@@ -31,9 +31,11 @@
 #   # edit .env: real domain, real secrets, real SMTP
 #   docker compose -f docker-compose.prod.yml up -d
 #
-# Only caddy publishes off-host ports (80/443). 8081/8082 are loopback-bound
-# and inert in production -- they exist so the same file serves a local run
-# where UMAMI_DOMAIN/LISTMONK_DOMAIN are bare ports instead of hostnames.
+# Only caddy publishes off-host ports: its 80 and 443, on host ports 80/443
+# unless SITE_HTTP_PORT/SITE_HTTPS_PORT move them (a host behind a tunnel
+# connector on another machine). 8081/8082 are loopback-bound and inert in
+# production -- they exist so the same file serves a local run where
+# UMAMI_DOMAIN/LISTMONK_DOMAIN are bare ports instead of hostnames.
 
 services:
 
@@ -143,8 +145,10 @@ services:
       - umami
       - listmonk
     ports:
-      - "80:80"
-      - "443:443"
+      # Host side movable from .env; unset, these are 80 and 443. Only the
+      # host side moves: Caddy still listens on 80 and 443 in the container.
+      - "${SITE_HTTP_PORT:-80}:80"
+      - "${SITE_HTTPS_PORT:-443}:443"
       # Inert in production: with real hostnames in UMAMI_DOMAIN/LISTMONK_DOMAIN
       # Caddy serves those sites on 443 and nothing listens here. Locally those
       # variables are ":8081"/":8082" and these are how you reach the consoles.

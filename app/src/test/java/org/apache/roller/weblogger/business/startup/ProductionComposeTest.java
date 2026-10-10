@@ -174,12 +174,44 @@ class ProductionComposeTest {
             }
             for (Object port : portList) {
                 String spec = String.valueOf(port);
-                boolean publicPort = spec.startsWith("80:") || spec.startsWith("443:");
+                boolean publicPort = spec.endsWith(":80") || spec.endsWith(":443");
                 assertTrue(publicPort || spec.startsWith("127.0.0.1:"),
-                        "only 80 and 443 may be reachable off-host; " + spec + " is neither "
-                                + "those nor loopback-bound");
+                        "only caddy's 80 and 443 may be reachable off-host; " + spec
+                                + " is neither those nor loopback-bound");
             }
         }
+    }
+
+    /**
+     * The off-host ports default to 80 and 443, which is what a public host
+     * serving its own domain needs. A host behind a tunnel connector or a
+     * reverse proxy on another machine is different: 80 and 443 there may
+     * belong to something else, and the connector can reach any port. So the
+     * host side of each one is movable from .env, the default unchanged, and
+     * named there, or the override exists but nobody can find it.
+     */
+    @Test
+    void everyPublicHostPortIsOverridableFromEnv() throws IOException {
+        Pattern overridable = Pattern.compile("\\$\\{([A-Z][A-Z0-9_]*):-(\\d+)}:(\\d+)");
+        String envExample = Files.readString(Paths.get("../deploy/.env.example"),
+                StandardCharsets.UTF_8);
+        List<String> published = new ArrayList<>();
+        for (Object port : (List<?>) service("caddy").get("ports")) {
+            String spec = String.valueOf(port);
+            if (spec.startsWith("127.0.0.1:")) {
+                continue;
+            }
+            published.add(spec);
+            var m = overridable.matcher(spec);
+            assertTrue(m.matches(), spec + " hard-codes its host port; write it as "
+                    + "${SOME_PORT:-<container port>}:<container port> so a host whose "
+                    + "port is taken can move it");
+            assertEquals(m.group(3), m.group(2), spec + " must default to its container "
+                    + "port, so a .env that never sets " + m.group(1) + " publishes what it did");
+            assertTrue(Pattern.compile("(?m)^#?" + m.group(1) + "=").matcher(envExample).find(),
+                    m.group(1) + " moves " + spec + " but deploy/.env.example never names it");
+        }
+        assertEquals(2, published.size(), "expected caddy's 80 and 443; got " + published);
     }
 
     /**

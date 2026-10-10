@@ -16,6 +16,7 @@ public IP.
 2. [Get the deploy files onto the host](#get-the-deploy-files-onto-the-host)
 3. [Configure `.env`](#configure-env)
 4. [DNS](#dns)
+   - [Behind a tunnel or a proxy on another host](#behind-a-tunnel-or-a-proxy-on-another-host)
 5. [First run](#first-run)
    - [Mail and account recovery](#mail-and-account-recovery)
 6. [TLS](#tls)
@@ -40,7 +41,10 @@ public IP.
   **or** none at all if you only want to run over plain HTTP on a LAN (see
   [DNS](#dns) — Caddy supports both modes).
 - Ports 80 and 443 reachable from the internet (Caddy needs 80 for the ACME
-  HTTP-01 challenge even if you only ever browse over HTTPS).
+  HTTP-01 challenge even if you only ever browse over HTTPS), **or** a tunnel
+  connector such as `cloudflared` on another machine that forwards to this
+  host (see [Behind a tunnel or a proxy on another
+  host](#behind-a-tunnel-or-a-proxy-on-another-host)).
 - Outbound SMTP relay credentials if you want password-reset mail to work
   (`mail.hostname`/`mail.port`/optional `mail.username`/`mail.password`).
   Roller runs fine without mail configured; that feature just won't send
@@ -198,6 +202,54 @@ production stack), set `SITE_DOMAIN=:80` in `.env` instead — Caddy then
 serves plain HTTP on port 80 only and never attempts ACME/TLS (a bare port
 with no hostname isn't a certificate-able name, so automatic HTTPS simply
 doesn't activate for it). See `deploy/caddy/Caddyfile` for the exact logic.
+`SITE_HTTP_PORT` in `.env` moves the host side of that port (for example to
+8080); Caddy itself still listens on 80 inside its container.
+
+### Behind a tunnel or a proxy on another host
+
+Some hosts never face the internet. A connector on another machine (the
+Cloudflare Tunnel daemon `cloudflared`, or a reverse proxy) receives public
+traffic, holds the public certificate, and forwards plain HTTP to this host
+over the LAN. For that layout:
+
+1. **In `.env`**, keep Caddy on plain HTTP and, if 80 and 443 belong to
+   something else on this host, move the published ports:
+
+   ```bash
+   SITE_DOMAIN=:80
+   SITE_HTTP_PORT=8080     # host side only; Caddy still listens on 80 in the container
+   SITE_HTTPS_PORT=8443    # unused in this layout, but published; moved off 443
+   ```
+
+   Don't set `SITE_DOMAIN` to the public hostname. Caddy would then redirect
+   port 80 to HTTPS, and a connector that forwards to port 80 gets that
+   redirect back for every request, which loops. (`http://blog.example.com`
+   also works, if you want Caddy to answer only that name.)
+2. **Apply it** with `./deploy.sh`, or `docker compose -f docker-compose.prod.yml up -d`.
+   The app takes its whole configuration from `.env`, so any `.env` change
+   recreates the app as well as Caddy: expect a short restart.
+3. **Point the connector** at `http://<this host>:<SITE_HTTP_PORT>`, for
+   example `http://docker2.lan:8080`, and let it pass the request's `Host`
+   header through unchanged. `cloudflared` does by default.
+4. **Set the site's address.** In Admin -> Global Config, set **Absolute URL
+   to site (if required)** to the public `https://` address. Feed ids, the
+   sitemap and password-reset links are built from it. A value saved there
+   wins over `ROLLER_SITE_ABSOLUTEURL`.
+
+**Known limitation: readers' addresses and the scheme stop at Caddy.**
+Caddy passes the connector's `Host` and `CF-Connecting-IP` headers through.
+It replaces `X-Forwarded-For` with the connector's own address and
+`X-Forwarded-Proto` with `http`, because it discards those two headers from
+any peer it doesn't trust, and `deploy/caddy/Caddyfile` trusts none
+(checked 2026-10-10 against Caddy 2.11.4). Behind a connector, therefore:
+
+- The app's per-client throttles (password reset, contact form, newsletter
+  sign-up) and Umami see one address, the connector's, for every reader.
+- The app treats every request as plain HTTP, so redirects it builds point at
+  `http://`.
+
+The fix is a `trusted_proxies` setting in the Caddyfile naming the connector's
+address, which needs a new `roller-caddy` image.
 
 ## First run
 
@@ -1065,7 +1117,12 @@ right.
 
 ## Firewall
 
-Only 80 and 443 need to be open to the internet. Caddy also publishes
+Only 80 and 443 need to be open to the internet, or the ports
+`SITE_HTTP_PORT`/`SITE_HTTPS_PORT` moved them to. Behind a tunnel connector
+(see [Behind a tunnel or a proxy on another
+host](#behind-a-tunnel-or-a-proxy-on-another-host)) nothing needs to be open
+to the internet; only the connector's host needs to reach `SITE_HTTP_PORT`.
+Caddy also publishes
 `127.0.0.1:8081` and `127.0.0.1:8082` (the local-testing path to the Umami
 and listmonk consoles — see [Test a release locally before deploying
 it](#test-a-release-locally-before-deploying-it)), but those are
@@ -1129,7 +1186,10 @@ LISTMONK_CONSOLE_PORT=18082   # and/or UMAMI_CONSOLE_PORT=18081
 
 In the local `:8081`/`:8082` mode the console is then at
 `http://localhost:18082`, and `LISTMONK_ROOT_URL` moves with it. 80 and 443
-are not movable this way: they are the site.
+move the same way, with `SITE_HTTP_PORT` and `SITE_HTTPS_PORT`. Do that only
+when a connector on another host forwards to them (see [Behind a tunnel or a
+proxy on another host](#behind-a-tunnel-or-a-proxy-on-another-host)): a host
+serving its own domain needs 80 and 443 reachable from the internet.
 
 **App container is up but `/roller` isn't reachable through Caddy**
 
