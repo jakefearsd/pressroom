@@ -250,7 +250,7 @@ isn't private, which is the reader's. Name that one machine, never a private
 range: where Docker's userland proxy carries a connection, an internet client
 arrives from a private address and could then write its own
 `X-Forwarded-For`. A malformed value stops Caddy, and the site with it.
-The setting needs the `roller-caddy` image from the release after 0.1.11;
+The setting needs the `roller-caddy` image from 0.1.12 on;
 older images ignore it. Umami is unaffected either way behind `cloudflared`:
 it reads `CF-Connecting-IP` first, which Caddy passes through.
 
