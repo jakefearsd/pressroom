@@ -215,6 +215,44 @@ class ProductionComposeTest {
     }
 
     /**
+     * Behind a proxy on another machine (a tunnel connector such as
+     * cloudflared), that machine is Caddy's peer, and an untrusted peer's
+     * X-Forwarded-For is replaced with its own address and its
+     * X-Forwarded-Proto with "http". Every reader then reaches the app's
+     * throttles as one address, and the app believes the request was plain
+     * HTTP. Which peer to trust is per host, so it comes from .env, and unset
+     * means none: on a public host Caddy is the first hop and must keep
+     * discarding whatever a client sends. Never {@code private_ranges}: where
+     * Docker's userland proxy carries a connection, an internet client arrives
+     * from the bridge gateway, a private address, and could then write its own
+     * X-Forwarded-For past every throttle.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void caddyTrustsForwardedHeadersOnlyFromProxiesNamedInEnv() throws IOException {
+        String directives = Files.readString(Paths.get("../deploy/caddy/Caddyfile"),
+                StandardCharsets.UTF_8).replaceAll("(?m)#.*$", "");
+        assertTrue(Pattern.compile("(?m)^\\s*trusted_proxies static \\{\\$TRUSTED_PROXIES}\\s*$")
+                        .matcher(directives).find(),
+                "the Caddyfile's global servers block must take its trusted proxies from "
+                        + "TRUSTED_PROXIES");
+        assertTrue(Pattern.compile("(?m)^\\s*trusted_proxies_strict\\s*$").matcher(directives).find(),
+                "Cloudflare appends the reader's address to any X-Forwarded-For the reader "
+                        + "sent, so only a right-to-left read (trusted_proxies_strict) finds it");
+        assertFalse(directives.contains("private_ranges"),
+                "trusting private_ranges trusts Docker's bridge gateway, which is where an "
+                        + "internet client appears when the userland proxy carries it");
+        Map<String, Object> env = (Map<String, Object>) service("caddy").get("environment");
+        assertEquals("${TRUSTED_PROXIES:-}", env.get("TRUSTED_PROXIES"),
+                "caddy must receive TRUSTED_PROXIES, and unset it must trust no proxy");
+        String envExample = Files.readString(Paths.get("../deploy/.env.example"),
+                StandardCharsets.UTF_8);
+        assertTrue(Pattern.compile("(?m)^#?TRUSTED_PROXIES=").matcher(envExample).find(),
+                "deploy/.env.example must name TRUSTED_PROXIES, or nobody behind a tunnel "
+                        + "finds it");
+    }
+
+    /**
      * The loopback console ports exist only for a local run, yet caddy cannot
      * start if a host already has either one bound -- on any address, since a
      * wildcard listener blocks a loopback bind of the same port -- and caddy is

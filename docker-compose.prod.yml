@@ -161,6 +161,9 @@ services:
       SITE_DOMAIN: ${SITE_DOMAIN:?SITE_DOMAIN must be set in .env (a real domain, or :80 for LAN/testing)}
       UMAMI_DOMAIN: ${UMAMI_DOMAIN:-analytics.invalid}
       LISTMONK_DOMAIN: ${LISTMONK_DOMAIN:-newsletter.invalid}
+      # The proxy whose X-Forwarded-* headers Caddy keeps (see the Caddyfile's
+      # global block). Empty trusts none, which a public host needs.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
       # Per-weblog custom domains (virtual hosting): unlike UMAMI_DOMAIN/
       # LISTMONK_DOMAIN above, VHOST_ZONE unset can't just default to a
       # do-nothing hostname on its own -- the Caddyfile's wildcard block

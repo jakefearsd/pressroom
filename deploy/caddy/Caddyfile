@@ -14,6 +14,26 @@
 #   - ":80" (LAN/local testing, no public domain/DNS): a bare port with no
 #     hostname is not a certificate-able name, so Caddy's automatic HTTPS
 #     never activates for it -- it just serves plain HTTP on port 80.
+
+# Which peers may tell Caddy who the reader is. Caddy replaces an untrusted
+# peer's X-Forwarded-For with the peer's own address and its
+# X-Forwarded-Proto with "http", so behind a proxy on another machine (a
+# tunnel connector such as cloudflared) every reader would reach the app as
+# that machine, over HTTP. {$TRUSTED_PROXIES} (deploy/.env.example) names
+# that machine; unset, Caddy trusts no one, which a public host needs.
+# Never private_ranges: an internet client carried by Docker's userland
+# proxy arrives from the bridge gateway, a private address.
+#
+# Cloudflare appends the reader's address to any X-Forwarded-For the reader
+# sent, so the leftmost entry is the reader's to write; strict reads right
+# to left, skipping trusted hops. The app's RemoteIpValve reads the same way.
+{
+	servers {
+		trusted_proxies static {$TRUSTED_PROXIES}
+		trusted_proxies_strict
+	}
+}
+
 {$SITE_DOMAIN} {
 	# Analytics, served from the BLOG's own origin.
 	#

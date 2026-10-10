@@ -212,11 +212,13 @@ Cloudflare Tunnel daemon `cloudflared`, or a reverse proxy) receives public
 traffic, holds the public certificate, and forwards plain HTTP to this host
 over the LAN. For that layout:
 
-1. **In `.env`**, keep Caddy on plain HTTP and, if 80 and 443 belong to
+1. **In `.env`**, keep Caddy on plain HTTP, name the connector's machine as
+   the proxy whose forwarded headers Caddy keeps and, if 80 and 443 belong to
    something else on this host, move the published ports:
 
    ```bash
    SITE_DOMAIN=:80
+   TRUSTED_PROXIES=192.168.5.50   # the connector's address; separate several with spaces
    SITE_HTTP_PORT=8080     # host side only; Caddy still listens on 80 in the container
    SITE_HTTPS_PORT=8443    # unused in this layout, but published; moved off 443
    ```
@@ -236,20 +238,21 @@ over the LAN. For that layout:
    sitemap and password-reset links are built from it. A value saved there
    wins over `ROLLER_SITE_ABSOLUTEURL`.
 
-**Known limitation: readers' addresses and the scheme stop at Caddy.**
-Caddy passes the connector's `Host` and `CF-Connecting-IP` headers through.
-It replaces `X-Forwarded-For` with the connector's own address and
-`X-Forwarded-Proto` with `http`, because it discards those two headers from
-any peer it doesn't trust, and `deploy/caddy/Caddyfile` trusts none
-(checked 2026-10-10 against Caddy 2.11.4). Behind a connector, therefore:
-
-- The app's per-client throttles (password reset, contact form, newsletter
-  sign-up) and Umami see one address, the connector's, for every reader.
-- The app treats every request as plain HTTP, so redirects it builds point at
-  `http://`.
-
-The fix is a `trusted_proxies` setting in the Caddyfile naming the connector's
-address, which needs a new `roller-caddy` image.
+**Why `TRUSTED_PROXIES`.** Caddy discards `X-Forwarded-For` and
+`X-Forwarded-Proto` from any peer it doesn't trust, writing the peer's own
+address and `http` in their place. With it unset behind a connector, the
+app's per-client throttles (password reset, contact form, newsletter sign-up)
+count every reader as the connector, and the app takes every request for
+plain HTTP, so redirects it builds point at `http://`. With the connector
+named, Caddy keeps both headers and appends the connector's address; the app
+reads `X-Forwarded-For` right to left and stops at the first address that
+isn't private, which is the reader's. Name that one machine, never a private
+range: where Docker's userland proxy carries a connection, an internet client
+arrives from a private address and could then write its own
+`X-Forwarded-For`. A malformed value stops Caddy, and the site with it.
+The setting needs the `roller-caddy` image from the release after 0.1.11;
+older images ignore it. Umami is unaffected either way behind `cloudflared`:
+it reads `CF-Connecting-IP` first, which Caddy passes through.
 
 ## First run
 
