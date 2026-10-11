@@ -15,6 +15,8 @@ import org.springframework.mock.web.MockServletContext;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The forward a tool call becomes, against a servlet context whose one
@@ -35,6 +37,9 @@ class InProcessApiDispatcherTest {
         @Override
         public RequestDispatcher getRequestDispatcher(String path) {
             this.path = path;
+            if (path.startsWith("/api/v1/nowhere")) {
+                return null;
+            }
             return new RequestDispatcher() {
                 @Override
                 public void forward(ServletRequest request, ServletResponse response) throws IOException {
@@ -94,5 +99,13 @@ class InProcessApiDispatcherTest {
         // A bare '+' in a query string is read back as a space, so a time
         // zone offset would arrive as "10:00 02:00".
         assertEquals("/api/v1/weblogs/b/entries?q=a%20b&q=c%26d%3De&q=10%3A00%2B02%3A00", context.path);
+    }
+
+    @Test
+    void aPathTheContainerCannotDispatchToIsRefusedByName() {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> new InProcessApiDispatcher()
+                .dispatch(mcpRequest(), new ApiCall("GET", "/v1/nowhere", null, null)));
+
+        assertTrue(e.getMessage().contains("/api/v1/nowhere"), e.getMessage());
     }
 }

@@ -57,14 +57,16 @@ final class CapturedResponse implements HttpServletResponse {
         return status;
     }
 
+    /** As the container does, discards what was written before it; renders no error page after it. */
     @Override
     public void sendError(int sc) {
+        resetBuffer();
         status = sc;
     }
 
     @Override
     public void sendError(int sc, String msg) {
-        status = sc;
+        sendError(sc);
     }
 
     @Override

@@ -35,9 +35,12 @@ public final class InProcessApiDispatcher implements ApiDispatcher {
 
     @Override
     public ApiReply dispatch(HttpServletRequest mcpRequest, ApiCall call) throws IOException, ServletException {
-        RequestDispatcher dispatcher =
-                mcpRequest.getServletContext().getRequestDispatcher("/api" + call.path() + queryString(call.query()));
-        DispatchedRequest request = new DispatchedRequest(mcpRequest, call.method(), call.jsonBody());
+        String target = "/api" + call.path() + queryString(call.query());
+        RequestDispatcher dispatcher = mcpRequest.getServletContext().getRequestDispatcher(target);
+        if (dispatcher == null) {
+            throw new IllegalArgumentException("The container cannot dispatch to " + target);
+        }
+        DispatchedRequest request = new DispatchedRequest(mcpRequest, call);
         CapturedResponse response = new CapturedResponse();
         dispatcher.forward(request, response);
         return response.reply();

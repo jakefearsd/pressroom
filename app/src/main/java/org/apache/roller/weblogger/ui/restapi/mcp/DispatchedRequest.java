@@ -7,8 +7,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletInputStream;
@@ -18,10 +24,23 @@ import jakarta.servlet.http.HttpServletRequestWrapper;
 
 /**
  * The MCP request, as the API route sees it when a tool call is forwarded:
- * the action's method and JSON body, and nothing else of the MCP request.
- * Identity is not a header here -- it is the security context the token
- * filter already established for this thread -- so Authorization, cookies
- * and every MCP header are hidden.
+ * the call's method, query parameters and JSON body, and nothing else of the
+ * MCP request. Identity is not a header here -- it is the security context
+ * the token filter already established for this thread -- so Authorization,
+ * cookies and every MCP header are hidden.
+ *
+ * <p>Parameters are exactly the call's query. On a forward the container
+ * merges the original request's parameters into the forwarded ones, so
+ * without this an MCP client posting to {@code /api/mcp?status=X} would add
+ * {@code status=X} to every call it makes.
+ *
+ * <p>Attributes are an overlay. What the dispatch sets or removes stays with
+ * the dispatch, so nothing one call leaves behind (the
+ * {@code actionWeblog} RollerHandlerInterceptor sets and never clears, which
+ * ApiScopeInterceptor trusts) can be read by a later call on the same MCP
+ * request. Reads fall back to the MCP request, because the markers its
+ * filters set (Spring Security's among them) are what stop those filters
+ * from running, and clearing the security context, a second time.
  */
 final class DispatchedRequest extends HttpServletRequestWrapper {
 
@@ -29,11 +48,17 @@ final class DispatchedRequest extends HttpServletRequestWrapper {
 
     private final String method;
     private final byte[] body;
+    private final Map<String, String[]> parameters;
+    private final Map<String, Object> attributes = new HashMap<>();
+    private final Set<String> removedAttributes = new HashSet<>();
 
-    DispatchedRequest(HttpServletRequest mcpRequest, String method, String jsonBody) {
+    DispatchedRequest(HttpServletRequest mcpRequest, ApiCall call) {
         super(mcpRequest);
-        this.method = method;
-        this.body = jsonBody == null ? new byte[0] : jsonBody.getBytes(StandardCharsets.UTF_8);
+        this.method = call.method();
+        this.body = call.jsonBody() == null ? new byte[0] : call.jsonBody().getBytes(StandardCharsets.UTF_8);
+        Map<String, String[]> query = new LinkedHashMap<>();
+        call.query().forEach((name, values) -> query.put(name, values.toArray(new String[0])));
+        this.parameters = Collections.unmodifiableMap(query);
     }
 
     @Override
@@ -109,6 +134,67 @@ final class DispatchedRequest extends HttpServletRequestWrapper {
                     + "that is the contract this wrapper implements, not a choice it makes.")
     public Cookie[] getCookies() {
         return null;
+    }
+
+    @Override
+    public String getParameter(String name) {
+        String[] values = parameters.get(name);
+        return values == null || values.length == 0 ? null : values[0];
+    }
+
+    /**
+     * Null for a parameter the call does not carry: the servlet contract.
+     * Spring's {@code @RequestParam} resolution reads null as "absent" and
+     * would take an empty array as a value that is present.
+     */
+    @Override
+    @SuppressWarnings("PMD.ReturnEmptyCollectionRatherThanNull")
+    public String[] getParameterValues(String name) {
+        String[] values = parameters.get(name);
+        return values == null ? null : values.clone();
+    }
+
+    @Override
+    public Enumeration<String> getParameterNames() {
+        return Collections.enumeration(parameters.keySet());
+    }
+
+    @Override
+    public Map<String, String[]> getParameterMap() {
+        return parameters;
+    }
+
+    @Override
+    public Object getAttribute(String name) {
+        Object value = attributes.get(name);
+        if (value != null || removedAttributes.contains(name)) {
+            return value;
+        }
+        return super.getAttribute(name);
+    }
+
+    @Override
+    public Enumeration<String> getAttributeNames() {
+        Set<String> names = new LinkedHashSet<>(Collections.list(super.getAttributeNames()));
+        names.removeAll(removedAttributes);
+        names.addAll(attributes.keySet());
+        return Collections.enumeration(names);
+    }
+
+    @Override
+    public void setAttribute(String name, Object value) {
+        if (value == null) {
+            removeAttribute(name);
+            return;
+        }
+        attributes.put(name, value);
+        removedAttributes.remove(name);
+    }
+
+    @Override
+    public void removeAttribute(String name) {
+        attributes.remove(name);
+        removedAttributes.add(name);
     }
 
     @Override

@@ -46,6 +46,18 @@ class CapturedResponseTest {
     }
 
     @Test
+    void sendErrorDiscardsWhatWasWrittenBeforeIt() throws Exception {
+        CapturedResponse captured = new CapturedResponse();
+        captured.getWriter().write("half a page");
+        captured.sendError(500);
+        assertEquals("", captured.reply().body());
+
+        captured.getOutputStream().write(new byte[] {'x'});
+        captured.sendError(503, "busy");
+        assertEquals(new ApiReply(503, null, ""), captured.reply());
+    }
+
+    @Test
     void aRedirectIsCapturedAsAStatusAndLocation() throws Exception {
         CapturedResponse captured = new CapturedResponse();
         captured.getWriter().write("discarded");

@@ -9,6 +9,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.StringJoiner;
+import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jakarta.servlet.ServletException;
@@ -46,42 +48,68 @@ class InProcessDispatchContainerTest {
     /** Held so the level sticks: JUL keeps only weak references to its loggers. */
     private static final Logger TOMCAT_LOG = Logger.getLogger("org.apache");
 
+    /** An attribute the outer request carries, as Spring Security's filter markers are. */
+    private static final String MARKER = "mcp.outer.marker";
+
     private static Tomcat tomcat;
     private static String mcpUrl;
     private static Level tomcatLogLevel;
 
-    /** Echoes the request it was forwarded, as JSON-ish text; 404s through sendError on /v1/missing. */
+    /**
+     * Echoes the request it was forwarded, as text. On /v1/missing it 404s
+     * through sendError; on /v1/attribute it reports two request attributes,
+     * then sets one and removes the other, as RollerHandlerInterceptor sets
+     * actionWeblog and a filter removes its own marker.
+     */
     private static final class EchoApi extends HttpServlet {
         private static final long serialVersionUID = 1L;
 
         @Override
         protected void service(HttpServletRequest request, HttpServletResponse response) throws IOException {
             if ("/v1/missing".equals(request.getPathInfo())) {
+                response.getWriter().write("partial output");
                 response.sendError(404);
                 return;
             }
-            String body = new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
             response.setStatus(201);
             response.setContentType("application/json");
+            if ("/v1/attribute".equals(request.getPathInfo())) {
+                response.getWriter().write("marker=" + request.getAttribute(MARKER)
+                        + " actionWeblog=" + request.getAttribute("actionWeblog"));
+                request.setAttribute("actionWeblog", "it_weblog");
+                request.removeAttribute(MARKER);
+                return;
+            }
+            String body = new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            Map<String, List<String>> params = new TreeMap<>();
+            request.getParameterMap().forEach((name, values) -> params.put(name, List.of(values)));
             response.getWriter().write(request.getMethod() + " " + request.getRequestURI()
-                    + " q=" + request.getParameter("q")
+                    + " params=" + params
                     + " auth=" + request.getHeader("Authorization")
                     + " body=" + body);
         }
     }
 
-    /** Dispatches the call named by the {@code to} header, then answers with what came back. */
+    /**
+     * Marks the MCP request (as a filter of the outer request would), then
+     * dispatches the call named by the {@code to} header as many times as the
+     * {@code times} header says, and answers with what came back.
+     */
     private static final class ForwardingTransport extends HttpServlet {
         private static final long serialVersionUID = 1L;
 
         @Override
         protected void doPost(HttpServletRequest request, HttpServletResponse response)
                 throws IOException, ServletException {
-            ApiReply reply = new InProcessApiDispatcher().dispatch(request, new ApiCall("POST",
-                    request.getHeader("to"), Map.of("q", List.of("a+b")), "{\"title\":\"t\"}"));
+            request.setAttribute(MARKER, "outer");
+            StringJoiner replies = new StringJoiner(" | ", "transport saw ", "");
+            for (int i = 0; i < Integer.parseInt(request.getHeader("times")); i++) {
+                ApiReply reply = new InProcessApiDispatcher().dispatch(request, new ApiCall("POST",
+                        request.getHeader("to"), Map.of("q", List.of("a+b")), "{\"title\":\"t\"}"));
+                replies.add(reply.status() + " " + reply.contentType() + " [" + reply.body() + "]");
+            }
             response.setContentType("text/plain");
-            response.getWriter().write("transport saw " + reply.status() + " " + reply.contentType()
-                    + " [" + reply.body() + "]");
+            response.getWriter().write(replies.toString());
         }
     }
 
@@ -109,30 +137,55 @@ class InProcessDispatchContainerTest {
         TOMCAT_LOG.setLevel(tomcatLogLevel);
     }
 
-    private static HttpResponse<String> callMcp(String to) throws Exception {
+    private static HttpResponse<String> callMcp(String query, String to, int times) throws Exception {
         try (HttpClient client = HttpClient.newHttpClient()) {
-            return client.send(HttpRequest.newBuilder(URI.create(mcpUrl))
+            return client.send(HttpRequest.newBuilder(URI.create(mcpUrl + query))
                     .header("Authorization", "Bearer rlr_secret")
                     .header("to", to)
+                    .header("times", Integer.toString(times))
                     .POST(HttpRequest.BodyPublishers.ofString("{\"jsonrpc\":\"2.0\"}"))
                     .build(), HttpResponse.BodyHandlers.ofString());
         }
     }
 
+    private static final String THINGS_ECHO = "transport saw 201 application/json"
+            + " [POST /roller/api/v1/things params={q=[a+b]} auth=null body={\"title\":\"t\"}]";
+
     @Test
     void theTransportStillAnswersAfterTheForwardWithWhatTheApiRouteWrote() throws Exception {
-        HttpResponse<String> response = callMcp("/v1/things");
+        HttpResponse<String> response = callMcp("", "/v1/things", 1);
 
         assertEquals(200, response.statusCode());
-        assertEquals("transport saw 201 application/json"
-                + " [POST /roller/api/v1/things q=a+b auth=null body={\"title\":\"t\"}]", response.body());
+        assertEquals(THINGS_ECHO, response.body());
+    }
+
+    @Test
+    void theMcpRequestsOwnQueryParametersNeverReachTheApi() throws Exception {
+        // Tomcat merges the original request's parameters into a forward's;
+        // the API must see the call's query and nothing else.
+        HttpResponse<String> response = callMcp("?q=injected&status=PUBLISHED", "/v1/things", 1);
+
+        assertEquals(200, response.statusCode());
+        assertEquals(THINGS_ECHO, response.body());
+    }
+
+    @Test
+    void nothingADispatchSetsOrRemovesOutlivesIt() throws Exception {
+        // The first call's actionWeblog must not be what a second call's
+        // scope check reads, and a marker the outer request's filters set
+        // must stay visible to every call, however one of them treats it.
+        HttpResponse<String> response = callMcp("", "/v1/attribute", 2);
+
+        assertEquals(200, response.statusCode());
+        assertEquals("transport saw 201 application/json [marker=outer actionWeblog=null]"
+                + " | 201 application/json [marker=outer actionWeblog=null]", response.body());
     }
 
     @Test
     void anApiSendErrorIsAStatusForTheTransportNotAnErrorPage() throws Exception {
-        HttpResponse<String> response = callMcp("/v1/missing");
+        HttpResponse<String> response = callMcp("", "/v1/missing", 1);
 
         assertEquals(200, response.statusCode());
-        assertEquals("transport saw 404 null []", response.body());
+        assertEquals("transport saw 404 null []", response.body(), "sendError discards what was written before it");
     }
 }
