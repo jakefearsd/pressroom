@@ -96,6 +96,25 @@ class CapturedResponseTest {
         assertThrows(UnsupportedOperationException.class, () -> captured.getOutputStream().setWriteListener(null));
     }
 
+    /**
+     * Spring replaces a header by clearing it first with {@code setHeader(name, null)}
+     * (ServletResponseHeadersAdapter.remove), as Tomcat's response treats it: a
+     * removal. A stored null made the next getHeaders throw, so an API error
+     * body written by an exception handler never reached the caller.
+     */
+    @Test
+    void settingAHeaderToNullRemovesItAndAddingNullIsIgnored() {
+        CapturedResponse captured = new CapturedResponse();
+        captured.setHeader("Vary", "Accept");
+
+        captured.setHeader("Vary", null);
+        captured.addHeader("X-None", null);
+
+        assertFalse(captured.containsHeader("Vary"));
+        assertEquals(List.of(), List.copyOf(captured.getHeaders("Vary")));
+        assertFalse(captured.containsHeader("X-None"));
+    }
+
     @Test
     void headersAreCapturedCaseInsensitively() {
         CapturedResponse captured = new CapturedResponse();

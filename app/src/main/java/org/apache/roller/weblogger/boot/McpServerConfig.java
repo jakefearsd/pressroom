@@ -2,20 +2,31 @@ package org.apache.roller.weblogger.boot;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.server.McpServer;
+import io.modelcontextprotocol.server.McpStatelessServerFeatures.SyncToolSpecification;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.server.transport.HttpServletStatelessServerTransport;
 import io.modelcontextprotocol.spec.McpSchema;
+import jakarta.servlet.http.HttpServletRequest;
 import org.apache.roller.weblogger.ui.restapi.mcp.ApiDispatcher;
+import org.apache.roller.weblogger.ui.restapi.mcp.ApiRouteTable;
 import org.apache.roller.weblogger.ui.restapi.mcp.InProcessApiDispatcher;
 import org.apache.roller.weblogger.ui.restapi.mcp.McpEndpointServlet;
+import org.apache.roller.weblogger.ui.restapi.mcp.McpToolCatalog;
+import org.apache.roller.weblogger.ui.restapi.mcp.McpToolExecutor;
+import org.apache.roller.weblogger.ui.restapi.mcp.ResolvedTool;
+import org.apache.roller.weblogger.ui.restapi.mcp.ToolSchemas;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -67,13 +78,33 @@ public class McpServerConfig {
     }
 
     @Bean
+    public ApiRouteTable mcpApiRoutes(
+            @Qualifier("requestMappingHandlerMapping") RequestMappingHandlerMapping requestMappingHandlerMapping) {
+        return ApiRouteTable.from(requestMappingHandlerMapping);
+    }
+
+    @Bean
     public McpStatelessSyncServer mcpServer(HttpServletStatelessServerTransport mcpTransport,
-            ApiDispatcher mcpApiDispatcher) {
+            ApiDispatcher mcpApiDispatcher, ApiRouteTable mcpApiRoutes) {
+        McpToolExecutor executor = new McpToolExecutor(mcpApiDispatcher);
+        List<SyncToolSpecification> tools = new ArrayList<>();
+        for (ResolvedTool tool : McpToolCatalog.resolve(mcpApiRoutes)) {
+            McpSchema.Tool.Builder spec = McpSchema.Tool.builder()
+                    .name(tool.name())
+                    .description(ToolSchemas.description(tool))
+                    .inputSchema(ToolSchemas.inputSchema(tool));
+            if (tool.readOnly()) {
+                spec.annotations(McpSchema.ToolAnnotations.builder().readOnlyHint(true).build());
+            }
+            tools.add(new SyncToolSpecification(spec.build(), (ctx, request) -> executor.call(
+                    (HttpServletRequest) ctx.get(McpEndpointServlet.REQUEST_KEY), tool, request.arguments())));
+        }
         return McpServer.sync(mcpTransport)
                 .serverInfo("roller", rollerVersion())
                 .capabilities(McpSchema.ServerCapabilities.builder().tools(false).build())
                 .immediateExecution(true)
-                .tools(org.apache.roller.weblogger.ui.restapi.mcp.SpikeToolsAccess.all(mcpApiDispatcher))
+                .validateToolInputs(false) // one validation path: McpToolExecutor, then the API
+                .tools(tools)
                 .build();
     }
 

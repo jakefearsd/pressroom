@@ -17,12 +17,17 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
  * touching this file), mapped by a real RequestMappingHandlerMapping. The
  * controllers' collaborators are left null -- only their mappings matter.
  */
-final class ApiRouteTables {
+public final class ApiRouteTables {
 
     private ApiRouteTables() {
     }
 
-    static ApiRouteTable real() {
+    public static ApiRouteTable real() {
+        return ApiRouteTable.from(realMapping());
+    }
+
+    /** The mapping {@link #real()} reads, for a test that must register it as a bean. */
+    public static RequestMappingHandlerMapping realMapping() {
         GenericWebApplicationContext ctx = new GenericWebApplicationContext(new MockServletContext());
         ClassPathScanningCandidateComponentProvider scanner = new ClassPathScanningCandidateComponentProvider(false);
         scanner.addIncludeFilter(new AnnotationTypeFilter(RestController.class));
@@ -34,7 +39,7 @@ final class ApiRouteTables {
         RequestMappingHandlerMapping mapping = new RequestMappingHandlerMapping();
         mapping.setApplicationContext(ctx);
         mapping.afterPropertiesSet();
-        return ApiRouteTable.from(mapping);
+        return mapping;
     }
 
     @SuppressWarnings("unchecked")

@@ -120,6 +120,13 @@ final class CapturedResponse implements HttpServletResponse {
 
     @Override
     public void setHeader(String name, String value) {
+        if (value == null) {
+            headers.remove(name.toLowerCase(Locale.ROOT));
+            if ("content-type".equalsIgnoreCase(name)) {
+                contentType = null;
+            }
+            return;
+        }
         List<String> values = new ArrayList<>();
         values.add(value);
         headers.put(name.toLowerCase(Locale.ROOT), values);
@@ -130,6 +137,9 @@ final class CapturedResponse implements HttpServletResponse {
 
     @Override
     public void addHeader(String name, String value) {
+        if (value == null) {
+            return;
+        }
         headers.computeIfAbsent(name.toLowerCase(Locale.ROOT), k -> new ArrayList<>()).add(value);
         if ("content-type".equalsIgnoreCase(name)) {
             contentType = value;

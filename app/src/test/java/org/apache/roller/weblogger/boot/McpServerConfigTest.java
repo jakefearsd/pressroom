@@ -11,6 +11,8 @@ import io.modelcontextprotocol.server.transport.HttpServletStatelessServerTransp
 import org.apache.roller.weblogger.ui.restapi.mcp.ApiCall;
 import org.apache.roller.weblogger.ui.restapi.mcp.ApiDispatcher;
 import org.apache.roller.weblogger.ui.restapi.mcp.ApiReply;
+import org.apache.roller.weblogger.ui.restapi.mcp.ApiRouteTable;
+import org.apache.roller.weblogger.ui.restapi.mcp.ApiRouteTables;
 import org.apache.roller.weblogger.ui.restapi.mcp.McpEndpointServlet;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.web.servlet.ServletContextInitializer;
@@ -40,13 +42,15 @@ class McpServerConfigTest {
 
     private static final ObjectMapper JSON = JsonMapper.builder().build();
 
+    private static final ApiRouteTable ROUTES = ApiRouteTables.real();
+
     private final McpServerConfig config = new McpServerConfig();
 
     @Test
     void theEndpointIsMappedAtExactlyApiMcp() {
         HttpServletStatelessServerTransport transport = config.mcpTransport();
         ServletRegistrationBean<McpEndpointServlet> registration = config.mcpEndpointRegistration(
-                transport, config.mcpServer(transport, (request, call) -> fail("nothing is dispatched")));
+                transport, config.mcpServer(transport, (request, call) -> fail("nothing is dispatched"), ROUTES));
 
         assertEquals(List.of("/api/mcp"), List.copyOf(registration.getUrlMappings()));
         assertEquals("/api/mcp", McpServerConfig.ENDPOINT);
@@ -61,7 +65,12 @@ class McpServerConfigTest {
      */
     @Test
     void onlyTheEndpointServletIsMappedNeverTheBareTransport() {
-        try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(McpServerConfig.class)) {
+        try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {
+            // a ready singleton: registered as a definition, the context would re-aware it
+            context.getBeanFactory().registerSingleton("requestMappingHandlerMapping",
+                    ApiRouteTables.realMapping());
+            context.register(McpServerConfig.class);
+            context.refresh();
             List<String> mapped = new ArrayList<>();
             for (ServletContextInitializer initializer : new ServletContextInitializerBeans(context.getBeanFactory())) {
                 if (initializer instanceof ServletRegistrationBean<?> servlet && servlet.isEnabled()) {
@@ -109,8 +118,8 @@ class McpServerConfigTest {
 
     @Test
     void anApiRefusalIsAToolErrorCarryingTheApisBody() throws Exception {
-        JsonNode answer = post(rpc("tools/call", Map.of("name", "spike_trash",
-                        "arguments", Map.of("weblog", "b", "id", "e1"))),
+        JsonNode answer = post(rpc("tools/call", Map.of("name", "entries",
+                        "arguments", Map.of("action", "trash", "weblog", "b", "id", "e1"))),
                 (request, call) -> new ApiReply(404, "application/problem+json", "{\"status\":404}"));
 
         JsonNode result = answer.get("result");
@@ -127,7 +136,7 @@ class McpServerConfigTest {
     private JsonNode post(MockHttpServletRequest request, ApiDispatcher dispatcher) throws Exception {
         HttpServletStatelessServerTransport transport = config.mcpTransport();
         McpEndpointServlet servlet =
-                config.mcpEndpointRegistration(transport, config.mcpServer(transport, dispatcher)).getServlet();
+                config.mcpEndpointRegistration(transport, config.mcpServer(transport, dispatcher, ROUTES)).getServlet();
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         servlet.service(request, response);

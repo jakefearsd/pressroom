@@ -35,7 +35,7 @@ class McpIT extends RollerIT {
 
     private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
 
-    // ------------------------------------------------------------- the spike
+    // ---------------------------------------------------------- the endpoint
 
     @Test
     void initializeAnswersAsRollerWithNoSession() throws Exception {
@@ -55,33 +55,68 @@ class McpIT extends RollerIT {
     }
 
     @Test
-    void aReadAWriteAndADeleteReachTheApiThroughMcp() throws Exception {
-        Token token = mint("McpIT spike", "ADMIN", null);
-        String entryId = null;
+    void anEntryRoundTripThroughMcpAloneMatchesRest() throws Exception {
+        Token token = mint("McpIT round trip", "ADMIN", null);
+        String id = null;
         try {
-            JsonNode who = callTool(token.raw(), "whoami", Map.of());
-            assertFalse(isError(who), who.toString());
-            assertEquals(ADMIN_USERNAME, JSON.readTree(text(who)).get("userName").asString());
-
-            JsonNode created = callTool(token.raw(), "spike_create_draft",
-                    Map.of("weblog", WEBLOG_HANDLE, "title", "McpIT spike " + System.nanoTime()));
+            JsonNode created = callTool(token.raw(), "entries", Map.of("action", "create",
+                    "weblog", WEBLOG_HANDLE, "title", "McpIT place " + System.nanoTime(), "text", "<p>x</p>",
+                    "jsonLdType", "TOURIST_ATTRACTION", "geoLatitude", 32.9228, "geoLongitude", -117.2534));
             assertFalse(isError(created), created.toString());
-            entryId = JSON.readTree(text(created)).get("id").asString();
+            id = JSON.readTree(text(created)).get("id").asString();
 
-            HttpResponse<String> overRest = restGet(token.raw(),
-                    "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries/" + entryId);
-            assertEquals(200, overRest.statusCode(), "the write must have committed: " + overRest.body());
+            JsonNode got = callTool(token.raw(), "entries", Map.of("action", "get", "weblog", WEBLOG_HANDLE, "id", id));
+            assertEquals(JSON.readTree(restGet(token.raw(), "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries/" + id).body()),
+                    JSON.readTree(text(got)), "MCP get and REST GET agree");
+            assertEquals(32.9228, JSON.readTree(text(got)).get("geoLatitude").asDouble());
 
-            JsonNode trashed = callTool(token.raw(), "spike_trash", Map.of("weblog", WEBLOG_HANDLE, "id", entryId));
-            assertFalse(isError(trashed), trashed.toString());
-            assertEquals("TRASHED", JSON.readTree(restGet(token.raw(),
-                    "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries/" + entryId).body()).get("status").asString());
+            JsonNode updated = callTool(token.raw(), "entries", Map.of("action", "update",
+                    "weblog", WEBLOG_HANDLE, "id", id, "searchDescription", "From McpIT"));
+            assertEquals("From McpIT", JSON.readTree(text(updated)).get("searchDescription").asString());
+
+            assertFalse(isError(callTool(token.raw(), "entries",
+                    Map.of("action", "trash", "weblog", WEBLOG_HANDLE, "id", id))));
+            assertFalse(isError(callTool(token.raw(), "entries",
+                    Map.of("action", "delete_forever", "weblog", WEBLOG_HANDLE, "id", id))));
+            assertEquals(404, restGet(token.raw(), "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries/" + id).statusCode());
+            id = null;
         } finally {
-            if (entryId != null) {
+            if (id != null) {
+                restSend(token.raw(), "DELETE", "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries/" + id, null);
                 restSend(token.raw(), "POST",
-                        "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries/" + entryId + "/delete-forever", null);
+                        "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries/" + id + "/delete-forever", null);
             }
             revoke(token.id());
+        }
+    }
+
+    @Test
+    void errorsThroughMcpCarryTheApisOwnStatusAndDetail() throws Exception {
+        Token read = mint("McpIT read", "READ", null);
+        Token pinned = mint("McpIT pinned", "POST", WEBLOG_HANDLE);
+        Token unpinned = mint("McpIT unpinned", "POST", null);
+        try {
+            JsonNode readWrite = callTool(read.raw(), "entries", Map.of("action", "create",
+                    "weblog", WEBLOG_HANDLE, "title", "t", "text", "x"));
+            assertTrue(isError(readWrite));
+            JsonNode problem = JSON.readTree(text(readWrite));
+            assertEquals(403, problem.get("status").asInt());
+            assertEquals("This token is read-only.", problem.get("detail").asString());
+
+            JsonNode otherWeblog = callTool(pinned.raw(), "entries",
+                    Map.of("action", "list", "weblog", "mcpit_other_weblog"));
+            assertTrue(isError(otherWeblog));
+            assertEquals(404, JSON.readTree(text(otherWeblog)).get("status").asInt());
+
+            // a weblog-pinned token meets 404 on an administration route (it names no weblog);
+            // the 403 "not scoped for administration" is for a token that is not pinned
+            JsonNode adminOnly = callTool(unpinned.raw(), "users", Map.of("action", "list"));
+            assertTrue(isError(adminOnly));
+            assertEquals(403, JSON.readTree(text(adminOnly)).get("status").asInt());
+        } finally {
+            revoke(read.id());
+            revoke(pinned.id());
+            revoke(unpinned.id());
         }
     }
 
