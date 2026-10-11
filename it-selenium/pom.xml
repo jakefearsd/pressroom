@@ -217,6 +217,16 @@ limitations under the License.
             <scope>test</scope>
         </dependency>
 
+        <!-- McpIT parses JSON-RPC responses. This module imports no BOM, so
+             the version is pinned here, matching the tools.jackson line app
+             resolves (app/pom.xml's jackson3.security.version). -->
+        <dependency>
+            <groupId>tools.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>3.2.2</version>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Not consumed directly (start-app.sh reads app/target/roller.war off
              the filesystem, not via Maven artifact resolution): declared purely
              to force Maven reactor build order. Without a real inter-module
