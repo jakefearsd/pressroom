@@ -1,5 +1,6 @@
 package org.apache.roller.it;
 
+import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -153,11 +155,14 @@ class McpIT extends RollerIT {
                     Map.of("Origin", "https://evil.example"));
             assertEquals(403, foreign.statusCode());
 
-            String huge = rpcBody("tools/call", Map.of("name", "whoami",
-                    "arguments", Map.of("pad", "x".repeat(2 * 1024 * 1024))));
-            // Expect: 100-continue, so the body is never sent once the 413 arrives (the transport
-            // answers without reading it; a client still sending would see a reset, not the 413)
-            assertEquals(413, post(token.raw(), huge, Map.of(), true).statusCode());
+            // Sent with no Content-Length (chunked), a little over the cap: the transport reads
+            // up to 2 MiB, refuses with 413, and the few KiB left unread are swallowed by Tomcat, so
+            // the 413 always arrives. (A known oversize Content-Length is refused unread, and Tomcat
+            // closes the connection over more than its 2 MiB maxSwallowSize: a client may see a reset.)
+            byte[] huge = rpcBody("tools/call", Map.of("name", "whoami",
+                    "arguments", Map.of("pad", "x".repeat(2 * 1024 * 1024 + 1024)))).getBytes(UTF_8);
+            assertEquals(413, post(token.raw(),
+                    BodyPublishers.ofInputStream(() -> new ByteArrayInputStream(huge)), Map.of()).statusCode());
         } finally {
             revoke(token.id());
         }
@@ -316,13 +321,12 @@ class McpIT extends RollerIT {
     }
 
     HttpResponse<String> post(String bearer, String body, Map<String, String> extraHeaders) throws Exception {
-        return post(bearer, body, extraHeaders, false);
+        return post(bearer, BodyPublishers.ofString(body), extraHeaders);
     }
 
-    HttpResponse<String> post(String bearer, String body, Map<String, String> extraHeaders, boolean expectContinue)
+    HttpResponse<String> post(String bearer, HttpRequest.BodyPublisher body, Map<String, String> extraHeaders)
             throws Exception {
         HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(baseUrl() + "/api/mcp"))
-                .expectContinue(expectContinue)
                 .timeout(Duration.ofSeconds(30))
                 .header("Content-Type", "application/json")
                 .header("Accept", "application/json, text/event-stream");
@@ -330,7 +334,7 @@ class McpIT extends RollerIT {
             builder.header("Authorization", "Bearer " + bearer);
         }
         extraHeaders.forEach(builder::header);
-        return client.send(builder.POST(BodyPublishers.ofString(body)).build(), HttpResponse.BodyHandlers.ofString());
+        return client.send(builder.POST(body).build(), HttpResponse.BodyHandlers.ofString());
     }
 
     JsonNode callTool(String bearer, String tool, Map<String, Object> arguments) throws Exception {
