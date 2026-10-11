@@ -264,6 +264,43 @@ class GlobalConfigControllerTest {
     }
 
     @Test
+    void aMissingFrontPageWeblogNeverBlocksTheRestOfTheForm() throws Exception {
+        // A fresh install has no weblogs, so the front-page <select> rendered
+        // with no options, and a <select> with no options submits nothing:
+        // the whole save was refused with "Property ... is null", leaving no
+        // way to change any setting. Which weblog fronts the site is a content
+        // choice, not a setting the rest of the form depends on, so its
+        // absence leaves it unchanged.
+        Map<String, RuntimeConfigProperty> stored = properties("site.frontpage.weblog.handle", "");
+        stored.put("site.name", new RuntimeConfigProperty("site.name", "Old Name"));
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+        HttpServletRequest request = request();
+        when(request.getParameter("site.name")).thenReturn("New Name");
+
+        controller.save(request, model);
+
+        assertEquals(List.of(), ControllerTestFixture.errors(model));
+        assertEquals("New Name", stored.get("site.name").getValue());
+        assertEquals("", stored.get("site.frontpage.weblog.handle").getValue());
+        verify(weblogger.propertiesManager()).saveProperties(stored);
+    }
+
+    @Test
+    void aBlankFrontPageWeblogClearsItSoTheSiteDirectoryShows() throws Exception {
+        // Characterisation: a blank submission is already stored as blank.
+        // The form's "None" option depends on exactly that, so it is pinned.
+        Map<String, RuntimeConfigProperty> stored = properties("site.frontpage.weblog.handle", "travel");
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+        HttpServletRequest request = request();
+        when(request.getParameter("site.frontpage.weblog.handle")).thenReturn("");
+
+        controller.save(request, model);
+
+        assertEquals(List.of(), ControllerTestFixture.errors(model));
+        assertEquals("", stored.get("site.frontpage.weblog.handle").getValue());
+    }
+
+    @Test
     void anUnknownPropertyInTheDatabaseIsLeftUntouched() throws Exception {
         // Rows with no definition in runtimeConfigDefs.xml are not on the form,
         // so the form's silence about them must not be read as "clear it".

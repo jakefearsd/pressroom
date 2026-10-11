@@ -52,6 +52,8 @@ public class GlobalConfigController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalConfigController.class);
 
+    private static final String FRONTPAGE_WEBLOG_HANDLE = "site.frontpage.weblog.handle";
+
     private final ResourceBundle bundle = ResourceBundle.getBundle("ApplicationResources");
 
     @Override
@@ -164,7 +166,10 @@ public class GlobalConfigController extends BaseController {
                 updProp.setValue(incomingProp.trim());
                 log.debug("Set something {} = {}", propName, incomingProp);
 
-            } else {
+            } else if (!FRONTPAGE_WEBLOG_HANDLE.equals(propName)) {
+                // Missing from the form. The front-page weblog is exempt: it is
+                // a content choice, so absent it is left as it is rather than
+                // blocking every other setting.
                 addError(model, "ConfigForm.invalidProperty", propName, request);
             }
         }

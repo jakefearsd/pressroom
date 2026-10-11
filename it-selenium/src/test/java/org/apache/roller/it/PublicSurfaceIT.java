@@ -21,6 +21,7 @@ import org.apache.roller.it.support.RollerIT;
 import org.junit.jupiter.api.Test;
 
 import static com.codeborne.selenide.Condition.text;
+import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -40,6 +41,15 @@ class PublicSurfaceIT extends RollerIT {
         openPath("/" + WEBLOG_HANDLE + "/");
         $("h1.qj-site").shouldHave(text("IT Weblog"));
         $("body").shouldHave(text("IT Seeded Entry"));
+    }
+
+    @Test
+    void theSiteRootIsThePublicDirectoryWhileNoWeblogIsTheFrontPage() {
+        // No IT sets a front-page weblog. index.jsp used to forward / to the
+        // admin-only setup page, so every reader got the sign-in form.
+        openPath("/");
+        $("#siteDirectory").shouldHave(text("IT Weblog"));
+        $("#siteDirectory a[href$='/" + WEBLOG_HANDLE + "/']").shouldBe(visible);
     }
 
     @Test

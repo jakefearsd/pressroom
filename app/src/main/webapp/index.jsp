@@ -26,9 +26,10 @@ if (frontpageBlog != null && !"".equals(frontpageBlog.trim())) {
             request.getRequestDispatcher("/roller-ui/rendering/page/"+frontpageBlog);
     homepage.forward(request, response);
 } else {
-    // dispatch to setup page
-    RequestDispatcher setuppage = request.getRequestDispatcher("/roller-ui/setup.rol");
-    setuppage.forward(request, response);
+    // no frontpage blog: the public site directory. (This was the setup
+    // page, which is admin-only, so every reader got the sign-in form.)
+    RequestDispatcher directory = request.getRequestDispatcher("/roller-ui/siteDirectory.rol");
+    directory.forward(request, response);
 }
 
 %>

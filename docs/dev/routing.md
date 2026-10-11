@@ -5,6 +5,22 @@ request) so they are read only when this area is being changed. Section
 names are unchanged, so an older "see CLAUDE.md, <section>" pointer
 resolves through the index at the end of `CLAUDE.md`.
 
+## The site root
+
+`/` reaches `index.jsp` (the welcome file; the dispatcher serves `*.rol`
+only). With `site.frontpage.weblog.handle` set, it forwards to that weblog's
+rendering. Empty, it forwards to `/roller-ui/siteDirectory.rol`
+(`SiteDirectoryController`), a public page with the site description and
+the enabled, active weblogs by name, plus a "choose a front page" link for
+an admin. It used to forward to the setup page, which is admin-only, so on a
+site with no front page every reader got the sign-in form.
+
+Empty is a real choice, not a gap: Global Config's front-page menu starts
+with "None", and a save never fails over that field. With no weblogs the
+menu used to render with no options, which a browser does not submit, and
+the save refused every other setting with "Property
+site.frontpage.weblog.handle is null".
+
 ## Redirects (301s for URLs that would otherwise 404)
 
 `roller_weblog_redirect` (V028) maps one weblog-relative path to another

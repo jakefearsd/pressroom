@@ -161,6 +161,8 @@ public final class Routes {
             // redirects here; it previously had no handler at all, so every denial
             // produced a bare 404. denied.jsp's only distinctive element is its h2.
             new Route("/roller-ui/access-denied.rol", Role.ANONYMOUS, "", "h2"),
+            // What / shows while no weblog is the front page; public.
+            new Route("/roller-ui/siteDirectory.rol", Role.ANONYMOUS, "", "#siteDirectory"),
 
             // SetupController.isUserRequired() is false, but SecurityConfig's
             // authorization rule for /roller-ui/setup* still requires the

@@ -222,6 +222,9 @@ public class RollerViewResolver implements ViewResolver, Ordered {
         addExtendedDefinition(".GenericError", ".tiles-simplepage",
                 Map.of("content", "/WEB-INF/jsps/core/GenericError.jsp"));
 
+        addExtendedDefinition(".SiteDirectory", ".tiles-simplepage",
+                Map.of("content", "/WEB-INF/jsps/core/SiteDirectory.jsp"));
+
         addExtendedDefinition(".MainMenu", ".tiles-mainmenupage",
                 Map.of(
                         "content", "/WEB-INF/jsps/core/MainMenu.jsp",

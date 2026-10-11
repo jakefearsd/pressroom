@@ -54,6 +54,12 @@
                     <div class="col-sm-9">
                         <select name="${fn:escapeXml(pd.name)}"
                                 id="globalConfig_${pd.nameWithUnderbars}" class="form-select">
+                            <%-- None is a real choice: / then shows the site
+                                 directory. It comes first, so when no weblog
+                                 option is marked selected the browser picks it
+                                 rather than the first weblog, and the field is
+                                 still submitted when no weblog exists yet. --%>
+                            <option value=""><spring:message code="configForm.frontpageWeblogHandle.none"/></option>
                             <c:forEach var="weblog" items="${weblogs}">
                                 <option value="${fn:escapeXml(weblog.handle)}"
                                     <c:if test="${properties[pd.name].value == weblog.handle}">selected="selected"</c:if>
