@@ -327,4 +327,25 @@ class McpToolExecutorTest {
         List<String> absent = logged(() -> call("whoami", Map.of()));
         assertTrue(absent.get(0).contains("weblog=- "), absent.get(0));
     }
+
+    /** A bean whose getter throws: serialising it fails inside toCall. */
+    public static final class Unserialisable {
+        public String getBoom() {
+            throw new IllegalStateException("boom");
+        }
+    }
+
+    @Test
+    void anUncheckedFailureOutsideDispatchIsTheOpaque500AndStillOneLogLine() {
+        // an argument Jackson cannot serialise makes toCall throw, outside the dispatch catch
+        Map<String, Object> args = Map.of("action", "create", "weblog", "b", "title", new Unserialisable());
+        CallToolResult[] result = new CallToolResult[1];
+        List<String> logged = logged(() -> result[0] = call("entries", args));
+
+        assertTrue(result[0].isError());
+        assertEquals("{\"status\":500,\"title\":\"Internal Server Error\"}", text(result[0]));
+        assertTrue(dispatched.isEmpty());
+        assertEquals(1, logged.size(), logged.toString());
+        assertTrue(logged.get(0).contains("status=500") && logged.get(0).contains("tool=entries"), logged.get(0));
+    }
 }

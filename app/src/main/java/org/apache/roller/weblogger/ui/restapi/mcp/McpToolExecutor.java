@@ -52,8 +52,15 @@ public final class McpToolExecutor {
      */
     public CallToolResult call(HttpServletRequest mcpRequest, ResolvedTool tool, Map<String, Object> arguments) {
         long started = System.currentTimeMillis();
-        Outcome outcome = execute(mcpRequest, tool, arguments);
-        logCall(tool.name(), outcome, started);
+        Outcome outcome = new Outcome(error(problem(500, null)), 500, "-", "-");
+        try {
+            outcome = execute(mcpRequest, tool, arguments);
+        } catch (RuntimeException e) {
+            // never let the SDK answer with the exception's message
+            log.error("MCP `{}` failed unexpectedly", tool.name(), e);
+        } finally {
+            logCall(tool.name(), outcome, started);
+        }
         return outcome.result();
     }
 

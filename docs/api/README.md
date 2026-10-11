@@ -655,6 +655,10 @@ action beyond the token's role answers "forbidden", exactly as over REST.
 - **Admin accounts are read-only through the API**, and so through MCP. Changing one (for example
   `PATCH /api/v1/admin/users/{userName}` on an admin) answers 403 `Admin accounts are managed in the
   admin UI.` Disabling, deleting, re-addressing and role changes for admins happen in the admin UI.
+- **`site.absoluteurl` is read-only through the API.** `PATCH /api/v1/admin/config` (the
+  `site_settings` tool) naming it answers 403 `site.absoluteurl is managed in the admin UI.` and
+  applies nothing: it is the base of every password-reset link, so a stolen token able to change it
+  could redirect an admin's reset to another host. Reading it is allowed.
 - A request carrying a browser `Origin` other than the site's own is refused (403); bodies over 2 MB
   are refused (413).
 - Each tool call counts once against the token's rate limit.

@@ -37,7 +37,10 @@ public final class ApiRouteTable {
             for (String pattern : info.getPatternValues()) {
                 for (RequestMethod method : methods) {
                     ApiRoute route = new ApiRoute(method.name(), pattern, handler);
-                    routes.put(route.key(), route);
+                    if (routes.putIfAbsent(route.key(), route) != null) {
+                        throw new IllegalStateException("Two handlers map " + route.key()
+                                + "; one would hide the other from the MCP tools and their coverage test.");
+                    }
                 }
             }
         });

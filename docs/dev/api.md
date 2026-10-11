@@ -92,6 +92,9 @@ Roller is 0.x.
 - **`AdminAccountGuard` is mandatory for any API route that changes a user**: deletion, profile
   self-edit, role grants or revocations. Admin accounts and the admin role are read-only through the
   API (403 `Admin accounts are managed in the admin UI.`).
+  `AdminAccountGuard.UI_ONLY_SETTINGS` (today `site.absoluteurl`, the base of every password-reset
+  link) are likewise never written through `PATCH /admin/config` (403, nothing applied); add a
+  setting there to protect it.
 - `McpEndpointServlet` refuses non-token callers (Basic is accepted chain-wide for `/v1/tokens`).
   `McpOriginValidator` refuses a foreign `Origin`. Each call logs one `roller.mcp` INFO line, with no
   argument values; the weblog appears only when it is handle-shaped (else `?`). That logger goes to

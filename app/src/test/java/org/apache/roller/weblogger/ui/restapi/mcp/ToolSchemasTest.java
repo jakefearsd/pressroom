@@ -60,4 +60,24 @@ class ToolSchemasTest {
         assertTrue(description.contains("geoLatitude"), description);
         assertTrue(description.contains("- delete_forever:"), description);
     }
+
+    /** Every shared description reaches the agent, whichever action declared the argument first. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void everyDescribedEntryWriteFieldKeepsItsSharedDescriptionOnTheEntriesTool() {
+        Map<String, Object> props = properties("entries");
+        int described = 0;
+        for (java.lang.reflect.RecordComponent component
+                : org.apache.roller.weblogger.ui.restapi.dto.EntryDtos.EntryWrite.class.getRecordComponents()) {
+            io.swagger.v3.oas.annotations.media.Schema schema =
+                    component.getAccessor().getAnnotation(io.swagger.v3.oas.annotations.media.Schema.class);
+            if (schema == null) {
+                continue;
+            }
+            described++;
+            assertEquals(schema.description(),
+                    ((Map<String, Object>) props.get(component.getName())).get("description"), component.getName());
+        }
+        assertEquals(8, described);
+    }
 }

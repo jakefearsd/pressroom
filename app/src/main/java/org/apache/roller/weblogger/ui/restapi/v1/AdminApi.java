@@ -272,6 +272,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         if (body == null || body.isEmpty()) {
             throw ApiException.badRequest("At least one property is required.");
         }
+        AdminAccountGuard.requireApiManageable(body.keySet());
 
         Map<String, RuntimeConfigProperty> toSave = new LinkedHashMap<>();
         List<AdminDtos.ConfigEntry> result = new ArrayList<>();

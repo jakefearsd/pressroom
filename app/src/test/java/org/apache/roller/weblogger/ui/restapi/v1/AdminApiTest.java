@@ -637,6 +637,39 @@ class AdminApiTest {
         assertEquals("boolean", json.get(0).get("type").asString());
     }
 
+    @Test
+    void patchConfigRefusesSiteAbsoluteUrlAloneAndAppliesNothing() throws Exception {
+        Weblogger weblogger = mockedConfigWeblogger();
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/admin/config")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"site.absoluteurl\":\"https://evil.example\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(body.contains("site.absoluteurl is managed in the admin UI."), body);
+
+        verify(weblogger.getPropertiesManager(), never()).saveProperties(any());
+        verify(weblogger, never()).flush();
+    }
+
+    @Test
+    void patchConfigRefusesSiteAbsoluteUrlWithAValidPropertyAndAppliesNeither() throws Exception {
+        Weblogger weblogger = mockedConfigWeblogger();
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/admin/config")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"groupblogging.enabled\":\"true\",\"site.absoluteurl\":\"\"}"))
+                .andExpect(status().isForbidden())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(body.contains("site.absoluteurl is managed in the admin UI."), body);
+
+        verify(weblogger.getPropertiesManager(), never()).saveProperties(any());
+        verify(weblogger, never()).flush();
+    }
+
     // --- Permission/scope declarations ---
 
     @Test

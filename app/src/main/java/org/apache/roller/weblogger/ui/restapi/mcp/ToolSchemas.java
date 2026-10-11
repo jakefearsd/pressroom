@@ -19,6 +19,15 @@ public final class ToolSchemas {
     private ToolSchemas() {
     }
 
+    /**
+     * An argument several actions take becomes one property. The actions must
+     * agree on its type (else the tool is refused at startup). Its schema is
+     * the first action's, except that a schema carrying a description
+     * replaces one without -- so the shared text (EntryWrite's, for the
+     * entries tool) reaches the agent even when a list action, whose query
+     * parameters are undocumented, comes first. Two different descriptions
+     * keep the first.
+     */
     public static Map<String, Object> inputSchema(ResolvedTool tool) {
         Map<String, Object> properties = new LinkedHashMap<>();
         if (!tool.singleAction()) {
@@ -28,10 +37,15 @@ public final class ToolSchemas {
         }
         tool.actions().values().forEach(action -> action.variants().forEach(variant ->
                 variant.arguments().forEach(arg -> {
-                    Object existing = properties.putIfAbsent(arg.name(), arg.schema());
-                    if (existing != null && !sameType(existing, arg.schema())) {
+                    Map<String, Object> existing = properties.get(arg.name()) instanceof Map<?, ?> m
+                            ? castMap(m) : null;
+                    if (existing == null) {
+                        properties.put(arg.name(), arg.schema());
+                    } else if (!sameType(existing, arg.schema())) {
                         throw new IllegalStateException("MCP " + tool.name() + ": argument '" + arg.name()
                                 + "' has two different types across actions");
+                    } else if (!existing.containsKey("description") && arg.schema().containsKey("description")) {
+                        properties.put(arg.name(), arg.schema());
                     }
                 })));
         Map<String, Object> schema = new LinkedHashMap<>();
@@ -61,7 +75,11 @@ public final class ToolSchemas {
     }
 
     @SuppressWarnings("unchecked")
-    private static boolean sameType(Object a, Map<String, Object> b) {
-        return Objects.equals(((Map<String, Object>) a).get("type"), b.get("type"));
+    private static Map<String, Object> castMap(Map<?, ?> map) {
+        return (Map<String, Object>) map;
+    }
+
+    private static boolean sameType(Map<String, Object> a, Map<String, Object> b) {
+        return Objects.equals(a.get("type"), b.get("type"));
     }
 }
