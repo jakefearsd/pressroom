@@ -8,12 +8,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import io.modelcontextprotocol.server.transport.HttpServletStatelessServerTransport;
+import org.apache.roller.weblogger.pojos.ApiToken;
+import org.apache.roller.weblogger.ui.restapi.ApiProblemWriter;
+import org.apache.roller.weblogger.ui.restapi.auth.ApiPrincipal;
 import org.apache.roller.weblogger.ui.restapi.mcp.ApiCall;
 import org.apache.roller.weblogger.ui.restapi.mcp.ApiDispatcher;
 import org.apache.roller.weblogger.ui.restapi.mcp.ApiReply;
 import org.apache.roller.weblogger.ui.restapi.mcp.ApiRouteTable;
 import org.apache.roller.weblogger.ui.restapi.mcp.ApiRouteTables;
 import org.apache.roller.weblogger.ui.restapi.mcp.McpEndpointServlet;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.web.servlet.ServletContextInitializer;
 import org.springframework.boot.web.servlet.ServletContextInitializerBeans;
@@ -21,6 +26,8 @@ import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
@@ -44,13 +51,29 @@ class McpServerConfigTest {
 
     private static final ApiRouteTable ROUTES = ApiRouteTables.real();
 
+    private static final ApiProblemWriter PROBLEMS = new ApiProblemWriter(JSON);
+
     private final McpServerConfig config = new McpServerConfig();
+
+    @BeforeEach
+    void authenticateWithAToken() {
+        UsernamePasswordAuthenticationToken auth =
+                UsernamePasswordAuthenticationToken.authenticated("alice", null, List.of());
+        auth.setDetails(new ApiPrincipal("alice", null, ApiToken.Role.ADMIN, "tok-1"));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+    }
+
+    @AfterEach
+    void clearAuthentication() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     void theEndpointIsMappedAtExactlyApiMcp() {
         HttpServletStatelessServerTransport transport = config.mcpTransport();
         ServletRegistrationBean<McpEndpointServlet> registration = config.mcpEndpointRegistration(
-                transport, config.mcpServer(transport, (request, call) -> fail("nothing is dispatched"), ROUTES));
+                transport, config.mcpServer(transport, (request, call) -> fail("nothing is dispatched"), ROUTES),
+                PROBLEMS);
 
         assertEquals(List.of("/api/mcp"), List.copyOf(registration.getUrlMappings()));
         assertEquals("/api/mcp", McpServerConfig.ENDPOINT);
@@ -69,6 +92,7 @@ class McpServerConfigTest {
             // a ready singleton: registered as a definition, the context would re-aware it
             context.getBeanFactory().registerSingleton("requestMappingHandlerMapping",
                     ApiRouteTables.realMapping());
+            context.getBeanFactory().registerSingleton("apiProblemWriter", PROBLEMS);
             context.register(McpServerConfig.class);
             context.refresh();
             List<String> mapped = new ArrayList<>();
@@ -136,7 +160,8 @@ class McpServerConfigTest {
     private JsonNode post(MockHttpServletRequest request, ApiDispatcher dispatcher) throws Exception {
         HttpServletStatelessServerTransport transport = config.mcpTransport();
         McpEndpointServlet servlet =
-                config.mcpEndpointRegistration(transport, config.mcpServer(transport, dispatcher, ROUTES)).getServlet();
+                config.mcpEndpointRegistration(transport, config.mcpServer(transport, dispatcher, ROUTES), PROBLEMS)
+                        .getServlet();
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         servlet.service(request, response);

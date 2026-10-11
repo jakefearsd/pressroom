@@ -47,7 +47,7 @@ class TokensApiTest {
 
     private void authenticateWithABearerToken() {
         var auth = new UsernamePasswordAuthenticationToken("agent", null, List.of());
-        auth.setDetails(new ApiPrincipal("agent", null, ApiToken.Role.ADMIN));
+        auth.setDetails(new ApiPrincipal("agent", null, ApiToken.Role.ADMIN, "token-1"));
         SecurityContextHolder.getContext().setAuthentication(auth);
     }
 

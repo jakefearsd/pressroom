@@ -8,9 +8,12 @@ import java.util.Map;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
+import org.apache.roller.weblogger.ui.restapi.auth.ApiPrincipal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.util.UriUtils;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.json.JsonMapper;
@@ -28,6 +31,9 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public final class McpToolExecutor {
 
     private static final Logger log = LoggerFactory.getLogger(McpToolExecutor.class);
+    /** The one line per tool call goes to this logger. */
+    public static final String LOG_NAME = "roller.mcp";
+    private static final Logger calls = LoggerFactory.getLogger(LOG_NAME);
     private static final String ACTION = "action";
 
     private final ApiDispatcher dispatcher;
@@ -37,7 +43,22 @@ public final class McpToolExecutor {
         this.dispatcher = dispatcher;
     }
 
+    /**
+     * One tool call, logging exactly one line (who, which tool and action,
+     * which weblog, the status, how long) on every exit -- never an argument
+     * value, which may be entry text.
+     */
     public CallToolResult call(HttpServletRequest mcpRequest, ResolvedTool tool, Map<String, Object> arguments) {
+        long started = System.currentTimeMillis();
+        Outcome outcome = execute(mcpRequest, tool, arguments);
+        logCall(tool.name(), outcome, started);
+        return outcome.result();
+    }
+
+    /** What a call produced, and what its log line says about it. */
+    private record Outcome(CallToolResult result, int status, String action, Object weblog) { }
+
+    private Outcome execute(HttpServletRequest mcpRequest, ResolvedTool tool, Map<String, Object> arguments) {
         Map<String, Object> args = new LinkedHashMap<>();
         if (arguments != null) {
             arguments.forEach((k, v) -> {
@@ -46,6 +67,7 @@ public final class McpToolExecutor {
                 }
             });
         }
+        Object weblog = args.getOrDefault("weblog", "-");
         ResolvedAction action;
         if (tool.singleAction()) {
             action = tool.actions().get("");
@@ -53,33 +75,35 @@ public final class McpToolExecutor {
             Object named = args.remove(ACTION);
             action = named instanceof String s ? tool.actions().get(s) : null;
             if (action == null) {
-                return refused(tool.name() + " has no action " + (named == null ? "(none given)" : "'" + named + "'")
+                return refusal("-", weblog, tool.name() + " has no action "
+                        + (named == null ? "(none given)" : "'" + named + "'")
                         + "; it is one of " + String.join(", ", tool.actions().keySet()) + ".");
             }
         }
         String label = tool.singleAction() ? "`" + tool.name() + "`" : "`" + tool.name() + "` `" + action.name() + "`";
         for (String given : args.keySet()) {
             if (!action.argumentNames().contains(given)) {
-                return refused("`" + given + "` does not apply to " + label + ".");
+                return refusal(action.name(), weblog, "`" + given + "` does not apply to " + label + ".");
             }
         }
         ResolvedAction.Variant variant = action.select(args);
         for (ArgumentSpec spec : variant.arguments()) {
             if (spec.required() && !args.containsKey(spec.name())) {
-                return refused(label + " needs `" + spec.name() + "`.");
+                return refusal(action.name(), weblog, label + " needs `" + spec.name() + "`.");
             }
         }
         ApiCall call;
         try {
             call = toCall(variant, args);
         } catch (IllegalArgumentException e) {
-            return refused(e.getMessage());
+            return refusal(action.name(), weblog, e.getMessage());
         }
         try {
-            return toResult(dispatcher.dispatch(mcpRequest, call));
+            ApiReply reply = dispatcher.dispatch(mcpRequest, call);
+            return new Outcome(toResult(reply), reply.status(), action.name(), weblog);
         } catch (IOException | ServletException | RuntimeException e) {
             log.error("MCP {} could not be dispatched", label, e);
-            return error(problem(500, null));
+            return new Outcome(error(problem(500, null)), 500, action.name(), weblog);
         }
     }
 
@@ -153,8 +177,18 @@ public final class McpToolExecutor {
         return error(jsonBody ? reply.body() : problem(reply.status(), null));
     }
 
-    private CallToolResult refused(String detail) {
-        return error(problem(400, detail));
+    private Outcome refusal(String action, Object weblog, String detail) {
+        return new Outcome(error(problem(400, detail)), 400, action, weblog);
+    }
+
+    private static void logCall(String tool, Outcome outcome, long started) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String tokenId = auth != null && auth.getDetails() instanceof ApiPrincipal p ? p.tokenId() : "-";
+        String user = auth != null ? auth.getName() : "-";
+        // token label and user name are attacker-influenced: only ever {} arguments
+        calls.info("token={} user={} tool={} action={} weblog={} status={} ms={}",
+                tokenId, user, tool, outcome.action().isEmpty() ? "-" : outcome.action(), outcome.weblog(),
+                outcome.status(), System.currentTimeMillis() - started);
     }
 
     private static CallToolResult error(String text) {

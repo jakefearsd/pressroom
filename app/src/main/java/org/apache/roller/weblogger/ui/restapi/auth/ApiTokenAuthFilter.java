@@ -172,7 +172,7 @@ public class ApiTokenAuthFilter extends OncePerRequestFilter {
             }
             String userName = token.getUser().getUserName();
             ApiPrincipal principal =
-                    new ApiPrincipal(userName, token.getScopeWeblog(), token.getScopeRole());
+                    new ApiPrincipal(userName, token.getScopeWeblog(), token.getScopeRole(), token.getId());
             var auth = new UsernamePasswordAuthenticationToken(
                     userName, null, List.of(new SimpleGrantedAuthority("api")));
             auth.setDetails(principal);

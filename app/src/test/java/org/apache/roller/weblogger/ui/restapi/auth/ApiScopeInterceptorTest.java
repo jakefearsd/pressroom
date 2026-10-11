@@ -84,7 +84,7 @@ class ApiScopeInterceptorTest {
             request.setAttribute("actionWeblog", actionWeblog);
         }
         var auth = new UsernamePasswordAuthenticationToken("agent", null, List.of());
-        auth.setDetails(new ApiPrincipal("agent", scopeWeblog, role));
+        auth.setDetails(new ApiPrincipal("agent", scopeWeblog, role, "token-1"));
         SecurityContextHolder.getContext().setAuthentication(auth);
         return request;
     }

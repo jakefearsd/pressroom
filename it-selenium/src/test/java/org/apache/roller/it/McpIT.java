@@ -120,6 +120,94 @@ class McpIT extends RollerIT {
         }
     }
 
+    @Test
+    void withoutAValidTokenTheEndpointAnswers401AndSetsNoCookie() throws Exception {
+        String init = rpcBody("initialize", Map.of("protocolVersion", "2025-06-18", "capabilities", Map.of(),
+                "clientInfo", Map.of("name", "McpIT", "version", "1")));
+        HttpResponse<String> none = post(null, init, Map.of());
+        assertEquals(401, none.statusCode());
+        assertTrue(none.headers().firstValue("Set-Cookie").isEmpty());
+        assertEquals(401, post("rlr_not_a_real_token", init, Map.of()).statusCode());
+    }
+
+    @Test
+    void basicCredentialsAreRefused() throws Exception {
+        HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl() + "/api/mcp"))
+                .timeout(Duration.ofSeconds(20))
+                .header("Authorization", basicAuth())
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json, text/event-stream")
+                .POST(BodyPublishers.ofString(rpcBody("tools/list", Map.of())))
+                .build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(401, response.statusCode());
+        assertTrue(response.body().contains("MCP accepts API tokens only."), response.body());
+    }
+
+    @Test
+    void aForeignOriginIsRefusedAndAnOversizedBodyIsRefused() throws Exception {
+        Token token = mint("McpIT origin", "READ", null);
+        try {
+            HttpResponse<String> foreign = post(token.raw(), rpcBody("tools/list", Map.of()),
+                    Map.of("Origin", "https://evil.example"));
+            assertEquals(403, foreign.statusCode());
+
+            String huge = rpcBody("tools/call", Map.of("name", "whoami",
+                    "arguments", Map.of("pad", "x".repeat(2 * 1024 * 1024))));
+            assertEquals(413, post(token.raw(), huge, Map.of()).statusCode());
+        } finally {
+            revoke(token.id());
+        }
+    }
+
+    @Test
+    void getAndDeleteAreNotAllowed() throws Exception {
+        Token token = mint("McpIT methods", "READ", null);
+        try {
+            for (String method : new String[] {"GET", "DELETE"}) {
+                HttpResponse<String> response = client.send(HttpRequest.newBuilder(URI.create(baseUrl() + "/api/mcp"))
+                        .timeout(Duration.ofSeconds(20)).header("Authorization", "Bearer " + token.raw())
+                        .header("Accept", "application/json, text/event-stream")
+                        .method(method, BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.ofString());
+                assertEquals(405, response.statusCode(), method);
+            }
+        } finally {
+            revoke(token.id());
+        }
+    }
+
+    @Test
+    void aToolCallCostsOneThrottleUnitNotTwo() throws Exception {
+        // 120 per 60 s per token. Counted twice, call 61 would be throttled.
+        Token token = mint("McpIT throttle", "READ", null);
+        try {
+            for (int i = 0; i < 70; i++) {
+                HttpResponse<String> response = post(token.raw(),
+                        rpcBody("tools/call", Map.of("name", "whoami", "arguments", Map.of())), Map.of());
+                assertEquals(200, response.statusCode(), "call " + (i + 1) + ": " + response.body());
+            }
+        } finally {
+            revoke(token.id());
+        }
+    }
+
+    @Test
+    void toolsListHasTheElevenToolsAndTheInstructionsArrive() throws Exception {
+        Token token = mint("McpIT list", "READ", null);
+        try {
+            HttpResponse<String> listed = post(token.raw(), rpcBody("tools/list", Map.of()), Map.of());
+            JsonNode tools = JSON.readTree(listed.body()).get("result").get("tools");
+            assertEquals(11, tools.size(), listed.body());
+            HttpResponse<String> init = post(token.raw(), rpcBody("initialize", Map.of("protocolVersion",
+                    "2025-06-18", "capabilities", Map.of(), "clientInfo", Map.of("name", "McpIT", "version", "1"))),
+                    Map.of());
+            assertTrue(JSON.readTree(init.body()).get("result").get("instructions").asString()
+                    .contains("admin UI"), init.body());
+        } finally {
+            revoke(token.id());
+        }
+    }
+
     // ---------------------------------------------------------------- helpers
 
     record Token(String id, String raw) { }

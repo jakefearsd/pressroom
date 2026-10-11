@@ -115,7 +115,7 @@ class MetaApiTest {
 
     @Test
     void aWeblogPinnedTokenReportsItsWeblogAndRole() throws Exception {
-        authenticateWithToken(new ApiPrincipal("alice", "travelblog", ApiToken.Role.POST));
+        authenticateWithToken(new ApiPrincipal("alice", "travelblog", ApiToken.Role.POST, "token-1"));
         givenGlobalAdmin(false);
 
         JsonNode body = me();
@@ -128,7 +128,7 @@ class MetaApiTest {
     /** An unpinned token reports its weblog as the empty string, not null. */
     @Test
     void anUnpinnedTokenReportsAnEmptyWeblog() throws Exception {
-        authenticateWithToken(new ApiPrincipal("alice", null, ApiToken.Role.READ));
+        authenticateWithToken(new ApiPrincipal("alice", null, ApiToken.Role.READ, "token-1"));
         givenGlobalAdmin(false);
 
         JsonNode body = me();

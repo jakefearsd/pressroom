@@ -14,10 +14,14 @@ import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.server.transport.HttpServletStatelessServerTransport;
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.http.HttpServletRequest;
+import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
+import org.apache.roller.weblogger.ui.restapi.ApiProblemWriter;
 import org.apache.roller.weblogger.ui.restapi.mcp.ApiDispatcher;
 import org.apache.roller.weblogger.ui.restapi.mcp.ApiRouteTable;
 import org.apache.roller.weblogger.ui.restapi.mcp.InProcessApiDispatcher;
 import org.apache.roller.weblogger.ui.restapi.mcp.McpEndpointServlet;
+import org.apache.roller.weblogger.ui.restapi.mcp.McpInstructions;
+import org.apache.roller.weblogger.ui.restapi.mcp.McpOriginValidator;
 import org.apache.roller.weblogger.ui.restapi.mcp.McpToolCatalog;
 import org.apache.roller.weblogger.ui.restapi.mcp.McpToolExecutor;
 import org.apache.roller.weblogger.ui.restapi.mcp.ResolvedTool;
@@ -43,11 +47,18 @@ public class McpServerConfig {
 
     public static final String ENDPOINT = "/api/mcp";
 
+    /** Request bodies over this many bytes are refused (413) by the transport. */
+    static final int MAX_REQUEST_BYTES = 2 * 1024 * 1024;
+
     @Bean
     public HttpServletStatelessServerTransport mcpTransport() {
         return HttpServletStatelessServerTransport.builder()
                 .jsonMapper(new JacksonMcpJsonMapper(JsonMapper.builder().build()))
                 .messageEndpoint(ENDPOINT)
+                // the supplier runs per request, after bootstrap
+                .securityValidator(new McpOriginValidator(
+                        () -> WebloggerRuntimeConfig.getPropertyWithConfigFallback("site.absoluteurl")))
+                .maxRequestSize(MAX_REQUEST_BYTES)
                 .contextExtractor(request ->
                         McpTransportContext.create(Map.of(McpEndpointServlet.REQUEST_KEY, request)))
                 .build();
@@ -101,6 +112,7 @@ public class McpServerConfig {
         }
         return McpServer.sync(mcpTransport)
                 .serverInfo("roller", rollerVersion())
+                .instructions(McpInstructions.TEXT)
                 .capabilities(McpSchema.ServerCapabilities.builder().tools(false).build())
                 .immediateExecution(true)
                 .validateToolInputs(false) // one validation path: McpToolExecutor, then the API
@@ -110,11 +122,12 @@ public class McpServerConfig {
 
     @Bean
     public ServletRegistrationBean<McpEndpointServlet> mcpEndpointRegistration(
-            HttpServletStatelessServerTransport mcpTransport, McpStatelessSyncServer mcpServer) {
+            HttpServletStatelessServerTransport mcpTransport, McpStatelessSyncServer mcpServer,
+            ApiProblemWriter apiProblemWriter) {
         // mcpServer is a parameter so the server -- which installs itself as
         // the transport's handler when built -- exists before the first request.
         ServletRegistrationBean<McpEndpointServlet> registration =
-                new ServletRegistrationBean<>(new McpEndpointServlet(mcpTransport), ENDPOINT);
+                new ServletRegistrationBean<>(new McpEndpointServlet(mcpTransport, apiProblemWriter), ENDPOINT);
         registration.setName("mcp");
         registration.setLoadOnStartup(2);
         return registration;

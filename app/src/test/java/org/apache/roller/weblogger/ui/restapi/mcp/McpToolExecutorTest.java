@@ -6,8 +6,20 @@ import java.util.List;
 import java.util.Map;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.appender.AbstractAppender;
+import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.logging.log4j.core.config.Property;
+import org.apache.roller.weblogger.pojos.ApiToken;
+import org.apache.roller.weblogger.ui.restapi.auth.ApiPrincipal;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -180,5 +192,73 @@ class McpToolExecutorTest {
             assertTrue(text(result).contains("\"status\":400"), text(result));
         }
         assertTrue(dispatched.isEmpty(), "a dot segment would be normalized by the container and re-route the call");
+    }
+
+    @AfterEach
+    void clearContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    /** Runs the action with a capture on the roller.mcp logger; returns the formatted lines. */
+    private static List<String> logged(Runnable action) {
+        List<String> lines = new ArrayList<>();
+        AbstractAppender appender = new AbstractAppender("mcp-capture", null, null, true, Property.EMPTY_ARRAY) {
+            @Override
+            public void append(LogEvent event) {
+                lines.add(event.getMessage().getFormattedMessage());
+            }
+        };
+        appender.start();
+        LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+        LoggerConfig lc = new LoggerConfig(McpToolExecutor.LOG_NAME, Level.INFO, false);
+        lc.addAppender(appender, Level.INFO, null);
+        ctx.getConfiguration().addLogger(McpToolExecutor.LOG_NAME, lc);
+        ctx.updateLoggers();
+        try {
+            UsernamePasswordAuthenticationToken auth =
+                    UsernamePasswordAuthenticationToken.authenticated("alice", null, List.of());
+            auth.setDetails(new ApiPrincipal("alice", null, ApiToken.Role.POST, "tok-1"));
+            SecurityContextHolder.getContext().setAuthentication(auth);
+            action.run();
+        } finally {
+            ctx.getConfiguration().removeLogger(McpToolExecutor.LOG_NAME);
+            ctx.updateLoggers();
+            appender.stop();
+        }
+        return lines;
+    }
+
+    @Test
+    void eachCallLogsOneLineWithNoArgumentValues() {
+        List<String> logged = logged(() ->
+                call("entries", Map.of("action", "update", "weblog", "b", "id", "e1", "title", "SECRET-TITLE")));
+
+        assertEquals(1, logged.size(), logged.toString());
+        String line = logged.get(0);
+        for (String part : new String[] {"tok-1", "alice", "entries", "update", "b", "200"}) {
+            assertTrue(line.contains(part), part + " in " + line);
+        }
+        assertFalse(line.contains("SECRET-TITLE"), line);
+        assertEquals("roller.mcp", McpToolExecutor.LOG_NAME);
+    }
+
+    @Test
+    void anApiErrorARefusalAndADispatchFailureEachLogOnceWithTheirStatus() {
+        nextReply = new ApiReply(404, "application/problem+json", "{\"status\":404}");
+        List<String> apiError = logged(() -> call("entries", Map.of("action", "get", "weblog", "b", "id", "e1")));
+        assertEquals(1, apiError.size(), apiError.toString());
+        assertTrue(apiError.get(0).contains("status=404"), apiError.get(0));
+
+        List<String> refusal = logged(() -> call("entries", Map.of("action", "get", "weblog", "b")));
+        assertEquals(1, refusal.size(), refusal.toString());
+        assertTrue(refusal.get(0).contains("status=400") && refusal.get(0).contains("tool=entries"), refusal.get(0));
+
+        McpToolExecutor failing = new McpToolExecutor((request, call) -> {
+            throw new IllegalStateException("boom");
+        });
+        List<String> failure = logged(() ->
+                failing.call(new MockHttpServletRequest(), tool("whoami"), Map.of()));
+        assertEquals(1, failure.size(), failure.toString());
+        assertTrue(failure.get(0).contains("status=500") && failure.get(0).contains("action=-"), failure.get(0));
     }
 }

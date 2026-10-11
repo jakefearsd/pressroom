@@ -19,10 +19,16 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.catalina.Context;
 import org.apache.catalina.startup.Tomcat;
+import org.apache.roller.weblogger.pojos.ApiToken;
+import org.apache.roller.weblogger.ui.restapi.ApiProblemWriter;
+import org.apache.roller.weblogger.ui.restapi.auth.ApiPrincipal;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import tools.jackson.databind.json.JsonMapper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -123,7 +129,26 @@ class InProcessDispatchContainerTest {
         Context context = tomcat.addContext("/roller", baseDir.toString());
         Tomcat.addServlet(context, "api", new EchoApi());
         context.addServletMappingDecoded("/api/*", "api");
-        Tomcat.addServlet(context, "mcp", new McpEndpointServlet(new ForwardingTransport()));
+        McpEndpointServlet endpoint = new McpEndpointServlet(new ForwardingTransport(),
+                new ApiProblemWriter(JsonMapper.builder().build()));
+        Tomcat.addServlet(context, "mcp", new HttpServlet() {
+            private static final long serialVersionUID = 1L;
+
+            /** Stands in for apiSecurityFilterChain: the request is a token's. */
+            @Override
+            protected void service(HttpServletRequest request, HttpServletResponse response)
+                    throws ServletException, IOException {
+                UsernamePasswordAuthenticationToken auth =
+                        UsernamePasswordAuthenticationToken.authenticated("alice", null, List.of());
+                auth.setDetails(new ApiPrincipal("alice", null, ApiToken.Role.ADMIN, "tok-1"));
+                SecurityContextHolder.getContext().setAuthentication(auth);
+                try {
+                    endpoint.service(request, response);
+                } finally {
+                    SecurityContextHolder.clearContext();
+                }
+            }
+        });
         context.addServletMappingDecoded("/api/mcp", "mcp");
         tomcat.getConnector();
         tomcat.start();
