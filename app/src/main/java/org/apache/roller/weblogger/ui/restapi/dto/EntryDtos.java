@@ -1,6 +1,7 @@
 package org.apache.roller.weblogger.ui.restapi.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -143,11 +144,31 @@ public final class EntryDtos {
      * lookup this pure mapper has no business making.
      */
     public record EntryWrite(
-            String title, String summary, String text, String status,
-            String category, String pubTime, List<String> tags,
+            String title, String summary, String text,
+            @Schema(description = "DRAFT, PUBLISHED, PENDING or SCHEDULED; a new entry without one is a "
+                    + "DRAFT. TRASHED is not writable: trash, restore and delete-forever are their own calls.")
+            String status,
+            @Schema(description = "The category's name, not its id. Omitted on create, the weblog's "
+                    + "default category.")
+            String category,
+            @Schema(description = "Wall-clock publication time in the weblog's own timezone, for example "
+                    + "2026-03-01T09:30. Publishing without one means now; SCHEDULED needs one.")
+            String pubTime,
+            @Schema(description = "The entry's tags. On update, replaces the whole set.")
+            List<String> tags,
             String metaTitle, String searchDescription, String canonicalUrl,
-            Boolean noindex, String featuredImageId, String ogImageId,
-            String jsonLdType, Double geoLatitude, Double geoLongitude) {
+            Boolean noindex,
+            @Schema(description = "Id of a media file in this weblog, used as the featured image.")
+            String featuredImageId,
+            String ogImageId,
+            @Schema(description = "Structured data the permalink emits beside BlogPosting: BLOG_POSTING "
+                    + "(the default), TOURIST_ATTRACTION, TOURIST_TRIP, EVENT or FAQ_PAGE.")
+            String jsonLdType,
+            @Schema(description = "Latitude in decimal degrees, -90 to 90. With TOURIST_ATTRACTION it is "
+                    + "the place's geo; it also centres the entry's [map].")
+            Double geoLatitude,
+            @Schema(description = "Longitude in decimal degrees, -180 to 180.")
+            Double geoLongitude) {
     }
 
     /**
