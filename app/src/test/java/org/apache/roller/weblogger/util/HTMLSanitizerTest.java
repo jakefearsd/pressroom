@@ -171,6 +171,25 @@ class HTMLSanitizerTest {
             assertTrue(HTMLSanitizer.sanitize("<a href=\"https://example.com/x\">x</a>")
                     .contains("https://example.com/x"), "absolute");
         }
+
+        @Test
+        void aLinkMayOpenInANewTabWithoutHandingTheNewTabThisPage() {
+            String out = HTMLSanitizer.sanitize(
+                    "<a href=\"https://www.parks.ca.gov/\" target=\"_blank\">State Parks</a>");
+            assertTrue(out.contains("target=\"_blank\""), out);
+            // window.opener would let the opened site navigate this tab
+            assertTrue(out.matches("(?s).*rel=\"[^\"]*\\bnoopener\\b[^\"]*\".*"), out);
+        }
+
+        @Test
+        void aNewTabIsTheOnlyTargetALinkMayName() {
+            for (String target : new String[] {"_top", "_parent", "_self", "sidebar"}) {
+                String out = HTMLSanitizer.sanitize(
+                        "<a href=\"https://example.com/\" target=\"" + target + "\">x</a>");
+                assertFalse(out.contains("target="), target + ": " + out);
+                assertTrue(out.contains("href=\"https://example.com/\""), target + ": " + out);
+            }
+        }
     }
 
     @Nested
@@ -270,11 +289,18 @@ class HTMLSanitizerTest {
         @Test
         void keepsTheCtaCard() {
             String out = HTMLSanitizer.sanitize("<a class=\"cta-card\""
-                    + " href=\"https://booking.example.com/cottage?utm_source=blog\">"
+                    + " href=\"https://booking.example.com/cottage?utm_source=blog\""
+                    + " rel=\"nofollow sponsored noopener\" target=\"_blank\">"
                     + "<span class=\"cta-label\">Check availability</span>"
                     + "<span class=\"cta-note\">Sleeps four</span></a>");
             assertTrue(out.contains("class=\"cta-card\""), out);
             assertTrue(out.contains("class=\"cta-label\""), out);
+            // CtaShortcode opens the booking site in a new tab, and its rel
+            // keeps search engines from crediting a paid link
+            assertTrue(out.contains("target=\"_blank\""), out);
+            for (String rel : new String[] {"nofollow", "sponsored", "noopener"}) {
+                assertTrue(out.matches("(?s).*rel=\"[^\"]*\\b" + rel + "\\b[^\"]*\".*"), rel + ": " + out);
+            }
             // The policy entity-encodes "=" inside attribute values, so the
             // href reads utm_source&#61;blog in the page source. That is not
             // breakage: a browser decodes entities in an attribute before it

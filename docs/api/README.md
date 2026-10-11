@@ -326,6 +326,44 @@ a wall-clock string in **the weblog's own timezone**, e.g. `2026-03-01T09:30`
 (see the repository's `CLAUDE.md`, "Entry editing", for why this is the
 weblog's zone specifically and not the caller's).
 
+**What `text` may hold.** Markdown, HTML, or both: HTML blocks pass through
+Markdown untouched, and bare paragraphs between them are wrapped in `<p>`.
+An HTML block ends at a blank line, so a line indented four or more spaces
+just after a blank line becomes a code block.
+The sanitizer then removes scripts, event handlers, `<iframe>`/`<object>`
+and dangerous CSS, and keeps headings, lists, tables, `<figure>`/
+`<figcaption>`, images (from any host) and inline `style`, checked
+declaration by declaration. A link's `target` survives only as `_blank`,
+and the sanitizer then adds `rel="noopener noreferrer"`. Use preview (below)
+to see exactly what will be published.
+
+**Location.** For a post about one place, send `jsonLdType`
+and the coordinates:
+
+```json
+{"title": "Torrey Pines", "text": "...", "status": "PUBLISHED",
+ "jsonLdType": "TOURIST_ATTRACTION",
+ "geoLatitude": 32.9228, "geoLongitude": -117.2534}
+```
+
+- `jsonLdType` chooses the structured-data block a permalink emits beside its
+  `BlogPosting`. It is one of `BLOG_POSTING` (the default, which adds
+  nothing), `TOURIST_ATTRACTION`, `TOURIST_TRIP`, `EVENT` and `FAQ_PAGE`,
+  read case-insensitively. An unknown name is a 400.
+- `geoLatitude` and `geoLongitude` are decimal degrees. A value that is not
+  finite, or lies outside ±90 or ±180, is a 400.
+- A `TOURIST_ATTRACTION` with both coordinates emits them as its `geo`. The
+  coordinates also centre the entry's `[map]`.
+- A `TOURIST_TRIP` takes its itinerary from the `[map]` pins, and a
+  `FAQ_PAGE` takes its questions from the `[faq]` pairs, so both work through
+  the API. An `EVENT` also needs its dates, which only the editor sets so
+  far.
+- As with every field here, omitting one leaves it alone, so the API cannot
+  clear coordinates. Setting `jsonLdType` to `BLOG_POSTING` stops them
+  being emitted as `geo`.
+
+All three fields come back on `EntryView` under the same names.
+
 **The four writable statuses are `DRAFT`, `PUBLISHED`, `PENDING` and
 `SCHEDULED`. `TRASHED` is not among them — a PATCH or create body carrying
 `"status": "TRASHED"` is a 400** (`Use DELETE to trash an entry and POST

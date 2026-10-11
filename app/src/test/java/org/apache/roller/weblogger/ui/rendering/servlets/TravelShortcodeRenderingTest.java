@@ -192,7 +192,10 @@ class TravelShortcodeRenderingTest {
                 + "&utm_source=" + HANDLE + "&utm_medium=blog"
                 + "&utm_campaign=iceland-guide\""),
                 "the campaign-tagged href must decode back to what the handler built:\n" + body);
-        assertTrue(body.contains("rel=\"nofollow sponsored noopener\""), body);
+        // The sanitizer keeps the new tab and appends noreferrer to the
+        // handler's rel; the href's UTM tags carry the attribution instead.
+        assertTrue(body.contains("rel=\"nofollow sponsored noopener noreferrer\""), body);
+        assertTrue(body.contains("target=\"_blank\""), body);
         assertTrue(body.contains("<span class=\"cta-label\">Book this cabin</span>"), body);
         assertTrue(body.contains("<span class=\"cta-note\">From EUR 120/night</span>"), body);
 

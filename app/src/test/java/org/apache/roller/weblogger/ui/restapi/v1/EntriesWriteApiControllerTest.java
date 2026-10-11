@@ -136,6 +136,56 @@ class EntriesWriteApiControllerTest {
         assertEquals("Cats &amp; Dogs", json.get("title").asString());
     }
 
+    /**
+     * A post about one place, as a publishing agent sends it: the location
+     * reaches the saved entry and comes back in the view under the same
+     * names, so an agent can read an entry and write it back unchanged.
+     */
+    @Test
+    void postWithALocationSavesItAndEchoesIt() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/entries")
+                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Torrey Pines\",\"text\":\"body\","
+                                + "\"jsonLdType\":\"TOURIST_ATTRACTION\","
+                                + "\"geoLatitude\":32.9228,\"geoLongitude\":-117.2534}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        ArgumentCaptor<WeblogEntry> captor = ArgumentCaptor.forClass(WeblogEntry.class);
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(captor.capture());
+        assertEquals(org.apache.roller.weblogger.pojos.JsonLdType.TOURIST_ATTRACTION,
+                captor.getValue().getJsonLdType());
+        assertEquals(32.9228, captor.getValue().getGeoLatitude());
+        assertEquals(-117.2534, captor.getValue().getGeoLongitude());
+
+        tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
+        assertEquals("TOURIST_ATTRACTION", json.get("jsonLdType").asString());
+        assertEquals(32.9228, json.get("geoLatitude").asDouble());
+        assertEquals(-117.2534, json.get("geoLongitude").asDouble());
+    }
+
+    @Test
+    void postWithALatitudeOffTheGlobeIsBadRequestAndSavesNothing() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/entries")
+                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"t\",\"text\":\"body\",\"geoLatitude\":132.9}"))
+                .andExpect(status().isBadRequest());
+
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+    }
+
     /** No manager fallback needed: an absent category leaves entry.category null, and
      * JPAWeblogEntryManagerImpl.saveWeblogEntry (not exercised by this mocked test) is
      * what defaults it to the weblog's first category in production. */

@@ -4,8 +4,11 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
+import org.apache.roller.weblogger.pojos.JsonLdType;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
 import org.apache.roller.weblogger.pojos.WeblogEntryTag;
@@ -19,6 +22,9 @@ import org.apache.roller.weblogger.ui.restapi.ColumnLimits;
  */
 public final class EntryDtos {
 
+    private static final double MAX_LATITUDE = 90;
+    private static final double MAX_LONGITUDE = 180;
+
     private EntryDtos() {
     }
 
@@ -28,7 +34,8 @@ public final class EntryDtos {
             String status, String category, List<String> tags,
             Instant pubTime, Instant updateTime, String permalink,
             String metaTitle, String searchDescription, String canonicalUrl,
-            Boolean noindex, String featuredImageId, String ogImageId) {
+            Boolean noindex, String featuredImageId, String ogImageId,
+            String jsonLdType, Double geoLatitude, Double geoLongitude) {
     }
 
     public record EntryPage(List<EntryView> items, int offset, int limit, boolean hasMore) {
@@ -74,7 +81,10 @@ public final class EntryDtos {
                 entry.getCanonicalUrl(),
                 entry.getNoindex(),
                 entry.getFeaturedImageId(),
-                entry.getOgImageId());
+                entry.getOgImageId(),
+                entry.getJsonLdType() == null ? null : entry.getJsonLdType().name(),
+                entry.getGeoLatitude(),
+                entry.getGeoLongitude());
     }
 
     private static Instant instant(Timestamp ts) {
@@ -136,7 +146,8 @@ public final class EntryDtos {
             String title, String summary, String text, String status,
             String category, String pubTime, List<String> tags,
             String metaTitle, String searchDescription, String canonicalUrl,
-            Boolean noindex, String featuredImageId, String ogImageId) {
+            Boolean noindex, String featuredImageId, String ogImageId,
+            String jsonLdType, Double geoLatitude, Double geoLongitude) {
     }
 
     /**
@@ -206,5 +217,46 @@ public final class EntryDtos {
             ColumnLimits.requireMaxLength("ogImageId", write.ogImageId(), ColumnLimits.OG_IMAGE_ID);
             entry.setOgImageId(write.ogImageId());
         }
+        // The location: the type decides which structured-data block the
+        // permalink emits (TOURIST_ATTRACTION carries the coordinates as its
+        // geo), and the coordinates also centre the entry's [map].
+        if (write.jsonLdType() != null) {
+            entry.setJsonLdType(parseJsonLdType(write.jsonLdType()));
+        }
+        if (write.geoLatitude() != null) {
+            entry.setGeoLatitude(requireOnTheGlobe("geoLatitude", write.geoLatitude(), MAX_LATITUDE));
+        }
+        if (write.geoLongitude() != null) {
+            entry.setGeoLongitude(requireOnTheGlobe("geoLongitude", write.geoLongitude(), MAX_LONGITUDE));
+        }
+    }
+
+    /**
+     * Strict, unlike {@link JsonLdType#fromString}, which falls back to
+     * BLOG_POSTING so a stored row it does not know still renders. From a
+     * request that fallback would turn a typo into an entry that quietly
+     * loses its structured data.
+     */
+    private static JsonLdType parseJsonLdType(String raw) {
+        try {
+            return JsonLdType.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw ApiException.badRequest("Unknown jsonLdType '" + raw + "'; it is one of "
+                    + Arrays.stream(JsonLdType.values()).map(Enum::name)
+                            .collect(Collectors.joining(", ")) + ".", e);
+        }
+    }
+
+    /**
+     * The renderer drops coordinates that are not finite or lie off the
+     * globe (EntryJsonLd.geoOf, MapShortcode.centerOf), so storing them
+     * would accept a location no reader or search engine ever sees.
+     */
+    private static Double requireOnTheGlobe(String field, Double value, double max) {
+        if (!Double.isFinite(value) || Math.abs(value) > max) {
+            throw ApiException.badRequest(field + " must be between -" + (int) max
+                    + " and " + (int) max + ".");
+        }
+        return value;
     }
 }

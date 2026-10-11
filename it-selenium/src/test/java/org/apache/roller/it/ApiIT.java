@@ -293,7 +293,69 @@ class ApiIT extends RollerIT {
         }
     }
 
+    /**
+     * What a publishing agent does: one call with an HTML body and a
+     * location, then a reader opens the permalink. The JSON reaches the
+     * entity through the real Jackson configuration and the real
+     * transaction, and the page carries the TouristAttraction block with the
+     * coordinates and keeps the link's new tab -- the unit tests stop at the
+     * entity and at the sanitizer.
+     */
+    @Test
+    void anEntryPublishedWithALocationRendersItsPlaceAndItsNewTabLink() throws Exception {
+        MintedToken minted = mintToken("ApiIT location token", "POST");
+        String entryId = null;
+        try {
+            String create = "{\"title\":\"ApiIT Torrey Pines " + System.nanoTime() + "\","
+                    + "\"text\":\"<p>See <a href=\\\"https://www.parks.ca.gov/\\\" target=\\\"_blank\\\">"
+                    + "State Parks</a>.</p>\","
+                    + "\"status\":\"PUBLISHED\",\"jsonLdType\":\"TOURIST_ATTRACTION\","
+                    + "\"geoLatitude\":32.9228,\"geoLongitude\":-117.2534}";
+            HttpResponse<String> created = client.send(HttpRequest.newBuilder(
+                            URI.create(baseUrl() + "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries"))
+                    .timeout(Duration.ofSeconds(20))
+                    .header("Authorization", "Bearer " + minted.raw())
+                    .header("Content-Type", "application/json")
+                    .POST(BodyPublishers.ofString(create))
+                    .build(), HttpResponse.BodyHandlers.ofString());
+            assertEquals(201, created.statusCode(), created.body());
+            entryId = extractJsonStringField(created.body(), "id");
+            assertEquals("TOURIST_ATTRACTION", extractJsonStringField(created.body(), "jsonLdType"),
+                    created.body());
+
+            String permalink = extractJsonStringField(created.body(), "permalink");
+            String page = getAnonymously(permalink);
+            assertTrue(page.contains("\"@type\":\"TouristAttraction\""), permalink + "\n" + page);
+            assertTrue(page.contains("\"latitude\":32.9228"), permalink + "\n" + page);
+            assertTrue(page.contains("\"longitude\":-117.2534"), permalink + "\n" + page);
+            assertTrue(page.contains("target=\"_blank\""), permalink + "\n" + page);
+            assertTrue(page.contains("noopener"), permalink + "\n" + page);
+        } finally {
+            if (entryId != null) {
+                deleteEntryForever(entryId, minted.raw());
+            }
+            revokeToken(minted.id());
+        }
+    }
+
     // ---------------------------------------------------------------- utils
+
+    /** Trash, then purge: an entry has to be in the trash to be deleted forever. */
+    private void deleteEntryForever(String entryId, String bearer) throws Exception {
+        String entry = baseUrl() + "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries/" + entryId;
+        HttpResponse<String> trashed = client.send(HttpRequest.newBuilder(URI.create(entry))
+                .timeout(Duration.ofSeconds(20))
+                .header("Authorization", "Bearer " + bearer)
+                .DELETE()
+                .build(), HttpResponse.BodyHandlers.ofString());
+        assertTrue(trashed.statusCode() < 300, trashed.body());
+        HttpResponse<String> purged = client.send(HttpRequest.newBuilder(URI.create(entry + "/delete-forever"))
+                .timeout(Duration.ofSeconds(20))
+                .header("Authorization", "Bearer " + bearer)
+                .POST(BodyPublishers.noBody())
+                .build(), HttpResponse.BodyHandlers.ofString());
+        assertTrue(purged.statusCode() < 300, purged.body());
+    }
 
     private record MintedToken(String id, String raw, HttpResponse<String> mintResponse) { }
 

@@ -97,6 +97,11 @@ public final class HTMLSanitizer {
             .allowElements("a", "img", "figure", "figcaption", "picture", "source")
 
             .allowAttributes("href", "title", "rel").onElements("a")
+            // A new tab, and only that (CtaShortcode's booking card, outbound
+            // references): _top or _parent would let a link replace the
+            // page around a framed preview. The policy adds rel="noopener
+            // noreferrer" to every link it keeps a target on.
+            .allowAttributes("target").matching(true, "_blank").onElements("a")
             // the lightbox reads these off the gallery anchor
             .allowAttributes("data-pswp-width", "data-pswp-height", "data-caption",
                     "data-exif-camera", "data-exif-lens", "data-exif-exposure",
