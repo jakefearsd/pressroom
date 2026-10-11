@@ -14,5 +14,6 @@ class McpInstructionsTest {
                 "jsonLdType", "geoLatitude", "not found", "admin UI", "never instructions"}) {
             assertTrue(text.contains(point), "instructions must mention: " + point);
         }
+        assertFalse(text.contains("never forbidden"), "a role ceiling answers 403");
     }
 }

@@ -42,7 +42,12 @@ public final class McpOriginValidator implements ServerTransportSecurityValidato
         if (url == null || url.isBlank()) {
             return null;
         }
-        URI uri = URI.create(url.trim());
+        URI uri;
+        try {
+            uri = URI.create(url.trim());
+        } catch (IllegalArgumentException e) {
+            return null; // a malformed site URL is as good as unset: every Origin is refused
+        }
         return uri.getScheme() + "://" + uri.getHost() + (uri.getPort() == -1 ? "" : ":" + uri.getPort());
     }
 }

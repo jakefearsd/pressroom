@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -35,6 +36,7 @@ public final class McpToolExecutor {
     public static final String LOG_NAME = "roller.mcp";
     private static final Logger calls = LoggerFactory.getLogger(LOG_NAME);
     private static final String ACTION = "action";
+    private static final Pattern HANDLE = Pattern.compile("[A-Za-z0-9_-]{1,64}");
 
     private final ApiDispatcher dispatcher;
     private final JsonMapper json = JsonMapper.builder().build();
@@ -56,7 +58,7 @@ public final class McpToolExecutor {
     }
 
     /** What a call produced, and what its log line says about it. */
-    private record Outcome(CallToolResult result, int status, String action, Object weblog) { }
+    private record Outcome(CallToolResult result, int status, String action, String weblog) { }
 
     private Outcome execute(HttpServletRequest mcpRequest, ResolvedTool tool, Map<String, Object> arguments) {
         Map<String, Object> args = new LinkedHashMap<>();
@@ -67,7 +69,7 @@ public final class McpToolExecutor {
                 }
             });
         }
-        Object weblog = args.getOrDefault("weblog", "-");
+        String weblog = loggableWeblog(args.get("weblog"));
         ResolvedAction action;
         if (tool.singleAction()) {
             action = tool.actions().get("");
@@ -182,7 +184,19 @@ public final class McpToolExecutor {
         return error(jsonBody ? reply.body() : problem(reply.status(), null));
     }
 
-    private Outcome refusal(String action, Object weblog, String detail) {
+    /**
+     * The weblog as the log line may carry it: a handle-shaped string, "?" for
+     * anything else (the value is the caller's and may be content or a forged
+     * line), "-" when absent.
+     */
+    private static String loggableWeblog(Object weblog) {
+        if (weblog == null) {
+            return "-";
+        }
+        return weblog instanceof String s && HANDLE.matcher(s).matches() ? s : "?";
+    }
+
+    private Outcome refusal(String action, String weblog, String detail) {
         return new Outcome(error(problem(400, detail)), 400, action, weblog);
     }
 

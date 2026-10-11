@@ -43,4 +43,12 @@ class McpOriginValidatorTest {
         assertThrows(ServerTransportSecurityException.class,
                 () -> lan.validateHeaders(Map.of("Origin", List.of("http://docker2.lan"))));
     }
+
+    @Test
+    void aMalformedSiteUrlRefusesEveryOriginInsteadOfThrowingUnchecked() {
+        McpOriginValidator bad = new McpOriginValidator(() -> "http://bad host/ with spaces");
+        assertThrows(ServerTransportSecurityException.class,
+                () -> bad.validateHeaders(Map.of("Origin", List.of("https://blog.wikantik.com"))));
+        assertDoesNotThrow(() -> bad.validateHeaders(Map.of()));
+    }
 }

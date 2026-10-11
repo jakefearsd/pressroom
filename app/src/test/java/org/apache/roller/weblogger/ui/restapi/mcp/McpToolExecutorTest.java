@@ -286,7 +286,7 @@ class McpToolExecutorTest {
 
         assertEquals(1, logged.size(), logged.toString());
         String line = logged.get(0);
-        for (String part : new String[] {"tok-1", "alice", "entries", "update", "b", "200"}) {
+        for (String part : new String[] {"tok-1", "alice", "entries", "update", "weblog=b", "status=200", "ms="}) {
             assertTrue(line.contains(part), part + " in " + line);
         }
         assertFalse(line.contains("SECRET-TITLE"), line);
@@ -311,5 +311,20 @@ class McpToolExecutorTest {
                 failing.call(new MockHttpServletRequest(), tool("whoami"), Map.of()));
         assertEquals(1, failure.size(), failure.toString());
         assertTrue(failure.get(0).contains("status=500") && failure.get(0).contains("action=-"), failure.get(0));
+    }
+
+    @Test
+    void aWeblogThatIsNotAHandleIsLoggedAsAQuestionMarkAndNeverForgesALine() {
+        List<Object> hostile = List.of("b\n token=forged user=root", "x".repeat(65), "has space", 42,
+                List.of("b"));
+        for (Object weblog : hostile) {
+            List<String> logged = logged(() ->
+                    call("entries", Map.of("action", "get", "weblog", weblog, "id", "e1")));
+            assertEquals(1, logged.size(), logged.toString());
+            assertTrue(logged.get(0).contains("weblog=? "), logged.get(0));
+            assertFalse(logged.get(0).contains("\n") || logged.get(0).contains("forged"), logged.get(0));
+        }
+        List<String> absent = logged(() -> call("whoami", Map.of()));
+        assertTrue(absent.get(0).contains("weblog=- "), absent.get(0));
     }
 }
