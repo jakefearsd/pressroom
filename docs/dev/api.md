@@ -66,3 +66,33 @@ Roller is 0.x.
   authorization path avoided here.
   `grep -r "import org.apache.roller.weblogger.ui.restapi" app/src/main/java/org/apache/roller/weblogger/ui/controllers/`
   must return exactly one line.
+
+## MCP endpoint
+`/api/mcp` (spec `docs/superpowers/specs/2026-10-11-mcp-endpoint-design.md`) is a facade over
+`/api/v1`, never a second API.
+
+- **A tool call is forwarded in process** (`InProcessApiDispatcher`, `RequestDispatcher.forward`)
+  to its `/api/v1` route, on the request thread (the SDK server runs with immediate execution). So
+  `RollerHandlerInterceptor`/`ApiScopeInterceptor` decide exactly as for REST. The Spring Security
+  filter chain does run again on the FORWARD (`spring.security.filter.dispatcher-types=request,forward`
+  in `application.properties`), but authentication and the throttle run once, because
+  `ApiTokenAuthFilter` is a `OncePerRequestFilter` and its marker is still on the request. A
+  dispatched call sees only its own query parameters, never the MCP request's, and keeps attributes
+  it sets itself (an overlay in `DispatchedRequest`); `CapturedResponse` is standalone. Never give a
+  tool its own permission check.
+- **Adding an `/api/v1` route means deciding its MCP action in the same change**: an `ActionDecl` in
+  `McpToolCatalog`, or an `Exclusion` with a reason. `McpCoverageTest` fails until you do, and
+  `McpDocsTest` until the README's MCP table matches.
+- **Arguments are derived, not declared** (`ArgumentDeriver`). Path variables (`{handle}` becomes
+  `weblog`), `@RequestParam`s and the `@RequestBody` record's components become arguments. A path
+  value must be one segment (empty, `.`, `..`, or containing `/`, `\` or `;` is refused).
+  springdoc `@Schema`/`@Parameter` descriptions are the shared text for `openapi.json` and the tool
+  (`McpIT` compares `EntryWrite.pubTime`). A body record gaining a field gains a tool argument with
+  no MCP change. An unknown parameter type stops startup.
+- **`AdminAccountGuard` is mandatory for any API route that changes a user**: deletion, profile
+  self-edit, role grants or revocations. Admin accounts and the admin role are read-only through the
+  API (403 `Admin accounts are managed in the admin UI.`).
+- `McpEndpointServlet` refuses non-token callers (Basic is accepted chain-wide for `/v1/tokens`).
+  `McpOriginValidator` refuses a foreign `Origin`. Each call logs one `roller.mcp` INFO line, with no
+  argument values; the weblog appears only when it is handle-shaped (else `?`). That logger goes to
+  the console appender, like `roller.redirects`, not to `roller.log`.

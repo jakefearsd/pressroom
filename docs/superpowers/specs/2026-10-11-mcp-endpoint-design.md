@@ -84,8 +84,9 @@ captures the status, headers and body. Requirements on the mechanism:
 - The dispatched request carries the MCP request's authenticated identity
   and token scope, and nothing else from it: no MCP parameters, headers
   other than `Accept`/`Content-Type`, or body.
-- The servlet filter chain is not entered again, so the throttle counts a
-  tool call once and authentication is not repeated.
+- The throttle counts a tool call once and authentication is not repeated.
+  The security chain may run again on the forward, but the token filter
+  runs once per request.
 - A `sendError` or exception inside the API is captured as a status and
   problem body, never as a container error page on the MCP response.
 - Writes behave as they do over REST: the API's own `weblogger.flush()`

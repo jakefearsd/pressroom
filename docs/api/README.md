@@ -61,6 +61,7 @@ printf '%s\n' "$PASSWORD" | bin/roller-api auth login \
 - [Audits](#audits)
 - [Site administration](#site-administration)
 - [Maintenance actions](#maintenance-actions)
+- [MCP](#mcp)
 - [The OpenAPI document](#the-openapi-document)
 - [`bin/roller-api`](#binroller-api)
 
@@ -640,6 +641,51 @@ rebuilding the index and regenerating renditions are asynchronous
 background work that has only just started when the response returns, and
 flushing the cache — while synchronous — shares the same status code so a
 caller never has to special-case one of the three.
+
+## MCP
+
+`POST /api/mcp` is a Model Context Protocol endpoint (Streamable HTTP, stateless: no sessions, no
+server-sent streams) for agents. Its tools are a facade over the routes in this document: each tool
+call runs the matching `/api/v1` route inside Roller, so every rule here (token scopes, validation,
+error details) applies unchanged. A weblog or item the token may not see answers "not found"; an
+action beyond the token's role answers "forbidden", exactly as over REST.
+
+- **API tokens only.** Mint one with `bin/roller-api auth login` or `POST /api/v1/tokens`. Username
+  and password are refused at `/api/mcp` with 401 `MCP accepts API tokens only.`
+- **Admin accounts are read-only through the API**, and so through MCP. Changing one (for example
+  `PATCH /api/v1/admin/users/{userName}` on an admin) answers 403 `Admin accounts are managed in the
+  admin UI.` Disabling, deleting, re-addressing and role changes for admins happen in the admin UI.
+- A request carrying a browser `Origin` other than the site's own is refused (403); bodies over 2 MB
+  are refused (413).
+- Each tool call counts once against the token's rate limit.
+
+Connect a client that supports Streamable HTTP with a custom header, for example:
+
+```bash
+claude mcp add --transport http roller https://blog.example.com/api/mcp \
+    --header "Authorization: Bearer $ROLLER_API_TOKEN"
+```
+
+| Tool | Actions |
+|---|---|
+| `whoami` | |
+| `weblogs` | `list`, `get`, `update` |
+| `entries` | `list`, `get`, `create`, `update`, `trash`, `restore`, `delete_forever`, `preview` |
+| `categories` | `list`, `create`, `update`, `delete`, `list_tags` |
+| `media` | `list`, `get`, `update`, `delete`, `list_directories`, `create_directory` |
+| `pages` | `list`, `get`, `create`, `update`, `delete` |
+| `redirects` | `list`, `create`, `delete` |
+| `audits` | `seo`, `media` |
+| `users` | `list`, `create`, `update` |
+| `site_settings` | `get`, `update` |
+| `maintenance` | `flush_cache`, `rebuild_index`, `regenerate_renditions` |
+
+A tool takes `action` (except `whoami`) and that action's arguments, named as in this document:
+`weblog` is a handle, and body fields keep their names. An argument the action does not take is
+refused, never ignored. An argument that fills part of the route's path (`weblog`, `id`, `userName`)
+must be one path segment: an empty value, `.`, `..`, or a value containing `/`, `\` or `;` is
+refused. A refusal from the API is a tool error whose text is the API's problem body. Not available
+through MCP: minting, listing or revoking tokens, and uploading media from local files.
 
 ## The OpenAPI document
 

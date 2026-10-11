@@ -18,6 +18,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -205,6 +206,29 @@ class McpIT extends RollerIT {
                     Map.of());
             assertTrue(JSON.readTree(init.body()).get("result").get("instructions").asString()
                     .contains("admin UI"), init.body());
+        } finally {
+            revoke(token.id());
+        }
+    }
+
+    @Test
+    void theEntriesPubTimeDescriptionIsTheOpenApiDocumentsText() throws Exception {
+        Token token = mint("McpIT openapi", "READ", null);
+        try {
+            JsonNode openapi = JSON.readTree(restGet(token.raw(), "/api/v1/openapi.json").body());
+            String apiText = openapi.at("/components/schemas/EntryWrite/properties/pubTime/description").asString();
+            assertFalse(apiText.isBlank(), "openapi.json carries EntryWrite.pubTime's description");
+
+            JsonNode tools = JSON.readTree(post(token.raw(), rpcBody("tools/list", Map.of()), Map.of()).body())
+                    .get("result").get("tools");
+            JsonNode entries = null;
+            for (JsonNode tool : tools) {
+                if ("entries".equals(tool.get("name").asString())) {
+                    entries = tool;
+                }
+            }
+            assertNotNull(entries, "tools/list names the entries tool");
+            assertEquals(apiText, entries.at("/inputSchema/properties/pubTime/description").asString());
         } finally {
             revoke(token.id());
         }
