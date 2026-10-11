@@ -149,9 +149,60 @@ class McpToolExecutorTest {
     }
 
     @Test
-    void aPathValueStaysInsideItsSegment() {
-        call("entries", Map.of("action", "get", "weblog", "my blog", "id", "a/../b?x"));
-        assertEquals("/v1/weblogs/my%20blog/entries/a%2F..%2Fb%3Fx", dispatched.get(0).path());
+    void aPathValueWithCharactersThatNeedEncodingStaysEncodedInsideItsSegment() {
+        call("entries", Map.of("action", "get", "weblog", "my blog", "id", "a?x%"));
+        assertEquals("/v1/weblogs/my%20blog/entries/a%3Fx%25", dispatched.get(0).path());
+    }
+
+    @Test
+    void aPathValueThatCouldLeaveItsSegmentIsRefusedNotDispatched() {
+        // the container decodes %2F and strips ;params when it forwards, so encoding alone is not enough
+        for (String bad : List.of("a/../b", "b/entries/x", "a\\b", "a;x", "..;")) {
+            CallToolResult result = call("entries", Map.of("action", "get", "weblog", bad, "id", "e1"));
+
+            assertTrue(result.isError(), bad);
+            assertTrue(text(result).contains("`weblog`") && text(result).contains("\"status\":400"), text(result));
+        }
+        assertTrue(dispatched.isEmpty());
+    }
+
+    @Test
+    void aWholeNumberDoubleStringifiesWithoutADecimalPoint() {
+        call("entries", Map.of("action", "list", "weblog", "b", "limit", 10.0));
+        assertEquals(List.of("10"), dispatched.get(0).query().get("limit"));
+
+        call("entries", Map.of("action", "get", "weblog", "b", "id", 10.0));
+        assertEquals("/v1/weblogs/b/entries/10", dispatched.get(1).path());
+
+        call("entries", Map.of("action", "list", "weblog", "b", "limit", 10.5));
+        assertEquals(List.of("10.5"), dispatched.get(2).query().get("limit"));
+    }
+
+    @Test
+    void aDispatchThatFailsIsAnOpaqueFiveHundredToolError() {
+        List<ApiDispatcher> failing = List.of(
+                (request, call) -> {
+                    throw new java.io.IOException("disk");
+                },
+                (request, call) -> {
+                    throw new IllegalStateException("boom");
+                });
+        for (ApiDispatcher dispatcher : failing) {
+            CallToolResult result = new McpToolExecutor(dispatcher)
+                    .call(new MockHttpServletRequest(), tool("whoami"), Map.of());
+
+            assertTrue(result.isError());
+            assertEquals("{\"status\":500,\"title\":\"Internal Server Error\"}", text(result));
+        }
+    }
+
+    @Test
+    void settingsGivenAsAStringIsRefusedNotDispatched() {
+        CallToolResult result = call("site_settings", Map.of("action", "update", "settings", "site.shortName=x"));
+
+        assertTrue(result.isError());
+        assertTrue(text(result).contains("`settings` must be an object."), text(result));
+        assertTrue(dispatched.isEmpty());
     }
 
     @Test

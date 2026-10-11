@@ -138,13 +138,18 @@ public final class McpToolExecutor {
     }
 
     /**
-     * The container normalizes dot-segments when it forwards, so an empty,
-     * "." or ".." value could re-route the call to a different route; refuse it.
+     * A path value must stay one segment. The container, when it forwards,
+     * decodes an encoded "%2F" into a real "/", strips ";params" and
+     * normalizes dot-segments, so encoding does not keep a value in its
+     * segment: refuse the values that could re-route the call. Real handles,
+     * ids and user names never contain these.
      */
     private static String pathSegment(String name, Object value) {
         String segment = scalar(value);
-        if (segment.isEmpty() || ".".equals(segment) || "..".equals(segment)) {
-            throw new IllegalArgumentException("`" + name + "` must be a real value, not empty, \".\" or \"..\".");
+        if (segment.isEmpty() || ".".equals(segment) || "..".equals(segment)
+                || segment.indexOf('/') >= 0 || segment.indexOf('\\') >= 0 || segment.indexOf(';') >= 0) {
+            throw new IllegalArgumentException("`" + name
+                    + "` must be a single path segment: not empty, \".\" or \"..\", and without \"/\", \"\\\" or \";\".");
         }
         return segment;
     }

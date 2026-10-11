@@ -208,6 +208,24 @@ class McpIT extends RollerIT {
         }
     }
 
+    @Test
+    void aPathValueThatWouldLeaveItsSegmentIsRefusedAndNothingChanges() throws Exception {
+        Token token = mint("McpIT segment", "ADMIN", null);
+        try {
+            String before = restGet(token.raw(), "/api/v1/weblogs/" + WEBLOG_HANDLE).body();
+
+            JsonNode refused = callTool(token.raw(), "weblogs", Map.of("action", "update",
+                    "weblog", WEBLOG_HANDLE + "/entries/x", "name", "McpIT hijacked"));
+
+            assertTrue(isError(refused), refused.toString());
+            assertEquals(400, JSON.readTree(text(refused)).get("status").asInt());
+            assertEquals(JSON.readTree(before),
+                    JSON.readTree(restGet(token.raw(), "/api/v1/weblogs/" + WEBLOG_HANDLE).body()));
+        } finally {
+            revoke(token.id());
+        }
+    }
+
     // ---------------------------------------------------------------- helpers
 
     record Token(String id, String raw) { }
