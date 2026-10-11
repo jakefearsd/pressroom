@@ -226,6 +226,28 @@ class McpIT extends RollerIT {
         }
     }
 
+    @Test
+    void adminAccountsCannotBeChangedThroughMcpOrRest() throws Exception {
+        Token token = mint("McpIT admin rule", "ADMIN", null);
+        try {
+            JsonNode viaMcp = callTool(token.raw(), "users",
+                    Map.of("action", "update", "userName", ADMIN_USERNAME, "enabled", false));
+            assertTrue(isError(viaMcp));
+            JsonNode problem = JSON.readTree(text(viaMcp));
+            assertEquals(403, problem.get("status").asInt());
+            assertEquals("Admin accounts are managed in the admin UI.", problem.get("detail").asString());
+
+            HttpResponse<String> viaRest = restSend(token.raw(), "PATCH",
+                    "/api/v1/admin/users/" + ADMIN_USERNAME, "{\"emailAddress\":\"x@evil.example\"}");
+            assertEquals(403, viaRest.statusCode(), viaRest.body());
+
+            JsonNode who = callTool(token.raw(), "whoami", Map.of());
+            assertFalse(isError(who), "the admin account is still enabled: " + who);
+        } finally {
+            revoke(token.id());
+        }
+    }
+
     // ---------------------------------------------------------------- helpers
 
     record Token(String id, String raw) { }

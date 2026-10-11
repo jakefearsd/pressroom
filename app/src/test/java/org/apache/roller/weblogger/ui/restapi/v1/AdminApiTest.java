@@ -382,6 +382,30 @@ class AdminApiTest {
     }
 
     @Test
+    void patchingAnAdminAccountIsRefusedWhateverItCarriesAndChangesNothing() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        UserManager mgr = weblogger.getUserManager();
+        User admin = aUser("boss");
+        when(mgr.getUserByUserName("boss", null)).thenReturn(admin);
+        when(mgr.checkPermission(any(), eq(admin))).thenReturn(true);
+
+        for (String body : new String[] {"{\"enabled\":false}", "{\"emailAddress\":\"x@evil.example\"}",
+                "{\"screenName\":\"Renamed\"}", "{\"enabled\":false,\"emailAddress\":\"x@evil.example\"}", "{}"}) {
+            String problem = mockMvc(controllerFor(weblogger))
+                    .perform(patch("/v1/admin/users/{userName}", "boss")
+                            .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isForbidden())
+                    .andReturn().getResponse().getContentAsString();
+            assertEquals("Admin accounts are managed in the admin UI.",
+                    new tools.jackson.databind.ObjectMapper().readTree(problem).get("detail").asString());
+        }
+        assertEquals(Boolean.TRUE, admin.getEnabled());
+        assertEquals("boss@example.test", admin.getEmailAddress());
+        assertEquals("Screen boss", admin.getScreenName());
+        verify(mgr, never()).saveUser(any());
+    }
+
+    @Test
     void patchUpdatesEnabledScreenNameAndEmail() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         User user = aUser("alice");

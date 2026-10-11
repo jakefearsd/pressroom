@@ -26,6 +26,7 @@ import org.apache.roller.weblogger.pojos.UserToken;
 import org.apache.roller.weblogger.ui.controllers.UISecurityEnforced;
 import org.apache.roller.weblogger.ui.controllers.core.PasswordLinkMailer;
 import org.apache.roller.weblogger.ui.controllers.util.UIUtils;
+import org.apache.roller.weblogger.ui.restapi.AdminAccountGuard;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
 import org.apache.roller.weblogger.ui.restapi.ColumnLimits;
 import org.apache.roller.weblogger.ui.restapi.auth.AdminScoped;
@@ -204,6 +205,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         if (user == null) {
             throw ApiException.notFound("No such user.");
         }
+        AdminAccountGuard.requireNotAdmin(mgr, user);
 
         if (body.emailAddress() != null) {
             String emailAddress = body.emailAddress().trim();
