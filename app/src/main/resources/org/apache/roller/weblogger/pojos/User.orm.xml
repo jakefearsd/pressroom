@@ -31,6 +31,13 @@
                  sign-in spec, criterion 33). -->
             <query>SELECT u FROM User u WHERE u.emailAddress = ?1 AND u.enabled = ?2 AND u.ssoSubject IS NULL ORDER BY u.userName</query>
         </named-query>
+        <named-query name="User.getScreenNamesOfWeblogMembers">
+            <!-- A member is an account holding any weblog permission (pending
+                 or not). The account page refuses a reader's display name
+                 matching one of these, so a reader cannot pass as an author. -->
+            <query>SELECT DISTINCT u.screenName FROM User u
+                   WHERE u.userName IN (SELECT p.userName FROM WeblogPermission p)</query>
+        </named-query>
         <named-query name="User.getBySsoIdentity">
             <query>SELECT u FROM User u WHERE u.ssoIssuer = ?1 AND u.ssoSubject = ?2</query>
         </named-query>

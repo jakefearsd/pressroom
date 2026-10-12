@@ -36,11 +36,13 @@ import org.apache.roller.weblogger.TestUtils;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.boot.SecurityConfig;
 import org.apache.roller.weblogger.boot.WebMvcConfig;
+import org.apache.roller.weblogger.business.BootstrapException;
 import org.apache.roller.weblogger.business.CommentManager;
 import org.apache.roller.weblogger.business.UserManager;
 import org.apache.roller.weblogger.business.WeblogEntryManager;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.business.WebloggerProvider;
+import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.business.comments.CommentOutcome;
 import org.apache.roller.weblogger.business.comments.CommentRefusal;
 import org.apache.roller.weblogger.business.comments.CommentService;
@@ -140,10 +142,31 @@ class CommentsControllerTest {
             return new ObjectMapper();
         }
 
-        /** The suite's tier; never shut down by this context's close. */
-        @Bean(destroyMethod = "")
+        /**
+         * The suite's tier, seen through a view that is not itself a bean to
+         * dispose. The provider is a {@code DisposableBean}, whose
+         * {@code destroy()} detaches the runtime config; Spring calls it on
+         * context close whatever {@code destroyMethod} says, which left every
+         * later test in the JVM reading null properties.
+         */
+        @Bean
         WebloggerProvider webloggerProvider() {
-            return TestUtils.provider();
+            return new WebloggerProvider() {
+                @Override
+                public boolean isBootstrapped() {
+                    return TestUtils.provider().isBootstrapped();
+                }
+
+                @Override
+                public void bootstrap() throws BootstrapException {
+                    TestUtils.provider().bootstrap();
+                }
+
+                @Override
+                public Weblogger getWeblogger() {
+                    return TestUtils.weblogger();
+                }
+            };
         }
 
         /** As above: an inferred {@code shutdown()} would stop the tier for every later test. */
@@ -193,6 +216,9 @@ class CommentsControllerTest {
         if (context != null) {
             context.close();
         }
+        assertNotNull(WebloggerRuntimeConfig.getProperty("uploads.file.maxsize"),
+                "closing this test's context must leave the suite's runtime config attached, "
+                        + "or every later test in the JVM reads null properties");
     }
 
     @BeforeEach

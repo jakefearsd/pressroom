@@ -436,8 +436,12 @@ public class CommentService {
                 reader.getUserName());
     }
 
-    /** Bumps lastModified (saveWeblog sets it) on the weblog, so rendered pages expire. */
-    void expire(Weblog weblog) throws WebloggerException {
+    /**
+     * Bumps lastModified (saveWeblog sets it) on the weblog, so rendered pages
+     * expire. Public for the account page, whose renames and deletions change
+     * what the weblogs show.
+     */
+    public void expire(Weblog weblog) throws WebloggerException {
         weblogger.getWeblogManager().saveWeblog(weblog);
         weblogger.flush();
         // WeblogPageCache expires only against weblog.lastModified; this reaches the other caches.

@@ -25,6 +25,7 @@ import java.util.Map;
 
 import org.apache.roller.weblogger.TestUtils;
 import org.apache.roller.weblogger.pojos.User;
+import org.apache.roller.weblogger.pojos.Weblog;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -533,6 +534,60 @@ class UserQueryAndRoleTest {
     @Test
     void aRoleThatWasNeverGrantedIsNotHeld() throws Exception {
         assertFalse(users().hasRole("admin", users().getUserByUserName(bobName)));
+    }
+
+    /**
+     * Roles are keyed by username with no foreign key to the account, so they
+     * survive the account unless removal deletes them. A later account given
+     * the same name (a reader re-signing up, an administrator reusing a name)
+     * would otherwise inherit the deleted account's authority.
+     */
+    @Test
+    void removingAUserRemovesItsRoles() throws Exception {
+        User leaving = TestUtils.setupUser("uqLeaving");
+        users().grantRole("admin", leaving);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+
+        TestUtils.teardownUser(leaving.getUserName());
+        TestUtils.endSession(true);
+
+        User sameName = new User();
+        sameName.setUserName(leaving.getUserName());
+        assertEquals(List.of(), users().getRoles(sameName),
+                "a removed account's roles must go with it");
+    }
+
+    // ------------------------------------------------------- weblog members
+
+    /**
+     * The account page refuses a display name that impersonates a weblog
+     * member, so it needs every member's screen name, from one query: an
+     * account holding any weblog permission is a member; one holding none is
+     * not, whatever its roles.
+     */
+    @Test
+    void screenNamesOfWeblogMembersAreThoseOfAccountsHoldingAWeblogPermission() throws Exception {
+        User member = users().getUserByUserName(aliceName);
+        member.setScreenName("Alice Member " + aliceName);
+        users().saveUser(member);
+        User outsider = users().getUserByUserName(bobName);
+        outsider.setScreenName("Bob Outsider " + bobName);
+        users().saveUser(outsider);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+        Weblog blog = TestUtils.setupWeblog("uqmembers", users().getUserByUserName(aliceName));
+        TestUtils.endSession(true);
+        try {
+            List<String> names = users().getScreenNamesOfWeblogMembers();
+
+            assertTrue(names.contains("Alice Member " + aliceName), "the weblog's creator is a member: " + names);
+            assertFalse(names.contains("Bob Outsider " + bobName), "bob holds no weblog permission: " + names);
+            assertEquals(names.size(), names.stream().distinct().count(), "each name once: " + names);
+        } finally {
+            TestUtils.teardownWeblog(blog.getId());
+            TestUtils.endSession(true);
+        }
     }
 
     // --------------------------------------------------------------- helpers

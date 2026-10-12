@@ -216,6 +216,13 @@ public class RollerViewResolver implements ViewResolver, Ordered {
         addExtendedDefinition(".Profile", ".tiles-mainmenupage",
                 Map.of("content", "/WEB-INF/jsps/core/Profile.jsp"));
 
+        // The reader's account page is the one admin-UI screen a reader can
+        // open, and the rail has nowhere for a reader to go (its account link
+        // opens the profile, which refuses readers), so it is simplepage: the
+        // card under the top bar, whose home and log-out links a reader can use.
+        addExtendedDefinition(".Account", ".tiles-simplepage",
+                Map.of("content", "/WEB-INF/jsps/core/Account.jsp"));
+
         addExtendedDefinition(".CreateWeblog", ".tiles-simplepage",
                 Map.of("content", "/WEB-INF/jsps/core/CreateWeblog.jsp"));
 

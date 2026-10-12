@@ -183,6 +183,12 @@ public final class Routes {
             new Route("/roller-ui/profile.rol", Role.EDITOR, "",
                     "form[action$='/roller-ui/profile!save.rol']"),
 
+            // The reader's account page. AccountController needs only the global
+            // "comment" action, which readers hold -- but Role has no READER and
+            // the sweep signs in as the seeded admin, who holds "comment" too, so
+            // EDITOR (whose role grants "comment") is the lowest role listed here.
+            new Route("/roller-ui/account.rol", Role.EDITOR, "", "#accountPage"),
+
             // Renders .CreateWeblog rather than .GenericError because
             // site.allowUserWeblogCreation defaults to true (runtimeConfigDefs.xml)
             // and groupblogging.enabled defaults to true (roller.properties), which

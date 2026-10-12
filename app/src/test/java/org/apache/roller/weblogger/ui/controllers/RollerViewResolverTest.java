@@ -179,6 +179,22 @@ class RollerViewResolverTest {
     }
 
     /**
+     * The reader's account page is a reader's only admin-UI screen, and a
+     * reader has nowhere on the rail to go: its account link opens the
+     * profile, which refuses a reader. So it is the plain card under the top
+     * bar, whose site-name and log-out links are the ones a reader can use.
+     */
+    @Test
+    void accountRendersThroughTheSimpleLayout() throws Exception {
+        resolver.init();
+
+        MockHttpServletRequest request = renderAndCapture(".Account");
+
+        assertEquals("/WEB-INF/jsps/core/Account.jsp", request.getAttribute("tile_content"));
+        assertEquals("/WEB-INF/jsps/tiles/bannerStatus.jsp", request.getAttribute("tile_banner"));
+    }
+
+    /**
      * Renders the named definition against a mock request/response pair and
      * hands back the request, whose {@code tile_*} attributes are the
      * definition's attribute map and whose response records the layout JSP the
@@ -202,6 +218,7 @@ class RollerViewResolverTest {
         return switch (viewName) {
             case ".Comments", ".Submissions" -> "/WEB-INF/jsps/tiles/tiles-tabbedpage.jsp";
             case ".Profile" -> "/WEB-INF/jsps/tiles/tiles-mainmenupage.jsp";
+            case ".Account" -> "/WEB-INF/jsps/tiles/tiles-simplepage.jsp";
             default -> throw new IllegalArgumentException("no expected layout for " + viewName);
         };
     }

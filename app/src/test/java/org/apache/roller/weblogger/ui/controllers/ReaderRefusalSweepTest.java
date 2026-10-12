@@ -31,6 +31,7 @@ import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.RollerPermission;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
+import org.apache.roller.weblogger.ui.controllers.core.AccountController;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DynamicTest;
@@ -50,6 +51,7 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerMapping;
 
 import static java.util.stream.Collectors.toSet;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -59,7 +61,9 @@ import static org.mockito.Mockito.when;
 
 /**
  * Every controller that requires a signed-in user refuses a reader (spec
- * criterion 22).
+ * criterion 22), except the pages a reader is meant to reach: those are
+ * excluded by name, each with its reason, in {@link #READER_PAGES}, and each
+ * has a positive test of its own.
  *
  * <p>Characterisation sweep for the new {@code reader} role: it passes against
  * the code as written, because every such controller already demands the
@@ -133,10 +137,19 @@ class ReaderRefusalSweepTest {
         }
     }
 
+    /**
+     * Pages a reader is meant to reach, each with the reason, left out of the
+     * sweep by name and pinned by a positive test of its own instead.
+     */
+    private static final Map<String, String> READER_PAGES = Map.of(
+            AccountController.class.getName(),
+            "requires the global comment action by design, which readers hold");
+
     @TestFactory
     Stream<DynamicTest> everyUserRequiredControllerRefusesAReader() {
         return securedControllers().stream()
                 .filter(UISecurityEnforced::isUserRequired)
+                .filter(c -> !READER_PAGES.containsKey(c.getClass().getName()))
                 .map(c -> DynamicTest.dynamicTest(c.getClass().getSimpleName(),
                         () -> assertFalse(interceptorAllows(c),
                                 c.getClass().getName() + " let a reader through")));
@@ -164,6 +177,32 @@ class ReaderRefusalSweepTest {
                 .map(c -> c.getClass().getSimpleName()).collect(toSet());
         assertTrue(names.containsAll(Set.of("MainMenuController", "ProfileController",
                 "EntryEditController", "UserAdminController", "MediaApi")), names.toString());
+        Set<String> classNames = securedControllers().stream()
+                .map(c -> c.getClass().getName()).collect(toSet());
+        assertTrue(classNames.containsAll(READER_PAGES.keySet()),
+                "an exclusion that names no controller excuses nothing: " + READER_PAGES.keySet());
+    }
+
+    /**
+     * The one page a reader may open: their own account page needs the global
+     * {@code comment} action, which a reader holds; a visitor who is not signed
+     * in is sent to log in first.
+     */
+    @Test
+    void theAccountPageLetsAReaderInAndSendsAnonymousToLogIn() throws Exception {
+        UISecurityEnforced account = instantiate(AccountController.class.getName());
+
+        assertTrue(interceptorAllows(account), "a reader reaches their own account page");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        weblogger = MockWeblogger.attached();
+        try {
+            assertFalse(interceptorAllowsWithAttachedMocks(account, false, response));
+        } finally {
+            weblogger.detach();
+            weblogger = null;
+        }
+        assertEquals("/roller/roller-ui/login.rol", response.getRedirectedUrl());
     }
 
     /**
@@ -179,14 +218,15 @@ class ReaderRefusalSweepTest {
     private boolean interceptorAllows(UISecurityEnforced controller) throws Exception {
         weblogger = MockWeblogger.attached();
         try {
-            return interceptorAllowsWithAttachedMocks(controller);
+            return interceptorAllowsWithAttachedMocks(controller, true, new MockHttpServletResponse());
         } finally {
             weblogger.detach();
             weblogger = null;
         }
     }
 
-    private boolean interceptorAllowsWithAttachedMocks(UISecurityEnforced controller) throws Exception {
+    private boolean interceptorAllowsWithAttachedMocks(UISecurityEnforced controller, boolean signedIn,
+                                                       MockHttpServletResponse response) throws Exception {
         WebloggerProvider provider = mock(WebloggerProvider.class);
         when(provider.isBootstrapped()).thenReturn(true);
         RollerHandlerInterceptor interceptor =
@@ -209,11 +249,15 @@ class ReaderRefusalSweepTest {
                     return false; // a reader holds no weblog permission
                 });
 
-        UserDetails details = mock(UserDetails.class);
-        when(details.getUsername()).thenReturn(READER);
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(details, "n/a",
-                        AuthorityUtils.createAuthorityList("ROLE_reader")));
+        if (signedIn) {
+            UserDetails details = mock(UserDetails.class);
+            when(details.getUsername()).thenReturn(READER);
+            SecurityContextHolder.getContext().setAuthentication(
+                    new UsernamePasswordAuthenticationToken(details, "n/a",
+                            AuthorityUtils.createAuthorityList("ROLE_reader")));
+        } else {
+            SecurityContextHolder.clearContext();
+        }
 
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setContextPath("/roller");
@@ -222,7 +266,7 @@ class ReaderRefusalSweepTest {
         HandlerMethod handler = new HandlerMethod(controller,
                 controller.getClass().getMethod("isUserRequired"));
         try {
-            return interceptor.preHandle(request, new MockHttpServletResponse(), handler);
+            return interceptor.preHandle(request, response, handler);
         } catch (ApiException refused) {
             return false;
         }

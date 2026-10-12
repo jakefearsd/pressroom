@@ -246,6 +246,13 @@ public interface UserManager {
     List<WeblogPermission> getWeblogPermissions(Weblog weblog)
             throws WebloggerException;
 
+    /**
+     * The distinct screen names of every account holding a permission on any
+     * weblog (a member of it, pending or not), in one query. The account page
+     * refuses a reader's display name that matches one of these.
+     */
+    List<String> getScreenNamesOfWeblogMembers() throws WebloggerException;
+
 
     /**
      * Get user's permission within a weblog or null if none.

@@ -96,7 +96,11 @@ class EditorJspEscapingTest {
             "author.screenName",
             "author.userName",
             "c.body",
-            "reply.body");
+            "reply.body",
+            // The reader's account page: a display name a reader typed (any
+            // account's screenName, however reached) and the form's echo of it.
+            "screenName",
+            "nameValue");
 
     @Test
     void authorControlledTextNeverRendersRawInAJsp() throws IOException {
@@ -112,6 +116,24 @@ class EditorJspEscapingTest {
         assertTrue(violations.isEmpty(),
                 "Raw author-controlled EL found -- wrap in ${fn:escapeXml(...)}:\n  "
                         + String.join("\n  ", violations));
+    }
+
+    /**
+     * Review Focus 3, the account page's half: the display name a reader typed
+     * is shown there (the form's value and the heading), and it goes through
+     * fn:escapeXml in both places, so {@code "><img onerror>} is text.
+     */
+    @Test
+    void displayNameIsEscapedOnTheAccountPage() throws IOException {
+        Path account = Path.of("src/main/webapp/WEB-INF/jsps/core/Account.jsp");
+        assertTrue(Files.isRegularFile(account), "the account page is missing: " + account.toAbsolutePath());
+        String source = Files.readString(account);
+
+        assertTrue(source.contains("${fn:escapeXml(nameValue)}"), "the name field's value is escaped");
+        assertTrue(source.contains("${fn:escapeXml(account.screenName)}"), "the shown name is escaped");
+        List<String> violations = new ArrayList<>();
+        scan(account, violations);
+        assertTrue(violations.isEmpty(), "raw on the account page: " + violations);
     }
 
     private static void scan(Path jsp, List<String> violations) {

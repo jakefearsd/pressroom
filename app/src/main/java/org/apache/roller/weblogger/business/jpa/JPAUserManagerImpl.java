@@ -95,6 +95,15 @@ public class JPAUserManagerImpl implements UserManager {
         removeApiTokens.setParameter(1, user);
         removeApiTokens.executeUpdate();
 
+        // userrole rows are keyed by username with no foreign key: left behind,
+        // they would hand this account's authority to the next account given
+        // the same name
+        TypedQuery<UserRole> roles = strategy.getNamedQuery("UserRole.getByUserName", UserRole.class);
+        roles.setParameter(1, userName);
+        for (UserRole role : roles.getResultList()) {
+            this.strategy.remove(role);
+        }
+
         // reader comments by the user, and the owners' replies to them; the
         // database would cascade, but not the shared cache
         roller.getCommentManager().removeCommentsByAuthor(user);
@@ -504,6 +513,11 @@ public class JPAUserManagerImpl implements UserManager {
                 WeblogPermission.class);
         q.setParameter(1, weblog.getHandle());
         return q.getResultList();
+    }
+
+    @Override
+    public List<String> getScreenNamesOfWeblogMembers() throws WebloggerException {
+        return strategy.getNamedQuery("User.getScreenNamesOfWeblogMembers", String.class).getResultList();
     }
 
 //-------------------------------------------------------------- role CRUD
