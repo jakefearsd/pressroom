@@ -2,15 +2,20 @@ package org.apache.roller.weblogger.business.fetch;
 
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpServer;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.net.ProxySelector;
 import java.net.ServerSocket;
+import java.net.SocketAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -20,6 +25,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -183,6 +189,11 @@ class RemoteImageFetcherTest {
         redirect("/to-ftp", "ftp://example.com/a.jpg");
         redirect("/to-nohost", "http://127.1/a.jpg");
         redirect("/to-garbage", "http://exa mple.com/");
+        serve("/final", 200, "image/jpeg", JPEG);
+        redirect("/to-userinfo", "http://user:pw@127.0.0.1:" + server.getAddress().getPort() + "/final");
+        assertEquals("A URL with a user name or password is not fetched.",
+                refusal(fetcher, url("/to-userinfo"), 1024));
+        assertEquals(0, hits.get());
         assertEquals("Only http and https URLs are fetched.", refusal(fetcher, url("/to-ftp"), 1024));
         assertEquals("That is not a valid http or https URL.", refusal(fetcher, url("/to-nohost"), 1024));
         assertEquals("The image server sent an invalid redirect.", refusal(fetcher, url("/to-garbage"), 1024));
@@ -262,6 +273,98 @@ class RemoteImageFetcherTest {
         }
     }
 
+    /**
+     * A server that keeps sending, slowly, never trips the socket timeout: each
+     * read gets a byte well inside it. Only the whole-fetch deadline stops it.
+     */
+    @Test
+    void aServerThatTricklesIsAbandonedAtTheWholeFetchDeadline() {
+        server.createContext("/trickle", exchange -> {
+            exchange.sendResponseHeaders(200, 0);
+            try (OutputStream out = exchange.getResponseBody()) {
+                out.write(JPEG);
+                out.flush();
+                for (int i = 0; i < 40; i++) { // about 6 s, then a complete image
+                    Thread.sleep(150);
+                    out.write(0);
+                    out.flush();
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        RemoteImageFetcher deadlined = new RemoteImageFetcher(permissive(Duration.ofSeconds(1)));
+        try {
+            long started = System.nanoTime();
+            assertEquals("The image server took too long.", refusal(deadlined, url("/trickle"), 1 << 20));
+            assertTrue(Duration.ofNanos(System.nanoTime() - started).toMillis() < 4000);
+        } finally {
+            deadlined.close();
+        }
+    }
+
+    /**
+     * The deadline can pass while the client is still connecting, here while
+     * it resolves the host. The client then fails with a runtime exception
+     * rather than an IOException; that is "too long" too, never a 500.
+     */
+    @Test
+    void aDeadlineThatPassesWhileConnectingIsTooLong() {
+        serve("/slow-lookup", 200, "image/jpeg", JPEG);
+        RemoteImageFetcher slowLookup = new RemoteImageFetcher(new RemoteImageFetcher.Policy(a -> {
+            pause(Duration.ofMillis(600));
+            return true;
+        }, true, Duration.ofSeconds(2), Duration.ofMillis(200), 3));
+        try {
+            // A host name, not a literal: only the client's resolver consults the slow policy.
+            assertEquals("The image server took too long.", refusal(slowLookup,
+                    "http://localhost:" + server.getAddress().getPort() + "/slow-lookup", 1024));
+        } finally {
+            slowLookup.close();
+        }
+    }
+
+    /**
+     * A JVM-wide SOCKS proxy (socksProxyHost, or the default ProxySelector)
+     * would otherwise carry the connection: the JDK's plain Socket asks the
+     * selector about every socket:// connection it makes.
+     */
+    @Test
+    void noJvmWideProxyIsConsulted() throws Exception {
+        serve("/direct", 200, "image/jpeg", JPEG);
+        String ours = ":" + server.getAddress().getPort();
+        List<URI> asked = new CopyOnWriteArrayList<>();
+        ProxySelector previous = ProxySelector.getDefault();
+        ProxySelector.setDefault(new ProxySelector() {
+            @Override
+            public List<Proxy> select(URI uri) {
+                if (String.valueOf(uri.getAuthority()).endsWith(ours)) {
+                    asked.add(uri);
+                }
+                return previous == null ? List.of(Proxy.NO_PROXY) : previous.select(uri);
+            }
+
+            @Override
+            public void connectFailed(URI uri, SocketAddress address, IOException e) {
+                // nothing to remember
+            }
+        });
+        try {
+            assertEquals(ImageKind.JPEG, fetcher.fetch(url("/direct"), 1024, null).kind());
+        } finally {
+            ProxySelector.setDefault(previous);
+        }
+        assertEquals(List.of(), asked);
+    }
+
+    private static void pause(Duration duration) {
+        try {
+            Thread.sleep(duration.toMillis());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
     @Test
     void aSpentDeadlineRefusesBeforeAnyRequest() {
         serve("/never", 200, "image/jpeg", JPEG);
@@ -298,12 +401,19 @@ class RemoteImageFetcherTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"ftp://example.com/a.jpg", "file:///etc/passwd", "http://example.com:8080/a.jpg",
-            "http://user:pw@example.com/a.jpg", "not a url", "/relative.jpg"})
-    void theProductionPolicyRefusesTheseUrlsBeforeConnecting(String url) {
+    @CsvSource(delimiter = '|', value = {
+            "ftp://example.com/a.jpg          | Only http and https URLs are fetched.",
+            "file:///etc/passwd               | Only http and https URLs are fetched.",
+            "http://example.com:8080/a.jpg    | Only ports 80 and 443 are fetched.",
+            "https://example.com:8443/a.jpg   | Only ports 80 and 443 are fetched.",
+            "http://user:pw@example.com/a.jpg | A URL with a user name or password is not fetched.",
+            "http://user@example.com/a.jpg    | A URL with a user name or password is not fetched.",
+            "not a url                        | That is not a valid http or https URL.",
+            "/relative.jpg                    | That is not a valid http or https URL."})
+    void theProductionPolicyRefusesTheseUrlsBeforeConnecting(String url, String detail) {
         RemoteImageFetcher production = new RemoteImageFetcher();
         try {
-            assertThrows(FetchRefusal.class, () -> production.fetch(url, 1024, null));
+            assertEquals(detail, refusal(production, url, 1024));
         } finally {
             production.close();
         }

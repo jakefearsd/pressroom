@@ -22,7 +22,13 @@ class PublicAddressesTest {
             "224.0.0.1", "239.255.255.255", "240.0.0.0", "255.255.255.255",
             "::", "::1", "::127.0.0.1", "fc00::", "fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff", "fe80::1",
             "febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff", "ff02::1", "2001:db8::1", "2001:0:4136:e378::1",
-            "2002:7f00:1::", "100::1", "::ffff:127.0.0.1", "::ffff:10.1.2.3", "64:ff9b::a9fe:a9fe"})
+            "2002:7f00:1::", "100::1", "::ffff:127.0.0.1", "::ffff:10.1.2.3", "64:ff9b::a9fe:a9fe",
+            // Outside global unicast (2000::/3), whatever it is: refused before any denylist.
+            "fec0::1", "5f00::1", "4000::1", "1fff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+            // Inside 2000::/3 but refused: documentation (3fff::/20) at both edges.
+            "3fff::1", "3fff:fff:ffff:ffff:ffff:ffff:ffff:ffff",
+            // Local-use NAT64 (RFC 8215) is not the well-known prefix, so never unwrapped.
+            "64:ff9b:1::a00:5", "64:ff9b:1::808:808"})
     void refused(String literal) throws Exception {
         assertFalse(PublicAddresses.isPublic(InetAddress.getByName(literal)), literal);
     }
@@ -32,7 +38,8 @@ class PublicAddressesTest {
             "1.1.1.1", "9.255.255.255", "11.0.0.0", "100.63.255.255", "100.128.0.0", "126.255.255.255",
             "128.0.0.0", "169.253.255.255", "169.255.0.0", "172.15.255.255", "172.32.0.0", "192.0.1.0",
             "192.167.255.255", "192.169.0.0", "198.17.255.255", "198.20.0.0", "223.255.255.255",
-            "2606:4700:4700::1111", "2001:4860:4860::8888", "fec0::1", "::ffff:8.8.8.8", "64:ff9b::808:808"})
+            "2606:4700:4700::1111", "2001:4860:4860::8888", "::ffff:8.8.8.8", "64:ff9b::808:808",
+            "2000::1", "3fff:1000::1", "3fff:ffff:ffff:ffff:ffff:ffff:ffff:ffff", "2001:db9::1"})
     void allowed(String literal) throws Exception {
         assertTrue(PublicAddresses.isPublic(InetAddress.getByName(literal)), literal);
     }

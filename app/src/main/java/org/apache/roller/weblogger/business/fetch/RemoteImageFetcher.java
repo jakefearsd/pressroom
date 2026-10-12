@@ -6,6 +6,8 @@ import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
@@ -20,18 +22,24 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import org.apache.hc.client5.http.DnsResolver;
+import org.apache.hc.client5.http.SchemePortResolver;
 import org.apache.hc.client5.http.SystemDefaultDnsResolver;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.DefaultHttpClientConnectionOperator;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.io.HttpClientConnectionOperator;
+import org.apache.hc.client5.http.ssl.TlsSocketStrategy;
 import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.HttpHeaders;
 import org.apache.hc.core5.http.HttpStatus;
+import org.apache.hc.core5.http.URIScheme;
+import org.apache.hc.core5.http.config.RegistryBuilder;
 import org.apache.hc.core5.http.io.SocketConfig;
 import org.apache.hc.core5.io.Closer;
 import org.apache.hc.core5.io.CloseMode;
@@ -96,9 +104,9 @@ public class RemoteImageFetcher implements AutoCloseable {
         });
     }
 
-    /** Connections that resolve through the policy's check; the client owns and closes them. */
+    /** Connections that resolve through the policy's check and open direct sockets; the client owns them. */
     private static PoolingHttpClientConnectionManager connections(Policy policy) {
-        return PoolingHttpClientConnectionManagerBuilder.create()
+        return new DirectConnectionsBuilder()
                 .setDnsResolver(new CheckingResolver(SystemDefaultDnsResolver.INSTANCE, policy.addresses()))
                 .setDefaultConnectionConfig(ConnectionConfig.custom()
                         .setConnectTimeout(Timeout.of(policy.connectTimeout()))
@@ -142,6 +150,14 @@ public class RemoteImageFetcher implements AutoCloseable {
             return answer(response, maxBytes);
         } catch (IOException e) {
             throw refusal(e, get.isCancelled());
+        } catch (RuntimeException e) {
+            // A deadline that passes between leasing a connection and using it
+            // releases the endpoint under the client, which then throws an
+            // IllegalStateException rather than an IOException.
+            if (get.isCancelled()) {
+                throw new FetchRefusal(TOO_SLOW, e);
+            }
+            throw e;
         } finally {
             alarm.cancel(false);
             // Closing a response whose body is unread drains it for connection
@@ -308,6 +324,23 @@ public class RemoteImageFetcher implements AutoCloseable {
     public void close() {
         deadlines.shutdownNow();
         client.close(CloseMode.IMMEDIATE);
+    }
+
+    /**
+     * HttpClient's own plain socket is {@code new Socket()}, which the JDK
+     * routes through a JVM-wide SOCKS proxy ({@code socksProxyHost}, or the
+     * default ProxySelector). The builder's operator hook is the one place to
+     * hand the operator a direct socket instead; the proxy argument, which
+     * would come from a SocketConfig SOCKS address this fetcher never sets,
+     * is ignored.
+     */
+    private static final class DirectConnectionsBuilder extends PoolingHttpClientConnectionManagerBuilder {
+        @Override
+        protected HttpClientConnectionOperator createConnectionOperator(
+                SchemePortResolver ports, DnsResolver dns, TlsSocketStrategy tls) {
+            return new DefaultHttpClientConnectionOperator(proxy -> new Socket(Proxy.NO_PROXY), ports, dns,
+                    RegistryBuilder.<TlsSocketStrategy>create().register(URIScheme.HTTPS.id, tls).build());
+        }
     }
 
     /** What one request came back with: a redirect's Location, or else a body. */
