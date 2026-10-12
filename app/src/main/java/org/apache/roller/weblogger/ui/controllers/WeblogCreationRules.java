@@ -125,7 +125,9 @@ public final class WeblogCreationRules {
         } else if (context.reservedPaths().contains(handle.toLowerCase(Locale.ROOT))) {
             found.add(new Violation("handle", "createWeblog.error.reservedHandle",
                     "handle \"" + handle + "\" is reserved for the site's own pages.", 400));
-        } else if (context.weblogs().getWeblogByHandle(handle) != null) {
+        } else if (context.weblogs().getWeblogByHandle(handle, null) != null) {
+            // null, not the one-argument lookup: that answers only for visible
+            // weblogs, and a disabled one still holds its handle (ws_handle_uq).
             found.add(new Violation("handle", "createWeblog.error.handleExists",
                     "A weblog with that handle already exists.", 409));
         }

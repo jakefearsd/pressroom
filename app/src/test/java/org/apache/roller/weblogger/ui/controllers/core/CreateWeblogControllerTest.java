@@ -285,7 +285,7 @@ class CreateWeblogControllerTest {
     @Test
     void aHandleSomebodyElseAlreadyTookIsRefusedAndCleared() throws Exception {
         CreateWeblogBean bean = validBean("taken");
-        when(weblogger.weblogManager().getWeblogByHandle("taken")).thenReturn(new Weblog());
+        when(weblogger.weblogManager().getWeblogByHandle("taken", null)).thenReturn(new Weblog());
 
         String view = controller.save(ControllerTestFixture.requestFor(user("jake")), model, bean, redirectAttributes);
 
@@ -298,7 +298,7 @@ class CreateWeblogControllerTest {
     @Test
     void aFailedHandleLookupStopsTheCreateRatherThanRiskingADuplicate() throws Exception {
         CreateWeblogBean bean = validBean("travelguide");
-        when(weblogger.weblogManager().getWeblogByHandle("travelguide"))
+        when(weblogger.weblogManager().getWeblogByHandle("travelguide", null))
                 .thenThrow(new WebloggerException("database down"));
 
         String view = controller.save(ControllerTestFixture.requestFor(user("jake")), model, bean, redirectAttributes);
@@ -407,7 +407,7 @@ class CreateWeblogControllerTest {
     @Test
     void aTakenHandleMarksTheHandleFieldAndIsCleared() throws Exception {
         CreateWeblogBean bean = validBean("taken");
-        when(weblogger.weblogManager().getWeblogByHandle("taken")).thenReturn(new Weblog());
+        when(weblogger.weblogManager().getWeblogByHandle("taken", null)).thenReturn(new Weblog());
 
         controller.save(ControllerTestFixture.requestFor(user("jake")), model, bean, redirectAttributes);
 

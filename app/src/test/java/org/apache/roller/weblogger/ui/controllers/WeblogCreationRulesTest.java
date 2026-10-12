@@ -89,10 +89,29 @@ class WeblogCreationRulesTest {
 
     @Test
     void aTakenHandleIsAConflict() throws Exception {
-        when(weblogs.getWeblogByHandle("travels")).thenReturn(new Weblog());
+        when(weblogs.getWeblogByHandle("travels", null)).thenReturn(new Weblog());
         WeblogCreationRules.Violation v = WeblogCreationRules.check(bean("travels"), context(true, true)).get(0);
         assertEquals(409, v.status());
         assertEquals("handle", v.field());
+    }
+
+    /**
+     * A disabled weblog still holds its handle (ws_handle_uq), but the
+     * one-argument getWeblogByHandle answers only for visible weblogs, so
+     * the handle looked free and addWeblog then hit the constraint: an
+     * opaque 500 through the API, a generic error on the page.
+     */
+    @Test
+    void aDisabledWeblogsHandleIsTaken() throws Exception {
+        Weblog disabled = new Weblog();
+        disabled.setHandle("travels");
+        disabled.setVisible(Boolean.FALSE);
+        when(weblogs.getWeblogByHandle("travels", null)).thenReturn(disabled);
+
+        WeblogCreationRules.Violation v = WeblogCreationRules.check(bean("travels"), context(true, true)).get(0);
+
+        assertEquals(409, v.status());
+        assertEquals("createWeblog.error.handleExists", v.messageKey());
     }
 
     @Test

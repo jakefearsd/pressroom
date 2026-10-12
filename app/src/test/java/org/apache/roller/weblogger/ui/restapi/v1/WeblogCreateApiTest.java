@@ -116,9 +116,21 @@ class WeblogCreateApiTest {
 
     @Test
     void aTakenHandleIsA409() throws Exception {
-        when(weblogManager.getWeblogByHandle("travels")).thenReturn(new Weblog());
+        when(weblogManager.getWeblogByHandle("travels", null)).thenReturn(new Weblog());
         send("{\"handle\":\"travels\",\"name\":\"Travels\",\"theme\":\"journal\"}", true)
                 .andExpect(status().isConflict());
+        verify(weblogManager, never()).addWeblog(any());
+    }
+
+    /** A disabled weblog's handle is as taken as any other: 409, not addWeblog meeting ws_handle_uq. */
+    @Test
+    void aDisabledWeblogsHandleIsA409() throws Exception {
+        Weblog disabled = new Weblog();
+        disabled.setVisible(Boolean.FALSE);
+        when(weblogManager.getWeblogByHandle("travels", null)).thenReturn(disabled);
+        ResultActions result = send("{\"handle\":\"travels\",\"name\":\"Travels\",\"theme\":\"journal\"}", true)
+                .andExpect(status().isConflict());
+        assertEquals("A weblog with that handle already exists.", detailOf(result));
         verify(weblogManager, never()).addWeblog(any());
     }
 
