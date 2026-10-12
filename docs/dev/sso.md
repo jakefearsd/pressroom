@@ -1,0 +1,160 @@
+# Reader sign-in (SSO)
+
+A reader signs in with Google (or any OIDC provider) and gets a `reader`
+account. Authors and admins keep password sign-in. Spec:
+`docs/superpowers/specs/2026-10-11-reader-sign-in-design.md`. Production
+setup: `docker_deployment.md`, "Reader sign-in (Google)". Code:
+`ui/core/security/sso/`, `boot/SsoConfig.java`, `boot/SecurityConfig.java`.
+
+## The flow
+
+1. A link to `/roller-ui/sso/start?return=<path>` (the login page carries it).
+   `SsoStartFilter` (GET only, inside the UI security chain) checks that the
+   Absolute URL is set and the registration resolves, stores
+   `ReturnPaths.sanitize(return)` in the session attribute `roller.sso.return`,
+   and redirects to `/roller-ui/sso/authorize/oidc`. Otherwise it redirects to
+   `/roller-ui/login.rol?sso=unavailable`.
+2. Spring's `oauth2Login()` redirects to the provider with `state`, `nonce`
+   and PKCE. `RollerAuthorizationRequestResolver` sets the redirect URI.
+3. The provider returns to `/roller-ui/sso/callback`. Spring validates `state`,
+   exchanges the code and checks the ID token.
+4. `ReaderOidcUserService` hands the claims to `ReaderAccounts.signIn`. The
+   principal (`RollerOidcUser`) has the **Roller username** as its name and the
+   account's Roller roles, read from the database, as authorities. Nothing in
+   the token grants a role.
+5. `SsoSuccessHandler` redirects to the stored return path (re-sanitised;
+   fallback is the context path plus `/`). `SsoFailureHandler` redirects to
+   the login page with `?sso=failed` or `?sso=refused`.
+
+`ReturnPaths.sanitize` accepts only a path under `<context>/`, at most 2000
+characters, not starting `//` or `/\`, with no control character.
+
+**The callback comes from the Absolute URL**, `site.absoluteurl` (Global
+Config) or `ROLLER_SITE_ABSOLUTEURL` (`SsoConfig.configuredAbsoluteUrl`, via
+`getPropertyWithConfigFallback`), with the trailing `/` stripped. It is never
+the value `InitFilter` latches from the first request: a visitor on
+`http://docker2.lan:8080` would produce a callback the provider refuses.
+
+Sign-out is the existing `logout.rol`; the provider session stays. There is
+no remember-me for SSO sign-ins.
+
+## Configuration
+
+| Property | Env var | Default |
+|---|---|---|
+| `sso.oidc.client.id` | `ROLLER_SSO_OIDC_CLIENT_ID` | empty |
+| `sso.oidc.client.secret` | `ROLLER_SSO_OIDC_CLIENT_SECRET` | empty |
+| `sso.oidc.discovery.uri` | `ROLLER_SSO_OIDC_DISCOVERY_URI` | Google's `/.well-known/openid-configuration` |
+| `sso.provider.label` | `ROLLER_SSO_PROVIDER_LABEL` | `Google` |
+
+SSO is on when the id and the secret are both non-blank (`SsoSettings.enabled`).
+The scope is fixed at `openid profile email`; client authentication is
+`client_secret_basic`. `SsoSettings.issuer()` accepts either the issuer URL or
+the full discovery URI. The registration id is `oidc`.
+
+`SsoSettings` and `ReaderAccounts` are always beans (the login page reads the
+settings; `ReaderAccounts` is component-scanned). Every OAuth2 bean lives in
+`SsoConfig.SsoEnabledConfig`, under `@Conditional(SsoEnabledCondition)`. With
+SSO off there is no `SsoLogin`, `SecurityConfig` adds nothing to the chain
+(`ObjectProvider<SsoLogin>`), and the start, authorize and callback paths
+answer 404.
+
+**Discovery is lazy.** `LazyOidcClientRegistrationRepository` builds the
+registration on first use: three attempts, a cached success, never at startup.
+A failure logs one WARN (class name only) and the sign-in answers
+`sso=unavailable`; the next sign-in retries. `OidcDiscoverySelfCheck` (daemon
+thread `roller-sso-selfcheck`, started on `ApplicationReadyEvent`, three
+attempts, 2 s then 4 s apart) probes once and only logs: INFO "OIDC discovery
+reachable" on success. It never fails startup.
+
+Logger `roller.sso` goes to `roller.log`. One INFO per sign-in (username,
+new or existing), one WARN per refusal or failure (code and reason). No
+email, token or secret is ever logged; `WebloggerConfig` masks `secret` keys.
+
+## Account binding
+
+Migration `V030__user_sso_identity.sql` adds `sso_issuer` and `sso_subject` to
+`roller_user` (null together or set together, partial unique index on the
+pair).
+
+- **The lookup is by `(iss, sub)` only** (`UserManager.getUserBySsoIdentity`),
+  including disabled accounts. Never by username or email: an email claim is
+  not an identity, and matching it would let a provider account take over a
+  local author who shares the address. A local account is never adopted.
+- A disabled bound account is refused (`sso=refused`); no replacement is made.
+- **`addReader`, not `addUser`.** `addUser` grants `editor` to everyone and
+  `admin` to the first user under `users.firstUserAdmin`. `addReader` gives the
+  role `reader` only. The username is `reader-` plus 10 characters of
+  `[a-z0-9]` from `SecureRandom` (redrawn on collision, 5 tries), never from a
+  claim. The passphrase is the unusable marker `User.SSO_PASSWORD_MARKER`
+  (`{bcrypt}!sso-bound`).
+- Refused (`sso_refused`): email missing, blank or over 255 characters;
+  `email_verified` not exactly boolean `true` (a string is not `true`).
+- Claims go through `ReaderClaims.firstScalar` (first value of a list). The
+  display name is the `name` claim with control and format characters
+  removed, whitespace collapsed, cut to 100 code points; else the email's
+  local part; else `Reader`.
+- Two first sign-ins at once: the unique index decides. The loser's flush
+  fails, it releases the persistence session and re-reads the winner's row.
+- Later sign-ins refresh `email` and leave the name alone.
+- **`getUserByEmail` is local-accounts-only.** Forgot-password uses it, so a
+  reader sharing an author's email cannot capture the author's reset.
+
+## The reader role
+
+`role.action.reader=` is empty: a reader holds no global action. The
+interceptor's default (`login`) refuses a reader on every secured UI
+controller (`ReaderRefusalSweepTest` sweeps all of them reflectively). The
+API chain ignores session cookies; `TokensApi` refuses an account without the
+`login` action. Members -> Invite refuses a reader-only account
+(`inviteMember.error.readerAccount`). The frontpage header shows "Main Menu"
+only under `$utils.isUserAuthor()`. Page caches already key a signed-in
+render by principal name, so a reader's render is never shared.
+
+## Passwords and administration
+
+A bound account never gets or uses a password: `RollerUserDetailsService`
+refuses it, forgot-password and reset-password skip it, User Admin's
+set-password link and password fields and Profile's password change are
+hidden and refused server-side (`User.isSsoBound`). User Admin marks it
+"Signs in with Google", can disable it, and can grant `editor` ("Can write");
+granting `admin` is refused (`userAdmin.error.ssoAdmin`). A promoted reader
+keeps `reader`. `GET /api/v1/admin/users` reports `"sso"`.
+
+## Session and cookies
+
+`server.servlet.session.cookie.same-site=lax`, pinned by
+`SessionCookiePolicyTest`. `Strict` drops the session on the return from the
+provider. Sign-in changes the session id.
+
+## Hazards found while building it
+
+- **`SecurityConfig` sets `http.authenticationManager(...)` on the UI chain,
+  which hides the providers `oauth2Login()` would register.** Every callback
+  failed with `ProviderNotFoundException` until `SsoLogin` gave the
+  `OAuth2LoginAuthenticationFilter` its own `ProviderManager` holding only the
+  OIDC provider. Anyone touching the UI chain's authentication manager must
+  keep that. The wrapper also turns a non-authentication `RuntimeException`
+  into a failure the handler answers, instead of a 500.
+- **Persistence-session release.** The security chain (order 40) runs before
+  `PersistenceSessionFilter` (order 60). Anything here that ends a request
+  inside the chain releases the persistence session itself, as
+  `ApiTokenAuthFilter` does (`PersistenceSession.release`): the start filter,
+  both handlers, and the resolver. Skip it and every sign-in leaves an
+  EntityManager bound to a worker thread.
+- **The resolver runs on every UI request**, so it matches the authorize path
+  first and reads the Absolute URL (a database read) and releases only there.
+  The customizer is set once in the constructor; the delegate is shared by
+  all threads.
+- **remember-me is disabled on the OAuth2 login filter**
+  (`NullRememberMeServices`), so a hand-edited callback cannot set a cookie.
+- **`ssoStartFilter` has a disabled `FilterRegistrationBean`**, or Boot also
+  registers it container-wide on `/*`. Same hazard as `ApiTokenAuthFilter`.
+- The authorized-client repository discards the access token; the default
+  in-memory one would hold every reader's token forever.
+
+## Tests
+
+Unit tests sit beside each class; `SsoLoginWiringTest` drives the whole
+start-authorize-callback round trip with a signed ID token.
+Browser ITs use Keycloak 26 in `it-selenium`, see `browser-its.md`.

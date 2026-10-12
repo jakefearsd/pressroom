@@ -23,11 +23,12 @@ public IP.
 7. [Health monitoring](#health-monitoring)
 8. [Analytics](#analytics)
 9. [Newsletter](#newsletter)
-10. [Backup and restore](#backup-and-restore)
-11. [Test a release locally before deploying it](#test-a-release-locally-before-deploying-it)
-12. [Upgrades](#upgrades)
-13. [Firewall](#firewall)
-14. [Troubleshooting](#troubleshooting)
+10. [Reader sign-in (Google)](#reader-sign-in-google)
+11. [Backup and restore](#backup-and-restore)
+12. [Test a release locally before deploying it](#test-a-release-locally-before-deploying-it)
+13. [Upgrades](#upgrades)
+14. [Firewall](#firewall)
+15. [Troubleshooting](#troubleshooting)
 
 ## Prerequisites
 
@@ -813,6 +814,37 @@ to retry on their behalf.
 > paths (the editor's and the scheduler's — a hook on only the first silently
 > skips every scheduled post). Until that exists, publishing a post and
 > sending it as a newsletter stay two deliberate, separate acts.
+
+## Reader sign-in (Google)
+
+Readers can sign in with Google and get a `reader` account (no author
+rights; comments will use it). It is off until both credentials are set.
+Developer notes: `docs/dev/sso.md`.
+
+1. **Create the OAuth client.** In the wiki's Google Cloud project, add an
+   OAuth client of type "Web application" named for the blog. Give it one
+   authorized redirect URI, matched exactly:
+   `https://blog.wikantik.com/roller-ui/sso/callback`. The URI must match
+   character for character, scheme and host included, or Google refuses the
+   sign-in.
+2. **Update the consent screen**, which is shared by the project. Give it a
+   suite-level app name, and make its privacy policy cover the blog. The
+   blog stores readers' names and email addresses.
+3. **Set the Absolute URL** in Global Config to `https://blog.wikantik.com`.
+   Setting `ROLLER_SITE_ABSOLUTEURL` in `.env` does the same; the Global
+   Config value wins when both are set. The callback is built from this
+   address, never from the visitor's host, and with none set sign-in answers
+   "unavailable".
+4. **Add the credentials** to `~/roller/.env` on docker2 as
+   `ROLLER_SSO_OIDC_CLIENT_ID` and `ROLLER_SSO_OIDC_CLIENT_SECRET`, then run
+   `./deploy.sh`. The compose file does not change. The client secret goes
+   only into `.env`: never into Global Config, a commit, a chat or a ticket.
+5. **Check it.** The login page shows "Sign in with Google", and
+   `roller.log` has the self-check's success line ("OIDC discovery
+   reachable").
+
+`ROLLER_SSO_OIDC_DISCOVERY_URI` and `ROLLER_SSO_PROVIDER_LABEL` are optional;
+the defaults are Google's discovery document and the label "Google".
 
 ## Backup and restore
 

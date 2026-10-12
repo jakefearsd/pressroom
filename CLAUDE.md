@@ -282,3 +282,4 @@ here.
 | Redirects; Virtual hosts | `docs/dev/routing.md` |
 | Audience; Analytics | `docs/dev/audience-and-analytics.md` |
 | Automation API | `docs/dev/api.md` (public reference: `docs/api/README.md`) |
+| Reader sign-in (SSO) | `docs/dev/sso.md` |
