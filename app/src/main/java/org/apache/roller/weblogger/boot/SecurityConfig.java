@@ -25,10 +25,12 @@ import org.apache.roller.weblogger.ui.core.RollerContext;
 import org.apache.roller.weblogger.ui.core.security.RollerRememberMeAuthenticationProvider;
 import org.apache.roller.weblogger.ui.core.security.RollerRememberMeServices;
 import org.apache.roller.weblogger.ui.core.security.RollerUserDetailsService;
+import org.apache.roller.weblogger.ui.core.security.sso.SsoLogin;
 import org.apache.roller.weblogger.ui.restapi.ApiProblemWriter;
 import org.apache.roller.weblogger.ui.restapi.auth.ApiAccessDeniedHandler;
 import org.apache.roller.weblogger.ui.restapi.auth.ApiAuthenticationEntryPoint;
 import org.apache.roller.weblogger.ui.restapi.auth.ApiTokenAuthFilter;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -232,7 +234,7 @@ public class SecurityConfig {
     @Order(2)
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http, AuthenticationManager authenticationManager,
-            RollerRememberMeServices rememberMeServices) throws Exception {
+            RollerRememberMeServices rememberMeServices, ObjectProvider<SsoLogin> ssoLogin) throws Exception {
 
         http
             .authenticationManager(authenticationManager)
@@ -288,6 +290,10 @@ public class SecurityConfig {
             .rememberMe(remember -> remember.rememberMeServices(rememberMeServices))
             // Roller's media-file editor uses iframes.
             .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin));
+
+        // Reader sign-in (single sign-on): the bean exists only when SSO is on --
+        // see SsoConfig. With it off, nothing is added and the sign-in paths 404.
+        ssoLogin.ifAvailable(sso -> sso.applyTo(http));
 
         return http.build();
     }
