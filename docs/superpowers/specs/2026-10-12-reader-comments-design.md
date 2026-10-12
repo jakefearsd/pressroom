@@ -146,6 +146,8 @@ Migration `V031__reader_comments.sql` is idempotent. **Table name.** It is `roll
 
 **Deletion and hiding.**
 - Deleting a comment deletes its reply (cascade).
+- **A reader deleting their own HIDDEN comment** erases its text but keeps the row as a HIDDEN tombstone with an empty body, so the owner's distrust survives (ruling R5, 2026-10-12). Without this, deleting a hidden comment would make the reader trusted again. Account deletion still removes everything.
+- **Only Hide marks a reader as untrusted.** An owner who deletes a spam comment instead of hiding it leaves the reader trusted. The moderation page says so.
 - Hiding a comment leaves its reply in the database but not rendered: a
   reply renders only under a `PUBLISHED` parent.
 
