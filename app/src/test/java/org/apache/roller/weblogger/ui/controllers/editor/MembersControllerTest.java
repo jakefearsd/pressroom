@@ -22,6 +22,7 @@ import java.util.Date;
 import java.util.List;
 
 import org.apache.roller.weblogger.WebloggerException;
+import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -73,6 +75,9 @@ class MembersControllerTest extends EditorControllerTestSupport {
         // controller to see anything at all.
         when(weblogger.getWeblogManager().getWeblogByHandle(WEBLOG_HANDLE, null)).thenReturn(weblog);
         registerUser(user);
+        // Everyone is an author (holds global login) unless a test says otherwise.
+        when(weblogger.getUserManager().checkPermission(any(GlobalPermission.class), any(User.class)))
+                .thenReturn(true);
     }
 
     @Test
@@ -379,6 +384,36 @@ class MembersControllerTest extends EditorControllerTestSupport {
         assertTrue(errors(model).contains("inviteMember.error.userNotFound"),
                 "Expected the not-found error: " + errors(model));
         verify(weblogger.getUserManager(), never()).grantWeblogPermission(any(), any(), any());
+    }
+
+    /**
+     * A reader (SSO sign-in) holds no global login action; a weblog permission
+     * would be dead weight and a promotion path. Criterion 25.
+     */
+    @Test
+    void inviteRefusesAReaderOnlyAccount() throws Exception {
+        User reader = otherUser("reader-abcdefghij");
+        when(weblogger.getUserManager().checkPermission(
+                argThat((org.apache.roller.weblogger.pojos.RollerPermission p) ->
+                        p instanceof GlobalPermission), eq(reader))).thenReturn(false);
+
+        String view = controller.grant(request, model, "reader-abcdefghij", WeblogPermission.POST);
+
+        assertEquals(".Members", view);
+        assertTrue(errors(model).contains("inviteMember.error.readerAccount"),
+                "Expected the reader-account error: " + errors(model));
+        verify(weblogger.getUserManager(), never()).grantWeblogPermission(any(), any(), any());
+    }
+
+    @Test
+    void anAccountHoldingReaderAndEditorIsInvitable() throws Exception {
+        User both = otherUser("both");
+        // editor implies login, so the global check passes (setUp default).
+
+        controller.grant(request, model, "both", WeblogPermission.POST);
+
+        assertFalse(errors(model).contains("inviteMember.error.readerAccount"), errors(model).toString());
+        verify(weblogger.getUserManager()).grantWeblogPermission(any(), eq(both), any());
     }
 
     @Test

@@ -33,7 +33,9 @@
         #if(!$utils.isUserAuthenticated())
         <a href="$url.login">Login</a>
         #else
+        #if($utils.isUserAuthor())
         <a href="$url.absoluteSite/roller-ui/menu.rol">Main Menu</a>
+        #end
         <a href="$url.logout">Logout</a>
         #end
     </nav>

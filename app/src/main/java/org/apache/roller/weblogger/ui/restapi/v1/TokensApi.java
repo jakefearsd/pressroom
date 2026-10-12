@@ -7,6 +7,7 @@ import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.ApiTokenManager;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.ApiToken;
+import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
 import org.apache.roller.weblogger.ui.restapi.ColumnLimits;
@@ -153,10 +154,16 @@ public class TokensApi {
         }
     }
 
-    private User requireUser() {
+    private User requireUser() throws WebloggerException {
         User user = currentUser();
         if (user == null) {
             throw ApiException.forbidden("Not authenticated.");
+        }
+        // A reader (SSO sign-in) holds no global login action: it may not use
+        // the API, and so may not mint, list or revoke tokens.
+        if (!weblogger.getUserManager().checkPermission(
+                new GlobalPermission(List.of(GlobalPermission.LOGIN)), user)) {
+            throw ApiException.forbidden("This account cannot use the API.");
         }
         return user;
     }

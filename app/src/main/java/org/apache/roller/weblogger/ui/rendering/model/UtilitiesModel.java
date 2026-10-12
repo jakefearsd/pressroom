@@ -45,6 +45,7 @@ import org.apache.roller.util.DateUtil;
 import org.apache.roller.util.RegexUtil;
 import org.apache.roller.weblogger.business.shortcodes.GalleryMarkup;
 import org.apache.roller.weblogger.pojos.Business;
+import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.pojos.wrapper.UserWrapper;
@@ -127,6 +128,24 @@ public class UtilitiesModel implements Model {
         return false;
     }
     
+    /**
+     * Whether the request's user may use the authoring UI at all: holds the
+     * global {@code login} action. A reader (SSO sign-in) does not. This is
+     * site-level; {@link #isUserAuthorizedToAuthor} is the per-weblog check.
+     * A display path: a check that cannot run answers "not an author".
+     */
+    public boolean isUserAuthor() {
+        try {
+            if (parsedRequest.getAuthenticUser() != null) {
+                return weblogger.getUserManager().checkPermission(
+                        new GlobalPermission(List.of(GlobalPermission.LOGIN)), parsedRequest.getUser());
+            }
+        } catch (Exception e) {
+            log.warn("ERROR: checking user authorization", e);
+        }
+        return false;
+    }
+
     public boolean isUserAuthorizedToAdmin(WeblogWrapper weblog) {
         try {
             if (parsedRequest.getAuthenticUser() != null) {

@@ -21,6 +21,7 @@ package org.apache.roller.weblogger.ui.rendering.model;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.Weblogger;
+import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
@@ -684,6 +685,61 @@ class UtilitiesModelTest {
         } catch (Exception e) {
             throw new AssertionError(e);
         }
+    }
+
+    /** A facade whose user manager answers the site-level login check with {@code holdsLogin}. */
+    private static Weblogger loginOracle(User user, boolean holdsLogin) {
+        try {
+            Weblogger weblogger = mock(Weblogger.class);
+            UserManager users = mock(UserManager.class);
+            when(weblogger.getUserManager()).thenReturn(users);
+            when(users.checkPermission(argThat(p -> p instanceof GlobalPermission
+                    && p.hasAction(GlobalPermission.LOGIN)), eq(user))).thenReturn(holdsLogin);
+            return weblogger;
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static WeblogRequest signedInAs(User user) {
+        WeblogRequest request = new WeblogRequest();
+        request.setWeblog(weblog("en_US", "UTC"));
+        request.setAuthenticUser(user.getUserName());
+        request.setUser(user);
+        return request;
+    }
+
+    @Test
+    void isUserAuthorIsTrueForAUserHoldingLogin() {
+        User user = new User();
+        user.setUserName("bob");
+        assertTrue(modelFor(signedInAs(user), loginOracle(user, true)).isUserAuthor(),
+                "A user with the global login action can use the authoring UI.");
+    }
+
+    @Test
+    void isUserAuthorIsFalseForAReader() {
+        User reader = new User();
+        reader.setUserName("reader-abcdefghij");
+        assertFalse(modelFor(signedInAs(reader), loginOracle(reader, false)).isUserAuthor(),
+                "A reader holds no login action, so the themes must not offer the menu.");
+    }
+
+    @Test
+    void isUserAuthorIsFalseForAnonymousWithoutAskingAnyone() throws Exception {
+        Weblogger weblogger = loginOracle(new User(), true);
+        WeblogRequest request = new WeblogRequest();
+        request.setWeblog(weblog("en_US", "UTC"));
+        assertFalse(modelFor(request, weblogger).isUserAuthor());
+        verify(weblogger.getUserManager(), never()).checkPermission(any(), any());
+    }
+
+    @Test
+    void isUserAuthorFailsClosedWhenTheCheckCannotRun() {
+        User user = new User();
+        user.setUserName("bob");
+        assertFalse(modelFor(signedInAs(user), failingPermissionOracle()).isUserAuthor(),
+                "A check that could not run must not report an author.");
     }
 
     @Test

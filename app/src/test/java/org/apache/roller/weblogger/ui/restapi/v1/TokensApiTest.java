@@ -4,6 +4,7 @@ import org.apache.roller.weblogger.business.ApiTokenManager;
 import org.apache.roller.weblogger.business.UserManager;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.ApiToken;
+import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.ui.restapi.ApiExceptionHandler;
 import org.apache.roller.weblogger.ui.restapi.auth.ApiPrincipal;
@@ -64,11 +65,14 @@ class TokensApiTest {
         SecurityContextHolder.getContext().setAuthentication(auth);
     }
 
-    private Weblogger mockedWeblogger() {
+    private Weblogger mockedWeblogger() throws Exception {
         Weblogger weblogger = mock(Weblogger.class);
         ApiTokenManager tokenManager = mock(ApiTokenManager.class);
         when(weblogger.getApiTokenManager()).thenReturn(tokenManager);
-        when(weblogger.getUserManager()).thenReturn(mock(UserManager.class));
+        UserManager userManager = mock(UserManager.class);
+        // An author: holds the global login action. aReaderCannotMintAToken flips it.
+        when(userManager.checkPermission(any(GlobalPermission.class), any(User.class))).thenReturn(true);
+        when(weblogger.getUserManager()).thenReturn(userManager);
         return weblogger;
     }
 
@@ -345,5 +349,31 @@ class TokensApiTest {
 
         verify(weblogger.getApiTokenManager(), never()).revoke(any(), anyString());
         verify(weblogger, never()).flush();
+    }
+
+    /**
+     * A reader (SSO sign-in, role "reader") holds no global login action and
+     * so cannot use the API at all: not mint, list or revoke (criterion 24).
+     */
+    @Test
+    void aReaderCannotMintAToken() throws Exception {
+        authenticateWithBasicAuth();
+        Weblogger weblogger = mockedWeblogger();
+        User reader = new User();
+        reader.setUserName("owner");
+        when(weblogger.getUserManager().getUserByUserName("owner")).thenReturn(reader);
+        when(weblogger.getUserManager().checkPermission(any(GlobalPermission.class), any(User.class)))
+                .thenReturn(false);
+
+        String body = mockMvc(new TokensApi(weblogger))
+                .perform(post("/v1/tokens")
+                        .contentType("application/json")
+                        .content("{\"label\":\"x\",\"role\":\"POST\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andReturn().getResponse().getContentAsString();
+        org.junit.jupiter.api.Assertions.assertTrue(body.contains("This account cannot use the API."), body);
+
+        verify(weblogger.getApiTokenManager(), never()).issueToken(any(), anyString(), any(), any(), any());
     }
 }

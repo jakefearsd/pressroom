@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.UserManager;
 import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
+import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.controllers.BaseController;
@@ -206,6 +207,12 @@ public class MembersController extends BaseController {
                 user = userMgr.getUserByUserName(userName);
                 if (user == null) {
                     addFieldError(model, "grantUserName", "inviteMember.error.userNotFound", request);
+                } else if (!userMgr.checkPermission(
+                        new GlobalPermission(List.of(GlobalPermission.LOGIN)), user)) {
+                    // A reader holds no global login action; a weblog
+                    // permission on it would be dead weight and a promotion
+                    // path. A check that throws lands in the catch below.
+                    addFieldError(model, "grantUserName", "inviteMember.error.readerAccount", request);
                 }
             } catch (WebloggerException ex) {
                 log.error("Error looking up user by name - {}", userName, ex);
