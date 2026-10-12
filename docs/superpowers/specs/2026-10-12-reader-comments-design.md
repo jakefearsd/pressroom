@@ -517,8 +517,10 @@ It never logs comment bodies or email addresses.
     - `DELETE` removes the comment;
     - `replies` creates an author reply.
 
-    A token without `POST` on the weblog, or limited to another weblog, gets
-    404. No response contains an email address. (U, I)
+    A token limited to another weblog, or any foreign or unknown comment id,
+    gets 404. A token whose role lacks `POST` on a weblog it can reach gets
+    the API's existing 403, as every other write route does (ruling R6). No
+    response contains an email address. (U, I)
 27. The MCP `comments` tool exposes `list`, `get`, `update`, `delete` and
     `reply`, and the drift tests pass. `weblogs update` sets
     `commentsEnabled`/`commentNotify`, and `entries update` sets
