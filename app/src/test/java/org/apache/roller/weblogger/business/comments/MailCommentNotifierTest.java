@@ -274,6 +274,65 @@ class MailCommentNotifierTest {
         }
     }
 
+    /**
+     * Real failures carry the recipient in their messages and in nested
+     * exceptions; none of that may reach a log line.
+     */
+    @Test
+    void aFailureWhoseMessagesNameTheRecipientLeaksNothingToTheLog() throws Exception {
+        jakarta.mail.SendFailedException inner = new jakarta.mail.SendFailedException(
+                "550 5.1.1 <amy@example.invalid>: Recipient address rejected");
+        jakarta.mail.SendFailedException outer = new jakarta.mail.SendFailedException(
+                "Invalid Addresses: amy@example.invalid");
+        outer.setNextException(inner);
+        MockMailProvider.uninstall();
+        mail = MockMailProvider.installFailing(outer);
+        admin("amy", "amy@example.invalid", true);
+        try (SsoLogCapture logs = SsoLogCapture.everyLogger()) {
+            notifier.notifyHeld(comment);
+
+            List<String> lines = new ArrayList<>();
+            for (Level level : Level.values()) {
+                lines.addAll(logs.lines(level));
+            }
+            assertTrue(lines.stream().anyMatch(l -> l.contains("c-1")), "the failure is logged");
+            for (String line : lines) {
+                assertFalse(line.contains("amy@") || line.contains("Recipient address"), line);
+            }
+            // The captured events carry thrown exceptions too.
+            assertTrue(logs.everything().stream().noneMatch(m -> m.contains("amy@")),
+                    "no Throwable with the address is attached");
+        }
+    }
+
+    @Test
+    void theWorkerReloadsTheWeblogInItsOwnSession() throws Exception {
+        Weblog reloaded = new Weblog();
+        reloaded.setHandle("food");
+        when(mocks.getWeblogManager().getWeblogByHandle("food")).thenReturn(reloaded);
+        User u = user("amy", "amy@example.invalid", true);
+        when(mocks.getUserManager().getUserByUserName("amy")).thenReturn(u);
+        when(mocks.getUserManager().getWeblogPermissions(reloaded))
+                .thenReturn(List.of(new WeblogPermission(reloaded, u, List.of(WeblogPermission.ADMIN))));
+
+        notifier.notifyHeld(comment);
+
+        assertEquals(1, mail.sent().size());
+        verify(mocks.getUserManager(), never()).getWeblogPermissions(org.mockito.ArgumentMatchers.same(weblog));
+    }
+
+    @Test
+    void aWeblogThatCannotBeReloadedMailsNobody() throws Exception {
+        when(mocks.getWeblogManager().getWeblogByHandle("food")).thenReturn(null);
+        admin("amy", "amy@example.invalid", true);
+        when(mocks.getWeblogManager().getWeblogByHandle("food")).thenReturn(null);
+
+        notifier.notifyHeld(comment);
+
+        assertTrue(mail.sent().isEmpty());
+        verify(mocks.weblogger()).release();
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private void property(String name, String value) throws Exception {
@@ -301,6 +360,7 @@ class MailCommentNotifierTest {
     private void member(String name, String email, boolean enabled, String action) throws Exception {
         User u = user(name, email, enabled);
         permissions.add(new WeblogPermission(weblog, u, List.of(action)));
+        when(mocks.getWeblogManager().getWeblogByHandle(weblog.getHandle())).thenReturn(weblog);
         when(mocks.getUserManager().getUserByUserName(name)).thenReturn(u);
         when(mocks.getUserManager().getWeblogPermissions(weblog)).thenReturn(List.copyOf(permissions));
     }

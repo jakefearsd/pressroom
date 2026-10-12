@@ -90,12 +90,17 @@ public final class MockMailProvider {
      * Restore with {@link #uninstall()}, same as {@link #install()}.
      */
     public static MockMailProvider installFailing() {
+        return installFailing(new MessagingException("simulated delivery failure"));
+    }
+
+    /** As {@link #installFailing()}, but the transport throws {@code failure}. */
+    public static MockMailProvider installFailing(Exception failure) {
         MockMailProvider recorder = new MockMailProvider();
 
         Session session = Session.getInstance(new Properties());
         Transport transport = Mockito.mock(Transport.class);
         try {
-            Mockito.doThrow(new MessagingException("simulated delivery failure"))
+            Mockito.doThrow(failure)
                     .when(transport).sendMessage(Mockito.any(), Mockito.any());
         } catch (Exception e) {
             throw new IllegalStateException("could not stub the transport", e);

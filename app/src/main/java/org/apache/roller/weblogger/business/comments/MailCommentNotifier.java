@@ -82,15 +82,35 @@ public class MailCommentNotifier implements CommentNotifier {
                     Utilities.unescapeHTML(entry.getTitle()),
                     StringUtils.left(comment.getBody(), EXCERPT_LENGTH),
                     moderationUrl(weblog));
+            String handle = weblog.getHandle();
             String from = WebloggerRuntimeConfig.getProperty("site.adminemail");
             weblogger.getThreadManager().executeInBackground(
-                    () -> sendToAdmins(weblog, from, subject, content, commentId));
+                    () -> sendToAdmins(handle, from, subject, content, commentId));
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
-            log.error("Could not schedule the held-comment notice for comment {}", commentId, ex);
+            log.error("Could not schedule the held-comment notice for comment {}: {}", commentId, kinds(ex));
         } catch (RuntimeException ex) {
-            log.error("Could not prepare the held-comment notice for comment {}", commentId, ex);
+            log.error("Could not prepare the held-comment notice for comment {}: {}", commentId, kinds(ex));
         }
+    }
+
+    /**
+     * The class names along an exception's cause and next-exception chains,
+     * never a message or stack trace: a mail failure's messages routinely
+     * quote the recipient address.
+     */
+    private static String kinds(Throwable failure) {
+        List<String> names = new ArrayList<>();
+        Throwable current = failure;
+        while (current != null && names.size() < 10) {
+            names.add(current.getClass().getSimpleName());
+            Throwable next = current.getCause();
+            if (next == null && current instanceof jakarta.mail.MessagingException messaging) {
+                next = messaging.getNextException();
+            }
+            current = next;
+        }
+        return String.join(" <- ", names);
     }
 
     private static String moderationUrl(Weblog weblog) {
@@ -101,18 +121,22 @@ public class MailCommentNotifier implements CommentNotifier {
     }
 
     /** The runnable's body: runs off the request thread, so it releases the session. */
-    private void sendToAdmins(Weblog weblog, String from, String subject, String content,
+    private void sendToAdmins(String handle, String from, String subject, String content,
                               String commentId) {
         try {
+            Weblog weblog = weblogger.getWeblogManager().getWeblogByHandle(handle);
+            if (weblog == null) {
+                return;
+            }
             for (String address : adminAddresses(weblog)) {
                 try {
                     MailUtil.sendTextMessage(from, new String[] {address}, null, null, subject, content);
                 } catch (Exception ex) {
-                    log.error("Could not send the held-comment notice for comment {}", commentId, ex);
+                    log.error("Could not send the held-comment notice for comment {}: {}", commentId, kinds(ex));
                 }
             }
         } catch (Exception ex) {
-            log.error("Could not find who to tell about held comment {}", commentId, ex);
+            log.error("Could not find who to tell about held comment {}: {}", commentId, kinds(ex));
         } finally {
             weblogger.release();
         }
