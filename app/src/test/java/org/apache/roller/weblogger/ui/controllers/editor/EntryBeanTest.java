@@ -682,4 +682,17 @@ class EntryBeanTest extends EditorControllerTestSupport {
         assertEquals("", bean.getEventEndLocal());
         assertTrue(bean.getEventLocation() == null || bean.getEventLocation().isEmpty());
     }
+
+    @Test
+    void anUncheckedCommentsClosedBindsToFalseAndCheckedToTrue() {
+        EntryBean absent = new EntryBean();
+        new org.springframework.web.bind.WebDataBinder(absent, "bean")
+                .bind(new org.springframework.beans.MutablePropertyValues());
+        assertFalse(absent.getCommentsClosed());
+
+        EntryBean present = new EntryBean();
+        new org.springframework.web.bind.WebDataBinder(present, "bean")
+                .bind(new org.springframework.beans.MutablePropertyValues().add("commentsClosed", "true"));
+        assertTrue(present.getCommentsClosed());
+    }
 }

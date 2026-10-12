@@ -99,4 +99,25 @@ class WeblogConfigBeanTest {
         org.junit.jupiter.api.Assertions.assertFalse(b.getCommentsEnabled());
         org.junit.jupiter.api.Assertions.assertTrue(b.getCommentNotify());
     }
+
+    /**
+     * An unticked checkbox posts nothing, and the controller binds a fresh bean per request,
+     * so a bean default of true could never be turned off. Pinned through the real binder.
+     */
+    @Test
+    void uncheckedCommentCheckboxesBindToFalseAndCheckedOnesToTrue() {
+        WeblogConfigBean absent = new WeblogConfigBean();
+        new org.springframework.web.bind.WebDataBinder(absent, "bean")
+                .bind(new org.springframework.beans.MutablePropertyValues());
+        org.junit.jupiter.api.Assertions.assertFalse(absent.getCommentsEnabled());
+        org.junit.jupiter.api.Assertions.assertFalse(absent.getCommentNotify());
+
+        WeblogConfigBean present = new WeblogConfigBean();
+        org.springframework.beans.MutablePropertyValues pvs = new org.springframework.beans.MutablePropertyValues();
+        pvs.add("commentsEnabled", "true");
+        pvs.add("commentNotify", "true");
+        new org.springframework.web.bind.WebDataBinder(present, "bean").bind(pvs);
+        org.junit.jupiter.api.Assertions.assertTrue(present.getCommentsEnabled());
+        org.junit.jupiter.api.Assertions.assertTrue(present.getCommentNotify());
+    }
 }

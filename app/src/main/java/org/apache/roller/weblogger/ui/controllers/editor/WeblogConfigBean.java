@@ -42,7 +42,7 @@ public class WeblogConfigBean {
     private int entryDisplayCount = 15;
     private boolean active = false;
     private boolean commentsEnabled = false;
-    private boolean commentNotify = true;
+    private boolean commentNotify = false;
     private String icon = null;
     private String about = null;
 
