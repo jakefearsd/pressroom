@@ -1,11 +1,17 @@
 package org.apache.roller.weblogger.ui.restapi.v1;
 
+import java.math.BigDecimal;
 import java.util.List;
+import org.apache.roller.weblogger.business.BusinessManager;
 import org.apache.roller.weblogger.business.WeblogManager;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.Weblog;
+import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
+import org.apache.roller.weblogger.ui.controllers.editor.WeblogConfigBean;
+import org.apache.roller.weblogger.ui.restapi.ApiException;
 import org.apache.roller.weblogger.ui.restapi.ApiExceptionHandler;
+import org.apache.roller.weblogger.ui.restapi.dto.AdminDtos;
 import org.apache.roller.weblogger.ui.restapi.auth.AdminScoped;
 import org.apache.roller.weblogger.util.cache.CacheManager;
 import org.junit.jupiter.api.Test;
@@ -46,7 +52,33 @@ class WeblogsApiTest {
         Weblogger weblogger = mock(Weblogger.class);
         WeblogManager weblogManager = mock(WeblogManager.class);
         when(weblogger.getWeblogManager()).thenReturn(weblogManager);
+        when(weblogger.getBusinessManager()).thenReturn(mock(BusinessManager.class));
         return weblogger;
+    }
+
+    /** The two site settings every PATCH reads through the shared settings rules. */
+    private static org.mockito.MockedStatic<WebloggerRuntimeConfig> siteConfig() {
+        var config = mockStatic(WebloggerRuntimeConfig.class);
+        config.when(() -> WebloggerRuntimeConfig.getIntProperty("site.pages.maxEntries")).thenReturn(30);
+        config.when(() -> WebloggerRuntimeConfig.getPropertyWithConfigFallback("site.absoluteurl"))
+                .thenReturn("https://blog.example.com");
+        return config;
+    }
+
+    private org.springframework.test.web.servlet.ResultActions doPatch(Weblogger weblogger, Weblog weblog,
+            String json) throws Exception {
+        try (var config = siteConfig(); var cache = mockStatic(CacheManager.class)) {
+            return mockMvc(controllerFor(weblogger))
+                    .perform(patch("/v1/weblogs/{handle}", weblog.getHandle())
+                            .requestAttr("actionWeblog", weblog)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json));
+        }
+    }
+
+    private static tools.jackson.databind.JsonNode json(org.springframework.test.web.servlet.ResultActions r)
+            throws Exception {
+        return new tools.jackson.databind.ObjectMapper().readTree(r.andReturn().getResponse().getContentAsString());
     }
 
     private WeblogsApi controllerFor(Weblogger weblogger) {
@@ -156,7 +188,7 @@ class WeblogsApiTest {
         weblog.setTagline("original tagline");
 
         String body;
-        try (org.mockito.MockedStatic<CacheManager> cache = mockStatic(CacheManager.class)) {
+        try (var config = siteConfig(); var cache = mockStatic(CacheManager.class)) {
             body = mockMvc(controllerFor(weblogger))
                     .perform(patch("/v1/weblogs/{handle}", "myblog")
                             .requestAttr("actionWeblog", weblog)
@@ -177,6 +209,168 @@ class WeblogsApiTest {
         tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
         assertEquals("New Name", json.get("name").asString());
         assertFalse(json.get("active").asBoolean());
+    }
+
+    @Test
+    void patchSetsTheNewSettingsAndGetShowsThem() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        var result = doPatch(weblogger, weblog, "{\"about\":\"A blog\",\"icon\":\"https://x/i.png\","
+                + "\"analyticsSiteId\":\"0b5d3f9e-1c2a-4e7b-9a6d-2f1e0c9b8a7d\","
+                + "\"placeType\":\"LodgingBusiness\",\"placeLocality\":\"Encinitas\",\"placeCountry\":\"us\","
+                + "\"placeLat\":33.04,\"placeLng\":-117.29,\"bookingUrl\":\"https://book.example.com\"}")
+                .andExpect(status().isOk());
+
+        tools.jackson.databind.JsonNode json = json(result);
+        assertEquals("A blog", json.get("about").asString());
+        assertEquals("https://x/i.png", json.get("icon").asString());
+        assertEquals("0b5d3f9e-1c2a-4e7b-9a6d-2f1e0c9b8a7d", json.get("analyticsSiteId").asString());
+        assertEquals("LodgingBusiness", json.get("placeType").asString());
+        assertEquals("Encinitas", json.get("placeLocality").asString());
+        assertEquals("US", json.get("placeCountry").asString());
+        assertEquals(33.04, json.get("placeLat").asDouble(), 0.0001);
+        assertEquals(-117.29, json.get("placeLng").asDouble(), 0.0001);
+        assertEquals("https://book.example.com", json.get("bookingUrl").asString());
+
+        assertEquals("A blog", weblog.getAbout());
+        assertEquals("https://x/i.png", weblog.getIconPath());
+        assertEquals("0b5d3f9e-1c2a-4e7b-9a6d-2f1e0c9b8a7d", weblog.getAnalyticsSiteId());
+        assertEquals("LodgingBusiness", weblog.getPlaceType());
+        assertEquals("Encinitas", weblog.getPlaceLocality());
+        assertEquals("US", weblog.getPlaceCountry());
+        assertEquals(new BigDecimal("33.04"), weblog.getPlaceLat());
+        assertEquals(new BigDecimal("-117.29"), weblog.getPlaceLng());
+        assertEquals("https://book.example.com", weblog.getBookingUrl());
+    }
+
+    @Test
+    void aCoordinateWithMorePrecisionThanTheColumnIsStoredAtTwoDecimals() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        var result = doPatch(weblogger, weblog, "{\"placeType\":\"LodgingBusiness\","
+                + "\"placeLocality\":\"Berlin\",\"placeLat\":52.123456789,\"placeLng\":13.4049}")
+                .andExpect(status().isOk());
+
+        assertEquals(new BigDecimal("52.12"), weblog.getPlaceLat());
+        assertEquals(new BigDecimal("13.40"), weblog.getPlaceLng());
+        assertEquals(52.12, json(result).get("placeLat").asDouble(), 0.0001);
+    }
+
+    @Test
+    void aNonFiniteCoordinateIsRefused() {
+        AdminDtos.WeblogPatch patch = new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, Double.NaN, null, null, null);
+
+        ApiException e = assertThrows(ApiException.class,
+                () -> AdminDtos.applyPatch(new WeblogConfigBean(), patch, java.util.Set.of()));
+
+        assertEquals(400, e.getStatus());
+        assertEquals("placeLat must be a finite number.", e.getMessage());
+    }
+
+    @Test
+    void aRuleTheRequestBreaksIsA400AndChangesNothing() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        var result = doPatch(weblogger, weblog, "{\"placeType\":\"Hotel\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
+
+        assertEquals("placeType must be LodgingBusiness.", json(result).get("detail").asString());
+        assertNull(weblog.getPlaceType());
+        verify(weblogger.getWeblogManager(), never()).saveWeblog(any());
+    }
+
+    @Test
+    void setsOnlyPlaceTypeOnAWeblogWithNoLocalityIsRefused() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        var result = doPatch(weblogger, weblog, "{\"placeType\":\"LodgingBusiness\"}")
+                .andExpect(status().isBadRequest());
+
+        assertEquals("A place needs a placeLocality (a town or city).", json(result).get("detail").asString());
+        verify(weblogger.getWeblogManager(), never()).saveWeblog(any());
+    }
+
+    @Test
+    void aStoredValueThatBreaksARuleDoesNotBlockAnUnrelatedChange() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        weblog.setAnalyticsSiteId("legacy-not-a-uuid");
+
+        doPatch(weblogger, weblog, "{\"tagline\":\"New\"}").andExpect(status().isOk());
+
+        assertEquals("New", weblog.getTagline());
+        verify(weblogger.getWeblogManager()).saveWeblog(weblog);
+    }
+
+    @Test
+    void clearRemovesValuesAndPlacePairClearsTogether() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        weblog.setAbout("About");
+        weblog.setPlaceType("LodgingBusiness");
+        weblog.setPlaceLocality("Encinitas");
+        weblog.setPlaceLat(new BigDecimal("33.04"));
+        weblog.setPlaceLng(new BigDecimal("-117.29"));
+
+        var result = doPatch(weblogger, weblog,
+                "{\"clear\":[\"about\",\"placeType\",\"placeLocality\",\"placeLat\",\"placeLng\"]}")
+                .andExpect(status().isOk());
+
+        // Weblog.setAbout strips HTML and turns null into blank, for the form as much as the API.
+        assertTrue(weblog.getAbout() == null || weblog.getAbout().isEmpty());
+        assertNull(weblog.getPlaceType());
+        assertNull(weblog.getPlaceLocality());
+        assertNull(weblog.getPlaceLat());
+        assertNull(weblog.getPlaceLng());
+        tools.jackson.databind.JsonNode json = json(result);
+        assertTrue(json.get("about") == null || json.get("about").asString().isEmpty());
+        for (String name : List.of("placeType", "placeLocality", "placeLat", "placeLng")) {
+            assertTrue(json.get(name) == null || json.get(name).isNull(), name + " must be gone");
+        }
+    }
+
+    @Test
+    void clearingTheLocalityWhileThePlaceTypeStaysIsRefused() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        weblog.setPlaceType("LodgingBusiness");
+        weblog.setPlaceLocality("Encinitas");
+
+        doPatch(weblogger, weblog, "{\"clear\":[\"placeLocality\"]}").andExpect(status().isBadRequest());
+
+        assertEquals("Encinitas", weblog.getPlaceLocality());
+        verify(weblogger.getWeblogManager(), never()).saveWeblog(any());
+    }
+
+    @Test
+    void anUnknownBusinessIsA400() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        when(weblogger.getBusinessManager().getBusiness("nope")).thenReturn(null);
+
+        var result = doPatch(weblogger, weblog, "{\"businessId\":\"nope\"}")
+                .andExpect(status().isBadRequest());
+
+        assertEquals("No such business.", json(result).get("detail").asString());
+        verify(weblogger.getWeblogManager(), never()).saveWeblog(any());
+    }
+
+    @Test
+    void anUnknownTimeZoneIsA400() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        var result = doPatch(weblogger, weblog, "{\"timeZone\":\"Mars/Olympus_Mons\"}")
+                .andExpect(status().isBadRequest());
+
+        assertEquals("timeZone must be a time zone id, for example Europe/Berlin.",
+                json(result).get("detail").asString());
     }
 
     @Test
@@ -208,11 +402,7 @@ class WeblogsApiTest {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");
 
-        mockMvc(controllerFor(weblogger))
-                .perform(patch("/v1/weblogs/{handle}", "myblog")
-                        .requestAttr("actionWeblog", weblog)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"entryDisplayCount\":0}"))
+        doPatch(weblogger, weblog, "{\"entryDisplayCount\":0}")
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 

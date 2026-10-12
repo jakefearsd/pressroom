@@ -28,8 +28,7 @@ public final class McpToolCatalog {
             tool("weblogs", "The weblogs on this site and their basic settings. Needs an ADMIN token.", false,
                     action("list", "List weblogs.", "GET /v1/weblogs"),
                     action("get", "One weblog's settings.", "GET " + W),
-                    action("update", "Change a weblog's name, tagline, email, locale, timezone, entries per page,"
-                            + " listing or custom domain.", "PATCH " + W)),
+                    action("update", "Change a weblog's settings; name fields in clear to remove them.", "PATCH " + W)),
             tool("entries", "Blog entries: write, revise, publish, trash and preview.", false,
                     action("list", "List entries; without status the trash is excluded.", "GET " + W + "/entries"),
                     action("get", "One entry.", "GET " + W + "/entries/{id}"),

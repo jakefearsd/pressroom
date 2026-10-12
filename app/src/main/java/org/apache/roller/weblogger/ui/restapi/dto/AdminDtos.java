@@ -1,12 +1,19 @@
 package org.apache.roller.weblogger.ui.restapi.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.config.runtime.PropertyDef;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
+import org.apache.roller.weblogger.ui.controllers.editor.WeblogConfigBean;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
+import org.apache.roller.weblogger.ui.restapi.ColumnLimits;
 
 /**
  * Views for the admin surface: user accounts, weblog administration, and
@@ -47,20 +54,42 @@ public final class AdminDtos {
     public record WeblogView(String id, String handle, String name, String tagline,
                               String emailAddress, String locale, String timeZone,
                               int entryDisplayCount, boolean active, String editorTheme,
-                              String creatorUserName, String customDomain) {
+                              String creatorUserName, String customDomain, String icon, String about,
+                              String analyticsSiteId, String analyticsShareUrl, String newsletterListUuid,
+                              String businessId, String placeType, String placeLocality, String placeRegion,
+                              String placeCountry, Double placeLat, Double placeLng, String bookingUrl) {
     }
 
     /**
      * The body of a weblog PATCH. A null field leaves the corresponding
-     * property unchanged. {@code customDomain} follows the JSP editor's own
-     * convention (see {@code WeblogConfigController.myValidate}): an
-     * explicit blank string clears the domain (normalises to null), while
-     * an omitted (JSON-null) field leaves whatever is stored untouched.
+     * property unchanged; removing a value is the {@code clear} list. An
+     * explicit blank {@code customDomain} still clears the domain (the
+     * JSP editor's convention), but {@code clear} is the way to say it.
      */
     public record WeblogPatch(String name, String tagline, String emailAddress, String locale,
                                String timeZone, Integer entryDisplayCount, Boolean active,
-                               String customDomain) {
+                               String customDomain, String icon, String about,
+                               String analyticsSiteId, String analyticsShareUrl, String newsletterListUuid,
+                               @Schema(description = "Id of an existing business profile") String businessId,
+                               @Schema(description = "LodgingBusiness, or omit; needs placeLocality") String placeType,
+                               String placeLocality, String placeRegion,
+                               @Schema(description = "Two-letter country code") String placeCountry,
+                               @Schema(description = "Decimal degrees, given as a pair; stored to two decimals")
+                               Double placeLat,
+                               @Schema(description = "Decimal degrees, given as a pair; stored to two decimals")
+                               Double placeLng,
+                               String bookingUrl,
+                               @Schema(description = "Fields to remove: tagline, customDomain, icon, about, "
+                                       + "analyticsSiteId, analyticsShareUrl, newsletterListUuid, businessId, "
+                                       + "placeType, placeLocality, placeRegion, placeCountry, placeLat with "
+                                       + "placeLng, bookingUrl. Null never removes anything.")
+                               List<String> clear) {
     }
+
+    public static final List<String> WEBLOG_CLEARABLE = List.of("tagline", "customDomain", "icon", "about",
+            "analyticsSiteId", "analyticsShareUrl", "newsletterListUuid", "businessId", "placeType",
+            "placeLocality", "placeRegion", "placeCountry", "placeLat", "placeLng", "bookingUrl");
+    public static final List<List<String>> WEBLOG_PAIRS = List.of(List.of("placeLat", "placeLng"));
 
     public static UserView toView(User user, List<String> roles) {
         return new UserView(user.getUserName(), user.getScreenName(), user.getEmailAddress(),
@@ -72,7 +101,116 @@ public final class AdminDtos {
                 weblog.getTagline(), weblog.getEmailAddress(), weblog.getLocale(),
                 weblog.getTimeZone(), weblog.getEntryDisplayCount(),
                 Boolean.TRUE.equals(weblog.getActive()), weblog.getEditorTheme(),
-                weblog.getCreatorUserName(), weblog.getCustomDomain());
+                weblog.getCreatorUserName(), weblog.getCustomDomain(), weblog.getIconPath(),
+                weblog.getAbout(), weblog.getAnalyticsSiteId(), weblog.getAnalyticsShareUrl(),
+                weblog.getNewsletterListUuid(),
+                weblog.getBusiness() == null ? null : weblog.getBusiness().getId(),
+                weblog.getPlaceType(), weblog.getPlaceLocality(), weblog.getPlaceRegion(),
+                weblog.getPlaceCountry(),
+                weblog.getPlaceLat() == null ? null : weblog.getPlaceLat().doubleValue(),
+                weblog.getPlaceLng() == null ? null : weblog.getPlaceLng().doubleValue(),
+                weblog.getBookingUrl());
+    }
+
+    /**
+     * Lays a PATCH over the settings form's bean, loaded from the weblog, so the
+     * form's own copyTo stores the result: the API and the form cannot store a
+     * value differently. Column and blank checks that were here before stay here
+     * (name, tagline, emailAddress, locale, timeZone lengths); everything the
+     * settings rules judge is left to WeblogSettingsRules. Returns the names the
+     * request touched (set or cleared), which is what the caller reports
+     * violations against.
+     */
+    public static Set<String> applyPatch(WeblogConfigBean bean, WeblogPatch patch, Set<String> cleared) {
+        if (patch.name() != null) {
+            String name = patch.name().trim();
+            if (name.isBlank()) {
+                throw ApiException.badRequest("name cannot be blank.");
+            }
+            ColumnLimits.requireMaxLength("name", name, ColumnLimits.WEBLOG_NAME);
+            bean.setName(name);
+        }
+        if (patch.tagline() != null) {
+            ColumnLimits.requireMaxLength("tagline", patch.tagline(), ColumnLimits.TAGLINE);
+            bean.setTagline(patch.tagline());
+        }
+        if (patch.emailAddress() != null) {
+            ColumnLimits.requireMaxLength("emailAddress", patch.emailAddress(), ColumnLimits.WEBLOG_EMAIL_ADDRESS);
+            bean.setEmailAddress(patch.emailAddress());
+        }
+        if (patch.locale() != null) {
+            ColumnLimits.requireMaxLength("locale", patch.locale(), ColumnLimits.LOCALE);
+            bean.setLocale(patch.locale());
+        }
+        if (patch.timeZone() != null) {
+            ColumnLimits.requireMaxLength("timeZone", patch.timeZone(), ColumnLimits.TIME_ZONE);
+            bean.setTimeZone(patch.timeZone());
+        }
+        if (patch.entryDisplayCount() != null) {
+            bean.setEntryDisplayCount(patch.entryDisplayCount());
+        }
+        if (patch.active() != null) {
+            bean.setActive(patch.active());
+        }
+        setIfPresent(patch.customDomain(), bean::setCustomDomain);
+        setIfPresent(patch.icon(), bean::setIcon);
+        setIfPresent(patch.about(), bean::setAbout);
+        setIfPresent(patch.analyticsSiteId(), bean::setAnalyticsSiteId);
+        setIfPresent(patch.analyticsShareUrl(), bean::setAnalyticsShareUrl);
+        setIfPresent(patch.newsletterListUuid(), bean::setNewsletterListUuid);
+        setIfPresent(patch.businessId(), bean::setBusinessId);
+        setIfPresent(patch.placeType(), bean::setPlaceType);
+        setIfPresent(patch.placeLocality(), bean::setPlaceLocality);
+        setIfPresent(patch.placeRegion(), bean::setPlaceRegion);
+        setIfPresent(patch.placeCountry(), bean::setPlaceCountry);
+        if (patch.placeLat() != null) {
+            bean.setPlaceLat(twoDecimals("placeLat", patch.placeLat()));
+        }
+        if (patch.placeLng() != null) {
+            bean.setPlaceLng(twoDecimals("placeLng", patch.placeLng()));
+        }
+        setIfPresent(patch.bookingUrl(), bean::setBookingUrl);
+        for (String name : cleared) {
+            clearOnBean(bean, name);
+        }
+        Set<String> touched = new HashSet<>(ClearFields.setFields(patch));
+        touched.addAll(cleared);
+        return touched;
+    }
+
+    private static void setIfPresent(String value, java.util.function.Consumer<String> setter) {
+        if (value != null) {
+            setter.accept(value);
+        }
+    }
+
+    /** The column is numeric(5,2)/(6,2): store what the database would keep, as the form's value would be. */
+    private static String twoDecimals(String field, Double value) {
+        if (!Double.isFinite(value)) {
+            throw ApiException.badRequest(field + " must be a finite number.");
+        }
+        return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP).toPlainString();
+    }
+
+    private static void clearOnBean(WeblogConfigBean bean, String name) {
+        switch (name) {
+            case "tagline" -> bean.setTagline(null);
+            case "customDomain" -> bean.setCustomDomain(null);
+            case "icon" -> bean.setIcon(null);
+            case "about" -> bean.setAbout(null);
+            case "analyticsSiteId" -> bean.setAnalyticsSiteId(null);
+            case "analyticsShareUrl" -> bean.setAnalyticsShareUrl(null);
+            case "newsletterListUuid" -> bean.setNewsletterListUuid(null);
+            case "businessId" -> bean.setBusinessId(null);
+            case "placeType" -> bean.setPlaceType(null);
+            case "placeLocality" -> bean.setPlaceLocality(null);
+            case "placeRegion" -> bean.setPlaceRegion(null);
+            case "placeCountry" -> bean.setPlaceCountry(null);
+            case "placeLat" -> bean.setPlaceLat(null);
+            case "placeLng" -> bean.setPlaceLng(null);
+            case "bookingUrl" -> bean.setBookingUrl(null);
+            default -> throw new IllegalArgumentException("Not clearable: " + name);
+        }
     }
 
     /**

@@ -3,16 +3,18 @@ package org.apache.roller.weblogger.ui.restapi.v1;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.roller.weblogger.WebloggerException;
-import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.Weblog;
-import org.apache.roller.weblogger.ui.controllers.CustomDomainRules;
+import org.apache.roller.weblogger.ui.controllers.WeblogSettingsRules;
 import org.apache.roller.weblogger.ui.controllers.UISecurityEnforced;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
-import org.apache.roller.weblogger.ui.restapi.ColumnLimits;
 import org.apache.roller.weblogger.ui.restapi.auth.AdminScoped;
+import org.apache.roller.weblogger.ui.controllers.editor.WeblogConfigBean;
 import org.apache.roller.weblogger.ui.restapi.dto.AdminDtos;
+import org.apache.roller.weblogger.ui.restapi.dto.ClearFields;
 import org.apache.roller.weblogger.util.cache.CacheManager;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -36,6 +38,9 @@ import org.springframework.web.bind.annotation.RestController;
  * one before dispatching there; {@code get}/{@code update} resolve their own
  * {@code {handle}} through {@link BaseApiController#requireActionWeblog}
  * regardless.
+ *
+ * <p>{@code update} lays the PATCH over the settings form's own bean and judges it with the
+ * form's shared {@code WeblogSettingsRules}, so the two surfaces cannot drift.
  *
  * <p><b>{@code @AdminScoped} despite living outside {@code /v1/admin}.</b>
  * {@code AdminScopedCoverageTest} does not require it here -- it only scans
@@ -83,84 +88,30 @@ public class WeblogsApi extends BaseApiController implements UISecurityEnforced 
     public AdminDtos.WeblogView update(HttpServletRequest request, @RequestBody AdminDtos.WeblogPatch body)
             throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
+        Set<String> cleared = ClearFields.validate(body.clear(), body,
+                AdminDtos.WEBLOG_CLEARABLE, AdminDtos.WEBLOG_PAIRS);
 
-        if (body.name() != null) {
-            String name = body.name().trim();
-            if (name.isBlank()) {
-                throw ApiException.badRequest("name cannot be blank.");
-            }
-            ColumnLimits.requireMaxLength("name", name, ColumnLimits.WEBLOG_NAME);
-            weblog.setName(name);
-        }
-        if (body.tagline() != null) {
-            ColumnLimits.requireMaxLength("tagline", body.tagline(), ColumnLimits.TAGLINE);
-            weblog.setTagline(body.tagline());
-        }
-        if (body.emailAddress() != null) {
-            ColumnLimits.requireMaxLength(
-                    "emailAddress", body.emailAddress(), ColumnLimits.WEBLOG_EMAIL_ADDRESS);
-            weblog.setEmailAddress(body.emailAddress());
-        }
-        if (body.locale() != null) {
-            ColumnLimits.requireMaxLength("locale", body.locale(), ColumnLimits.LOCALE);
-            weblog.setLocale(body.locale());
-        }
-        if (body.timeZone() != null) {
-            ColumnLimits.requireMaxLength("timeZone", body.timeZone(), ColumnLimits.TIME_ZONE);
-            weblog.setTimeZone(body.timeZone());
-        }
-        if (body.entryDisplayCount() != null) {
-            // Same bound WeblogConfigController.myValidate enforces for the
-            // JSP form: entryDisplayCount above the site-wide cap is refused
-            // rather than silently accepted and then behaving strangely on
-            // every page that reads it.
-            int maxEntries = WebloggerRuntimeConfig.getIntProperty("site.pages.maxEntries");
-            if (body.entryDisplayCount() < 1 || (maxEntries > 0 && body.entryDisplayCount() > maxEntries)) {
-                throw ApiException.badRequest(
-                        "entryDisplayCount must be between 1 and " + maxEntries + ".");
-            }
-            weblog.setEntryDisplayCount(body.entryDisplayCount());
-        }
-        if (body.active() != null) {
-            weblog.setActive(body.active());
-        }
-        if (body.customDomain() != null) {
-            // Same rule as WeblogConfigController.myValidate for the JSP
-            // editor -- calling CustomDomainRules here rather than
-            // reimplementing the hostname check is the whole point of that
-            // class existing. An explicit blank clears the domain (normalise
-            // turns "" into null); a JSON-null field (the body.customDomain()
-            // != null guard above) leaves it untouched, same as every other
-            // patchable field on this endpoint.
-            String customDomain = CustomDomainRules.normalise(body.customDomain());
-            if (customDomain != null) {
-                if (!CustomDomainRules.isWellFormed(customDomain)) {
-                    throw ApiException.badRequest("customDomain must be a well-formed hostname.");
-                }
-                // Same I4b rule as WeblogConfigController.myValidate for the
-                // JSP editor -- reject the site's own hostname, or
-                // VirtualHostRegistry resolves it to this weblog for every
-                // request, including /roller-ui/**, which
-                // ControlPlaneHostFilter then redirects back to the host it
-                // just arrived on: an infinite loop with no route back.
-                if (CustomDomainRules.isSiteHost(customDomain,
-                        WebloggerRuntimeConfig.getPropertyWithConfigFallback("site.absoluteurl"))) {
-                    throw ApiException.badRequest("customDomain must not be the site's own hostname.");
-                }
-                Weblog claimant = weblogger.getWeblogManager().getWeblogByCustomDomain(customDomain);
-                if (claimant != null && !claimant.getHandle().equals(weblog.getHandle())) {
-                    throw ApiException.conflict("customDomain is already in use by another weblog.");
-                }
-            }
-            weblog.setCustomDomain(customDomain);
+        // The settings form's own bean carries the change, so the form's copyTo stores it:
+        // one way to store each value, whichever surface changed it.
+        WeblogConfigBean bean = new WeblogConfigBean();
+        bean.copyFrom(weblog);
+        Set<String> touched = AdminDtos.applyPatch(bean, body, cleared);
+
+        List<WeblogSettingsRules.Violation> broken = WeblogSettingsRules.check(bean,
+                WeblogSettingsRules.Context.current(weblog.getHandle(), weblogger)).stream()
+                .filter(v -> v.involvesAny(touched))
+                .toList();
+        if (!broken.isEmpty()) {
+            String detail = broken.stream().map(WeblogSettingsRules.Violation::detail)
+                    .collect(Collectors.joining(" "));
+            throw broken.stream().allMatch(WeblogSettingsRules.Violation::conflict)
+                    ? ApiException.conflict(detail) : ApiException.badRequest(detail);
         }
 
+        bean.copyTo(weblog, weblogger.getBusinessManager());
         weblogger.getWeblogManager().saveWeblog(weblog);
         weblogger.flush();
-        // WeblogPageCache has no CacheHandler and expires only lazily
-        // against weblog.lastModified (see CLAUDE.md's Templates section);
-        // CacheManager.invalidate is what bumps it, the same call
-        // WeblogConfigController's own save makes.
+        // WeblogPageCache expires only against weblog.lastModified; invalidate bumps it.
         CacheManager.invalidate(weblog);
         return AdminDtos.toView(weblog);
     }
