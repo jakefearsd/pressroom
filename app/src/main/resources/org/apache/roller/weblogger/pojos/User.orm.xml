@@ -25,8 +25,14 @@
             <!-- emailaddress has no unique constraint at the database level
                  (V002 baseline schema), so this orders deterministically and
                  the caller caps it to one row: see
-                 JPAUserManagerImpl.getUserByEmail. -->
-            <query>SELECT u FROM User u WHERE u.emailAddress = ?1 AND u.enabled = ?2 ORDER BY u.userName</query>
+                 JPAUserManagerImpl.getUserByEmail.
+                 Local accounts only: a reader who shares an author's address
+                 must never capture the author's password reset (reader
+                 sign-in spec, criterion 33). -->
+            <query>SELECT u FROM User u WHERE u.emailAddress = ?1 AND u.enabled = ?2 AND u.ssoSubject IS NULL ORDER BY u.userName</query>
+        </named-query>
+        <named-query name="User.getBySsoIdentity">
+            <query>SELECT u FROM User u WHERE u.ssoIssuer = ?1 AND u.ssoSubject = ?2</query>
         </named-query>
         <named-query name="User.getByUserNameOrEmailAddressStartsWith">
             <query>SELECT u FROM User u WHERE u.userName LIKE ?1 OR u.emailAddress LIKE ?1</query>
@@ -71,6 +77,12 @@
             </basic>
             <basic name="emailAddress">
                 <column name="emailaddress" insertable="true" updatable="true" unique="true"/>
+            </basic>
+            <basic name="ssoIssuer">
+                <column name="sso_issuer" insertable="true" updatable="true" unique="false"/>
+            </basic>
+            <basic name="ssoSubject">
+                <column name="sso_subject" insertable="true" updatable="true" unique="false"/>
             </basic>
             <basic name="dateCreated">
                 <column name="datecreated" insertable="true" updatable="true" unique="false"/>

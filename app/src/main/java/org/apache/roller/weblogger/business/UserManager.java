@@ -124,10 +124,32 @@ public interface UserManager {
      * username) rather than whichever the database happens to return first.
      *
      * @param emailAddress email address of the user to lookup.
-     * @return The enabled user with this email address, or null if not found.
+     * @return The enabled local (non-SSO) account with this email address, or null if not found.
      * @throws WebloggerException If there is a problem.
      */
     User getUserByEmail(String emailAddress) throws WebloggerException;
+
+    /**
+     * Lookup the account bound to an OpenID Connect identity, enabled or not
+     * (a disabled account must still be found, or a sign-in would create a
+     * replacement for it).
+     *
+     * @param issuer The provider's issuer URL.
+     * @param subject The provider's stable subject id for the person.
+     * @return The bound user, or null if none.
+     * @throws WebloggerException If either argument is null or on a store problem.
+     */
+    User getUserBySsoIdentity(String issuer, String subject) throws WebloggerException;
+
+    /**
+     * Store a new reader account (one already bound to an SSO identity) and
+     * grant it only the {@code reader} role. Unlike addUser this never grants
+     * "editor", and never "admin" to a first user.
+     *
+     * @param newUser A user whose {@link User#isSsoBound()} is true.
+     * @throws WebloggerException If the user is not SSO-bound, the username is taken, or on a store problem.
+     */
+    void addReader(User newUser) throws WebloggerException;
 
 
     /**

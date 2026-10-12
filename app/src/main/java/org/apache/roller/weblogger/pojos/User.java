@@ -41,6 +41,8 @@ public class User implements Serializable {
     private String  screenName;
     private String  fullName;
     private String  emailAddress;
+    private String  ssoIssuer;
+    private String  ssoSubject;
     private Date    dateCreated;
     private String  locale;
     private String  timeZone;
@@ -97,6 +99,30 @@ public class User implements Serializable {
         return this.password;
     }
     
+    /** Passphrase stored on an SSO-bound account; matches no password the encoder can produce. */
+    public static final String SSO_PASSWORD_MARKER = "{bcrypt}!sso-bound";
+
+    /** True when this account signs in through an OpenID Connect identity rather than a password. */
+    public boolean isSsoBound() {
+        return ssoSubject != null;
+    }
+
+    public String getSsoIssuer() {
+        return ssoIssuer;
+    }
+
+    public void setSsoIssuer(String ssoIssuer) {
+        this.ssoIssuer = ssoIssuer;
+    }
+
+    public String getSsoSubject() {
+        return ssoSubject;
+    }
+
+    public void setSsoSubject(String ssoSubject) {
+        this.ssoSubject = ssoSubject;
+    }
+
     /**
      * Set password.
      * If password encryption is turned on, then pass in an encrypted password.
@@ -111,6 +137,9 @@ public class User implements Serializable {
      * @param newPassword The new password to be set.
      */
     public void resetPassword(String newPassword) {
+        if (isSsoBound()) {
+            throw new IllegalStateException("An account that signs in with single sign-on has no password.");
+        }
         PasswordEncoder encoder = RollerContext.getPasswordEncoder();
         setPassword(encoder.encode(newPassword));
     }

@@ -219,6 +219,36 @@ public class JPAUserManagerImpl implements UserManager {
     }
 
     @Override
+    public User getUserBySsoIdentity(String issuer, String subject) throws WebloggerException {
+        if (issuer == null || subject == null) {
+            throw new WebloggerException("issuer and subject cannot be null");
+        }
+        TypedQuery<User> query = strategy.getNamedQuery("User.getBySsoIdentity", User.class);
+        query.setParameter(1, issuer);
+        query.setParameter(2, subject);
+        try {
+            return query.getSingleResult();
+        } catch (NoResultException e) {
+            return null;
+        }
+    }
+
+    @Override
+    public void addReader(User newUser) throws WebloggerException {
+        if (newUser == null || !newUser.isSsoBound()) {
+            throw new WebloggerException("addReader needs an account bound to an SSO identity");
+        }
+        // Deliberately NOT addUser: that grants "editor" to every new account and
+        // "admin" to the first one when users.firstUserAdmin is set. A reader holds
+        // exactly one role, whatever the table looks like (reader sign-in spec, criterion 15).
+        if (getUserByUserName(newUser.getUserName(), null) != null) {
+            throw new WebloggerException("error.add.user.userNameInUse");
+        }
+        this.strategy.store(newUser);
+        grantRole("reader", newUser);
+    }
+
+    @Override
     public List<User> getUsers(Boolean enabled, Date startDate, Date endDate,
             int offset, int length)
             throws WebloggerException {
