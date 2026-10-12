@@ -24,11 +24,12 @@ public IP.
 8. [Analytics](#analytics)
 9. [Newsletter](#newsletter)
 10. [Reader sign-in (Google)](#reader-sign-in-google)
-11. [Backup and restore](#backup-and-restore)
-12. [Test a release locally before deploying it](#test-a-release-locally-before-deploying-it)
-13. [Upgrades](#upgrades)
-14. [Firewall](#firewall)
-15. [Troubleshooting](#troubleshooting)
+11. [Comments](#comments)
+12. [Backup and restore](#backup-and-restore)
+13. [Test a release locally before deploying it](#test-a-release-locally-before-deploying-it)
+14. [Upgrades](#upgrades)
+15. [Firewall](#firewall)
+16. [Troubleshooting](#troubleshooting)
 
 ## Prerequisites
 
@@ -818,7 +819,7 @@ to retry on their behalf.
 ## Reader sign-in (Google)
 
 Readers can sign in with Google and get a `reader` account (no author
-rights; comments will use it). It is off until both credentials are set.
+rights; they can comment). It is off until both credentials are set.
 Developer notes: `docs/dev/sso.md`.
 
 1. **Create the OAuth client.** In the wiki's Google Cloud project, add an
@@ -865,6 +866,23 @@ sign in again**: their roles are read when they sign in, so until then the
 menu still refuses them. They write in the admin UI only: with no password
 they cannot mint an API token, so the `roller-api` CLI and the MCP endpoint
 are not for them.
+
+## Comments
+
+Signed-in readers (see "Reader sign-in" above) can comment once an owner turns
+comments on, per weblog.
+
+- **Turn them on:** Weblog Settings, "Allow comments". A single entry can be
+  closed with "Comments closed" in its editor. Comments are not offered on
+  custom-domain weblogs.
+- **Mail:** held-comment notices go to each weblog admin only when mail is
+  configured (see "Mail and account recovery") and "Email me when a comment
+  needs approval" is ticked. Without mail, nothing is lost; check the Comments
+  page.
+- **Held comments:** a reader's first comment on a weblog waits for approval.
+  It appears on the weblog's Comments page (also a count on Main Menu) and
+  through MCP (`comments list`, status `PENDING`).
+- **Developer notes:** `docs/dev/comments.md`.
 
 ## Backup and restore
 

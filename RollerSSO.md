@@ -3,7 +3,7 @@
 Readers sign in to Roller with their Google account, the same way they sign
 in to the wiki at wiki.wikantik.com. Their first sign-in creates a **reader**
 account. A reader cannot use the admin or authoring UI, the API, MCP or
-private media. Comments for signed-in readers are being built on top of this.
+private media. They can comment on entries, and manage their account page.
 
 **Current state:** Roller 0.1.16 on blog.wikantik.com contains the feature,
 but sign-in is **off**. It turns on when both Google credentials are in
@@ -123,8 +123,19 @@ app. Two settings are optional and rarely needed:
 
 ## Running it
 
-- **What a reader can do today:** sign in and sign out, nothing else.
-  Comments will give readers their one permission.
+- **What a reader can do today:** sign in and out, comment on entries of
+  weblogs that have comments on, and manage an account page.
+  - **Commenting.** A reader's first comment on a weblog waits for an owner's
+    approval. Once one is approved, their later comments there publish at once;
+    a comment with more than two links, or any comment after one is hidden,
+    waits again. Limits: 5 comments per 10 minutes and 30 per day. A reader can
+    delete their own comments. Commenting is not offered on custom-domain
+    weblogs.
+  - **The account page** (`/roller-ui/account.rol`, linked from the comment
+    form): set a display name (not one that matches an author's screen name),
+    list and delete their comments, or delete the account, which removes its
+    comments. An account that holds a weblog role or admin cannot delete itself
+    this way.
 - **Letting a reader write:**
   1. In **User Admin**, open the account, tick **Can write (editor)** and
      save.

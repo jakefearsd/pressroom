@@ -280,6 +280,7 @@ here.
 | Admin UI; Categories | `docs/dev/admin-ui.md` |
 | Comments; Entry editing; Trash; Pages | `docs/dev/entries.md` |
 | Redirects; Virtual hosts | `docs/dev/routing.md` |
+| Comments (reader) | `docs/dev/comments.md` |
 | Audience; Analytics | `docs/dev/audience-and-analytics.md` |
 | Automation API | `docs/dev/api.md` (public reference: `docs/api/README.md`) |
 | Reader sign-in (SSO) | `docs/dev/sso.md` |

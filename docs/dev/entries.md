@@ -6,12 +6,9 @@ names are unchanged, so an older "see CLAUDE.md, <section>" pointer
 resolves through the index at the end of `CLAUDE.md`.
 
 ## Comments
-The W1 comment subsystem was removed (V022) because nobody could reach it:
-there was no way for a reader to get an account (`requireAuthenticatedComments`
-defaulted true, V013, and there was no public self-registration). Readers now
-sign in with Google (`docs/dev/sso.md`), and comments for signed-in readers are
-the next roadmap step, designed fresh rather than restored. The contact form
-and newsletter (see Audience) are the reader-facing channels until then.
+Comments for signed-in readers are documented in `docs/dev/comments.md`
+(data model, `CommentService`, rendering and cache expiry, the page script,
+moderation, API, hazards). The W1 subsystem removed by V022 is not restored.
 
 A sweep for "comment" must leave alone:
 - **`roller_audit_log.comment_text`** — the audit log's own change note; a
