@@ -182,6 +182,7 @@ public class UserEditController extends BaseController {
         // populate form data from user profile data
         bean.copyFrom(user);
         bean.setAdministrator(isAdministrator(user));
+        bean.setWriter(hasEditorRole(user));
         model.addAttribute("bean", bean);
         model.addAttribute("ssoBound", user.isSsoBound());
         model.addAttribute("mailConfigured", PasswordLinkMailer.isReady());
@@ -217,6 +218,13 @@ public class UserEditController extends BaseController {
         model.addAttribute("permissions", getPermissions(user));
         model.addAttribute("ssoBound", user.isSsoBound());
 
+        // A bound account signs in through Google and must never hold admin
+        // (a compromised Google account would otherwise be an admin account).
+        if (user.isSsoBound() && bean.isAdministrator()) {
+            addError(model, "userAdmin.error.ssoAdmin", request);
+            return ".UserEdit";
+        }
+
         // validate for modify
         myValidate(bean, user, false, model, request);
 
@@ -245,6 +253,20 @@ public class UserEditController extends BaseController {
             try {
                 UserManager mgr = weblogger.getUserManager();
                 mgr.saveUser(user);
+
+                if (user.isSsoBound()) {
+                    // a bound account never holds admin; only the editor role is editable
+                    boolean hasEditor = mgr.hasRole("editor", user);
+                    if (bean.isWriter() && !hasEditor) {
+                        mgr.grantRole("editor", user);
+                    } else if (!bean.isWriter() && hasEditor) {
+                        mgr.revokeRole("editor", user);
+                    }
+                    weblogger.flush();
+                    model.addAttribute("bean", new CreateUserBean());
+                    addMessage(model, "userAdmin.userSaved", request);
+                    return ".UserAdmin";
+                }
 
                 // update Admin role as appropriate
                 boolean hasAdmin = false;
@@ -423,6 +445,15 @@ public class UserEditController extends BaseController {
      * rather than offering to make somebody an admin on the strength of a
      * database error.
      */
+    private boolean hasEditorRole(User user) {
+        try {
+            return weblogger.getUserManager().hasRole("editor", user);
+        } catch (WebloggerException ex) {
+            log.warn("Could not determine editor role for user {}", user.getUserName(), ex);
+            return false;
+        }
+    }
+
     private boolean isAdministrator(User user) {
         try {
             GlobalPermission adminPerm =

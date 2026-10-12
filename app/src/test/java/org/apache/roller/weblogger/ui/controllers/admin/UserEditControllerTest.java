@@ -731,4 +731,70 @@ class UserEditControllerTest {
         controller.modifyUserExecute(ControllerTestFixture.requestFor(null), localModel, localBean);
         assertEquals(Boolean.FALSE, localModel.getAttribute("ssoBound"));
     }
+
+    @Test
+    void aBoundAccountCannotBeMadeAdmin() throws Exception {
+        User stored = storedBoundUser("reader-abc1234567");
+        CreateUserBean bean = beanForExisting("u1", "reader-abc1234567");
+        bean.setAdministrator(true);
+
+        String view = controller.modifyUserSave(
+                ControllerTestFixture.requestFor(user("admin", "a@example.com")), model, bean);
+
+        assertEquals(".UserEdit", view);
+        assertEquals(List.of("userAdmin.error.ssoAdmin"), ControllerTestFixture.errors(model));
+        assertEquals(Boolean.TRUE, model.getAttribute("ssoBound"));
+        verify(weblogger.userManager(), never()).grantRole(eq("admin"), any());
+        verify(weblogger.userManager(), never()).saveUser(any());
+        assertEquals(User.SSO_PASSWORD_MARKER, stored.getPassword());
+    }
+
+    @Test
+    void canWriteGrantsAndRevokesEditorOnABoundAccount() throws Exception {
+        User stored = storedBoundUser("reader-abc1234567");
+        CreateUserBean grant = beanForExisting("u1", "reader-abc1234567");
+        grant.setWriter(true);
+
+        controller.modifyUserSave(
+                ControllerTestFixture.requestFor(user("admin", "a@example.com")), model, grant);
+
+        verify(weblogger.userManager()).grantRole("editor", stored);
+        verify(weblogger.userManager(), never()).grantRole(eq("admin"), any());
+
+        when(weblogger.userManager().hasRole("editor", stored)).thenReturn(true);
+        CreateUserBean revoke = beanForExisting("u1", "reader-abc1234567");
+        revoke.setWriter(false);
+
+        controller.modifyUserSave(
+                ControllerTestFixture.requestFor(user("admin", "a@example.com")), new ExtendedModelMap(), revoke);
+
+        verify(weblogger.userManager()).revokeRole("editor", stored);
+        verify(weblogger.userManager(), never()).revokeRole(eq("admin"), any());
+    }
+
+    @Test
+    void canWriteIsIgnoredForLocalAccounts() throws Exception {
+        User stored = storedUser("jake");
+        when(weblogger.userManager().hasRole("editor", stored)).thenReturn(true);
+        CreateUserBean bean = beanForExisting("u1", "jake");
+        bean.setWriter(false);
+
+        controller.modifyUserSave(
+                ControllerTestFixture.requestFor(user("admin", "a@example.com")), model, bean);
+
+        verify(weblogger.userManager(), never()).revokeRole(eq("editor"), any());
+        verify(weblogger.userManager(), never()).grantRole(eq("editor"), any());
+    }
+
+    @Test
+    void modifyUserPrefillsWriterFromTheEditorRole() throws Exception {
+        User stored = storedBoundUser("reader-abc1234567");
+        when(weblogger.userManager().hasRole("editor", stored)).thenReturn(true);
+        CreateUserBean bean = new CreateUserBean();
+        bean.setId("u1");
+
+        controller.modifyUserExecute(ControllerTestFixture.requestFor(null), model, bean);
+
+        assertTrue(((CreateUserBean) model.getAttribute("bean")).isWriter());
+    }
 }

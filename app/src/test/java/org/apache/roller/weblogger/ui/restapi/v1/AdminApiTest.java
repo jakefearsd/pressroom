@@ -910,4 +910,47 @@ class AdminApiTest {
         assertNotNull(stored, "the account must exist even though the email could not be sent");
         assertFalse(stored.getEnabled());
     }
+
+    @Test
+    void listUsersReportsSso() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        User bound = aUser("reader-abc1234567");
+        bound.setSsoIssuer("https://accounts.example");
+        bound.setSsoSubject("sub-1");
+        User local = aUser("alice");
+        when(weblogger.getUserManager().getUsers(null, null, null, 0, 50)).thenReturn(List.of(bound, local));
+        when(weblogger.getUserManager().getRoles(bound)).thenReturn(List.of("reader"));
+        when(weblogger.getUserManager().getRoles(local)).thenReturn(List.of("editor"));
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(get("/v1/admin/users"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
+        assertTrue(json.get(0).get("sso").asBoolean());
+        assertFalse(json.get(1).get("sso").asBoolean());
+    }
+
+    @Test
+    void patchCanDisableAReader() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        User reader = aUser("reader-abc1234567");
+        reader.setSsoIssuer("https://accounts.example");
+        reader.setSsoSubject("sub-1");
+        when(weblogger.getUserManager().getUserByUserName("reader-abc1234567", null)).thenReturn(reader);
+        when(weblogger.getUserManager().getRoles(reader)).thenReturn(List.of("reader"));
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/admin/users/{userName}", "reader-abc1234567")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"enabled\":false}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        verify(weblogger.getUserManager()).saveUser(reader);
+        assertFalse(reader.getEnabled());
+        tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
+        assertTrue(json.get("sso").asBoolean());
+    }
 }

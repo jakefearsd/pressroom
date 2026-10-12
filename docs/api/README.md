@@ -687,6 +687,15 @@ set-password link" action uses. No plaintext password ever crosses this
 API, and the call fails outright (400) if mail is not configured, rather
 than creating an account with no way to ever reach a usable password.
 
+The user view (`UserView`) carries these fields:
+
+| Field | Meaning |
+|---|---|
+| `userName`, `screenName`, `emailAddress` | The account's identity. |
+| `enabled` | Whether the account may sign in. |
+| `globalRoles` | The account's global roles (`admin`, `editor`, `reader`). |
+| `sso` | `true` when the account signs in with single sign-on (Google). Such an account has no password. An email address patched on such an account is replaced at its next sign-in. |
+
 `GET/PATCH /api/v1/admin/config` reads and writes Roller's runtime
 properties (`runtimeConfigDefs.xml` is the allowlist — a name that file
 doesn't declare, including anything startup-scoped, is a 400). `PATCH` takes

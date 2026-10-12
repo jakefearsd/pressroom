@@ -39,6 +39,8 @@ public class CreateUserBean {
     private String timeZone = null;
     private Boolean enabled = Boolean.FALSE;
     private boolean administrator = false;
+    /** The editor role, offered only for an SSO-bound account; set by the controller, never by copyFrom. */
+    private boolean writer = false;
     private List<String> list = new ArrayList<>();
 
     public List<String> getList() {
@@ -136,6 +138,14 @@ public class CreateUserBean {
 
     public void setAdministrator(boolean administrator) {
         this.administrator = administrator;
+    }
+
+    public boolean isWriter() {
+        return writer;
+    }
+
+    public void setWriter(boolean writer) {
+        this.writer = writer;
     }
 
     public void copyTo(User dataHolder) {

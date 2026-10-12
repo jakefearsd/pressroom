@@ -38,6 +38,10 @@
     </c:if>
 </p>
 
+<c:if test="${ssoBound}">
+    <p class="form-text" id="ssoBoundMarker"><spring:message code="userAdmin.ssoBound"/></p>
+</c:if>
+
 <c:choose>
     <c:when test="${actionName == 'createUser'}">
         <c:set var="saveAction" value="/roller-ui/admin/createUser!save.rol"/>
@@ -162,6 +166,7 @@
         </div>
     </div>
 
+    <c:if test="${not ssoBound}">
     <div class="row mb-3">
         <label class="col-sm-3 col-form-label" for="bean_administrator"><spring:message code="userAdmin.userAdmin"/></label>
         <div class="col-sm-9">
@@ -170,6 +175,16 @@
                    title="<spring:message code='userAdmin.tip.userAdmin'/>"/>
         </div>
     </div>
+    </c:if>
+    <c:if test="${ssoBound}">
+    <div class="row mb-3">
+        <label class="col-sm-3 col-form-label" for="bean_writer"><spring:message code="userAdmin.canWrite"/></label>
+        <div class="col-sm-9">
+            <input type="checkbox" id="bean_writer" class="form-check-input" name="bean.writer" value="true"
+                <c:if test="${bean.writer}">checked="checked"</c:if>/>
+        </div>
+    </div>
+    </c:if>
 
 
     <c:if test="${actionName == 'modifyUser'}">
