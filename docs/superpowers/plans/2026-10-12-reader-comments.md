@@ -5,7 +5,7 @@
 **Goal:** Signed-in readers comment on entries. Owners moderate in the UI and through `/api/v1` + MCP. Published comments render into the cached entry page, and the comment form is built in the browser.
 
 **Architecture:**
-- A new `roller_comment` table (V031) is reached through a `CommentManager` on the `Weblogger` facade.
+- A new `roller_reader_comment` table (V031) is reached through a `CommentManager` on the `Weblogger` facade.
 - All rules live in one container-managed `CommentService`: who may post, the status a comment gets, the trust rule, rate limits, cache bumps and notifications. Every surface calls it: the rendering endpoints, the moderation page, the API and the account page.
 - Published comments render through a `showComments` macro, so their bytes are shared and cached.
 - A script in the page fills a `.comments-slot` placeholder from a `no-store` session endpoint, which also hands out the CSRF token for posting.
@@ -50,7 +50,7 @@
 **Never log** a comment body, an email address, a token or a client secret. Logger `roller.comments` records ids, statuses, usernames and codes.
 
 **Exact names, verbatim**
-- Table: `roller_comment`.
+- Table: `roller_reader_comment`.
 - Columns:
   - `weblog.comments_enabled`, default false;
   - `weblog.comment_notify`, default true;
@@ -257,11 +257,11 @@ public interface CommentManager {
 -- Migration: comments for signed-in readers (docs/superpowers/specs/2026-10-12-reader-comments-design.md).
 -- A fresh table: the W1 comment subsystem (dropped in V022) is not restored. Idempotent.
 
-CREATE TABLE IF NOT EXISTS roller_comment (
+CREATE TABLE IF NOT EXISTS roller_reader_comment (
     id              varchar(48)  NOT NULL PRIMARY KEY,
     entry_id        varchar(48)  NOT NULL REFERENCES weblogentry(id) ON DELETE CASCADE,
     author_id       varchar(48)  NOT NULL REFERENCES roller_user(id) ON DELETE CASCADE,
-    reply_to_id     varchar(48)  REFERENCES roller_comment(id) ON DELETE CASCADE,
+    reply_to_id     varchar(48)  REFERENCES roller_reader_comment(id) ON DELETE CASCADE,
     body            text         NOT NULL,
     status          varchar(16)  NOT NULL,
     author_is_owner boolean      DEFAULT false NOT NULL,
@@ -271,13 +271,13 @@ CREATE TABLE IF NOT EXISTS roller_comment (
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'rc_status_ck') THEN
-        ALTER TABLE roller_comment ADD CONSTRAINT rc_status_ck
+        ALTER TABLE roller_reader_comment ADD CONSTRAINT rc_status_ck
             CHECK (status IN ('PENDING', 'PUBLISHED', 'HIDDEN'));
     END IF;
 END $$;
-CREATE INDEX IF NOT EXISTS rc_entry_status_created_idx ON roller_comment (entry_id, status, created);
-CREATE INDEX IF NOT EXISTS rc_author_idx ON roller_comment (author_id);
-CREATE INDEX IF NOT EXISTS rc_reply_to_idx ON roller_comment (reply_to_id);
+CREATE INDEX IF NOT EXISTS rc_entry_status_created_idx ON roller_reader_comment (entry_id, status, created);
+CREATE INDEX IF NOT EXISTS rc_author_idx ON roller_reader_comment (author_id);
+CREATE INDEX IF NOT EXISTS rc_reply_to_idx ON roller_reader_comment (reply_to_id);
 
 ALTER TABLE weblog      ADD COLUMN IF NOT EXISTS comments_enabled boolean DEFAULT false NOT NULL;
 ALTER TABLE weblog      ADD COLUMN IF NOT EXISTS comment_notify   boolean DEFAULT true  NOT NULL;
@@ -309,7 +309,7 @@ Run it again. Expected: PASS.
 
 - [ ] **Step 4: Run it.** Expected: compile FAIL. Implement the pojo, the ORM with named queries (positional `?1` parameters, as `Business.orm.xml` does), the manager and the wiring. Run it again. Expected: PASS. Then run `SchemaMigrationTest`, `MigrationCatalogTest`, `EqualsContractTest`, `BusinessManagerTest` (a wiring smoke test), `WeblogTest` and `WeblogEntryTest`, then the static gates.
 
-- [ ] **Step 5: Commit.** Subject: `feat(comments): roller_comment (V031), ReaderComment, CommentManager, settings columns`.
+- [ ] **Step 5: Commit.** Subject: `feat(comments): roller_reader_comment (V031), ReaderComment, CommentManager, settings columns`.
 
 ---
 

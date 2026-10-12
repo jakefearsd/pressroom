@@ -77,15 +77,15 @@ Made by me in the approved sections:
 
 ### Data
 
-Migration `V031__reader_comments.sql` is idempotent.
+Migration `V031__reader_comments.sql` is idempotent. **Table name.** It is `roller_reader_comment`, not `roller_comment`. The baseline V002 still creates the W1 `roller_comment` table and V022 drops it, so reusing that name would let a replayed V022 drop live comments (ruling R3, 2026-10-12).
 
-**The comment table**, `roller_comment`:
+**The comment table**, `roller_reader_comment`:
 - `id varchar(48)` is the primary key.
 - `entry_id varchar(48) NOT NULL` references `weblogentry(id)` `ON DELETE
   CASCADE`.
 - `author_id varchar(48) NOT NULL` references `roller_user(id)` `ON DELETE
   CASCADE`.
-- `reply_to_id varchar(48)` references `roller_comment(id)` `ON DELETE
+- `reply_to_id varchar(48)` references `roller_reader_comment(id)` `ON DELETE
   CASCADE`. It is null for a top-level comment.
 - `body text NOT NULL` holds the raw text, at most 4000 characters, checked
   in code.
