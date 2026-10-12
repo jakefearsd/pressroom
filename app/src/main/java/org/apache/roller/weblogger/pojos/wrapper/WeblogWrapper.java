@@ -238,6 +238,14 @@ public final class WeblogWrapper {
     public Boolean getActive() {
         return this.pojo.getActive();
     }
+
+    public Boolean getCommentsEnabled() {
+        return this.pojo.getCommentsEnabled();
+    }
+
+    public Boolean getCommentNotify() {
+        return this.pojo.getCommentNotify();
+    }
     
     
     public Date getLastModified() {

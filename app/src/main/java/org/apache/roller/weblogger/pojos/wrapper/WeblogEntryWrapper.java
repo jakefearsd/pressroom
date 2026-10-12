@@ -301,6 +301,10 @@ public final class WeblogEntryWrapper {
         return this.pojo.getNoindex();
     }
 
+    public Boolean getCommentsClosed() {
+        return this.pojo.getCommentsClosed();
+    }
+
     public JsonLdType getJsonLdType() {
         return this.pojo.getJsonLdType();
     }

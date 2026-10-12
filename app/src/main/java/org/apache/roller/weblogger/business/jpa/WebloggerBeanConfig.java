@@ -37,6 +37,7 @@ import org.apache.roller.weblogger.business.WeblogManager;
 import org.apache.roller.weblogger.business.WeblogPageManager;
 import org.apache.roller.weblogger.business.WeblogRedirectManager;
 import org.apache.roller.weblogger.business.BusinessManager;
+import org.apache.roller.weblogger.business.CommentManager;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.business.plugins.PluginManager;
 import org.apache.roller.weblogger.business.plugins.PluginManagerImpl;
@@ -154,6 +155,11 @@ public class WebloggerBeanConfig {
     }
 
     @Bean
+    public CommentManager commentManager(JPAPersistenceStrategy strategy) {
+        return new JPACommentManagerImpl(strategy);
+    }
+
+    @Bean
     public EventManager eventManager(JPAPersistenceStrategy strategy) {
         return new JPAEventManagerImpl(strategy);
     }
@@ -218,6 +224,7 @@ public class WebloggerBeanConfig {
             WeblogPageManager weblogPageManager,
             WeblogRedirectManager weblogRedirectManager,
             BusinessManager businessManager,
+            CommentManager commentManager,
             EventManager eventManager,
             FormSubmissionManager formSubmissionManager,
             UserTokenManager userTokenManager,
@@ -240,6 +247,7 @@ public class WebloggerBeanConfig {
                 weblogPageManager,
                 weblogRedirectManager,
                 businessManager,
+                commentManager,
                 eventManager,
                 formSubmissionManager,
                 userTokenManager,

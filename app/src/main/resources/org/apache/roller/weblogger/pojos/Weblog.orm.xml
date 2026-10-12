@@ -86,6 +86,12 @@
 			<basic name="active">
 				<column name="isactive" insertable="true" updatable="true" unique="false"/>
 			</basic>
+			<basic name="commentsEnabled">
+				<column name="comments_enabled" insertable="true" updatable="true" unique="false"/>
+			</basic>
+			<basic name="commentNotify">
+				<column name="comment_notify" insertable="true" updatable="true" unique="false"/>
+			</basic>
 			<basic name="creatorUserName">
 				<column name="creator" insertable="true" updatable="true" unique="false"/>
 			</basic>

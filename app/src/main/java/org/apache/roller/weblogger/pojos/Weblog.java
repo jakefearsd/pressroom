@@ -54,6 +54,8 @@ public class Weblog implements Serializable {
     private String  timeZone         = null;
     private Boolean visible          = Boolean.TRUE;
     private Boolean active           = Boolean.TRUE;
+    private Boolean commentsEnabled  = Boolean.FALSE;
+    private Boolean commentNotify    = Boolean.TRUE;
     private Date    dateCreated      = new Date();
     private int     entryDisplayCount = 15;
     private Date    lastModified     = new Date();
@@ -262,6 +264,8 @@ public class Weblog implements Serializable {
         this.setDateCreated(other.getDateCreated());
         this.setEntryDisplayCount(other.getEntryDisplayCount());
         this.setActive(other.getActive());
+        this.setCommentsEnabled(other.getCommentsEnabled());
+        this.setCommentNotify(other.getCommentNotify());
         this.setLastModified(other.getLastModified());
         this.setWeblogCategories(other.getWeblogCategories());
     }
@@ -319,6 +323,24 @@ public class Weblog implements Serializable {
     
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    /** True when signed-in readers may comment on this weblog's entries. */
+    public Boolean getCommentsEnabled() {
+        return commentsEnabled;
+    }
+
+    public void setCommentsEnabled(Boolean commentsEnabled) {
+        this.commentsEnabled = commentsEnabled;
+    }
+
+    /** True to email the owner when a comment arrives. */
+    public Boolean getCommentNotify() {
+        return commentNotify;
+    }
+
+    public void setCommentNotify(Boolean commentNotify) {
+        this.commentNotify = commentNotify;
     }
     
     /**

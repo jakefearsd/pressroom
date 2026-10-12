@@ -215,6 +215,8 @@ class EqualsContractTest {
                 new Specimen("WeblogRedirect (keyed on id)",
                         redirect("redirect-a"), redirect("redirect-a"), redirect("redirect-b")),
 
+                new Specimen("ReaderComment (keyed on id)",
+                        readerComment("rc-a"), readerComment("rc-a"), readerComment("rc-b")),
                 new Specimen("Business (keyed on id)",
                         business("business-a"), business("business-a"), business("business-b")),
 
@@ -254,6 +256,13 @@ class EqualsContractTest {
         WeblogPage page = new WeblogPage();
         page.setId(id);
         return page;
+    }
+
+    private static ReaderComment readerComment(String id) {
+        ReaderComment comment = new ReaderComment();
+        comment.setId(id);
+        comment.setBody("hello");
+        return comment;
     }
 
     private static Business business(String id) {
@@ -472,14 +481,20 @@ class EqualsContractTest {
                 "Both entries must survive in a set");
     }
 
+    /**
+     * The W1 comment subsystem is gone; reader comments (V031) add exactly
+     * three settings columns and nothing else on these two entities.
+     */
     @Test
-    void weblogAndEntryCarryNoCommentState() {
-        for (Class<?> c : List.of(Weblog.class, WeblogEntry.class)) {
-            List<String> offenders = Arrays.stream(c.getDeclaredFields())
-                    .map(Field::getName)
-                    .filter(n -> n.toLowerCase(Locale.ROOT).contains("comment"))
-                    .sorted().toList();
-            assertTrue(offenders.isEmpty(), c.getSimpleName() + " keeps: " + offenders);
-        }
+    void weblogAndEntryCarryOnlyTheReaderCommentSettings() {
+        assertEquals(List.of("commentNotify", "commentsEnabled"), commentFields(Weblog.class));
+        assertEquals(List.of("commentsClosed"), commentFields(WeblogEntry.class));
+    }
+
+    private static List<String> commentFields(Class<?> c) {
+        return Arrays.stream(c.getDeclaredFields())
+                .map(Field::getName)
+                .filter(n -> n.toLowerCase(Locale.ROOT).contains("comment"))
+                .sorted().toList();
     }
 }

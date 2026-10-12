@@ -81,6 +81,7 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
     private String    ogImageId       = null;
     private String    canonicalUrl    = null;
     private Boolean   noindex         = Boolean.FALSE;
+    private Boolean   commentsClosed  = Boolean.FALSE;
 
     // Wave 3 travel structured data
     private JsonLdType jsonLdType     = null;
@@ -167,6 +168,7 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
         this.setOgImageId(other.getOgImageId());
         this.setCanonicalUrl(other.getCanonicalUrl());
         this.setNoindex(other.getNoindex());
+        this.setCommentsClosed(other.getCommentsClosed());
         this.setAnchor(other.getAnchor());
         this.setPubTime(other.getPubTime());
         this.setUpdateTime(other.getUpdateTime());
@@ -456,6 +458,15 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
 
     public void setNoindex(Boolean noindex) {
         this.noindex = noindex;
+    }
+
+    /** True when the owner has closed this entry to new reader comments. */
+    public Boolean getCommentsClosed() {
+        return commentsClosed;
+    }
+
+    public void setCommentsClosed(Boolean commentsClosed) {
+        this.commentsClosed = commentsClosed;
     }
 
     /**

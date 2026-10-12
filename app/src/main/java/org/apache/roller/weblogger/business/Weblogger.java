@@ -108,6 +108,11 @@ public interface Weblogger {
     BusinessManager getBusinessManager();
 
     /**
+     * Get the CommentManager, which stores comments by signed-in readers.
+     */
+    CommentManager getCommentManager();
+
+    /**
      * Get the EventManager, which records first-party outcome events.
      */
     EventManager getEventManager();

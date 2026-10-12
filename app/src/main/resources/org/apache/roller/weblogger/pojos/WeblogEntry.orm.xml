@@ -108,6 +108,9 @@
             <basic name="noindex">
                 <column name="noindex" insertable="true" updatable="true" unique="false" nullable="true"/>
             </basic>
+            <basic name="commentsClosed">
+                <column name="comments_closed" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
             <basic name="jsonLdType">
                 <column name="jsonld_type" insertable="true" updatable="true" unique="false" nullable="true"/>
                 <enumerated>STRING</enumerated>

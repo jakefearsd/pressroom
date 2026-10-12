@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<entity-mappings version="3.0" xmlns="https://jakarta.ee/xml/ns/persistence/orm"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence/orm https://jakarta.ee/xml/ns/persistence/orm_3_0.xsd">
+    <package>org.apache.roller.weblogger.pojos</package>
+    <entity metadata-complete="true" name="ReaderComment"
+            class="org.apache.roller.weblogger.pojos.ReaderComment" access="PROPERTY">
+        <table name="roller_comment"/>
+        <!-- One query for an entry's thread: top-level PUBLISHED comments with
+             their author, and the PUBLISHED reply with its author. -->
+        <named-query name="ReaderComment.getPublishedForEntry">
+            <query>SELECT c FROM ReaderComment c JOIN FETCH c.author
+                   LEFT JOIN FETCH c.reply r ON r.status = org.apache.roller.weblogger.pojos.ReaderComment.Status.PUBLISHED
+                   LEFT JOIN FETCH r.author
+                   WHERE c.entry = ?1 AND c.replyTo IS NULL
+                   AND c.status = org.apache.roller.weblogger.pojos.ReaderComment.Status.PUBLISHED
+                   ORDER BY c.created, c.id</query>
+            <!-- The reply is filtered by the ON clause, but a comment already in the shared
+                 cache would keep whatever reply it was loaded with (a hidden one). Refresh
+                 so that, after this query, getReply() is the PUBLISHED reply or null. -->
+            <hint name="eclipselink.refresh" value="true"/>
+        </named-query>
+        <named-query name="ReaderComment.getPendingForEntryAndAuthor">
+            <query>SELECT c FROM ReaderComment c WHERE c.entry = ?1 AND c.author = ?2
+                   AND c.status = org.apache.roller.weblogger.pojos.ReaderComment.Status.PENDING
+                   ORDER BY c.created, c.id</query>
+        </named-query>
+        <named-query name="ReaderComment.getByAuthor">
+            <query>SELECT c FROM ReaderComment c WHERE c.author = ?1 ORDER BY c.created DESC, c.id</query>
+        </named-query>
+        <named-query name="ReaderComment.countByAuthorWeblogStatus">
+            <query>SELECT COUNT(c) FROM ReaderComment c WHERE c.author = ?1 AND c.entry.website = ?2
+                   AND c.status = ?3</query>
+        </named-query>
+        <named-query name="ReaderComment.getWeblogsPublishedBy">
+            <query>SELECT DISTINCT w FROM ReaderComment c JOIN c.entry e JOIN e.website w
+                   WHERE c.author = ?1
+                   AND c.status = org.apache.roller.weblogger.pojos.ReaderComment.Status.PUBLISHED
+                   ORDER BY w.handle</query>
+        </named-query>
+        <attributes>
+            <id name="id">
+                <column name="id"/>
+            </id>
+            <basic name="body">
+                <column name="body" nullable="false"/>
+            </basic>
+            <basic name="status">
+                <column name="status" nullable="false"/>
+                <enumerated>STRING</enumerated>
+            </basic>
+            <basic name="authorIsOwner">
+                <column name="author_is_owner" nullable="false"/>
+            </basic>
+            <basic name="created">
+                <column name="created" nullable="false"/>
+                <temporal>TIMESTAMP</temporal>
+            </basic>
+            <basic name="statusChanged">
+                <column name="status_changed" nullable="false"/>
+                <temporal>TIMESTAMP</temporal>
+            </basic>
+            <many-to-one name="entry" target-entity="org.apache.roller.weblogger.pojos.WeblogEntry" fetch="LAZY">
+                <join-column name="entry_id" nullable="false"/>
+            </many-to-one>
+            <many-to-one name="author" target-entity="org.apache.roller.weblogger.pojos.User" fetch="LAZY">
+                <join-column name="author_id" nullable="false"/>
+            </many-to-one>
+            <many-to-one name="replyTo" target-entity="org.apache.roller.weblogger.pojos.ReaderComment" fetch="LAZY">
+                <join-column name="reply_to_id" nullable="true"/>
+            </many-to-one>
+            <one-to-one name="reply" mapped-by="replyTo" target-entity="org.apache.roller.weblogger.pojos.ReaderComment" fetch="LAZY">
+                <cascade>
+                    <cascade-remove/>
+                </cascade>
+            </one-to-one>
+        </attributes>
+    </entity>
+</entity-mappings>
