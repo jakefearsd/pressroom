@@ -98,20 +98,26 @@ public class CommentsModerationController extends BaseController {
     @PostMapping("/comments!approve.rol")
     public String approve(@RequestParam(name = "ids", required = false) String[] ids,
                           @RequestParam(name = "status", required = false) String status,
+                          @RequestParam(name = "entry", required = false) String entryId,
+                          @RequestParam(name = "page", required = false, defaultValue = "0") int page,
                           HttpServletRequest request, Model model) {
-        return moveAll(ids, status, Status.PUBLISHED, "comments.approved", request, model);
+        return moveAll(ids, status, entryId, page, Status.PUBLISHED, "comments.approved", request, model);
     }
 
     @PostMapping("/comments!hide.rol")
     public String hide(@RequestParam(name = "ids", required = false) String[] ids,
                        @RequestParam(name = "status", required = false) String status,
+                       @RequestParam(name = "entry", required = false) String entryId,
+                       @RequestParam(name = "page", required = false, defaultValue = "0") int page,
                        HttpServletRequest request, Model model) {
-        return moveAll(ids, status, Status.HIDDEN, "comments.hidden", request, model);
+        return moveAll(ids, status, entryId, page, Status.HIDDEN, "comments.hidden", request, model);
     }
 
     @PostMapping("/comments!delete.rol")
     public String delete(@RequestParam(name = "ids", required = false) String[] ids,
                          @RequestParam(name = "status", required = false) String status,
+                         @RequestParam(name = "entry", required = false) String entryId,
+                         @RequestParam(name = "page", required = false, defaultValue = "0") int page,
                          HttpServletRequest request, Model model) {
         populateCommonModel(request, model);
         User actor = getAuthenticatedUser(request);
@@ -126,7 +132,7 @@ public class CommentsModerationController extends BaseController {
             log.error("Error deleting comments", ex);
             addError(model, "generic.error.check.logs", request);
         }
-        load(request, model, parse(status), 0, null);
+        load(request, model, parse(status), page, entryId);
         return ".Comments";
     }
 
@@ -134,6 +140,8 @@ public class CommentsModerationController extends BaseController {
     public String reply(@RequestParam(name = "id") String id,
                         @RequestParam(name = "body") String body,
                         @RequestParam(name = "status", required = false) String status,
+                        @RequestParam(name = "entry", required = false) String entryId,
+                        @RequestParam(name = "page", required = false, defaultValue = "0") int page,
                         HttpServletRequest request, Model model) {
         populateCommonModel(request, model);
         try {
@@ -149,11 +157,11 @@ public class CommentsModerationController extends BaseController {
             log.error("Error replying to comment {}", id, ex);
             addError(model, "generic.error.check.logs", request);
         }
-        load(request, model, parse(status), 0, null);
+        load(request, model, parse(status), page, entryId);
         return ".Comments";
     }
 
-    private String moveAll(String[] ids, String status, Status target, String messageKey,
+    private String moveAll(String[] ids, String status, String entryId, int page, Status target, String messageKey,
                            HttpServletRequest request, Model model) {
         populateCommonModel(request, model);
         User actor = getAuthenticatedUser(request);
@@ -172,7 +180,7 @@ public class CommentsModerationController extends BaseController {
             log.error("Error moderating comments", ex);
             addError(model, "generic.error.check.logs", request);
         }
-        load(request, model, parse(status), 0, null);
+        load(request, model, parse(status), page, entryId);
         return ".Comments";
     }
 

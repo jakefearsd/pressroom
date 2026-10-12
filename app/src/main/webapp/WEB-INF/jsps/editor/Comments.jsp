@@ -19,8 +19,9 @@
 
 <%-- Reader comments. Everything a reader typed -- display name, username and
      body -- goes through fn:escapeXml; the body is plain text shown with
-     pre-wrap, never HTML. The entry title is the entry's own displayTitle
-     (tags already removed), escaped as well. --%>
+     pre-wrap, never HTML. The entry title is the entry's displayTitle, emitted
+     bare like Entries.jsp: it is already escaped (and tag-free), so escaping
+     it again would show an ampersand as the literal text amp. --%>
 
 <spring:message var="tabPending" code="comments.tab.pending"/>
 <spring:message var="tabPublished" code="comments.tab.published"/>
@@ -74,6 +75,8 @@
 <form id="commentsModerationForm" method="post" action="${base}/comments!approve.rol">
     <input type="hidden" name="weblog" value="${fn:escapeXml(actionWeblog.handle)}"/>
     <input type="hidden" name="status" value="${fn:escapeXml(status)}"/>
+    <input type="hidden" name="page" value="${fn:escapeXml(page)}"/>
+    <c:if test="${not empty entryFilter}"><input type="hidden" name="entry" value="${fn:escapeXml(entryFilter)}"/></c:if>
     <sec:csrfInput/>
 
     <c:choose>
@@ -141,7 +144,7 @@
                         <c:param name="weblog" value="${actionWeblog.handle}"/>
                         <c:param name="bean.id" value="${c.entry.id}"/>
                     </c:url>
-                    <a href="${editUrl}">${fn:escapeXml(c.entry.displayTitle)}</a>
+                    <a href="${editUrl}">${c.entry.displayTitle}</a>
                 </td>
                 <td class="data"><rc:date value="${c.created}"/></td>
                 <td>
@@ -180,6 +183,8 @@
         <form id="reply-${fn:escapeXml(c.id)}" method="post" action="${base}/comments!reply.rol">
             <input type="hidden" name="weblog" value="${fn:escapeXml(actionWeblog.handle)}"/>
             <input type="hidden" name="status" value="${fn:escapeXml(status)}"/>
+    <input type="hidden" name="page" value="${fn:escapeXml(page)}"/>
+    <c:if test="${not empty entryFilter}"><input type="hidden" name="entry" value="${fn:escapeXml(entryFilter)}"/></c:if>
             <input type="hidden" name="id" value="${fn:escapeXml(c.id)}"/>
             <sec:csrfInput/>
         </form>

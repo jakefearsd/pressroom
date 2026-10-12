@@ -122,18 +122,18 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
         ReaderComment a = comment("a", weblog, Status.PENDING, "x");
         ReaderComment b = comment("b", weblog, Status.PENDING, "y");
 
-        controller.approve(new String[] {"a", "b"}, "PENDING", request, model);
+        controller.approve(new String[] {"a", "b"}, "PENDING", null, 0, request, model);
         verify(service).setStatus(a, Status.PUBLISHED, user);
         verify(service).setStatus(b, Status.PUBLISHED, user);
         assertTrue(messages(model).contains("2 approved."), messages(model).toString());
 
         Model m2 = newModel();
-        controller.hide(new String[] {"a"}, "PUBLISHED", request, m2);
+        controller.hide(new String[] {"a"}, "PUBLISHED", null, 0, request, m2);
         verify(service).setStatus(a, Status.HIDDEN, user);
         assertTrue(messages(m2).contains("1 hidden."));
 
         Model m3 = newModel();
-        controller.delete(new String[] {"a", "b"}, "HIDDEN", request, m3);
+        controller.delete(new String[] {"a", "b"}, "HIDDEN", null, 0, request, m3);
         verify(service).delete(a, user);
         verify(service).delete(b, user);
         assertTrue(messages(m3).contains("2 deleted."));
@@ -144,9 +144,9 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
         ReaderComment mine = comment("m", weblog, Status.PENDING, "x");
         comment("f", other, Status.PENDING, "y");
 
-        controller.approve(new String[] {"m", "f", "missing"}, "PENDING", request, model);
-        controller.delete(new String[] {"f"}, "PENDING", request, newModel());
-        controller.hide(new String[] {"f"}, "PENDING", request, newModel());
+        controller.approve(new String[] {"m", "f", "missing"}, "PENDING", null, 0, request, model);
+        controller.delete(new String[] {"f"}, "PENDING", null, 0, request, newModel());
+        controller.hide(new String[] {"f"}, "PENDING", null, 0, request, newModel());
 
         verify(service).setStatus(mine, Status.PUBLISHED, user);
     }
@@ -154,9 +154,9 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
     @Test
     void aForeignCommentIsNeverTouched() throws Exception {
         ReaderComment foreign = comment("f", other, Status.PENDING, "y");
-        controller.approve(new String[] {"f"}, "PENDING", request, model);
-        controller.hide(new String[] {"f"}, "PENDING", request, newModel());
-        controller.delete(new String[] {"f"}, "PENDING", request, newModel());
+        controller.approve(new String[] {"f"}, "PENDING", null, 0, request, model);
+        controller.hide(new String[] {"f"}, "PENDING", null, 0, request, newModel());
+        controller.delete(new String[] {"f"}, "PENDING", null, 0, request, newModel());
         verify(service, never()).setStatus(any(), any(), any());
         verify(service, never()).delete(any(), any());
         assertTrue(messages(model).contains("0 approved."));
@@ -166,7 +166,7 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
     @Test
     void aTombstoneCannotBeApproved() throws Exception {
         comment("t", weblog, Status.HIDDEN, "");
-        controller.approve(new String[] {"t"}, "HIDDEN", request, model);
+        controller.approve(new String[] {"t"}, "HIDDEN", null, 0, request, model);
         verify(service, never()).setStatus(any(), any(), any());
     }
 
@@ -175,7 +175,7 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
         ReaderComment a = comment("a", weblog, Status.PENDING, "x");
         org.mockito.Mockito.doThrow(new WebloggerException("down")).when(service)
                 .setStatus(a, Status.PUBLISHED, user);
-        controller.approve(new String[] {"a"}, "PENDING", request, model);
+        controller.approve(new String[] {"a"}, "PENDING", null, 0, request, model);
         assertTrue(errors(model).contains("generic.error.check.logs"));
     }
 
@@ -185,7 +185,7 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
         ReaderComment stored = comment("r", weblog, Status.PUBLISHED, "thanks");
         when(service.reply(user, parent, "thanks")).thenReturn(CommentOutcome.stored(stored));
 
-        controller.reply("p", "thanks", "PUBLISHED", request, model);
+        controller.reply("p", "thanks", "PUBLISHED", null, 0, request, model);
 
         verify(service).reply(user, parent, "thanks");
         assertTrue(messages(model).contains("comments.replied"), messages(model).toString());
@@ -196,7 +196,7 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
         ReaderComment parent = comment("p", weblog, Status.PENDING, "q");
         when(service.reply(user, parent, "no")).thenReturn(CommentOutcome.refused(CommentRefusal.BAD_REPLY));
 
-        controller.reply("p", "no", "PENDING", request, model);
+        controller.reply("p", "no", "PENDING", null, 0, request, model);
 
         assertTrue(errors(model).contains("comments.reply.refused"), errors(model).toString());
     }
@@ -204,7 +204,7 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
     @Test
     void aForeignCommentTakesNoReply() throws Exception {
         comment("f", other, Status.PUBLISHED, "q");
-        controller.reply("f", "hi", "PUBLISHED", request, model);
+        controller.reply("f", "hi", "PUBLISHED", null, 0, request, model);
         verify(service, never()).reply(any(), any(), any());
         assertTrue(errors(model).contains("comments.reply.refused"));
     }
@@ -223,13 +223,17 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
                 continue; // a condition, not output
             }
             if (el.contains("c.author.") || el.contains("c.body") || el.contains("c.reply.body")
-                    || el.contains("c.entry.displayTitle")) {
+) {
                 fields++;
                 assertTrue(el.contains("fn:escapeXml"), "unescaped: ${" + el + "}");
             }
         }
         assertTrue(fields >= 3, "expected display name, username and body, found " + fields);
         assertTrue(src.contains("white-space: pre-wrap"));
+        // The entry title is emitted bare, as Entries.jsp does: displayTitle is already escaped, so
+        // escaping again would show "Fish &amp; Chips".
+        assertTrue(src.contains("${c.entry.displayTitle}"));
+        assertFalse(src.contains("escapeXml(c.entry.displayTitle)"));
     }
 
     private ReaderComment comment(String id, Weblog w, Status status, String body) throws Exception {
@@ -262,5 +266,31 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
         assertTrue(jsp.contains("id=\"commentsModerationForm\""));
         assertTrue(jsp.contains("data-confirm"));
         assertFalse(jsp.contains("onclick"));
+    }
+
+    @Test
+    void anActionReturnsToTheTabPageAndEntryFilter() throws Exception {
+        ReaderComment a = comment("a", weblog, Status.PUBLISHED, "x");
+        WeblogEntry e = entry("e1", weblog);
+
+        String view = controller.hide(new String[] {"a"}, "PUBLISHED", "e1", 2, request, model);
+
+        assertEquals(".Comments", view);
+        verify(manager).getComments(weblog, Status.PUBLISHED, e, 60, 30);
+        assertEquals("PUBLISHED", model.getAttribute("status"));
+        assertEquals(2, model.getAttribute("page"));
+        assertEquals("e1", model.getAttribute("entryFilter"));
+        verify(service).setStatus(a, Status.HIDDEN, user);
+    }
+
+    @Test
+    void anActionIgnoresAForeignEntryFilterLikeTheList() throws Exception {
+        comment("a", weblog, Status.PUBLISHED, "x");
+        entry("e2", other);
+
+        controller.reply("a", "hi", "PUBLISHED", "e2", 0, request, model);
+
+        verify(manager).getComments(weblog, Status.PUBLISHED, null, 0, 30);
+        assertEquals(null, model.getAttribute("entryFilter"));
     }
 }
