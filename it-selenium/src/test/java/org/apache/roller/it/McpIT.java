@@ -207,12 +207,12 @@ class McpIT extends RollerIT {
     }
 
     @Test
-    void toolsListHasTheElevenToolsAndTheInstructionsArrive() throws Exception {
+    void toolsListHasTheTwelveToolsAndTheInstructionsArrive() throws Exception {
         Token token = mint("McpIT list", "READ", null);
         try {
             HttpResponse<String> listed = post(token.raw(), rpcBody("tools/list", Map.of()), Map.of());
             JsonNode tools = JSON.readTree(listed.body()).get("result").get("tools");
-            assertEquals(11, tools.size(), listed.body());
+            assertEquals(12, tools.size(), listed.body());
             HttpResponse<String> init = post(token.raw(), rpcBody("initialize", Map.of("protocolVersion",
                     "2025-06-18", "capabilities", Map.of(), "clientInfo", Map.of("name", "McpIT", "version", "1"))),
                     Map.of());
