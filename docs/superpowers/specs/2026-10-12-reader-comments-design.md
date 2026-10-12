@@ -229,11 +229,13 @@ The shared audience-assets script, as the contact form does, turns each
   {"signedIn": true, "canPost": true, "displayName": "...",
    "isOwner": bool, "csrf": {"header": "...", "token": "..."},
    "accountUrl": "<ctx>/roller-ui/account.rol",
-   "pending": [ {id, body, created} ... ]}
+   "pending": [ {id, body, created} ... ],
+   "ownPublished": ["<comment id>", ...]}
   ```
 
   `pending` lists that account's own `PENDING` comments on this entry, shown
-  as "awaiting approval".
+  as "awaiting approval". `ownPublished` lists the ids of its own `PUBLISHED`
+  comments on this entry.
 
 **Posting.**
 - `POST <ctx>/roller-ui/rendering/comments.rol` takes a JSON body
@@ -254,9 +256,12 @@ The shared audience-assets script, as the contact form does, turns each
 - `DELETE <ctx>/roller-ui/rendering/comments/<id>.rol`, with CSRF, deletes
   the caller's own comment.
 - Answers: `204`, or `404` when it is not theirs or does not exist.
-- The script shows a Delete link on the reader's own published comments.
-  Those are marked `data-author="<username>"`. The session answer carries the
-  username so the script can match it; the username is not secret.
+- The script shows a Delete link on the reader's own published comments. It
+  matches each `ownPublished` id from the session answer to the rendered
+  `id="comment-<id>"`.
+- The cached page carries no username at all (ruling R7, 2026-10-12). An
+  owner's login name would otherwise be published on every page they
+  comment on.
 
 **Escaping.** The script inserts every server-provided string with
 `textContent`, never `innerHTML`.
