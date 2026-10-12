@@ -30,6 +30,7 @@ import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
+import org.apache.roller.weblogger.ui.core.security.sso.RollerOidcUser;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -336,6 +337,10 @@ public class RollerHandlerInterceptor implements HandlerInterceptor {
     /**
      * Resolve the Roller User from the Spring Security context.
      * Returns null if no user is authenticated.
+     *
+     * <p>A reader signed in through the provider carries a {@link RollerOidcUser},
+     * whose name is the Roller username. Only that principal type is trusted for
+     * one: a bare OIDC user's name is the provider's subject, never a username.
      */
     private User resolveAuthenticatedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -347,6 +352,8 @@ public class RollerHandlerInterceptor implements HandlerInterceptor {
         String username = null;
         if (principal instanceof UserDetails userDetails) {
             username = userDetails.getUsername();
+        } else if (principal instanceof RollerOidcUser reader) {
+            username = reader.getName();
         } else if (principal instanceof String name) {
             // Some authentication tokens store the username directly as a String
             if (!"anonymousUser".equals(name)) {

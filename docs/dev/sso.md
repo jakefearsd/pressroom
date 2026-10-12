@@ -152,6 +152,14 @@ provider. Sign-in changes the session id.
   registers it container-wide on `/*`. Same hazard as `ApiTokenAuthFilter`.
 - The authorized-client repository discards the access token; the default
   in-memory one would hold every reader's token forever.
+- **The principal is a `RollerOidcUser`, not a `UserDetails`.** Anything that
+  reads the signed-in user off the security context must accept it (its
+  `getName()` is the Roller username; a bare `OidcUser`'s is the provider's
+  subject, never trusted). `RollerHandlerInterceptor.resolveAuthenticatedUser`
+  handled only `UserDetails` and `String`, so a reader promoted to editor was
+  sent back to log in from `menu.rol` and every other page requiring a user.
+  The unit sweeps signed readers in with a `UserDetails`, so only
+  `SsoSignInIT` (criterion 29) saw it.
 
 ## Tests
 

@@ -17,6 +17,7 @@
  */
 package org.apache.roller.weblogger.ui.controllers;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 
@@ -28,6 +29,7 @@ import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
+import org.apache.roller.weblogger.ui.core.security.sso.RollerOidcUser;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,8 +38,13 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.oidc.OidcIdToken;
+import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.method.HandlerMethod;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -391,6 +398,54 @@ class RollerHandlerInterceptorTest {
         interceptor.preHandle(request, response, handlerFor(new PlainController()));
 
         assertNull(request.getAttribute("authenticatedUser"));
+    }
+
+    /**
+     * A reader signed in through the provider carries a {@link RollerOidcUser},
+     * which is not a {@code UserDetails}; its name is the Roller username.
+     * Resolving only UserDetails and String principals sent a reader promoted to
+     * editor back to log in from every page that requires a user, menu.rol
+     * included (found by SsoSignInIT, spec criterion 29).
+     */
+    @Test
+    void aProviderSignedInPrincipalResolvesToItsRollerAccount() throws Exception {
+        SecurityContextHolder.getContext().setAuthentication(providerToken(
+                new RollerOidcUser(oidcUser("provider-subject-1"), "alice", EDITOR, false)));
+
+        boolean proceed = interceptor.preHandle(request, response,
+                handlerFor(new SecuredController(true, List.of(), false, List.of())));
+
+        assertTrue(proceed, "a provider-signed-in account was sent to " + response.getRedirectedUrl());
+        assertSame(alice, request.getAttribute("authenticatedUser"));
+        verify(weblogger.userManager(), never()).getUserByUserName("provider-subject-1");
+    }
+
+    /**
+     * Characterisation, passing before the fix above and pinned so it keeps
+     * passing: only Roller's own principal is trusted for a username. A bare
+     * OIDC user's name is the provider's subject, which is not a Roller
+     * username and must never be looked up as one.
+     */
+    @Test
+    void aBareOidcPrincipalResolvesToNobody() throws Exception {
+        SecurityContextHolder.getContext().setAuthentication(providerToken(oidcUser("alice")));
+
+        interceptor.preHandle(request, response, handlerFor(new PlainController()));
+
+        assertNull(request.getAttribute("authenticatedUser"));
+        verify(weblogger.userManager(), never()).getUserByUserName("alice");
+    }
+
+    private static final List<SimpleGrantedAuthority> EDITOR = List.of(new SimpleGrantedAuthority("editor"));
+
+    private static DefaultOidcUser oidcUser(String subject) {
+        OidcIdToken idToken = OidcIdToken.withTokenValue("t").subject(subject)
+                .issuedAt(Instant.now()).expiresAt(Instant.now().plusSeconds(60)).build();
+        return new DefaultOidcUser(EDITOR, idToken);
+    }
+
+    private static OAuth2AuthenticationToken providerToken(OidcUser principal) {
+        return new OAuth2AuthenticationToken(principal, EDITOR, "oidc");
     }
 
     /**
