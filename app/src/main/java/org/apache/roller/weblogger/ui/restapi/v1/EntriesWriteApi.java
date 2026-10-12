@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.Set;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
@@ -13,6 +14,7 @@ import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.controllers.EntryDeletion;
 import org.apache.roller.weblogger.ui.controllers.UISecurityEnforced;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
+import org.apache.roller.weblogger.ui.restapi.dto.ClearFields;
 import org.apache.roller.weblogger.ui.restapi.ColumnLimits;
 import org.apache.roller.weblogger.ui.restapi.dto.EntryDtos;
 import org.apache.roller.weblogger.util.Utilities;
@@ -47,13 +49,16 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         Weblog weblog = requireActionWeblog(request);
         User user = requireAuthenticatedUser(request);
 
+        if (body.clear() != null && !body.clear().isEmpty()) {
+            throw ApiException.badRequest("clear applies only to updates.");
+        }
         requireTitleAndText(body);
 
         WeblogEntry entry = new WeblogEntry();
         entry.setWebsite(weblog);
         entry.setCreatorUserName(user.getUserName());
 
-        EntryDtos.applyWrite(entry, body, weblog);
+        EntryDtos.applyWrite(entry, body, weblog, Set.of());
         applyCategory(entry, weblog, body.category());
         applyTags(entry, body.tags());
         applyPublishNowDefault(entry);
@@ -84,8 +89,10 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         // (to DRAFT or straight to PUBLISHED) by a side door that bypasses
         // restore's DRAFT-only rule entirely. See requireLiveEntry's javadoc.
         WeblogEntry entry = requireLiveEntry(request, id);
+        Set<String> cleared = ClearFields.validate(body.clear(), body,
+                EntryDtos.ENTRY_CLEARABLE, EntryDtos.ENTRY_PAIRS);
 
-        EntryDtos.applyWrite(entry, body, weblog);
+        EntryDtos.applyWrite(entry, body, weblog, cleared);
         applyCategory(entry, weblog, body.category());
         applyTags(entry, body.tags());
         applyPublishNowDefault(entry);

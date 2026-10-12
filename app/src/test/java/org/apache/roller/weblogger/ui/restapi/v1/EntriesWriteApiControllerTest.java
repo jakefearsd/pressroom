@@ -1178,4 +1178,123 @@ class EntriesWriteApiControllerTest {
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
     }
+
+    private static WeblogEntry aFullyDecoratedEntry(Weblog weblog) {
+        WeblogEntry entry = new WeblogEntry();
+        entry.setId("entry-1");
+        entry.setWebsite(weblog);
+        entry.setTitle("kept");
+        entry.setText("body");
+        entry.setSummary("s");
+        entry.setMetaTitle("mt");
+        entry.setSearchDescription("sd");
+        entry.setCanonicalUrl("https://example.com/x");
+        entry.setFeaturedImageId("img-1");
+        entry.setOgImageId("img-2");
+        entry.setJsonLdType(org.apache.roller.weblogger.pojos.JsonLdType.EVENT);
+        entry.setGeoLatitude(32.9);
+        entry.setGeoLongitude(-117.2);
+        entry.setEventStart(java.sql.Timestamp.from(java.time.Instant.parse("2026-08-02T19:30:00Z")));
+        entry.setEventEnd(java.sql.Timestamp.from(java.time.Instant.parse("2026-08-02T21:00:00Z")));
+        entry.setEventLocation("The Hall");
+        return entry;
+    }
+
+    private org.springframework.test.web.servlet.ResultActions patchEntry(
+            Weblogger weblogger, Weblog weblog, String json) throws Exception {
+        return mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
+                        .requestAttr("actionWeblog", weblog)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json));
+    }
+
+    @Test
+    void clearRemovesEachClearableEntryField() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogEntry entry = aFullyDecoratedEntry(weblog);
+        when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1")).thenReturn(entry);
+        String names = org.apache.roller.weblogger.ui.restapi.dto.EntryDtos.ENTRY_CLEARABLE.stream()
+                .map(n -> "\"" + n + "\"").collect(java.util.stream.Collectors.joining(","));
+
+        String body = patchEntry(weblogger, weblog, "{\"clear\":[" + names + "]}")
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        assertNull(entry.getSummary());
+        assertNull(entry.getMetaTitle());
+        assertNull(entry.getSearchDescription());
+        assertNull(entry.getCanonicalUrl());
+        assertNull(entry.getFeaturedImageId());
+        assertNull(entry.getOgImageId());
+        assertEquals(org.apache.roller.weblogger.pojos.JsonLdType.BLOG_POSTING, entry.getJsonLdType());
+        assertNull(entry.getGeoLatitude());
+        assertNull(entry.getGeoLongitude());
+        assertNull(entry.getEventStart());
+        assertNull(entry.getEventEnd());
+        assertNull(entry.getEventLocation());
+        assertEquals("kept", entry.getTitle());
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(entry);
+        tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
+        for (String name : org.apache.roller.weblogger.ui.restapi.dto.EntryDtos.ENTRY_CLEARABLE) {
+            if ("jsonLdType".equals(name)) {
+                assertEquals("BLOG_POSTING", json.get(name).asString());
+            } else {
+                assertTrue(json.get(name) == null || json.get(name).isNull(), name + " should be gone");
+            }
+        }
+    }
+
+    @Test
+    void clearOnCreateIsA400() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/entries")
+                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"t\",\"text\":\"x\",\"clear\":[\"summary\"]}"))
+                .andExpect(status().isBadRequest())
+                .andReturn().getResponse().getContentAsString();
+
+        assertTrue(body.contains("clear applies only to updates."), body);
+
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+    }
+
+    @Test
+    void clearRefusalsChangeNothing() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogEntry entry = aFullyDecoratedEntry(weblog);
+        when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1")).thenReturn(entry);
+
+        patchEntry(weblogger, weblog, "{\"clear\":[\"title\"]}").andExpect(status().isBadRequest());
+        String pairBody = patchEntry(weblogger, weblog, "{\"clear\":[\"geoLatitude\"]}")
+                .andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
+        assertTrue(pairBody.contains("geoLatitude and geoLongitude are cleared together."), pairBody);
+        patchEntry(weblogger, weblog, "{\"summary\":\"x\",\"clear\":[\"summary\"]}")
+                .andExpect(status().isBadRequest());
+
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        assertEquals("s", entry.getSummary());
+        assertEquals(32.9, entry.getGeoLatitude());
+    }
+
+    @Test
+    void clearingTheStartLeavesAnEndAlone() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogEntry entry = aFullyDecoratedEntry(weblog);
+        java.sql.Timestamp end = entry.getEventEnd();
+        when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1")).thenReturn(entry);
+
+        patchEntry(weblogger, weblog, "{\"clear\":[\"eventStart\"]}").andExpect(status().isOk());
+
+        assertNull(entry.getEventStart());
+        assertEquals(end, entry.getEventEnd());
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(entry);
+    }
 }

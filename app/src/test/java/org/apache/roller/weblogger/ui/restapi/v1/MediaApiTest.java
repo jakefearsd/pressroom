@@ -59,7 +59,7 @@ class MediaApiTest {
     void anAbsentAltTextInAPatchLeavesTheStoredValue() {
         MediaFile file = new MediaFile();
         file.setAltText("kept");
-        MediaDtos.applyPatch(file, new MediaDtos.MediaPatch(null, 0.5, 0.5, null, null));
+        MediaDtos.applyPatch(file, new MediaDtos.MediaPatch(null, 0.5, 0.5, null, null, null), java.util.Set.of());
         assertEquals("kept", file.getAltText());
     }
 
@@ -72,7 +72,7 @@ class MediaApiTest {
     void anExplicitlyEmptyAltTextIsStored() {
         MediaFile file = new MediaFile();
         file.setAltText("was here");
-        MediaDtos.applyPatch(file, new MediaDtos.MediaPatch("", null, null, null, null));
+        MediaDtos.applyPatch(file, new MediaDtos.MediaPatch("", null, null, null, null, null), java.util.Set.of());
         assertEquals("", file.getAltText());
     }
 
@@ -91,7 +91,7 @@ class MediaApiTest {
         String tooLong = "a".repeat(300);
 
         ApiException ex = assertThrows(ApiException.class, () -> MediaDtos.applyPatch(
-                file, new MediaDtos.MediaPatch(tooLong, null, null, null, null)));
+                file, new MediaDtos.MediaPatch(tooLong, null, null, null, null, null), java.util.Set.of()));
 
         assertEquals(400, ex.getStatus());
         assertNull(file.getAltText(), "the in-memory file must be untouched on refusal");
@@ -102,7 +102,7 @@ class MediaApiTest {
     void anAltTextAtExactlyTheColumnLimitIsAccepted() {
         MediaFile file = new MediaFile();
         String atLimit = "a".repeat(255);
-        MediaDtos.applyPatch(file, new MediaDtos.MediaPatch(atLimit, null, null, null, null));
+        MediaDtos.applyPatch(file, new MediaDtos.MediaPatch(atLimit, null, null, null, null, null), java.util.Set.of());
         assertEquals(255, file.getAltText().length());
     }
 
@@ -118,7 +118,7 @@ class MediaApiTest {
         file.setName("original.jpg");
 
         ApiException ex = assertThrows(ApiException.class, () -> MediaDtos.applyPatch(
-                file, new MediaDtos.MediaPatch(null, null, null, null, "   ")));
+                file, new MediaDtos.MediaPatch(null, null, null, null, "   ", null), java.util.Set.of()));
 
         assertEquals(400, ex.getStatus());
         assertEquals("original.jpg", file.getName(), "the in-memory file must be untouched on refusal");
@@ -697,5 +697,44 @@ class MediaApiTest {
         assertEquals(List.of(WeblogPermission.POST), new MediaApi().requiredWeblogPermissionActions());
         assertTrue(new MediaApi().isUserRequired());
         assertTrue(new MediaApi().isWeblogRequired());
+    }
+
+    private MediaFile patchedFile(Weblogger weblogger, Weblog weblog, String json, int expectedStatus)
+            throws Exception {
+        MediaFileDirectory dir = aDirectory(weblog, "default");
+        MediaFile file = aMediaFile(dir, "dog.jpg");
+        file.setAltText("a");
+        file.setFocalX(0.2);
+        file.setFocalY(0.8);
+        when(weblogger.getMediaFileManager().getMediaFile("file-1")).thenReturn(file);
+        int actual = mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/weblogs/myblog/media/{id}", "file-1")
+                        .requestAttr("actionWeblog", weblog)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andReturn().getResponse().getStatus();
+        assertEquals(expectedStatus, actual);
+        return file;
+    }
+
+    @Test
+    void clearRemovesAltTextAndTheFocalPair() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        MediaFile file = patchedFile(weblogger, aWeblog("myblog"),
+                "{\"clear\":[\"altText\",\"focalX\",\"focalY\"]}", 200);
+
+        assertNull(file.getAltText());
+        assertNull(file.getFocalX());
+        assertNull(file.getFocalY());
+        verify(weblogger.getMediaFileManager()).updateMediaFile(any(), any());
+    }
+
+    @Test
+    void halfTheFocalPairIsA400() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        MediaFile file = patchedFile(weblogger, aWeblog("myblog"), "{\"clear\":[\"focalX\"]}", 400);
+
+        assertEquals(0.2, file.getFocalX());
+        verify(weblogger.getMediaFileManager(), never()).updateMediaFile(any(), any());
     }
 }

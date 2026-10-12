@@ -1,7 +1,9 @@
 package org.apache.roller.weblogger.ui.restapi.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
+import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.roller.weblogger.pojos.MediaFile;
 import org.apache.roller.weblogger.pojos.MediaFileDirectory;
@@ -14,6 +16,12 @@ import org.apache.roller.weblogger.util.RollerMessages;
  * Views of a media file and a media file directory, for the automation API.
  */
 public final class MediaDtos {
+
+    /** The fields {@code clear} may name on a media file. */
+    public static final List<String> MEDIA_CLEARABLE = List.of("altText", "focalX", "focalY");
+
+    /** Fields that are cleared together or not at all. */
+    public static final List<List<String>> MEDIA_PAIRS = List.of(List.of("focalX", "focalY"));
 
     private MediaDtos() {
     }
@@ -35,15 +43,17 @@ public final class MediaDtos {
 
     /**
      * A partial update. Every component is nullable and null means ABSENT,
-     * not "clear this" -- with one deliberate exception: an explicitly empty
-     * {@code altText} ("") IS a real value, because an author who cleared
-     * the field did that on purpose (see {@link #applyPatch}).
+     * not "clear this"; {@code clear} removes a value. An explicitly empty
+     * {@code altText} ("") still sets an empty alt text (the author marked it
+     * on purpose, see {@link #applyPatch}), while {@code clear} removes it.
      * {@code directoryId} is not applied by {@link #applyPatch} -- moving a
      * file needs an ownership-checked directory lookup this pure mapper has
      * no business making, so the controller applies it after an explicit
      * lookup of its own.
      */
-    public record MediaPatch(String altText, Double focalX, Double focalY, String directoryId, String name) {
+    public record MediaPatch(String altText, Double focalX, Double focalY, String directoryId, String name,
+            @Schema(description = "Fields to remove: altText, focalX with focalY.")
+            List<String> clear) {
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -154,7 +164,7 @@ public final class MediaDtos {
      * is deliberately unnamed" concept a blank name could mean, only a
      * silently broken one.
      */
-    public static void applyPatch(MediaFile file, MediaPatch patch) {
+    public static void applyPatch(MediaFile file, MediaPatch patch, Set<String> cleared) {
         if (patch.altText() != null) {
             ColumnLimits.requireMaxLength("altText", patch.altText(), ColumnLimits.MEDIA_ALT_TEXT);
             file.setAltText(patch.altText());
@@ -172,6 +182,14 @@ public final class MediaDtos {
             }
             ColumnLimits.requireMaxLength("name", name, ColumnLimits.MEDIA_NAME);
             file.setName(name);
+        }
+        for (String name : cleared) {
+            switch (name) {
+                case "altText" -> file.setAltText(null);
+                case "focalX" -> file.setFocalX(null);
+                case "focalY" -> file.setFocalY(null);
+                default -> throw new IllegalArgumentException("Not clearable: " + name);
+            }
         }
     }
 }

@@ -632,4 +632,26 @@ class EntryBeanTest extends EditorControllerTestSupport {
         format.setTimeZone(zone);
         return format.format(timestamp);
     }
+
+    /** Characterisation: a cleared entry already copies to empty fields; written to pin it, passes at once. */
+    @Test
+    void aClearedEntryShowsEmptyFieldsInTheEditor() throws Exception {
+        WeblogEntry entry = storedEntry();
+        entry.setFeaturedImageId(null);
+        entry.setGeoLatitude(null);
+        entry.setGeoLongitude(null);
+        entry.setEventStart(null);
+        entry.setEventEnd(null);
+        entry.setEventLocation(null);
+
+        bean.copyFrom(entry, Locale.ROOT);
+
+        assertTrue(bean.getFeaturedImageId() == null || bean.getFeaturedImageId().isEmpty());
+        assertNull(bean.getGeoLatitude());
+        assertNull(bean.getGeoLongitude());
+        assertNull(bean.getEventStart());
+        assertEquals("", bean.getEventStartLocal());
+        assertEquals("", bean.getEventEndLocal());
+        assertTrue(bean.getEventLocation() == null || bean.getEventLocation().isEmpty());
+    }
 }

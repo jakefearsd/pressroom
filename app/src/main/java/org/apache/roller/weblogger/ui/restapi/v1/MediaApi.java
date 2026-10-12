@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.MediaFileManager;
@@ -15,6 +16,7 @@ import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.controllers.MediaUploads;
 import org.apache.roller.weblogger.ui.controllers.UISecurityEnforced;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
+import org.apache.roller.weblogger.ui.restapi.dto.ClearFields;
 import org.apache.roller.weblogger.ui.restapi.ColumnLimits;
 import org.apache.roller.weblogger.ui.restapi.dto.MediaDtos;
 import org.apache.roller.weblogger.util.RollerMessages;
@@ -166,9 +168,11 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
             @RequestBody MediaDtos.MediaPatch body) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
         MediaFile file = requireMedia(request, id);
+        Set<String> cleared = ClearFields.validate(body.clear(), body,
+                MediaDtos.MEDIA_CLEARABLE, MediaDtos.MEDIA_PAIRS);
         MediaFileDirectory target = body.directoryId() == null ? null : requireDirectory(request, body.directoryId());
 
-        MediaDtos.applyPatch(file, body);
+        MediaDtos.applyPatch(file, body, cleared);
         weblogger.getMediaFileManager().updateMediaFile(weblog, file);
 
         if (target != null && (file.getDirectory() == null || !target.getId().equals(file.getDirectory().getId()))) {

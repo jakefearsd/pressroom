@@ -8,6 +8,7 @@ import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.roller.weblogger.pojos.JsonLdType;
 import org.apache.roller.weblogger.pojos.Weblog;
@@ -25,6 +26,14 @@ public final class EntryDtos {
 
     private static final double MAX_LATITUDE = 90;
     private static final double MAX_LONGITUDE = 180;
+
+    /** The fields {@code clear} may name on an entry. */
+    public static final List<String> ENTRY_CLEARABLE = List.of("summary", "metaTitle", "searchDescription",
+            "canonicalUrl", "featuredImageId", "ogImageId", "jsonLdType", "geoLatitude", "geoLongitude",
+            "eventStart", "eventEnd", "eventLocation");
+
+    /** Fields that are cleared together or not at all. */
+    public static final List<List<String>> ENTRY_PAIRS = List.of(List.of("geoLatitude", "geoLongitude"));
 
     private EntryDtos() {
     }
@@ -179,16 +188,22 @@ public final class EntryDtos {
             @Schema(description = "The end, in the same form; not before eventStart.")
             String eventEnd,
             @Schema(description = "The venue's name.")
-            String eventLocation) {
+            String eventLocation,
+            @Schema(description = "On update, fields to remove: summary, metaTitle, searchDescription, "
+                    + "canonicalUrl, featuredImageId, ogImageId, jsonLdType (back to BLOG_POSTING), "
+                    + "geoLatitude with geoLongitude, eventStart, eventEnd, eventLocation. "
+                    + "Null never removes anything.")
+            List<String> clear) {
     }
 
     /**
      * Applies every field {@code write} actually carries onto {@code entry}.
      * {@code category} and {@code tags} are deliberately left untouched here
      * -- see {@link EntryWrite}'s javadoc -- the controller applies both
-     * itself after this call returns.
+     * itself after this call returns. {@code cleared} (already validated by
+     * {@code ClearFields}) is applied after the sets, before the event-order check.
      */
-    public static void applyWrite(WeblogEntry entry, EntryWrite write, Weblog weblog) {
+    public static void applyWrite(WeblogEntry entry, EntryWrite write, Weblog weblog, Set<String> cleared) {
         if (write.title() != null) {
             // The one place raw author input becomes escaped markup, shared
             // with the JSP editor so the two cannot drift. Checked AFTER
@@ -271,8 +286,29 @@ public final class EntryDtos {
             ColumnLimits.requireMaxLength("eventLocation", write.eventLocation(), ColumnLimits.EVENT_LOCATION);
             entry.setEventLocation(write.eventLocation());
         }
+        for (String name : cleared) {
+            clearField(entry, name);
+        }
         if (EntryFieldRules.endsBeforeStart(entry.getEventStart(), entry.getEventEnd())) {
             throw ApiException.badRequest("eventEnd must not be before eventStart.");
+        }
+    }
+
+    private static void clearField(WeblogEntry entry, String name) {
+        switch (name) {
+            case "summary" -> entry.setSummary(null);
+            case "metaTitle" -> entry.setMetaTitle(null);
+            case "searchDescription" -> entry.setSearchDescription(null);
+            case "canonicalUrl" -> entry.setCanonicalUrl(null);
+            case "featuredImageId" -> entry.setFeaturedImageId(null);
+            case "ogImageId" -> entry.setOgImageId(null);
+            case "jsonLdType" -> entry.setJsonLdType(JsonLdType.BLOG_POSTING);
+            case "geoLatitude" -> entry.setGeoLatitude(null);
+            case "geoLongitude" -> entry.setGeoLongitude(null);
+            case "eventStart" -> entry.setEventStart(null);
+            case "eventEnd" -> entry.setEventEnd(null);
+            case "eventLocation" -> entry.setEventLocation(null);
+            default -> throw new IllegalArgumentException("Not clearable: " + name);
         }
     }
 

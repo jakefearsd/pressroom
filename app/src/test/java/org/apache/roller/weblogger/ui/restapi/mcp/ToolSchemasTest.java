@@ -78,6 +78,6 @@ class ToolSchemasTest {
             assertEquals(schema.description(),
                     ((Map<String, Object>) props.get(component.getName())).get("description"), component.getName());
         }
-        assertEquals(11, described);
+        assertEquals(12, described);
     }
 }
