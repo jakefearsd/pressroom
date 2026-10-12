@@ -212,7 +212,7 @@ class SsoSignInIT extends RollerIT {
         assertEquals(contextPath() + START, URI.create($("#ssoSignIn").getAttribute("href")).getPath());
 
         clickAndAwaitNewPage($("#ssoSignIn"));
-        new KeycloakLoginPage().signIn(READER, passwordOf(READER));
+        new KeycloakLoginPage().signIn(READER, KeycloakLoginPage.passwordOf(READER));
 
         assertEquals(contextPath() + "/", currentPath(), "a sign-in with no return path lands on the site root");
         assertEquals(403, menuStatus(sessionCookie()).statusCode(), "the reader is not signed in");
@@ -398,7 +398,7 @@ class SsoSignInIT extends RollerIT {
         openPath(LOGIN);
         String before = sessionCookie();
         clickAndAwaitNewPage($("#ssoSignIn"));
-        new KeycloakLoginPage().signIn(READER, passwordOf(READER));
+        new KeycloakLoginPage().signIn(READER, KeycloakLoginPage.passwordOf(READER));
 
         String after = sessionCookie();
         assertNotEquals(before, after, "the session id survived the sign-in");
@@ -445,12 +445,6 @@ class SsoSignInIT extends RollerIT {
 
     // ------------------------------------------------------------- sign-in
 
-    /** Starts a sign-in that returns to {@code returnTo} and completes it on Keycloak's form. */
-    private void signInWithKeycloak(String user, String returnTo) {
-        openPath(START + "?return=" + encode(returnTo));
-        new KeycloakLoginPage().signIn(user, passwordOf(user));
-    }
-
     /**
      * Starts a sign-in and stops on the provider's form, returning the {@code state} it
      * was sent: the one value a callback must echo back.
@@ -461,11 +455,6 @@ class SsoSignInIT extends RollerIT {
         String state = queryParameter(url, "state");
         assertNotNull(state, "the provider was sent no state: " + url);
         return state;
-    }
-
-    /** The realm's test-only password convention; see roller-it-realm.json. */
-    private static String passwordOf(String user) {
-        return user + "-password";
     }
 
     private static String emailOf(String user) {

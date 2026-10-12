@@ -1,7 +1,7 @@
 {
   "realm": "roller-it",
   "attributes": {
-    "_comment": "Test fixture for SsoSignInIT (mvn verify -Pit): the realm Keycloak imports when the IT run starts its throwaway container (start-dev --import-realm, it-selenium/pom.xml). The client secret and every user password in this file are TEST-ONLY values: they protect nothing but a container that lives for one IT run on localhost, and must never be used anywhere real. The secret is repeated in roller-it.properties (sso.oidc.client.secret); change the two together. This sits in the realm's attributes because Keycloak refuses an unknown top-level field. VERIFY_PROFILE is disabled because Keycloak 24+ requires a first and last name by default and would stop noname-it at an Update Account Information form, which is exactly the claim-less sign-in that user exists to test; its email local part (nameless-reader) differs from its username so the test can tell the email fallback from a preferred_username one. reader-it is never modified by a test; writer-it (promoted) and disabled-it (disabled) exist so the two tests that change an account cannot leak that change into the others."
+    "_comment": "Test fixture for SsoSignInIT (mvn verify -Pit): the realm Keycloak imports when the IT run starts its throwaway container (start-dev --import-realm, it-selenium/pom.xml). The client secret and every user password in this file are TEST-ONLY values: they protect nothing but a container that lives for one IT run on localhost, and must never be used anywhere real. The secret is repeated in roller-it.properties (sso.oidc.client.secret); change the two together. This sits in the realm's attributes because Keycloak refuses an unknown top-level field. VERIFY_PROFILE is disabled because Keycloak 24+ requires a first and last name by default and would stop noname-it at an Update Account Information form, which is exactly the claim-less sign-in that user exists to test; its email local part (nameless-reader) differs from its username so the test can tell the email fallback from a preferred_username one. reader-it is never modified by a test; writer-it (promoted) and disabled-it (disabled) exist so the two tests that change an account cannot leak that change into the others. commenter-it and commenter2-it belong to CommentsIT alone (it deletes and renames their Roller accounts and builds per-weblog trust with them), so no SsoSignInIT assertion about an account by email can see them."
   },
   "enabled": true,
   "sslRequired": "none",
@@ -75,6 +75,28 @@
       "lastName": "Writer",
       "credentials": [
         { "type": "password", "value": "writer-it-password", "temporary": false }
+      ]
+    },
+    {
+      "username": "commenter-it",
+      "enabled": true,
+      "email": "commenter-it@example.com",
+      "emailVerified": true,
+      "firstName": "Cora",
+      "lastName": "Commenter",
+      "credentials": [
+        { "type": "password", "value": "commenter-it-password", "temporary": false }
+      ]
+    },
+    {
+      "username": "commenter2-it",
+      "enabled": true,
+      "email": "commenter2-it@example.com",
+      "emailVerified": true,
+      "firstName": "Colm",
+      "lastName": "Second",
+      "credentials": [
+        { "type": "password", "value": "commenter2-it-password", "temporary": false }
       ]
     },
     {

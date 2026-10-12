@@ -36,6 +36,15 @@ public final class KeycloakLoginPage {
     private static final Duration FORM_TIMEOUT = Duration.ofSeconds(30);
 
     /**
+     * The realm's test-only password convention: every user in
+     * src/test/resources/keycloak/roller-it-realm.json signs in with its username
+     * followed by {@code -password}.
+     */
+    public static String passwordOf(String user) {
+        return user + "-password";
+    }
+
+    /**
      * Fills the form and submits it, returning once the provider's answer has replaced
      * the page: the redirect back through Roller's callback to wherever the sign-in
      * lands, or Keycloak's own form again if it refused the password.

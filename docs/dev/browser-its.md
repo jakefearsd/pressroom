@@ -67,9 +67,10 @@ newest.
 `quay.io/keycloak/keycloak:26.0` (`it.keycloak.image`), in dev mode on the
 reserved port `it.kc.port`, importing realm `roller-it` from
 `it-selenium/src/test/resources/keycloak/roller-it-realm.json`: a confidential
-client `roller-it` and five users (`reader-it`, `unverified-it`, `noname-it`,
+client `roller-it` and seven users (`reader-it`, `unverified-it`, `noname-it`,
 plus `writer-it` and `disabled-it`, which only the promote and disable tests
-change). `noname-it`'s email is `nameless-reader@example.com`: a local part
+change, and `commenter-it` and `commenter2-it`, which belong to `CommentsIT`
+alone: it renames and deletes their Roller accounts). `noname-it`'s email is `nameless-reader@example.com`: a local part
 that is not the username, so criterion 18 tells the email fallback from a
 `preferred_username` one. "Not signed in" is asserted as a 302 **to the login
 page** (`SsoSignInIT.assertSentToLogIn`), never a bare 302: a 302 to
@@ -81,7 +82,8 @@ and every login page shows "Sign in with Keycloak". The client secret and
 passwords are test-only values, kept in those two files. `VERIFY_PROFILE` is
 disabled in the realm, or Keycloak 24+ stops a user with no name at an
 "Update Account Information" form. `SsoSignInIT` drives it at both context
-paths. The sign-in callback is built from the Absolute URL, so the class
+paths, and `CommentsIT` signs its readers in through it with the shared
+`RollerIT.signInWithKeycloak`. The sign-in callback is built from the Absolute URL, so the class
 sets `site.absoluteurl` to `baseUrl()` (`RollerIT.setSiteAbsoluteUrl`) once,
 restores it in `@AfterAll`, and holds `GLOBAL_CONFIG` **write** for the
 whole class, as `VirtualHostIT` does: anything that writes
@@ -159,8 +161,9 @@ a race:
   (`CUSTOM_THEMES_ALLOWED`), `ThemeMatrixIT` (`uploads.enabled`), `ApiIT`,
   `VirtualHostIT`, and `McpIT` (`uploads.enabled`, on its one import-refusal
   method only; its two weblog-creating methods hold it **read**, the rest
-  none), and by `SsoSignInIT`, which sets `site.absoluteurl` through
-  `setSiteAbsoluteUrl` as `VirtualHostIT` also does. One shared app instance holds
+  none), and by `SsoSignInIT` and `CommentsIT`, which set `site.absoluteurl`
+  through `setSiteAbsoluteUrl` as `VirtualHostIT` also does (both sign readers
+  in, and the sign-in callback is built from it). One shared app instance holds
   one set of runtime properties, so two overlapping would each see the
   other's flag. **A seventh `setGlobalFlag` class must take this lock** —
   nothing enforces it,

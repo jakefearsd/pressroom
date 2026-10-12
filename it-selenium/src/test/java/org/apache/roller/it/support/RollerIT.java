@@ -450,6 +450,26 @@ public abstract class RollerIT {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
+    /** Where a reader's sign-in with the provider starts (SsoPaths.START in app). */
+    private static final String SSO_START_PATH = "/roller-ui/sso/start";
+
+    /**
+     * Signs a reader in through the run's Keycloak (realm {@code roller-it}): starts a
+     * sign-in that returns to {@code returnTo} and completes it on the provider's form,
+     * returning once the provider's answer has replaced the page.
+     *
+     * <p>Needs {@code site.absoluteurl} pointed at {@link #baseUrl()}, since the callback
+     * is built from it; the caller holds {@link #GLOBAL_CONFIG} exclusively and sets it.
+     * Shared by {@code SsoSignInIT} and {@code CommentsIT}.
+     *
+     * @param user     a username from roller-it-realm.json
+     * @param returnTo the path, context path included, the sign-in should land on
+     */
+    protected void signInWithKeycloak(String user, String returnTo) {
+        openPath(SSO_START_PATH + "?return=" + encode(returnTo));
+        new KeycloakLoginPage().signIn(user, KeycloakLoginPage.passwordOf(user));
+    }
+
     /**
      * Signs in as any user. Journeys that create users need this; everything
      * else wants {@link #loginAsAdmin()}.
