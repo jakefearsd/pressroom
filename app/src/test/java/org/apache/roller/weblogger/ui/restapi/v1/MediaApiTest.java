@@ -896,6 +896,170 @@ class MediaApiTest {
         verify(fetcher, never()).fetch(any(), org.mockito.ArgumentMatchers.anyLong(), any());
     }
 
+    /** The leading bytes a real file of each kind starts with, then a little body. */
+    private static byte[] imageBytes(ImageKind kind) {
+        byte[] head = switch (kind) {
+            case JPEG -> new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0};
+            case PNG -> new byte[] {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
+            case GIF -> "GIF89a".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+            case WEBP -> "RIFF\0\0\0\0WEBPVP8 ".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        };
+        byte[] bytes = java.util.Arrays.copyOf(head, head.length + 5);
+        for (int i = head.length; i < bytes.length; i++) {
+            bytes[i] = (byte) (i * 31);
+        }
+        return bytes;
+    }
+
+    /** Captures the stream createMediaFile is handed, read at the moment it is handed over. */
+    private static java.util.concurrent.atomic.AtomicReference<byte[]> captureStoredBytes(MediaFileManager mfm)
+            throws Exception {
+        java.util.concurrent.atomic.AtomicReference<byte[]> stored = new java.util.concurrent.atomic.AtomicReference<>();
+        doAnswer(inv -> {
+            MediaFile file = inv.getArgument(1);
+            stored.set(file.getInputStream().readAllBytes());
+            return null;
+        }).when(mfm).createMediaFile(any(), any(), any());
+        return stored;
+    }
+
+    /**
+     * Criterion 11 for the other three kinds the fetcher recognises: each is
+     * stored through the upload path under its own content type, with the
+     * name -- extension included -- the fetcher chose from the detected
+     * kind, and the bytes stored are the bytes fetched, not merely as many.
+     * Characterisation of the import as shipped (the JPEG case was the only
+     * one pinned): expected to pass at once.
+     */
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(value = ImageKind.class, names = {"PNG", "GIF", "WEBP"})
+    void eachImageKindIsStoredWithItsContentTypeExtensionAndExactBytes(ImageKind kind) throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        byte[] served = imageBytes(kind);
+        String url = "https://img.example.com/photo?id=7";
+        RemoteImageFetcher fetcher = mock(RemoteImageFetcher.class);
+        when(fetcher.fetch(url, 2097152L, null))
+                .thenReturn(new FetchedImage("photo." + kind.extension(), kind, served));
+        MediaApi controller = importController(weblogger, weblog, fetcher);
+        MediaFileManager mfm = weblogger.getMediaFileManager();
+        var stored = captureStoredBytes(mfm);
+
+        String body;
+        try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(true)) {
+            body = mockMvc(controller).perform(importRequest(weblog, "{\"url\":\"" + url + "\"}"))
+                    .andExpect(status().isCreated())
+                    .andReturn().getResponse().getContentAsString();
+        }
+
+        ArgumentCaptor<MediaFile> created = ArgumentCaptor.forClass(MediaFile.class);
+        verify(mfm).createMediaFile(org.mockito.ArgumentMatchers.eq(weblog), created.capture(), any());
+        assertEquals(kind.contentType(), created.getValue().getContentType());
+        assertEquals("photo." + kind.extension(), created.getValue().getName());
+        assertEquals("default", created.getValue().getDirectory().getName());
+        assertArrayEquals(served, stored.get());
+        tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
+        assertEquals("photo." + kind.extension(), json.get("name").asString());
+        assertEquals(kind.contentType(), json.get("contentType").asString());
+        assertEquals(served.length, json.get("length").asLong());
+    }
+
+    /** The JPEG case's bytes, too: the stream handed to the store carries exactly what was fetched. */
+    @Test
+    void theBytesStoredAreTheBytesFetched() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        byte[] served = imageBytes(ImageKind.JPEG);
+        RemoteImageFetcher fetcher = mock(RemoteImageFetcher.class);
+        when(fetcher.fetch(SIGNED_URL, 2097152L, null))
+                .thenReturn(new FetchedImage("sunset.jpg", ImageKind.JPEG, served));
+        MediaApi controller = importController(weblogger, weblog, fetcher);
+        var stored = captureStoredBytes(weblogger.getMediaFileManager());
+
+        try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(true)) {
+            mockMvc(controller).perform(importRequest(weblog, "{\"url\":\"" + SIGNED_URL + "\"}"))
+                    .andExpect(status().isCreated());
+        }
+
+        assertArrayEquals(served, stored.get());
+    }
+
+    /** {@code directoryId} names where the import lands, found through the ownership-checked lookup. */
+    @Test
+    void anImportWithADirectoryIdLandsInThatDirectory() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        MediaFileDirectory travel = aDirectory(weblog, "travel");
+        RemoteImageFetcher fetcher = mock(RemoteImageFetcher.class);
+        when(fetcher.fetch(SIGNED_URL, 2097152L, null))
+                .thenReturn(new FetchedImage("sunset.jpg", ImageKind.JPEG, JPEG_BYTES));
+        MediaApi controller = importController(weblogger, weblog, fetcher);
+        MediaFileManager mfm = weblogger.getMediaFileManager();
+        when(mfm.getMediaFileDirectory(travel.getId())).thenReturn(travel);
+
+        try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(true)) {
+            String body = mockMvc(controller)
+                    .perform(importRequest(weblog,
+                            "{\"url\":\"" + SIGNED_URL + "\",\"directoryId\":\"" + travel.getId() + "\"}"))
+                    .andExpect(status().isCreated())
+                    .andReturn().getResponse().getContentAsString();
+            assertEquals(travel.getId(),
+                    new tools.jackson.databind.ObjectMapper().readTree(body).get("directory").asString());
+        }
+
+        ArgumentCaptor<MediaFile> created = ArgumentCaptor.forClass(MediaFile.class);
+        verify(mfm).createMediaFile(org.mockito.ArgumentMatchers.eq(weblog), created.capture(), any());
+        assertSame(travel, created.getValue().getDirectory());
+        verify(mfm, never()).getDefaultMediaFileDirectory(any());
+    }
+
+    /** Another weblog's directory and an unknown id are the same 404, and nothing is fetched for either. */
+    @Test
+    void aForeignOrUnknownDirectoryIdIsNotFoundAndNothingIsFetched() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        MediaFileDirectory foreign = aDirectory(aWeblog("otherblog"), "travel");
+        RemoteImageFetcher fetcher = mock(RemoteImageFetcher.class);
+        MediaApi controller = importController(weblogger, weblog, fetcher);
+        when(weblogger.getMediaFileManager().getMediaFileDirectory(foreign.getId())).thenReturn(foreign);
+
+        try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(true)) {
+            for (String directoryId : new String[] {foreign.getId(), "no-such-directory"}) {
+                mockMvc(controller)
+                        .perform(importRequest(weblog,
+                                "{\"url\":\"" + SIGNED_URL + "\",\"directoryId\":\"" + directoryId + "\"}"))
+                        .andExpect(status().isNotFound());
+            }
+        }
+        verify(fetcher, never()).fetch(any(), org.mockito.ArgumentMatchers.anyLong(), any());
+        verify(weblogger.getMediaFileManager(), never()).createMediaFile(any(), any(), any());
+    }
+
+    /** Criterion 17: the weblog's quota refuses an import the way it refuses an upload, with that detail. */
+    @Test
+    void anExceededWeblogQuotaIsA400CarryingTheUploadDetail() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        RemoteImageFetcher fetcher = mock(RemoteImageFetcher.class);
+        when(fetcher.fetch(any(), org.mockito.ArgumentMatchers.anyLong(), any()))
+                .thenReturn(new FetchedImage("sunset.jpg", ImageKind.JPEG, JPEG_BYTES));
+        MediaApi controller = importController(weblogger, weblog, fetcher);
+        MediaFileManager manager = weblogger.getMediaFileManager();
+        doAnswer(inv -> {
+            ((RollerMessages) inv.getArgument(2)).addError("error.upload.dirmax", "4.00");
+            return null;
+        }).when(manager).createMediaFile(any(), any(), any());
+
+        try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(true)) {
+            String body = mockMvc(controller)
+                    .perform(importRequest(weblog, "{\"url\":\"" + SIGNED_URL + "\"}"))
+                    .andExpect(status().isBadRequest())
+                    .andReturn().getResponse().getContentAsString();
+            assertTrue(body.contains("Adding this file would exceed this weblog's 4.00 MB storage limit."), body);
+        }
+        verify(weblogger, never()).flush();
+    }
+
     /** A step that performs requests against a controller; may throw what MockMvc throws. */
     @FunctionalInterface
     private interface Requests {

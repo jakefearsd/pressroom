@@ -313,6 +313,38 @@ class EntriesWriteApiControllerTest {
     }
 
     /**
+     * Criterion 11's last step, the import-then-featuredImageId flow: the id
+     * POST /media/imports answers with (a MediaFile id, a 36-character UUID)
+     * is accepted as an entry's featuredImageId, stored, and read back.
+     * Characterisation of the shipped write path: expected to pass at once.
+     */
+    @Test
+    void patchAcceptsAnImportedMediaIdAsTheFeaturedImage() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogEntry entry = new WeblogEntry();
+        entry.setId("entry-1");
+        entry.setWebsite(weblog);
+        entry.setTitle("Harbour");
+        when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1")).thenReturn(entry);
+        String mediaId = new org.apache.roller.weblogger.pojos.MediaFile().getId();
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
+                        .requestAttr("actionWeblog", weblog)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"featuredImageId\":\"" + mediaId + "\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertEquals(mediaId, entry.getFeaturedImageId());
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(entry);
+        verify(weblogger).flush();
+        assertEquals(mediaId,
+                new tools.jackson.databind.ObjectMapper().readTree(body).get("featuredImageId").asString());
+    }
+
+    /**
      * The IDOR case: an entry belonging to another weblog is
      * indistinguishable from an unknown id -- 404 either way, never the
      * foreign entry's data or a rewrite of it.
