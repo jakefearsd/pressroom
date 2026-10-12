@@ -882,6 +882,13 @@ comments on, per weblog.
 - **Held comments:** a reader's first comment on a weblog waits for approval.
   It appears on the weblog's Comments page (also a count on Main Menu) and
   through MCP (`comments list`, status `PENDING`).
+- **Rate limit:** each account may post 5 comments or replies in 10 minutes
+  and 30 a day; the next is refused. To change it, set in `.env` (read at
+  startup, so restart the app):
+  `ROLLER_COMMENTS_THROTTLE_WINDOW_LIMIT` (default 5),
+  `ROLLER_COMMENTS_THROTTLE_WINDOW_SECONDS` (default 600, at most 86400) and
+  `ROLLER_COMMENTS_THROTTLE_DAILY_LIMIT` (default 30), the
+  `comments.throttle.*` properties. An unusable value keeps the default.
 - **Developer notes:** `docs/dev/comments.md`.
 
 ## Backup and restore

@@ -292,7 +292,7 @@ requires `errors` to be present; treat it as optional.
 | 403 | Authenticated, but the token's own scope refuses this call (wrong role, or an admin-only route with a non-`ADMIN` token). |
 | 404 | The resource does not exist, **or the caller may not see it.** A weblog outside a token's pin, a foreign entry/category/page/media id, and a genuinely-missing id are all 404 — never 403, because a 403 there would confirm the resource exists under someone else's weblog. Also what an unmapped path under `/api/...` answers — see the note above on why that one is plain `application/json`, not a problem body. |
 | 405 | The path exists but not for this HTTP verb (e.g. `DELETE` on a collection endpoint that only supports `GET`/`POST`). Plain `application/json` from Boot's own `/error`, not a problem body — see the note above. |
-| 409 | The request conflicts with the resource's current state: trashing an already-trashed entry, restoring one that isn't trashed, PATCHing a trashed entry (restore it first), a duplicate category/directory/page-slug name, deleting a weblog's last category. |
+| 409 | The request conflicts with the resource's current state: trashing an already-trashed entry, restoring one that isn't trashed, PATCHing a trashed entry (restore it first), a duplicate category/directory/page-slug name, deleting a weblog's last category, publishing a comment its author deleted. |
 | 413 | A multipart request body larger than `spring.servlet.multipart.max-request-size` (1GB). Plain `application/json` from Boot's own `/error`, not a problem body — see the note above. Distinct from the per-file media-quota refusal below, which is never a whole-request 413. |
 | 415 | `POST .../media` without a `multipart/form-data` body. Plain `application/json`, not a problem body — see the note above. |
 | 429 | Throttled — see below. |
@@ -622,11 +622,15 @@ curl -sS -H "Authorization: Bearer $ROLLER_API_TOKEN" \
 ```
 
 `PATCH` accepts only `PUBLISHED` or `HIDDEN`; any other value is a 400.
+Publishing a comment its author deleted (a `HIDDEN` comment with an empty
+`body`) is a 409: its text is gone, so it can never be shown again.
 `DELETE` removes the comment and its reply (204). A reply is written as the
 token's user, published at once, and answers 201 with its view; a reply the
 service refuses (for example the comment already has one, or the body is empty
-or over 4000 characters) is a 400 naming the refusal code, such as `BAD_REPLY`,
-`EMPTY_BODY`, `BODY_TOO_LONG` or `RATE_LIMITED`.
+or over 4000 code points) is a 400 naming the refusal code, such as `BAD_REPLY`,
+`EMPTY_BODY`, `BODY_TOO_LONG` or `RATE_LIMITED` (replies count toward the
+per-account comment rate limit). Replies are for the weblog's members: a global
+admin whose token reaches a weblog they are not a member of gets `BAD_REPLY`.
 
 **Settings.** A weblog's `commentsEnabled` and `commentNotify` (email the
 weblog's admins when a comment is held) are fields of the weblog view and

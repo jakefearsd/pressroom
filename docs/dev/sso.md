@@ -118,9 +118,12 @@ pair).
 
 ## The reader role
 
-`role.action.reader=` is empty: a reader holds no global action. The
-interceptor's default (`login`) refuses a reader on every secured UI
-controller (`ReaderRefusalSweepTest` sweeps all of them reflectively). The
+`role.action.reader=comment`: a reader holds the global `comment` action and
+nothing else, and `comment` implies no other action (`GlobalPermission.implies`
+fails closed; `docs/dev/comments.md`). It reaches the comment endpoints and the
+account page (`/roller-ui/account.rol`) only. The interceptor's default
+(`login`) refuses a reader on every other secured UI controller
+(`ReaderRefusalSweepTest` sweeps all of them reflectively). The
 API chain ignores session cookies; `TokensApi` refuses an account without the
 `login` action. Members -> Invite refuses a reader-only account
 (`inviteMember.error.readerAccount`). **A weblog permission ignores global

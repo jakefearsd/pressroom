@@ -41,7 +41,10 @@ Migration `bin/db/migrations/V031__reader_comments.sql` (idempotent).
   as `weblogger.getCommentManager()`: `saveComment`, `removeComment`,
   `getComment`, `getPublishedForEntry` (one query, `JOIN FETCH` of reply and
   authors, for the page), `getComments(weblog, status, entry, offset, limit)`,
-  `countComments`, `countForEntry`, `getPendingForEntryAndAuthor`,
+  `countComments(weblog, status[, entry])` (what `getComments` lists, replies
+  included: the moderation pager's count), `countForEntry` (top-level only: the
+  entry page heading's number, which the entry editor shows),
+  `getPendingForEntryAndAuthor`,
   `getPublishedIdsForEntryAndAuthor`, `getCommentsByAuthor`, `isTrusted`,
   `getWeblogsWithPublishedCommentsBy`, `removeCommentsForEntry`,
   `removeCommentsByAuthor`. Callers flush before `getPublishedForEntry`.
@@ -63,16 +66,31 @@ moderation page, the account page, the API. Nothing else saves a
   (`CLOSED`). The other refusals are `EMPTY_BODY`, `BODY_TOO_LONG`,
   `BAD_REPLY`, `RATE_LIMITED`.
 - `post`, `reply` (owner only, to a PUBLISHED top-level comment without a
-  reply), `setStatus`, `delete`, `deleteOwn`, `isOwner`, `expire(weblog)`.
-  Results are a `CommentOutcome`.
+  reply), `setStatus`, `delete`, `deleteOwn`, `isOwner`, `expire(weblog)`,
+  `expireAll`, `expireWhereShown(author)`. Post and reply results are a
+  `CommentOutcome`; `setStatus` answers false when it refuses (a tombstone is
+  never published, below), and each surface maps that: the moderation page does
+  not count it, the API (and so MCP) answers 409.
 - **Owner** = holds any `WeblogPermission` on the weblog.
 - **Body:** `CommentRules.normalizeBody` trims and strips C0/C1 control
   characters except tab, newline and return; at most `MAX_BODY` (4000)
-  characters, non-empty.
-- **Rate limit:** 5 per 10 minutes and 30 per day per account, keyed by user
-  id, two `GenericThrottle`s under a striped per-account lock. Owners' replies
-  count. The window is fixed, not sliding: a burst across a reset can store up
-  to 10 in a little over 10 minutes.
+  code points, non-empty.
+- **Rate limit (ruling R9: configurable):** by default 5 per 10 minutes and 30
+  per day per account, keyed by user id, two `GenericThrottle`s under a striped
+  per-account lock. Owners' replies count (the moderation page says so with its
+  own message, `comments.reply.rateLimited`). The window is fixed, not sliding:
+  a burst across a reset can store up to twice the window's limit in a little
+  over one window. Configured in roller.properties as ALLOWED counts, read once
+  at startup by `CommentLimits`:
+  - `comments.throttle.window.limit` (default 5),
+  - `comments.throttle.window.seconds` (default 600, at most 86400),
+  - `comments.throttle.daily.limit` (default 30).
+
+  A missing or unusable value falls back to its default, never to no limit.
+  `CommentService.limit` is the one place an allowed count becomes a throttle
+  threshold. The browser suite raises them (`roller-it.properties`:
+  1000/600/10000) so `CommentsIT` is never one owner write from a 429; the unit
+  tests prove the defaults.
 - **Logging:** logger `roller.comments` (routed to roller.log): ids, statuses,
   usernames, codes. Never a body, an email address or a token.
 
@@ -91,9 +109,13 @@ moderation page, the account page, the API. Nothing else saves a
 - **Only Hide untrusts.** Deleting a spam comment leaves the reader trusted;
   the moderation page says so.
 - **Tombstones (ruling R5).** A reader deleting their own HIDDEN comment gets
-  the body erased and the row kept as HIDDEN with an empty body, so the
-  owner's distrust survives. Account deletion removes everything. The
-  moderation page and account list show a tombstone as "deleted by its author".
+  the body erased and the row kept as HIDDEN with an empty body
+  (`CommentRules.isTombstone`), so the owner's distrust survives. Account
+  deletion removes everything. The moderation page shows a tombstone as
+  "deleted by its author" and the account list leaves it out. `setStatus`
+  refuses to publish a tombstone, for every surface. An owner's own comment or
+  reply (`authorIsOwner`) is never tombstoned: `deleteOwn` deletes it outright,
+  so an owner's hidden reply does not hold its comment's one reply slot.
 - Turning comments off keeps moderation and the API working on existing
   comments; only posting (404) and the page section go.
 
@@ -142,8 +164,10 @@ by every controller in `ReaderRefusalSweepTest`.
   calls `expire(weblog)` (`saveWeblog` then `CacheManager.invalidate`) when a
   comment becomes or stops being PUBLISHED, a PUBLISHED comment is deleted, a
   reply is added or deleted, or a commenter with published comments renames
-  (every weblog where they have one). A PENDING comment changes no page and
-  expires nothing.
+  (every weblog where they have one: `expireWhereShown`). A rename can come from
+  the account page, Profile (`ProfileController`) or User Admin
+  (`UserEditController`); each expires after its save commits. A PENDING
+  comment changes no page and expires nothing.
 - Trashed entries render no page and their comments survive a restore;
   deleting an entry outright deletes them.
 
@@ -200,17 +224,30 @@ would be its own spec.
 `comments!approve|hide|delete|reply.rol`, `Comments.jsp`, a `Routes` entry and
 CSS marker): needs the weblog `POST` permission. Tabs Awaiting approval
 (default), Published, Hidden; filter `entry=`; single and bulk Approve, Hide,
-Delete (`data-confirm`), inline Reply. Main Menu shows the pending count per
-weblog. Weblog Settings has "Allow comments" and "Email me when a comment needs
-approval"; the entry editor has "Comments closed" and the counts.
+Delete (`data-confirm`), inline Reply. `page` is clamped to 0..`MAX_PAGE`
+(client input multiplied into an offset), and the pager counts what the list
+shows, entry filter included. Ids are request parameters, so no log line
+carries a raw one (a CR/LF could forge a line): a refusal names the weblog, or
+the stored comment's id; `WeblogOwnership` logs the weblog for a failed lookup
+of any kind.
+
+**Who sees moderation elsewhere.** Main Menu shows the pending count per weblog
+to a member whose permission row *implies* `POST`
+(`WeblogPermissionView.isCanModerate`), never by looking for the literal
+`post` action: a weblog's creator holds `admin` alone, and Members grants
+single-action rows. The entry editor shows the counts line (top-level
+comments, as the entry page's heading counts) only to a member with `POST`,
+since it links to this page. Weblog Settings has "Allow comments" and "Email
+me when a comment needs approval"; the entry editor has "Comments closed".
 
 ## API and MCP
 
 `ui/restapi/v1/CommentsApi` under `/api/v1/weblogs/{handle}/comments`: list
 (`status`, `entry`, `limit` default 50 max 200, `offset`; page object
 `{items, offset, limit, hasMore}`), get, PATCH `{status}` (PUBLISHED or HIDDEN
-only), DELETE, and `POST .../{id}/replies` (written as the token's user,
-PUBLISHED). View: `CommentDtos.CommentView`; it never carries an email or an
+only; publishing a tombstone is 409), DELETE, and `POST .../{id}/replies`
+(written as the token's user, PUBLISHED; the token's user must be a weblog
+member, so a global admin who is not one gets `BAD_REPLY`). View: `CommentDtos.CommentView`; it never carries an email or an
 account id. `WeblogView`/`WeblogPatch` gain `commentsEnabled`/`commentNotify`,
 `EntryView`/`EntryWrite` gain `commentsClosed`; booleans are never clearable.
 **Ruling R6:** a token whose role lacks POST on a weblog it can reach keeps the
@@ -295,10 +332,21 @@ no foreign key).
   failed on null runtime properties. `CommentsControllerTest` and
   `AccountControllerTest` use a non-disposable provider view and an
   `@AfterAll` check.
+- **A permission row's action list is not what it grants.** The Main Menu
+  badge was first gated on `perms.hasAction("post")`, a literal lookup, so a
+  weblog's creator (whose row holds `admin` alone) never saw it. Ask whether
+  the row *implies* the action, as the interceptor does
+  (`WeblogPermissionView.isCanModerate`).
 - **Pinned counts break on new routes and fields:** `ApiRouteTableTest`,
   `ToolSchemasTest`, `McpDocsTest`; and `MessageFormatRegressionTest` forbids a
   doubled apostrophe in a key with no placeholder.
 - **A mail failure's exception text quotes addresses**; log class names only.
 - **Velocity:** the comments CSS has no `#id` selectors (a hash before a word
-  can be read as a directive), and no comment writes the audience-assets or
-  showComments macro with its `#`.
+  can be read as a directive). Prose names a macro as "the showComments macro"
+  or "the showAudienceAssets macro", never with its `#`; the only exception is
+  the usage line in a macro's own `#**` doc block, a Velocity comment.
+- **Bidi:** a display name or body may carry RTL overrides or zero-width
+  characters. They render as text, isolated (`unicode-bidi: isolate` on
+  `.comment-name` and `.comment-body`), and a link ends at any Unicode space or
+  format character. Tests write such characters as `\u` escapes, never raw
+  (Trojan Source).
