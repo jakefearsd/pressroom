@@ -197,7 +197,7 @@ public final class MailUtil {
         if (! StringUtils.isEmpty(from)) {
             InternetAddress sentFrom = new InternetAddress(from);
             message.setFrom(sentFrom);
-            log.debug("e-mail from: {}", sentFrom);
+            log.debug("e-mail from is set");
         }
 
         // A form submitter's or commenter's address is not the account this
@@ -205,7 +205,7 @@ public final class MailUtil {
         // weblog's own from address (or nowhere, when no from is set).
         if (! StringUtils.isEmpty(replyTo)) {
             message.setReplyTo(new InternetAddress[]{ new InternetAddress(replyTo) });
-            log.debug("e-mail reply-to: {}", replyTo);
+            log.debug("e-mail reply-to is set");
         }
 
         if (to!=null) {
@@ -213,7 +213,7 @@ public final class MailUtil {
 
             for (int i = 0; i < to.length; i++) {
                 sendTo[i] = new InternetAddress(to[i]);
-                log.debug("sending e-mail to: {}", to[i]);
+                log.debug("e-mail to recipient {} of {}", i + 1, to.length);
             }
             message.setRecipients(Message.RecipientType.TO, sendTo);
         }
@@ -223,7 +223,7 @@ public final class MailUtil {
 
             for (int i = 0; i < cc.length; i++) {
                 copyTo[i] = new InternetAddress(cc[i]);
-                log.debug("copying e-mail to: {}", cc[i]);
+                log.debug("e-mail cc recipient {} of {}", i + 1, cc.length);
             }
             message.setRecipients(Message.RecipientType.CC, copyTo);
         }
@@ -233,7 +233,7 @@ public final class MailUtil {
 
             for (int i = 0; i < bcc.length; i++) {
                 copyTo[i] = new InternetAddress(bcc[i]);
-                log.debug("blind copying e-mail to: {}", bcc[i]);
+                log.debug("e-mail bcc recipient {} of {}", i + 1, bcc.length);
             }
             message.setRecipients(Message.RecipientType.BCC, copyTo);
         }

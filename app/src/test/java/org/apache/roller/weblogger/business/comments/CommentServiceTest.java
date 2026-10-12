@@ -102,7 +102,7 @@ class CommentServiceTest {
         ea2 = TestUtils.setupWeblogEntry("csea2", TestUtils.getManagedWebsite(a), TestUtils.getManagedUser(owner));
         eb = TestUtils.setupWeblogEntry("cseb", TestUtils.getManagedWebsite(b), TestUtils.getManagedUser(owner));
         TestUtils.endSession(true);
-        notifier = Mockito.spy(new NoOpCommentNotifier());
+        notifier = Mockito.spy(new MailCommentNotifier(TestUtils.weblogger()));
         service = new CommentService(TestUtils.weblogger(), notifier, unlimited(), unlimited());
     }
 
@@ -370,7 +370,7 @@ class CommentServiceTest {
 
     @Test
     void theSixthIn10MinutesAndThe31stInADayAreRateLimited() throws Exception {
-        CommentService limited = new CommentService(TestUtils.weblogger(), new NoOpCommentNotifier());
+        CommentService limited = new CommentService(TestUtils.weblogger(), new MailCommentNotifier(TestUtils.weblogger()));
 
         for (int i = 0; i < 6; i++) {
             assertSame(CommentRefusal.EMPTY_BODY, post(limited, reader, ea, " ").refusal());
@@ -392,7 +392,7 @@ class CommentServiceTest {
         assertEquals(10, countOn(a));
 
         // The day, with the ten-minute window out of the way.
-        CommentService daily = new CommentService(TestUtils.weblogger(), new NoOpCommentNotifier(),
+        CommentService daily = new CommentService(TestUtils.weblogger(), new MailCommentNotifier(TestUtils.weblogger()),
                 unlimited(), CommentService.dayThrottle());
         for (int i = 1; i <= 30; i++) {
             assertTrue(post(daily, reader, eb, BODY + " " + i).ok(), "comment " + i);
