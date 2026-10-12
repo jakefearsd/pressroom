@@ -260,6 +260,43 @@ class MetaApiTest {
         assertEquals("", weblogs.get(0).get("name").asString());
     }
 
+    /**
+     * A failed membership lookup is an opaque 500 problem, never a 200 with
+     * an empty {@code weblogs} list that would read as "no weblogs".
+     */
+    @Test
+    void aFailedMembershipLookupIsAnOpaque500NotAnEmptyList() throws Exception {
+        authenticateWithBasicAuth();
+        givenGlobalAdmin(false);
+        when(userManager.getWeblogPermissions(user))
+                .thenThrow(new WebloggerException("store unreachable"));
+
+        JsonNode body = json(mockMvc.perform(get("/v1/me").requestAttr(AUTHENTICATED_USER, user))
+                .andExpect(status().isInternalServerError()));
+
+        assertEquals("The request could not be completed.", body.get("detail").asString());
+        assertFalse(body.has("weblogs"), body.toString());
+    }
+
+    /**
+     * A failed weblog lookup for a membership row is likewise an opaque 500,
+     * not a silently skipped weblog.
+     */
+    @Test
+    void aFailedWeblogLookupIsAnOpaque500NotAnEmptyList() throws Exception {
+        authenticateWithBasicAuth();
+        givenGlobalAdmin(false);
+        givenMembership(weblog("food", "Food"), List.of(WeblogPermission.POST));
+        when(weblogManager.getWeblogByHandle("food"))
+                .thenThrow(new WebloggerException("store unreachable"));
+
+        JsonNode body = json(mockMvc.perform(get("/v1/me").requestAttr(AUTHENTICATED_USER, user))
+                .andExpect(status().isInternalServerError()));
+
+        assertEquals("The request could not be completed.", body.get("detail").asString());
+        assertFalse(body.has("weblogs"), body.toString());
+    }
+
     // ---------------------------------------------------------------- helpers
 
     /** {@code GET /v1/me} as {@link #user}; asserts 200 and returns the body. */
