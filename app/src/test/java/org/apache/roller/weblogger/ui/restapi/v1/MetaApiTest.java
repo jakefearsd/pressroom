@@ -1,13 +1,17 @@
 package org.apache.roller.weblogger.ui.restapi.v1;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.UserManager;
+import org.apache.roller.weblogger.business.WeblogManager;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.ApiToken;
 import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.User;
+import org.apache.roller.weblogger.pojos.Weblog;
+import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.restapi.ApiExceptionHandler;
 import org.apache.roller.weblogger.ui.restapi.auth.ApiPrincipal;
 import org.junit.jupiter.api.AfterEach;
@@ -52,6 +56,7 @@ class MetaApiTest {
     private static final String AUTHENTICATED_USER = "authenticatedUser";
 
     private UserManager userManager;
+    private WeblogManager weblogManager;
     private MockMvc mockMvc;
     private User user;
 
@@ -60,6 +65,8 @@ class MetaApiTest {
         Weblogger weblogger = mock(Weblogger.class);
         userManager = mock(UserManager.class);
         when(weblogger.getUserManager()).thenReturn(userManager);
+        weblogManager = mock(WeblogManager.class);
+        when(weblogger.getWeblogManager()).thenReturn(weblogManager);
 
         MetaApi api = new MetaApi();
         // Field-injected (@Autowired @Lazy) in production; no constructor.
@@ -163,12 +170,120 @@ class MetaApiTest {
         assertFalse(body.get("globalAdmin").asBoolean());
     }
 
+    /**
+     * An unlimited token (no weblog pin) lists every weblog its user is a
+     * member of, sorted by handle, each with the highest action it holds.
+     */
+    @Test
+    void anUnlimitedTokenSeesEveryWeblogItsUserBelongsTo() throws Exception {
+        authenticateWithToken(new ApiPrincipal("alice", null, ApiToken.Role.POST, "token-1"));
+        givenGlobalAdmin(false);
+        givenMembership(weblog("travels", "Travels"), List.of(WeblogPermission.ADMIN));
+        givenMembership(weblog("food", "Food"), List.of(WeblogPermission.POST));
+
+        JsonNode weblogs = me().get("weblogs");
+
+        assertEquals(2, weblogs.size(), weblogs.toString());
+        assertEquals("food", weblogs.get(0).get("handle").asString());
+        assertEquals("Food", weblogs.get(0).get("name").asString());
+        assertEquals("POST", weblogs.get(0).get("permission").asString());
+        assertEquals("travels", weblogs.get(1).get("handle").asString());
+        assertEquals("Travels", weblogs.get(1).get("name").asString());
+        assertEquals("ADMIN", weblogs.get(1).get("permission").asString());
+    }
+
+    /** A weblog-limited token lists only the weblog it is pinned to. */
+    @Test
+    void aLimitedTokenSeesOnlyItsWeblog() throws Exception {
+        authenticateWithToken(new ApiPrincipal("alice", "travels", ApiToken.Role.POST, "token-1"));
+        givenGlobalAdmin(false);
+        givenMembership(weblog("travels", "Travels"), List.of(WeblogPermission.ADMIN));
+        givenMembership(weblog("food", "Food"), List.of(WeblogPermission.POST));
+
+        JsonNode weblogs = me().get("weblogs");
+
+        assertEquals(1, weblogs.size(), weblogs.toString());
+        assertEquals("travels", weblogs.get(0).get("handle").asString());
+    }
+
+    /** A user with no weblog permissions gets an empty array, not an absent key. */
+    @Test
+    void aUserWithNoWeblogsSeesAnEmptyList() throws Exception {
+        authenticateWithBasicAuth();
+        givenGlobalAdmin(false);
+        when(userManager.getWeblogPermissions(user)).thenReturn(List.of());
+
+        JsonNode weblogs = me().get("weblogs");
+
+        assertTrue(weblogs.isArray(), weblogs.toString());
+        assertTrue(weblogs.isEmpty(), weblogs.toString());
+    }
+
+    /** A permission row whose weblog no longer exists is skipped, not an error. */
+    @Test
+    void aPermissionWhoseWeblogIsGoneIsSkipped() throws Exception {
+        authenticateWithBasicAuth();
+        givenGlobalAdmin(false);
+        when(weblogManager.getWeblogByHandle("gone")).thenReturn(null);
+        givenMembership(weblog("food", "Food"), List.of(WeblogPermission.POST));
+        when(userManager.getWeblogPermissions(user)).thenReturn(List.of(
+                new WeblogPermission(weblog("gone", "Gone"), user, List.of(WeblogPermission.ADMIN)),
+                new WeblogPermission(weblog("food", "Food"), user, List.of(WeblogPermission.POST))));
+
+        JsonNode weblogs = me().get("weblogs");
+
+        assertEquals(1, weblogs.size(), weblogs.toString());
+        assertEquals("food", weblogs.get(0).get("handle").asString());
+    }
+
+    /** A member with only edit_draft is reported as EDIT_DRAFT, the lowest rung. */
+    @Test
+    void aDraftOnlyMemberIsReportedAsEditDraft() throws Exception {
+        authenticateWithBasicAuth();
+        givenGlobalAdmin(false);
+        givenMembership(weblog("food", "Food"), List.of(WeblogPermission.EDIT_DRAFT));
+
+        JsonNode weblogs = me().get("weblogs");
+
+        assertEquals("EDIT_DRAFT", weblogs.get(0).get("permission").asString());
+    }
+
+    /** A weblog with no display name is listed with an empty name, not a 500. */
+    @Test
+    void aWeblogWithNoNameIsListedWithAnEmptyName() throws Exception {
+        authenticateWithBasicAuth();
+        givenGlobalAdmin(false);
+        givenMembership(weblog("food", null), List.of(WeblogPermission.POST));
+
+        JsonNode weblogs = me().get("weblogs");
+
+        assertEquals("", weblogs.get(0).get("name").asString());
+    }
+
     // ---------------------------------------------------------------- helpers
 
     /** {@code GET /v1/me} as {@link #user}; asserts 200 and returns the body. */
     private JsonNode me() throws Exception {
         return json(mockMvc.perform(get("/v1/me").requestAttr(AUTHENTICATED_USER, user))
                 .andExpect(status().isOk()));
+    }
+
+    private static Weblog weblog(String handle, String name) {
+        Weblog weblog = new Weblog();
+        weblog.setHandle(handle);
+        weblog.setName(name);
+        return weblog;
+    }
+
+    /**
+     * Makes {@code weblog} one {@link #user} belongs to with {@code actions},
+     * and answers the weblog lookup for its handle.
+     */
+    private void givenMembership(Weblog weblog, List<String> actions) throws WebloggerException {
+        when(weblogManager.getWeblogByHandle(weblog.getHandle())).thenReturn(weblog);
+        List<WeblogPermission> existing = new ArrayList<>(userManager.getWeblogPermissions(user));
+        existing.add(new WeblogPermission(weblog, user, actions));
+        when(userManager.getWeblogPermissions(user)).thenReturn(existing);
     }
 
     private static JsonNode json(ResultActions result) throws Exception {

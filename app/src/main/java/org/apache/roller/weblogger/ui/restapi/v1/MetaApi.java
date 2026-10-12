@@ -1,7 +1,13 @@
 package org.apache.roller.weblogger.ui.restapi.v1;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
+import org.apache.roller.weblogger.pojos.Weblog;
+import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
@@ -60,7 +66,7 @@ public class MetaApi {
      */
     @WeblogScopeExempt
     @GetMapping("/me")
-    public ResponseEntity<Map<String, Object>> me(HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> me(HttpServletRequest request) throws WebloggerException {
         User user = (User) request.getAttribute("authenticatedUser");
         if (user == null) {
             throw ApiException.forbidden("Not authenticated.");
@@ -68,13 +74,50 @@ public class MetaApi {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         ApiPrincipal principal =
                 auth != null && auth.getDetails() instanceof ApiPrincipal p ? p : null;
-        return ResponseEntity.ok(Map.of(
-                "userName", user.getUserName(),
-                "screenName", user.getScreenName(),
-                "globalAdmin", isGlobalAdmin(user),
-                "tokenScope", principal == null ? Map.of() : Map.of(
-                        "weblog", principal.scopeWeblog() == null ? "" : principal.scopeWeblog(),
-                        "role", principal.scopeRole().name())));
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("userName", user.getUserName());
+        body.put("screenName", user.getScreenName());
+        body.put("globalAdmin", isGlobalAdmin(user));
+        body.put("tokenScope", principal == null ? Map.of() : Map.of(
+                "weblog", principal.scopeWeblog() == null ? "" : principal.scopeWeblog(),
+                "role", principal.scopeRole().name()));
+        body.put("weblogs", weblogsFor(user, principal));
+        return ResponseEntity.ok(body);
+    }
+
+    /**
+     * The weblogs this token can act on: the one it is limited to, or every
+     * weblog its user is a member of. This tree has no pending invitations
+     * (WeblogPermission carries no such flag), so membership is the permission
+     * row. A failed lookup propagates as a 500, never as an empty list.
+     */
+    private List<Map<String, String>> weblogsFor(User user, ApiPrincipal principal) throws WebloggerException {
+        List<Map<String, String>> weblogs = new ArrayList<>();
+        for (WeblogPermission permission : weblogger.getUserManager().getWeblogPermissions(user)) {
+            String handle = permission.getObjectId();
+            if (principal != null && principal.scopeWeblog() != null
+                    && !principal.scopeWeblog().equals(handle)) {
+                continue;
+            }
+            Weblog weblog = weblogger.getWeblogManager().getWeblogByHandle(handle);
+            if (weblog != null) {
+                weblogs.add(Map.of(
+                        "handle", weblog.getHandle(),
+                        "name", Objects.toString(weblog.getName(), ""),
+                        "permission", highest(permission)));
+            }
+        }
+        weblogs.sort(Comparator.comparing(w -> w.get("handle")));
+        return weblogs;
+    }
+
+    /** The strongest action a permission row grants, as the API names it. */
+    private static String highest(WeblogPermission permission) {
+        List<String> actions = permission.getActionsAsList();
+        if (actions.contains(WeblogPermission.ADMIN)) {
+            return "ADMIN";
+        }
+        return actions.contains(WeblogPermission.POST) ? "POST" : "EDIT_DRAFT";
     }
 
     /**

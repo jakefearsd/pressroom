@@ -23,7 +23,7 @@ public final class McpToolCatalog {
 
     public static final List<ToolDecl> TOOLS = List.of(
             tool("whoami", "Who this token belongs to: user name, whether the user is a site admin, "
-                    + "and the token's role and weblog limit.", true,
+                    + "the token's role and weblog limit, and the weblogs it can act on.", true,
                     action("", "Describe the caller.", "GET /v1/me")),
             tool("weblogs", "Weblogs: create one (any writing token not limited to a weblog); list them and change "
                     + "their settings (ADMIN tokens).", false,

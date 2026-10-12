@@ -156,7 +156,12 @@ otherwise equivalent: `GET /api/v1/ping` is the one route in the whole API
 that needs **no credential at all** (`permitAll` in `SecurityConfig`, a bare
 liveness check), while `GET /api/v1/me` still requires a valid Bearer or
 Basic credential — it answers who *that* credential is, so an unauthenticated
-call to it is a 401 like anywhere else. Every other route
+call to it is a 401 like anywhere else. `GET /api/v1/me` also lists the
+`weblogs` the token can act on, each with its `handle`, `name` and highest
+`permission` (`ADMIN`, `POST` or `EDIT_DRAFT`), sorted by handle: the one
+weblog a pinned token is limited to, or every weblog its user belongs to.
+This is how a token that is not a site admin finds its weblogs, since listing
+`/api/v1/weblogs` needs the admin role. Every other route
 that resolves no weblog defaults to **deny**, not "unlimited because there
 was nothing to check": `/api/v1/admin/**` and the site-wide
 `/api/v1/weblogs` resource require `ADMIN` role via a separate, explicit
