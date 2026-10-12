@@ -857,4 +857,143 @@ class WeblogConfigControllerTest extends EditorControllerTestSupport {
         bean.setBookingUrl("javascript:alert(1)");
         assertBusinessFieldRefused("weblog_bean_bookingUrl");
     }
+
+    // --- one field error per rule, pinned before the rules moved to WeblogSettingsRules ---
+
+    private void assertFieldRefused(String fieldId) throws Exception {
+        controller.save(request, model, bean);
+        assertTrue(invalidFields(model).contains(fieldId),
+                "Expected " + fieldId + " among " + invalidFields(model));
+        verify(weblogger.getWeblogManager(), never()).saveWeblog(any());
+    }
+
+    /** Characterisation: written against the pre-extraction controller and expected to pass unchanged. */
+    @Test
+    void charEntryDisplayCountOverTheMaxNamesItsField() throws Exception {
+        bean.setEntryDisplayCount(31);
+        assertFieldRefused("weblog_bean_entryDisplayCount");
+    }
+
+    /** Characterisation: written against the pre-extraction controller and expected to pass unchanged. */
+    @Test
+    void charNewsletterListUuidNamesItsField() throws Exception {
+        bean.setNewsletterListUuid("not-a-uuid");
+        assertFieldRefused("weblog_bean_newsletterListUuid");
+    }
+
+    /** Characterisation: written against the pre-extraction controller and expected to pass unchanged. */
+    @Test
+    void charAnalyticsSiteIdNamesItsField() throws Exception {
+        bean.setAnalyticsSiteId("nope");
+        assertFieldRefused("weblog_bean_analyticsSiteId");
+    }
+
+    /** Characterisation: written against the pre-extraction controller and expected to pass unchanged. */
+    @Test
+    void charAnalyticsShareUrlNamesItsField() throws Exception {
+        bean.setAnalyticsShareUrl("ftp://x");
+        assertFieldRefused("weblog_bean_analyticsShareUrl");
+    }
+
+    /** Characterisation: written against the pre-extraction controller and expected to pass unchanged. */
+    @Test
+    void charUnknownBusinessNamesItsField() throws Exception {
+        bean.setBusinessId("unknown-biz");
+        assertFieldRefused("weblog_bean_businessId");
+    }
+
+    /** Characterisation: written against the pre-extraction controller and expected to pass unchanged. */
+    @Test
+    void charFailingBusinessLookupNamesItsField() throws Exception {
+        when(weblogger.businessManager().getBusiness("biz-x"))
+                .thenThrow(new WebloggerException("db down"));
+        bean.setBusinessId("biz-x");
+        assertFieldRefused("weblog_bean_businessId");
+    }
+
+    /** Characterisation: written against the pre-extraction controller and expected to pass unchanged. */
+    @Test
+    void charHotelPlaceTypeNamesItsField() throws Exception {
+        bean.setPlaceType("Hotel");
+        bean.setPlaceLocality("Lisbon");
+        assertFieldRefused("weblog_bean_placeType");
+    }
+
+    /** Characterisation: written against the pre-extraction controller and expected to pass unchanged. */
+    @Test
+    void charPlaceTypeWithBlankLocalityNamesTheLocality() throws Exception {
+        bean.setPlaceType("LodgingBusiness");
+        bean.setPlaceLocality("");
+        assertFieldRefused("weblog_bean_placeLocality");
+    }
+
+    /** Characterisation: written against the pre-extraction controller and expected to pass unchanged. */
+    @Test
+    void charThreeLetterCountryNamesItsField() throws Exception {
+        bean.setPlaceCountry("USA");
+        assertFieldRefused("weblog_bean_placeCountry");
+    }
+
+    /** Characterisation: written against the pre-extraction controller and expected to pass unchanged. */
+    @Test
+    void charLatitudeOutOfRangeNamesItsField() throws Exception {
+        bean.setPlaceLat("91");
+        bean.setPlaceLng("0");
+        assertFieldRefused("weblog_bean_placeLat");
+    }
+
+    /** Characterisation: written against the pre-extraction controller and expected to pass unchanged. */
+    @Test
+    void charLongitudeWithBlankLatitudeNamesTheLatitude() throws Exception {
+        bean.setPlaceLat("");
+        bean.setPlaceLng("10");
+        assertFieldRefused("weblog_bean_placeLat");
+    }
+
+    /** Characterisation: written against the pre-extraction controller and expected to pass unchanged. */
+    @Test
+    void charLongLocalityNamesItsField() throws Exception {
+        bean.setPlaceLocality("l".repeat(129));
+        assertFieldRefused("weblog_bean_placeLocality");
+    }
+
+    /** Characterisation: written against the pre-extraction controller and expected to pass unchanged. */
+    @Test
+    void charMailtoBookingUrlNamesItsField() throws Exception {
+        bean.setBookingUrl("mailto:x@example.com");
+        assertFieldRefused("weblog_bean_bookingUrl");
+    }
+
+    /** Characterisation: written against the pre-extraction controller and expected to pass unchanged. */
+    @Test
+    void charMalformedCustomDomainNamesItsField() throws Exception {
+        bean.setCustomDomain("not a host");
+        assertFieldRefused("weblog_bean_customDomain");
+    }
+
+    /** Characterisation: written against the pre-extraction controller and expected to pass unchanged. */
+    @Test
+    void charSiteHostCustomDomainNamesItsField() throws Exception {
+        givenRuntimeProperty("site.absoluteurl", "https://blog.example.com");
+        bean.setCustomDomain("blog.example.com");
+        assertFieldRefused("weblog_bean_customDomain");
+    }
+
+    /** Characterisation: written against the pre-extraction controller and expected to pass unchanged. */
+    @Test
+    void charClaimedCustomDomainNamesItsField() throws Exception {
+        Weblog other = new Weblog();
+        other.setHandle("someoneelse");
+        when(weblogger.getWeblogManager().getWeblogByCustomDomain("claimed.example.com"))
+                .thenReturn(other);
+        bean.setCustomDomain("claimed.example.com");
+        assertFieldRefused("weblog_bean_customDomain");
+    }
+
+    /** The one intended change of the extraction: a count below one used to be saved. */
+    @Test
+    void anEntryDisplayCountBelowOneIsRefused() throws Exception {
+        bean.setEntryDisplayCount(0);
+        assertFieldRefused("weblog_bean_entryDisplayCount");
+    }
 }

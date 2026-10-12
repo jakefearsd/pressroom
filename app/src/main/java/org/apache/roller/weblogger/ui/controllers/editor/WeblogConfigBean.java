@@ -320,7 +320,7 @@ public class WeblogConfigBean {
      * reports the latter). Checked against the pattern before any BigDecimal
      * is made, so no arithmetic ever sees an exponent.
      */
-    static BigDecimal toDecimal(String text) {
+    public static BigDecimal toDecimal(String text) {
         String trimmed = StringUtils.trimToNull(text);
         if (trimmed == null || !PLAIN_DECIMAL.matcher(trimmed).matches()) {
             return null;

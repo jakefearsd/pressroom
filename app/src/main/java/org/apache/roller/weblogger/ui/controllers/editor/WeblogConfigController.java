@@ -18,14 +18,11 @@
 
 package org.apache.roller.weblogger.ui.controllers.editor;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.WebloggerException;
@@ -34,8 +31,8 @@ import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.pojos.Business;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.ui.controllers.BaseController;
-import org.apache.roller.weblogger.ui.controllers.BusinessRules;
 import org.apache.roller.weblogger.ui.controllers.CustomDomainRules;
+import org.apache.roller.weblogger.ui.controllers.WeblogSettingsRules;
 import org.apache.roller.weblogger.util.cache.CacheManager;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -108,162 +105,25 @@ public class WeblogConfigController extends BaseController {
         return ".WeblogConfig";
     }
 
-    private static final Pattern UUID_PATTERN = Pattern.compile(
-            "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
-
     private void myValidate(WeblogConfigBean bean, HttpServletRequest request, Model model) {
-        int maxEntries = WebloggerRuntimeConfig.getIntProperty("site.pages.maxEntries");
-        if (bean.getEntryDisplayCount() > maxEntries) {
-            addFieldError(model, "weblog_bean_entryDisplayCount",
-                    "websiteSettings.error.entryDisplayCount", request);
-        }
-
-        String newsletterListUuid = StringUtils.trimToNull(bean.getNewsletterListUuid());
-        if (newsletterListUuid != null && !UUID_PATTERN.matcher(newsletterListUuid).matches()) {
-            addFieldError(model, "weblog_bean_newsletterListUuid",
-                    "websiteSettings.newsletterListUuid.invalid", request);
-        }
-
-        String analyticsSiteId = StringUtils.trimToNull(bean.getAnalyticsSiteId());
-        if (analyticsSiteId != null && !UUID_PATTERN.matcher(analyticsSiteId).matches()) {
-            addFieldError(model, "weblog_bean_analyticsSiteId",
-                    "websiteSettings.analyticsSiteId.invalid", request);
-        }
-
-        String analyticsShareUrl = StringUtils.trimToNull(bean.getAnalyticsShareUrl());
-        if (analyticsShareUrl != null && !analyticsShareUrl.matches("(?i)^https?://.*")) {
-            addFieldError(model, "weblog_bean_analyticsShareUrl",
-                    "websiteSettings.analyticsShareUrl.invalid", request);
-        }
-
-        validateBusiness(bean, request, model);
-
-        String customDomain = CustomDomainRules.normalise(bean.getCustomDomain());
-        bean.setCustomDomain(customDomain);
-        if (customDomain != null) {
-            if (!CustomDomainRules.isWellFormed(customDomain)) {
-                addFieldError(model, "weblog_bean_customDomain",
-                        "websiteSettings.customDomain.invalid", request);
-            } else if (CustomDomainRules.isSiteHost(customDomain,
-                    WebloggerRuntimeConfig.getPropertyWithConfigFallback("site.absoluteurl"))) {
-                addFieldError(model, "weblog_bean_customDomain",
-                        "websiteSettings.customDomain.isSiteHost", request);
+        // The real action weblog's handle, never bean.getHandle(): the "bean." prefix binds
+        // bean.handle from POST data the JSP never renders (I4), so it cannot be trusted here.
+        WeblogSettingsRules.Context context =
+                WeblogSettingsRules.Context.current(getActionWeblog(request).getHandle(), weblogger);
+        for (WeblogSettingsRules.Violation v : WeblogSettingsRules.check(bean, context)) {
+            String fieldId = "weblog_bean_" + v.field();
+            if (v.labelKey() == null) {
+                addFieldError(model, fieldId, v.messageKey(), request);
             } else {
-                try {
-                    Weblog claimant = weblogger.getWeblogManager()
-                            .getWeblogByCustomDomain(customDomain);
-                    // Compare against the REAL action weblog, never
-                    // bean.getHandle() -- initBeanBinder's "bean." field
-                    // prefix binds bean.handle from POST data even though
-                    // the JSP never renders it, so a submitted bean.handle
-                    // equal to the claimant's own handle must not be able to
-                    // make this check pass for a domain this weblog does not
-                    // actually own (I4).
-                    if (claimant != null
-                            && !claimant.getHandle().equals(getActionWeblog(request).getHandle())) {
-                        addFieldError(model, "weblog_bean_customDomain",
-                                "websiteSettings.customDomain.taken", request);
-                    }
-                } catch (WebloggerException e) {
-                    addFieldError(model, "weblog_bean_customDomain",
-                            "websiteSettings.customDomain.invalid", request);
-                }
+                addFieldError(model, fieldId, v.messageKey(),
+                        new Object[] {getText(v.labelKey(), request), v.max()}, request);
             }
         }
-
-        // Only warn about the zone when the save is actually going to happen --
-        // otherwise a malformed or taken hostname's rejection re-renders the
-        // page with an error AND a false "Saved, but..." banner, for a
-        // domain that was never persisted at all.
-        if (!hasErrors(model) && CustomDomainRules.isOutsideCertZones(customDomain,
+        // Only warn about the zone when the save is actually going to happen (see the history of this check).
+        if (!hasErrors(model) && CustomDomainRules.isOutsideCertZones(bean.getCustomDomain(),
                 WebloggerConfig.getProperty("vhost.cert.zones"))) {
-            model.addAttribute("customDomainWarning", customDomain);
+            model.addAttribute("customDomainWarning", bean.getCustomDomain());
         }
-    }
-
-    private static final BigDecimal MAX_LAT = new BigDecimal(90);
-    private static final BigDecimal MAX_LNG = new BigDecimal(180);
-    private static final Pattern COUNTRY = Pattern.compile("^[A-Za-z]{2}$");
-
-    private void validateBusiness(WeblogConfigBean bean, HttpServletRequest request, Model model) {
-        String businessId = StringUtils.trimToNull(bean.getBusinessId());
-        if (businessId != null) {
-            try {
-                if (weblogger.getBusinessManager().getBusiness(businessId) == null) {
-                    addFieldError(model, "weblog_bean_businessId",
-                            "websiteSettings.business.invalid", request);
-                }
-            } catch (WebloggerException e) {
-                // A lookup that could not run is not one that passed.
-                log.error("Error checking business", e);
-                addFieldError(model, "weblog_bean_businessId",
-                        "websiteSettings.business.invalid", request);
-            }
-        }
-
-        String placeType = StringUtils.trimToNull(bean.getPlaceType());
-        if (placeType != null && !"LodgingBusiness".equals(placeType)) {
-            addFieldError(model, "weblog_bean_placeType",
-                    "websiteSettings.placeType.invalid", request);
-        } else if (placeType != null && StringUtils.isBlank(bean.getPlaceLocality())) {
-            addFieldError(model, "weblog_bean_placeLocality",
-                    "websiteSettings.placeLocality.required", request);
-        }
-
-        String country = StringUtils.trimToNull(bean.getPlaceCountry());
-        if (country != null && !COUNTRY.matcher(country).matches()) {
-            addFieldError(model, "weblog_bean_placeCountry",
-                    "websiteSettings.placeCountry.invalid", request);
-        }
-
-        String lat = StringUtils.trimToNull(bean.getPlaceLat());
-        String lng = StringUtils.trimToNull(bean.getPlaceLng());
-        if (!withinRange(lat, MAX_LAT) || (lat == null && lng != null)) {
-            addFieldError(model, "weblog_bean_placeLat",
-                    "websiteSettings.placeLat.invalid", request);
-        }
-        if (!withinRange(lng, MAX_LNG) || (lng == null && lat != null)) {
-            addFieldError(model, "weblog_bean_placeLng",
-                    "websiteSettings.placeLng.invalid", request);
-        }
-
-        checkLength(model, request, "weblog_bean_placeLocality", "websiteSettings.placeLocality",
-                bean.getPlaceLocality(), MAX_PLACE_TEXT);
-        checkLength(model, request, "weblog_bean_placeRegion", "websiteSettings.placeRegion",
-                bean.getPlaceRegion(), MAX_PLACE_TEXT);
-
-        String bookingUrl = StringUtils.trimToNull(bean.getBookingUrl());
-        if (bookingUrl != null && !BusinessRules.isHttpUrl(bookingUrl)) {
-            addFieldError(model, "weblog_bean_bookingUrl",
-                    "websiteSettings.bookingUrl.invalid", request);
-        } else {
-            checkLength(model, request, "weblog_bean_bookingUrl", "websiteSettings.bookingUrl",
-                    bookingUrl, MAX_BOOKING_URL);
-        }
-    }
-
-    /** place_locality and place_region are varchar(128). */
-    private static final int MAX_PLACE_TEXT = 128;
-    /** booking_url is varchar(255). */
-    private static final int MAX_BOOKING_URL = 255;
-
-    /** A value longer than its column is a field error here, not a failed flush. */
-    private void checkLength(Model model, HttpServletRequest request, String fieldId,
-                             String labelKey, String raw, int max) {
-        String value = StringUtils.trimToNull(raw);
-        if (value != null && value.length() > max) {
-            addFieldError(model, fieldId, "businesses.error.tooLong",
-                    new Object[] {getText(labelKey, request), max}, request);
-        }
-    }
-
-    /** True when blank, or a number whose magnitude is at most {@code limit}. */
-    private static boolean withinRange(String text, BigDecimal limit) {
-        if (text == null) {
-            return true;
-        }
-        BigDecimal value = WeblogConfigBean.toDecimal(text);
-        return value != null && value.abs().compareTo(limit) <= 0;
     }
 
     /**
