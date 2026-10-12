@@ -384,6 +384,11 @@ public final class Routes {
                     "Returns redirect:/ -- the site front page, which is Velocity-rendered "
                             + "weblog content rather than a controller view. Belongs to a "
                             + "front-page test, not a controller sweep."),
+            new SkippedRoute("/roller-ui/rendering/comments/session.rol", Role.ANONYMOUS,
+                    "JSON for the comment form's page script, not a page: it needs "
+                            + "entry= naming a published entry, and none is seeded, so "
+                            + "without one it answers 404. CommentsControllerTest pins "
+                            + "its contract."),
             new SkippedRoute("/roller-ui/admin/createUser!cancel.rol", Role.ADMIN,
                     "Pure redirect to userAdmin.rol, which the sweep already asserts on."),
             new SkippedRoute("/roller-ui/admin/modifyUser!cancel.rol", Role.ADMIN,
