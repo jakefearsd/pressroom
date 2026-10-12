@@ -78,10 +78,9 @@ public class SchemaMigrationTest {
             // V017: hitcount subsystem replaced by Umami traffic counting.
             "roller_hitcounts",
             // V020: share-link feature removed entirely, not coming back.
-            "roller_share_link");
-    // roller_comment is deliberately absent: V022 dropped the W1 table, and V031
-    // reuses the name for reader comments (a different shape, which
-    // CommentsMigrationTest pins).
+            "roller_share_link",
+            // V022: comment subsystem removed entirely (W1), not coming back.
+            "roller_comment");
 
     @Test
     public void migrationsAreDiscoverableOnTheClasspath() {
@@ -171,14 +170,6 @@ public class SchemaMigrationTest {
         String dbName = "migrationtest_idempotency";
         try (Connection con = freshDatabase(dbName)) {
             List<String> before = tableNames(con);
-
-            // V002 still creates the W1 roller_comment (V022 drops it) and V031 reuses
-            // the name. Replaying the chain over the final table would run V002's
-            // indexes against columns the new shape lacks, so start the replay with
-            // the name free, as it was when V002 first ran.
-            try (Statement st = con.createStatement()) {
-                st.execute("DROP TABLE IF EXISTS roller_comment");
-            }
 
             for (Path migration : MigrationFiles.all()) {
                 String sql = readMigration(migration);

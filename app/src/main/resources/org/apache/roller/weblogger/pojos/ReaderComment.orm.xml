@@ -5,7 +5,7 @@
     <package>org.apache.roller.weblogger.pojos</package>
     <entity metadata-complete="true" name="ReaderComment"
             class="org.apache.roller.weblogger.pojos.ReaderComment" access="PROPERTY">
-        <table name="roller_comment"/>
+        <table name="roller_reader_comment"/>
         <!-- One query for an entry's thread: top-level PUBLISHED comments with
              their author, and the PUBLISHED reply with its author. -->
         <named-query name="ReaderComment.getPublishedForEntry">

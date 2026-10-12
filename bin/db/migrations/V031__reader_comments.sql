@@ -13,13 +13,13 @@
 -- limitations under the License.
 --
 -- Migration: comments for signed-in readers (docs/superpowers/specs/2026-10-12-reader-comments-design.md).
--- A fresh table: the W1 comment subsystem (dropped in V022) is not restored. Idempotent.
+-- A fresh table, deliberately not named roller_comment: V022 drops that name. Idempotent.
 
-CREATE TABLE IF NOT EXISTS roller_comment (
+CREATE TABLE IF NOT EXISTS roller_reader_comment (
     id              varchar(48)  NOT NULL PRIMARY KEY,
     entry_id        varchar(48)  NOT NULL REFERENCES weblogentry(id) ON DELETE CASCADE,
     author_id       varchar(48)  NOT NULL REFERENCES roller_user(id) ON DELETE CASCADE,
-    reply_to_id     varchar(48)  REFERENCES roller_comment(id) ON DELETE CASCADE,
+    reply_to_id     varchar(48)  REFERENCES roller_reader_comment(id) ON DELETE CASCADE,
     body            text         NOT NULL,
     status          varchar(16)  NOT NULL,
     author_is_owner boolean      DEFAULT false NOT NULL,
@@ -28,14 +28,14 @@ CREATE TABLE IF NOT EXISTS roller_comment (
 );
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'rc_status_ck') THEN
-        ALTER TABLE roller_comment ADD CONSTRAINT rc_status_ck
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'rrc_status_ck') THEN
+        ALTER TABLE roller_reader_comment ADD CONSTRAINT rrc_status_ck
             CHECK (status IN ('PENDING', 'PUBLISHED', 'HIDDEN'));
     END IF;
 END $$;
-CREATE INDEX IF NOT EXISTS rc_entry_status_created_idx ON roller_comment (entry_id, status, created);
-CREATE INDEX IF NOT EXISTS rc_author_idx ON roller_comment (author_id);
-CREATE INDEX IF NOT EXISTS rc_reply_to_idx ON roller_comment (reply_to_id);
+CREATE INDEX IF NOT EXISTS rrc_entry_status_created_idx ON roller_reader_comment (entry_id, status, created);
+CREATE INDEX IF NOT EXISTS rrc_author_idx ON roller_reader_comment (author_id);
+CREATE INDEX IF NOT EXISTS rrc_reply_to_idx ON roller_reader_comment (reply_to_id);
 
 ALTER TABLE weblog      ADD COLUMN IF NOT EXISTS comments_enabled boolean DEFAULT false NOT NULL;
 ALTER TABLE weblog      ADD COLUMN IF NOT EXISTS comment_notify   boolean DEFAULT true  NOT NULL;
