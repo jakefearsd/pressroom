@@ -5,6 +5,10 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.function.Supplier;
 import org.apache.roller.weblogger.business.WebloggerProvider;
 import org.slf4j.Logger;
@@ -26,6 +30,21 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * {@code ?sso=unavailable} and redirects to no provider. Only then does it
  * store the sanitised return path in the session and hand over to
  * {@link SsoPaths#AUTHORIZE_BASE}.
+ *
+ * <p><b>A sign-in starts on the Absolute URL's host.</b> The return path and
+ * Spring's authorization request live in the session of the host the browser
+ * used, and the provider always sends the browser back to the Absolute URL's
+ * host. Started on any other ({@code http://docker2.lan:8080} for
+ * {@code https://blog.wikantik.com}), the callback would find a session holding
+ * neither, and the sign-in could never complete. So when the request's scheme,
+ * host or port is not the Absolute URL's (a default port is the same as none),
+ * this redirects to {@code <Absolute URL>/roller-ui/sso/start?return=<the
+ * sanitised return>} before touching the session, and the start runs again
+ * there. The request's scheme, host and port are what the trusted proxy
+ * reported ({@code server.forward-headers-strategy=framework}); behind a proxy
+ * that does not send {@code X-Forwarded-Proto}, the public host looks like
+ * another host to itself. An Absolute URL with no scheme or host cannot be
+ * compared, and answers unavailable.
  *
  * <p>Every request this filter answers ends inside the security chain, so it
  * releases the persistence session itself; see {@link PersistenceSession}.
@@ -61,14 +80,13 @@ public class SsoStartFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String contextPath = request.getContextPath();
         try {
-            String unavailable = unavailableReason();
-            if (unavailable != null) {
-                log.warn("Reader sign-in refused or failed: {} ({})", SsoPaths.ERROR_UNAVAILABLE, unavailable);
-                response.sendRedirect(SsoPaths.loginError(contextPath, SsoPaths.ERROR_UNAVAILABLE));
+            String returnPath = ReturnPaths.sanitize(request.getParameter("return"), contextPath);
+            String elsewhere = notHere(request, returnPath);
+            if (elsewhere != null) {
+                response.sendRedirect(elsewhere);
                 return;
             }
-            request.getSession().setAttribute(ReturnPaths.SESSION_ATTRIBUTE,
-                    ReturnPaths.sanitize(request.getParameter("return"), contextPath));
+            request.getSession().setAttribute(ReturnPaths.SESSION_ATTRIBUTE, returnPath);
             response.sendRedirect(contextPath + SsoPaths.AUTHORIZE_BASE + "/" + SsoSettings.REGISTRATION_ID);
         } finally {
             PersistenceSession.release(webloggerProvider);
@@ -76,22 +94,54 @@ public class SsoStartFilter extends OncePerRequestFilter {
     }
 
     /**
-     * @return why sign-in cannot complete, or null when it can. A check that
-     *         throws has not passed: it answers unavailable too.
+     * @return where to send the browser instead of the provider -- the login page
+     *         when sign-in cannot complete, or this start on the Absolute URL's
+     *         host -- or null to go ahead. A check that throws has not passed: it
+     *         answers unavailable too.
      */
-    private String unavailableReason() {
+    private String notHere(HttpServletRequest request, String returnPath) {
+        String contextPath = request.getContextPath();
         try {
             String absolute = absoluteUrl.get();
             if (absolute == null || absolute.isBlank()) {
-                return "absolute_url_unset";
+                return unavailable(contextPath, "absolute_url_unset");
+            }
+            URI canonical = URI.create(absolute.trim());
+            if (canonical.getScheme() == null || canonical.getHost() == null) {
+                return unavailable(contextPath, "absolute_url_invalid");
+            }
+            if (!isSameOrigin(request, canonical)) {
+                return SsoPaths.onAbsoluteUrl(absolute, SsoPaths.START)
+                        + "?return=" + URLEncoder.encode(returnPath, StandardCharsets.UTF_8);
             }
             if (registrations.findByRegistrationId(SsoSettings.REGISTRATION_ID) == null) {
-                return "registration_unresolved";
+                return unavailable(contextPath, "registration_unresolved");
             }
             return null;
         } catch (RuntimeException ex) {
             // The class name only: the message could carry configuration or provider text.
-            return ex.getClass().getSimpleName();
+            return unavailable(contextPath, ex.getClass().getSimpleName());
         }
+    }
+
+    private static String unavailable(String contextPath, String reason) {
+        log.warn("Reader sign-in refused or failed: {} ({})", SsoPaths.ERROR_UNAVAILABLE, reason);
+        return SsoPaths.loginError(contextPath, SsoPaths.ERROR_UNAVAILABLE);
+    }
+
+    /** @return true when the request's scheme, host and port are the Absolute URL's */
+    private static boolean isSameOrigin(HttpServletRequest request, URI canonical) {
+        String scheme = canonical.getScheme().toLowerCase(Locale.ROOT);
+        return scheme.equalsIgnoreCase(request.getScheme())
+                && canonical.getHost().equalsIgnoreCase(request.getServerName())
+                && portOrDefault(scheme, canonical.getPort()) == portOrDefault(scheme, request.getServerPort());
+    }
+
+    /** @return {@code port}, or the scheme's default when there is none (80 for http, 443 for https) */
+    private static int portOrDefault(String scheme, int port) {
+        if (port > 0) {
+            return port;
+        }
+        return "https".equals(scheme) ? 443 : 80;
     }
 }

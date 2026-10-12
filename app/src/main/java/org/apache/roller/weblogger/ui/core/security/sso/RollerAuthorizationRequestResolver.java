@@ -2,7 +2,6 @@ package org.apache.roller.weblogger.ui.core.security.sso;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.function.Supplier;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.roller.weblogger.business.WebloggerProvider;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
@@ -98,6 +97,6 @@ public class RollerAuthorizationRequestResolver implements OAuth2AuthorizationRe
         if (absolute == null || absolute.isBlank()) {
             return null;
         }
-        return StringUtils.stripEnd(absolute.trim(), "/") + SsoPaths.CALLBACK;
+        return SsoPaths.onAbsoluteUrl(absolute, SsoPaths.CALLBACK);
     }
 }

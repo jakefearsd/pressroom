@@ -36,8 +36,19 @@ class SsoStartFilterTest {
         when(provider.getWeblogger()).thenReturn(weblogger);
     }
 
+    /** A start request on the Absolute URL's own host, {@code https://blog.example}. */
     private static MockHttpServletRequest get(String ctx, String uri, String returnPath) {
+        return on("https", "blog.example", 443, ctx, uri, returnPath);
+    }
+
+    /** A start request as the browser addressed it: scheme, host and port. */
+    private static MockHttpServletRequest on(String scheme, String host, int port, String ctx, String uri,
+            String returnPath) {
         MockHttpServletRequest req = new MockHttpServletRequest("GET", uri);
+        req.setScheme(scheme);
+        req.setSecure("https".equals(scheme));
+        req.setServerName(host);
+        req.setServerPort(port);
         req.setContextPath(ctx);
         if (returnPath != null) {
             req.setParameter("return", returnPath);
@@ -79,6 +90,126 @@ class SsoStartFilterTest {
         filter(() -> "https://blog.example", registrationPresent())
                 .doFilter(req, new MockHttpServletResponse(), new MockFilterChain());
         assertEquals("/roller/", req.getSession().getAttribute(ReturnPaths.SESSION_ATTRIBUTE));
+    }
+
+    // ------------------------------------------- the Absolute URL's own host (I1)
+    //
+    // Spring keeps the authorization request, and this filter the return path, in
+    // the session of the host the browser used; the provider always returns the
+    // browser to the Absolute URL's host. A sign-in started anywhere else would
+    // arrive at a session holding neither, so it moves there before it starts.
+
+    @Test
+    void aSignInStartedOnAnotherHostMovesToTheAbsoluteUrlFirst() throws Exception {
+        AtomicInteger lookups = new AtomicInteger();
+        ClientRegistrationRepository repo = id -> {
+            lookups.incrementAndGet();
+            return SsoTestRegistrations.registration();
+        };
+        MockHttpServletRequest req = on("http", "docker2.lan", 8080, "", "/roller-ui/sso/start", "/blog/?p=1&q=a b");
+        MockHttpServletResponse res = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+        filter(() -> "https://blog.example", repo).doFilter(req, res, chain);
+
+        assertEquals("https://blog.example/roller-ui/sso/start?return=%2Fblog%2F%3Fp%3D1%26q%3Da+b",
+                res.getRedirectedUrl());
+        assertNull(req.getSession(false), "no session on a host the provider never returns to");
+        assertEquals(0, lookups.get(), "the start on the Absolute URL's host resolves the provider");
+        assertNull(chain.getRequest(), "the start step ends the request");
+        verify(weblogger, times(1)).release();
+    }
+
+    @Test
+    void theSchemeAloneDifferingIsAnotherHost() throws Exception {
+        MockHttpServletRequest req = on("http", "blog.example", 80, "", "/roller-ui/sso/start", "/blog/");
+        MockHttpServletResponse res = new MockHttpServletResponse();
+        filter(() -> "https://blog.example", registrationPresent()).doFilter(req, res, new MockFilterChain());
+        assertEquals("https://blog.example/roller-ui/sso/start?return=%2Fblog%2F", res.getRedirectedUrl());
+        assertNull(req.getSession(false));
+    }
+
+    @Test
+    void thePortAloneDifferingIsAnotherHost() throws Exception {
+        MockHttpServletRequest req = on("https", "blog.example", 8443, "", "/roller-ui/sso/start", "/blog/");
+        MockHttpServletResponse res = new MockHttpServletResponse();
+        filter(() -> "https://blog.example", registrationPresent()).doFilter(req, res, new MockFilterChain());
+        assertEquals("https://blog.example/roller-ui/sso/start?return=%2Fblog%2F", res.getRedirectedUrl());
+        assertNull(req.getSession(false));
+    }
+
+    @Test
+    void aDefaultPortIsTheSameAsNoPort() throws Exception {
+        String[][] cases = {
+            {"https://blog.example", "https", "443"},
+            {"https://blog.example:443", "https", "443"},
+            {"http://blog.example", "http", "80"},
+            {"http://blog.example:80/", "http", "80"},
+            {"https://BLOG.example", "https", "443"},
+        };
+        for (String[] c : cases) {
+            MockHttpServletRequest req = on(c[1], "blog.example", Integer.parseInt(c[2]), "",
+                    "/roller-ui/sso/start", "/blog/");
+            MockHttpServletResponse res = new MockHttpServletResponse();
+            filter(() -> c[0], registrationPresent()).doFilter(req, res, new MockFilterChain());
+            assertEquals("/roller-ui/sso/authorize/oidc", res.getRedirectedUrl(), c[0]);
+            assertEquals("/blog/", req.getSession().getAttribute(ReturnPaths.SESSION_ATTRIBUTE), c[0]);
+        }
+    }
+
+    @Test
+    void aTrailingSlashOnTheAbsoluteUrlIsNotDoubled() throws Exception {
+        MockHttpServletRequest req = on("http", "docker2.lan", 8080, "", "/roller-ui/sso/start", "/blog/");
+        MockHttpServletResponse res = new MockHttpServletResponse();
+        filter(() -> " https://blog.example/ ", registrationPresent()).doFilter(req, res, new MockFilterChain());
+        assertEquals("https://blog.example/roller-ui/sso/start?return=%2Fblog%2F", res.getRedirectedUrl());
+    }
+
+    @Test
+    void anAbsoluteUrlCarryingTheContextPathKeepsIt() throws Exception {
+        MockHttpServletRequest req = on("http", "127.0.0.1", 8080, "/roller", "/roller/roller-ui/sso/start",
+                "/roller/blog/");
+        MockHttpServletResponse res = new MockHttpServletResponse();
+        filter(() -> "http://localhost:8080/roller/", registrationPresent())
+                .doFilter(req, res, new MockFilterChain());
+        assertEquals("http://localhost:8080/roller/roller-ui/sso/start?return=%2Froller%2Fblog%2F",
+                res.getRedirectedUrl());
+        assertNull(req.getSession(false));
+    }
+
+    @Test
+    void onTheAbsoluteUrlsOwnHostUnderAContextPathTheStartIsUnchanged() throws Exception {
+        MockHttpServletRequest req = on("http", "localhost", 8080, "/roller", "/roller/roller-ui/sso/start",
+                "/roller/blog/");
+        MockHttpServletResponse res = new MockHttpServletResponse();
+        filter(() -> "http://localhost:8080/roller", registrationPresent())
+                .doFilter(req, res, new MockFilterChain());
+        assertEquals("/roller/roller-ui/sso/authorize/oidc", res.getRedirectedUrl());
+        assertEquals("/roller/blog/", req.getSession().getAttribute(ReturnPaths.SESSION_ATTRIBUTE));
+    }
+
+    @Test
+    void theReturnCarriedToTheAbsoluteUrlIsSanitisedFirst() throws Exception {
+        MockHttpServletRequest req = on("http", "docker2.lan", 8080, "/roller", "/roller/roller-ui/sso/start",
+                "https://evil.example/");
+        MockHttpServletResponse res = new MockHttpServletResponse();
+        filter(() -> "https://blog.example/roller", registrationPresent())
+                .doFilter(req, res, new MockFilterChain());
+        assertEquals("https://blog.example/roller/roller-ui/sso/start?return=%2Froller%2F", res.getRedirectedUrl());
+    }
+
+    @Test
+    void anAbsoluteUrlWithNoSchemeOrHostAnswersUnavailable() throws Exception {
+        for (String absolute : new String[] {"blog.example", "/roller", "https://", "http://bad host/"}) {
+            try (SsoLogCapture log = SsoLogCapture.start()) {
+                MockHttpServletRequest req = get("", "/roller-ui/sso/start", "/blog/");
+                MockHttpServletResponse res = new MockHttpServletResponse();
+                filter(() -> absolute, registrationPresent()).doFilter(req, res, new MockFilterChain());
+                assertEquals("/roller-ui/login.rol?sso=unavailable", res.getRedirectedUrl(),
+                        absolute + ": a host that cannot be compared is not a host that matched");
+                assertNull(req.getSession(false), absolute);
+                assertEquals(1, log.lines(Level.WARN).size(), absolute + " " + log.lines(Level.WARN));
+            }
+        }
     }
 
     @Test

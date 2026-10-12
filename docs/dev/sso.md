@@ -13,7 +13,15 @@ setup: `docker_deployment.md`, "Reader sign-in (Google)". Code:
    Absolute URL is set and the registration resolves, stores
    `ReturnPaths.sanitize(return)` in the session attribute `roller.sso.return`,
    and redirects to `/roller-ui/sso/authorize/oidc`. Otherwise it redirects to
-   `/roller-ui/login.rol?sso=unavailable`.
+   `/roller-ui/login.rol?sso=unavailable`. **A start on any host but the
+   Absolute URL's** (scheme, host or port differ; a default port equals none)
+   first redirects to `<Absolute URL>/roller-ui/sso/start?return=<sanitised
+   return>`, before touching the session, and starts again there: the
+   provider returns the browser to the Absolute URL's host, and a session on
+   `http://docker2.lan:8080` is not that host's session, so the callback would
+   find neither the return path nor Spring's authorization request
+   (`authorization_request_not_found`, `sso=failed`). An Absolute URL with no
+   scheme or host answers `unavailable`.
 2. Spring's `oauth2Login()` redirects to the provider with `state`, `nonce`
    and PKCE. `RollerAuthorizationRequestResolver` sets the redirect URI.
 3. The provider returns to `/roller-ui/sso/callback`. Spring validates `state`,
@@ -149,6 +157,13 @@ provider. Sign-in changes the session id.
   opens a fresh EntityManager to close it), so every path releases exactly once.
   The customizer is set once in the constructor; the delegate is shared by
   all threads.
+- **The start filter compares the request's own scheme, host and port** with
+  the Absolute URL's. Behind a proxy those are what
+  `server.forward-headers-strategy=framework` makes of `X-Forwarded-Proto`
+  and `Host`; a proxy that sends no `X-Forwarded-Proto` makes the public host
+  look like another host to itself, and the start redirects to itself until
+  the browser gives up ("too many redirects"). Caddy and cloudflared both
+  send it.
 - **remember-me is disabled on the OAuth2 login filter**
   (`NullRememberMeServices`), so a hand-edited callback cannot set a cookie.
 - **`ssoStartFilter` has a disabled `FilterRegistrationBean`**, or Boot also

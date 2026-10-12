@@ -841,7 +841,10 @@ Developer notes: `docs/dev/sso.md`.
    only into `.env`: never into Global Config, a commit, a chat or a ticket.
 5. **Check it.** The login page shows "Sign in with Google", and
    `roller.log` has the self-check's success line ("OIDC discovery
-   reachable").
+   reachable"). Test the sign-in itself at the public URL,
+   `https://blog.wikantik.com/roller-ui/login.rol`: a sign-in started on the
+   LAN address (`http://docker2.lan:8080`) now redirects there first, because
+   Google returns the browser to the Absolute URL's host.
 
 `ROLLER_SSO_OIDC_DISCOVERY_URI` and `ROLLER_SSO_PROVIDER_LABEL` are optional;
 the defaults are Google's discovery document and the label "Google".

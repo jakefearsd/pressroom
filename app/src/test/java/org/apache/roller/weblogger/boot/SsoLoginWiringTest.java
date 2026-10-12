@@ -214,6 +214,19 @@ class SsoLoginWiringTest {
         assertEquals("S256", u.getQueryParams().getFirst("code_challenge_method"));
     }
 
+    /**
+     * The provider returns the browser to the Absolute URL's host, so a sign-in
+     * started on any other host (here the LAN address) moves there first, before a
+     * session exists on the host it was started from.
+     */
+    @Test
+    void aStartOnAnotherHostMovesToTheAbsoluteUrlBeforeAnySessionExists() throws Exception {
+        MvcResult r = onMvc.perform(get("http://docker2.lan:8080/roller-ui/sso/start").param("return", "/blog/"))
+                .andExpect(redirectedUrl(ABSOLUTE_URL + "/roller-ui/sso/start?return=%2Fblog%2F"))
+                .andReturn();
+        assertNull(r.getRequest().getSession(false), "a session on a host the provider never returns to");
+    }
+
     @Test
     void authorizeForAnUnknownRegistrationFailsClosedRatherThanErroring() throws Exception {
         onMvc.perform(get("/roller-ui/sso/authorize/other"))
@@ -266,7 +279,9 @@ class SsoLoginWiringTest {
     @Test
     void callbackNeverSetsARememberMeCookie() throws Exception {
         MockHttpSession session = new MockHttpSession();
-        onMvc.perform(get("/roller-ui/sso/start").session(session).param("return", "/blog/"))
+        // On the Absolute URL's own host. MockMvc keeps port 80 for an https URI with
+        // none, where Tomcat (and the forwarded-header filter) would report 443.
+        onMvc.perform(get("https://blog.example:443/roller-ui/sso/start").session(session).param("return", "/blog/"))
                 .andExpect(redirectedUrl("/roller-ui/sso/authorize/oidc"));
         String state = authorize(session);
         String before = session.getId();
