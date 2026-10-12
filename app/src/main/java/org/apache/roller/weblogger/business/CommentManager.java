@@ -40,10 +40,11 @@ public interface CommentManager {
     /** The comment with this id, or null when absent. */
     ReaderComment getComment(String id) throws WebloggerException;
 
-    /** PUBLISHED top-level comments of the entry, oldest first, each with its PUBLISHED reply fetched; ONE query.
-     * Only the comments this returns are guaranteed to have getReply() limited to a PUBLISHED reply;
-     * on a comment obtained any other way getReply() is the reply in whatever status it has.
-     * The query refreshes managed instances: flush pending changes first or they are lost. */
+    /**
+     * PUBLISHED top-level comments of the entry, oldest first, each with its author and its reply
+     * (and the reply's author) fetched; ONE query. The reply is whatever {@link ReaderComment#getReply()}
+     * is, in ANY status: consumers show it only when PUBLISHED.
+     */
     List<ReaderComment> getPublishedForEntry(WeblogEntry entry) throws WebloggerException;
 
     /** Any status filter (null = all), newest first, paged; entry may be null. */
@@ -67,4 +68,10 @@ public interface CommentManager {
 
     /** The distinct weblogs where this author has a PUBLISHED comment (for cache bumps on rename/delete). */
     List<Weblog> getWeblogsWithPublishedCommentsBy(User author) throws WebloggerException;
+
+    /** Remove every comment on the entry, replies included, so the persistence context stays in step. */
+    void removeCommentsForEntry(WeblogEntry entry) throws WebloggerException;
+
+    /** Remove every comment by this author and every reply to one, so the persistence context stays in step. */
+    void removeCommentsByAuthor(User author) throws WebloggerException;
 }

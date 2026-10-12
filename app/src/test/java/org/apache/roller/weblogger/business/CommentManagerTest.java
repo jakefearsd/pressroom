@@ -81,7 +81,9 @@ class CommentManagerTest {
         TestUtils.teardownWeblog(b.getId());
         TestUtils.teardownUser(owner.getUserName());
         TestUtils.teardownUser(reader.getUserName());
-        TestUtils.teardownUser(other.getUserName());
+        if (TestUtils.weblogger().getUserManager().getUserByUserName(other.getUserName(), null) != null) {
+            TestUtils.teardownUser(other.getUserName());
+        }
         TestUtils.endSession(true);
     }
 
@@ -186,7 +188,80 @@ class CommentManagerTest {
             assertEquals(Status.PUBLISHED, list.get(i).getReply().getStatus());
         }
         assertNull(list.get(20).getReply());
-        assertNull(list.get(40).getReply(), "a hidden reply is not served");
+        assertEquals(Status.HIDDEN, list.get(40).getReply().getStatus(),
+                "getReply() is the true inverse: the reply in any status, the consumer filters");
+    }
+
+    @Test
+    void getReplyStaysTheTrueInverseAfterAStatusChangeAndARender() throws Exception {
+        ReaderComment parent = comment(ea, reader, Status.PUBLISHED, null);
+        ReaderComment reply = comment(ea, owner, Status.PUBLISHED, parent);
+        TestUtils.endSession(true);
+
+        ReaderComment r = mgr().getComment(reply.getId());
+        r.setStatus(Status.HIDDEN);
+        mgr().saveComment(r);
+        TestUtils.endSession(true);
+
+        mgr().getPublishedForEntry(TestUtils.getManagedWeblogEntry(ea));
+        TestUtils.endSession(true);
+
+        ReaderComment again = mgr().getComment(parent.getId());
+        assertNotNull(again.getReply());
+        assertEquals(reply.getId(), again.getReply().getId());
+        assertEquals(Status.HIDDEN, again.getReply().getStatus());
+    }
+
+    @Test
+    void removingAParentTakesItsReplyOutOfEveryView() throws Exception {
+        ReaderComment parent = comment(ea, reader, Status.PUBLISHED, null);
+        ReaderComment reply = comment(ea, owner, Status.HIDDEN, parent);
+        TestUtils.endSession(true);
+        mgr().getPublishedForEntry(TestUtils.getManagedWeblogEntry(ea));   // render fills the cache
+
+        mgr().removeComment(mgr().getComment(parent.getId()));
+        TestUtils.endSession(true);
+
+        assertNull(mgr().getComment(parent.getId()));
+        assertNull(mgr().getComment(reply.getId()), "no ghost reply");
+        assertTrue(mgr().getCommentsByAuthor(TestUtils.getManagedUser(owner)).isEmpty());
+    }
+
+    @Test
+    void removingAnEntryRemovesItsComments() throws Exception {
+        ReaderComment parent = comment(ea, reader, Status.PUBLISHED, null);
+        ReaderComment reply = comment(ea, owner, Status.PUBLISHED, parent);
+        ReaderComment elsewhere = comment(eb, reader, Status.PUBLISHED, null);
+        TestUtils.endSession(true);
+        mgr().getPublishedForEntry(TestUtils.getManagedWeblogEntry(ea));
+
+        TestUtils.weblogger().getWeblogEntryManager()
+                .removeWeblogEntry(TestUtils.getManagedWeblogEntry(ea));
+        TestUtils.endSession(true);
+
+        assertNull(mgr().getComment(parent.getId()));
+        assertNull(mgr().getComment(reply.getId()));
+        assertEquals(List.of(elsewhere.getId()),
+                ids(mgr().getCommentsByAuthor(TestUtils.getManagedUser(reader))));
+    }
+
+    @Test
+    void removingAUserRemovesTheirCommentsAndTheRepliesToThem() throws Exception {
+        ReaderComment mine = comment(ea, other, Status.PUBLISHED, null);
+        ReaderComment ownerReply = comment(ea, owner, Status.PUBLISHED, mine);
+        ReaderComment kept = comment(ea, reader, Status.PUBLISHED, null);
+        TestUtils.endSession(true);
+        mgr().getPublishedForEntry(TestUtils.getManagedWeblogEntry(ea));
+
+        TestUtils.weblogger().getUserManager().removeUser(TestUtils.getManagedUser(other));
+        TestUtils.endSession(true);
+
+        assertNull(mgr().getComment(mine.getId()));
+        assertNull(mgr().getComment(ownerReply.getId()));
+        assertNotNull(mgr().getComment(kept.getId()));
+        assertEquals(List.of(kept.getId()), ids(mgr().getComments(
+                TestUtils.getManagedWebsite(a), null, null, 0, 50)));
+        assertTrue(mgr().getCommentsByAuthor(TestUtils.getManagedUser(owner)).isEmpty());
     }
 
     private JPAPersistenceStrategy strategy() throws Exception {

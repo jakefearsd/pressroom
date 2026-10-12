@@ -223,9 +223,10 @@ class CommentServiceTest {
         TestUtils.endSession(true);
 
         // One reply per comment, ever: a hidden reply still counts, even after a
-        // render has re-read the parent with only its PUBLISHED reply.
+        // render (the reply stays on the parent, in whatever status it has).
         setStatus(reply, Status.HIDDEN);
-        assertNull(mgr().getPublishedForEntry(TestUtils.getManagedWeblogEntry(ea)).get(0).getReply());
+        assertEquals(Status.HIDDEN,
+                mgr().getPublishedForEntry(TestUtils.getManagedWeblogEntry(ea)).get(0).getReply().getStatus());
         TestUtils.endSession(true);
         assertSame(CommentRefusal.BAD_REPLY, post(owner, ea.getId(), "again", parent.getId()).refusal(),
                 "a second reply while the first is hidden");

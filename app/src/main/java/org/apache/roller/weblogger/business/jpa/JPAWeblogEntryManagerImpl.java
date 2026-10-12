@@ -339,6 +339,10 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         removeRevisions.setParameter(1, entry);
         removeRevisions.executeUpdate();
 
+        // reader comments cascade in the database too; removing the entities
+        // keeps the shared cache from serving them after the entry is gone
+        roller.getCommentManager().removeCommentsForEntry(entry);
+
         // remove tag & tag aggregates
         if (entry.getTags() != null) {
             for (WeblogEntryTag tag : entry.getTags()) {

@@ -17,7 +17,9 @@
  */
 package org.apache.roller.weblogger.business.jpa;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import jakarta.persistence.TypedQuery;
 
@@ -61,7 +63,45 @@ public class JPACommentManagerImpl implements CommentManager {
         if (c.getReplyTo() != null) {
             c.getReplyTo().setReply(null);
         }
+        ReaderComment reply = c.getReply();
+        if (reply != null) {
+            c.setReply(null);
+            strategy.remove(reply);
+        }
         strategy.remove(c);
+    }
+
+    @Override
+    public void removeCommentsForEntry(WeblogEntry entry) throws WebloggerException {
+        TypedQuery<ReaderComment> query = strategy.getNamedQuery("ReaderComment.getByEntry", ReaderComment.class);
+        query.setParameter(1, entry);
+        removeAll(new LinkedHashSet<>(query.getResultList()));
+    }
+
+    @Override
+    public void removeCommentsByAuthor(User author) throws WebloggerException {
+        Set<ReaderComment> doomed = new LinkedHashSet<>();
+        for (ReaderComment c : getCommentsByAuthor(author)) {
+            doomed.add(c);
+            if (c.getReply() != null) {
+                doomed.add(c.getReply());
+            }
+        }
+        removeAll(doomed);
+    }
+
+    /** Replies first, each unhooked from its parent, so no cached parent keeps pointing at a removed row. */
+    private void removeAll(Set<ReaderComment> doomed) throws WebloggerException {
+        for (ReaderComment c : doomed) {
+            if (c.getReplyTo() != null) {
+                removeComment(c);
+            }
+        }
+        for (ReaderComment c : doomed) {
+            if (c.getReplyTo() == null) {
+                removeComment(c);
+            }
+        }
     }
 
     @Override

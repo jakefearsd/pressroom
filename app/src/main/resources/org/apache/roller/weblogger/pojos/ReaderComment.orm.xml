@@ -7,18 +7,17 @@
             class="org.apache.roller.weblogger.pojos.ReaderComment" access="PROPERTY">
         <table name="roller_reader_comment"/>
         <!-- One query for an entry's thread: top-level PUBLISHED comments with
-             their author, and the PUBLISHED reply with its author. -->
+             their author, and the reply (in ANY status; consumers filter) with its author. -->
         <named-query name="ReaderComment.getPublishedForEntry">
             <query>SELECT c FROM ReaderComment c JOIN FETCH c.author
-                   LEFT JOIN FETCH c.reply r ON r.status = org.apache.roller.weblogger.pojos.ReaderComment.Status.PUBLISHED
+                   LEFT JOIN FETCH c.reply r
                    LEFT JOIN FETCH r.author
                    WHERE c.entry = ?1 AND c.replyTo IS NULL
                    AND c.status = org.apache.roller.weblogger.pojos.ReaderComment.Status.PUBLISHED
                    ORDER BY c.created, c.id</query>
-            <!-- The reply is filtered by the ON clause, but a comment already in the shared
-                 cache would keep whatever reply it was loaded with (a hidden one). Refresh
-                 so that, after this query, getReply() is the PUBLISHED reply or null. -->
-            <hint name="eclipselink.refresh" value="true"/>
+        </named-query>
+        <named-query name="ReaderComment.getByEntry">
+            <query>SELECT c FROM ReaderComment c WHERE c.entry = ?1</query>
         </named-query>
         <named-query name="ReaderComment.getPendingForEntryAndAuthor">
             <query>SELECT c FROM ReaderComment c WHERE c.entry = ?1 AND c.author = ?2

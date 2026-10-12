@@ -103,8 +103,8 @@ public class WebloggerBeanConfig {
     }
 
     @Bean
-    public UserManager userManager(JPAPersistenceStrategy strategy) {
-        return new JPAUserManagerImpl(strategy);
+    public UserManager userManager(@Lazy Weblogger weblogger, JPAPersistenceStrategy strategy) {
+        return new JPAUserManagerImpl(weblogger, strategy);
     }
 
     @Bean

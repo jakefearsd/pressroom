@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.UserManager;
+import org.apache.roller.weblogger.business.Weblogger;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -48,14 +49,16 @@ import org.apache.roller.weblogger.pojos.WeblogPermission;
 public class JPAUserManagerImpl implements UserManager {
     private static final Logger log = LoggerFactory.getLogger(JPAUserManagerImpl.class);
 
+    private final Weblogger roller;
     private final JPAPersistenceStrategy strategy;
     
     // cached mapping of userNames -> userIds
     private final Map<String, String> userNameToIdMap = Collections.synchronizedMap(new HashMap<>());
     
 
-    public JPAUserManagerImpl(JPAPersistenceStrategy strat) {
+    public JPAUserManagerImpl(Weblogger roller, JPAPersistenceStrategy strat) {
         log.debug("Instantiating JPA User Manager");
+        this.roller = roller;
         this.strategy = strat;
     }
 
@@ -91,6 +94,10 @@ public class JPAUserManagerImpl implements UserManager {
         Query removeApiTokens = strategy.getNamedUpdate("ApiToken.removeByUser");
         removeApiTokens.setParameter(1, user);
         removeApiTokens.executeUpdate();
+
+        // reader comments by the user, and the owners' replies to them; the
+        // database would cascade, but not the shared cache
+        roller.getCommentManager().removeCommentsByAuthor(user);
 
         this.strategy.remove(user);
 
