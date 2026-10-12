@@ -24,11 +24,20 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
  *
  * <p>Spring calls this on every request through the UI chain, so the Absolute
  * URL -- a database read -- is read only on the authorization endpoint itself.
- * That endpoint answers the request inside the security chain, so the read's
- * persistence session is released here; see {@link PersistenceSession}. When
- * building the request throws, {@link SsoFailureHandler} answers and releases
- * again; the second release finds nothing bound and is a no-op, the same as
- * {@code PersistenceSessionFilter}'s after a failed API token lookup.
+ *
+ * <p>The persistence session is released exactly once whichever way that read
+ * ends (spec criterion 32; see {@link PersistenceSession}), and only here when
+ * this resolver is what ends the request:
+ * <ul>
+ *   <li>a request is returned: the redirect filter answers it inside the
+ *       security chain, so it is released here;</li>
+ *   <li>null is returned: the redirect filter continues the chain and
+ *       {@code PersistenceSessionFilter} releases;</li>
+ *   <li>building the request throws: the redirect filter hands it to
+ *       {@link SsoFailureHandler}, which releases.</li>
+ * </ul>
+ * Releasing on the last two as well would release twice, and a second release
+ * is not free: it opens a fresh EntityManager only to close it.
  */
 public class RollerAuthorizationRequestResolver implements OAuth2AuthorizationRequestResolver {
 
@@ -41,7 +50,7 @@ public class RollerAuthorizationRequestResolver implements OAuth2AuthorizationRe
     /**
      * @param registrations     the provider registration
      * @param absoluteUrl       the configured Absolute URL, read per sign-in
-     * @param webloggerProvider answers "is the tier up?" for the release after the read
+     * @param webloggerProvider answers "is the tier up?" for the release when this ends the request
      */
     public RollerAuthorizationRequestResolver(ClientRegistrationRepository registrations,
             Supplier<String> absoluteUrl, WebloggerProvider webloggerProvider) {
@@ -56,14 +65,10 @@ public class RollerAuthorizationRequestResolver implements OAuth2AuthorizationRe
 
     @Override
     public OAuth2AuthorizationRequest resolve(HttpServletRequest request) {
-        if (!authorizationEndpoint.matches(request)) {
+        if (!authorizationEndpoint.matches(request) || callbackUrl() == null) {
             return null;
         }
-        try {
-            return callbackUrl() == null ? null : delegate.resolve(request);
-        } finally {
-            PersistenceSession.release(webloggerProvider);
-        }
+        return releasedIfAnswered(delegate.resolve(request));
     }
 
     /**
@@ -73,11 +78,18 @@ public class RollerAuthorizationRequestResolver implements OAuth2AuthorizationRe
      */
     @Override
     public OAuth2AuthorizationRequest resolve(HttpServletRequest request, String clientRegistrationId) {
-        try {
-            return callbackUrl() == null ? null : delegate.resolve(request, clientRegistrationId);
-        } finally {
+        if (callbackUrl() == null) {
+            return null;
+        }
+        return releasedIfAnswered(delegate.resolve(request, clientRegistrationId));
+    }
+
+    /** A returned request ends this request in the security chain, so its persistence session goes now. */
+    private OAuth2AuthorizationRequest releasedIfAnswered(OAuth2AuthorizationRequest authorizationRequest) {
+        if (authorizationRequest != null) {
             PersistenceSession.release(webloggerProvider);
         }
+        return authorizationRequest;
     }
 
     /** @return the callback for the configured Absolute URL, or null when none is set */

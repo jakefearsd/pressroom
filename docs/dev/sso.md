@@ -143,7 +143,10 @@ provider. Sign-in changes the session id.
   both handlers, and the resolver. Skip it and every sign-in leaves an
   EntityManager bound to a worker thread.
 - **The resolver runs on every UI request**, so it matches the authorize path
-  first and reads the Absolute URL (a database read) and releases only there.
+  first and reads the Absolute URL (a database read) only there. It releases
+  only when it returns a request: on null the chain continues to order 60, and
+  on a throw `SsoFailureHandler` releases. A second release is not free (it
+  opens a fresh EntityManager to close it), so every path releases exactly once.
   The customizer is set once in the constructor; the delegate is shared by
   all threads.
 - **remember-me is disabled on the OAuth2 login filter**

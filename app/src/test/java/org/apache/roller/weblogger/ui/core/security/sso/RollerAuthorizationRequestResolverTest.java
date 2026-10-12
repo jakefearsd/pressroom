@@ -92,6 +92,7 @@ class RollerAuthorizationRequestResolverTest {
                     "no redirect to a provider without a configured callback");
             assertEquals(0, lookups.get(), "and no discovery either");
         }
+        verify(weblogger, never()).release();
     }
 
     @Test
@@ -107,19 +108,38 @@ class RollerAuthorizationRequestResolverTest {
         verify(weblogger, never()).release();
     }
 
+    /** On null the redirect filter continues the chain, and {@code PersistenceSessionFilter} releases. */
+    @Test
+    void resolvingNothingLeavesTheReleaseToTheRestOfTheChain() {
+        assertNull(resolver(() -> "").resolve(authorize()));
+        verify(weblogger, never()).release();
+    }
+
     @Test
     void releasesThePersistenceSessionExactlyOnceOnTheAuthorizationEndpoint() {
         resolver(() -> "https://blog.example").resolve(authorize());
         verify(weblogger, times(1)).release();
     }
 
+    /**
+     * Exactly once on every path: on a throw the redirect filter hands the request
+     * to {@link SsoFailureHandler}, which releases; releasing here as well would
+     * release twice (a second release opens and closes a fresh EntityManager).
+     */
     @Test
-    void releasesThePersistenceSessionExactlyOnceEvenWhenTheSupplierThrows() {
+    void aThrowingSupplierLeavesTheReleaseToTheFailureHandler() {
         RollerAuthorizationRequestResolver resolver = resolver(() -> {
             throw new IllegalStateException("store down");
         });
         assertThrows(IllegalStateException.class, () -> resolver.resolve(authorize()));
-        verify(weblogger, times(1)).release();
+        verify(weblogger, never()).release();
+    }
+
+    @Test
+    void anUnknownRegistrationLeavesTheReleaseToTheFailureHandler() {
+        RollerAuthorizationRequestResolver resolver = resolver(() -> "https://blog.example", id -> null);
+        assertThrows(RuntimeException.class, () -> resolver.resolve(authorize()));
+        verify(weblogger, never()).release();
     }
 
     @Test
@@ -135,7 +155,8 @@ class RollerAuthorizationRequestResolverTest {
         OAuth2AuthorizationRequest r = resolver(() -> "https://blog.example/").resolve(req, "oidc");
         assertNotNull(r);
         assertEquals("https://blog.example/roller-ui/sso/callback", r.getRedirectUri());
+        verify(weblogger, times(1)).release();
         assertNull(resolver(() -> "").resolve(req, "oidc"));
-        verify(weblogger, times(2)).release();
+        verify(weblogger, times(1)).release();
     }
 }

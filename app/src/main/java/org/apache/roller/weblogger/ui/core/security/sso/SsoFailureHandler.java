@@ -3,6 +3,8 @@ package org.apache.roller.weblogger.ui.core.security.sso;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.roller.weblogger.business.WebloggerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,10 +20,17 @@ import org.springframework.security.web.authentication.AuthenticationFailureHand
  * invalid ID token, the provider's own error answer, the account store
  * failing -- becomes {@code failed} (spec, Errors).
  *
- * <p>Logs one WARN line with that code and the OAuth2 error code, nothing
- * more: an exception's message and an error's description can carry provider
- * text, and the error code itself arrives on a URL anyone can type, so it is
- * cut down to a short run of safe characters before it reaches the log.
+ * <p>Logs one WARN line with that code and the reason (spec, Logging). The
+ * reason is Roller's own refusal reason when the cause chain holds a
+ * {@link ReaderSignInRefused} -- a fixed phrase that never carries an email --
+ * and otherwise the OAuth2 error code, or the exception's class, followed by
+ * its causes' class names ({@code AuthenticationServiceException<-IllegalStateException}),
+ * so an account store failing mid-sign-in still shows up. Never an exception
+ * message or the OAuth2 description: a message can carry an email (an SQL
+ * error echoing a row), and whoever holds a valid {@code state} can set the
+ * description through {@code error_description}. The error code itself
+ * arrives on a URL anyone can type, so it is cut down to a short run of safe
+ * characters. No throwable is passed to the logger.
  *
  * <p>Answers the request inside the security chain, so it releases the
  * persistence session; see {@link PersistenceSession}.
@@ -30,6 +39,7 @@ public class SsoFailureHandler implements AuthenticationFailureHandler {
 
     private static final Logger log = LoggerFactory.getLogger("roller.sso");
     private static final int MAX_LOGGED_CODE = 64;
+    private static final int MAX_CAUSES = 8;
 
     private final WebloggerProvider webloggerProvider;
 
@@ -44,14 +54,56 @@ public class SsoFailureHandler implements AuthenticationFailureHandler {
         try {
             String oauthErrorCode = exception instanceof OAuth2AuthenticationException oauth
                     ? loggable(oauth.getError().getErrorCode())
-                    : exception.getClass().getSimpleName();
+                    : null;
             String code = ReaderOidcUserService.REFUSED.equals(oauthErrorCode)
                     ? SsoPaths.ERROR_REFUSED : SsoPaths.ERROR_FAILED;
-            log.warn("Reader sign-in refused or failed: {} ({})", code, oauthErrorCode);
+            log.warn("Reader sign-in refused or failed: {} ({})", code, reason(exception, oauthErrorCode));
             response.sendRedirect(SsoPaths.loginError(request.getContextPath(), code));
         } finally {
             PersistenceSession.release(webloggerProvider);
         }
+    }
+
+    /**
+     * @return Roller's refusal reason if the cause chain carries one, otherwise the
+     *         OAuth2 error code (or the exception's class) and its causes' class names
+     */
+    private static String reason(AuthenticationException exception, String oauthErrorCode) {
+        String head = oauthErrorCode != null ? oauthErrorCode : exception.getClass().getSimpleName();
+        List<Throwable> causes = causes(exception);
+        for (Throwable cause : causes) {
+            if (cause instanceof ReaderSignInRefused refused) {
+                return head + ": " + plain(refused.reason());
+            }
+        }
+        StringBuilder reason = new StringBuilder(head);
+        for (Throwable cause : causes) {
+            reason.append("<-").append(cause.getClass().getSimpleName());
+        }
+        return reason.toString();
+    }
+
+    /** The cause chain below {@code top}, ending at a repeat or after {@value #MAX_CAUSES}. */
+    private static List<Throwable> causes(Throwable top) {
+        List<Throwable> chain = new ArrayList<>();
+        chain.add(top);
+        Throwable cause = top.getCause();
+        while (cause != null && !chain.contains(cause) && chain.size() <= MAX_CAUSES) {
+            chain.add(cause);
+            cause = cause.getCause();
+        }
+        return chain.subList(1, chain.size());
+    }
+
+    /** A Roller refusal reason is a fixed phrase; control characters are dropped all the same. */
+    private static String plain(String text) {
+        if (text == null) {
+            return "";
+        }
+        StringBuilder plain = new StringBuilder();
+        text.codePoints().filter(c -> !Character.isISOControl(c)).limit(MAX_LOGGED_CODE)
+                .forEach(plain::appendCodePoint);
+        return plain.toString();
     }
 
     /** RFC 6749 error codes are short and plain; anything else is cut down to that shape. */

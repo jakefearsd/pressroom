@@ -4,6 +4,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
@@ -14,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup;
 
+import jakarta.servlet.Filter;
 import jakarta.servlet.http.Cookie;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -32,6 +34,7 @@ import org.apache.roller.weblogger.ui.core.security.sso.RollerAuthorizationReque
 import org.apache.roller.weblogger.ui.core.security.sso.RollerOidcUser;
 import org.apache.roller.weblogger.ui.core.security.sso.SsoFailureHandler;
 import org.apache.roller.weblogger.ui.core.security.sso.SsoLogin;
+import org.apache.roller.weblogger.ui.core.security.sso.SsoSettings;
 import org.apache.roller.weblogger.ui.core.security.sso.SsoStartFilter;
 import org.apache.roller.weblogger.ui.core.security.sso.SsoSuccessHandler;
 import org.apache.roller.weblogger.ui.core.security.sso.SsoTestRegistrations;
@@ -44,7 +47,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.mock.web.MockServletContext;
+import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.endpoint.OAuth2AuthorizationCodeGrantRequest;
 import org.springframework.security.oauth2.client.oidc.authentication.OidcIdTokenValidator;
@@ -52,6 +57,8 @@ import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
+import org.springframework.security.oauth2.client.web.OAuth2LoginAuthenticationFilter;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AccessTokenResponse;
@@ -65,8 +72,11 @@ import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.web.FilterChainProxy;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.rememberme.AbstractRememberMeServices;
 import org.springframework.stereotype.Controller;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -277,6 +287,25 @@ class SsoLoginWiringTest {
         assertNotEquals(before, r.getRequest().getSession().getId(), "sign-in changes the session id");
     }
 
+    /**
+     * Roller uses the provider only to sign the reader in. Spring's default keeps
+     * every reader's access token in an in-memory map for the life of the process;
+     * after a real sign-in, the chain's repository must hold nothing for the reader.
+     */
+    @Test
+    void aSignInKeepsNoAccessToken() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        String state = authorize(session);
+        MvcResult r = onMvc.perform(get("/roller-ui/sso/callback").session(session)
+                        .param("code", "c").param("state", state))
+                .andExpect(authenticated().withUsername(READER))
+                .andReturn();
+
+        Authentication reader = new TestingAuthenticationToken(READER, null, "reader");
+        assertNull(signInFilterClients().loadAuthorizedClient(SsoSettings.REGISTRATION_ID, reader, r.getRequest()),
+                "no authorized client (access token) is kept after sign-in");
+    }
+
     @Test
     void anAccountStoreThatThrowsFailsClosed() throws Exception {
         users = request -> {
@@ -290,6 +319,20 @@ class SsoLoginWiringTest {
     }
 
     // ------------------------------------------------------------- fixtures
+
+    /** The authorized-client repository the built chain's sign-in filter actually uses. */
+    private static OAuth2AuthorizedClientRepository signInFilterClients() {
+        FilterChainProxy proxy = onContext.getBean(FilterChainProxy.class);
+        for (SecurityFilterChain chain : proxy.getFilterChains()) {
+            for (Filter filter : chain.getFilters()) {
+                if (filter instanceof OAuth2LoginAuthenticationFilter signIn) {
+                    return (OAuth2AuthorizedClientRepository)
+                            ReflectionTestUtils.getField(signIn, "authorizedClientRepository");
+                }
+            }
+        }
+        throw new AssertionError("no OAuth2LoginAuthenticationFilter in the built chain");
+    }
 
     /** Runs the authorization step in {@code session}; returns the state it sent to the provider. */
     private static String authorize(MockHttpSession session) throws Exception {

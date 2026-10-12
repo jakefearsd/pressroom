@@ -16,15 +16,18 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import org.apache.logging.log4j.Level;
+import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.business.WebloggerProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -163,6 +166,84 @@ class SsoHandlersTest {
                     new BadCredentialsException("secret detail"));
             assertEquals("/roller-ui/login.rol?sso=failed", res.getRedirectedUrl());
             assertFalse(log.lines(Level.WARN).get(0).contains("secret detail"));
+        }
+    }
+
+    /**
+     * Spec, Logging: the code and the reason. Roller's own refusal reason travels
+     * as the cause and is logged; the OAuth2 description is not, because whoever
+     * holds a valid state can set it through {@code error_description}.
+     */
+    @Test
+    void aRefusalLogsRollersReasonButNeverTheDescription() throws Exception {
+        try (SsoLogCapture log = SsoLogCapture.start()) {
+            MockHttpServletResponse res = new MockHttpServletResponse();
+            OAuth2AuthenticationException ex = new OAuth2AuthenticationException(
+                    new OAuth2Error(ReaderOidcUserService.REFUSED, "provider-set description jo@example.com", null),
+                    "message jo@example.com", new ReaderSignInRefused("account disabled"));
+            new SsoFailureHandler(provider).onAuthenticationFailure(callback("", null), res, ex);
+
+            assertEquals("/roller-ui/login.rol?sso=refused", res.getRedirectedUrl());
+            String warn = log.lines(Level.WARN).get(0);
+            assertTrue(warn.contains("refused"), warn);
+            assertTrue(warn.contains("account disabled"), warn);
+            assertFalse(warn.contains("provider-set"), "never the OAuth2 description: " + warn);
+            assertFalse(warn.contains("jo@example.com"), warn);
+            assertFalse(log.anyThrowable(), "never the exception itself");
+        }
+    }
+
+    /**
+     * An unexpected failure in the account store must still be visible, but an
+     * exception's message can carry an email (an SQL error echoing a row), so
+     * only the cause chain's class names are logged.
+     */
+    @Test
+    void aStoreFailureNamesItsCauseClassesButNoMessages() throws Exception {
+        try (SsoLogCapture log = SsoLogCapture.start()) {
+            MockHttpServletResponse res = new MockHttpServletResponse();
+            AuthenticationServiceException ex = new AuthenticationServiceException("reader sign-in failed",
+                    new IllegalStateException("duplicate key (email)=(jo@example.com)"));
+            new SsoFailureHandler(provider).onAuthenticationFailure(callback("", null), res, ex);
+
+            assertEquals("/roller-ui/login.rol?sso=failed", res.getRedirectedUrl());
+            String warn = log.lines(Level.WARN).get(0);
+            assertTrue(warn.contains("AuthenticationServiceException<-IllegalStateException"), warn);
+            assertFalse(warn.contains("jo@example.com"), warn);
+            assertFalse(warn.contains("reader sign-in failed"), warn);
+            assertFalse(log.anyThrowable(), "never the exception itself");
+        }
+    }
+
+    @Test
+    void anOAuth2FailureWithACauseNamesTheCauseClassesAfterTheErrorCode() throws Exception {
+        try (SsoLogCapture log = SsoLogCapture.start()) {
+            OAuth2AuthenticationException ex = new OAuth2AuthenticationException(
+                    new OAuth2Error(ReaderOidcUserService.FAILED), "reader account store failed",
+                    new WebloggerException("lookup failed for jo@example.com", new IllegalStateException("x")));
+            new SsoFailureHandler(provider).onAuthenticationFailure(callback("", null),
+                    new MockHttpServletResponse(), ex);
+
+            String warn = log.lines(Level.WARN).get(0);
+            assertTrue(warn.contains("sso_failed<-WebloggerException<-IllegalStateException"), warn);
+            assertFalse(warn.contains("jo@example.com"), warn);
+        }
+    }
+
+    /** A separate thread, so a regressed guard fails here rather than hanging the build. */
+    @Test
+    @Timeout(value = 10, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+    void aCyclicCauseChainStillEnds() throws Exception {
+        IllegalStateException first = new IllegalStateException("a");
+        IllegalArgumentException second = new IllegalArgumentException("b");
+        first.initCause(second);
+        second.initCause(first);
+        try (SsoLogCapture log = SsoLogCapture.start()) {
+            MockHttpServletResponse res = new MockHttpServletResponse();
+            new SsoFailureHandler(provider).onAuthenticationFailure(callback("", null), res,
+                    new AuthenticationServiceException("x", first));
+            assertEquals("/roller-ui/login.rol?sso=failed", res.getRedirectedUrl());
+            assertTrue(log.lines(Level.WARN).get(0).length() < 400, log.lines(Level.WARN).get(0));
         }
     }
 

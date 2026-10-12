@@ -46,7 +46,9 @@ import org.springframework.security.web.authentication.NullRememberMeServices;
  *       gains nothing.</li>
  *   <li><b>No remember-me</b> (spec, Session and cookies). The chain's
  *       remember-me services would otherwise be applied to this filter too, and
- *       with {@code _spring_security_remember_me=on} on the callback they look
+ *       with {@code remember-me=on} on the callback -- Spring's default
+ *       parameter, which {@code RollerRememberMeServices} reads; not the login
+ *       page's {@code _spring_security_remember_me} -- they look
  *       the reader up as a password user and fail the sign-in.</li>
  *   <li><b>No stored access token.</b> Roller never calls the provider after
  *       sign-in; the default keeps every reader's token in an in-memory map for
