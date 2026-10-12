@@ -191,9 +191,17 @@ The rules:
   user who can author (new `$utils.isUserAuthor()`: holds the `login`
   global action). A reader sees "Logout". `weblog.vm` already shows a
   signed-in visitor only "Logout".
-- **Render cache:** whatever rule keeps a signed-in author's page out of
-  the shared render cache must hold for a reader too. The plan verifies
-  which rule it is and pins it with a test.
+- **Render cache:** the page caches already key a signed-in visitor's
+  render by the principal's name (`/user=<name>` in `WeblogPageCache` and
+  `SiteWideCache`). A reader's principal name is the Roller username, so a
+  reader's render is cached per reader and is never served to anyone else,
+  the same as an author's.
+- **Persistence sessions:** the security chain (order 40) runs before
+  `PersistenceSessionFilter` (order 60). Anything SSO does there that ends
+  the request without continuing the chain releases the persistence
+  session itself, as `ApiTokenAuthFilter` does: the start filter and both
+  handlers. Otherwise every sign-in leaves an EntityManager bound to a
+  worker thread.
 
 ### Passwords and administration
 
@@ -203,7 +211,8 @@ refuses it:
 - **Password sign-in:** `RollerUserDetailsService` reports it with an
   unusable credential. Belt and braces: the unusable marker never matches.
 - **Forgot-password:** answers the usual enumeration-proof page and sends
-  nothing.
+  nothing. Its lookup by email considers only local accounts, so a reader
+  who shares an author's email never captures the author's reset.
 - **Reset-password:** refuses to consume a token for it.
 - **User Admin's set-password link:** refused.
 - **The password fields on User Admin's edit page and on Profile** are
@@ -212,7 +221,8 @@ refuses it:
 
 **User Admin:**
 
-- The user list marks a bound account "Google".
+- The user edit page marks a bound account "Signs in with Google". User
+  Admin has no list page, only a search box.
 - An admin can disable it, and can make it an `editor` with a new checkbox
   ("Can write").
 - Granting it `admin` is refused server-side
@@ -410,8 +420,9 @@ integration.
 25. Members → Invite refuses an account that is only a reader. (U)
 26. The frontpage header shows "Main Menu" to an author but not to a
     reader, who sees "Logout". (U)
-27. A reader's page view is never served from, or stored into, the shared
-    render cache, exactly as for a signed-in author. (U)
+27. A reader's rendered page is cached under a key carrying that reader's
+    username, so it is never served to anyone else. The same rule applies
+    to an author. (U)
 
 **Passwords and administration**
 
@@ -423,7 +434,7 @@ integration.
     - Profile's password change.
 
     (U)
-29. User Admin marks a bound account "Google". It refuses to grant such an
+29. The user edit page marks a bound account "Signs in with Google". It refuses to grant such an
     account `admin`, and the checkbox is absent. It allows "Can write"
     (`editor`), after which that account signs in with Google and reaches
     the editor menu. (U; I for the promotion)
@@ -439,3 +450,11 @@ integration.
     - `docs/api/README.md` notes `sso` on user views;
     - `docs/dev/entries.md`'s "Comments … not coming back" sentence is
       replaced by a pointer to this work.
+
+**Added after reading the code**
+
+32. Every SSO step that ends a request inside the security chain releases
+    the persistence session exactly once: the start filter and both
+    handlers. (U)
+33. Forgot-password by email reaches the local account when a reader
+    shares its address. (U)
