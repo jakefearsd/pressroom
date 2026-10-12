@@ -636,6 +636,14 @@ limitations under the License.
             <artifactId>commons-lang3</artifactId>
         </dependency>
 
+        <!-- Image import by URL (business.fetch): the one common Java client with a
+             per-client DnsResolver, so the fetcher can refuse internal addresses and
+             connect only to addresses it checked. Version from Spring Boot's BOM. -->
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+        </dependency>
+
         <!-- Image resizing for responsive media renditions (Stage 2 Wave 1).
              Not Boot-BOM-managed, so the version is pinned explicitly here.
              Delegates encoding to ImageIO; WebP output is produced separately
