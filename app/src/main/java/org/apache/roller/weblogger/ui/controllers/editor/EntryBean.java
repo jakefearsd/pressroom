@@ -63,6 +63,7 @@ public class EntryBean {
     private String ogImageId = null;
     private String canonicalUrl = null;
     private boolean noindex = false;
+    private boolean commentsClosed = false;
 
     // Wave 3 travel structured data, edited in the SEO card.
     // jsonLdType holds a JsonLdType enum name, like status holds a PubStatus
@@ -204,6 +205,14 @@ public class EntryBean {
 
     public void setCanonicalUrl(String canonicalUrl) {
         this.canonicalUrl = canonicalUrl;
+    }
+
+    public boolean getCommentsClosed() {
+        return commentsClosed;
+    }
+
+    public void setCommentsClosed(boolean commentsClosed) {
+        this.commentsClosed = commentsClosed;
     }
 
     public boolean getNoindex() {
@@ -360,6 +369,7 @@ public class EntryBean {
         entry.setOgImageId(getOgImageId());
         entry.setCanonicalUrl(getCanonicalUrl());
         entry.setNoindex(getNoindex());
+        entry.setCommentsClosed(getCommentsClosed());
         // fromString is lenient by design: null/blank (no dropdown yet) and
         // unknown values both normalize to the BLOG_POSTING default.
         entry.setJsonLdType(JsonLdType.fromString(getJsonLdType()));
@@ -405,6 +415,7 @@ public class EntryBean {
         setOgImageId(entry.getOgImageId());
         setCanonicalUrl(entry.getCanonicalUrl());
         setNoindex(entry.getNoindex() != null && entry.getNoindex());
+        setCommentsClosed(Boolean.TRUE.equals(entry.getCommentsClosed()));
         // Null (entries persisted before this field existed) stays null; the
         // editor treats it as the BLOG_POSTING default.
         setJsonLdType(entry.getJsonLdType() != null ? entry.getJsonLdType().name() : null);

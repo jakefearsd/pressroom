@@ -401,6 +401,24 @@
                         </div>
                     </div>
 
+                    <%-- comments: closing stops new ones on this entry; the counts line
+                         links to the moderation page and shows only for a saved entry
+                         on a weblog that has comments on. --%>
+                    <div class="row mb-3">
+                        <div class="offset-sm-3 col-sm-9">
+                            <div class="form-check">
+                                <label class="form-check-label"><input type="checkbox" class="form-check-input" id="comments_closed" name="bean.commentsClosed" value="true" ${bean.commentsClosed ? 'checked' : ''}/> <spring:message code="weblogEdit.commentsClosed"/></label>
+                            </div>
+                            <c:if test="${actionWeblog.commentsEnabled and not empty bean.id and not empty commentsPublished}">
+                                <c:url value="/roller-ui/authoring/comments.rol" var="entryCommentsUrl">
+                                    <c:param name="weblog" value="${actionWeblog.handle}"/>
+                                    <c:param name="entry" value="${bean.id}"/>
+                                </c:url>
+                                <a class="small" id="entryCommentCounts" href="${entryCommentsUrl}"><spring:message code="weblogEdit.commentCounts" arguments="${commentsPublished},${commentsPending}"/></a>
+                            </c:if>
+                        </div>
+                    </div>
+
                     <%-- structured data: the schema.org type this entry's head declares.
                          The event rows below are shown/hidden by
                          updateSeoJsonLdRows() and stay in the DOM when hidden, so

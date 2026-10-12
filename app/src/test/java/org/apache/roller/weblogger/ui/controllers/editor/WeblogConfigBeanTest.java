@@ -71,4 +71,32 @@ class WeblogConfigBeanTest {
         assertEquals("Original", w.getName());
         assertNull(w.getBusiness());
     }
+
+    @Test
+    void theCommentSettingsRoundTripThroughTheBean() {
+        Weblog w = weblog();
+        w.setCommentsEnabled(Boolean.TRUE);
+        w.setCommentNotify(Boolean.FALSE);
+        WeblogConfigBean b = new WeblogConfigBean();
+        b.copyFrom(w);
+        org.junit.jupiter.api.Assertions.assertTrue(b.getCommentsEnabled());
+        org.junit.jupiter.api.Assertions.assertFalse(b.getCommentNotify());
+
+        b.setCommentsEnabled(false);
+        b.setCommentNotify(true);
+        b.copyTo(w);
+        assertEquals(Boolean.FALSE, w.getCommentsEnabled());
+        assertEquals(Boolean.TRUE, w.getCommentNotify());
+    }
+
+    @Test
+    void nullCommentColumnsReadAsTheirDefaults() {
+        Weblog w = weblog();
+        w.setCommentsEnabled(null);
+        w.setCommentNotify(null);
+        WeblogConfigBean b = new WeblogConfigBean();
+        b.copyFrom(w);
+        org.junit.jupiter.api.Assertions.assertFalse(b.getCommentsEnabled());
+        org.junit.jupiter.api.Assertions.assertTrue(b.getCommentNotify());
+    }
 }

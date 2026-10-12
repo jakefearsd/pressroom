@@ -27,7 +27,7 @@ class EntriesApiWriteTest {
         EntryDtos.EntryWrite write = new EntryDtos.EntryWrite(
                 "Cats & Dogs", null, null, null, null, null, null,
                 null, null, null, null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
 
         EntryDtos.applyWrite(entry, write, weblogInZone("UTC"), Set.of());
 
@@ -43,7 +43,7 @@ class EntriesApiWriteTest {
         EntryDtos.EntryWrite write = new EntryDtos.EntryWrite(
                 null, null, "new body", null, null, null, null,
                 null, null, null, null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
 
         EntryDtos.applyWrite(entry, write, weblogInZone("UTC"), Set.of());
 
@@ -59,7 +59,7 @@ class EntriesApiWriteTest {
         EntryDtos.EntryWrite write = new EntryDtos.EntryWrite(
                 null, null, null, null, null, "2026-03-01T09:30", null,
                 null, null, null, null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
 
         EntryDtos.applyWrite(utcEntry, write, weblogInZone("UTC"), Set.of());
         EntryDtos.applyWrite(tokyoEntry, write, weblogInZone("Asia/Tokyo"), Set.of());
@@ -72,7 +72,7 @@ class EntriesApiWriteTest {
         EntryDtos.EntryWrite write = new EntryDtos.EntryWrite(
                 null, null, null, null, null, "yesterday-ish", null,
                 null, null, null, null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
 
         assertThrows(org.apache.roller.weblogger.ui.restapi.ApiException.class,
                 () -> EntryDtos.applyWrite(new WeblogEntry(), write, weblogInZone("UTC"), Set.of()));
@@ -92,7 +92,7 @@ class EntriesApiWriteTest {
         EntryDtos.EntryWrite write = new EntryDtos.EntryWrite(
                 title, null, null, null, null, null, null,
                 null, null, null, null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
 
         org.apache.roller.weblogger.ui.restapi.ApiException ex = assertThrows(
                 org.apache.roller.weblogger.ui.restapi.ApiException.class,
@@ -107,7 +107,7 @@ class EntriesApiWriteTest {
         EntryDtos.EntryWrite write = new EntryDtos.EntryWrite(
                 title, null, null, null, null, null, null,
                 null, null, null, null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
 
         WeblogEntry entry = new WeblogEntry();
         EntryDtos.applyWrite(entry, write, weblogInZone("UTC"), Set.of());
@@ -125,7 +125,7 @@ class EntriesApiWriteTest {
         EntryDtos.EntryWrite write = new EntryDtos.EntryWrite(
                 null, null, null, null, null, null, null,
                 "x".repeat(256), null, null, null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
 
         assertThrows(org.apache.roller.weblogger.ui.restapi.ApiException.class,
                 () -> EntryDtos.applyWrite(new WeblogEntry(), write, weblogInZone("UTC"), Set.of()));
@@ -136,7 +136,7 @@ class EntriesApiWriteTest {
         EntryDtos.EntryWrite write = new EntryDtos.EntryWrite(
                 null, null, null, null, null, null, null,
                 null, "x".repeat(256), null, null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
 
         assertThrows(org.apache.roller.weblogger.ui.restapi.ApiException.class,
                 () -> EntryDtos.applyWrite(new WeblogEntry(), write, weblogInZone("UTC"), Set.of()));
@@ -147,7 +147,7 @@ class EntriesApiWriteTest {
         EntryDtos.EntryWrite write = new EntryDtos.EntryWrite(
                 null, null, null, null, null, null, null,
                 null, null, "x".repeat(256), null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
 
         assertThrows(org.apache.roller.weblogger.ui.restapi.ApiException.class,
                 () -> EntryDtos.applyWrite(new WeblogEntry(), write, weblogInZone("UTC"), Set.of()));
@@ -159,7 +159,7 @@ class EntriesApiWriteTest {
         EntryDtos.EntryWrite write = new EntryDtos.EntryWrite(
                 null, null, null, null, null, null, null,
                 null, null, null, null, "x".repeat(49), null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
 
         assertThrows(org.apache.roller.weblogger.ui.restapi.ApiException.class,
                 () -> EntryDtos.applyWrite(new WeblogEntry(), write, weblogInZone("UTC"), Set.of()));
@@ -170,7 +170,7 @@ class EntriesApiWriteTest {
         EntryDtos.EntryWrite write = new EntryDtos.EntryWrite(
                 null, null, null, null, null, null, null,
                 null, null, null, null, null, "x".repeat(49),
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
 
         assertThrows(org.apache.roller.weblogger.ui.restapi.ApiException.class,
                 () -> EntryDtos.applyWrite(new WeblogEntry(), write, weblogInZone("UTC"), Set.of()));
@@ -182,7 +182,7 @@ class EntriesApiWriteTest {
         return new EntryDtos.EntryWrite(
                 null, null, null, null, null, null, null,
                 null, null, null, null, null, null,
-                jsonLdType, lat, lng, null, null, null, null);
+                jsonLdType, lat, lng, null, null, null, null, null);
     }
 
     private static void assertRejected(EntryDtos.EntryWrite write) {

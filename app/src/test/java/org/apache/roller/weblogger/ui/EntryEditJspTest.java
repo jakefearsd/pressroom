@@ -256,4 +256,15 @@ class EntryEditJspTest {
         assertTrue(anchorAt >= 0 && anchorAt < linkAt,
                 "the newsletter.noList.link message must render inside an <a> element");
     }
+
+    /** The Comments closed checkbox binds the bean beside noindex, and the counts line links to moderation. */
+    @Test
+    void theEditorOffersCommentsClosedAndTheCountsLine() throws IOException {
+        String jsp = read();
+        assertTrue(jsp.contains("name=\"bean.commentsClosed\""), "Comments closed checkbox");
+        assertTrue(jsp.contains("code=\"weblogEdit.commentsClosed\""));
+        assertTrue(jsp.contains("code=\"weblogEdit.commentCounts\""), "counts line");
+        assertTrue(jsp.contains("/roller-ui/authoring/comments.rol"), "links to the moderation page");
+        assertTrue(jsp.contains("actionWeblog.commentsEnabled"), "shown only when comments are on");
+    }
 }

@@ -568,6 +568,34 @@ class EntryBeanTest extends EditorControllerTestSupport {
 
 
     @Test
+    void commentsClosedRoundTripsThroughTheBeanBothWays() throws Exception {
+        WeblogEntry entry = entryInCategory("cat-1");
+        bean.setStatus(PubStatus.DRAFT.name());
+        bean.setCategoryId("cat-1");
+        bean.setCommentsClosed(true);
+        bean.copyTo(entry, entry.getCategory());
+        assertEquals(Boolean.TRUE, entry.getCommentsClosed());
+
+        EntryBean again = new EntryBean();
+        again.copyFrom(entry, Locale.US);
+        assertTrue(again.getCommentsClosed());
+
+        bean.setCommentsClosed(false);
+        bean.copyTo(entry, entry.getCategory());
+        assertEquals(Boolean.FALSE, entry.getCommentsClosed());
+    }
+
+    @Test
+    void copyFromTreatsANullCommentsClosedAsFalse() throws Exception {
+        WeblogEntry entry = storedEntry();
+        entry.setCommentsClosed(null);
+
+        bean.copyFrom(entry, Locale.US);
+
+        assertFalse(bean.getCommentsClosed());
+    }
+
+    @Test
     void copyFromTreatsANullNoindexAsFalseRatherThanThrowing() throws Exception {
         // WeblogEntry.noindex is a boxed Boolean (nullable column, entries
         // persisted before this field existed have no value); EntryBean.noindex

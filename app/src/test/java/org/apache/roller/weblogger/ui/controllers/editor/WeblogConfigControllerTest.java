@@ -110,6 +110,17 @@ class WeblogConfigControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
+    void savingStoresTheCommentSettings() throws Exception {
+        bean.setCommentsEnabled(true);
+        bean.setCommentNotify(false);
+
+        controller.save(request, model, bean);
+
+        assertEquals(Boolean.TRUE, weblog.getCommentsEnabled());
+        assertEquals(Boolean.FALSE, weblog.getCommentNotify());
+    }
+
+    @Test
     void savingNeverChangesTheWeblogHandle() throws Exception {
         // The handle is the blog's URL and its identity in every permission
         // row; copyTo deliberately does not carry it across.

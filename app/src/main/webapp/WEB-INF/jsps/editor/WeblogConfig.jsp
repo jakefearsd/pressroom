@@ -114,6 +114,22 @@
         </div>
     </div>
 
+    <div class="row mb-3">
+        <div class="offset-sm-3 col-sm-9">
+            <div class="form-check">
+                <label class="form-check-label"><input type="checkbox" class="form-check-input" name="bean.commentsEnabled" value="true" ${bean.commentsEnabled ? 'checked' : ''}/> <spring:message code="weblogSettings.commentsEnabled"/></label>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="offset-sm-3 col-sm-9">
+            <div class="form-check">
+                <label class="form-check-label"><input type="checkbox" class="form-check-input" name="bean.commentNotify" value="true" ${bean.commentNotify ? 'checked' : ''}/> <spring:message code="weblogSettings.commentNotify"/></label>
+            </div>
+        </div>
+    </div>
+
     <%-- ***** Language/i18n settings ***** --%>
 
     <h3 class="section-head" id="settings-language"><spring:message code="websiteSettings.languageSettings"/></h3>

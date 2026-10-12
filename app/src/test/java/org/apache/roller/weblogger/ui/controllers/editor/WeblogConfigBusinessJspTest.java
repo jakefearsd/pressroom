@@ -72,4 +72,13 @@ class WeblogConfigBusinessJspTest {
             assertTrue(input.group().contains("maxlength=\"128\""), input.group());
         }
     }
+
+    @Test
+    void theSettingsFormOffersTheTwoCommentCheckboxes() throws IOException {
+        String jsp = read();
+        assertTrue(jsp.contains("name=\"bean.commentsEnabled\""), "commentsEnabled checkbox");
+        assertTrue(jsp.contains("name=\"bean.commentNotify\""), "commentNotify checkbox");
+        assertTrue(jsp.contains("code=\"weblogSettings.commentsEnabled\""));
+        assertTrue(jsp.contains("code=\"weblogSettings.commentNotify\""));
+    }
 }

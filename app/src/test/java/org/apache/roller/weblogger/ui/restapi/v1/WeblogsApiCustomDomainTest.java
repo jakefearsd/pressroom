@@ -110,7 +110,7 @@ class WeblogsApiCustomDomainTest {
         patch("vhostblog",
                 new AdminDtos.WeblogPatch(null, null, null, null, null, null, null,
                         "moved.example.com",
-                        null, null, null, null, null, null, null, null, null, null, null, null, null, null));
+                        null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null));
         assertEquals("moved.example.com",
                 get("vhostblog").customDomain());
     }
@@ -122,7 +122,7 @@ class WeblogsApiCustomDomainTest {
                 patch("vhostblog",
                         new AdminDtos.WeblogPatch(null, null, null, null, null, null, null,
                         "not a hostname",
-                        null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
+                        null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
         assertEquals(400, thrown.getStatus());
     }
 
@@ -132,7 +132,7 @@ class WeblogsApiCustomDomainTest {
                 patch("plainblog",
                         new AdminDtos.WeblogPatch(null, null, null, null, null, null, null,
                         "vhost.example.com",
-                        null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
+                        null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
         assertEquals(409, thrown.getStatus());
     }
 
@@ -146,7 +146,7 @@ class WeblogsApiCustomDomainTest {
         AdminDtos.WeblogView view = patch("vhostblog",
                 new AdminDtos.WeblogPatch(null, null, null, null, null, null, null,
                         "vhost.example.com",
-                        null, null, null, null, null, null, null, null, null, null, null, null, null, null));
+                        null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null));
         assertEquals("vhost.example.com", view.customDomain());
     }
 
@@ -163,7 +163,7 @@ class WeblogsApiCustomDomainTest {
                 patch("plainblog",
                         new AdminDtos.WeblogPatch(null, null, null, null, null, null, null,
                         "blog.example.com",
-                        null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
+                        null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
         assertEquals(400, thrown.getStatus());
     }
 
@@ -173,7 +173,7 @@ class WeblogsApiCustomDomainTest {
         AdminDtos.WeblogView view = patch("plainblog",
                 new AdminDtos.WeblogPatch(null, null, null, null, null, null, null,
                         "blog.example.com",
-                        null, null, null, null, null, null, null, null, null, null, null, null, null, null));
+                        null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null));
         assertEquals("blog.example.com", view.customDomain());
     }
 }

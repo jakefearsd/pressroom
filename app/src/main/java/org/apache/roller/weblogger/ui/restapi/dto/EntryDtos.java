@@ -46,7 +46,7 @@ public final class EntryDtos {
             String metaTitle, String searchDescription, String canonicalUrl,
             Boolean noindex, String featuredImageId, String ogImageId,
             String jsonLdType, Double geoLatitude, Double geoLongitude,
-            Instant eventStart, Instant eventEnd, String eventLocation) {
+            Instant eventStart, Instant eventEnd, String eventLocation, Boolean commentsClosed) {
     }
 
     public record EntryPage(List<EntryView> items, int offset, int limit, boolean hasMore) {
@@ -98,7 +98,8 @@ public final class EntryDtos {
                 entry.getGeoLongitude(),
                 instant(entry.getEventStart()),
                 instant(entry.getEventEnd()),
-                entry.getEventLocation());
+                entry.getEventLocation(),
+                entry.getCommentsClosed());
     }
 
     private static Instant instant(Timestamp ts) {
@@ -189,6 +190,8 @@ public final class EntryDtos {
             String eventEnd,
             @Schema(description = "The venue's name.")
             String eventLocation,
+            @Schema(description = "True to stop new comments on this entry; existing ones stay. Not clearable.")
+            Boolean commentsClosed,
             @Schema(description = "On update, fields to remove: summary, metaTitle, searchDescription, "
                     + "canonicalUrl, featuredImageId, ogImageId, jsonLdType (back to BLOG_POSTING), "
                     + "geoLatitude with geoLongitude, eventStart, eventEnd, eventLocation. "
@@ -251,6 +254,9 @@ public final class EntryDtos {
         if (write.canonicalUrl() != null) {
             ColumnLimits.requireMaxLength("canonicalUrl", write.canonicalUrl(), ColumnLimits.CANONICAL_URL);
             entry.setCanonicalUrl(write.canonicalUrl());
+        }
+        if (write.commentsClosed() != null) {
+            entry.setCommentsClosed(write.commentsClosed());
         }
         if (write.noindex() != null) {
             entry.setNoindex(write.noindex());

@@ -41,6 +41,7 @@ import org.apache.roller.weblogger.business.WeblogEntryManager;
 import org.apache.roller.weblogger.business.search.IndexManager;
 import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.MediaFile;
+import org.apache.roller.weblogger.pojos.ReaderComment;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogCategory;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
@@ -821,6 +822,20 @@ public class EntryEditController extends BaseController {
                         weblogger.getWeblogEntryManager().getRevisions(entry));
             } catch (WebloggerException e) {
                 log.error("Error loading revisions for entry {}", entry.getId(), e);
+            }
+        }
+
+        // Comment counts for the "N published, M awaiting" line: only for a saved
+        // entry on a weblog with comments on. A count that cannot load leaves the
+        // line off (display path), never blocks the editor.
+        if (bean.getId() != null && Boolean.TRUE.equals(getActionWeblog(request).getCommentsEnabled())) {
+            try {
+                model.addAttribute("commentsPublished", weblogger.getCommentManager()
+                        .countForEntry(entry, ReaderComment.Status.PUBLISHED));
+                model.addAttribute("commentsPending", weblogger.getCommentManager()
+                        .countForEntry(entry, ReaderComment.Status.PENDING));
+            } catch (WebloggerException e) {
+                log.error("Error counting comments for entry {}", entry.getId(), e);
             }
         }
 

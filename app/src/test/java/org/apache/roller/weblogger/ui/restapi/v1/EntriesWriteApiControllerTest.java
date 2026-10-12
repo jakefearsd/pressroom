@@ -312,6 +312,37 @@ class EntriesWriteApiControllerTest {
         assertEquals("kept", json.get("title").asString());
     }
 
+    /** Criterion 27 (settings half): commentsClosed is writable, shown, and null leaves it alone. */
+    @Test
+    void patchSetsCommentsClosedAndNullLeavesItAlone() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogEntry entry = new WeblogEntry();
+        entry.setId("entry-1");
+        entry.setWebsite(weblog);
+        entry.setTitle("t");
+        entry.setText("b");
+        when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1")).thenReturn(entry);
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
+                        .requestAttr("actionWeblog", weblog)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"commentsClosed\":true}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertEquals(Boolean.TRUE, entry.getCommentsClosed());
+        assertTrue(new tools.jackson.databind.ObjectMapper().readTree(body).get("commentsClosed").asBoolean());
+
+        mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
+                        .requestAttr("actionWeblog", weblog)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":\"again\"}"))
+                .andExpect(status().isOk());
+        assertEquals(Boolean.TRUE, entry.getCommentsClosed(), "null leaves the flag unchanged");
+    }
+
     /**
      * Criterion 11's last step, the import-then-featuredImageId flow: the id
      * POST /media/imports answers with (a MediaFile id, a 36-character UUID)

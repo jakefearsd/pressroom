@@ -280,6 +280,42 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
                         + model.getAttribute("tabTitle"));
     }
 
+    /** Criterion 25 (settings half): the editor shows the entry's comment counts when comments are on. */
+    @Test
+    void theEditorCarriesTheCommentCountsWhenTheWeblogHasCommentsOn() throws Exception {
+        weblog.setCommentsEnabled(Boolean.TRUE);
+        WeblogEntry entry = existingEntry(PubStatus.PUBLISHED);
+        when(weblogger.commentManager().countForEntry(entry,
+                org.apache.roller.weblogger.pojos.ReaderComment.Status.PUBLISHED)).thenReturn(3L);
+        when(weblogger.commentManager().countForEntry(entry,
+                org.apache.roller.weblogger.pojos.ReaderComment.Status.PENDING)).thenReturn(2L);
+
+        controller.entryEditExecute(request, model, bean, newRedirectAttributes());
+
+        assertEquals(3L, model.getAttribute("commentsPublished"));
+        assertEquals(2L, model.getAttribute("commentsPending"));
+    }
+
+    @Test
+    void theEditorCarriesNoCommentCountsWhenCommentsAreOff() throws Exception {
+        weblog.setCommentsEnabled(Boolean.FALSE);
+        existingEntry(PubStatus.PUBLISHED);
+
+        controller.entryEditExecute(request, model, bean, newRedirectAttributes());
+
+        assertNull(model.getAttribute("commentsPublished"));
+        org.mockito.Mockito.verifyNoInteractions(weblogger.commentManager());
+    }
+
+    @Test
+    void theNewEntryFormCarriesNoCommentCounts() {
+        weblog.setCommentsEnabled(Boolean.TRUE);
+
+        controller.entryAddExecute(request, model, bean);
+
+        assertNull(model.getAttribute("commentsPublished"));
+    }
+
     /**
      * The other half of the split above: naming the tab must leave the visible
      * heading alone. A regression here is not subtle -- it prints the entry

@@ -211,6 +211,26 @@ class WeblogsApiTest {
         assertFalse(json.get("active").asBoolean());
     }
 
+    /** Criterion 25 (settings half): the comment settings are patchable, shown, and null leaves them alone. */
+    @Test
+    void patchSetsTheCommentSettingsAndNullLeavesThemAlone() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        var result = doPatch(weblogger, weblog, "{\"commentsEnabled\":true,\"commentNotify\":false}")
+                .andExpect(status().isOk());
+
+        assertEquals(Boolean.TRUE, weblog.getCommentsEnabled());
+        assertEquals(Boolean.FALSE, weblog.getCommentNotify());
+        tools.jackson.databind.JsonNode json = json(result);
+        assertTrue(json.get("commentsEnabled").asBoolean());
+        assertFalse(json.get("commentNotify").asBoolean());
+
+        doPatch(weblogger, weblog, "{\"name\":\"Other\"}").andExpect(status().isOk());
+        assertEquals(Boolean.TRUE, weblog.getCommentsEnabled());
+        assertEquals(Boolean.FALSE, weblog.getCommentNotify());
+    }
+
     @Test
     void patchSetsTheNewSettingsAndGetShowsThem() throws Exception {
         Weblogger weblogger = mockedWeblogger();
@@ -261,7 +281,7 @@ class WeblogsApiTest {
     @Test
     void aNonFiniteCoordinateIsRefused() {
         AdminDtos.WeblogPatch patch = new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, Double.NaN, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null);
 
         ApiException e = assertThrows(ApiException.class,
                 () -> AdminDtos.applyPatch(new WeblogConfigBean(), patch, java.util.Set.of()));

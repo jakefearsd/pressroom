@@ -54,7 +54,8 @@ public final class AdminDtos {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record WeblogView(String id, String handle, String name, String tagline,
                               String emailAddress, String locale, String timeZone,
-                              int entryDisplayCount, boolean active, String editorTheme,
+                              int entryDisplayCount, boolean active, boolean commentsEnabled, boolean commentNotify,
+                              String editorTheme,
                               String creatorUserName, String customDomain, String icon, String about,
                               String analyticsSiteId, String analyticsShareUrl, String newsletterListUuid,
                               String businessId, String placeType, String placeLocality, String placeRegion,
@@ -105,6 +106,10 @@ public final class AdminDtos {
                                @Schema(description = "Decimal degrees, given as a pair; stored to two decimals")
                                Double placeLng,
                                String bookingUrl,
+                               @Schema(description = "Allow signed-in readers to comment. Not clearable.")
+                               Boolean commentsEnabled,
+                               @Schema(description = "Email the owners when a comment needs approval. Not clearable.")
+                               Boolean commentNotify,
                                @Schema(description = "Fields to remove: tagline, customDomain, icon, about, "
                                        + "analyticsSiteId, analyticsShareUrl, newsletterListUuid, businessId, "
                                        + "placeType, placeLocality, placeRegion, placeCountry, placeLat with "
@@ -126,7 +131,9 @@ public final class AdminDtos {
         return new WeblogView(weblog.getId(), weblog.getHandle(), weblog.getName(),
                 weblog.getTagline(), weblog.getEmailAddress(), weblog.getLocale(),
                 weblog.getTimeZone(), weblog.getEntryDisplayCount(),
-                Boolean.TRUE.equals(weblog.getActive()), weblog.getEditorTheme(),
+                Boolean.TRUE.equals(weblog.getActive()),
+                Boolean.TRUE.equals(weblog.getCommentsEnabled()),
+                !Boolean.FALSE.equals(weblog.getCommentNotify()), weblog.getEditorTheme(),
                 weblog.getCreatorUserName(), weblog.getCustomDomain(), weblog.getIconPath(),
                 weblog.getAbout(), weblog.getAnalyticsSiteId(), weblog.getAnalyticsShareUrl(),
                 weblog.getNewsletterListUuid(),
@@ -177,6 +184,12 @@ public final class AdminDtos {
         }
         if (patch.active() != null) {
             bean.setActive(patch.active());
+        }
+        if (patch.commentsEnabled() != null) {
+            bean.setCommentsEnabled(patch.commentsEnabled());
+        }
+        if (patch.commentNotify() != null) {
+            bean.setCommentNotify(patch.commentNotify());
         }
         setIfPresent(patch.customDomain(), bean::setCustomDomain);
         setIfPresent(patch.icon(), bean::setIcon);

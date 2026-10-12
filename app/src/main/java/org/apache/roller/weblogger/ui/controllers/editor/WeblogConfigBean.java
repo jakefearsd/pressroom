@@ -41,6 +41,8 @@ public class WeblogConfigBean {
     private String timeZone = null;
     private int entryDisplayCount = 15;
     private boolean active = false;
+    private boolean commentsEnabled = false;
+    private boolean commentNotify = true;
     private String icon = null;
     private String about = null;
 
@@ -133,6 +135,22 @@ public class WeblogConfigBean {
         this.about = about;
     }
     
+    public boolean getCommentsEnabled() {
+        return commentsEnabled;
+    }
+
+    public void setCommentsEnabled(boolean commentsEnabled) {
+        this.commentsEnabled = commentsEnabled;
+    }
+
+    public boolean getCommentNotify() {
+        return commentNotify;
+    }
+
+    public void setCommentNotify(boolean commentNotify) {
+        this.commentNotify = commentNotify;
+    }
+
     public boolean getActive() {
         return active;
     }
@@ -247,6 +265,8 @@ public class WeblogConfigBean {
         this.timeZone = dataHolder.getTimeZone();
         this.entryDisplayCount = dataHolder.getEntryDisplayCount();
         setActive(dataHolder.getActive());
+        setCommentsEnabled(Boolean.TRUE.equals(dataHolder.getCommentsEnabled()));
+        setCommentNotify(!Boolean.FALSE.equals(dataHolder.getCommentNotify()));
         this.analyticsSiteId = dataHolder.getAnalyticsSiteId();
         this.analyticsShareUrl = dataHolder.getAnalyticsShareUrl();
         this.newsletterListUuid = dataHolder.getNewsletterListUuid();
@@ -272,6 +292,8 @@ public class WeblogConfigBean {
         dataHolder.setTimeZone(this.timeZone);
         dataHolder.setEntryDisplayCount(this.entryDisplayCount);
         dataHolder.setActive(this.getActive());
+        dataHolder.setCommentsEnabled(this.getCommentsEnabled());
+        dataHolder.setCommentNotify(this.getCommentNotify());
         dataHolder.setIconPath(getIcon());
         dataHolder.setAbout(getAbout());
         dataHolder.setAnalyticsSiteId(StringUtils.trimToNull(this.analyticsSiteId));
