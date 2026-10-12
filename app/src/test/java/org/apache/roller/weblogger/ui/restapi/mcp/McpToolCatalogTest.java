@@ -21,7 +21,7 @@ class McpToolCatalogTest {
                 t -> List.copyOf(t.actions().keySet())));
         assertEquals(Map.ofEntries(
                 Map.entry("whoami", List.of("")),
-                Map.entry("weblogs", List.of("list", "get", "update")),
+                Map.entry("weblogs", List.of("list", "get", "create", "update")),
                 Map.entry("entries", List.of("list", "get", "create", "update", "trash", "restore",
                         "delete_forever", "preview")),
                 Map.entry("categories", List.of("list", "create", "update", "delete", "list_tags")),

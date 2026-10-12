@@ -571,8 +571,37 @@ PATCH /api/v1/admin/config
 
 GET   /api/v1/weblogs[?offset=&limit=]
 GET   /api/v1/weblogs/{handle}
+POST  /api/v1/weblogs
 PATCH /api/v1/weblogs/{handle}
 ```
+
+**`POST /api/v1/weblogs` creates a weblog, and is not `ADMIN`-only.** It
+follows the Create Weblog page's rule: any user the page lets create a weblog
+may do it with a token whose role is `POST` or `ADMIN` and that is not limited
+to one weblog (a token pinned to a weblog answers 404, a `READ` token 403).
+When the site turns creation off, or allows one weblog per user and the caller
+has one, the answer is 403. `handle`, `name` and `theme` are required;
+`tagline`, `emailAddress`, `locale` and `timeZone` are optional, and an omitted
+`emailAddress`, `locale` or `timeZone` is the caller's own. A handle that is
+reserved for the site's own pages (`api`, `page`, `search` and the like) is a
+400, a handle already taken is a 409, and `frontpage` (the site-wide
+aggregator theme) is refused like any theme that is not enabled: the 400 lists
+the valid theme ids. The creator becomes the weblog's owner. The answer is 201
+with the new weblog and a `Location` header.
+
+**`PATCH /api/v1/weblogs/{handle}` fields.** A field left out, or sent as JSON
+`null`, is unchanged; to remove a value name its field in `clear`
+(`"clear": ["about", "bookingUrl"]`). `clear` applies only to updates.
+
+- `tagline`, `about`, `icon`: text; clearable.
+- `customDomain`: a hostname, as described below; clearable.
+- `analyticsSiteId`, `analyticsShareUrl`: the Umami website id and its public share URL; clearable.
+- `newsletterListUuid`: the Brevo list id; clearable.
+- `businessId`: the id of an existing business profile; clearable.
+- `placeType`: `LodgingBusiness`, or omit; needs `placeLocality`; clearable.
+- `placeLocality`, `placeRegion`, `placeCountry` (two letters): clearable.
+- `placeLat`, `placeLng`: decimal degrees, given as a pair, stored to two decimals; clear them together.
+- `bookingUrl`: an http(s) URL; clearable.
 
 **`POST /api/v1/admin/users` never accepts a password.** The account is
 created disabled, with a random password nobody is ever told, and a
@@ -673,7 +702,7 @@ claude mcp add --transport http roller https://blog.example.com/api/mcp \
 | Tool | Actions |
 |---|---|
 | `whoami` | |
-| `weblogs` | `list`, `get`, `update` |
+| `weblogs` | `list`, `get`, `create`, `update` |
 | `entries` | `list`, `get`, `create`, `update`, `trash`, `restore`, `delete_forever`, `preview` |
 | `categories` | `list`, `create`, `update`, `delete`, `list_tags` |
 | `media` | `list`, `get`, `update`, `delete`, `list_directories`, `create_directory` |

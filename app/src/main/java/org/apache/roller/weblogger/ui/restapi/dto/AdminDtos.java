@@ -11,6 +11,7 @@ import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.config.runtime.PropertyDef;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
+import org.apache.roller.weblogger.ui.controllers.core.CreateWeblogBean;
 import org.apache.roller.weblogger.ui.controllers.editor.WeblogConfigBean;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
 import org.apache.roller.weblogger.ui.restapi.ColumnLimits;
@@ -58,6 +59,30 @@ public final class AdminDtos {
                               String analyticsSiteId, String analyticsShareUrl, String newsletterListUuid,
                               String businessId, String placeType, String placeLocality, String placeRegion,
                               String placeCountry, Double placeLat, Double placeLng, String bookingUrl) {
+    }
+
+    /** The body of POST /weblogs. handle, name and theme are required; the rest default to the user's own. */
+    public record WeblogCreate(
+            @Schema(description = "The weblog's handle: its URL path. Letters and digits.") String handle,
+            @Schema(description = "The weblog's name.") String name,
+            @Schema(description = "An enabled theme id, for example journal; a wrong one answers with the list.")
+            String theme,
+            String tagline, String emailAddress,
+            @Schema(description = "A locale such as en_US; omitted, the user's own.") String locale,
+            @Schema(description = "A time zone id such as Europe/Berlin; omitted, the user's own.") String timeZone) {
+    }
+
+    /** The create form's bean, filled as the page pre-fills it: omitted email, locale and zone are the user's. */
+    public static CreateWeblogBean toBean(WeblogCreate body, User user) {
+        CreateWeblogBean bean = new CreateWeblogBean();
+        bean.setHandle(body.handle() == null ? null : body.handle().trim());
+        bean.setName(body.name());
+        bean.setTheme(body.theme());
+        bean.setDescription(body.tagline());
+        bean.setEmailAddress(body.emailAddress() != null ? body.emailAddress() : user.getEmailAddress());
+        bean.setLocale(body.locale() != null ? body.locale() : user.getLocale());
+        bean.setTimeZone(body.timeZone() != null ? body.timeZone() : user.getTimeZone());
+        return bean;
     }
 
     /**

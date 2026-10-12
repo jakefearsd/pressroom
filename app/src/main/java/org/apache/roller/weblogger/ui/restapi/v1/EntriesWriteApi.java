@@ -338,21 +338,6 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         entry.setTagsAsString(joined);
     }
 
-    /**
-     * The request's {@code authenticatedUser} attribute, set by {@code
-     * RollerHandlerInterceptor} before any handler here runs -- {@link
-     * #isUserRequired()} is true, so a request that reached this method
-     * already has one; the check exists only so a missing attribute fails
-     * loudly rather than with a NullPointerException.
-     */
-    private User requireAuthenticatedUser(HttpServletRequest request) {
-        Object user = request.getAttribute("authenticatedUser");
-        if (user instanceof User u) {
-            return u;
-        }
-        throw ApiException.unauthorized("Not authenticated.");
-    }
-
     private String permalink(WeblogEntry entry) {
         return weblogger.getUrlStrategy()
                 .getWeblogEntryURL(entry.getWebsite(), null, entry.getAnchor(), true);

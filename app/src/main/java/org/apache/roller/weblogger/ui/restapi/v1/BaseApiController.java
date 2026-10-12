@@ -2,6 +2,7 @@ package org.apache.roller.weblogger.ui.restapi.v1;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.roller.weblogger.business.Weblogger;
+import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
 import org.apache.roller.weblogger.ui.controllers.WeblogOwnership;
@@ -38,6 +39,15 @@ public abstract class BaseApiController {
             return w;
         }
         throw ApiException.notFound("No such weblog.");
+    }
+
+    /** The signed-in user the handler interceptor stored, or a 401. */
+    protected User requireAuthenticatedUser(HttpServletRequest request) {
+        Object user = request.getAttribute("authenticatedUser");
+        if (user instanceof User u) {
+            return u;
+        }
+        throw ApiException.unauthorized("Not authenticated.");
     }
 
     /**
