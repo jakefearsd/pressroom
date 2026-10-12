@@ -22,6 +22,7 @@ import java.util.List;
 
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.Weblogger;
+import org.apache.roller.weblogger.pojos.ReaderComment;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
@@ -57,6 +58,7 @@ public final class WeblogPermissionView {
     private final User user;
     private final Weblogger weblogger;
     private Long entryCount;
+    private Long pendingCommentCount;
 
     private WeblogPermissionView(WeblogPermission permission, Weblog weblog, User user,
             Weblogger weblogger) {
@@ -131,5 +133,24 @@ public final class WeblogPermissionView {
             entryCount = count;
         }
         return entryCount;
+    }
+
+    /**
+     * Comments awaiting approval on this weblog, read once and remembered; a
+     * count that cannot be read is 0 (logged), never a failed main menu.
+     */
+    public long getPendingCommentCount() {
+        if (pendingCommentCount == null) {
+            long count = 0;
+            if (weblog != null) {
+                try {
+                    count = weblogger.getCommentManager().countComments(weblog, ReaderComment.Status.PENDING);
+                } catch (WebloggerException e) {
+                    log.error("Error getting pending comment count for weblog {}", weblog.getHandle(), e);
+                }
+            }
+            pendingCommentCount = count;
+        }
+        return pendingCommentCount;
     }
 }

@@ -55,6 +55,7 @@ class WeblogPermissionViewTest {
     private WeblogManager weblogs;
     private UserManager users;
     private WeblogEntryManager entries;
+    private org.apache.roller.weblogger.business.CommentManager commentManager;
     private Weblog weblog;
     private User alice;
 
@@ -67,6 +68,8 @@ class WeblogPermissionViewTest {
         when(weblogger.getWeblogManager()).thenReturn(weblogs);
         when(weblogger.getUserManager()).thenReturn(users);
         when(weblogger.getWeblogEntryManager()).thenReturn(entries);
+        commentManager = mock(org.apache.roller.weblogger.business.CommentManager.class);
+        when(weblogger.getCommentManager()).thenReturn(commentManager);
 
         weblog = new Weblog();
         weblog.setHandle("testblog");
@@ -111,6 +114,43 @@ class WeblogPermissionViewTest {
         assertEquals(7L, row.getEntryCount());
         assertEquals(7L, row.getEntryCount());
         verify(entries, times(1)).getEntryCount(weblog);
+    }
+
+    @Test
+    void thePendingCommentCountIsAskedOnceAndRemembered() throws Exception {
+        when(commentManager.countComments(weblog,
+                org.apache.roller.weblogger.pojos.ReaderComment.Status.PENDING)).thenReturn(4L);
+        WeblogPermissionView row =
+                WeblogPermissionView.of(new WeblogPermission(weblog, alice, List.of("post")), weblogger);
+
+        assertEquals(4L, row.getPendingCommentCount());
+        assertEquals(4L, row.getPendingCommentCount());
+        verify(commentManager, times(1)).countComments(weblog,
+                org.apache.roller.weblogger.pojos.ReaderComment.Status.PENDING);
+    }
+
+    @Test
+    void aPendingCountThatCannotBeReadIsZero() throws Exception {
+        when(commentManager.countComments(any(), any())).thenThrow(new WebloggerException("down"));
+        WeblogPermissionView row =
+                WeblogPermissionView.of(new WeblogPermission(weblog, alice, List.of("post")), weblogger);
+
+        assertEquals(0L, row.getPendingCommentCount());
+    }
+
+    @Test
+    void mainMenuShowsThePendingCount() throws Exception {
+        java.nio.file.Path jsp = java.nio.file.Path.of(System.getProperty("user.dir"))
+                .resolve("src/main/webapp/WEB-INF/jsps/core/MainMenu.jsp");
+        String source = java.nio.file.Files.readString(jsp);
+
+        assertTrue(source.contains("perms.pendingCommentCount > 0"),
+                "the badge shows only when the count is above 0");
+        assertTrue(source.contains("mainMenu.pendingComments"));
+        assertTrue(source.indexOf("perms.hasAction('post')") >= 0
+                || source.contains("perms.hasAction(\"post\")"),
+                "the badge is gated on the post action");
+        assertTrue(source.contains("comments.rol"), "the badge links to the moderation page");
     }
 
     @Test

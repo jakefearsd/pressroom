@@ -182,6 +182,10 @@ class JspConsistencyTest {
         assertEquals(1, countOccurrences(submissions, "class=\"selection-bar\""),
                 "Submissions.jsp must have exactly one .selection-bar");
 
+        String comments = Files.readString(JSPS.resolve("editor/Comments.jsp"), StandardCharsets.UTF_8);
+        assertEquals(1, countOccurrences(comments, "class=\"selection-bar\""),
+                "Comments.jsp must have exactly one .selection-bar");
+
         String mediaFileView = Files.readString(JSPS.resolve("editor/MediaFileView.jsp"), StandardCharsets.UTF_8);
         assertEquals(1, countOccurrences(mediaFileView, "class=\"selection-bar\""),
                 "MediaFileView.jsp must have exactly one .selection-bar");

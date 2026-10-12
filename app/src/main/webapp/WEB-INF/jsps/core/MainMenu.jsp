@@ -114,6 +114,16 @@
 
                 </c:if>
 
+                <%-- Comments awaiting approval: moderation needs the post action. --%>
+                <c:if test='${perms.hasAction("post") and perms.pendingCommentCount > 0}'>
+                    <c:url value="/roller-ui/authoring/comments.rol" var="pendingComments">
+                        <c:param name="weblog" value="${perms.weblog.handle}"/>
+                    </c:url>
+                    <a href="${pendingComments}" class="quiet-link">
+                        <span class="badge text-bg-warning"><spring:message code="mainMenu.pendingComments" arguments="${perms.pendingCommentCount}"/></span>
+                    </a>
+                </c:if>
+
                 <%-- Only admins get access to theme and config settings --%>
                 <c:if test='${perms.hasAction("admin")}'>
 

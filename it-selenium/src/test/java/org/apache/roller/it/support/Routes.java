@@ -297,6 +297,10 @@ public final class Routes {
             new Route("/roller-ui/authoring/submissions.rol", Role.EDITOR, WEBLOG,
                     "#submissionsDeleteForm"),
 
+            // The moderation form is emitted unconditionally, empty list or not.
+            new Route("/roller-ui/authoring/comments.rol", Role.EDITOR, WEBLOG,
+                    "#commentsModerationForm"),
+
             new Route("/roller-ui/authoring/templates.rol", Role.EDITOR, WEBLOG,
                     "form[action$='/roller-ui/authoring/templates!remove.rol']"),
 

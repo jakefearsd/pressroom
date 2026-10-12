@@ -91,7 +91,12 @@ class EditorJspEscapingTest {
             "bean.originalPath",
             "bean.content",
             "bean.contentsStandard",
-            "bean.userName");
+            "bean.userName",
+            // The moderation page's reader-controlled fields (reader comments).
+            "author.screenName",
+            "author.userName",
+            "c.body",
+            "reply.body");
 
     @Test
     void authorControlledTextNeverRendersRawInAJsp() throws IOException {

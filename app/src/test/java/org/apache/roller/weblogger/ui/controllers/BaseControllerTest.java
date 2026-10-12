@@ -195,6 +195,16 @@ class BaseControllerTest {
     }
 
     @Test
+    void switcherActionKeepsTheCommentsTab() throws WebloggerException {
+        controller.weblogger = MockWeblogger.create().weblogger();
+        controller.setActionName("comments");
+
+        controller.populate(request, model);
+
+        assertEquals("comments", model.getAttribute("switcherAction"));
+    }
+
+    @Test
     void switcherActionFallsBackToEntriesOffTheRail() throws WebloggerException {
         controller.weblogger = MockWeblogger.create().weblogger();
         controller.setActionName("stylesheetEdit");

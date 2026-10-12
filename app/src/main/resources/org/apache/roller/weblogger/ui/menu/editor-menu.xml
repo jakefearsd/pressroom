@@ -52,6 +52,11 @@ Each menu or menu item is governed by four attributes:
                    weblogPerms="post"/>
 
         <!-- globalPerms="login" -->
+        <menu-item action="comments"
+                   name="tabbedmenu.comments"
+                   weblogPerms="post"/>
+
+        <!-- globalPerms="login" -->
         <menu-item action="categories"
                    name="tabbedmenu.weblog.categories"
                    weblogPerms="post"

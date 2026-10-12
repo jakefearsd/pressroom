@@ -150,6 +150,17 @@ class RollerViewResolverTest {
         assertEquals("/WEB-INF/jsps/tiles/empty.jsp", request.getAttribute("tile_styles"));
     }
 
+    @Test
+    void commentsRendersThroughTheTabbedLayout() throws Exception {
+        resolver.init();
+
+        MockHttpServletRequest request = renderAndCapture(".Comments");
+
+        assertEquals("/WEB-INF/jsps/editor/Comments.jsp", request.getAttribute("tile_content"));
+        assertEquals("/WEB-INF/jsps/tiles/empty.jsp", request.getAttribute("tile_menu"));
+        assertEquals("/WEB-INF/jsps/tiles/head.jsp", request.getAttribute("tile_head"));
+    }
+
     /**
      * Profile is not weblog-scoped, so it has no tabs to render -- but it is
      * still a signed-in admin screen, and {@code .tiles-mainmenupage} is the
@@ -189,7 +200,7 @@ class RollerViewResolverTest {
 
     private static String expectedLayout(String viewName) {
         return switch (viewName) {
-            case ".Submissions" -> "/WEB-INF/jsps/tiles/tiles-tabbedpage.jsp";
+            case ".Comments", ".Submissions" -> "/WEB-INF/jsps/tiles/tiles-tabbedpage.jsp";
             case ".Profile" -> "/WEB-INF/jsps/tiles/tiles-mainmenupage.jsp";
             default -> throw new IllegalArgumentException("no expected layout for " + viewName);
         };

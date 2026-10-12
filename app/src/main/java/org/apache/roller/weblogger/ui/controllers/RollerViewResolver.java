@@ -432,6 +432,14 @@ public class RollerViewResolver implements ViewResolver, Ordered {
                         "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
                 ));
 
+        // Reader-comment moderation: the same minimal tabbed shape as .Submissions.
+        addExtendedDefinition(".Comments", ".tiles-tabbedpage",
+                Map.of(
+                        "head",    "/WEB-INF/jsps/tiles/head.jsp",
+                        "content", "/WEB-INF/jsps/editor/Comments.jsp",
+                        "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
+                ));
+
         addExtendedDefinition(".Members", ".tiles-tabbedpage",
                 Map.of(
                         "content", "/WEB-INF/jsps/editor/Members.jsp",

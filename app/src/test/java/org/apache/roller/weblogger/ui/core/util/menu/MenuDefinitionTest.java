@@ -73,7 +73,7 @@ class MenuDefinitionTest {
     void theWeblogTabListsTheContentManagementActions() {
         ParsedTab weblogTab = tab("editor", "tabbedmenu.weblog");
 
-        assertEquals(List.of("entryAdd", "entries", "trash", "submissions", "categories", "pages",
+        assertEquals(List.of("entryAdd", "entries", "trash", "submissions", "comments", "categories", "pages",
                         "mediaFileView"),
                 actions(weblogTab),
                 "These are the actions the Weblog tab offers, in order. The first of them is "
@@ -182,16 +182,15 @@ class MenuDefinitionTest {
     }
 
     /**
-     * Comment moderation was removed wholesale (W1): no editor tab offers
-     * per-weblog comment management, and no admin tab offers the global
-     * screen. A raw-text check on the XML itself, rather than the parsed
-     * menu, so this fails even if a stray {@code <menu-item>} is re-added
-     * under a different action name.
+     * The old per-weblog comment management was removed wholesale (W1) and
+     * the global screen stays gone. The editor menu now offers the reader
+     * comment moderation tab (action {@code comments}); it is pinned in
+     * {@link #theWeblogTabListsTheContentManagementActions}. A raw-text check
+     * on the admin XML, so this fails even if a stray item is re-added under
+     * a different action name.
      */
     @Test
-    void noMenuOffersCommentModeration() {
-        assertFalse(menuXml().contains("\"comments\""),
-                "editor-menu.xml must not offer a comments tab");
+    void noMenuOffersGlobalCommentManagement() {
         assertFalse(adminMenuXml().contains("globalCommentManagement"),
                 "admin-menu.xml must not offer global comment management");
     }

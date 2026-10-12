@@ -160,7 +160,7 @@ class MenuHelperTest {
                 tabKeys(menu),
                 "A weblog administrator on an installation with custom themes enabled should "
                         + "see all three tabs.");
-        assertEquals(List.of("entryAdd", "entries", "trash", "submissions", "categories", "pages",
+        assertEquals(List.of("entryAdd", "entries", "trash", "submissions", "comments", "categories", "pages",
                         "mediaFileView"),
                 itemActions(menu.getTabs().get(0)),
                 "A weblog administrator should see every content screen.");
