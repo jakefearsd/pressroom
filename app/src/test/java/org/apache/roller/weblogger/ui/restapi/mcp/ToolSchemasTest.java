@@ -102,6 +102,7 @@ class ToolSchemasTest {
             assertEquals(schema.description(),
                     ((Map<String, Object>) props.get(component.getName())).get("description"), component.getName());
         }
-        assertEquals(12, described);
+        // 12 before commentsClosed (Task 8) joined the described fields.
+        assertEquals(13, described);
     }
 }
