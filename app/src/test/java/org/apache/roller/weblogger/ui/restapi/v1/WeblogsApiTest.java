@@ -335,6 +335,84 @@ class WeblogsApiTest {
         }
     }
 
+    static java.util.stream.Stream<String> clearableNames() {
+        return AdminDtos.WEBLOG_CLEARABLE.stream();
+    }
+
+    private static void store(Weblog w, String name) {
+        switch (name) {
+            case "tagline" -> w.setTagline("T");
+            case "customDomain" -> w.setCustomDomain("mine.example.com");
+            case "icon" -> w.setIconPath("https://x/i.png");
+            case "about" -> w.setAbout("About");
+            case "analyticsSiteId" -> w.setAnalyticsSiteId("0b5d3f9e-1c2a-4e7b-9a6d-2f1e0c9b8a7d");
+            case "analyticsShareUrl" -> w.setAnalyticsShareUrl("https://share.example.com/x");
+            case "newsletterListUuid" -> w.setNewsletterListUuid("0b5d3f9e-1c2a-4e7b-9a6d-2f1e0c9b8a7d");
+            case "businessId" -> {
+                org.apache.roller.weblogger.pojos.Business b = new org.apache.roller.weblogger.pojos.Business();
+                b.setId("biz-1");
+                w.setBusiness(b);
+            }
+            case "placeType" -> {
+                w.setPlaceType("LodgingBusiness");
+                w.setPlaceLocality("Encinitas");
+            }
+            case "placeLocality" -> w.setPlaceLocality("Encinitas");
+            case "placeRegion" -> w.setPlaceRegion("CA");
+            case "placeCountry" -> w.setPlaceCountry("US");
+            case "placeLat", "placeLng" -> {
+                w.setPlaceLat(new BigDecimal("33.04"));
+                w.setPlaceLng(new BigDecimal("-117.29"));
+            }
+            case "bookingUrl" -> w.setBookingUrl("https://book.example.com");
+            default -> throw new IllegalArgumentException("No fixture for " + name);
+        }
+    }
+
+    private static Object stored(Weblog w, String name) {
+        return switch (name) {
+            case "tagline" -> w.getTagline();
+            case "customDomain" -> w.getCustomDomain();
+            case "icon" -> w.getIconPath();
+            case "about" -> w.getAbout();
+            case "analyticsSiteId" -> w.getAnalyticsSiteId();
+            case "analyticsShareUrl" -> w.getAnalyticsShareUrl();
+            case "newsletterListUuid" -> w.getNewsletterListUuid();
+            case "businessId" -> w.getBusiness();
+            case "placeType" -> w.getPlaceType();
+            case "placeLocality" -> w.getPlaceLocality();
+            case "placeRegion" -> w.getPlaceRegion();
+            case "placeCountry" -> w.getPlaceCountry();
+            case "placeLat" -> w.getPlaceLat();
+            case "placeLng" -> w.getPlaceLng();
+            case "bookingUrl" -> w.getBookingUrl();
+            default -> throw new IllegalArgumentException(name);
+        };
+    }
+
+    /** Every name in the clearable list has a working arm: a name without one would be a 500. */
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.MethodSource("clearableNames")
+    void everyClearableFieldCanBeClearedThroughPatch(String name) throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        store(weblog, name);
+        assertNotNull(stored(weblog, name), name + " fixture must store a value");
+        if ("businessId".equals(name)) {
+            when(weblogger.getBusinessManager().getBusiness("biz-1")).thenReturn(weblog.getBusiness());
+        }
+        String names = "placeLat".equals(name) || "placeLng".equals(name)
+                ? "\"placeLat\",\"placeLng\"" : "\"" + name + "\"";
+
+        var result = doPatch(weblogger, weblog, "{\"clear\":[" + names + "]}").andExpect(status().isOk());
+
+        Object after = stored(weblog, name);
+        assertTrue(after == null || "".equals(after), name + " must be gone, was " + after);
+        tools.jackson.databind.JsonNode value = json(result).get(name);
+        assertTrue(value == null || value.isNull() || value.asString().isEmpty(), name + " must be gone in JSON");
+        verify(weblogger.getWeblogManager()).saveWeblog(weblog);
+    }
+
     @Test
     void clearingTheLocalityWhileThePlaceTypeStaysIsRefused() throws Exception {
         Weblogger weblogger = mockedWeblogger();
