@@ -2,9 +2,11 @@ package org.apache.roller.weblogger.boot;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
@@ -25,6 +27,7 @@ import java.security.MessageDigest;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +36,7 @@ import org.apache.roller.weblogger.business.WebloggerProvider;
 import org.apache.roller.weblogger.ui.core.security.sso.RollerAuthorizationRequestResolver;
 import org.apache.roller.weblogger.ui.core.security.sso.RollerOidcUser;
 import org.apache.roller.weblogger.ui.core.security.sso.SsoFailureHandler;
+import org.apache.roller.weblogger.ui.core.security.sso.SsoLogCapture;
 import org.apache.roller.weblogger.ui.core.security.sso.SsoLogin;
 import org.apache.roller.weblogger.ui.core.security.sso.SsoSettings;
 import org.apache.roller.weblogger.ui.core.security.sso.SsoStartFilter;
@@ -279,10 +283,7 @@ class SsoLoginWiringTest {
     @Test
     void callbackNeverSetsARememberMeCookie() throws Exception {
         MockHttpSession session = new MockHttpSession();
-        // On the Absolute URL's own host. MockMvc keeps port 80 for an https URI with
-        // none, where Tomcat (and the forwarded-header filter) would report 443.
-        onMvc.perform(get("https://blog.example:443/roller-ui/sso/start").session(session).param("return", "/blog/"))
-                .andExpect(redirectedUrl("/roller-ui/sso/authorize/oidc"));
+        startOnTheAbsoluteUrlsHost(session);
         String state = authorize(session);
         String before = session.getId();
 
@@ -321,6 +322,64 @@ class SsoLoginWiringTest {
                 "no authorized client (access token) is kept after sign-in");
     }
 
+    // ----------------------------------------------------------- criterion 4
+
+    /**
+     * Criterion 4: the client secret appears in no log line, response or exception
+     * message, across a failed sign-in (a forged {@code state} while a real sign-in
+     * is pending) and a successful one (the signed ID token round trip).
+     *
+     * <p>Every logger is captured at every level, so a library's DEBUG or TRACE line
+     * counts as well as Roller's own: a sign-in an operator is debugging must not
+     * leak the secret either. Looked for as itself and as the Basic credential that
+     * carries it ({@code client_secret_basic}). Each phase must have logged
+     * something, or the absence would prove nothing.
+     */
+    @Test
+    void theClientSecretAppearsInNoLogLineResponseOrExceptionMessage() throws Exception {
+        List<String> secretForms = List.of(SsoTestRegistrations.CLIENT_SECRET,
+                Base64.getEncoder().encodeToString((SsoTestRegistrations.CLIENT_ID + ":"
+                        + SsoTestRegistrations.CLIENT_SECRET).getBytes(UTF_8)));
+        List<MvcResult> results = new ArrayList<>();
+        try (SsoLogCapture log = SsoLogCapture.everyLogger()) {
+            MockHttpSession failed = new MockHttpSession();
+            results.add(startOnTheAbsoluteUrlsHost(failed));
+            results.add(authorizeStep(failed));
+            results.add(onMvc.perform(get("/roller-ui/sso/callback").session(failed)
+                            .param("code", "c").param("state", "forged"))
+                    .andExpect(redirectedUrl("/roller-ui/login.rol?sso=failed"))
+                    .andExpect(unauthenticated())
+                    .andReturn());
+            List<String> afterFailure = log.everything();
+            assertTrue(afterFailure.stream().anyMatch(line -> line.contains("Reader sign-in refused or failed")),
+                    "the failed sign-in's WARN was not captured: " + afterFailure.size() + " lines");
+
+            MockHttpSession succeeded = new MockHttpSession();
+            results.add(startOnTheAbsoluteUrlsHost(succeeded));
+            MvcResult authorized = authorizeStep(succeeded);
+            results.add(authorized);
+            results.add(onMvc.perform(get("/roller-ui/sso/callback").session(succeeded)
+                            .param("code", "c").param("state", stateOf(authorized)))
+                    .andExpect(redirectedUrl("/blog/"))
+                    .andExpect(authenticated().withUsername(READER))
+                    .andReturn());
+            List<String> lines = log.everything();
+            assertTrue(lines.size() > afterFailure.size(), "the successful sign-in logged nothing to look at");
+
+            for (String line : lines) {
+                for (String secret : secretForms) {
+                    assertFalse(line.contains(secret), "a log line carries the client secret: " + line);
+                }
+            }
+        }
+        for (MvcResult result : results) {
+            String response = everythingIn(result);
+            for (String secret : secretForms) {
+                assertFalse(response.contains(secret), "a response carries the client secret: " + response);
+            }
+        }
+    }
+
     @Test
     void anAccountStoreThatThrowsFailsClosed() throws Exception {
         users = request -> {
@@ -351,12 +410,53 @@ class SsoLoginWiringTest {
 
     /** Runs the authorization step in {@code session}; returns the state it sent to the provider. */
     private static String authorize(MockHttpSession session) throws Exception {
-        MvcResult r = onMvc.perform(get("/roller-ui/sso/authorize/oidc").session(session))
+        return stateOf(authorizeStep(session));
+    }
+
+    /** The authorization step in {@code session}: the redirect to the provider. */
+    private static MvcResult authorizeStep(MockHttpSession session) throws Exception {
+        return onMvc.perform(get("/roller-ui/sso/authorize/oidc").session(session))
                 .andExpect(status().is3xxRedirection()).andReturn();
-        String state = UriComponentsBuilder.fromUriString(r.getResponse().getRedirectedUrl()).build()
+    }
+
+    /** @return the {@code state} an authorization step sent to the provider */
+    private static String stateOf(MvcResult authorizeStep) {
+        String state = UriComponentsBuilder.fromUriString(authorizeStep.getResponse().getRedirectedUrl()).build()
                 .getQueryParams().getFirst("state");
         assertNotNull(state);
         return URLDecoder.decode(state, UTF_8);
+    }
+
+    /**
+     * The start step on the Absolute URL's own host, returning to {@code /blog/}. The
+     * port is explicit: MockMvc keeps port 80 for an https URI with none, where Tomcat
+     * (and the forwarded-header filter) would report 443.
+     */
+    private static MvcResult startOnTheAbsoluteUrlsHost(MockHttpSession session) throws Exception {
+        return onMvc.perform(get("https://blog.example:443/roller-ui/sso/start").session(session)
+                        .param("return", "/blog/"))
+                .andExpect(redirectedUrl("/roller-ui/sso/authorize/oidc"))
+                .andReturn();
+    }
+
+    /** Everything a response shows: status, headers, cookies, redirect, forward, body, and any exception. */
+    private static String everythingIn(MvcResult result) throws Exception {
+        StringBuilder text = new StringBuilder();
+        text.append(result.getResponse().getStatus()).append('\n');
+        for (String name : result.getResponse().getHeaderNames()) {
+            text.append(name).append(": ").append(result.getResponse().getHeaders(name)).append('\n');
+        }
+        for (Cookie cookie : result.getResponse().getCookies()) {
+            text.append(cookie.getName()).append('=').append(cookie.getValue()).append('\n');
+        }
+        text.append(result.getResponse().getRedirectedUrl()).append('\n')
+                .append(result.getResponse().getForwardedUrl()).append('\n')
+                .append(result.getResponse().getErrorMessage()).append('\n')
+                .append(result.getResponse().getContentAsString()).append('\n');
+        if (result.getResolvedException() != null) {
+            text.append(result.getResolvedException());
+        }
+        return text.toString();
     }
 
     private static OidcUser aReader(OidcUserRequest request) {

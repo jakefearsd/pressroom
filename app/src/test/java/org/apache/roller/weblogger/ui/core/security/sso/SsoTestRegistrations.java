@@ -16,6 +16,8 @@ public final class SsoTestRegistrations {
     public static final String PROVIDER = "http://provider.test";
     /** The stub registration's client id: the ID token's audience. */
     public static final String CLIENT_ID = "roller-test";
+    /** The stub registration's client secret, distinctive so a test can look for it anywhere. */
+    public static final String CLIENT_SECRET = "stub-client-secret-7c41e9";
 
     private SsoTestRegistrations() {
     }
@@ -24,7 +26,7 @@ public final class SsoTestRegistrations {
     public static ClientRegistration registration() {
         return ClientRegistration.withRegistrationId(SsoSettings.REGISTRATION_ID)
                 .clientId(CLIENT_ID)
-                .clientSecret("test-secret")
+                .clientSecret(CLIENT_SECRET)
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .redirectUri("{baseUrl}/roller-ui/sso/callback")

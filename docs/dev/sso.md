@@ -168,6 +168,12 @@ provider. Sign-in changes the session id.
   look like another host to itself, and the start redirects to itself until
   the browser gives up ("too many redirects"). Caddy and cloudflared both
   send it.
+- **`ClientRegistration.toString()` prints the client secret**
+  (`clientSecret='...'`). Never log a registration, or anything whose
+  `toString` carries one. `SsoLoginWiringTest` captures every logger at every
+  level (`SsoLogCapture.everyLogger()`) across a failed and a successful
+  sign-in and fails on the secret, or its Basic credential, anywhere in a log
+  line or a response (criterion 4).
 - **remember-me is disabled on the OAuth2 login filter**
   (`NullRememberMeServices`), so a hand-edited callback cannot set a cookie.
 - **`ssoStartFilter` has a disabled `FilterRegistrationBean`**, or Boot also
