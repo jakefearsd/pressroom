@@ -85,7 +85,10 @@ public class LoginController extends BaseController {
 
         // spring:message arguments are not escaped, so the label is escaped here.
         model.addAttribute("ssoEnabled", sso.enabled());
-        model.addAttribute("ssoLabel", HtmlUtils.htmlEscape(sso.providerLabel()));
+        String label = HtmlUtils.htmlEscape(sso.providerLabel());
+        model.addAttribute("ssoLabel", label);
+        // An Object[] is used as the argument array as-is; a String would be split on ','.
+        model.addAttribute("ssoLabelArgs", new Object[] {label});
 
         return ".Login";
     }

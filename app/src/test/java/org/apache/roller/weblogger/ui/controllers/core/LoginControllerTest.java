@@ -20,14 +20,15 @@ package org.apache.roller.weblogger.ui.controllers.core;
 import java.util.List;
 
 import org.apache.roller.weblogger.business.MockWeblogger;
+import org.apache.roller.weblogger.ui.core.security.sso.SsoSettings;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.apache.roller.weblogger.ui.core.security.sso.SsoSettings;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.ui.ExtendedModelMap;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -94,6 +95,14 @@ class LoginControllerTest {
 
         assertEquals(Boolean.TRUE, model.getAttribute("ssoEnabled"));
         assertEquals("&lt;b&gt;G&lt;/b&gt;", model.getAttribute("ssoLabel"));
+    }
+
+    @Test
+    void aLabelWithACommaReachesTheMessageAsOneArgument() {
+        // spring:message splits a String argument on ',', so the JSP is handed an array.
+        runWith(new SsoSettings("id", "s", "", "Google, Inc."), null);
+
+        assertArrayEquals(new Object[] {"Google, Inc."}, (Object[]) model.getAttribute("ssoLabelArgs"));
     }
 
     @Test
