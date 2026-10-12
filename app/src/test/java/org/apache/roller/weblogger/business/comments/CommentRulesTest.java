@@ -1,0 +1,84 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ *  contributor license agreements.  The ASF licenses this file to You
+ * under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.  For additional information regarding
+ * copyright in this work, please see the NOTICE file in the top level
+ * directory of this distribution.
+ */
+package org.apache.roller.weblogger.business.comments;
+
+import org.apache.roller.weblogger.pojos.ReaderComment;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/** The pure posting rules: status, links, the body, and the outcome's shape. */
+class CommentRulesTest {
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+        "true|false|plain|PUBLISHED", "false|true|plain|PUBLISHED", "false|false|plain|PENDING",
+        "false|true|http://a https://b|PUBLISHED", "false|true|http://a https://b HTTP://c|PENDING",
+        "true|false|http://a http://b http://c|PUBLISHED"})
+    void statusFor(boolean owner, boolean trusted, String body, ReaderComment.Status expected) {
+        assertEquals(expected, CommentRules.statusFor(owner, trusted, body));
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+        "plain text|0", "see http://a.example|1", "HTTPS://A and hTtP://b|2",
+        "http://a https://b HTTP://c|3", "www.example.com and ftp://x|0", "http:/not-a-link|0"})
+    void countHttpLinks(String body, int expected) {
+        assertEquals(expected, CommentRules.countHttpLinks(body));
+    }
+
+    @Test
+    void bodyLimits() {
+        assertEquals("", CommentRules.normalizeBody(null));
+        assertEquals("", CommentRules.normalizeBody("  "));
+        assertEquals("", CommentRules.normalizeBody(" \t\r\n　 "), "Unicode whitespace trims too");
+        assertEquals("a  b", CommentRules.normalizeBody("\n a  b \n"), "only the ends are trimmed");
+
+        assertSame(CommentRefusal.EMPTY_BODY, CommentRules.bodyRefusal(""));
+        assertNull(CommentRules.bodyRefusal("x".repeat(CommentRules.MAX_BODY)));
+        assertSame(CommentRefusal.BODY_TOO_LONG, CommentRules.bodyRefusal("x".repeat(CommentRules.MAX_BODY + 1)));
+        // Characters, not UTF-16 units: 4000 emoji are 4000 characters.
+        assertNull(CommentRules.bodyRefusal("😀".repeat(CommentRules.MAX_BODY)));
+        assertSame(CommentRefusal.BODY_TOO_LONG,
+                CommentRules.bodyRefusal("😀".repeat(CommentRules.MAX_BODY) + "x"));
+    }
+
+    @Test
+    void anOutcomeIsAStoredCommentOrARefusalNeverBothOrNeither() {
+        ReaderComment c = new ReaderComment();
+        CommentOutcome stored = CommentOutcome.stored(c);
+        assertTrue(stored.ok());
+        assertSame(c, stored.comment());
+        assertNull(stored.refusal());
+
+        CommentOutcome refused = CommentOutcome.refused(CommentRefusal.CLOSED);
+        assertFalse(refused.ok());
+        assertNull(refused.comment());
+        assertSame(CommentRefusal.CLOSED, refused.refusal());
+
+        assertThrows(IllegalArgumentException.class, () -> new CommentOutcome(null, null));
+        assertThrows(IllegalArgumentException.class, () -> new CommentOutcome(c, CommentRefusal.CLOSED));
+    }
+}
