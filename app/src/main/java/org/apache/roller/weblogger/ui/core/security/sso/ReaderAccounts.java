@@ -2,6 +2,7 @@ package org.apache.roller.weblogger.ui.core.security.sso;
 
 import org.apache.roller.weblogger.business.UserManager;
 import org.apache.roller.weblogger.business.Weblogger;
+import org.apache.roller.weblogger.business.comments.DisplayNames;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.pojos.User;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,7 @@ public class ReaderAccounts {
     private static final String PREFIX = "reader-";
     private static final int SUFFIX_LENGTH = 10;
     private static final int MAX_DRAWS = 5;
+    private static final String FALLBACK_NAME = "Reader";
 
     private final Weblogger weblogger;
     private final RandomGenerator random;
@@ -97,10 +99,11 @@ public class ReaderAccounts {
         if (userName == null) {
             throw new WebloggerException("no free reader username after " + MAX_DRAWS + " draws");
         }
+        String name = displayName(users, claims, userName);
         User user = new User();
         user.setUserName(userName);
-        user.setScreenName(claims.displayName());
-        user.setFullName(claims.displayName());
+        user.setScreenName(name);
+        user.setFullName(name);
         user.setEmailAddress(claims.email());
         user.setPassword(User.SSO_PASSWORD_MARKER);
         user.setDateCreated(new Date());
@@ -108,5 +111,26 @@ public class ReaderAccounts {
         user.setSsoIssuer(claims.issuer());
         user.setSsoSubject(claims.subject());
         return user;
+    }
+
+    /**
+     * The new reader's display name, by the account page's rule
+     * ({@link DisplayNames}): the provider's name claim, cut to the limit; if
+     * it is refused (a weblog member's name, or nothing once stored), the
+     * email's local part; then {@value #FALLBACK_NAME}; and if even that is a
+     * member's name, the generated username, which no one else holds.
+     */
+    private static String displayName(UserManager users, ReaderClaims claims, String userName)
+            throws WebloggerException {
+        String email = claims.email();
+        List<String> candidates = List.of(claims.displayName(),
+                email.substring(0, Math.max(0, email.lastIndexOf('@'))), FALLBACK_NAME);
+        for (String candidate : candidates) {
+            String name = DisplayNames.cut(DisplayNames.storedForm(candidate));
+            if (DisplayNames.refusal(name, null, users) == null) {
+                return name;
+            }
+        }
+        return userName;
     }
 }

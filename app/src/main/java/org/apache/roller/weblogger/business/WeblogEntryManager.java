@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.pojos.TagStat;
+import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogCategory;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
@@ -283,6 +284,15 @@ public interface WeblogEntryManager {
      * Get weblog entry count 
      */    
     long getEntryCount(Weblog websiteData) throws WebloggerException;
+
+    /**
+     * True when any entry, in any status (the trash included), names this
+     * account as its creator. Entries carry the creator's username with no
+     * foreign key, so the account page refuses to delete a writer. A tag's
+     * creator is always its entry's (WeblogEntry.addTag), so entries are the
+     * whole answer.
+     */
+    boolean hasEntriesCreatedBy(User user) throws WebloggerException;
 
 }
 

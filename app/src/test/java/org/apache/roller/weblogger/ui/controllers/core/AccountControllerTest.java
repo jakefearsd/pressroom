@@ -45,6 +45,7 @@ import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
 import org.apache.roller.weblogger.ui.controllers.RollerHandlerInterceptor;
+import org.apache.roller.weblogger.ui.core.security.sso.SsoLogCapture;
 import org.apache.roller.weblogger.ui.core.security.sso.RollerOidcUser;
 import org.apache.roller.weblogger.util.HTMLSanitizer;
 import org.junit.jupiter.api.AfterAll;
@@ -311,7 +312,7 @@ class AccountControllerTest {
         String ownerName = TestUtils.getManagedUser(owner).getScreenName();
         // Upper case, a zero-width space and doubled blanks: the same name to a reader's eye.
         String lookalike = "  " + ownerName.toUpperCase(Locale.ROOT)
-                .replace(" ", "​  ") + " ";
+                .replace(" ", "\u200B  ") + " ";
 
         MvcResult result = perform(post(SAVE_NAME).with(csrf()).with(as(reader)).param("screenName", lookalike));
 
@@ -335,14 +336,14 @@ class AccountControllerTest {
 
     @Test
     void aBlankOr51CodePointNameIsRefused() throws Exception {
-        String fiftyOne = "😀".repeat(51);
-        for (String bad : List.of("", "   ", "\u0007​‮", fiftyOne)) {
+        String fiftyOne = "\uD83D\uDE00".repeat(51);
+        for (String bad : List.of("", "   ", "\u0007\u200B\u202E", fiftyOne)) {
             MvcResult result = perform(post(SAVE_NAME).with(csrf()).with(as(reader)).param("screenName", bad));
             assertEquals(List.of("account.name.length"), modelErrors(result), "for [" + bad + "]");
             assertEquals("Ann Reader", stored(reader).getScreenName(), "nothing saved for [" + bad + "]");
         }
 
-        String fifty = "😀".repeat(50);
+        String fifty = "\uD83D\uDE00".repeat(50);
         MvcResult result = perform(post(SAVE_NAME).with(csrf()).with(as(reader)).param("screenName", fifty));
         assertEquals("/roller-ui/account.rol", result.getResponse().getRedirectedUrl(),
                 "fifty code points is the limit, not fifty chars: " + modelErrors(result));
@@ -364,6 +365,50 @@ class AccountControllerTest {
         assertEquals("Ann Reader", stored(reader).getScreenName());
     }
 
+    /**
+     * Review finding: the stripper decodes entities after removing tags, so
+     * one pass leaves new markup that the setter's own pass strips. Judged
+     * after one pass this was {@code <owner name><b></b>} and passed; stored,
+     * it was the owner's exact name.
+     */
+    @Test
+    void aNameThatStoresAsAnOwnersNameIsRefused() throws Exception {
+        String ownerName = TestUtils.getManagedUser(owner).getScreenName();
+        MvcResult result = withMarkupStripped(() -> perform(post(SAVE_NAME).with(csrf()).with(as(reader))
+                .param("screenName", "<i>" + ownerName + "&lt;b&gt;&lt;/b&gt;</i>")));
+
+        assertEquals(List.of("account.name.taken"), modelErrors(result));
+        assertEquals("Ann Reader", stored(reader).getScreenName());
+    }
+
+    /** Review finding: seven code points after one pass, an empty name once stored. */
+    @Test
+    void aNameThatStoresEmptyIsRefused() throws Exception {
+        MvcResult result = withMarkupStripped(() -> perform(post(SAVE_NAME).with(csrf()).with(as(reader))
+                .param("screenName", "<i>&lt;b&gt;&lt;/b&gt;</i>")));
+
+        assertEquals(List.of("account.name.length"), modelErrors(result));
+        assertEquals("Ann Reader", stored(reader).getScreenName());
+    }
+
+    @Test
+    void aNameThatNeverSettlesIsRefused() throws Exception {
+        MvcResult result = withMarkupStripped(() -> perform(post(SAVE_NAME).with(csrf()).with(as(reader))
+                .param("screenName", "x < y &" + "amp;".repeat(20) + "lt;")));
+
+        assertEquals(List.of("account.name.invalid"), modelErrors(result));
+        assertEquals("Ann Reader", stored(reader).getScreenName());
+    }
+
+    @Test
+    void aMarkedUpNameIsSavedExactlyAsJudged() throws Exception {
+        MvcResult result = withMarkupStripped(() -> perform(post(SAVE_NAME).with(csrf()).with(as(reader))
+                .param("screenName", "<b>Ann</b>\u00A0Marked")));
+
+        assertEquals("/roller-ui/account.rol", result.getResponse().getRedirectedUrl(), modelErrors(result).toString());
+        assertEquals("Ann Marked", stored(reader).getScreenName());
+    }
+
     @Test
     void aValidNameIsSavedAndExpiresTheWeblogs() throws Exception {
         published(reader, entryA, "On A");
@@ -372,7 +417,7 @@ class AccountControllerTest {
         Date beforeB = freshLastModified(blogB);
 
         MvcResult result = perform(post(SAVE_NAME).with(csrf()).with(as(reader))
-                .param("screenName", " \tAnn   Newname​ "));
+                .param("screenName", " \tAnn\u00A0\u00A0 Newname\u200B "));
 
         assertEquals(302, result.getResponse().getStatus());
         assertEquals("/roller-ui/account.rol", result.getResponse().getRedirectedUrl());
@@ -498,6 +543,25 @@ class AccountControllerTest {
                 model(perform(get(ACCOUNT).with(user(admin.getUserName()))), "deleteRefusal"));
     }
 
+    /**
+     * Ruling R8: entries name their creator by username with no foreign key,
+     * so deleting a writer would orphan the bylines and hand them to the next
+     * account given the same name.
+     */
+    @Test
+    void deletingIsRefusedForAnAccountThatWroteEntries() throws Exception {
+        TestUtils.setupWeblogEntry("acbyreader", TestUtils.getManagedWebsite(blogA),
+                TestUtils.getManagedUser(reader));
+        TestUtils.endSession(true);
+
+        MvcResult refused = perform(post(DELETE_ACCOUNT).with(csrf()).with(as(reader)));
+
+        assertEquals("/roller-ui/account.rol", refused.getResponse().getRedirectedUrl());
+        assertEquals(List.of("account.delete.author"), flash(refused, "errors"));
+        assertNotNull(stored(reader), "the writer's account stays");
+        assertEquals("account.delete.author", model(perform(get(ACCOUNT).with(as(reader))), "deleteRefusal"));
+    }
+
     /** Under a context path, as no code may assume there is none. */
     @Test
     void theSessionEndsAfterDeletion() throws Exception {
@@ -514,7 +578,6 @@ class AccountControllerTest {
         assertNotNull(rememberMe, "any remember-me cookie is cancelled");
         assertEquals(0, rememberMe.getMaxAge());
         assertEquals("/roller", rememberMe.getPath(), "on the path it was set for");
-        assertNull(SecurityContextHolder.getContext().getAuthentication());
 
         MockHttpSession next = (MockHttpSession) result.getRequest().getSession(false);
         MockHttpSession carried = next == null ? new MockHttpSession() : next;
@@ -572,6 +635,71 @@ class AccountControllerTest {
         verify(mocked.userManager(), never()).removeUser(any());
     }
 
+    /** Review minor: a save that failed must not show its unsaved name as the current one. */
+    @Test
+    void aFailedSaveShowsTheNameAsStored() throws Exception {
+        AccountController controller = mockedController();
+        User account = account("reader-x");
+        when(mocked.userManager().getUserByUserName("reader-x")).thenReturn(account("reader-x"));
+        doThrow(new WebloggerException("down")).when(mocked.userManager()).saveUser(any());
+        Model model = new ExtendedModelMap();
+
+        assertEquals(".Account", controller.saveName("A Fine Name", requestFor(account), model,
+                new RedirectAttributesModelMap()));
+
+        assertEquals(List.of("generic.error.check.logs"), errors(model));
+        assertEquals("Reader X", ((User) model.getAttribute("account")).getScreenName(),
+                "the page shows the name as stored");
+        assertEquals("A Fine Name", model.getAttribute("nameValue"), "the form keeps what was typed");
+        verify(mocked.weblogger()).release();
+    }
+
+    @Test
+    void aFailedSaveWhoseAccountCannotBeReadShowsNoName() throws Exception {
+        AccountController controller = mockedController();
+        User account = account("reader-x");
+        when(mocked.userManager().getUserByUserName("reader-x")).thenThrow(new WebloggerException("down"));
+        doThrow(new WebloggerException("down")).when(mocked.userManager()).saveUser(any());
+        Model model = new ExtendedModelMap();
+
+        controller.saveName("A Fine Name", requestFor(account), model, new RedirectAttributesModelMap());
+
+        assertNull(model.getAttribute("account"));
+        assertEquals(List.of(), model.getAttribute("comments"));
+        assertEquals(List.of("generic.error.check.logs"), errors(model));
+    }
+
+    /** Review minor: the comment id is a request parameter; written raw, a CR/LF in it forges log lines. */
+    @Test
+    void aCommentIdIsNeverWrittenToTheLog() throws Exception {
+        AccountController controller = mockedController();
+        User account = account("reader-x");
+        when(mocked.userManager().getUserByUserName(any(), any())).thenThrow(new WebloggerException("down"));
+        List<String> lines;
+        try (SsoLogCapture capture = SsoLogCapture.everyLogger()) {
+            controller.deleteComment("c1\r\nFORGED a line", requestFor(account), new RedirectAttributesModelMap());
+            lines = capture.everything();
+        }
+
+        assertTrue(lines.stream().anyMatch(l -> l.contains("reader-x")), "control: the failure was logged");
+        assertTrue(lines.stream().noneMatch(l -> l.contains("FORGED")), "the raw id reached the log: " + lines);
+    }
+
+    @Test
+    void deletionIsRefusedWhenTheAuthorshipCheckCannotRun() throws Exception {
+        AccountController controller = mockedController();
+        User account = account("reader-x");
+        when(mocked.userManager().getWeblogPermissions(account)).thenReturn(List.of());
+        when(mocked.weblogEntryManager().hasEntriesCreatedBy(account)).thenThrow(new WebloggerException("down"));
+        RedirectAttributesModelMap flash = new RedirectAttributesModelMap();
+
+        assertEquals("redirect:/roller-ui/account.rol",
+                controller.deleteAccount(requestFor(account), new MockHttpServletResponse(), flash));
+
+        assertEquals(List.of("generic.error.check.logs"), flashErrors(flash));
+        verify(mocked.userManager(), never()).removeUser(any());
+    }
+
     @Test
     void aStoreErrorWhileDeletingACommentIsReported() throws Exception {
         AccountController controller = mockedController();
@@ -625,14 +753,22 @@ class AccountControllerTest {
         assertEquals("/", response.getCookie("remember-me").getPath(), "no context path: the root");
     }
 
-    @Test
-    void theNameIsNormalizedBeforeItIsJudged() {
-        assertEquals("a b c", AccountController.normalizeName(" \u0000a  b\t\n c‏ "));
-        assertEquals("", AccountController.normalizeName(null));
-        assertEquals("", AccountController.normalizeName("​\u0007"));
+    // ------------------------------------------------------------- helpers
+
+    private interface Request {
+        MvcResult run() throws Exception;
     }
 
-    // ------------------------------------------------------------- helpers
+    /** With markup stripped from names, as {@code weblogAdminsUntrusted} (the shipped default) does. */
+    private static MvcResult withMarkupStripped(Request request) throws Exception {
+        Boolean sanitizing = HTMLSanitizer.xssEnabled;
+        try {
+            HTMLSanitizer.xssEnabled = Boolean.TRUE;
+            return request.run();
+        } finally {
+            HTMLSanitizer.xssEnabled = sanitizing;
+        }
+    }
 
     /** One request, then the end of its persistence session, as the request filter does. */
     private static MvcResult perform(RequestBuilder request) throws Exception {

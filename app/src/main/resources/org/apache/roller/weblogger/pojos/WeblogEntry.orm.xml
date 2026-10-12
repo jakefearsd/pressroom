@@ -36,6 +36,11 @@
         <named-query name="WeblogEntry.getByWebsite">
             <query>SELECT w FROM WeblogEntry w WHERE w.website = ?1</query>
         </named-query>
+        <named-query name="WeblogEntry.getIdsByCreator">
+            <!-- Any status, the trash included; the caller asks for one row
+                 (an existence test on the we_creator_idx index). -->
+            <query>SELECT e.id FROM WeblogEntry e WHERE e.creatorUserName = ?1</query>
+        </named-query>
         <named-query name="WeblogEntry.getCountDistinctByStatus">
             <!-- DISTINCT is not required for this query -->
             <query>SELECT COUNT(e) FROM WeblogEntry e WHERE e.status = ?1</query>

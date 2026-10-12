@@ -4,6 +4,8 @@ import org.apache.roller.weblogger.TestUtils;
 import org.apache.roller.weblogger.business.UserManager;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.User;
+import org.apache.roller.weblogger.pojos.Weblog;
+import org.apache.roller.weblogger.util.HTMLSanitizer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,6 +29,7 @@ class ReaderAccountsTest {
     private static final String ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789";
 
     private final List<String> created = new ArrayList<>();
+    private final List<String> weblogIds = new ArrayList<>();
     private String sub;
 
     @BeforeEach
@@ -38,6 +41,9 @@ class ReaderAccountsTest {
     @AfterEach
     void tearDown() throws Exception {
         TestUtils.endSession(false);
+        for (String id : weblogIds) {
+            TestUtils.teardownWeblog(id);
+        }
         for (String name : created) {
             TestUtils.teardownUser(name);
         }
@@ -167,6 +173,89 @@ class ReaderAccountsTest {
         assertFalse(loser.created());
     }
 
+    // ------------------------------------------------------------- the display name (ruling R8)
+
+    /**
+     * The account page's rule applies at first sign-in too: a provider's name
+     * claim that is a weblog member's screen name would let a reader pass as
+     * the author from their very first comment.
+     */
+    @Test
+    void aClaimNameThatIsAMembersNameFallsBackToTheEmailLocalPart() throws Exception {
+        String ownerName = member("Owner " + sub.substring(4, 12));
+
+        ReaderAccounts.SignIn s = signIn(new ReaderAccounts(TestUtils.weblogger()),
+                claims("ann.reader@example.com", ownerName.toUpperCase(java.util.Locale.ROOT)));
+
+        assertEquals("ann.reader", s.user().getScreenName());
+        assertEquals("ann.reader", s.user().getFullName());
+    }
+
+    @Test
+    void whenTheEmailLocalPartIsTakenTooTheReaderIsCalledReader() throws Exception {
+        String local = "taken" + sub.substring(4, 12);
+        member(local);
+
+        ReaderAccounts.SignIn s = signIn(new ReaderAccounts(TestUtils.weblogger()),
+                claims(local + "@example.com", local));
+
+        assertEquals("Reader", s.user().getScreenName());
+    }
+
+    @Test
+    void whenEvenReaderIsTakenTheGeneratedUserNameIsTheName() throws Exception {
+        String local = "taken" + sub.substring(4, 12);
+        member(local);
+        member("Reader");
+
+        ReaderAccounts.SignIn s = signIn(new ReaderAccounts(TestUtils.weblogger()),
+                claims(local + "@example.com", local));
+
+        assertEquals(s.user().getUserName(), s.user().getScreenName());
+    }
+
+    /** The review's input, at sign-up: stored, this claim is the owner's exact name. */
+    @Test
+    void aClaimNameIsJudgedAsItWouldBeStored() throws Exception {
+        String ownerName = member("Owner " + sub.substring(4, 12));
+        Boolean sanitizing = HTMLSanitizer.xssEnabled;
+        ReaderAccounts.SignIn s;
+        try {
+            HTMLSanitizer.xssEnabled = Boolean.TRUE;
+            s = signIn(new ReaderAccounts(TestUtils.weblogger()),
+                    claims("ann.reader@example.com", "<i>" + ownerName + "&lt;b&gt;&lt;/b&gt;</i>"));
+        } finally {
+            HTMLSanitizer.xssEnabled = sanitizing;
+        }
+
+        assertEquals("ann.reader", s.user().getScreenName());
+    }
+
+    @Test
+    void aClaimNameThatStoresEmptyFallsBack() throws Exception {
+        Boolean sanitizing = HTMLSanitizer.xssEnabled;
+        ReaderAccounts.SignIn s;
+        try {
+            HTMLSanitizer.xssEnabled = Boolean.TRUE;
+            s = signIn(new ReaderAccounts(TestUtils.weblogger()),
+                    claims("ann.reader@example.com", "<i>&lt;b&gt;&lt;/b&gt;</i>"));
+        } finally {
+            HTMLSanitizer.xssEnabled = sanitizing;
+        }
+
+        assertEquals("ann.reader", s.user().getScreenName());
+    }
+
+    @Test
+    void aLongClaimNameIsCutToFiftyCodePoints() throws Exception {
+        String sixty = "Ann " + "x".repeat(56);
+
+        ReaderAccounts.SignIn s = signIn(new ReaderAccounts(TestUtils.weblogger()),
+                claims("ann.reader@example.com", sixty));
+
+        assertEquals(sixty.substring(0, 50), s.user().getScreenName());
+    }
+
     @Test
     void refusedClaimsCreateNothing() throws Exception {
         long before = TestUtils.weblogger().getUserManager().getUserCount();
@@ -174,6 +263,20 @@ class ReaderAccountsTest {
         assertThrows(ReaderSignInRefused.class,
                 () -> accounts.signIn(new ReaderClaims(ISSUER, sub, "u@example.com", false, "U")));
         assertEquals(before, TestUtils.weblogger().getUserManager().getUserCount());
+    }
+
+    /** A password account holding a weblog, renamed to {@code screenName}; returns the name. */
+    private String member(String screenName) throws Exception {
+        User owner = TestUtils.setupUser("ram" + UUID.randomUUID().toString().substring(0, 8));
+        created.add(owner.getUserName());
+        owner.setScreenName(screenName);
+        TestUtils.weblogger().getUserManager().saveUser(owner);
+        TestUtils.endSession(true);
+        Weblog blog = TestUtils.setupWeblog("ram" + UUID.randomUUID().toString().substring(0, 8),
+                TestUtils.getManagedUser(owner));
+        weblogIds.add(blog.getId());
+        TestUtils.endSession(true);
+        return screenName;
     }
 
     private static User bound(String userName, String subject) {

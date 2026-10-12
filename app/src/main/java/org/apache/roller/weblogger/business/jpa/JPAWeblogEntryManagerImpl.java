@@ -33,6 +33,7 @@ import org.apache.roller.util.RollerConstants;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.RollerEvent;
+import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.WeblogEntrySearchCriteria;
 import org.apache.roller.weblogger.pojos.TagStat;
 import org.apache.roller.weblogger.pojos.TagStatComparator;
@@ -1244,6 +1245,14 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         return cal.getTime();
     }
 
+
+    @Override
+    public boolean hasEntriesCreatedBy(User user) throws WebloggerException {
+        TypedQuery<String> q = strategy.getNamedQuery("WeblogEntry.getIdsByCreator", String.class);
+        q.setParameter(1, user.getUserName());
+        q.setMaxResults(1);
+        return !q.getResultList().isEmpty();
+    }
 
     /**
      * @inheritDoc

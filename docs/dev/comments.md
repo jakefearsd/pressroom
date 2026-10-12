@@ -243,14 +243,22 @@ readers are never mailed. Needs mail configured (`MailUtil.isMailConfigured`).
 `AccountController`: `/roller-ui/account.rol`, `account!saveName.rol`,
 `account!deleteComment.rol`, `account!deleteAccount.rol` (`Account.jsp`). It
 requires the global `comment` action (`requiredGlobalPermissionActions`).
-Display name (the screen name): 1 to 50 code points after stripping control
-and format characters and collapsing whitespace; refused if it equals,
-case-insensitively, the screen name of any weblog member (anti-impersonation;
-a member keeping their own name is exempt); saving expires the weblogs showing
-it. The page lists the account's comments with Delete. Delete my account
-(`data-confirm`) removes comments, replies, roles, tokens and the user, expires
-each weblog that showed them, and ends the session; it is refused for an
-account with any weblog permission or `admin`.
+Display name (the screen name), one rule in `business/comments/DisplayNames`
+shared with a reader's first sign-in (ruling R8): judged in exactly the form
+`User.setScreenName` stores (`storedForm` repeats normalising and the setter's
+markup stripping until the setter keeps the name unchanged, since
+`HTMLSanitizer.sanitizeText` is not idempotent); 1 to 50 code points after
+stripping control and format characters and collapsing whitespace; refused if
+it equals, case-insensitively, the screen name of any weblog member
+(anti-impersonation; a member keeping their own name is exempt); saving
+expires the weblogs showing it. At first sign-in (`ReaderAccounts`) a refused
+name claim falls back to the email's local part, then "Reader", then the
+generated username. The page lists the account's comments with Delete. Delete
+my account (`data-confirm`) removes comments, replies, roles, tokens and the
+user, expires each weblog that showed them, and ends the session; it is
+refused for an account with any weblog permission, `admin`, or any entry it
+created (`WeblogEntryManager.hasEntriesCreatedBy`: bylines are usernames with
+no foreign key).
 
 ## Hazards found while building
 

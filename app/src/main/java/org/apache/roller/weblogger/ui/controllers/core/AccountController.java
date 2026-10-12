@@ -19,7 +19,6 @@ package org.apache.roller.weblogger.ui.controllers.core;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.regex.Pattern;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,6 +28,7 @@ import jakarta.servlet.http.HttpSession;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.UserManager;
 import org.apache.roller.weblogger.business.comments.CommentService;
+import org.apache.roller.weblogger.business.comments.DisplayNames;
 import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.ReaderComment;
 import org.apache.roller.weblogger.pojos.ReaderComment.Status;
@@ -37,7 +37,6 @@ import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.ui.controllers.BaseController;
 import org.apache.roller.weblogger.ui.core.RollerLoginSessionManager;
 import org.apache.roller.weblogger.ui.core.RollerSession;
-import org.apache.roller.weblogger.util.HTMLSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -71,13 +70,9 @@ public class AccountController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger("roller.comments");
 
-    /** The longest display name, in code points. */
-    static final int MAX_NAME = 50;
-
     private static final String VIEW = ".Account";
     private static final String BACK = "redirect:/roller-ui/account.rol";
     private static final String STORE_ERROR = "generic.error.check.logs";
-    private static final Pattern SPACES = Pattern.compile(" {2,}");
 
     private final CommentService comments;
 
@@ -114,25 +109,28 @@ public class AccountController extends BaseController {
     }
 
     /**
-     * Saves the display name. It is judged in the form it would be stored in:
-     * normalized, and stripped of markup when the site strips it from names.
+     * Saves the display name, judged by {@link DisplayNames} in exactly the
+     * form it is stored in. A save that fails is rolled back and the page
+     * shows the account as stored, not the name that did not save.
      */
     @PostMapping("/account!saveName.rol")
     public String saveName(@RequestParam(name = "screenName", required = false) String screenName,
                            HttpServletRequest request, Model model, RedirectAttributes redirectAttributes) {
         User account = getAuthenticatedUser(request);
-        String name = normalizeName(HTMLSanitizer.conditionallySanitizeText(normalizeName(screenName)));
+        String name = DisplayNames.storedForm(screenName);
         try {
-            String refusal = nameRefusal(account, name);
+            DisplayNames.Refusal refusal = DisplayNames.refusal(name, account, weblogger.getUserManager());
             if (refusal == null) {
                 rename(account, name);
                 addFlashMessage(redirectAttributes, "account.name.saved", request);
                 return BACK;
             }
-            addError(model, refusal, request);
+            addError(model, refusal.messageKey(), request);
         } catch (WebloggerException ex) {
             log.error("Could not save the display name of {}", account.getUserName(), ex);
             addError(model, STORE_ERROR, request);
+            weblogger.release();
+            account = asStored(account);
         }
         show(account, screenName, request, model);
         return VIEW;
@@ -149,7 +147,8 @@ public class AccountController extends BaseController {
                 addFlashError(redirectAttributes, "account.comment.notFound", request);
             }
         } catch (WebloggerException ex) {
-            log.error("Could not delete comment {} for {}", id, account.getUserName(), ex);
+            // Not the id: it is a request parameter, and a CR/LF in it would forge log lines.
+            log.error("Could not delete a comment for {}", account.getUserName(), ex);
             addFlashError(redirectAttributes, STORE_ERROR, request);
         }
         return BACK;
@@ -157,8 +156,8 @@ public class AccountController extends BaseController {
 
     /**
      * Deletes the account, its comments and the replies to them, its roles and
-     * tokens, then ends the session. Refused for a weblog member and for an
-     * administrator.
+     * tokens, then ends the session. Refused for a weblog member, for an
+     * administrator, and for an account that wrote entries (ruling R8).
      */
     @PostMapping("/account!deleteAccount.rol")
     public String deleteAccount(HttpServletRequest request, HttpServletResponse response,
@@ -191,49 +190,6 @@ public class AccountController extends BaseController {
 
     // ------------------------------------------------------------- rules
 
-    /**
-     * The name as judged and stored: control and format characters dropped,
-     * every kind of blank made one space, runs of them collapsed, trimmed.
-     * Null is "".
-     */
-    static String normalizeName(String raw) {
-        if (raw == null) {
-            return "";
-        }
-        StringBuilder kept = new StringBuilder(raw.length());
-        raw.codePoints().forEach(cp -> {
-            if (Character.isWhitespace(cp) || Character.isSpaceChar(cp)) {
-                kept.append(' ');
-            } else if (!Character.isISOControl(cp) && Character.getType(cp) != Character.FORMAT) {
-                kept.appendCodePoint(cp);
-            }
-        });
-        return SPACES.matcher(kept).replaceAll(" ").strip();
-    }
-
-    /** The message key refusing this (normalized) name, or null when it may be saved. */
-    private String nameRefusal(User account, String name) throws WebloggerException {
-        int length = name.codePointCount(0, name.length());
-        if (length < 1 || length > MAX_NAME) {
-            return "account.name.length";
-        }
-        return impersonates(account, name) ? "account.name.taken" : null;
-    }
-
-    /**
-     * True when the name is a weblog member's, case aside. A member keeping
-     * its own name matches only itself, which is no impersonation.
-     */
-    private boolean impersonates(User account, String name) throws WebloggerException {
-        UserManager users = weblogger.getUserManager();
-        boolean taken = users.getScreenNamesOfWeblogMembers().stream().anyMatch(member -> sameName(member, name));
-        return taken && !(sameName(account.getScreenName(), name) && !users.getWeblogPermissions(account).isEmpty());
-    }
-
-    private static boolean sameName(String stored, String name) {
-        return stored != null && normalizeName(stored).equalsIgnoreCase(name);
-    }
-
     /** The message key refusing deletion of this account, or null when it may go. */
     private String deletionRefusal(User account) throws WebloggerException {
         UserManager users = weblogger.getUserManager();
@@ -243,7 +199,25 @@ public class AccountController extends BaseController {
         if (users.checkPermission(new GlobalPermission(List.of(GlobalPermission.ADMIN)), account)) {
             return "account.delete.admin";
         }
+        // Entries name their creator by username with no foreign key: deleting a
+        // writer would orphan the bylines and hand them to the next account of that name.
+        if (weblogger.getWeblogEntryManager().hasEntriesCreatedBy(account)) {
+            return "account.delete.author";
+        }
         return null;
+    }
+
+    /**
+     * The account as stored, after a failed save was rolled back; null when
+     * even that cannot be read, and the page then shows no name at all.
+     */
+    private User asStored(User account) {
+        try {
+            return weblogger.getUserManager().getUserByUserName(account.getUserName());
+        } catch (WebloggerException ex) {
+            log.error("Could not re-read the account {}", account.getUserName(), ex);
+            return null;
+        }
     }
 
     /** Saves the name (and a full name that was the old screen name), then expires the weblogs that show it. */
@@ -300,13 +274,17 @@ public class AccountController extends BaseController {
      * The page: the account, the name in the form, the account's comments
      * (newest first, without the tombstones of hidden ones it deleted) and why
      * it may not be deleted, if it may not. A display path: what cannot be
-     * read is shown empty, with an error; the actions re-check for themselves.
+     * read is shown empty, with an error (a null account, one that could not
+     * be re-read, shows nothing); the actions re-check for themselves.
      */
     private void show(User account, String nameValue, HttpServletRequest request, Model model) {
         populateCommonModel(request, model);
         model.addAttribute("account", account);
         model.addAttribute("nameValue", nameValue);
         model.addAttribute("comments", List.of());
+        if (account == null) {
+            return;
+        }
         try {
             model.addAttribute("comments", weblogger.getCommentManager().getCommentsByAuthor(account).stream()
                     .filter(c -> !isTombstone(c))
