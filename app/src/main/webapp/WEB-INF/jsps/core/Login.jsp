@@ -62,6 +62,14 @@
 
         </form>
 
+<c:if test="${ssoEnabled}">
+    <p class="mt-3">
+        <a class="btn btn-secondary" id="ssoSignIn" href="<c:url value='/roller-ui/sso/start'/>">
+            <spring:message code="loginPage.ssoSignIn" arguments="${ssoLabel}"/>
+        </a>
+    </p>
+</c:if>
+
 <p class="mt-3"><a href="<c:url value='/roller-ui/forgotPassword.rol'/>">
     <spring:message code="loginPage.forgotPassword"/></a></p>
 

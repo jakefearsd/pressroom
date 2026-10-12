@@ -20,12 +20,16 @@ package org.apache.roller.weblogger.ui.controllers.core;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import java.util.Map;
+
 import org.apache.roller.weblogger.ui.controllers.BaseController;
+import org.apache.roller.weblogger.ui.core.security.sso.SsoSettings;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.util.HtmlUtils;
 
 
 /**
@@ -35,6 +39,17 @@ import org.springframework.web.bind.annotation.RequestParam;
 @RequestMapping("/roller-ui")
 public class LoginController extends BaseController {
 
+    /** The {@code sso} codes the SSO failure handler sends; anything else is ignored. */
+    private static final Map<String, String> SSO_MESSAGES = Map.of(
+            "unavailable", "login.sso.unavailable",
+            "failed", "login.sso.failed",
+            "refused", "login.sso.refused");
+
+    private final SsoSettings sso;
+
+    public LoginController(SsoSettings sso) {
+        this.sso = sso;
+    }
 
     @Override
     public boolean isUserRequired() {
@@ -53,7 +68,8 @@ public class LoginController extends BaseController {
 
     @GetMapping("/login.rol")
     public String execute(HttpServletRequest request, Model model,
-                          @RequestParam(value = "error", required = false) String error) {
+                          @RequestParam(value = "error", required = false) String error,
+                          @RequestParam(value = "sso", required = false) String ssoCode) {
 
         populateCommonModel(request, model);
 
@@ -61,6 +77,15 @@ public class LoginController extends BaseController {
         if (error != null) {
             addError(model, "error.password.mismatch", request);
         }
+
+        String ssoMessage = ssoCode == null ? null : SSO_MESSAGES.get(ssoCode);
+        if (ssoMessage != null) {
+            addError(model, ssoMessage, request);
+        }
+
+        // spring:message arguments are not escaped, so the label is escaped here.
+        model.addAttribute("ssoEnabled", sso.enabled());
+        model.addAttribute("ssoLabel", HtmlUtils.htmlEscape(sso.providerLabel()));
 
         return ".Login";
     }

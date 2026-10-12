@@ -22,11 +22,15 @@ import java.util.List;
 import org.apache.roller.weblogger.business.MockWeblogger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.apache.roller.weblogger.ui.core.security.sso.SsoSettings;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.ui.ExtendedModelMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests for {@link LoginController}, the sign-in page.
@@ -41,7 +45,7 @@ class LoginControllerTest {
     void setUp() {
         weblogger = MockWeblogger.attached();
         ControllerTestFixture.useWeblogger(weblogger.weblogger());
-        controller = ControllerTestFixture.withMessages(new LoginController());
+        controller = ControllerTestFixture.withMessages(new LoginController(new SsoSettings("", "", "", "")));
         model = new ExtendedModelMap();
     }
 
@@ -53,7 +57,7 @@ class LoginControllerTest {
 
     @Test
     void theSignInPageStartsWithNoComplaint() {
-        String view = controller.execute(ControllerTestFixture.requestFor(null), model, null);
+        String view = controller.execute(ControllerTestFixture.requestFor(null), model, null, null);
 
         assertEquals(".Login", view);
         assertEquals(List.of(), ControllerTestFixture.errors(model),
@@ -65,7 +69,7 @@ class LoginControllerTest {
     void comingBackWithAnErrorParameterShowsTheFailureMessage() {
         // Spring Security bounces a failed login back to /login.rol?error, and
         // this is the only thing that tells the user their attempt failed.
-        String view = controller.execute(ControllerTestFixture.requestFor(null), model, "");
+        String view = controller.execute(ControllerTestFixture.requestFor(null), model, "", null);
 
         assertEquals(".Login", view);
         assertEquals(List.of("error.password.mismatch"), ControllerTestFixture.errors(model));
@@ -77,5 +81,40 @@ class LoginControllerTest {
         assertFalse(controller.isUserRequired());
         assertFalse(controller.isWeblogRequired());
         assertEquals("loginPage.title", controller.getPageTitle());
+    }
+
+    private String runWith(SsoSettings settings, String sso) {
+        LoginController c = ControllerTestFixture.withMessages(new LoginController(settings));
+        return c.execute(ControllerTestFixture.requestFor(null), model, null, sso);
+    }
+
+    @Test
+    void ssoOnShowsTheProviderButtonWithAnEscapedLabel() {
+        runWith(new SsoSettings("id", "s", SsoSettings.GOOGLE_DISCOVERY, "<b>G</b>"), null);
+
+        assertEquals(Boolean.TRUE, model.getAttribute("ssoEnabled"));
+        assertEquals("&lt;b&gt;G&lt;/b&gt;", model.getAttribute("ssoLabel"));
+    }
+
+    @Test
+    void ssoOffShowsNoButton() {
+        runWith(new SsoSettings("", "", "", ""), null);
+
+        assertEquals(Boolean.FALSE, model.getAttribute("ssoEnabled"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"unavailable", "failed", "refused"})
+    void knownCodesShowTheirMessage(String code) {
+        runWith(new SsoSettings("id", "s", "", ""), code);
+
+        assertEquals(List.of("login.sso." + code), ControllerTestFixture.errors(model));
+    }
+
+    @Test
+    void unknownCodesAreIgnored() {
+        runWith(new SsoSettings("id", "s", "", ""), "<script>");
+
+        assertTrue(ControllerTestFixture.errors(model).isEmpty());
     }
 }
