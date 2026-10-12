@@ -21,6 +21,7 @@ package org.apache.roller.weblogger.ui.controllers.admin;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -30,6 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.UserManager;
+import org.apache.roller.weblogger.business.comments.CommentService;
 import org.apache.roller.weblogger.config.WebloggerConfig;
 import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.User;
@@ -58,6 +60,13 @@ import org.apache.commons.text.StringEscapeUtils;
 public class UserEditController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(UserEditController.class);
+
+    private final CommentService comments;
+
+    /** @param comments expires the weblogs showing an account's comments when it is renamed */
+    public UserEditController(CommentService comments) {
+        this.comments = comments;
+    }
 
 
     @Override
@@ -229,6 +238,7 @@ public class UserEditController extends BaseController {
         myValidate(bean, user, false, model, request);
 
         if (!hasErrors(model)) {
+            String screenNameBefore = user.getScreenName();
             bean.copyTo(user);
 
             // reset password if set
@@ -263,6 +273,7 @@ public class UserEditController extends BaseController {
                         mgr.revokeRole("editor", user);
                     }
                     weblogger.flush();
+                    expireIfRenamed(user, screenNameBefore);
                     model.addAttribute("bean", new CreateUserBean());
                     addMessage(model, "userAdmin.userSaved", request);
                     return ".UserAdmin";
@@ -288,6 +299,7 @@ public class UserEditController extends BaseController {
                     mgr.grantRole("admin", user);
                 }
                 weblogger.flush();
+                expireIfRenamed(user, screenNameBefore);
 
                 // successful edit: send user back to user admin page
                 model.addAttribute("bean", new CreateUserBean());
@@ -424,6 +436,16 @@ public class UserEditController extends BaseController {
             if (user.isSsoBound() && !StringUtils.isEmpty(bean.getPassword())) {
                 addFieldError(model, "bean_password", "userAdmin.error.ssoPassword", request);
             }
+        }
+    }
+
+    /**
+     * After a committed save: when the screen name changed, expires every weblog
+     * showing the account's published comments, which its screen name signs.
+     */
+    private void expireIfRenamed(User user, String screenNameBefore) {
+        if (!Objects.equals(screenNameBefore, user.getScreenName())) {
+            comments.expireWhereShown(user);
         }
     }
 

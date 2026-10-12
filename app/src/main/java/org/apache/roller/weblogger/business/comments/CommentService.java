@@ -62,11 +62,6 @@ public class CommentService {
 
     private static final Logger log = LoggerFactory.getLogger("roller.comments");
 
-    /** At most this many comments per account in any ten minutes... */
-    static final int PER_TEN_MINUTES = 5;
-    /** ...and this many in a day. */
-    static final int PER_DAY = 30;
-    private static final int TEN_MINUTES_SECONDS = 600;
     private static final int DAY_SECONDS = 86_400;
     private static final int TRACKED_ACCOUNTS = 1000;
     private static final int LOCK_STRIPES = 64;
@@ -81,12 +76,21 @@ public class CommentService {
     private final Object[] stripes = new Object[LOCK_STRIPES];
 
     /**
+     * With the rate limit roller.properties configures ({@link CommentLimits}).
+     *
      * @param weblogger the lazily-resolved business tier
      * @param notifier  told about each comment stored {@code PENDING}
      */
     @Autowired
     public CommentService(@Lazy Weblogger weblogger, CommentNotifier notifier) {
-        this(weblogger, notifier, tenMinuteThrottle(), dayThrottle());
+        this(weblogger, notifier, CommentLimits.fromConfig());
+    }
+
+    /** With the rate limit given, as configuration would give it. */
+    CommentService(Weblogger weblogger, CommentNotifier notifier, CommentLimits limits) {
+        this(weblogger, notifier, windowThrottle(limits), dailyThrottle(limits));
+        log.info("comment rate limit: {} per {}s and {} a day per account", limits.windowLimit(),
+                limits.windowSeconds(), limits.dailyLimit());
     }
 
     /** With the rate limit's two windows supplied, so a test need not wait. */
@@ -100,17 +104,18 @@ public class CommentService {
         }
     }
 
-    /** The production ten-minute window. */
-    static GenericThrottle tenMinuteThrottle() {
-        return limit(PER_TEN_MINUTES, TEN_MINUTES_SECONDS);
+    /** The short window: {@code windowLimit} per {@code windowSeconds}. */
+    static GenericThrottle windowThrottle(CommentLimits limits) {
+        return limit(limits.windowLimit(), limits.windowSeconds());
     }
 
-    /** The production one-day window. */
-    static GenericThrottle dayThrottle() {
-        return limit(PER_DAY, DAY_SECONDS);
+    /** The day: {@code dailyLimit} per 24 hours. */
+    static GenericThrottle dailyThrottle(CommentLimits limits) {
+        return limit(limits.dailyLimit(), DAY_SECONDS);
     }
 
     /**
+     * The one place an ALLOWED count becomes a GenericThrottle threshold.
      * GenericThrottle calls an account abusive once its hits EXCEED the
      * threshold, so "at most {@code allowed}" is a threshold one lower: after
      * {@code allowed} stored comments, the next is refused.
@@ -358,12 +363,21 @@ public class CommentService {
      * Pages expire only when the move is into or out of PUBLISHED. Works with
      * comments off: existing comments stay moderatable. The caller has
      * authorized {@code actor}; it is logged.
+     *
+     * @return false, with nothing changed, when the move is refused: a
+     *         reader-deleted tombstone ({@link CommentRules#isTombstone}) is
+     *         never published. Every surface (moderation page, API, MCP) gets
+     *         this one answer.
      */
-    public void setStatus(ReaderComment c, Status status, User actor) throws WebloggerException {
+    public boolean setStatus(ReaderComment c, Status status, User actor) throws WebloggerException {
         Objects.requireNonNull(status, "status");
         Status before = c.getStatus();
         if (before == status) {
-            return;
+            return true;
+        }
+        if (status == Status.PUBLISHED && CommentRules.isTombstone(c)) {
+            log.info("comment {} not published: its author deleted it; asked by {}", c.getId(), nameOf(actor));
+            return false;
         }
         c.setStatus(status);
         c.setStatusChanged(new Date());
@@ -374,6 +388,7 @@ public class CommentService {
             weblogger.flush();
         }
         log.info("comment {} {} -> {} by {}", c.getId(), before, status, nameOf(actor));
+        return true;
     }
 
     /**
@@ -396,7 +411,10 @@ public class CommentService {
 
     /**
      * A reader deletes their own comment; false (and nothing done) when it is
-     * not theirs. A HIDDEN one is erased to a tombstone instead (see erase).
+     * not theirs. A reader's HIDDEN one is erased to a tombstone instead (see
+     * erase). An owner's own comment or reply (authorIsOwner) is deleted
+     * outright whatever its status: an owner needs no trust to keep, and a
+     * tombstoned hidden reply would hold its comment's one reply slot forever.
      */
     public boolean deleteOwn(User user, String commentId) throws WebloggerException {
         if (user == null || commentId == null) {
@@ -410,7 +428,7 @@ public class CommentService {
         if (c == null || !c.getAuthor().getId().equals(current.getId())) {
             return false;
         }
-        if (c.getStatus() == Status.HIDDEN) {
+        if (c.getStatus() == Status.HIDDEN && !c.isAuthorIsOwner()) {
             erase(c, current);
         } else {
             delete(c, current);
@@ -434,6 +452,40 @@ public class CommentService {
         weblogger.flush();
         log.info("comment {} erased{} by {}", c.getId(), reply == null ? "" : " with reply " + reply.getId(),
                 reader.getUserName());
+    }
+
+    /**
+     * Expires every weblog where this author has a PUBLISHED comment or reply:
+     * their screen name signs it there. For a rename from anywhere (the account
+     * page, Profile, User Admin), called after the rename has committed, so a
+     * failure here is logged, not thrown: the rename stands, and those pages
+     * show the old name until their weblog's next change.
+     */
+    public void expireWhereShown(User author) {
+        List<Weblog> shown;
+        try {
+            shown = comments().getWeblogsWithPublishedCommentsBy(author);
+        } catch (WebloggerException ex) {
+            log.error("Could not find the weblogs showing {}; they show the old name until their next change",
+                    nameOf(author), ex);
+            return;
+        }
+        expireAll(shown);
+    }
+
+    /**
+     * Expires each weblog, after the change that alters them has committed. One
+     * that fails is logged and the rest still expire: the change itself stands.
+     */
+    public void expireAll(List<Weblog> weblogs) {
+        for (Weblog weblog : weblogs) {
+            try {
+                expire(weblog);
+            } catch (WebloggerException ex) {
+                log.error("Could not expire weblog {}; its pages show the old comments until its next change",
+                        weblog.getHandle(), ex);
+            }
+        }
     }
 
     /**

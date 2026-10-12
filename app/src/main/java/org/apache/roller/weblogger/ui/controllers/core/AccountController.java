@@ -27,11 +27,10 @@ import jakarta.servlet.http.HttpSession;
 
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.UserManager;
+import org.apache.roller.weblogger.business.comments.CommentRules;
 import org.apache.roller.weblogger.business.comments.CommentService;
 import org.apache.roller.weblogger.business.comments.DisplayNames;
 import org.apache.roller.weblogger.pojos.GlobalPermission;
-import org.apache.roller.weblogger.pojos.ReaderComment;
-import org.apache.roller.weblogger.pojos.ReaderComment.Status;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.ui.controllers.BaseController;
@@ -182,7 +181,7 @@ public class AccountController extends BaseController {
             return BACK;
         }
         log.info("account {} deleted by its holder", userName);
-        expireAll(shown);
+        comments.expireAll(shown);
         endSession(request, response, userName);
         addFlashMessage(redirectAttributes, "account.deleted", request);
         return "redirect:/";
@@ -230,22 +229,7 @@ public class AccountController extends BaseController {
         weblogger.getUserManager().saveUser(account);
         weblogger.flush();
         log.info("account {} renamed", account.getUserName());
-        expireAll(shown);
-    }
-
-    /**
-     * Expires each weblog, after the change has committed. One that fails is
-     * logged and the rest still expire: the change itself already stands.
-     */
-    private void expireAll(List<Weblog> weblogs) {
-        for (Weblog weblog : weblogs) {
-            try {
-                comments.expire(weblog);
-            } catch (WebloggerException ex) {
-                log.error("Could not expire weblog {}; its pages show the old comments until its next change",
-                        weblog.getHandle(), ex);
-            }
-        }
+        comments.expireAll(shown);
     }
 
     /**
@@ -287,17 +271,12 @@ public class AccountController extends BaseController {
         }
         try {
             model.addAttribute("comments", weblogger.getCommentManager().getCommentsByAuthor(account).stream()
-                    .filter(c -> !isTombstone(c))
+                    .filter(c -> !CommentRules.isTombstone(c))
                     .toList());
             model.addAttribute("deleteRefusal", deletionRefusal(account));
         } catch (WebloggerException ex) {
             log.error("Could not load the account page of {}", account.getUserName(), ex);
             addError(model, STORE_ERROR, request);
         }
-    }
-
-    /** A HIDDEN comment with no body: one its author deleted (ruling R5). */
-    private static boolean isTombstone(ReaderComment c) {
-        return c.getStatus() == Status.HIDDEN && (c.getBody() == null || c.getBody().isEmpty());
     }
 }

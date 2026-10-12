@@ -25,6 +25,7 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.MockWeblogger;
+import org.apache.roller.weblogger.business.comments.CommentService;
 import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
@@ -64,6 +65,7 @@ class UserEditControllerTest {
     private static final String ALLOWED_CHARS = "username.allowedChars";
 
     private MockWeblogger weblogger;
+    private CommentService comments;
     private UserEditController controller;
     private ExtendedModelMap model;
     private Object previousPasswordEncoder;
@@ -75,7 +77,8 @@ class UserEditControllerTest {
         ControllerTestFixture.useWeblogger(weblogger.weblogger());
         previousPasswordEncoder = ControllerTestFixture.installBcryptPasswordEncoder();
         previousAllowedChars = ControllerTestFixture.setConfigProperty(ALLOWED_CHARS, "A-Za-z0-9");
-        controller = ControllerTestFixture.withMessages(new UserEditController());
+        comments = org.mockito.Mockito.mock(CommentService.class);
+        controller = ControllerTestFixture.withMessages(new UserEditController(comments));
         model = new ExtendedModelMap();
     }
 
@@ -575,6 +578,53 @@ class UserEditControllerTest {
         controller.modifyUserSave(ControllerTestFixture.requestFor(user("admin", "a@example.com")), model, bean);
 
         verify(weblogger.userManager()).grantRole("admin", stored);
+    }
+
+    // --- modify: a rename expires the pages showing the account's comments (M8) ---
+
+    @Test
+    void renamingAnAccountExpiresTheWeblogsShowingItsComments() throws Exception {
+        User stored = storedUser("jake");
+        stored.setScreenName("Jake");
+        CreateUserBean bean = beanForExisting("u1", "jake");
+        bean.setScreenName("Jake Renamed");
+        bean.setEnabled(Boolean.TRUE);
+
+        controller.modifyUserSave(ControllerTestFixture.requestFor(user("admin", "a@example.com")), model, bean);
+
+        assertEquals(List.of(), ControllerTestFixture.errors(model));
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(weblogger.weblogger(), comments);
+        order.verify(weblogger.weblogger()).flush();
+        order.verify(comments).expireWhereShown(stored);
+    }
+
+    @Test
+    void renamingABoundReaderExpiresTheWeblogsShowingItsComments() throws Exception {
+        User stored = storedBoundUser("reader-abc1234567");
+        stored.setScreenName("Cora");
+        CreateUserBean bean = beanForExisting("u1", "reader-abc1234567");
+        bean.setScreenName("Cora Renamed");
+        bean.setEnabled(Boolean.TRUE);
+
+        controller.modifyUserSave(ControllerTestFixture.requestFor(user("admin", "a@example.com")), model, bean);
+
+        assertEquals(List.of(), ControllerTestFixture.errors(model));
+        verify(comments).expireWhereShown(stored);
+    }
+
+    @Test
+    void anEditThatKeepsTheNameExpiresNothing() throws Exception {
+        User stored = storedUser("jake");
+        stored.setScreenName("Jake");
+        CreateUserBean bean = beanForExisting("u1", "jake");
+        bean.setScreenName("Jake");
+        bean.setEmailAddress("new@example.com");
+        bean.setEnabled(Boolean.TRUE);
+
+        controller.modifyUserSave(ControllerTestFixture.requestFor(user("admin", "a@example.com")), model, bean);
+
+        verify(weblogger.userManager()).saveUser(stored);
+        verify(comments, never()).expireWhereShown(any());
     }
 
     @Test

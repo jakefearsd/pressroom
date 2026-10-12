@@ -67,7 +67,8 @@ class UserEditPasswordLinkTest {
         mail = MockMailProvider.install();
         previousPasswordEncoder = ControllerTestFixture.installBcryptPasswordEncoder();
         previousAllowedChars = ControllerTestFixture.setConfigProperty(ALLOWED_CHARS, "A-Za-z0-9");
-        controller = ControllerTestFixture.withMessages(new UserEditController());
+        controller = ControllerTestFixture.withMessages(new UserEditController(
+                org.mockito.Mockito.mock(org.apache.roller.weblogger.business.comments.CommentService.class)));
         model = new ExtendedModelMap();
 
         // Mail-ready by default (a transport, via MockMailProvider above, AND

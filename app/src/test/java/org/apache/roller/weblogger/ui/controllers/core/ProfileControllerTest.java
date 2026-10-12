@@ -21,6 +21,7 @@ import java.util.List;
 
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.MockWeblogger;
+import org.apache.roller.weblogger.business.comments.CommentService;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.TestUtils;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -52,6 +53,7 @@ import static org.mockito.Mockito.verify;
 class ProfileControllerTest {
 
     private MockWeblogger weblogger;
+    private CommentService comments;
     private ProfileController controller;
     private ExtendedModelMap model;
     private RedirectAttributes redirectAttributes;
@@ -62,7 +64,8 @@ class ProfileControllerTest {
         weblogger = MockWeblogger.attached();
         ControllerTestFixture.useWeblogger(weblogger.weblogger());
         previousPasswordEncoder = ControllerTestFixture.installBcryptPasswordEncoder();
-        controller = ControllerTestFixture.withMessages(new ProfileController());
+        comments = org.mockito.Mockito.mock(CommentService.class);
+        controller = ControllerTestFixture.withMessages(new ProfileController(comments));
         model = new ExtendedModelMap();
         redirectAttributes = new RedirectAttributesModelMap();
     }
@@ -115,6 +118,40 @@ class ProfileControllerTest {
         assertEquals("new@example.com", user.getEmailAddress());
         assertEquals(List.of("generic.changes.saved"),
                 ControllerTestFixture.flashMessages(redirectAttributes));
+    }
+
+    /**
+     * M8: an owner's screen name signs their comments and replies, and rendered
+     * pages expire only through the weblog. A rename here expires every weblog
+     * showing the account's published comments, after the save; any other edit
+     * leaves them alone.
+     */
+    @Test
+    void renamingExpiresTheWeblogsShowingTheAccountsComments() throws Exception {
+        User user = user("jake");
+        user.setScreenName("Jake");
+        ProfileBean bean = new ProfileBean();
+        bean.setScreenName("Jake Renamed");
+
+        controller.save(ControllerTestFixture.requestFor(user), model, bean, redirectAttributes);
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(weblogger.weblogger(), comments);
+        order.verify(weblogger.weblogger()).flush();
+        order.verify(comments).expireWhereShown(user);
+    }
+
+    @Test
+    void keepingTheNameExpiresNothing() throws Exception {
+        User user = user("jake");
+        user.setScreenName("Jake");
+        ProfileBean bean = new ProfileBean();
+        bean.setScreenName("Jake");
+        bean.setEmailAddress("new@example.com");
+
+        controller.save(ControllerTestFixture.requestFor(user), model, bean, redirectAttributes);
+
+        verify(weblogger.userManager()).saveUser(user);
+        verify(comments, never()).expireWhereShown(any());
     }
 
     @Test

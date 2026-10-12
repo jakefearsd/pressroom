@@ -77,13 +77,15 @@ class CommentsApiTest {
     private MockMvc mvc;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         weblogger = mock(Weblogger.class);
         comments = mock(CommentManager.class);
         entries = mock(WeblogEntryManager.class);
         service = mock(CommentService.class);
         when(weblogger.getCommentManager()).thenReturn(comments);
         when(weblogger.getWeblogEntryManager()).thenReturn(entries);
+        // The service moves a comment unless a test says it refuses.
+        when(service.setStatus(any(), any(), any())).thenReturn(true);
 
         weblog = aWeblog("myblog");
         other = aWeblog("other");
@@ -247,6 +249,24 @@ class CommentsApiTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"hidden\"}"))
                 .andExpect(status().isOk());
         verify(service).setStatus(c, Status.HIDDEN, actor);
+    }
+
+    /**
+     * I2: the API reaches the same tombstone rule as the moderation page, in the
+     * service. A refused move is a 409 (the comment's state forbids it), never a
+     * 200 that published an erased comment.
+     */
+    @Test
+    void publishingATombstoneIsAConflict() throws Exception {
+        ReaderComment tombstone = aComment("t1", entry, Status.HIDDEN, "");
+        when(comments.getComment("t1")).thenReturn(tombstone);
+        when(service.setStatus(tombstone, Status.PUBLISHED, owner)).thenReturn(false);
+
+        mvc.perform(patch(BASE + "/t1").requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", owner)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"PUBLISHED\"}"))
+                .andExpect(status().isConflict());
+        verify(service).setStatus(tombstone, Status.PUBLISHED, owner);
     }
 
     @Test

@@ -78,6 +78,15 @@ public final class CommentRules {
     }
 
     /**
+     * A comment its reader deleted while it was HIDDEN (ruling R5): kept as a
+     * HIDDEN row with its body erased, so the owner's distrust survives. It is
+     * never published again and shows as "deleted by its author".
+     */
+    public static boolean isTombstone(ReaderComment c) {
+        return c.getStatus() == ReaderComment.Status.HIDDEN && (c.getBody() == null || c.getBody().isEmpty());
+    }
+
+    /**
      * The status of a new top-level comment: an owner's is published; a
      * trusted reader's is published when it carries at most
      * {@link #MAX_LINKS_BEFORE_HOLD} links; anything else is held.

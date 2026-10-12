@@ -108,7 +108,10 @@ public class CommentsApi extends BaseApiController implements UISecurityEnforced
         if (wanted != Status.PUBLISHED && wanted != Status.HIDDEN) {
             throw ApiException.badRequest("status must be PUBLISHED or HIDDEN.");
         }
-        commentService.setStatus(comment, wanted, requireAuthenticatedUser(request));
+        if (!commentService.setStatus(comment, wanted, requireAuthenticatedUser(request))) {
+            // The service's one refusal: a reader-deleted tombstone is never published.
+            throw ApiException.conflict("Its author deleted this comment; it cannot be published.");
+        }
         return CommentDtos.toView(comment);
     }
 

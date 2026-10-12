@@ -77,7 +77,7 @@ class CommentRulesTest {
         assertSame(CommentRefusal.EMPTY_BODY, CommentRules.bodyRefusal(CommentRules.normalizeBody("\u0000 \u0007")));
         assertEquals("ab", CommentRules.normalizeBody("a\u007F\u0085\u009Fb"), "DEL and C1 controls go too");
         assertEquals("a\tb\nc\r\nd", CommentRules.normalizeBody("a\tb\nc\r\nd"), "tab and line breaks stay");
-        assertEquals("a​b‮c‏d", CommentRules.normalizeBody("a​b‮c‏d"),
+        assertEquals("a\u200Bb\u202Ec\u200Fd", CommentRules.normalizeBody("a\u200Bb\u202Ec\u200Fd"),
                 "format characters stay");
     }
 
@@ -96,5 +96,22 @@ class CommentRulesTest {
 
         assertThrows(IllegalArgumentException.class, () -> new CommentOutcome(null, null));
         assertThrows(IllegalArgumentException.class, () -> new CommentOutcome(c, CommentRefusal.CLOSED));
+    }
+
+    /** Ruling R5's tombstone: HIDDEN with its body erased. One rule for the service and every page. */
+    @Test
+    void aTombstoneIsAHiddenCommentWithNoBody() {
+        assertTrue(CommentRules.isTombstone(comment(ReaderComment.Status.HIDDEN, "")));
+        assertTrue(CommentRules.isTombstone(comment(ReaderComment.Status.HIDDEN, null)));
+        assertFalse(CommentRules.isTombstone(comment(ReaderComment.Status.HIDDEN, "text")));
+        assertFalse(CommentRules.isTombstone(comment(ReaderComment.Status.PUBLISHED, "")));
+        assertFalse(CommentRules.isTombstone(comment(ReaderComment.Status.PENDING, "")));
+    }
+
+    private static ReaderComment comment(ReaderComment.Status status, String body) {
+        ReaderComment c = new ReaderComment();
+        c.setStatus(status);
+        c.setBody(body);
+        return c;
     }
 }

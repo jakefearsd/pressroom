@@ -20,6 +20,7 @@ package org.apache.roller.weblogger.ui.controllers.core;
 
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.TimeZone;
 
@@ -30,6 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.UserManager;
+import org.apache.roller.weblogger.business.comments.CommentService;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.ui.controllers.BaseController;
 import org.springframework.stereotype.Controller;
@@ -51,6 +53,13 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class ProfileController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(ProfileController.class);
+
+    private final CommentService comments;
+
+    /** @param comments expires the weblogs showing this account's comments when it is renamed */
+    public ProfileController(CommentService comments) {
+        this.comments = comments;
+    }
 
 
     @Override
@@ -105,6 +114,7 @@ public class ProfileController extends BaseController {
 
             // We ONLY modify the user currently logged in
             User existingUser = getAuthenticatedUser(request);
+            String screenNameBefore = existingUser.getScreenName();
 
             // copy updated attributes
             bean.copyTo(existingUser);
@@ -119,6 +129,11 @@ public class ProfileController extends BaseController {
                 UserManager mgr = weblogger.getUserManager();
                 mgr.saveUser(existingUser);
                 weblogger.flush();
+                // The screen name signs this account's comments and replies, and
+                // rendered pages expire only through their weblog.
+                if (!Objects.equals(screenNameBefore, existingUser.getScreenName())) {
+                    comments.expireWhereShown(existingUser);
+                }
                 addFlashMessage(redirectAttributes, "generic.changes.saved", request);
                 return "redirect:/roller-ui/menu.rol";
             } catch (WebloggerException ex) {

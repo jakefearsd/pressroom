@@ -393,12 +393,35 @@ class CommentServiceTest {
 
         // The day, with the ten-minute window out of the way.
         CommentService daily = new CommentService(TestUtils.weblogger(), new MailCommentNotifier(TestUtils.weblogger()),
-                unlimited(), CommentService.dayThrottle());
+                unlimited(), CommentService.dailyThrottle(CommentLimits.fromConfig()));
         for (int i = 1; i <= 30; i++) {
             assertTrue(post(daily, reader, eb, BODY + " " + i).ok(), "comment " + i);
         }
         assertSame(CommentRefusal.RATE_LIMITED, post(daily, reader, eb, BODY).refusal(), "the 31st");
         assertEquals(30, countOn(b));
+    }
+
+    /**
+     * M11 (ruling R9): the limits are configuration. The defaults above come from
+     * roller.properties; a configured limit, here two in the window, is honoured
+     * the same way, as allowed counts: the third is refused.
+     */
+    @Test
+    void aConfiguredRateLimitIsHonoured() throws Exception {
+        assertEquals(CommentLimits.DEFAULTS, CommentLimits.fromConfig(), "roller.properties holds the defaults");
+        assertEquals(new CommentLimits(5, 600, 30), CommentLimits.DEFAULTS);
+
+        CommentService two = new CommentService(TestUtils.weblogger(), new MailCommentNotifier(TestUtils.weblogger()),
+                new CommentLimits(2, 600, 30));
+        assertTrue(post(two, reader, ea, BODY + " 1").ok());
+        assertTrue(post(two, reader, ea, BODY + " 2").ok());
+        assertSame(CommentRefusal.RATE_LIMITED, post(two, reader, ea, BODY + " 3").refusal(), "the third");
+        assertEquals(2, countOn(a));
+
+        CommentService daily = new CommentService(TestUtils.weblogger(), new MailCommentNotifier(TestUtils.weblogger()),
+                new CommentLimits(1000, 600, 1));
+        assertTrue(post(daily, reader, eb, BODY).ok());
+        assertSame(CommentRefusal.RATE_LIMITED, post(daily, reader, eb, BODY + " again").refusal(), "a day of one");
     }
 
     // ------------------------------------------------------------- criterion 18
@@ -490,6 +513,83 @@ class CommentServiceTest {
         post(reader, ea, BODY);
         post(reader, ea, "");
         Mockito.verifyNoMoreInteractions(notifier);
+    }
+
+    /**
+     * I2: a reader-deleted tombstone (HIDDEN, body erased) cannot be published by
+     * anyone: publishing it would show an empty comment and restore nothing the
+     * reader wrote. The rule is the service's, so every surface (the moderation
+     * page, the API, MCP) gets the same answer. Anything else moves as asked.
+     */
+    @Test
+    void aTombstoneCannotBePublished() throws Exception {
+        ReaderComment c = post(reader, ea, BODY).comment();
+        setStatus(c, Status.HIDDEN);
+        assertTrue(deleteOwn(reader, c.getId()));
+        assertEquals("", fetch(c).getBody(), "fixture: a tombstone");
+
+        boolean moved = keeps("refusing to publish a tombstone",
+                () -> service.setStatus(fetch(c), Status.PUBLISHED, TestUtils.getManagedUser(owner)));
+        TestUtils.endSession(true);
+
+        assertFalse(moved, "a tombstone was published");
+        assertEquals(Status.HIDDEN, fetch(c).getStatus());
+
+        ReaderComment hidden = post(reader, ea2, BODY).comment();
+        setStatus(hidden, Status.HIDDEN);
+        assertTrue(service.setStatus(fetch(hidden), Status.PUBLISHED, TestUtils.getManagedUser(owner)),
+                "a hidden comment with its text is published again");
+        TestUtils.endSession(true);
+        assertEquals(Status.PUBLISHED, fetch(hidden).getStatus());
+        assertTrue(service.setStatus(fetch(hidden), Status.PUBLISHED, TestUtils.getManagedUser(owner)),
+                "moving to the status it has is no refusal");
+        TestUtils.endSession(true);
+    }
+
+    /**
+     * M4: the tombstone keeps a reader's distrust alive (R5); an owner needs no
+     * trust. An owner deleting their own hidden reply deletes it outright, so the
+     * comment's one reply slot is free again; their own hidden top-level comment
+     * goes outright too.
+     */
+    @Test
+    void anOwnersOwnHiddenCommentOrReplyIsDeletedNotTombstoned() throws Exception {
+        ReaderComment question = trust(reader, ea);
+        ReaderComment reply = service.reply(TestUtils.getManagedUser(owner), fetch(question), "Thanks").comment();
+        TestUtils.endSession(true);
+        setStatus(reply, Status.HIDDEN);
+
+        assertTrue(deleteOwn(owner, reply.getId()));
+        assertNull(mgr().getComment(reply.getId()), "an owner's hidden reply is gone, not a tombstone");
+        assertNull(fetch(question).getReply(), "the slot is free");
+        assertTrue(service.reply(TestUtils.getManagedUser(owner), fetch(question), "Thanks again").ok(),
+                "the owner can reply again");
+        TestUtils.endSession(true);
+
+        ReaderComment own = post(owner, ea2, BODY).comment();
+        setStatus(own, Status.HIDDEN);
+        assertTrue(deleteOwn(owner, own.getId()));
+        assertNull(mgr().getComment(own.getId()), "an owner's own hidden comment is gone");
+    }
+
+    /**
+     * M8: a rename outside the account page (Profile, User Admin) expires every
+     * weblog that shows the account's published comments; the service does it for
+     * them, and one weblog failing does not stop the rest.
+     */
+    @Test
+    void expiringWhereAnAuthorIsShownBumpsEachWeblogWithTheirPublishedComments() throws Exception {
+        trust(reader, ea);
+        trust(reader, eb);
+        Date beforeB = TestUtils.getManagedWebsite(b).getLastModified();
+
+        expires("expiring where the reader is shown",
+                () -> service.expireWhereShown(TestUtils.getManagedUser(reader)));
+        assertTrue(TestUtils.getManagedWebsite(b).getLastModified().after(beforeB), "and the other weblog");
+
+        User nobody = newReader("reader-csnobody1", "csnobody1@example.com");
+        TestUtils.endSession(true);
+        keeps("an author with nothing published", () -> service.expireWhereShown(TestUtils.getManagedUser(nobody)));
     }
 
     @Test
