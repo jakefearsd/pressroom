@@ -53,8 +53,10 @@ import java.util.Map;
  * <ol>
  *   <li>Resolves the authenticated Roller {@link User} from Spring Security
  *       and stores it as request attribute "authenticatedUser".</li>
- *   <li>Resolves the target {@link Weblog} from the "weblog" request parameter
- *       and stores it as request attribute "actionWeblog".</li>
+ *   <li>Resolves the target {@link Weblog} -- for a REST handler from the
+ *       {@code {handle}} path variable only, for a JSP handler from the
+ *       "weblog" request parameter (see {@link #resolveWeblogHandle}) -- and
+ *       stores it as request attribute "actionWeblog".</li>
  *   <li>Enforces security rules declared by {@link UISecurityEnforced}.</li>
  *   <li>Calls {@link UIActionPreparable#myPrepare()} if applicable.</li>
  * </ol>
@@ -96,7 +98,7 @@ public class RollerHandlerInterceptor implements HandlerInterceptor {
      * @return true to let the request continue; false when the response has
      *         already been committed to a redirect
      */
-    private boolean enforceSecurity(UISecurityEnforced secured, HandlerMethod handlerMethod,
+    private boolean enforceSecurity(UISecurityEnforced secured, boolean apiHandler,
                                     HttpServletRequest request, HttpServletResponse response,
                                     User authenticatedUser, Weblog actionWeblog)
             throws Exception {
@@ -104,8 +106,6 @@ public class RollerHandlerInterceptor implements HandlerInterceptor {
         if (!secured.isUserRequired()) {
             return true;
         }
-
-        boolean apiHandler = isApiHandler(handlerMethod);
 
         if (authenticatedUser == null) {
             log.debug("DENIED: required user not found, redirecting to login");
@@ -199,8 +199,9 @@ public class RollerHandlerInterceptor implements HandlerInterceptor {
             request.setAttribute("authenticatedUser", authenticatedUser);
         }
 
-        // --- 2. Resolve weblog from request parameter or URI template ---
-        String weblogHandle = resolveWeblogHandle(request);
+        // --- 2. Resolve weblog from URI template (API) or request parameter (JSP) ---
+        boolean apiHandler = isApiHandler(handlerMethod);
+        String weblogHandle = resolveWeblogHandle(request, apiHandler);
         Weblog actionWeblog = null;
         if (weblogHandle != null && !weblogHandle.isBlank()) {
             try {
@@ -215,7 +216,7 @@ public class RollerHandlerInterceptor implements HandlerInterceptor {
 
         // --- 3. Enforce security if controller implements UISecurityEnforced ---
         if (controller instanceof UISecurityEnforced secured
-                && !enforceSecurity(secured, handlerMethod, request, response,
+                && !enforceSecurity(secured, apiHandler, request, response,
                         authenticatedUser, actionWeblog)) {
             return false;
         }
@@ -241,26 +242,45 @@ public class RollerHandlerInterceptor implements HandlerInterceptor {
      * both surfaces instead of the API growing a second, divergent
      * implementation.
      *
-     * <p><b>The path variable wins when both are present.</b> A {@code
-     * weblog=} query parameter is JSP vocabulary, not REST vocabulary --
-     * nothing in a {@code {handle}}-carrying route's own handler reads it.
-     * Preferring the parameter would let this resolver (and therefore
-     * RollerHandlerInterceptor's permission check and
-     * ApiScopeInterceptor's scope ceiling) agree with each other while both
-     * disagree with the handler method actually invoked, which reads {@code
-     * {handle}} directly -- a caller could then pass permission and scope
-     * checks for one weblog while the handler acted on a different one
-     * named only in the query string.
+     * <p><b>An API handler names its weblog only by {@code {handle}}; the
+     * {@code weblog} parameter is never read for one.</b> It is JSP
+     * vocabulary, not REST vocabulary -- no API handler reads it. Two ways
+     * reading it went wrong:
+     * <ul>
+     *   <li>On a {@code {handle}}-carrying route, preferring the parameter
+     *       would let this resolver (and therefore the permission check and
+     *       ApiScopeInterceptor's scope ceiling) agree with each other while
+     *       both disagree with the handler, which reads {@code {handle}}
+     *       directly: a caller could pass the checks for one weblog while
+     *       the handler acted on another.</li>
+     *   <li>On a route with no {@code {handle}} at all ({@code POST
+     *       /v1/weblogs}, {@code /v1/admin/**}, {@code GET /v1/weblogs}),
+     *       falling back to the parameter resolved an action weblog the
+     *       handler never acts on. ApiScopeInterceptor accepts any resolved
+     *       weblog equal to a limited token's, so {@code ?weblog=<its
+     *       handle>} turned that route's default 404 into a pass: a token
+     *       limited to one weblog could create weblogs, and a limited ADMIN
+     *       token could list every user. {@code
+     *       WeblogParameterDispatchTest} pins both.</li>
+     * </ul>
+     * A JSP handler has no {@code {handle}} route, so for it the parameter
+     * is the only source, unchanged.
      *
      * <p>Package-visible and static so it can be tested without a container.
+     *
+     * @param apiHandler true for a handler under {@code ui.restapi}
+     *                   ({@link #isApiHandler})
      */
-    static String resolveWeblogHandle(HttpServletRequest request) {
+    static String resolveWeblogHandle(HttpServletRequest request, boolean apiHandler) {
         Object vars = request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
         if (vars instanceof Map<?, ?> map) {
             Object fromPath = map.get("handle");
             if (fromPath instanceof String s && !s.isBlank()) {
                 return s;
             }
+        }
+        if (apiHandler) {
+            return null;
         }
         String handle = request.getParameter("weblog");
         if (handle != null && !handle.isBlank()) {

@@ -190,8 +190,7 @@ class ApiScopeInterceptorDispatchTest {
      * A mismatched {@code weblog=} query parameter cannot manufacture a
      * false match: the path names B, the token is scoped to B, so this
      * passes regardless of what the query string claims -- because the
-     * query parameter is simply not consulted once a path variable is
-     * present. This is the safe twin of a real vulnerability the ceiling
+     * query parameter is never consulted for an API handler. This is the safe twin of a real vulnerability the ceiling
      * used to have: comparing against the query-preferred weblog (A) while
      * the handler itself reads {@code {handle}} (B) directly meant the
      * ceiling and the handler could be evaluating two different targets.

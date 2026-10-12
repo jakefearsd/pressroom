@@ -32,6 +32,12 @@ import org.springframework.web.servlet.HandlerInterceptor;
  * {@code ApiScopeInterceptorDispatchTest} dispatches real requests through
  * the real {@code WebMvcConfig} registration and pins both the ordering and
  * this exact scenario.
+ *
+ * <p>For an API handler RollerHandlerInterceptor resolves that weblog from
+ * the {@code {handle}} path variable only, never from {@code ?weblog=}: a
+ * route with no {@code {handle}} has no action weblog, so a limited token
+ * meets the default 404 below however the query string is dressed
+ * ({@code WeblogParameterDispatchTest}).
  */
 public class ApiScopeInterceptor implements HandlerInterceptor {
 

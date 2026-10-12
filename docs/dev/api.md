@@ -30,6 +30,13 @@ Roller is 0.x.
   permission system exists. `ApiScopeInterceptor` is registered *after* it in
   `WebMvcConfig` (order is load-bearing, see its javadoc) and only narrows by
   token scope.
+- **An API route names its weblog only by its `{handle}` path variable.** The
+  `weblog` request parameter is JSP vocabulary and `RollerHandlerInterceptor`
+  ignores it for an API handler (one under `ui.restapi`). Reading it let a
+  limited token satisfy its own ceiling on a route with no `{handle}`
+  (`POST /v1/weblogs?weblog=<its handle>` created a weblog);
+  `WeblogParameterDispatchTest` pins the refusal and that JSP routes still
+  read the parameter.
 - **`ApiToken.Role` (`READ`/`POST`/`ADMIN`) and the optional weblog pin are a
   ceiling, never a grant.** `ApiScopeInterceptor` refuses what the scope
   disallows and never approves what `RollerHandlerInterceptor`'s

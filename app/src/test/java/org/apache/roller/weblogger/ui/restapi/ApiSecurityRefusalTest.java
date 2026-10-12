@@ -1,6 +1,7 @@
 package org.apache.roller.weblogger.ui.restapi;
 
 import java.util.List;
+import java.util.Map;
 
 import org.apache.roller.weblogger.business.MockWeblogger;
 import org.apache.roller.weblogger.business.WebloggerProvider;
@@ -19,6 +20,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.web.method.HandlerMethod;
+import org.springframework.web.servlet.HandlerMapping;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -89,6 +91,11 @@ class ApiSecurityRefusalTest {
                         AuthorityUtils.createAuthorityList("ROLE_USER")));
     }
 
+    /** An API route names its weblog by {@code {handle}}, as Spring's handler mapping exposes it. */
+    private void nameWeblogInPath(String handle) {
+        request.setAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, Map.of("handle", handle));
+    }
+
     private static HandlerMethod handlerFor(Object controller) throws Exception {
         return new HandlerMethod(controller, controller.getClass().getMethod("handle"));
     }
@@ -145,7 +152,7 @@ class ApiSecurityRefusalTest {
     @Test
     void anApiCallerWithoutPermissionOnTheWeblogIsForbidden() throws Exception {
         signInAsAlice();
-        request.setParameter("weblog", "aliceblog");
+        nameWeblogInPath("aliceblog");
         when(weblogger.userManager().checkPermission(any(WeblogPermission.class), any()))
                 .thenReturn(false);
 
@@ -168,7 +175,7 @@ class ApiSecurityRefusalTest {
     @Test
     void anApiCallerHoldingEveryRequirementProceeds() throws Exception {
         signInAsAlice();
-        request.setParameter("weblog", "aliceblog");
+        nameWeblogInPath("aliceblog");
         when(weblogger.userManager().checkPermission(any(), any())).thenReturn(true);
 
         assertTrue(interceptor.preHandle(request, response,
