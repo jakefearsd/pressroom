@@ -345,6 +345,34 @@ class ItHarnessLeakTest {
     }
 
     /**
+     * The Keycloak prefix is the postgres prefix with its {@code -postgres} suffix
+     * swapped for {@code -keycloak}. Given a prefix without that suffix, the swap
+     * would only append, the Keycloak prefix would begin with the postgres one, and
+     * the postgres pass would match a live run's Keycloak container, misread its run
+     * id as {@code keycloak-<run id>}, and remove it mid-suite. The library refuses
+     * such a prefix before a script does anything.
+     */
+    @Test
+    void aContainerPrefixNotEndingInPostgresFailsFastAndRemovesNothing() throws Exception {
+        Process owner = spawn(List.of("sleep", "300"));
+        String liveRun = runId("live");
+        spawnMarked(liveRun, ownerToken(owner.pid()));
+        String prefix = namespace.replace('.', '-') + "-db";
+        Path docker = fakeDocker(prefix + "-" + liveRun, prefix + "-keycloak-" + liveRun);
+
+        Map<String, String> env = new HashMap<>(fakeDockerEnvironment(docker));
+        env.put("IT_WORK_DIR", work.toString());
+        env.put("IT_RECORD_DIR", recordDir().toString());
+        env.put("IT_CONTAINER_PREFIX", prefix);
+        Result result = run(List.of(SWEEP.toString(), runId("current")), env, Duration.ofMinutes(1));
+
+        assertTrue(removedContainers(docker).isEmpty(),
+                "the sweep removed a LIVE run's container: " + removedContainers(docker) + "\n" + result.output());
+        assertTrue(result.exit() != 0, "the sweep accepted a prefix it cannot derive from:\n" + result.output());
+        assertTrue(result.output().contains("IT_CONTAINER_PREFIX"), "say which setting is wrong:\n" + result.output());
+    }
+
+    /**
      * The supervisor removes every container it is given once the build dies,
      * not only the first: a build killed between pg-start and pg-stop would
      * otherwise leave its Keycloak running, and nothing but the next sweep

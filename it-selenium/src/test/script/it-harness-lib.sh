@@ -65,6 +65,18 @@ IT_CONTAINER_PREFIX="${IT_CONTAINER_PREFIX:-roller-it-postgres}"
 # run's Keycloak mid-suite. The derivation needs IT_CONTAINER_PREFIX to end in
 # -postgres, as both the real and the test values do; otherwise one prefix
 # would begin with the other and the postgres pass would misread its run id.
+# Checked, not assumed: without the suffix the swap only appends, and the
+# postgres pass would match a live run's Keycloak container, read its run id as
+# "keycloak-<run id>", and remove it. Every caller runs under set -e, so the
+# failed source stops it before it does anything.
+case "$IT_CONTAINER_PREFIX" in
+    ?*-postgres) ;;
+    *)
+        printf 'it-harness-lib.sh: IT_CONTAINER_PREFIX must end in -postgres (got "%s"); the Keycloak prefix is derived from it\n' \
+            "$IT_CONTAINER_PREFIX" >&2
+        return 1 2>/dev/null || exit 1
+        ;;
+esac
 IT_KC_CONTAINER_PREFIX="${IT_CONTAINER_PREFIX%-postgres}-keycloak"
 
 # ---------------------------------------------------------------- ownership
