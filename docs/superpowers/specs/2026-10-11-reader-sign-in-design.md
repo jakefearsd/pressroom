@@ -458,3 +458,7 @@ integration.
     handlers. (U)
 33. Forgot-password by email reaches the local account when a reader
     shares its address. (U)
+34. A sign-in started on a host other than the Absolute URL's (e.g. the LAN
+    address) is redirected to the same start on the Absolute URL's host,
+    before any session is created, with the return path preserved. The
+    target is built only from the configured Absolute URL. (U)
