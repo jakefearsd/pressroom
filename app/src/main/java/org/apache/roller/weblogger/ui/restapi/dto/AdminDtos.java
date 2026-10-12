@@ -68,8 +68,9 @@ public final class AdminDtos {
             @Schema(description = "An enabled theme id, for example journal; a wrong one answers with the list.")
             String theme,
             String tagline, String emailAddress,
-            @Schema(description = "A locale such as en_US; omitted, the user's own.") String locale,
-            @Schema(description = "A time zone id such as Europe/Berlin; omitted, the user's own.") String timeZone) {
+            @Schema(description = "A locale such as en_US. On create, defaults to the user's own.") String locale,
+            @Schema(description = "A time zone id such as Europe/Berlin. On create, defaults to the user's own.")
+            String timeZone) {
     }
 
     /** The create form's bean, filled as the page pre-fills it: omitted email, locale and zone are the user's. */

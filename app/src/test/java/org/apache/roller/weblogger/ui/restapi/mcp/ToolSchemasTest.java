@@ -61,6 +61,30 @@ class ToolSchemasTest {
         assertTrue(description.contains("- delete_forever:"), description);
     }
 
+    /**
+     * One property serves every action that takes the argument, so its text
+     * must hold for all of them. A default that applies on one action only
+     * names that action: omitting locale on a weblogs update leaves it
+     * unchanged, it does not become the user's; omitting directoryId on a
+     * media update does not move the file to the default directory.
+     */
+    @Test
+    void aDefaultThatAppliesToOneActionNamesThatAction() {
+        String[][] cases = {
+            {"weblogs", "locale", "On create, "},
+            {"weblogs", "timeZone", "On create, "},
+            {"media", "directoryId", "On import, "},
+            {"media", "name", "On import, "},
+        };
+        for (String[] c : cases) {
+            @SuppressWarnings("unchecked")
+            String text = (String) ((Map<String, Object>) properties(c[0]).get(c[1])).get("description");
+            assertTrue(text.contains(c[2]), c[0] + "." + c[1] + ": " + text);
+            assertFalse(text.contains("omitted, "), c[0] + "." + c[1] + ": " + text);
+            assertFalse(text.startsWith("File name to store"), c[0] + "." + c[1] + ": " + text);
+        }
+    }
+
     /** Every shared description reaches the agent, whichever action declared the argument first. */
     @Test
     @SuppressWarnings("unchecked")
