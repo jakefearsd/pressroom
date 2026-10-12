@@ -49,7 +49,6 @@ import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.pojos.wrapper.UserWrapper;
-import org.apache.roller.weblogger.ui.core.security.sso.SsoSettings;
 import org.apache.roller.weblogger.ui.rendering.util.ParsedRequest;
 import org.apache.roller.weblogger.util.URLUtilities;
 import org.apache.roller.weblogger.util.Utilities;
@@ -193,15 +192,6 @@ public class UtilitiesModel implements Model {
                 "session", context + "/roller-ui/rendering/comments/session.rol",
                 "post", context + "/roller-ui/rendering/comments.rol",
                 "delete", context + "/roller-ui/rendering/comments/");
-    }
-
-    /**
-     * Whether reader sign-in (OIDC) is configured: the site's setting, the
-     * same for every visitor. Read from the {@code sso.*} properties, as the
-     * SSO wiring reads them.
-     */
-    public boolean isSsoEnabled() {
-        return SsoSettings.fromConfig().enabled();
     }
              
     //-------------------------------------------------------------- Date utils

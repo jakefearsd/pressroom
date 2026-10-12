@@ -284,12 +284,12 @@ class CommentsControllerTest {
         assertEquals(200, result.getResponse().getStatus());
         assertEquals("no-store", result.getResponse().getHeader("Cache-Control"));
         Map<String, Object> session = json(result);
-        assertEquals(Set.of("signedIn", "canPost", "displayName", "userName", "isOwner", "csrf",
-                "accountUrl", "pending"), session.keySet());
+        assertEquals(Set.of("signedIn", "canPost", "displayName", "isOwner", "csrf",
+                "accountUrl", "pending", "ownPublished"), session.keySet());
         assertEquals(true, session.get("signedIn"));
         assertEquals(true, session.get("canPost"));
         assertEquals("Ann Reader", session.get("displayName"));
-        assertEquals(reader.getUserName(), session.get("userName"));
+        assertFalse(body(result).contains(reader.getUserName()), "no username: the script matches by id (R7)");
         assertEquals(false, session.get("isOwner"));
         assertEquals("/roller-ui/account.rol", session.get("accountUrl"));
         Map<?, ?> token = (Map<?, ?>) session.get("csrf");
@@ -313,6 +313,39 @@ class CommentsControllerTest {
                 .with(user(owner.getUserName()))));
         assertEquals(true, ownerSession.get("isOwner"));
         assertEquals(List.of(), ownerSession.get("pending"));
+    }
+
+    /**
+     * Ruling R7: the cached page carries no usernames, so the session answer
+     * names the caller's own PUBLISHED comments on the entry by id, and the
+     * page script offers Delete on exactly those.
+     */
+    @Test
+    void theSessionListsTheCallersOwnPublishedCommentsAndRepliesById() throws Exception {
+        ReaderComment mine = service().post(reader, entry.getId(), "Approve me", null).comment();
+        ReaderComment held = service().post(reader, entry.getId(), "Still held", null).comment();
+        ReaderComment theirs = service().post(other, entry.getId(), "Approve them", null).comment();
+        TestUtils.endSession(true);
+        service().setStatus(comments().getComment(mine.getId()), Status.PUBLISHED, owner);
+        service().setStatus(comments().getComment(theirs.getId()), Status.PUBLISHED, owner);
+        TestUtils.endSession(true);
+        ReaderComment reply = service().post(owner, entry.getId(), "Thanks", mine.getId()).comment();
+        TestUtils.endSession(true);
+        assertEquals(Status.PENDING, comments().getComment(held.getId()).getStatus(),
+                "fixture: one comment still held");
+
+        Map<String, Object> readerSession = json(perform(get(SESSION).param("entry", entry.getId())
+                .with(as(reader))));
+        assertEquals(List.of(mine.getId()), readerSession.get("ownPublished"),
+                "their own published comment only: not another reader's, not their held one");
+
+        Map<String, Object> ownerSession = json(perform(get(SESSION).param("entry", entry.getId())
+                .with(user(owner.getUserName()))));
+        assertEquals(List.of(reply.getId()), ownerSession.get("ownPublished"), "an owner's reply is theirs");
+
+        Map<String, Object> otherEntry = json(perform(get(SESSION).param("entry", newEntry(blog, "ccelse").getId())
+                .with(as(reader))));
+        assertEquals(List.of(), otherEntry.get("ownPublished"), "this entry's only");
     }
 
     @Test

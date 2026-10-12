@@ -182,6 +182,16 @@ public class JPACommentManagerImpl implements CommentManager {
     }
 
     @Override
+    public List<String> getPublishedIdsForEntryAndAuthor(WeblogEntry entry, User author)
+            throws WebloggerException {
+        TypedQuery<String> query = strategy.getNamedQuery(
+                "ReaderComment.getPublishedIdsForEntryAndAuthor", String.class);
+        query.setParameter(1, entry);
+        query.setParameter(2, author);
+        return query.getResultList();
+    }
+
+    @Override
     public List<ReaderComment> getCommentsByAuthor(User author) throws WebloggerException {
         TypedQuery<ReaderComment> query = strategy.getNamedQuery(
                 "ReaderComment.getByAuthor", ReaderComment.class);

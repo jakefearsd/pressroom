@@ -915,6 +915,14 @@ CSP changes: connect-src 'self' already allows the fetches.
 The hidden "website" field is a honeypot: bots fill every field, humans
 never see it. elapsedMs is a naive-bot timer: the server refuses a submit
 faster than a human could type. Neither is secret; neither needs to be.
+
+It also turns the comments slot of #showComments into the comment form, in
+the block between the "comments" markers, from the session endpoint (see the
+comment there). That block is pinned by CommentsScriptSourceTest: no markup
+parsing of server strings, suffix-checked endpoints, same-origin credentials,
+the CSRF header named by the session answer, no English (every word is a
+data-msg attribute on the slot) and no dollar or hash characters, which
+Velocity would read as references or directives.
 *#
 #macro(showAudienceAssets)
 <style>
@@ -1025,6 +1033,318 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     slot.appendChild(form);
   });
+
+  // --- comments ---
+  // The comment form, in the inert comments-slot the showComments macro
+  // renders. The page is cached and shared, so everything about THIS reader
+  // (signed in or not, their name, their held comments, which published
+  // comments are theirs to delete, the CSRF token) comes from the session
+  // endpoint at view time. Every word shown comes from a data-msg attribute
+  // the macro renders from the bundle, and every server string goes in as
+  // text: textContent or createTextNode, never parsed as markup.
+  //
+  // A lost session (the CSRF filter answers 403 once the session has
+  // expired, or a sign-in page comes back where JSON was expected) re-reads
+  // the session and re-renders from it: signed out shows the sign-in link,
+  // cannot-post shows its reason, and otherwise the request is retried ONCE
+  // with the fresh token. The textarea keeps what the reader wrote through
+  // every failure; only a successful post empties it.
+  function readJson(response) {
+    var type = response.headers.get('Content-Type') || '';
+    return type.indexOf('application/json') === -1 ? Promise.resolve(null) : response.json();
+  }
+
+  // A link the session answer hands us must stay on this site.
+  function sameOrigin(url) {
+    if (typeof url !== 'string' || url.charAt(0) !== '/') { return false; }
+    try {
+      return new URL(url, window.location.href).origin === window.location.origin;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function element(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) { node.className = className; }
+    if (text) { node.textContent = text; }
+    return node;
+  }
+
+  // 401 or 403 (the CSRF filter's answer once the session has expired), or
+  // an answer below 400 other than the expected one: a sign-in page where
+  // JSON was expected. Callers have already handled the expected answer.
+  function sessionLost(response) {
+    return response.status === 401 || response.status === 403 || response.status < 400;
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('.comments-slot'), function (slot) {
+    if (slot.getAttribute('data-unavailable') === 'custom-domain') {
+      slot.appendChild(element('p', 'comments-note', slot.getAttribute('data-msg-unavailable')));
+      return;
+    }
+    var section = slot.closest('.comments');
+    var entryId = slot.getAttribute('data-entry');
+    var sessionUrl = slot.getAttribute('data-session');
+    var postUrl = slot.getAttribute('data-post');
+    var deleteUrl = slot.getAttribute('data-delete');
+    if (!section || !entryId
+        || !endpointOk(sessionUrl, '/roller-ui/rendering/comments/session.rol')
+        || !endpointOk(postUrl, '/roller-ui/rendering/comments.rol')
+        || !endpointOk(deleteUrl, '/roller-ui/rendering/comments/')) {
+      return;
+    }
+    var text = {
+      signIn: slot.getAttribute('data-msg-sign-in'),
+      unavailable: slot.getAttribute('data-msg-unavailable'),
+      pending: slot.getAttribute('data-msg-pending'),
+      awaiting: slot.getAttribute('data-msg-awaiting'),
+      published: slot.getAttribute('data-msg-published'),
+      error: slot.getAttribute('data-msg-error'),
+      rate: slot.getAttribute('data-msg-rate'),
+      signedInAs: slot.getAttribute('data-msg-signed-in-as'),
+      account: slot.getAttribute('data-msg-account'),
+      remove: slot.getAttribute('data-msg-delete'),
+      removeConfirm: slot.getAttribute('data-msg-delete-confirm'),
+      removeFailed: slot.getAttribute('data-msg-delete-failed'),
+      post: slot.getAttribute('data-msg-post'),
+      closed: slot.getAttribute('data-msg-closed'),
+      notAllowed: slot.getAttribute('data-msg-not-allowed')
+    };
+    var session = null;
+    var pendingList, form, whoami, textarea, button, message;
+
+    function getSession() {
+      return fetch(sessionUrl + '?entry=' + encodeURIComponent(entryId), {
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: {'Accept': 'application/json'}
+      }).then(function (response) {
+        return response.ok ? readJson(response) : null;
+      });
+    }
+
+    // POST or DELETE, with the CSRF header the session answer named.
+    function send(method, url, payload) {
+      var headers = {'Accept': 'application/json'};
+      headers[session.csrf.header] = session.csrf.token;
+      var options = {method: method, credentials: 'same-origin', headers: headers};
+      if (payload) {
+        headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(payload);
+      }
+      return fetch(url, options);
+    }
+
+    function say(words) {
+      message.hidden = false;
+      message.textContent = words;
+    }
+
+    function reasonText(reason) {
+      if (reason === 'closed' || reason === 'comments-off') { return text.closed; }
+      if (reason === 'custom-domain') { return text.unavailable; }
+      return text.notAllowed;
+    }
+
+    function signInLink(url) {
+      var link = element('a', 'comments-sign-in', text.signIn);
+      link.href = url;
+      return link;
+    }
+
+    function showWhoami() {
+      var parts = (text.signedInAs || '{0}').split('{0}');
+      var name = element('span', 'comment-whoami-name');
+      name.textContent = session.displayName;
+      whoami.textContent = '';
+      whoami.appendChild(document.createTextNode(parts[0]));
+      whoami.appendChild(name);
+      whoami.appendChild(document.createTextNode(parts.slice(1).join('')));
+      if (sameOrigin(session.accountUrl)) {
+        var account = element('a', 'comment-account', text.account);
+        account.href = session.accountUrl;
+        whoami.appendChild(document.createTextNode(' · '));
+        whoami.appendChild(account);
+      }
+    }
+
+    function addPending(id, body) {
+      var item = element('div', 'comment');
+      item.classList.add('comment-pending');
+      item.setAttribute('data-comment', id);
+      var header = element('header');
+      header.appendChild(element('span', 'comment-badge', text.awaiting));
+      item.appendChild(header);
+      item.appendChild(element('div', 'comment-body', body));
+      pendingList.appendChild(item);
+    }
+
+    // Re-read the session after a lost one; retry() runs at most once, and
+    // failure is the message for a request that still cannot be made.
+    function recover(retried, retry, failure) {
+      getSession().then(function (fresh) {
+        if (!fresh) {
+          say(failure);
+          button.disabled = false;
+        } else if (!fresh.signedIn) {
+          button.disabled = true;
+          whoami.textContent = '';
+          if (sameOrigin(fresh.signInUrl)) {
+            whoami.appendChild(signInLink(fresh.signInUrl));
+          } else {
+            say(failure);
+          }
+        } else if (!fresh.canPost) {
+          button.disabled = true;
+          say(reasonText(fresh.reason));
+        } else {
+          session = fresh;
+          if (retried) {
+            say(failure);
+            button.disabled = false;
+          } else {
+            retry();
+          }
+        }
+      }).catch(function () {
+        say(failure);
+        button.disabled = false;
+      });
+    }
+
+    function reloadAt(id) {
+      var permalink = slot.getAttribute('data-permalink');
+      var target = new URL(sameOrigin(permalink) ? permalink : window.location.href, window.location.href);
+      target.search = 'c=' + encodeURIComponent(id);
+      target.hash = 'comment-' + id;
+      window.location.assign(target.href);
+    }
+
+    function posted(created, body) {
+      if (created.status === 'PUBLISHED') {
+        say(text.published);
+        textarea.value = '';
+        reloadAt(created.id);
+        return;
+      }
+      say(text.pending);
+      addPending(created.id, body);
+      textarea.value = '';
+      button.disabled = false;
+    }
+
+    function post(retried) {
+      var body = textarea.value;
+      button.disabled = true;
+      send('POST', postUrl, {entry: entryId, body: body}).then(function (response) {
+        if (response.status === 201) {
+          return readJson(response).then(function (created) {
+            if (created && typeof created.id === 'string') {
+              posted(created, body);
+            } else {
+              recover(retried, function () { post(true); }, text.error);
+            }
+          });
+        }
+        if (sessionLost(response)) {
+          recover(retried, function () { post(true); }, text.error);
+          return null;
+        }
+        if (response.status === 429) {
+          say(text.rate);
+        } else if (response.status === 404) {
+          say(text.closed);
+        } else {
+          say(text.error);
+        }
+        button.disabled = false;
+        return null;
+      }).catch(function () {
+        say(text.error);
+        button.disabled = false;
+      });
+    }
+
+    function remove(id, target, retried) {
+      send('DELETE', deleteUrl + encodeURIComponent(id) + '.rol').then(function (response) {
+        if (response.status === 204) {
+          target.parentNode.removeChild(target);
+        } else if (sessionLost(response)) {
+          recover(retried, function () { remove(id, target, true); }, text.removeFailed);
+        } else {
+          say(text.removeFailed);
+        }
+      }).catch(function () {
+        say(text.removeFailed);
+      });
+    }
+
+    function offerDelete(ids) {
+      (Array.isArray(ids) ? ids : []).forEach(function (id) {
+        var target = document.getElementById('comment-' + id);
+        if (!target || !section.contains(target)) { return; }
+        var header = target.firstElementChild;
+        var link = element('button', 'comment-delete', text.remove);
+        link.type = 'button';
+        link.addEventListener('click', function () {
+          if (window.confirm(text.removeConfirm)) { remove(id, target, false); }
+        });
+        (header && header.tagName === 'HEADER' ? header : target).appendChild(link);
+      });
+    }
+
+    function showForm() {
+      pendingList = element('div', 'comments-pending');
+      (Array.isArray(session.pending) ? session.pending : []).forEach(function (held) {
+        addPending(held.id, held.body);
+      });
+      form = element('form', 'comment-form');
+      whoami = element('p', 'comment-whoami');
+      showWhoami();
+      textarea = element('textarea');
+      textarea.name = 'body';
+      textarea.maxLength = 4000;
+      textarea.required = true;
+      textarea.rows = 5;
+      textarea.setAttribute('aria-label', text.post);
+      button = element('button', null, text.post);
+      button.type = 'submit';
+      message = element('p', 'comment-message');
+      message.hidden = true;
+      message.setAttribute('role', 'status');
+      form.appendChild(whoami);
+      form.appendChild(textarea);
+      form.appendChild(button);
+      form.appendChild(message);
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (textarea.value.trim()) { post(false); }
+      });
+      slot.appendChild(pendingList);
+      slot.appendChild(form);
+      offerDelete(session.ownPublished);
+    }
+
+    getSession().then(function (answer) {
+      if (!answer) { return; }
+      if (!answer.signedIn) {
+        if (sameOrigin(answer.signInUrl)) {
+          var note = element('p', 'comments-note');
+          note.appendChild(signInLink(answer.signInUrl));
+          slot.appendChild(note);
+        }
+      } else if (!answer.canPost) {
+        slot.appendChild(element('p', 'comments-note', reasonText(answer.reason)));
+      } else {
+        session = answer;
+        showForm();
+      }
+    }).catch(function () {
+      return null;
+    });
+  });
+  // --- end comments ---
 });
 </script>
 #end
@@ -1510,6 +1830,15 @@ before a word, which Velocity can read as a directive or a macro call.
 .comments .comment-body p { margin: .5rem 0; }
 .comments .comment-reply { margin: .75rem 0 0 1.25rem; padding-left: 1rem; border-left: 2px solid rgba(127, 127, 127, .4); }
 .comments .comments-closed { font-style: italic; opacity: .85; }
+.comments .comments-slot { margin-top: 1.5rem; }
+.comments .comment-pending { opacity: .8; }
+.comments .comment-pending .comment-body { white-space: pre-wrap; }
+.comments .comment-whoami { font-size: .9em; margin: 0 0 .5rem; }
+.comments .comment-form textarea { display: block; width: 100%; min-height: 6em; padding: .4em; box-sizing: border-box; font: inherit; }
+.comments .comment-form button { margin-top: .5rem; padding: .4em 1.2em; }
+.comments .comment-message { margin: .75rem 0 0; }
+.comments .comment-delete { margin-left: auto; padding: 0; border: 0; background: none; color: inherit;
+  font: inherit; font-size: .85em; text-decoration: underline; cursor: pointer; }
 </style>
 <section class="comments" id="comments" aria-labelledby="comments-heading">
   <h2 id="comments-heading">$text.get("comments.heading", [$entry.commentCount])</h2>
@@ -1535,7 +1864,14 @@ before a word, which Velocity can read as a directive or a macro call.
   <div class="comments-slot" data-entry="$entry.id" data-permalink="$utils.escapeHTML($entry.relativePermalink)"
        data-session="$utils.escapeHTML($utils.commentEndpoints.session)" data-post="$utils.escapeHTML($utils.commentEndpoints.post)"
        data-delete="$utils.escapeHTML($utils.commentEndpoints.delete)"
-       data-msg-sign-in="$utils.escapeHTML($text.get("comments.signIn"))" data-msg-unavailable="$utils.escapeHTML($text.get("comments.unavailableHere"))"></div>
+       data-msg-sign-in="$utils.escapeHTML($text.get("comments.signIn"))" data-msg-unavailable="$utils.escapeHTML($text.get("comments.unavailableHere"))"
+       data-msg-pending="$utils.escapeHTML($text.get("comments.pending"))" data-msg-awaiting="$utils.escapeHTML($text.get("comments.awaiting"))"
+       data-msg-published="$utils.escapeHTML($text.get("comments.published"))" data-msg-error="$utils.escapeHTML($text.get("comments.error"))"
+       data-msg-rate="$utils.escapeHTML($text.get("comments.rateLimited"))" data-msg-signed-in-as="$utils.escapeHTML($text.get("comments.signedInAs"))"
+       data-msg-account="$utils.escapeHTML($text.get("comments.yourAccount"))" data-msg-delete="$utils.escapeHTML($text.get("comments.deleteOwn"))"
+       data-msg-delete-confirm="$utils.escapeHTML($text.get("comments.deleteOwn.confirm"))" data-msg-post="$utils.escapeHTML($text.get("comments.post"))"
+       data-msg-delete-failed="$utils.escapeHTML($text.get("comments.deleteOwn.failed"))" data-msg-closed="$utils.escapeHTML($text.get("comments.closed"))"
+       data-msg-not-allowed="$utils.escapeHTML($text.get("comments.notAllowed"))"></div>
   #end
 </section>
 #end

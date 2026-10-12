@@ -30,6 +30,7 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.roller.weblogger.WebloggerException;
+import org.apache.roller.weblogger.business.CommentManager;
 import org.apache.roller.weblogger.business.comments.CommentOutcome;
 import org.apache.roller.weblogger.business.comments.CommentRefusal;
 import org.apache.roller.weblogger.business.comments.CommentService;
@@ -223,8 +224,9 @@ public class CommentsController extends BaseController {
 
     private Map<String, Object> canPost(HttpServletRequest request, User user, WeblogEntry entry, CsrfToken csrf)
             throws WebloggerException {
+        CommentManager store = weblogger.getCommentManager();
         List<Map<String, String>> pending = new ArrayList<>();
-        for (ReaderComment c : weblogger.getCommentManager().getPendingForEntryAndAuthor(entry, user)) {
+        for (ReaderComment c : store.getPendingForEntryAndAuthor(entry, user)) {
             pending.add(Map.of("id", c.getId(), "body", c.getBody(),
                     "created", c.getCreated().toInstant().toString()));
         }
@@ -232,11 +234,13 @@ public class CommentsController extends BaseController {
         body.put("signedIn", true);
         body.put("canPost", true);
         body.put("displayName", user.getScreenName());
-        body.put("userName", user.getUserName());
         body.put("isOwner", comments.isOwner(user, entry.getWebsite()));
         body.put("csrf", Map.of("header", csrf.getHeaderName(), "token", csrf.getToken()));
         body.put("accountUrl", request.getContextPath() + "/roller-ui/account.rol");
         body.put("pending", pending);
+        // Ruling R7: the cached page names no commenter, so the script finds the
+        // caller's own comments (to offer Delete) by these ids, not by username.
+        body.put("ownPublished", store.getPublishedIdsForEntryAndAuthor(entry, user));
         return body;
     }
 

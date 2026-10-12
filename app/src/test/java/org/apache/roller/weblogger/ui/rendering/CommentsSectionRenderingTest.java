@@ -247,7 +247,8 @@ class CommentsSectionRenderingTest {
 
         String page = render(null);
         assertFalse(page.contains("class=\"comments\""), page);
-        assertFalse(page.contains("comments-slot"), page);
+        // The page script names the class on every page; the slot itself must be absent.
+        assertFalse(page.contains("class=\"comments-slot\""), page);
         assertFalse(page.contains("body-c1"), page);
     }
 
@@ -460,6 +461,35 @@ class CommentsSectionRenderingTest {
         assertFalse(s.contains("comments-closed"), s);
     }
 
+    /**
+     * Every word the page script shows comes from the slot, rendered from the
+     * bundle and escaped for the attribute, so the script carries no English.
+     * {@code comments.signedInAs} keeps its placeholder: the script fills it.
+     */
+    @Test
+    void theSlotCarriesEveryMessageTheScriptShows() throws Exception {
+        String s = renderedSection();
+        String slot = s.substring(s.indexOf("<div class=\"comments-slot\""), s.indexOf("</div>",
+                s.indexOf("<div class=\"comments-slot\"")));
+        for (String attribute : List.of(
+                " data-msg-unavailable=\"Commenting is not available on this address yet.\"",
+                " data-msg-pending=\"Thanks &mdash; your comment will appear once it is approved.\"",
+                " data-msg-awaiting=\"Awaiting approval\"",
+                " data-msg-published=\"Published.\"",
+                " data-msg-error=\"Your comment could not be posted. Please try again.\"",
+                " data-msg-rate=\"You are commenting too fast. Please wait a while.\"",
+                " data-msg-signed-in-as=\"Signed in as {0}\"",
+                " data-msg-account=\"Your account\"",
+                " data-msg-delete=\"Delete\"",
+                " data-msg-delete-confirm=\"Delete your comment?\"",
+                " data-msg-delete-failed=\"Your comment could not be deleted. Please try again.\"",
+                " data-msg-post=\"Post comment\"",
+                " data-msg-closed=\"Comments are closed.\"",
+                " data-msg-not-allowed=\"This account cannot comment here.\"")) {
+            assertTrue(slot.contains(attribute), attribute + " in " + slot);
+        }
+    }
+
     @Test
     void aCustomDomainWeblogShowsItsCommentsAndAnUnavailableSlot() throws Exception {
         comment("c1", ana, Status.PUBLISHED, null);
@@ -536,6 +566,24 @@ class CommentsSectionRenderingTest {
         if (leak.find()) {
             throw new AssertionError(theme + " left `" + leak.group() + "` in the section:\n" + s);
         }
+    }
+
+    /**
+     * The comment form script reaches the page exactly as written: Velocity
+     * prints what it cannot resolve without complaint, so a stray reference or
+     * directive in the script would ship as broken JavaScript, not fail here.
+     */
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"journal", "travel", "portfolio"})
+    void theCommentFormScriptRendersVerbatim(String theme) throws Exception {
+        configure(theme, true, null);
+        String page = render(null);
+        String start = "// --- comments ---";
+        String end = "// --- end comments ---";
+        int from = page.indexOf(start);
+        int to = page.indexOf(end);
+        assertTrue(from >= 0 && to > from, theme + " renders the comment form script");
+        assertEquals(CommentsScriptSourceTest.script(), page.substring(from + start.length(), to));
     }
 
     @Test

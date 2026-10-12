@@ -322,6 +322,35 @@ class CommentManagerTest {
                 TestUtils.getManagedWeblogEntry(ea), TestUtils.getManagedUser(reader))));
     }
 
+    /**
+     * What the session answer hands the page script so it can offer Delete on
+     * the caller's own comments (ruling R7: the cached page carries no
+     * usernames, so the script matches these ids against id="comment-...").
+     */
+    @Test
+    void publishedIdsForEntryAndAuthorAreTheirOwnPublishedCommentsAndReplies() throws Exception {
+        ReaderComment mine = comment(ea, reader, Status.PUBLISHED, null);
+        ReaderComment ownerReply = comment(ea, owner, Status.PUBLISHED, mine);
+        comment(ea, reader, Status.PENDING, null);
+        comment(ea, reader, Status.HIDDEN, null);
+        comment(ea, other, Status.PUBLISHED, null);
+        comment(ea2, reader, Status.PUBLISHED, null);
+        ReaderComment mineLater = comment(ea, reader, Status.PUBLISHED, null);
+        comment(ea, owner, Status.HIDDEN, mineLater);
+        ReaderComment ownerTopLevel = comment(ea, owner, Status.PUBLISHED, null);
+        TestUtils.endSession(true);
+
+        WeblogEntry entry = TestUtils.getManagedWeblogEntry(ea);
+        assertEquals(List.of(mine.getId(), mineLater.getId()),
+                mgr().getPublishedIdsForEntryAndAuthor(entry, TestUtils.getManagedUser(reader)),
+                "published only, this entry only, oldest first");
+        assertEquals(List.of(ownerReply.getId(), ownerTopLevel.getId()),
+                mgr().getPublishedIdsForEntryAndAuthor(entry, TestUtils.getManagedUser(owner)),
+                "a published reply counts; a hidden one does not");
+        assertEquals(List.of(), mgr().getPublishedIdsForEntryAndAuthor(
+                TestUtils.getManagedWeblogEntry(eb), TestUtils.getManagedUser(reader)));
+    }
+
     @Test
     void byAuthorAcrossWeblogs() throws Exception {
         ReaderComment c1 = comment(ea, reader, Status.PUBLISHED, null);

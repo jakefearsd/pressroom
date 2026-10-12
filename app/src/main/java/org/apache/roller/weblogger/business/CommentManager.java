@@ -60,6 +60,12 @@ public interface CommentManager {
     /** The author's PENDING comments on the entry, oldest first. */
     List<ReaderComment> getPendingForEntryAndAuthor(WeblogEntry entry, User author) throws WebloggerException;
 
+    /**
+     * The ids of the author's PUBLISHED comments on the entry, top-level and
+     * replies alike, oldest first: the ones the page script offers to delete.
+     */
+    List<String> getPublishedIdsForEntryAndAuthor(WeblogEntry entry, User author) throws WebloggerException;
+
     /** The author's comments, newest first, on all weblogs. */
     List<ReaderComment> getCommentsByAuthor(User author) throws WebloggerException;
 

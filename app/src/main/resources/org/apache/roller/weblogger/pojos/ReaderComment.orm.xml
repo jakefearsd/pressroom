@@ -24,6 +24,13 @@
                    AND c.status = org.apache.roller.weblogger.pojos.ReaderComment.Status.PENDING
                    ORDER BY c.created, c.id</query>
         </named-query>
+        <!-- The caller's own PUBLISHED comments and replies on an entry, by id only:
+             the session answer's ownPublished, which the page script offers to delete. -->
+        <named-query name="ReaderComment.getPublishedIdsForEntryAndAuthor">
+            <query>SELECT c.id FROM ReaderComment c WHERE c.entry = ?1 AND c.author = ?2
+                   AND c.status = org.apache.roller.weblogger.pojos.ReaderComment.Status.PUBLISHED
+                   ORDER BY c.created, c.id</query>
+        </named-query>
         <named-query name="ReaderComment.getByAuthor">
             <query>SELECT c FROM ReaderComment c WHERE c.author = ?1 ORDER BY c.created DESC, c.id</query>
         </named-query>
