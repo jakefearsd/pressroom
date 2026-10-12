@@ -17,9 +17,13 @@
  */
 package org.apache.roller.weblogger.business.comments;
 
+import java.sql.SQLException;
+import java.util.Collections;
 import java.util.Date;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.roller.util.RollerConstants;
@@ -65,11 +69,16 @@ public class CommentService {
     private static final int TEN_MINUTES_SECONDS = 600;
     private static final int DAY_SECONDS = 86_400;
     private static final int TRACKED_ACCOUNTS = 1000;
+    private static final int LOCK_STRIPES = 64;
+    private static final String UNIQUE_VIOLATION = "23505";
+    private static final String ONE_REPLY_INDEX = "rrc_reply_to_uq";
 
     private final Weblogger weblogger;
     private final CommentNotifier notifier;
     private final GenericThrottle tenMinutes;
     private final GenericThrottle day;
+    /** Per-account locks (by id hash) around the rate check, the store and the hit. */
+    private final Object[] stripes = new Object[LOCK_STRIPES];
 
     /**
      * @param weblogger the lazily-resolved business tier
@@ -86,6 +95,9 @@ public class CommentService {
         this.notifier = notifier;
         this.tenMinutes = tenMinutes;
         this.day = day;
+        for (int i = 0; i < stripes.length; i++) {
+            stripes[i] = new Object();
+        }
     }
 
     /** The production ten-minute window. */
@@ -168,8 +180,9 @@ public class CommentService {
     // ------------------------------------------------------------- writing
 
     /**
-     * Posts a comment, or an owner's reply when {@code replyToId} is given, as
-     * the public form does. Nothing is stored unless every rule passes.
+     * Posts a comment, or an owner's reply when {@code replyToId} is given (a
+     * blank one counts as not given), as the public form does. Nothing is
+     * stored unless every rule passes.
      */
     public CommentOutcome post(User user, String entryId, String body, String replyToId)
             throws WebloggerException {
@@ -184,7 +197,7 @@ public class CommentService {
         }
         boolean owner = isOwner(author, entry.getWebsite());
         ReaderComment parent = null;
-        if (replyToId != null) {
+        if (StringUtils.isNotBlank(replyToId)) {
             parent = comments().getComment(replyToId);
             if (!acceptsReply(owner, parent, entry)) {
                 return refused(CommentRefusal.BAD_REPLY, author, entry);
@@ -222,34 +235,13 @@ public class CommentService {
      * same entry that has no reply yet. One reply per comment, ever: a reply in
      * any status counts.
      */
-    private boolean acceptsReply(boolean owner, ReaderComment parent, WeblogEntry entry)
-            throws WebloggerException {
+    private static boolean acceptsReply(boolean owner, ReaderComment parent, WeblogEntry entry) {
         return owner
                 && parent != null
                 && parent.getStatus() == Status.PUBLISHED
                 && parent.getReplyTo() == null
                 && parent.getEntry().getId().equals(entry.getId())
-                && replyOf(parent) == null;
-    }
-
-    /**
-     * The comment's reply in any status, or null, asked of the store rather
-     * than of {@code getReply()}: a render re-reads a cached parent with only
-     * its PUBLISHED reply ({@code CommentManager.getPublishedForEntry}), so the
-     * parent can lose sight of a hidden one. {@code replyTo} is the owning side
-     * and stays true.
-     */
-    private ReaderComment replyOf(ReaderComment parent) throws WebloggerException {
-        if (parent.getReplyTo() != null) {
-            return null;
-        }
-        WeblogEntry entry = parent.getEntry();
-        for (ReaderComment c : comments().getComments(entry.getWebsite(), null, entry, 0, Integer.MAX_VALUE)) {
-            if (parent.equals(c.getReplyTo())) {
-                return c;
-            }
-        }
-        return null;
+                && parent.getReply() == null;
     }
 
     /** The body and rate checks, then the store, expiry and notification shared by post and reply. */
@@ -257,16 +249,38 @@ public class CommentService {
             throws WebloggerException {
         String text = CommentRules.normalizeBody(body);
         CommentRefusal why = CommentRules.bodyRefusal(text);
-        if (why == null && rateLimited(author)) {
-            why = CommentRefusal.RATE_LIMITED;
-        }
         if (why != null) {
             return refused(why, author, entry);
         }
-        Weblog weblog = entry.getWebsite();
+        ReaderComment c;
+        // One account's check, store and record run one at a time, so a burst of
+        // parallel posts cannot all pass the check before any is recorded; a hit
+        // is still recorded only for a comment that was stored.
+        synchronized (stripeFor(author.getId())) {
+            if (rateLimited(author)) {
+                return refused(CommentRefusal.RATE_LIMITED, author, entry);
+            }
+            c = newComment(author, entry, parent, owner, text);
+            if (!commit(c)) {
+                return refused(CommentRefusal.BAD_REPLY, author, entry);
+            }
+            tenMinutes.processHit(author.getId());
+            day.processHit(author.getId());
+        }
+        log.info("comment {} stored {} on entry {} by {}{}", c.getId(), c.getStatus(), entry.getId(),
+                author.getUserName(), parent == null ? "" : " in reply to " + parent.getId());
+        if (c.getStatus() == Status.PENDING) {
+            notifier.notifyHeld(c);
+        }
+        return CommentOutcome.stored(c);
+    }
+
+    /** The new comment: a reply is PUBLISHED; anything else as {@link CommentRules#statusFor} says. */
+    private ReaderComment newComment(User author, WeblogEntry entry, ReaderComment parent, boolean owner,
+            String text) throws WebloggerException {
         Status status = parent != null
                 ? Status.PUBLISHED
-                : CommentRules.statusFor(owner, !owner && comments().isTrusted(author, weblog), text);
+                : CommentRules.statusFor(owner, !owner && comments().isTrusted(author, entry.getWebsite()), text);
         Date now = new Date();
         ReaderComment c = new ReaderComment();
         c.setEntry(entry);
@@ -277,20 +291,49 @@ public class CommentService {
         c.setAuthorIsOwner(owner);
         c.setCreated(now);
         c.setStatusChanged(now);
-        comments().saveComment(c);
-        if (status == Status.PUBLISHED) {
-            expire(weblog);
-        } else {
-            weblogger.flush();
+        return c;
+    }
+
+    /**
+     * Stores and commits the comment, expiring the weblog when it is
+     * PUBLISHED. False, with the failed transaction released, when the commit
+     * broke the one-reply unique index: another request's reply to the same
+     * parent committed first.
+     */
+    private boolean commit(ReaderComment c) throws WebloggerException {
+        try {
+            comments().saveComment(c);
+            if (c.getStatus() == Status.PUBLISHED) {
+                expire(c.getEntry().getWebsite());
+            } else {
+                weblogger.flush();
+            }
+            return true;
+        } catch (WebloggerException e) {
+            if (c.getReplyTo() == null || !isUniqueViolation(e)) {
+                throw e;
+            }
+            weblogger.release();
+            return false;
         }
-        tenMinutes.processHit(author.getId());
-        day.processHit(author.getId());
-        log.info("comment {} stored {} on entry {} by {}{}", c.getId(), status, entry.getId(),
-                author.getUserName(), parent == null ? "" : " in reply to " + parent.getId());
-        if (status == Status.PENDING) {
-            notifier.notifyHeld(c);
+    }
+
+    /** True when the failure's cause chain is a unique violation, by SQLState or by the one-reply index's name. */
+    static boolean isUniqueViolation(Throwable failure) {
+        Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (Throwable t = failure; t != null && seen.add(t); t = t.getCause()) {
+            if (t instanceof SQLException sql && UNIQUE_VIOLATION.equals(sql.getSQLState())) {
+                return true;
+            }
+            if (t.getMessage() != null && t.getMessage().contains(ONE_REPLY_INDEX)) {
+                return true;
+            }
         }
-        return CommentOutcome.stored(c);
+        return false;
+    }
+
+    private Object stripeFor(String accountId) {
+        return stripes[Math.floorMod(accountId.hashCode(), stripes.length)];
     }
 
     private boolean rateLimited(User author) {
@@ -325,12 +368,12 @@ public class CommentService {
         c.setStatus(status);
         c.setStatusChanged(new Date());
         comments().saveComment(c);
-        log.info("comment {} {} -> {} by {}", c.getId(), before, status, nameOf(actor));
         if (before == Status.PUBLISHED || status == Status.PUBLISHED) {
             expire(c.getEntry().getWebsite());
         } else {
             weblogger.flush();
         }
+        log.info("comment {} {} -> {} by {}", c.getId(), before, status, nameOf(actor));
     }
 
     /**
@@ -340,23 +383,21 @@ public class CommentService {
     public void delete(ReaderComment c, User actor) throws WebloggerException {
         boolean shown = c.getStatus() == Status.PUBLISHED;
         Weblog weblog = c.getEntry().getWebsite();
-        // Removed explicitly: the cascade reaches only a reply the cached parent
-        // still knows about, and the database's own cascade leaves the cache stale.
-        ReaderComment reply = replyOf(c);
-        if (reply != null) {
-            comments().removeComment(reply);
-        }
+        ReaderComment reply = c.getReply();
         comments().removeComment(c);
-        log.info("comment {} deleted{} by {}", c.getId(), reply == null ? "" : " with reply " + reply.getId(),
-                nameOf(actor));
         if (shown) {
             expire(weblog);
         } else {
             weblogger.flush();
         }
+        log.info("comment {} deleted{} by {}", c.getId(), reply == null ? "" : " with reply " + reply.getId(),
+                nameOf(actor));
     }
 
-    /** A reader deletes their own comment; false (and nothing done) when it is not theirs. */
+    /**
+     * A reader deletes their own comment; false (and nothing done) when it is
+     * not theirs. A HIDDEN one is erased to a tombstone instead (see erase).
+     */
     public boolean deleteOwn(User user, String commentId) throws WebloggerException {
         if (user == null || commentId == null) {
             return false;
@@ -369,8 +410,30 @@ public class CommentService {
         if (c == null || !c.getAuthor().getId().equals(current.getId())) {
             return false;
         }
-        delete(c, current);
+        if (c.getStatus() == Status.HIDDEN) {
+            erase(c, current);
+        } else {
+            delete(c, current);
+        }
         return true;
+    }
+
+    /**
+     * A reader's own HIDDEN comment is kept as a tombstone with its body
+     * erased (ruling R5): deleting the row would erase the owner's distrust,
+     * since trust needs no HIDDEN comment. Its reply goes. Nothing rendered
+     * changes, so nothing expires.
+     */
+    private void erase(ReaderComment c, User reader) throws WebloggerException {
+        ReaderComment reply = c.getReply();
+        if (reply != null) {
+            comments().removeComment(reply);
+        }
+        c.setBody("");
+        comments().saveComment(c);
+        weblogger.flush();
+        log.info("comment {} erased{} by {}", c.getId(), reply == null ? "" : " with reply " + reply.getId(),
+                reader.getUserName());
     }
 
     /** Bumps lastModified (saveWeblog sets it) on the weblog, so rendered pages expire. */

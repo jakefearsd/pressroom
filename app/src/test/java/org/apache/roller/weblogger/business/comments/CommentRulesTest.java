@@ -65,6 +65,22 @@ class CommentRulesTest {
                 CommentRules.bodyRefusal("😀".repeat(CommentRules.MAX_BODY) + "x"));
     }
 
+    /**
+     * PostgreSQL refuses a NUL in a text column, so a body carrying one was a
+     * 500. Control characters other than tab and line breaks go; format
+     * characters (RTL marks, zero-width spaces) stay for the renderer to show.
+     */
+    @Test
+    void controlCharactersAreDroppedFormatCharactersKept() {
+        assertEquals("ab", CommentRules.normalizeBody("a\u0000b"));
+        assertEquals("", CommentRules.normalizeBody("\u0000 \u0007"));
+        assertSame(CommentRefusal.EMPTY_BODY, CommentRules.bodyRefusal(CommentRules.normalizeBody("\u0000 \u0007")));
+        assertEquals("ab", CommentRules.normalizeBody("a\u007F\u0085\u009Fb"), "DEL and C1 controls go too");
+        assertEquals("a\tb\nc\r\nd", CommentRules.normalizeBody("a\tb\nc\r\nd"), "tab and line breaks stay");
+        assertEquals("a​b‮c‏d", CommentRules.normalizeBody("a​b‮c‏d"),
+                "format characters stay");
+    }
+
     @Test
     void anOutcomeIsAStoredCommentOrARefusalNeverBothOrNeither() {
         ReaderComment c = new ReaderComment();

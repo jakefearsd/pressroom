@@ -36,12 +36,20 @@ public final class CommentRules {
 
     private static final Pattern HTTP_LINK = Pattern.compile("https?://", Pattern.CASE_INSENSITIVE);
 
+    /** Control characters (C0, DEL, C1) except tab, newline and carriage return. */
+    private static final Pattern CONTROL = Pattern.compile("[\\p{Cc}&&[^\\t\\n\\r]]");
+
     private CommentRules() {
     }
 
-    /** The body as stored: trimmed of (Unicode) whitespace at both ends; null becomes "". */
+    /**
+     * The body as stored: control characters other than tab and line breaks
+     * dropped (PostgreSQL refuses a NUL in text), then trimmed of (Unicode)
+     * whitespace at both ends; null becomes "". Format characters such as RTL
+     * marks and zero-width spaces stay: the renderer shows them as text.
+     */
     public static String normalizeBody(String raw) {
-        return raw == null ? "" : raw.strip();
+        return raw == null ? "" : CONTROL.matcher(raw).replaceAll("").strip();
     }
 
     /** How many {@code http://} and {@code https://} occur in the body, in any case. */

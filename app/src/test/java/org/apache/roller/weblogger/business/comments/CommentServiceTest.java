@@ -18,18 +18,27 @@
 package org.apache.roller.weblogger.business.comments;
 
 import java.nio.file.Path;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.apache.roller.weblogger.TestUtils;
+import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.CommentManager;
 import org.apache.roller.weblogger.business.UserManager;
+import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.ReaderComment;
 import org.apache.roller.weblogger.pojos.ReaderComment.Status;
 import org.apache.roller.weblogger.pojos.User;
@@ -53,6 +62,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -559,6 +569,215 @@ class CommentServiceTest {
         assertEquals("false", comments.getAttribute("additivity"));
         Element ref = (Element) comments.getElementsByTagName("AppenderRef").item(0);
         assertEquals("asyncRoller", ref.getAttribute("ref"));
+    }
+
+    // ------------------------------------------------------------- review round 1
+
+    /**
+     * I1: two posts from one account at once. The ten-minute window allows one;
+     * its check is held open until the second post reaches its own check, so
+     * without a per-account lock across check, store and record, both pass.
+     */
+    @Test
+    void aParallelBurstCannotOutrunTheRateLimit() throws Exception {
+        CountDownLatch secondArrived = new CountDownLatch(1);
+        AtomicInteger checks = new AtomicInteger();
+        GenericThrottle oneAllowed = new GenericThrottle(0, 60_000, 1000) {
+            @Override
+            public boolean isAbusive(String clientId) {
+                if (checks.incrementAndGet() == 1) {
+                    try {
+                        secondArrived.await(2, TimeUnit.SECONDS);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                } else {
+                    secondArrived.countDown();
+                }
+                return super.isAbusive(clientId);
+            }
+        };
+        CommentService burst = new CommentService(TestUtils.weblogger(), new NoOpCommentNotifier(),
+                oneAllowed, unlimited());
+
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        List<CommentOutcome> outcomes = new ArrayList<>();
+        try {
+            List<Future<CommentOutcome>> posts = new ArrayList<>();
+            for (int i = 0; i < 2; i++) {
+                posts.add(pool.submit(() -> {
+                    try {
+                        return burst.post(reader, ea.getId(), BODY, null);
+                    } finally {
+                        TestUtils.endSession(true);
+                    }
+                }));
+            }
+            for (Future<CommentOutcome> post : posts) {
+                outcomes.add(post.get(30, TimeUnit.SECONDS));
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+
+        assertEquals(1, outcomes.stream().filter(CommentOutcome::ok).count(), "exactly the one allowed");
+        assertEquals(List.of(CommentRefusal.RATE_LIMITED),
+                outcomes.stream().filter(o -> !o.ok()).map(CommentOutcome::refusal).toList());
+        assertEquals(1, countOn(a));
+    }
+
+    /** I2: a NUL reaches the service through JSON; it is dropped, not a 500. */
+    @Test
+    void aBodyWithANulIsStoredWithoutIt() throws Exception {
+        CommentOutcome out = post(reader, ea, "a\u0000b");
+
+        assertTrue(out.ok());
+        assertEquals("ab", fetch(out.comment()).getBody());
+        assertSame(CommentRefusal.EMPTY_BODY, post(reader, ea, "\u0000 \u0007").refusal());
+    }
+
+    /**
+     * I3, ruling R5: a reader deleting their own HIDDEN comment must not erase
+     * the owner's distrust. The row stays HIDDEN with its body erased, its
+     * reply goes, no page changes, and the reader is still held.
+     */
+    @Test
+    void deletingYourOwnHiddenCommentLeavesATombstoneAndNoTrust() throws Exception {
+        trust(reader, ea);
+        ReaderComment hidden = post(reader, ea, BODY).comment();
+        assertEquals(Status.PUBLISHED, hidden.getStatus(), "fixture: trusted");
+        ReaderComment reply = service.reply(TestUtils.getManagedUser(owner), fetch(hidden), "Thanks").comment();
+        TestUtils.endSession(true);
+        setStatus(hidden, Status.HIDDEN);
+
+        boolean deleted = keeps("erasing a hidden comment", () -> deleteOwn(reader, hidden.getId()));
+
+        assertTrue(deleted, "to the reader, it is gone");
+        ReaderComment tombstone = fetch(hidden);
+        assertNotNull(tombstone, "the row stays");
+        assertEquals(Status.HIDDEN, tombstone.getStatus());
+        assertEquals("", tombstone.getBody(), "the body is erased");
+        assertNull(tombstone.getReply());
+        assertNull(mgr().getComment(reply.getId()), "its reply goes");
+        assertEquals(Status.PENDING, post(reader, ea, BODY).comment().getStatus(), "still not trusted");
+
+        ReaderComment unanswered = post(reader, ea2, BODY).comment();
+        setStatus(unanswered, Status.HIDDEN);
+        assertTrue(deleteOwn(reader, unanswered.getId()));
+        assertEquals("", fetch(unanswered).getBody(), "a hidden comment with no reply is erased too");
+        assertEquals(Status.HIDDEN, fetch(unanswered).getStatus());
+    }
+
+    /**
+     * I4: two replies to one comment at once. This request read the parent
+     * with no reply; another request's reply commits first. The unique index
+     * stops the second; it is a refusal, not a 500, and the session is clean.
+     */
+    @Test
+    void aConcurrentSecondReplyIsRefusedNotAnError() throws Exception {
+        ReaderComment parent = trust(reader, ea);
+        ReaderComment seen = fetch(parent);
+        assertNull(seen.getReply(), "this request sees no reply yet");
+
+        ExecutorService other = Executors.newSingleThreadExecutor();
+        try {
+            other.submit(() -> {
+                try {
+                    return service.reply(TestUtils.getManagedUser(owner), fetch(parent), "first").ok();
+                } finally {
+                    TestUtils.endSession(true);
+                }
+            }).get(30, TimeUnit.SECONDS);
+        } finally {
+            other.shutdownNow();
+        }
+
+        CommentOutcome second = service.reply(TestUtils.getManagedUser(owner), seen, "second");
+        TestUtils.endSession(false);
+
+        assertSame(CommentRefusal.BAD_REPLY, second.refusal());
+        assertEquals(2, countOn(a), "the parent and the first reply");
+        assertTrue(post(reader, ea, BODY).ok(), "the failed transaction left nothing behind");
+    }
+
+    /**
+     * Only the one-reply index's violation is a refusal; any other failed
+     * commit, of a comment or a reply, is an error, records no hit and tells
+     * nobody.
+     */
+    @Test
+    void aFailedCommitIsAnErrorAndRecordsNothing() throws Exception {
+        ReaderComment parent = post(owner, ea, BODY).comment();
+        GenericThrottle oneAllowed = new GenericThrottle(0, 60_000, 1000);
+        Weblogger failing = Mockito.spy(TestUtils.weblogger());
+        Mockito.doThrow(new WebloggerException("commit failed")).when(failing).flush();
+        CommentService broken = new CommentService(failing, notifier, oneAllowed, unlimited());
+
+        assertThrows(WebloggerException.class, () -> broken.post(reader, ea.getId(), BODY, null));
+        TestUtils.endSession(false);
+        assertThrows(WebloggerException.class,
+                () -> broken.reply(TestUtils.getManagedUser(owner), fetch(parent), "a reply"));
+        TestUtils.endSession(false);
+
+        Mockito.verifyNoInteractions(notifier);
+        assertEquals(1, countOn(a), "only the owner's comment");
+        CommentService working = new CommentService(TestUtils.weblogger(), notifier, oneAllowed, unlimited());
+        assertTrue(post(working, reader, ea, BODY).ok(), "the failed post recorded no hit");
+    }
+
+    @Test
+    void uniqueViolationsAreRecognisedBySqlStateOrIndexName() {
+        assertTrue(CommentService.isUniqueViolation(
+                new WebloggerException("commit failed", new SQLException("duplicate key", "23505"))));
+        assertTrue(CommentService.isUniqueViolation(new WebloggerException(
+                "ERROR: duplicate key value violates unique constraint \"rrc_reply_to_uq\"")));
+        assertFalse(CommentService.isUniqueViolation(
+                new WebloggerException("commit failed", new SQLException("foreign key", "23503"))));
+        assertFalse(CommentService.isUniqueViolation(new WebloggerException(new IllegalStateException())));
+        RuntimeException first = new RuntimeException("first");
+        RuntimeException second = new RuntimeException("second", first);
+        first.initCause(second);
+        assertFalse(CommentService.isUniqueViolation(first), "a cyclic cause chain ends");
+    }
+
+    /** M1: a form that sends replyTo "" for a top-level comment is not refused. */
+    @Test
+    void aBlankReplyToIsATopLevelComment() throws Exception {
+        for (String blank : new String[] {"", "  "}) {
+            CommentOutcome out = post(reader, ea.getId(), BODY, blank);
+            assertTrue(out.ok(), "[" + blank + "]");
+            assertNull(fetch(out.comment()).getReplyTo());
+        }
+    }
+
+    /** M2: a change that did not commit is not logged as made. */
+    @Test
+    void aModerationChangeIsLoggedOnlyOnceItCommits() throws Exception {
+        ReaderComment held = post(reader, ea, BODY).comment();
+        ReaderComment own = post(owner, ea, BODY).comment();
+        Weblogger failing = Mockito.spy(TestUtils.weblogger());
+        Mockito.doThrow(new WebloggerException("commit failed")).when(failing).flush();
+        CommentService broken = new CommentService(failing, notifier, unlimited(), unlimited());
+
+        List<String> lines;
+        try (SsoLogCapture capture = SsoLogCapture.everyLogger()) {
+            assertThrows(WebloggerException.class,
+                    () -> broken.setStatus(fetch(held), Status.HIDDEN, TestUtils.getManagedUser(owner)));
+            TestUtils.endSession(false);
+            assertThrows(WebloggerException.class,
+                    () -> broken.setStatus(fetch(own), Status.HIDDEN, TestUtils.getManagedUser(owner)));
+            TestUtils.endSession(false);
+            assertThrows(WebloggerException.class, () -> broken.delete(fetch(held), TestUtils.getManagedUser(owner)));
+            TestUtils.endSession(false);
+            lines = capture.everything();
+        }
+
+        for (String line : lines) {
+            assertFalse(line.contains("comment " + held.getId()), line);
+            assertFalse(line.contains("comment " + own.getId()), line);
+        }
+        assertEquals(Status.PENDING, fetch(held).getStatus(), "nothing was changed");
+        assertEquals(Status.PUBLISHED, fetch(own).getStatus());
     }
 
     // ------------------------------------------------------------- helpers
