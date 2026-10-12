@@ -114,8 +114,8 @@ public final class WeblogSettingsRules {
         }
         tooLong("icon", "websiteSettings.icon", bean.getIcon(), MAX_TEXT, found);
         tooLong("about", "websiteSettings.about", bean.getAbout(), MAX_TEXT, found);
-        mustBeUuid("newsletterListUuid", bean.getNewsletterListUuid(), found);
-        mustBeUuid("analyticsSiteId", bean.getAnalyticsSiteId(), found);
+        mustBeUuid("newsletterListUuid", "websiteSettings.newsletterListUuid.invalid", bean.getNewsletterListUuid(), found);
+        mustBeUuid("analyticsSiteId", "websiteSettings.analyticsSiteId.invalid", bean.getAnalyticsSiteId(), found);
         String shareUrl = StringUtils.trimToNull(bean.getAnalyticsShareUrl());
         if (shareUrl != null && !HTTP_URL.matcher(shareUrl).matches()) {
             found.add(simple("analyticsShareUrl", "websiteSettings.analyticsShareUrl.invalid",
@@ -210,10 +210,10 @@ public final class WeblogSettingsRules {
         }
     }
 
-    private static void mustBeUuid(String field, String raw, List<Violation> found) {
+    private static void mustBeUuid(String field, String messageKey, String raw, List<Violation> found) {
         String value = StringUtils.trimToNull(raw);
         if (value != null && !UUID.matcher(value).matches()) {
-            found.add(simple(field, "websiteSettings." + field + ".invalid", field + " must be a UUID."));
+            found.add(simple(field, messageKey, field + " must be a UUID."));
         }
     }
 
