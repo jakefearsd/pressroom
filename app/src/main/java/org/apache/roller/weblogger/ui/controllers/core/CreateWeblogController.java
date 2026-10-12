@@ -22,20 +22,14 @@ import java.util.List;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-import org.apache.commons.lang3.CharSetUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.WebloggerException;
-import org.apache.roller.weblogger.business.UserManager;
 import org.apache.roller.weblogger.business.themes.SharedTheme;
 import org.apache.roller.weblogger.business.themes.ThemeManager;
-import org.apache.roller.weblogger.config.WebloggerConfig;
-import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.pojos.User;
-import org.apache.roller.weblogger.pojos.Weblog;
-import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.controllers.BaseController;
+import org.apache.roller.weblogger.ui.controllers.WeblogCreationRules;
 import org.apache.roller.weblogger.ui.controllers.util.UIUtils;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -85,26 +79,18 @@ public class CreateWeblogController extends BaseController {
         populateCommonModel(request, model);
         addListsToModel(model);
 
-        // check if blog administrator has enabled creation of new blogs
-        if (!WebloggerRuntimeConfig.getBooleanProperty("site.allowUserWeblogCreation")) {
-            addError(model, "createWebsite.disabled", request);
-            return ".GenericError";
-        }
-
         User user = getAuthenticatedUser(request);
 
+        WeblogCreationRules.Violation refusal;
         try {
-            if (!WebloggerRuntimeConfig.getBooleanProperty("groupblogging.enabled")) {
-                UserManager mgr = weblogger.getUserManager();
-                List<WeblogPermission> permissions = mgr.getWeblogPermissions(user);
-                if (!permissions.isEmpty()) {
-                    addError(model, "createWebsite.oneBlogLimit", request);
-                    return ".GenericError";
-                }
-            }
+            refusal = WeblogCreationRules.mayCreate(user, WeblogCreationRules.Context.current(weblogger));
         } catch (WebloggerException ex) {
-            log.error("error checking for existing weblogs count", ex);
+            log.error("error checking whether this user may create a weblog", ex);
             addError(model, "generic.error.check.logs", request);
+            return ".GenericError";
+        }
+        if (refusal != null) {
+            addError(model, refusal.messageKey(), request);
             return ".GenericError";
         }
 
@@ -125,35 +111,26 @@ public class CreateWeblogController extends BaseController {
         addListsToModel(model);
 
         User user = getAuthenticatedUser(request);
+        WeblogCreationRules.Violation refusal;
         try {
-            if (!WebloggerRuntimeConfig.getBooleanProperty("groupblogging.enabled")) {
-                UserManager mgr = weblogger.getUserManager();
-                List<WeblogPermission> permissions = mgr.getWeblogPermissions(user);
-                if (!permissions.isEmpty()) {
-                    addFlashError(redirectAttributes, "createWebsite.oneBlogLimit", request);
-                    return "redirect:/roller-ui/menu.rol";
-                }
-            }
+            refusal = WeblogCreationRules.mayCreate(user, WeblogCreationRules.Context.current(weblogger));
         } catch (WebloggerException ex) {
-            log.error("error checking for existing weblogs count", ex);
+            // A check that could not run is not one that passed.
+            log.error("error checking whether this user may create a weblog", ex);
+            addFlashError(redirectAttributes, "generic.error.check.logs", request);
+            return "redirect:/roller-ui/menu.rol";
+        }
+        if (refusal != null) {
+            addFlashError(redirectAttributes, refusal.messageKey(), request);
+            return "redirect:/roller-ui/menu.rol";
         }
 
         myValidate(request, model, bean);
 
         if (!hasErrors(model)) {
 
-            Weblog wd = new Weblog(
-                    bean.getHandle(),
-                    user.getUserName(),
-                    bean.getName(),
-                    bean.getDescription(),
-                    bean.getEmailAddress(),
-                    bean.getTheme(),
-                    bean.getLocale(),
-                    bean.getTimeZone());
-
             try {
-                weblogger.getWeblogManager().addWeblog(wd);
+                WeblogCreationRules.create(bean, user, weblogger.getWeblogManager());
                 weblogger.flush();
 
                 addFlashMessage(redirectAttributes, "createWebsite.created", bean.getHandle(), request);
@@ -169,33 +146,17 @@ public class CreateWeblogController extends BaseController {
     }
 
     private void myValidate(HttpServletRequest request, Model model, CreateWeblogBean bean) {
-        String allowed = WebloggerConfig.getProperty("username.allowedChars");
-        if (allowed == null || allowed.isBlank()) {
-            allowed = UIUtils.DEFAULT_ALLOWED_CHARS;
-        }
-
-        // A missing handle used to reach CharSetUtils.keep(null, ...), which
-        // returns null and blew up on the comparison below; an empty one passed
-        // every check and created a weblog with no URL of its own.
-        if (StringUtils.isBlank(bean.getHandle())) {
-            addFieldError(model, "handle", "createWeblog.error.invalidHandle", request);
-            return;
-        }
-
-        String safe = CharSetUtils.keep(bean.getHandle(), allowed);
-        if (!safe.equals(bean.getHandle())) {
-            addFieldError(model, "handle", "createWeblog.error.invalidHandle", request);
-            return;
-        }
-
         try {
-            if (weblogger.getWeblogManager()
-                    .getWeblogByHandle(bean.getHandle()) != null) {
-                addFieldError(model, "handle", "createWeblog.error.handleExists", request);
-                bean.setHandle(null);
+            for (WeblogCreationRules.Violation v : WeblogCreationRules.check(bean,
+                    WeblogCreationRules.Context.current(weblogger))) {
+                addFieldError(model, v.field(), v.messageKey(), request);
+                if ("createWeblog.error.handleExists".equals(v.messageKey())) {
+                    bean.setHandle(null);
+                }
             }
         } catch (WebloggerException ex) {
-            log.error("error checking for weblog", ex);
+            // A check that could not run is not one that passed.
+            log.error("error checking the new weblog", ex);
             addError(model, "generic.error.check.logs", request);
         }
     }

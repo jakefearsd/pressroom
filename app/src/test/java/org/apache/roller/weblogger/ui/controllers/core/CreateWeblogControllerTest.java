@@ -69,6 +69,10 @@ class CreateWeblogControllerTest {
         previousGroupBlogging = ControllerTestFixture.setConfigProperty("groupblogging.enabled", "true");
         previousAllowedChars = ControllerTestFixture.setConfigProperty("username.allowedChars", "A-Za-z0-9");
         allowWeblogCreation(true);
+        org.apache.roller.weblogger.business.themes.SharedTheme journal =
+                org.mockito.Mockito.mock(org.apache.roller.weblogger.business.themes.SharedTheme.class);
+        when(journal.getId()).thenReturn("journal");
+        when(weblogger.themeManager().getEnabledThemesList()).thenReturn(List.of(journal));
     }
 
     @AfterEach
@@ -135,8 +139,7 @@ class CreateWeblogControllerTest {
         // Handles are validated against username.allowedChars; a site that
         // widens that set must get the wider set, not the built-in default.
         ControllerTestFixture.setConfigProperty("username.allowedChars", "A-Za-z0-9_");
-        CreateWeblogBean bean = new CreateWeblogBean();
-        bean.setHandle("travel_guide");
+        CreateWeblogBean bean = validBean("travel_guide");
 
         controller.save(ControllerTestFixture.requestFor(user("jake")), model, bean, redirectAttributes);
 
@@ -147,8 +150,7 @@ class CreateWeblogControllerTest {
     @Test
     void withNoConfiguredCharacterSetTheBuiltInDefaultAppliesToHandles() throws Exception {
         ControllerTestFixture.setConfigProperty("username.allowedChars", null);
-        CreateWeblogBean bean = new CreateWeblogBean();
-        bean.setHandle("travel_guide");
+        CreateWeblogBean bean = validBean("travel_guide");
 
         controller.save(ControllerTestFixture.requestFor(user("jake")), model, bean, redirectAttributes);
 
@@ -210,8 +212,7 @@ class CreateWeblogControllerTest {
     @Test
     void aValidSubmissionCreatesTheWeblogAndConfirmsIt() throws Exception {
         User user = user("jake");
-        CreateWeblogBean bean = new CreateWeblogBean();
-        bean.setHandle("travelguide");
+        CreateWeblogBean bean = validBean("travelguide");
         bean.setName("Travel Guide");
         bean.setDescription("Where to go");
         bean.setEmailAddress("jake@example.com");
@@ -242,8 +243,7 @@ class CreateWeblogControllerTest {
     void aHandleWithPunctuationInItIsRefused() throws Exception {
         // Handles go straight into URLs; anything outside the allowed set would
         // produce a blog that cannot be linked to.
-        CreateWeblogBean bean = new CreateWeblogBean();
-        bean.setHandle("my blog!");
+        CreateWeblogBean bean = validBean("my blog!");
 
         String view = controller.save(ControllerTestFixture.requestFor(user("jake")), model, bean, redirectAttributes);
 
@@ -260,8 +260,7 @@ class CreateWeblogControllerTest {
     void anEmptyHandleIsRefusedInsteadOfCreatingAnUnreachableWeblog() throws Exception {
         // An empty handle used to sail through validation and produce a weblog
         // whose URL is the site root, with no way to reach or fix it.
-        CreateWeblogBean bean = new CreateWeblogBean();
-        bean.setHandle("");
+        CreateWeblogBean bean = validBean("");
 
         String view = controller.save(ControllerTestFixture.requestFor(user("jake")), model, bean, redirectAttributes);
 
@@ -274,7 +273,7 @@ class CreateWeblogControllerTest {
     void aMissingHandleIsRefusedInsteadOfFailingWithAServerError() throws Exception {
         // A post without the field at all (an old bookmark, a script) reached
         // CharSetUtils.keep(null, ...) and died with a NullPointerException.
-        CreateWeblogBean bean = new CreateWeblogBean();
+        CreateWeblogBean bean = validBean(null);
 
         String view = controller.save(ControllerTestFixture.requestFor(user("jake")), model, bean, redirectAttributes);
 
@@ -285,8 +284,7 @@ class CreateWeblogControllerTest {
 
     @Test
     void aHandleSomebodyElseAlreadyTookIsRefusedAndCleared() throws Exception {
-        CreateWeblogBean bean = new CreateWeblogBean();
-        bean.setHandle("taken");
+        CreateWeblogBean bean = validBean("taken");
         when(weblogger.weblogManager().getWeblogByHandle("taken")).thenReturn(new Weblog());
 
         String view = controller.save(ControllerTestFixture.requestFor(user("jake")), model, bean, redirectAttributes);
@@ -299,8 +297,7 @@ class CreateWeblogControllerTest {
 
     @Test
     void aFailedHandleLookupStopsTheCreateRatherThanRiskingADuplicate() throws Exception {
-        CreateWeblogBean bean = new CreateWeblogBean();
-        bean.setHandle("travelguide");
+        CreateWeblogBean bean = validBean("travelguide");
         when(weblogger.weblogManager().getWeblogByHandle("travelguide"))
                 .thenThrow(new WebloggerException("database down"));
 
@@ -318,8 +315,7 @@ class CreateWeblogControllerTest {
         User user = user("jake");
         when(weblogger.userManager().getWeblogPermissions(user))
                 .thenReturn(List.of(new WeblogPermission()));
-        CreateWeblogBean bean = new CreateWeblogBean();
-        bean.setHandle("second");
+        CreateWeblogBean bean = validBean("second");
 
         String view = controller.save(ControllerTestFixture.requestFor(user), model, bean, redirectAttributes);
 
@@ -330,8 +326,7 @@ class CreateWeblogControllerTest {
 
     @Test
     void aFailedWriteLeavesTheUserOnTheFormWithoutAConfirmation() throws Exception {
-        CreateWeblogBean bean = new CreateWeblogBean();
-        bean.setHandle("travelguide");
+        CreateWeblogBean bean = validBean("travelguide");
         doThrow(new WebloggerException("database down")).when(weblogger.weblogManager()).addWeblog(any());
 
         String view = controller.save(ControllerTestFixture.requestFor(user("jake")), model, bean, redirectAttributes);
@@ -339,6 +334,43 @@ class CreateWeblogControllerTest {
         assertEquals(".CreateWeblog", view);
         assertFalse(ControllerTestFixture.errors(model).isEmpty());
         assertEquals(List.of(), ControllerTestFixture.flashMessages(redirectAttributes));
+    }
+
+    @Test
+    void aReservedHandleMarksTheHandleFieldAndCreatesNothing() throws Exception {
+        CreateWeblogBean bean = validBean("api");
+
+        controller.save(ControllerTestFixture.requestFor(user("jake")), model, bean, redirectAttributes);
+
+        assertEquals(List.of("createWeblog.error.reservedHandle"), ControllerTestFixture.errors(model));
+        assertEquals(List.of("handle"), ControllerTestFixture.invalidFields(model));
+        verify(weblogger.weblogManager(), never()).addWeblog(any());
+    }
+
+    @Test
+    void theSitewideFrontpageThemeMarksTheThemeField() throws Exception {
+        CreateWeblogBean bean = validBean("travelguide");
+        bean.setTheme("frontpage");
+
+        controller.save(ControllerTestFixture.requestFor(user("jake")), model, bean, redirectAttributes);
+
+        assertEquals(List.of("theme"), ControllerTestFixture.invalidFields(model));
+        verify(weblogger.weblogManager(), never()).addWeblog(any());
+    }
+
+    @Test
+    void aFailedMembershipLookupOnSaveCreatesNothing() throws Exception {
+        ControllerTestFixture.setConfigProperty("groupblogging.enabled", "false");
+        User user = user("jake");
+        when(weblogger.userManager().getWeblogPermissions(user))
+                .thenThrow(new WebloggerException("database down"));
+
+        String view = controller.save(ControllerTestFixture.requestFor(user), model,
+                validBean("travelguide"), redirectAttributes);
+
+        assertEquals("redirect:/roller-ui/menu.rol", view);
+        assertEquals(List.of("generic.error.check.logs"), ControllerTestFixture.flashErrors(redirectAttributes));
+        verify(weblogger.weblogManager(), never()).addWeblog(any());
     }
 
     // --- helpers ---
@@ -352,6 +384,16 @@ class CreateWeblogControllerTest {
                 .thenReturn(new RuntimeConfigProperty(name, value));
     }
 
+    private static CreateWeblogBean validBean(String handle) {
+        CreateWeblogBean bean = new CreateWeblogBean();
+        bean.setHandle(handle);
+        bean.setName("A weblog");
+        bean.setTheme("journal");
+        bean.setLocale("en_US");
+        bean.setTimeZone("Europe/Berlin");
+        return bean;
+    }
+
     private static User user(String userName) {
         User user = new User();
         user.setUserName(userName);
@@ -361,10 +403,21 @@ class CreateWeblogControllerTest {
 
     // --- errors point at the field they name (B8) ---
 
+    /** Characterisation: pins the page before the rules move. */
+    @Test
+    void aTakenHandleMarksTheHandleFieldAndIsCleared() throws Exception {
+        CreateWeblogBean bean = validBean("taken");
+        when(weblogger.weblogManager().getWeblogByHandle("taken")).thenReturn(new Weblog());
+
+        controller.save(ControllerTestFixture.requestFor(user("jake")), model, bean, redirectAttributes);
+
+        assertEquals(List.of("handle"), ControllerTestFixture.invalidFields(model));
+        assertNull(bean.getHandle());
+    }
+
     @Test
     void aRefusedHandleMarksTheHandleField() throws Exception {
-        CreateWeblogBean bean = new CreateWeblogBean();
-        bean.setHandle("my blog!");
+        CreateWeblogBean bean = validBean("my blog!");
 
         controller.save(ControllerTestFixture.requestFor(user("jake")), model, bean, redirectAttributes);
 
