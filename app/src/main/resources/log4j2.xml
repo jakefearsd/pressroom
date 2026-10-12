@@ -86,6 +86,7 @@ limitations under the License.
 
         <!-- the MCP SDK logs the client's initialize text at INFO: caller-controlled -->
         <Logger name="io.modelcontextprotocol" level="warn" additivity="false"> <AppenderRef ref="asyncRoller"/> </Logger>
+        <Logger name="roller.sso" level="info" additivity="false"> <AppenderRef ref="asyncRoller"/> </Logger>
         <Logger name="org.webjars"             level="info"  additivity="false"> <AppenderRef ref="asyncRoller"/> </Logger>
 
         <!-- server.log catches everything that hasn't been logged yet-->

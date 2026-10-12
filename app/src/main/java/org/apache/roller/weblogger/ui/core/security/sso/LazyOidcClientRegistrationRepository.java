@@ -1,0 +1,75 @@
+package org.apache.roller.weblogger.ui.core.security.sso;
+
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.registration.ClientRegistrations;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+
+/**
+ * Resolves the OIDC client registration on demand. Discovery is fetched lazily so
+ * an unreachable provider at startup neither blocks boot nor stays broken: the
+ * next sign-in retries. Success is cached for the life of the process.
+ */
+public class LazyOidcClientRegistrationRepository implements ClientRegistrationRepository {
+
+    private static final Logger log = LoggerFactory.getLogger("roller.sso");
+    private static final int ATTEMPTS = 3;
+
+    private final SsoSettings settings;
+    private final Function<String, ClientRegistration.Builder> fetcher;
+    private final AtomicReference<ClientRegistration> cached = new AtomicReference<>();
+
+    /** Production constructor: discovery over HTTP. */
+    public LazyOidcClientRegistrationRepository(SsoSettings settings) {
+        this(settings, ClientRegistrations::fromOidcIssuerLocation);
+    }
+
+    LazyOidcClientRegistrationRepository(SsoSettings settings,
+            Function<String, ClientRegistration.Builder> fetcher) {
+        this.settings = settings;
+        this.fetcher = fetcher;
+    }
+
+    @Override
+    public ClientRegistration findByRegistrationId(String registrationId) {
+        if (!SsoSettings.REGISTRATION_ID.equals(registrationId) || !settings.enabled()) {
+            return null;
+        }
+        for (int attempt = 1; attempt <= ATTEMPTS && cached.get() == null; attempt++) {
+            tryResolveOnce();
+        }
+        return cached.get();
+    }
+
+    /** One discovery attempt; caches success. */
+    public boolean tryResolveOnce() {
+        if (cached.get() != null) {
+            return true;
+        }
+        try {
+            ClientRegistration built = fetcher.apply(settings.issuer())
+                    .registrationId(SsoSettings.REGISTRATION_ID)
+                    .clientId(settings.clientId())
+                    .clientSecret(settings.clientSecret())
+                    .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                    .scope("openid", "profile", "email")
+                    // Replaced per request by RollerAuthorizationRequestResolver with the
+                    // configured Absolute URL; the template only satisfies the builder.
+                    .redirectUri("{baseUrl}/roller-ui/sso/callback")
+                    .userNameAttributeName("sub")
+                    .clientName(settings.providerLabel())
+                    .build();
+            cached.compareAndSet(null, built);
+            return true;
+        } catch (RuntimeException ex) {
+            // Class name only, never the exception object: a provider error body could echo
+            // request details, and the secret must never reach a log (spec criterion 4).
+            log.warn("OIDC discovery for {} failed: {}", settings.issuer(), ex.getClass().getSimpleName());
+            return false;
+        }
+    }
+}

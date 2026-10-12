@@ -730,6 +730,16 @@ limitations under the License.
             <artifactId>spring-security-config</artifactId>
         </dependency>
 
+        <!-- Reader sign-in: oauth2Login() with OIDC discovery and ID token validation. -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-jose</artifactId>
+        </dependency>
+
 
         <!-- spring-security-openid removed in Spring Security 6.0;
              OpenID Connect (OIDC) via OAuth2 client is the replacement -->
