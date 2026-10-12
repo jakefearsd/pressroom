@@ -1047,8 +1047,10 @@ document.addEventListener('DOMContentLoaded', function () {
   // expired, or a sign-in page comes back where JSON was expected) re-reads
   // the session and re-renders from it: signed out shows the sign-in link,
   // cannot-post shows its reason, and otherwise the request is retried ONCE
-  // with the fresh token. The textarea keeps what the reader wrote through
-  // every failure; only a successful post empties it.
+  // with the fresh token. A post answered 201 is never sent again: the
+  // comment exists, so an answer that cannot be read reloads the page. The
+  // textarea keeps what the reader wrote through every failure; only a
+  // successful post empties it.
   function readJson(response) {
     var type = response.headers.get('Content-Type') || '';
     return type.indexOf('application/json') === -1 ? Promise.resolve(null) : response.json();
@@ -1072,10 +1074,10 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // 401 or 403 (the CSRF filter's answer once the session has expired), or
-  // an answer below 400 other than the expected one: a sign-in page where
-  // JSON was expected. Callers have already handled the expected answer.
+  // a sign-in page: fetch follows the redirect and answers with that page.
+  // Nothing else counts, above all no 2xx, which may mean the request was done.
   function sessionLost(response) {
-    return response.status === 401 || response.status === 403 || response.status < 400;
+    return response.status === 401 || response.status === 403 || response.redirected;
   }
 
   Array.prototype.forEach.call(document.querySelectorAll('.comments-slot'), function (slot) {
@@ -1088,10 +1090,13 @@ document.addEventListener('DOMContentLoaded', function () {
     var sessionUrl = slot.getAttribute('data-session');
     var postUrl = slot.getAttribute('data-post');
     var deleteUrl = slot.getAttribute('data-delete');
+    // The suffix check is the contact form's. The CSRF token goes to these
+    // URLs, so each must also be a path on this site: an absolute URL on
+    // another origin can end in the same suffix.
     if (!section || !entryId
-        || !endpointOk(sessionUrl, '/roller-ui/rendering/comments/session.rol')
-        || !endpointOk(postUrl, '/roller-ui/rendering/comments.rol')
-        || !endpointOk(deleteUrl, '/roller-ui/rendering/comments/')) {
+        || !endpointOk(sessionUrl, '/roller-ui/rendering/comments/session.rol') || !sameOrigin(sessionUrl)
+        || !endpointOk(postUrl, '/roller-ui/rendering/comments.rol') || !sameOrigin(postUrl)
+        || !endpointOk(deleteUrl, '/roller-ui/rendering/comments/') || !sameOrigin(deleteUrl)) {
       return;
     }
     var text = {
@@ -1142,12 +1147,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function reasonText(reason) {
-      if (reason === 'closed' || reason === 'comments-off') { return text.closed; }
+      if (reason === 'closed' || reason === 'comments-off' || reason === 'not-found') { return text.closed; }
       if (reason === 'custom-domain') { return text.unavailable; }
       return text.notAllowed;
     }
 
+    // A sign-in link, or null when the URL the session gave is not on this site.
     function signInLink(url) {
+      if (!sameOrigin(url)) { return null; }
       var link = element('a', 'comments-sign-in', text.signIn);
       link.href = url;
       return link;
@@ -1180,57 +1187,61 @@ document.addEventListener('DOMContentLoaded', function () {
       pendingList.appendChild(item);
     }
 
-    // Re-read the session after a lost one; retry() runs at most once, and
-    // failure is the message for a request that still cannot be made.
-    function recover(retried, retry, failure) {
+    // Re-read the session after a lost one. retry() runs at most once;
+    // giveUp() shows the request's own failure and frees its button.
+    function recover(retried, retry, giveUp) {
       getSession().then(function (fresh) {
         if (!fresh) {
-          say(failure);
-          button.disabled = false;
+          giveUp();
         } else if (!fresh.signedIn) {
+          var link = signInLink(fresh.signInUrl);
+          if (!link) { giveUp(); }
           button.disabled = true;
           whoami.textContent = '';
-          if (sameOrigin(fresh.signInUrl)) {
-            whoami.appendChild(signInLink(fresh.signInUrl));
-          } else {
-            say(failure);
-          }
+          if (link) { whoami.appendChild(link); }
         } else if (!fresh.canPost) {
           button.disabled = true;
           say(reasonText(fresh.reason));
         } else {
           session = fresh;
           if (retried) {
-            say(failure);
-            button.disabled = false;
+            giveUp();
           } else {
             retry();
           }
         }
       }).catch(function () {
-        say(failure);
-        button.disabled = false;
+        giveUp();
       });
     }
 
+    // The entry page afresh, at the comment when its id is known; the c
+    // query gets past the browser's own HTTP cache.
     function reloadAt(id) {
       var permalink = slot.getAttribute('data-permalink');
       var target = new URL(sameOrigin(permalink) ? permalink : window.location.href, window.location.href);
-      target.search = 'c=' + encodeURIComponent(id);
-      target.hash = 'comment-' + id;
+      target.search = 'c=' + encodeURIComponent(id || String(Date.now()));
+      target.hash = id ? 'comment-' + id : 'comments';
       window.location.assign(target.href);
     }
 
+    // The comment exists. Held: say so and list it as awaiting. Published, or
+    // an answer that could not be read: show the page as it now is.
     function posted(created, body) {
-      if (created.status === 'PUBLISHED') {
-        say(text.published);
-        textarea.value = '';
-        reloadAt(created.id);
+      textarea.value = '';
+      var id = created && typeof created.id === 'string' ? created.id : '';
+      if (id && created.status === 'PENDING') {
+        say(text.pending);
+        addPending(id, body);
+        button.disabled = false;
         return;
       }
-      say(text.pending);
-      addPending(created.id, body);
-      textarea.value = '';
+      if (id && created.status === 'PUBLISHED') { say(text.published); }
+      reloadAt(id);
+    }
+
+    function failedPost() {
+      say(text.error);
       button.disabled = false;
     }
 
@@ -1240,15 +1251,13 @@ document.addEventListener('DOMContentLoaded', function () {
       send('POST', postUrl, {entry: entryId, body: body}).then(function (response) {
         if (response.status === 201) {
           return readJson(response).then(function (created) {
-            if (created && typeof created.id === 'string') {
-              posted(created, body);
-            } else {
-              recover(retried, function () { post(true); }, text.error);
-            }
+            posted(created, body);
+          }, function () {
+            posted(null, body);
           });
         }
         if (sessionLost(response)) {
-          recover(retried, function () { post(true); }, text.error);
+          recover(retried, function () { post(true); }, failedPost);
           return null;
         }
         if (response.status === 429) {
@@ -1260,24 +1269,24 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         button.disabled = false;
         return null;
-      }).catch(function () {
-        say(text.error);
-        button.disabled = false;
-      });
+      }).catch(failedPost);
     }
 
-    function remove(id, target, retried) {
+    // control is the Delete button, disabled while its request runs.
+    function remove(id, target, control, retried) {
+      function failed() {
+        say(text.removeFailed);
+        control.disabled = false;
+      }
       send('DELETE', deleteUrl + encodeURIComponent(id) + '.rol').then(function (response) {
         if (response.status === 204) {
           target.parentNode.removeChild(target);
         } else if (sessionLost(response)) {
-          recover(retried, function () { remove(id, target, true); }, text.removeFailed);
+          recover(retried, function () { remove(id, target, control, true); }, failed);
         } else {
-          say(text.removeFailed);
+          failed();
         }
-      }).catch(function () {
-        say(text.removeFailed);
-      });
+      }).catch(failed);
     }
 
     function offerDelete(ids) {
@@ -1288,7 +1297,10 @@ document.addEventListener('DOMContentLoaded', function () {
         var link = element('button', 'comment-delete', text.remove);
         link.type = 'button';
         link.addEventListener('click', function () {
-          if (window.confirm(text.removeConfirm)) { remove(id, target, false); }
+          if (window.confirm(text.removeConfirm)) {
+            link.disabled = true;
+            remove(id, target, link, false);
+          }
         });
         (header && header.tagName === 'HEADER' ? header : target).appendChild(link);
       });
@@ -1329,9 +1341,10 @@ document.addEventListener('DOMContentLoaded', function () {
     getSession().then(function (answer) {
       if (!answer) { return; }
       if (!answer.signedIn) {
-        if (sameOrigin(answer.signInUrl)) {
+        var link = signInLink(answer.signInUrl);
+        if (link) {
           var note = element('p', 'comments-note');
-          note.appendChild(signInLink(answer.signInUrl));
+          note.appendChild(link);
           slot.appendChild(note);
         }
       } else if (!answer.canPost) {

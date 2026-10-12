@@ -59,6 +59,9 @@ class CommentsScriptSourceTest {
 
     private static final Pattern DATA_MSG = Pattern.compile("data-msg-[a-z-]+");
 
+    /** {@code x.href = <url>;}, an assignment, not a comparison. */
+    private static final Pattern HREF_ASSIGNMENT = Pattern.compile("\\.href\\s*=(?!=)\\s*([^;]+);");
+
     /** {@code data-msg-x="$utils.escapeHTML($text.get("key"))"}: a bundle message, escaped for the attribute. */
     private static final Pattern ESCAPED_MESSAGE = Pattern.compile(
             "(data-msg-[a-z-]+)=\"\\$utils\\.escapeHTML\\(\\$text\\.get\\(\"[A-Za-z.]+\"\\)\\)\"");
@@ -133,6 +136,72 @@ class CommentsScriptSourceTest {
         assertFalse(script.contains("data-author"), script);
     }
 
+    /**
+     * A 201 means the comment exists: whatever happens next, the post is never
+     * sent again (a second POST is a duplicate comment). And no 2xx counts as
+     * a lost session unless it came through a redirect (a sign-in page).
+     */
+    @Test
+    void aCreatedCommentIsNeverPostedAgain() throws IOException {
+        String code = withoutLineComments(script());
+        int at = code.indexOf("if (response.status === 201)");
+        assertTrue(at >= 0, "the post handles its 201");
+        String created = block(code, code.indexOf('{', at));
+        assertFalse(created.contains("recover("), "no session recovery after a 201: " + created);
+        assertFalse(Pattern.compile("(?<![A-Za-z])post\\(").matcher(created).find(),
+                "no second post after a 201: " + created);
+
+        String lost = functionBody(code, "sessionLost");
+        assertTrue(lost.contains("redirected"), "a sign-in page is recognised by the redirect: " + lost);
+        assertFalse(lost.contains("<"), "no status range counts as lost, so no 2xx does: " + lost);
+    }
+
+    /**
+     * The script sends the CSRF token to these URLs, so the suffix check is
+     * not enough: an absolute URL on another origin ends in the same suffix.
+     */
+    @Test
+    void theCommentEndpointsMustBeSameOriginPaths() throws IOException {
+        String code = withoutLineComments(script());
+        for (String endpoint : List.of("sessionUrl", "postUrl", "deleteUrl")) {
+            assertTrue(code.contains("sameOrigin(" + endpoint + ")"), endpoint + " is checked same-origin");
+        }
+    }
+
+    @Test
+    void aDeleteInFlightCannotBeSentTwice() throws IOException {
+        String offer = functionBody(withoutLineComments(script()), "offerDelete");
+        assertTrue(offer.contains(".disabled = true"), "the Delete button is disabled while its request runs: " + offer);
+    }
+
+    /** The reasons the session answer can give; any other falls to the generic line. */
+    @Test
+    void everyEntryReasonTheSessionCanGiveIsNamed() throws IOException {
+        String reasons = functionBody(withoutLineComments(script()), "reasonText");
+        for (String code : List.of("closed", "comments-off", "not-found", "custom-domain")) {
+            assertTrue(reasons.contains("'" + code + "'"), code + " has its own line: " + reasons);
+        }
+    }
+
+    /**
+     * Every link the script builds points where the session answer said, and
+     * only after that URL was checked to be on this site, in the same function.
+     */
+    @Test
+    void everyHrefIsSetOnlyAfterASameOriginCheck() throws IOException {
+        String code = withoutLineComments(script());
+        Matcher href = HREF_ASSIGNMENT.matcher(code);
+        int seen = 0;
+        while (href.find()) {
+            seen++;
+            String url = href.group(1).strip();
+            String before = code.substring(enclosingFunctionStart(code, href.start()), href.start());
+            assertTrue(before.contains("sameOrigin(" + url + ")"),
+                    "href = " + url + " without sameOrigin(" + url + ") before it in the same function");
+        }
+        assertTrue(seen >= 2, "the sign-in and account links set an href");
+    }
+
     @Test
     void theTextareaIsCappedAtTheBodyLimit() throws IOException {
         assertTrue(script().contains("maxLength = 4000"), "the textarea's maxlength is the 4000-character limit");
@@ -191,6 +260,50 @@ class CommentsScriptSourceTest {
         int end = vm.indexOf("\n#end", start);
         assertTrue(end > start, "macro " + name + " has no end");
         return vm.substring(start, end);
+    }
+
+    /** The text of the brace block opening at {@code open}, quotes honoured. */
+    private static String block(String code, int open) {
+        assertTrue(open >= 0 && code.charAt(open) == '{', "no block at " + open);
+        int depth = 0;
+        for (int i = open; i < code.length(); i++) {
+            char c = code.charAt(i);
+            if (c == '\'') {
+                i = endOfLiteral(code, i);
+            } else if (c == '{') {
+                depth++;
+            } else if (c == '}' && --depth == 0) {
+                return code.substring(open, i + 1);
+            }
+        }
+        throw new AssertionError("unbalanced block at " + open);
+    }
+
+    /** The index of the quote that closes the literal opening at {@code open}. */
+    private static int endOfLiteral(String code, int open) {
+        int i = open + 1;
+        while (i < code.length() && code.charAt(i) != '\'') {
+            i += code.charAt(i) == '\\' ? 2 : 1;
+        }
+        return i;
+    }
+
+    /** The body of {@code function name(...)}. */
+    private static String functionBody(String code, String name) {
+        int at = code.indexOf("function " + name + "(");
+        assertTrue(at >= 0, "no function " + name);
+        return block(code, code.indexOf('{', at));
+    }
+
+    /** Where the innermost function containing {@code index} starts. */
+    private static int enclosingFunctionStart(String code, int index) {
+        for (int at = code.lastIndexOf("function", index); at >= 0; at = code.lastIndexOf("function", at - 1)) {
+            int open = code.indexOf('{', at);
+            if (open < index && open + block(code, open).length() > index) {
+                return at;
+            }
+        }
+        throw new AssertionError("no function encloses " + index);
     }
 
     private static String withoutLineComments(String script) {
