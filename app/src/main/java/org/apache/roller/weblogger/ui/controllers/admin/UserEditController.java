@@ -438,12 +438,10 @@ public class UserEditController extends BaseController {
     }
 
     /**
-     * Whether the user holds the global admin role, for the edit form's
-     * checkbox. This used to live in {@code CreateUserBean.copyFrom}; it moved
-     * here because the bean is pure and the controller holds the user manager.
-     * A lookup that fails reads as "not an admin" (a display default, logged)
-     * rather than offering to make somebody an admin on the strength of a
-     * database error.
+     * Whether the user holds the {@code editor} role, for a provider-bound
+     * account's "Can write" checkbox (the only role User Admin can grant one).
+     * A lookup that fails reads as "cannot write" (a display default, logged),
+     * the same default {@link #isAdministrator} takes for the admin box.
      */
     private boolean hasEditorRole(User user) {
         try {
@@ -454,6 +452,14 @@ public class UserEditController extends BaseController {
         }
     }
 
+    /**
+     * Whether the user holds the global admin role, for the edit form's
+     * checkbox. This used to live in {@code CreateUserBean.copyFrom}; it moved
+     * here because the bean is pure and the controller holds the user manager.
+     * A lookup that fails reads as "not an admin" (a display default, logged)
+     * rather than offering to make somebody an admin on the strength of a
+     * database error.
+     */
     private boolean isAdministrator(User user) {
         try {
             GlobalPermission adminPerm =
