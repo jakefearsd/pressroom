@@ -173,4 +173,62 @@ class GlobalPermissionTest {
                         .contains(GlobalPermission.WEBLOG),
                 "toString() must name the actions so a denied permission check is diagnosable");
     }
+
+    private static GlobalPermission holder(String... actions) throws Exception {
+        return held(actions);
+    }
+
+    private static GlobalPermission required(String... actions) throws Exception {
+        return held(actions);
+    }
+
+    private static User user() {
+        User u = new User();
+        u.setUserName("reader-test");
+        return u;
+    }
+
+    @Test
+    void aHolderOfOnlyCommentImpliesNothingButComment() throws Exception {
+        GlobalPermission reader = holder(GlobalPermission.COMMENT);
+        assertTrue(reader.implies(required(GlobalPermission.COMMENT)));
+        for (String a : List.of(GlobalPermission.LOGIN, GlobalPermission.WEBLOG, GlobalPermission.ADMIN)) {
+            assertFalse(reader.implies(required(a)), a);
+        }
+        assertFalse(reader.implies(required(GlobalPermission.LOGIN, GlobalPermission.COMMENT)));
+    }
+
+    @Test
+    void anUnknownActionIsImpliedOnlyByAdmin() throws Exception {
+        assertFalse(holder(GlobalPermission.LOGIN, GlobalPermission.WEBLOG).implies(required("frobnicate")));
+        assertFalse(holder(GlobalPermission.COMMENT).implies(required("frobnicate")));
+        assertTrue(holder(GlobalPermission.ADMIN).implies(required("frobnicate")));
+    }
+
+    @Test
+    void editorsAndAdminsHoldComment() throws Exception {
+        // via role.action.* in the shipped roller.properties
+        assertTrue(GlobalPermission.impliedByRoles(user(), List.of("editor"))
+                .implies(required(GlobalPermission.COMMENT)));
+        assertTrue(GlobalPermission.impliedByRoles(user(), List.of("admin"))
+                .implies(required(GlobalPermission.COMMENT)));
+        GlobalPermission reader = GlobalPermission.impliedByRoles(user(), List.of("reader"));
+        assertTrue(reader.implies(required(GlobalPermission.COMMENT)));
+        assertFalse(reader.implies(required(GlobalPermission.LOGIN)));
+    }
+
+    /**
+     * Characterisation test: passes against the old code and the new. A
+     * non-admin holder never implies a weblog permission, and an empty holder
+     * implies no global action.
+     */
+    @Test
+    void nonAdminHoldersNeverImplyAWeblogPermission() throws Exception {
+        WeblogPermission wp = new WeblogPermission();
+        wp.setActionsAsList(List.of(WeblogPermission.ADMIN));
+        for (String a : List.of(GlobalPermission.LOGIN, GlobalPermission.WEBLOG, GlobalPermission.COMMENT)) {
+            assertFalse(holder(a).implies(wp), a);
+        }
+        assertFalse(holder().implies(required(GlobalPermission.COMMENT)));
+    }
 }

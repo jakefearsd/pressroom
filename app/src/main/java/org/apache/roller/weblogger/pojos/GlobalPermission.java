@@ -46,6 +46,12 @@ public class GlobalPermission extends RollerPermission {
 
     /** Allowed to login and do everything, including site-wide admin */
     public static final String ADMIN  = "admin";
+
+    /**
+     * Allowed to post reader comments. Implies nothing else: not login, not
+     * weblog, not admin.
+     */
+    public static final String COMMENT = "comment";
     
     /**
      * The global permission implied by a user's roles: the union, without
@@ -109,28 +115,13 @@ public class GlobalPermission extends RollerPermission {
                 return true;                
             } 
         } else if (perm instanceof RollerPermission) {
-            RollerPermission rperm = (RollerPermission)perm;            
             if (hasAction(ADMIN)) {
                 // admin implies all other permissions
                 return true;
-                
-            } else if (hasAction(WEBLOG)) {
-                // Best we've got is WEBLOG, so make sure perm doesn't specify ADMIN
-                for (String action : rperm.getActionsAsList()) {
-                    if (ADMIN.equals(action)) {
-                        return false;
-                    }
-                }
-                
-            } else if (hasAction(LOGIN)) {
-                // Best we've got is LOGIN, so make sure perm doesn't specify anything else
-                for (String action : rperm.getActionsAsList()) {
-                    if (WEBLOG.equals(action)) {
-                        return false;
-                    }
-                    if (ADMIN.equals(action)) {
-                        return false;
-                    }
+            }
+            for (String action : ((RollerPermission) perm).getActionsAsList()) {
+                if (!impliesAction(action)) {
+                    return false; // fail closed, including for unknown actions
                 }
             }
             return true;
@@ -138,6 +129,17 @@ public class GlobalPermission extends RollerPermission {
         return false;
     }
     
+    /** Whether this holder (known not to hold ADMIN) has {@code action}: WEBLOG implies LOGIN; COMMENT stands alone. */
+    private boolean impliesAction(String action) {
+        if (LOGIN.equals(action)) {
+            return hasAction(LOGIN) || hasAction(WEBLOG);
+        }
+        if (WEBLOG.equals(action) || COMMENT.equals(action)) {
+            return hasAction(action);
+        }
+        return false;
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
