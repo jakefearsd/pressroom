@@ -4,15 +4,21 @@ import java.util.List;
 import java.util.Set;
 import org.apache.roller.weblogger.business.UserManager;
 import org.apache.roller.weblogger.business.WeblogManager;
+import org.apache.roller.weblogger.business.Weblogger;
+import org.apache.roller.weblogger.business.themes.ThemeManager;
+import org.apache.roller.weblogger.config.WebloggerConfig;
+import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.controllers.core.CreateWeblogBean;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 class WeblogCreationRulesTest {
@@ -78,6 +84,40 @@ class WeblogCreationRulesTest {
         for (String handle : List.of("api", "API", "Search", "page", "mine")) {
             assertEquals(List.of("createWeblog.error.reservedHandle"), keys(bean(handle)), handle);
         }
+    }
+
+    /**
+     * Context.current reads the reserved roots from both protected-URL lists
+     * in the static config: comma lists that may carry spaces, empty items
+     * and any case, folded into one lower-cased set. So a name a site adds to
+     * userProtectedUrls is refused as a handle, whatever its case.
+     * Characterisation of the shipped parsing: expected to pass at once.
+     */
+    @Test
+    void theReservedPathsComeFromBothProtectedUrlListsLowerCased() throws Exception {
+        Weblogger weblogger = mock(Weblogger.class);
+        ThemeManager themes = mock(ThemeManager.class);
+        when(themes.getEnabledThemesList()).thenReturn(List.of());
+        when(weblogger.getThemeManager()).thenReturn(themes);
+        when(weblogger.getUserManager()).thenReturn(users);
+        when(weblogger.getWeblogManager()).thenReturn(weblogs);
+        WeblogCreationRules.Context context;
+        try (MockedStatic<WebloggerConfig> config = mockStatic(WebloggerConfig.class);
+             MockedStatic<WebloggerRuntimeConfig> ignored = mockStatic(WebloggerRuntimeConfig.class)) {
+            config.when(() -> WebloggerConfig.getProperty("rendering.weblogMapper.rollerProtectedUrls"))
+                    .thenReturn(" API, page ,, Search ");
+            config.when(() -> WebloggerConfig.getProperty("rendering.weblogMapper.userProtectedUrls"))
+                    .thenReturn("Shop, ,about");
+            context = WeblogCreationRules.Context.current(weblogger);
+        }
+
+        assertEquals(Set.of("api", "page", "search", "shop", "about"), context.reservedPaths());
+        CreateWeblogBean shop = bean("SHOP");
+        assertEquals(List.of("createWeblog.error.reservedHandle"),
+                WeblogCreationRules.check(shop, context).stream()
+                        .map(WeblogCreationRules.Violation::messageKey)
+                        .filter(key -> key.startsWith("createWeblog.error.") && key.endsWith("Handle"))
+                        .toList());
     }
 
     @Test

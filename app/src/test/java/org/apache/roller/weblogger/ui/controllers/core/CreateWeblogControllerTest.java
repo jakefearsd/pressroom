@@ -308,6 +308,24 @@ class CreateWeblogControllerTest {
         verify(weblogger.weblogManager(), never()).addWeblog(any());
     }
 
+    /**
+     * The form check can be bypassed by posting straight to the save URL, so
+     * save refuses on its own when creation is switched off. Characterisation
+     * of the shipped save: expected to pass at once.
+     */
+    @Test
+    void withWeblogCreationSwitchedOffASaveIsRefusedToo() throws Exception {
+        allowWeblogCreation(false);
+
+        String view = controller.save(ControllerTestFixture.requestFor(user("jake")), model,
+                validBean("travelguide"), redirectAttributes);
+
+        assertEquals("redirect:/roller-ui/menu.rol", view);
+        assertEquals(List.of("createWebsite.disabled"), ControllerTestFixture.flashErrors(redirectAttributes));
+        assertEquals(List.of(), ControllerTestFixture.flashMessages(redirectAttributes));
+        verify(weblogger.weblogManager(), never()).addWeblog(any());
+    }
+
     @Test
     void withGroupBloggingOffASecondWeblogCannotBeSavedEither() throws Exception {
         // The form check can be bypassed by posting straight to the save URL.
