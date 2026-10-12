@@ -841,13 +841,30 @@ Developer notes: `docs/dev/sso.md`.
    only into `.env`: never into Global Config, a commit, a chat or a ticket.
 5. **Check it.** The login page shows "Sign in with Google", and
    `roller.log` has the self-check's success line ("OIDC discovery
-   reachable"). Test the sign-in itself at the public URL,
-   `https://blog.wikantik.com/roller-ui/login.rol`: a sign-in started on the
-   LAN address (`http://docker2.lan:8080`) now redirects there first, because
-   Google returns the browser to the Absolute URL's host.
+   reachable"). The sign-in lines go only to that file, never to the
+   console, so `docker compose logs app` does not show them; read the file
+   inside the container:
+
+   ```bash
+   docker compose -f docker-compose.prod.yml exec app grep "OIDC discovery" /app/logs/roller.log
+   ```
+
+   `/app/logs` is in the container, not the `/data` volume, so a recreated
+   container starts a fresh `roller.log`. Then test the sign-in itself at
+   the public URL, `https://blog.wikantik.com/roller-ui/login.rol`. A
+   sign-in started on the LAN address (`http://docker2.lan:8080`) redirects
+   there first, because Google returns the browser to the Absolute URL's
+   host.
 
 `ROLLER_SSO_OIDC_DISCOVERY_URI` and `ROLLER_SSO_PROVIDER_LABEL` are optional;
 the defaults are Google's discovery document and the label "Google".
+
+**Letting a reader write.** User Admin, open the account (marked "Signs in
+with Google"), tick "Can write", save. The reader must then **sign out and
+sign in again**: their roles are read when they sign in, so until then the
+menu still refuses them. They write in the admin UI only: with no password
+they cannot mint an API token, so the `roller-api` CLI and the MCP endpoint
+are not for them.
 
 ## Backup and restore
 

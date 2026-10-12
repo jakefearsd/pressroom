@@ -79,7 +79,11 @@ thread `roller-sso-selfcheck`, started on `ApplicationReadyEvent`, three
 attempts, 2 s then 4 s apart) probes once and only logs: INFO "OIDC discovery
 reachable" on success. It never fails startup.
 
-Logger `roller.sso` goes to `roller.log`. One INFO per sign-in (username,
+Logger `roller.sso` goes to `roller.log` **only** (`additivity="false"` in
+`log4j2.xml`): never the console, so `docker compose logs app` never shows
+it. In the container the file is `/app/logs/roller.log` (the working
+directory's `logs/`, not the `/data` volume, so a recreated container starts
+a fresh one). One INFO per sign-in (username,
 new or existing), one WARN per refusal or failure (code and reason). No
 email, token or secret is ever logged; `WebloggerConfig` masks `secret` keys.
 
@@ -138,7 +142,13 @@ set-password link and password fields and Profile's password change are
 hidden and refused server-side (`User.isSsoBound`). User Admin marks it
 "Signs in with Google", can disable it, and can grant `editor` ("Can write");
 granting `admin` is refused (`userAdmin.error.ssoAdmin`). A promoted reader
-keeps `reader`. `GET /api/v1/admin/users` reports `"sso"`.
+keeps `reader`. **A promoted reader must sign out and in again**: the
+principal's authorities are the roles read at sign-in, `SecurityConfig`
+checks them on `menu.rol` and `/roller-ui/authoring/**`, and promotion
+invalidates no session, so until then the menu answers 403. **It writes in
+the UI only**: it has no password, so Basic sign-in, and with it minting an
+API token (`POST /api/v1/tokens`), is refused, and the API chain ignores
+session cookies. `GET /api/v1/admin/users` reports `"sso"`.
 
 ## Session and cookies
 
