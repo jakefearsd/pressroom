@@ -896,17 +896,14 @@ class MediaApiTest {
         verify(fetcher, never()).fetch(any(), org.mockito.ArgumentMatchers.anyLong(), any());
     }
 
-    @Test
-    void eachImportLogsOneLineWithTheHostAndNeverThePathOrQuery() throws Exception {
-        Weblogger weblogger = mockedWeblogger();
-        Weblog weblog = aWeblog("myblog");
-        RemoteImageFetcher fetcher = mock(RemoteImageFetcher.class);
-        when(fetcher.fetch(SIGNED_URL, 2097152L, null))
-                .thenReturn(new FetchedImage("sunset.jpg", ImageKind.JPEG, JPEG_BYTES));
-        String refusedUrl = "https://Img.Example.com/private/sunset.png?sig=SECRET";
-        when(fetcher.fetch(refusedUrl, 2097152L, null)).thenThrow(new FetchRefusal("The image server took too long."));
-        MediaApi controller = importController(weblogger, weblog, fetcher);
+    /** A step that performs requests against a controller; may throw what MockMvc throws. */
+    @FunctionalInterface
+    private interface Requests {
+        void perform() throws Exception;
+    }
 
+    /** Runs {@code requests} with {@value #IMPORT_LOGGER} captured at INFO and returns its lines. */
+    private static List<String> importLogLines(Requests requests) throws Exception {
         List<String> lines = new ArrayList<>();
         AbstractAppender appender = new AbstractAppender("import-capture", null, null, true, Property.EMPTY_ARRAY) {
             @Override
@@ -920,16 +917,35 @@ class MediaApiTest {
         lc.addAppender(appender, Level.INFO, null);
         ctx.getConfiguration().addLogger(IMPORT_LOGGER, lc);
         ctx.updateLoggers();
-        try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(true)) {
-            mockMvc(controller).perform(importRequest(weblog, "{\"url\":\"" + SIGNED_URL + "\"}"))
-                    .andExpect(status().isCreated());
-            mockMvc(controller).perform(importRequest(weblog, "{\"url\":\"" + refusedUrl + "\"}"))
-                    .andExpect(status().isBadRequest());
+        try {
+            requests.perform();
         } finally {
             ctx.getConfiguration().removeLogger(IMPORT_LOGGER);
             ctx.updateLoggers();
             appender.stop();
         }
+        return lines;
+    }
+
+    @Test
+    void eachImportLogsOneLineWithTheHostAndNeverThePathOrQuery() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        RemoteImageFetcher fetcher = mock(RemoteImageFetcher.class);
+        when(fetcher.fetch(SIGNED_URL, 2097152L, null))
+                .thenReturn(new FetchedImage("sunset.jpg", ImageKind.JPEG, JPEG_BYTES));
+        String refusedUrl = "https://Img.Example.com/private/sunset.png?sig=SECRET";
+        when(fetcher.fetch(refusedUrl, 2097152L, null)).thenThrow(new FetchRefusal("The image server took too long."));
+        MediaApi controller = importController(weblogger, weblog, fetcher);
+
+        List<String> lines = importLogLines(() -> {
+            try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(true)) {
+                mockMvc(controller).perform(importRequest(weblog, "{\"url\":\"" + SIGNED_URL + "\"}"))
+                        .andExpect(status().isCreated());
+                mockMvc(controller).perform(importRequest(weblog, "{\"url\":\"" + refusedUrl + "\"}"))
+                        .andExpect(status().isBadRequest());
+            }
+        });
 
         assertEquals(2, lines.size(), lines.toString());
         for (String line : lines) {
@@ -941,5 +957,46 @@ class MediaApiTest {
         assertTrue(lines.get(0).contains("outcome=created") && lines.get(0).contains("bytes=" + JPEG_BYTES.length),
                 lines.get(0));
         assertTrue(lines.get(1).contains("outcome=refused"), lines.get(1));
+    }
+
+    /**
+     * Criterion 18 says each import logs one line, so an import refused
+     * before any fetch -- uploads off, no url, an alt text too long, a
+     * directory that is not this weblog's -- logs one too, as refused, still
+     * with the host only ("?" when there is no url to take one from).
+     */
+    @Test
+    void anImportRefusedBeforeTheFetchStillLogsOneLine() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        RemoteImageFetcher fetcher = mock(RemoteImageFetcher.class);
+        MediaApi controller = importController(weblogger, weblog, fetcher);
+
+        List<String> lines = importLogLines(() -> {
+            try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(false)) {
+                mockMvc(controller).perform(importRequest(weblog, "{\"url\":\"" + SIGNED_URL + "\"}"))
+                        .andExpect(status().isBadRequest());
+            }
+            try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(true)) {
+                mockMvc(controller).perform(importRequest(weblog, "{\"url\":\" \"}"))
+                        .andExpect(status().isBadRequest());
+                mockMvc(controller).perform(importRequest(weblog,
+                                "{\"url\":\"" + SIGNED_URL + "\",\"altText\":\"" + "a".repeat(256) + "\"}"))
+                        .andExpect(status().isBadRequest());
+                mockMvc(controller).perform(importRequest(weblog,
+                                "{\"url\":\"" + SIGNED_URL + "\",\"directoryId\":\"nope\"}"))
+                        .andExpect(status().isNotFound());
+            }
+        });
+
+        assertEquals(4, lines.size(), lines.toString());
+        for (String line : lines) {
+            assertTrue(line.contains("weblog=myblog") && line.contains("outcome=refused")
+                    && line.contains("bytes=0"), line);
+            assertFalse(line.contains("sunset") || line.contains("SECRET"), line);
+        }
+        assertTrue(lines.get(0).contains("host=img.example.com"), lines.get(0));
+        assertTrue(lines.get(1).contains("host=? "), lines.get(1));
+        verify(fetcher, never()).fetch(any(), org.mockito.ArgumentMatchers.anyLong(), any());
     }
 }

@@ -156,30 +156,26 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
     /**
      * Import an image from a public URL. The fetched bytes are stored through
      * MediaUploads.store, the path a browser upload takes, so every upload rule
-     * applies. One INFO line per import on roller.media.import: weblog, host,
-     * outcome, bytes, ms. Never the path or query, where a signed URL keeps
-     * its credentials.
+     * applies. One INFO line per import on roller.media.import, refusals
+     * before the fetch included: weblog, host, outcome, bytes, ms. Never the
+     * path or query, where a signed URL keeps its credentials.
      */
     @PostMapping("/imports")
     public ResponseEntity<MediaDtos.MediaView> importImage(HttpServletRequest request,
             @RequestBody MediaDtos.MediaImport body) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
-        if (body.url() == null || body.url().isBlank()) {
-            throw ApiException.badRequest("url is required.");
-        }
-        ColumnLimits.requireMaxLength("altText", body.altText(), ColumnLimits.MEDIA_ALT_TEXT);
         MediaFileManager mfm = weblogger.getMediaFileManager();
-        MediaFileDirectory directory = StringUtils.isNotBlank(body.directoryId())
-                ? requireDirectory(request, body.directoryId())
-                : MediaUploads.defaultDirectory(weblog, mfm);
-        if (!WebloggerRuntimeConfig.getBooleanProperty("uploads.enabled")) {
-            throw ApiException.badRequest("File upload is disabled for this site.");
-        }
-
         long started = System.nanoTime();
         String outcome = "error";
         long bytes = 0;
         try {
+            MediaFileDirectory directory;
+            try {
+                directory = importDirectory(request, weblog, body, mfm);
+            } catch (ApiException e) {
+                outcome = "refused";
+                throw e;
+            }
             FetchedImage image = imageFetcher.fetch(body.url(), MediaUploads.maxFileBytes(), body.name());
             bytes = image.size();
             RollerMessages messages = new RollerMessages();
@@ -210,8 +206,31 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
         }
     }
 
+    /**
+     * The checks an import must pass before any network request, in the
+     * order the caller hears about them; the directory to store into when
+     * all pass. Each refusal is an ApiException.
+     */
+    private MediaFileDirectory importDirectory(HttpServletRequest request, Weblog weblog,
+            MediaDtos.MediaImport body, MediaFileManager mfm) throws WebloggerException {
+        if (StringUtils.isBlank(body.url())) {
+            throw ApiException.badRequest("url is required.");
+        }
+        ColumnLimits.requireMaxLength("altText", body.altText(), ColumnLimits.MEDIA_ALT_TEXT);
+        MediaFileDirectory directory = StringUtils.isNotBlank(body.directoryId())
+                ? requireDirectory(request, body.directoryId())
+                : MediaUploads.defaultDirectory(weblog, mfm);
+        if (!WebloggerRuntimeConfig.getBooleanProperty("uploads.enabled")) {
+            throw ApiException.badRequest("File upload is disabled for this site.");
+        }
+        return directory;
+    }
+
     /** The URL's host only, lower-cased; "?" when it has none. URI parsing keeps it to hostname characters. */
     private static String hostOf(String url) {
+        if (StringUtils.isBlank(url)) {
+            return "?";
+        }
         try {
             String host = new URI(url.trim()).getHost();
             return host == null ? "?" : host.toLowerCase(Locale.ROOT);
