@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.Weblogger;
+import org.apache.roller.weblogger.pojos.ReaderComment;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogCategory;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
@@ -162,6 +163,28 @@ public final class WeblogOwnership {
             return page;
         } catch (WebloggerException ex) {
             log.error("Error looking up page by id - {}", id, ex);
+        }
+        return null;
+    }
+
+    /**
+     * The reader comment with this id, but only when its entry belongs to
+     * {@code weblog}.
+     */
+    public static ReaderComment comment(Weblogger weblogger, String id, Weblog weblog) {
+        if (StringUtils.isBlank(id)) {
+            return null;
+        }
+        try {
+            ReaderComment comment = weblogger.getCommentManager().getComment(id);
+            if (comment == null || comment.getEntry() == null
+                    || comment.getEntry().getWebsite() == null
+                    || !comment.getEntry().getWebsite().equals(weblog)) {
+                return null;
+            }
+            return comment;
+        } catch (WebloggerException ex) {
+            log.error("Error looking up comment by id - {}", id, ex);
         }
         return null;
     }

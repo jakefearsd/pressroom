@@ -75,6 +75,16 @@ public final class McpToolCatalog {
                     action("create", "Add a rule from source to target (weblog-relative paths).",
                             "POST " + W + "/redirects"),
                     action("delete", "Delete a rule.", "DELETE " + W + "/redirects/{id}")),
+            tool("comments", "Comments by signed-in readers: list held or published ones, approve or hide them, "
+                    + "delete them, and reply as the token's user.", false,
+                    action("list", "List comments, newest first; filter by status (PENDING, PUBLISHED, HIDDEN) "
+                            + "or entry.", "GET " + W + "/comments"),
+                    action("get", "One comment.", "GET " + W + "/comments/{id}"),
+                    action("update", "Approve (status PUBLISHED) or hide (status HIDDEN) a comment.",
+                            "PATCH " + W + "/comments/{id}"),
+                    action("delete", "Delete a comment and its reply.", "DELETE " + W + "/comments/{id}"),
+                    action("reply", "Reply to a comment as the token's user; the reply is published.",
+                            "POST " + W + "/comments/{id}/replies")),
             tool("audits", "Work lists: entries missing SEO fields, media missing alt text.", true,
                     action("seo", "Entries missing a search description, meta title or featured image, or "
                             + "marked noindex.", "GET " + W + "/audit/seo"),

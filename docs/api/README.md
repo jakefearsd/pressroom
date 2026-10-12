@@ -59,6 +59,7 @@ printf '%s\n' "$PASSWORD" | bin/roller-api auth login \
 - [Media](#media)
 - [Pages](#pages)
 - [Redirects](#redirects)
+- [Comments](#comments)
 - [Audits](#audits)
 - [Site administration](#site-administration)
 - [Maintenance actions](#maintenance-actions)
@@ -576,6 +577,63 @@ being asked for — and every *served* redirect also logs one line to the
 `roller.redirects` logger with the requested URI, referer, and user-agent
 for diagnosis.
 
+## Comments
+
+```
+GET    /api/v1/weblogs/{handle}/comments[?status=&entry=&limit=&offset=]
+GET    /api/v1/weblogs/{handle}/comments/{id}
+PATCH  /api/v1/weblogs/{handle}/comments/{id}
+DELETE /api/v1/weblogs/{handle}/comments/{id}
+POST   /api/v1/weblogs/{handle}/comments/{id}/replies
+```
+
+`POST`-role required: moderation is for the weblog's authors. These are the
+comments written by signed-in readers. A comment of another weblog, or an id
+that does not exist, answers 404. Moderation keeps working when comments are
+switched off on the weblog, so existing comments stay listable and actionable.
+
+`GET` lists newest first, as `{"items": [...], "offset", "limit", "hasMore"}`.
+`status` is `PENDING` (held for approval), `PUBLISHED` or `HIDDEN`; `entry` is
+an entry id of the same weblog (another weblog's entry is a 404); `limit`
+defaults to 50 with a maximum of 200.
+
+**The comment view:** `id`, `entryId`, `entryTitle`, `status`, `body`,
+`created`, `statusChanged`, `authorUserName`, `authorDisplayName`,
+`authorIsOwner` (the author holds a role on this weblog), `replyTo` (the id of
+the comment this answers) and `reply` (the id of its reply, whatever that
+reply's status). An email address or account id is never part of a view.
+`entryTitle` is the entry's stored title, which is stored HTML-escaped, so it is
+returned unchanged. An empty `body` on a `HIDDEN` comment means its author
+deleted it.
+
+```bash
+curl -sS -H "Authorization: Bearer $ROLLER_API_TOKEN" \
+  "https://blog.example.com/api/v1/weblogs/myblog/comments?status=PENDING"
+
+# approve it
+curl -sS -X PATCH -H "Authorization: Bearer $ROLLER_API_TOKEN" \
+  -H 'Content-Type: application/json' -d '{"status": "PUBLISHED"}' \
+  https://blog.example.com/api/v1/weblogs/myblog/comments/COMMENT_ID
+
+# answer it, as the token's user
+curl -sS -H "Authorization: Bearer $ROLLER_API_TOKEN" \
+  -H 'Content-Type: application/json' -d '{"body": "Thanks!"}' \
+  https://blog.example.com/api/v1/weblogs/myblog/comments/COMMENT_ID/replies
+```
+
+`PATCH` accepts only `PUBLISHED` or `HIDDEN`; any other value is a 400.
+`DELETE` removes the comment and its reply (204). A reply is written as the
+token's user, published at once, and answers 201 with its view; a reply the
+service refuses (for example the comment already has one, or the body is empty
+or over 4000 characters) is a 400 naming the refusal code, such as `BAD_REPLY`,
+`EMPTY_BODY`, `BODY_TOO_LONG` or `RATE_LIMITED`.
+
+**Settings.** A weblog's `commentsEnabled` and `commentNotify` (email the
+weblog's admins when a comment is held) are fields of the weblog view and
+`PATCH /api/v1/weblogs/{handle}` (ADMIN token), and an entry's
+`commentsClosed` is a field of the entry view and of entry create and update.
+All three are booleans and cannot be cleared.
+
 ## Audits
 
 ```
@@ -794,6 +852,7 @@ claude mcp add --transport http roller https://blog.example.com/api/mcp \
 | `media` | `list`, `get`, `import`, `update`, `delete`, `list_directories`, `create_directory` |
 | `pages` | `list`, `get`, `create`, `update`, `delete` |
 | `redirects` | `list`, `create`, `delete` |
+| `comments` | `list`, `get`, `update`, `delete`, `reply` |
 | `audits` | `seo`, `media` |
 | `users` | `list`, `create`, `update` |
 | `site_settings` | `get`, `update` |
