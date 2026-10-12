@@ -662,6 +662,29 @@ public abstract class RollerIT {
         return previous;
     }
 
+    /**
+     * Sets {@code site.absoluteurl} from the real Admin Settings page and returns what it
+     * was before, mirroring {@link #setGlobalFlag}'s contract for a string-typed runtime
+     * property (that helper only covers checkboxes).
+     *
+     * <p>Global like every setting on that page, so the caller holds {@link #GLOBAL_CONFIG}
+     * exclusively and puts the old value back. Two classes need it: {@code VirtualHostIT}
+     * (the control-plane redirect has to name a site host) and {@code SsoSignInIT} (the
+     * sign-in callback is built from this URL; with it blank, sign-in answers
+     * {@code sso=unavailable}). Requires an administrator session.
+     *
+     * @param value the new Absolute URL; {@code null} or empty clears it
+     * @return the value it had on arrival
+     */
+    protected String setSiteAbsoluteUrl(String value) {
+        openPath(GLOBAL_CONFIG_PATH);
+        String previous = $("input[name='site.absoluteurl']").should(exist).getValue();
+        $("input[name='site.absoluteurl']").setValue(value == null ? "" : value);
+        clickAndAwaitNewPage($("#saveButton"));
+        $("#messages").should(exist);
+        return previous;
+    }
+
     /** GET with no cookies, i.e. exactly what an anonymous reader sends. */
     protected static String getAnonymously(String url) {
         try {

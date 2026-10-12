@@ -52,19 +52,45 @@ Five mechanisms in `it-selenium/src/test/script/`:
   `aSweepNeverTouchesAStaleAppInAnotherNamespace`. Never set either variable
   for a real run: its leftovers would be invisible to the next real sweep.
 
-Per run: container `roller-it-postgres-<run id>` (no fixed-name 409 needing
-`docker rm`); `pg-stop` passes `<removeVolumes>true</removeVolumes>` (the
+Per run: containers `roller-it-postgres-<run id>` and
+`roller-it-keycloak-<run id>` (no fixed-name 409 needing `docker rm`); the
+supervisor is handed both, and the sweep looks under both prefixes (the
+Keycloak one is derived from `IT_CONTAINER_PREFIX`, never defaulted on its
+own, so a test's sweep cannot reach a real run's Keycloak);
+`pg-stop` passes `<removeVolumes>true</removeVolumes>` (the
 default leaked an anonymous volume even on success: `postgres:18` declares
 `VOLUME /var/lib/postgresql`); pidfiles, logs and work dirs, so a leaked
 run's `app.log`/`app.pid` survive; `it-work/app-latest.log` symlinks the
 newest.
 
+**Keycloak (reader sign-in).** `pg-start` starts a second image,
+`quay.io/keycloak/keycloak:26.0` (`it.keycloak.image`), in dev mode on the
+reserved port `it.kc.port`, importing realm `roller-it` from
+`it-selenium/src/test/resources/keycloak/roller-it-realm.json`: a confidential
+client `roller-it` and five users (`reader-it`, `unverified-it`, `noname-it`,
+plus `writer-it` and `disabled-it`, which only the promote and disable tests
+change). The wait is the realm's discovery document, which answers only
+after the import (about 15 s). `roller-it.properties` points `sso.oidc.*` at
+`http://localhost:${it.kc.port}` (localhost, because Keycloak takes its
+issuer from the Host it is asked on), so **SSO is on for the whole suite**
+and every login page shows "Sign in with Keycloak". The client secret and
+passwords are test-only values, kept in those two files. `VERIFY_PROFILE` is
+disabled in the realm, or Keycloak 24+ stops a user with no name at an
+"Update Account Information" form. `SsoSignInIT` drives it at both context
+paths. The sign-in callback is built from the Absolute URL, so the class
+sets `site.absoluteurl` to `baseUrl()` (`RollerIT.setSiteAbsoluteUrl`) once,
+restores it in `@AfterAll`, and holds `GLOBAL_CONFIG` **write** for the
+whole class, as `VirtualHostIT` does: anything that writes
+`site.absoluteurl` takes that lock.
+
 `RollerPostgresContainer` (the unit suite's shared, never-stopped container)
 adds a JVM shutdown hook behind Ryuk, one process that can be missing.
 
 Tests (fast suite, not `-Pit`): `ItHarnessLeakTest` (real scripts, fake
-processes), `ItHarnessPomTest` (`removeVolumes`, per-run names, plugin order
-putting `app-stop` before `pg-stop`), `RollerPostgresContainerTest`.
+processes, and a fake `docker` on `PATH` for the container passes),
+`ItHarnessPomTest` (`removeVolumes`, every container named per run and handed
+to the supervisor, plugin order putting `app-stop` before `pg-stop`),
+`RollerPostgresContainerTest`.
 
 ## Permuting global runtime flags
 
@@ -129,7 +155,8 @@ a race:
   (`CUSTOM_THEMES_ALLOWED`), `ThemeMatrixIT` (`uploads.enabled`), `ApiIT`,
   `VirtualHostIT`, and `McpIT` (`uploads.enabled`, on its one import-refusal
   method only; its two weblog-creating methods hold it **read**, the rest
-  none). One shared app instance holds
+  none), and by `SsoSignInIT`, which sets `site.absoluteurl` through
+  `setSiteAbsoluteUrl` as `VirtualHostIT` also does. One shared app instance holds
   one set of runtime properties, so two overlapping would each see the
   other's flag. **A seventh `setGlobalFlag` class must take this lock** —
   nothing enforces it,

@@ -100,9 +100,6 @@ class VirtualHostIT extends RollerIT {
 
     private static final String VHOST = "vhost.example.com";
 
-    /** The Weblog Settings admin path, where a custom domain is edited. */
-    private static final String GLOBAL_CONFIG_PATH = "/roller-ui/admin/globalConfig.rol";
-
     /** Rendered on the entry edit page only once the entry is actually published. */
     private static final String PERMALINK = "#entry_bean_permalink";
 
@@ -693,24 +690,6 @@ class VirtualHostIT extends RollerIT {
         $("#pageEditForm button[type='submit']").click();
         $("#messages").should(exist);
         BrowserHealth.current().settle();
-    }
-
-    // ------------------------------------------------------- global config
-
-    /**
-     * Sets {@code site.absoluteurl} from the real Admin Settings page and
-     * returns what it was before, mirroring {@link RollerIT#setGlobalFlag}'s
-     * contract but for a string-typed runtime property (that helper only
-     * covers checkboxes).
-     */
-    private String setSiteAbsoluteUrl(String value) {
-        openPath(GLOBAL_CONFIG_PATH);
-        String previous = $("input[name='site.absoluteurl']").should(exist).getValue();
-        $("input[name='site.absoluteurl']").setValue(value == null ? "" : value);
-        $("#saveButton").click();
-        $("#messages").should(exist);
-        BrowserHealth.current().settle();
-        return previous;
     }
 
     private static String nonce() {

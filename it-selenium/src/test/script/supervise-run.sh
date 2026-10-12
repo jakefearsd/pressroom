@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Ties one IT run's processes and container to the lifetime of the Maven build
+# Ties one IT run's processes and containers to the lifetime of the Maven build
 # that owns them, rather than to the build reaching post-integration-test.
 #
 # WHY THIS EXISTS. Failsafe's split-goal design already protects cleanup from
@@ -19,7 +19,9 @@
 # would add a platform dependency and still need this polling loop underneath.
 # setsid plus an ignored SIGINT is portable to anything with a POSIX shell.
 #
-# Usage: supervise-run.sh <run-id> <container-name> <work-dir>
+# Usage: supervise-run.sh <run-id> <container-name> <work-dir> [<container-name>...]
+# Containers after <work-dir> are the run's others (Keycloak, for the SSO
+# tests); every one named is removed when the build dies.
 # <work-dir> is used only for this run's own log file; the chromedriver
 # attribution record lives elsewhere (IT_RECORD_DIR, see it-harness-lib.sh)
 # precisely because <work-dir> is target/, which `mvn clean` deletes.
@@ -39,6 +41,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUN_ID="$1"
 CONTAINER="${2:-}"
 WORK_DIR="${3:-.}"
+# The detached child below is re-invoked with its marker properties appended
+# after these, so anything starting -D is a marker, not a container.
+CONTAINERS=()
+if [ -n "$CONTAINER" ]; then
+    CONTAINERS+=("$CONTAINER")
+fi
+for arg in "${@:4}"; do
+    case "$arg" in
+        -D*|"") ;;
+        *) CONTAINERS+=("$arg") ;;
+    esac
+done
 
 OWNER="${IT_OWNER_STAMP:-$(it_owner_stamp "$PPID")}"
 POLL="${IT_POLL_SECONDS:-3}"
@@ -73,7 +87,7 @@ fi
 trap '' INT HUP
 
 OWNER_PID="${OWNER%%@*}"
-echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] supervising run $RUN_ID, build pid $OWNER_PID, container ${CONTAINER:-none}"
+echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] supervising run $RUN_ID, build pid $OWNER_PID, containers ${CONTAINERS[*]:-none}"
 
 # The record is created (with its owner header) as soon as we start watching,
 # not lazily on first sighting of a chromedriver -- a run that dies before
@@ -122,7 +136,11 @@ if [ -f "$RECORD" ]; then
     rm -f "$RECORD"
 fi
 
-removed="$(it_remove_container "$CONTAINER")"
-[ -n "$removed" ] && echo "  $removed"
+for name in ${CONTAINERS[@]+"${CONTAINERS[@]}"}; do
+    removed="$(it_remove_container "$name")"
+    if [ -n "$removed" ]; then
+        echo "  $removed"
+    fi
+done
 
 echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] run $RUN_ID cleaned up"

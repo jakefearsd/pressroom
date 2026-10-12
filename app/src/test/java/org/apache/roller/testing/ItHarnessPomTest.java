@@ -101,6 +101,36 @@ class ItHarnessPomTest {
     }
 
     /**
+     * Every container the build starts -- PostgreSQL, and Keycloak for the
+     * SSO tests -- is named per run AND handed to the supervisor. pg-start
+     * starts every image in the plugin's configuration, so a second image
+     * added with a fixed name collides across concurrent runs, and one the
+     * supervisor is not told about leaks whenever the build dies before
+     * pg-stop: the supervisor removes only what it was given.
+     */
+    @Test
+    void everyContainerIsNamedPerRunAndSupervised() {
+        List<String> supervised = argumentsOf(execution("org.apache.maven.plugins",
+                "maven-antrun-plugin", "it-supervisor"));
+        List<Element> images = children(plugin("io.fabric8", "docker-maven-plugin"),
+                "configuration", "images", "image");
+        assertTrue(images.size() >= 1, "no images under docker-maven-plugin");
+        for (Element image : images) {
+            String alias = childText(image, "alias");
+            String pattern = childText(children(image, "run").get(0), "containerNamePattern");
+            assertNotNull(pattern, alias + " has no containerNamePattern: the plugin would name it alone");
+            assertTrue(pattern.matches("\\$\\{[^}]+}"),
+                    alias + "'s container name must be one property the supervisor can be given, was: " + pattern);
+            String property = pattern.substring(2, pattern.length() - 1);
+            assertTrue(property(property).contains("${it.run.id}"),
+                    property + " must be per-run (contain ${it.run.id}), was: " + property(property));
+            assertTrue(supervised.contains(pattern),
+                    "the supervisor is not told about " + alias + "'s container (" + pattern
+                            + "), so a build that dies before pg-stop leaks it: " + supervised);
+        }
+    }
+
+    /**
      * Cleanup that only runs in post-integration-test is cleanup that does not
      * run when an infrastructure step in pre-integration-test fails, or on a
      * Ctrl-C. The sweep (reaps what earlier runs left) and the supervisor

@@ -310,6 +310,71 @@ class ItHarnessLeakTest {
                 "the supervisor had nothing to reap but killed something anyway:\n" + log);
     }
 
+    // ------------------------------------------------------------ containers
+
+    /**
+     * A run owns two containers since the SSO tests brought Keycloak in, and
+     * the sweep must treat the second exactly like the first: an aborted run's
+     * Keycloak goes, a concurrent live run's stays. A Keycloak container under
+     * a name the sweep did not look for would leak on every aborted run; one
+     * whose run id it misread would be removed from under a live run.
+     */
+    @Test
+    void sweepRemovesEveryContainerOfAStaleRunAndNoneOfALiveOne() throws Exception {
+        Process owner = spawn(List.of("sleep", "300"));
+        String liveRun = runId("live");
+        spawnMarked(liveRun, ownerToken(owner.pid()));
+        String staleRun = runId("stale");
+        Path docker = fakeDocker(postgresContainer(staleRun), keycloakContainer(staleRun),
+                postgresContainer(liveRun), keycloakContainer(liveRun));
+
+        Result result = runSweepAgainst(docker, runId("current"));
+
+        assertEquals(0, result.exit(), result.output());
+        List<String> removed = removedContainers(docker);
+        assertTrue(removed.contains(keycloakContainer(staleRun)),
+                "the sweep left a stale run's Keycloak container: " + removed + "\n" + result.output());
+        assertTrue(removed.contains(postgresContainer(staleRun)),
+                "the sweep left a stale run's postgres container: " + removed + "\n" + result.output());
+        assertFalse(removed.contains(keycloakContainer(liveRun)),
+                "the sweep removed a LIVE run's Keycloak container: " + removed + "\n" + result.output());
+        assertFalse(removed.contains(postgresContainer(liveRun)),
+                "the sweep removed a LIVE run's postgres container: " + removed + "\n" + result.output());
+        assertTrue(result.output().contains(keycloakContainer(staleRun)),
+                "the sweep must name what it removed:\n" + result.output());
+    }
+
+    /**
+     * The supervisor removes every container it is given once the build dies,
+     * not only the first: a build killed between pg-start and pg-stop would
+     * otherwise leave its Keycloak running, and nothing but the next sweep
+     * would ever notice.
+     */
+    @Test
+    void supervisorRemovesEveryContainerItWasGivenWhenTheBuildDies() throws Exception {
+        Process owner = spawn(List.of("sleep", "300"));
+        String runId = runId("containers");
+        Path docker = fakeDocker(postgresContainer(runId), keycloakContainer(runId));
+
+        Map<String, String> env = new HashMap<>(fakeDockerEnvironment(docker));
+        env.put("IT_OWNER_STAMP", ownerToken(owner.pid()));
+        env.put("IT_POLL_SECONDS", "1");
+        env.put("IT_RECORD_DIR", recordDir().toString());
+        Result start = run(List.of(SUPERVISE.toString(), runId, postgresContainer(runId), work.toString(),
+                keycloakContainer(runId)), env, Duration.ofSeconds(30));
+        assertEquals(0, start.exit(), start.output());
+        assertTrue(removedContainers(docker).isEmpty(),
+                "the supervisor removed a container while its build was still alive");
+
+        owner.destroyForcibly();
+        assertTrue(owner.waitFor(30, TimeUnit.SECONDS), "the fake build did not die");
+
+        String log = awaitFileContaining(work.resolve("supervisor-" + runId + ".log"), "cleaned up");
+        List<String> removed = removedContainers(docker);
+        assertTrue(removed.contains(postgresContainer(runId)), "postgres container left behind:\n" + log);
+        assertTrue(removed.contains(keycloakContainer(runId)), "Keycloak container left behind:\n" + log);
+    }
+
     // ------------------------------------------------------ chromedriver records
 
     /**
@@ -527,6 +592,79 @@ class ItHarnessLeakTest {
         env.put("IT_WORK_DIR", work.toString());
         env.put("IT_RECORD_DIR", recordDir.toString());
         return run(List.of(SWEEP.toString(), currentRunId), env, Duration.ofMinutes(1));
+    }
+
+    /** A sweep that finds {@code docker} on its PATH ahead of the real one. */
+    private Result runSweepAgainst(Path docker, String currentRunId) throws Exception {
+        Map<String, String> env = new HashMap<>(fakeDockerEnvironment(docker));
+        env.put("IT_WORK_DIR", work.toString());
+        env.put("IT_RECORD_DIR", recordDir().toString());
+        return run(List.of(SWEEP.toString(), currentRunId), env, Duration.ofMinutes(1));
+    }
+
+    // ------------------------------------------------------ container fixtures
+
+    /** This test's postgres container for a run, under its own IT_CONTAINER_PREFIX (see spawn). */
+    private String postgresContainer(String runId) {
+        return namespace.replace('.', '-') + "-postgres-" + runId;
+    }
+
+    /**
+     * This test's Keycloak container for a run: the postgres prefix with its role
+     * swapped, which is how it-harness-lib.sh derives IT_KC_CONTAINER_PREFIX and how
+     * it-selenium/pom.xml names the real one (roller-it-keycloak-run id).
+     */
+    private String keycloakContainer(String runId) {
+        return namespace.replace('.', '-') + "-keycloak-" + runId;
+    }
+
+    /**
+     * A stand-in for the docker CLI, holding {@code containers} and nothing else: the
+     * "daemon" is a file of names, {@code ps --filter name=REGEX} greps it, and
+     * {@code rm} deletes the line and appends the name to {@code removed}. The harness
+     * only ever lists names and removes by name, so that is the whole contract. No real
+     * container is created, so these tests need no Docker and cannot touch a real run.
+     *
+     * @return the fake's directory, holding {@code bin/docker}
+     */
+    private Path fakeDocker(String... containers) throws IOException {
+        Path dir = Files.createDirectories(work.resolve("fake-docker"));
+        Path bin = Files.createDirectories(dir.resolve("bin"));
+        Files.write(dir.resolve("containers"), List.of(containers), StandardCharsets.UTF_8);
+        Files.writeString(dir.resolve("removed"), "", StandardCharsets.UTF_8);
+        Path docker = bin.resolve("docker");
+        Files.writeString(docker, String.join("\n",
+                "#!/usr/bin/env bash",
+                "dir=\"$(cd \"$(dirname \"$0\")/..\" && pwd)\"",
+                "case \"${1:-}\" in",
+                "    ps)",
+                "        filter=''",
+                "        while [ $# -gt 0 ]; do",
+                "            if [ \"$1\" = --filter ]; then filter=\"${2#name=}\"; shift; fi",
+                "            shift",
+                "        done",
+                "        grep -E -- \"$filter\" \"$dir/containers\" || true",
+                "        ;;",
+                "    rm)",
+                "        name=\"${!#}\"",
+                "        grep -vxF -- \"$name\" \"$dir/containers\" > \"$dir/containers.next\" || true",
+                "        mv \"$dir/containers.next\" \"$dir/containers\"",
+                "        printf '%s\\n' \"$name\" >> \"$dir/removed\"",
+                "        ;;",
+                "esac",
+                ""), StandardCharsets.UTF_8);
+        Files.setPosixFilePermissions(docker, PosixFilePermissions.fromString("rwx------"));
+        return dir;
+    }
+
+    private static Map<String, String> fakeDockerEnvironment(Path docker) {
+        return Map.of("PATH", docker.resolve("bin") + ":" + System.getenv("PATH"));
+    }
+
+    private static List<String> removedContainers(Path docker) throws IOException {
+        return Files.readAllLines(docker.resolve("removed"), StandardCharsets.UTF_8).stream()
+                .filter(line -> !line.isBlank())
+                .toList();
     }
 
     /**

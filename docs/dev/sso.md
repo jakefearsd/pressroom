@@ -165,4 +165,5 @@ provider. Sign-in changes the session id.
 
 Unit tests sit beside each class; `SsoLoginWiringTest` drives the whole
 start-authorize-callback round trip with a signed ID token.
-Browser ITs use Keycloak 26 in `it-selenium`, see `browser-its.md`.
+Browser ITs: `SsoSignInIT`, against Keycloak 26 in `it-selenium`, at both
+context paths; see `browser-its.md`, "The IT harness cleans up by identity".

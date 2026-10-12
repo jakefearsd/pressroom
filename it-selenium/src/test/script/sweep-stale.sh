@@ -141,20 +141,24 @@ fi
 # Named <prefix>-<run id>, so a container is stale exactly when no process of
 # its run is still alive. The bare legacy name (no run id) predates per-run
 # naming and can only be a corpse -- it is also the "409 name conflict on the
-# next run" that CLAUDE.md used to tell operators to clear by hand.
+# next run" that CLAUDE.md used to tell operators to clear by hand. A run owns
+# two containers, postgres and Keycloak, each under its own prefix (see
+# IT_KC_CONTAINER_PREFIX in it-harness-lib.sh).
 if command -v docker >/dev/null 2>&1; then
-    for name in $(docker ps -a --filter "name=^${IT_CONTAINER_PREFIX}" --format '{{.Names}}' 2>/dev/null || true); do
-        [ "$name" = "${IT_CONTAINER_PREFIX}-${CURRENT_RUN}" ] && continue
-        runid="${name#"${IT_CONTAINER_PREFIX}"}"
-        runid="${runid#-}"
-        if [ -n "$runid" ] && it_run_is_live "$runid"; then
-            continue
-        fi
-        removed="$(it_remove_container "$name")"
-        if [ -n "$removed" ]; then
-            note "  $removed"
-            REAPED=$(( REAPED + 1 ))
-        fi
+    for prefix in "$IT_CONTAINER_PREFIX" "$IT_KC_CONTAINER_PREFIX"; do
+        for name in $(docker ps -a --filter "name=^${prefix}" --format '{{.Names}}' 2>/dev/null || true); do
+            [ "$name" = "${prefix}-${CURRENT_RUN}" ] && continue
+            runid="${name#"${prefix}"}"
+            runid="${runid#-}"
+            if [ -n "$runid" ] && it_run_is_live "$runid"; then
+                continue
+            fi
+            removed="$(it_remove_container "$name")"
+            if [ -n "$removed" ]; then
+                note "  $removed"
+                REAPED=$(( REAPED + 1 ))
+            fi
+        done
     done
 fi
 

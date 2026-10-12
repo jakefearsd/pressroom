@@ -56,6 +56,17 @@ IT_SUPERVISOR_PROP="-D${IT_NAMESPACE}.supervisor="
 # real run's container.
 IT_CONTAINER_PREFIX="${IT_CONTAINER_PREFIX:-roller-it-postgres}"
 
+# A run's second container, the Keycloak that SsoSignInIT signs readers in
+# through: <this prefix>-<run id>, the postgres prefix with its role swapped
+# (roller-it-keycloak by default, matching it.kc.container-alias). DERIVED, never
+# defaulted on its own: ItHarnessLeakTest overrides IT_CONTAINER_PREFIX alone,
+# and an independent default would hand its sweeps the real prefix -- from
+# another namespace a live run looks unclaimed, so a test would remove that
+# run's Keycloak mid-suite. The derivation needs IT_CONTAINER_PREFIX to end in
+# -postgres, as both the real and the test values do; otherwise one prefix
+# would begin with the other and the postgres pass would misread its run id.
+IT_KC_CONTAINER_PREFIX="${IT_CONTAINER_PREFIX%-postgres}-keycloak"
+
 # ---------------------------------------------------------------- ownership
 
 # it_owner_stamp <pid> -> "<pid>@<start time, punctuation stripped>"

@@ -78,6 +78,19 @@ limitations under the License.
         <it.db.container-alias>roller-it-postgres</it.db.container-alias>
         <it.postgres.image>postgres:18</it.postgres.image>
 
+        <!-- The OIDC provider SsoSignInIT signs readers in through. It joins
+             PostgreSQL under docker-maven-plugin (pg-start starts every image
+             below, pg-stop stops and removes every one), imports the realm in
+             src/test/resources/keycloak/roller-it-realm.json, and listens on the
+             reserved ${it.kc.port}; roller-it.properties points the app's
+             sso.oidc.* at it, so SSO is on for the whole IT suite.
+
+             The alias must be what it-harness-lib.sh derives from the
+             postgres prefix (IT_KC_CONTAINER_PREFIX), or the sweep cannot
+             find a container an aborted run left behind. -->
+        <it.keycloak.image>quay.io/keycloak/keycloak:26.0</it.keycloak.image>
+        <it.kc.container-alias>roller-it-keycloak</it.kc.container-alias>
+
         <!-- The bare context segment the app under test is deployed under.
              EMPTY = the root, which is what application.properties now ships
              (server.servlet.context-path=/). The suite must track the shipped
@@ -162,6 +175,7 @@ limitations under the License.
         <it.app.pidfile>${it.work.dir}/app-${it.run.id}.pid</it.app.pidfile>
         <it.app.log>${it.work.dir}/app-${it.run.id}.log</it.app.log>
         <it.db.container-name>${it.db.container-alias}-${it.run.id}</it.db.container-name>
+        <it.kc.container-name>${it.kc.container-alias}-${it.run.id}</it.kc.container-name>
     </properties>
 
     <!-- A property alone would not move httpclient5: it arrives transitively via
@@ -277,6 +291,7 @@ limitations under the License.
                             <portNames>
                                 <portName>it.db.port</portName>
                                 <portName>it.http.port</portName>
+                                <portName>it.kc.port</portName>
                             </portNames>
                         </configuration>
                     </execution>
@@ -341,6 +356,7 @@ limitations under the License.
                                     <arg value="${it.run.id}"/>
                                     <arg value="${it.db.container-name}"/>
                                     <arg value="${it.work.dir}"/>
+                                    <arg value="${it.kc.container-name}"/>
                                 </exec>
                             </target>
                         </configuration>
@@ -400,6 +416,41 @@ limitations under the License.
                                         </ports>
                                     </tcp>
                                     <time>60000</time>
+                                </wait>
+                            </run>
+                        </image>
+                        <!-- Keycloak for SsoSignInIT; modelled on Wikantik's SSO IT
+                             module. Named per run like postgres, and handed to the
+                             supervisor, so an aborted run cannot leak it. The image
+                             declares no VOLUME and the realm is a read-only bind, so
+                             pg-stop's removeVolumes leaves nothing behind for it
+                             either. Waited on through the realm's own discovery
+                             document: that answers only once the import is done,
+                             which a port or health check does not prove. -->
+                        <image>
+                            <alias>${it.kc.container-alias}</alias>
+                            <name>${it.keycloak.image}</name>
+                            <run>
+                                <containerNamePattern>${it.kc.container-name}</containerNamePattern>
+                                <cmd>start-dev --import-realm --http-port=8080</cmd>
+                                <env>
+                                    <KC_HEALTH_ENABLED>true</KC_HEALTH_ENABLED>
+                                </env>
+                                <ports>
+                                    <port>${it.kc.port}:8080</port>
+                                </ports>
+                                <volumes>
+                                    <bind>
+                                        <volume>${project.basedir}/src/test/resources/keycloak:/opt/keycloak/data/import:ro</volume>
+                                    </bind>
+                                </volumes>
+                                <wait>
+                                    <http>
+                                        <url>http://localhost:${it.kc.port}/realms/roller-it/.well-known/openid-configuration</url>
+                                        <method>GET</method>
+                                        <status>200</status>
+                                    </http>
+                                    <time>120000</time>
                                 </wait>
                             </run>
                         </image>

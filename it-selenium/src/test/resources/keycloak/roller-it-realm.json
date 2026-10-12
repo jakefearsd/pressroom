@@ -1,0 +1,92 @@
+{
+  "realm": "roller-it",
+  "attributes": {
+    "_comment": "Test fixture for SsoSignInIT (mvn verify -Pit): the realm Keycloak imports when the IT run starts its throwaway container (start-dev --import-realm, it-selenium/pom.xml). The client secret and every user password in this file are TEST-ONLY values: they protect nothing but a container that lives for one IT run on localhost, and must never be used anywhere real. The secret is repeated in roller-it.properties (sso.oidc.client.secret); change the two together. This sits in the realm's attributes because Keycloak refuses an unknown top-level field. VERIFY_PROFILE is disabled because Keycloak 24+ requires a first and last name by default and would stop noname-it at an Update Account Information form, which is exactly the claim-less sign-in that user exists to test. reader-it is never modified by a test; writer-it (promoted) and disabled-it (disabled) exist so the two tests that change an account cannot leak that change into the others."
+  },
+  "enabled": true,
+  "sslRequired": "none",
+  "verifyEmail": false,
+  "requiredActions": [
+    {
+      "alias": "VERIFY_PROFILE",
+      "name": "Verify Profile",
+      "providerId": "VERIFY_PROFILE",
+      "enabled": false,
+      "defaultAction": false,
+      "priority": 90,
+      "config": {}
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "roller-it",
+      "name": "Roller browser ITs",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "b99429513643428e10a1129cdff2a7122cc644fd625ae62b",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["*"],
+      "webOrigins": ["*"]
+    }
+  ],
+  "users": [
+    {
+      "username": "reader-it",
+      "enabled": true,
+      "email": "reader-it@example.com",
+      "emailVerified": true,
+      "firstName": "Ivy",
+      "lastName": "Reader",
+      "credentials": [
+        { "type": "password", "value": "reader-it-password", "temporary": false }
+      ]
+    },
+    {
+      "username": "unverified-it",
+      "enabled": true,
+      "email": "unverified-it@example.com",
+      "emailVerified": false,
+      "firstName": "Una",
+      "lastName": "Unverified",
+      "credentials": [
+        { "type": "password", "value": "unverified-it-password", "temporary": false }
+      ]
+    },
+    {
+      "username": "noname-it",
+      "enabled": true,
+      "email": "noname-it@example.com",
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "noname-it-password", "temporary": false }
+      ]
+    },
+    {
+      "username": "writer-it",
+      "enabled": true,
+      "email": "writer-it@example.com",
+      "emailVerified": true,
+      "firstName": "Wren",
+      "lastName": "Writer",
+      "credentials": [
+        { "type": "password", "value": "writer-it-password", "temporary": false }
+      ]
+    },
+    {
+      "username": "disabled-it",
+      "enabled": true,
+      "email": "disabled-it@example.com",
+      "emailVerified": true,
+      "firstName": "Dana",
+      "lastName": "Disabled",
+      "credentials": [
+        { "type": "password", "value": "disabled-it-password", "temporary": false }
+      ]
+    }
+  ]
+}
