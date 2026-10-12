@@ -36,7 +36,8 @@ public final class EntryDtos {
             Instant pubTime, Instant updateTime, String permalink,
             String metaTitle, String searchDescription, String canonicalUrl,
             Boolean noindex, String featuredImageId, String ogImageId,
-            String jsonLdType, Double geoLatitude, Double geoLongitude) {
+            String jsonLdType, Double geoLatitude, Double geoLongitude,
+            Instant eventStart, Instant eventEnd, String eventLocation) {
     }
 
     public record EntryPage(List<EntryView> items, int offset, int limit, boolean hasMore) {
@@ -85,7 +86,10 @@ public final class EntryDtos {
                 entry.getOgImageId(),
                 entry.getJsonLdType() == null ? null : entry.getJsonLdType().name(),
                 entry.getGeoLatitude(),
-                entry.getGeoLongitude());
+                entry.getGeoLongitude(),
+                instant(entry.getEventStart()),
+                instant(entry.getEventEnd()),
+                entry.getEventLocation());
     }
 
     private static Instant instant(Timestamp ts) {
@@ -168,7 +172,14 @@ public final class EntryDtos {
                     + "the place's geo; it also centres the entry's [map].")
             Double geoLatitude,
             @Schema(description = "Longitude in decimal degrees, -180 to 180.")
-            Double geoLongitude) {
+            Double geoLongitude,
+            @Schema(description = "With EVENT: the start, wall-clock time in the weblog's zone, "
+                    + "for example 2026-08-02T19:30.")
+            String eventStart,
+            @Schema(description = "The end, in the same form; not before eventStart.")
+            String eventEnd,
+            @Schema(description = "The venue's name.")
+            String eventLocation) {
     }
 
     /**
@@ -249,6 +260,32 @@ public final class EntryDtos {
         }
         if (write.geoLongitude() != null) {
             entry.setGeoLongitude(requireOnTheGlobe("geoLongitude", write.geoLongitude(), MAX_LONGITUDE));
+        }
+        if (write.eventStart() != null) {
+            entry.setEventStart(eventTime("eventStart", write.eventStart(), weblog));
+        }
+        if (write.eventEnd() != null) {
+            entry.setEventEnd(eventTime("eventEnd", write.eventEnd(), weblog));
+        }
+        if (write.eventLocation() != null) {
+            ColumnLimits.requireMaxLength("eventLocation", write.eventLocation(), ColumnLimits.EVENT_LOCATION);
+            entry.setEventLocation(write.eventLocation());
+        }
+        if (EntryFieldRules.endsBeforeStart(entry.getEventStart(), entry.getEventEnd())) {
+            throw ApiException.badRequest("eventEnd must not be before eventStart.");
+        }
+    }
+
+    /** A blank value is refused, not read as "remove": removing is clear's job. */
+    private static Timestamp eventTime(String field, String raw, Weblog weblog) {
+        String detail = field + " must be a wall-clock time in the weblog's zone, for example 2026-08-02T19:30.";
+        if (raw.isBlank()) {
+            throw ApiException.badRequest(detail);
+        }
+        try {
+            return EntryFieldRules.parseEventTime(raw, weblog.getTimeZoneInstance());
+        } catch (DateTimeParseException e) {
+            throw ApiException.badRequest(detail, e);
         }
     }
 

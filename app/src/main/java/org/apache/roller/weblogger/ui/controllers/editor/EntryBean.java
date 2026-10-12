@@ -18,7 +18,6 @@
 
 package org.apache.roller.weblogger.ui.controllers.editor;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.commons.text.StringEscapeUtils;
@@ -31,7 +30,6 @@ import org.apache.roller.weblogger.ui.controllers.EntryFieldRules;
 import org.apache.roller.weblogger.util.Utilities;
 
 import java.sql.Timestamp;
-import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -68,13 +66,15 @@ public class EntryBean {
 
     // Wave 3 travel structured data, edited in the SEO card.
     // jsonLdType holds a JsonLdType enum name, like status holds a PubStatus
-    // name; the timestamps are carried as-is and the form binds them through
-    // the eventStartLocal/eventEndLocal datetime-local accessors below.
+    // name; the form binds event times as text (eventStartLocal/eventEndLocal) which
+    // the controller reads in the weblog's zone into eventStart/eventEnd.
     private String jsonLdType = null;
     private Double geoLatitude = null;
     private Double geoLongitude = null;
     private Timestamp eventStart = null;
     private Timestamp eventEnd = null;
+    private String eventStartLocal = null;
+    private String eventEndLocal = null;
     private String eventLocation = null;
     
     
@@ -263,30 +263,27 @@ public class EntryBean {
     }
 
     /**
-     * {@link #getEventStart()} as an {@code <input type="datetime-local">}
-     * value, or "" when unset. This -- not the Timestamp property -- is what
-     * the SEO card binds, because the two formats do not meet: a
-     * datetime-local field submits {@code 2026-08-02T19:30} while Spring's
-     * default String-to-Timestamp conversion goes through
-     * {@code Timestamp.valueOf}, which demands {@code 2026-08-02 19:30:00} and
-     * throws on the browser's format.
+     * The text of the event-start field: the zone-formatted time on a loaded
+     * entry, or exactly what the author submitted. The controller parses it
+     * in the weblog's zone (see {@code EntryEditController}); a value that
+     * will not parse stays here so the form redisplays it with its error.
      */
     public String getEventStartLocal() {
     // CPD-ON
-        return formatLocalInput(eventStart);
+        return eventStartLocal;
     }
 
     public void setEventStartLocal(String value) {
-        this.eventStart = parseLocalInput(value);
+        this.eventStartLocal = value;
     }
 
     /** {@link #getEventEndLocal} counterpart of {@link #getEventStartLocal}. */
     public String getEventEndLocal() {
-        return formatLocalInput(eventEnd);
+        return eventEndLocal;
     }
 
     public void setEventEndLocal(String value) {
-        this.eventEnd = parseLocalInput(value);
+        this.eventEndLocal = value;
     }
 
     /**
@@ -297,37 +294,6 @@ public class EntryBean {
      */
     private static final DateTimeFormatter DATETIME_LOCAL =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm", Locale.ROOT);
-
-    /**
-     * A Timestamp as {@code yyyy-MM-ddTHH:mm}, the shape a datetime-local
-     * input round-trips; "" for null so the field renders empty rather than
-     * with the word "null".
-     */
-    private static String formatLocalInput(Timestamp value) {
-        if (value == null) {
-            return "";
-        }
-        return value.toLocalDateTime().format(DATETIME_LOCAL);
-    }
-
-    /**
-     * A datetime-local value as a Timestamp in the server's default zone (the
-     * field is a wall-clock instant with no offset, and so is the column).
-     * Blank means "cleared". An unparseable value also clears rather than
-     * throwing: the input type keeps browsers honest, and a binding exception
-     * on a hand-crafted POST would lose the author's whole entry.
-     */
-    private static Timestamp parseLocalInput(String value) {
-        if (StringUtils.isBlank(value)) {
-            return null;
-        }
-        try {
-            return Timestamp.valueOf(LocalDateTime.parse(value.trim()));
-        } catch (DateTimeParseException e) {
-            log.debug("Ignoring unparseable event date '{}'", value);
-            return null;
-        }
-    }
 
     /**
      * The final pubtime of the entry: {@link #getPubTimeLocal()} -- what an
@@ -446,6 +412,14 @@ public class EntryBean {
         setGeoLongitude(entry.getGeoLongitude());
         setEventStart(entry.getEventStart());
         setEventEnd(entry.getEventEnd());
+        if (entry.getEventStart() != null || entry.getEventEnd() != null) {
+            TimeZone zone = entry.getWebsite().getTimeZoneInstance();
+            this.eventStartLocal = EntryFieldRules.formatWallClock(entry.getEventStart(), zone);
+            this.eventEndLocal = EntryFieldRules.formatWallClock(entry.getEventEnd(), zone);
+        } else {
+            this.eventStartLocal = "";
+            this.eventEndLocal = "";
+        }
         setEventLocation(entry.getEventLocation());
 
         // init pubtime value -- emitted in the WEBLOG's timezone, matching

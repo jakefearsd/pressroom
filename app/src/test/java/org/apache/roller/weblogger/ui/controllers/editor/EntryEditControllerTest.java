@@ -460,9 +460,10 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         assertEquals(JsonLdType.EVENT, saved.getJsonLdType());
         assertEquals(48.8584, saved.getGeoLatitude());
         assertEquals(2.2945, saved.getGeoLongitude());
-        assertEquals(Timestamp.valueOf(LocalDateTime.of(2026, 8, 2, 19, 30)),
+        ZoneId zone = ZoneId.of("America/New_York"); // the fixture weblog's zone
+        assertEquals(Timestamp.from(LocalDateTime.of(2026, 8, 2, 19, 30).atZone(zone).toInstant()),
                 saved.getEventStart());
-        assertEquals(Timestamp.valueOf(LocalDateTime.of(2026, 8, 2, 22, 0)),
+        assertEquals(Timestamp.from(LocalDateTime.of(2026, 8, 2, 22, 0).atZone(zone).toInstant()),
                 saved.getEventEnd());
         assertEquals("Champ de Mars", saved.getEventLocation());
 
@@ -663,6 +664,42 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         assertEquals(java.util.List.of("entry_bean_pubTimeLocal"), invalidFields(model),
                 "the refusal must name the control's own id, which EntryEdit.jsp renders "
                         + "on the datetime-local input");
+    }
+
+    @Test
+    void eventTimesAreWallClockInTheWeblogsZone() throws Exception {
+        weblog.setTimeZone("Europe/Berlin");
+        bean.setEventStartLocal("2026-08-02T19:30");
+        bean.setEventEndLocal("2026-08-02T22:00");
+
+        controller.entryAddSaveDraft(request, model, bean);
+
+        WeblogEntry saved = captureSavedEntry();
+        assertEquals(Timestamp.from(java.time.Instant.parse("2026-08-02T17:30:00Z")), saved.getEventStart());
+        assertEquals(Timestamp.from(java.time.Instant.parse("2026-08-02T20:00:00Z")), saved.getEventEnd());
+    }
+
+    @Test
+    void anEventEndBeforeItsStartIsAFieldErrorAndNothingIsSaved() throws Exception {
+        bean.setEventStartLocal("2026-08-02T19:30");
+        bean.setEventEndLocal("2026-08-02T18:00");
+
+        controller.entryAddSaveDraft(request, model, bean);
+
+        assertEquals(java.util.List.of("entry_bean_eventEndLocal"), invalidFields(model));
+        assertTrue(errors(model).contains("entryEdit.eventEndBeforeStart"), errors(model).toString());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+    }
+
+    @Test
+    void anUnparseableEventStartIsAFieldErrorAndNothingIsSaved() throws Exception {
+        bean.setEventStartLocal("soon");
+
+        controller.entryAddSaveDraft(request, model, bean);
+
+        assertEquals(java.util.List.of("entry_bean_eventStartLocal"), invalidFields(model));
+        assertTrue(errors(model).contains("entryEdit.eventTimeInvalid"), errors(model).toString());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
     }
 
     @Test

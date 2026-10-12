@@ -354,52 +354,46 @@ class EntryBeanTest extends EditorControllerTestSupport {
     // --- the SEO card's datetime-local binding ---
 
     @Test
-    void eventDatesBindThroughTheDatetimeLocalAccessors() {
-        // What an <input type="datetime-local"> submits. Spring's default
-        // String-to-Timestamp conversion goes through Timestamp.valueOf, which
-        // wants "2026-08-02 19:30:00" and throws on the browser's format --
-        // hence these accessors rather than binding the Timestamp property.
-        bean.setEventStartLocal("2026-08-02T19:30");
-        bean.setEventEndLocal("2026-08-02T22:00");
+    void eventTimesShowInTheWeblogsZone() throws Exception {
+        weblog.setTimeZone("Europe/Berlin");
+        WeblogEntry entry = storedEntry();
+        entry.setEventStart(Timestamp.from(java.time.Instant.parse("2026-08-02T17:30:00Z")));
+        entry.setEventEnd(Timestamp.from(java.time.Instant.parse("2026-08-02T20:00:00Z")));
 
-        assertEquals(Timestamp.valueOf(LocalDateTime.of(2026, 8, 2, 19, 30)),
-                bean.getEventStart());
-        assertEquals(Timestamp.valueOf(LocalDateTime.of(2026, 8, 2, 22, 0)),
-                bean.getEventEnd());
-    }
-
-    @Test
-    void eventDatesRenderBackIntoTheInputTheyCameFrom() {
-        // The round trip the edit form depends on: a value the browser cannot
-        // parse leaves the author staring at an empty field after every save.
-        bean.setEventStartLocal("2026-08-02T19:30");
+        bean.copyFrom(entry, Locale.ROOT);
 
         assertEquals("2026-08-02T19:30", bean.getEventStartLocal());
-        assertEquals("", bean.getEventEndLocal(),
-                "an unset date must render as an empty field, not the word null");
+        assertEquals("2026-08-02T22:00", bean.getEventEndLocal());
     }
 
     @Test
-    void eventDatesWithSecondsAreAcceptedAndShownToTheMinute() {
-        // Some browsers submit seconds; the column keeps them, the input shows
-        // minutes, and neither side may reject the other's format.
-        bean.setEventStartLocal("2026-08-02T19:30:45");
+    void anEntryWithNoEventTimesShowsEmptyFields() throws Exception {
+        bean.copyFrom(storedEntry(), Locale.ROOT);
 
-        assertEquals(Timestamp.valueOf(LocalDateTime.of(2026, 8, 2, 19, 30, 45)),
-                bean.getEventStart());
-        assertEquals("2026-08-02T19:30", bean.getEventStartLocal());
+        assertEquals("", bean.getEventStartLocal());
+        assertEquals("", bean.getEventEndLocal());
     }
 
     @Test
-    void anEmptyOrUnparseableEventDateClearsItInsteadOfThrowing() {
-        bean.setEventStartLocal("2026-08-02T19:30");
-        bean.setEventStartLocal("");
-        assertNull(bean.getEventStart(), "clearing the field must clear the column");
+    void anEntryWithoutAWebsiteAndWithoutEventTimesStillCopies() {
+        WeblogEntry entry = new WeblogEntry();
+        entry.setId("e");
+        entry.setStatus(PubStatus.DRAFT);
+        WeblogCategory category = new WeblogCategory();
+        category.setId("cat-1");
+        entry.setCategory(category);
 
-        bean.setEventStartLocal("2026-08-02T19:30");
-        bean.setEventStartLocal("not a date");
-        assertNull(bean.getEventStart(),
-                "a hand-crafted POST must not throw the author's whole entry away");
+        bean.copyFrom(entry, Locale.ROOT);
+
+        assertEquals("", bean.getEventStartLocal());
+    }
+
+    @Test
+    void theSubmittedTextIsKeptUntilTheControllerResolvesIt() {
+        bean.setEventStartLocal("not a time");
+
+        assertEquals("not a time", bean.getEventStartLocal());
+        assertNull(bean.getEventStart(), "the setter only stores the text");
     }
 
     @Test

@@ -20,7 +20,9 @@ package org.apache.roller.weblogger.ui.controllers;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Locale;
 import java.util.TimeZone;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
@@ -41,6 +43,7 @@ import org.apache.commons.text.StringEscapeUtils;
  *   <li>A pubtime is wall-clock time in the WEBLOG's zone. Blank means
  *       "publish now"; an unparseable non-blank value throws, so a mistyped
  *       time blocks the save instead of silently publishing immediately.</li>
+ *   <li>An event time is wall-clock time in the WEBLOG's zone, like a pubtime.</li>
  * </ul>
  */
 public final class EntryFieldRules {
@@ -73,5 +76,26 @@ public final class EntryFieldRules {
         }
         LocalDateTime local = LocalDateTime.parse(wallClock.trim());
         return Timestamp.from(local.atZone(zone.toZoneId()).toInstant());
+    }
+
+    private static final DateTimeFormatter WALL_CLOCK =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm", Locale.ROOT);
+
+    /** An event's start or end: wall-clock time in the weblog's zone, the format a pubtime takes. */
+    public static Timestamp parseEventTime(String wallClock, TimeZone zone) {
+        return parsePubTime(wallClock, zone);
+    }
+
+    /** {@code instant} as wall-clock time in {@code zone}, to the minute; "" for null. */
+    public static String formatWallClock(Timestamp instant, TimeZone zone) {
+        if (instant == null) {
+            return "";
+        }
+        return instant.toInstant().atZone(zone.toZoneId()).toLocalDateTime().format(WALL_CLOCK);
+    }
+
+    /** True when both are set and the end is before the start. */
+    public static boolean endsBeforeStart(Timestamp start, Timestamp end) {
+        return start != null && end != null && end.before(start);
     }
 }

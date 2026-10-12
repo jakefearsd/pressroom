@@ -1,6 +1,7 @@
 package org.apache.roller.weblogger.ui.controllers;
 
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.TimeZone;
@@ -73,5 +74,36 @@ class EntryFieldRulesTest {
         assertNotNull(parsed);
         LocalDateTime back = LocalDateTime.ofInstant(parsed.toInstant(), zone.toZoneId());
         assertEquals(LocalDateTime.of(2026, 7, 4, 13, 45), back);
+    }
+
+    private static final TimeZone BERLIN = TimeZone.getTimeZone("Europe/Berlin");
+
+    @Test
+    void anEventTimeIsWallClockInTheWeblogsZone() {
+        assertEquals(Instant.parse("2026-08-02T17:30:00Z"),
+                EntryFieldRules.parseEventTime("2026-08-02T19:30", BERLIN).toInstant());
+        assertEquals(Instant.parse("2026-08-02T17:30:00Z"),
+                EntryFieldRules.parseEventTime("2026-08-02T19:30:00", BERLIN).toInstant(), "seconds are accepted");
+        assertNull(EntryFieldRules.parseEventTime("  ", BERLIN));
+        assertThrows(DateTimeParseException.class,
+                () -> EntryFieldRules.parseEventTime("2026-08-02T19:30+02:00", BERLIN));
+    }
+
+    @Test
+    void formatWallClockIsTheInverseToTheMinute() {
+        Timestamp start = Timestamp.from(Instant.parse("2026-08-02T17:30:00Z"));
+        assertEquals("2026-08-02T19:30", EntryFieldRules.formatWallClock(start, BERLIN));
+        assertEquals("", EntryFieldRules.formatWallClock(null, BERLIN));
+    }
+
+    @Test
+    void endsBeforeStartOnlyWhenBothAreSet() {
+        Timestamp a = Timestamp.from(Instant.parse("2026-08-02T17:30:00Z"));
+        Timestamp b = Timestamp.from(Instant.parse("2026-08-02T20:00:00Z"));
+        assertTrue(EntryFieldRules.endsBeforeStart(b, a));
+        assertFalse(EntryFieldRules.endsBeforeStart(a, b));
+        assertFalse(EntryFieldRules.endsBeforeStart(a, a));
+        assertFalse(EntryFieldRules.endsBeforeStart(null, a));
+        assertFalse(EntryFieldRules.endsBeforeStart(a, null));
     }
 }

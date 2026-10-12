@@ -24,6 +24,7 @@ import java.time.format.DateTimeParseException;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.TimeZone;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -47,6 +48,7 @@ import org.apache.roller.weblogger.pojos.WeblogEntryRevision;
 import org.apache.roller.weblogger.pojos.WeblogEntry.PubStatus;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.controllers.BaseController;
+import org.apache.roller.weblogger.ui.controllers.EntryFieldRules;
 import org.apache.roller.weblogger.util.HTMLSanitizer;
 import org.apache.roller.weblogger.util.TextDiff;
 import org.apache.roller.weblogger.util.cache.CacheManager;
@@ -144,6 +146,7 @@ public class EntryEditController extends BaseController {
         entry.setWebsite(getActionWeblog(request));
 
         Timestamp pubTime = resolvePubTime(bean, request, model);
+        resolveEventTimes(bean, request, model);
 
         if ("saveDraft".equals(action)) {
             bean.setStatus(PubStatus.DRAFT.name());
@@ -562,6 +565,7 @@ public class EntryEditController extends BaseController {
         }
 
         Timestamp pubTime = resolvePubTime(bean, request, model);
+        resolveEventTimes(bean, request, model);
 
         if ("saveDraft".equals(action)) {
             bean.setStatus(PubStatus.DRAFT.name());
@@ -598,6 +602,33 @@ public class EntryEditController extends BaseController {
             return bean.getPubTime(getActionWeblog(request).getTimeZoneInstance());
         } catch (DateTimeParseException e) {
             addFieldError(model, "entry_bean_pubTimeLocal", "entryEdit.pubTimeInvalid", request);
+            return null;
+        }
+    }
+
+    /**
+     * The event times the form submitted, read in the action weblog's zone as a
+     * pubtime is, and set on the bean for copyTo. A value that will not parse,
+     * or an end before the start, is a field error; doSave's hasErrors gate
+     * then blocks the save.
+     */
+    private void resolveEventTimes(EntryBean bean, HttpServletRequest request, Model model) {
+        TimeZone zone = getActionWeblog(request).getTimeZoneInstance();
+        Timestamp start = eventTime(bean.getEventStartLocal(), zone, "entry_bean_eventStartLocal", request, model);
+        Timestamp end = eventTime(bean.getEventEndLocal(), zone, "entry_bean_eventEndLocal", request, model);
+        if (EntryFieldRules.endsBeforeStart(start, end)) {
+            addFieldError(model, "entry_bean_eventEndLocal", "entryEdit.eventEndBeforeStart", request);
+        }
+        bean.setEventStart(start);
+        bean.setEventEnd(end);
+    }
+
+    private Timestamp eventTime(String text, TimeZone zone, String fieldId,
+                                HttpServletRequest request, Model model) {
+        try {
+            return EntryFieldRules.parseEventTime(text, zone);
+        } catch (DateTimeParseException e) {
+            addFieldError(model, fieldId, "entryEdit.eventTimeInvalid", request);
             return null;
         }
     }

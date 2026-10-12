@@ -41,6 +41,8 @@ public final class ColumnLimits {
     public static final int CANONICAL_URL = 255;
     public static final int FEATURED_IMAGE_ID = 48;
     public static final int OG_IMAGE_ID = 48;
+    // V008 travel structured data: event_location varchar(255)
+    public static final int EVENT_LOCATION = 255;
 
     // roller_weblogentrytag (V002__baseline_schema.sql)
     public static final int TAG_NAME = 255;

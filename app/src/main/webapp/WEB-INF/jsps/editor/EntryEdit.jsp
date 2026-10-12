@@ -445,14 +445,14 @@
                         <div class="row mb-3">
                             <label class="col-sm-3 col-form-label" for="seo_eventStart"><spring:message code="weblogEdit.eventStart"/></label>
                             <div class="col-sm-9">
-                                <input type="datetime-local" id="seo_eventStart" name="bean.eventStartLocal" value="${bean.eventStartLocal}" class="form-control"/>
+                                <input type="datetime-local" id="seo_eventStart" name="bean.eventStartLocal" value="${fn:escapeXml(bean.eventStartLocal)}" class="form-control"/>
                                 <div class="form-text"><spring:message code="weblogEdit.eventStart.tip"/></div>
                             </div>
                         </div>
                         <div class="row mb-3">
                             <label class="col-sm-3 col-form-label" for="seo_eventEnd"><spring:message code="weblogEdit.eventEnd"/></label>
                             <div class="col-sm-9">
-                                <input type="datetime-local" id="seo_eventEnd" name="bean.eventEndLocal" value="${bean.eventEndLocal}" class="form-control"/>
+                                <input type="datetime-local" id="seo_eventEnd" name="bean.eventEndLocal" value="${fn:escapeXml(bean.eventEndLocal)}" class="form-control"/>
                             </div>
                         </div>
                         <div class="row mb-3">

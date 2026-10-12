@@ -1053,4 +1053,129 @@ class EntriesWriteApiControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
     }
+
+    // ------------------------------------------------------------ event times
+
+    private static Weblog aBerlinWeblog() {
+        Weblog weblog = aWeblog("myblog");
+        weblog.setTimeZone("Europe/Berlin");
+        return weblog;
+    }
+
+    private static final String EVENT_FORMAT_DETAIL =
+            "eventStart must be a wall-clock time in the weblog's zone, for example 2026-08-02T19:30.";
+
+    @Test
+    void anEventIsWrittenInTheWeblogsZoneAndReadBackAsInstants() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aBerlinWeblog();
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/entries")
+                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"t\",\"text\":\"x\",\"jsonLdType\":\"EVENT\","
+                                + "\"eventStart\":\"2026-08-02T19:30\",\"eventEnd\":\"2026-08-02T22:00\","
+                                + "\"eventLocation\":\"Waldb\u00fchne\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        ArgumentCaptor<WeblogEntry> captor = ArgumentCaptor.forClass(WeblogEntry.class);
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(captor.capture());
+        assertEquals(java.time.Instant.parse("2026-08-02T17:30:00Z"),
+                captor.getValue().getEventStart().toInstant());
+        assertEquals(java.time.Instant.parse("2026-08-02T20:00:00Z"),
+                captor.getValue().getEventEnd().toInstant());
+        assertEquals("Waldb\u00fchne", captor.getValue().getEventLocation());
+
+        tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
+        assertEquals("2026-08-02T17:30:00Z", json.get("eventStart").asString());
+        assertEquals("2026-08-02T20:00:00Z", json.get("eventEnd").asString());
+        assertEquals("Waldb\u00fchne", json.get("eventLocation").asString());
+    }
+
+    @Test
+    void anEventTimeWithAnOffsetIsA400ShowingTheFormat() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/entries")
+                        .requestAttr("actionWeblog", aBerlinWeblog())
+                        .requestAttr("authenticatedUser", aUser("maiia"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"t\",\"text\":\"x\",\"eventStart\":\"2026-08-02T19:30+02:00\"}"))
+                .andExpect(status().isBadRequest())
+                .andReturn().getResponse().getContentAsString();
+
+        assertTrue(body.contains(EVENT_FORMAT_DETAIL), body);
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+    }
+
+    @Test
+    void anEventTimeWithSecondsIsAccepted() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+
+        mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/entries")
+                        .requestAttr("actionWeblog", aBerlinWeblog())
+                        .requestAttr("authenticatedUser", aUser("maiia"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"t\",\"text\":\"x\",\"eventStart\":\"2026-08-02T19:30:00\"}"))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void anEndBeforeTheStartIsA400EvenWhenOnlyOneIsSent() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aBerlinWeblog();
+        WeblogEntry entry = new WeblogEntry();
+        entry.setId("entry-1");
+        entry.setWebsite(weblog);
+        entry.setEventStart(java.sql.Timestamp.from(java.time.Instant.parse("2026-08-02T17:30:00Z")));
+        when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1")).thenReturn(entry);
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
+                        .requestAttr("actionWeblog", weblog)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"eventEnd\":\"2026-08-02T18:00\"}"))
+                .andExpect(status().isBadRequest())
+                .andReturn().getResponse().getContentAsString();
+
+        assertTrue(body.contains("eventEnd must not be before eventStart."), body);
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+    }
+
+    @Test
+    void aBlankEventTimeIsRefusedNotTreatedAsClearing() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/entries")
+                        .requestAttr("actionWeblog", aBerlinWeblog())
+                        .requestAttr("authenticatedUser", aUser("maiia"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"t\",\"text\":\"x\",\"eventStart\":\" \"}"))
+                .andExpect(status().isBadRequest())
+                .andReturn().getResponse().getContentAsString();
+
+        assertTrue(body.contains(EVENT_FORMAT_DETAIL), body);
+    }
+
+    @Test
+    void anEventLocationOver255IsA400() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+
+        mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/entries")
+                        .requestAttr("actionWeblog", aBerlinWeblog())
+                        .requestAttr("authenticatedUser", aUser("maiia"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"t\",\"text\":\"x\",\"eventLocation\":\""
+                                + "x".repeat(256) + "\"}"))
+                .andExpect(status().isBadRequest());
+
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+    }
 }
