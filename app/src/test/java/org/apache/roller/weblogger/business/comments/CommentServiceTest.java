@@ -597,7 +597,7 @@ class CommentServiceTest {
                 return super.isAbusive(clientId);
             }
         };
-        CommentService burst = new CommentService(TestUtils.weblogger(), new NoOpCommentNotifier(),
+        CommentService burst = new CommentService(TestUtils.weblogger(), Mockito.mock(CommentNotifier.class),
                 oneAllowed, unlimited());
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
