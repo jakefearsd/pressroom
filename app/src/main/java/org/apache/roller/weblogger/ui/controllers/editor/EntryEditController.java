@@ -614,10 +614,10 @@ public class EntryEditController extends BaseController {
      */
     private void resolveEventTimes(EntryBean bean, HttpServletRequest request, Model model) {
         TimeZone zone = getActionWeblog(request).getTimeZoneInstance();
-        Timestamp start = eventTime(bean.getEventStartLocal(), zone, "entry_bean_eventStartLocal", request, model);
-        Timestamp end = eventTime(bean.getEventEndLocal(), zone, "entry_bean_eventEndLocal", request, model);
+        Timestamp start = eventTime(bean.getEventStartLocal(), zone, "seo_eventStart", request, model);
+        Timestamp end = eventTime(bean.getEventEndLocal(), zone, "seo_eventEnd", request, model);
         if (EntryFieldRules.endsBeforeStart(start, end)) {
-            addFieldError(model, "entry_bean_eventEndLocal", "entryEdit.eventEndBeforeStart", request);
+            addFieldError(model, "seo_eventEnd", "entryEdit.eventEndBeforeStart", request);
         }
         bean.setEventStart(start);
         bean.setEventEnd(end);

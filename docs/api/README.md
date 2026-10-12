@@ -398,10 +398,11 @@ and the coordinates:
   coordinates also centre the entry's `[map]`.
 - A `TOURIST_TRIP` takes its itinerary from the `[map]` pins, and a
   `FAQ_PAGE` takes its questions from the `[faq]` pairs, so both work through
-  the API. An `EVENT` also needs its dates, which only the editor sets so
-  far.
-- As with every field here, omitting one leaves it alone, so the API cannot
-  clear coordinates. Setting `jsonLdType` to `BLOG_POSTING` stops them
+  the API. An `EVENT` takes `eventStart`, `eventEnd` and `eventLocation`
+  (see Events below).
+- Omitting a field leaves it alone; to remove coordinates, send
+  `"clear": ["geoLatitude", "geoLongitude"]` (see
+  [Removing a value](#removing-a-value)). Setting `jsonLdType` to `BLOG_POSTING` stops them
   being emitted as `geo`.
 
 All three fields come back on `EntryView` under the same names.

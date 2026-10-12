@@ -686,7 +686,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
 
         controller.entryAddSaveDraft(request, model, bean);
 
-        assertEquals(java.util.List.of("entry_bean_eventEndLocal"), invalidFields(model));
+        assertEquals(java.util.List.of("seo_eventEnd"), invalidFields(model));
         assertTrue(errors(model).contains("entryEdit.eventEndBeforeStart"), errors(model).toString());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
     }
@@ -697,7 +697,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
 
         controller.entryAddSaveDraft(request, model, bean);
 
-        assertEquals(java.util.List.of("entry_bean_eventStartLocal"), invalidFields(model));
+        assertEquals(java.util.List.of("seo_eventStart"), invalidFields(model));
         assertTrue(errors(model).contains("entryEdit.eventTimeInvalid"), errors(model).toString());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
     }
