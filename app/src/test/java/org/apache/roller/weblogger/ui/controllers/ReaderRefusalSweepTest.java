@@ -139,9 +139,27 @@ class ReaderRefusalSweepTest {
                 "EntryEditController", "UserAdminController", "MediaApi")), names.toString());
     }
 
-    /** Runs the real interceptor as a reader; a refusal is a false return or an ApiException. */
+    /**
+     * Runs the real interceptor as a reader; a refusal is a false return or an ApiException.
+     *
+     * <p>Detaches its own mock before returning, not only in {@link #tearDown}: that runs
+     * once for the whole {@code @TestFactory}, not once per dynamic test, and each
+     * attachment restores the one before it. One detach for 42 attachments left
+     * {@code WebloggerRuntimeConfig} on a mock for the rest of the JVM, so every
+     * database-backed test after it read default runtime properties (uploads off, no
+     * revision retention): 72 failures across 11 classes that each passed alone.
+     */
     private boolean interceptorAllows(UISecurityEnforced controller) throws Exception {
         weblogger = MockWeblogger.attached();
+        try {
+            return interceptorAllowsWithAttachedMocks(controller);
+        } finally {
+            weblogger.detach();
+            weblogger = null;
+        }
+    }
+
+    private boolean interceptorAllowsWithAttachedMocks(UISecurityEnforced controller) throws Exception {
         WebloggerProvider provider = mock(WebloggerProvider.class);
         when(provider.isBootstrapped()).thenReturn(true);
         RollerHandlerInterceptor interceptor =
