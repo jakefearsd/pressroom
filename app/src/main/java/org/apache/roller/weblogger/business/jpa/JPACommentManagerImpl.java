@@ -123,16 +123,9 @@ public class JPACommentManagerImpl implements CommentManager {
     @Override
     public List<ReaderComment> getComments(Weblog weblog, Status status, WeblogEntry entry,
             int offset, int length) throws WebloggerException {
-        StringBuilder jpql = new StringBuilder("SELECT c FROM ReaderComment c WHERE c.entry.website = ?1");
-        int next = 2;
-        if (status != null) {
-            jpql.append(" AND c.status = ?").append(next++);
-        }
-        if (entry != null) {
-            jpql.append(" AND c.entry = ?").append(next);
-        }
-        jpql.append(" ORDER BY c.created DESC, c.id");
-        TypedQuery<ReaderComment> query = strategy.getDynamicQuery(jpql.toString(), ReaderComment.class);
+        String jpql = "SELECT c FROM ReaderComment c WHERE c.entry.website = ?1" + filters(status, entry)
+                + " ORDER BY c.created DESC, c.id";
+        TypedQuery<ReaderComment> query = strategy.getDynamicQuery(jpql, ReaderComment.class);
         bind(query, weblog, status, entry);
         query.setFirstResult(offset);
         query.setMaxResults(length);
@@ -141,23 +134,40 @@ public class JPACommentManagerImpl implements CommentManager {
 
     @Override
     public long countComments(Weblog weblog, Status status) throws WebloggerException {
-        return count("c.entry.website = ?1", weblog, status);
+        return countComments(weblog, status, null);
+    }
+
+    @Override
+    public long countComments(Weblog weblog, Status status, WeblogEntry entry) throws WebloggerException {
+        TypedQuery<Long> query = strategy.getDynamicQuery(
+                "SELECT COUNT(c) FROM ReaderComment c WHERE c.entry.website = ?1" + filters(status, entry), Long.class);
+        bind(query, weblog, status, entry);
+        return query.getSingleResult();
     }
 
     @Override
     public long countForEntry(WeblogEntry entry, Status status) throws WebloggerException {
-        return count("c.entry = ?1", entry, status);
-    }
-
-    private long count(String where, Object scope, Status status) throws WebloggerException {
-        String jpql = "SELECT COUNT(c) FROM ReaderComment c WHERE " + where
+        String jpql = "SELECT COUNT(c) FROM ReaderComment c WHERE c.entry = ?1 AND c.replyTo IS NULL"
                 + (status != null ? " AND c.status = ?2" : "");
         TypedQuery<Long> query = strategy.getDynamicQuery(jpql, Long.class);
-        query.setParameter(1, scope);
+        query.setParameter(1, entry);
         if (status != null) {
             query.setParameter(2, status);
         }
         return query.getSingleResult();
+    }
+
+    /** The status and entry conditions after the weblog's, numbered as {@link #bind} binds them. */
+    private static String filters(Status status, WeblogEntry entry) {
+        StringBuilder where = new StringBuilder();
+        int next = 2;
+        if (status != null) {
+            where.append(" AND c.status = ?").append(next++);
+        }
+        if (entry != null) {
+            where.append(" AND c.entry = ?").append(next);
+        }
+        return where.toString();
     }
 
     private void bind(TypedQuery<?> query, Weblog weblog, Status status, WeblogEntry entry) {

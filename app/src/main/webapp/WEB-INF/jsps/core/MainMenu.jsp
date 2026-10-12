@@ -114,8 +114,9 @@
 
                 </c:if>
 
-                <%-- Comments awaiting approval: moderation needs the post action. --%>
-                <c:if test='${perms.hasAction("post") and perms.pendingCommentCount > 0}'>
+                <%-- Comments awaiting approval, for a member who may moderate: one whose
+                     row implies the post permission (a creator's row holds admin alone). --%>
+                <c:if test='${perms.canModerate and perms.pendingCommentCount > 0}'>
                     <c:url value="/roller-ui/authoring/comments.rol" var="pendingComments">
                         <c:param name="weblog" value="${perms.weblog.handle}"/>
                     </c:url>

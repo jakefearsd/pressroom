@@ -51,10 +51,19 @@ public interface CommentManager {
     List<ReaderComment> getComments(Weblog weblog, ReaderComment.Status status, WeblogEntry entry,
                                     int offset, int length) throws WebloggerException;
 
-    /** Comments on the weblog in this status (null = all). */
+    /** Comments on the weblog in this status (null = all), replies included. */
     long countComments(Weblog weblog, ReaderComment.Status status) throws WebloggerException;
 
-    /** Comments on the entry in this status (null = all). */
+    /**
+     * What {@link #getComments} lists, counted: comments on the weblog in this
+     * status (null = all), on this entry when it is not null, replies included.
+     */
+    long countComments(Weblog weblog, ReaderComment.Status status, WeblogEntry entry) throws WebloggerException;
+
+    /**
+     * TOP-LEVEL comments on the entry in this status (null = all): replies are not
+     * counted, so the number is the one the entry page's heading shows.
+     */
     long countForEntry(WeblogEntry entry, ReaderComment.Status status) throws WebloggerException;
 
     /** The author's PENDING comments on the entry, oldest first. */

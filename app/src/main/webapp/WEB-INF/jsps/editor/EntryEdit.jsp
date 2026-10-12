@@ -403,7 +403,9 @@
 
                     <%-- comments: closing stops new ones on this entry; the counts line
                          links to the moderation page and shows only for a saved entry
-                         on a weblog that has comments on. --%>
+                         on a weblog that has comments on, to a member who may moderate
+                         (the controller counts only for them). It counts top-level
+                         comments, as the entry page's heading does. --%>
                     <div class="row mb-3">
                         <div class="offset-sm-3 col-sm-9">
                             <div class="form-check">

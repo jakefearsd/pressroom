@@ -296,6 +296,24 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         assertEquals(2L, model.getAttribute("commentsPending"));
     }
 
+    /**
+     * M10: the counts link to the Comments page, which needs the weblog POST
+     * permission. A limited (edit_draft) member is refused that page, so the
+     * editor neither counts nor links for them.
+     */
+    @Test
+    void aMemberWhoCannotModerateGetsNoCommentCounts() throws Exception {
+        weblog.setCommentsEnabled(Boolean.TRUE);
+        userMayPost = false;
+        existingEntry(PubStatus.DRAFT);
+
+        controller.entryEditExecute(request, model, bean, newRedirectAttributes());
+
+        assertNull(model.getAttribute("commentsPublished"));
+        assertNull(model.getAttribute("commentsPending"));
+        org.mockito.Mockito.verifyNoInteractions(weblogger.commentManager());
+    }
+
     @Test
     void theEditorCarriesNoCommentCountsWhenCommentsAreOff() throws Exception {
         weblog.setCommentsEnabled(Boolean.FALSE);

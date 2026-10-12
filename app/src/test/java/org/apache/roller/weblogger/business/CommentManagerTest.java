@@ -310,6 +310,48 @@ class CommentManagerTest {
         assertEquals(2, mgr().countForEntry(entry, null));
     }
 
+    /**
+     * M6: the moderation pager counts what its list shows. With an entry filter
+     * the count is that entry's, replies included (the list shows them as rows),
+     * in the status asked for (null = all).
+     */
+    @Test
+    void theWeblogCountTakesTheListsEntryFilter() throws Exception {
+        ReaderComment parent = comment(ea, reader, Status.PUBLISHED, null);
+        comment(ea, owner, Status.PUBLISHED, parent);
+        comment(ea, reader, Status.PENDING, null);
+        comment(ea2, reader, Status.PUBLISHED, null);
+        comment(eb, reader, Status.PUBLISHED, null);
+        TestUtils.endSession(true);
+
+        Weblog wa = TestUtils.getManagedWebsite(a);
+        WeblogEntry entry = TestUtils.getManagedWeblogEntry(ea);
+        assertEquals(2, mgr().countComments(wa, Status.PUBLISHED, entry));
+        assertEquals(1, mgr().countComments(wa, Status.PENDING, entry));
+        assertEquals(3, mgr().countComments(wa, null, entry));
+        assertEquals(3, mgr().countComments(wa, Status.PUBLISHED, null), "no filter: the weblog's");
+        assertEquals(mgr().getComments(wa, Status.PUBLISHED, entry, 0, 50).size(),
+                mgr().countComments(wa, Status.PUBLISHED, entry), "the count is the list's length");
+    }
+
+    /**
+     * M10: the editor's "N published" is the number the entry page's heading
+     * shows, which counts top-level comments: an author's reply is not counted.
+     */
+    @Test
+    void theEntryCountIsOfTopLevelCommentsOnly() throws Exception {
+        ReaderComment parent = comment(ea, reader, Status.PUBLISHED, null);
+        comment(ea, owner, Status.PUBLISHED, parent);
+        comment(ea, reader, Status.PUBLISHED, null);
+        TestUtils.endSession(true);
+
+        WeblogEntry entry = TestUtils.getManagedWeblogEntry(ea);
+        assertEquals(2, mgr().countForEntry(entry, Status.PUBLISHED));
+        assertEquals(2, mgr().countForEntry(entry, null));
+        assertEquals(mgr().getPublishedForEntry(entry).size(), mgr().countForEntry(entry, Status.PUBLISHED),
+                "the editor's count is the page's");
+    }
+
     @Test
     void pendingForEntryAndAuthor() throws Exception {
         ReaderComment mine = comment(ea, reader, Status.PENDING, null);

@@ -116,6 +116,19 @@ public final class WeblogPermissionView {
     }
 
     /**
+     * Whether this member may moderate the weblog's comments: whether the row
+     * implies the weblog {@code POST} permission, the check the Comments page's
+     * interceptor makes. Never a lookup of the literal {@code "post"} action: a
+     * weblog's creator holds {@code "admin"} alone, and the Members page grants
+     * single-action rows.
+     */
+    public boolean isCanModerate() {
+        WeblogPermission moderate = new WeblogPermission();
+        moderate.setActionsAsList(List.of(WeblogPermission.POST));
+        return permission.implies(moderate);
+    }
+
+    /**
      * The weblog's entry count, read once through the entry manager and
      * remembered; a count that cannot be read is 0 (logged), never a failed
      * page -- the main menu is the first thing a user sees after login.

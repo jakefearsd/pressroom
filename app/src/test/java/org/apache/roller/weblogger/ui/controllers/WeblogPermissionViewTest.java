@@ -138,19 +138,44 @@ class WeblogPermissionViewTest {
         assertEquals(0L, row.getPendingCommentCount());
     }
 
+    /**
+     * I1: moderation needs the weblog POST permission, and a weblog's creator holds
+     * "admin" alone (the Members page grants single-action rows too), so the row
+     * answers by implication, as the interceptor's check does, never by looking for
+     * the literal "post" action in the row.
+     */
     @Test
-    void mainMenuShowsThePendingCount() throws Exception {
+    void canModerateFollowsTheImpliedPostPermissionNotTheLiteralAction() throws Exception {
+        assertTrue(rowWith(WeblogPermission.ADMIN).isCanModerate(), "an admin-only row is a creator's row");
+        assertTrue(rowWith(WeblogPermission.POST).isCanModerate());
+        assertTrue(rowWith(WeblogPermission.ADMIN, WeblogPermission.POST, WeblogPermission.EDIT_DRAFT)
+                .isCanModerate());
+        assertFalse(rowWith(WeblogPermission.EDIT_DRAFT).isCanModerate(), "a limited member cannot moderate");
+        assertFalse(WeblogPermissionView.of(new WeblogPermission(), weblogger).isCanModerate(),
+                "a row granting nothing implies nothing");
+    }
+
+    /**
+     * The badge's gate is the row's answer. A JSP cannot be rendered in a unit test,
+     * so this pins only that the page asks the row (the behaviour is above, and
+     * CommentsIT sees the badge for a weblog's creator).
+     */
+    @Test
+    void mainMenuGatesThePendingBadgeOnTheRowsModerationAnswer() throws Exception {
         java.nio.file.Path jsp = java.nio.file.Path.of(System.getProperty("user.dir"))
                 .resolve("src/main/webapp/WEB-INF/jsps/core/MainMenu.jsp");
         String source = java.nio.file.Files.readString(jsp);
 
-        assertTrue(source.contains("perms.pendingCommentCount > 0"),
-                "the badge shows only when the count is above 0");
-        assertTrue(source.contains("mainMenu.pendingComments"));
-        assertTrue(source.indexOf("perms.hasAction('post')") >= 0
-                || source.contains("perms.hasAction(\"post\")"),
-                "the badge is gated on the post action");
-        assertTrue(source.contains("comments.rol"), "the badge links to the moderation page");
+        assertTrue(source.contains("perms.canModerate and perms.pendingCommentCount > 0"),
+                "the badge shows only to a member who may moderate, and only above 0");
+        assertTrue(source.contains("mainMenu.pendingComments") && source.contains("comments.rol"),
+                "the badge names the count and links to the moderation page");
+        assertFalse(source.contains("hasAction(\"post\") and perms.pendingCommentCount"),
+                "the literal post action misses a creator's admin-only row");
+    }
+
+    private WeblogPermissionView rowWith(String... actions) throws Exception {
+        return WeblogPermissionView.of(new WeblogPermission(weblog, alice, List.of(actions)), weblogger);
     }
 
     @Test

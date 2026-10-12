@@ -805,8 +805,9 @@ public class EntryEditController extends BaseController {
         }
 
         model.addAttribute("categories", getCategories(request));
-        model.addAttribute("userAnAuthor", hasWeblogAction(getActionWeblog(request),
-                getAuthenticatedUser(request), WeblogPermission.POST));
+        boolean mayPost = hasWeblogAction(getActionWeblog(request),
+                getAuthenticatedUser(request), WeblogPermission.POST);
+        model.addAttribute("userAnAuthor", mayPost);
         // EntryEdit.jsp used to ask ${authenticatedUser.hasGlobalPermission('admin')}
         // for the pin-to-front-page box; the entity no longer answers that.
         model.addAttribute("isGlobalAdmin", isGlobalAdmin(getAuthenticatedUser(request)));
@@ -826,9 +827,13 @@ public class EntryEditController extends BaseController {
         }
 
         // Comment counts for the "N published, M awaiting" line: only for a saved
-        // entry on a weblog with comments on. A count that cannot load leaves the
-        // line off (display path), never blocks the editor.
-        if (bean.getId() != null && Boolean.TRUE.equals(getActionWeblog(request).getCommentsEnabled())) {
+        // entry on a weblog with comments on, and only for a member who may
+        // moderate (weblog POST), since the line links to the Comments page. The
+        // counts are of top-level comments, the number the entry page's heading
+        // shows. A count that cannot load leaves the line off (display path),
+        // never blocks the editor.
+        if (mayPost && bean.getId() != null
+                && Boolean.TRUE.equals(getActionWeblog(request).getCommentsEnabled())) {
             try {
                 model.addAttribute("commentsPublished", weblogger.getCommentManager()
                         .countForEntry(entry, ReaderComment.Status.PUBLISHED));
