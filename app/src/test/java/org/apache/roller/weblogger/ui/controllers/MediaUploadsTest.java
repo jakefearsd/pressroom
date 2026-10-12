@@ -34,6 +34,8 @@ import org.apache.roller.weblogger.util.RollerMessages;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.apache.roller.weblogger.pojos.MediaFile;
 import org.springframework.mock.web.MockMultipartFile;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -41,6 +43,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 /**
  * DB-backed tests for {@link MediaUploads}, the per-file upload logic moved
@@ -145,5 +151,46 @@ class MediaUploadsTest {
                 Path.of("src/main/java/org/apache/roller/weblogger/ui/restapi/v1/MediaApi.java"));
         assertFalse(api.contains("private String effectiveContentType("), "MediaApi must delegate to MediaUploads");
         assertTrue(api.contains("MediaUploads."), "MediaApi must delegate to MediaUploads");
+    }
+
+    @Test
+    void aByteArraySourceReachesCreateMediaFileWithItsNameTypeLengthAndBytes() throws Exception {
+        byte[] bytes = tinyPng();
+        MediaFileManager manager = mock(MediaFileManager.class);
+
+        MediaUploads.Result r = MediaUploads.store(
+                MediaUploads.Source.of("a.jpg", "image/jpeg", bytes), weblog, dir, manager, new RollerMessages());
+
+        assertEquals("created", r.status());
+        ArgumentCaptor<MediaFile> captor = ArgumentCaptor.forClass(MediaFile.class);
+        verify(manager).createMediaFile(org.mockito.ArgumentMatchers.eq(weblog), captor.capture(), any());
+        MediaFile stored = captor.getValue();
+        assertEquals("a.jpg", stored.getName());
+        assertEquals("image/jpeg", stored.getContentType());
+        assertEquals(bytes.length, stored.getLength());
+        assertEquals(dir, stored.getDirectory());
+        assertTrue(java.util.Arrays.equals(bytes, stored.getInputStream().readAllBytes()));
+    }
+
+    @Test
+    void anEmptyByteArraySourceIsRefusedBeforeTheManager() throws Exception {
+        MediaFileManager manager = mock(MediaFileManager.class);
+
+        MediaUploads.Result r = MediaUploads.store(
+                MediaUploads.Source.of("a.jpg", "image/jpeg", new byte[0]), weblog, dir, manager,
+                new RollerMessages());
+
+        assertEquals("error", r.status());
+        assertEquals("The file is empty.", r.detail());
+        verify(manager, never()).createMediaFile(any(), any(), any());
+    }
+
+    @Test
+    void theFileLimitIsReadFromTheRuntimeConfigInBytes() throws Exception {
+        Map<String, RuntimeConfigProperty> config = weblogger.getPropertiesManager().getProperties();
+        config.get("uploads.file.maxsize").setValue("2.00");
+        weblogger.getPropertiesManager().saveProperties(config);
+
+        assertEquals(2L * 1024 * 1024, MediaUploads.maxFileBytes());
     }
 }

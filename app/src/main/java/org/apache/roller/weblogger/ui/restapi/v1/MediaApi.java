@@ -1,13 +1,20 @@
 package org.apache.roller.weblogger.ui.restapi.v1;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.MediaFileManager;
+import org.apache.roller.weblogger.business.fetch.FetchRefusal;
+import org.apache.roller.weblogger.business.fetch.FetchedImage;
+import org.apache.roller.weblogger.business.fetch.RemoteImageFetcher;
+import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.pojos.MediaFile;
 import org.apache.roller.weblogger.pojos.MediaFileDirectory;
 import org.apache.roller.weblogger.pojos.MediaFileFilter;
@@ -20,6 +27,9 @@ import org.apache.roller.weblogger.ui.restapi.dto.ClearFields;
 import org.apache.roller.weblogger.ui.restapi.ColumnLimits;
 import org.apache.roller.weblogger.ui.restapi.dto.MediaDtos;
 import org.apache.roller.weblogger.util.RollerMessages;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +43,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 /**
  * Media read, patch, delete and directory listing/creation.
@@ -52,6 +63,11 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/v1/weblogs/{handle}/media")
 public class MediaApi extends BaseApiController implements UISecurityEnforced {
+
+    private static final Logger IMPORT_LOG = LoggerFactory.getLogger("roller.media.import");
+
+    @Autowired
+    RemoteImageFetcher imageFetcher;
 
     /**
      * The weblog's media files. With {@code dir}, only that directory's
@@ -135,6 +151,73 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
         return ResponseEntity
                 .status(response.failed() == 0 ? HttpStatus.CREATED : HttpStatus.MULTI_STATUS)
                 .body(response);
+    }
+
+    /**
+     * Import an image from a public URL. The fetched bytes are stored through
+     * MediaUploads.store, the path a browser upload takes, so every upload rule
+     * applies. One INFO line per import on roller.media.import: weblog, host,
+     * outcome, bytes, ms. Never the path or query, where a signed URL keeps
+     * its credentials.
+     */
+    @PostMapping("/imports")
+    public ResponseEntity<MediaDtos.MediaView> importImage(HttpServletRequest request,
+            @RequestBody MediaDtos.MediaImport body) throws WebloggerException {
+        Weblog weblog = requireActionWeblog(request);
+        if (body.url() == null || body.url().isBlank()) {
+            throw ApiException.badRequest("url is required.");
+        }
+        ColumnLimits.requireMaxLength("altText", body.altText(), ColumnLimits.MEDIA_ALT_TEXT);
+        MediaFileManager mfm = weblogger.getMediaFileManager();
+        MediaFileDirectory directory = StringUtils.isNotBlank(body.directoryId())
+                ? requireDirectory(request, body.directoryId())
+                : MediaUploads.defaultDirectory(weblog, mfm);
+        if (!WebloggerRuntimeConfig.getBooleanProperty("uploads.enabled")) {
+            throw ApiException.badRequest("File upload is disabled for this site.");
+        }
+
+        long started = System.nanoTime();
+        String outcome = "error";
+        long bytes = 0;
+        try {
+            FetchedImage image = imageFetcher.fetch(body.url(), MediaUploads.maxFileBytes(), body.name());
+            bytes = image.size();
+            RollerMessages messages = new RollerMessages();
+            MediaUploads.Result stored = MediaUploads.store(
+                    MediaUploads.Source.of(image.fileName(), image.kind().contentType(), image.bytes()),
+                    weblog, directory, mfm, messages);
+            if (stored.file() == null) {
+                outcome = stored.status();
+                throw ApiException.badRequest(stored.detail());
+            }
+            MediaFile file = stored.file();
+            if (body.altText() != null) {
+                file.setAltText(body.altText());
+                mfm.updateMediaFile(weblog, file);
+            }
+            weblogger.flush();
+            outcome = "created";
+            URI location = ServletUriComponentsBuilder.fromContextPath(request)
+                    .path("/api/v1/weblogs/{handle}/media/{id}")
+                    .buildAndExpand(weblog.getHandle(), file.getId()).toUri();
+            return ResponseEntity.created(location).body(MediaDtos.toView(file, url(weblog, file)));
+        } catch (FetchRefusal e) {
+            outcome = "refused";
+            throw ApiException.badRequest(e.getMessage(), e);
+        } finally {
+            IMPORT_LOG.info("weblog={} host={} outcome={} bytes={} ms={}", weblog.getHandle(), hostOf(body.url()),
+                    outcome, bytes, (System.nanoTime() - started) / 1_000_000);
+        }
+    }
+
+    /** The URL's host only, lower-cased; "?" when it has none. URI parsing keeps it to hostname characters. */
+    private static String hostOf(String url) {
+        try {
+            String host = new URI(url.trim()).getHost();
+            return host == null ? "?" : host.toLowerCase(Locale.ROOT);
+        } catch (URISyntaxException e) {
+            return "?";
+        }
     }
 
     /**

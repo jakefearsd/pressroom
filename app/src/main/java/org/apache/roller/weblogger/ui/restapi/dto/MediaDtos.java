@@ -41,6 +41,15 @@ public final class MediaDtos {
             String url, String blurhash) {
     }
 
+    /** The body of POST /media/imports: an image to fetch from a public URL. */
+    public record MediaImport(
+            @Schema(description = "A public http or https URL of a JPEG, PNG, GIF or WebP image.") String url,
+            @Schema(description = "File name to store it under; the extension follows the image's real type.")
+            String name,
+            @Schema(description = "Directory id; omitted, the weblog's default directory.") String directoryId,
+            @Schema(description = "Alt text for the image.") String altText) {
+    }
+
     /**
      * A partial update. Every component is nullable and null means ABSENT,
      * not "clear this"; {@code clear} removes a value. An explicitly empty

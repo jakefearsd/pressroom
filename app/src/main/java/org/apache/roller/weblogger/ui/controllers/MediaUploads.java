@@ -17,13 +17,18 @@
  */
 package org.apache.roller.weblogger.ui.controllers;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.math.BigDecimal;
 import java.util.Iterator;
 import java.util.Locale;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.roller.util.RollerConstants;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.MediaFileManager;
 import org.apache.roller.weblogger.business.Weblogger;
+import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.pojos.MediaFile;
 import org.apache.roller.weblogger.pojos.MediaFileDirectory;
 import org.apache.roller.weblogger.pojos.Weblog;
@@ -62,6 +67,83 @@ public final class MediaUploads {
     private MediaUploads() {
     }
 
+    /** The bytes of one file to store, wherever they came from: a multipart part or a fetched image. */
+    public interface Source {
+        String fileName();
+
+        String contentType();
+
+        long size();
+
+        boolean isEmpty();
+
+        InputStream openStream() throws IOException;
+
+        static Source of(MultipartFile upload) {
+            return new Source() {
+                @Override
+                public String fileName() {
+                    return upload.getOriginalFilename();
+                }
+
+                @Override
+                public String contentType() {
+                    return upload.getContentType();
+                }
+
+                @Override
+                public long size() {
+                    return upload.getSize();
+                }
+
+                @Override
+                public boolean isEmpty() {
+                    return upload.isEmpty();
+                }
+
+                @Override
+                public InputStream openStream() throws IOException {
+                    return upload.getInputStream();
+                }
+            };
+        }
+
+        static Source of(String fileName, String contentType, byte[] bytes) {
+            return new Source() {
+                @Override
+                public String fileName() {
+                    return fileName;
+                }
+
+                @Override
+                public String contentType() {
+                    return contentType;
+                }
+
+                @Override
+                public long size() {
+                    return bytes.length;
+                }
+
+                @Override
+                public boolean isEmpty() {
+                    return bytes.length == 0;
+                }
+
+                @Override
+                public InputStream openStream() {
+                    return new ByteArrayInputStream(bytes);
+                }
+            };
+        }
+    }
+
+    /** The per-file limit in bytes, computed exactly as FileContentManagerImpl.canSave computes it. */
+    public static long maxFileBytes() {
+        BigDecimal maxFileMB = new BigDecimal(WebloggerRuntimeConfig.getProperty("uploads.file.maxsize"));
+        return (long) (RollerConstants.ONE_MB_IN_BYTES * maxFileMB.doubleValue());
+    }
+
     /**
      * One uploaded file's outcome. {@code file} is populated only when
      * {@code status} is {@code "created"} -- a refused file was never
@@ -86,7 +168,13 @@ public final class MediaUploads {
      */
     public static Result store(MultipartFile upload, Weblog weblog, MediaFileDirectory directory,
             MediaFileManager mfm, RollerMessages messages) throws WebloggerException {
-        String fileName = upload.getOriginalFilename();
+        return store(Source.of(upload), weblog, directory, mfm, messages);
+    }
+
+    /** {@link #store(MultipartFile, Weblog, MediaFileDirectory, MediaFileManager, RollerMessages)} for any {@link Source}. */
+    public static Result store(Source upload, Weblog weblog, MediaFileDirectory directory,
+            MediaFileManager mfm, RollerMessages messages) throws WebloggerException {
+        String fileName = upload.fileName();
         if (StringUtils.isBlank(fileName)) {
             return new Result(fileName == null ? "(unnamed)" : fileName, "error", "A file name is required.", null);
         }
@@ -134,8 +222,8 @@ public final class MediaUploads {
      * #store} can be decided BEFORE {@link #buildMediaFile} opens the
      * file's input stream, not after.
      */
-    private static String effectiveContentType(MultipartFile upload, String fileName) {
-        String contentType = upload.getContentType();
+    private static String effectiveContentType(Source upload, String fileName) {
+        String contentType = upload.contentType();
         if (contentType == null || contentType.endsWith("/octet-stream")) {
             String detected = Utilities.getContentTypeFromFileName(fileName);
             if (detected != null) {
@@ -145,15 +233,15 @@ public final class MediaUploads {
         return contentType;
     }
 
-    private static MediaFile buildMediaFile(MultipartFile upload, Weblog weblog, MediaFileDirectory directory,
+    private static MediaFile buildMediaFile(Source upload, Weblog weblog, MediaFileDirectory directory,
             String fileName, String contentType) throws WebloggerException {
         MediaFile mediaFile = new MediaFile();
         mediaFile.setName(fileName);
         mediaFile.setDirectory(directory);
         mediaFile.setWeblog(weblog);
-        mediaFile.setLength(upload.getSize());
+        mediaFile.setLength(upload.size());
         try {
-            mediaFile.setInputStream(upload.getInputStream());
+            mediaFile.setInputStream(upload.openStream());
         } catch (IOException e) {
             throw new WebloggerException(e);
         }

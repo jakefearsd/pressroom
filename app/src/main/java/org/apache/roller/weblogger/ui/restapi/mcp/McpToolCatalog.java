@@ -53,9 +53,12 @@ public final class McpToolCatalog {
                     action("delete", "Delete a category; moveTo names where its entries go.",
                             "DELETE " + W + "/categories/{id}"),
                     action("list_tags", "List the weblog's tags.", "GET " + W + "/tags")),
-            tool("media", "A weblog's media files and folders. Uploading arrives as import by URL later.", false,
+            tool("media", "A weblog's media files and folders. Add an image with import (a public URL); "
+                    + "uploading files is REST-only.", false,
                     action("list", "List media files, optionally in one directory.", "GET " + W + "/media"),
                     action("get", "One media file.", "GET " + W + "/media/{id}"),
+                    action("import", "Import an image from a public http(s) URL; use its id as an entry's "
+                            + "featuredImageId.", "POST " + W + "/media/imports"),
                     action("update", "Change alt text, focal point, name or directory.",
                             "PATCH " + W + "/media/{id}"),
                     action("delete", "Delete a media file.", "DELETE " + W + "/media/{id}"),
@@ -100,8 +103,8 @@ public final class McpToolCatalog {
             new Exclusion("GET /v1/tokens", "Basic-auth only by design: a token holder can never list tokens."),
             new Exclusion("DELETE /v1/tokens/{id}", "Basic-auth only by design: a token holder can never revoke."),
             new Exclusion("GET /v1/ping", "Unauthenticated liveness check; nothing for an agent."),
-            new Exclusion("POST " + W + "/media", "Multipart file upload; a tool call carries JSON. Image "
-                    + "import by URL arrives in roadmap step 2."));
+            new Exclusion("POST " + W + "/media", "Multipart file upload; a tool call carries JSON. "
+                    + "Use media import to add an image by URL."));
 
     private McpToolCatalog() {
     }

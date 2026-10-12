@@ -10,7 +10,7 @@ class ApiRouteTableTest {
     void holdsEveryApiRouteByMethodAndTemplate() {
         ApiRouteTable table = ApiRouteTables.real();
 
-        assertEquals(48, table.all().size(), "the /api/v1 surface as of this plan: " + table.all());
+        assertEquals(49, table.all().size(), "the /api/v1 surface as of this plan: " + table.all());
         assertTrue(table.find("GET /v1/weblogs/{handle}/entries").isPresent());
         assertTrue(table.find("PATCH /v1/admin/users/{userName}").isPresent());
         assertTrue(table.find("GET /v1/weblogs").isPresent());

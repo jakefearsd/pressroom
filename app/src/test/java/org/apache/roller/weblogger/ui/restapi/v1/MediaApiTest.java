@@ -1,6 +1,22 @@
 package org.apache.roller.weblogger.ui.restapi.v1;
 
+import java.util.ArrayList;
 import java.util.List;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.appender.AbstractAppender;
+import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.logging.log4j.core.config.Property;
+import org.apache.roller.weblogger.business.fetch.FetchRefusal;
+import org.apache.roller.weblogger.business.fetch.FetchedImage;
+import org.apache.roller.weblogger.business.fetch.ImageKind;
+import org.apache.roller.weblogger.business.fetch.RemoteImageFetcher;
+import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
+import org.apache.roller.weblogger.util.RollerMessages;
+import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import org.apache.roller.weblogger.business.MediaFileManager;
 import org.apache.roller.weblogger.business.URLStrategy;
 import org.apache.roller.weblogger.business.Weblogger;
@@ -19,7 +35,9 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -736,5 +754,192 @@ class MediaApiTest {
 
         assertEquals(0.2, file.getFocalX());
         verify(weblogger.getMediaFileManager(), never()).updateMediaFile(any(), any());
+    }
+
+    // -----------------------------------------------------------------
+    // POST /media/imports
+    // -----------------------------------------------------------------
+
+    private static final byte[] JPEG_BYTES = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 1, 2, 3};
+    private static final String SIGNED_URL = "https://img.example.com/a/sunset.jpg?sig=SECRET";
+    private static final String IMPORT_LOGGER = "roller.media.import";
+
+    /** A controller wired with a mocked fetcher and a default directory for {@code weblog}. */
+    private MediaApi importController(Weblogger weblogger, Weblog weblog, RemoteImageFetcher fetcher) throws Exception {
+        MediaFileDirectory dir = aDirectory(weblog, "default");
+        when(weblogger.getMediaFileManager().getDefaultMediaFileDirectory(weblog)).thenReturn(dir);
+        MediaApi controller = controllerFor(weblogger);
+        controller.imageFetcher = fetcher;
+        return controller;
+    }
+
+    private static MockedStatic<WebloggerRuntimeConfig> runtimeConfig(boolean uploadsEnabled) {
+        MockedStatic<WebloggerRuntimeConfig> runtime = mockStatic(WebloggerRuntimeConfig.class);
+        runtime.when(() -> WebloggerRuntimeConfig.getBooleanProperty("uploads.enabled")).thenReturn(uploadsEnabled);
+        runtime.when(() -> WebloggerRuntimeConfig.getProperty("uploads.file.maxsize")).thenReturn("2.00");
+        return runtime;
+    }
+
+    private static org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder importRequest(
+            Weblog weblog, String json) {
+        return post("/v1/weblogs/{handle}/media/imports", weblog.getHandle())
+                .requestAttr("actionWeblog", weblog)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json);
+    }
+
+    @Test
+    void anImportStoresTheFetchedImageAndAnswers201() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        RemoteImageFetcher fetcher = mock(RemoteImageFetcher.class);
+        when(fetcher.fetch(SIGNED_URL, 2097152L, null))
+                .thenReturn(new FetchedImage("sunset.jpg", ImageKind.JPEG, JPEG_BYTES));
+        MediaApi controller = importController(weblogger, weblog, fetcher);
+
+        try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(true)) {
+            org.springframework.test.web.servlet.MvcResult result = mockMvc(controller)
+                    .perform(importRequest(weblog, "{\"url\":\"" + SIGNED_URL + "\",\"altText\":\"Dusk\"}"))
+                    .andExpect(status().isCreated())
+                    .andReturn();
+
+            tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper()
+                    .readTree(result.getResponse().getContentAsString());
+            assertEquals("sunset.jpg", json.get("name").asString());
+            assertEquals("Dusk", json.get("altText").asString());
+            String location = result.getResponse().getHeader("Location");
+            assertTrue(location.endsWith("/api/v1/weblogs/myblog/media/" + json.get("id").asString()), location);
+        }
+
+        MediaFileManager mfm = weblogger.getMediaFileManager();
+        ArgumentCaptor<MediaFile> created = ArgumentCaptor.forClass(MediaFile.class);
+        verify(mfm).createMediaFile(org.mockito.ArgumentMatchers.eq(weblog), created.capture(), any());
+        assertEquals("image/jpeg", created.getValue().getContentType());
+        assertEquals(JPEG_BYTES.length, created.getValue().getLength());
+        verify(mfm).updateMediaFile(weblog, created.getValue());
+        verify(weblogger).flush();
+    }
+
+    @Test
+    void aRefusedFetchIsA400CarryingItsDetail() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        RemoteImageFetcher fetcher = mock(RemoteImageFetcher.class);
+        when(fetcher.fetch(any(), org.mockito.ArgumentMatchers.anyLong(), any()))
+                .thenThrow(new FetchRefusal("That address is not on the public internet."));
+        MediaApi controller = importController(weblogger, weblog, fetcher);
+
+        try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(true)) {
+            String body = mockMvc(controller)
+                    .perform(importRequest(weblog, "{\"url\":\"http://10.0.0.1/x.png\"}"))
+                    .andExpect(status().isBadRequest())
+                    .andReturn().getResponse().getContentAsString();
+            assertTrue(body.contains("That address is not on the public internet."), body);
+        }
+        verify(weblogger.getMediaFileManager(), never()).createMediaFile(any(), any(), any());
+    }
+
+    @Test
+    void withUploadsOffTheImportIsRefusedBeforeAnyFetch() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        RemoteImageFetcher fetcher = mock(RemoteImageFetcher.class);
+        MediaApi controller = importController(weblogger, weblog, fetcher);
+
+        try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(false)) {
+            String body = mockMvc(controller)
+                    .perform(importRequest(weblog, "{\"url\":\"" + SIGNED_URL + "\"}"))
+                    .andExpect(status().isBadRequest())
+                    .andReturn().getResponse().getContentAsString();
+            assertTrue(body.contains("File upload is disabled for this site."), body);
+        }
+        verify(fetcher, never()).fetch(any(), org.mockito.ArgumentMatchers.anyLong(), any());
+    }
+
+    @Test
+    void aForbiddenExtensionCarriesTheUploadDetail() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        RemoteImageFetcher fetcher = mock(RemoteImageFetcher.class);
+        when(fetcher.fetch(any(), org.mockito.ArgumentMatchers.anyLong(), any()))
+                .thenReturn(new FetchedImage("sunset.jpg", ImageKind.JPEG, JPEG_BYTES));
+        MediaApi controller = importController(weblogger, weblog, fetcher);
+        MediaFileManager manager = weblogger.getMediaFileManager();
+        doAnswer(inv -> {
+            ((RollerMessages) inv.getArgument(2)).addError("error.upload.forbiddenFile");
+            return null;
+        }).when(manager).createMediaFile(any(), any(), any());
+
+        try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(true)) {
+            String body = mockMvc(controller)
+                    .perform(importRequest(weblog, "{\"url\":\"" + SIGNED_URL + "\"}"))
+                    .andExpect(status().isBadRequest())
+                    .andReturn().getResponse().getContentAsString();
+            assertTrue(body.contains("Files of this type may not be uploaded."), body);
+        }
+        verify(weblogger, never()).flush();
+    }
+
+    @Test
+    void aMissingUrlIsA400() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        RemoteImageFetcher fetcher = mock(RemoteImageFetcher.class);
+        MediaApi controller = importController(weblogger, weblog, fetcher);
+
+        String body = mockMvc(controller)
+                .perform(importRequest(weblog, "{}"))
+                .andExpect(status().isBadRequest())
+                .andReturn().getResponse().getContentAsString();
+
+        assertTrue(body.contains("url is required."), body);
+        verify(fetcher, never()).fetch(any(), org.mockito.ArgumentMatchers.anyLong(), any());
+    }
+
+    @Test
+    void eachImportLogsOneLineWithTheHostAndNeverThePathOrQuery() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        RemoteImageFetcher fetcher = mock(RemoteImageFetcher.class);
+        when(fetcher.fetch(SIGNED_URL, 2097152L, null))
+                .thenReturn(new FetchedImage("sunset.jpg", ImageKind.JPEG, JPEG_BYTES));
+        String refusedUrl = "https://Img.Example.com/private/sunset.png?sig=SECRET";
+        when(fetcher.fetch(refusedUrl, 2097152L, null)).thenThrow(new FetchRefusal("The image server took too long."));
+        MediaApi controller = importController(weblogger, weblog, fetcher);
+
+        List<String> lines = new ArrayList<>();
+        AbstractAppender appender = new AbstractAppender("import-capture", null, null, true, Property.EMPTY_ARRAY) {
+            @Override
+            public void append(LogEvent event) {
+                lines.add(event.getMessage().getFormattedMessage());
+            }
+        };
+        appender.start();
+        LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+        LoggerConfig lc = new LoggerConfig(IMPORT_LOGGER, Level.INFO, false);
+        lc.addAppender(appender, Level.INFO, null);
+        ctx.getConfiguration().addLogger(IMPORT_LOGGER, lc);
+        ctx.updateLoggers();
+        try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(true)) {
+            mockMvc(controller).perform(importRequest(weblog, "{\"url\":\"" + SIGNED_URL + "\"}"))
+                    .andExpect(status().isCreated());
+            mockMvc(controller).perform(importRequest(weblog, "{\"url\":\"" + refusedUrl + "\"}"))
+                    .andExpect(status().isBadRequest());
+        } finally {
+            ctx.getConfiguration().removeLogger(IMPORT_LOGGER);
+            ctx.updateLoggers();
+            appender.stop();
+        }
+
+        assertEquals(2, lines.size(), lines.toString());
+        for (String line : lines) {
+            for (String part : new String[] {"weblog=myblog", "host=img.example.com", "outcome=", "bytes=", "ms="}) {
+                assertTrue(line.contains(part), part + " in " + line);
+            }
+            assertFalse(line.contains("sunset") || line.contains("SECRET") || line.contains("private"), line);
+        }
+        assertTrue(lines.get(0).contains("outcome=created") && lines.get(0).contains("bytes=" + JPEG_BYTES.length),
+                lines.get(0));
+        assertTrue(lines.get(1).contains("outcome=refused"), lines.get(1));
     }
 }

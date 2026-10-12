@@ -427,6 +427,7 @@ per-weblog tag cloud has never been large enough to need it.
 GET    /api/v1/weblogs/{handle}/media[?dir={directoryId}]
 GET    /api/v1/weblogs/{handle}/media/{id}
 POST   /api/v1/weblogs/{handle}/media           multipart upload, one or more files
+POST   /api/v1/weblogs/{handle}/media/imports   import an image from a URL
 PATCH  /api/v1/weblogs/{handle}/media/{id}
 DELETE /api/v1/weblogs/{handle}/media/{id}
 GET    /api/v1/weblogs/{handle}/media/directories
@@ -451,6 +452,18 @@ fails, the whole response is 207 (Multi-Status)** — check the status code
 before assuming success, and check `results[].status` (not just the
 presence of a 2xx) to see which files actually made it, because 207 is
 still a 2xx.
+
+**Import by URL.** `POST .../media/imports` with `{"url": "...", "name": "...",
+"directoryId": "...", "altText": "..."}` (only `url` is required) fetches one
+image and stores it exactly as an upload would, answering 201 with the
+`MediaView` and a `Location` header. Use its `id` as an entry's
+`featuredImageId`. The type is decided by the bytes, not the URL or the
+server's `Content-Type`: JPEG, PNG, GIF and WebP are accepted, SVG is refused,
+and the stored extension follows the real type. Only public hosts are fetched,
+on ports 80 and 443, following at most 3 redirects (each re-checked), within 30
+seconds overall. The site's per-file size limit and its uploads-enabled switch
+apply as they do for uploads. Every refusal is a 400 whose `detail` says why.
+In the MCP endpoint this is `media` with `action: "import"`.
 
 `MediaView.directory` is the owning directory's **id**, not its name —
 deliberately the opposite of `EntryView.category`, which is a name. The read
@@ -723,7 +736,7 @@ claude mcp add --transport http roller https://blog.example.com/api/mcp \
 | `weblogs` | `list`, `get`, `create`, `update` |
 | `entries` | `list`, `get`, `create`, `update`, `trash`, `restore`, `delete_forever`, `preview` |
 | `categories` | `list`, `create`, `update`, `delete`, `list_tags` |
-| `media` | `list`, `get`, `update`, `delete`, `list_directories`, `create_directory` |
+| `media` | `list`, `get`, `import`, `update`, `delete`, `list_directories`, `create_directory` |
 | `pages` | `list`, `get`, `create`, `update`, `delete` |
 | `redirects` | `list`, `create`, `delete` |
 | `audits` | `seo`, `media` |
