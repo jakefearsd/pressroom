@@ -35,7 +35,8 @@ BEGIN
 END $$;
 CREATE INDEX IF NOT EXISTS rrc_entry_status_created_idx ON roller_reader_comment (entry_id, status, created);
 CREATE INDEX IF NOT EXISTS rrc_author_idx ON roller_reader_comment (author_id);
-CREATE INDEX IF NOT EXISTS rrc_reply_to_idx ON roller_reader_comment (reply_to_id);
+-- Unique: a comment has at most one reply (the owner's), even under a double submit.
+CREATE UNIQUE INDEX IF NOT EXISTS rrc_reply_to_uq ON roller_reader_comment (reply_to_id) WHERE reply_to_id IS NOT NULL;
 
 ALTER TABLE weblog      ADD COLUMN IF NOT EXISTS comments_enabled boolean DEFAULT false NOT NULL;
 ALTER TABLE weblog      ADD COLUMN IF NOT EXISTS comment_notify   boolean DEFAULT true  NOT NULL;

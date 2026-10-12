@@ -42,7 +42,8 @@ public interface CommentManager {
 
     /** PUBLISHED top-level comments of the entry, oldest first, each with its PUBLISHED reply fetched; ONE query.
      * Only the comments this returns are guaranteed to have getReply() limited to a PUBLISHED reply;
-     * on a comment obtained any other way getReply() is the reply in whatever status it has. */
+     * on a comment obtained any other way getReply() is the reply in whatever status it has.
+     * The query refreshes managed instances: flush pending changes first or they are lost. */
     List<ReaderComment> getPublishedForEntry(WeblogEntry entry) throws WebloggerException;
 
     /** Any status filter (null = all), newest first, paged; entry may be null. */

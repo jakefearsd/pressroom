@@ -94,6 +94,23 @@ public class CommentsMigrationTest {
     }
 
     @Test
+    void aCommentHasAtMostOneReply() throws Exception {
+        String db = "migrationtest_comments_one_reply";
+        try (Connection con = freshDatabase(db)) {
+            seed(con);
+            insertComment(con, "c1", "PUBLISHED", null);
+            insertComment(con, "r1", "PUBLISHED", "c1");
+            SQLException second = assertThrows(SQLException.class,
+                    () -> insertComment(con, "r2", "PUBLISHED", "c1"));
+            assertEquals("23505", second.getSQLState());
+            insertComment(con, "c2", "PUBLISHED", null);   // top-level rows (null reply_to) are unconstrained
+            insertComment(con, "c3", "PUBLISHED", null);
+        } finally {
+            dropDatabase(db);
+        }
+    }
+
+    @Test
     void deletingTheUserDeletesTheirComments() throws Exception {
         String db = "migrationtest_comments_user";
         try (Connection con = freshDatabase(db)) {
