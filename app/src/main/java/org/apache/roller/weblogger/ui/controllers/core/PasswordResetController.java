@@ -225,6 +225,13 @@ public class PasswordResetController extends BaseController {
             return ".ResetPassword";
         }
 
+        if (user.isSsoBound()) {
+            // Defence in depth: no token should exist for a bound account,
+            // but resetPassword would throw for one.
+            model.addAttribute("resetTokenValid", false);
+            return ".ResetPassword";
+        }
+
         user.resetPassword(passwordText);
         weblogger.getUserManager().saveUser(user);
         weblogger.flush();
@@ -297,7 +304,8 @@ public class PasswordResetController extends BaseController {
         UserManager userManager = weblogger.getUserManager();
         User user = userManager.getUserByUserName(identifier, Boolean.TRUE);
         if (user != null) {
-            return user;
+            // An SSO-bound account has no password to reset.
+            return user.isSsoBound() ? null : user;
         }
         return userManager.getUserByEmail(identifier);
     }

@@ -84,6 +84,7 @@ public class ProfileController extends BaseController {
         User ud = getAuthenticatedUser(request);
         // load up the form from the users existing profile data
         bean.copyFrom(ud);
+        model.addAttribute("ssoBound", ud.isSsoBound());
 
         return ".Profile";
     }
@@ -96,7 +97,9 @@ public class ProfileController extends BaseController {
         populateCommonModel(request, model);
         addListsToModel(model);
 
-        myValidate(request, model, bean);
+        User signedIn = getAuthenticatedUser(request);
+        model.addAttribute("ssoBound", signedIn != null && signedIn.isSsoBound());
+        myValidate(request, model, bean, signedIn);
 
         if (!hasErrors(model)) {
 
@@ -126,7 +129,12 @@ public class ProfileController extends BaseController {
         return ".Profile";
     }
 
-    private void myValidate(HttpServletRequest request, Model model, ProfileBean bean) {
+    private void myValidate(HttpServletRequest request, Model model, ProfileBean bean, User signedIn) {
+        if (signedIn != null && signedIn.isSsoBound()
+                && (!StringUtils.isEmpty(bean.getPasswordText())
+                    || !StringUtils.isEmpty(bean.getPasswordConfirm()))) {
+            addError(model, "userSettings.error.ssoPassword", request);
+        }
         if (!StringUtils.equals(bean.getPasswordText(), bean.getPasswordConfirm())) {
             // userRegister.* went away with public self-registration; this page
             // has its own key for the same message.

@@ -84,4 +84,25 @@ class RollerUserDetailsServiceTest {
             weblogger.detach();
         }
     }
+
+    @Test
+    void aBoundAccountIsInvisibleToPasswordSignIn() throws Exception {
+        MockWeblogger weblogger = MockWeblogger.create();
+        try {
+            when(provider.getWeblogger()).thenReturn(weblogger.weblogger());
+            org.apache.roller.weblogger.pojos.User reader = new org.apache.roller.weblogger.pojos.User();
+            reader.setUserName("reader-x");
+            reader.setPassword(org.apache.roller.weblogger.pojos.User.SSO_PASSWORD_MARKER);
+            reader.setSsoIssuer("https://accounts.example");
+            reader.setSsoSubject("sub-1");
+            when(weblogger.userManager().getUserByUserName("reader-x")).thenReturn(reader);
+
+            UsernameNotFoundException thrown = assertThrows(UsernameNotFoundException.class,
+                    () -> service.loadUserByUsername("reader-x"));
+
+            assertEquals("ERROR no password user: reader-x", thrown.getMessage());
+        } finally {
+            weblogger.detach();
+        }
+    }
 }

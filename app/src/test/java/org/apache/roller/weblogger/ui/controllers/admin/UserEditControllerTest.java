@@ -676,4 +676,59 @@ class UserEditControllerTest {
 
         assertEquals(List.of("bean_userName"), ControllerTestFixture.invalidFields(model));
     }
+
+    private User storedBoundUser(String userName) throws WebloggerException {
+        User stored = storedUser(userName);
+        stored.setPassword(User.SSO_PASSWORD_MARKER);
+        stored.setSsoIssuer("https://accounts.example");
+        stored.setSsoSubject("sub-1");
+        return stored;
+    }
+
+    @Test
+    void savingAPasswordForABoundAccountIsRefused() throws Exception {
+        User stored = storedBoundUser("reader-abc1234567");
+        CreateUserBean bean = beanForExisting("u1", "reader-abc1234567");
+        bean.setPassword("newpass");
+
+        String view = controller.modifyUserSave(
+                ControllerTestFixture.requestFor(user("admin", "a@example.com")), model, bean);
+
+        assertEquals(".UserEdit", view);
+        assertEquals(List.of("userAdmin.error.ssoPassword"), ControllerTestFixture.errors(model));
+        assertEquals(Boolean.TRUE, model.getAttribute("ssoBound"));
+        verify(weblogger.userManager(), never()).saveUser(any());
+        assertEquals(User.SSO_PASSWORD_MARKER, stored.getPassword());
+    }
+
+    @Test
+    void sendPasswordLinkIsRefusedForABoundAccount() throws Exception {
+        User stored = storedBoundUser("reader-abc1234567");
+        when(weblogger.userManager().getUserByUserName("reader-abc1234567", null)).thenReturn(stored);
+
+        String view = controller.sendPasswordLink(
+                ControllerTestFixture.requestFor(user("admin", "a@example.com")), model, "reader-abc1234567");
+
+        assertEquals(".UserEdit", view);
+        assertEquals(List.of("userAdmin.error.ssoPassword"), ControllerTestFixture.errors(model));
+        assertEquals(Boolean.TRUE, model.getAttribute("ssoBound"));
+        verify(weblogger.getUserTokenManager(), never()).issueToken(any(), any());
+    }
+
+    @Test
+    void modifyUserExposesSsoBound() throws Exception {
+        storedBoundUser("reader-abc1234567");
+        CreateUserBean bean = new CreateUserBean();
+        bean.setId("u1");
+
+        controller.modifyUserExecute(ControllerTestFixture.requestFor(null), model, bean);
+        assertEquals(Boolean.TRUE, model.getAttribute("ssoBound"));
+
+        ExtendedModelMap localModel = new ExtendedModelMap();
+        storedUser("jake");
+        CreateUserBean localBean = new CreateUserBean();
+        localBean.setId("u1");
+        controller.modifyUserExecute(ControllerTestFixture.requestFor(null), localModel, localBean);
+        assertEquals(Boolean.FALSE, localModel.getAttribute("ssoBound"));
+    }
 }

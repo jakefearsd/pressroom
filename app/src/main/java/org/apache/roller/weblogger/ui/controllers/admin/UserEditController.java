@@ -183,6 +183,7 @@ public class UserEditController extends BaseController {
         bean.copyFrom(user);
         bean.setAdministrator(isAdministrator(user));
         model.addAttribute("bean", bean);
+        model.addAttribute("ssoBound", user.isSsoBound());
         model.addAttribute("mailConfigured", PasswordLinkMailer.isReady());
         model.addAttribute("permissions", getPermissions(user));
         addLocalesAndTimezones(model);
@@ -214,6 +215,7 @@ public class UserEditController extends BaseController {
             return ".UserAdmin";
         }
         model.addAttribute("permissions", getPermissions(user));
+        model.addAttribute("ssoBound", user.isSsoBound());
 
         // validate for modify
         myValidate(bean, user, false, model, request);
@@ -316,6 +318,12 @@ public class UserEditController extends BaseController {
         bean.setAdministrator(isAdministrator(user));
         model.addAttribute("bean", bean);
         model.addAttribute("permissions", getPermissions(user));
+        model.addAttribute("ssoBound", user.isSsoBound());
+
+        if (user.isSsoBound()) {
+            addError(model, "userAdmin.error.ssoPassword", request);
+            return ".UserEdit";
+        }
 
         if (!PasswordLinkMailer.isReady()) {
             addError(model, "userAdmin.mailNotConfigured", request);
@@ -390,6 +398,9 @@ public class UserEditController extends BaseController {
         } else {
             if (user.getUserName() == null) {
                 addError(model, "userAdmin.error.userNotFound", request);
+            }
+            if (user.isSsoBound() && !StringUtils.isEmpty(bean.getPassword())) {
+                addFieldError(model, "bean_password", "userAdmin.error.ssoPassword", request);
             }
         }
     }

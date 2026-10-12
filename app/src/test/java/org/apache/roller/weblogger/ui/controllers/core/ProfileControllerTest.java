@@ -277,4 +277,26 @@ class ProfileControllerTest {
 
         assertEquals(List.of("timeZone"), ControllerTestFixture.invalidFields(model));
     }
+
+    @Test
+    void aBoundAccountCannotChangeItsPassword() throws Exception {
+        User user = user("reader-abc1234567");
+        user.setPassword(User.SSO_PASSWORD_MARKER);
+        user.setSsoIssuer("https://accounts.example");
+        user.setSsoSubject("sub-1");
+        ProfileBean bean = new ProfileBean();
+        bean.setPasswordText("newpassword");
+        bean.setPasswordConfirm("newpassword");
+
+        String view = controller.save(ControllerTestFixture.requestFor(user), model, bean, redirectAttributes);
+
+        assertEquals(".Profile", view);
+        assertEquals(List.of("userSettings.error.ssoPassword"), ControllerTestFixture.errors(model));
+        verify(weblogger.userManager(), never()).saveUser(any());
+        assertEquals(User.SSO_PASSWORD_MARKER, user.getPassword());
+
+        ExtendedModelMap getModel = new ExtendedModelMap();
+        controller.execute(ControllerTestFixture.requestFor(user), getModel, new ProfileBean());
+        assertEquals(Boolean.TRUE, getModel.getAttribute("ssoBound"));
+    }
 }

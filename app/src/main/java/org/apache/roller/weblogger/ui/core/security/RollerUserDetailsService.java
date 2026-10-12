@@ -61,6 +61,11 @@ public class RollerUserDetailsService implements UserDetailsService {
             if (userData == null) {
                 throw new UsernameNotFoundException("ERROR no user: " + userName);
             }
+            if (userData.isSsoBound()) {
+                // A bound account has no password; to password sign-in it is
+                // indistinguishable from an unknown user.
+                throw new UsernameNotFoundException("ERROR no password user: " + userName);
+            }
             List<SimpleGrantedAuthority> authorities = getAuthorities(userData, umgr);
             return new org.springframework.security.core.userdetails.User(
                     userData.getUserName(), userData.getPassword(),

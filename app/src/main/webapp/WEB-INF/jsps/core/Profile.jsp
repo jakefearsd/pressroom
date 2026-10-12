@@ -61,6 +61,7 @@
         </div>
     </div>
 
+        <c:if test="${not ssoBound}">
         <div class="row mb-3">
             <spring:message code="userSettings.password" var="passwordLabel"/>
             <label class="col-sm-3 col-form-label" for="passwordText">${passwordLabel}</label>
@@ -80,6 +81,7 @@
                                onchange="formChanged()" onkeyup="formChanged()"/>
             </div>
         </div>
+        </c:if>
 
 
     <div class="row mb-3">

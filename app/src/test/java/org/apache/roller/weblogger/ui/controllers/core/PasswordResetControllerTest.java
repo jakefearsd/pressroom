@@ -541,4 +541,52 @@ class PasswordResetControllerTest {
         RollerLoginSessionManager.getInstance().register(userName, session);
         return session;
     }
+
+    private static User boundReader(String userName) {
+        User reader = user(userName, "reader@example.invalid");
+        reader.setSsoIssuer("https://accounts.example");
+        reader.setSsoSubject("sub-1");
+        return reader;
+    }
+
+    @Test
+    void forgotPasswordByAReaderUsernameSendsNothing() throws Exception {
+        User reader = boundReader("reader-abc1234567");
+        when(mocks.getUserManager().getUserByUserName("reader-abc1234567", Boolean.TRUE)).thenReturn(reader);
+
+        String view = controller.forgotSend(request(), model, "reader-abc1234567");
+
+        assertEquals(".ForgotPassword", view);
+        assertEquals(List.of("forgotPassword.confirmation"), ControllerTestFixture.messages(model));
+        verify(mocks.getUserTokenManager(), never()).issueToken(any(), any());
+        assertTrue(mail.sent().isEmpty());
+    }
+
+    @Test
+    void forgotPasswordByASharedEmailReachesTheLocalAccount() throws Exception {
+        User local = user("dana", "shared@example.invalid");
+        when(mocks.getUserManager().getUserByEmail("shared@example.invalid")).thenReturn(local);
+        when(mocks.getUserTokenManager().issueToken(local, UserToken.Purpose.PASSWORD_RESET))
+                .thenReturn("raw-token-9");
+
+        controller.forgotSend(request(), model, "shared@example.invalid");
+
+        verify(mocks.getUserTokenManager()).issueToken(local, UserToken.Purpose.PASSWORD_RESET);
+    }
+
+    @Test
+    void resetSaveRefusesABoundAccount() throws Exception {
+        User reader = boundReader("reader-abc1234567");
+        reader.setPassword(User.SSO_PASSWORD_MARKER);
+        when(mocks.getUserTokenManager().validate("good-token")).thenReturn(new UserToken());
+        when(mocks.getUserTokenManager().consume("good-token")).thenReturn(reader);
+
+        String view = controller.resetSave(request(), new MockHttpServletResponse(), model,
+                new RedirectAttributesModelMap(), "good-token", "newpassword1", "newpassword1");
+
+        assertEquals(".ResetPassword", view);
+        assertEquals(Boolean.FALSE, model.getAttribute("resetTokenValid"));
+        verify(mocks.getUserManager(), never()).saveUser(any());
+        assertEquals(User.SSO_PASSWORD_MARKER, reader.getPassword());
+    }
 }

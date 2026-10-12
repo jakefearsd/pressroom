@@ -99,6 +99,7 @@
         </div>
     </div>
 
+        <c:if test="${not ssoBound}">
         <div class="row mb-3">
             <label class="col-sm-3 col-form-label" for="bean_password"><spring:message code="userSettings.password"/></label>
             <div class="col-sm-9">
@@ -111,6 +112,7 @@
                 </c:if>
             </div>
         </div>
+        </c:if>
 
 
     <div class="row mb-3">
@@ -243,7 +245,7 @@
 
 </form>
 
-<c:if test="${actionName == 'modifyUser' && not empty bean.id}">
+<c:if test="${actionName == 'modifyUser' && not empty bean.id && not ssoBound}">
     <%-- A second, sibling form -- HTML does not allow nesting one inside the
          save form above, and this button posts to a different action. --%>
     <spring:message code="userAdmin.sendPasswordLink.confirm"
