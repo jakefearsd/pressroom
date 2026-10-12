@@ -77,7 +77,7 @@ public final class WeblogOwnership {
             }
             return entry;
         } catch (WebloggerException ex) {
-            log.error("Error looking up entry by id - {}", id, ex);
+            log.error("Error looking up an entry for weblog {}", handleOf(weblog), ex);
         }
         return null;
     }
@@ -99,7 +99,7 @@ public final class WeblogOwnership {
             }
             return category;
         } catch (WebloggerException ex) {
-            log.error("Error looking up category by id - {}", id, ex);
+            log.error("Error looking up a category for weblog {}", handleOf(weblog), ex);
         }
         return null;
     }
@@ -121,7 +121,7 @@ public final class WeblogOwnership {
             }
             return template;
         } catch (WebloggerException ex) {
-            log.error("Error looking up template by id - {}", id, ex);
+            log.error("Error looking up a template for weblog {}", handleOf(weblog), ex);
         }
         return null;
     }
@@ -142,7 +142,7 @@ public final class WeblogOwnership {
             }
             return rule;
         } catch (WebloggerException ex) {
-            log.error("Error looking up redirect by id - {}", id, ex);
+            log.error("Error looking up a redirect for weblog {}", handleOf(weblog), ex);
         }
         return null;
     }
@@ -162,7 +162,7 @@ public final class WeblogOwnership {
             }
             return page;
         } catch (WebloggerException ex) {
-            log.error("Error looking up page by id - {}", id, ex);
+            log.error("Error looking up a page for weblog {}", handleOf(weblog), ex);
         }
         return null;
     }
@@ -184,8 +184,16 @@ public final class WeblogOwnership {
             }
             return comment;
         } catch (WebloggerException ex) {
-            log.error("Error looking up comment by id - {}", id, ex);
+            log.error("Error looking up a comment for weblog {}", handleOf(weblog), ex);
         }
         return null;
+    }
+
+    /**
+     * The weblog to name in a failed lookup's log line. The id is never logged:
+     * it is a request parameter, and a CR/LF in it could forge a line of its own.
+     */
+    private static String handleOf(Weblog weblog) {
+        return weblog == null ? "-" : weblog.getHandle();
     }
 }

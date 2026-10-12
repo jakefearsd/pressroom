@@ -32,6 +32,7 @@ import org.apache.roller.weblogger.pojos.ReaderComment.Status;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
+import org.apache.roller.weblogger.ui.core.security.sso.SsoLogCapture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ui.Model;
@@ -69,6 +70,12 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
         registerMessage("comments.approved", "{0} approved.");
         registerMessage("comments.hidden", "{0} hidden.");
         registerMessage("comments.deleted", "{0} deleted.");
+        try {
+            // The service answers whether it moved the comment; it does unless a test says not.
+            when(service.setStatus(any(), any(), any())).thenReturn(true);
+        } catch (WebloggerException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     @Test
@@ -82,7 +89,7 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
     void listsByTabAndPages() throws Exception {
         ReaderComment c = comment("c1", weblog, Status.PENDING, "hi");
         when(manager.getComments(weblog, Status.PENDING, null, 0, 30)).thenReturn(List.of(c));
-        when(manager.countComments(weblog, Status.PENDING)).thenReturn(31L);
+        when(manager.countComments(weblog, Status.PENDING, null)).thenReturn(31L);
 
         assertEquals(".Comments", controller.execute("PENDING", 0, null, request, model));
         assertEquals(List.of(c), model.getAttribute("comments"));
@@ -107,6 +114,47 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
         controller.execute("PENDING", 0, "e1", request, model);
         verify(manager).getComments(weblog, Status.PENDING, entry, 0, 30);
         assertEquals("e1", model.getAttribute("entryFilter"));
+    }
+
+    /**
+     * M6: the pager's "Older" link shows while (page + 1) * 30 is below the
+     * count, so the count must be of what the list shows: with an entry filter,
+     * that entry's comments, not the whole weblog's.
+     */
+    @Test
+    void theCountFollowsTheEntryFilter() throws Exception {
+        WeblogEntry entry = entry("e1", weblog);
+        when(manager.countComments(weblog, Status.PUBLISHED, entry)).thenReturn(3L);
+        when(manager.countComments(weblog, Status.PUBLISHED, null)).thenReturn(95L);
+        when(manager.countComments(weblog, Status.PUBLISHED)).thenReturn(95L);
+
+        controller.execute("PUBLISHED", 0, "e1", request, model);
+
+        assertEquals(3L, model.getAttribute("commentCount"));
+    }
+
+    /**
+     * M3: page is client input, multiplied by the page size into an offset. A
+     * negative page would be a negative first result and a huge one overflows
+     * int; both are clamped, on the list and on every action's return to it.
+     */
+    @Test
+    void aNegativeOrHugePageIsClampedNotAnError() throws Exception {
+        controller.execute("PENDING", -3, null, request, model);
+        verify(manager).getComments(weblog, Status.PENDING, null, 0, 30);
+        assertEquals(0, model.getAttribute("page"));
+
+        Model huge = newModel();
+        controller.execute("PUBLISHED", Integer.MAX_VALUE, null, request, huge);
+        int clamped = (Integer) huge.getAttribute("page");
+        assertTrue(clamped > 0 && clamped < Integer.MAX_VALUE / 30, "clamped to a sane cap: " + clamped);
+        verify(manager).getComments(weblog, Status.PUBLISHED, null, clamped * 30, 30);
+        assertTrue(errors(huge).isEmpty(), errors(huge).toString());
+
+        Model posted = newModel();
+        controller.hide(new String[0], "HIDDEN", null, Integer.MIN_VALUE, request, posted);
+        verify(manager).getComments(weblog, Status.HIDDEN, null, 0, 30);
+        assertEquals(0, posted.getAttribute("page"));
     }
 
     @Test
@@ -163,11 +211,22 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
         assertEquals("f", foreign.getId());
     }
 
+    /**
+     * I2: the tombstone rule lives in the service (the API reaches it too); the
+     * page acts on the service's answer, so a refused move is not counted.
+     */
     @Test
-    void aTombstoneCannotBeApproved() throws Exception {
-        comment("t", weblog, Status.HIDDEN, "");
-        controller.approve(new String[] {"t"}, "HIDDEN", null, 0, request, model);
-        verify(service, never()).setStatus(any(), any(), any());
+    void aTombstoneTheServiceRefusesIsNotCounted() throws Exception {
+        ReaderComment t = comment("t", weblog, Status.HIDDEN, "");
+        ReaderComment a = comment("a", weblog, Status.PENDING, "x");
+        when(service.setStatus(t, Status.PUBLISHED, user)).thenReturn(false);
+
+        controller.approve(new String[] {"t", "a"}, "HIDDEN", null, 0, request, model);
+
+        verify(service).setStatus(t, Status.PUBLISHED, user);
+        verify(service).setStatus(a, Status.PUBLISHED, user);
+        assertTrue(messages(model).contains("1 approved."), messages(model).toString());
+        assertTrue(errors(model).isEmpty(), errors(model).toString());
     }
 
     @Test
@@ -199,6 +258,42 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
         controller.reply("p", "no", "PENDING", null, 0, request, model);
 
         assertTrue(errors(model).contains("comments.reply.refused"), errors(model).toString());
+    }
+
+    /**
+     * M5: an owner's replies count toward the rate limit, so a refused reply
+     * can be the limit, which is not "that comment cannot take a reply".
+     */
+    @Test
+    void aRateLimitedReplySaysSo() throws Exception {
+        ReaderComment parent = comment("p", weblog, Status.PUBLISHED, "q");
+        when(service.reply(user, parent, "again")).thenReturn(CommentOutcome.refused(CommentRefusal.RATE_LIMITED));
+
+        controller.reply("p", "again", "PUBLISHED", null, 0, request, model);
+
+        assertEquals(List.of("comments.reply.rateLimited"), errors(model));
+    }
+
+    /**
+     * M7: ids are request parameters. A CR/LF in one must not reach a log line,
+     * where it could forge a line of its own: neither the refusal of an unknown
+     * id nor the error of a failed lookup logs the raw id.
+     */
+    @Test
+    void aForgedIdNeverReachesTheLog() throws Exception {
+        String forged = "x\r\n2026-10-12 ERROR FORGEDLINE";
+        when(manager.getComment("y\r\nFORGEDREPLY")).thenThrow(new WebloggerException("down"));
+        List<String> lines;
+        try (SsoLogCapture capture = SsoLogCapture.everyLogger()) {
+            controller.approve(new String[] {forged}, "PENDING", null, 0, request, newModel());
+            controller.reply("y\r\nFORGEDREPLY", "hi", "PUBLISHED", null, 0, request, newModel());
+            lines = capture.everything();
+        }
+        assertTrue(lines.stream().anyMatch(l -> l.contains(weblog.getHandle())),
+                "the capture saw the refusals: " + lines);
+        for (String line : lines) {
+            assertFalse(line.contains("FORGED"), "a raw id was logged: " + line);
+        }
     }
 
     @Test

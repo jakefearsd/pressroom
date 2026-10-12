@@ -25,6 +25,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.CommentManager;
 import org.apache.roller.weblogger.business.comments.CommentOutcome;
+import org.apache.roller.weblogger.business.comments.CommentRefusal;
 import org.apache.roller.weblogger.business.comments.CommentService;
 import org.apache.roller.weblogger.pojos.ReaderComment;
 import org.apache.roller.weblogger.pojos.ReaderComment.Status;
@@ -58,6 +59,8 @@ public class CommentsModerationController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(CommentsModerationController.class);
     private static final int COUNT = 30;
+    /** The last page a request may ask for: page * COUNT stays far below int overflow. */
+    static final int MAX_PAGE = 100_000;
 
     private final CommentService comments;
 
@@ -150,11 +153,15 @@ public class CommentsModerationController extends BaseController {
                     : comments.reply(getAuthenticatedUser(request), mine.get(0), body);
             if (outcome != null && outcome.ok()) {
                 addMessage(model, "comments.replied", request);
+            } else if (outcome != null && outcome.refusal() == CommentRefusal.RATE_LIMITED) {
+                // An owner's replies count toward the per-account limit too.
+                addError(model, "comments.reply.rateLimited", request);
             } else {
                 addError(model, "comments.reply.refused", request);
             }
         } catch (WebloggerException ex) {
-            log.error("Error replying to comment {}", id, ex);
+            // The id is a raw request parameter: never logged (a CR/LF in it could forge a line).
+            log.error("Error replying to a comment on weblog {}", getActionWeblog(request).getHandle(), ex);
             addError(model, "generic.error.check.logs", request);
         }
         load(request, model, parse(status), page, entryId);
@@ -168,12 +175,11 @@ public class CommentsModerationController extends BaseController {
         int done = 0;
         try {
             for (ReaderComment c : owned(ids, request)) {
-                // A reader-deleted tombstone has no body: publishing it would show nothing.
-                if (target == Status.PUBLISHED && isTombstone(c)) {
-                    continue;
+                // The service refuses a move it forbids (publishing a reader-deleted
+                // tombstone); a refused one is not counted.
+                if (comments.setStatus(c, target, actor)) {
+                    done++;
                 }
-                comments.setStatus(c, target, actor);
-                done++;
             }
             addMessage(model, messageKey, Integer.toString(done), request);
         } catch (WebloggerException ex) {
@@ -196,16 +202,15 @@ public class CommentsModerationController extends BaseController {
             ReaderComment c = mgr.getComment(id);
             if (c != null && c.getEntry() != null && actionWeblog.equals(c.getEntry().getWebsite())) {
                 found.add(c);
+            } else if (c != null) {
+                // A stored comment's id, not the raw parameter.
+                log.warn("Refusing comment {}: not on weblog {}", c.getId(), actionWeblog.getHandle());
             } else {
-                log.warn("Refusing comment {}: not on weblog {}", id, actionWeblog.getHandle());
+                // The raw parameter is never logged: a CR/LF in it could forge a line.
+                log.warn("Refusing an unknown comment id on weblog {}", actionWeblog.getHandle());
             }
         }
         return found;
-    }
-
-    /** A HIDDEN comment with an empty body: its author deleted it (ruling R5). */
-    static boolean isTombstone(ReaderComment c) {
-        return c.getStatus() == Status.HIDDEN && (c.getBody() == null || c.getBody().isEmpty());
     }
 
     private static Status parse(String status) {
@@ -219,8 +224,14 @@ public class CommentsModerationController extends BaseController {
         return Status.PENDING;
     }
 
-    private void load(HttpServletRequest request, Model model, Status status, int page, String entryId) {
+    /** The page as asked, held to 0..MAX_PAGE: it is client input, multiplied into an offset. */
+    static int clampPage(int page) {
+        return Math.clamp(page, 0, MAX_PAGE);
+    }
+
+    private void load(HttpServletRequest request, Model model, Status status, int requestedPage, String entryId) {
         Weblog actionWeblog = getActionWeblog(request);
+        int page = clampPage(requestedPage);
         model.addAttribute("status", status.name());
         model.addAttribute("page", page);
         try {
@@ -234,7 +245,8 @@ public class CommentsModerationController extends BaseController {
             }
             CommentManager mgr = weblogger.getCommentManager();
             model.addAttribute("comments", mgr.getComments(actionWeblog, status, entry, page * COUNT, COUNT));
-            model.addAttribute("commentCount", mgr.countComments(actionWeblog, status));
+            // What the list shows, counted: the pager's "Older" link reads it.
+            model.addAttribute("commentCount", mgr.countComments(actionWeblog, status, entry));
         } catch (WebloggerException ex) {
             log.error("Error getting comments for weblog - {}", actionWeblog.getHandle(), ex);
             addError(model, "generic.error.check.logs", request);

@@ -106,4 +106,41 @@ class WeblogOwnershipTest {
 
         assertNull(WeblogOwnership.redirect(mock.weblogger(), "boom", mine));
     }
+
+    /**
+     * M7: an id is a request parameter, so a CR/LF in it could forge a line of
+     * its own in roller.log. A failed lookup of any kind logs the weblog, not the
+     * raw id.
+     */
+    @Test
+    void aFailedLookupNeverLogsTheRawId() throws Exception {
+        org.apache.roller.weblogger.business.MockWeblogger mock =
+                org.apache.roller.weblogger.business.MockWeblogger.create();
+        org.apache.roller.weblogger.WebloggerException down =
+                new org.apache.roller.weblogger.WebloggerException("store down");
+        String forged = "boom\r\n2026-10-12 ERROR FORGEDLINE";
+        org.mockito.Mockito.when(mock.weblogEntryManager().getWeblogEntry(forged)).thenThrow(down);
+        org.mockito.Mockito.when(mock.weblogEntryManager().getWeblogCategory(forged)).thenThrow(down);
+        org.mockito.Mockito.when(mock.weblogManager().getTemplate(forged)).thenThrow(down);
+        org.mockito.Mockito.when(mock.weblogRedirectManager().getRedirect(forged)).thenThrow(down);
+        org.mockito.Mockito.when(mock.weblogPageManager().getPage(forged)).thenThrow(down);
+        org.mockito.Mockito.when(mock.commentManager().getComment(forged)).thenThrow(down);
+
+        java.util.List<String> lines;
+        try (org.apache.roller.weblogger.ui.core.security.sso.SsoLogCapture capture =
+                org.apache.roller.weblogger.ui.core.security.sso.SsoLogCapture.everyLogger()) {
+            assertNull(WeblogOwnership.entry(mock.weblogger(), forged, mine));
+            assertNull(WeblogOwnership.category(mock.weblogger(), forged, mine));
+            assertNull(WeblogOwnership.template(mock.weblogger(), forged, mine));
+            assertNull(WeblogOwnership.redirect(mock.weblogger(), forged, mine));
+            assertNull(WeblogOwnership.page(mock.weblogger(), forged, mine));
+            assertNull(WeblogOwnership.comment(mock.weblogger(), forged, mine));
+            lines = capture.everything();
+        }
+        assertTrue(lines.stream().filter(l -> l.contains(mine.getHandle())).count() >= 6,
+                "each failure is logged, with the weblog: " + lines);
+        for (String line : lines) {
+            org.junit.jupiter.api.Assertions.assertFalse(line.contains("FORGED"), "a raw id was logged: " + line);
+        }
+    }
 }
