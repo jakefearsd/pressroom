@@ -92,11 +92,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * and approves it through the API when it was held; the API test holds its comment with
  * three links, which holds even a trusted reader's (criterion 6).
  *
- * <p><b>The rate limit is per account: five stored comments in ten minutes.</b> A refused
- * post stores nothing and counts for nothing. The seeded admin stores exactly five here
- * (two owner comments in the fixture, three replies), and each reader at most four. A
- * further owner comment or reply needs a second owner account, or the sixth is refused
- * with a 429.
+ * <p><b>The rate limit is raised for this suite.</b> Production allows each account five
+ * comments or replies in ten minutes and thirty a day; {@code roller-it.properties} sets
+ * {@code comments.throttle.*} to 1000 in ten minutes and 10000 a day (ruling R9), so the
+ * seeded admin and the readers post and reply as often as the tests need. The limit
+ * itself, at its defaults and as configured, is proven by {@code CommentServiceTest}.
  *
  * <p><b>The custom domain is reached by a real browser.</b> As in {@code VirtualHostIT},
  * Chrome's {@code --host-resolver-rules} maps {@link #VHOST} to {@code 127.0.0.1} for this
@@ -129,7 +129,10 @@ class CommentsIT extends RollerIT {
     private static final String AUTHOR_BADGE = "Author";
 
     private static final String LOGIN = "/roller-ui/login.rol";
+    private static final String MENU = "/roller-ui/menu.rol";
     private static final String ACCOUNT = "/roller-ui/account.rol";
+    private static final String MODERATION = "/roller-ui/authoring/comments.rol";
+    private static final String ACCESS_DENIED = "/roller-ui/access-denied.rol";
     private static final String SSO_START = "/roller-ui/sso/start";
     private static final String SESSION_ENDPOINT = "/roller-ui/rendering/comments/session.rol";
     private static final String POST_ENDPOINT = "/roller-ui/rendering/comments.rol";
@@ -349,7 +352,12 @@ class CommentsIT extends RollerIT {
         assertFalse(before.contains(body), "a held comment is on the public page");
         logout();
 
+        // Criterion 25: Main Menu shows the pending count beside the weblog. The seeded
+        // admin created it, so its permission row holds "admin" alone, not "post".
         loginAsAdmin();
+        openPath(MENU);
+        $("a[href*='/roller-ui/authoring/comments.rol?weblog=" + otherHandle + "'] .badge")
+                .shouldHave(text("awaiting approval"));
         openPath(moderation(otherHandle, null));
         $$(MODERATION_ROWS).findBy(text(body)).should(exist);
         clickAndAwaitNewPage($("#commentsModerationForm button[formaction$='comments!approve.rol'][value='" + id + "']"));
@@ -434,6 +442,69 @@ class CommentsIT extends RollerIT {
         SelenideElement under = $("article#comment-" + id + " .comment-reply#comment-" + replyId);
         under.shouldHave(text(answer));
         under.$(".comment-badge").shouldHave(exactText(AUTHOR_BADGE));
+
+        // Ruling R7: the shared, cached page names nobody by account. The reader's
+        // username and email appear nowhere on it, and the owner's login name is not in
+        // the comments section (an owner's username is half a credential).
+        String readerName = adminApi("GET", comment(mainHandle, id), null, 200).get("authorUserName").asString();
+        String page = anonymousPage(open);
+        assertTrue(page.contains("id=\"comment-" + id + "\"") && page.contains("id=\"comment-" + replyId + "\""),
+                "fixture: the comment and its reply are on the page");
+        assertFalse(page.contains(readerName), "the anonymous page carries the reader's username " + readerName);
+        assertFalse(page.contains(READER2 + "@example.com"), "the anonymous page carries the reader's email");
+        assertFalse(section(page).contains(ADMIN_USERNAME), "the comments section carries the owner's username");
+        assertFalse(section(page).contains("it-admin@example.invalid"), "the comments section carries the owner's email");
+    }
+
+    // ---------------------------------------------------------- criterion 24
+
+    /**
+     * Criterion 24, the rows a click changes: the owner hides a held comment on the Comments
+     * page, where it leaves the Awaiting tab for the Hidden one, then deletes it there with
+     * the confirmed Delete button, after which it is gone. A signed-in reader is refused the
+     * page. {@link #READER}'s comments on {@code other} are always held (see the class
+     * javadoc), so hiding one changes no other test's trust.
+     */
+    @Test
+    void theOwnerHidesThenDeletesOnTheCommentsPage() throws Exception {
+        signInWithKeycloak(READER, other.fullPath());
+        $(TEXTAREA).should(visible);
+        String body = "Soon hidden, then deleted " + nonce();
+        Posted held = postThroughTheSessionEndpoint(body);
+        assertEquals("PENDING", held.status(), "the reader is trusted on the other weblog");
+
+        HttpResponse<String> refused = send("GET", moderation(otherHandle, null), null,
+                Map.of("Cookie", "JSESSIONID=" + sessionCookie()), -1);
+        String location = refused.headers().firstValue("Location").orElse("");
+        assertTrue(refused.statusCode() == 403 || (refused.statusCode() == 302 && location.contains(ACCESS_DENIED)),
+                "the Comments page answered a reader " + refused.statusCode() + " " + location);
+        BrowserHealth.current().expectRefusal(MODERATION);
+        BrowserHealth.current().expectRefusal(ACCESS_DENIED);
+        openPath(moderation(otherHandle, null));
+        $("#commentsModerationForm").shouldNot(exist);
+        logout();
+
+        loginAsAdmin();
+        openPath(moderation(otherHandle, null));
+        clickAndAwaitNewPage($("#commentsModerationForm button[formaction$='comments!hide.rol'][value='"
+                + held.id() + "']"));
+        $("#messages").shouldHave(text("1 hidden."));
+        $$(MODERATION_ROWS).findBy(text(body)).shouldNot(exist);
+
+        openPath(moderation(otherHandle, "HIDDEN"));
+        $$(MODERATION_ROWS).findBy(text(body)).should(exist);
+        SelenideElement delete = $("#commentsModerationForm button[formaction$='comments!delete.rol'][value='"
+                + held.id() + "']").should(visible);
+        assertNotNull(delete.getAttribute("data-confirm"), "Delete is not a confirmed button");
+        awaitNewPageAfter(() -> {
+            delete.click();
+            Selenide.confirm();
+        });
+        $("#messages").shouldHave(text("1 deleted."));
+        $$(MODERATION_ROWS).findBy(text(body)).shouldNot(exist);
+        logout();
+
+        assertEquals(404, adminApiStatus("GET", comment(otherHandle, held.id())), "the deleted comment survives");
     }
 
     // ---------------------------------------------------------- criterion 23
@@ -735,6 +806,14 @@ class CommentsIT extends RollerIT {
         return send("GET", entry.path(), null, Map.of(), 200).body();
     }
 
+    /** The page's comments section, from its opening tag to its close. */
+    private static String section(String page) {
+        int start = page.indexOf("<section class=\"comments\"");
+        assertTrue(start >= 0, "the page has no comments section");
+        int end = page.indexOf("</section>", start);
+        return page.substring(start, end < 0 ? page.length() : end);
+    }
+
     /** The HTML of one rendered comment, from its opening tag to its close. */
     private static String articleIn(String page, String id) {
         int start = page.indexOf("id=\"comment-" + id + "\"");
@@ -744,7 +823,7 @@ class CommentsIT extends RollerIT {
     }
 
     private static String moderation(String handle, String status) {
-        return "/roller-ui/authoring/comments.rol?weblog=" + handle + (status == null ? "" : "&status=" + status);
+        return MODERATION + "?weblog=" + handle + (status == null ? "" : "&status=" + status);
     }
 
     // ----------------------------------------------------------------- API
