@@ -69,7 +69,11 @@ reserved port `it.kc.port`, importing realm `roller-it` from
 `it-selenium/src/test/resources/keycloak/roller-it-realm.json`: a confidential
 client `roller-it` and five users (`reader-it`, `unverified-it`, `noname-it`,
 plus `writer-it` and `disabled-it`, which only the promote and disable tests
-change). The wait is the realm's discovery document, which answers only
+change). `noname-it`'s email is `nameless-reader@example.com`: a local part
+that is not the username, so criterion 18 tells the email fallback from a
+`preferred_username` one. "Not signed in" is asserted as a 302 **to the login
+page** (`SsoSignInIT.assertSentToLogIn`), never a bare 302: a 302 to
+access-denied is how a signed-in account is refused. The wait is the realm's discovery document, which answers only
 after the import (about 15 s). `roller-it.properties` points `sso.oidc.*` at
 `http://localhost:${it.kc.port}` (localhost, because Keycloak takes its
 issuer from the Host it is asked on), so **SSO is on for the whole suite**

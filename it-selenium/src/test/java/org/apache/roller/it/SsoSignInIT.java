@@ -112,6 +112,11 @@ class SsoSignInIT extends RollerIT {
     private static final String READER = "reader-it";
     private static final String UNVERIFIED = "unverified-it";
     private static final String NONAME = "noname-it";
+    /**
+     * {@code noname-it}'s email. Its local part is not the username, so criterion 18 can
+     * tell the email fallback from a {@code preferred_username} one.
+     */
+    private static final String NONAME_EMAIL = "nameless-reader@example.com";
     private static final String WRITER = "writer-it";
     private static final String DISABLED = "disabled-it";
 
@@ -192,10 +197,7 @@ class SsoSignInIT extends RollerIT {
         assertTrue(account.get("enabled").asBoolean(), "a new reader is disabled: " + account);
 
         logout();
-        HttpResponse<String> afterSignOut = menuStatus(session);
-        assertEquals(302, afterSignOut.statusCode(), "the signed-out session still authenticates");
-        assertTrue(afterSignOut.headers().firstValue("Location").orElse("").contains(LOGIN),
-                "the signed-out session is not sent to log in: " + afterSignOut.headers().map());
+        assertSentToLogIn(session, "the signed-out session still authenticates");
         openPath(MENU);
         assertEquals(contextPath() + LOGIN, currentPath(), "an anonymous browser reached the menu");
     }
@@ -271,13 +273,17 @@ class SsoSignInIT extends RollerIT {
         signInWithKeycloak(UNVERIFIED, contextPath() + "/");
 
         assertLoginPageSays("refused", REFUSED_TEXT);
-        assertEquals(302, menuStatus(sessionCookie()).statusCode(), "a refused sign-in signed someone in");
+        assertSentToLogIn(sessionCookie(), "a refused sign-in signed someone in");
         assertTrue(accountsWithEmail(emailOf(UNVERIFIED)).isEmpty(), "a refused sign-in created an account");
     }
 
     // ---------------------------------------------------------- criterion 18
 
-    /** Criterion 18: with no name claim, the screen name is the email's local part. */
+    /**
+     * Criterion 18: with no name claim, the screen name is the email's local part --
+     * {@code nameless-reader}, which is not the username {@code noname-it}, so a
+     * {@code preferred_username} fallback would fail this.
+     */
     @Test
     void aReaderWithoutANameGetsTheEmailLocalPart() throws Exception {
         signInWithKeycloak(NONAME, contextPath() + "/");
@@ -288,7 +294,7 @@ class SsoSignInIT extends RollerIT {
         loginAsAdmin();
         openUserEdit(userName);
         $("#ssoBoundMarker").shouldBe(visible);
-        $("input[name='bean.screenName']").shouldHave(value(NONAME));
+        $("input[name='bean.screenName']").shouldHave(value("nameless-reader"));
         logout();
     }
 
@@ -309,7 +315,7 @@ class SsoSignInIT extends RollerIT {
             signInWithKeycloak(DISABLED, contextPath() + "/");
 
             assertLoginPageSays("refused", REFUSED_TEXT);
-            assertEquals(302, menuStatus(sessionCookie()).statusCode(), "a disabled reader was signed in");
+            assertSentToLogIn(sessionCookie(), "a disabled reader was signed in");
             assertEquals(userName, theOnlyAccountWith(emailOf(DISABLED)).get("userName").asString(),
                     "the refused subject was given another account");
         } finally {
@@ -369,12 +375,12 @@ class SsoSignInIT extends RollerIT {
         startSignIn();
         openPath(CALLBACK + "?code=x&state=forged");
         assertLoginPageSays("failed", FAILED_TEXT);
-        assertEquals(302, menuStatus(sessionCookie()).statusCode(), "a forged state signed someone in");
+        assertSentToLogIn(sessionCookie(), "a forged state signed someone in");
 
         String state = startSignIn();
         openPath(CALLBACK + "?code=garbage&state=" + encode(state));
         assertLoginPageSays("failed", FAILED_TEXT);
-        assertEquals(302, menuStatus(sessionCookie()).statusCode(), "a garbage code signed someone in");
+        assertSentToLogIn(sessionCookie(), "a garbage code signed someone in");
 
         openPath(CALLBACK);
         assertLoginPageSays("failed", FAILED_TEXT);
@@ -397,7 +403,7 @@ class SsoSignInIT extends RollerIT {
         String after = sessionCookie();
         assertNotEquals(before, after, "the session id survived the sign-in");
         assertEquals(403, menuStatus(after).statusCode(), "the new session is not the reader's");
-        assertEquals(302, menuStatus(before).statusCode(), "the pre-sign-in session id authenticates");
+        assertSentToLogIn(before, "the pre-sign-in session id authenticates");
 
         HttpResponse<String> login = get(LOGIN, null);
         String cookie = login.headers().allValues("Set-Cookie").stream()
@@ -463,7 +469,7 @@ class SsoSignInIT extends RollerIT {
     }
 
     private static String emailOf(String user) {
-        return user + "@example.com";
+        return NONAME.equals(user) ? NONAME_EMAIL : user + "@example.com";
     }
 
     private void assertLoginPageSays(String code, String message) {
@@ -485,6 +491,19 @@ class SsoSignInIT extends RollerIT {
     /** {@code menu.rol} asked with {@code sessionId}: 403 for a reader, 302 to log in for nobody. */
     private HttpResponse<String> menuStatus(String sessionId) throws Exception {
         return get(MENU, sessionId);
+    }
+
+    /**
+     * {@code sessionId} authenticates nobody: {@code menu.rol} answers it as it answers an
+     * anonymous visitor, a 302 to the login page. The Location is part of it, because a
+     * 302 to the access-denied page is how a signed-in account without the right is
+     * refused, not how nobody is.
+     */
+    private void assertSentToLogIn(String sessionId, String message) throws Exception {
+        HttpResponse<String> menu = menuStatus(sessionId);
+        assertEquals(302, menu.statusCode(), message);
+        String location = menu.headers().firstValue("Location").orElse("");
+        assertTrue(location.contains(LOGIN), message + ": sent to " + location + ", not to log in");
     }
 
     private HttpResponse<String> get(String path, String sessionId) throws Exception {
