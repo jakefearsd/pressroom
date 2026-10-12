@@ -586,8 +586,24 @@ class CommentsSectionRenderingTest {
         assertEquals(CommentsScriptSourceTest.script(), page.substring(from + start.length(), to));
     }
 
+    /**
+     * D3: a display name or body carrying a bidi control (U+202E) must not
+     * reorder the text around it: each is its own bidi island.
+     */
     @Test
-    void aPageWithoutAnEntryRendersNoSection() throws Exception {
+    void namesAndBodiesAreBidiIsolated() throws Exception {
+        configure("journal", true, null);
+        String page = render(null);
+        for (String selector : new String[] {".comments .comment-name", ".comments .comment-body"}) {
+            java.util.regex.Matcher rule = java.util.regex.Pattern
+                    .compile(java.util.regex.Pattern.quote(selector) + " \\{([^}]*)\\}").matcher(page);
+            assertTrue(rule.find(), "no rule for " + selector);
+            assertTrue(rule.group(1).contains("unicode-bidi: isolate"), selector + " is not isolated: " + rule.group(1));
+        }
+    }
+
+    @Test
+    void theWeblogHomePageRendersNoSection() throws Exception {
         comment("c1", ana, Status.PUBLISHED, null);
         RenderingTestSupport.clearRenderCaches();
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(PAGE_SERVLET, "/" + handle + "/");

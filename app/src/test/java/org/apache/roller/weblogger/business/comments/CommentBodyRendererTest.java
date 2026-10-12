@@ -42,7 +42,7 @@ class CommentBodyRendererTest {
     @ValueSource(strings = {
         "<script>alert(1)</script>", "<img src=x onerror=alert(1)>", "javascript:alert(1)",
         "<a href=\"javascript:alert(1)\">x</a>", "data:text/html;base64,PHNjcmlwdD4=",
-        "&lt;script&gt;alert(1)&lt;/script&gt;", "‮gnp.exe", "a​b<b>c</b>"})
+        "&lt;script&gt;alert(1)&lt;/script&gt;", "\u202Egnp.exe", "a\u200Bb<b>c</b>"})
     void hostileBodiesRenderAsText(String body) {
         String html = CommentBodyRenderer.toHtml(body);
         String lower = html.toLowerCase(Locale.ROOT);
@@ -68,8 +68,8 @@ class CommentBodyRendererTest {
 
     @Test
     void rtlAndZeroWidthCharactersSurviveAsText() {
-        assertEquals("<p>‮gnp.exe</p>", CommentBodyRenderer.toHtml("‮gnp.exe"));
-        assertEquals("<p>a​b</p>", CommentBodyRenderer.toHtml("a​b"));
+        assertEquals("<p>\u202Egnp.exe</p>", CommentBodyRenderer.toHtml("\u202Egnp.exe"));
+        assertEquals("<p>a\u200Bb</p>", CommentBodyRenderer.toHtml("a\u200Bb"));
     }
 
     @Test
@@ -104,6 +104,38 @@ class CommentBodyRendererTest {
     void aUrlEndsAtASingleQuoteAndTheQuoteIsText() {
         assertEquals("<p>it&#39;s <a href=\"https://ex.com/a\" rel=\"nofollow ugc noopener\">https://ex.com/a</a>&#39;b</p>",
                 CommentBodyRenderer.toHtml("it's https://ex.com/a'b"));
+    }
+
+    /**
+     * D2: a URL ends at any Unicode space or format character, not only ASCII
+     * whitespace: an ideographic space (U+3000), a no-break space (U+00A0), a
+     * zero-width space (U+200B) or a bidi control (U+202E) ends the link, and the
+     * character stays text after it.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"\u3000", "\u00A0", "\u2003", "\u200B", "\u202E", "\u2028", "\uFEFF"})
+    void aUnicodeSpaceOrFormatCharacterEndsAUrl(String separator) {
+        String html = CommentBodyRenderer.toHtml("see https://ex.com/a" + separator + "next");
+        assertTrue(html.contains("<a href=\"https://ex.com/a\" rel=\"nofollow ugc noopener\">https://ex.com/a</a>"),
+                html);
+        assertFalse(html.contains("next\""), "the link ran past the separator: " + html);
+    }
+
+    /**
+     * D4: a closing parenthesis belongs to the URL when it balances one in it, as
+     * in a Wikipedia link; an unbalanced one is the sentence's. (The sanitizer
+     * writes the href's parentheses percent-encoded, the same address.)
+     */
+    @Test
+    void aBalancedClosingParenthesisStaysInTheUrl() {
+        assertEquals("<p>see <a href=\"https://en.wikipedia.org/wiki/Fish_%28food%29\" rel=\"nofollow ugc noopener\">"
+                        + "https://en.wikipedia.org/wiki/Fish_(food)</a></p>",
+                CommentBodyRenderer.toHtml("see https://en.wikipedia.org/wiki/Fish_(food)"));
+        assertEquals("<p>(see <a href=\"https://en.wikipedia.org/wiki/Fish_%28food%29\" rel=\"nofollow ugc noopener\">"
+                        + "https://en.wikipedia.org/wiki/Fish_(food)</a>).</p>",
+                CommentBodyRenderer.toHtml("(see https://en.wikipedia.org/wiki/Fish_(food))."));
+        assertEquals("<p>(<a href=\"https://ex.com/a\" rel=\"nofollow ugc noopener\">https://ex.com/a</a>))</p>",
+                CommentBodyRenderer.toHtml("(https://ex.com/a))"));
     }
 
     @Test

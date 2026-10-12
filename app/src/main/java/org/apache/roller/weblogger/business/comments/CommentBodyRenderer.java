@@ -34,9 +34,13 @@ import org.apache.roller.weblogger.util.HTMLSanitizer;
  *       are.</li>
  *   <li>{@code http(s)} URLs become {@code <a rel="nofollow ugc noopener">}
  *       links whose href and text are the escaped URL. A URL runs up to
- *       whitespace, an angle bracket or a quote, and trailing
- *       {@code .,;:!?)} is left out, so "(see https://x.com/a)." links
- *       {@code https://x.com/a}. The URL is found in the raw text and the
+ *       any Unicode whitespace or space separator (an ideographic or
+ *       no-break space included), a format character (zero-width and bidi
+ *       controls), an angle bracket or a quote. Trailing {@code .,;:!?} is
+ *       left out, and so is a trailing {@code )} unless it balances a
+ *       {@code (} in the URL: "(see https://x.com/a)." links
+ *       {@code https://x.com/a}, and a Wikipedia URL ending in
+ *       {@code _(food)} keeps its parenthesis. The URL is found in the raw text and the
  *       pieces are escaped as they are emitted, so nothing the reader typed
  *       reaches the output unescaped and an escaped {@code &lt;} can never
  *       be read as part of a URL.</li>
@@ -49,12 +53,14 @@ import org.apache.roller.weblogger.util.HTMLSanitizer;
  */
 public final class CommentBodyRenderer {
 
-    private static final Pattern URL = Pattern.compile("https?://[^\\s<>\"']+", Pattern.CASE_INSENSITIVE);
+    /** Up to whitespace, a Unicode space separator, a format character, an angle bracket or a quote. */
+    private static final Pattern URL = Pattern.compile("https?://[^\\s\\p{Z}\\p{Cf}<>\"']+",
+            Pattern.CASE_INSENSITIVE);
 
     /** A line holding nothing but whitespace (or nothing) separates paragraphs. */
     private static final Pattern PARAGRAPH_BREAK = Pattern.compile("\\n[ \\t\\x0B\\f]*\\n\\s*");
 
-    private static final String TRAILING_PUNCTUATION = ".,;:!?)";
+    private static final String TRAILING_PUNCTUATION = ".,;:!?";
 
     private static final String REL = "nofollow ugc noopener";
 
@@ -106,12 +112,33 @@ public final class CommentBodyRenderer {
         html.append(escape(line.substring(done)));
     }
 
+    /**
+     * The URL without the sentence's punctuation after it: trailing
+     * {@code .,;:!?}, and a trailing {@code )} that has no {@code (} to close
+     * inside the URL.
+     */
     private static String withoutTrailingPunctuation(String url) {
         int end = url.length();
-        while (end > 0 && TRAILING_PUNCTUATION.indexOf(url.charAt(end - 1)) >= 0) {
+        while (end > 0) {
+            char last = url.charAt(end - 1);
+            boolean sentence = TRAILING_PUNCTUATION.indexOf(last) >= 0
+                    || (last == ')' && count(url, end, ')') > count(url, end, '('));
+            if (!sentence) {
+                break;
+            }
             end--;
         }
         return url.substring(0, end);
+    }
+
+    private static int count(String text, int end, char c) {
+        int n = 0;
+        for (int i = 0; i < end; i++) {
+            if (text.charAt(i) == c) {
+                n++;
+            }
+        }
+        return n;
     }
 
     /**

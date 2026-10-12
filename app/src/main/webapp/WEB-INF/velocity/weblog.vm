@@ -916,7 +916,7 @@ The hidden "website" field is a honeypot: bots fill every field, humans
 never see it. elapsedMs is a naive-bot timer: the server refuses a submit
 faster than a human could type. Neither is secret; neither needs to be.
 
-It also turns the comments slot of #showComments into the comment form, in
+It also turns the comments slot of the showComments macro into the comment form, in
 the block between the "comments" markers, from the session endpoint (see the
 comment there). That block is pinned by CommentsScriptSourceTest: no markup
 parsing of server strings, suffix-checked endpoints, same-origin credentials,
@@ -1808,8 +1808,8 @@ Renders NOTHING when the weblog has comments off (Weblog Settings), so themes
 call it unconditionally. Otherwise it renders the PUBLISHED top-level
 comments, oldest first, each with its PUBLISHED reply (the owner's, marked as
 the author's); the count in the heading; and below them either "Comments are
-closed" or the inert comments-slot that #showAudienceAssets' script turns into
-the comment form.
+closed" or the inert comments-slot that the showAudienceAssets macro's script
+turns into the comment form.
 
 Nothing in here may depend on who is looking. The page is cached and shared
 by every visitor, so the form, the reader's name and the reader's own pending
@@ -1822,6 +1822,8 @@ request, because both hosts share one cached page.
 
 Escaping: a display name is user-typed and stored raw, so it is escaped here;
 the body is already-safe HTML from CommentBodyRenderer and is emitted bare.
+Both are bidi-isolated (unicode-bidi: isolate), so an RTL override typed in
+one cannot reorder the text around it.
 No username appears here (an owner's is their login name): the page script
 finds the reader's own comments by the ids the session endpoint returns,
 matched against id="comment-<id>".
@@ -1835,11 +1837,11 @@ before a word, which Velocity can read as a directive or a macro call.
 .comments h2 { font-size: 1.25em; margin: 0 0 .5rem; }
 .comments .comment { margin: 0; padding: 1rem 0; border-top: 1px solid rgba(127, 127, 127, .3); }
 .comments .comment header { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .6rem; font-size: .9em; }
-.comments .comment-name { font-weight: 600; }
+.comments .comment-name { font-weight: 600; unicode-bidi: isolate; }
 .comments .comment-badge { font-size: .75em; letter-spacing: .04em; text-transform: uppercase;
   padding: 0 .5em; border: 1px solid currentColor; border-radius: 1em; }
 .comments time { opacity: .75; }
-.comments .comment-body { overflow-wrap: anywhere; }
+.comments .comment-body { overflow-wrap: anywhere; unicode-bidi: isolate; }
 .comments .comment-body p { margin: .5rem 0; }
 .comments .comment-reply { margin: .75rem 0 0 1.25rem; padding-left: 1rem; border-left: 2px solid rgba(127, 127, 127, .4); }
 .comments .comments-closed { font-style: italic; opacity: .85; }

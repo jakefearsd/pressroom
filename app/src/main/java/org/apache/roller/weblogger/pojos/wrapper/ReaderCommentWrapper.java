@@ -26,8 +26,8 @@ import org.apache.roller.weblogger.pojos.User;
 /**
  * What a theme sees of a reader's comment on the entry page: read-only, and
  * nothing a template could use to reach the entity or its author. It
-exposes no username: the page is public and cached, and an owner's
-username is their login name.
+ * exposes no username: the page is public and cached, and an owner's
+ * username is their login name.
  *
  * <p>Two values are deliberately left for the template: the display name is
  * returned RAW and the template escapes it ({@code $utils.escapeHTML}), the
