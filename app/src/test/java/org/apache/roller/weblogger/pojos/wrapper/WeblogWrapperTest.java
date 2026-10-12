@@ -149,6 +149,19 @@ class WeblogWrapperTest {
         weblog.setActive(value);
     }
 
+    /**
+     * The comments section offers no form on a custom-domain weblog (its
+     * session cookie lives on the site host), so the template has to be able
+     * to ask; and it asks the weblog, never the request, because the
+     * rendered page is cached by handle and shared by both hosts.
+     */
+    @Test
+    void theCustomDomainIsTheWeblogsOwn() {
+        assertNull(wrapper.getCustomDomain());
+        weblog.setCustomDomain("blog.example.com");
+        assertEquals("blog.example.com", wrapper.getCustomDomain());
+    }
+
     @Test
     void theDeprecatedEnabledAliasStillMirrorsVisible() {
         // Themes written for Roller 5.0 call $weblog.enabled; it has to keep

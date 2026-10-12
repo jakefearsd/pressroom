@@ -246,6 +246,15 @@ public final class WeblogWrapper {
     public Boolean getCommentNotify() {
         return this.pojo.getCommentNotify();
     }
+
+    /**
+     * The hostname the weblog is served on besides the site host, or null.
+     * Read off the weblog, never the request: a rendered page is cached by
+     * handle and shared by both hosts (see MultiWeblogURLStrategy.getWeblogURL).
+     */
+    public String getCustomDomain() {
+        return this.pojo.getCustomDomain();
+    }
     
     
     public Date getLastModified() {

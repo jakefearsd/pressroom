@@ -273,12 +273,21 @@ public class MessageFormatRegressionTest {
     }
 
     /**
+     * A placeholder whose format type takes a number -- {@code {0,choice,...}}
+     * (a plural: "1 comment", "3 comments") or {@code {0,number,...}}.
+     * {@code MessageFormat} refuses a String there, so the dummy argument for
+     * it is a number, as it is at the real call site.
+     */
+    private static final Pattern NUMERIC_PLACEHOLDER = Pattern.compile("\\{(\\d+)\\s*,\\s*(?:choice|number)\\b");
+
+    /**
      * Dummy arguments matching the highest {@code {n}} placeholder referenced
      * in the raw (undecoded) message text, so a key declaring {@code {0}} and
      * {@code {1}} is called with two arguments, and a key with none is
      * called with none -- mirroring how each key is actually invoked
      * throughout the codebase (arguments present only when the message
-     * needs them).
+     * needs them). An argument is a String, except a number where the
+     * placeholder's format type needs one ({@link #NUMERIC_PLACEHOLDER}).
      */
     private static Object[] dummyArgsFor(String raw) {
         int highest = -1;
@@ -286,12 +295,19 @@ public class MessageFormatRegressionTest {
         while (matcher.find()) {
             highest = Math.max(highest, Integer.parseInt(matcher.group(1)));
         }
+        Set<Integer> numeric = new TreeSet<>();
+        Matcher typed = NUMERIC_PLACEHOLDER.matcher(raw);
+        while (typed.find()) {
+            int index = Integer.parseInt(typed.group(1));
+            numeric.add(index);
+            highest = Math.max(highest, index);
+        }
         if (highest < 0) {
             return new Object[0];
         }
         Object[] args = new Object[highest + 1];
         for (int i = 0; i <= highest; i++) {
-            args[i] = "X" + i;
+            args[i] = numeric.contains(i) ? Integer.valueOf(2) : "X" + i;
         }
         return args;
     }

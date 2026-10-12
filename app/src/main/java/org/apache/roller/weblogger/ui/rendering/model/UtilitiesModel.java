@@ -49,6 +49,7 @@ import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.pojos.wrapper.UserWrapper;
+import org.apache.roller.weblogger.ui.core.security.sso.SsoSettings;
 import org.apache.roller.weblogger.ui.rendering.util.ParsedRequest;
 import org.apache.roller.weblogger.util.URLUtilities;
 import org.apache.roller.weblogger.util.Utilities;
@@ -175,6 +176,32 @@ public class UtilitiesModel implements Model {
     public UserWrapper getAuthenticatedUser() {
         return parsedRequest.getAuthenticUser() != null 
                 ? UserWrapper.wrap(parsedRequest.getUser()) : null;
+    }
+
+    //---------------------------------------------------------------- Comments
+
+    /**
+     * Where the comments page script talks to the server, built here so the
+     * script never guesses the context path: {@code session} (GET),
+     * {@code post} (POST) and {@code delete} (the prefix of
+     * {@code DELETE <delete><id>.rol}). The same for every visitor, so they
+     * may sit in a cached page.
+     */
+    public Map<String, String> getCommentEndpoints() {
+        String context = WebloggerRuntimeConfig.getRelativeContextURL();
+        return Map.of(
+                "session", context + "/roller-ui/rendering/comments/session.rol",
+                "post", context + "/roller-ui/rendering/comments.rol",
+                "delete", context + "/roller-ui/rendering/comments/");
+    }
+
+    /**
+     * Whether reader sign-in (OIDC) is configured: the site's setting, the
+     * same for every visitor. Read from the {@code sso.*} properties, as the
+     * SSO wiring reads them.
+     */
+    public boolean isSsoEnabled() {
+        return SsoSettings.fromConfig().enabled();
     }
              
     //-------------------------------------------------------------- Date utils

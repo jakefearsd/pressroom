@@ -52,6 +52,7 @@ These are the documented macros in order defined in this file:
 
     #showEntryTags($entry)                           [custom-theme API]
     #showSubscribeForm($weblog $prompt)
+    #showComments($weblog $entry)
 
 [custom-theme API] marks a macro no bundled theme calls. They are kept
 deliberately: a weblog switched to WeblogTheme.CUSTOM owns its templates from
@@ -1461,6 +1462,79 @@ the unsubscribe link.
     <div class="subscribe-form-slot" data-list-uuid="$utils.escapeHTML($weblog.newsletterListUuid)"
          data-endpoint="$utils.escapeHTML($url.site)/newsletter/subscribe"></div>
 </div>
+#end
+#end
+
+
+#**
+The comments section of an entry page. Each bundled theme's permalink.vm
+calls it under the entry:
+    #showComments($model.weblog $model.weblogEntry)
+
+Renders NOTHING when the weblog has comments off (Weblog Settings), so themes
+call it unconditionally. Otherwise it renders the PUBLISHED top-level
+comments, oldest first, each with its PUBLISHED reply (the owner's, marked as
+the author's); the count in the heading; and below them either "Comments are
+closed" or the inert comments-slot that #showAudienceAssets' script turns into
+the comment form.
+
+Nothing in here may depend on who is looking. The page is cached and shared
+by every visitor, so the form, the reader's name and the reader's own pending
+comments come from the session endpoint at view time, never from this markup.
+That is also why the endpoints are server-built ($utils.commentEndpoints:
+the script never guesses the context path) and why a custom-domain weblog,
+whose host does not carry the site's session cookie, gets a slot that says
+"unavailable" instead of endpoints -- decided from the weblog, not the
+request, because both hosts share one cached page.
+
+Escaping: a display name is user-typed and stored raw, so it is escaped here;
+the body is already-safe HTML from CommentBodyRenderer and is emitted bare.
+The styles use classes only: an id selector in this block would put a hash
+before a word, which Velocity can read as a directive or a macro call.
+*#
+#macro(showComments $weblog $entry)
+#if($entry && $weblog.commentsEnabled)
+<style>
+.comments { margin: 3rem 0 0; max-width: 42rem; }
+.comments h2 { font-size: 1.25em; margin: 0 0 .5rem; }
+.comments .comment { margin: 0; padding: 1rem 0; border-top: 1px solid rgba(127, 127, 127, .3); }
+.comments .comment header { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .6rem; font-size: .9em; }
+.comments .comment-name { font-weight: 600; }
+.comments .comment-badge { font-size: .75em; letter-spacing: .04em; text-transform: uppercase;
+  padding: 0 .5em; border: 1px solid currentColor; border-radius: 1em; }
+.comments time { opacity: .75; }
+.comments .comment-body { overflow-wrap: anywhere; }
+.comments .comment-body p { margin: .5rem 0; }
+.comments .comment-reply { margin: .75rem 0 0 1.25rem; padding-left: 1rem; border-left: 2px solid rgba(127, 127, 127, .4); }
+.comments .comments-closed { font-style: italic; opacity: .85; }
+</style>
+<section class="comments" id="comments" aria-labelledby="comments-heading">
+  <h2 id="comments-heading">$text.get("comments.heading", [$entry.commentCount])</h2>
+  #foreach($c in $entry.comments)
+  <article class="comment#if($c.authorIsOwner) comment-author#end" id="comment-$c.id" data-author="$utils.escapeHTML($c.authorUserName)">
+    <header><span class="comment-name">$utils.escapeHTML($c.displayName)</span>#if($c.authorIsOwner) <span class="comment-badge">$text.get("comments.authorBadge")</span>#end
+      <time datetime="$utils.formatIso8601Date($c.created)">$utils.formatDate($c.created, $text.get("comments.dateFormat"))</time></header>
+    <div class="comment-body">$c.bodyHtml</div>
+    #if($c.reply)
+    <div class="comment-reply comment-author" id="comment-$c.reply.id">
+      <header><span class="comment-name">$utils.escapeHTML($c.reply.displayName)</span> <span class="comment-badge">$text.get("comments.authorBadge")</span>
+        <time datetime="$utils.formatIso8601Date($c.reply.created)">$utils.formatDate($c.reply.created, $text.get("comments.dateFormat"))</time></header>
+      <div class="comment-body">$c.reply.bodyHtml</div>
+    </div>
+    #end
+  </article>
+  #end
+  #if($entry.commentsClosed)
+  <p class="comments-closed">$text.get("comments.closed")</p>
+  #elseif($utils.isNotEmpty($weblog.customDomain))
+  <div class="comments-slot" data-unavailable="custom-domain" data-msg-unavailable="$utils.escapeHTML($text.get("comments.unavailableHere"))"></div>
+  #else
+  <div class="comments-slot" data-entry="$entry.id" data-permalink="$utils.escapeHTML($entry.relativePermalink)"
+       data-session="$utils.escapeHTML($utils.commentEndpoints.session)" data-post="$utils.escapeHTML($utils.commentEndpoints.post)"
+       data-delete="$utils.escapeHTML($utils.commentEndpoints.delete)"
+       data-msg-sign-in="$utils.escapeHTML($text.get("comments.signIn"))" data-msg-unavailable="$utils.escapeHTML($text.get("comments.unavailableHere"))"></div>
+  #end
+</section>
 #end
 #end
 

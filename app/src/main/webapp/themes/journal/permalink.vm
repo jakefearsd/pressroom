@@ -37,6 +37,8 @@
     #set($pager = $model.getWeblogEntriesPager())
     #showWeblogEntriesPager($pager)
 
+    #showComments($model.weblog $model.weblogEntry)
+
     ## Rendered here rather than through #showNextPrevEntriesControl, which
     ## emits a single "&laquo; a | Main | b &raquo;" line and truncates each
     ## neighbour's title to 15-20 characters ("Why We Stopped Publi..."). That

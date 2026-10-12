@@ -21,6 +21,8 @@ package org.apache.roller.weblogger.ui.rendering.model;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.Weblogger;
+import org.apache.roller.weblogger.config.WebloggerConfig;
+import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
@@ -29,6 +31,7 @@ import org.apache.roller.weblogger.pojos.wrapper.WeblogWrapper;
 import org.apache.roller.weblogger.ui.rendering.util.ParsedRequest;
 import org.apache.roller.weblogger.ui.rendering.util.WeblogRequest;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -48,7 +51,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -842,5 +847,47 @@ class UtilitiesModelTest {
 
         assertFalse(modelFor(request, weblogger).isUserAuthorizedToAdmin(wrapper),
                 "A failed admin permission lookup must deny access, not grant it.");
+    }
+
+    // ------------------------------------------------------------- comments
+
+    /**
+     * The comments slot's endpoints are built here, on the server, so the page
+     * script never guesses the context path -- the bug class the contact slot
+     * had. They follow whatever context the application runs under.
+     */
+    @Test
+    void commentEndpointsHangOffTheContextPath() {
+        String previous = WebloggerRuntimeConfig.getRelativeContextURL();
+        try {
+            WebloggerRuntimeConfig.setRelativeContextURL("/roller");
+            assertEquals(Map.of(
+                    "session", "/roller/roller-ui/rendering/comments/session.rol",
+                    "post", "/roller/roller-ui/rendering/comments.rol",
+                    "delete", "/roller/roller-ui/rendering/comments/"),
+                    model().getCommentEndpoints());
+
+            WebloggerRuntimeConfig.setRelativeContextURL("");
+            assertEquals(Map.of(
+                    "session", "/roller-ui/rendering/comments/session.rol",
+                    "post", "/roller-ui/rendering/comments.rol",
+                    "delete", "/roller-ui/rendering/comments/"),
+                    model().getCommentEndpoints());
+        } finally {
+            WebloggerRuntimeConfig.setRelativeContextURL(previous);
+        }
+    }
+
+    @Test
+    void ssoIsOffUntilBothTheClientIdAndSecretAreSet() {
+        assertFalse(model().isSsoEnabled(), "the shipped roller.properties leaves SSO off");
+
+        try (MockedStatic<WebloggerConfig> config = mockStatic(WebloggerConfig.class, CALLS_REAL_METHODS)) {
+            config.when(() -> WebloggerConfig.getProperty("sso.oidc.client.id")).thenReturn("client-id");
+            assertFalse(model().isSsoEnabled(), "an id without a secret is not SSO");
+
+            config.when(() -> WebloggerConfig.getProperty("sso.oidc.client.secret")).thenReturn("secret");
+            assertTrue(model().isSsoEnabled());
+        }
     }
 }

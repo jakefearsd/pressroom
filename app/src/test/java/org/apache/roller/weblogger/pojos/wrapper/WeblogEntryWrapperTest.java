@@ -17,10 +17,14 @@
  */
 package org.apache.roller.weblogger.pojos.wrapper;
 
+import org.apache.roller.weblogger.WebloggerException;
+import org.apache.roller.weblogger.business.CommentManager;
 import org.apache.roller.weblogger.business.MediaFileManager;
 import org.apache.roller.weblogger.business.URLStrategy;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.MediaFile;
+import org.apache.roller.weblogger.pojos.ReaderComment;
+import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogCategory;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
@@ -39,6 +43,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -411,5 +417,64 @@ class WeblogEntryWrapperTest {
         assertSame(entry, wrapper.getPojo(),
                 "The rendering internals unwrap through getPojo(); handing back a copy "
                         + "would silently drop any state they then set on it");
+    }
+
+    @Test
+    void theRelativePermalinkComesFromTheUrlStrategyWithTheContextPath() {
+        when(urls.getWeblogEntryURL(weblog, null, "hello-world", false))
+                .thenReturn("/roller/testblog/entry/hello-world");
+        when(urls.getWeblogEntryURL(weblog, null, "hello-world", true))
+                .thenReturn("https://example.com/roller/testblog/entry/hello-world");
+
+        assertEquals("/roller/testblog/entry/hello-world", wrapper.getRelativePermalink());
+    }
+
+    private static ReaderComment published(String id, String screenName) {
+        User author = new User();
+        author.setUserName("u-" + id);
+        author.setScreenName(screenName);
+        ReaderComment c = new ReaderComment();
+        c.setId(id);
+        c.setAuthor(author);
+        c.setStatus(ReaderComment.Status.PUBLISHED);
+        c.setBody("body " + id);
+        return c;
+    }
+
+    @Test
+    void commentsAreThePublishedListWrappedInOrderFromOneLookup() throws Exception {
+        CommentManager comments = mock(CommentManager.class);
+        when(weblogger.getCommentManager()).thenReturn(comments);
+        when(comments.getPublishedForEntry(entry))
+                .thenReturn(List.of(published("c1", "Ana"), published("c2", "Bo")));
+
+        List<ReaderCommentWrapper> shown = wrapper.getComments();
+        assertEquals(List.of("c1", "c2"), shown.stream().map(ReaderCommentWrapper::getId).toList());
+        assertEquals("Bo", shown.get(1).getDisplayName());
+        assertEquals(2L, wrapper.getCommentCount(), "the heading counts what the list shows");
+        assertEquals(2, wrapper.getComments().size());
+
+        // One page render asks for the list and its count: one query, not one per call.
+        verify(comments, times(1)).getPublishedForEntry(entry);
+    }
+
+    @Test
+    void noCommentsIsAnEmptyListAndAZeroCount() throws Exception {
+        CommentManager comments = mock(CommentManager.class);
+        when(weblogger.getCommentManager()).thenReturn(comments);
+        when(comments.getPublishedForEntry(entry)).thenReturn(List.of());
+
+        assertTrue(wrapper.getComments().isEmpty());
+        assertEquals(0L, wrapper.getCommentCount());
+    }
+
+    @Test
+    void aFailedLookupShowsNoCommentsRatherThanBreakingThePage() throws Exception {
+        CommentManager comments = mock(CommentManager.class);
+        when(weblogger.getCommentManager()).thenReturn(comments);
+        when(comments.getPublishedForEntry(entry)).thenThrow(new WebloggerException("db down"));
+
+        assertTrue(wrapper.getComments().isEmpty());
+        assertEquals(0L, wrapper.getCommentCount());
     }
 }

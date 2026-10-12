@@ -37,6 +37,8 @@
     #set($pager = $model.getWeblogEntriesPager())
     #showWeblogEntriesPager($pager)
 
+    #showComments($model.weblog $model.weblogEntry)
+
     <nav class="tg-pager" aria-label="More entries">
         #showNextPrevEntriesControl($pager)
     </nav>

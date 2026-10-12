@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.URLStrategy;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.JsonLdType;
@@ -49,6 +50,9 @@ public final class WeblogEntryWrapper {
 
     // the business tier, for the lookups the template API needs
     private final Weblogger weblogger;
+
+    // the published comments, looked up on first use (see getComments)
+    private List<ReaderCommentWrapper> comments;
     
     
     // this is private so that we can force the use of the .wrap(pojo) method
@@ -303,6 +307,49 @@ public final class WeblogEntryWrapper {
 
     public Boolean getCommentsClosed() {
         return this.pojo.getCommentsClosed();
+    }
+
+    /**
+     * The permalink as a path under the context ({@code /roller/blog/entry/x},
+     * or {@code /blog/entry/x} at the root context), from the same strategy as
+     * {@link #getPermalink()}: where a reader who signs in to comment is sent
+     * back to. Relative, so it never names a host.
+     */
+    public String getRelativePermalink() {
+        return urlStrategy.getWeblogEntryURL(this.pojo.getWebsite(), null, this.pojo.getAnchor(), false);
+    }
+
+    /**
+     * The entry's PUBLISHED top-level comments, oldest first, each with its
+     * PUBLISHED reply (see {@link ReaderCommentWrapper#getReply()}).
+     *
+     * <p>Fetched once per wrapper, in the one query
+     * {@code CommentManager.getPublishedForEntry} makes, and kept: the template
+     * reads the list and its count, and a second lookup would be a second
+     * query for the same answer. A display path: a lookup that fails shows no
+     * comments, and is logged, rather than breaking the page.
+     */
+    public List<ReaderCommentWrapper> getComments() {
+        if (comments == null) {
+            comments = loadComments();
+        }
+        return comments;
+    }
+
+    /** How many PUBLISHED top-level comments the section lists: the heading's count. */
+    public long getCommentCount() {
+        return getComments().size();
+    }
+
+    private List<ReaderCommentWrapper> loadComments() {
+        try {
+            return weblogger.getCommentManager().getPublishedForEntry(this.pojo).stream()
+                    .map(ReaderCommentWrapper::wrap)
+                    .toList();
+        } catch (WebloggerException | RuntimeException e) {
+            log.error("Could not load the comments of entry {}", this.pojo.getId(), e);
+            return List.of();
+        }
     }
 
     public JsonLdType getJsonLdType() {
