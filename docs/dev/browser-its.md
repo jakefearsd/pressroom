@@ -124,12 +124,15 @@ built in `@BeforeAll`; the parallelism worth having is across classes.
 Two resource locks, whose failure modes both look like something other than
 a race:
 
-- **`RollerIT.GLOBAL_CONFIG`** — held **write** by the five classes that
+- **`RollerIT.GLOBAL_CONFIG`** — held **write** by the six classes that
   call `setGlobalFlag`: `GlobalConfigMatrixIT`, `ThemeIT`
   (`CUSTOM_THEMES_ALLOWED`), `ThemeMatrixIT` (`uploads.enabled`), `ApiIT`,
-  `VirtualHostIT`. One shared app instance holds one set of runtime
-  properties, so two overlapping would each see the other's flag. **A
-  sixth `setGlobalFlag` class must take this lock** — nothing enforces it,
+  `VirtualHostIT`, and `McpIT` (`uploads.enabled`, on its one import-refusal
+  method only; its two weblog-creating methods hold it **read**, the rest
+  none). One shared app instance holds
+  one set of runtime properties, so two overlapping would each see the
+  other's flag. **A seventh `setGlobalFlag` class must take this lock** —
+  nothing enforces it,
   and the symptom is a wrong-looking assertion, not a concurrency error.
   Held **read** by `RouteSweepIT`, which visits every admin route and so is
   exposed to every site-wide flag (on a `/roller`-prefix run with

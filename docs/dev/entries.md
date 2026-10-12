@@ -50,12 +50,13 @@ incidental re-save) — minor PII residue worth clearing.
   `entryEdit.pubTimeInvalid` via `addFieldError` (marking and focusing
   `entry_bean_pubTimeLocal`) through the normal `hasErrors` gate — the old
   parser silently published "now". Blank still means publish now.
-  **The SEO card's `bean.eventStartLocal`/`eventEndLocal` do NOT share those
-  semantics** (pre-existing, SEO Wave 1, not fixed): they round-trip through
-  `Timestamp.valueOf(LocalDateTime)` with no `TimeZone`, so the stored
-  instant is in the **server's default zone** and `eventStart`/`eventEnd`
-  drift where the weblog's zone differs; `EntryBean` needs the same
-  `TimeZone` accessor.
+  **The SEO card's `bean.eventStartLocal`/`eventEndLocal` share those
+  semantics**: wall-clock times in the weblog's zone, read and written
+  through `EntryFieldRules.parseEventTime`/`formatWallClock`, the same pair
+  `EntryDtos` uses for the API's `eventStart`/`eventEnd`, so the editor and
+  the API cannot disagree about an event's instant. The editor works to the
+  minute (`formatWallClock` drops seconds, so an unchanged editor save
+  truncates an API-set event time's seconds; ruled acceptable).
 - **The sidebar is retired.** `EntrySidebar.jsp` is deleted;
   `RollerViewResolver`'s `.EntryEdit` layout maps `"sidebar"` to
   `tiles/empty.jsp`; its four recent-entries lists (20 each) are gone from
