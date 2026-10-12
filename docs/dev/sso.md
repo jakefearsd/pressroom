@@ -69,8 +69,12 @@ answer 404.
 
 **Discovery is lazy.** `LazyOidcClientRegistrationRepository` builds the
 registration on first use: three attempts, a cached success, never at startup.
-A failure logs one WARN (class name only) and the sign-in answers
-`sso=unavailable`; the next sign-in retries. `OidcDiscoverySelfCheck` (daemon
+Each failed attempt logs one WARN naming the cause chain's classes
+(`IllegalArgumentException<-...<-UnknownHostException`, no message; the same
+`CauseChain` helper and guard as `SsoFailureHandler`), so a failed
+resolution logs three, and the start filter then logs its own
+`unavailable (registration_unresolved)` line; the sign-in answers
+`sso=unavailable`, and the next sign-in retries. No failure is cached. `OidcDiscoverySelfCheck` (daemon
 thread `roller-sso-selfcheck`, started on `ApplicationReadyEvent`, three
 attempts, 2 s then 4 s apart) probes once and only logs: INFO "OIDC discovery
 reachable" on success. It never fails startup.

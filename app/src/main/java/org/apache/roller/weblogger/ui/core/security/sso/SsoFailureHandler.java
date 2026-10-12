@@ -3,8 +3,6 @@ package org.apache.roller.weblogger.ui.core.security.sso;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.roller.weblogger.business.WebloggerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +37,6 @@ public class SsoFailureHandler implements AuthenticationFailureHandler {
 
     private static final Logger log = LoggerFactory.getLogger("roller.sso");
     private static final int MAX_LOGGED_CODE = 64;
-    private static final int MAX_CAUSES = 8;
 
     private final WebloggerProvider webloggerProvider;
 
@@ -70,29 +67,12 @@ public class SsoFailureHandler implements AuthenticationFailureHandler {
      */
     private static String reason(AuthenticationException exception, String oauthErrorCode) {
         String head = oauthErrorCode != null ? oauthErrorCode : exception.getClass().getSimpleName();
-        List<Throwable> causes = causes(exception);
-        for (Throwable cause : causes) {
+        for (Throwable cause : CauseChain.below(exception)) {
             if (cause instanceof ReaderSignInRefused refused) {
                 return head + ": " + plain(refused.reason());
             }
         }
-        StringBuilder reason = new StringBuilder(head);
-        for (Throwable cause : causes) {
-            reason.append("<-").append(cause.getClass().getSimpleName());
-        }
-        return reason.toString();
-    }
-
-    /** The cause chain below {@code top}, ending at a repeat or after {@value #MAX_CAUSES}. */
-    private static List<Throwable> causes(Throwable top) {
-        List<Throwable> chain = new ArrayList<>();
-        chain.add(top);
-        Throwable cause = top.getCause();
-        while (cause != null && !chain.contains(cause) && chain.size() <= MAX_CAUSES) {
-            chain.add(cause);
-            cause = cause.getCause();
-        }
-        return chain.subList(1, chain.size());
+        return head + CauseChain.causeNames(exception);
     }
 
     /** A Roller refusal reason is a fixed phrase; control characters are dropped all the same. */

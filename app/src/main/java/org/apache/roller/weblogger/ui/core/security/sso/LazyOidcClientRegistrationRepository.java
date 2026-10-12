@@ -66,9 +66,11 @@ public class LazyOidcClientRegistrationRepository implements ClientRegistrationR
             cached.compareAndSet(null, built);
             return true;
         } catch (RuntimeException ex) {
-            // Class name only, never the exception object: a provider error body could echo
-            // request details, and the secret must never reach a log (spec criterion 4).
-            log.warn("OIDC discovery for {} failed: {}", settings.issuer(), ex.getClass().getSimpleName());
+            // Class names only, never a message or the exception object: a provider error body
+            // could echo request details, and the secret must never reach a log (spec
+            // criterion 4). The whole chain, because discovery wraps the cause that matters.
+            log.warn("OIDC discovery for {} failed: {}", settings.issuer(),
+                    ex.getClass().getSimpleName() + CauseChain.causeNames(ex));
             return false;
         }
     }

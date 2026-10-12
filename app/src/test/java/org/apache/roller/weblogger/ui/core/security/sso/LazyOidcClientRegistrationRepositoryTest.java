@@ -85,6 +85,69 @@ class LazyOidcClientRegistrationRepositoryTest {
         assertEquals(0, calls.get());
     }
 
+    /**
+     * The WARN names every class along the cause chain: discovery failures arrive
+     * wrapped (an {@code IllegalArgumentException} around the connect error), and the
+     * top class alone says nothing about why. Never a message: it could carry
+     * provider text.
+     */
+    @Test
+    void theWarnNamesTheCauseChainButNoMessage() {
+        try (SsoLogCapture log = SsoLogCapture.start()) {
+            var repo = new LazyOidcClientRegistrationRepository(SETTINGS, iss -> {
+                throw new IllegalArgumentException("Unable to resolve the Configuration with the provided Issuer",
+                        new IllegalStateException("I/O error on GET request",
+                                new java.net.UnknownHostException("accounts.google.com: Name or service not known")));
+            });
+            assertNull(repo.findByRegistrationId("oidc"));
+
+            List<String> warns = log.lines(Level.WARN);
+            assertEquals(3, warns.size(), "one WARN per attempt: " + warns);
+            for (String warn : warns) {
+                assertTrue(warn.contains("IllegalArgumentException<-IllegalStateException<-UnknownHostException"),
+                        warn);
+                assertFalse(warn.contains("Unable to resolve") || warn.contains("I/O error")
+                        || warn.contains("Name or service"), "never a message: " + warn);
+            }
+            assertFalse(log.anyThrowable(), "never the exception itself");
+        }
+    }
+
+    /** A cause chain that loops, or runs long, still ends: the same guard as the failure handler's. */
+    @Test
+    void aLoopingOrLongCauseChainStillEnds() {
+        IllegalStateException first = new IllegalStateException("a");
+        IllegalArgumentException second = new IllegalArgumentException("b");
+        first.initCause(second);
+        second.initCause(first);
+        RuntimeException longChain = new RuntimeException("top");
+        Throwable link = longChain;
+        for (int i = 0; i < 20; i++) {
+            Throwable next = new UnsupportedOperationException("link " + i);
+            link.initCause(next);
+            link = next;
+        }
+        for (RuntimeException thrown : List.of(new RuntimeException("top", first), longChain)) {
+            try (SsoLogCapture log = SsoLogCapture.start()) {
+                new LazyOidcClientRegistrationRepository(SETTINGS, iss -> {
+                    throw thrown;
+                }).tryResolveOnce();
+                List<String> warns = log.lines(Level.WARN);
+                assertEquals(1, warns.size(), warns.toString());
+                String names = warns.get(0).substring(warns.get(0).indexOf("RuntimeException"));
+                assertTrue(names.split("<-").length <= 9, "at most eight causes: " + names);
+            }
+        }
+        try (SsoLogCapture log = SsoLogCapture.start()) {
+            new LazyOidcClientRegistrationRepository(SETTINGS, iss -> {
+                throw new RuntimeException("top", first);
+            }).tryResolveOnce();
+            assertTrue(log.lines(Level.WARN).get(0)
+                    .endsWith("RuntimeException<-IllegalStateException<-IllegalArgumentException"),
+                    "the loop ends at the first repeat: " + log.lines(Level.WARN));
+        }
+    }
+
     @Test
     void theSecretAppearsInNoLogLineOrException() {
         List<String> captured = new ArrayList<>();
