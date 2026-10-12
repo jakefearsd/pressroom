@@ -589,19 +589,32 @@ aggregator theme) is refused like any theme that is not enabled: the 400 lists
 the valid theme ids. The creator becomes the weblog's owner. The answer is 201
 with the new weblog and a `Location` header.
 
-**`PATCH /api/v1/weblogs/{handle}` fields.** A field left out, or sent as JSON
-`null`, is unchanged; to remove a value name its field in `clear`
-(`"clear": ["about", "bookingUrl"]`). `clear` applies only to updates.
+**`PATCH /api/v1/weblogs/{handle}` settings.** A field left out, or sent as JSON
+`null`, is unchanged. To remove a value, name its field in `clear`
+(`"clear": ["about", "bookingUrl"]`); `clear` applies only to updates. The
+clearable weblog fields are `tagline`, `customDomain`, `icon`, `about`,
+`analyticsSiteId`, `analyticsShareUrl`, `newsletterListUuid`, `businessId`,
+`placeType`, `placeLocality`, `placeRegion`, `placeCountry`, `placeLat`,
+`placeLng` and `bookingUrl`; `placeLat` and `placeLng` clear together, as a
+pair. The weblog view shows all of the fields below. The thirteen settings
+added to `PATCH`, with the rules the settings form applies:
 
-- `tagline`, `about`, `icon`: text; clearable.
-- `customDomain`: a hostname, as described below; clearable.
-- `analyticsSiteId`, `analyticsShareUrl`: the Umami website id and its public share URL; clearable.
-- `newsletterListUuid`: the Brevo list id; clearable.
-- `businessId`: the id of an existing business profile; clearable.
-- `placeType`: `LodgingBusiness`, or omit; needs `placeLocality`; clearable.
-- `placeLocality`, `placeRegion`, `placeCountry` (two letters): clearable.
-- `placeLat`, `placeLng`: decimal degrees, given as a pair, stored to two decimals; clear them together.
-- `bookingUrl`: an http(s) URL; clearable.
+- `icon`: at most 255 characters.
+- `about`: at most 255 characters.
+- `analyticsSiteId`: a UUID.
+- `analyticsShareUrl`: an `http` or `https` URL, at most 255 characters.
+- `newsletterListUuid`: the newsletter list's UUID.
+- `businessId`: the id of an existing business profile; otherwise 400 `No such business.`
+- `placeType`: `LodgingBusiness`; needs a `placeLocality`.
+- `placeLocality`: at most 128 characters.
+- `placeRegion`: at most 128 characters.
+- `placeCountry`: two letters.
+- `placeLat`: a number from -90 to 90, given together with `placeLng`; stored to two decimals.
+- `placeLng`: a number from -180 to 180, given together with `placeLat`; stored to two decimals.
+- `bookingUrl`: an `http` or `https` URL, at most 255 characters.
+
+The rules judge the weblog as it will be after the change, so setting only
+`placeType` on a weblog with no `placeLocality` is a 400.
 
 **`POST /api/v1/admin/users` never accepts a password.** The account is
 created disabled, with a random password nobody is ever told, and a
