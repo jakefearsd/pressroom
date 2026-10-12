@@ -99,3 +99,18 @@ Roller is 0.x.
   `McpOriginValidator` refuses a foreign `Origin`. Each call logs one `roller.mcp` INFO line, with no
   argument values; the weblog appears only when it is handle-shaped (else `?`). That logger goes to
   the console appender, like `roller.redirects`, not to `roller.log`.
+
+## New-weblog needs (step 2)
+
+- **`WeblogSettingsRules` and `WeblogCreationRules`** are the one home for those checks. Both the JSP
+  controllers and the API call them. The settings PATCH lays the request over `WeblogConfigBean` and
+  stores it with the form's own `copyTo`. Violations are reported only when they involve a touched
+  field.
+- **`ClearFields`:** null never removes; `clear` does. A new clearable field goes in the resource's
+  `*_CLEARABLE` list and its `apply` switch.
+- **`RemoteImageFetcher`:** no bypass. Only a package-private `Policy` constructor, for tests. It must
+  never gain a config switch. Any change to `PublicAddresses` updates the table test at the range's
+  edges.
+- **Event times:** wall-clock times in the weblog's zone, editor and API alike
+  (`EntryFieldRules.parseEventTime`/`formatWallClock`).
+- **Import logging:** `roller.media.import` logs the host only.

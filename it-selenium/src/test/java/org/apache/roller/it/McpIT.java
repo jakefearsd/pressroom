@@ -9,14 +9,21 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.roller.it.support.BrowserHealth;
 import org.apache.roller.it.support.RollerIT;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import static com.codeborne.selenide.Condition.exist;
+import static com.codeborne.selenide.Condition.visible;
+import static com.codeborne.selenide.Selenide.$;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -279,7 +286,130 @@ class McpIT extends RollerIT {
         }
     }
 
+    // ------------------------------------------------- step 2: a new weblog's needs
+
+    @Test
+    @ResourceLock(value = RollerIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
+    void aNewWeblogIsCreatedConfiguredAndPublishedThroughMcpAlone() throws Exception {
+        Token token = mint("McpIT new weblog", "ADMIN", null);
+        String handle = "mcpit" + (System.nanoTime() % 1_000_000_000L);
+        try {
+            JsonNode created = callTool(token.raw(), "weblogs", Map.of("action", "create", "handle", handle,
+                    "name", "McpIT weblog", "theme", "journal", "timeZone", "Europe/Berlin"));
+            assertFalse(isError(created), created.toString());
+
+            JsonNode placed = callTool(token.raw(), "weblogs", Map.of("action", "update", "weblog", handle,
+                    "placeType", "LodgingBusiness", "placeLocality", "Berlin", "placeLat", 52.52, "placeLng", 13.40));
+            assertEquals("Berlin", JSON.readTree(text(placed)).get("placeLocality").asString(), text(placed));
+
+            Map<String, Object> eventArgs = new LinkedHashMap<>(Map.of("action", "create", "weblog", handle,
+                    "title", "Konzert", "text", "<p>x</p>", "status", "PUBLISHED", "jsonLdType", "EVENT",
+                    "eventStart", "2026-08-02T19:30", "eventEnd", "2026-08-02T22:00"));
+            eventArgs.put("eventLocation", "Waldb\u00fchne");
+            eventArgs.put("geoLatitude", 52.5146);
+            eventArgs.put("geoLongitude", 13.2283);
+            JsonNode event = callTool(token.raw(), "entries", eventArgs);
+            assertFalse(isError(event), event.toString());
+            JsonNode entry = JSON.readTree(text(event));
+            assertEquals("2026-08-02T17:30:00Z", entry.get("eventStart").asString());
+            String id = entry.get("id").asString();
+
+            JsonNode cleared = callTool(token.raw(), "entries", Map.of("action", "update", "weblog", handle, "id", id,
+                    "clear", List.of("geoLatitude", "geoLongitude")));
+            JsonNode after = JSON.readTree(text(cleared));
+            assertTrue(after.path("geoLatitude").isNull() || after.path("geoLatitude").isMissingNode(), after.toString());
+
+            String permalinkHtml = client.send(HttpRequest.newBuilder(URI.create(entry.get("permalink").asString()))
+                    .timeout(Duration.ofSeconds(20)).GET().build(), HttpResponse.BodyHandlers.ofString()).body();
+            // the Event block's startDate is the same instant as 19:30 Berlin
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("\"startDate\"\\s*:\\s*\"([^\"]+)\"")
+                    .matcher(permalinkHtml);
+            assertTrue(m.find(), "an Event block with a startDate");
+            assertEquals(java.time.Instant.parse("2026-08-02T17:30:00Z"),
+                    java.time.OffsetDateTime.parse(m.group(1)).toInstant());
+
+            JsonNode me = JSON.readTree(text(callTool(token.raw(), "whoami", Map.of())));
+            boolean listed = false;
+            for (JsonNode w : me.get("weblogs")) {
+                listed |= handle.equals(w.get("handle").asString()) && "ADMIN".equals(w.get("permission").asString());
+            }
+            assertTrue(listed, me.toString());
+        } finally {
+            removeWeblog(handle);
+            revoke(token.id());
+        }
+    }
+
+    /**
+     * {@code uploads.enabled} is off in the seed IT fixture, and the upload-disabled answer comes before the
+     * address check, so this turns it on (and back) under the exclusive GLOBAL_CONFIG lock, as ApiIT does.
+     */
+    @Test
+    @ResourceLock(RollerIT.GLOBAL_CONFIG)
+    void importingFromAnInternalAddressIsRefused() throws Exception {
+        Token token = mint("McpIT import refusals", "POST", WEBLOG_HANDLE);
+        loginAsAdmin();
+        boolean uploadsWere = false;
+        try {
+            uploadsWere = setGlobalFlag("uploads.enabled", true);
+            for (String url : List.of("http://127.0.0.1/", "http://localhost/", "http://169.254.169.254/")) {
+                JsonNode refused = callTool(token.raw(), "media",
+                        Map.of("action", "import", "weblog", WEBLOG_HANDLE, "url", url));
+                assertTrue(isError(refused), url);
+                JsonNode problem = JSON.readTree(text(refused));
+                assertEquals(400, problem.get("status").asInt(), url);
+                assertEquals("That address is not on the public internet.", problem.get("detail").asString(), url);
+            }
+        } finally {
+            setGlobalFlag("uploads.enabled", uploadsWere);
+            logout();
+            revoke(token.id());
+        }
+    }
+
+    @Test
+    @ResourceLock(value = RollerIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
+    void creatingAWeblogWithAPinnedOrReadTokenIsRefusedAndCreatesNothing() throws Exception {
+        Token pinned = mint("McpIT create pinned", "POST", WEBLOG_HANDLE);
+        Token read = mint("McpIT create read", "READ", null);
+        Token admin = mint("McpIT create check", "ADMIN", null);
+        String handle = "mcpit" + (System.nanoTime() % 1_000_000_000L);
+        try {
+            Map<String, Object> args = Map.of("action", "create", "handle", handle,
+                    "name", "McpIT refused", "theme", "journal");
+
+            JsonNode viaPinned = callTool(pinned.raw(), "weblogs", args);
+            assertTrue(isError(viaPinned), viaPinned.toString());
+            assertEquals(404, JSON.readTree(text(viaPinned)).get("status").asInt(), text(viaPinned));
+
+            JsonNode viaRead = callTool(read.raw(), "weblogs", args);
+            assertTrue(isError(viaRead), viaRead.toString());
+            JsonNode problem = JSON.readTree(text(viaRead));
+            assertEquals(403, problem.get("status").asInt(), text(viaRead));
+            assertEquals("This token is read-only.", problem.get("detail").asString());
+
+            assertEquals(404, restGet(admin.raw(), "/api/v1/weblogs/" + handle).statusCode(),
+                    "neither refused call created the weblog");
+        } finally {
+            revoke(pinned.id());
+            revoke(read.id());
+            revoke(admin.id());
+        }
+    }
+
     // ---------------------------------------------------------------- helpers
+
+    /** Removes a weblog through the admin UI, as {@code VirtualHostIT} does. */
+    private void removeWeblog(String handle) {
+        loginAsAdmin();
+        openPath("/roller-ui/authoring/weblogRemove.rol?weblog=" + handle);
+        $("form[action$='/roller-ui/authoring/weblogRemove!remove.rol'] button[type='submit']")
+                .should(visible).click();
+        $("#messages").should(exist);
+        BrowserHealth.current().settle();
+        logout();
+    }
+
 
     record Token(String id, String raw) { }
 

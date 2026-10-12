@@ -50,6 +50,7 @@ printf '%s\n' "$PASSWORD" | bin/roller-api auth login \
 - [Getting a token](#getting-a-token)
 - [Token scopes](#token-scopes)
 - [Making a request](#making-a-request)
+- [Removing a value](#removing-a-value)
 - [Pagination](#pagination)
 - [Errors](#errors)
 - [The throttle](#the-throttle)
@@ -180,6 +181,41 @@ curl -sS -H "Authorization: Bearer $ROLLER_API_TOKEN" \
 
 `Content-Type: application/json` on every request carrying a JSON body
 (everything except the multipart media upload — see [Media](#media)).
+
+## Removing a value
+
+A field left out of a body, or sent as JSON `null`, is **unchanged**. `null`
+never removes anything. To remove a value, name its field in `clear` on an
+update (`PATCH`):
+
+```json
+{"clear": ["featuredImageId", "geoLatitude", "geoLongitude"]}
+```
+
+The clearable fields, per resource:
+
+- **Entry:** `summary`, `metaTitle`, `searchDescription`, `canonicalUrl`,
+  `featuredImageId`, `ogImageId`, `jsonLdType`, `geoLatitude`, `geoLongitude`,
+  `eventStart`, `eventEnd` and `eventLocation`. `geoLatitude` and `geoLongitude`
+  clear together, as a pair.
+- **Weblog:** `tagline`, `customDomain`, `icon`, `about`, `analyticsSiteId`,
+  `analyticsShareUrl`, `newsletterListUuid`, `businessId`, `placeType`,
+  `placeLocality`, `placeRegion`, `placeCountry`, `placeLat`, `placeLng` and
+  `bookingUrl`. `placeLat` and `placeLng` clear together.
+- **Media:** `altText`, `focalX` and `focalY`. `focalX` and `focalY` clear together.
+
+An empty `clear` changes nothing, and a repeated name or one with surrounding
+spaces is tolerated. Naming a field both with a value and in `clear` is a 400,
+except that a `null` value counts as absent (`{"about": null, "clear": ["about"]}`
+clears). Four requests are refused with a 400, and nothing is changed:
+
+- a name that is not clearable (the detail lists the ones that are);
+- one half of a pair without the other (`geoLatitude and geoLongitude are
+  cleared together.`);
+- a field that is both set and cleared (`about is both set and cleared.`);
+- `clear` on a create (`clear applies only to updates.`).
+
+In the MCP endpoint `clear` is an argument of the `update` actions.
 
 ## Pagination
 
@@ -369,6 +405,15 @@ and the coordinates:
   being emitted as `geo`.
 
 All three fields come back on `EntryView` under the same names.
+
+**Events.** An `EVENT` takes `eventStart`, `eventEnd` and `eventLocation`.
+`eventStart` and `eventEnd` are wall-clock strings in **the weblog's own
+timezone**, in the format `pubTime` takes (`2026-08-02T19:30`; seconds are
+accepted, an offset such as `+02:00` is a 400 whose detail shows the format).
+`eventEnd` before `eventStart` is a 400 (`eventEnd must not be before
+eventStart.`). `EntryView` returns both as instants (`2026-08-02T17:30:00Z` for
+19:30 in Berlin in summer), and the permalink's `Event` block carries the same
+instant. All three can be removed with `clear`.
 
 **The four writable statuses are `DRAFT`, `PUBLISHED`, `PENDING` and
 `SCHEDULED`. `TRASHED` is not among them — a PATCH or create body carrying
