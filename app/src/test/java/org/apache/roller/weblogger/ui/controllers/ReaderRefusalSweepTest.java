@@ -93,14 +93,25 @@ class ReaderRefusalSweepTest {
         ClassPathScanningCandidateComponentProvider scanner =
                 new ClassPathScanningCandidateComponentProvider(false);
         scanner.addIncludeFilter(new AssignableTypeFilter(UISecurityEnforced.class));
-        // Test fixtures (RollerHandlerInterceptorTest.SecuredController and its kin)
-        // live on the same classpath and are not controllers.
         return scanner.findCandidateComponents("org.apache.roller.weblogger.ui").stream()
                 .map(BeanDefinition::getBeanClassName)
-                .filter(name -> !name.contains("Test"))
+                .filter(name -> !isTestFixture(name))
                 .sorted()
                 .map(ReaderRefusalSweepTest::instantiate)
                 .toList();
+    }
+
+    /**
+     * Test fixtures (RollerHandlerInterceptorTest.SecuredController and its kin) live
+     * on the same classpath and are not controllers. A fixture is a class whose
+     * top-level class's simple name ends in {@code Test}; matching "Test" anywhere in
+     * the name would also drop a {@code TestimonialsController}.
+     */
+    static boolean isTestFixture(String className) {
+        String simpleName = className.substring(className.lastIndexOf('.') + 1);
+        int nested = simpleName.indexOf('$');
+        String topLevel = nested < 0 ? simpleName : simpleName.substring(0, nested);
+        return topLevel.endsWith("Test");
     }
 
     private static UISecurityEnforced instantiate(String className) {
@@ -129,6 +140,22 @@ class ReaderRefusalSweepTest {
                 .map(c -> DynamicTest.dynamicTest(c.getClass().getSimpleName(),
                         () -> assertFalse(interceptorAllows(c),
                                 c.getClass().getName() + " let a reader through")));
+    }
+
+    /**
+     * Only a test class's nested fixtures are left out: a controller whose name merely
+     * contains "Test" is a controller, and escaping the sweep would be silent.
+     */
+    @Test
+    void onlyNestedTestFixturesAreLeftOut() {
+        String ui = "org.apache.roller.weblogger.ui.controllers.";
+        assertTrue(isTestFixture(ui + "RollerHandlerInterceptorTest$SecuredController"));
+        assertTrue(isTestFixture(ui + "core.ContactControllerTest$Probe"));
+        assertTrue(isTestFixture("org.apache.roller.weblogger.ui.restapi.ApiSecurityRefusalTest$Secured$Inner"));
+        for (String controller : List.of("TestimonialsController", "LatestPostsController",
+                "core.ContestController", "admin.TestsController", "MainMenuController")) {
+            assertFalse(isTestFixture(ui + controller), controller + " would escape the sweep");
+        }
     }
 
     @Test
