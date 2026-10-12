@@ -1489,6 +1489,9 @@ request, because both hosts share one cached page.
 
 Escaping: a display name is user-typed and stored raw, so it is escaped here;
 the body is already-safe HTML from CommentBodyRenderer and is emitted bare.
+No username appears here (an owner's is their login name): the page script
+finds the reader's own comments by the ids the session endpoint returns,
+matched against id="comment-<id>".
 The styles use classes only: an id selector in this block would put a hash
 before a word, which Velocity can read as a directive or a macro call.
 *#
@@ -1511,7 +1514,7 @@ before a word, which Velocity can read as a directive or a macro call.
 <section class="comments" id="comments" aria-labelledby="comments-heading">
   <h2 id="comments-heading">$text.get("comments.heading", [$entry.commentCount])</h2>
   #foreach($c in $entry.comments)
-  <article class="comment#if($c.authorIsOwner) comment-author#end" id="comment-$c.id" data-author="$utils.escapeHTML($c.authorUserName)">
+  <article class="comment#if($c.authorIsOwner) comment-author#end" id="comment-$c.id">
     <header><span class="comment-name">$utils.escapeHTML($c.displayName)</span>#if($c.authorIsOwner) <span class="comment-badge">$text.get("comments.authorBadge")</span>#end
       <time datetime="$utils.formatIso8601Date($c.created)">$utils.formatDate($c.created, $text.get("comments.dateFormat"))</time></header>
     <div class="comment-body">$c.bodyHtml</div>

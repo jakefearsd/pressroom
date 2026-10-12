@@ -25,7 +25,9 @@ import org.apache.roller.weblogger.pojos.User;
 
 /**
  * What a theme sees of a reader's comment on the entry page: read-only, and
- * nothing a template could use to reach the entity or its author.
+ * nothing a template could use to reach the entity or its author. It
+exposes no username: the page is public and cached, and an owner's
+username is their login name.
  *
  * <p>Two values are deliberately left for the template: the display name is
  * returned RAW and the template escapes it ({@code $utils.escapeHTML}), the
@@ -53,12 +55,6 @@ public final class ReaderCommentWrapper {
     public String getDisplayName() {
         User author = pojo.getAuthor();
         return author == null || author.getScreenName() == null ? "" : author.getScreenName();
-    }
-
-    /** The writer's username, which the page script matches to offer "Delete" on the reader's own comments. */
-    public String getAuthorUserName() {
-        User author = pojo.getAuthor();
-        return author == null || author.getUserName() == null ? "" : author.getUserName();
     }
 
     /** Whether the writer held a permission on the weblog when posting: the "Author" badge. */

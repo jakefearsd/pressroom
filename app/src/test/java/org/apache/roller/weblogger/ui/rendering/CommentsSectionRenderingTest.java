@@ -294,8 +294,7 @@ class CommentsSectionRenderingTest {
         ReaderComment c1 = comment("c1", ana, Status.PUBLISHED, null);
 
         String a = article(renderedSection(), c1);
-        assertTrue(a.startsWith("<article class=\"comment\" id=\"comment-" + c1.getId()
-                + "\" data-author=\"" + ana.getUserName() + "\">"), a);
+        assertTrue(a.startsWith("<article class=\"comment\" id=\"comment-" + c1.getId() + "\">"), a);
         assertTrue(a.contains("<span class=\"comment-name\">Ana</span>"), a);
         assertFalse(a.contains("comment-badge"), "a reader's comment carries no Author badge:\n" + a);
         // in the weblog's zone (Los Angeles): 12:00 UTC is the morning of the 4th
@@ -406,6 +405,29 @@ class CommentsSectionRenderingTest {
         assertEquals(anonymous, signedIn, "nothing in the section may depend on who is looking");
         assertFalse(signedIn.contains("body-pending-mine"),
                 "a reader's own pending comment comes from the session endpoint, never the cached page");
+    }
+
+    /**
+     * Ruling R7: the cached public page carries no usernames. A reader's is
+     * random, but an owner's is their login name, and the page is shared and
+     * cached. The page script matches the caller's own comments by the ids
+     * the session endpoint returns, against {@code id="comment-<id>"}.
+     */
+    @Test
+    void theSectionCarriesNoUsernameOfAnyCommenter() throws Exception {
+        ReaderComment c1 = comment("c1", ana, Status.PUBLISHED, null);
+        comment("r1", owner, Status.PUBLISHED, c1);
+        comment("c2", bo, Status.PUBLISHED, null);
+        comment("c3", reader, Status.PUBLISHED, null);
+        comment("c4", owner, Status.PUBLISHED, null);
+
+        String s = renderedSection();
+        assertTrue(s.contains("body-c1") && s.contains("body-r1") && s.contains("body-c4"), s);
+        assertFalse(s.contains("data-author"), s);
+        for (User u : List.of(owner, ana, bo, reader)) {
+            assertFalse(s.contains(u.getUserName()), u.getUserName() + " is on the public page:\n" + s);
+        }
+        assertTrue(s.contains("id=\"comment-" + c1.getId() + "\""), "the script matches on the comment id:\n" + s);
     }
 
     // ------------------------------------------------------------ criterion 19

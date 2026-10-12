@@ -64,7 +64,6 @@ class ReaderCommentWrapperTest {
 
         assertEquals("c1", w.getId());
         assertEquals("Ana", w.getDisplayName());
-        assertEquals("reader-abc", w.getAuthorUserName());
         assertFalse(w.isAuthorIsOwner());
         assertEquals(new Date(1_700_000_000_000L), w.getCreated());
     }
@@ -130,7 +129,6 @@ class ReaderCommentWrapperTest {
         ReaderComment c = comment("c1", null, Status.PUBLISHED, false);
         ReaderCommentWrapper w = ReaderCommentWrapper.wrap(c);
         assertEquals("", w.getDisplayName());
-        assertEquals("", w.getAuthorUserName());
     }
 
     @Test
@@ -139,7 +137,6 @@ class ReaderCommentWrapperTest {
         c.setCreated(null);
         ReaderCommentWrapper w = ReaderCommentWrapper.wrap(c);
         assertEquals("", w.getDisplayName());
-        assertEquals("", w.getAuthorUserName());
         assertNull(w.getCreated());
     }
 
