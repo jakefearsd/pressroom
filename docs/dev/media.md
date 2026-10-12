@@ -24,7 +24,9 @@ resolves through the index at the end of `CLAUDE.md`.
   only — never into entry content.
 - Private directories (`MediaFileDirectory.isPrivate()`, toggled on
   MediaFileView): 404 on the base media path except for logged-in editors of
-  the owning weblog, excluded from sitemaps, refused by `[gallery]`. A pure
+  the owning weblog (a permission on it **and** the global `login` action:
+  a reader demoted from "Can write" keeps its weblog membership but holds no
+  `login`), excluded from sitemaps, refused by `[gallery]`. A pure
   visibility flag with no bypass of any kind. The share-link feature that
   once punched a tokened hole through it (`ShareController`,
   `roller_share_link`) is gone and not coming back.

@@ -119,7 +119,11 @@ interceptor's default (`login`) refuses a reader on every secured UI
 controller (`ReaderRefusalSweepTest` sweeps all of them reflectively). The
 API chain ignores session cookies; `TokensApi` refuses an account without the
 `login` action. Members -> Invite refuses a reader-only account
-(`inviteMember.error.readerAccount`). The frontpage header shows "Main Menu"
+(`inviteMember.error.readerAccount`). **A weblog permission ignores global
+roles**, and unticking "Can write" revokes `editor` only, so a demoted reader
+keeps the weblog memberships it was given; private media
+(`MediaResourceServlet.requesterMayEditWeblog`) therefore needs the global
+`login` action as well as the permission. The frontpage header shows "Main Menu"
 only under `$utils.isUserAuthor()`. Page caches already key a signed-in
 render by principal name, so a reader's render is never shared.
 

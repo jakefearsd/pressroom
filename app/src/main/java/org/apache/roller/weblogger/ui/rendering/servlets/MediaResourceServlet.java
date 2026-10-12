@@ -21,6 +21,7 @@ package org.apache.roller.weblogger.ui.rendering.servlets;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.List;
 
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
@@ -38,8 +39,10 @@ import org.apache.roller.weblogger.business.FileContentManager;
 import org.apache.roller.weblogger.business.MediaFileManager;
 import org.apache.roller.weblogger.business.RenditionSupport;
 import org.apache.roller.weblogger.pojos.FileContent;
+import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.MediaFile;
 import org.apache.roller.weblogger.pojos.Weblog;
+import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.rendering.util.ModDateHeaderUtil;
 import org.apache.roller.weblogger.ui.rendering.util.WeblogMediaResourceRequest;
 
@@ -265,8 +268,13 @@ public class MediaResourceServlet extends HttpServlet {
     /**
      * True when the current request carries an authenticated session whose
      * user holds at least the weakest permission ({@code EDIT_DRAFT}) on the
-     * weblog -- i.e. one of the weblog's own editors. Anonymous requests and
-     * users of other weblogs are false; any lookup failure fails closed.
+     * weblog -- i.e. one of the weblog's own editors -- and the global
+     * {@code login} action. Anonymous requests and users of other weblogs are
+     * false; any lookup failure fails closed.
+     *
+     * <p>The global check matters because a weblog permission ignores global
+     * roles: a reader once given "Can write" and then demoted keeps its weblog
+     * membership but holds {@code reader} only, which grants no action.
      */
     private static boolean requesterMayEditWeblog(Weblog weblog, UserManager umgr) {
         try {
@@ -280,11 +288,9 @@ public class MediaResourceServlet extends HttpServlet {
             }
             org.apache.roller.weblogger.pojos.User user =
                     umgr.getUserByUserName(authentication.getName());
-            return user != null && umgr.checkPermission(
-                    new org.apache.roller.weblogger.pojos.WeblogPermission(weblog,
-                            java.util.List.of(
-                                    org.apache.roller.weblogger.pojos.WeblogPermission.EDIT_DRAFT)),
-                    user);
+            return user != null
+                    && umgr.checkPermission(new GlobalPermission(List.of(GlobalPermission.LOGIN)), user)
+                    && umgr.checkPermission(new WeblogPermission(weblog, List.of(WeblogPermission.EDIT_DRAFT)), user);
         } catch (Exception e) {
             log.debug("could not resolve an editor session for private media", e);
             return false;

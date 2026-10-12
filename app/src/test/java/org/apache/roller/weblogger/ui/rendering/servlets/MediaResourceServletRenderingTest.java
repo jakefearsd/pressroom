@@ -249,6 +249,38 @@ class MediaResourceServletRenderingTest {
         }
     }
 
+    /**
+     * A reader once given "Can write" and then demoted keeps the weblog membership
+     * it was given, but a weblog permission ignores global roles. Private media also
+     * needs the global {@code login} action, which a reader-only account does not
+     * hold (spec, the reader role).
+     */
+    @Test
+    void aWeblogMemberWithoutTheLoginActionDoesNotSeePrivateDirectoryFiles() throws Exception {
+        MediaFile image = TestUtils.setupImageMediaFile(weblog, "privdemoted.jpg", "privatedir");
+        markDirectoryPrivate(image);
+        User demoted = TestUtils.setupUser("mediademoted");
+        org.apache.roller.weblogger.business.UserManager users = TestUtils.weblogger().getUserManager();
+        users.grantWeblogPermission(TestUtils.getManagedWebsite(weblog), demoted,
+                java.util.List.of(org.apache.roller.weblogger.pojos.WeblogPermission.POST));
+        users.revokeRole("editor", demoted);
+        users.grantRole("reader", demoted);
+        TestUtils.endSession(true);
+
+        MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
+                "/roller-ui/rendering/media-resources", "/mediablog/" + image.getId());
+        try {
+            authenticateAs(demoted.getUserName());
+            assertEquals(404, RenderingTestSupport.execute(
+                    RenderingTestSupport.mediaResourceServlet(), request).getStatus(),
+                    "a weblog member who may not author anything must not see private media");
+        } finally {
+            org.springframework.security.core.context.SecurityContextHolder.clearContext();
+            TestUtils.teardownUser(demoted.getUserName());
+            TestUtils.endSession(true);
+        }
+    }
+
     /** Puts an authenticated principal into the security context, as the session filter would. */
     private static void authenticateAs(String userName) {
         org.springframework.security.core.context.SecurityContextHolder.getContext()
