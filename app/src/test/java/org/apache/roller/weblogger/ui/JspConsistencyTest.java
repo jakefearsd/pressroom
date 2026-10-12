@@ -740,6 +740,29 @@ class JspConsistencyTest {
     }
 
     /**
+     * The top bar's "Main Menu" link is for someone who can use it: anonymous
+     * visitors (it leads to the login page, then the menu) and authors. A signed-in
+     * reader holds no global action and {@code menu.rol} refuses them, so on the
+     * login page and the site directory the link led to access-denied.
+     * {@code BaseController.populateCommonModel} adds {@code userIsAuthor} (the
+     * global {@code login} action); {@code BaseControllerTest} pins it.
+     */
+    @Test
+    void theTopBarOffersTheMainMenuOnlyToSomeoneWhoCanUseIt() throws IOException {
+        String markup = withoutJspComments(
+                Files.readString(JSPS.resolve("tiles/bannerStatus.jsp"), StandardCharsets.UTF_8));
+
+        int link = markup.indexOf("/roller-ui/menu.rol");
+        assertTrue(link > 0, "bannerStatus.jsp no longer links the menu");
+        assertEquals(1, countOccurrences(markup, "/roller-ui/menu.rol"), "one Main Menu link");
+        String guard = "<c:if test=\"${empty authenticatedUser or userIsAuthor}\">";
+        int open = markup.lastIndexOf(guard, link);
+        assertTrue(open >= 0, "the Main Menu link is not guarded by " + guard);
+        assertTrue(markup.indexOf("</c:if>", open) > link,
+                "the guard closes before the Main Menu link");
+    }
+
+    /**
      * B9's `<details>` disclosure on MediaFileAdd.jsp had two loose ends,
      * folded in here per B12's deferred-minors decision. First, its summary
      * used a bare {@code cursor:pointer} rule rather than the same chevron

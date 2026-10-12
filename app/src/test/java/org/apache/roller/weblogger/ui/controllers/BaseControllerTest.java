@@ -25,6 +25,8 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.MockWeblogger;
+import org.apache.roller.weblogger.pojos.GlobalPermission;
+import org.apache.roller.weblogger.pojos.RollerPermission;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
@@ -39,6 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 /**
@@ -199,6 +202,61 @@ class BaseControllerTest {
         controller.populate(request, model);
 
         assertEquals("entries", model.getAttribute("switcherAction"));
+    }
+
+    // --- the top bar's Main Menu link: userIsAuthor ---
+    //
+    // bannerStatus.jsp shows "Main Menu" only to someone who can use it. A reader
+    // (SSO sign-in) holds no global action, so menu.rol refuses them; the link would
+    // lead to the access-denied page from the login page and the site directory.
+
+    @Test
+    void anAuthorIsAnAuthor() throws WebloggerException {
+        assertEquals(Boolean.TRUE, userIsAuthorFor(List.of("editor")));
+    }
+
+    @Test
+    void aReaderIsNotAnAuthor() throws WebloggerException {
+        assertEquals(Boolean.FALSE, userIsAuthorFor(List.of("reader")));
+    }
+
+    @Test
+    void nobodySignedInIsNotAnAuthor() throws WebloggerException {
+        controller.weblogger = MockWeblogger.create().weblogger();
+
+        controller.populate(request, model);
+
+        assertEquals(Boolean.FALSE, model.getAttribute("userIsAuthor"));
+    }
+
+    @Test
+    void aPermissionCheckThatThrowsIsNotAnAuthor() throws WebloggerException {
+        MockWeblogger mock = MockWeblogger.create();
+        controller.weblogger = mock.weblogger();
+        User user = userNamed("jake");
+        when(mock.userManager().checkPermission(any(RollerPermission.class), any(User.class)))
+                .thenThrow(new WebloggerException("store unreachable"));
+        setUser(user);
+
+        controller.populate(request, model);
+
+        assertEquals(Boolean.FALSE, model.getAttribute("userIsAuthor"),
+                "a display default: a check that cannot run offers no link");
+    }
+
+    /** {@code userIsAuthor} for a signed-in user holding exactly {@code roles}. */
+    private Object userIsAuthorFor(List<String> roles) throws WebloggerException {
+        MockWeblogger mock = MockWeblogger.create();
+        controller.weblogger = mock.weblogger();
+        User user = userNamed("someone");
+        when(mock.userManager().checkPermission(any(RollerPermission.class), any(User.class)))
+                .thenAnswer(inv -> inv.getArgument(0) instanceof GlobalPermission perm
+                        && GlobalPermission.impliedByRoles(user, roles).implies(perm));
+        setUser(user);
+
+        controller.populate(request, model);
+
+        return model.getAttribute("userIsAuthor");
     }
 
     private void setUser(User user) {

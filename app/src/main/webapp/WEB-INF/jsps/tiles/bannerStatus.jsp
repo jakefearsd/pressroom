@@ -70,10 +70,17 @@
 
             <ul class="navbar-nav ms-auto">
 
-                <li class="nav-item">
-                    <a class="nav-link" href="<c:url value="/roller-ui/menu.rol"/>">
-                        <spring:message code="mainPage.mainMenu"/></a>
-                </li>
+                <%-- Not for a signed-in reader: menu.rol refuses an account
+                     without the global login action, so the link would only
+                     lead to access-denied (BaseController.populateCommonModel
+                     sets userIsAuthor). Anonymous visitors keep it; it leads
+                     them to log in. --%>
+                <c:if test="${empty authenticatedUser or userIsAuthor}">
+                    <li class="nav-item">
+                        <a class="nav-link" href="<c:url value="/roller-ui/menu.rol"/>">
+                            <spring:message code="mainPage.mainMenu"/></a>
+                    </li>
+                </c:if>
 
                 <c:choose>
                     <c:when test="${authenticatedUser != null}">

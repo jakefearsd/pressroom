@@ -592,7 +592,8 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
 
     /**
      * Populate common model attributes used across all pages:
-     * authenticatedUser, actionWeblog, pageTitle, siteURL, absoluteSiteURL, menu.
+     * authenticatedUser, userIsAuthor, actionWeblog, pageTitle, siteURL,
+     * absoluteSiteURL, menu.
      */
     protected void populateCommonModel(HttpServletRequest request, Model model) {
         User user = getAuthenticatedUser(request);
@@ -600,6 +601,7 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
         String actionName = getActionName();
 
         model.addAttribute("authenticatedUser", user);
+        model.addAttribute("userIsAuthor", isAuthor(user));
         model.addAttribute("actionWeblog", weblog);
         model.addAttribute("pageTitle", getPageTitle());
         model.addAttribute("siteURL", WebloggerRuntimeConfig.getRelativeContextURL());
@@ -617,6 +619,26 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
         }
 
         addUserWeblogsForSwitcher(user, model);
+    }
+
+    /**
+     * Whether {@code user} may use the authoring UI at all: holds the global
+     * {@code login} action. A reader (SSO sign-in) does not, so the top bar
+     * offers them no "Main Menu" link that {@code menu.rol} would refuse.
+     * A display path: a check that cannot run answers "not an author".
+     */
+    private boolean isAuthor(User user) {
+        if (user == null) {
+            return false;
+        }
+        try {
+            return weblogger.getUserManager().checkPermission(
+                    new GlobalPermission(List.of(GlobalPermission.LOGIN)), user);
+        } catch (WebloggerException ex) {
+            log.warn("Could not check whether {} may author; the top bar offers no Main Menu",
+                    user.getUserName(), ex);
+            return false;
+        }
     }
 
     /**

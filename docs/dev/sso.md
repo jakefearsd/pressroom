@@ -124,7 +124,10 @@ roles**, and unticking "Can write" revokes `editor` only, so a demoted reader
 keeps the weblog memberships it was given; private media
 (`MediaResourceServlet.requesterMayEditWeblog`) therefore needs the global
 `login` action as well as the permission. The frontpage header shows "Main Menu"
-only under `$utils.isUserAuthor()`. Page caches already key a signed-in
+only under `$utils.isUserAuthor()`, and the admin UI's top bar
+(`tiles/bannerStatus.jsp`, on the login page and the site directory too)
+only to an anonymous visitor or under `userIsAuthor`, which
+`BaseController.populateCommonModel` sets from the same global `login` check. Page caches already key a signed-in
 render by principal name, so a reader's render is never shared.
 
 ## Passwords and administration
