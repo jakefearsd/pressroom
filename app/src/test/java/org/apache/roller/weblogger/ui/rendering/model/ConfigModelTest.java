@@ -203,6 +203,8 @@ class ConfigModelTest {
 
     // ------------------------------------------------------------ trackbacks
 
+    // The shim is deprecated on purpose and this test is what keeps it answering.
+    @SuppressWarnings("deprecation")
     @Test
     void removedFeaturesReportThemselvesAsOff() {
         // Trackbacks were removed in a different, earlier wave than comments

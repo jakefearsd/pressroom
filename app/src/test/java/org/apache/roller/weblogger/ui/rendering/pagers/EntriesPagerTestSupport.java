@@ -99,7 +99,7 @@ abstract class EntriesPagerTestSupport {
      * with, so a pager that regressed to locating it statically would fail.
      */
     void withRuntimeConfig(Runnable body) {
-        try (RuntimeConfigAttachment ignored = RuntimeConfigAttachment.answering(
+        try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering(
                 "site.pages.maxEntries", String.valueOf(SITE_MAX_ENTRIES))) {
             body.run();
         }

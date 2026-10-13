@@ -644,7 +644,7 @@ class MenuHelperTest {
         // ...and this one is not, so the static roller.properties value applies.
         when(properties.getProperty("groupblogging.enabled")).thenReturn(null);
 
-        try (RuntimeConfigAttachment runtimeConfig = businessTier(properties)) {
+        try (RuntimeConfigAttachment _ = businessTier(properties)) {
             Menu menu = MenuHelper.getMenu("editor", "categories", user, weblog, userManager);
 
             assertEquals(List.of("tabbedmenu.weblog", "tabbedmenu.design", "tabbedmenu.website"),
@@ -676,7 +676,7 @@ class MenuHelperTest {
         // nor roller.properties.
         when(properties.getProperty("themes.customtheme.allowed")).thenReturn(null);
 
-        try (RuntimeConfigAttachment runtimeConfig = businessTier(properties)) {
+        try (RuntimeConfigAttachment _ = businessTier(properties)) {
             Menu menu = MenuHelper.getMenu("editor", null, user, weblog, userManager);
 
             assertTrue(tabKeys(menu).contains("tabbedmenu.design"),
@@ -697,7 +697,7 @@ class MenuHelperTest {
         when(properties.getProperty("themes.customtheme.allowed"))
                 .thenReturn(new RuntimeConfigProperty("themes.customtheme.allowed", "false"));
 
-        try (RuntimeConfigAttachment runtimeConfig = businessTier(properties)) {
+        try (RuntimeConfigAttachment _ = businessTier(properties)) {
             Menu menu = MenuHelper.getMenu("editor", null, user, weblog, userManager);
 
             assertTrue(tabKeys(menu).contains("tabbedmenu.design"),
@@ -737,7 +737,7 @@ class MenuHelperTest {
         when(explicit.checkPermission(any(), eq(user))).thenReturn(true);
         PropertiesManager properties = mock(PropertiesManager.class);
 
-        try (RuntimeConfigAttachment runtimeConfig = businessTier(properties)) {
+        try (RuntimeConfigAttachment _ = businessTier(properties)) {
             MenuHelper.getMenu("editor", null, user, weblog, explicit);
         }
 

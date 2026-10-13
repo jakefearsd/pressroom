@@ -56,7 +56,7 @@ class WebloggerRuntimeConfigTest {
         previouslyAttached = WebloggerRuntimeConfig.attach(null);
         // InitFilter's first-request latch is process-global too. With nothing
         // attached and no static value the reader answers the latch itself.
-        try (StaticConfigOverride none = StaticConfigOverride.set("site.absoluteurl", null)) {
+        try (StaticConfigOverride _ = StaticConfigOverride.set("site.absoluteurl", null)) {
             previouslyLatched = WebloggerRuntimeConfig.getAbsoluteContextURL();
         }
     }
@@ -136,8 +136,8 @@ class WebloggerRuntimeConfigTest {
      */
     @Test
     void anEnvironmentSiteUrlBeatsTheFirstRequestLatchWhenTheDatabaseRowIsBlank() {
-        try (RuntimeConfigAttachment row = RuntimeConfigAttachment.answering("site.absoluteurl", "");
-             StaticConfigOverride env = StaticConfigOverride.set("site.absoluteurl", "http://docker2.lan")) {
+        try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering("site.absoluteurl", "");
+             StaticConfigOverride _ = StaticConfigOverride.set("site.absoluteurl", "http://docker2.lan")) {
             WebloggerRuntimeConfig.setAbsoluteContextURL("http://192.168.5.52");
 
             assertEquals("http://docker2.lan", WebloggerRuntimeConfig.getAbsoluteContextURL(),
@@ -148,7 +148,7 @@ class WebloggerRuntimeConfigTest {
     /** Before bootstrap (nothing attached) the environment value is still the site url. */
     @Test
     void anEnvironmentSiteUrlIsHonouredWithNoDatabaseAttached() {
-        try (StaticConfigOverride env = StaticConfigOverride.set("site.absoluteurl", "http://docker2.lan")) {
+        try (StaticConfigOverride _ = StaticConfigOverride.set("site.absoluteurl", "http://docker2.lan")) {
             WebloggerRuntimeConfig.setAbsoluteContextURL("http://192.168.5.52");
 
             assertEquals("http://docker2.lan", WebloggerRuntimeConfig.getAbsoluteContextURL());
@@ -162,9 +162,9 @@ class WebloggerRuntimeConfigTest {
      */
     @Test
     void aNonBlankDatabaseRowStillBeatsTheEnvironment() {
-        try (RuntimeConfigAttachment row =
+        try (RuntimeConfigAttachment _ =
                      RuntimeConfigAttachment.answering("site.absoluteurl", "https://admin.example.com");
-             StaticConfigOverride env = StaticConfigOverride.set("site.absoluteurl", "http://docker2.lan")) {
+             StaticConfigOverride _ = StaticConfigOverride.set("site.absoluteurl", "http://docker2.lan")) {
             WebloggerRuntimeConfig.setAbsoluteContextURL("http://192.168.5.52");
 
             assertEquals("https://admin.example.com", WebloggerRuntimeConfig.getAbsoluteContextURL());
@@ -178,8 +178,8 @@ class WebloggerRuntimeConfigTest {
      */
     @Test
     void withNeitherConfiguredTheFirstRequestLatchIsTheLastResort() {
-        try (RuntimeConfigAttachment row = RuntimeConfigAttachment.answering("site.absoluteurl", " ");
-             StaticConfigOverride env = StaticConfigOverride.set("site.absoluteurl", "  ")) {
+        try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering("site.absoluteurl", " ");
+             StaticConfigOverride _ = StaticConfigOverride.set("site.absoluteurl", "  ")) {
             WebloggerRuntimeConfig.setAbsoluteContextURL("http://192.168.5.52");
 
             assertEquals("http://192.168.5.52", WebloggerRuntimeConfig.getAbsoluteContextURL());

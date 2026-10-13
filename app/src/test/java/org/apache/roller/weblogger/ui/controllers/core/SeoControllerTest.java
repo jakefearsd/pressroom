@@ -147,7 +147,7 @@ class SeoControllerTest {
         assertTrue(WebloggerRuntimeConfig.getProperty("site.absoluteurl") == null
                         || WebloggerRuntimeConfig.getProperty("site.absoluteurl").isBlank(),
                 "precondition: the Global Config row is at its blank default");
-        try (StaticConfigOverride env = StaticConfigOverride.set("site.absoluteurl", "http://docker2.lan")) {
+        try (StaticConfigOverride _ = StaticConfigOverride.set("site.absoluteurl", "http://docker2.lan")) {
             WebloggerRuntimeConfig.setAbsoluteContextURL("http://192.168.5.52");
 
             String body = controller.robots(new MockHttpServletRequest()).getBody();

@@ -107,7 +107,7 @@ class WeblogLogicTest {
                         + "whole blog");
 
         weblog.setLocale("fr");
-        assertEquals(new Locale("fr"), weblog.getLocaleInstance(),
+        assertEquals(Locale.of("fr"), weblog.getLocaleInstance(),
                 "A language-only locale must parse as such rather than being rejected");
     }
 

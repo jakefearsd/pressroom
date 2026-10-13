@@ -63,13 +63,13 @@ class AbstractWeblogEntriesPagerTest {
 
     private final URLStrategy urlStrategy = mock(URLStrategy.class);
 
+    /** Neither test pager queries anything, so the facade they are built with is inert. */
+    private static final Weblogger NO_TIER = mock(Weblogger.class);
+
     /**
      * Minimal concrete pager. The base class leaves the entry collection and
      * the has-more decision to subclasses; both are injected.
      */
-    /** Neither test pager queries anything, so the facade they are built with is inert. */
-    private static final Weblogger NO_TIER = mock(Weblogger.class);
-
     private static final class FixedEntriesPager extends AbstractWeblogEntriesPager {
 
         private final boolean more;
@@ -136,7 +136,7 @@ class AbstractWeblogEntriesPagerTest {
      * attached here -- and nothing else.
      */
     private static void withSiteMaxEntries(int maxEntries, Runnable body) {
-        try (RuntimeConfigAttachment ignored = RuntimeConfigAttachment.answering(
+        try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering(
                 "site.pages.maxEntries", String.valueOf(maxEntries))) {
             body.run();
         }

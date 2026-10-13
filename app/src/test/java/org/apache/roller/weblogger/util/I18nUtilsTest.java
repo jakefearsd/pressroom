@@ -36,7 +36,7 @@ public class I18nUtilsTest {
 
     @Test
     public void parsesLanguageOnly() {
-        assertEquals(new Locale("en"), I18nUtils.toLocale("en"));
+        assertEquals(Locale.of("en"), I18nUtils.toLocale("en"));
         assertEquals("en", I18nUtils.toLocale("en").getLanguage());
     }
 

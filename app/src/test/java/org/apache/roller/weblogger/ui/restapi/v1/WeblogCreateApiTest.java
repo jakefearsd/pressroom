@@ -84,7 +84,7 @@ class WeblogCreateApiTest {
 
     private String detailOf(ResultActions result) throws Exception {
         String body = result.andReturn().getResponse().getContentAsString();
-        return new tools.jackson.databind.ObjectMapper().readTree(body).path("detail").asText();
+        return new tools.jackson.databind.ObjectMapper().readTree(body).path("detail").asString();
     }
 
     @Test
@@ -94,7 +94,7 @@ class WeblogCreateApiTest {
                 .andExpect(status().isCreated())
                 .andExpect(r -> assertTrue(r.getResponse().getHeader("Location").endsWith("/v1/weblogs/travels")))
                 .andExpect(r -> assertEquals("travels", new tools.jackson.databind.ObjectMapper()
-                        .readTree(r.getResponse().getContentAsString()).path("handle").asText()));
+                        .readTree(r.getResponse().getContentAsString()).path("handle").asString()));
         ArgumentCaptor<Weblog> added = ArgumentCaptor.forClass(Weblog.class);
         verify(weblogManager).addWeblog(added.capture());
         Weblog weblog = added.getValue();

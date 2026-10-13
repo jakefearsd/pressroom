@@ -224,6 +224,8 @@ class WeblogEntryWrapperTest {
         assertEquals("2024-03-10", wrapper.formatUpdateTime("yyyy-MM-dd"));
     }
 
+    // Exercises a deprecated theme-facing alias on purpose.
+    @SuppressWarnings("deprecation")
     @Test
     void permalinksComeFromTheUrlStrategyAndTheDeprecatedFormsFromTheHandle() throws Exception {
         when(urls.getWeblogEntryURL(weblog, null, "hello-world", true))
@@ -241,6 +243,8 @@ class WeblogEntryWrapperTest {
                 "The deprecated relative form is built from the handle and anchor");
     }
 
+    // Exercises a deprecated theme-facing alias on purpose.
+    @SuppressWarnings("deprecation")
     @Test
     void anchorsAreUrlEncodedInTheDeprecatedPermalink() {
         entry.setAnchor("hello world&again");

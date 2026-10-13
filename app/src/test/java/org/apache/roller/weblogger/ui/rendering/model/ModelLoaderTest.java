@@ -223,10 +223,7 @@ class ModelLoaderTest {
                 "A required model that cannot be constructed must abort the render.");
         assertTrue(thrown.getMessage().contains(UNINSTANTIABLE),
                 "The failure must name the class; was: " + thrown.getMessage());
-        // RollerException keeps the wrapped throwable in its own mRootCause
-        // field rather than passing it to Throwable's constructor, so
-        // getCause() is always null on these — getRootCause() is where to look.
-        assertInstanceOf(ReflectiveOperationException.class, thrown.getRootCause(),
+        assertInstanceOf(ReflectiveOperationException.class, thrown.getCause(),
                 "The underlying reflection failure must be kept so the real reason "
                         + "survives into the log.");
     }

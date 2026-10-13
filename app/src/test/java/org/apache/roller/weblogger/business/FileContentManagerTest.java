@@ -350,11 +350,6 @@ public class FileContentManagerTest  {
     }
 
     /**
-     * Test FileContentManager.saveFile() checks.
-     *
-     * This should test all conditions where a save should fail.
-     */
-    /**
      * The upload gate, one rule at a time.
      *
      * <p>This replaced a single {@code testCanSave} whose later assertions were

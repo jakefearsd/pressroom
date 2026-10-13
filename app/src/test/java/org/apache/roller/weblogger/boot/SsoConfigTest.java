@@ -90,7 +90,7 @@ class SsoConfigTest {
 
     @Test
     void withSsoOnTheSignInIsWired() {
-        try (MockedStatic<WebloggerConfig> config = ssoOn(); AnnotationConfigApplicationContext ctx = context()) {
+        try (MockedStatic<WebloggerConfig> _ = ssoOn(); AnnotationConfigApplicationContext ctx = context()) {
             assertTrue(ctx.getBean(SsoSettings.class).enabled());
             assertNotNull(ctx.getBean(SsoLogin.class));
             assertNotNull(ctx.getBean(ReaderOidcUserService.class));
@@ -102,7 +102,7 @@ class SsoConfigTest {
     /** The same hazard {@code SecurityConfigTest#apiTokenAuthFilterIsNotAutoRegisteredAsAContainerWideFilter} pins. */
     @Test
     void ssoStartFilterIsNotAutoRegisteredAsAContainerWideFilter() {
-        try (MockedStatic<WebloggerConfig> config = ssoOn(); AnnotationConfigApplicationContext ctx = context()) {
+        try (MockedStatic<WebloggerConfig> _ = ssoOn(); AnnotationConfigApplicationContext ctx = context()) {
             FilterRegistrationBean<?> registration =
                     ctx.getBean("ssoStartFilterRegistration", FilterRegistrationBean.class);
             assertFalse(registration.isEnabled(),
@@ -157,7 +157,7 @@ class SsoConfigTest {
     void theDiscoverySelfCheckStartsOnceTheApplicationIsReady() throws InterruptedException {
         Set<Thread> before = selfChecks();
         Set<Thread> started = Set.of();
-        try (MockedStatic<WebloggerConfig> config = ssoOn(); AnnotationConfigApplicationContext ctx = context()) {
+        try (MockedStatic<WebloggerConfig> _ = ssoOn(); AnnotationConfigApplicationContext ctx = context()) {
             assertTrue(startedSince(before).isEmpty(), "nothing probes the provider during context refresh");
             ctx.publishEvent(new ApplicationReadyEvent(new SpringApplication(), new String[0], ctx, Duration.ZERO));
             started = startedSince(before);

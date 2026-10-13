@@ -67,7 +67,7 @@ class WeblogsApiTest {
 
     private org.springframework.test.web.servlet.ResultActions doPatch(Weblogger weblogger, Weblog weblog,
             String json) throws Exception {
-        try (var config = siteConfig(); var cache = mockStatic(CacheManager.class)) {
+        try (var _ = siteConfig(); var _ = mockStatic(CacheManager.class)) {
             return mockMvc(controllerFor(weblogger))
                     .perform(patch("/v1/weblogs/{handle}", weblog.getHandle())
                             .requestAttr("actionWeblog", weblog)
@@ -188,7 +188,7 @@ class WeblogsApiTest {
         weblog.setTagline("original tagline");
 
         String body;
-        try (var config = siteConfig(); var cache = mockStatic(CacheManager.class)) {
+        try (var _ = siteConfig(); var cache = mockStatic(CacheManager.class)) {
             body = mockMvc(controllerFor(weblogger))
                     .perform(patch("/v1/weblogs/{handle}", "myblog")
                             .requestAttr("actionWeblog", weblog)

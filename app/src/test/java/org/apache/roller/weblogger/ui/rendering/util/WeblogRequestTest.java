@@ -264,7 +264,7 @@ class WeblogRequestTest {
     void localeInstanceIsBuiltFromTheLanguageOnlySegment() throws Exception {
         WeblogRequest request = parse("/myblog/fr");
 
-        assertEquals(new Locale("fr"), request.getLocaleInstance());
+        assertEquals(Locale.of("fr"), request.getLocaleInstance());
     }
 
     @Test

@@ -162,7 +162,7 @@ class MapShortcodeTest {
         JsonNode pins = browserParsedPins(html);
         assertEquals(1, pins.size(),
                 "the entity-text label fabricated a second pin: " + pins);
-        assertEquals(evil, pins.get(0).get("label").asText(),
+        assertEquals(evil, pins.get(0).get("label").asString(),
                 "the label must round-trip as the author's literal text: " + pins);
         assertEquals(1.0, pins.get(0).get("lat").asDouble(), pins.toString());
     }
@@ -174,7 +174,7 @@ class MapShortcodeTest {
 
         JsonNode pins = browserParsedPins(html);
         assertEquals(1, pins.size(), pins.toString());
-        assertEquals("Fish & Chips", pins.get(0).get("label").asText(), pins.toString());
+        assertEquals("Fish & Chips", pins.get(0).get("label").asString(), pins.toString());
     }
 
     /**

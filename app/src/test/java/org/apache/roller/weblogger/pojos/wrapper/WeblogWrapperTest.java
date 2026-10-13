@@ -122,6 +122,8 @@ class WeblogWrapperTest {
         }
     }
 
+    // Exercises a deprecated theme-facing alias on purpose.
+    @SuppressWarnings("deprecation")
     @Test
     void everyBooleanFlagTracksItsOwnFieldInBothStates() {
         // A boolean accessor has only two possible answers, so reading it once
@@ -162,6 +164,8 @@ class WeblogWrapperTest {
         assertEquals("blog.example.com", wrapper.getCustomDomain());
     }
 
+    // Exercises a deprecated theme-facing alias on purpose.
+    @SuppressWarnings("deprecation")
     @Test
     void theDeprecatedEnabledAliasStillMirrorsVisible() {
         // Themes written for Roller 5.0 call $weblog.enabled; it has to keep

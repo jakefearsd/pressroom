@@ -61,7 +61,7 @@ class MockWebloggerTest {
 
     @Test
     void createTouchesNoGlobalState() throws Exception {
-        try (RuntimeConfigAttachment previous = RuntimeConfigAttachment.preserve()) {
+        try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.preserve()) {
             WebloggerRuntimeConfig.attach(null);
 
             MockWeblogger mocks = MockWeblogger.create();
@@ -77,7 +77,7 @@ class MockWebloggerTest {
 
     @Test
     void attachedRoutesRuntimeConfigReadsToTheMockUntilDetached() throws Exception {
-        try (RuntimeConfigAttachment previous = RuntimeConfigAttachment.preserve()) {
+        try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.preserve()) {
             MockWeblogger outer = MockWeblogger.attached();
             when(outer.propertiesManager().getProperty("site.name"))
                     .thenReturn(property("site.name", "outer"));

@@ -797,7 +797,7 @@ class MediaApiTest {
                 .thenReturn(new FetchedImage("sunset.jpg", ImageKind.JPEG, JPEG_BYTES));
         MediaApi controller = importController(weblogger, weblog, fetcher);
 
-        try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(true)) {
+        try (MockedStatic<WebloggerRuntimeConfig> _ = runtimeConfig(true)) {
             org.springframework.test.web.servlet.MvcResult result = mockMvc(controller)
                     .perform(importRequest(weblog, "{\"url\":\"" + SIGNED_URL + "\",\"altText\":\"Dusk\"}"))
                     .andExpect(status().isCreated())
@@ -829,7 +829,7 @@ class MediaApiTest {
                 .thenThrow(new FetchRefusal("That address is not on the public internet."));
         MediaApi controller = importController(weblogger, weblog, fetcher);
 
-        try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(true)) {
+        try (MockedStatic<WebloggerRuntimeConfig> _ = runtimeConfig(true)) {
             String body = mockMvc(controller)
                     .perform(importRequest(weblog, "{\"url\":\"http://10.0.0.1/x.png\"}"))
                     .andExpect(status().isBadRequest())
@@ -846,7 +846,7 @@ class MediaApiTest {
         RemoteImageFetcher fetcher = mock(RemoteImageFetcher.class);
         MediaApi controller = importController(weblogger, weblog, fetcher);
 
-        try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(false)) {
+        try (MockedStatic<WebloggerRuntimeConfig> _ = runtimeConfig(false)) {
             String body = mockMvc(controller)
                     .perform(importRequest(weblog, "{\"url\":\"" + SIGNED_URL + "\"}"))
                     .andExpect(status().isBadRequest())
@@ -870,7 +870,7 @@ class MediaApiTest {
             return null;
         }).when(manager).createMediaFile(any(), any(), any());
 
-        try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(true)) {
+        try (MockedStatic<WebloggerRuntimeConfig> _ = runtimeConfig(true)) {
             String body = mockMvc(controller)
                     .perform(importRequest(weblog, "{\"url\":\"" + SIGNED_URL + "\"}"))
                     .andExpect(status().isBadRequest())
@@ -946,7 +946,7 @@ class MediaApiTest {
         var stored = captureStoredBytes(mfm);
 
         String body;
-        try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(true)) {
+        try (MockedStatic<WebloggerRuntimeConfig> _ = runtimeConfig(true)) {
             body = mockMvc(controller).perform(importRequest(weblog, "{\"url\":\"" + url + "\"}"))
                     .andExpect(status().isCreated())
                     .andReturn().getResponse().getContentAsString();
@@ -976,7 +976,7 @@ class MediaApiTest {
         MediaApi controller = importController(weblogger, weblog, fetcher);
         var stored = captureStoredBytes(weblogger.getMediaFileManager());
 
-        try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(true)) {
+        try (MockedStatic<WebloggerRuntimeConfig> _ = runtimeConfig(true)) {
             mockMvc(controller).perform(importRequest(weblog, "{\"url\":\"" + SIGNED_URL + "\"}"))
                     .andExpect(status().isCreated());
         }
@@ -997,7 +997,7 @@ class MediaApiTest {
         MediaFileManager mfm = weblogger.getMediaFileManager();
         when(mfm.getMediaFileDirectory(travel.getId())).thenReturn(travel);
 
-        try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(true)) {
+        try (MockedStatic<WebloggerRuntimeConfig> _ = runtimeConfig(true)) {
             String body = mockMvc(controller)
                     .perform(importRequest(weblog,
                             "{\"url\":\"" + SIGNED_URL + "\",\"directoryId\":\"" + travel.getId() + "\"}"))
@@ -1023,7 +1023,7 @@ class MediaApiTest {
         MediaApi controller = importController(weblogger, weblog, fetcher);
         when(weblogger.getMediaFileManager().getMediaFileDirectory(foreign.getId())).thenReturn(foreign);
 
-        try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(true)) {
+        try (MockedStatic<WebloggerRuntimeConfig> _ = runtimeConfig(true)) {
             for (String directoryId : new String[] {foreign.getId(), "no-such-directory"}) {
                 mockMvc(controller)
                         .perform(importRequest(weblog,
@@ -1050,7 +1050,7 @@ class MediaApiTest {
             return null;
         }).when(manager).createMediaFile(any(), any(), any());
 
-        try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(true)) {
+        try (MockedStatic<WebloggerRuntimeConfig> _ = runtimeConfig(true)) {
             String body = mockMvc(controller)
                     .perform(importRequest(weblog, "{\"url\":\"" + SIGNED_URL + "\"}"))
                     .andExpect(status().isBadRequest())
@@ -1103,7 +1103,7 @@ class MediaApiTest {
         MediaApi controller = importController(weblogger, weblog, fetcher);
 
         List<String> lines = importLogLines(() -> {
-            try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(true)) {
+            try (MockedStatic<WebloggerRuntimeConfig> _ = runtimeConfig(true)) {
                 mockMvc(controller).perform(importRequest(weblog, "{\"url\":\"" + SIGNED_URL + "\"}"))
                         .andExpect(status().isCreated());
                 mockMvc(controller).perform(importRequest(weblog, "{\"url\":\"" + refusedUrl + "\"}"))
@@ -1137,11 +1137,11 @@ class MediaApiTest {
         MediaApi controller = importController(weblogger, weblog, fetcher);
 
         List<String> lines = importLogLines(() -> {
-            try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(false)) {
+            try (MockedStatic<WebloggerRuntimeConfig> _ = runtimeConfig(false)) {
                 mockMvc(controller).perform(importRequest(weblog, "{\"url\":\"" + SIGNED_URL + "\"}"))
                         .andExpect(status().isBadRequest());
             }
-            try (MockedStatic<WebloggerRuntimeConfig> ignored = runtimeConfig(true)) {
+            try (MockedStatic<WebloggerRuntimeConfig> _ = runtimeConfig(true)) {
                 mockMvc(controller).perform(importRequest(weblog, "{\"url\":\" \"}"))
                         .andExpect(status().isBadRequest());
                 mockMvc(controller).perform(importRequest(weblog,

@@ -262,6 +262,9 @@ class SharedReaderLifecycleTest {
         assertEquals(1, current.getRefCount(), "a closed operation took a reference");
     }
 
+    // The explicit op.close() is the point: the test reads the reader's count
+    // after the operation lets go, and the try block's own close then repeats it.
+    @SuppressWarnings("try")
     @Test
     void anOperationRunTwiceHoldsOnlyItsLatestReader() throws Exception {
         manager = initialized(new LuceneIndexManager(roller));

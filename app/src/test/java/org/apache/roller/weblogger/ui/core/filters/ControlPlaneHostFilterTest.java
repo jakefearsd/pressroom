@@ -164,7 +164,7 @@ class ControlPlaneHostFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
 
-        try (StaticConfigOverride env = StaticConfigOverride.set("site.absoluteurl", SITE_URL + "/")) {
+        try (StaticConfigOverride _ = StaticConfigOverride.set("site.absoluteurl", SITE_URL + "/")) {
             filter.doFilter(request, response, chain);
         }
 

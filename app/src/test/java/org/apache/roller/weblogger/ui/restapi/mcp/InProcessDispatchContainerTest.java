@@ -18,6 +18,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.catalina.Context;
+import org.apache.catalina.Wrapper;
 import org.apache.catalina.startup.Tomcat;
 import org.apache.roller.weblogger.pojos.ApiToken;
 import org.apache.roller.weblogger.ui.restapi.ApiProblemWriter;
@@ -127,11 +128,10 @@ class InProcessDispatchContainerTest {
         tomcat.setBaseDir(baseDir.toString());
         tomcat.setPort(0);
         Context context = tomcat.addContext("/roller", baseDir.toString());
-        Tomcat.addServlet(context, "api", new EchoApi());
-        context.addServletMappingDecoded("/api/*", "api");
+        Tomcat.addServlet(context, "api", new EchoApi()).addMapping("/api/*");
         McpEndpointServlet endpoint = new McpEndpointServlet(new ForwardingTransport(),
                 new ApiProblemWriter(JsonMapper.builder().build()));
-        Tomcat.addServlet(context, "mcp", new HttpServlet() {
+        Wrapper mcpServlet = Tomcat.addServlet(context, "mcp", new HttpServlet() {
             private static final long serialVersionUID = 1L;
 
             /** Stands in for apiSecurityFilterChain: the request is a token's. */
@@ -149,7 +149,7 @@ class InProcessDispatchContainerTest {
                 }
             }
         });
-        context.addServletMappingDecoded("/api/mcp", "mcp");
+        mcpServlet.addMapping("/api/mcp");
         tomcat.getConnector();
         tomcat.start();
         mcpUrl = "http://127.0.0.1:" + tomcat.getConnector().getLocalPort() + "/roller/api/mcp";

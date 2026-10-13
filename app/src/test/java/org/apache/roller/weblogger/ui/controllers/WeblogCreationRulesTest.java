@@ -103,7 +103,7 @@ class WeblogCreationRulesTest {
         when(weblogger.getWeblogManager()).thenReturn(weblogs);
         WeblogCreationRules.Context context;
         try (MockedStatic<WebloggerConfig> config = mockStatic(WebloggerConfig.class);
-             MockedStatic<WebloggerRuntimeConfig> ignored = mockStatic(WebloggerRuntimeConfig.class)) {
+             MockedStatic<WebloggerRuntimeConfig> _ = mockStatic(WebloggerRuntimeConfig.class)) {
             config.when(() -> WebloggerConfig.getProperty("rendering.weblogMapper.rollerProtectedUrls"))
                     .thenReturn(" API, page ,, Search ");
             config.when(() -> WebloggerConfig.getProperty("rendering.weblogMapper.userProtectedUrls"))

@@ -471,7 +471,7 @@ class BusinessesControllerTest {
     void aRuntimeFailureWhileInvalidatingAfterASaveIsStillReportedSaved() throws Exception {
         when(manager.getWeblogsUsing(any())).thenThrow(new IllegalStateException("cache boom"));
 
-        try (MockedStatic<CacheManager> cache = mockStatic(CacheManager.class)) {
+        try (MockedStatic<CacheManager> _ = mockStatic(CacheManager.class)) {
             assertEquals("redirect:/roller-ui/admin/businesses.rol", save(validBean()));
         }
         assertTrue(ControllerTestFixture.errors(model).isEmpty());

@@ -525,7 +525,7 @@ public class UtilitiesTest  {
             // locale or the same tag stops matching itself.
             assertEquals("hello", Utilities.normalizeTag("HeLLo", null));
             assertEquals("title", Utilities.normalizeTag("TITLE", Locale.ENGLISH));
-            assertEquals("tıtle", Utilities.normalizeTag("TITLE", new Locale("tr")));
+            assertEquals("tıtle", Utilities.normalizeTag("TITLE", Locale.of("tr")));
         }
 
         @Test
