@@ -120,7 +120,7 @@ Four classes carry the configuration matrix:
   feature-refusal switch (uploads/weblog-creation off, batched),
   `groupblogging.enabled`'s own refusal (a user who already owns a weblog is
   refused a second one — its own test, so the assertion cannot pass for the
-  wrong reason), and the entry-URL word-separator. One of five classes that
+  wrong reason), and the entry-URL word-separator. One of six classes that
   call `setGlobalFlag`; "Browser ITs run class-parallel" lists them.
 - `ScheduledEntryIT` — a future-dated entry is withheld from pages, its Atom
   feed, and the sitemap.
@@ -178,9 +178,9 @@ a race:
   `uploads.enabled=false`; with uploads off the media page renders no
   buttons, and the failure reads
   `Element not found {button[formaction$='entryAddWithMediaFile.rol']}`).
-- **`RollerIT.SHARED_MEDIA`** — held **write** by the four classes that
+- **`RollerIT.SHARED_MEDIA`** — held **write** by the five classes that
   upload, crop or delete media on the shared `WEBLOG_HANDLE` (`GalleryIT`,
-  `MediaCropIT`, `MediaBulkUploadIT`, `EditorSeoIT`); **read** by
+  `MediaCropIT`, `MediaBulkUploadIT`, `EditorSeoIT`, `EditorUploadIT`); **read** by
   `ErrorCasesIT`, which only browses the media page.
 
 The `GLOBAL_CONFIG` read modes preserve the speed: readers exclude the
