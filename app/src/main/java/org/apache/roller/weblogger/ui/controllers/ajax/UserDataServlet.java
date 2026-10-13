@@ -132,6 +132,9 @@ public class UserDataServlet extends HttpServlet {
             UserManager umgr = weblogger.getUserManager();
             List<User> users = umgr.getUsersStartingWith(startsWith,
                     enabledOnly, offset, length);
+            // Owner-typed names, written as text: never left for a browser to
+            // sniff as markup, and in UTF-8 rather than the container's Latin-1.
+            response.setContentType("text/plain; charset=UTF-8");
             for (User user : users) {
                 response.getWriter().print(user.getUserName());
                 if (admin) {

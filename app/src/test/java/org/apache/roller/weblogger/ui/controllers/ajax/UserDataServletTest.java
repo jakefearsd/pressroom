@@ -146,6 +146,25 @@ class UserDataServletTest {
      * A principal with no matching account is refused rather than served an
      * empty list, so a stale session cannot quietly enumerate users.
      */
+    /**
+     * Screen names are typed by their owners, and a reader's comes from the
+     * Google account's name. The list must reach the browser as plain text: with
+     * no content type at all, a name such as {@code <img src=x onerror=...>} was
+     * one sniffing browser away from running in an administrator's session when
+     * the endpoint is opened directly. UTF-8 is named too, so a name outside
+     * Latin-1 is not written as question marks.
+     */
+    @Test
+    void theListIsPlainUtf8TextNotMarkup() throws Exception {
+        callerIsAdmin(false);
+        found.setScreenName("<img src=x onerror=alert(1)> Zoë");
+
+        servlet.doGet(request, response);
+
+        assertEquals("text/plain;charset=UTF-8", String.valueOf(response.getContentType()).replace(" ", ""));
+        assertTrue(response.getContentAsString().contains("Zoë"), response.getContentAsString());
+    }
+
     @Test
     void aCallerWithNoAccountIsRefused() throws Exception {
         request.setUserPrincipal(() -> "ghost");
