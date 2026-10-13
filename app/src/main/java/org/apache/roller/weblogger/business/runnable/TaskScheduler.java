@@ -136,9 +136,11 @@ public class TaskScheduler implements Runnable {
     
     /**
      * Run the necessary tasks given a specific currentTime to work from.
+     * Package-private so TaskSchedulerTest can drive the launch decision with
+     * a chosen clock; run() would otherwise make it wait for the next minute.
      */
     @SuppressWarnings("PMD.AvoidCatchingGenericException")
-    private void runTasks(Date currentTime) {
+    void runTasks(Date currentTime) {
         
         log.debug("Started - {}", currentTime);
         
