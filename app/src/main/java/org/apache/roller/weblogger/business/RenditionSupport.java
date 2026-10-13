@@ -75,7 +75,9 @@ public final class RenditionSupport {
     private static final Set<Integer> LADDER_WIDTHS_SET =
             new LinkedHashSet<>(LADDER_WIDTHS);
 
-    /** JPEG encode quality used for both the JPEG ladder rendition and the cwebp source it feeds. */
+    /** JPEG encode quality used for the JPEG ladder rendition. */
+    // JPEG_QUALITY and WEBP_QUALITY are tuning values for photographs, trading file size against
+    // visible artefacts; no measurement behind them is recorded. Revisit by looking at output.
     private static final float JPEG_QUALITY = 0.85f;
 
     /** cwebp "-q" quality (0-100). */
@@ -354,6 +356,8 @@ public final class RenditionSupport {
                 byte[] encoded = encodeToBytes(resized, formatName, JPEG_QUALITY);
                 cmgr.saveFileContent(weblog, id + "_" + width, new ByteArrayInputStream(encoded));
             } catch (Exception e) {
+                // A missing width is a smaller srcset, not a broken image: the upload itself stays valid and the
+                // ladder is simply sparse at this width.
                 log.warn("Failed to generate {}w rendition for media file {}", width, id, e);
                 continue;
             }
