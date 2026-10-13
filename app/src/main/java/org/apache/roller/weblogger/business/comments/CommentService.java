@@ -63,7 +63,14 @@ public class CommentService {
     private static final Logger log = LoggerFactory.getLogger("roller.comments");
 
     private static final int DAY_SECONDS = 86_400;
+    // Bounded memory over exactness: each throttle keeps the 1000 most recently active commenters
+    // and forgets the rest, and a restart forgets all of it. A forgotten account gets a fresh window;
+    // that is cheaper than a counter written to the database on every comment and fine at this scale.
+    // Raise it if a site ever has more than 1000 active commenters inside the one-day window.
     private static final int TRACKED_ACCOUNTS = 1000;
+    // 64 stripes, not one lock per account: two accounts that hash together only wait for each
+    // other's write, and there is no unbounded lock map to clean up. The store runs inside the lock
+    // on purpose, so the rate check, the write and the hit are one step per account.
     private static final int LOCK_STRIPES = 64;
     private static final String UNIQUE_VIOLATION = "23505";
     private static final String ONE_REPLY_INDEX = "rrc_reply_to_uq";

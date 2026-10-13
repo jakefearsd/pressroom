@@ -58,6 +58,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class CommentsModerationController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(CommentsModerationController.class);
+    // 30 per page: a normal queue is one or two pages, and the page size bounds what one request loads.
     private static final int COUNT = 30;
     /** The last page a request may ask for: page * COUNT stays far below int overflow. */
     static final int MAX_PAGE = 100_000;

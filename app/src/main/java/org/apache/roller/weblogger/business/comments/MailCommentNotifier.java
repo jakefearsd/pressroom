@@ -56,6 +56,7 @@ public class MailCommentNotifier implements CommentNotifier {
     private static final Logger log = LoggerFactory.getLogger(MailCommentNotifier.class);
 
     /** How much of the comment the email quotes. */
+    // A notice is a nudge, not a copy: the full text, up to 4000 characters, is on the Comments page.
     private static final int EXCERPT_LENGTH = 500;
 
     private final Weblogger weblogger;

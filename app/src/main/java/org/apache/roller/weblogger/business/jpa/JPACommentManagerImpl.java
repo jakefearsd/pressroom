@@ -113,6 +113,8 @@ public class JPACommentManagerImpl implements CommentManager {
     }
 
     @Override
+    // Unpaged on purpose: the entry page renders the whole thread, and the per-account rate limit
+    // plus moderation keep a thread small. If threads ever grow to thousands, paging starts here.
     public List<ReaderComment> getPublishedForEntry(WeblogEntry entry) throws WebloggerException {
         TypedQuery<ReaderComment> query = strategy.getNamedQuery(
                 "ReaderComment.getPublishedForEntry", ReaderComment.class);

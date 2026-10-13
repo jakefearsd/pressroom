@@ -34,6 +34,9 @@ public final class CommentRules {
     /** A trusted reader's comment with more {@code http(s)} URLs than this is held. */
     public static final int MAX_LINKS_BEFORE_HOLD = 2;
 
+    // A substring count, not a URL parse: it errs toward holding (a body that merely repeats
+    // http:// is held; a bare www.x.com is not counted), is easy to explain to a blog owner, and
+    // gives a spammer no parser to shape input for. A held comment is delayed, not lost.
     private static final Pattern HTTP_LINK = Pattern.compile("https?://", Pattern.CASE_INSENSITIVE);
 
     /** Control characters (C0, DEL, C1) except tab, newline and carriage return. */
