@@ -42,15 +42,18 @@ class QualityGatePomTest {
     /**
      * The exact bug patterns making up the three permitted SpotBugs exclusion
      * families in config/spotbugs/exclude.xml, transcribed from that file. This
-     * set is closed: a pattern outside it, or a fourth {@code <Match>} family,
-     * is a spec change -- update the design doc and this list.
+     * set is closed in both directions: a pattern outside it, or a fourth
+     * {@code <Match>} family, is a spec change -- update the design doc and this
+     * list -- and a pattern listed here must still be in the filter. Every one
+     * of them finds sites today (re-counted 2026-10-12); a pattern that finds
+     * nothing is removed from both, because an exclusion that excludes nothing
+     * only hides whatever that detector finds next.
      */
     private static final List<String> PERMITTED_SPOTBUGS_PATTERNS = List.of(
             "EI_EXPOSE_REP", "EI_EXPOSE_REP2", "MS_EXPOSE_REP",
             "SE_TRANSIENT_FIELD_NOT_RESTORED", "SE_COMPARATOR_SHOULD_BE_SERIALIZABLE", "CT_CONSTRUCTOR_THROW",
             "THROWS_METHOD_THROWS_RUNTIMEEXCEPTION", "THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION",
-            "THROWS_METHOD_THROWS_CLAUSE_THROWABLE", "REC_CATCH_EXCEPTION",
-            "MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR", "MC_OVERRIDABLE_METHOD_CALL_IN_READ_OBJECT");
+            "REC_CATCH_EXCEPTION", "MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR");
 
     @Test
     void allThreeChecksAreBoundToVerifyAndFailTheBuild() throws IOException {
@@ -128,14 +131,22 @@ class QualityGatePomTest {
                 + "spec permits. Adding a fourth is a spec change: update the design doc and this test.");
 
         Matcher bugPattern = Pattern.compile("<Bug\\s+pattern=\"([^\"]+)\"").matcher(filter);
+        List<String> excluded = new ArrayList<>();
         while (bugPattern.find()) {
             for (String pattern : bugPattern.group(1).split(",")) {
                 String trimmed = pattern.trim();
+                excluded.add(trimmed);
                 assertTrue(PERMITTED_SPOTBUGS_PATTERNS.contains(trimmed),
                         "SpotBugs bug pattern '" + trimmed + "' is excluded but the spec does not "
                         + "permit it. Adding an exclusion is a spec change: update the design doc "
                         + "and this test.");
             }
+        }
+        for (String permitted : PERMITTED_SPOTBUGS_PATTERNS) {
+            assertTrue(excluded.contains(permitted),
+                    "'" + permitted + "' is permitted but no longer excluded: drop it from "
+                    + "PERMITTED_SPOTBUGS_PATTERNS too, so the list stays a transcript of the filter "
+                    + "and cannot quietly re-admit it later.");
         }
     }
 
