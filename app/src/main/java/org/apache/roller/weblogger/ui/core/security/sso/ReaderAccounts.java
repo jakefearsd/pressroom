@@ -1,5 +1,6 @@
 package org.apache.roller.weblogger.ui.core.security.sso;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.roller.weblogger.business.UserManager;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.business.comments.DisplayNames;
@@ -84,6 +85,11 @@ public class ReaderAccounts {
         return new SignIn(account, users.getRoles(account), false);
     }
 
+    @SuppressFBWarnings(
+            value = "HARD_CODE_PASSWORD",
+            justification = "SSO_PASSWORD_MARKER is a marker in the password-hash column, not a password: "
+                    + "a bcrypt-prefixed value no input encodes to, so a reader account cannot sign in "
+                    + "with a password at all (ReaderAccountStoreTest pins that).")
     private User newReader(UserManager users, ReaderClaims claims) throws WebloggerException {
         String userName = null;
         for (int draw = 0; draw < MAX_DRAWS && userName == null; draw++) {

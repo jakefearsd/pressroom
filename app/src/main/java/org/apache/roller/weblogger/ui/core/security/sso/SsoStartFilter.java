@@ -10,6 +10,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.function.Supplier;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.roller.weblogger.business.WebloggerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,6 +77,11 @@ public class SsoStartFilter extends OncePerRequestFilter {
     }
 
     @Override
+    @SuppressFBWarnings(
+            value = "UNVALIDATED_REDIRECT",
+            justification = "Both targets are fixed: the authorization path under the context path, or "
+                    + "(notHere) the login page or the configured Absolute URL's own start path, carrying "
+                    + "a return path that ReturnPaths.sanitize has confined and URLEncoder has encoded.")
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         String contextPath = request.getContextPath();

@@ -3,6 +3,7 @@ package org.apache.roller.weblogger.ui.core.security.sso;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.roller.weblogger.business.WebloggerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +47,10 @@ public class SsoFailureHandler implements AuthenticationFailureHandler {
     }
 
     @Override
+    @SuppressFBWarnings(
+            value = "UNVALIDATED_REDIRECT",
+            justification = "The target is SsoPaths.loginError with one of two fixed codes, under the "
+                    + "container's own context path.")
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
             AuthenticationException exception) throws IOException {
         try {

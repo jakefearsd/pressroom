@@ -73,10 +73,12 @@ public class UserDataServlet extends HttpServlet {
 
     @Override
     @SuppressFBWarnings(
-            value = "DE_MIGHT_IGNORE",
+            value = {"DE_MIGHT_IGNORE", "XSS_SERVLET"},
             justification = "A malformed \"offset\"/\"length\" query parameter is routine, not "
                     + "an error -- parsing simply keeps the declared default and there is "
-                    + "nothing to act on.")
+                    + "nothing to act on. The names are written as text/plain, which a browser does "
+                    + "not render as markup (Spring Security also sends nosniff), and the one "
+                    + "consumer, ajax-user.js, builds Option elements from them as text.")
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 

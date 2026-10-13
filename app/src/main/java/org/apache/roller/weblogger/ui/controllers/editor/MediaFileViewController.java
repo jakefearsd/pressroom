@@ -22,6 +22,7 @@ import java.util.List;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.slf4j.Logger;
@@ -76,6 +77,11 @@ public class MediaFileViewController extends MediaFileBase {
     // every one of those submits.
     @RequestMapping(value = "/mediaFileView.rol",
             method = {RequestMethod.GET, RequestMethod.POST})
+    @SuppressFBWarnings(
+            value = "SPRING_CSRF_UNRESTRICTED_REQUEST_MAPPING",
+            justification = "Changes nothing: it lists a media directory. POST is accepted only because "
+                    + "the page's sort form posts back here; every change on the page has its own "
+                    + "POST-only mapping.")
     public String execute(HttpServletRequest request, Model model,
                           @RequestParam(value = "directoryId", required = false) String directoryId,
                           @RequestParam(value = "directoryName", required = false) String directoryName,

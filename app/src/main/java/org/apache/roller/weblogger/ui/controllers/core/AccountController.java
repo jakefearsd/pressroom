@@ -25,6 +25,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.UserManager;
 import org.apache.roller.weblogger.business.comments.CommentRules;
@@ -237,6 +238,10 @@ public class AccountController extends BaseController {
      * goes, the security context is cleared, and any remember-me cookie is
      * cancelled so that it cannot try to sign the deleted account back in.
      */
+    @SuppressFBWarnings(
+            value = {"HTTPONLY_COOKIE", "INSECURE_COOKIE"},
+            justification = "This cookie only cancels the remember-me cookie: no value and Max-Age 0, so "
+                    + "the browser deletes it and holds nothing a script or a plain-http hop could read.")
     private static void endSession(HttpServletRequest request, HttpServletResponse response, String userName) {
         HttpSession session = request.getSession(false);
         if (session != null) {

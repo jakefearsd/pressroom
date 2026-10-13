@@ -21,6 +21,7 @@ import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.business.WeblogRedirectManager;
@@ -69,6 +70,12 @@ public class RedirectResponder {
      *        string already removed -- the form rules are stored in.
      * @return true when a 301 was written and the caller must not 404.
      */
+    @SuppressFBWarnings(
+            value = "UNVALIDATED_REDIRECT",
+            justification = "The Location is the weblog's own URL from the URL strategy plus a stored rule "
+                    + "target that JPAWeblogRedirectManagerImpl.validatedPath accepted only as a "
+                    + "weblog-relative path (a leading /, not //, no backslash, no query, no control "
+                    + "character).")
     public boolean answer(Weblog weblog, String weblogRelativePath,
             HttpServletRequest request, HttpServletResponse response) {
 

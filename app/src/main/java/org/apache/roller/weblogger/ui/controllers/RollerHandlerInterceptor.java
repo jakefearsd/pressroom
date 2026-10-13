@@ -21,6 +21,7 @@ package org.apache.roller.weblogger.ui.controllers;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.business.UserManager;
@@ -164,6 +165,10 @@ public class RollerHandlerInterceptor implements HandlerInterceptor {
      * a browser gets a redirect. The failure is supplied lazily so that the
      * browser path never builds an exception it will not throw.
      */
+    @SuppressFBWarnings(
+            value = "UNVALIDATED_REDIRECT",
+            justification = "redirectUrl is always LOGIN_URL or ACCESS_DENIED_URL, constants of this "
+                    + "class, behind the container's own context path.")
     private boolean deny(boolean apiHandler, Supplier<ApiException> apiFailure,
                          String redirectUrl, HttpServletRequest request,
                          HttpServletResponse response) throws IOException {

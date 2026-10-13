@@ -4,6 +4,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Locale;
 import java.util.regex.Pattern;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 /**
  * The rules for a weblog's custom domain, in one place because two surfaces
@@ -23,6 +24,12 @@ import java.util.regex.Pattern;
  * against {@code WeblogManager.getWeblogByCustomDomain}, and the unique index
  * added in V027 is the actual guarantee either way.
  */
+@SuppressFBWarnings(
+        value = "REDOS",
+        justification = "HOSTNAME, this class's one pattern (class level because a suppression cannot sit on "
+                + "the static initializer that compiles it): the lookahead refuses anything over 253 "
+                + "characters before the labels are tried, and each label must end at a dot, so a label "
+                + "boundary is never ambiguous and the work is bounded by that length.")
 public final class CustomDomainRules {
 
     /**

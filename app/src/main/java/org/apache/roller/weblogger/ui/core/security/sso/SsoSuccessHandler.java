@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.roller.weblogger.business.WebloggerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +35,11 @@ public class SsoSuccessHandler implements AuthenticationSuccessHandler {
     }
 
     @Override
+    @SuppressFBWarnings(
+            value = "UNVALIDATED_REDIRECT",
+            justification = "The target is the context root or a return path ReturnPaths.sanitize has "
+                    + "confined to a path under the context: no scheme, no host, no // or /\\ prefix, no "
+                    + "control character.")
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
             Authentication authentication) throws IOException {
         try {

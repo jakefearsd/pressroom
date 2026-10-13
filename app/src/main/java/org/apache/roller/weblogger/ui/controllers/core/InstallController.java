@@ -25,6 +25,7 @@ import java.util.List;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.WebloggerException;
@@ -160,6 +161,12 @@ public class InstallController extends BaseController {
     }
 
     @RequestMapping(value = "/install!bootstrap.rol", method = {RequestMethod.GET, RequestMethod.POST})
+    @SuppressFBWarnings(
+            value = "SPRING_CSRF_UNRESTRICTED_REQUEST_MAPPING",
+            justification = "The installer is anonymous by design (/roller-ui/install/** falls through to "
+                    + "permitAll in SecurityConfig) and bootstraps only while no tier exists, when there "
+                    + "is no signed-in user whose authority a forged request could borrow; afterwards it "
+                    + "only redirects. CreateDatabase.jsp links here with a GET.")
     public String bootstrap(HttpServletRequest request, Model model) {
         // populateCommonModel skipped - runs before bootstrap
 

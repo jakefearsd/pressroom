@@ -28,6 +28,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.config.WebloggerConfig;
@@ -167,6 +168,12 @@ public class WeblogRequestMapper {
      * rendering servlet. Returns {@code true} when the request was handled
      * (forwarded or redirected) and the filter chain must not continue.
      */
+    @SuppressFBWarnings(
+            value = "UNVALIDATED_REDIRECT",
+            justification = "Both Locations stay on a fixed host: https:// plus the weblog's own custom "
+                    + "domain from VirtualHostRegistry, or the context path plus a handle isWeblog() has "
+                    + "just found stored. The request path only ever follows that host or a "
+                    + "context-relative /.")
     public boolean handleRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         

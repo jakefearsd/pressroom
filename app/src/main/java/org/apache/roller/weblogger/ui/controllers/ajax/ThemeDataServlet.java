@@ -18,6 +18,7 @@
 package org.apache.roller.weblogger.ui.controllers.ajax;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.business.themes.SharedTheme;
@@ -75,6 +76,10 @@ public class ThemeDataServlet extends HttpServlet {
     }
 
     @Override
+    @SuppressFBWarnings(
+            value = "XSS_SERVLET",
+            justification = "The body is JSON serialised by Jackson and sent as application/json; its "
+                    + "fields come from the themes' own theme.xml, not from the request.")
     protected void doGet(
             HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {

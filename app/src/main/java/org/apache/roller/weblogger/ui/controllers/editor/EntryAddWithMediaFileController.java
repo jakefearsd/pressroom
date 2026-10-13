@@ -20,6 +20,7 @@ package org.apache.roller.weblogger.ui.controllers.editor;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +57,10 @@ public class EntryAddWithMediaFileController extends MediaFileBase {
     }
 
     @RequestMapping(value = "/entryAddWithMediaFile.rol", method = {RequestMethod.GET, RequestMethod.POST})
+    @SuppressFBWarnings(
+            value = "SPRING_CSRF_UNRESTRICTED_REQUEST_MAPPING",
+            justification = "Changes nothing: it builds an unsaved EntryBean from the selected media files "
+                    + "and forwards to the entry editor, whose own save is a CSRF-checked POST.")
     public String execute(HttpServletRequest request, Model model,
                           @ModelAttribute("bean") EntryBean bean,
                           @RequestParam(value = "selectedImages", required = false) String[] selectedImages,
