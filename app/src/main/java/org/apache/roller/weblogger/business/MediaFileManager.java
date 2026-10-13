@@ -138,6 +138,14 @@ public interface MediaFileManager {
             throws WebloggerException;
 
     /**
+     * The oldest file in {@code directory} whose content hash is {@code
+     * contentHash}, or null. A file without a hash -- from before V032, or
+     * replaced or cropped since -- never matches.
+     */
+    MediaFile getMediaFileByContentHash(MediaFileDirectory directory, String contentHash)
+            throws WebloggerException;
+
+    /**
      * Get the list of media file directories for the given weblog.
      */
     List<MediaFileDirectory> getMediaFileDirectories(Weblog weblog)

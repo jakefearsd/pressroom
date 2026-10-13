@@ -9,6 +9,9 @@
         <named-query name="MediaFile.getByWeblogAndOrigpath">
             <query>SELECT f FROM MediaFile f WHERE f.weblog = ?1 AND f.originalPath = ?2</query>
         </named-query>
+        <named-query name="MediaFile.getByDirectoryAndContentHash">
+            <query>SELECT f FROM MediaFile f WHERE f.directory = ?1 AND f.contentHash = ?2 ORDER BY f.dateUploaded</query>
+        </named-query>
         <attributes>
             <id name="id">
                 <column name="id"/>
@@ -51,6 +54,9 @@
             </basic>
             <basic name="blurhash">
                 <column name="blurhash" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="contentHash">
+                <column name="content_hash" insertable="true" updatable="true" unique="false" nullable="true"/>
             </basic>
             <basic name="exifCamera">
                 <column name="exif_camera" insertable="true" updatable="true" unique="false" nullable="true"/>

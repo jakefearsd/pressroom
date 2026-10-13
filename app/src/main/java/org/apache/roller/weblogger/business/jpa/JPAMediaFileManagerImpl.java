@@ -24,6 +24,8 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,6 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.BlurHash;
+import org.apache.roller.weblogger.business.ContentHashes;
 import org.apache.roller.weblogger.business.ExifSupport;
 import org.apache.roller.weblogger.business.FileContentManager;
 import org.apache.roller.weblogger.business.FileIOException;
@@ -220,7 +223,12 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         // update weblog last modified date. date updated by saveWeblog()
         roller.getWeblogManager().saveWeblog(weblog);
 
-        cmgr.saveFileContent(weblog, mediaFile.getId(), is);
+        // The hash is taken from the bytes as they stream to disk, so an
+        // upload of any size is hashed without being held in memory.
+        MessageDigest sha256 = ContentHashes.sha256();
+        cmgr.saveFileContent(weblog, mediaFile.getId(), new DigestInputStream(is, sha256));
+        mediaFile.setContentHash(ContentHashes.hex(sha256.digest()));
+        strategy.store(mediaFile);
 
         if (mediaFile.isImageFile()) {
             updateThumbnail(mediaFile);
@@ -387,6 +395,8 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
     @Override
     public void updateMediaFile(Weblog weblog, MediaFile mediaFile,
             InputStream is) throws WebloggerException {
+        // New content is no longer the image an earlier import matched by hash.
+        mediaFile.setContentHash(null);
         updateMediaFile(weblog, mediaFile);
 
         FileContentManager cmgr = roller.getFileContentManager();
@@ -488,6 +498,21 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
     /**
      * {@inheritDoc}
      */
+    @Override
+    public MediaFile getMediaFileByContentHash(MediaFileDirectory directory, String contentHash)
+            throws WebloggerException {
+        if (directory == null || contentHash == null) {
+            return null;
+        }
+        TypedQuery<MediaFile> q = strategy.getNamedQuery(
+                "MediaFile.getByDirectoryAndContentHash", MediaFile.class);
+        q.setParameter(1, directory);
+        q.setParameter(2, contentHash);
+        q.setMaxResults(1);
+        List<MediaFile> found = q.getResultList();
+        return found.isEmpty() ? null : found.get(0);
+    }
+
     @Override
     public MediaFile getMediaFileByOriginalPath(Weblog weblog, String origpath)
             throws WebloggerException {
@@ -869,6 +894,8 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
             mediaFile.setWidth(cropped.getWidth());
             mediaFile.setHeight(cropped.getHeight());
             mediaFile.setLength(encoded.length);
+            // A cropped file is no longer the bytes it was imported as.
+            mediaFile.setContentHash(null);
             // Bump lastUpdated so MediaResourceServlet's Last-Modified/304
             // check doesn't keep serving cached pre-crop bytes.
             mediaFile.setLastUpdated(new Timestamp(System.currentTimeMillis()));

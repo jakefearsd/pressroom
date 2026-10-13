@@ -59,6 +59,7 @@ public class MediaFile implements Serializable {
     private Weblog weblog;
 
     private String blurhash;
+    private String contentHash;
     private String exifCamera;
     private String exifLens;
     private String exifExposure;
@@ -475,6 +476,20 @@ public class MediaFile implements Serializable {
 
     public void setBlurhash(String blurhash) {
         this.blurhash = blurhash;
+    }
+
+    /**
+     * SHA-256 (lower-case hex) of the bytes this file was created with, or
+     * null: for files from before V032, and once the content is replaced or
+     * cropped. An import of identical bytes into the same directory returns
+     * this file instead of storing a copy.
+     */
+    public String getContentHash() {
+        return contentHash;
+    }
+
+    public void setContentHash(String contentHash) {
+        this.contentHash = contentHash;
     }
 
     /** Combined camera make/model read from EXIF, e.g. "Canon EOS R5". Null if absent or unreadable. */
