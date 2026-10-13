@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.roller.weblogger.business.RenditionSupport;
 import org.apache.roller.weblogger.pojos.MediaFile;
@@ -118,6 +119,12 @@ public final class GalleryMarkup {
         return html.toString();
     }
 
+    @SuppressFBWarnings(
+            value = "POTENTIAL_XML_INJECTION",
+            justification = "Alt text, captions and blurhash go through escape() "
+                    + "(HTMLSanitizer.htmlEncodeApexesAndTags), URLs are built from ids by the URL "
+                    + "strategy, and the expanded entry then passes through HTMLSanitizer, the one content "
+                    + "boundary.")
     private static void appendFigure(StringBuilder html, MediaFileWrapper image,
             int rowHeight, ImageUrls urls) {
         boolean knownDimensions = image.getWidth() > 0 && image.getHeight() > 0;

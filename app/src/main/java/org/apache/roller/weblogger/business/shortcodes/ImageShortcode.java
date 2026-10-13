@@ -19,6 +19,7 @@ package org.apache.roller.weblogger.business.shortcodes;
 
 import java.util.Map;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,6 +75,12 @@ public class ImageShortcode implements ShortcodeHandler {
     }
 
     @Override
+    @SuppressFBWarnings(
+            value = "POTENTIAL_XML_INJECTION",
+            justification = "src and srcset are built by the media wrapper from ids and widths, alt and "
+                    + "the caption attribute go through escape(), and a body caption is the author's own "
+                    + "markup; the expanded entry then passes through HTMLSanitizer, the one content "
+                    + "boundary.")
     public String render(Map<String, String> attributes, String body, ShortcodeContext content) {
         String id = attributes.get("id");
         if (StringUtils.isBlank(id)) {

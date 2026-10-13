@@ -24,6 +24,7 @@ import java.util.List;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.WebloggerException;
@@ -140,6 +141,10 @@ public class SeoController extends BaseController {
      * {@code robots.txt}.
      */
     @GetMapping("/sitemap.xml")
+    @SuppressFBWarnings(
+            value = "POTENTIAL_XML_INJECTION",
+            justification = "Every value written into the XML goes through escapeXml(); the URLs come from "
+                    + "the configured absolute URL and weblog handles.")
     public ResponseEntity<String> sitemapIndex(HttpServletRequest request) {
         String vhostHandle = weblogger.getVirtualHostRegistry().handleFor(request.getHeader("Host"));
         if (vhostHandle != null) {
@@ -182,6 +187,10 @@ public class SeoController extends BaseController {
 
     /** Sitemap for one weblog: home page plus published, indexable entries. */
     @GetMapping("/sitemap-{handle}.xml")
+    @SuppressFBWarnings(
+            value = "POTENTIAL_XML_INJECTION",
+            justification = "Every value written into the XML goes through escapeXml(); the URLs are built "
+                    + "by the URL strategy from the stored weblog, entries and pages.")
     public ResponseEntity<String> weblogSitemap(@PathVariable("handle") String handle) {
         Weblog weblog;
         try {
@@ -274,6 +283,10 @@ public class SeoController extends BaseController {
      * silently: the sitemap must stay valid even when a referenced upload was
      * deleted after the entry was saved.
      */
+    @SuppressFBWarnings(
+            value = "POTENTIAL_XML_INJECTION",
+            justification = "The image URL is built by the URL strategy from the media file's id and goes "
+                    + "through escapeXml().")
     private void appendFeaturedImage(StringBuilder xml, URLStrategy urlStrategy,
             Weblog weblog, WeblogEntry entry) {
         String imageId = entry.getFeaturedImageId();
@@ -311,6 +324,10 @@ public class SeoController extends BaseController {
     }
 
     /** Appends a {@code lastmod} element in W3C datetime (UTC) if a date is known. */
+    @SuppressFBWarnings(
+            value = "POTENTIAL_XML_INJECTION",
+            justification = "Writes only a date formatted by DateTimeFormatter.ISO_INSTANT, and a constant "
+                    + "indent.")
     private static void appendLastmod(StringBuilder xml, String indent, Date date) {
         if (date == null) {
             return;

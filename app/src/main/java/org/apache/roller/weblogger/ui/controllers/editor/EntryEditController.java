@@ -28,6 +28,7 @@ import java.util.TimeZone;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -281,6 +282,11 @@ public class EntryEditController extends BaseController {
      * field did not change -- three "no changes" headings would bury the one
      * section the author opened the modal to read.
      */
+    @SuppressFBWarnings(
+            value = "POTENTIAL_XML_INJECTION",
+            justification = "The label and every diff line go through HTMLSanitizer.htmlEncodeTag into "
+                    + "element content (h5, span inside pre): with < and > encoded no tag can open there. "
+                    + "The diff is shown only to the entry's editors.")
     private void appendDiff(StringBuilder html, String label, String before, String after) {
         List<TextDiff.Line> lines = TextDiff.diff(before, after);
         if (lines.isEmpty()) {

@@ -26,6 +26,7 @@ import jakarta.activation.MimetypesFileTypeMap;
 import jakarta.mail.internet.AddressException;
 import jakarta.mail.internet.InternetAddress;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -867,6 +868,12 @@ public final class Utilities {
      *            the String to transform
      * @return the transformed String
      */
+    @SuppressFBWarnings(
+            value = "MODIFICATION_AFTER_VALIDATION",
+            justification = "Nothing here validates: each Matcher is a find-and-replace turning one "
+                    + "escaped tag back into that tag. The method is template API only ($utils) with no "
+                    + "caller in Roller's own templates, and templates are written by weblog admins, who "
+                    + "can already emit any markup.")
     public static String transformToHTMLSubset(String s) {
 
         if (s == null) {

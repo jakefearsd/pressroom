@@ -20,6 +20,7 @@ package org.apache.roller.weblogger.business.shortcodes;
 import java.util.List;
 import java.util.Map;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,6 +65,11 @@ public class FaqShortcode implements ShortcodeHandler {
     }
 
     @Override
+    @SuppressFBWarnings(
+            value = "POTENTIAL_XML_INJECTION",
+            justification = "The questions and answers are the author's own entry markup and are kept as "
+                    + "written on purpose; the expanded entry passes through HTMLSanitizer, the one "
+                    + "content boundary, before any reader sees it (EntryRenderer.render).")
     public String render(Map<String, String> attributes, String body, ShortcodeContext content) {
         if (StringUtils.isBlank(body)) {
             log.debug("[faq] shortcode without a body; leaving it as written");

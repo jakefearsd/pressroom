@@ -19,6 +19,7 @@ package org.apache.roller.weblogger.business.shortcodes;
 
 import java.util.Map;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,6 +79,12 @@ public class CtaShortcode implements ShortcodeHandler {
     }
 
     @Override
+    @SuppressFBWarnings(
+            value = "POTENTIAL_XML_INJECTION",
+            justification = "Every author value goes through escape() "
+                    + "(HTMLSanitizer.htmlEncodeApexesAndTags), the href is taken only as an absolute "
+                    + "http(s) URL, and the expanded entry then passes through HTMLSanitizer, the one "
+                    + "content boundary (EntryRenderer.render).")
     public String render(Map<String, String> attributes, String body, ShortcodeContext content) {
         String href = StringUtils.trimToNull(attributes.get("href"));
         if (href == null && content != null) {

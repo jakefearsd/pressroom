@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -116,6 +117,12 @@ public class VideoShortcode implements ShortcodeHandler {
         return null;
     }
 
+    @SuppressFBWarnings(
+            value = {"POTENTIAL_XML_INJECTION", "FORMAT_STRING_MANIPULATION"},
+            justification = "The id has matched its provider's id pattern (eleven [A-Za-z0-9_-] or digits) "
+                    + "before it gets here and the caption goes through escape(); the format string is a "
+                    + "constant in PROVIDERS, never input. The expanded entry also passes through "
+                    + "HTMLSanitizer.")
     private static String markup(Provider provider, String id, String caption) {
         StringBuilder html = new StringBuilder(320);
         html.append("<figure class=\"video-figure\">");

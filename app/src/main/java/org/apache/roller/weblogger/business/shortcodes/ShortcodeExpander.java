@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.roller.weblogger.business.MediaFileManager;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.slf4j.Logger;
@@ -113,9 +114,23 @@ public final class ShortcodeExpander {
      * end, and nothing after group 3 can match inside it, so the possessive
      * quantifiers give up no match the greedy ones could have found.
      */
-    private static final Pattern OPEN_TAG = Pattern.compile(
-            "\\[(\\[?)([a-zA-Z][\\w-]*)"
-            + "((?:\\s[^\\]\"']*+(?:(?:\"[^\"]*+\"|'[^']*+')[^\\]\"']*+)*+)?)(/?)\\]");
+    private static final Pattern OPEN_TAG = openTagPattern();
+
+    /**
+     * {@link #OPEN_TAG}, compiled in a method of its own only so that the
+     * REDOS review below is attached to this one pattern rather than to the
+     * whole class: a suppression cannot sit on a static initializer.
+     */
+    @SuppressFBWarnings(
+            value = "REDOS",
+            justification = "Every repetition is possessive and the alternatives start on different "
+                    + "characters (a plain run excludes both quotes), so nothing backtracks for input to "
+                    + "multiply; ShortcodeExpanderTest feeds it 100,000 characters of unclosed prose "
+                    + "and 20,000 quoted values.")
+    private static Pattern openTagPattern() {
+        return Pattern.compile("\\[(\\[?)([a-zA-Z][\\w-]*)"
+                + "((?:\\s[^\\]\"']*+(?:(?:\"[^\"]*+\"|'[^']*+')[^\\]\"']*+)*+)?)(/?)\\]");
+    }
 
     private static final Pattern ATTRIBUTE = Pattern.compile(
             "([\\w-]+)\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s\\]]+))");
