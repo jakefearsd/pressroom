@@ -61,7 +61,8 @@ import org.commonmark.renderer.html.HtmlRenderer;
 public final class MarkdownRenderer {
 
 
-    private static final List<Extension> EXTENSIONS = List.of(
+    /** Package-visible so {@link ExternalImages} parses entry text exactly as it renders. */
+    static final List<Extension> EXTENSIONS = List.of(
             TablesExtension.create(),
             StrikethroughExtension.create(),
             AutolinkExtension.create());
