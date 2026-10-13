@@ -66,6 +66,29 @@ class QualityGatePomTest {
                 "SpotBugs must fail the build, not warn");
     }
 
+    /**
+     * javac warnings fail the build, and the lints switched off are a closed
+     * set. A fourth {@code -Xlint:-x} is a policy change: update this list and
+     * the comment beside the compiler arguments in the parent pom.
+     */
+    @Test
+    void javacWarningsFailTheBuildAndOnlyThreeLintsAreOff() throws IOException {
+        String parentPom = read("pom.xml");
+        int plugin = parentPom.indexOf("<artifactId>maven-compiler-plugin</artifactId>");
+        assertTrue(plugin >= 0, "maven-compiler-plugin missing from the parent pom");
+        String config = parentPom.substring(plugin, parentPom.indexOf("</plugin>", plugin));
+        assertTrue(config.contains("<failOnWarning>true</failOnWarning>"),
+                "javac warnings must fail the build, not scroll past");
+        assertTrue(config.contains("<arg>-Xlint:all</arg>"), "-Xlint:all must stay on");
+        List<String> off = new ArrayList<>();
+        Matcher m = Pattern.compile("<arg>-Xlint:-([a-z-]+)</arg>").matcher(config);
+        while (m.find()) {
+            off.add(m.group(1));
+        }
+        assertEquals(List.of("options", "processing", "this-escape"), off,
+                "the disabled javac lints are a closed set");
+    }
+
     @Test
     void everyPmdExclusionIsPermittedAndCarriesAReason() throws IOException {
         String ruleset = read("config/pmd/ruleset.xml");

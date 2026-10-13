@@ -149,7 +149,23 @@ limitations under the License.
                                  has not been a dependency since.) -->
                             <arg>-Xlint:-options</arg>
                             <arg>-Xlint:-processing</arg>
+                            <!-- -this-escape is the javac twin of SpotBugs
+                                 MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR, which
+                                 config/spotbugs/exclude.xml already excludes as a
+                                 family: template methods called from constructors
+                                 are how the servlet and manager hierarchies are
+                                 written, and most sites are JPA entities, which
+                                 the JPA spec forbids making final (class or
+                                 method), so the usual fix is unavailable. The two
+                                 gates must not disagree. -->
+                            <arg>-Xlint:-this-escape</arg>
                         </compilerArgs>
+                        <!-- Any other warning fails the build: a deprecation, an
+                             unused try resource or a dangling doc comment is
+                             fixed (or suppressed at the site, with a reason),
+                             never left to scroll past. QualityGatePomTest pins
+                             this and the closed set of disabled lints. -->
+                        <failOnWarning>true</failOnWarning>
                         <encoding>${project.build.sourceEncoding}</encoding>
                     </configuration>
                 </plugin>
