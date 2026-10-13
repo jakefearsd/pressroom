@@ -119,4 +119,138 @@ class ArgumentDeriverTest {
                 () -> ArgumentDeriver.derive(fixture("twice", String.class, String.class)));
         assertTrue(ex.getMessage().contains("id"), ex.getMessage());
     }
+
+    // ---------------------------------------------------- derivation branches
+
+    record Inner(String label, Integer count) { }
+
+    record Wide(String name, Boolean flag, long size, float ratio, String[] names, List<Inner> inners,
+            Inner inner) { }
+
+    static final class Plain { }
+
+    static final class Branches {
+        public void infrastructure(jakarta.servlet.http.HttpServletRequest request,
+                jakarta.servlet.http.HttpServletResponse response, java.security.Principal who,
+                java.util.Locale locale, @org.springframework.web.bind.annotation.RequestAttribute("a") Object a) { }
+
+        public void unbound(Object stray) { }
+
+        public void nonRecord(@RequestBody Plain body) { }
+
+        public void mapBody(@RequestBody Map<String, String> body) { }
+
+        public void wide(@RequestBody Wide body) { }
+
+        public void queries(
+                @RequestParam("q") @io.swagger.v3.oas.annotations.Parameter(description = "Search text") String q,
+                @RequestParam(name = "page", required = false) Integer page,
+                @RequestParam(name = "size", defaultValue = "10") int size,
+                @RequestParam("wanted") boolean wanted) { }
+
+        public void namedPath(@PathVariable(name = "slug") String slug) { }
+
+        public void unnamedPath(@PathVariable String slug) { }
+
+        public void noPathBinding() { }
+    }
+
+    private static ApiRoute branch(String template, String method, Class<?>... types) throws Exception {
+        return new ApiRoute("GET", template, new HandlerMethod(new Branches(), Branches.class.getMethod(method, types)));
+    }
+
+    private static Map<String, ArgumentSpec> byName(ApiRoute route) {
+        return ArgumentDeriver.derive(route).stream().collect(Collectors.toMap(ArgumentSpec::name, a -> a));
+    }
+
+    @Test
+    void servletInfrastructureParametersAreNotArguments() throws Exception {
+        ApiRoute route = branch("/v1/x", "infrastructure", jakarta.servlet.http.HttpServletRequest.class,
+                jakarta.servlet.http.HttpServletResponse.class, java.security.Principal.class,
+                java.util.Locale.class, Object.class);
+
+        assertTrue(ArgumentDeriver.derive(route).isEmpty());
+    }
+
+    @Test
+    void aParameterNothingBindsStopsStartupNamingItsPosition() throws Exception {
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> ArgumentDeriver.derive(branch("/v1/x", "unbound", Object.class)));
+
+        assertTrue(ex.getMessage().contains("parameter 0"), ex.getMessage());
+        assertTrue(ex.getMessage().contains("GET /v1/x"), ex.getMessage());
+    }
+
+    @Test
+    void aBodyThatIsNotARecordOrMapStopsStartup() throws Exception {
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> ArgumentDeriver.derive(branch("/v1/x", "nonRecord", Plain.class)));
+
+        assertTrue(ex.getMessage().contains("not a record"), ex.getMessage());
+    }
+
+    @Test
+    void aMapBodyIsOneRequiredSettingsObject() throws Exception {
+        ApiRoute route = branch("/v1/x", "mapBody", Map.class);
+
+        ArgumentSpec settings = byName(route).get("settings");
+
+        assertEquals(ArgumentSpec.Location.BODY_MAP, settings.location());
+        assertTrue(settings.required());
+        assertTrue(ArgumentDeriver.takesBody(route));
+    }
+
+    @Test
+    void everyJavaTypeAnArgumentCanHaveMapsToItsJsonType() throws Exception {
+        Map<String, ArgumentSpec> a = byName(branch("/v1/x", "wide", Wide.class));
+
+        assertEquals("string", a.get("name").schema().get("type"));
+        assertEquals("boolean", a.get("flag").schema().get("type"));
+        assertEquals("integer", a.get("size").schema().get("type"));
+        assertEquals("number", a.get("ratio").schema().get("type"));
+        assertEquals(Map.of("type", "array", "items", Map.of("type", "string")), a.get("names").schema());
+        assertEquals("array", a.get("inners").schema().get("type"));
+        assertEquals("object", ((Map<?, ?>) a.get("inners").schema().get("items")).get("type"));
+        Map<?, ?> properties = (Map<?, ?>) a.get("inner").schema().get("properties");
+        assertEquals(java.util.Set.of("label", "count"), properties.keySet());
+    }
+
+    @Test
+    void queryParametersCarryDescriptionAndRequirednessFromTheirAnnotations() throws Exception {
+        Map<String, ArgumentSpec> a = byName(branch("/v1/x", "queries", String.class, Integer.class, int.class,
+                boolean.class));
+
+        assertEquals("Search text", a.get("q").schema().get("description"));
+        assertTrue(a.get("q").required());
+        assertFalse(a.get("page").required(), "required=false");
+        assertFalse(a.get("size").required(), "a default value makes it optional");
+        assertFalse(a.get("wanted").schema().containsKey("description"));
+        assertEquals("boolean", a.get("wanted").schema().get("type"));
+    }
+
+    @Test
+    void aPathVariableNamedThroughNameIsAnArgumentAndTheTemplateVariablesAreAddedOnce() throws Exception {
+        Map<String, ArgumentSpec> a = byName(branch("/v1/{handle}/things/{slug}", "namedPath", String.class));
+
+        assertEquals(java.util.Set.of("weblog", "slug"), a.keySet());
+        assertEquals("handle", a.get("weblog").sourceName());
+        assertTrue(a.get("weblog").schema().get("description").toString().contains("handle"));
+        assertEquals(ArgumentSpec.Location.PATH, a.get("slug").location());
+    }
+
+    @Test
+    void aTemplateVariableTheHandlerNeverBindsIsStillAnArgument() throws Exception {
+        Map<String, ArgumentSpec> a = byName(branch("/v1/{handle}/ping", "noPathBinding"));
+
+        assertEquals(java.util.Set.of("weblog"), a.keySet());
+        assertFalse(ArgumentDeriver.takesBody(branch("/v1/{handle}/ping", "noPathBinding")));
+    }
+
+    @Test
+    void anUnnamedPathVariableStopsStartupBecauseTheBuildHasNoParametersFlag() throws Exception {
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> ArgumentDeriver.derive(branch("/v1/{slug}", "unnamedPath", String.class)));
+
+        assertTrue(ex.getMessage().contains("unnamed"), ex.getMessage());
+    }
 }

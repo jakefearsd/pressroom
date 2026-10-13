@@ -376,4 +376,96 @@ class TokensApiTest {
 
         verify(weblogger.getApiTokenManager(), never()).issueToken(any(), anyString(), any(), any(), any());
     }
+
+    @Test
+    void aBasicCallerListsOnlyTheMetadataOfTheirOwnTokens() throws Exception {
+        authenticateWithBasicAuth();
+        Weblogger weblogger = mockedWeblogger();
+        User owner = new User();
+        owner.setUserName("owner");
+        when(weblogger.getUserManager().getUserByUserName("owner")).thenReturn(owner);
+        ApiToken token = new ApiToken();
+        token.setId("t-1");
+        token.setUser(owner);
+        token.setLabel("ci");
+        token.setScopeRole(ApiToken.Role.POST);
+        token.setCreated(new Timestamp(System.currentTimeMillis()));
+        when(weblogger.getApiTokenManager().getTokens(owner)).thenReturn(List.of(token));
+
+        String response = mockMvc(new TokensApi(weblogger))
+                .perform(get("/v1/tokens"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        tools.jackson.databind.JsonNode body = new tools.jackson.databind.ObjectMapper().readTree(response);
+        assertEquals(1, body.size());
+        assertEquals("t-1", body.get(0).get("id").asString());
+        assertEquals("ci", body.get(0).get("label").asString());
+    }
+
+    @Test
+    void anExpiryInTheRequestIsHandedToTheManager() throws Exception {
+        authenticateWithBasicAuth();
+        Weblogger weblogger = mockedWeblogger();
+        User owner = new User();
+        owner.setUserName("owner");
+        when(weblogger.getUserManager().getUserByUserName("owner")).thenReturn(owner);
+        ApiToken persisted = new ApiToken();
+        persisted.setId("t-2");
+        persisted.setUser(owner);
+        persisted.setLabel("temp");
+        persisted.setScopeRole(ApiToken.Role.POST);
+        persisted.setCreated(new Timestamp(System.currentTimeMillis()));
+        when(weblogger.getApiTokenManager().issueToken(any(), anyString(), any(), any(), any()))
+                .thenReturn(new ApiTokenManager.Issued("rlr_x", persisted));
+
+        mockMvc(new TokensApi(weblogger))
+                .perform(post("/v1/tokens").contentType("application/json")
+                        .content("{\"label\":\"temp\",\"role\":\"post\",\"expiresAt\":\"2031-01-02T03:04:05Z\"}"))
+                .andExpect(status().isCreated());
+
+        verify(weblogger.getApiTokenManager()).issueToken(any(), org.mockito.ArgumentMatchers.eq("temp"), any(),
+                org.mockito.ArgumentMatchers.eq(ApiToken.Role.POST),
+                org.mockito.ArgumentMatchers.eq(Timestamp.from(java.time.Instant.parse("2031-01-02T03:04:05Z"))));
+    }
+
+    @Test
+    void aPlainStringPrincipalIsLookedUpByName() throws Exception {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("owner", null, List.of()));
+        Weblogger weblogger = mockedWeblogger();
+        User owner = new User();
+        when(weblogger.getUserManager().getUserByUserName("owner")).thenReturn(owner);
+        when(weblogger.getApiTokenManager().getTokens(owner)).thenReturn(List.of());
+
+        mockMvc(new TokensApi(weblogger)).perform(get("/v1/tokens"))
+                .andExpect(status().isOk())
+                .andExpect(r -> assertEquals("[]", r.getResponse().getContentAsString()));
+    }
+
+    @Test
+    void theAnonymousPrincipalIsNotAUser() throws Exception {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("anonymousUser", null, List.of()));
+        Weblogger weblogger = mockedWeblogger();
+
+        mockMvc(new TokensApi(weblogger)).perform(get("/v1/tokens"))
+                .andExpect(status().isForbidden());
+
+        verify(weblogger.getUserManager(), never()).getUserByUserName(anyString());
+    }
+
+    /** A user lookup that fails is "not authenticated" (403), never a token list or a 500. */
+    @Test
+    void aFailedUserLookupIsTreatedAsNotAuthenticated() throws Exception {
+        authenticateWithBasicAuth();
+        Weblogger weblogger = mockedWeblogger();
+        when(weblogger.getUserManager().getUserByUserName("owner"))
+                .thenThrow(new org.apache.roller.weblogger.WebloggerException("db down"));
+
+        mockMvc(new TokensApi(weblogger)).perform(get("/v1/tokens"))
+                .andExpect(status().isForbidden());
+
+        verify(weblogger.getApiTokenManager(), never()).getTokens(any());
+    }
 }
