@@ -348,4 +348,32 @@ class McpToolExecutorTest {
         assertEquals(1, logged.size(), logged.toString());
         assertTrue(logged.get(0).contains("status=500") && logged.get(0).contains("tool=entries"), logged.get(0));
     }
+
+    @Test
+    void aCallWithNoArgumentsMapAtAllIsTreatedAsNoArguments() {
+        CallToolResult result = executor.call(new MockHttpServletRequest(), tool("whoami"), null);
+
+        assertFalse(result.isError());
+        assertEquals("/v1/me", dispatched.get(0).path());
+    }
+
+    @Test
+    void anErrorReplyWithNoContentTypeOrABlankJsonBodyBecomesAProblemShape() {
+        nextReply = new ApiReply(500, null, "{\"leak\":\"internal detail\"}");
+        CallToolResult noType = call("entries", Map.of("action", "list", "weblog", "b"));
+        assertEquals("{\"status\":500,\"title\":\"Internal Server Error\"}", text(noType));
+
+        nextReply = new ApiReply(404, "application/json", "  ");
+        CallToolResult blank = call("entries", Map.of("action", "list", "weblog", "b"));
+        assertEquals("{\"status\":404,\"title\":\"Not Found\"}", text(blank));
+    }
+
+    @Test
+    void anActionNameGivenForASingleActionToolIsRejectedAsNotApplying() {
+        CallToolResult result = call("whoami", Map.of("action", "get"));
+
+        assertTrue(result.isError());
+        assertTrue(text(result).contains("`action` does not apply to `whoami`"), text(result));
+        assertTrue(dispatched.isEmpty());
+    }
 }
