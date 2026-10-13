@@ -1,10 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Roller's SpotBugs exclusion filter. Three families, 555 findings when
-  re-counted on 2026-10-12; everything outside them is at zero. (The 2026-08
-  wave found 603 and fixed or suppressed the 134 outside these families at
-  their sites: see
+  Roller's SpotBugs exclusion filter, re-counted on 2026-10-12 with
+  find-sec-bugs 1.14.0 loaded. Six families: three of SpotBugs' own (555
+  findings) and three of find-sec-bugs' (source markers 252,
+  CRLF_INJECTION_LOGS 439, IMPROPER_UNICODE 34). Everything outside them is
+  at zero. (The 2026-08 wave found 603 and fixed or suppressed the 134
+  outside SpotBugs' own families at their sites: see
   docs/superpowers/specs/2026-08-18-static-analysis-quality-gates-design.md.)
+
+  A new find-sec-bugs finding is triaged, never added here: trace it from
+  source to sink, fix it if the input can reach the sink, otherwise suppress
+  it at the site with the reason the input is not attacker-controlled or is
+  already constrained, and where.
 
   Every Match block below needs a justification comment above it; QualityGatePomTest enforces it.
   One-off suppressions belong at the call site as @SuppressFBWarnings with a
@@ -34,5 +41,42 @@
          found nothing by 2026-10-12, so they are gate-checked again. -->
     <Match>
         <Bug pattern="THROWS_METHOD_THROWS_RUNTIMEEXCEPTION,THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION,REC_CATCH_EXCEPTION,MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR"/>
+    </Match>
+
+    <!-- find-sec-bugs' source markers (252 findings). find-sec-bugs marks
+         every place untrusted input enters; these are inventory, not
+         findings — the sink detectors below are the gate. Listed by name,
+         never by category or confidence, so no future sink detector is
+         hidden with them. -->
+    <Match>
+        <Bug pattern="SPRING_ENDPOINT,SERVLET_PARAMETER,SERVLET_SERVER_NAME,SERVLET_QUERY_STRING,SERVLET_HEADER,SERVLET_HEADER_USER_AGENT,SERVLET_HEADER_REFERER"/>
+    </Match>
+
+    <!-- Log forging (CRLF_INJECTION_LOGS, 439 findings): fixed once, in
+         configuration, not at every call site. log4j2.xml writes each message
+         through %encode{%m}{CRLF}, so a CR or LF in a logged value comes out
+         as the two characters \r or \n and one call writes one line
+         (LogPatternTest pins it; QualityGatePomTest refuses this exclusion
+         without it). Residual risk: a stack trace stays multi-line, and a
+         Throwable's own message on its first line is not encoded. -->
+    <Match>
+        <Bug pattern="CRLF_INJECTION_LOGS"/>
+    </Match>
+
+    <!-- IMPROPER_UNICODE (34 findings; the 33 of the first run were each
+         read on 2026-10-12). The detector fires on every toLowerCase or
+         toUpperCase in a method that also calls equals or indexOf, every
+         equalsIgnoreCase and every Normalizer.normalize, with Locale.ROOT or
+         without, so it cannot tell a correct comparison from a broken one,
+         or a fixed one: the one real finding, DisplayNames' impersonation
+         check (now NFKC and full case folding), still fires. The rest fold
+         ASCII protocol tokens, configuration keys, theme and shortcode names,
+         or values already confined to ASCII: usernames and handles by
+         username.allowedChars, and Host and method values, which Tomcat
+         decodes as ISO-8859-1, where no character lower-cases into ASCII.
+         A new comparison of a name a person typed must fold the way
+         DisplayNames does. -->
+    <Match>
+        <Bug pattern="IMPROPER_UNICODE"/>
     </Match>
 </FindBugsFilter>

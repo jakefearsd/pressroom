@@ -45,6 +45,10 @@ limitations under the License.
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <testcontainers.version>2.0.5</testcontainers.version>
         <maven-surefire.version>3.6.0</maven-surefire.version>
+        <!-- find-sec-bugs, the security detectors in the SpotBugs gate. Pinned
+             like PMD: a bump adds detectors, and what they find gets triaged
+             (config/spotbugs/exclude.xml says how), never excluded wholesale. -->
+        <findsecbugs.version>1.14.0</findsecbugs.version>
 
         <!-- See the comment on surefire's skipTests in app/pom.xml for what
              this is and why it is not spelled skipTests.
@@ -263,6 +267,13 @@ limitations under the License.
                         <failOnError>true</failOnError>
                         <skip>${quality.check.skip}</skip>
                         <excludeFilterFile>${maven.multiModuleProjectDirectory}/config/spotbugs/exclude.xml</excludeFilterFile>
+                        <plugins>
+                            <plugin>
+                                <groupId>com.h3xstream.findsecbugs</groupId>
+                                <artifactId>findsecbugs-plugin</artifactId>
+                                <version>${findsecbugs.version}</version>
+                            </plugin>
+                        </plugins>
                     </configuration>
                 </plugin>
             </plugins>

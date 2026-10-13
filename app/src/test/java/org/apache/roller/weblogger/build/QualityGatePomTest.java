@@ -35,9 +35,14 @@ class QualityGatePomTest {
             "AssignmentInOperand", "UncommentedEmptyMethodBody",
             "UnnecessaryConstructor", "AvoidUsingVolatile");
 
-    /** The three SpotBugs families the spec permits excluding, by representative pattern. */
+    /**
+     * The six SpotBugs families the spec permits excluding, by representative
+     * pattern: three of SpotBugs' own, then find-sec-bugs' source markers, its
+     * log-forging family (fixed in log4j2.xml instead) and IMPROPER_UNICODE.
+     */
     private static final List<String> PERMITTED_SPOTBUGS_EXCLUSIONS = List.of(
-            "EI_EXPOSE_REP", "SE_TRANSIENT_FIELD_NOT_RESTORED", "THROWS_METHOD_THROWS");
+            "EI_EXPOSE_REP", "SE_TRANSIENT_FIELD_NOT_RESTORED", "THROWS_METHOD_THROWS",
+            "SPRING_ENDPOINT", "CRLF_INJECTION_LOGS", "IMPROPER_UNICODE");
 
     /**
      * The exact bug patterns making up the three permitted SpotBugs exclusion
@@ -53,7 +58,11 @@ class QualityGatePomTest {
             "EI_EXPOSE_REP", "EI_EXPOSE_REP2", "MS_EXPOSE_REP",
             "SE_TRANSIENT_FIELD_NOT_RESTORED", "SE_COMPARATOR_SHOULD_BE_SERIALIZABLE", "CT_CONSTRUCTOR_THROW",
             "THROWS_METHOD_THROWS_RUNTIMEEXCEPTION", "THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION",
-            "REC_CATCH_EXCEPTION", "MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR");
+            "REC_CATCH_EXCEPTION", "MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR",
+            "SPRING_ENDPOINT", "SERVLET_PARAMETER", "SERVLET_SERVER_NAME", "SERVLET_QUERY_STRING",
+            "SERVLET_HEADER", "SERVLET_HEADER_USER_AGENT", "SERVLET_HEADER_REFERER",
+            "CRLF_INJECTION_LOGS",
+            "IMPROPER_UNICODE");
 
     @Test
     void allThreeChecksAreBoundToVerifyAndFailTheBuild() throws IOException {
@@ -125,10 +134,10 @@ class QualityGatePomTest {
                     "every <Match> in the SpotBugs filter needs a justification comment above it");
         }
         // Closes the set the same way everyPmdExclusionIsPermittedAndCarriesAReason does for PMD:
-        // a fourth <Match> family, even with a justification comment, is a spec change.
-        assertEquals(3, matchCount,
-                "config/spotbugs/exclude.xml must contain exactly the three <Match> families the "
-                + "spec permits. Adding a fourth is a spec change: update the design doc and this test.");
+        // a seventh <Match> family, even with a justification comment, is a spec change.
+        assertEquals(PERMITTED_SPOTBUGS_EXCLUSIONS.size(), matchCount,
+                "config/spotbugs/exclude.xml must contain exactly the six <Match> families the "
+                + "spec permits. Adding another is a spec change: update the design doc and this test.");
 
         Matcher bugPattern = Pattern.compile("<Bug\\s+pattern=\"([^\"]+)\"").matcher(filter);
         List<String> excluded = new ArrayList<>();
@@ -148,6 +157,58 @@ class QualityGatePomTest {
                     + "PERMITTED_SPOTBUGS_PATTERNS too, so the list stays a transcript of the filter "
                     + "and cannot quietly re-admit it later.");
         }
+    }
+
+    /**
+     * The security detectors are a plugin, so dropping one {@code <plugin>}
+     * element would turn every find-sec-bugs family above into an exclusion of
+     * nothing, and the gate would still pass. Pinned like PMD's version: a bump
+     * adds detectors, and what they find is triaged, not excluded.
+     */
+    @Test
+    void findSecBugsRunsInsideTheSpotbugsGateAtAPinnedVersion() throws IOException {
+        String parentPom = read("pom.xml");
+        assertTrue(parentPom.contains("<findsecbugs.version>1.14.0</findsecbugs.version>"),
+                "find-sec-bugs must be pinned in a property; an unpinned plugin drifts the gate");
+        Matcher spotbugs = Pattern.compile(
+                "<artifactId>spotbugs-maven-plugin</artifactId>(.*?)</plugin>\\s*</plugins>\\s*</configuration>",
+                Pattern.DOTALL).matcher(parentPom);
+        assertTrue(spotbugs.find(), "spotbugs-maven-plugin must carry a <plugins> block in its configuration");
+        String configured = spotbugs.group(1);
+        assertTrue(configured.contains("<artifactId>findsecbugs-plugin</artifactId>")
+                        && configured.contains("<version>${findsecbugs.version}</version>"),
+                "find-sec-bugs must be loaded into the SpotBugs gate's own configuration");
+    }
+
+    /**
+     * Excluding by category or confidence would hide every future sink
+     * detector along with today's noise, so the filter names patterns only.
+     */
+    @Test
+    void theSpotbugsFilterExcludesByPatternOnly() throws IOException {
+        String filter = read("config/spotbugs/exclude.xml");
+        for (String broad : List.of("category=", "<Confidence", "<Priority", "<Rank", "<Package", "<Class",
+                "<Source", "<Or>", "<Not>")) {
+            assertFalse(filter.contains(broad),
+                    "config/spotbugs/exclude.xml must exclude by named bug pattern only; found " + broad);
+        }
+    }
+
+    /**
+     * CRLF_INJECTION_LOGS is excluded only because the log layout encodes CR
+     * and LF in every message (LogPatternTest). Without that encoding the
+     * exclusion would hide ~440 real log-forging sites.
+     */
+    @Test
+    void theLogForgingExclusionStandsOnTheEncodedLogPattern() throws IOException {
+        String filter = read("config/spotbugs/exclude.xml");
+        // The property's value, not the whole file: the file's own comment names the encoding too.
+        Matcher pattern = Pattern.compile("<property name=\"logging.pattern\">([^<]*)</property>")
+                .matcher(read("app/src/main/resources/log4j2.xml"));
+        assertTrue(pattern.find(), "log4j2.xml defines the logging.pattern property");
+        assertTrue(!filter.contains("CRLF_INJECTION_LOGS") || pattern.group(1).contains("%encode{%m}{CRLF}"),
+                "CRLF_INJECTION_LOGS may be excluded only while log4j2.xml's logging.pattern writes "
+                + "messages through %encode{%m}{CRLF}");
     }
 
     @Test
