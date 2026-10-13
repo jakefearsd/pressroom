@@ -11,7 +11,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.xml.parsers.DocumentBuilderFactory;
 import org.junit.jupiter.api.Test;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
 /**
  * Pins the static-analysis gate's wiring and its exclusion policy.
@@ -181,17 +184,78 @@ class QualityGatePomTest {
     }
 
     /**
-     * Excluding by category or confidence would hide every future sink
-     * detector along with today's noise, so the filter names patterns only.
+     * Excluding by category, code or confidence would hide every future sink
+     * detector along with today's noise, and a class or package would hide a
+     * whole subsystem, so the filter names patterns and nothing else. Parsed,
+     * not string-searched: SpotBugs ORs {@code pattern}, {@code code} and
+     * {@code category} on one {@code <Bug>}, so {@code code="SECPTI"} added
+     * beside an existing pattern silently excluded every PATH_TRAVERSAL_IN
+     * while a list of forbidden strings still passed.
      */
     @Test
-    void theSpotbugsFilterExcludesByPatternOnly() throws IOException {
-        String filter = read("config/spotbugs/exclude.xml");
-        for (String broad : List.of("category=", "<Confidence", "<Priority", "<Rank", "<Package", "<Class",
-                "<Source", "<Or>", "<Not>")) {
-            assertFalse(filter.contains(broad),
-                    "config/spotbugs/exclude.xml must exclude by named bug pattern only; found " + broad);
+    void theSpotbugsFilterExcludesByPatternOnly() throws Exception {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        Element root = factory.newDocumentBuilder()
+                .parse(REPO.resolve("config/spotbugs/exclude.xml").toFile()).getDocumentElement();
+
+        assertEquals("FindBugsFilter", root.getTagName());
+        assertEquals(0, root.getAttributes().getLength(), "the filter element takes no attributes");
+        for (Element match : childElements(root)) {
+            assertEquals("Match", match.getTagName(),
+                    "only <Match> families may sit in the filter, found <" + match.getTagName() + ">");
+            assertEquals(0, match.getAttributes().getLength(), "a <Match> takes no attributes");
+            List<Element> inside = childElements(match);
+            assertEquals(1, inside.size(),
+                    "a <Match> holds exactly one <Bug>: a <Class>, <Package>, <Method>, <Source>, <Or>, "
+                    + "<Not> or <Rank> beside it narrows or widens the family");
+            Element bug = inside.get(0);
+            assertEquals("Bug", bug.getTagName(), "a <Match> holds a <Bug>, found <" + bug.getTagName() + ">");
+            assertEquals(1, bug.getAttributes().getLength(),
+                    "a <Bug> names patterns only; code=, category= and the like widen it silently");
+            assertTrue(bug.hasAttribute("pattern"), "a <Bug> names its patterns with pattern=");
         }
+    }
+
+    /**
+     * Settings that drop findings without touching exclude.xml: skipping
+     * detectors, analysing only some classes, a baseline of known bugs, an
+     * include filter, a second exclude filter, a rank cutoff. None is in use,
+     * and each would pass every other test here. Searched in every place Maven
+     * reads them: both poms (a {@code spotbugs.*} property counts too) and the
+     * .mvn command-line files.
+     */
+    @Test
+    void theSpotbugsGateRunsEveryDetectorThroughTheOneFilter() throws IOException {
+        StringBuilder config = new StringBuilder();
+        for (String file : List.of("pom.xml", "app/pom.xml", ".mvn/maven.config", ".mvn/jvm.config")) {
+            Path path = REPO.resolve(file);
+            if (Files.exists(path)) {
+                config.append(Files.readString(path)).append('\n');
+            }
+        }
+        String text = config.toString();
+        String lower = text.toLowerCase(java.util.Locale.ROOT);
+        for (String knob : List.of("visitors", "onlyanalyze", "excludebugsfile", "includefilterfile", "maxrank")) {
+            assertFalse(lower.contains(knob),
+                    "the SpotBugs gate must run every detector over every class; found " + knob);
+        }
+        assertTrue(text.contains("<excludeFilterFile>${maven.multiModuleProjectDirectory}"
+                        + "/config/spotbugs/exclude.xml</excludeFilterFile>"),
+                "the gate reads config/spotbugs/exclude.xml");
+        assertEquals(2, lower.split("excludefilterfile", -1).length - 1,
+                "exactly one excludeFilterFile (its open and close tag), naming exactly that file");
+    }
+
+    private static List<Element> childElements(Element parent) {
+        List<Element> elements = new ArrayList<>();
+        NodeList children = parent.getChildNodes();
+        for (int i = 0; i < children.getLength(); i++) {
+            if (children.item(i) instanceof Element element) {
+                elements.add(element);
+            }
+        }
+        return elements;
     }
 
     /**
