@@ -404,6 +404,8 @@ public class UserEditController extends BaseController {
                 return mgr.getUserByUserName(bean.getUserName(), null);
             }
         } catch (Exception e) {
+            // A failed lookup reads as not found to the admin and the edit does not proceed; the cause is
+            // in this log line.
             log.error("Error looking up user (id/username):{}/{}", bean.getId(), bean.getUserName(), e);
         }
         return null;

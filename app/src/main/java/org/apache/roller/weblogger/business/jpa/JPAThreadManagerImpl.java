@@ -122,6 +122,9 @@ public class JPAThreadManagerImpl extends ThreadManagerImpl {
                 }
 
             } catch (Exception e) {
+                // A failed lease is read as a lost race: the task does not run this tick and tries again next
+                // minute. Right for a real race; during a database outage tasks are skipped, and this WARN is
+                // the only trace.
                 log.warn("Error obtaining lease, assuming race condition.", e);
                 return false;
             }

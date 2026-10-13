@@ -48,7 +48,10 @@ import org.apache.roller.weblogger.pojos.WeblogTemplate;
  * <p>All four methods return {@code null} when the id is blank, unknown, or
  * owned by a different weblog than the one passed in -- an unknown id and a
  * foreign one are deliberately indistinguishable to the caller, so a probe
- * cannot map one weblog's ids from another.
+ * cannot map one weblog's ids from another. A store failure answers
+ * {@code null} too, after logging it: a lookup that could not run is a lookup
+ * that did not pass, so callers answer 404 or refuse, and the log is where an
+ * outage stays visible.
  *
  * <p>This is a pure extraction: every body here is moved verbatim from
  * {@code BaseController}, which now delegates to it.

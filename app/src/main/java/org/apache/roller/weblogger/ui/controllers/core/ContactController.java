@@ -164,6 +164,8 @@ public class ContactController extends BaseController {
         try {
             return weblogger.getWeblogManager().getWeblogByHandle(handle);
         } catch (WebloggerException ex) {
+            // An outage reads as an unknown weblog (404) to the visitor: the endpoint is public, so it must not
+            // reveal state or throw. The ERROR line is how an operator learns the lookups are failing.
             log.error("Error looking up weblog by handle - {}", handle, ex);
             return null;
         }

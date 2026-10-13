@@ -27,6 +27,8 @@ import org.apache.roller.weblogger.business.UserManager;
 import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.ui.controllers.BaseController;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,6 +42,8 @@ import org.apache.roller.weblogger.ui.controllers.WeblogPermissionView;
 @Controller
 @RequestMapping("/roller-ui")
 public class MainMenuController extends BaseController {
+
+    private static final Logger log = LoggerFactory.getLogger(MainMenuController.class);
 
     @Override
     public boolean isWeblogRequired() {
@@ -69,6 +73,9 @@ public class MainMenuController extends BaseController {
             UserManager mgr = weblogger.getUserManager();
             return WeblogPermissionView.resolve(mgr.getWeblogPermissions(user), weblogger);
         } catch (Exception e) {
+            // Display only: a failure shows a smaller menu and grants nothing; authorization is
+            // the interceptor's. Logged so an empty menu has a cause.
+            log.warn("Could not load the Main Menu permissions", e);
             return Collections.emptyList();
         }
     }
@@ -80,6 +87,8 @@ public class MainMenuController extends BaseController {
             UserManager umgr = weblogger.getUserManager();
             return umgr.checkPermission(adminPerm, user);
         } catch (Exception e) {
+            // Display only (hides the admin links); the interceptor still enforces.
+            log.warn("Could not check the Main Menu admin permission", e);
             return false;
         }
     }

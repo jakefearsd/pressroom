@@ -201,6 +201,8 @@ public class NewsletterController extends BaseController {
         try {
             return weblogger.getWeblogManager().getWeblogByNewsletterListUuid(listUuid);
         } catch (WebloggerException ex) {
+            // An outage reads as an unknown list (404) to the visitor: the endpoint is public, so it must not
+            // reveal state or throw. The ERROR line is how an operator learns the lookups are failing.
             log.error("Error looking up weblog by newsletter list uuid", ex);
             return null;
         }

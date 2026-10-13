@@ -371,6 +371,8 @@ public class RollerHandlerInterceptor implements HandlerInterceptor {
         try {
             return weblogger.getUserManager().getUserByUserName(username);
         } catch (Exception e) {
+            // Fail closed: a store that cannot answer leaves the user null and enforceSecurity then refuses
+            // the request. Do not return a cached or default user here.
             log.error("Error looking up user: {}", username, e);
             return null;
         }
