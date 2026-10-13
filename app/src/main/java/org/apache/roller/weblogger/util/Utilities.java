@@ -28,6 +28,7 @@ import jakarta.mail.internet.InternetAddress;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.util.RegexUtil;
@@ -125,12 +126,12 @@ public final class Utilities {
     public static String escapeHTML(String s, boolean escapeAmpersand) {
         // got to do amp's first so we don't double escape
         if (escapeAmpersand) {
-            s = StringUtils.replace(s, "&", "&amp;");
+            s = Strings.CS.replace(s, "&", "&amp;");
         }
-        s = StringUtils.replace(s, "&nbsp;", " ");
-        s = StringUtils.replace(s, "\"", "&quot;");
-        s = StringUtils.replace(s, "<", "&lt;");
-        s = StringUtils.replace(s, ">", "&gt;");
+        s = Strings.CS.replace(s, "&nbsp;", " ");
+        s = Strings.CS.replace(s, "\"", "&quot;");
+        s = Strings.CS.replace(s, "<", "&lt;");
+        s = Strings.CS.replace(s, ">", "&gt;");
         return s;
     }
 
@@ -217,7 +218,7 @@ public final class Utilities {
      * Autoformat.
      */
     public static String autoformat(String s) {
-        return StringUtils.replace(s, "\n", "<br />");
+        return Strings.CS.replace(s, "\n", "<br />");
     }
 
     /**

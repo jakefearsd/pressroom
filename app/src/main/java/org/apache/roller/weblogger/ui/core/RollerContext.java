@@ -172,9 +172,9 @@ public final class RollerContext {
         if(migrateFrom == null || migrateFrom.isEmpty()) {
             log.debug("lazy pw upgrade disabled");
         } else if ("MD5".equals(migrateFrom)) {
-            encoders.put(null, new org.springframework.security.crypto.password.MessageDigestPasswordEncoder("MD5"));
+            encoders.put(null, legacyDigestEncoder("MD5"));
         } else if ("SHA".equals(migrateFrom)) {
-            encoders.put(null, new org.springframework.security.crypto.password.MessageDigestPasswordEncoder("SHA-1"));
+            encoders.put(null, legacyDigestEncoder("SHA-1"));
         } else {
             throw new RuntimeException("passwds.encryption.lazyUpgradeFrom="+migrateFrom+" is no valid encoding to upgrade from.");
         }
@@ -200,6 +200,15 @@ public final class RollerContext {
         log.info("Password Encryption Algorithm set to '{}'", algorithm);
         
         return new DelegatingPasswordEncoder(algorithm, encoders);
+    }
+
+    // Spring Security deprecated MessageDigestPasswordEncoder and offers no
+    // replacement for the one job it has here: recognising an unprefixed
+    // MD5/SHA-1 hash from a pre-migration database so the user can sign in once
+    // and be upgraded. Only reachable when passwds.encryption.lazyUpgradeFrom is set.
+    @SuppressWarnings("deprecation")
+    private static PasswordEncoder legacyDigestEncoder(String algorithm) {
+        return new org.springframework.security.crypto.password.MessageDigestPasswordEncoder(algorithm);
     }
 
 

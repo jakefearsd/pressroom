@@ -37,7 +37,7 @@ public final class I18nUtils {
                 if (localeStr[0] == null) {
                     localeStr[0] = "";
                 }
-                return new Locale(localeStr[0]);
+                return Locale.of(localeStr[0]);
             } else if (localeStr.length == 2) {
                 if (localeStr[0] == null) {
                     localeStr[0] = "";
@@ -45,7 +45,7 @@ public final class I18nUtils {
                 if (localeStr[1] == null) {
                     localeStr[1] = "";
                 }
-                return new Locale(localeStr[0], localeStr[1]);
+                return Locale.of(localeStr[0], localeStr[1]);
             } else if (localeStr.length == 3) {
                 if (localeStr[0] == null) {
                     localeStr[0] = "";
@@ -56,7 +56,7 @@ public final class I18nUtils {
                 if (localeStr[2] == null) {
                     localeStr[2] = "";
                 }
-                return new Locale(localeStr[0], localeStr[1], localeStr[2]);
+                return Locale.of(localeStr[0], localeStr[1], localeStr[2]);
             }
         }
         return Locale.getDefault();

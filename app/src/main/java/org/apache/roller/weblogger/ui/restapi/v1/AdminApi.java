@@ -232,7 +232,6 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         return AdminDtos.toView(user, roles(user));
     }
 
-    @SuppressWarnings("deprecation") // getRoles() is the only way to read a user's actual roles
     private List<String> roles(User user) throws WebloggerException {
         return weblogger.getUserManager().getRoles(user);
     }

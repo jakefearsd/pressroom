@@ -119,7 +119,7 @@ public class MailProvider {
             session = Session.getInstance(props, null);
         }
         
-        try (Transport ignored = getTransport()) {
+        try (Transport _ = getTransport()) {
             log.debug("Successfully connected to mail server");
         } catch (Exception e) {
             throw new StartupException("ERROR connecting to mail server", e);

@@ -20,8 +20,14 @@ public final class RollerOidcUser implements OidcUser, Serializable {
 
     private static final long serialVersionUID = 1L;
 
+    // The provider's user is a DefaultOidcUser at runtime (Serializable); the
+    // interface type is what the constructor accepts. RollerOidcUserTest pins a
+    // serialization round trip, so a non-serializable delegate shows up there.
+    @SuppressWarnings("serial")
     private final OidcUser delegate;
     private final String rollerUserName;
+    // Always Stream.toList(), an immutable list that serializes.
+    @SuppressWarnings("serial")
     private final List<GrantedAuthority> authorities;
     private final boolean newAccount;
 

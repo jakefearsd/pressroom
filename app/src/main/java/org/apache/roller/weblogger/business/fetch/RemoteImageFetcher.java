@@ -236,7 +236,7 @@ public class RemoteImageFetcher implements AutoCloseable {
         }
         // A bracketed host is always an IPv6 literal; getByName does no lookup for a literal.
         boolean bracketed = host.startsWith("[");
-        if (bracketed || InetAddressUtils.isIPv4Address(host)) {
+        if (bracketed || InetAddressUtils.isIPv4(host)) {
             String bare = bracketed ? host.substring(1, host.length() - 1) : host;
             try {
                 if (!policy.addresses().test(InetAddress.getByName(bare))) {

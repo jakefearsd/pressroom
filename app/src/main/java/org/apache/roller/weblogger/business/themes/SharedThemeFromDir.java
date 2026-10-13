@@ -19,6 +19,7 @@
 package org.apache.roller.weblogger.business.themes;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -458,7 +459,7 @@ public class SharedThemeFromDir extends SharedTheme {
      */
     private void setResource(String path, SharedThemeResourceFromDir resource) {
         // normalize to use web-style separators
-        String normalizedPath = StringUtils.replace(path, "\\", "/");
+        String normalizedPath = Strings.CS.replace(path, "\\", "/");
         this.resources.put(normalizedPath, resource);
     }
 

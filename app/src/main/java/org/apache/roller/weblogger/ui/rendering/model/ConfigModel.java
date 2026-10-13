@@ -84,6 +84,7 @@ public class ConfigModel implements Model {
     }
     
     /** @deprecated Trackbacks have been removed. Always returns false. */
+    @Deprecated
     public boolean getTrackbacksEnabled() {
         return false;
     }

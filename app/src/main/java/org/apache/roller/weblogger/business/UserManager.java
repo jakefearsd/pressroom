@@ -277,19 +277,18 @@ public interface UserManager {
 
         
     /**
-     * Returns true if user has role specified, should be used only for testing.
-     * @deprecated Use checkPermission() instead.
+     * Returns true if user has the named role. This reads the stored role, not
+     * what the role implies; for an authorisation decision use
+     * {@link #checkPermission}.
      */
-    @Deprecated
     boolean hasRole(String roleName, User user) throws WebloggerException;
     
     
     /**
-     * Get roles associated with user, should be used only for testing.
-     * Get all roles associated with user.
-     * @deprecated Use checkPermission() instead.
+     * Get all roles associated with user. The only reader of the stored roles,
+     * which Spring Security's authorities, the admin API and reader sign-in need;
+     * {@link #checkPermission} answers "may they", not "which roles do they hold".
      */
-    @Deprecated
     List<String> getRoles(User user) throws WebloggerException;
 
     

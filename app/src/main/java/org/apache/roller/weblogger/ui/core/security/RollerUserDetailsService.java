@@ -77,7 +77,6 @@ public class RollerUserDetailsService implements UserDetailsService {
 
     }
         
-    @SuppressWarnings("deprecation") // getRoles() is needed for Spring Security integration
     private List<SimpleGrantedAuthority> getAuthorities(User userData, UserManager umgr) throws WebloggerException {
         List<String> roles = umgr.getRoles(userData);
         List<SimpleGrantedAuthority> authorities = new ArrayList<>(roles.size());

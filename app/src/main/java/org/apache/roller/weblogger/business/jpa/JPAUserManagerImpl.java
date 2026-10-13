@@ -527,7 +527,6 @@ public class JPAUserManagerImpl implements UserManager {
      * Returns true if user has role specified.
      */
     @Override
-    @Deprecated
     public boolean hasRole(String roleName, User user) throws WebloggerException {
         TypedQuery<UserRole> q = strategy.getNamedQuery("UserRole.getByUserNameAndRole", UserRole.class);
         q.setParameter(1, user.getUserName());
@@ -545,7 +544,6 @@ public class JPAUserManagerImpl implements UserManager {
      * Get all of user's roles.
      */
     @Override
-    @Deprecated
     public List<String> getRoles(User user) throws WebloggerException {
         TypedQuery<UserRole> q = strategy.getNamedQuery("UserRole.getByUserName", UserRole.class);
         q.setParameter(1, user.getUserName());

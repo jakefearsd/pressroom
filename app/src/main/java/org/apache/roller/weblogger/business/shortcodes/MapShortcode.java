@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.commons.text.StringEscapeUtils;
@@ -174,7 +175,7 @@ public class MapShortcode implements ShortcodeHandler {
             return autoPins(auto, content, mediaFiles);
         }
         List<MapPins.Pin> pins = MapPins.parse(body);
-        if (pins.isEmpty() && StringUtils.containsIgnoreCase(body, "[pin")) {
+        if (pins.isEmpty() && Strings.CI.contains(body, "[pin")) {
             // the author clearly tried to write pins and every one is
             // malformed: leave the shortcode visible rather than
             // rendering a pinless map that hides the mistake

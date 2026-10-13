@@ -20,6 +20,8 @@ package org.apache.roller.weblogger.util;
 
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +56,7 @@ public final class MediacastUtil {
         
         MediacastResource resource = null;
         try {
-            HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
+            HttpURLConnection con = (HttpURLConnection) toUrl(url).openConnection();
             con.setRequestMethod("HEAD");
             int response = con.getResponseCode();
             String message = con.getResponseMessage();
@@ -90,5 +92,22 @@ public final class MediacastUtil {
         }
         return resource;
     }
-    
+
+    /**
+     * Parses through {@link URI}, since {@code new URL(String)} is deprecated.
+     * An unparseable or relative string is reported as the
+     * {@link MalformedURLException} the caller already maps to {@code BAD_URL}.
+     * Trade-off: a URL with a raw space, which the old constructor let through,
+     * is now refused as malformed -- it was never a valid URL.
+     */
+    private static URL toUrl(String url) throws MalformedURLException {
+        try {
+            return new URI(url).toURL();
+        } catch (URISyntaxException | IllegalArgumentException e) {
+            MalformedURLException bad = new MalformedURLException(e.getMessage());
+            bad.initCause(e);
+            throw bad;
+        }
+    }
+
 }

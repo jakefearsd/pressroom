@@ -25,6 +25,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.util.RollerConstants;
@@ -204,7 +205,7 @@ public class PasswordResetController extends BaseController {
             return ".ResetPassword";
         }
 
-        if (!StringUtils.equals(passwordText, passwordConfirm)) {
+        if (!Strings.CS.equals(passwordText, passwordConfirm)) {
             addError(model, "resetPassword.mismatch", request);
         }
         if (passwordText == null || passwordText.length() < MIN_PASSWORD_LENGTH) {

@@ -78,8 +78,8 @@ public class InstallController extends BaseController {
         if (WebloggerStartup.getDatabaseProviderException() != null) {
             StartupException se = WebloggerStartup.getDatabaseProviderException();
             Throwable rootCause;
-            if (se.getRootCause() != null) {
-                rootCause = se.getRootCause();
+            if (se.getCause() != null) {
+                rootCause = se.getCause();
             } else {
                 rootCause = se;
             }

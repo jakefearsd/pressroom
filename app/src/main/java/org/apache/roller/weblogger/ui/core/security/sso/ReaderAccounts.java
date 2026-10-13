@@ -71,7 +71,6 @@ public class ReaderAccounts {
         }
     }
 
-    @SuppressWarnings("deprecation") // UserManager.getRoles is the only role reader
     private SignIn existingAccount(UserManager users, User account, ReaderClaims claims)
             throws ReaderSignInRefused, WebloggerException {
         if (!Boolean.TRUE.equals(account.getEnabled())) {

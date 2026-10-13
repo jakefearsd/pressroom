@@ -100,10 +100,8 @@ public class McpServerConfig {
         McpToolExecutor executor = new McpToolExecutor(mcpApiDispatcher);
         List<SyncToolSpecification> tools = new ArrayList<>();
         for (ResolvedTool tool : McpToolCatalog.resolve(mcpApiRoutes)) {
-            McpSchema.Tool.Builder spec = McpSchema.Tool.builder()
-                    .name(tool.name())
-                    .description(ToolSchemas.description(tool))
-                    .inputSchema(ToolSchemas.inputSchema(tool));
+            McpSchema.Tool.Builder spec = McpSchema.Tool.builder(tool.name(), ToolSchemas.inputSchema(tool))
+                    .description(ToolSchemas.description(tool));
             if (tool.readOnly()) {
                 spec.annotations(McpSchema.ToolAnnotations.builder().readOnlyHint(true).build());
             }

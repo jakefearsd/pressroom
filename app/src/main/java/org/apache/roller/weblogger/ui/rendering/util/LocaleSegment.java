@@ -93,11 +93,11 @@ public final class LocaleSegment {
         String[] langCountry = localeString.split("_");
 
         if (langCountry.length == 1) {
-            return new Locale(langCountry[0]);
+            return Locale.of(langCountry[0]);
         }
         if (langCountry.length == 2) {
-            return new Locale(langCountry[0], langCountry[1]);
+            return Locale.of(langCountry[0], langCountry[1]);
         }
-        return new Locale(langCountry[0], langCountry[1], langCountry[2]);
+        return Locale.of(langCountry[0], langCountry[1], langCountry[2]);
     }
 }

@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.WebloggerException;
@@ -271,7 +272,7 @@ public class UtilitiesModel implements Model {
     }
     
     public boolean equals(String str1, String str2) {
-        return StringUtils.equals(str1, str2);
+        return Strings.CS.equals(str1, str2);
     }
     
     public boolean isAlphanumeric(String str) {
@@ -428,11 +429,11 @@ public class UtilitiesModel implements Model {
     }
 
     public String replace(String src, String target, String rWith) {
-        return StringUtils.replace(src, target, rWith);
+        return Strings.CS.replace(src, target, rWith);
     }
     
     public String replace(String src, String target, String rWith, int maxCount) {
-        return StringUtils.replace(src, target, rWith, maxCount);
+        return Strings.CS.replace(src, target, rWith, maxCount);
     }
     
     /**

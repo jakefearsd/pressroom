@@ -27,6 +27,7 @@ import java.util.TimeZone;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.WebloggerException;
@@ -150,7 +151,7 @@ public class ProfileController extends BaseController {
                     || !StringUtils.isEmpty(bean.getPasswordConfirm()))) {
             addError(model, "userSettings.error.ssoPassword", request);
         }
-        if (!StringUtils.equals(bean.getPasswordText(), bean.getPasswordConfirm())) {
+        if (!Strings.CS.equals(bean.getPasswordText(), bean.getPasswordConfirm())) {
             // userRegister.* went away with public self-registration; this page
             // has its own key for the same message.
             addFieldError(model, "passwordConfirm", "yourProfile.passwordsNotSame", request);

@@ -54,7 +54,7 @@ public final class UIUtils {
 
 
     public static String getLocale(String localeName) {
-        Locale locale = new Locale(localeName, localeName); // TODO: is this a bug?
+        Locale locale = Locale.of(localeName, localeName); // TODO: is this a bug?
         return locale.toString();
     }
 

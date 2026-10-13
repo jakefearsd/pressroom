@@ -374,6 +374,10 @@ public class JPAPersistenceStrategy {
             return List.of();
         }
 
+        // PersistenceUnitInfo.getTransactionType() is abstract and still returns
+        // the spi enum, which JPA 3.2 marks for removal; the interface leaves no
+        // other way to say RESOURCE_LOCAL, so this stays until the contract moves.
+        @SuppressWarnings("removal")
         @Override
         public PersistenceUnitTransactionType getTransactionType() {
             return PersistenceUnitTransactionType.RESOURCE_LOCAL;

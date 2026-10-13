@@ -199,14 +199,11 @@ public class TaskScheduler implements Runnable {
                     // thread's default UncaughtExceptionHandler.
                     pool.execute(task);
                 }
-            } catch (ThreadDeath t) {
-                throw t;
             } catch (Throwable t) {
                 // Deliberately Throwable, not Exception: one misbehaving
                 // task (an Error as much as an Exception) must not take
                 // down the scheduling loop for every other task. Logged and
-                // moved on; ThreadDeath above is the one Throwable that must
-                // still propagate.
+                // moved on.
                 log.warn("{}: Unhandled exception caught", task.getName(), t);
             }
         }

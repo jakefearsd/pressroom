@@ -175,8 +175,6 @@ public class RollerLifecycle implements SmartLifecycle {
 
             } catch (BootstrapException ex) {
                 log.error("Roller Weblogger bootstrap failed", ex);
-            } catch (WebloggerException ex) {
-                log.error("Roller Weblogger initialization failed", ex);
             } finally {
                 if (weblogger != null) {
                     weblogger.release();

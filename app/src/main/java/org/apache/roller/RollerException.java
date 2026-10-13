@@ -73,29 +73,16 @@ public abstract class RollerException extends Exception {
 
 
     /**
-     * Get root cause object, or null if none.
-     *
-     * @return Root cause or null if none.
-     * @deprecated the cause is now on the standard chain; call
-     *             {@link Throwable#getCause()}.
-     */
-    @Deprecated
-    public Throwable getRootCause() {
-        return getCause();
-    }
-
-
-    /**
      * Get root cause message.
      * @return Root cause message.
      */
     public String getRootCauseMessage() {
         String rcmessage = null;
-        if (getRootCause()!=null) {
-            if (getRootCause().getCause()!=null) {
-                rcmessage = getRootCause().getCause().getMessage();
+        if (getCause()!=null) {
+            if (getCause().getCause()!=null) {
+                rcmessage = getCause().getCause().getMessage();
             }
-            rcmessage = (rcmessage == null) ? getRootCause().getMessage() : rcmessage;
+            rcmessage = (rcmessage == null) ? getCause().getMessage() : rcmessage;
             rcmessage = (rcmessage == null) ? super.getMessage() : rcmessage;
             rcmessage = (rcmessage == null) ? "NONE" : rcmessage;
         }
