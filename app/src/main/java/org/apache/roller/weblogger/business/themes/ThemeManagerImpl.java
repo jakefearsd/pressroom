@@ -33,6 +33,7 @@ import java.util.Set;
 import jakarta.activation.FileTypeMap;
 import jakarta.activation.MimetypesFileTypeMap;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.WebloggerException;
@@ -96,6 +97,9 @@ public class ThemeManagerImpl implements ThemeManager {
 	// the Map contains ... (theme id, Theme)
 	private Map<String, SharedTheme> themes = null;
 
+	@SuppressFBWarnings(
+			value = "PATH_TRAVERSAL_IN",
+			justification = "themeDir is themes.dir, operator configuration; no request reaches it.")
 	public ThemeManagerImpl(Weblogger roller) {
 
 		this.roller = roller;
@@ -427,16 +431,17 @@ public class ThemeManagerImpl implements ThemeManager {
 	 * This is a convenience method which loads all the theme data from themes
 	 * stored on the filesystem in the roller webapp /themes/ directory.
 	 */
+	@SuppressFBWarnings(
+			value = "PATH_TRAVERSAL_IN",
+			justification = "themeDir is themes.dir, operator configuration, and the names joined to it are that "
+					+ "directory's own listing.")
 	private Map<String, SharedTheme> loadAllThemesFromDisk() {
 
 		Map<String, SharedTheme> themeMap = new HashMap<>();
 
 		// first, get a list of the themes available
 		File themesdir = new File(this.themeDir);
-		FilenameFilter filter = (File dir, String name) -> {
-            File file = new File(dir.getAbsolutePath() + File.separator + name);
-            return file.isDirectory() && !file.getName().startsWith(".");
-        };
+		FilenameFilter filter = ThemeManagerImpl::isThemeDirectory;
 		String[] themenames = themesdir.list(filter);
 
 		if (themenames == null) {
@@ -459,6 +464,16 @@ public class ThemeManagerImpl implements ThemeManager {
         }
 
 		return themeMap;
+	}
+
+	/** A theme is a visible subdirectory of themes.dir. */
+	@SuppressFBWarnings(
+			value = "PATH_TRAVERSAL_IN",
+			justification = "dir is themes.dir, operator configuration, and name is an entry of that "
+					+ "directory's own listing.")
+	private static boolean isThemeDirectory(File dir, String name) {
+		File file = new File(dir.getAbsolutePath() + File.separator + name);
+		return file.isDirectory() && !file.getName().startsWith(".");
 	}
 
 	/**

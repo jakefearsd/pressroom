@@ -28,6 +28,7 @@ import java.util.Map;
 
 import jakarta.servlet.ServletContext;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.ui.core.RollerContext;
@@ -210,6 +211,11 @@ public class WebappResourceLoader extends ResourceLoader {
 	 * 
 	 * @return the cached file
 	 */
+	@SuppressFBWarnings(
+			value = "PATH_TRAVERSAL_IN",
+			justification = "Only names Velocity has already loaded through ServletContext.getResourceAsStream, "
+					+ "which serves nothing outside the webapp, reach this; the File is only checked for existence and a "
+					+ "modification time, never read.")
 	private File getCachedFile(String rootPath, String fileName) {
 
 		// Looked up under the name exactly as getResourceReader stored it. This
@@ -239,6 +245,11 @@ public class WebappResourceLoader extends ResourceLoader {
 	 * @return boolean True if the resource has been modified
 	 */
     @Override
+	@SuppressFBWarnings(
+			value = "PATH_TRAVERSAL_IN",
+			justification = "Only names Velocity has already loaded through ServletContext.getResourceAsStream, "
+					+ "which serves nothing outside the webapp, reach this; the Files are only checked for existence and "
+					+ "a modification time, never read.")
 	public boolean isSourceModified(Resource resource) {
 
 		String rootPath = servletContext.getRealPath("/");

@@ -20,6 +20,7 @@ package org.apache.roller.weblogger.business;
 import java.io.File;
 import java.util.concurrent.TimeUnit;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -110,6 +111,11 @@ public final class CwebpEncoder {
      * Returns true on success. Never throws -- callers treat encode failure
      * as "skip this rendition", not as an upload failure.
      */
+    @SuppressFBWarnings(
+            value = "COMMAND_INJECTION",
+            justification = "ProcessBuilder runs the fixed executable cwebp with an argument vector, never "
+                    + "a shell; the two paths are temp files RenditionSupport made with "
+                    + "File.createTempFile, and quality is an int.")
     public static boolean encode(File input, File output, int quality) {
         try {
             Process process = new ProcessBuilder("cwebp", "-quiet",

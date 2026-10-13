@@ -27,6 +27,7 @@ import java.util.Properties;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.business.startup.StartupException;
@@ -80,6 +81,10 @@ public class DatabaseProvider  {
      * Reads configuraiton, loads driver or locates data-source and attempts
      * to get test connecton so that we can fail early.
      */ 
+    @SuppressFBWarnings(
+            value = "LDAP_INJECTION",
+            justification = "The JNDI name is database.jndi.name, operator configuration "
+                    + "(roller.properties or ROLLER_* environment); no request reaches it.")
     public DatabaseProvider() throws StartupException {
         
         String connectionTypeString = 

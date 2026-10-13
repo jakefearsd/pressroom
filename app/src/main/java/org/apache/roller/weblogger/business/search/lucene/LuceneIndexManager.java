@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.beanutils.ConstructorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,6 +102,10 @@ public class LuceneIndexManager implements IndexManager {
      * 
      * @param roller - the weblogger instance
      */
+    @SuppressFBWarnings(
+            value = "PATH_TRAVERSAL_IN",
+            justification = "indexDir is search.index.dir, operator configuration (roller.properties or "
+                    + "ROLLER_SEARCH_INDEX_DIR); no request reaches it.")
     public LuceneIndexManager(Weblogger roller) {
         this.roller = roller;
 
@@ -127,6 +132,10 @@ public class LuceneIndexManager implements IndexManager {
      * @inheritDoc
      */
     @Override
+    @SuppressFBWarnings(
+            value = "PATH_TRAVERSAL_IN",
+            justification = "indexDir is search.index.dir, operator configuration (roller.properties or "
+                    + "ROLLER_SEARCH_INDEX_DIR); no request reaches it.")
     public void initialize() throws InitializationException {
 
         // only initialize the index if search is enabled

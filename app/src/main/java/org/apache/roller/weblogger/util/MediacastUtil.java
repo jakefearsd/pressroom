@@ -23,6 +23,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +48,11 @@ public final class MediacastUtil {
     /**
      * Validate a Mediacast resource.
      */
+    @SuppressFBWarnings(
+            value = "URLCONNECTION_SSRF_FD",
+            justification = "Nothing in production calls this; MediacastUtilTest is its only caller. The "
+                    + "URL would be an author's, so a new caller must first refuse private and loopback "
+                    + "addresses the way RemoteImageFetcher's address policy does.")
     public static MediacastResource lookupResource(String url)
             throws MediacastException {
         

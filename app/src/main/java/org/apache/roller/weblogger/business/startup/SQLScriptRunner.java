@@ -144,6 +144,11 @@ public class SQLScriptRunner {
     
     
     /** Creates a new instance of SQLScriptRunner */
+    @SuppressFBWarnings(
+            value = "PATH_TRAVERSAL_IN",
+            justification = "Only tests call the path constructor, with scripts under target/test-classes; "
+                    + "production runs migrations through the InputStream constructor "
+                    + "(DatabaseInstaller.applyMigration).")
     public SQLScriptRunner(String scriptPath) throws IOException {
         this(new FileInputStream(scriptPath));
     }
@@ -175,7 +180,7 @@ public class SQLScriptRunner {
     
     /** Run script, logs messages, and optionally throws exception on error */
     @SuppressFBWarnings(
-            value = "SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE",
+            value = {"SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE", "SQL_INJECTION_JDBC"},
             justification = "SQLScriptRunner exists to execute the migration scripts under "
                     + "bin/db/migrations, which ship inside the artifact and are parsed by "
                     + "this class's own constructor -- non-constant SQL is the class's entire "

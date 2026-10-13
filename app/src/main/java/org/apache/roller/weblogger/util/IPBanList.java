@@ -61,6 +61,10 @@ public final class IPBanList {
 
     // private -- construction with an explicit supplier is for the static
     // initializer above and, via newForTest, for unit tests
+    @SuppressFBWarnings(
+            value = "PATH_TRAVERSAL_IN",
+            justification = "The path is ipbanlist.file, operator configuration (the supplier in the "
+                    + "static initializer), or a test's own file; no request reaches it.")
     private IPBanList(Supplier<String> banIpsFilePathSupplier) {
 
         log.debug("INIT");
@@ -194,6 +198,10 @@ public final class IPBanList {
 
         private long myLastModified;
 
+        @SuppressFBWarnings(
+                value = "PATH_TRAVERSAL_IN",
+                justification = "Constructed only by IPBanList with ipbanlist.file, operator "
+                        + "configuration.")
         public ModifiedFile(String filePath) {
             super(filePath);
 

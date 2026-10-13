@@ -44,6 +44,7 @@ import javax.imageio.stream.ImageOutputStream;
 
 import net.coobird.thumbnailator.Thumbnails;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.pojos.MediaFile;
@@ -423,6 +424,11 @@ public final class RenditionSupport {
         }
     }
 
+    @SuppressFBWarnings(
+            value = "PATH_TRAVERSAL_IN",
+            justification = "The temp files are named by File.createTempFile; the only caller-supplied "
+                    + "part is the suffix, and sourceFormat is what formatFor() returned: the constant "
+                    + "\"jpg\" or \"png\".")
     private static void generateWebp(FileContentManager cmgr, Weblog weblog, String id,
             int width, BufferedImage resized, String sourceFormat) {
         File tempInput = null;

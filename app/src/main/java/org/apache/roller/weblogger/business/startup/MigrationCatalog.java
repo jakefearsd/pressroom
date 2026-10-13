@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Pattern;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 /**
  * Lists the schema migrations available on the classpath.
@@ -92,6 +93,10 @@ public final class MigrationCatalog {
         return versions;
     }
 
+    @SuppressFBWarnings(
+            value = "PATH_TRAVERSAL_IN",
+            justification = "dir is ClassLoader.getResource for the migrations folder, a location inside "
+                    + "the application; no request reaches it.")
     private static List<String> listFromDirectory(URL dir)
             throws IOException, java.net.URISyntaxException {
         List<String> versions = new ArrayList<>();
@@ -107,6 +112,11 @@ public final class MigrationCatalog {
         return versions;
     }
 
+    @SuppressFBWarnings(
+            value = "URLCONNECTION_SSRF_FD",
+            justification = "dir is ClassLoader.getResource for the migrations folder, a jar: URL inside "
+                    + "the application; the connection opens the application's own archive, never a "
+                    + "network address.")
     private static List<String> listFromJar(URL dir) throws IOException {
         List<String> versions = new ArrayList<>();
         JarURLConnection connection = (JarURLConnection) dir.openConnection();

@@ -21,6 +21,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.hc.client5.http.DnsResolver;
 import org.apache.hc.client5.http.SchemePortResolver;
 import org.apache.hc.client5.http.SystemDefaultDnsResolver;
@@ -341,8 +342,17 @@ public class RemoteImageFetcher implements AutoCloseable {
         @Override
         protected HttpClientConnectionOperator createConnectionOperator(
                 SchemePortResolver ports, DnsResolver dns, TlsSocketStrategy tls) {
-            return new DefaultHttpClientConnectionOperator(proxy -> new Socket(Proxy.NO_PROXY), ports, dns,
+            return new DefaultHttpClientConnectionOperator(DirectConnectionsBuilder::directSocket, ports, dns,
                     RegistryBuilder.<TlsSocketStrategy>create().register(URIScheme.HTTPS.id, tls).build());
+        }
+
+        @SuppressFBWarnings(
+                value = "UNENCRYPTED_SOCKET",
+                justification = "This is the transport under both schemes: https connections are wrapped "
+                        + "in TLS by the TlsSocketStrategy registered beside it, and a plain http socket is "
+                        + "used only because the author's image URL said http.")
+        private static Socket directSocket(Proxy ignored) {
+            return new Socket(Proxy.NO_PROXY);
         }
     }
 

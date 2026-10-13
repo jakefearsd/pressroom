@@ -25,6 +25,7 @@ import jakarta.mail.Transport;
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.business.startup.StartupException;
@@ -66,6 +67,10 @@ public class MailProvider {
     private String mailPassword;
 
     
+    @SuppressFBWarnings(
+            value = "LDAP_INJECTION",
+            justification = "The JNDI name is mail.jndi.name, operator configuration (roller.properties or "
+                    + "ROLLER_* environment); no request reaches it.")
     public MailProvider() throws StartupException {
         
         String connectionTypeString = WebloggerConfig.getProperty("mail.configurationType"); 

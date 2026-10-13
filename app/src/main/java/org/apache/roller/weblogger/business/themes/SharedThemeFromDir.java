@@ -18,6 +18,7 @@
 
 package org.apache.roller.weblogger.business.themes;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.slf4j.Logger;
@@ -39,6 +40,12 @@ import org.apache.roller.weblogger.pojos.ThemeTemplate.ComponentType;
  * used mostly to contain all the templates for a theme, but does contain other
  * theme related attributes such as name, last modified date, etc.
  */
+@SuppressFBWarnings(
+        value = "PATH_TRAVERSAL_IN",
+        justification = "Every path in this class is the theme's directory under themes.dir (operator "
+                + "configuration) joined with a file name that theme's own theme.xml declares. Themes ship "
+                + "in the image or the operator's themes directory; no request, author or upload supplies "
+                + "a theme or its descriptor. Class-level because all six loaders share this one reason.")
 public class SharedThemeFromDir extends SharedTheme {
 
     private static final long serialVersionUID = 1L;
