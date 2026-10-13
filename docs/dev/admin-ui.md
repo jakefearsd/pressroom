@@ -147,8 +147,8 @@ resolves through the index at the end of `CLAUDE.md`.
 - **The top bar's weblog switcher appears only for a user on ≥ 2 weblogs.**
   `BaseController.populateCommonModel` resolves the caller's weblog
   permissions to `List<Weblog>` and adds `userWeblogs` only then.
-  `switcherAction` is the current admin action when it is one of nine reusable
-  ones (`entries`, `trash`, `submissions`, `categories`, `pages`,
+  `switcherAction` is the current admin action when it is one of ten reusable
+  ones (`entries`, `trash`, `submissions`, `comments`, `categories`, `pages`,
   `mediaFileView`, `themeEdit`, `weblogConfig`, `members`), else `entries`, so
   switching from Global Config lands on the entry list, not a 403. The
   permission lookup is a log-and-return `catch` — a display path, the page
