@@ -304,7 +304,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      */
     private void requireScheduledHasPubTime(WeblogEntry entry) {
         if (entry.getStatus() == WeblogEntry.PubStatus.SCHEDULED && entry.getPubTime() == null) {
-            throw ApiException.badRequest("pubTime is required when status is SCHEDULED.");
+            throw ApiException.invalidField("pubTime", "pubTime is required when status is SCHEDULED.");
         }
     }
 

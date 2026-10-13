@@ -12,6 +12,7 @@ import org.apache.roller.weblogger.ui.controllers.UISecurityEnforced;
 import org.apache.roller.weblogger.ui.controllers.WeblogCreationRules;
 import org.apache.roller.weblogger.ui.controllers.core.CreateWeblogBean;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
+import org.apache.roller.weblogger.ui.restapi.ApiProblem;
 import org.apache.roller.weblogger.ui.restapi.ColumnLimits;
 import org.apache.roller.weblogger.ui.restapi.dto.AdminDtos;
 import org.springframework.http.ResponseEntity;
@@ -47,8 +48,13 @@ public class WeblogCreateApi extends BaseApiController implements UISecurityEnfo
         if (!broken.isEmpty()) {
             String detail = broken.stream().map(WeblogCreationRules.Violation::detail)
                     .collect(Collectors.joining(" "));
-            throw broken.stream().allMatch(v -> v.status() == 409)
-                    ? ApiException.conflict(detail) : ApiException.badRequest(detail);
+            if (broken.stream().allMatch(v -> v.status() == 409)) {
+                throw broken.size() == 1
+                        ? ApiException.conflictOnField(broken.get(0).field(), detail)
+                        : ApiException.conflict(detail);
+            }
+            throw ApiException.validation(detail, broken.stream()
+                    .map(v -> new ApiProblem.FieldError(v.field(), v.detail())).toList());
         }
         Weblog weblog = WeblogCreationRules.create(bean, user, weblogger.getWeblogManager());
         weblogger.flush();

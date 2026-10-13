@@ -17,6 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import static org.apache.roller.weblogger.ui.restapi.ErrorFieldMatchers.errorFieldIs;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -575,7 +576,8 @@ class EntriesWriteApiControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"x\",\"text\":\"y\",\"status\":\"SCHEDULED\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(errorFieldIs("pubTime"));
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
     }
@@ -598,7 +600,8 @@ class EntriesWriteApiControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"SCHEDULED\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(errorFieldIs("pubTime"));
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
     }

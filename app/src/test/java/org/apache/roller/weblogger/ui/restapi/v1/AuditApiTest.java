@@ -319,4 +319,16 @@ class AuditApiTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(errorFieldIs("status"));
     }
+
+    @Test
+    void seoAuditWithAnUnknownStatusNamesTheStatusField() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+
+        mockMvc(controllerFor(weblogger))
+                .perform(get("/v1/weblogs/myblog/audit/seo")
+                        .param("status", "BANANA")
+                        .requestAttr("actionWeblog", aWeblog()))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("status"));
+    }
 }

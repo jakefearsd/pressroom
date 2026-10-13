@@ -11,6 +11,7 @@ import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.ui.controllers.WeblogSettingsRules;
 import org.apache.roller.weblogger.ui.controllers.UISecurityEnforced;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
+import org.apache.roller.weblogger.ui.restapi.ApiProblem;
 import org.apache.roller.weblogger.ui.restapi.auth.AdminScoped;
 import org.apache.roller.weblogger.ui.controllers.editor.WeblogConfigBean;
 import org.apache.roller.weblogger.ui.restapi.dto.AdminDtos;
@@ -106,8 +107,13 @@ public class WeblogsApi extends BaseApiController implements UISecurityEnforced 
         if (!broken.isEmpty()) {
             String detail = broken.stream().map(WeblogSettingsRules.Violation::detail)
                     .collect(Collectors.joining(" "));
-            throw broken.stream().allMatch(WeblogSettingsRules.Violation::conflict)
-                    ? ApiException.conflict(detail) : ApiException.badRequest(detail);
+            if (broken.stream().allMatch(WeblogSettingsRules.Violation::conflict)) {
+                throw broken.size() == 1
+                        ? ApiException.conflictOnField(broken.get(0).field(), detail)
+                        : ApiException.conflict(detail);
+            }
+            throw ApiException.validation(detail, broken.stream()
+                    .map(v -> new ApiProblem.FieldError(v.field(), v.detail())).toList());
         }
 
         bean.copyTo(weblog, weblogger.getBusinessManager());

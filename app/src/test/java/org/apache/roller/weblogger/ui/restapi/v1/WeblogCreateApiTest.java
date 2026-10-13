@@ -19,6 +19,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import static org.apache.roller.weblogger.ui.restapi.ErrorFieldMatchers.errorFieldIs;
+import static org.apache.roller.weblogger.ui.restapi.ErrorFieldMatchers.errorFieldsAre;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -156,5 +158,35 @@ class WeblogCreateApiTest {
                 .andExpect(status().isForbidden());
         assertTrue(detailOf(result).contains("Weblog creation is turned off on this site."));
         verify(weblogManager, never()).addWeblog(any());
+    }
+
+    @Test
+    void aBlankHandleNamesTheHandleField() throws Exception {
+        send("{\"handle\":\"\",\"name\":\"Travels\",\"theme\":\"journal\"}", true)
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("handle"));
+    }
+
+    @Test
+    void aReservedHandleNamesTheHandleField() throws Exception {
+        send("{\"handle\":\"API\",\"name\":\"x\",\"theme\":\"journal\"}", true)
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("handle"));
+    }
+
+    @Test
+    void aTakenHandleNamesTheHandleField() throws Exception {
+        when(weblogManager.getWeblogByHandle("travels", null)).thenReturn(new Weblog());
+        send("{\"handle\":\"travels\",\"name\":\"Travels\",\"theme\":\"journal\"}", true)
+                .andExpect(status().isConflict())
+                .andExpect(errorFieldIs("handle"));
+    }
+
+    /** Two 400 violations at once: both are reported, in the order WeblogCreationRules.check runs its rules (handle, then theme). */
+    @Test
+    void twoBadFieldsAreReportedInRuleOrder() throws Exception {
+        send("{\"handle\":\"API\",\"name\":\"x\",\"theme\":\"frontpage\"}", true)
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldsAre("handle", "theme"));
     }
 }

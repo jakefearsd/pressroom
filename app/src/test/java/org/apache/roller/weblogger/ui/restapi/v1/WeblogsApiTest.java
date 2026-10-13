@@ -19,6 +19,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.lang.reflect.RecordComponent;
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.apache.roller.weblogger.ui.controllers.WeblogSettingsRules;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -661,5 +667,45 @@ class WeblogsApiTest {
                 () -> AdminDtos.applyPatch(new WeblogConfigBean(), patch, java.util.Set.of()));
 
         assertEquals("placeLat", e.getFieldErrors().get(0).field());
+    }
+
+    @Test
+    void aPlaceTypeWithNoLocalityNamesThePlaceLocalityField() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        doPatch(weblogger, weblog, "{\"placeType\":\"LodgingBusiness\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("placeLocality"));
+    }
+
+    @Test
+    void anOverlongTextFieldNamesItsField() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        doPatch(weblogger, weblog, "{\"about\":\"" + "a".repeat(WeblogSettingsRules.MAX_TEXT + 1) + "\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("about"));
+    }
+
+    /**
+     * Every field a WeblogSettingsRules violation can name is a WeblogPatch component, so the
+     * error's field is a name the caller sent. The list is the rules' own field names (grep
+     * WeblogSettingsRules for new Violation / simple / tooLong / mustBeUuid); a new rule
+     * on a new field must add its name here.
+     */
+    @Test
+    void everyWeblogSettingsRuleFieldIsAWeblogPatchComponent() {
+        List<String> ruleFields = List.of("entryDisplayCount", "locale", "timeZone", "icon", "about",
+                "analyticsShareUrl", "newsletterListUuid", "analyticsSiteId", "businessId", "placeType",
+                "placeLocality", "placeRegion", "placeCountry", "placeLat", "placeLng", "bookingUrl",
+                "customDomain");
+        Set<String> components = Arrays.stream(AdminDtos.WeblogPatch.class.getRecordComponents())
+                .map(RecordComponent::getName)
+                .collect(Collectors.toSet());
+        for (String field : ruleFields) {
+            assertTrue(components.contains(field), field + " is not a WeblogPatch component");
+        }
     }
 }

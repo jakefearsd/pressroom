@@ -142,12 +142,12 @@ public final class EntryDtos {
 
     private static WeblogEntry.PubStatus parseStatus(String raw) {
         if (raw == null || raw.isBlank()) {
-            throw ApiException.badRequest("status is required.");
+            throw ApiException.invalidField("status", "status is required.");
         }
         try {
             return WeblogEntry.PubStatus.valueOf(raw.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw ApiException.badRequest("Unknown status '" + raw + "'.", e);
+            throw ApiException.invalidField("status", "Unknown status '" + raw + "'.", e);
         }
     }
 

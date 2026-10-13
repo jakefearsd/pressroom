@@ -176,4 +176,15 @@ class WeblogsApiCustomDomainTest {
                         null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null));
         assertEquals("blog.example.com", view.customDomain());
     }
+
+    @Test
+    void aDuplicateCustomDomainNamesTheCustomDomainField() {
+        ApiException thrown = assertThrows(ApiException.class, () ->
+                patch("plainblog",
+                        new AdminDtos.WeblogPatch(null, null, null, null, null, null, null,
+                        "vhost.example.com",
+                        null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
+        assertEquals(409, thrown.getStatus());
+        assertEquals("customDomain", thrown.getFieldErrors().get(0).field());
+    }
 }
