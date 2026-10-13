@@ -276,11 +276,11 @@ here.
 | Media Pipeline | `docs/dev/media.md` |
 | SEO; Travel; Plugin System; Shortcodes | `docs/dev/content-features.md` |
 | Configuration Files; Development vs Production; Configuration scope | `docs/dev/configuration.md` |
-| Passwords | `docs/dev/passwords.md` |
+| Passwords; The admin account tool (first admin, lost password) | `docs/dev/passwords.md` |
 | Admin UI; Categories | `docs/dev/admin-ui.md` |
 | Comments; Entry editing; Trash; Pages | `docs/dev/entries.md` |
 | Redirects; Virtual hosts | `docs/dev/routing.md` |
 | Comments (reader) | `docs/dev/comments.md` |
 | Audience; Analytics | `docs/dev/audience-and-analytics.md` |
-| Automation API | `docs/dev/api.md` (public reference: `docs/api/README.md`) |
+| Automation API; MCP endpoint; New-weblog needs | `docs/dev/api.md` (public reference: `docs/api/README.md`) |
 | Reader sign-in (SSO) | `docs/dev/sso.md` |
