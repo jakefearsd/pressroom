@@ -2,12 +2,14 @@ package org.apache.roller.weblogger.ui.restapi.v1;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
+import java.time.Clock;
 import java.sql.Timestamp;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.roller.weblogger.WebloggerException;
+import org.apache.roller.weblogger.business.fetch.RemoteImageFetcher;
 import org.apache.roller.weblogger.pojos.MediaFile;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
@@ -24,6 +26,7 @@ import org.apache.roller.weblogger.ui.restapi.dto.ClearFields;
 import org.apache.roller.weblogger.ui.restapi.ColumnLimits;
 import org.apache.roller.weblogger.ui.restapi.dto.EntryDtos;
 import org.apache.roller.weblogger.util.Utilities;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -49,6 +52,12 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @RequestMapping("/v1/weblogs/{handle}/entries")
 public class EntriesWriteApi extends BaseApiController implements UISecurityEnforced {
 
+    @Autowired
+    RemoteImageFetcher imageFetcher;
+
+    /** The import step's budget is measured on this; a test replaces it. */
+    Clock clock = Clock.systemUTC();
+
     @PostMapping("")
     public ResponseEntity<EntryDtos.EntryView> create(
             HttpServletRequest request, @RequestBody EntryDtos.EntryWrite body) throws WebloggerException {
@@ -69,14 +78,22 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
             errors.check("anchor", () -> requireAnchorForm(body.anchor()));
         }
         checkWrite(errors, weblog, entry, body, Set.of());
+        EntryImports imports = new EntryImports(weblogger, imageFetcher, clock);
+        EntryImports.Plan importPlan = imports.plan(errors, weblog, body, Set.of(), null);
         errors.throwIfAny();
 
         if (body.anchor() != null) {
             requireAnchorFree(weblog, body.anchor());
+        }
+        EntryDtos.EntryWrite effective = imports.run(importPlan, weblog, body);
+        if (body.anchor() != null) {
+            // Again, immediately before the save: the import step can take a
+            // minute, and a client that timed out may have retried meanwhile.
+            requireAnchorFree(weblog, body.anchor());
             // saveWeblogEntry generates an anchor only when none is set
             entry.setAnchor(body.anchor());
         }
-        apply(entry, weblog, body, Set.of());
+        apply(entry, weblog, effective, Set.of());
         // No explicit category fallback needed here:
         // JPAWeblogEntryManagerImpl.saveWeblogEntry already defaults a
         // categoryless entry to the weblog's first category -- the same
@@ -111,9 +128,13 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
             errors.add("anchor", "anchor is set when an entry is created and cannot change.");
         }
         checkWrite(errors, weblog, entry, body, cleared);
+        EntryImports imports = new EntryImports(weblogger, imageFetcher, clock);
+        EntryImports.Plan importPlan = imports.plan(errors, weblog, body, cleared, entry.getText());
         errors.throwIfAny();
 
-        apply(entry, weblog, body, cleared);
+        // The import step commits each image it stores; nothing has been
+        // applied to the managed entry yet, so nothing of the write goes with it.
+        apply(entry, weblog, imports.run(importPlan, weblog, body), cleared);
         weblogger.getWeblogEntryManager().saveWeblogEntry(entry);
         weblogger.flush();
 

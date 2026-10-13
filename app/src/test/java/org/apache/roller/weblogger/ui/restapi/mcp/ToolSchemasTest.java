@@ -102,7 +102,7 @@ class ToolSchemasTest {
             assertEquals(schema.description(),
                     ((Map<String, Object>) props.get(component.getName())).get("description"), component.getName());
         }
-        // 12 before commentsClosed (Task 8) joined the described fields; anchor (Task 3) is the 14th.
-        assertEquals(14, described);
+        // 14 through anchor (Task 3); featuredImageUrl, featuredImageAlt and importExternalImages (Task 8) make 17.
+        assertEquals(17, described);
     }
 }

@@ -197,11 +197,34 @@ public final class EntryDtos {
                     + "for example torrey-pines. Set only when the entry is created; omitted, it is made from the "
                     + "title. Another entry of the weblog holding it, a trashed one included, answers 409.")
             String anchor,
+            @Schema(description = "A public http(s) URL of a JPEG, PNG, GIF or WebP image to import as the "
+                    + "featured image, in one call. An image already in the weblog's default directory with the "
+                    + "same bytes is reused. Not with featuredImageId.")
+            String featuredImageUrl,
+            @Schema(description = "Alt text for the image featuredImageUrl imports; it fills the file's alt "
+                    + "text only when that has none.")
+            String featuredImageAlt,
+            @Schema(description = "True to import every image the text loads from another site (HTML img src "
+                    + "and Markdown images, at most 10) and point the text at the copies. Without text on an "
+                    + "update, the stored text. All or nothing: if any image fails, nothing is written.")
+            Boolean importExternalImages,
             @Schema(description = "On update, fields to remove: summary, metaTitle, searchDescription, "
                     + "canonicalUrl, featuredImageId, ogImageId, jsonLdType (back to BLOG_POSTING), "
                     + "geoLatitude with geoLongitude, eventStart, eventEnd, eventLocation. "
                     + "Null never removes anything.")
             List<String> clear) {
+
+        /**
+         * This write with what the import step produced: the featured image it
+         * set and the text it rewrote. A null argument keeps the write's own value.
+         */
+        public EntryWrite withImports(String importedFeaturedImageId, String rewrittenText) {
+            return new EntryWrite(title, summary, rewrittenText != null ? rewrittenText : text, status, category,
+                    pubTime, tags, metaTitle, searchDescription, canonicalUrl, noindex,
+                    importedFeaturedImageId != null ? importedFeaturedImageId : featuredImageId, ogImageId,
+                    jsonLdType, geoLatitude, geoLongitude, eventStart, eventEnd, eventLocation, commentsClosed,
+                    anchor, featuredImageUrl, featuredImageAlt, importExternalImages, clear);
+        }
     }
 
     /**
