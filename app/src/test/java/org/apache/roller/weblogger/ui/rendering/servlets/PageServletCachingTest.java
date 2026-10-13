@@ -74,14 +74,22 @@ class PageServletCachingTest {
         entry = TestUtils.setupWeblogEntry("cached-entry", weblog, user);
         TestUtils.endSession(true);
 
-        // A settled, known modification time: the conditional-GET assertions
-        // below compare against it, and "now" would race the request.
+        // saveWeblog stamps lastModified with "now" whatever it was set to, so
+        // the backdating below does not survive the save. What matters is the
+        // stored value: a sentinel planted in that same millisecond counts as
+        // stale (LazyExpiringCacheEntry treats a same-millisecond change as
+        // newer), so wait for the clock to pass it before any test plants one.
         Weblog managed = TestUtils.getManagedWebsite(weblog);
         managed.setLastModified(new Timestamp(
                 Instant.now().minusSeconds(3600).toEpochMilli()));
         TestUtils.weblogger().getWeblogManager().saveWeblog(managed);
         TestUtils.weblogger().flush();
         TestUtils.endSession(true);
+        long stamped = TestUtils.getManagedWebsite(weblog).getLastModified().getTime();
+        TestUtils.endSession(true);
+        while (System.currentTimeMillis() <= stamped) {
+            Thread.onSpinWait();
+        }
     }
 
     /**
