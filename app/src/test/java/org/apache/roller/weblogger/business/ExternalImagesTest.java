@@ -137,6 +137,41 @@ class ExternalImagesTest {
     }
 
     @Test
+    void aSrcInsideAnotherAttributesValueIsNotTheSrc() {
+        String text = "<img src=\"https://ext.example/real.jpg\" title=\"see src=https://ext.example/other.jpg\">";
+
+        assertEquals(List.of("https://ext.example/real.jpg"), urls(text));
+        assertEquals("<img src=\"https://blog.example.com/m/real\" title=\"see src=https://ext.example/other.jpg\">",
+                ExternalImages.rewrite(text, ExternalImages.scan(text, OWN).refs(),
+                        Map.of("https://ext.example/real.jpg", "https://blog.example.com/m/real")));
+    }
+
+    @Test
+    void theFirstOfTwoSrcAttributesIsTheOneLoaded() {
+        assertEquals(List.of("https://ext.example/a.jpg"),
+                urls("<img src=\"https://ext.example/a.jpg\" src=\"/local.jpg\">"));
+    }
+
+    @Test
+    void anAttributeRightAfterAQuotedValueOrASlashIsSeen() {
+        assertEquals(List.of("https://ext.example/a.jpg", "https://ext.example/b.jpg"),
+                urls("<p><img alt=\"x\"src=\"https://ext.example/a.jpg\"> "
+                        + "<img/src=\"https://ext.example/b.jpg\"></p>"));
+    }
+
+    @Test
+    void tagAndAttributeNamesAreCaseInsensitive() {
+        assertEquals(List.of("https://ext.example/c.jpg"), urls("<IMG SRC=\"https://ext.example/c.jpg\">"));
+        assertEquals(1, ExternalImages.scan("<picture><Source SrcSet=\"https://ext.example/d.webp\"></picture>",
+                OWN).refusals().size());
+    }
+
+    @Test
+    void dataSrcIsNotSrc() {
+        assertEquals(List.of(), urls("<img data-src=\"https://ext.example/e.jpg\" src=\"/local.jpg\">"));
+    }
+
+    @Test
     void emptyTextHasNoImages() {
         assertTrue(ExternalImages.scan("", OWN).refs().isEmpty());
         assertTrue(ExternalImages.scan(null, OWN).refs().isEmpty());

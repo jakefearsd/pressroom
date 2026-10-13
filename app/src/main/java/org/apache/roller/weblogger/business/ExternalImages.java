@@ -61,20 +61,24 @@ public final class ExternalImages {
             .includeSourceSpans(IncludeSourceSpans.BLOCKS_AND_INLINES)
             .build();
 
-    // An attribute value containing '>' ends the tag early; such a tag's
-    // later attributes are not seen. Accepted: alt text is the only
-    // attribute that plausibly carries one, and src/srcset precede it in
-    // every generator this blog sees.
-    // Names are told apart by which capture group matched, not by lower-casing
-    // them: case mapping of text from the entry is what SpotBugs flags as
-    // IMPROPER_UNICODE, and the pattern's own CASE_INSENSITIVE already does it.
-    private static final Pattern TAG = Pattern.compile(
-            "<(?:(img)|source)\\b[^>]*>", Pattern.CASE_INSENSITIVE);
-    // The leading \s keeps data-src and similar from matching as src.
-    // Groups: 1 src, 2 srcset, 3 alt; then the value in 4, 5 or 6 by quoting.
-    private static final Pattern ATTRIBUTE = Pattern.compile(
-            "\\s(?:(src)|(srcset)|(alt))\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s\"'=<>`]+))",
-            Pattern.CASE_INSENSITIVE);
+    // Names are told apart by a precompiled case-insensitive pattern, never by
+    // lower-casing entry text: SpotBugs flags that as IMPROPER_UNICODE.
+    private static final Pattern OPEN = Pattern.compile(
+            "<(?:(img)|source)\\b", Pattern.CASE_INSENSITIVE);
+    // One attribute, read where the previous one ended, the way a browser's
+    // tokenizer reads it: separators are whitespace and/or '/', an attribute
+    // may follow a quoted value with none, and a value is consumed as one
+    // token, so text inside it is never read as an attribute.
+    // Split in two, each read where the previous token ended: one combined
+    // pattern with an optional value trips SpotBugs' ReDoS check. The name
+    // group is 1; the value pattern's groups are 1 double-quoted, 2
+    // single-quoted, 3 unquoted. Possessive runs cannot give text back.
+    private static final Pattern NAME = Pattern.compile("[\\s/]*+([^\\s/>=]++)");
+    private static final Pattern VALUE = Pattern.compile(
+            "\\s*+=\\s*+(?:\"([^\"]*+)\"|'([^']*+)'|([^\\s>]++))");
+    private static final Pattern SRC = Pattern.compile("src", Pattern.CASE_INSENSITIVE);
+    private static final Pattern SRCSET = Pattern.compile("srcset", Pattern.CASE_INSENSITIVE);
+    private static final Pattern ALT = Pattern.compile("alt", Pattern.CASE_INSENSITIVE);
     private static final int ABBREVIATE_AT = 120;
 
     private ExternalImages() {
@@ -171,32 +175,60 @@ public final class ExternalImages {
         if (range.length != 2) {
             return;
         }
-        Matcher tag = TAG.matcher(text).region(range[0], range[1]);
-        while (tag.find()) {
+        Matcher open = OPEN.matcher(text).region(range[0], range[1]);
+        while (open.find()) {
             String src = null;
             int srcStart = -1;
             int srcEnd = -1;
+            boolean srcSeen = false;
             String alt = null;
-            Matcher attribute = ATTRIBUTE.matcher(text).region(tag.start(), tag.end());
-            while (attribute.find()) {
-                int group = attribute.group(4) != null ? 4 : attribute.group(5) != null ? 5 : 6;
-                String value = StringEscapeUtils.unescapeHtml4(attribute.group(group));
-                if (attribute.group(1) != null) {
-                    src = value;
-                    srcStart = attribute.start(group);
-                    srcEnd = attribute.end(group);
-                } else if (attribute.group(2) != null) {
-                    if (srcsetIsExternal(value, ownHosts)) {
-                        refusals.add("srcset is not imported; use one src, or [image id=...] for a "
-                                + "responsive image: " + abbreviate(tag.group()));
+            boolean srcsetExternal = false;
+            Matcher attrName = NAME.matcher(text);
+            Matcher attrValue = VALUE.matcher(text);
+            int pos = open.end();
+            while (true) {
+                attrName.region(pos, range[1]);
+                if (!attrName.lookingAt()) {
+                    break;
+                }
+                pos = attrName.end();
+                String name = attrName.group(1);
+                String rawValue = null;
+                int valueGroup = 0;
+                attrValue.region(pos, range[1]);
+                if (attrValue.lookingAt()) {
+                    pos = attrValue.end();
+                    valueGroup = attrValue.start(1) >= 0 ? 1 : attrValue.start(2) >= 0 ? 2 : 3;
+                    rawValue = attrValue.group(valueGroup);
+                }
+                if (SRC.matcher(name).matches()) {
+                    // A browser uses the first src and ignores the rest.
+                    if (!srcSeen) {
+                        srcSeen = true;
+                        if (rawValue != null) {
+                            src = StringEscapeUtils.unescapeHtml4(rawValue);
+                            srcStart = attrValue.start(valueGroup);
+                            srcEnd = attrValue.end(valueGroup);
+                        }
                     }
-                } else {
-                    alt = value;
+                } else if (SRCSET.matcher(name).matches()) {
+                    srcsetExternal |= rawValue != null && srcsetIsExternal(
+                            StringEscapeUtils.unescapeHtml4(rawValue), ownHosts);
+                } else if (ALT.matcher(name).matches() && rawValue != null) {
+                    alt = StringEscapeUtils.unescapeHtml4(rawValue);
                 }
             }
-            if (tag.group(1) != null && isExternal(src, ownHosts)) {
+            int close = text.indexOf('>', pos);
+            int tagEnd = close < 0 || close >= range[1] ? range[1] : close + 1;
+            if (srcsetExternal) {
+                refusals.add("srcset is not imported; use one src, or [image id=...] for a "
+                        + "responsive image: " + abbreviate(text.substring(open.start(), tagEnd)));
+            }
+            if (open.group(1) != null && isExternal(src, ownHosts)) {
                 refs.add(new Ref(Kind.HTML_SRC, srcStart, srcEnd, src, alt, null));
             }
+            // Resume after this tag, so a tag-looking run inside an attribute value is not a tag.
+            open.region(tagEnd, range[1]);
         }
     }
 
