@@ -173,4 +173,39 @@ class WeblogCreationRulesTest {
         bean.setTimeZone("Mars/Olympus_Mons");
         assertEquals(List.of("createWeblog.error.nameRequired", "websiteSettings.timeZone.invalid"), keys(bean));
     }
+
+    @Test
+    void aNameOrDescriptionOverTheColumnLimitIsRefusedAtExactlyTheLimit() throws Exception {
+        CreateWeblogBean atLimit = bean("travels");
+        atLimit.setName("n".repeat(WeblogCreationRules.MAX_TEXT));
+        atLimit.setDescription("d".repeat(WeblogCreationRules.MAX_TEXT));
+        assertEquals(List.of(), keys(atLimit));
+
+        CreateWeblogBean over = bean("travels");
+        over.setName("n".repeat(WeblogCreationRules.MAX_TEXT + 1));
+        over.setDescription("d".repeat(WeblogCreationRules.MAX_TEXT + 1));
+        List<WeblogCreationRules.Violation> found = WeblogCreationRules.check(over, context(true, true));
+
+        assertEquals(List.of("name", "description"), found.stream().map(WeblogCreationRules.Violation::field).toList());
+        assertTrue(found.stream().allMatch(v -> v.status() == 400 && "createWeblog.error.tooLong".equals(v.messageKey())));
+    }
+
+    @Test
+    void aLocaleTheSettingsFormDoesNotOfferIsRefusedAndABlankOneIsLeftToTheDefault() throws Exception {
+        CreateWeblogBean odd = bean("travels");
+        odd.setLocale("xx_YY");
+        assertEquals(List.of("websiteSettings.locale.invalid"), keys(odd));
+
+        CreateWeblogBean blank = bean("travels");
+        blank.setLocale("  ");
+        blank.setTimeZone(null);
+        assertEquals(List.of(), keys(blank));
+    }
+
+    @Test
+    void aUserWithNoWeblogYetMayCreateTheirFirstEvenWithoutGroupBlogging() throws Exception {
+        when(users.getWeblogPermissions(org.mockito.ArgumentMatchers.any(User.class))).thenReturn(List.of());
+
+        assertNull(WeblogCreationRules.mayCreate(user(), context(true, false)));
+    }
 }
