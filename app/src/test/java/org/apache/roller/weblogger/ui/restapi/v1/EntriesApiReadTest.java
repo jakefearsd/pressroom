@@ -13,6 +13,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import static org.apache.roller.weblogger.ui.restapi.ErrorFieldMatchers.errorFieldIs;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -319,6 +320,24 @@ class EntriesApiReadTest {
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getWeblogEntryManager(), org.mockito.Mockito.never()).getWeblogEntries(any());
+    }
+
+    /** A range error names the field that is out of range, limit first when both are. */
+    @Test
+    void aRangeErrorNamesTheOffendingField() throws Exception {
+        MockMvc mvc = mockMvc(controllerFor(mockedWeblogger()));
+
+        mvc.perform(get("/v1/weblogs/myblog/entries").param("limit", "0")
+                        .requestAttr("actionWeblog", aWeblog()))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("limit"));
+        mvc.perform(get("/v1/weblogs/myblog/entries").param("offset", "-1")
+                        .requestAttr("actionWeblog", aWeblog()))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("offset"));
+        mvc.perform(get("/v1/weblogs/myblog/entries").param("limit", "0").param("offset", "-1")
+                        .requestAttr("actionWeblog", aWeblog()))
+                .andExpect(errorFieldIs("limit"));
     }
 
     /**

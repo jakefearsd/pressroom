@@ -101,4 +101,29 @@ class EntriesWriteApiFieldErrorsTest {
         assertEquals(List.of("eventEnd"), EntriesWriteApiFixture.fields(problem));
         assertEquals(null, stored.getEventEnd());
     }
+
+    /** A pubTime that does not parse is one error, not also "pubTime is required" for SCHEDULED. */
+    @Test
+    void aMalformedPubTimeWithScheduledIsOneError() throws Exception {
+        JsonNode problem = fx.refused(post("/v1/weblogs/myblog/entries").content(
+                "{\"title\":\"t\",\"text\":\"x\",\"status\":\"SCHEDULED\",\"pubTime\":\"soon\"}"));
+
+        assertEquals(List.of("pubTime"), EntriesWriteApiFixture.fields(problem));
+    }
+
+    /** A malformed eventStart is one error; the valid eventEnd is not judged against the stored start. */
+    @Test
+    void aMalformedEventStartDoesNotMakeAValidEventEndWrong() throws Exception {
+        WeblogEntry stored = new WeblogEntry();
+        stored.setId("e3");
+        stored.setWebsite(fx.weblog);
+        stored.setTitle("Festival");
+        stored.setEventStart(java.sql.Timestamp.valueOf("2026-08-02 19:30:00"));
+        when(fx.entries.getWeblogEntry("e3")).thenReturn(stored);
+
+        JsonNode problem = fx.refused(patch("/v1/weblogs/myblog/entries/e3").content(
+                "{\"eventStart\":\"nonsense\",\"eventEnd\":\"2026-08-01T10:00\"}"));
+
+        assertEquals(List.of("eventStart"), EntriesWriteApiFixture.fields(problem));
+    }
 }

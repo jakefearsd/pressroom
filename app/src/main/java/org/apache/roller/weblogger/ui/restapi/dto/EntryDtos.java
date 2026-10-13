@@ -206,7 +206,8 @@ public final class EntryDtos {
             String featuredImageAlt,
             @Schema(description = "True to import every image the text loads from another site (HTML img src "
                     + "and Markdown images, at most 10) and point the text at the copies. Without text on an "
-                    + "update, the stored text. All or nothing: if any image fails, nothing is written.")
+                    + "update, the stored text. All or nothing: if any image fails, the entry is not written; "
+                    + "images already imported stay in the media library and a retry reuses them.")
             Boolean importExternalImages,
             @Schema(description = "On update, fields to remove: summary, metaTitle, searchDescription, "
                     + "canonicalUrl, featuredImageId, ogImageId, jsonLdType (back to BLOG_POSTING), "
@@ -314,11 +315,20 @@ public final class EntryDtos {
             errors.check("geoLongitude", () -> entry.setGeoLongitude(
                     requireOnTheGlobe("geoLongitude", write.geoLongitude(), MAX_LONGITUDE)));
         }
+        // [start, end]: false while a sent time has not parsed. The order check
+        // below is skipped then, or it would judge the other time against a stale one.
+        boolean[] timeOk = {write.eventStart() == null, write.eventEnd() == null};
         if (write.eventStart() != null) {
-            errors.check("eventStart", () -> entry.setEventStart(eventTime("eventStart", write.eventStart(), weblog)));
+            errors.check("eventStart", () -> {
+                entry.setEventStart(eventTime("eventStart", write.eventStart(), weblog));
+                timeOk[0] = true;
+            });
         }
         if (write.eventEnd() != null) {
-            errors.check("eventEnd", () -> entry.setEventEnd(eventTime("eventEnd", write.eventEnd(), weblog)));
+            errors.check("eventEnd", () -> {
+                entry.setEventEnd(eventTime("eventEnd", write.eventEnd(), weblog));
+                timeOk[1] = true;
+            });
         }
         if (write.eventLocation() != null) {
             errors.check("eventLocation", () -> {
@@ -329,7 +339,7 @@ public final class EntryDtos {
         for (String name : cleared) {
             clearField(entry, name);
         }
-        if (EntryFieldRules.endsBeforeStart(entry.getEventStart(), entry.getEventEnd())) {
+        if (timeOk[0] && timeOk[1] && EntryFieldRules.endsBeforeStart(entry.getEventStart(), entry.getEventEnd())) {
             errors.add("eventEnd", "eventEnd must not be before eventStart.");
         }
         errors.throwIfAny();

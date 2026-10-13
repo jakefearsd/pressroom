@@ -163,6 +163,40 @@ class EntriesWriteApiImportsTest {
         verify(fetcher, times(1)).fetch(eq("https://img.example.com/a.jpg"), anyLong(), any());
     }
 
+    /** Final review I1: a URL that failed as the featured image is not fetched again as a body image. */
+    @Test
+    void aFailingUrlUsedAsFeaturedAndInTheBodyIsFetchedAndReportedOnce() throws Exception {
+        String url = "https://img.example.com/a.jpg";
+        when(fetcher.fetch(eq(url), anyLong(), any())).thenThrow(new FetchRefusal("Not a JPEG, PNG, GIF or WebP image."));
+
+        JsonNode problem = fx.refused(post("/v1/weblogs/myblog/entries").content("{\"title\":\"t\","
+                + "\"text\":\"![x](" + url + ")\",\"featuredImageUrl\":\"" + url + "\","
+                + "\"importExternalImages\":true}"));
+
+        verify(fetcher, times(1)).fetch(eq(url), anyLong(), any());
+        assertEquals(List.of("featuredImageUrl"), fields(problem));
+    }
+
+    /** Final review M7: the check just before the save catches an anchor taken during the import. */
+    @Test
+    void anAnchorTakenDuringTheImportIsA409AndNothingIsSaved() throws Exception {
+        serves("https://img.example.com/a.jpg");
+        WeblogEntry holder = new WeblogEntry();
+        holder.setId("holder");
+        holder.setWebsite(fx.weblog);
+        holder.setAnchor("torrey-pines");
+        holder.setStatus(WeblogEntry.PubStatus.PUBLISHED);
+        when(fx.entries.getWeblogEntryByAnchor(fx.weblog, "torrey-pines")).thenReturn(null, holder);
+
+        JsonNode problem = json(fx.send(post("/v1/weblogs/myblog/entries").content("{\"title\":\"t\","
+                + "\"text\":\"![x](https://img.example.com/a.jpg)\",\"anchor\":\"torrey-pines\","
+                + "\"importExternalImages\":true}")).andExpect(status().isConflict()));
+
+        assertEquals(List.of("anchor"), fields(problem));
+        verify(fx.entries, never()).saveWeblogEntry(any());
+        verify(media, times(1)).createMediaFile(any(), any(), any());
+    }
+
     @Test
     void elevenImagesOrAnExternalSrcsetAreRefusedBeforeAnyFetch() throws Exception {
         StringBuilder eleven = new StringBuilder();

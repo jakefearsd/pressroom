@@ -29,6 +29,7 @@ import org.apache.roller.weblogger.ui.controllers.core.PasswordLinkMailer;
 import org.apache.roller.weblogger.ui.controllers.util.UIUtils;
 import org.apache.roller.weblogger.ui.restapi.AdminAccountGuard;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
+import org.apache.roller.weblogger.ui.restapi.Paging;
 import org.apache.roller.weblogger.ui.restapi.ColumnLimits;
 import org.apache.roller.weblogger.ui.restapi.auth.AdminScoped;
 import org.apache.roller.weblogger.ui.restapi.dto.AdminDtos;
@@ -103,9 +104,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         // as NO LIMIT (JPAUserManagerImpl only calls setMaxResults when
         // length != -1), so limit=-1 would silently run an unbounded query
         // instead of failing.
-        if (limit < 1 || offset < 0) {
-            throw ApiException.badRequest("limit must be at least 1 and offset must not be negative.");
-        }
+        Paging.requireRange(limit, offset);
         int boundedLimit = Math.min(limit, MAX_LIMIT);
 
         UserManager mgr = weblogger.getUserManager();

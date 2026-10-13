@@ -8,7 +8,7 @@ import org.apache.roller.weblogger.pojos.WeblogEntry;
 import org.apache.roller.weblogger.pojos.WeblogEntrySearchCriteria;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.controllers.UISecurityEnforced;
-import org.apache.roller.weblogger.ui.restapi.ApiException;
+import org.apache.roller.weblogger.ui.restapi.Paging;
 import org.apache.roller.weblogger.ui.restapi.dto.EntryDtos;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -60,10 +60,7 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
         // three are one query-string character away from any authenticated
         // contributor, and the contract says client-supplied garbage is a
         // 400, not a stack trace.
-        if (limit < 1 || offset < 0) {
-            throw ApiException.badRequest(
-                    "limit must be at least 1 and offset must not be negative.");
-        }
+        Paging.requireRange(limit, offset);
 
         Weblog weblog = requireActionWeblog(request);
         int boundedLimit = Math.min(limit, MAX_LIMIT);

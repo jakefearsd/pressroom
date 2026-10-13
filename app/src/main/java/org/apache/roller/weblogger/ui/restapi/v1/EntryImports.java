@@ -141,8 +141,11 @@ final class EntryImports {
         Instant started = clock.instant();
         Map<String, MediaFile> imported = new LinkedHashMap<>();
         FieldErrors failures = new FieldErrors();
+        // Attempts, not successes: a URL that failed as the featured image is
+        // not fetched (or reported) again as a body image.
+        Set<String> attempted = new HashSet<>();
         for (Wanted wanted : wanted(plan)) {
-            if (imported.containsKey(wanted.url())) {
+            if (!attempted.add(wanted.url())) {
                 continue;
             }
             if (Duration.between(started, clock.instant()).compareTo(BUDGET) >= 0) {

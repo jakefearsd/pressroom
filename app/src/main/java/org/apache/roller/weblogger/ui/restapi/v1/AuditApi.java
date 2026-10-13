@@ -14,6 +14,7 @@ import org.apache.roller.weblogger.pojos.WeblogEntrySearchCriteria;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.controllers.UISecurityEnforced;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
+import org.apache.roller.weblogger.ui.restapi.Paging;
 import org.apache.roller.weblogger.ui.restapi.dto.AuditDtos;
 import org.apache.roller.weblogger.ui.restapi.dto.EntryDtos;
 import org.apache.roller.weblogger.ui.restapi.dto.MediaDtos;
@@ -76,10 +77,7 @@ public class AuditApi extends BaseApiController implements UISecurityEnforced {
         // doing any work, rather than let Math.min(limit, MAX) let a
         // negative limit through as "no limit" at all. An audit walking an
         // entire weblog is exactly where an unbounded read hurts most.
-        if (limit < 1 || offset < 0) {
-            throw ApiException.badRequest(
-                    "limit must be at least 1 and offset must not be negative.");
-        }
+        Paging.requireRange(limit, offset);
 
         Weblog weblog = requireActionWeblog(request);
         int boundedLimit = Math.min(limit, MAX_LIMIT);

@@ -11,6 +11,7 @@ import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.ui.controllers.WeblogSettingsRules;
 import org.apache.roller.weblogger.ui.controllers.UISecurityEnforced;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
+import org.apache.roller.weblogger.ui.restapi.Paging;
 import org.apache.roller.weblogger.ui.restapi.ApiProblem;
 import org.apache.roller.weblogger.ui.restapi.auth.AdminScoped;
 import org.apache.roller.weblogger.ui.controllers.editor.WeblogConfigBean;
@@ -69,9 +70,7 @@ public class WeblogsApi extends BaseApiController implements UISecurityEnforced 
             @RequestParam(value = "limit", defaultValue = "50") int limit) throws WebloggerException {
         // Same negative-limit/offset trap as every other list endpoint in
         // this API -- see EntriesApi.list and AdminApi.listUsers.
-        if (limit < 1 || offset < 0) {
-            throw ApiException.badRequest("limit must be at least 1 and offset must not be negative.");
-        }
+        Paging.requireRange(limit, offset);
         int boundedLimit = Math.min(limit, MAX_LIMIT);
 
         List<AdminDtos.WeblogView> views = new ArrayList<>();

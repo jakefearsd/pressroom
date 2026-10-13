@@ -34,6 +34,7 @@ import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.controllers.UISecurityEnforced;
 import org.apache.roller.weblogger.ui.controllers.WeblogOwnership;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
+import org.apache.roller.weblogger.ui.restapi.Paging;
 import org.apache.roller.weblogger.ui.restapi.dto.CommentDtos;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -75,9 +76,7 @@ public class CommentsApi extends BaseApiController implements UISecurityEnforced
             @RequestParam(value = "entry", required = false) String entryId,
             @RequestParam(value = "offset", defaultValue = "0") int offset,
             @RequestParam(value = "limit", defaultValue = "50") int limit) throws WebloggerException {
-        if (limit < 1 || offset < 0) {
-            throw ApiException.badRequest("limit must be at least 1 and offset must not be negative.");
-        }
+        Paging.requireRange(limit, offset);
         Weblog weblog = requireActionWeblog(request);
         Status wanted = null;
         if (StringUtils.isNotBlank(status)) {

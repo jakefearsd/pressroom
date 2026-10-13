@@ -322,7 +322,10 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         errors.check("category", () -> categoryFor(weblog, body.category()));
         errors.check("tags", () -> checkTags(body.tags()));
         applyPublishNowDefault(scratch);
-        errors.check("pubTime", () -> requireScheduledHasPubTime(scratch));
+        // A pubTime in the body either parsed or has its own error already.
+        if (body.pubTime() == null) {
+            errors.check("pubTime", () -> requireScheduledHasPubTime(scratch));
+        }
         checkImageId(errors, weblog, "featuredImageId", body.featuredImageId(), entry.getFeaturedImageId());
         checkImageId(errors, weblog, "ogImageId", body.ogImageId(), entry.getOgImageId());
     }
