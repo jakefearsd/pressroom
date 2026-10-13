@@ -224,11 +224,6 @@ class PageServletCachingTest {
         String before = get(null).getContentAsString();
         assertFalse(before.isEmpty());
 
-        // An entry is expired only when it was cached strictly BEFORE the
-        // weblog's lastModified (LazyExpiringCacheEntry), so a change made in
-        // the same millisecond as the render reads as not yet stale. Now that
-        // this test really uses the cache, give the change its own millisecond.
-        Thread.sleep(5);
         Weblog managed = TestUtils.getManagedWebsite(weblog);
         managed.setName("Renamed while cached");
         managed.setLastModified(new Timestamp(Instant.now().toEpochMilli()));

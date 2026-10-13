@@ -74,8 +74,9 @@ public class LazyExpiringCacheEntry implements Serializable {
      * Determine if this cache entry has expired.
      */
     public boolean isInvalid(long lastInvalidated) {
-        
-        return this.timeCached < lastInvalidated;
+        // <=, not <: within one millisecond the order of render and change is
+        // unknowable, so a same-millisecond change counts as newer.
+        return this.timeCached <= lastInvalidated;
     }
 
     

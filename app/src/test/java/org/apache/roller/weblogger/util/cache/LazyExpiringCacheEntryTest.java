@@ -61,16 +61,17 @@ public class LazyExpiringCacheEntryTest {
     }
 
     @Test
-    public void entryCachedAtTheInstantOfTheChangeIsKept() {
+    public void entryCachedAtTheInstantOfTheChangeIsStale() {
         LazyExpiringCacheEntry entry = new LazyExpiringCacheEntry("rendered page");
         long cachedAt = entry.getTimeCached();
 
-        // the comparison is strictly "cached before", so a same-millisecond
-        // change does not throw the entry away; this is the boundary that
-        // decides whether a busy weblog caches anything at all
-        assertFalse(entry.isInvalid(cachedAt),
-                "An entry cached in the same millisecond as the change is kept");
-        assertEquals("rendered page", entry.getValue(cachedAt), "and is served");
+        // Within one millisecond the order of "the render read the weblog" and
+        // "the change was saved" is unknowable, so a same-millisecond change
+        // counts as newer. That costs one extra render; the other way round a
+        // reader is served the pre-change page until the cache times out.
+        assertTrue(entry.isInvalid(cachedAt),
+                "An entry cached in the same millisecond as the change is stale");
+        assertNull(entry.getValue(cachedAt), "and is withheld");
     }
 
     @Test
