@@ -7,10 +7,12 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.roller.it.support.BrowserHealth;
@@ -408,6 +410,59 @@ class McpIT extends RollerIT {
         $("#messages").should(exist);
         BrowserHealth.current().settle();
         logout();
+    }
+
+
+    /** Criterion 21: field errors arrive through MCP unchanged, at whichever context path the suite runs. */
+    @Test
+    void aRefusedWriteThroughMcpListsEveryBadField() throws Exception {
+        Token token = mint("McpIT field errors", "POST", null);
+        try {
+            JsonNode refused = callTool(token.raw(), "entries", Map.of("action", "create",
+                    "weblog", WEBLOG_HANDLE, "title", "t", "text", "x",
+                    "category", "No Such Category", "geoLatitude", 91));
+            assertTrue(isError(refused));
+            JsonNode problem = JSON.readTree(text(refused));
+            assertEquals(400, problem.get("status").asInt());
+            List<String> fields = new ArrayList<>();
+            for (JsonNode error : problem.get("errors")) {
+                fields.add(error.get("field").asString());
+            }
+            assertEquals(Set.of("category", "geoLatitude"), Set.copyOf(fields));
+            assertTrue(problem.get("detail").asString().contains("it is one of:"));
+        } finally {
+            revoke(token.id());
+        }
+    }
+
+    /** Criterion 21: a chosen anchor is the permalink's last segment, and a second claim is a 409. */
+    @Test
+    void anAnchorChosenThroughMcpIsThePermalinkAndCannotBeClaimedTwice() throws Exception {
+        Token token = mint("McpIT anchor", "POST", null);
+        String anchor = "mcpit-anchor-" + System.nanoTime();
+        String id = null;
+        try {
+            JsonNode created = callTool(token.raw(), "entries", Map.of("action", "create",
+                    "weblog", WEBLOG_HANDLE, "title", "Any title at all", "text", "x", "anchor", anchor));
+            assertFalse(isError(created), created.toString());
+            JsonNode view = JSON.readTree(text(created));
+            id = view.get("id").asString();
+            assertTrue(view.get("permalink").asString().endsWith("/" + anchor), view.toString());
+
+            JsonNode again = callTool(token.raw(), "entries", Map.of("action", "create",
+                    "weblog", WEBLOG_HANDLE, "title", "Another", "text", "x", "anchor", anchor));
+            assertTrue(isError(again));
+            JsonNode problem = JSON.readTree(text(again));
+            assertEquals(409, problem.get("status").asInt());
+            assertEquals("anchor", problem.get("errors").get(0).get("field").asString());
+        } finally {
+            if (id != null) {
+                restSend(token.raw(), "DELETE", "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries/" + id, null);
+                restSend(token.raw(), "POST",
+                        "/api/v1/weblogs/" + WEBLOG_HANDLE + "/entries/" + id + "/delete-forever", null);
+            }
+            revoke(token.id());
+        }
     }
 
 
