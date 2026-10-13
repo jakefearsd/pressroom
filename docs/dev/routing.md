@@ -90,7 +90,7 @@ A weblog with `weblog.custom_domain` set is served at that hostname's root:
 - **Generated urls derive from the WEBLOG, never the request**:
   `WeblogPageCache` keys on the handle and `#showSeoHead` bakes absolute
   canonical/`og:url` values into those bytes, so a request-derived url would
-  stamp one host's canonical onto the other. All eleven weblog-content url
+  stamp one host's canonical onto the other. All ten weblog-content url
   methods root through `MultiWeblogURLStrategy.getWeblogURL`;
   `AbstractURLStrategy`'s six `/roller-ui/` methods are control plane and
   must **not** become domain-aware.
