@@ -19,6 +19,13 @@ resolves through the index at the end of `CLAUDE.md`.
   (Java-config transcription of the retired `WEB-INF/security.xml`)
 - **JPA Mappings**: `app/src/main/resources/org/apache/roller/weblogger/pojos/*.orm.xml`
 - **Velocity Templates**: `app/src/main/webapp/WEB-INF/velocity/templates/`
+- **Logging**: `app/src/main/resources/log4j2.xml`. Its `logging.pattern`
+  writes every message through `%encode{%m}{CRLF}`, so a CR or LF in a logged
+  value comes out as `\r` or `\n`. One log call is one line, and a
+  reader-supplied value cannot forge a line in `roller.log`. Stack traces
+  stay multi-line and are not encoded. Every `PatternLayout` must keep that
+  property (`LogPatternTest`); grepping `roller.log` line by line works as
+  before.
 
 ### Development vs Production
 - **Development**: PostgreSQL via `docker-compose.yml` (postgres only; the

@@ -154,8 +154,9 @@ Considered and left out: `ReplaceJavaUtilDate` (376 sites; the JPA pojos are
 `AvoidDuplicateLiterals` and `RedundantFieldInitializer` (450). They are
 opinion or noise here.
 
-Six PMD rules and three SpotBugs families (469 of 603 raw SpotBugs findings)
-are excluded, each with a reason comment in the config file.
+Six PMD rules and six SpotBugs families are excluded, each with a reason
+comment in the config file: three SpotBugs-core families, and three
+find-sec-bugs families (below).
 `QualityGatePomTest` fails the build if an exclusion lacks a justification
 comment or the excluded set differs from the list it names — a rule outside
 `PERMITTED_PMD_EXCLUSIONS`, a `<Match>` block beyond the three families, or
@@ -190,6 +191,53 @@ and `USO_UNSAFE_*_METHOD_SYNCHRONIZATION` (three `synchronized` methods on
 publicly reachable objects, now private lock objects). A tool bump that
 adds detectors is expected to find things; fix them or justify a site-level
 suppression, never widen `exclude.xml` for a version bump.
+
+**find-sec-bugs 1.14.0 runs inside the SpotBugs gate** (the parent pom's
+`<plugins>`, pinned by `findsecbugs.version`). `QualityGatePomTest` fails if
+the plugin is removed or if the filter excludes by anything but pattern name.
+Its first run, on 2026-10-12, found 793 findings. Three of its families are
+excluded:
+
+- **The seven source markers** (`SPRING_ENDPOINT`, `SERVLET_PARAMETER` and the
+  `SERVLET_HEADER`/`SERVER_NAME`/`QUERY_STRING` kind). They only mark where
+  untrusted input enters. The sink detectors are the gate.
+- **`CRLF_INJECTION_LOGS`.** It is fixed once, by `%encode{%m}{CRLF}` in
+  `log4j2.xml` (see `docs/dev/configuration.md`), and `QualityGatePomTest`
+  refuses the exclusion without that pattern.
+- **`IMPROPER_UNICODE`.** It fires on any case fold near an `equals`, with
+  `Locale.ROOT` or without, so it cannot tell a fixed comparison from a
+  broken one. All 33 first-run sites were read.
+
+Every other finding was traced from source to sink. Six were real and are
+fixed:
+
+- the shortcode tag pattern overflowed the stack on long unclosed prose, which
+  crashed the entry and the weblog front page;
+- the user lookup answered with no content type;
+- a commenter could take a member's display name in fullwidth or bold
+  letters;
+- the anonymous installer showed the JDBC URL, the username and a stack trace
+  while the database was down. Its pages now point at `roller.log`, and
+  `SQLScriptRunner` reports by statement position;
+- `MediacastUtil`, a dead SSRF sink, was deleted;
+- two checks compared HTTP methods case-insensitively; they are exact now.
+
+The rest carry `@SuppressFBWarnings` at the method that holds the sink, with a
+reason that says why the input is not attacker-controlled and where it is
+constrained.
+
+**Triaging a new finding:**
+- Trace it from source to sink. Fix it if the input can reach the sink;
+  otherwise suppress it at the narrowest element, with that reason.
+- Never add a pattern to `exclude.xml` for a version bump.
+- A method-level suppression does not reach a lambda inside the method, and
+  nothing can annotate a static initializer. Move such a sink into a named
+  method. SpotBugs reports a suppression that matches nothing as
+  `US_USELESS_SUPPRESSION_*`.
+- The tool will not prompt for this one: a new comparison of a name a person
+  typed (a display name, an email, a claim) must fold the way
+  `DisplayNames.fold` does: NFKC, upper then lower in `Locale.ROOT`, then NFKC
+  again.
 
 **On SLF4J's varargs form a `Throwable` must stay the LAST argument, and no
 `{}` may consume it.** `log.error("x {}", a, e)` preserves the stack trace;
