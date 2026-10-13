@@ -27,6 +27,11 @@ import org.apache.roller.weblogger.TestUtils;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
+import org.apache.roller.weblogger.ui.rendering.util.WeblogPageRequest;
+import org.apache.roller.weblogger.ui.rendering.util.cache.RenderCache;
+import org.apache.roller.weblogger.ui.rendering.util.cache.RenderCaches;
+import org.apache.roller.weblogger.util.cache.CachedContent;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -242,6 +247,112 @@ class PageServletCachingTest {
                 "and must have marked the request as bypassing the cache");
     }
 
+    // ------------------------------------------- what the cache really does
+
+    private static final String SENTINEL = "SERVED-FROM-THE-CACHE";
+
+    private static CachedContent sentinel() throws Exception {
+        CachedContent content = new CachedContent(64, "text/html; charset=utf-8");
+        content.getCachedWriter().print(SENTINEL);
+        content.flush();
+        return content;
+    }
+
+    private String keyFor(MockHttpServletRequest request) throws Exception {
+        return RenderCaches.forPage(false).generateKey(
+                new WeblogPageRequest(TestUtils.weblogger(), request));
+    }
+
+    private boolean cacheHolds(String key) {
+        RenderCache<WeblogPageRequest> cache = RenderCaches.forPage(false);
+        return cache.get(key, 0L) != null;
+    }
+
+    /** Characterisation of the shipped read path, with the cache genuinely in play. */
+    @Test
+    void anAnonymousRequestIsAnsweredFromTheEntryHoldingItsKey() throws Exception {
+        RenderCaches.forPage(false).put(keyFor(pageRequest(null, null)), sentinel());
+
+        MockHttpServletResponse response = get(null);
+
+        assertEquals(SENTINEL, response.getContentAsString());
+        assertEquals(SENTINEL.length(), response.getContentLength());
+        assertEquals("text/html; charset=utf-8", response.getContentType());
+    }
+
+    @Test
+    void aSignedInReaderIsNotHandedTheEntryKeptForAnonymousReaders() throws Exception {
+        MockHttpServletRequest anonymous = pageRequest(null, null);
+        MockHttpServletRequest signedIn = pageRequest(null, user.getUserName());
+        RenderCaches.forPage(false).put(keyFor(anonymous), sentinel());
+
+        assertNotEquals(keyFor(anonymous), keyFor(signedIn));
+        assertTrue(keyFor(signedIn).contains("/user=" + user.getUserName()), keyFor(signedIn));
+        assertNotEquals(SENTINEL, get(null, user.getUserName()).getContentAsString());
+    }
+
+    @Test
+    void theSkipCacheParameterIgnoresAnExistingEntryButStillRepopulatesIt() throws Exception {
+        String key = keyFor(pageRequest(null, null));
+        RenderCaches.forPage(false).put(key, sentinel());
+        MockHttpServletRequest request = pageRequest(null, null);
+        request.setParameter("skipCache", "true");
+
+        MockHttpServletResponse response = RenderingTestSupport.execute(
+                RenderingTestSupport.pageServlet(), request);
+
+        assertNotEquals(SENTINEL, response.getContentAsString());
+        assertEquals(response.getContentAsString(),
+                RenderCaches.forPage(false).get(key, 0L).getContentAsString(),
+                "a parameter suppresses the read only; the fresh render replaces the entry");
+    }
+
+    @Test
+    void theSkipCacheAttributeNeitherReadsNorWrites() throws Exception {
+        String key = keyFor(pageRequest(null, null));
+        RenderCaches.forPage(false).put(key, sentinel());
+        MockHttpServletRequest request = pageRequest(null, null);
+        request.setAttribute("skipCache", "true");
+
+        MockHttpServletResponse response = RenderingTestSupport.execute(
+                RenderingTestSupport.pageServlet(), request);
+
+        assertNotEquals(SENTINEL, response.getContentAsString());
+        assertEquals(SENTINEL, RenderCaches.forPage(false).get(key, 0L).getContentAsString(),
+                "internally uncacheable content must leave the cache untouched");
+    }
+
+    @Test
+    void aRenderPopulatesTheCacheAndAnEntryOlderThanTheWeblogIsNotServed() throws Exception {
+        MockHttpServletRequest request = pageRequest(null, null);
+        String key = keyFor(request);
+        assertFalse(cacheHolds(key), "nothing is cached before the first request");
+
+        String rendered = get(null).getContentAsString();
+
+        assertTrue(cacheHolds(key), "the first render must be stored");
+        assertEquals(rendered, RenderCaches.forPage(false).get(key, 0L).getContentAsString());
+        long afterTheEntryWasStored = System.currentTimeMillis() + 60_000;
+        assertEquals(null, RenderCaches.forPage(false).get(key, afterTheEntryWasStored),
+                "an entry older than the weblog's lastModified is expired, not served");
+    }
+
+    /** With cache.excludeOwnerEditPages on, a signed-in render is neither read from nor written to the cache. */
+    @Test
+    void withOwnerPagesExcludedASignedInRenderIsNeverCached() throws Exception {
+        org.apache.roller.weblogger.ui.rendering.servlets.PageServlet servlet = RenderingTestSupport.pageServlet();
+        ReflectionTestUtils.setField(servlet, "excludeOwnerPages", true);
+        MockHttpServletRequest signedIn = pageRequest(null, user.getUserName());
+        String key = keyFor(signedIn);
+        RenderCaches.forPage(false).put(key, sentinel());
+
+        MockHttpServletResponse response = RenderingTestSupport.execute(servlet, signedIn);
+
+        assertNotEquals(SENTINEL, response.getContentAsString(), "the read side is closed to a signed-in reader");
+        assertEquals(SENTINEL, RenderCaches.forPage(false).get(key, 0L).getContentAsString(),
+                "and the write side leaves the existing entry alone");
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private MockHttpServletResponse get(String ifModifiedSince) throws Exception {
@@ -257,6 +368,11 @@ class PageServletCachingTest {
     private MockHttpServletRequest pageRequest(String ifModifiedSince, String signedInAs) {
         MockHttpServletRequest request = RenderingTestSupport
                 .anonymousGet("/roller-ui/rendering/page", "/pagecacheblog");
+        // anonymousGet marks every request skipCache so the render tests never
+        // see a stale page; this class is about the cache, so it must not.
+        // Without this the "served from cache" tests below passed without the
+        // cache ever being read or written.
+        request.removeAttribute("skipCache");
         if (ifModifiedSince != null) {
             request.addHeader("If-Modified-Since", ifModifiedSince);
         }
