@@ -36,6 +36,8 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
      * unlike a limit below 1 or a negative offset, which are rejected with
      * 400 rather than clamped (see the validation at the top of {@link #list}).
      */
+    // 200 is the documented cap for every list endpoint (docs/api/README.md, Pagination); the cap is
+    // repeated in each controller, so change all of them together.
     private static final int MAX_LIMIT = 200;
 
     @GetMapping("")

@@ -36,6 +36,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuditApi extends BaseApiController implements UISecurityEnforced {
 
     /** Same cap EntriesApi.list uses for its own offset/limit convention. */
+    // 200 is the documented cap for every list endpoint (docs/api/README.md, Pagination); the cap is
+    // repeated in each controller, so change all of them together.
     private static final int MAX_LIMIT = 200;
 
     /**

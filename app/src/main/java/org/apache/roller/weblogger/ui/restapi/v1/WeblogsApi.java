@@ -58,6 +58,8 @@ import org.springframework.web.bind.annotation.RestController;
 @AdminScoped
 public class WeblogsApi extends BaseApiController implements UISecurityEnforced {
 
+    // 200 is the documented cap for every list endpoint (docs/api/README.md, Pagination); the cap is
+    // repeated in each controller, so change all of them together.
     private static final int MAX_LIMIT = 200;
 
     @GetMapping("")
