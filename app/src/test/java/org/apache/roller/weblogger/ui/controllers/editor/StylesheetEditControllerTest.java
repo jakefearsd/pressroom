@@ -371,6 +371,33 @@ class StylesheetEditControllerTest extends EditorControllerTestSupport {
                 "Expected the failure to be surfaced, got: " + errors(model));
     }
 
+    @Test
+    void aFailedRevertIsReportedRatherThanConfirmed() throws Exception {
+        givenExistingRendition("body { color: blue; }");
+        TemplateRendition themeRendition = mock(TemplateRendition.class);
+        when(themeRendition.getTemplate()).thenReturn("body { color: green; }");
+        when(sharedStylesheet.getTemplateRendition(RenditionType.STANDARD)).thenReturn(themeRendition);
+        org.mockito.Mockito.doThrow(new WebloggerException("database down"))
+                .when(weblogger.getWeblogManager()).saveTemplate(any());
+
+        controller.revert(request, model);
+
+        assertTrue(messages(model).isEmpty(), "A failed revert must not report success: " + messages(model));
+        assertEquals(java.util.List.of("generic.error.check.logs"), errors(model));
+    }
+
+    @Test
+    void aFailedCopyIsReportedAndNoOverrideIsAnnounced() throws Exception {
+        when(weblogger.getWeblogManager().getTemplateByLink(weblog, STYLESHEET_LINK)).thenReturn(null);
+        org.mockito.Mockito.doThrow(new WebloggerException("database down"))
+                .when(weblogger.getWeblogManager()).saveTemplate(any());
+
+        controller.copyStylesheet(request, model);
+
+        assertFalse(messages(model).contains("stylesheetEdit.create.success"), "Got: " + messages(model));
+        assertTrue(errors(model).contains("generic.error.check.logs"), "Got: " + errors(model));
+    }
+
     private CustomTemplateRendition givenExistingRendition(String css) throws WebloggerException {
         CustomTemplateRendition rendition =
                 new CustomTemplateRendition(template, RenditionType.STANDARD);
