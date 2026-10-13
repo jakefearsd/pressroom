@@ -48,6 +48,34 @@ mvn clean test && mvn jacoco:report -pl app  # coverage: app/target/site/jacoco/
   tables.
 - Render caches are per-JVM singletons: rendering tests call
   `CacheManager.clear()` in `@BeforeEach` (`RenderingTestSupport`).
+  **That does not reach `WeblogPageCache`**, and
+  `RenderingTestSupport.anonymousGet` sets `skipCache=true` on every request.
+  A test about the page cache must therefore:
+  - remove that attribute;
+  - clear `RenderCaches.forPage(false)` and `forPage(true)` itself;
+  - plant a sentinel only after the clock has passed the weblog's stored
+    `lastModified`. `saveWeblog` stamps "now", and a same-millisecond change
+    counts as newer (`PageServletCachingTest`, whose cache tests once passed
+    without touching the cache).
+- A servlet over a faulty collaborator: mock `Weblogger`, delegate only the
+  managers the servlet uses to `TestUtils.weblogger()`, and build the servlet
+  directly (`new XServlet(weblogger)` plus
+  `init(new MockServletConfig(RollerContext.getServletContext()))`). No
+  production seam is needed.
+- One `WebloggerConfig` key for one test: `StaticConfigOverride.set(key,
+  value)` in try-with-resources (it restores on close). Several `var _ = ...`
+  resources can share one `try`.
+- `new WeblogCategory(weblog, ...)` attaches itself to the weblog's collection
+  at once. A test expecting `saveWeblogCategory` to refuse a duplicate must
+  discard the session (`TestUtils.endSession(false)`) before the next flush, or
+  the refused category is persisted and the test fails far from its cause.
+- MockMvc standalone tests have no Hamcrest on the classpath, so
+  `status().is(int)` and `content().json(...)` fail with
+  `NoClassDefFoundError`. Use `isXxx()` or an `andExpect(r -> assertEquals(...))`
+  lambda.
+- javac runs with `failOnWarning`, tests included. Write an unused
+  try-with-resources variable as `_` (`try (var _ = mockStatic(X.class))`), and
+  use no deprecated API.
 - `TestUtils.weblogger()` is the real tier (one per JVM;
   `TestUtils.setupWeblogger()` via `SpringWebloggerProvider.standalone()`);
   hand it, or `MockWeblogger.create()`'s mock, to the class under test by
