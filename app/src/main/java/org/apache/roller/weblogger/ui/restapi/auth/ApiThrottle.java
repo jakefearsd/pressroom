@@ -4,6 +4,8 @@ import org.apache.roller.util.RollerConstants;
 import org.apache.roller.weblogger.config.WebloggerConfig;
 import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.util.GenericThrottle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Wraps {@link GenericThrottle} for the automation API, following the same
@@ -17,6 +19,8 @@ import org.apache.roller.weblogger.util.GenericThrottle;
  * so it can be flipped from Admin Settings without a restart.
  */
 public final class ApiThrottle {
+
+    private static final Logger log = LoggerFactory.getLogger(ApiThrottle.class);
 
     private final GenericThrottle throttle;
 
@@ -35,6 +39,9 @@ public final class ApiThrottle {
     public static ApiThrottle create() {
         int threshold = intProperty("api.throttle.threshold", 120);
         int interval = intProperty("api.throttle.interval", 60);
+        // 500 tracked keys is a memory bound: every distinct bad token or source address takes a slot, so
+        // a flood of random tokens can evict a real caller's counter. That only makes the throttle more
+        // lenient for that caller; it never locks anyone out.
         int maxEntries = intProperty("api.throttle.maxentries", 500);
         return new ApiThrottle(
                 new GenericThrottle(threshold, interval * RollerConstants.SEC_IN_MS, maxEntries), null);
@@ -67,6 +74,9 @@ public final class ApiThrottle {
         try {
             return Integer.parseInt(WebloggerConfig.getProperty(name));
         } catch (NumberFormatException e) {
+            // A bad value falls back to the default rather than stopping startup; say so,
+            // or a typo in roller-custom.properties silently leaves the stock limits in force.
+            log.warn("{} is not a number; using {}", name, fallback);
             return fallback;
         }
     }

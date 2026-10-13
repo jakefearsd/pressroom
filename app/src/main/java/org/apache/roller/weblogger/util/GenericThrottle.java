@@ -57,6 +57,9 @@ public class GenericThrottle {
             this.interval = inter;
         }
         
+        // The cache is a bounded LRU, so the oldest clients are forgotten once it fills: a throttle is a
+        // brake on bursts, not an audit of everyone who ever called. A bad size is repaired to the nearest
+        // working value rather than rejected.
         // max entries must be a positive value
         if(maxEntries < 0) {
             maxEntries = 1;
