@@ -39,8 +39,8 @@ public final class Reflection {
     // AvoidAccessibilityAlteration: this is the codebase's one extension-point
     // loader -- every caller (CacheManager's cache factory/handlers,
     // ThreadManagerImpl's scheduled tasks, RendererManager's renderer
-    // factories, ModelLoader's page models, RequestMappingFilter's request
-    // mappers, PluginManagerImpl's entry plugins) resolves the class name
+    // factories, ModelLoader's page models,
+    // PluginManagerImpl's entry plugins) resolves the class name
     // from a startup-scoped WebloggerConfig property
     // (roller.properties/roller-custom.properties or a ROLLER_* env var),
     // never from request input, so this is deployer-configured extension

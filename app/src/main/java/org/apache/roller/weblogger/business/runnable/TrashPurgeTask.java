@@ -106,7 +106,7 @@ public class TrashPurgeTask extends RollerTaskWithLeasing {
     // other PMD.UnnecessaryFullyQualifiedName sites in this file were
     // shortened to would make this method text-identical to
     // ScheduledEntriesTask's, extending an already-large shared-boilerplate
-    // span past CPD's 200-token minimum. Keeping one side qualified breaks
+    // span past CPD's 110-token minimum. Keeping one side qualified breaks
     // that match without reintroducing behavior risk.
     //
     // This is a scaffold, not the answer, and it has a scheduled end: the

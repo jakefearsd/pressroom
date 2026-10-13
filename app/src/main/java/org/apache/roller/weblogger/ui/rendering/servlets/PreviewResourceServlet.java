@@ -83,7 +83,7 @@ public class PreviewResourceServlet extends HttpServlet {
     // instance is not closed" -- each reassignment below is reached only
     // inside `if (resourceStream == null)`, so there is never a live stream
     // to lose at that point. The stream this variable ends up holding is
-    // closed in the finally block further down.
+    // closed by RenderingServletUtils.streamResource, which this method hands it to.
     @SuppressWarnings("PMD.CloseResource")
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)

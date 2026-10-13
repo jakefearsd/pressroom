@@ -222,8 +222,7 @@ public final class I18nMessages {
 	// ever exercised against that one known, non-public Tomcat field
 	// (resourceEntries) and only to invoke its own public clear() method --
 	// there is no other way to flush Tomcat's classloader-level resource
-	// bundle cache on theme/locale reload (see Theme System hot reload in
-	// CLAUDE.md), because the field is deliberately not exposed by Tomcat.
+	// bundle cache on theme/locale reload (see docs/dev/themes-and-templates.md), because the field is deliberately not exposed by Tomcat.
 	@SuppressWarnings("PMD.AvoidAccessibilityAlteration")
 	private static void clearMap(Class<?> cl, Object obj, String name)
 			throws NoSuchFieldException, IllegalAccessException,

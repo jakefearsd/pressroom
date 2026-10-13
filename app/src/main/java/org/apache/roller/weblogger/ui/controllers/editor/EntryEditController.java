@@ -741,38 +741,38 @@ public class EntryEditController extends BaseController {
     // the case's own comment below), so the only way to exercise that
     // defensive branch is to call this directly.
     void addStatusMessage(PubStatus pubStatus, Model model, WeblogEntry entry, HttpServletRequest request) {
-        switch (pubStatus) {
-            case DRAFT:
-                addMessage(model, "weblogEdit.draftSaved", request);
-                break;
-            case PUBLISHED:
-                // The href is built here, from the entry, and never from anything a
-                // reader supplied: messages.jsp renders a message unescaped.
-                addMessage(model, "weblogEdit.publishedEntry", permalinkOf(entry), request);
-                break;
-            case SCHEDULED:
-                addMessage(model, "weblogEdit.scheduledEntry",
-                        DateUtil.fullDate(entry.getPubTime()), request);
-                break;
-            case PENDING:
-                addMessage(model, "weblogEdit.submittedForReview", request);
-                break;
-            case TRASHED:
-                // Both callers (entryEditExecute and entryEditFirstSave)
-                // already redirect a trashed entry to the trash screen
-                // before reaching this method, so this should be
-                // unreachable in practice; it is handled explicitly rather
-                // than silently, in case a future call site forgets that
-                // guard. No status toast makes sense for it, so this is a
-                // documented no-op rather than a thrown exception -- this
-                // method's only job is a confirmation message, and both
-                // current callers would misreport an otherwise-successful
-                // request as a failure (the save-flow caller sits inside a
-                // try/catch that shows "generic.error.check.logs" on any
-                // exception; the firstSave caller has no surrounding
-                // try/catch at all and would simply 500 a page view) if
-                // this threw instead.
-                break;
+        // An expression, so the compiler rejects a new PubStatus constant here.
+        String[] message = switch (pubStatus) {
+            case DRAFT -> new String[] {"weblogEdit.draftSaved"};
+            // The href is built here, from the entry, and never from anything a
+            // reader supplied: messages.jsp renders a message unescaped.
+            case PUBLISHED -> new String[] {"weblogEdit.publishedEntry", permalinkOf(entry)};
+            case SCHEDULED -> new String[] {"weblogEdit.scheduledEntry",
+                    DateUtil.fullDate(entry.getPubTime())};
+            case PENDING -> new String[] {"weblogEdit.submittedForReview"};
+            // Both callers (entryEditExecute and entryEditFirstSave)
+            // already redirect a trashed entry to the trash screen
+            // before reaching this method, so this should be
+            // unreachable in practice; it is handled explicitly rather
+            // than silently, in case a future call site forgets that
+            // guard. No status toast makes sense for it, so this is a
+            // documented no-op rather than a thrown exception -- this
+            // method's only job is a confirmation message, and both
+            // current callers would misreport an otherwise-successful
+            // request as a failure (the save-flow caller sits inside a
+            // try/catch that shows "generic.error.check.logs" on any
+            // exception; the firstSave caller has no surrounding
+            // try/catch at all and would simply 500 a page view) if
+            // this threw instead.
+            case TRASHED -> null;
+        };
+        if (message == null) {
+            return;
+        }
+        if (message.length == 1) {
+            addMessage(model, message[0], request);
+        } else {
+            addMessage(model, message[0], message[1], request);
         }
     }
 

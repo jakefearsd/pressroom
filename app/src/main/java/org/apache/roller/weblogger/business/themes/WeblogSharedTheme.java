@@ -40,7 +40,7 @@ import org.apache.roller.weblogger.pojos.WeblogTheme;
 // and is dead code in practice: ThemeManagerImpl.getWeblogTheme(weblog)
 // constructs exactly one WeblogSharedTheme per call (confirmed by
 // `grep -rn "WeblogSharedTheme" app/src/main/java`, whose only non-declaration
-// hit is that single `new WeblogSharedTheme(weblog, staticTheme)`), and it is
+// hit is that single `new WeblogSharedTheme(weblog, staticTheme, roller.getWeblogManager())`), and it is
 // returned and used standalone -- never placed in a List, Set or Map
 // alongside a sibling instance. compareTo simply delegates to the wrapped
 // SharedTheme's own (separately suppressed, same reasoning) compareTo.
