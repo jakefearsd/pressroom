@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   Roller's SpotBugs exclusion filter, re-counted on 2026-10-12 with
-  find-sec-bugs 1.14.0 loaded. Six families: three of SpotBugs' own (557
-  findings) and three of find-sec-bugs' (source markers 252,
-  CRLF_INJECTION_LOGS 439, IMPROPER_UNICODE 32). Everything outside them is
-  at zero. (The 2026-08 wave found 603 and fixed or suppressed the 134
+  find-sec-bugs 1.14.0 loaded. Five families: three of SpotBugs' own (557
+  findings) and two of find-sec-bugs' (source markers 252,
+  CRLF_INJECTION_LOGS 439). Everything outside them is at zero.
+
+  IMPROPER_UNICODE is deliberately NOT here, though it fires on every case
+  fold near an equals: a new fold must fail the build until someone decides,
+  at that site, whether a person-typed name is being compared (the bug it
+  caught in DisplayNames). Each of its 31 existing sites carries a reviewed
+  @SuppressFBWarnings; QualityGatePomTest refuses the family. (The 2026-08 wave found 603 and fixed or suppressed the 134
   outside SpotBugs' own families at their sites: see
   docs/superpowers/specs/2026-08-18-static-analysis-quality-gates-design.md.)
 
@@ -61,23 +66,5 @@
          Throwable's own message on its first line is not encoded. -->
     <Match>
         <Bug pattern="CRLF_INJECTION_LOGS"/>
-    </Match>
-
-    <!-- IMPROPER_UNICODE (32 findings; the 33 of the first run were each
-         read on 2026-10-12). The detector fires on every toLowerCase or
-         toUpperCase in a method that also calls equals or indexOf, every
-         equalsIgnoreCase and every Normalizer.normalize, with Locale.ROOT or
-         without, so it cannot tell a correct comparison from a broken one,
-         or a fixed one: the one real finding, DisplayNames' impersonation
-         check (now NFKC and full case folding), still fires. The rest fold
-         ASCII protocol tokens, configuration keys, theme and shortcode names,
-         or values already confined to ASCII: usernames and handles by
-         username.allowedChars, and Host values, which Tomcat decodes as
-         ISO-8859-1, where no character lower-cases into ASCII. (HTTP methods
-         are now compared exactly, as RFC 9110 and Spring's dispatch do.)
-         A new comparison of a name a person typed must fold the way
-         DisplayNames does. -->
-    <Match>
-        <Bug pattern="IMPROPER_UNICODE"/>
     </Match>
 </FindBugsFilter>

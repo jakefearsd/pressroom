@@ -39,13 +39,13 @@ class QualityGatePomTest {
             "UnnecessaryConstructor", "AvoidUsingVolatile");
 
     /**
-     * The six SpotBugs families the spec permits excluding, by representative
-     * pattern: three of SpotBugs' own, then find-sec-bugs' source markers, its
-     * log-forging family (fixed in log4j2.xml instead) and IMPROPER_UNICODE.
+     * The five SpotBugs families the spec permits excluding, by representative
+     * pattern: three of SpotBugs' own, then find-sec-bugs' source markers and
+     * its log-forging family (fixed in log4j2.xml instead).
      */
     private static final List<String> PERMITTED_SPOTBUGS_EXCLUSIONS = List.of(
             "EI_EXPOSE_REP", "SE_TRANSIENT_FIELD_NOT_RESTORED", "THROWS_METHOD_THROWS",
-            "SPRING_ENDPOINT", "CRLF_INJECTION_LOGS", "IMPROPER_UNICODE");
+            "SPRING_ENDPOINT", "CRLF_INJECTION_LOGS");
 
     /**
      * The exact bug patterns making up the three permitted SpotBugs exclusion
@@ -64,8 +64,7 @@ class QualityGatePomTest {
             "REC_CATCH_EXCEPTION", "MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR",
             "SPRING_ENDPOINT", "SERVLET_PARAMETER", "SERVLET_SERVER_NAME", "SERVLET_QUERY_STRING",
             "SERVLET_HEADER", "SERVLET_HEADER_USER_AGENT", "SERVLET_HEADER_REFERER",
-            "CRLF_INJECTION_LOGS",
-            "IMPROPER_UNICODE");
+            "CRLF_INJECTION_LOGS");
 
     @Test
     void allThreeChecksAreBoundToVerifyAndFailTheBuild() throws IOException {
@@ -137,9 +136,9 @@ class QualityGatePomTest {
                     "every <Match> in the SpotBugs filter needs a justification comment above it");
         }
         // Closes the set the same way everyPmdExclusionIsPermittedAndCarriesAReason does for PMD:
-        // a seventh <Match> family, even with a justification comment, is a spec change.
+        // a sixth <Match> family, even with a justification comment, is a spec change.
         assertEquals(PERMITTED_SPOTBUGS_EXCLUSIONS.size(), matchCount,
-                "config/spotbugs/exclude.xml must contain exactly the six <Match> families the "
+                "config/spotbugs/exclude.xml must contain exactly the five <Match> families the "
                 + "spec permits. Adding another is a spec change: update the design doc and this test.");
 
         Matcher bugPattern = Pattern.compile("<Bug\\s+pattern=\"([^\"]+)\"").matcher(filter);
@@ -256,6 +255,24 @@ class QualityGatePomTest {
             }
         }
         return elements;
+    }
+
+    /**
+     * IMPROPER_UNICODE stays live: a new case fold or equalsIgnoreCase near an
+     * equals fails the build until someone decides, at that site, whether a
+     * person-typed name is being compared. That is the bug it caught in
+     * DisplayNames (a member's name taken in fullwidth letters). Each existing
+     * site carries its own reviewed suppression; the family was excluded for a
+     * while and the review overruled it (2026-10-12).
+     */
+    @Test
+    void theUnicodeFoldDetectorIsNeverExcludedAsAFamily() throws IOException {
+        Matcher bugPattern = Pattern.compile("<Bug\\s+pattern=\"([^\"]+)\"")
+                .matcher(read("config/spotbugs/exclude.xml"));
+        while (bugPattern.find()) {
+            assertFalse(bugPattern.group(1).contains("IMPROPER_UNICODE"),
+                    "IMPROPER_UNICODE is suppressed site by site, with a reason, never in exclude.xml");
+        }
     }
 
     /**
