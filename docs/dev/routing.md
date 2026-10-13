@@ -53,8 +53,9 @@ screen).
   targeting the old slug at the new one (or one-hop breaks under repeated
   renames), then mint; A→B→A converges to one rule. The old slug is
   `WeblogPage.loadedSlug`, a JPA post-load snapshot.
-- **Entry anchors are immutable, so there is no entry-side hook** —
-  `EntryBean` has no anchor field; `createAnchor` fires only when unset.
+- **Entry anchors are immutable after create, so there is no entry-side hook** —
+  `EntryBean` has no anchor field; `createAnchor` fires only when unset. The API's
+  `anchor` sets one at create only (`EntryFieldRules.isValidAnchor`).
   Migrated permalinks are manual rules.
 - **Hit bookkeeping is best-effort**: `recordHit` is one JPQL
   `UPDATE ... hit_count = hit_count + 1` (no load-modify-store) in its own

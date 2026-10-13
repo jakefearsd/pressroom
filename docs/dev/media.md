@@ -71,3 +71,9 @@ resolves through the index at the end of `CLAUDE.md`.
 - `EntryAddWithMediaFileController` (entry from selected files) seeds the
   draft with `[image id=".."]`, not hand-built `<img>` markup, so alt text
   and the rendition ladder arrive through the normal path.
+- **`MediaFile.contentHash` (V032)** is SHA-256 lower-case hex, set from the bytes as they stream
+  to disk in `persistNewMediaFile` (a `DigestInputStream`, so no upload is held in memory). It is
+  cleared by `updateMediaFile(…, InputStream)` and `cropMediaFile`, since the file is no longer the
+  bytes it was imported as. `MediaImports` matches per directory by it, and a file without one
+  (from before V032) is simply not matched. There is no unique constraint, so two concurrent
+  identical imports can both store.

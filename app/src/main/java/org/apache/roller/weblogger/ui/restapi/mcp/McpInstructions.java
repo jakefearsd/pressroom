@@ -19,8 +19,16 @@ public final class McpInstructions {
             - `weblogs create` makes a weblog you own; a wrong `theme` answers with the valid ones.
             - Updates never read null as a value. To remove a field, name it in `clear`, for example \
             clear: ["featuredImageId"].
-            - A featured image is a media file: `media import` it from a public http(s) URL, then set \
-            featuredImageId to its id.
+            - A featured image is a media file: set featuredImageUrl to a public http(s) image URL to import it \
+            and set it in one call (featuredImageAlt describes it), or `media import` it and set featuredImageId. \
+            Importing the same image again returns the first copy.
+            - `importExternalImages: true` on create or update imports every image the text loads from another \
+            site and points the text at the copies; if any image fails, nothing is written.
+            - In entry text, `[image id=<media id> caption="..."]` places an imported image responsively; \
+            `[gallery dir="<directory>"]`, `[map]` with `[pin lat=.. lng=.. label=".."]`, `[video url="..."]` \
+            and `[faq]` with `[q]`/`[a]` are also available.
+            - Give `anchor` on create to choose the URL slug (lower-case words joined by - or _); it cannot \
+            change later. A refused write lists every bad field in `errors`.
             - For an event, set jsonLdType EVENT with eventStart and eventEnd as wall-clock times in the \
             weblog's zone, for example 2026-08-02T19:30, and eventLocation.
             - Entries are DRAFT, PUBLISHED, PENDING or SCHEDULED. Trash, restore and delete_forever are \

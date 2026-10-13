@@ -279,12 +279,28 @@ from every other failure in this document.
 }
 ```
 
-The problem type carries an `errors` array of `{"field": ..., "message":
-...}` when the failure came from `@Valid` bean-validation — but as of this
-writing **no `*Api` controller method actually declares `@Valid`**, so in
-practice every 400 you will see from this API today carries only a plain
-`detail` string, never an `errors` array. Do not build a client that
-requires `errors` to be present; treat it as optional.
+A 400 or 409 about one field carries `errors: [{"field", "message"}]`, where
+`field` is the property or query parameter name as the caller sent it (for
+example `geoLatitude`, or `status` on a list filter). An entry create or
+update lists every bad field at once, and `detail` joins those messages with
+one space; a 400 that is not about one field (unparseable JSON, a missing
+body) carries no `errors`, so treat the array as optional. A weblog create or
+settings PATCH reports one `errors` entry per violated rule, and a single
+conflict (a taken handle or custom domain) is a 409 carrying `errors` too.
+
+```json
+{
+  "type": "https://roller.invalid/problems/invalid-request",
+  "title": "Invalid request",
+  "status": 400,
+  "detail": "Unknown category 'Travle'; it is one of: Food, Travel. geoLatitude must be between -90 and 90.",
+  "instance": "/api/v1/weblogs/myblog/entries",
+  "errors": [
+    {"field": "category", "message": "Unknown category 'Travle'; it is one of: Food, Travel."},
+    {"field": "geoLatitude", "message": "geoLatitude must be between -90 and 90."}
+  ]
+}
+```
 
 | Status | Meaning |
 |--------|---------|
@@ -293,7 +309,7 @@ requires `errors` to be present; treat it as optional.
 | 403 | Authenticated, but the token's own scope refuses this call (wrong role, or an admin-only route with a non-`ADMIN` token). |
 | 404 | The resource does not exist, **or the caller may not see it.** A weblog outside a token's pin, a foreign entry/category/page/media id, and a genuinely-missing id are all 404 — never 403, because a 403 there would confirm the resource exists under someone else's weblog. Also what an unmapped path under `/api/...` answers — see the note above on why that one is plain `application/json`, not a problem body. |
 | 405 | The path exists but not for this HTTP verb (e.g. `DELETE` on a collection endpoint that only supports `GET`/`POST`). Plain `application/json` from Boot's own `/error`, not a problem body — see the note above. |
-| 409 | The request conflicts with the resource's current state: trashing an already-trashed entry, restoring one that isn't trashed, PATCHing a trashed entry (restore it first), a duplicate category/directory/page-slug name, deleting a weblog's last category, publishing a comment its author deleted. |
+| 409 | The request conflicts with the resource's current state: trashing an already-trashed entry, restoring one that isn't trashed, PATCHing a trashed entry (restore it first), a duplicate category/directory/page-slug name, deleting a weblog's last category, publishing a comment its author deleted, an `anchor` another entry of the weblog holds (a trashed one included). |
 | 413 | A multipart request body larger than `spring.servlet.multipart.max-request-size` (1GB). Plain `application/json` from Boot's own `/error`, not a problem body — see the note above. Distinct from the per-file media-quota refusal below, which is never a whole-request 413. |
 | 415 | `POST .../media` without a `multipart/form-data` body. Plain `application/json`, not a problem body — see the note above. |
 | 429 | Throttled — see below. |
@@ -451,6 +467,49 @@ sequence a saved entry goes through, so what you preview cannot disagree
 with what gets published. Nothing is persisted; this is the only way to see
 `[gallery]`/`[map]`/etc. expand before committing to a save.
 
+### Slugs and images
+
+**`anchor`** sets the entry's URL slug. It is accepted on create only: a
+PATCH may send the stored value back unchanged, and any other value is a 400
+on `anchor`. Omit it and Roller generates one. The form is lower-case
+letters and digits in words joined by one `-` or `_`, never starting or
+ending with a separator, at most 255 characters
+(`^[a-z0-9]+(?:[-_][a-z0-9]+)*$`); a bad form is a 400 on `anchor`, and a
+chosen anchor is refused rather than normalised. An anchor another entry of
+the weblog holds is a 409 on `anchor`. A trashed entry still holds its
+anchor, so the message says `delete it forever (delete_forever) to free it`:
+call `POST .../entries/{id}/delete-forever` on that entry, which frees the
+slug. Trashing alone does not.
+
+**`featuredImageUrl`** imports a public image from an http(s) URL, sets it as
+the featured image, and takes `featuredImageAlt` as its alt text, all in the
+entry write. It cannot be combined with `featuredImageId` (or with clearing
+it), `featuredImageAlt` without a URL is a 400, and it needs uploads enabled
+for the site. The import follows the same rules as `media/imports`, and a
+refusal is a 400 on `featuredImageUrl`.
+
+**`importExternalImages: true`** on create or update imports each image the
+text loads from a host other than the site's own, and points the text at the
+local copy. Found are `<img src>` tags in HTML (the first `src` wins, as in a
+browser) and every Markdown image, reference-style ones included, never an
+image inside code. A reference-style image becomes an inline image pointing
+at the copy. Only the `src` value of an HTML tag is rewritten. An external
+`srcset` is refused, not imported, so it is a 400 on `text`.
+
+- At most 10 distinct external URLs per write (`MAX_BODY_IMAGES`); more is a
+  400 on `text`.
+- The whole import step has a 60-second budget. An image not started within
+  it counts as not fetched.
+- All or nothing for the entry: if any image is refused or not fetched, the
+  write is a 400 naming each such image (on `text`, or on `featuredImageUrl` for
+  the featured one), and the entry is not saved. Images that did import stay in the library, and a retry matches
+  them by content hash, so it costs downloads, not copies.
+
+**`featuredImageId` and `ogImageId`** must name an image of this weblog
+outside any private directory, or the write is a 400 on that field. A value
+sent back exactly as it was read is not re-checked, so a file deleted since
+does not break a round-trip.
+
 ## Categories and tags
 
 ```
@@ -510,7 +569,9 @@ server's `Content-Type`: JPEG, PNG, GIF and WebP are accepted, SVG is refused,
 and the stored extension follows the real type. Only public hosts are fetched,
 on ports 80 and 443, following at most 3 redirects (each re-checked), within 30
 seconds overall. The site's per-file size limit and its uploads-enabled switch
-apply as they do for uploads. Every refusal is a 400 whose `detail` says why.
+apply as they do for uploads. A refused URL is a 400 on `url` whose `detail` says why.
+Bytes already in the target directory (matched by content hash) answer **200** with that file, with
+no copy and no quota charge; a null `altText` is filled from the request, while `""` is kept.
 In the MCP endpoint this is `media` with `action: "import"`.
 
 `MediaView.directory` is the owning directory's **id**, not its name —

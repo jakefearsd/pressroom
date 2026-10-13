@@ -121,3 +121,16 @@ Roller is 0.x.
 - **Event times:** wall-clock times in the weblog's zone, editor and API alike
   (`EntryFieldRules.parseEventTime`/`formatWallClock`).
 - **Import logging:** `roller.media.import` logs the host only.
+
+## Entry writes: check, import, apply
+
+- **`checkWrite` runs on `EntryDtos.scratchOf`**, a copy of the entry. A refused write changes
+  nothing, and `persistNewMediaFile` flushes mid-request, so nothing may be applied to the entry
+  before the import step has succeeded.
+- **`FieldErrors` collects only 400s.** A 404, a 409 or an unexpected failure is not a field problem
+  and propagates at once, so a clash found during a write is never merged into the 400 list.
+- **`MediaImports` is the one import path**, shared by `media/imports` and the entry writes. It
+  commits each file as it is stored (a file on disk must have its row), and logs the host only.
+- **`EntryImports.BUDGET` (60 s) and `MAX_BODY_IMAGES` (10).** Cloudflare ends a request at 100
+  seconds, and the entry still has to save after the last fetch; each fetch has its own 30-second
+  deadline, so the budget only decides whether a new fetch starts.
