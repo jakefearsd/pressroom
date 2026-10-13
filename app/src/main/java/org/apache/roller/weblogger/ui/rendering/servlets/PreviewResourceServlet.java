@@ -154,6 +154,12 @@ public class PreviewResourceServlet extends HttpServlet {
                 MediaFileManager mmgr = weblogger.getMediaFileManager();
                 MediaFile mf = mmgr.getMediaFileByOriginalPath(weblog,
                         resourceRequest.getResourcePath());
+                // The authoring path admits any editor, not only this weblog's
+                // members, so a private directory's file is refused here as on
+                // ResourceServlet: answered as a file that does not exist.
+                if (mf.getDirectory() != null && mf.getDirectory().isPrivate()) {
+                    throw new WebloggerException("private media file");
+                }
                 resourceLastMod = mf.getLastModified();
                 resourceStream = mf.getInputStream();
 

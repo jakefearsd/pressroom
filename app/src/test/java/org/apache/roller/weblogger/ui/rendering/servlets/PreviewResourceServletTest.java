@@ -83,6 +83,24 @@ class PreviewResourceServletTest {
                 "the real image bytes must be streamed, not a placeholder");
     }
 
+    /**
+     * The authoring path admits any editor, not only this weblog's members, so a
+     * private directory's file is refused here exactly as on the public
+     * ResourceServlet: same status, no bytes, as though it did not exist.
+     */
+    @Test
+    void aFileInAPrivateDirectoryIsNotServedByItsOriginalPath() throws Exception {
+        MediaFile image = uploadedImage("private-photo.jpg");
+        TestUtils.weblogger().getMediaFileManager().getMediaFile(image.getId())
+                .getDirectory().setPrivate(true);
+        TestUtils.endSession(true);
+
+        MockHttpServletResponse response = get("/" + handle + "/private-photo.jpg");
+
+        assertEquals(404, response.getStatus());
+        assertEquals(0, response.getContentAsByteArray().length);
+    }
+
     @Test
     void anUnknownWeblogIsNotFound() throws Exception {
         assertEquals(404, get("/nosuchblog/whatever.jpg").getStatus(),
