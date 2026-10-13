@@ -496,4 +496,77 @@ class ThemeEditControllerTest extends EditorControllerTestSupport {
         assertEquals("shared-1", model.getAttribute("selectedThemeId"),
                 "The form must be repopulated with the weblog's (unchanged) current theme id");
     }
+
+    // --- save failures: the author is told, and nothing claims success ---
+
+    @Test
+    void aFailedSaveWhileSwitchingToCustomReportsAnErrorAndNoSuccessBanner() throws Exception {
+        weblog.setEditorTheme("shared-1");
+        doThrow(new WebloggerException("store down")).when(weblogger.getWeblogManager()).saveWeblog(weblog);
+
+        String view = controller.save(request, model, WeblogTheme.CUSTOM, null, false);
+
+        assertEquals(".ThemeEdit", view);
+        assertTrue(errors(model).contains("generic.error.check.logs"), "Got: " + errors(model));
+        assertTrue(messages(model).isEmpty(), "a failed switch must not announce itself: " + messages(model));
+    }
+
+    @Test
+    void aFailedSaveWhileSwitchingSharedThemesReportsAnErrorAndNoSuccessBanner() throws Exception {
+        weblog.setEditorTheme("shared-1");
+        SharedTheme target = mock(SharedTheme.class);
+        when(target.getName()).thenReturn("Other");
+        when(weblogger.getThemeManager().getTheme("shared-2")).thenReturn(target);
+        doThrow(new WebloggerException("store down")).when(weblogger.getWeblogManager()).saveWeblog(weblog);
+
+        controller.save(request, model, "shared", "shared-2", false);
+
+        assertTrue(errors(model).contains("generic.error.check.logs"), "Got: " + errors(model));
+        assertTrue(messages(model).isEmpty(), "Got: " + messages(model));
+    }
+
+    @Test
+    void aThemeTypeOfNeitherCustomNorSharedChangesNothing() throws Exception {
+        weblog.setEditorTheme("shared-1");
+
+        String view = controller.save(request, model, "bogus", "shared-2", false);
+
+        assertEquals(".ThemeEdit", view);
+        assertEquals("shared-1", weblog.getEditorTheme());
+        verify(weblogger.getWeblogManager(), never()).saveWeblog(any());
+    }
+
+    /**
+     * The javadoc on {@code currentTheme} promises a half-configured weblog
+     * still reaches the form. A weblog whose theme cannot be resolved must
+     * therefore open the editor (with no current theme named) rather than die
+     * on a null.
+     */
+    @Test
+    void aWeblogWhoseCurrentThemeCannotBeResolvedStillOpensTheForm() throws Exception {
+        weblog.setEditorTheme("shared-1");
+        when(weblogger.getThemeManager().getTheme(weblog)).thenThrow(new WebloggerException("theme gone"));
+
+        String view = controller.execute(request, model);
+
+        assertEquals(".ThemeEdit", view);
+        assertNull(model.getAttribute("currentThemeName"));
+        assertNull(model.getAttribute("themeId"));
+    }
+
+    @Test
+    void aWeblogWhoseCurrentThemeCannotBeResolvedCanStillBeMovedToASharedTheme() throws Exception {
+        weblog.setEditorTheme("shared-1");
+        when(weblogger.getThemeManager().getTheme(weblog)).thenThrow(new WebloggerException("theme gone"));
+        SharedTheme target = mock(SharedTheme.class);
+        when(target.getName()).thenReturn("Other");
+        when(weblogger.getThemeManager().getTheme("shared-2")).thenReturn(target);
+
+        String view = controller.save(request, model, "shared", "shared-2", false);
+
+        assertEquals(".ThemeEdit", view);
+        assertEquals("shared-2", weblog.getEditorTheme());
+        assertTrue(errors(model).isEmpty(), "Got: " + errors(model));
+        verify(weblogger.getWeblogManager()).saveWeblog(weblog);
+    }
 }

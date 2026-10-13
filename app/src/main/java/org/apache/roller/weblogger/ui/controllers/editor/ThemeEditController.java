@@ -79,7 +79,7 @@ public class ThemeEditController extends BaseController {
             model.addAttribute("selectedThemeId", null);
             model.addAttribute("importTheme", false);
         } else {
-            String themeId = currentTheme(request).getId();
+            String themeId = currentThemeId(request);
             model.addAttribute("themeId", themeId);
             model.addAttribute("selectedThemeId", themeId);
         }
@@ -153,7 +153,8 @@ public class ThemeEditController extends BaseController {
                     String originalTheme = weblog.getEditorTheme();
                     WeblogManager mgr = weblogger.getWeblogManager();
 
-                    if (!originalTheme.equals(selectedThemeId) && currentTheme(request).getStylesheet() != null) {
+                    WeblogTheme theme = currentTheme(request);
+                    if (!originalTheme.equals(selectedThemeId) && theme != null && theme.getStylesheet() != null) {
                         WeblogTemplate stylesheet = mgr.getTemplateByAction(getActionWeblog(request), ComponentType.STYLESHEET);
                         if (stylesheet != null) {
                             mgr.removeTemplate(stylesheet);
@@ -181,7 +182,7 @@ public class ThemeEditController extends BaseController {
             model.addAttribute("themeId", null);
             model.addAttribute("selectedThemeId", null);
         } else {
-            String themeId = currentTheme(request).getId();
+            String themeId = currentThemeId(request);
             model.addAttribute("themeId", themeId);
             model.addAttribute("selectedThemeId", themeId);
         }
@@ -242,6 +243,12 @@ public class ThemeEditController extends BaseController {
         }
     }
 
+    /** The current theme's id; null when it cannot be resolved, like {@link #currentThemeName}. */
+    private String currentThemeId(HttpServletRequest request) {
+        WeblogTheme theme = currentTheme(request);
+        return theme == null ? null : theme.getId();
+    }
+
     /** What the form shows as "your current theme"; null when there is none to name. */
     private String currentThemeName(HttpServletRequest request) {
         WeblogTheme theme = currentTheme(request);
@@ -251,7 +258,7 @@ public class ThemeEditController extends BaseController {
     private void loadThemeData(HttpServletRequest request, Model model) {
         ThemeManager themeMgr = weblogger.getThemeManager();
         String currentThemeId = WeblogTheme.CUSTOM.equals(getActionWeblog(request).getEditorTheme())
-                ? null : currentTheme(request).getId();
+                ? null : currentThemeId(request);
         List<SharedTheme> selectable = themeMgr.getEnabledThemesList().stream()
                 .filter(t -> !SITEWIDE_ONLY_THEME_ID.equals(t.getId()) || SITEWIDE_ONLY_THEME_ID.equals(currentThemeId))
                 .toList();
@@ -272,11 +279,11 @@ public class ThemeEditController extends BaseController {
 
     private boolean isSharedThemeCustomStylesheet(HttpServletRequest request) {
         try {
+            WeblogTheme theme = currentTheme(request);
             if (!WeblogTheme.CUSTOM.equals(getActionWeblog(request).getEditorTheme())
-                    && currentTheme(request).getStylesheet() != null) {
+                    && theme != null && theme.getStylesheet() != null) {
                 ThemeTemplate override = weblogger.getWeblogManager()
-                        .getTemplateByLink(getActionWeblog(request),
-                                currentTheme(request).getStylesheet().getLink());
+                        .getTemplateByLink(getActionWeblog(request), theme.getStylesheet().getLink());
                 if (override != null) {
                     return true;
                 }
