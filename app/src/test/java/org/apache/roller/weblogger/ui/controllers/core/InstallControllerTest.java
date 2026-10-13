@@ -326,6 +326,74 @@ class InstallControllerTest {
      * the smallest thing that can stand in for "a database in state X" without
      * one being running.
      */
+    // ---- the success and bootstrap paths
+
+    @Test
+    void aSchemaCreationThatSucceedsShowsItsLogAsSuccess() {
+        try (org.mockito.MockedStatic<WebloggerStartup> startup = org.mockito.Mockito.mockStatic(WebloggerStartup.class)) {
+            startup.when(WebloggerStartup::createDatabase).thenReturn(List.of("created table a"));
+
+            String view = controller.create(request(), model);
+
+            assertEquals(".CreateDatabase", view);
+            assertEquals(Boolean.TRUE, model.getAttribute("success"));
+            assertNull(model.getAttribute("error"));
+            assertEquals(List.of("created table a"), model.getAttribute("messages"));
+            assertEquals("unknown", model.getAttribute("databaseProductName"),
+                    "no reachable provider: the probe falls back rather than failing the page");
+        }
+    }
+
+    @Test
+    void anUpgradeThatSucceedsShowsItsLogAsSuccess() {
+        try (org.mockito.MockedStatic<WebloggerStartup> startup = org.mockito.Mockito.mockStatic(WebloggerStartup.class)) {
+            startup.when(() -> WebloggerStartup.upgradeDatabase(true)).thenReturn(List.of("applied V030"));
+
+            String view = controller.upgrade(request(), model);
+
+            assertEquals(".UpgradeDatabase", view);
+            assertEquals(Boolean.TRUE, model.getAttribute("success"));
+            assertEquals(List.of("applied V030"), model.getAttribute("messages"));
+        }
+    }
+
+    @Test
+    void bootstrappingThatSucceedsGoesToTheSite() throws Exception {
+        assertEquals("redirect:/", controller.bootstrap(request(), model));
+
+        verify(webloggerProvider).bootstrap();
+    }
+
+    @Test
+    void bootstrapOnAnAlreadyRunningSiteDoesNotBootstrapAgain() throws Exception {
+        when(webloggerProvider.isBootstrapped()).thenReturn(true);
+
+        assertEquals("redirect:/", controller.bootstrap(request(), model));
+
+        org.mockito.Mockito.verify(webloggerProvider, org.mockito.Mockito.never()).bootstrap();
+    }
+
+    /** Whatever kind of failure bootstrapping reports, the page shows that failure and its trace. */
+    @Test
+    void everyKindOfBootstrapFailureLandsOnTheBootstrapPageWithItsCause() throws Exception {
+        Throwable[] failures = {
+            new org.springframework.beans.FatalBeanException("bean wiring"),
+            new org.apache.roller.weblogger.business.BootstrapException("tier"),
+            new IllegalStateException("anything else")
+        };
+        for (Throwable failure : failures) {
+            ExtendedModelMap each = new ExtendedModelMap();
+            org.mockito.Mockito.doThrow(failure).when(webloggerProvider).bootstrap();
+
+            String view = controller.bootstrap(request(), each);
+
+            assertEquals(".Bootstrap", view, failure.toString());
+            assertSame(failure, each.getAttribute("rootCauseException"));
+            assertTrue(each.getAttribute("rootCauseStackTrace").toString().contains(failure.getClass().getSimpleName()));
+            assertEquals("installer.error.unknown.pageTitle", each.getAttribute("pageTitle"));
+        }
+    }
+
     private void installDatabaseProvider(String[] tables, String... appliedVersions) throws Exception {
         DatabaseMetaData metaData = mock(DatabaseMetaData.class);
         when(metaData.getDatabaseProductName()).thenReturn("PostgreSQL");
