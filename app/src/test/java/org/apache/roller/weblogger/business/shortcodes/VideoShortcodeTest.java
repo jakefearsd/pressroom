@@ -32,6 +32,18 @@ class VideoShortcodeTest {
         assertTrue(html.contains("class=\"video-embed\""), html);
     }
 
+    /**
+     * The watch-URL pattern used to step over each earlier query parameter
+     * with a repeated group, which java.util.regex runs by recursion: a few
+     * thousand parameters overflowed the stack and took the page down.
+     */
+    @Test
+    void aWatchUrlWithThousandsOfParametersStillYieldsItsId() {
+        String html = render("https://www.youtube.com/watch?" + "a=1&".repeat(20_000) + "v=dQw4w9WgXcQ");
+
+        assertTrue(html.contains("data-video-id=\"dQw4w9WgXcQ\""), html);
+    }
+
     @Test
     void aShortYoutuBeUrlYieldsTheSameId() {
         assertTrue(render("https://youtu.be/dQw4w9WgXcQ")

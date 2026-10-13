@@ -416,6 +416,26 @@ class ShortcodeExpanderTest {
             String text = "arrays[0] and [1,2,3] and [ spaced ]";
             assertEquals(text, expander.expand(entry, text));
         }
+
+        /**
+         * "[Note that" and then a long paragraph with no closing bracket is
+         * ordinary prose. The tag pattern used to recurse once per character
+         * of a would-be attribute section, so a couple of thousand of them
+         * overflowed a request thread's stack: every page showing the entry
+         * failed with a StackOverflowError instead of rendering it.
+         */
+        @Test
+        void anUnclosedBracketBeforeALongParagraphIsLeftAlone() {
+            String text = "[Note that " + "the rest of this paragraph runs on. ".repeat(3_000);
+            assertEquals(text, expander.expand(entry, text));
+        }
+
+        /** The same recursion, reached through quoted values inside a well-formed tag. */
+        @Test
+        void aTagWithThousandsOfQuotedValuesStillExpands() {
+            String text = "[upper word=x" + " a=\"b\"".repeat(20_000) + "]";
+            assertEquals("X", expander.expand(entry, text));
+        }
     }
 
     // ---------------------------------------------------------- failure modes

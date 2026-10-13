@@ -56,10 +56,14 @@ public class VideoShortcode implements ShortcodeHandler {
                             String thumbnailFormat) {
     }
 
+    // The watch URL's v= may follow any number of other parameters. "(?s:.*&)?"
+    // skips them in one backtracking scan; the repeated group "(?:[^&]*&)*" it
+    // replaces matched the same URLs but recursed once per parameter, which
+    // overflowed the stack on a few thousand.
     private static final List<Provider> PROVIDERS = List.of(
             new Provider("youtube",
                     Pattern.compile("^https?://(?:www\\.|m\\.)?youtube\\.com/watch\\?"
-                            + "(?:[^&]*&)*v=([^&#]+)"),
+                            + "(?s:.*&)?v=([^&#]+)"),
                     Pattern.compile("^[A-Za-z0-9_-]{11}$"),
                     "https://i.ytimg.com/vi/%s/hqdefault.jpg"),
             new Provider("youtube",

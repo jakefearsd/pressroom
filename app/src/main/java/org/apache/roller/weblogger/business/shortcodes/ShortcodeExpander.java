@@ -103,9 +103,19 @@ public final class ShortcodeExpander {
      * the no-attribute self-close ({@code [name/]}); a trailing {@code /}
      * after attributes lands inside group 3 and is handled by
      * {@link #isSelfClosing}.
+     *
+     * <p>Group 3 is written as runs of plain characters between quoted values,
+     * all possessive, rather than as one alternation repeated per character.
+     * {@code java.util.regex} recurses once per iteration of a repeated group,
+     * so the per-character form overflowed a request thread's stack on a
+     * couple of thousand characters of unclosed {@code [word ...} prose. The
+     * two forms match the same text: a quoted value has exactly one possible
+     * end, and nothing after group 3 can match inside it, so the possessive
+     * quantifiers give up no match the greedy ones could have found.
      */
     private static final Pattern OPEN_TAG = Pattern.compile(
-            "\\[(\\[?)([a-zA-Z][\\w-]*)((?:\\s(?:[^\\]\"']|\"[^\"]*\"|'[^']*')*)?)(/?)\\]");
+            "\\[(\\[?)([a-zA-Z][\\w-]*)"
+            + "((?:\\s[^\\]\"']*+(?:(?:\"[^\"]*+\"|'[^']*+')[^\\]\"']*+)*+)?)(/?)\\]");
 
     private static final Pattern ATTRIBUTE = Pattern.compile(
             "([\\w-]+)\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s\\]]+))");
