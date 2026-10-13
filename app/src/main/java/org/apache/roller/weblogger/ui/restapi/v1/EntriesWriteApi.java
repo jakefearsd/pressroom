@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.roller.weblogger.WebloggerException;
+import org.apache.roller.weblogger.pojos.MediaFile;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogCategory;
@@ -15,6 +16,7 @@ import org.apache.roller.weblogger.pojos.WeblogEntry;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.controllers.EntryDeletion;
 import org.apache.roller.weblogger.ui.controllers.EntryFieldRules;
+import org.apache.roller.weblogger.ui.controllers.WeblogOwnership;
 import org.apache.roller.weblogger.ui.controllers.UISecurityEnforced;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
 import org.apache.roller.weblogger.ui.restapi.FieldErrors;
@@ -300,6 +302,28 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         errors.check("tags", () -> checkTags(body.tags()));
         applyPublishNowDefault(scratch);
         errors.check("pubTime", () -> requireScheduledHasPubTime(scratch));
+        checkImageId(errors, weblog, "featuredImageId", body.featuredImageId(), entry.getFeaturedImageId());
+        checkImageId(errors, weblog, "ogImageId", body.ogImageId(), entry.getOgImageId());
+    }
+
+    /**
+     * featuredImageId and ogImageId must name an image readers can load: a
+     * media file of this weblog, an image, outside every private directory.
+     * They were only length-checked, so a typo or a foreign id was stored and
+     * the post silently had no featured image. A value equal to the stored
+     * one is not re-checked, so an entry sent back exactly as it was read
+     * never fails on a file deleted since.
+     */
+    private void checkImageId(FieldErrors errors, Weblog weblog, String field, String id, String stored) {
+        if (id == null || id.equals(stored)) {
+            return;
+        }
+        MediaFile file = WeblogOwnership.mediaFile(weblogger, id, weblog);
+        boolean hidden = file != null && file.getDirectory() != null && file.getDirectory().isPrivate();
+        if (file == null || !file.isImageFile() || hidden) {
+            errors.add(field, field + " must be the id of an image in this weblog's media, "
+                    + "outside any private directory.");
+        }
     }
 
     /**

@@ -143,4 +143,25 @@ class WeblogOwnershipTest {
             org.junit.jupiter.api.Assertions.assertFalse(line.contains("FORGED"), "a raw id was logged: " + line);
         }
     }
+
+    @Test
+    void aMediaFileIsFoundOnlyThroughItsOwnWeblog() throws Exception {
+        weblogger.getPropertiesManager().getProperties().get("uploads.enabled").setValue("true");
+        org.apache.roller.weblogger.business.MediaFileManager mfm = weblogger.getMediaFileManager();
+        Weblog managed = TestUtils.getManagedWebsite(mine);
+        org.apache.roller.weblogger.pojos.MediaFile file = new org.apache.roller.weblogger.pojos.MediaFile();
+        file.setName("own.jpg");
+        file.setDirectory(mfm.getDefaultMediaFileDirectory(managed));
+        file.setWeblog(managed);
+        file.setContentType("image/jpeg");
+        file.setInputStream(getClass().getResourceAsStream("/hawk.jpg"));
+        mfm.createMediaFile(managed, file, new org.apache.roller.weblogger.util.RollerMessages());
+        TestUtils.endSession(true);
+
+        assertNotNull(WeblogOwnership.mediaFile(weblogger, file.getId(), TestUtils.getManagedWebsite(mine)));
+        assertNull(WeblogOwnership.mediaFile(weblogger, file.getId(), TestUtils.getManagedWebsite(theirs)));
+        assertNull(WeblogOwnership.mediaFile(weblogger, "no-such-id", TestUtils.getManagedWebsite(mine)));
+        assertNull(WeblogOwnership.mediaFile(weblogger, " ", TestUtils.getManagedWebsite(mine)));
+        assertNull(WeblogOwnership.mediaFile(weblogger, null, TestUtils.getManagedWebsite(mine)));
+    }
 }

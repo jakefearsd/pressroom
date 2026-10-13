@@ -21,6 +21,7 @@ import org.apache.roller.weblogger.pojos.MediaFileFilter;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.controllers.MediaUploads;
+import org.apache.roller.weblogger.ui.controllers.WeblogOwnership;
 import org.apache.roller.weblogger.ui.controllers.UISecurityEnforced;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
 import org.apache.roller.weblogger.ui.restapi.dto.ClearFields;
@@ -363,33 +364,20 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
 
     /**
      * The media file with this id, but only when it belongs to the action
-     * weblog. There is no {@code WeblogOwnership.media} member -- ownership
-     * for a media file is read off its containing directory's weblog,
-     * falling back to the file's own weblog column for a file not yet
-     * filed anywhere, the same rule {@code MediaFileBase.ownedMediaFile}
-     * applies for the JSP admin UI. That helper lives on a different
-     * controller hierarchy ({@code BaseController}, not
-     * {@code BaseApiController}), so this is a small local duplicate of the
-     * same shape rather than a shared extraction with only one other
-     * caller.
+     * weblog. Delegates to {@link WeblogOwnership#mediaFile}, the by-id
+     * ownership check the entry write's image-id check shares, so both
+     * agree on what "this weblog's file" means.
      */
     private MediaFile requireMedia(HttpServletRequest request, String id) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
         if (StringUtils.isBlank(id)) {
             throw ApiException.notFound("No such media file.");
         }
-        MediaFile file = weblogger.getMediaFileManager().getMediaFile(id);
-        if (file == null || !belongsTo(file, weblog)) {
+        MediaFile file = WeblogOwnership.mediaFile(weblogger, id, weblog);
+        if (file == null) {
             throw ApiException.notFound("No such media file.");
         }
         return file;
-    }
-
-    private boolean belongsTo(MediaFile file, Weblog weblog) {
-        Weblog owner = file.getDirectory() != null && file.getDirectory().getWeblog() != null
-                ? file.getDirectory().getWeblog()
-                : file.getWeblog();
-        return owner != null && owner.getId() != null && owner.getId().equals(weblog.getId());
     }
 
     /**

@@ -348,6 +348,8 @@ class EntriesWriteApiControllerTest {
      * POST /media/imports answers with (a MediaFile id, a 36-character UUID)
      * is accepted as an entry's featuredImageId, stored, and read back.
      * Characterisation of the shipped write path: expected to pass at once.
+     * The id must now name an image of this weblog (spec 2026-10-13, section
+     * 4), so the test stubs one.
      */
     @Test
     void patchAcceptsAnImportedMediaIdAsTheFeaturedImage() throws Exception {
@@ -359,6 +361,14 @@ class EntriesWriteApiControllerTest {
         entry.setTitle("Harbour");
         when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1")).thenReturn(entry);
         String mediaId = new org.apache.roller.weblogger.pojos.MediaFile().getId();
+        org.apache.roller.weblogger.business.MediaFileManager media =
+                mock(org.apache.roller.weblogger.business.MediaFileManager.class);
+        when(weblogger.getMediaFileManager()).thenReturn(media);
+        org.apache.roller.weblogger.pojos.MediaFile image = new org.apache.roller.weblogger.pojos.MediaFile();
+        image.setId(mediaId);
+        image.setDirectory(new org.apache.roller.weblogger.pojos.MediaFileDirectory(weblog, "default", null));
+        image.setContentType("image/jpeg");
+        when(media.getMediaFile(mediaId)).thenReturn(image);
 
         String body = mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")

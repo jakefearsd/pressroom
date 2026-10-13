@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.Weblogger;
+import org.apache.roller.weblogger.pojos.MediaFile;
 import org.apache.roller.weblogger.pojos.ReaderComment;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogCategory;
@@ -33,7 +34,7 @@ import org.apache.roller.weblogger.pojos.WeblogTemplate;
 
 /**
  * By-id ownership lookups for {@code WeblogEntry}, {@code WeblogCategory},
- * {@code WeblogTemplate} and {@code WeblogPage}, extracted from
+ * {@code WeblogTemplate}, {@code WeblogPage} and {@code MediaFile}, extracted from
  * {@link BaseController}'s four {@code lookupX} methods (Task 7).
  *
  * <p>{@code getWeblogEntry}/{@code getWeblogCategory}/{@code getTemplate}/
@@ -188,6 +189,33 @@ public final class WeblogOwnership {
             return comment;
         } catch (WebloggerException ex) {
             log.error("Error looking up a comment for weblog {}", handleOf(weblog), ex);
+        }
+        return null;
+    }
+
+    /**
+     * The media file with this id, but only when it belongs to {@code
+     * weblog}. A file's weblog is its directory's; {@code MediaFile.weblog}
+     * is the fallback for a file read without its directory.
+     */
+    public static MediaFile mediaFile(Weblogger weblogger, String id, Weblog weblog) {
+        if (id == null || id.isBlank()) {
+            return null;
+        }
+        try {
+            MediaFile file = weblogger.getMediaFileManager().getMediaFile(id);
+            if (file == null) {
+                return null;
+            }
+            Weblog owner = file.getDirectory() != null && file.getDirectory().getWeblog() != null
+                    ? file.getDirectory().getWeblog()
+                    : file.getWeblog();
+            if (owner == null || owner.getId() == null || !owner.getId().equals(weblog.getId())) {
+                return null;
+            }
+            return file;
+        } catch (WebloggerException ex) {
+            log.error("Error looking up a media file for weblog {}", handleOf(weblog), ex);
         }
         return null;
     }
