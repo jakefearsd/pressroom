@@ -65,7 +65,7 @@ class BaseControllerHelpersTest {
 
     @Test
     void theRuntimeValueIsUsedWhenTheStaticOneIsAbsentAndAnUnknownKeyIsItsOwnName() {
-        try (MockedStatic<WebloggerConfig> staticConfig = mockStatic(WebloggerConfig.class);
+        try (var _ = mockStatic(WebloggerConfig.class);
                 MockedStatic<WebloggerRuntimeConfig> runtime = mockStatic(WebloggerRuntimeConfig.class)) {
             runtime.when(() -> WebloggerRuntimeConfig.getProperty("only.runtime")).thenReturn("from-db");
 

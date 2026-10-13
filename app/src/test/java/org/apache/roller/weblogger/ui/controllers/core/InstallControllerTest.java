@@ -318,14 +318,6 @@ class InstallControllerTest {
         return ControllerTestFixture.requestFor(null);
     }
 
-    /**
-     * Points {@code WebloggerStartup} at a database that reports the given
-     * tables and applied migration versions.
-     *
-     * <p>The installer inspects the database through JDBC metadata, so this is
-     * the smallest thing that can stand in for "a database in state X" without
-     * one being running.
-     */
     // ---- the success and bootstrap paths
 
     @Test
@@ -373,9 +365,13 @@ class InstallControllerTest {
         org.mockito.Mockito.verify(webloggerProvider, org.mockito.Mockito.never()).bootstrap();
     }
 
-    /** Whatever kind of failure bootstrapping reports, the page shows that failure and its trace. */
+    /**
+     * Whatever kind of failure bootstrapping reports, the anonymous page names the problem
+     * and nothing else: no exception, trace or class name in the model. The failure is
+     * logged with its Throwable instead.
+     */
     @Test
-    void everyKindOfBootstrapFailureLandsOnTheBootstrapPageWithItsCause() throws Exception {
+    void everyKindOfBootstrapFailureLandsOnTheBootstrapPageAndIsLoggedNotShown() throws Exception {
         Throwable[] failures = {
             new org.springframework.beans.FatalBeanException("bean wiring"),
             new org.apache.roller.weblogger.business.BootstrapException("tier"),
@@ -383,17 +379,31 @@ class InstallControllerTest {
         };
         for (Throwable failure : failures) {
             ExtendedModelMap each = new ExtendedModelMap();
-            org.mockito.Mockito.doThrow(failure).when(webloggerProvider).bootstrap();
+            doThrow(failure).when(webloggerProvider).bootstrap();
 
-            String view = controller.bootstrap(request(), each);
+            String view;
+            List<String> logged;
+            try (SsoLogCapture capture = SsoLogCapture.everyLogger()) {
+                view = controller.bootstrap(request(), each);
+                logged = capture.everything();
+            }
 
             assertEquals(".Bootstrap", view, failure.toString());
-            assertSame(failure, each.getAttribute("rootCauseException"));
-            assertTrue(each.getAttribute("rootCauseStackTrace").toString().contains(failure.getClass().getSimpleName()));
             assertEquals("installer.error.unknown.pageTitle", each.getAttribute("pageTitle"));
+            assertNothingDiagnostic(each);
+            assertTrue(logged.contains(failure.getClass().getName() + ": " + failure.getMessage()),
+                    "logged with its exception: " + logged);
         }
     }
 
+    /**
+     * Points {@code WebloggerStartup} at a database that reports the given
+     * tables and applied migration versions.
+     *
+     * <p>The installer inspects the database through JDBC metadata, so this is
+     * the smallest thing that can stand in for "a database in state X" without
+     * one being running.
+     */
     private void installDatabaseProvider(String[] tables, String... appliedVersions) throws Exception {
         DatabaseMetaData metaData = mock(DatabaseMetaData.class);
         when(metaData.getDatabaseProductName()).thenReturn("PostgreSQL");

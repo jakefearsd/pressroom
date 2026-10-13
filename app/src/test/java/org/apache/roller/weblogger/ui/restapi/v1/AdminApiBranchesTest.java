@@ -182,6 +182,12 @@ class AdminApiBranchesTest {
 
         tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
         assertEquals(3, json.size());
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, RuntimeConfigProperty>> saved = ArgumentCaptor.forClass(Map.class);
+        verify(weblogger.getPropertiesManager()).saveProperties(saved.capture());
+        assertEquals("12", saved.getValue().get("site.pages.maxEntries").getValue());
+        assertEquals("1.5", saved.getValue().get("uploads.file.maxsize").getValue());
+        assertEquals("FALSE", saved.getValue().get("groupblogging.enabled").getValue());
         verify(weblogger).flush();
     }
 
