@@ -79,10 +79,15 @@ org.apache.roller.weblogger.
 │   ├── themes/
 │   └── search/      # Lucene
 ├── pojos/           # Domain entities
+├── config/          # WebloggerConfig, WebloggerRuntimeConfig
 ├── ui/controllers/  # Spring MVC controllers
 │   ├── admin/
-│   ├── core/        # Login, profile
+│   ├── ajax/        # the user/theme data servlets
+│   ├── core/        # Login, profile, reader account and comments
 │   └── editor/
+├── ui/core/         # filters, security (incl. sso/), RollerSession
+├── ui/rendering/    # blog rendering: servlets, models, Velocity
+├── ui/restapi/      # /api/v1 and the MCP endpoint
 └── util/
 ```
 
