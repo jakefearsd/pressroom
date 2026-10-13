@@ -66,8 +66,8 @@ class LogPatternTest {
 
     private static String format(LogEvent event) throws Exception {
         PatternLayout layout = PatternLayout.newBuilder()
-                .withPattern(configuredPattern())
-                .withConfiguration(new DefaultConfiguration())
+                .setPattern(configuredPattern())
+                .setConfiguration(new DefaultConfiguration())
                 .build();
         return layout.toSerializable(event);
     }

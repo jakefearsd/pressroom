@@ -143,10 +143,6 @@ class UserDataServletTest {
     }
 
     /**
-     * A principal with no matching account is refused rather than served an
-     * empty list, so a stale session cannot quietly enumerate users.
-     */
-    /**
      * Screen names are typed by their owners, and a reader's comes from the
      * Google account's name. The list must reach the browser as plain text: with
      * no content type at all, a name such as {@code <img src=x onerror=...>} was
@@ -165,6 +161,10 @@ class UserDataServletTest {
         assertTrue(response.getContentAsString().contains("Zoë"), response.getContentAsString());
     }
 
+    /**
+     * A principal with no matching account is refused rather than served an
+     * empty list, so a stale session cannot quietly enumerate users.
+     */
     @Test
     void aCallerWithNoAccountIsRefused() throws Exception {
         request.setUserPrincipal(() -> "ghost");
