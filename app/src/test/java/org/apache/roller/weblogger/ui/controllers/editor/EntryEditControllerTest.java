@@ -1294,4 +1294,120 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
                 "the diff rendered raw markup from a revision: " + body);
         assertTrue(body.contains("&lt;script&gt;"), "the removed line must appear, escaped");
     }
+
+    // ---------------------------------------- revisions: diff content and failures
+
+    private WeblogEntryRevision revisionOf(WeblogEntry entry, String id) throws Exception {
+        WeblogEntryRevision revision = new WeblogEntryRevision();
+        revision.setId(id);
+        revision.setWeblogEntry(entry);
+        when(weblogger.getWeblogEntryManager().getRevision(id)).thenReturn(revision);
+        return revision;
+    }
+
+    @Test
+    void theDiffMarksAddedRemovedAndUnchangedLinesAndOmitsUnchangedSections() throws Exception {
+        WeblogEntry entry = existingEntry(PubStatus.PUBLISHED);
+        entry.setTitle("Same title");
+        entry.setSummary(null);
+        entry.setText("kept\nnew line");
+        WeblogEntryRevision revision = revisionOf(entry, "r1");
+        revision.setTitle("Same title");
+        revision.setSummary(null);
+        revision.setText("kept\nold line");
+
+        String body = controller.entryEditRevisionDiff(request, "entry-1", "r1").getBody();
+
+        assertTrue(body.contains("<span class=\"diff-same\">  kept</span>"), body);
+        assertTrue(body.contains("<span class=\"diff-removed\">- old line</span>"), body);
+        assertTrue(body.contains("<span class=\"diff-added\">+ new line</span>"), body);
+        assertEquals(1, body.split("<h5>", -1).length - 1, "only the changed section is shown: " + body);
+    }
+
+    @Test
+    void aDiffWithNoRevisionIdOrNoEntryIsNotFound() throws Exception {
+        existingEntry(PubStatus.PUBLISHED);
+
+        assertEquals(404, controller.entryEditRevisionDiff(request, "entry-1", null).getStatusCode().value());
+        assertEquals(404, controller.entryEditRevisionDiff(request, "no-such-entry", "r1").getStatusCode().value());
+    }
+
+    @Test
+    void aRevisionLookupThatFailsIsNotFoundRatherThanAnError() throws Exception {
+        existingEntry(PubStatus.PUBLISHED);
+        when(weblogger.getWeblogEntryManager().getRevision("r1")).thenThrow(new WebloggerException("store down"));
+
+        assertEquals(404, controller.entryEditRevisionDiff(request, "entry-1", "r1").getStatusCode().value());
+    }
+
+    @Test
+    void aRevisionWithNoEntryRecordedIsNotRestoredOrShown() throws Exception {
+        WeblogEntry entry = existingEntry(PubStatus.PUBLISHED);
+        entry.setText("Current text");
+        WeblogEntryRevision orphan = revisionOf(entry, "r1");
+        orphan.setWeblogEntry(null);
+        orphan.setText("orphan");
+
+        assertEquals(404, controller.entryEditRevisionDiff(request, "entry-1", "r1").getStatusCode().value());
+        RedirectAttributes redirect = newRedirectAttributes();
+        controller.entryEditRestoreRevision(request, "entry-1", "r1", redirect);
+        assertEquals("Current text", entry.getText());
+        assertEquals(java.util.List.of("weblogEntry.notFound"), flashErrors(redirect));
+    }
+
+    @Test
+    void restoringAnUnpublishedEntryDoesNotPutItInTheSearchIndex() throws Exception {
+        WeblogEntry entry = existingEntry(PubStatus.DRAFT);
+        WeblogEntryRevision revision = revisionOf(entry, "r1");
+        revision.setText("Older text");
+
+        controller.entryEditRestoreRevision(request, "entry-1", "r1", newRedirectAttributes());
+
+        assertEquals("Older text", entry.getText());
+        verify(weblogger.getIndexManager(), never()).addEntryReIndexOperation(any(WeblogEntry.class));
+    }
+
+    @Test
+    void restoringAPublishedEntryReindexesIt() throws Exception {
+        WeblogEntry entry = existingEntry(PubStatus.PUBLISHED);
+        revisionOf(entry, "r1").setText("Older text");
+
+        RedirectAttributes redirect = newRedirectAttributes();
+        controller.entryEditRestoreRevision(request, "entry-1", "r1", redirect);
+
+        verify(weblogger.getIndexManager()).addEntryReIndexOperation(entry);
+        assertEquals(java.util.List.of("weblogEdit.revisionRestored"), flashMessages(redirect));
+    }
+
+    @Test
+    void aRestoreThatFailsToSaveReportsAnErrorAndNoSuccess() throws Exception {
+        WeblogEntry entry = existingEntry(PubStatus.PUBLISHED);
+        revisionOf(entry, "r1").setText("Older text");
+        org.mockito.Mockito.doThrow(new WebloggerException("store down"))
+                .when(weblogger.getWeblogEntryManager()).saveWeblogEntry(entry);
+
+        RedirectAttributes redirect = newRedirectAttributes();
+        String view = controller.entryEditRestoreRevision(request, "entry-1", "r1", redirect);
+
+        assertEquals(java.util.List.of("generic.error.check.logs"), flashErrors(redirect));
+        assertTrue(flashMessages(redirect).isEmpty(), "a failed restore must not claim success");
+        assertTrue(view.startsWith("redirect:/roller-ui/authoring/entryEdit.rol"), view);
+    }
+
+    @Test
+    void aBlankIdPreviewsAgainstAScratchEntryOfTheActionWeblogAndPersistsNothing() throws Exception {
+        var response = controller.entryEditPreview(request, "  ", "plain **text**");
+
+        assertEquals(200, response.getStatusCode().value());
+        assertTrue(response.getBody().contains("<strong>text</strong>"), response.getBody());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+    }
+
+    @Test
+    void aPreviewWithNoTextAtAllRendersAnEmptyBody() {
+        var response = controller.entryEditPreview(request, null, null);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertTrue(response.getBody().isBlank(), response.getBody());
+    }
 }
