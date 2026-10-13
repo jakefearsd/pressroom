@@ -45,7 +45,11 @@ import org.apache.roller.weblogger.pojos.ThemeTemplate.ComponentType;
         justification = "Every path in this class is the theme's directory under themes.dir (operator "
                 + "configuration) joined with a file name that theme's own theme.xml declares. Themes ship "
                 + "in the image or the operator's themes directory; no request, author or upload supplies "
-                + "a theme or its descriptor. Class-level because all six loaders share this one reason.")
+                + "a theme or its descriptor. The one path built from weblog data, "
+                + "ThemeManagerImpl.reLoadThemeFromDisk(weblog.getEditorTheme()), runs only with "
+                + "themes.reload.mode=true (default false), and editorTheme is only ever a theme id "
+                + "ThemeManager.getTheme or WeblogCreationRules accepted, or custom. Class-level because "
+                + "all six loaders share this one reason.")
 public class SharedThemeFromDir extends SharedTheme {
 
     private static final long serialVersionUID = 1L;

@@ -122,7 +122,7 @@ public class VideoShortcode implements ShortcodeHandler {
             justification = "The id has matched its provider's id pattern (eleven [A-Za-z0-9_-] or digits) "
                     + "before it gets here and the caption goes through escape(); the format string is a "
                     + "constant in PROVIDERS, never input. The expanded entry also passes through "
-                    + "HTMLSanitizer.")
+                    + "HTMLSanitizer whenever weblogAdminsUntrusted is on (the shipped default).")
     private static String markup(Provider provider, String id, String caption) {
         StringBuilder html = new StringBuilder(320);
         html.append("<figure class=\"video-figure\">");

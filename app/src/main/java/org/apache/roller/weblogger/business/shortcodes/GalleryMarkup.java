@@ -124,7 +124,8 @@ public final class GalleryMarkup {
             justification = "Alt text, captions and blurhash go through escape() "
                     + "(HTMLSanitizer.htmlEncodeApexesAndTags), URLs are built from ids by the URL "
                     + "strategy, and the expanded entry then passes through HTMLSanitizer, the one content "
-                    + "boundary.")
+                    + "boundary, whenever weblogAdminsUntrusted is on (the shipped default; with it off, "
+                    + "authors are trusted with raw HTML anyway).")
     private static void appendFigure(StringBuilder html, MediaFileWrapper image,
             int rowHeight, ImageUrls urls) {
         boolean knownDimensions = image.getWidth() > 0 && image.getHeight() > 0;

@@ -193,8 +193,10 @@ public class SQLScriptRunner {
                     + "list from files read off the classpath (MigrationCatalog.versions() / "
                     + "ClasspathDatabaseScriptProvider), and neither the web install wizard "
                     + "(InstallController) nor any other caller accepts caller-supplied SQL "
-                    + "text. Parameterising this would break the migration runner, which is "
-                    + "one of the three appliers of the migration chain.")
+                    + "text. The one non-constant piece is :app_user, the connection's user name, "
+                    + "which DatabaseInstaller.connectionUser admits only as an unquoted identifier "
+                    + "([A-Za-z_][A-Za-z0-9_]*). Parameterising this would break the migration "
+                    + "runner, which is one of the three appliers of the migration chain.")
     public void runScript(
             Connection con, boolean stopOnError) throws SQLException {
         failed = false;

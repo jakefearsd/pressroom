@@ -84,7 +84,8 @@ public class CtaShortcode implements ShortcodeHandler {
             justification = "Every author value goes through escape() "
                     + "(HTMLSanitizer.htmlEncodeApexesAndTags), the href is taken only as an absolute "
                     + "http(s) URL, and the expanded entry then passes through HTMLSanitizer, the one "
-                    + "content boundary (EntryRenderer.render).")
+                    + "content boundary (EntryRenderer.render), whenever weblogAdminsUntrusted is on (the "
+                    + "shipped default; with it off, authors are trusted with raw HTML anyway).")
     public String render(Map<String, String> attributes, String body, ShortcodeContext content) {
         String href = StringUtils.trimToNull(attributes.get("href"));
         if (href == null && content != null) {

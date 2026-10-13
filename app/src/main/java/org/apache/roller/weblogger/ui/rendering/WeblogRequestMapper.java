@@ -172,7 +172,10 @@ public class WeblogRequestMapper {
             value = "UNVALIDATED_REDIRECT",
             justification = "Both Locations stay on a fixed host: https:// plus the weblog's own custom "
                     + "domain from VirtualHostRegistry, or the context path plus a handle isWeblog() has "
-                    + "just found stored. The request path only ever follows that host or a "
+                    + "just found stored and a locale segment LocaleSegment.isLocale admits only at two or "
+                    + "five characters (on a custom domain the locale comes first). A segment holds no "
+                    + "slash, and a backslash, which a browser would read as one, never arrives: Tomcat "
+                    + "refuses it in a path with a 400. The request path only ever follows that host or a "
                     + "context-relative /.")
     public boolean handleRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {

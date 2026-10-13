@@ -69,7 +69,9 @@ public class FaqShortcode implements ShortcodeHandler {
             value = "POTENTIAL_XML_INJECTION",
             justification = "The questions and answers are the author's own entry markup and are kept as "
                     + "written on purpose; the expanded entry passes through HTMLSanitizer, the one "
-                    + "content boundary, before any reader sees it (EntryRenderer.render).")
+                    + "content boundary, before any reader sees it (EntryRenderer.render), whenever "
+                    + "weblogAdminsUntrusted is on (the shipped default; with it off, authors are trusted "
+                    + "with raw HTML anyway).")
     public String render(Map<String, String> attributes, String body, ShortcodeContext content) {
         if (StringUtils.isBlank(body)) {
             log.debug("[faq] shortcode without a body; leaving it as written");

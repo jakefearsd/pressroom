@@ -80,7 +80,8 @@ public class ImageShortcode implements ShortcodeHandler {
             justification = "src and srcset are built by the media wrapper from ids and widths, alt and "
                     + "the caption attribute go through escape(), and a body caption is the author's own "
                     + "markup; the expanded entry then passes through HTMLSanitizer, the one content "
-                    + "boundary.")
+                    + "boundary, whenever weblogAdminsUntrusted is on (the shipped default; with it off, "
+                    + "authors are trusted with raw HTML anyway).")
     public String render(Map<String, String> attributes, String body, ShortcodeContext content) {
         String id = attributes.get("id");
         if (StringUtils.isBlank(id)) {
