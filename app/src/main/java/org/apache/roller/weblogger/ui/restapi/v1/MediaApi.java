@@ -2,17 +2,13 @@ package org.apache.roller.weblogger.ui.restapi.v1;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.MediaFileManager;
-import org.apache.roller.weblogger.business.fetch.FetchRefusal;
-import org.apache.roller.weblogger.business.fetch.FetchedImage;
 import org.apache.roller.weblogger.business.fetch.RemoteImageFetcher;
 import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.pojos.MediaFile;
@@ -24,12 +20,11 @@ import org.apache.roller.weblogger.ui.controllers.MediaUploads;
 import org.apache.roller.weblogger.ui.controllers.WeblogOwnership;
 import org.apache.roller.weblogger.ui.controllers.UISecurityEnforced;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
+import org.apache.roller.weblogger.ui.restapi.MediaImports;
 import org.apache.roller.weblogger.ui.restapi.dto.ClearFields;
 import org.apache.roller.weblogger.ui.restapi.ColumnLimits;
 import org.apache.roller.weblogger.ui.restapi.dto.MediaDtos;
 import org.apache.roller.weblogger.util.RollerMessages;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -64,8 +59,6 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @RestController
 @RequestMapping("/v1/weblogs/{handle}/media")
 public class MediaApi extends BaseApiController implements UISecurityEnforced {
-
-    private static final Logger IMPORT_LOG = LoggerFactory.getLogger("roller.media.import");
 
     @Autowired
     RemoteImageFetcher imageFetcher;
@@ -155,56 +148,40 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
     }
 
     /**
-     * Import an image from a public URL. The fetched bytes are stored through
-     * MediaUploads.store, the path a browser upload takes, so every upload rule
-     * applies. One INFO line per import on roller.media.import, refusals
-     * before the fetch included: weblog, host, outcome, bytes, ms. Never the
-     * path or query, where a signed URL keeps its credentials.
+     * Import an image from a public URL through {@link MediaImports}: 201
+     * with a Location for a new file, 200 with the file already in the
+     * directory when the bytes match one. The checks before any network
+     * request are this endpoint's own and log their refusal on the same
+     * import logger.
      */
     @PostMapping("/imports")
     public ResponseEntity<MediaDtos.MediaView> importImage(HttpServletRequest request,
             @RequestBody MediaDtos.MediaImport body) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
-        MediaFileManager mfm = weblogger.getMediaFileManager();
         long started = System.nanoTime();
-        String outcome = "error";
-        long bytes = 0;
+        MediaFileDirectory directory;
         try {
-            MediaFileDirectory directory;
-            try {
-                directory = importDirectory(request, weblog, body, mfm);
-            } catch (ApiException e) {
-                outcome = "refused";
-                throw e;
-            }
-            FetchedImage image = imageFetcher.fetch(body.url(), MediaUploads.maxFileBytes(), body.name());
-            bytes = image.size();
-            RollerMessages messages = new RollerMessages();
-            MediaUploads.Result stored = MediaUploads.store(
-                    MediaUploads.Source.of(image.fileName(), image.kind().contentType(), image.bytes()),
-                    weblog, directory, mfm, messages);
-            if (stored.file() == null) {
-                outcome = stored.status();
-                throw ApiException.badRequest(stored.detail());
-            }
-            MediaFile file = stored.file();
-            if (body.altText() != null) {
-                file.setAltText(body.altText());
-                mfm.updateMediaFile(weblog, file);
-            }
-            weblogger.flush();
-            outcome = "created";
-            URI location = ServletUriComponentsBuilder.fromContextPath(request)
-                    .path("/api/v1/weblogs/{handle}/media/{id}")
-                    .buildAndExpand(weblog.getHandle(), file.getId()).toUri();
-            return ResponseEntity.created(location).body(MediaDtos.toView(file, url(weblog, file)));
-        } catch (FetchRefusal e) {
-            outcome = "refused";
-            throw ApiException.badRequest(e.getMessage(), e);
-        } finally {
-            IMPORT_LOG.info("weblog={} host={} outcome={} bytes={} ms={}", weblog.getHandle(), hostOf(body.url()),
-                    outcome, bytes, (System.nanoTime() - started) / 1_000_000);
+            directory = importDirectory(request, weblog, body, weblogger.getMediaFileManager());
+        } catch (ApiException e) {
+            MediaImports.log(weblog, body.url(), "refused", 0, started);
+            throw e;
         }
+        MediaImports.Imported imported;
+        try {
+            imported = MediaImports.importImage(weblogger, imageFetcher, weblog, directory,
+                    body.url(), body.name(), body.altText());
+        } catch (MediaImports.ImportRefused e) {
+            throw ApiException.invalidField("url", e.getMessage(), e);
+        }
+        MediaFile file = imported.file();
+        MediaDtos.MediaView view = MediaDtos.toView(file, url(weblog, file));
+        if (!imported.created()) {
+            return ResponseEntity.ok(view);
+        }
+        URI location = ServletUriComponentsBuilder.fromContextPath(request)
+                .path("/api/v1/weblogs/{handle}/media/{id}")
+                .buildAndExpand(weblog.getHandle(), file.getId()).toUri();
+        return ResponseEntity.created(location).body(view);
     }
 
     /**
@@ -215,7 +192,7 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
     private MediaFileDirectory importDirectory(HttpServletRequest request, Weblog weblog,
             MediaDtos.MediaImport body, MediaFileManager mfm) throws WebloggerException {
         if (StringUtils.isBlank(body.url())) {
-            throw ApiException.badRequest("url is required.");
+            throw ApiException.invalidField("url", "url is required.");
         }
         ColumnLimits.requireMaxLength("altText", body.altText(), ColumnLimits.MEDIA_ALT_TEXT);
         MediaFileDirectory directory = StringUtils.isNotBlank(body.directoryId())
@@ -225,19 +202,6 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
             throw ApiException.badRequest("File upload is disabled for this site.");
         }
         return directory;
-    }
-
-    /** The URL's host only, lower-cased; "?" when it has none. URI parsing keeps it to hostname characters. */
-    private static String hostOf(String url) {
-        if (StringUtils.isBlank(url)) {
-            return "?";
-        }
-        try {
-            String host = new URI(url.trim()).getHost();
-            return host == null ? "?" : host.toLowerCase(Locale.ROOT);
-        } catch (URISyntaxException e) {
-            return "?";
-        }
     }
 
     /**

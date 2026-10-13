@@ -17,6 +17,7 @@ import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.util.RollerMessages;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
+import org.apache.roller.weblogger.business.ContentHashes;
 import org.apache.roller.weblogger.business.MediaFileManager;
 import org.apache.roller.weblogger.business.URLStrategy;
 import org.apache.roller.weblogger.business.Weblogger;
@@ -894,6 +895,78 @@ class MediaApiTest {
 
         assertTrue(body.contains("url is required."), body);
         verify(fetcher, never()).fetch(any(), org.mockito.ArgumentMatchers.anyLong(), any());
+    }
+
+    @Test
+    void importingBytesAlreadyInTheDirectoryAnswers200WithThatFile() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        RemoteImageFetcher fetcher = mock(RemoteImageFetcher.class);
+        when(fetcher.fetch(SIGNED_URL, 2097152L, null))
+                .thenReturn(new FetchedImage("sunset.jpg", ImageKind.JPEG, JPEG_BYTES));
+        MediaApi controller = importController(weblogger, weblog, fetcher);
+        MediaFileManager mfm = weblogger.getMediaFileManager();
+        MediaFile existing = new MediaFile();
+        existing.setName("sunset.jpg");
+        existing.setAltText("");
+        existing.setDirectory(mfm.getDefaultMediaFileDirectory(weblog));
+        existing.setContentType("image/jpeg");
+        when(mfm.getMediaFileByContentHash(mfm.getDefaultMediaFileDirectory(weblog),
+                ContentHashes.sha256Hex(JPEG_BYTES))).thenReturn(existing);
+
+        try (MockedStatic<WebloggerRuntimeConfig> _ = runtimeConfig(true)) {
+            String body = mockMvc(controller)
+                    .perform(importRequest(weblog, "{\"url\":\"" + SIGNED_URL + "\",\"altText\":\"Dusk\"}"))
+                    .andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString();
+            tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
+            assertEquals(existing.getId(), json.get("id").asString());
+            assertEquals("", json.get("altText").asString(), "a deliberate \"\" is never overwritten");
+        }
+        verify(mfm, never()).createMediaFile(any(), any(), any());
+    }
+
+    @Test
+    void aMatchedFileWithoutAltTextTakesTheImportsAltText() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        RemoteImageFetcher fetcher = mock(RemoteImageFetcher.class);
+        when(fetcher.fetch(SIGNED_URL, 2097152L, null))
+                .thenReturn(new FetchedImage("sunset.jpg", ImageKind.JPEG, JPEG_BYTES));
+        MediaApi controller = importController(weblogger, weblog, fetcher);
+        MediaFileManager mfm = weblogger.getMediaFileManager();
+        MediaFile existing = new MediaFile();
+        existing.setName("sunset.jpg");
+        existing.setDirectory(mfm.getDefaultMediaFileDirectory(weblog));
+        existing.setContentType("image/jpeg");
+        when(mfm.getMediaFileByContentHash(any(), any())).thenReturn(existing);
+
+        try (MockedStatic<WebloggerRuntimeConfig> _ = runtimeConfig(true)) {
+            mockMvc(controller)
+                    .perform(importRequest(weblog, "{\"url\":\"" + SIGNED_URL + "\",\"altText\":\"Dusk\"}"))
+                    .andExpect(status().isOk());
+        }
+        assertEquals("Dusk", existing.getAltText());
+        verify(mfm).updateMediaFile(weblog, existing);
+    }
+
+    @Test
+    void aRefusedFetchNamesTheUrlField() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        RemoteImageFetcher fetcher = mock(RemoteImageFetcher.class);
+        when(fetcher.fetch(any(), org.mockito.ArgumentMatchers.anyLong(), any()))
+                .thenThrow(new FetchRefusal("That address is not on the public internet."));
+        MediaApi controller = importController(weblogger, weblog, fetcher);
+
+        try (MockedStatic<WebloggerRuntimeConfig> _ = runtimeConfig(true)) {
+            String body = mockMvc(controller)
+                    .perform(importRequest(weblog, "{\"url\":\"http://10.0.0.1/x.png\"}"))
+                    .andExpect(status().isBadRequest())
+                    .andReturn().getResponse().getContentAsString();
+            assertEquals("url", new tools.jackson.databind.ObjectMapper().readTree(body)
+                    .get("errors").get(0).get("field").asString());
+        }
     }
 
     /** The leading bytes a real file of each kind starts with, then a little body. */
