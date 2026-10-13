@@ -1069,11 +1069,11 @@ chmod +x deploy.sh
 `.env` is worth doing on any release whose notes mention new `.env` keys, but
 never overwrite `.env` itself; it holds your secrets.
 
-**`umami` moved from a floating tag to a pinned digest this release.** The
-previous value was `postgresql-latest`, which — unlike every other image in
+**`umami` has been pinned to a digest since 0.1.0.** Before that it used
+the floating `postgresql-latest` tag, which — unlike every other image in
 this stack — was not digest-pinned, so a host that had recently pulled
-`latest` could already be running a newer Umami than the digest this release
-now pins, and applying this upgrade would *downgrade* it. Umami's own schema
+`latest` could already be running a newer Umami than the pinned digest, and
+upgrading such a host to 0.1.0 or later would *downgrade* it. Umami's own schema
 migrations are forward-only (they do not support a downgrade), so the
 symptom of that is a container that refuses to start — check `docker compose
 logs umami` — never silent data loss; if you hit it, stay on the newer image

@@ -120,7 +120,8 @@ A flake goes here once it is explained; a rerun that passes explains nothing.
   `ghcr.io/jakefearsd/roller-caddy:<version>` (plus `:latest`,
   `:sha-<short>`), extracts the WAR from the `roller` image into a
   GitHub Release with the deploy bundle (`docker-compose.prod.yml`,
-  `.env.example`, `deploy.sh`).
+  `env.example`, `deploy.sh`). The asset is `deploy/.env.example` renamed: a
+  release asset whose name starts with a dot would not download as itself.
 - `docker-compose.prod.yml` requires `IMAGE_VERSION` in `.env` (no floating
   default) so a deploy always names a tagged release.
 - Local testing of an untagged tree is a `docker build` of
