@@ -4,6 +4,7 @@ import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
 import org.apache.roller.weblogger.ui.restapi.dto.EntryDtos;
 import org.junit.jupiter.api.Test;
+import java.util.List;
 import java.util.Set;
 import java.util.TimeZone;
 import static org.junit.jupiter.api.Assertions.*;
@@ -24,10 +25,7 @@ class EntriesApiWriteTest {
     @Test
     void applyingAWriteEscapesTheTitleExactlyOnce() {
         WeblogEntry entry = new WeblogEntry();
-        EntryDtos.EntryWrite write = new EntryDtos.EntryWrite(
-                "Cats & Dogs", null, null, null, null, null, null,
-                null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null);
+        EntryDtos.EntryWrite write = EntryWrites.write().title("Cats & Dogs").build();
 
         EntryDtos.applyWrite(entry, write, weblogInZone("UTC"), Set.of());
 
@@ -40,10 +38,7 @@ class EntriesApiWriteTest {
         WeblogEntry entry = new WeblogEntry();
         entry.setTitle("kept");
         entry.setText("also kept");
-        EntryDtos.EntryWrite write = new EntryDtos.EntryWrite(
-                null, null, "new body", null, null, null, null,
-                null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null);
+        EntryDtos.EntryWrite write = EntryWrites.write().text("new body").build();
 
         EntryDtos.applyWrite(entry, write, weblogInZone("UTC"), Set.of());
 
@@ -56,10 +51,7 @@ class EntriesApiWriteTest {
     void pubTimeIsParsedInTheWeblogsZone() {
         WeblogEntry utcEntry = new WeblogEntry();
         WeblogEntry tokyoEntry = new WeblogEntry();
-        EntryDtos.EntryWrite write = new EntryDtos.EntryWrite(
-                null, null, null, null, null, "2026-03-01T09:30", null,
-                null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null);
+        EntryDtos.EntryWrite write = EntryWrites.write().pubTime("2026-03-01T09:30").build();
 
         EntryDtos.applyWrite(utcEntry, write, weblogInZone("UTC"), Set.of());
         EntryDtos.applyWrite(tokyoEntry, write, weblogInZone("Asia/Tokyo"), Set.of());
@@ -69,10 +61,7 @@ class EntriesApiWriteTest {
 
     @Test
     void aMistypedPubTimeIsRejectedRatherThanPublishingNow() {
-        EntryDtos.EntryWrite write = new EntryDtos.EntryWrite(
-                null, null, null, null, null, "yesterday-ish", null,
-                null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null);
+        EntryDtos.EntryWrite write = EntryWrites.write().pubTime("yesterday-ish").build();
 
         assertThrows(org.apache.roller.weblogger.ui.restapi.ApiException.class,
                 () -> EntryDtos.applyWrite(new WeblogEntry(), write, weblogInZone("UTC"), Set.of()));
@@ -89,10 +78,7 @@ class EntriesApiWriteTest {
     @Test
     void aTitleThatOverflowsTheColumnOnlyAfterEscapingIsRejected() {
         String title = "&".repeat(200);
-        EntryDtos.EntryWrite write = new EntryDtos.EntryWrite(
-                title, null, null, null, null, null, null,
-                null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null);
+        EntryDtos.EntryWrite write = EntryWrites.write().title(title).build();
 
         org.apache.roller.weblogger.ui.restapi.ApiException ex = assertThrows(
                 org.apache.roller.weblogger.ui.restapi.ApiException.class,
@@ -104,10 +90,7 @@ class EntriesApiWriteTest {
     @Test
     void aTitleAtExactlyTheColumnLimitAfterEscapingIsAccepted() {
         String title = "a".repeat(255);
-        EntryDtos.EntryWrite write = new EntryDtos.EntryWrite(
-                title, null, null, null, null, null, null,
-                null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null);
+        EntryDtos.EntryWrite write = EntryWrites.write().title(title).build();
 
         WeblogEntry entry = new WeblogEntry();
         EntryDtos.applyWrite(entry, write, weblogInZone("UTC"), Set.of());
@@ -122,10 +105,7 @@ class EntriesApiWriteTest {
      */
     @Test
     void aMetaTitleLongerThanTheColumnIsRejected() {
-        EntryDtos.EntryWrite write = new EntryDtos.EntryWrite(
-                null, null, null, null, null, null, null,
-                "x".repeat(256), null, null, null, null, null,
-                null, null, null, null, null, null, null, null);
+        EntryDtos.EntryWrite write = EntryWrites.write().metaTitle("x".repeat(256)).build();
 
         assertThrows(org.apache.roller.weblogger.ui.restapi.ApiException.class,
                 () -> EntryDtos.applyWrite(new WeblogEntry(), write, weblogInZone("UTC"), Set.of()));
@@ -133,10 +113,7 @@ class EntriesApiWriteTest {
 
     @Test
     void aSearchDescriptionLongerThanTheColumnIsRejected() {
-        EntryDtos.EntryWrite write = new EntryDtos.EntryWrite(
-                null, null, null, null, null, null, null,
-                null, "x".repeat(256), null, null, null, null,
-                null, null, null, null, null, null, null, null);
+        EntryDtos.EntryWrite write = EntryWrites.write().searchDescription("x".repeat(256)).build();
 
         assertThrows(org.apache.roller.weblogger.ui.restapi.ApiException.class,
                 () -> EntryDtos.applyWrite(new WeblogEntry(), write, weblogInZone("UTC"), Set.of()));
@@ -144,10 +121,7 @@ class EntriesApiWriteTest {
 
     @Test
     void aCanonicalUrlLongerThanTheColumnIsRejected() {
-        EntryDtos.EntryWrite write = new EntryDtos.EntryWrite(
-                null, null, null, null, null, null, null,
-                null, null, "x".repeat(256), null, null, null,
-                null, null, null, null, null, null, null, null);
+        EntryDtos.EntryWrite write = EntryWrites.write().canonicalUrl("x".repeat(256)).build();
 
         assertThrows(org.apache.roller.weblogger.ui.restapi.ApiException.class,
                 () -> EntryDtos.applyWrite(new WeblogEntry(), write, weblogInZone("UTC"), Set.of()));
@@ -156,10 +130,7 @@ class EntriesApiWriteTest {
     /** featuredImageId/ogImageId store a roller_mediafile id -- varchar(48), the shortest column here. */
     @Test
     void aFeaturedImageIdLongerThanTheColumnIsRejected() {
-        EntryDtos.EntryWrite write = new EntryDtos.EntryWrite(
-                null, null, null, null, null, null, null,
-                null, null, null, null, "x".repeat(49), null,
-                null, null, null, null, null, null, null, null);
+        EntryDtos.EntryWrite write = EntryWrites.write().featuredImageId("x".repeat(49)).build();
 
         assertThrows(org.apache.roller.weblogger.ui.restapi.ApiException.class,
                 () -> EntryDtos.applyWrite(new WeblogEntry(), write, weblogInZone("UTC"), Set.of()));
@@ -167,22 +138,48 @@ class EntriesApiWriteTest {
 
     @Test
     void anOgImageIdLongerThanTheColumnIsRejected() {
-        EntryDtos.EntryWrite write = new EntryDtos.EntryWrite(
-                null, null, null, null, null, null, null,
-                null, null, null, null, null, "x".repeat(49),
-                null, null, null, null, null, null, null, null);
+        EntryDtos.EntryWrite write = EntryWrites.write().ogImageId("x".repeat(49)).build();
 
         assertThrows(org.apache.roller.weblogger.ui.restapi.ApiException.class,
                 () -> EntryDtos.applyWrite(new WeblogEntry(), write, weblogInZone("UTC"), Set.of()));
     }
 
+    @Test
+    void scratchOfCarriesWhatTheCrossFieldChecksReadAndNothingElse() {
+        WeblogEntry entry = new WeblogEntry();
+        entry.setTitle("not copied");
+        entry.setStatus(WeblogEntry.PubStatus.SCHEDULED);
+        entry.setPubTime(java.sql.Timestamp.valueOf("2026-03-01 09:30:00"));
+        entry.setEventStart(java.sql.Timestamp.valueOf("2026-08-02 19:30:00"));
+        entry.setEventEnd(java.sql.Timestamp.valueOf("2026-08-02 22:00:00"));
+
+        WeblogEntry scratch = EntryDtos.scratchOf(entry);
+
+        assertNotSame(entry, scratch);
+        assertEquals(entry.getStatus(), scratch.getStatus());
+        assertEquals(entry.getPubTime(), scratch.getPubTime());
+        assertEquals(entry.getEventStart(), scratch.getEventStart());
+        assertEquals(entry.getEventEnd(), scratch.getEventEnd());
+        assertNull(scratch.getTitle());
+    }
+
+    @Test
+    void applyWriteReportsEveryBadFieldAtOnce() {
+        EntryDtos.EntryWrite write = EntryWrites.write().status("NOPE").jsonLdType("NOPE")
+                .geoLatitude(91.0).build();
+
+        org.apache.roller.weblogger.ui.restapi.ApiException ex = assertThrows(
+                org.apache.roller.weblogger.ui.restapi.ApiException.class,
+                () -> EntryDtos.applyWrite(new WeblogEntry(), write, weblogInZone("UTC"), Set.of()));
+
+        assertEquals(List.of("status", "jsonLdType", "geoLatitude"),
+                ex.getFieldErrors().stream().map(e -> e.field()).toList());
+    }
+
     // ------------------------------------------------------------ location
 
     private static EntryDtos.EntryWrite locationWrite(String jsonLdType, Double lat, Double lng) {
-        return new EntryDtos.EntryWrite(
-                null, null, null, null, null, null, null,
-                null, null, null, null, null, null,
-                jsonLdType, lat, lng, null, null, null, null, null);
+        return EntryWrites.write().jsonLdType(jsonLdType).geoLatitude(lat).geoLongitude(lng).build();
     }
 
     private static void assertRejected(EntryDtos.EntryWrite write) {

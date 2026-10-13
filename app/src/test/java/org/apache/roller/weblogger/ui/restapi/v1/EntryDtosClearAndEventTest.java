@@ -31,9 +31,11 @@ class EntryDtosClearAndEventTest {
     private static EntryDtos.EntryWrite write(String status, String summary, String metaTitle,
             String searchDescription, String canonicalUrl, Boolean noindex, String featured, String og,
             String eventStart, String eventEnd, String eventLocation, Boolean commentsClosed) {
-        return new EntryDtos.EntryWrite(null, summary, null, status, null, null, null,
-                metaTitle, searchDescription, canonicalUrl, noindex, featured, og,
-                null, null, null, eventStart, eventEnd, eventLocation, commentsClosed, null);
+        return EntryWrites.write()
+                .summary(summary).status(status).metaTitle(metaTitle)
+                .searchDescription(searchDescription).canonicalUrl(canonicalUrl).noindex(noindex)
+                .featuredImageId(featured).ogImageId(og).eventStart(eventStart).eventEnd(eventEnd)
+                .eventLocation(eventLocation).commentsClosed(commentsClosed).build();
     }
 
     @Test

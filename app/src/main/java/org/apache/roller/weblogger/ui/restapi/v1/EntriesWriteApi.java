@@ -3,8 +3,10 @@ package org.apache.roller.weblogger.ui.restapi.v1;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.sql.Timestamp;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
@@ -14,6 +16,7 @@ import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.controllers.EntryDeletion;
 import org.apache.roller.weblogger.ui.controllers.UISecurityEnforced;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
+import org.apache.roller.weblogger.ui.restapi.FieldErrors;
 import org.apache.roller.weblogger.ui.restapi.dto.ClearFields;
 import org.apache.roller.weblogger.ui.restapi.ColumnLimits;
 import org.apache.roller.weblogger.ui.restapi.dto.EntryDtos;
@@ -50,20 +53,19 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         User user = requireAuthenticatedUser(request);
 
         if (body.clear() != null && !body.clear().isEmpty()) {
-            throw ApiException.badRequest("clear applies only to updates.");
+            throw ApiException.invalidField("clear", "clear applies only to updates.");
         }
-        requireTitleAndText(body);
-
         WeblogEntry entry = new WeblogEntry();
         entry.setWebsite(weblog);
         entry.setCreatorUserName(user.getUserName());
 
-        EntryDtos.applyWrite(entry, body, weblog, Set.of());
-        applyCategory(entry, weblog, body.category());
-        applyTags(entry, body.tags());
-        applyPublishNowDefault(entry);
-        requireScheduledHasPubTime(entry);
+        FieldErrors errors = new FieldErrors();
+        errors.check("title", () -> requireNotBlank("title", body.title()));
+        errors.check("text", () -> requireNotBlank("text", body.text()));
+        checkWrite(errors, weblog, entry, body, Set.of());
+        errors.throwIfAny();
 
+        apply(entry, weblog, body, Set.of());
         // No explicit category fallback needed here:
         // JPAWeblogEntryManagerImpl.saveWeblogEntry already defaults a
         // categoryless entry to the weblog's first category -- the same
@@ -89,15 +91,15 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         // (to DRAFT or straight to PUBLISHED) by a side door that bypasses
         // restore's DRAFT-only rule entirely. See requireLiveEntry's javadoc.
         WeblogEntry entry = requireLiveEntry(request, id);
-        Set<String> cleared = ClearFields.validate(body.clear(), body,
-                EntryDtos.ENTRY_CLEARABLE, EntryDtos.ENTRY_PAIRS);
 
-        EntryDtos.applyWrite(entry, body, weblog, cleared);
-        applyCategory(entry, weblog, body.category());
-        applyTags(entry, body.tags());
-        applyPublishNowDefault(entry);
-        requireScheduledHasPubTime(entry);
+        FieldErrors errors = new FieldErrors();
+        Set<String> cleared = new HashSet<>();
+        errors.check("clear", () -> cleared.addAll(ClearFields.validate(body.clear(), body,
+                EntryDtos.ENTRY_CLEARABLE, EntryDtos.ENTRY_PAIRS)));
+        checkWrite(errors, weblog, entry, body, cleared);
+        errors.throwIfAny();
 
+        apply(entry, weblog, body, cleared);
         weblogger.getWeblogEntryManager().saveWeblogEntry(entry);
         weblogger.flush();
 
@@ -272,6 +274,39 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
     }
 
     /**
+     * Every field check of a write, before anything is applied. The checks
+     * run against a scratch copy of {@code entry} ({@link EntryDtos#scratchOf}),
+     * so a refused write leaves the real entry exactly as it was, and the
+     * import step that runs between checking and applying (it commits) can
+     * never commit half a write. Problems land in {@code errors}.
+     */
+    private void checkWrite(FieldErrors errors, Weblog weblog, WeblogEntry entry,
+                            EntryDtos.EntryWrite body, Set<String> cleared) throws WebloggerException {
+        WeblogEntry scratch = EntryDtos.scratchOf(entry);
+        errors.check(() -> EntryDtos.applyWrite(scratch, body, weblog, cleared));
+        errors.check("category", () -> categoryFor(weblog, body.category()));
+        errors.check("tags", () -> checkTags(body.tags()));
+        applyPublishNowDefault(scratch);
+        errors.check("pubTime", () -> requireScheduledHasPubTime(scratch));
+    }
+
+    /**
+     * Applies a write {@link #checkWrite} passed. Each step repeats a check
+     * that already passed on identical input, so none of them refuses here.
+     */
+    private void apply(WeblogEntry entry, Weblog weblog, EntryDtos.EntryWrite body, Set<String> cleared)
+            throws WebloggerException {
+        EntryDtos.applyWrite(entry, body, weblog, cleared);
+        WeblogCategory category = categoryFor(weblog, body.category());
+        if (category != null) {
+            entry.setCategory(category);
+        }
+        applyTags(entry, body.tags());
+        applyPublishNowDefault(entry);
+        requireScheduledHasPubTime(entry);
+    }
+
+    /**
      * {@code title} and {@code text} are NOT NULL columns
      * (V002__baseline_schema.sql) and a brand-new WeblogEntry defaults both
      * to null, so an omitted one used to reach weblogger.flush() and die on
@@ -280,52 +315,44 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * PATCH omitting either must leave the stored value alone per
      * applyWrite's "null means absent" contract, not suddenly demand one.
      */
-    private void requireTitleAndText(EntryDtos.EntryWrite body) {
-        if (body.title() == null || body.title().isBlank()) {
-            throw ApiException.badRequest("title is required.");
-        }
-        if (body.text() == null || body.text().isBlank()) {
-            throw ApiException.badRequest("text is required.");
+    private static void requireNotBlank(String field, String value) {
+        if (value == null || value.isBlank()) {
+            throw ApiException.invalidField(field, field + " is required.");
         }
     }
 
     /**
-     * {@code category} names a category by NAME, matching {@code
-     * EntryDtos.EntryView.category} -- the read side already exposes the
-     * name rather than an internal id, so the write side accepts the same
-     * thing back. {@code getWeblogCategoryByName} is scoped to {@code
-     * weblog} in the query itself, the same lookup {@code CategoriesApi}
-     * uses for its own rename-collision check, so an unknown name is simply
-     * absent -- there is no separate ownership check to bypass, unlike an
-     * by-id lookup.
-     *
-     * <p>Null (absent from the request) leaves the entry's category
-     * untouched, per {@code applyWrite}'s "null means absent" contract.
+     * The category named by {@code categoryName}, or null when the write
+     * names none (absent leaves the entry's category untouched, per
+     * {@code applyWrite}'s "null means absent" contract). {@code category}
+     * names a category by NAME, matching {@code EntryDtos.EntryView.category}.
+     * {@code getWeblogCategoryByName} is scoped to {@code weblog} in the
+     * query itself, so an unknown name is simply absent -- there is no
+     * separate ownership check to bypass. An unknown name is answered with
+     * the weblog's names, so a caller can correct itself in one round trip
+     * instead of listing categories before every write.
      */
-    private void applyCategory(WeblogEntry entry, Weblog weblog, String categoryName)
-            throws WebloggerException {
+    private WeblogCategory categoryFor(Weblog weblog, String categoryName) throws WebloggerException {
         if (categoryName == null) {
-            return;
+            return null;
         }
         String trimmed = categoryName.trim();
         if (trimmed.isBlank()) {
-            throw ApiException.badRequest("category cannot be blank.");
+            throw ApiException.invalidField("category", "category cannot be blank.");
         }
         WeblogCategory category = weblogger.getWeblogEntryManager().getWeblogCategoryByName(weblog, trimmed);
         if (category == null) {
-            throw ApiException.badRequest("Unknown category '" + categoryName + "'.");
+            String names = weblogger.getWeblogEntryManager().getWeblogCategories(weblog).stream()
+                    .map(WeblogCategory::getName)
+                    .collect(Collectors.joining(", "));
+            throw ApiException.invalidField("category",
+                    "Unknown category '" + categoryName + "'; it is one of: " + names + ".");
         }
-        entry.setCategory(category);
+        return category;
     }
 
     /**
-     * Tags go through the entry's own comma/space-tolerant tag-setting path
-     * rather than being reimplemented here. Null (absent) leaves the
-     * stored tags untouched; a non-null EMPTY list is a real instruction to
-     * clear every tag, distinguishable from absence exactly as {@code
-     * applyWrite} distinguishes them for every other field.
-     *
-     * <p>The length guard is checked AFTER splitting the joined string on
+     * The length guard is checked AFTER splitting the joined string on
      * {@link Utilities#TAG_SPLIT_CHARS} -- the same split {@code
      * WeblogEntry.setTagsAsString} performs internally -- rather than per
      * list element. A single list element can itself carry several
@@ -334,15 +361,26 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * short; checking before the split measured the wrong thing and
      * over-rejected that case.
      */
-    private void applyTags(WeblogEntry entry, List<String> tags) throws WebloggerException {
+    private static void checkTags(List<String> tags) {
         if (tags == null) {
             return;
         }
-        String joined = String.join(" ", tags);
-        for (String tag : Utilities.splitStringAsTags(joined)) {
-            ColumnLimits.requireMaxLength("tag", tag, ColumnLimits.TAG_NAME);
+        for (String tag : Utilities.splitStringAsTags(String.join(" ", tags))) {
+            ColumnLimits.requireMaxLength("tags", tag, ColumnLimits.TAG_NAME);
         }
-        entry.setTagsAsString(joined);
+    }
+
+    /**
+     * Tags go through the entry's own comma/space-tolerant tag-setting path
+     * rather than being reimplemented here. Null (absent) leaves the
+     * stored tags untouched; a non-null EMPTY list is a real instruction to
+     * clear every tag, distinguishable from absence exactly as {@code
+     * applyWrite} distinguishes them for every other field.
+     */
+    private void applyTags(WeblogEntry entry, List<String> tags) throws WebloggerException {
+        if (tags != null) {
+            entry.setTagsAsString(String.join(" ", tags));
+        }
     }
 
     private String permalink(WeblogEntry entry) {

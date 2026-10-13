@@ -16,6 +16,7 @@ import org.apache.roller.weblogger.pojos.WeblogEntry;
 import org.apache.roller.weblogger.pojos.WeblogEntryTag;
 import org.apache.roller.weblogger.ui.controllers.EntryFieldRules;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
+import org.apache.roller.weblogger.ui.restapi.FieldErrors;
 import org.apache.roller.weblogger.ui.restapi.ColumnLimits;
 
 /**
@@ -205,18 +206,22 @@ public final class EntryDtos {
      * -- see {@link EntryWrite}'s javadoc -- the controller applies both
      * itself after this call returns. {@code cleared} (already validated by
      * {@code ClearFields}) is applied after the sets, before the event-order check.
+     * Every field's problem is collected; the one 400 thrown at the end names them all.
      */
     public static void applyWrite(WeblogEntry entry, EntryWrite write, Weblog weblog, Set<String> cleared) {
+        FieldErrors errors = new FieldErrors();
         if (write.title() != null) {
-            // The one place raw author input becomes escaped markup, shared
-            // with the JSP editor so the two cannot drift. Checked AFTER
-            // escaping, not before: escapeHtml4 can grow a title up to 5x
-            // (every '&' becomes "&amp;"), so a raw value under the column
-            // limit can still overflow it once stored -- a guard on the raw
-            // input would pass and still 500 on save.
-            String escaped = EntryFieldRules.escapeTitle(write.title());
-            ColumnLimits.requireMaxLength("title", escaped, ColumnLimits.ENTRY_TITLE);
-            entry.setTitle(escaped);
+            errors.check("title", () -> {
+                // The one place raw author input becomes escaped markup, shared
+                // with the JSP editor so the two cannot drift. Checked AFTER
+                // escaping, not before: escapeHtml4 can grow a title up to 5x
+                // (every '&' becomes "&amp;"), so a raw value under the column
+                // limit can still overflow it once stored -- a guard on the raw
+                // input would pass and still 500 on save.
+                String escaped = EntryFieldRules.escapeTitle(write.title());
+                ColumnLimits.requireMaxLength("title", escaped, ColumnLimits.ENTRY_TITLE);
+                entry.setTitle(escaped);
+            });
         }
         if (write.summary() != null) {
             entry.setSummary(write.summary());
@@ -225,35 +230,29 @@ public final class EntryDtos {
             entry.setText(write.text());
         }
         if (write.status() != null) {
-            entry.setStatus(parseWritableStatus(write.status()));
+            errors.check("status", () -> entry.setStatus(parseWritableStatus(write.status())));
         }
         if (write.pubTime() != null) {
-            try {
-                entry.setPubTime(EntryFieldRules.parsePubTime(
-                        write.pubTime(), weblog.getTimeZoneInstance()));
-            } catch (DateTimeParseException e) {
-                // EntryFieldRules.parsePubTime throws DateTimeParseException,
-                // NOT IllegalArgumentException -- DateTimeParseException does
-                // not extend it, so catching the wrong type here would let a
-                // mistyped pubtime escape as an opaque 500 instead of the
-                // 400 this exists to produce.
-                throw ApiException.badRequest(
-                        "pubTime must be a wall-clock time in the weblog's zone, "
-                        + "for example 2026-03-01T09:30.", e);
-            }
+            errors.check("pubTime", () -> entry.setPubTime(pubTime(write.pubTime(), weblog)));
         }
         if (write.metaTitle() != null) {
-            ColumnLimits.requireMaxLength("metaTitle", write.metaTitle(), ColumnLimits.META_TITLE);
-            entry.setMetaTitle(write.metaTitle());
+            errors.check("metaTitle", () -> {
+                ColumnLimits.requireMaxLength("metaTitle", write.metaTitle(), ColumnLimits.META_TITLE);
+                entry.setMetaTitle(write.metaTitle());
+            });
         }
         if (write.searchDescription() != null) {
-            ColumnLimits.requireMaxLength(
-                    "searchDescription", write.searchDescription(), ColumnLimits.SEARCH_DESCRIPTION);
-            entry.setSearchDescription(write.searchDescription());
+            errors.check("searchDescription", () -> {
+                ColumnLimits.requireMaxLength(
+                        "searchDescription", write.searchDescription(), ColumnLimits.SEARCH_DESCRIPTION);
+                entry.setSearchDescription(write.searchDescription());
+            });
         }
         if (write.canonicalUrl() != null) {
-            ColumnLimits.requireMaxLength("canonicalUrl", write.canonicalUrl(), ColumnLimits.CANONICAL_URL);
-            entry.setCanonicalUrl(write.canonicalUrl());
+            errors.check("canonicalUrl", () -> {
+                ColumnLimits.requireMaxLength("canonicalUrl", write.canonicalUrl(), ColumnLimits.CANONICAL_URL);
+                entry.setCanonicalUrl(write.canonicalUrl());
+            });
         }
         if (write.commentsClosed() != null) {
             entry.setCommentsClosed(write.commentsClosed());
@@ -262,42 +261,85 @@ public final class EntryDtos {
             entry.setNoindex(write.noindex());
         }
         if (write.featuredImageId() != null) {
-            ColumnLimits.requireMaxLength(
-                    "featuredImageId", write.featuredImageId(), ColumnLimits.FEATURED_IMAGE_ID);
-            entry.setFeaturedImageId(write.featuredImageId());
+            errors.check("featuredImageId", () -> {
+                ColumnLimits.requireMaxLength(
+                        "featuredImageId", write.featuredImageId(), ColumnLimits.FEATURED_IMAGE_ID);
+                entry.setFeaturedImageId(write.featuredImageId());
+            });
         }
         if (write.ogImageId() != null) {
-            ColumnLimits.requireMaxLength("ogImageId", write.ogImageId(), ColumnLimits.OG_IMAGE_ID);
-            entry.setOgImageId(write.ogImageId());
+            errors.check("ogImageId", () -> {
+                ColumnLimits.requireMaxLength("ogImageId", write.ogImageId(), ColumnLimits.OG_IMAGE_ID);
+                entry.setOgImageId(write.ogImageId());
+            });
         }
         // The location: the type decides which structured-data block the
         // permalink emits (TOURIST_ATTRACTION carries the coordinates as its
         // geo), and the coordinates also centre the entry's [map].
         if (write.jsonLdType() != null) {
-            entry.setJsonLdType(parseJsonLdType(write.jsonLdType()));
+            errors.check("jsonLdType", () -> entry.setJsonLdType(parseJsonLdType(write.jsonLdType())));
         }
         if (write.geoLatitude() != null) {
-            entry.setGeoLatitude(requireOnTheGlobe("geoLatitude", write.geoLatitude(), MAX_LATITUDE));
+            errors.check("geoLatitude", () -> entry.setGeoLatitude(
+                    requireOnTheGlobe("geoLatitude", write.geoLatitude(), MAX_LATITUDE)));
         }
         if (write.geoLongitude() != null) {
-            entry.setGeoLongitude(requireOnTheGlobe("geoLongitude", write.geoLongitude(), MAX_LONGITUDE));
+            errors.check("geoLongitude", () -> entry.setGeoLongitude(
+                    requireOnTheGlobe("geoLongitude", write.geoLongitude(), MAX_LONGITUDE)));
         }
         if (write.eventStart() != null) {
-            entry.setEventStart(eventTime("eventStart", write.eventStart(), weblog));
+            errors.check("eventStart", () -> entry.setEventStart(eventTime("eventStart", write.eventStart(), weblog)));
         }
         if (write.eventEnd() != null) {
-            entry.setEventEnd(eventTime("eventEnd", write.eventEnd(), weblog));
+            errors.check("eventEnd", () -> entry.setEventEnd(eventTime("eventEnd", write.eventEnd(), weblog)));
         }
         if (write.eventLocation() != null) {
-            ColumnLimits.requireMaxLength("eventLocation", write.eventLocation(), ColumnLimits.EVENT_LOCATION);
-            entry.setEventLocation(write.eventLocation());
+            errors.check("eventLocation", () -> {
+                ColumnLimits.requireMaxLength("eventLocation", write.eventLocation(), ColumnLimits.EVENT_LOCATION);
+                entry.setEventLocation(write.eventLocation());
+            });
         }
         for (String name : cleared) {
             clearField(entry, name);
         }
         if (EntryFieldRules.endsBeforeStart(entry.getEventStart(), entry.getEventEnd())) {
-            throw ApiException.badRequest("eventEnd must not be before eventStart.");
+            errors.add("eventEnd", "eventEnd must not be before eventStart.");
         }
+        errors.throwIfAny();
+    }
+
+    /**
+     * {@code raw} read as wall-clock time in the weblog's zone.
+     * EntryFieldRules.parsePubTime throws DateTimeParseException, NOT
+     * IllegalArgumentException -- DateTimeParseException does not extend it,
+     * so catching the wrong type here would let a mistyped pubtime escape as
+     * an opaque 500 instead of the 400 this exists to produce.
+     */
+    private static Timestamp pubTime(String raw, Weblog weblog) {
+        try {
+            return EntryFieldRules.parsePubTime(raw, weblog.getTimeZoneInstance());
+        } catch (DateTimeParseException e) {
+            throw ApiException.badRequest(
+                    "pubTime must be a wall-clock time in the weblog's zone, for example 2026-03-01T09:30.", e);
+        }
+    }
+
+    /**
+     * A detached copy of {@code entry} carrying exactly what a write's
+     * cross-field checks read -- status, pubTime and the event times -- so a
+     * write can be checked in full before anything touches the real entry.
+     * Checking against the managed entity itself would leave it half-written
+     * on a refusal, and the import step that runs between checking and
+     * applying commits the persistence context.
+     */
+    public static WeblogEntry scratchOf(WeblogEntry entry) {
+        WeblogEntry scratch = new WeblogEntry();
+        scratch.setWebsite(entry.getWebsite());
+        scratch.setStatus(entry.getStatus());
+        scratch.setPubTime(entry.getPubTime());
+        scratch.setEventStart(entry.getEventStart());
+        scratch.setEventEnd(entry.getEventEnd());
+        return scratch;
     }
 
     private static void clearField(WeblogEntry entry, String name) {
