@@ -83,6 +83,13 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
      */
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
+    /**
+     * true or false in ASCII letters, any case: CASE_INSENSITIVE without
+     * UNICODE_CASE folds ASCII only, where equalsIgnoreCase would also take
+     * "fal\u017Fe" (LONG S upper-cases to S).
+     */
+    private static final Pattern BOOLEAN = Pattern.compile("true|false", Pattern.CASE_INSENSITIVE);
+
     // ------------------------------------------------------------- users
 
     @GetMapping("/users")
@@ -329,7 +336,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         }
         switch (def.getType()) {
             case "boolean" -> {
-                if (!"true".equalsIgnoreCase(value) && !"false".equalsIgnoreCase(value)) {
+                if (!BOOLEAN.matcher(value).matches()) {
                     throw ApiException.badRequest("'" + def.getName() + "' must be true or false.");
                 }
             }

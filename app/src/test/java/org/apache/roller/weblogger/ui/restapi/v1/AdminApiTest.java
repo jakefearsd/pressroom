@@ -571,6 +571,29 @@ class AdminApiTest {
         verify(weblogger.getPropertiesManager(), never()).saveProperties(any());
     }
 
+    /**
+     * A boolean is true or false in ASCII letters, any case. equalsIgnoreCase
+     * folds Unicode too, so "fal\u017Fe" (LONG S upper-cases to S) passed as
+     * false and was stored as written.
+     */
+    @Test
+    void patchConfigTakesBooleansInAsciiLettersOnly() throws Exception {
+        Weblogger weblogger = mockedConfigWeblogger();
+
+        mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/admin/config")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"groupblogging.enabled\":\"fal\u017Fe\"}"))
+                .andExpect(status().isBadRequest());
+        verify(weblogger.getPropertiesManager(), never()).saveProperties(any());
+
+        mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/admin/config")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"groupblogging.enabled\":\"FALSE\"}"))
+                .andExpect(status().is2xxSuccessful());
+    }
+
     @Test
     void patchConfigRejectsAnUnparseableIntegerWithItsCauseAttached() throws Exception {
         Weblogger weblogger = mockedConfigWeblogger();
