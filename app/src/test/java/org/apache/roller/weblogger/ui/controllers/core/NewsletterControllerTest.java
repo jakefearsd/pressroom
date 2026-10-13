@@ -256,6 +256,79 @@ class NewsletterControllerTest {
         assertTrue(controller.requiredGlobalPermissionActions().isEmpty());
     }
 
+    // ------------------------------------------------ requests with no usable list
+
+    @Test
+    void aPayloadWithNoListUuidsAtAllIs404WithoutALookup() throws Exception {
+        for (List<String> uuids : java.util.Arrays.<List<String>>asList(null, List.of(), List.of(" "))) {
+            ResponseEntity<Void> response = controller.subscribe(
+                    new NewsletterController.SubscribePayload("reader@example.com", uuids, "", 5000L), request());
+
+            assertEquals(404, response.getStatusCode().value(), String.valueOf(uuids));
+        }
+        verify(mocks.getWeblogManager(), never()).getWeblogByNewsletterListUuid(any());
+        verify(listmonk, never()).subscribe(any(), any());
+    }
+
+    /** A lookup that cannot run must not be read as a weblog: nothing is forwarded. */
+    @Test
+    void aWeblogLookupThatFailsIs404AndNothingIsForwarded() throws Exception {
+        when(mocks.getWeblogManager().getWeblogByNewsletterListUuid(UUID))
+                .thenThrow(new WebloggerException("store down"));
+
+        ResponseEntity<Void> response = controller.subscribe(
+                payload("reader@example.com", UUID, "", 5000L), request());
+
+        assertEquals(404, response.getStatusCode().value());
+        verify(listmonk, never()).subscribe(any(), any());
+    }
+
+    @Test
+    void aHoneypotHitCountsAgainstTheThrottleSoABotIsEventuallyRefused() throws Exception {
+        when(mocks.getWeblogManager().getWeblogByNewsletterListUuid(UUID)).thenReturn(weblog("newsblog"));
+        String previous = ControllerTestFixture.setConfigProperty(
+                "newsletter.subscribe.throttle.threshold", "0");
+        try {
+            ResponseEntity<Void> first = controller.subscribe(
+                    payload("bot@example.com", UUID, "http://spam.example", 5000L), request());
+            ResponseEntity<Void> second = controller.subscribe(
+                    payload("bot@example.com", UUID, "http://spam.example", 5000L), request());
+
+            assertEquals(200, first.getStatusCode().value(), "a detected bot is answered like a success");
+            assertEquals(429, second.getStatusCode().value(), "but its hits still add up");
+        } finally {
+            ControllerTestFixture.restoreConfigProperty("newsletter.subscribe.throttle.threshold", previous);
+        }
+        verify(listmonk, never()).subscribe(any(), any());
+    }
+
+    @Test
+    void anUnreadableThrottleSettingFallsBackToTheDefaultRatherThanBreakingTheForm() throws Exception {
+        when(mocks.getWeblogManager().getWeblogByNewsletterListUuid(UUID)).thenReturn(weblog("newsblog"));
+        when(listmonk.subscribe("reader@example.com", UUID)).thenReturn(200);
+        String previous = ControllerTestFixture.setConfigProperty(
+                "newsletter.subscribe.throttle.threshold", "not-a-number");
+        try {
+            ResponseEntity<Void> response = controller.subscribe(
+                    payload("reader@example.com", UUID, "", 5000L), request());
+
+            assertEquals(200, response.getStatusCode().value());
+        } finally {
+            ControllerTestFixture.restoreConfigProperty("newsletter.subscribe.throttle.threshold", previous);
+        }
+    }
+
+    /** With no client injected the controller builds one from config; none is configured here, so 503. */
+    @Test
+    void withNoNewsletterServiceConfiguredTheLazilyBuiltClientAnswers503() throws Exception {
+        NewsletterController fresh = ControllerTestFixture.withMessages(new NewsletterController());
+        when(mocks.getWeblogManager().getWeblogByNewsletterListUuid(UUID)).thenReturn(weblog("newsblog"));
+
+        ResponseEntity<Void> response = fresh.subscribe(payload("reader@example.com", UUID, "", 5000L), request());
+
+        assertEquals(503, response.getStatusCode().value());
+    }
+
     // --------------------------------------------------------------- support
 
     private static Weblog weblog(String handle) {
