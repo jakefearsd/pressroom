@@ -243,6 +243,10 @@ public final class WebloggerConfig {
      * {@code System.getenv()} is unmodifiable and the caller below is a static
      * initializer that runs once per JVM.
      */
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Matches ROLLER_ environment variable names to roller.properties keys "
+                    + "case-insensitively: operator configuration read once at startup, no request input.")
     static void applyEnvironmentOverrides(Properties config, Map<String, String> env) {
 
         Map<String, String> knownByLowerCase = new HashMap<>();

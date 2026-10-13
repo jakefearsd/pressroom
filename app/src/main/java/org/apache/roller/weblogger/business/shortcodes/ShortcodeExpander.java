@@ -191,6 +191,11 @@ public final class ShortcodeExpander {
         return expand(content, text, 0);
     }
 
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Lower-cases a shortcode name to look up one of Roller's registered handlers, "
+                    + "whose names are ASCII; it chooses only which built-in renders the author's content, "
+                    + "and EntryRenderer's sanitizing step still follows.")
     private String expand(ShortcodeContext content, String text, int depth) {
         if (text == null || handlers.isEmpty() || depth > MAX_NESTING_DEPTH
                 || text.indexOf('[') < 0) {
@@ -283,6 +288,11 @@ public final class ShortcodeExpander {
      * {@code [[name ...]]} escape, which the main loop handles because it
      * matches OPEN_TAG). Returns whether anything was unescaped.
      */
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Lower-cases a shortcode name to check it against Roller's registered ASCII "
+                    + "handler names, only to decide whether an escaped closer in the author's text is "
+                    + "unescaped.")
     private boolean appendPlainText(StringBuilder out, String text, int from, int to) {
         boolean changed = false;
         int pos = from;
@@ -346,6 +356,10 @@ public final class ShortcodeExpander {
      * Matching is case-insensitive, like tag names everywhere else.
      * Returns -1 only when no closer exists at all.
      */
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Compares shortcode names case-insensitively to pair an author's opening tag "
+                    + "with its closer; it decides only how the author's own text nests.")
     private static int findMatchingCloser(String text, String name, int from) {
         String closer = "[/" + name + "]";
         int depth = 1;

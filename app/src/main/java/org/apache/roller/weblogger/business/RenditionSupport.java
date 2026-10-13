@@ -142,6 +142,10 @@ public final class RenditionSupport {
      * null for formats the ladder does not cover (e.g. gif, bmp, webp
      * originals) -- callers should skip ladder generation entirely.
      */
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Lower-cases an upload's content type to choose jpg or png for its renditions; "
+                    + "an unmatched type just gets no rendition ladder. No access decision rests on it.")
     static String formatFor(String contentType) {
         if (contentType == null) {
             return null;

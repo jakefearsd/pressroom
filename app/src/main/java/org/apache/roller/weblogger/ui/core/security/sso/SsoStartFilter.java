@@ -136,6 +136,12 @@ public class SsoStartFilter extends OncePerRequestFilter {
     }
 
     /** @return true when the request's scheme, host and port are the Absolute URL's */
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Compares the request's scheme and host with the configured Absolute URL, "
+                    + "whose host java.net.URI parses only when ASCII. The request's values come through "
+                    + "Tomcat, which decodes headers as ISO-8859-1, and no character in U+0080 to U+00FF "
+                    + "equalsIgnoreCase-matches an ASCII one (checked over the whole range on 2026-10-12).")
     private static boolean isSameOrigin(HttpServletRequest request, URI canonical) {
         String scheme = canonical.getScheme().toLowerCase(Locale.ROOT);
         return scheme.equalsIgnoreCase(request.getScheme())

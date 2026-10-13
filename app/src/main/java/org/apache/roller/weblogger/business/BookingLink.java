@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.routines.UrlValidator;
 import org.apache.roller.weblogger.pojos.Weblog;
@@ -103,6 +104,11 @@ public final class BookingLink {
     }
 
     /** The (lower-cased) names of the query parameters already on {@code base}. */
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Lower-cases the query parameter names already on an author's own outbound "
+                    + "link, so the ASCII utm_ parameters Roller appends are not added twice. It decides "
+                    + "only which of Roller's own parameters to add, never access.")
     private static Set<String> existingParamNames(String base) {
         Set<String> names = new HashSet<>();
         int query = base.indexOf('?');

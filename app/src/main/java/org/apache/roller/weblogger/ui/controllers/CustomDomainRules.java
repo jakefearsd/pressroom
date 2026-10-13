@@ -71,6 +71,10 @@ public final class CustomDomainRules {
      *
      * @param zones comma-separated apex names, or null/blank to warn about nothing
      */
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Compares an ASCII-validated host with the operator's certificate zones only "
+                    + "to decide whether to show a warning; it allows and refuses nothing.")
     public static boolean isOutsideCertZones(String normalisedHost, String zones) {
         if (normalisedHost == null || zones == null || zones.isBlank()) {
             return false;

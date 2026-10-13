@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.slf4j.Logger;
@@ -108,6 +109,10 @@ public class MapShortcode implements ShortcodeHandler {
                     + "[pin lat=\"48.8606\" lng=\"2.3376\" label=\"Louvre\"]\n[/map]");
 
     @Override
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Reads the author's route attribute as true in any case; it decides only "
+                    + "whether the author's own map draws a route.")
     public String render(Map<String, String> attributes, String body, ShortcodeContext content) {
         List<MapPins.Pin> pins = resolvePins(attributes, body, content, mediaFiles);
         if (pins == null) {

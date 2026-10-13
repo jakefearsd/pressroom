@@ -14,6 +14,7 @@ import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.WriteListener;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 /**
  * Catches everything the API writes for a forwarded tool call -- status,
@@ -119,6 +120,11 @@ final class CapturedResponse implements HttpServletResponse {
     }
 
     @Override
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Header names here are set by Roller's and Spring's own code while an MCP tool "
+                    + "call is dispatched internally, never read from a request; the fold matches them as "
+                    + "HTTP does.")
     public void setHeader(String name, String value) {
         if (value == null) {
             headers.remove(name.toLowerCase(Locale.ROOT));
@@ -136,6 +142,11 @@ final class CapturedResponse implements HttpServletResponse {
     }
 
     @Override
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Header names here are set by Roller's and Spring's own code while an MCP tool "
+                    + "call is dispatched internally, never read from a request; the fold matches them as "
+                    + "HTTP does.")
     public void addHeader(String name, String value) {
         if (value == null) {
             return;

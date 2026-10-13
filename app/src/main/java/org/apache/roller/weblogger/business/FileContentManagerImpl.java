@@ -32,6 +32,7 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.Locale;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -347,6 +348,12 @@ public class FileContentManagerImpl implements FileContentManager {
      * Return true if file is allowed to be uplaoded given specified allowed and
      * forbidden file types.
      */
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Compares an upload's name with the admin's ASCII extension rules, both "
+                    + "lower-cased in Locale.ROOT. ASCII letters fold only to ASCII, so no name escapes a "
+                    + "forbid rule it matches as typed; the one non-ASCII fold onto ASCII (KELVIN SIGN to "
+                    + "k) can only let an allow rule accept a name stored under its own spelling.")
     private boolean checkFileType(String[] allowFiles, String[] forbidFiles,
             String fileName, String contentType) {
 

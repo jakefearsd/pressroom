@@ -289,6 +289,10 @@ public class DatabaseInstaller {
         return pending;
     }
 
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Compares table names from the database's own JDBC metadata with a constant "
+                    + "table name; no request input reaches it.")
     private boolean tableExists(Connection con, String tableName) throws SQLException {
         try (ResultSet rs = con.getMetaData().getTables(null, null, "%", null)) {
             while (rs.next()) {

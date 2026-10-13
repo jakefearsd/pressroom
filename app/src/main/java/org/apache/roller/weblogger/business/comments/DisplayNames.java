@@ -21,6 +21,7 @@ import java.text.Normalizer;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.UserManager;
 import org.apache.roller.weblogger.pojos.User;
@@ -159,6 +160,11 @@ public final class DisplayNames {
      * that merely look alike (a Cyrillic a) are not caught: that needs
      * Unicode's confusables data, which the JDK does not carry.
      */
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "This is the fold that makes the impersonation check hold: NFKC, full case "
+                    + "folding in Locale.ROOT, NFKC again, so fullwidth and mathematical letters and sharp "
+                    + "s compare as the letters they draw (DisplayNamesTest pins each).")
     private static String fold(String name) {
         String plain = Normalizer.normalize(name, Normalizer.Form.NFKC);
         String folded = plain.toUpperCase(Locale.ROOT).toLowerCase(Locale.ROOT);

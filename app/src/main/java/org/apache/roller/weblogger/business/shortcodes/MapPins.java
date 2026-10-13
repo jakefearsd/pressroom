@@ -23,6 +23,7 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -109,6 +110,10 @@ public final class MapPins {
         return pins;
     }
 
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Lower-cases an author's attribute names (lat, lng, label) to pick a field of "
+                    + "the pin; it decides only how the author's own map content is parsed.")
     private static Pin toPin(String attributeText) {
         String lat = null;
         String lng = null;

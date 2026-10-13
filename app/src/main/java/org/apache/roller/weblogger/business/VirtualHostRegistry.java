@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.WebloggerException;
@@ -43,6 +44,12 @@ public final class VirtualHostRegistry {
      * Lowercases a Host header and strips the port and any trailing root
      * label, returning null for anything unusable.
      */
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Lower-cases a Host header to look up a stored custom domain, which "
+                    + "CustomDomainRules admits only as ASCII. Tomcat decodes header bytes as ISO-8859-1, "
+                    + "and no character in U+0080 to U+00FF lower-cases into ASCII (checked over the whole "
+                    + "range on 2026-10-12), so no other host folds onto a stored one.")
     public static String normalise(String hostHeader) {
         if (hostHeader == null || hostHeader.isBlank()) {
             return null;

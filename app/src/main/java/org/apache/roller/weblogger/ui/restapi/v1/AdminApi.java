@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.CharSetUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -116,6 +117,11 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
     }
 
     @PostMapping("/users")
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Lower-cases a username only after the check above has confined it to "
+                    + "username.allowedChars (A-Za-z0-9 unless the operator widens it), to find an "
+                    + "existing account that differs only in case.")
     public ResponseEntity<AdminDtos.UserView> createUser(@RequestBody AdminDtos.UserCreate body)
             throws WebloggerException {
         String userName = body.userName() == null ? null : body.userName().trim();

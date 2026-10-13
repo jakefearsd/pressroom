@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 import io.modelcontextprotocol.server.transport.ServerTransportSecurityException;
 import io.modelcontextprotocol.server.transport.ServerTransportSecurityValidator;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 /**
  * A browser page can never drive /api/mcp: a request carrying an Origin
@@ -24,6 +25,11 @@ public final class McpOriginValidator implements ServerTransportSecurityValidato
     }
 
     @Override
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Finds the Origin header by name: header names are ASCII tokens (Tomcat "
+                    + "refuses others), and the Origin value itself is compared exactly with the site's "
+                    + "origin.")
     public void validateHeaders(Map<String, List<String>> headers) throws ServerTransportSecurityException {
         for (Map.Entry<String, List<String>> header : headers.entrySet()) {
             if (!"origin".equals(header.getKey().toLowerCase(Locale.ROOT))) {

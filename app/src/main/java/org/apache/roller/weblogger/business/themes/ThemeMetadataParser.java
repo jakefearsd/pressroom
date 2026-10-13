@@ -18,6 +18,7 @@
 
 package org.apache.roller.weblogger.business.themes;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.roller.weblogger.pojos.TemplateRendition.RenditionType;
 import org.apache.roller.weblogger.pojos.TemplateRendition.TemplateLanguage;
@@ -113,6 +114,10 @@ public class ThemeMetadataParser {
     }
     
     
+	@SuppressFBWarnings(
+			value = "IMPROPER_UNICODE",
+			justification = "Reads the navbar and hidden flags as true in any case from a theme's own theme.xml, "
+					+ "which ships with the theme; no request or author supplies it.")
 	private ThemeMetadataTemplate elementToTemplateMetadata(Element element)
 			throws ThemeParsingException {
 

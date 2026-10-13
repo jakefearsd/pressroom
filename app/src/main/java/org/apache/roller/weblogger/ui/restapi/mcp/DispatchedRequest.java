@@ -87,6 +87,11 @@ final class DispatchedRequest extends HttpServletRequestWrapper {
     }
 
     @Override
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "The names are asked for by Spring's and Roller's own code while an MCP tool "
+                    + "call is dispatched internally; the answers are synthetic, and no client header is "
+                    + "consulted.")
     public String getHeader(String name) {
         return switch (name.toLowerCase(Locale.ROOT)) {
             case "accept" -> JSON;

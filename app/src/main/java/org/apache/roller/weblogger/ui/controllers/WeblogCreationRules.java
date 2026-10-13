@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Stream;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.CharSetUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.roller.weblogger.WebloggerException;
@@ -113,6 +114,11 @@ public final class WeblogCreationRules {
         return found;
     }
 
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Lower-cases a handle only after the check above has confined it to "
+                    + "username.allowedChars (A-Za-z0-9 unless the operator widens it), to compare it with "
+                    + "the reserved paths.")
     private static void checkHandle(String handle, Context context, List<Violation> found)
             throws WebloggerException {
         if (StringUtils.isBlank(handle)) {

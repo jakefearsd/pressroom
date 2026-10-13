@@ -222,6 +222,11 @@ public class RemoteImageFetcher implements AutoCloseable {
     }
 
     /** Scheme, host, port and user info for every hop; an IP-literal host is judged here, before any request. */
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Lower-cases a java.net.URI scheme to compare it with http and https: URI "
+                    + "parsing admits only ASCII letters, digits, plus, minus and dot in a scheme (RFC "
+                    + "3986), so nothing else can fold onto either.")
     private void checkUrl(URI uri) throws FetchRefusal {
         String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
         if (!"http".equals(scheme) && !"https".equals(scheme)) {

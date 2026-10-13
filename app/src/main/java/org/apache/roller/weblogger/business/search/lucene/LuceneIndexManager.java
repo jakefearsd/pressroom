@@ -103,9 +103,10 @@ public class LuceneIndexManager implements IndexManager {
      * @param roller - the weblogger instance
      */
     @SuppressFBWarnings(
-            value = "PATH_TRAVERSAL_IN",
+            value = {"PATH_TRAVERSAL_IN", "IMPROPER_UNICODE"},
             justification = "indexDir is search.index.dir, operator configuration (roller.properties or "
-                    + "ROLLER_SEARCH_INDEX_DIR); no request reaches it.")
+                    + "ROLLER_SEARCH_INDEX_DIR); no request reaches it. search.enabled, compared with "
+                    + "false in any case, is operator configuration too.")
     public LuceneIndexManager(Weblogger roller) {
         this.roller = roller;
 
