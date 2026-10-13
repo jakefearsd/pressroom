@@ -43,7 +43,7 @@ public class WeblogEntriesDayPager extends AbstractWeblogEntriesPager {
     
     private static final Logger log = LoggerFactory.getLogger(WeblogEntriesDayPager.class);
     
-    private SimpleDateFormat dayFormat = new SimpleDateFormat();
+    private SimpleDateFormat dayFormat;
     
     private Date day;
     private Date nextDay;
@@ -73,7 +73,7 @@ public class WeblogEntriesDayPager extends AbstractWeblogEntriesPager {
         TimeZone tz = weblog.getTimeZoneInstance();
 
         dayFormat = new SimpleDateFormat(
-            messageUtils.getString("weblogEntriesPager.day.dateFormat"));
+            messageUtils.getString("weblogEntriesPager.day.dateFormat"), messageUtils.getLocale());
         dayFormat.setTimeZone(tz);
         
         getEntries();

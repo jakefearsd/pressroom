@@ -20,6 +20,7 @@ package org.apache.roller.weblogger.ui.rendering.pagers;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.apache.roller.weblogger.TestUtils;
 import org.apache.roller.weblogger.business.MultiWeblogURLStrategy;
@@ -83,6 +84,24 @@ class WeblogEntriesPagerCharacterisationTest {
 
         assertNotNull(pager.getHomeLink(), "home link");
         assertEquals(0, pager.getEntries().size(), "empty weblog has no entries");
+    }
+
+    @Test
+    void monthPagerNamesTheMonthInTheViewersLanguage() {
+        // The French bundle supplies the pattern ("MMM yyyy"); the month name
+        // must come from the same locale, not the server's.
+        java.util.Locale original = java.util.Locale.getDefault();
+        try {
+            java.util.Locale.setDefault(java.util.Locale.US);
+            WeblogEntriesMonthPager pager = new WeblogEntriesMonthPager(
+                    urlStrategy, TestUtils.weblogger(), testWeblog, "fr", null, null, "202006", null, null, 0);
+
+            String name = pager.getNextCollectionName();
+            assertNotNull(name, "a past month has a following month");
+            assertTrue(name.contains("juil"), "expected the French month (July) in '" + name + "'");
+        } finally {
+            java.util.Locale.setDefault(original);
+        }
     }
 
     @Test

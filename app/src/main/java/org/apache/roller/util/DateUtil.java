@@ -362,46 +362,46 @@ public abstract class DateUtil {
      **/
     public static SimpleDateFormat friendlyDateFormat(boolean minimalFormat) {
         if (minimalFormat) {
-            return new SimpleDateFormat(FORMAT_DEFAULT_DATE_MINIMAL);
+            return new SimpleDateFormat(FORMAT_DEFAULT_DATE_MINIMAL, Locale.ROOT);
         }
         
-        return new SimpleDateFormat(FORMAT_DEFAULT_DATE);
+        return new SimpleDateFormat(FORMAT_DEFAULT_DATE, Locale.ROOT);
     }
     
     
     // returns full timestamp format
     public static SimpleDateFormat defaultTimestampFormat() {
-        return new SimpleDateFormat(FORMAT_DEFAULT_TIMESTAMP);
+        return new SimpleDateFormat(FORMAT_DEFAULT_TIMESTAMP, Locale.ROOT);
     }
     
     
     // convenience method returns long friendly timestamp format
     public static SimpleDateFormat friendlyTimestampFormat() {
-        return new SimpleDateFormat(FORMAT_FRIENDLY_TIMESTAMP);
+        return new SimpleDateFormat(FORMAT_FRIENDLY_TIMESTAMP, Locale.ROOT);
     }
     
     
     // convenience method returns minimal date format
     public static SimpleDateFormat get8charDateFormat() {
-        return new SimpleDateFormat(FORMAT_8CHARS);
+        return new SimpleDateFormat(FORMAT_8CHARS, Locale.ROOT);
     }
     
     
     // convenience method returns minimal date format
     public static SimpleDateFormat get6charDateFormat() {
-        return new SimpleDateFormat(FORMAT_6CHARS);
+        return new SimpleDateFormat(FORMAT_6CHARS, Locale.ROOT);
     }
     
     
     // convenience method returns minimal date format
     public static SimpleDateFormat getIso8601DateFormat() {
-        return new SimpleDateFormat(FORMAT_ISO_8601);
+        return new SimpleDateFormat(FORMAT_ISO_8601, Locale.ROOT);
     }
     
     
     // convenience method returns minimal date format
     public static SimpleDateFormat getIso8601DayDateFormat() {
-        return new SimpleDateFormat(FORMAT_ISO_8601_DAY);
+        return new SimpleDateFormat(FORMAT_ISO_8601_DAY, Locale.ROOT);
     }
     
     

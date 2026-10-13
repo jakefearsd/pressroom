@@ -18,6 +18,7 @@ package org.apache.roller.util;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 import java.util.TimeZone;
 
 
@@ -82,7 +83,7 @@ public final class ISO8601DateParser {
 
         //NOTE: SimpleDateFormat uses GMT[-+]hh:mm for the TZ which breaks
         //things a bit.  Before we go on we have to repair this.
-        SimpleDateFormat df = new SimpleDateFormat( "yyyy-MM-dd'T'HH:mm:ssz" );
+        SimpleDateFormat df = new SimpleDateFormat( "yyyy-MM-dd'T'HH:mm:ssz", Locale.ROOT );
         
         //this is zero time so we need to add that TZ indicator for 
         if ( input.endsWith( "Z" ) ) {
@@ -108,7 +109,7 @@ public final class ISO8601DateParser {
         // JDK would print a nine character "GMT+00:00"; it prints "UTC", and
         // the slices then silently dropped the minutes field (19:20:30 came
         // out as 19:30).
-        SimpleDateFormat df = new SimpleDateFormat( "yyyy-MM-dd'T'HH:mm:ss" );
+        SimpleDateFormat df = new SimpleDateFormat( "yyyy-MM-dd'T'HH:mm:ss", Locale.ROOT );
 
         TimeZone tz = TimeZone.getTimeZone( "UTC" );
 

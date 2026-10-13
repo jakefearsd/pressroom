@@ -25,6 +25,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Date;
+import java.util.Locale;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.roller.weblogger.pojos.WeblogEntrySearchCriteria;
@@ -97,7 +98,7 @@ public class EntriesBean {
             // format a bookmarked search URL may still carry.
         }
         try {
-            DateFormat df = new SimpleDateFormat("MM/dd/yy");
+            DateFormat df = new SimpleDateFormat("MM/dd/yy", Locale.ROOT);
             Date parsed = df.parse(s);
             if (!endOfDay) {
                 return parsed;

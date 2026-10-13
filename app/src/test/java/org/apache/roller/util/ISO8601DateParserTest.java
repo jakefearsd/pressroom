@@ -41,6 +41,20 @@ public class ISO8601DateParserTest {
     private static final Date JUNE_14_2004_1920_30_UTC = Date.from(Instant.parse("2004-06-14T19:20:30Z"));
 
     @Test
+    public void parsesAndRendersTheSameWhateverTheServerLocaleIs() {
+        // Under a Thai default locale SimpleDateFormat switches to the Buddhist
+        // calendar, so an unpinned formatter wrote 2547 into the feed.
+        java.util.Locale original = java.util.Locale.getDefault();
+        try {
+            java.util.Locale.setDefault(java.util.Locale.forLanguageTag("th-TH"));
+            assertEquals(JUNE_14_2004_1920_30_UTC, assertParsed("2004-06-14T19:20:30Z"));
+            assertEquals("2004-06-14T19:20:30+00:00", ISO8601DateParser.toString(JUNE_14_2004_1920_30_UTC));
+        } finally {
+            java.util.Locale.setDefault(original);
+        }
+    }
+
+    @Test
     public void parsesUtcDesignator() {
         assertEquals(JUNE_14_2004_1920_30_UTC, assertParsed("2004-06-14T19:20:30Z"));
     }

@@ -289,6 +289,26 @@ public class DateUtilTest {
         }
 
         @Test
+        public void machineStampsDoNotFollowTheServerLocaleOrCalendar() {
+            // A server whose default locale is Thai would otherwise write the
+            // Buddhist year (2547) into /date/YYYYMMDD permalinks and ISO feed
+            // dates, which no client can read back. Each of these formatters
+            // is a wire format and is pinned to Locale.ROOT.
+            Locale original = Locale.getDefault();
+            try {
+                Locale.setDefault(Locale.forLanguageTag("th-TH"));
+                Date d = dateIn(TimeZone.getDefault(), 2004, Calendar.JUNE, 14, 12, 0, 0, 0);
+                assertEquals("20040614", DateUtil.get8charDateFormat().format(d));
+                assertEquals("200406", DateUtil.get6charDateFormat().format(d));
+                assertEquals("2004-06-14", DateUtil.getIso8601DayDateFormat().format(d));
+                assertTrue(DateUtil.getIso8601DateFormat().format(d).startsWith("2004-06-14T"));
+                assertTrue(DateUtil.defaultTimestampFormat().format(d).startsWith("2004-06-14 "));
+            } finally {
+                Locale.setDefault(original);
+            }
+        }
+
+        @Test
         public void rfc822OfARealDateIsAWellFormedPubDate() {
             // Whatever zone the server runs in, the shape has to be the one
             // RSS 2.0 requires for <pubDate>.

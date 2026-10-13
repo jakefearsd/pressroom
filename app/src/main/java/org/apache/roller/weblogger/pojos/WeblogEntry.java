@@ -865,7 +865,8 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
      */
     public String formatUpdateTime(String pattern) {
         try {
-            SimpleDateFormat format = new SimpleDateFormat(pattern);
+            Locale locale = getWebsite() != null ? getWebsite().getLocaleInstance() : Locale.getDefault();
+            SimpleDateFormat format = new SimpleDateFormat(pattern, locale);
             
             return format.format(getUpdateTime());
         } catch (RuntimeException e) {

@@ -20,6 +20,7 @@ package org.apache.roller.weblogger.ui.rendering.util;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -75,7 +76,7 @@ public final class ModDateHeaderUtil {
 
 		if (log.isDebugEnabled()) {
 			SimpleDateFormat dateFormat = new SimpleDateFormat(
-					"EEE MMM dd 'at' h:mm:ss a");
+					"EEE MMM dd 'at' h:mm:ss a", Locale.US); // debug log line, English like the rest of the log
 			log.debug("since date = {}",
 					DateUtil.format(new Date(sinceDate), dateFormat));
 			log.debug("last mod date (trucated to seconds) = {}",

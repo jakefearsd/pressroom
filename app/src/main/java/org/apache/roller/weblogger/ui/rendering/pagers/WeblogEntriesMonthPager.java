@@ -38,7 +38,7 @@ public class WeblogEntriesMonthPager extends AbstractWeblogEntriesPager {
     
     private static final Logger log = LoggerFactory.getLogger(WeblogEntriesMonthPager.class);
     
-    private SimpleDateFormat monthFormat = new SimpleDateFormat();
+    private SimpleDateFormat monthFormat;
     
     private Date month;
     private Date nextMonth;
@@ -68,7 +68,7 @@ public class WeblogEntriesMonthPager extends AbstractWeblogEntriesPager {
         TimeZone tz = weblog.getTimeZoneInstance();
 
         monthFormat = new SimpleDateFormat(
-            messageUtils.getString("weblogEntriesPager.month.dateFormat"));
+            messageUtils.getString("weblogEntriesPager.month.dateFormat"), messageUtils.getLocale());
         monthFormat.setTimeZone(tz);
         
         getEntries();

@@ -405,6 +405,16 @@ class WeblogEntryLogicTest {
     }
 
     @Test
+    void updateTimeIsFormattedInTheWeblogsLocaleLikePublicationTime() {
+        weblog.setLocale("fr");
+        entry.setUpdateTime(Timestamp.valueOf("2024-03-09 15:30:00"));
+
+        assertEquals("mars", entry.formatUpdateTime("MMMM"),
+                "formatUpdateTime used the server's locale while formatPubTime used the weblog's, "
+                + "so one page could print an entry's two dates in two languages");
+    }
+
+    @Test
     void formattingReportsAnErrorStringRatherThanThrowing() {
         // These are called straight from Velocity templates, where an exception
         // takes out the whole page render.
