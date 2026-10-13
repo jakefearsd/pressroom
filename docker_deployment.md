@@ -603,7 +603,7 @@ Analytics are per-weblog and opt-in, through a field dedicated to it —
 lived on the same Settings page. That textarea only renders when *Server
 Administration → Configuration → Allow analytics code override* is on **and**
 `weblogAdminsUntrusted` is off — and this fork keeps `weblogAdminsUntrusted`
-on everywhere (see `CLAUDE.md`), so the textarea has never actually been
+on everywhere (`docs/dev/configuration.md`), so the textarea has never actually been
 reachable. If an earlier revision of this document told you to paste a
 `<script>` snippet into it, that procedure never worked; disregard it.
 
@@ -1042,12 +1042,12 @@ equivalent rather than identical.
 Building the image needs outbound network access, and not only for the
 Maven/apt steps already implied by "a build": the builder stage's
 `generate-resources` phase runs `frontend-maven-plugin`, which fetches Node
-`v22.23.2` from `nodejs.org` and then the editor bundle's npm packages from
+`v24.21.0` from `nodejs.org` and then the editor bundle's npm packages from
 `registry.npmjs.org`, fresh, every time, because the builder stage starts
 from a clean `maven:3.9-eclipse-temurin-25` image with no cached
 `app/frontend/node/` or `node_modules/` on it. An air-gapped `docker build`
 fails at that step. (This is the image-build case specifically; see
-"Frontend build" in CLAUDE.md for how a persistent checkout avoids re-paying
+"Frontend build" in `docs/dev/build-and-ci.md` for how a persistent checkout avoids re-paying
 that cost on every local `mvn` run.)
 
 ## Upgrades
@@ -1143,7 +1143,7 @@ release needs three changes, not just a version bump:
 1. **Replace `docker-compose.prod.yml`** with the current release's copy —
    the old file bind-mounts a properties file and a Caddyfile that no longer
    exist as separate artifacts; both are baked into the images now (see
-   "Development vs Production" in `CLAUDE.md` and the top of this document).
+   "Development vs Production" in `docs/dev/configuration.md` and the top of this document).
 2. **Rename two `.env` keys**: `ROLLER_DOMAIN` becomes `SITE_DOMAIN`, and
    `ROLLER_IMAGE` becomes `IMAGE_VERSION` — and `IMAGE_VERSION` is a **bare
    version tag** (e.g. `0.1.0`), not a full image reference the way
@@ -1271,7 +1271,7 @@ when a connector on another host forwards to them (see [Behind a tunnel or a
 proxy on another host](#behind-a-tunnel-or-a-proxy-on-another-host)): a host
 serving its own domain needs 80 and 443 reachable from the internet.
 
-**App container is up but `/roller` isn't reachable through Caddy**
+**App container is up but the blog isn't reachable through Caddy**
 
 Check Caddy's own logs for ACME/certificate errors (common cause: DNS isn't
 pointed at the host yet, or port 80 isn't reachable from the internet):
