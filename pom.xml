@@ -149,6 +149,12 @@ limitations under the License.
                                  has not been a dependency since.) -->
                             <arg>-Xlint:-options</arg>
                             <arg>-Xlint:-processing</arg>
+                            <!-- -path is classpath housekeeping, not a code defect.
+                                 it-selenium has no main sources, so its own
+                                 target/classes never exists and javac warns "bad
+                                 path element" on every clean build; with
+                                 failOnWarning that broke the browser-IT build. -->
+                            <arg>-Xlint:-path</arg>
                             <!-- -this-escape is the javac twin of SpotBugs
                                  MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR, which
                                  config/spotbugs/exclude.xml already excludes as a

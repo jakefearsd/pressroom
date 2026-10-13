@@ -68,11 +68,11 @@ class QualityGatePomTest {
 
     /**
      * javac warnings fail the build, and the lints switched off are a closed
-     * set. A fourth {@code -Xlint:-x} is a policy change: update this list and
+     * set. A fifth {@code -Xlint:-x} is a policy change: update this list and
      * the comment beside the compiler arguments in the parent pom.
      */
     @Test
-    void javacWarningsFailTheBuildAndOnlyThreeLintsAreOff() throws IOException {
+    void javacWarningsFailTheBuildAndOnlyFourLintsAreOff() throws IOException {
         String parentPom = read("pom.xml");
         int plugin = parentPom.indexOf("<artifactId>maven-compiler-plugin</artifactId>");
         assertTrue(plugin >= 0, "maven-compiler-plugin missing from the parent pom");
@@ -85,7 +85,7 @@ class QualityGatePomTest {
         while (m.find()) {
             off.add(m.group(1));
         }
-        assertEquals(List.of("options", "processing", "this-escape"), off,
+        assertEquals(List.of("options", "processing", "path", "this-escape"), off,
                 "the disabled javac lints are a closed set");
     }
 
