@@ -73,7 +73,9 @@ public final class ExternalImages {
     // pattern with an optional value trips SpotBugs' ReDoS check. The name
     // group is 1; the value pattern's groups are 1 double-quoted, 2
     // single-quoted, 3 unquoted. Possessive runs cannot give text back.
-    private static final Pattern NAME = Pattern.compile("[\\s/]*+([^\\s/>=]++)");
+    // A name is never empty: a leading '=' starts one (browsers take it as the
+    // first character of the name), so the loop stops only at '>' or the end.
+    private static final Pattern NAME = Pattern.compile("[\\s/]*+(=[^\\s/>=]*+|[^\\s/>=]++)");
     private static final Pattern VALUE = Pattern.compile(
             "\\s*+=\\s*+(?:\"([^\"]*+)\"|'([^']*+)'|([^\\s>]++))");
     private static final Pattern SRC = Pattern.compile("src", Pattern.CASE_INSENSITIVE);
@@ -218,8 +220,13 @@ public final class ExternalImages {
                     alt = StringEscapeUtils.unescapeHtml4(rawValue);
                 }
             }
-            int close = text.indexOf('>', pos);
-            int tagEnd = close < 0 || close >= range[1] ? range[1] : close + 1;
+            int tagEnd = pos;
+            while (tagEnd < range[1] && text.charAt(tagEnd) != '>') {
+                tagEnd++;
+            }
+            if (tagEnd < range[1]) {
+                tagEnd++;
+            }
             if (srcsetExternal) {
                 refusals.add("srcset is not imported; use one src, or [image id=...] for a "
                         + "responsive image: " + abbreviate(text.substring(open.start(), tagEnd)));

@@ -171,6 +171,20 @@ class ExternalImagesTest {
         assertEquals(List.of(), urls("<img data-src=\"https://ext.example/e.jpg\" src=\"/local.jpg\">"));
     }
 
+    /**
+     * Inline, commonmark reads {@code <img =x ...>} as text (its grammar has
+     * no such attribute name), so the renderer escapes it and no browser loads
+     * it. Inside a raw HTML block the text passes through verbatim, so that is
+     * where a leading {@code =} must be read as an attribute name.
+     */
+    @Test
+    void aLeadingEqualsSignStartsAnAttributeName() {
+        assertEquals(List.of("https://ext.example/a.jpg"),
+                urls("<div>\n<img =x src=\"https://ext.example/a.jpg\">\n</div>\n"));
+        assertEquals(List.of("https://ext.example/c.jpg"),
+                urls("<div>\n<img =x title=\"a>b\" src=\"https://ext.example/c.jpg\">\n</div>\n"));
+    }
+
     @Test
     void emptyTextHasNoImages() {
         assertTrue(ExternalImages.scan("", OWN).refs().isEmpty());
