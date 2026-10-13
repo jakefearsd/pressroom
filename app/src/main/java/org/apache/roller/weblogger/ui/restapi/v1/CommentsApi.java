@@ -108,7 +108,7 @@ public class CommentsApi extends BaseApiController implements UISecurityEnforced
         ReaderComment comment = requireComment(request, id);
         Status wanted = body == null || StringUtils.isBlank(body.status()) ? null : parse(body.status());
         if (wanted != Status.PUBLISHED && wanted != Status.HIDDEN) {
-            throw ApiException.badRequest("status must be PUBLISHED or HIDDEN.");
+            throw ApiException.invalidField("status", "status must be PUBLISHED or HIDDEN.");
         }
         if (!commentService.setStatus(comment, wanted, requireAuthenticatedUser(request))) {
             // The service's one refusal: a reader-deleted tombstone is never published.
@@ -145,7 +145,7 @@ public class CommentsApi extends BaseApiController implements UISecurityEnforced
         try {
             return Status.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
-            throw ApiException.badRequest("status must be one of PENDING, PUBLISHED or HIDDEN.", ex);
+            throw ApiException.invalidField("status", "status must be one of PENDING, PUBLISHED or HIDDEN.", ex);
         }
     }
 

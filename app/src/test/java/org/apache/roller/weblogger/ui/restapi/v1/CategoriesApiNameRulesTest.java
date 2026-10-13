@@ -19,6 +19,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.apache.roller.weblogger.ui.restapi.ErrorFieldMatchers.errorFieldIs;
 
 /** The category name rules a request can break before anything is stored. */
 class CategoriesApiNameRulesTest {
@@ -111,5 +112,22 @@ class CategoriesApiNameRulesTest {
                 .andExpect(status().isOk());
 
         assertEquals("Trips", category.getName());
+    }
+
+    @Test
+    void createWithNoNameNamesTheNameField() throws Exception {
+        mvc().perform(post("/v1/weblogs/catblog/categories").requestAttr("actionWeblog", weblog)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"description\":\"d\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("name"));
+    }
+
+    @Test
+    void renamingToABlankNameNamesTheNameField() throws Exception {
+        ownedCategory("c1", "Travel");
+        mvc().perform(patch("/v1/weblogs/catblog/categories/{id}", "c1").requestAttr("actionWeblog", weblog)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"  \"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("name"));
     }
 }

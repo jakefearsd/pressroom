@@ -24,6 +24,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.apache.roller.weblogger.ui.restapi.ErrorFieldMatchers.errorFieldIs;
 
 class PagesApiTest {
 
@@ -487,5 +488,65 @@ class PagesApiTest {
                 new PagesApi().requiredWeblogPermissionActions());
         assertTrue(new PagesApi().isUserRequired());
         assertTrue(new PagesApi().isWeblogRequired());
+    }
+
+    @Test
+    void postWithABlankTitleNamesTheTitleField() throws Exception {
+        mockMvc(controllerFor(mockedWeblogger()))
+                .perform(post("/v1/weblogs/myblog/pages")
+                        .requestAttr("actionWeblog", aWeblog("myblog"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"slug\":\"about\",\"title\":\"  \"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("title"));
+    }
+
+    @Test
+    void postWithAReservedSlugNamesTheSlugField() throws Exception {
+        mockMvc(controllerFor(mockedWeblogger()))
+                .perform(post("/v1/weblogs/myblog/pages")
+                        .requestAttr("actionWeblog", aWeblog("myblog"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"slug\":\"category\",\"title\":\"Nope\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("slug"));
+    }
+
+    @Test
+    void postWithASlashInTheSlugNamesTheSlugField() throws Exception {
+        mockMvc(controllerFor(mockedWeblogger()))
+                .perform(post("/v1/weblogs/myblog/pages")
+                        .requestAttr("actionWeblog", aWeblog("myblog"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"slug\":\"foo/bar\",\"title\":\"Nope\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("slug"));
+    }
+
+    @Test
+    void postWithAnUnknownStatusNamesTheStatusField() throws Exception {
+        mockMvc(controllerFor(mockedWeblogger()))
+                .perform(post("/v1/weblogs/myblog/pages")
+                        .requestAttr("actionWeblog", aWeblog("myblog"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"slug\":\"about\",\"title\":\"About\",\"status\":\"bogus\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("status"));
+    }
+
+    @Test
+    void patchWithABlankTitleNamesTheTitleField() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogPage page = aPage(weblog, "page-1", "about", "About");
+        when(weblogger.getWeblogPageManager().getPage("page-1")).thenReturn(page);
+
+        mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/weblogs/myblog/pages/{id}", "page-1")
+                        .requestAttr("actionWeblog", weblog)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"   \"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("title"));
     }
 }

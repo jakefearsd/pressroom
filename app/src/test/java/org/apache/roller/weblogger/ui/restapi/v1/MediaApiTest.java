@@ -48,6 +48,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.apache.roller.weblogger.ui.restapi.ErrorFieldMatchers.errorFieldIs;
 
 class MediaApiTest {
 
@@ -1235,5 +1236,55 @@ class MediaApiTest {
         assertTrue(lines.get(0).contains("host=img.example.com"), lines.get(0));
         assertTrue(lines.get(1).contains("host=? "), lines.get(1));
         verify(fetcher, never()).fetch(any(), org.mockito.ArgumentMatchers.anyLong(), any());
+    }
+
+    @Test
+    void createDirectoryWithABlankNameNamesTheNameField() throws Exception {
+        mockMvc(controllerFor(mockedWeblogger()))
+                .perform(post("/v1/weblogs/myblog/media/directories")
+                        .requestAttr("actionWeblog", aWeblog("myblog"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"   \"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("name"));
+    }
+
+    @Test
+    void createDirectoryNamedDefaultNamesTheNameField() throws Exception {
+        mockMvc(controllerFor(mockedWeblogger()))
+                .perform(post("/v1/weblogs/myblog/media/directories")
+                        .requestAttr("actionWeblog", aWeblog("myblog"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"default\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("name"));
+    }
+
+    @Test
+    void createDirectoryNamedSlashNamesTheNameField() throws Exception {
+        mockMvc(controllerFor(mockedWeblogger()))
+                .perform(post("/v1/weblogs/myblog/media/directories")
+                        .requestAttr("actionWeblog", aWeblog("myblog"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"/\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("name"));
+    }
+
+    @Test
+    void patchWithABlankNameNamesTheNameField() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        MediaFileDirectory dir = aDirectory(weblog, "default");
+        MediaFile file = aMediaFile(dir, "dog.jpg");
+        when(weblogger.getMediaFileManager().getMediaFile("file-1")).thenReturn(file);
+
+        mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/weblogs/myblog/media/{id}", "file-1")
+                        .requestAttr("actionWeblog", weblog)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"   \"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("name"));
     }
 }

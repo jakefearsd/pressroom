@@ -30,6 +30,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.apache.roller.weblogger.ui.restapi.ErrorFieldMatchers.errorFieldIs;
 
 class CategoriesApiTest {
 
@@ -545,5 +546,21 @@ class CategoriesApiTest {
                 new CategoriesApi().requiredWeblogPermissionActions());
         assertTrue(new CategoriesApi().isUserRequired());
         assertTrue(new CategoriesApi().isWeblogRequired());
+    }
+
+    @Test
+    void deleteWithMoveToNamingTheSameCategoryNamesTheMoveToField() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogCategory category = aCategory(weblog, "Doomed");
+        aCategory(weblog, "Other");
+        when(weblogger.getWeblogEntryManager().getWeblogCategory("cat-1")).thenReturn(category);
+
+        mockMvc(controllerFor(weblogger))
+                .perform(delete("/v1/weblogs/myblog/categories/{id}", "cat-1")
+                        .param("moveTo", "cat-1")
+                        .requestAttr("actionWeblog", weblog))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("moveTo"));
     }
 }

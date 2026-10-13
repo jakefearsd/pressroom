@@ -204,4 +204,85 @@ class AdminApiBranchesTest {
         assertTrue(body.contains("cannot be set to null"), body);
         verify(weblogger.getPropertiesManager(), never()).saveProperties(any());
     }
+
+    /** The field named by the first {@code errors} entry of a problem body. */
+    private static String firstErrorField(String body) {
+        return new tools.jackson.databind.ObjectMapper().readTree(body)
+                .get("errors").get(0).get("field").asString();
+    }
+
+    private static String patchUserRefused(String json) throws Exception {
+        Weblogger weblogger = weblogger();
+        User user = new User();
+        user.setUserName("alice");
+        when(weblogger.getUserManager().getUserByUserName("alice", null)).thenReturn(user);
+        return mvc(weblogger).perform(patch("/v1/admin/users/{userName}", "alice")
+                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isBadRequest())
+                .andReturn().getResponse().getContentAsString();
+    }
+
+    private static String patchConfigRefused(String json) throws Exception {
+        return mvc(weblogger()).perform(patch("/v1/admin/config").contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isBadRequest())
+                .andReturn().getResponse().getContentAsString();
+    }
+
+    @Test
+    void aCreateWithNoUserNameNamesTheUserNameField() throws Exception {
+        String body = postUser(mvc(weblogger()), "{\"emailAddress\":\"a@example.test\"}", 400);
+        assertEquals("userName", firstErrorField(body));
+    }
+
+    @Test
+    void aCreateWithNoEmailAddressNamesTheEmailAddressField() throws Exception {
+        String body = postUser(mvc(weblogger()), "{\"userName\":\"alice\"}", 400);
+        assertEquals("emailAddress", firstErrorField(body));
+    }
+
+    @Test
+    void aCreateWithDisallowedCharactersNamesTheUserNameField() throws Exception {
+        try (var config = mockStatic(WebloggerConfig.class)) {
+            config.when(() -> WebloggerConfig.getProperty("username.allowedChars")).thenReturn("  ");
+            String body = postUser(mvc(weblogger()),
+                    "{\"userName\":\"al ice!\",\"emailAddress\":\"a@example.test\"}", 400);
+            assertEquals("userName", firstErrorField(body));
+        }
+    }
+
+    @Test
+    void aPatchWithAMalformedEmailAddressNamesTheEmailAddressField() throws Exception {
+        assertEquals("emailAddress", firstErrorField(patchUserRefused("{\"emailAddress\":\"not-an-address\"}")));
+    }
+
+    @Test
+    void aPatchWithABlankScreenNameNamesTheScreenNameField() throws Exception {
+        assertEquals("screenName", firstErrorField(patchUserRefused("{\"screenName\":\"  \"}")));
+    }
+
+    @Test
+    void aConfigPatchNullNamesThatProperty() throws Exception {
+        assertEquals("groupblogging.enabled", firstErrorField(patchConfigRefused("{\"groupblogging.enabled\":null}")));
+    }
+
+    @Test
+    void aConfigPatchBadBooleanNamesThatProperty() throws Exception {
+        assertEquals("groupblogging.enabled", firstErrorField(patchConfigRefused("{\"groupblogging.enabled\":\"maybe\"}")));
+    }
+
+    @Test
+    void aConfigPatchBadIntegerNamesThatProperty() throws Exception {
+        assertEquals("site.pages.maxEntries", firstErrorField(patchConfigRefused("{\"site.pages.maxEntries\":\"abc\"}")));
+    }
+
+    @Test
+    void aConfigPatchBadNumberNamesThatProperty() throws Exception {
+        assertEquals("uploads.file.maxsize", firstErrorField(patchConfigRefused("{\"uploads.file.maxsize\":\"abc\"}")));
+    }
+
+    @Test
+    void aConfigPatchOfAnUnknownPropertyNamesIt() throws Exception {
+        assertEquals("no.such.property", firstErrorField(patchConfigRefused("{\"no.such.property\":\"x\"}")));
+    }
 }

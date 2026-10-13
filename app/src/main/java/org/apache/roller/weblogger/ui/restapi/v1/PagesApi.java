@@ -67,7 +67,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         // applied on create only; a PATCH omitting title leaves the stored
         // one alone per applyWrite's "null means absent" contract.
         if (body.title() == null || body.title().isBlank()) {
-            throw ApiException.badRequest("title is required.");
+            throw ApiException.invalidField("title", "title is required.");
         }
         String slug = PageDtos.requireUsableSlug(body.slug());
         requireSlugAvailable(weblog, slug, null);
@@ -94,7 +94,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
         WeblogPage page = requirePage(request, id);
 
         if (body.title() != null && body.title().isBlank()) {
-            throw ApiException.badRequest("title cannot be blank.");
+            throw ApiException.invalidField("title", "title cannot be blank.");
         }
         if (body.slug() != null) {
             String slug = PageDtos.requireUsableSlug(body.slug());

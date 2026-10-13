@@ -151,4 +151,20 @@ class ApiExceptionHandlerTest {
 
     @SuppressWarnings("unused")
     private void dummyTypedTarget(int arg) { }
+
+    @Test
+    void aTypeMismatchedParameterNamesItsFieldInErrors() throws NoSuchMethodException {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/admin/users");
+        MethodParameter methodParameter = new MethodParameter(
+                ApiExceptionHandlerTest.class.getDeclaredMethod("dummyTypedTarget", int.class), 0);
+        org.springframework.web.method.annotation.MethodArgumentTypeMismatchException ex =
+                new org.springframework.web.method.annotation.MethodArgumentTypeMismatchException(
+                        "abc", int.class, "limit", methodParameter,
+                        new NumberFormatException("For input string: \"abc\""));
+
+        ApiProblem body = handler.handleTypeMismatch(ex, request).getBody();
+
+        assertNotNull(body);
+        assertEquals("limit", body.errors().get(0).field());
+    }
 }

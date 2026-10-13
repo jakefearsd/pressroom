@@ -142,7 +142,7 @@ public class TokensApi {
 
     private static void requireLabel(String label) {
         if (label == null || label.isBlank()) {
-            throw ApiException.badRequest("label is required.");
+            throw ApiException.invalidField("label", "label is required.");
         }
     }
 
@@ -150,7 +150,7 @@ public class TokensApi {
         try {
             return ApiToken.Role.valueOf(role.toUpperCase(Locale.ROOT));
         } catch (RuntimeException e) {
-            throw ApiException.badRequest("Unknown role: " + role, e);
+            throw ApiException.invalidField("role", "Unknown role: " + role, e);
         }
     }
 

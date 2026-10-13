@@ -126,7 +126,7 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
             @RequestParam(value = "directoryId", required = false) String directoryId) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
         if (files == null || files.length == 0) {
-            throw ApiException.badRequest("At least one file is required.");
+            throw ApiException.invalidField("file", "At least one file is required.");
         }
 
         MediaFileManager mfm = weblogger.getMediaFileManager();
@@ -299,15 +299,15 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
         Weblog weblog = requireActionWeblog(request);
         String name = body.name() == null ? null : body.name().trim();
         if (name == null || name.isBlank()) {
-            throw ApiException.badRequest("name is required.");
+            throw ApiException.invalidField("name", "name is required.");
         }
 
         String normalized = name.startsWith("/") ? name.substring(1) : name;
         if (normalized.isEmpty()) {
-            throw ApiException.badRequest("name is required.");
+            throw ApiException.invalidField("name", "name is required.");
         }
         if ("default".equals(normalized)) {
-            throw ApiException.badRequest("'default' is a reserved directory name.");
+            throw ApiException.invalidField("name", "'default' is a reserved directory name.");
         }
         ColumnLimits.requireMaxLength("name", normalized, ColumnLimits.DIRECTORY_NAME);
         if (weblog.hasMediaFileDirectory(normalized)) {

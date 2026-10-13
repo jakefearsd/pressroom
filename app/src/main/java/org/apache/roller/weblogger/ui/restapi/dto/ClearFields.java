@@ -27,19 +27,19 @@ public final class ClearFields {
         for (String raw : clear) {
             String name = raw == null ? "" : raw.trim();
             if (!clearable.contains(name)) {
-                throw ApiException.badRequest("\"" + abbreviate(name) + "\" cannot be cleared. Clearable: "
+                throw ApiException.invalidField("clear", "\"" + abbreviate(name) + "\" cannot be cleared. Clearable: "
                         + String.join(", ", clearable) + ".");
             }
             names.add(name);
         }
         for (List<String> pair : pairs) {
             if (names.contains(pair.get(0)) != names.contains(pair.get(1))) {
-                throw ApiException.badRequest(pair.get(0) + " and " + pair.get(1) + " are cleared together.");
+                throw ApiException.invalidField("clear", pair.get(0) + " and " + pair.get(1) + " are cleared together.");
             }
         }
         for (String set : setFields(body)) {
             if (names.contains(set)) {
-                throw ApiException.badRequest(set + " is both set and cleared.");
+                throw ApiException.invalidField("clear", set + " is both set and cleared.");
             }
         }
         return Set.copyOf(names);

@@ -126,7 +126,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
             throws WebloggerException {
         String userName = body.userName() == null ? null : body.userName().trim();
         if (StringUtils.isBlank(userName)) {
-            throw ApiException.badRequest("userName is required.");
+            throw ApiException.invalidField("userName", "userName is required.");
         }
         ColumnLimits.requireMaxLength("userName", userName, ColumnLimits.USERNAME);
         String allowed = WebloggerConfig.getProperty("username.allowedChars");
@@ -134,12 +134,12 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
             allowed = UIUtils.DEFAULT_ALLOWED_CHARS;
         }
         if (!CharSetUtils.keep(userName, allowed).equals(userName)) {
-            throw ApiException.badRequest("userName contains characters that are not allowed.");
+            throw ApiException.invalidField("userName", "userName contains characters that are not allowed.");
         }
 
         String emailAddress = body.emailAddress() == null ? null : body.emailAddress().trim();
         if (StringUtils.isBlank(emailAddress) || !EMAIL_PATTERN.matcher(emailAddress).matches()) {
-            throw ApiException.badRequest("A valid emailAddress is required.");
+            throw ApiException.invalidField("emailAddress", "A valid emailAddress is required.");
         }
         ColumnLimits.requireMaxLength("emailAddress", emailAddress, ColumnLimits.USER_EMAIL_ADDRESS);
 
@@ -225,7 +225,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         if (body.emailAddress() != null) {
             String emailAddress = body.emailAddress().trim();
             if (!EMAIL_PATTERN.matcher(emailAddress).matches()) {
-                throw ApiException.badRequest("emailAddress is not a valid address.");
+                throw ApiException.invalidField("emailAddress", "emailAddress is not a valid address.");
             }
             ColumnLimits.requireMaxLength("emailAddress", emailAddress, ColumnLimits.USER_EMAIL_ADDRESS);
             user.setEmailAddress(emailAddress);
@@ -233,7 +233,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         if (body.screenName() != null) {
             String screenName = body.screenName().trim();
             if (screenName.isBlank()) {
-                throw ApiException.badRequest("screenName cannot be blank.");
+                throw ApiException.invalidField("screenName", "screenName cannot be blank.");
             }
             ColumnLimits.requireMaxLength("screenName", screenName, ColumnLimits.SCREEN_NAME);
             user.setScreenName(screenName);
@@ -338,26 +338,26 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
      */
     private static void requireValidType(PropertyDef def, String value) {
         if (value == null) {
-            throw ApiException.badRequest("'" + def.getName() + "' cannot be set to null.");
+            throw ApiException.invalidField(def.getName(), "'" + def.getName() + "' cannot be set to null.");
         }
         switch (def.getType()) {
             case "boolean" -> {
                 if (!BOOLEAN.matcher(value).matches()) {
-                    throw ApiException.badRequest("'" + def.getName() + "' must be true or false.");
+                    throw ApiException.invalidField(def.getName(), "'" + def.getName() + "' must be true or false.");
                 }
             }
             case "integer" -> {
                 try {
                     Integer.parseInt(value);
                 } catch (NumberFormatException e) {
-                    throw ApiException.badRequest("'" + def.getName() + "' must be an integer.", e);
+                    throw ApiException.invalidField(def.getName(), "'" + def.getName() + "' must be an integer.", e);
                 }
             }
             case "float" -> {
                 try {
                     Float.parseFloat(value);
                 } catch (NumberFormatException e) {
-                    throw ApiException.badRequest("'" + def.getName() + "' must be a number.", e);
+                    throw ApiException.invalidField(def.getName(), "'" + def.getName() + "' must be a number.", e);
                 }
             }
             default -> {

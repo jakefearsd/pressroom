@@ -189,7 +189,7 @@ public final class MediaDtos {
         if (patch.name() != null) {
             String name = patch.name().trim();
             if (name.isEmpty()) {
-                throw ApiException.badRequest("name cannot be blank.");
+                throw ApiException.invalidField("name", "name cannot be blank.");
             }
             ColumnLimits.requireMaxLength("name", name, ColumnLimits.MEDIA_NAME);
             file.setName(name);

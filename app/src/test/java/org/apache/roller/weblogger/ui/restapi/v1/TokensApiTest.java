@@ -24,6 +24,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.apache.roller.weblogger.ui.restapi.ErrorFieldMatchers.errorFieldIs;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -467,5 +468,33 @@ class TokensApiTest {
                 .andExpect(status().isForbidden());
 
         verify(weblogger.getApiTokenManager(), never()).getTokens(any());
+    }
+
+    @Test
+    void anUnknownRoleNamesTheRoleField() throws Exception {
+        authenticateWithBasicAuth();
+        Weblogger weblogger = mockedWeblogger();
+        when(weblogger.getUserManager().getUserByUserName("owner")).thenReturn(new User());
+
+        mockMvc(new TokensApi(weblogger))
+                .perform(post("/v1/tokens")
+                        .contentType("application/json")
+                        .content("{\"label\":\"x\",\"role\":\"SUPERUSER\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("role"));
+    }
+
+    @Test
+    void aBlankLabelNamesTheLabelField() throws Exception {
+        authenticateWithBasicAuth();
+        Weblogger weblogger = mockedWeblogger();
+        when(weblogger.getUserManager().getUserByUserName("owner")).thenReturn(new User());
+
+        mockMvc(new TokensApi(weblogger))
+                .perform(post("/v1/tokens")
+                        .contentType("application/json")
+                        .content("{\"label\":\"   \",\"role\":\"POST\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("label"));
     }
 }

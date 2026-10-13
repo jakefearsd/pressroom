@@ -158,7 +158,7 @@ public final class AdminDtos {
         if (patch.name() != null) {
             String name = patch.name().trim();
             if (name.isBlank()) {
-                throw ApiException.badRequest("name cannot be blank.");
+                throw ApiException.invalidField("name", "name cannot be blank.");
             }
             ColumnLimits.requireMaxLength("name", name, ColumnLimits.WEBLOG_NAME);
             bean.setName(name);
@@ -226,7 +226,7 @@ public final class AdminDtos {
     /** The column is numeric(5,2)/(6,2): store what the database would keep, as the form's value would be. */
     private static String twoDecimals(String field, Double value) {
         if (!Double.isFinite(value)) {
-            throw ApiException.badRequest(field + " must be a finite number.");
+            throw ApiException.invalidField(field, field + " must be a finite number.");
         }
         return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP).toPlainString();
     }
@@ -264,7 +264,7 @@ public final class AdminDtos {
             throw ApiException.badRequest("A property name is required.");
         }
         if (findPropertyDef(name) == null) {
-            throw ApiException.badRequest(
+            throw ApiException.invalidField(name,
                     "'" + name + "' is not a runtime-settable property.");
         }
     }

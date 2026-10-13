@@ -89,7 +89,7 @@ public final class PageDtos {
         try {
             return WeblogPage.PubStatus.valueOf(raw.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw ApiException.badRequest("Unknown status '" + raw + "'.", e);
+            throw ApiException.invalidField("status", "Unknown status '" + raw + "'.", e);
         }
     }
 
@@ -122,11 +122,11 @@ public final class PageDtos {
     public static String requireUsableSlug(String slug) {
         String trimmed = slug == null ? null : slug.trim();
         if (ReservedSlugs.isReserved(trimmed)) {
-            throw ApiException.badRequest(
+            throw ApiException.invalidField("slug",
                     "slug is blank or reserved: '" + slug + "'.");
         }
         if (trimmed.indexOf('/') >= 0) {
-            throw ApiException.badRequest(
+            throw ApiException.invalidField("slug",
                     "slug may not contain '/': '" + slug + "'.");
         }
         ColumnLimits.requireMaxLength("slug", trimmed, ColumnLimits.PAGE_SLUG);

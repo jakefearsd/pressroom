@@ -91,7 +91,7 @@ public class AuditApi extends BaseApiController implements UISecurityEnforced {
             // Unlike EntriesApi.list, this endpoint never widens to the
             // trash -- see the javadoc above for why. Refused before any
             // criteria is built or the manager is called.
-            throw ApiException.badRequest(
+            throw ApiException.invalidField("status",
                     "The SEO audit does not cover trashed entries; status=TRASHED is not accepted here.");
         }
 

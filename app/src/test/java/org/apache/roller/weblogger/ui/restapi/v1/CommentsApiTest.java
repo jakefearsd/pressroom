@@ -56,6 +56,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.apache.roller.weblogger.ui.restapi.ErrorFieldMatchers.errorFieldIs;
 
 /**
  * The comment-moderation API: routing, filters and paging, the status and
@@ -409,5 +410,24 @@ class CommentsApiTest {
                 .andExpect(status().isNoContent());
         verify(service).setStatus(c, Status.HIDDEN, owner);
         verify(service).delete(c, owner);
+    }
+
+    @Test
+    void aListStatusFilterNamesTheStatusField() throws Exception {
+        mvc.perform(get(BASE).requestAttr("actionWeblog", weblog).param("status", "bogus"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("status"));
+    }
+
+    @Test
+    void aPatchStatusOtherThanPublishedOrHiddenNamesTheStatusField() throws Exception {
+        ReaderComment c = aComment("c1", entry, Status.PUBLISHED, "hello");
+        when(comments.getComment("c1")).thenReturn(c);
+
+        mvc.perform(patch(BASE + "/c1").requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", owner)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"PENDING\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("status"));
     }
 }

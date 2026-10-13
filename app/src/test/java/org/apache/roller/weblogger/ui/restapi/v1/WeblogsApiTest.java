@@ -31,6 +31,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.apache.roller.weblogger.ui.restapi.ErrorFieldMatchers.errorFieldIs;
 
 /**
  * Controller-level tests for {@link WeblogsApi}: routing, the ownership
@@ -635,5 +636,30 @@ class WeblogsApiTest {
                 "WeblogsApi must carry @AdminScoped -- it reaches every weblog on the site, not just "
                         + "the caller's own, and ApiScopeInterceptor otherwise never applies the "
                         + "ADMIN-role ceiling to it.");
+    }
+
+    @Test
+    void patchWithABlankNameNamesTheNameField() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/weblogs/{handle}", "myblog")
+                        .requestAttr("actionWeblog", weblog)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"   \"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("name"));
+    }
+
+    @Test
+    void aNonFiniteCoordinateNamesTheCoordinateField() {
+        AdminDtos.WeblogPatch patch = new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null);
+
+        ApiException e = assertThrows(ApiException.class,
+                () -> AdminDtos.applyPatch(new WeblogConfigBean(), patch, java.util.Set.of()));
+
+        assertEquals("placeLat", e.getFieldErrors().get(0).field());
     }
 }

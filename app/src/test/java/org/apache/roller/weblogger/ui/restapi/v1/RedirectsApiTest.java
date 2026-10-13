@@ -44,6 +44,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.apache.roller.weblogger.ui.restapi.ErrorFieldMatchers.errorFieldIs;
 
 /**
  * Redirect-rule CRUD over the API: routing, status codes, the ownership
@@ -264,5 +265,33 @@ class RedirectsApiTest {
                 .perform(delete("/v1/weblogs/myblog/redirects/{id}", "nope")
                         .requestAttr("actionWeblog", weblog))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void aMissingSourceNamesTheSourceField() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/redirects")
+                        .requestAttr("actionWeblog", weblog)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"target\":\"/new\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("source"));
+    }
+
+    @Test
+    void aMissingTargetNamesTheTargetField() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/redirects")
+                        .requestAttr("actionWeblog", weblog)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"source\":\"/old\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("target"));
     }
 }

@@ -61,7 +61,7 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
         Weblog weblog = requireActionWeblog(request);
         String name = body.name() == null ? null : body.name().trim();
         if (name == null || name.isBlank()) {
-            throw ApiException.badRequest("name is required.");
+            throw ApiException.invalidField("name", "name is required.");
         }
         ColumnLimits.requireMaxLength("name", name, ColumnLimits.CATEGORY_NAME);
         if (body.description() != null) {
@@ -91,7 +91,7 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
         if (body.name() != null) {
             String name = body.name().trim();
             if (name.isBlank()) {
-                throw ApiException.badRequest("name cannot be blank.");
+                throw ApiException.invalidField("name", "name cannot be blank.");
             }
             ColumnLimits.requireMaxLength("name", name, ColumnLimits.CATEGORY_NAME);
             if (!name.equals(category.getName())) {
@@ -155,7 +155,7 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
             // shape the last-category and in-use guards above exist to
             // intercept.
             if (moveTo.equals(id)) {
-                throw ApiException.badRequest("moveTo cannot name the category being deleted.");
+                throw ApiException.invalidField("moveTo", "moveTo cannot name the category being deleted.");
             }
             WeblogCategory target = WeblogOwnership.category(weblogger, moveTo, weblog);
             if (target == null) {

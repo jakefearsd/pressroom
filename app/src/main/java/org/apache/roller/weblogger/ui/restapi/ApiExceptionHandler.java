@@ -76,7 +76,7 @@ public class ApiExceptionHandler {
         log.info("Type mismatch for parameter '{}' at {}", ex.getName(), request.getRequestURI(),
                 ex);
         return handleApiException(
-                ApiException.badRequest("'" + ex.getName() + "' is not a valid value for this parameter."),
+                ApiException.invalidField(ex.getName(), "'" + ex.getName() + "' is not a valid value for this parameter."),
                 request);
     }
 

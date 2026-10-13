@@ -30,6 +30,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.apache.roller.weblogger.ui.restapi.ErrorFieldMatchers.errorFieldIs;
 
 /**
  * A batch is not a transaction. createMediaFile reports quota and
@@ -497,5 +498,16 @@ class MediaUploadTest {
         assertEquals(1, response.getBody().created());
         assertEquals(1, response.getBody().failed());
         verify(odd, never()).getInputStream();
+    }
+
+    @Test
+    void uploadWithNoFilesNamesTheFileField() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        mockMvc(controllerFor(weblogger))
+                .perform(multipart("/v1/weblogs/myblog/media").requestAttr("actionWeblog", weblog))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("file"));
     }
 }

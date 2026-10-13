@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.apache.roller.weblogger.ui.restapi.ErrorFieldMatchers.errorFieldIs;
 
 class AuditApiTest {
 
@@ -305,5 +306,17 @@ class AuditApiTest {
         assertEquals(List.of(WeblogPermission.EDIT_DRAFT), new AuditApi().requiredWeblogPermissionActions());
         assertTrue(new AuditApi().isUserRequired());
         assertTrue(new AuditApi().isWeblogRequired());
+    }
+
+    @Test
+    void seoAuditRefusalOfStatusTrashedNamesTheStatusField() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+
+        mockMvc(controllerFor(weblogger))
+                .perform(get("/v1/weblogs/myblog/audit/seo")
+                        .param("status", "TRASHED")
+                        .requestAttr("actionWeblog", aWeblog()))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("status"));
     }
 }

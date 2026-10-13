@@ -66,4 +66,17 @@ class ClearFieldsTest {
     void aWholePairClears() {
         assertEquals(Set.of("lat", "lng"), validate(new Body(null, null, null, List.of("lat", "lng"))));
     }
+
+    @Test
+    void everyRefusalNamesTheClearField() {
+        record Body(String a, String b, List<String> clear) { }
+        for (List<String> clear : List.of(List.of("nope"), List.of("a"))) {
+            ApiException ex = assertThrows(ApiException.class, () -> ClearFields.validate(clear,
+                    new Body(null, null, clear), List.of("a", "b"), List.of(List.of("a", "b"))));
+            assertEquals("clear", ex.getFieldErrors().get(0).field());
+        }
+        ApiException both = assertThrows(ApiException.class, () -> ClearFields.validate(List.of("a", "b"),
+                new Body("set", null, List.of("a", "b")), List.of("a", "b"), List.of()));
+        assertEquals("clear", both.getFieldErrors().get(0).field());
+    }
 }

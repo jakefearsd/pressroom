@@ -72,10 +72,10 @@ public class RedirectsApi extends BaseApiController implements UISecurityEnforce
         Weblog weblog = requireActionWeblog(request);
 
         if (body.source() == null || body.source().isBlank()) {
-            throw ApiException.badRequest("source is required.");
+            throw ApiException.invalidField("source", "source is required.");
         }
         if (body.target() == null || body.target().isBlank()) {
-            throw ApiException.badRequest("target is required.");
+            throw ApiException.invalidField("target", "target is required.");
         }
         ColumnLimits.requireMaxLength("source", body.source(), ColumnLimits.REDIRECT_PATH);
         ColumnLimits.requireMaxLength("target", body.target(), ColumnLimits.REDIRECT_PATH);
