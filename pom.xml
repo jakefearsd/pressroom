@@ -99,9 +99,15 @@ limitations under the License.
              nine commits of characterisation tests): measured LINE 0.9377,
              BRANCH 0.8722 on `mvn -pl app clean verify` without cwebp.
              Floors keep the same headroom as the 2026-09-08 raise: 0.9330
-             leaves ~95 lines, 0.8670 leaves ~37 branches. -->
-        <jacoco.line.minimum>0.9330</jacoco.line.minimum>
-        <jacoco.branch.minimum>0.8670</jacoco.branch.minimum>
+             leaves ~95 lines, 0.8670 leaves ~37 branches.
+
+             Raised 2026-10-13 after the post-0.1.17 quality pass (two
+             coverage agents, ~170 test classes' worth of behaviour tests):
+             measured LINE 0.9621, BRANCH 0.9141, identical over two clean
+             runs without cwebp. 0.9590 leaves ~74 lines (23 864 total),
+             0.9100 leaves ~36 branches (8 852 total). -->
+        <jacoco.line.minimum>0.9590</jacoco.line.minimum>
+        <jacoco.branch.minimum>0.9100</jacoco.branch.minimum>
         <jacoco.check.skip>false</jacoco.check.skip>
 
         <quality.check.skip>false</quality.check.skip>
@@ -392,8 +398,57 @@ limitations under the License.
                                                  ratio 5.6 points, far too volatile to hang a
                                                  build gate on. Check the includes before reading
                                                  the lowest number in a coverage report as this
-                                                 rule's binding constraint. -->
-                                            <minimum>0.80</minimum>
+                                                 rule's binding constraint.
+
+                                                 0.80 to 0.86 on 2026-10-13, after a coverage pass.
+                                                 Re-measured: velocity 0.8815 (binding; 270 lines,
+                                                 so ~6 lines of headroom), servlets 0.9058,
+                                                 rendering 0.9600. -->
+                                            <minimum>0.86</minimum>
+                                        </limit>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <!-- Added 2026-10-13. Re-measured: velocity 0.8033
+                                                 (binding; 122 branches, one is 0.8 points, so ~3
+                                                 branches of headroom), servlets 0.8401, rendering
+                                                 0.9062. -->
+                                            <minimum>0.78</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <rule>
+                                    <!-- The security boundary: reader sign-in, reader
+                                         comments, API authentication, the REST API and the
+                                         MCP endpoint, the code a stranger on the public site
+                                         can reach. Added 2026-10-13 so new code there cannot
+                                         land untested while the bundle average hides it.
+                                         Measured: auth L 0.9528 / B 0.9516, sso 0.9725 /
+                                         0.9375, v1 0.9893 / 0.9391, mcp 0.9912 / 0.9133,
+                                         comments 0.9860 / 0.9827. The floors sit further
+                                         under measured than the bundle's because the
+                                         packages are small: in auth (106 lines, 62
+                                         branches) one line is 0.9 points and one branch
+                                         1.6, so a few tenths would be a tripwire, not a
+                                         ratchet. -->
+                                    <element>PACKAGE</element>
+                                    <includes>
+                                        <include>org.apache.roller.weblogger.ui.core.security.sso</include>
+                                        <include>org.apache.roller.weblogger.business.comments</include>
+                                        <include>org.apache.roller.weblogger.ui.restapi.auth</include>
+                                        <include>org.apache.roller.weblogger.ui.restapi.v1</include>
+                                        <include>org.apache.roller.weblogger.ui.restapi.mcp</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.93</minimum>
+                                        </limit>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.89</minimum>
                                         </limit>
                                     </limits>
                                 </rule>

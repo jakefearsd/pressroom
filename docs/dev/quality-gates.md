@@ -9,8 +9,19 @@ resolves through the index at the end of `CLAUDE.md`.
 
 - JaCoCo `check` runs at `verify` with floors in the parent `pom.xml`
   (`jacoco.line.minimum` / `jacoco.branch.minimum`, plus a PACKAGE rule for
-  `ui.rendering.*`). Floors only ever move up; "raise" means raise where
-  there is slack, not all three. Re-measured 2026-09-28 (after a test-only
+  `ui.rendering.*` and one for the security boundary). Floors only ever move
+  up; "raise" means raise where there is slack, not all three.
+  **2026-10-13** (after the post-0.1.17 coverage pass, two identical clean
+  runs without `cwebp`): LINE 0.9621, BRANCH 0.9141. Floors are now
+  **0.9590 / 0.9100**.
+  - The rendering PACKAGE rule is LINE 0.86 (velocity 0.8815 binds) and gains
+    BRANCH 0.78 (velocity 0.8033).
+  - A new PACKAGE rule covers the code a stranger can reach: `ui.core.security.sso`,
+    `business.comments`, `ui.restapi.auth`, `ui.restapi.v1` and
+    `ui.restapi.mcp`, at LINE 0.93 / BRANCH 0.89. Its floors sit further under
+    measured (auth 0.9528 / 0.9516, mcp B 0.9133) because the packages are
+    small: in auth one branch is 1.6 points.
+  Re-measured 2026-09-28 (after a test-only
   coverage wave, without `cwebp`): LINE 0.9377, BRANCH 0.8722, PACKAGE
   velocity 0.8819 / servlets 0.8551 / rendering 0.9447; floors stand at
   **0.9330 / 0.8670 / 0.80** (raised from 0.9100 / 0.8400, measured
