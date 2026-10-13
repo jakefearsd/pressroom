@@ -154,8 +154,8 @@ Considered and left out: `ReplaceJavaUtilDate` (376 sites; the JPA pojos are
 `AvoidDuplicateLiterals` and `RedundantFieldInitializer` (450). They are
 opinion or noise here.
 
-Six PMD rules and six SpotBugs families are excluded, each with a reason
-comment in the config file: three SpotBugs-core families, and three
+Six PMD rules and five SpotBugs families are excluded, each with a reason
+comment in the config file: three SpotBugs-core families, and two
 find-sec-bugs families (below).
 `QualityGatePomTest` fails the build if an exclusion lacks a justification
 comment or the excluded set differs from the list it names — a rule outside
@@ -195,7 +195,7 @@ suppression, never widen `exclude.xml` for a version bump.
 **find-sec-bugs 1.14.0 runs inside the SpotBugs gate** (the parent pom's
 `<plugins>`, pinned by `findsecbugs.version`). `QualityGatePomTest` fails if
 the plugin is removed or if the filter excludes by anything but pattern name.
-Its first run, on 2026-10-12, found 793 findings. Three of its families are
+Its first run, on 2026-10-12, found 793 findings. Two of its families are
 excluded:
 
 - **The seven source markers** (`SPRING_ENDPOINT`, `SERVLET_PARAMETER` and the
@@ -204,11 +204,39 @@ excluded:
 - **`CRLF_INJECTION_LOGS`.** It is fixed once, by `%encode{%m}{CRLF}` in
   `log4j2.xml` (see `docs/dev/configuration.md`), and `QualityGatePomTest`
   refuses the exclusion without that pattern.
-- **`IMPROPER_UNICODE`.** It fires on any case fold near an `equals`, with
-  `Locale.ROOT` or without, so it cannot tell a fixed comparison from a
-  broken one. All 33 first-run sites were read.
 
-Every other finding was traced from source to sink. Six were real and are
+**`IMPROPER_UNICODE` is deliberately not excluded.**
+- It fires on every case fold near an `equals`, every `equalsIgnoreCase` and
+  every `Normalizer.normalize`, with `Locale.ROOT` or without.
+- Its value is the prompt it gives on the next new site. Folding a
+  person-typed name inside a security decision is exactly the bug it caught in
+  `DisplayNames`. It also caught `AdminApi` storing "falſe" (with a long s) as
+  a boolean config value.
+- Each existing site carries a suppression saying why its fold is safe:
+  - ASCII by construction;
+  - Tomcat's ISO-8859-1 header decoding, under which no character in
+    U+0080 to U+00FF folds into ASCII;
+  - configuration;
+  - display or author-content parsing;
+  - the `DisplayNames` fold itself.
+- `QualityGatePomTest` refuses the family in `exclude.xml`.
+- For a new site:
+  - Fold a person-typed name the way `DisplayNames.fold` does: NFKC, upper
+    then lower in `Locale.ROOT`, then NFKC again.
+  - Check an ASCII token with an ASCII-only pattern (`CASE_INSENSITIVE`
+    without `UNICODE_CASE`, as `AdminApi`'s boolean check does).
+  - Otherwise, suppress the site with its reason.
+
+`QualityGatePomTest` also pins the ways findings could be dropped without
+touching `exclude.xml`:
+- The filter may contain only `<Match>` elements, each holding one
+  `<Bug pattern=…>`. A `code=` attribute would widen a match, because
+  SpotBugs ORs it with the pattern.
+- The plugin configuration may not set `omitVisitors`/`visitors`,
+  `onlyAnalyze`, `excludeBugsFile`, `includeFilterFile`, `maxRank`, or a second
+  `excludeFilterFile`, in either pom or `.mvn/`.
+
+Every other finding was traced from source to sink. Seven were real and are
 fixed:
 
 - the shortcode tag pattern overflowed the stack on long unclosed prose, which
@@ -220,7 +248,9 @@ fixed:
   while the database was down. Its pages now point at `roller.log`, and
   `SQLScriptRunner` reports by statement position;
 - `MediacastUtil`, a dead SSRF sink, was deleted;
-- two checks compared HTTP methods case-insensitively; they are exact now.
+- two checks compared HTTP methods case-insensitively; they are exact now;
+- the admin API accepted a boolean config value spelled with non-ASCII look-alike
+  letters; it now accepts ASCII only.
 
 The rest carry `@SuppressFBWarnings` at the method that holds the sink, with a
 reason that says why the input is not attacker-controlled and where it is
@@ -234,10 +264,6 @@ constrained.
   nothing can annotate a static initializer. Move such a sink into a named
   method. SpotBugs reports a suppression that matches nothing as
   `US_USELESS_SUPPRESSION_*`.
-- The tool will not prompt for this one: a new comparison of a name a person
-  typed (a display name, an email, a claim) must fold the way
-  `DisplayNames.fold` does: NFKC, upper then lower in `Locale.ROOT`, then NFKC
-  again.
 
 **On SLF4J's varargs form a `Throwable` must stay the LAST argument, and no
 `{}` may consume it.** `log.error("x {}", a, e)` preserves the stack trace;
