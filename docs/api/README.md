@@ -220,7 +220,7 @@ In the MCP endpoint `clear` is an argument of the `update` actions.
 
 ## Pagination
 
-List endpoints (`GET .../entries`, `GET .../audit/seo`,
+List endpoints (`GET .../entries`, `GET .../comments`, `GET .../audit/seo`,
 `GET /api/v1/admin/users`, `GET /api/v1/weblogs`) accept `?offset=` and
 `?limit=`. **Out-of-range values are a 400, never silently clamped or
 wrapped**: `limit` below 1, or a negative `offset`, is rejected outright
@@ -230,12 +230,13 @@ entire table. A `limit` above the endpoint's cap (200, uniformly) is
 silently capped rather than rejected — the one place this API *does*
 clamp instead of refusing.
 
-**The page envelope is not uniform across these four endpoints — check the
+**The page envelope is not uniform across these five endpoints — check the
 shape before assuming a field exists.**
 
 - `GET .../entries` returns an `EntryPage`: `{items, offset, limit, hasMore}`.
   `hasMore` is computed by fetching one row past the requested page — page
-  until it is `false`, not until a short page arrives.
+  until it is `false`, not until a short page arrives. `GET .../comments`
+  returns the same envelope.
 - `GET .../audit/seo` returns a `SeoAudit`: `{total, counts, entries}`. There
   is no `hasMore`; `total` (and `counts`, the same per-gap-type tally) cover
   **every** gappy entry the search found, not just the current page, so an
