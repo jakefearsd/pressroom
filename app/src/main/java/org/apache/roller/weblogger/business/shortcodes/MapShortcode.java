@@ -271,6 +271,8 @@ public class MapShortcode implements ShortcodeHandler {
                                     StringUtils.trimToNull(mf.getName()))))
                     .toList();
         } catch (Exception e) {
+            // Null leaves the [map] text in the page on purpose: a visible broken tag tells the author
+            // something is wrong, an empty block would not. Only the log says why.
             log.warn("[map] shortcode could not resolve auto directory \"{}\"",
                     directoryName, e);
             return null;

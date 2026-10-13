@@ -118,6 +118,9 @@ public class ControlPlaneHostFilter implements Filter {
             if (request.getQueryString() != null) {
                 target.append('?').append(request.getQueryString());
             }
+            // Permanent, so browsers cache it: a wrong site.absoluteurl keeps sending an admin to the old host
+            // until the browser's cache is cleared. Change that setting deliberately and check it from a fresh
+            // browser profile.
             response.setStatus(HttpServletResponse.SC_MOVED_PERMANENTLY);
             response.setHeader("Location", target.toString());
             return;

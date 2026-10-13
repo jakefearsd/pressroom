@@ -40,6 +40,9 @@ public final class BookingLink {
     }
 
     /** The same schemes the entry-content sanitizer accepts for anchor hrefs. */
+    // No ALLOW_LOCAL_URLS: a localhost or intranet booking link would pass a laxer check and then be
+    // deleted by the entry sanitizer, so it is refused up front. Keep this validator and the
+    // sanitizer's in step (docs/dev/content-features.md).
     private static final UrlValidator URL_VALIDATOR =
             new UrlValidator(new String[] {"http", "https"});
 

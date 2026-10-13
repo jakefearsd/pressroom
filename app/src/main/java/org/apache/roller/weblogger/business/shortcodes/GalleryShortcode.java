@@ -116,6 +116,8 @@ public class GalleryShortcode implements ShortcodeHandler {
                     .map(f -> MediaFileWrapper.wrap(f, weblogger.getUrlStrategy(), weblogger))
                     .toList();
         } catch (Exception e) {
+            // Null leaves the [gallery] text in the page on purpose: a visible broken tag tells the author
+            // something is wrong, an empty block would not. Only the log says why.
             log.warn("[gallery] shortcode could not resolve directory \"{}\"",
                     directoryName, e);
             return null;

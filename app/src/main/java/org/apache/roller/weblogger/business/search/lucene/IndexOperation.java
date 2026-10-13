@@ -78,6 +78,8 @@ public abstract class IndexOperation implements Runnable {
         try {
             return manager.weblogger().getUserManager().getUserByUserName(data.getCreatorUserName());
         } catch (Exception e) {
+            // Index the entry without an author rather than not at all: a search that misses a post is worse
+            // than one that cannot filter it by creator.
             log.error("ERROR fetching user object for username: {}", data.getCreatorUserName(), e);
             return null;
         }
