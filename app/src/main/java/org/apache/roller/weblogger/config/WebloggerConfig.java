@@ -188,10 +188,6 @@ public final class WebloggerConfig {
      * extraction is the only seam that reaches either branch. Package-
      * private, not private, for that test.
      */
-    @SuppressFBWarnings(
-            value = "INFORMATION_EXPOSURE_THROUGH_AN_ERROR_MESSAGE",
-            justification = "Runs once at class load, before logging is configured; printStackTrace writes "
-                    + "to the server's stderr, which reaches the container log and never a response.")
     static void runAtClassLoad(ExceptionalRunnable work) {
         try {
             work.run();
@@ -208,6 +204,10 @@ public final class WebloggerConfig {
     // The logger does not exist yet when this runs (see loadLayers), so stderr
     // is the only place the failure can go.
     @SuppressWarnings("PMD.AvoidPrintStackTrace")
+    @SuppressFBWarnings(
+            value = "INFORMATION_EXPOSURE_THROUGH_AN_ERROR_MESSAGE",
+            justification = "Runs once at class load, before logging is configured; printStackTrace writes "
+                    + "to the server's stderr, which reaches the container log and never a response.")
     private static void printBootstrapFailure(Exception e) {
         e.printStackTrace();
     }
