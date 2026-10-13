@@ -79,7 +79,7 @@ public final class ColumnLimits {
      */
     public static void requireMaxLength(String field, String value, int max) {
         if (value != null && value.length() > max) {
-            throw ApiException.badRequest(
+            throw ApiException.invalidField(field,
                     "'" + field + "' must be " + max + " characters or fewer.");
         }
     }

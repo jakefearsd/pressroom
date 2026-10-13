@@ -3,6 +3,7 @@ package org.apache.roller.weblogger.ui.restapi;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -38,5 +39,14 @@ class ColumnLimitsTest {
         ApiException ex = assertThrows(ApiException.class,
                 () -> ColumnLimits.requireMaxLength("locale", "x".repeat(21), 20));
         org.junit.jupiter.api.Assertions.assertTrue(ex.getMessage().contains("locale"));
+    }
+
+    @Test
+    void aRefusalNamesItsField() {
+        ApiException ex = assertThrows(ApiException.class,
+                () -> ColumnLimits.requireMaxLength("metaTitle", "x".repeat(256), 255));
+
+        assertEquals("'metaTitle' must be 255 characters or fewer.", ex.getMessage());
+        assertEquals("metaTitle", ex.getFieldErrors().get(0).field());
     }
 }

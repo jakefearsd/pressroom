@@ -16,5 +16,6 @@ public record ApiProblem(
         String instance,
         List<FieldError> errors) {
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record FieldError(String field, String message) { }
 }

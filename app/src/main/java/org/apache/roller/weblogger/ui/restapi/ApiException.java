@@ -70,6 +70,23 @@ public class ApiException extends RuntimeException {
         return new ApiException(400, TYPE_BASE + "invalid-request", "Invalid request", detail, errors);
     }
 
+    /** A 400 about one request field: its detail, and an {@code errors} entry naming the field. */
+    public static ApiException invalidField(String field, String detail) {
+        return validation(detail, List.of(new ApiProblem.FieldError(field, detail)));
+    }
+
+    /** As above, chaining {@code cause} -- see the cause-carrying constructor. */
+    public static ApiException invalidField(String field, String detail, Throwable cause) {
+        return new ApiException(400, TYPE_BASE + "invalid-request", "Invalid request", detail,
+                List.of(new ApiProblem.FieldError(field, detail)), cause);
+    }
+
+    /** A 409 about one request field, such as an entry anchor another entry already holds. */
+    public static ApiException conflictOnField(String field, String detail) {
+        return new ApiException(409, TYPE_BASE + "conflict", "Conflict", detail,
+                List.of(new ApiProblem.FieldError(field, detail)));
+    }
+
     public static ApiException conflict(String detail) {
         return new ApiException(409, TYPE_BASE + "conflict", "Conflict", detail);
     }
@@ -101,6 +118,11 @@ public class ApiException extends RuntimeException {
 
     public int getStatus() {
         return status;
+    }
+
+    /** The field errors this exception carries; empty when it names none. */
+    public List<ApiProblem.FieldError> getFieldErrors() {
+        return errors == null ? List.of() : List.copyOf(errors);
     }
 
     public ApiProblem toProblem(String instance) {
