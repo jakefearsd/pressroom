@@ -146,8 +146,10 @@ final class RenderingServletUtils {
         log.error(message, cause);
         if (!response.isCommitted()) {
             response.reset();
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
-        response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        // else: sendError on a committed response throws IllegalStateException,
+        // which would replace the failure just logged with a misleading one.
     }
 
     /**
