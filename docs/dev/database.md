@@ -66,3 +66,12 @@ follow-up. Convention: `bin/db/migrations/README.md`; `SchemaMigrationTest`
 enforces discoverability, shape and idempotency. Three appliers read the same
 files: `bin/db/migrate.sh` (deploy), `DatabaseInstaller` (install wizard),
 and the test harness.
+
+The install wizard is anonymous, and with `installation.type=auto` every
+public request reaches it while Roller cannot start. So its pages carry no
+diagnostics: the error pages say only that the database cannot be reached or
+prepared and point at `roller.log`, and `SQLScriptRunner` reports a failure by
+statement position ("statement 3 of 12"). The startup log (JDBC URL and user),
+the SQL text (which carries the expanded `:app_user`) and every exception are
+logged at the point of failure instead (`InstallControllerTest`,
+`SQLScriptRunnerTest`).

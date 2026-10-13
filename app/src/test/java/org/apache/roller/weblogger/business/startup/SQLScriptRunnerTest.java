@@ -17,6 +17,8 @@
  */
 package org.apache.roller.weblogger.business.startup;
 
+import org.apache.logging.log4j.Level;
+import org.apache.roller.weblogger.ui.core.security.sso.SsoLogCapture;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
@@ -141,23 +143,33 @@ class SQLScriptRunnerTest {
         assertEquals(List.of("CREATE TABLE t (id int, name text)"), runner.getCommands());
     }
 
+    /**
+     * The messages reach the anonymous installer's pages, and a migration's
+     * SQL carries the database user (its :app_user grants). So a message names
+     * only which statement failed; the SQL text and the exception go to the
+     * server log.
+     */
     @Test
     void withoutStopOnErrorAFailureIsReportedAndTheScriptContinues() throws Exception {
         List<String> executed = new ArrayList<>();
+        SQLException failure = new SQLException("syntax error at BAD");
         SQLScriptRunner runner = runnerFor("SELECT 1;\nBAD STATEMENT;\nSELECT 2;");
 
-        runner.runScript(recordingConnection(executed, new SQLException("syntax error at BAD")), false);
+        List<String> logged;
+        List<String> errors;
+        try (SsoLogCapture capture = SsoLogCapture.everyLogger()) {
+            runner.runScript(recordingConnection(executed, failure), false);
+            logged = capture.everything();
+            errors = capture.lines(Level.ERROR);
+        }
 
         assertEquals(List.of("SELECT 1", "SELECT 2"), executed);
         assertFalse(runner.getFailed());
-        List<String> messages = runner.getMessages();
-        assertEquals(4, messages.size(), messages.toString());
-        assertEquals("SELECT 1", messages.get(0));
-        assertEquals("ERROR: SQLException executing SQL [BAD STATEMENT] : syntax error at BAD",
-                messages.get(1));
-        assertTrue(messages.get(2).startsWith("java.sql.SQLException: syntax error at BAD"),
-                "the stack trace follows the error line: " + messages.get(2));
-        assertEquals("SELECT 2", messages.get(3));
+        assertEquals(List.of("ERROR: statement 2 of 3 failed; the details are in the server log."),
+                runner.getMessages());
+        assertTrue(errors.stream().anyMatch(line -> line.contains("BAD STATEMENT")),
+                "the failing SQL is logged at ERROR: " + errors);
+        assertTrue(logged.contains(failure.toString()), "with its exception: " + logged);
     }
 
     @Test
@@ -166,12 +178,23 @@ class SQLScriptRunnerTest {
         SQLException failure = new SQLException("syntax error at BAD");
         SQLScriptRunner runner = runnerFor("SELECT 1;\nBAD STATEMENT;\nSELECT 2;");
 
-        SQLException thrown = assertThrows(SQLException.class,
-                () -> runner.runScript(recordingConnection(executed, failure), true));
+        List<String> logged;
+        SQLException thrown;
+        try (SsoLogCapture capture = SsoLogCapture.everyLogger()) {
+            thrown = assertThrows(SQLException.class,
+                    () -> runner.runScript(recordingConnection(executed, failure), true));
+            logged = capture.everything();
+        }
 
         assertSame(failure, thrown);
         assertTrue(runner.getFailed());
         assertEquals(List.of("SELECT 1"), executed);
+        assertEquals(List.of("ERROR: statement 2 of 3 failed; the details are in the server log."),
+                runner.getMessages());
+        assertTrue(logged.stream().anyMatch(line -> line.contains("BAD STATEMENT")), logged.toString());
+        // The exception is rethrown, so the caller logs it with its trace
+        // (DatabaseInstaller.applyMigration); logging it here too would print it twice.
+        assertFalse(logged.contains(failure.toString()), logged.toString());
     }
 
     @Test
@@ -183,8 +206,7 @@ class SQLScriptRunnerTest {
 
         assertFalse(runner.getFailed());
         assertEquals(List.of("SELECT 2"), executed);
-        assertEquals(List.of("INFO: SQL command [alter table t drop index ix_t] failed, ignored.", "SELECT 2"),
-                runner.getMessages());
+        assertEquals(List.of("INFO: statement 1 of 2 failed and was ignored."), runner.getMessages());
     }
 
     @Test

@@ -27,11 +27,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.logging.log4j.Level;
 import org.apache.roller.weblogger.business.DatabaseProvider;
 import org.apache.roller.weblogger.business.WebloggerProvider;
 import org.apache.roller.weblogger.business.startup.MigrationCatalog;
 import org.apache.roller.weblogger.business.startup.StartupException;
 import org.apache.roller.weblogger.business.startup.WebloggerStartup;
+import org.apache.roller.weblogger.ui.core.security.sso.SsoLogCapture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,9 +42,7 @@ import org.springframework.ui.ExtendedModelMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -107,36 +107,43 @@ class InstallControllerTest {
         assertEquals("redirect:/", controller.bootstrap(request(), model));
     }
 
+    /**
+     * The installer is anonymous, and with installation.type=auto (production)
+     * every public request lands on it while the database is unreachable. So
+     * the page says only that, and where to look: the JDBC URL, the database
+     * user, the exception and its trace stay in the server log, where
+     * RollerLifecycle wrote them at the point of failure.
+     */
     @Test
-    void aDatabaseConnectionFailureIsShownWithItsCauseAndStartupLog() {
-        // This is the page an administrator sees when the JDBC settings are
-        // wrong, so the underlying cause and the log have to reach the view.
-        Throwable rootCause = new IllegalStateException("connection refused");
-        StartupException failure =
-                new StartupException("could not connect", rootCause, List.of("tried localhost:5432"));
+    void aDatabaseConnectionFailureShowsTheVisitorNoConnectionDetails() {
+        StartupException failure = new StartupException("could not connect",
+                new IllegalStateException("connection refused"),
+                List.of("-- Using JDBC connection URL: jdbc:postgresql://db.internal:5432/roller",
+                        "-- Using JDBC username: roller_app"));
         setStartupField("dbProviderException", failure);
 
         String view = controller.execute(request(), model);
 
         assertEquals(".DatabaseError", view);
-        assertSame(rootCause, model.getAttribute("rootCauseException"));
-        assertEquals(List.of("tried localhost:5432"), model.getAttribute("messages"));
         assertEquals("installer.error.connection.pageTitle", model.getAttribute("pageTitle"));
-        String stackTrace = (String) model.getAttribute("rootCauseStackTrace");
-        assertTrue(stackTrace.contains("connection refused"),
-                "the stack trace shown to the administrator has to be the real one: " + stackTrace);
+        assertNothingDiagnostic(model);
     }
 
+    /**
+     * The pages themselves cannot print a startup log, an exception or a trace,
+     * whatever a later controller puts in the model; each shows the one
+     * message that points at the server log.
+     */
     @Test
-    void aStartupFailureWithNoDeeperCauseReportsItself() {
-        StartupException failure = new StartupException("no database configured");
-        setStartupField("dbProviderException", failure);
-
-        String view = controller.execute(request(), model);
-
-        assertEquals(".DatabaseError", view);
-        assertSame(failure, model.getAttribute("rootCauseException"),
-                "with no root cause the exception itself is what there is to show");
+    void theInstallerErrorPagesPrintNoDiagnostics() throws Exception {
+        for (String page : List.of("DatabaseError.jsp", "UnknownError.jsp")) {
+            String jsp = java.nio.file.Files.readString(
+                    java.nio.file.Path.of("src/main/webapp/WEB-INF/jsps/core", page));
+            for (String forbidden : List.of("${messages}", "rootCause", "StackTrace", "['class']")) {
+                assertFalse(jsp.contains(forbidden), page + " prints " + forbidden);
+            }
+            assertTrue(jsp.contains("installer.detailsInServerLog"), page + " points at the server log");
+        }
     }
 
     @Test
@@ -149,12 +156,23 @@ class InstallControllerTest {
         doThrow(new IllegalStateException("Cannot bootstrap until application has been properly prepared"))
                 .when(webloggerProvider).bootstrap();
 
-        String view = controller.bootstrap(request(), model);
+        String view;
+        List<String> logged;
+        List<String> errors;
+        try (SsoLogCapture capture = SsoLogCapture.everyLogger()) {
+            view = controller.bootstrap(request(), model);
+            logged = capture.everything();
+            errors = capture.lines(Level.ERROR);
+        }
 
         assertEquals(".Bootstrap", view);
-        assertNotNull(model.getAttribute("rootCauseException"));
         assertEquals("installer.error.unknown.pageTitle", model.getAttribute("pageTitle"));
-        assertFalse(((String) model.getAttribute("rootCauseStackTrace")).isEmpty());
+        assertNothingDiagnostic(model);
+        assertTrue(errors.stream().anyMatch(line -> line.contains("bootstrap")),
+                "the failure is logged at ERROR: " + errors);
+        assertTrue(logged.contains("java.lang.IllegalStateException: "
+                        + "Cannot bootstrap until application has been properly prepared"),
+                "with its exception, which the page no longer shows: " + logged);
     }
 
     @Test
@@ -189,7 +207,7 @@ class InstallControllerTest {
         String view = controller.execute(request(), model);
 
         assertEquals(".Bootstrap", view);
-        assertNotNull(model.getAttribute("rootCauseException"));
+        assertNothingDiagnostic(model);
     }
 
     @Test
@@ -221,6 +239,8 @@ class InstallControllerTest {
         assertNull(model.getAttribute("success"));
         assertFalse(((List<?>) model.getAttribute("messages")).isEmpty(),
                 "the failure has to come back with something to read");
+        assertFalse(model.getAttribute("messages").toString().contains("connection refused"),
+                "but not the exception, which is in the log: " + model.getAttribute("messages"));
         assertEquals("installer.database.creation.pageTitle", model.getAttribute("pageTitle"));
     }
 
@@ -281,6 +301,17 @@ class InstallControllerTest {
     void anUnknownPropertyComesBackAsItsOwnName() {
         // Which is what the installer JSPs render, rather than "null".
         assertEquals("no.such.property.exists", controller.getProp("no.such.property.exists"));
+    }
+
+    /** Nothing in the model a visitor could learn the deployment from. */
+    private static void assertNothingDiagnostic(ExtendedModelMap model) {
+        for (String name : List.of("rootCauseException", "rootCauseStackTrace", "messages")) {
+            assertFalse(model.containsAttribute(name), name + " must not reach the page");
+        }
+        String everything = model.toString();
+        for (String detail : List.of("jdbc:", "roller_app", "Exception", "connection refused", "\tat ")) {
+            assertFalse(everything.contains(detail), "the model carries " + detail + ": " + everything);
+        }
     }
 
     private static jakarta.servlet.http.HttpServletRequest request() {

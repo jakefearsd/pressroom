@@ -160,7 +160,11 @@ public class SQLScriptRunner {
     }
     
     
-    /** Return messages from last run of script, empty if no previous run */
+    /**
+     * The failures of the last run, each named by its statement's position and
+     * never by its SQL (these reach the installer's pages; the SQL is logged).
+     * Empty when every statement succeeded or the script has not run.
+     */
     public List<String> getMessages() {
         return messages;
     }
@@ -209,7 +213,13 @@ public class SQLScriptRunner {
         // each statement itself -- so this stays a no-op there, unchanged.
         boolean transactional = !con.getAutoCommit();
 
+        // The messages reach the anonymous installer's pages, and a migration's
+        // SQL carries the database user (its :app_user grants), so a message
+        // names only the statement's position; the SQL text goes to the log.
+        int number = 0;
         for (String command : commands) {
+            number++;
+            String position = "statement " + number + " of " + commands.size();
 
             Savepoint savepoint = null;
             try {
@@ -225,28 +235,27 @@ public class SQLScriptRunner {
                     con.releaseSavepoint(savepoint);
                 }
 
-                // on success, echo command to messages
-                successMessage(command);
+                log.debug("SQL {} succeeded: [{}]", position, command);
 
             } catch (SQLException ex) {
                 if (transactional) {
                     rollbackToSavepoint(con, savepoint, command);
                 }
                 if (command.contains("drop foreign key") || command.contains("drop index")) {
-                    errorMessage("INFO: SQL command [" + command + "] failed, ignored.");
+                    log.info("SQL {} failed and was ignored: [{}]: {}", position, command, ex.getMessage());
+                    errorMessage("INFO: " + position + " failed and was ignored.");
                     continue;
                 }
-                // add error message with text of SQL command to messages
-                errorMessage("ERROR: SQLException executing SQL [" + command
-                        + "] : " + ex.getLocalizedMessage());
-                // add stack trace to messages
-                StringWriter sw = new StringWriter();
-                ex.printStackTrace(new PrintWriter(sw));
-                errorMessage(sw.toString());
+                errorMessage("ERROR: " + position + " failed; the details are in the server log.");
                 if (stopOnError) {
+                    // Rethrown, so the caller logs the exception with its trace
+                    // (DatabaseInstaller.applyMigration); logging it here as well
+                    // would print it twice.
+                    log.error("SQL {} failed: [{}]", position, command);
                     failed = true;
                     throw ex;
                 }
+                log.error("SQL {} failed: [{}]", position, command, ex);
             }
         }
     }
@@ -269,11 +278,6 @@ public class SQLScriptRunner {
     
     
     private void errorMessage(String msg) {
-        messages.add(msg);
-    }    
-    
-    
-    private void successMessage(String msg) {
         messages.add(msg);
     }
     

@@ -141,9 +141,11 @@ class DatabaseInstallerMigrationTest {
         assertEquals(versions, recordedVersions());
         assertEquals("granted to " + RollerPostgresContainer.getUsername(),
                 queryString("SELECT obj_description('upgrade_probe'::regclass, 'pg_class')"));
+        // The messages reach the anonymous installer's pages, so no SQL is echoed
+        // there: the expanded :app_user would name the database user.
         List<String> messages = installer.getMessages();
-        assertTrue(messages.contains("CREATE TABLE upgrade_probe (id INT)"),
-                "the runner's own messages are carried: " + messages);
+        assertTrue(messages.stream().noneMatch(m -> m.contains("upgrade_probe") || m.contains("granted to")),
+                "no SQL, and so no database user, on the page: " + messages);
         assertTrue(messages.contains(last + " applied"), messages.toString());
         assertEquals("Applied 1 migration(s)", messages.getLast());
         assertFalse(installer.isUpgradeRequired());
@@ -185,8 +187,10 @@ class DatabaseInstallerMigrationTest {
         assertFalse(tableExists("broken"));
         List<String> log = failure.getStartupLog();
         assertTrue(log.contains(V001 + " applied"), log.toString());
-        assertTrue(log.stream().anyMatch(m -> m.startsWith("ERROR: SQLException executing SQL [CREATE TABLE broken (]")),
+        assertTrue(log.contains("ERROR: statement 1 of 1 failed; the details are in the server log."),
                 "the runner's error reaches the installer's log: " + log);
+        assertTrue(log.stream().noneMatch(m -> m.contains("broken")),
+                "by position only; the SQL goes to the server log: " + log);
         assertEquals("ERROR applying migration " + second, log.getLast());
         assertEquals(log, installer.getMessages());
     }
@@ -263,9 +267,7 @@ class DatabaseInstallerMigrationTest {
                         + "even inside a single migration transaction");
         assertEquals(versions, recordedVersions());
         List<String> messages = installer.getMessages();
-        assertTrue(messages.stream().anyMatch(
-                        m -> m.contains("drop index") && m.contains("failed, ignored")),
-                messages.toString());
+        assertTrue(messages.contains("INFO: statement 2 of 3 failed and was ignored."), messages.toString());
     }
 
     @Test

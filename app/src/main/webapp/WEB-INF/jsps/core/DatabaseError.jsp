@@ -17,27 +17,12 @@
 --%>
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
 
+<%-- Anonymous, and with installation.type=auto every public request lands
+     here while Roller cannot start: so the page names the problem and where
+     to read about it, nothing more. The startup log (the JDBC URL and user),
+     the exception and its trace are in the server log only. --%>
 <h2 class="roller-page-title"><spring:message code="installer.cannotConnectToDatabase" /></h2>
 
-<h3 class="section-head"><spring:message code="installer.whatHappened" /></h3>
-
-<p><spring:message code="installer.whatHappenedDatabaseConnectionError" /></p>
-<ul>
-   <c:forEach items="${messages}" var="msg">
-      <li>${fn:escapeXml(msg)}</li>
-   </c:forEach>
-</ul>
-
-<h3 class="section-head"><spring:message code="installer.whyDidThatHappen" /></h3>
-
-<p>
-    <spring:message code="installer.aboutTheException" />
-    [${rootCauseException['class'].name}]
-</p>
-
-<p><spring:message code="installer.heresTheStackTrace" /></p>
-<pre>
-    [${fn:escapeXml(rootCauseStackTrace)}]
-</pre>
+<p><spring:message code="installer.detailsInServerLog" /></p>
 
 <div class="mb-4"></div>

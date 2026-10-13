@@ -18,8 +18,6 @@
 
 package org.apache.roller.weblogger.ui.controllers.core;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.sql.Connection;
 import java.util.List;
 
@@ -28,13 +26,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.WebloggerProvider;
 import org.apache.roller.weblogger.business.startup.StartupException;
 import org.apache.roller.weblogger.business.startup.WebloggerStartup;
 import org.apache.roller.weblogger.config.WebloggerConfig;
 import org.apache.roller.weblogger.ui.controllers.BaseController;
-import org.springframework.beans.FatalBeanException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -76,17 +72,12 @@ public class InstallController extends BaseController {
             return "redirect:/";
         }
 
+        // This page is anonymous, and with installation.type=auto every public
+        // request reaches it while the database is down, so it names the
+        // problem and nothing else: the startup log (the JDBC URL and user),
+        // the exception and its trace were logged at ERROR where startup
+        // failed (DatabaseProvider, RollerLifecycle) and stay there.
         if (WebloggerStartup.getDatabaseProviderException() != null) {
-            StartupException se = WebloggerStartup.getDatabaseProviderException();
-            Throwable rootCause;
-            if (se.getCause() != null) {
-                rootCause = se.getCause();
-            } else {
-                rootCause = se;
-            }
-            model.addAttribute("rootCauseException", rootCause);
-            model.addAttribute("rootCauseStackTrace", getStackTrace(rootCause));
-            model.addAttribute("messages", se.getStartupLog());
             model.addAttribute("pageTitle", "installer.error.connection.pageTitle");
 
             log.debug("Forwarding to database error page");
@@ -108,11 +99,9 @@ public class InstallController extends BaseController {
             return ".UpgradeDatabase";
         }
 
+        // Prepared but not running: RollerLifecycle logged why the bootstrap
+        // failed at startup, or install!bootstrap.rol starts it from here.
         model.addAttribute("pageTitle", "installer.error.unknown.pageTitle");
-        Throwable rootCause = new Exception("UNKNOWN ERROR");
-        rootCause.fillInStackTrace();
-        model.addAttribute("rootCauseException", rootCause);
-        model.addAttribute("rootCauseStackTrace", getStackTrace(rootCause));
         return ".Bootstrap";
     }
 
@@ -187,18 +176,10 @@ public class InstallController extends BaseController {
             log.info("EXITING - Bootstrap successful, forwarding to Roller");
             return "redirect:/";
 
-        } catch (FatalBeanException ex) {
-            log.error("FatalBeanException", ex);
-            model.addAttribute("rootCauseException", ex);
-            model.addAttribute("rootCauseStackTrace", getStackTrace(ex));
-        } catch (WebloggerException ex) {
-            log.error("WebloggerException", ex);
-            model.addAttribute("rootCauseException", ex);
-            model.addAttribute("rootCauseStackTrace", getStackTrace(ex));
-        } catch (Exception e) {
-            log.error("Exception", e);
-            model.addAttribute("rootCauseException", e);
-            model.addAttribute("rootCauseStackTrace", getStackTrace(e));
+        } catch (Exception ex) {
+            // Logged here, the point of failure, and only here: the page is
+            // anonymous, so it says where to look, not what went wrong.
+            log.error("Roller could not be bootstrapped from the installer", ex);
         }
 
         log.info("EXITING - Bootstrap failed, forwarding to error page");
@@ -227,12 +208,4 @@ public class InstallController extends BaseController {
         return (value == null) ? key : value;
     }
 
-    private String getStackTrace(Throwable t) {
-        if (t == null) {
-            return "";
-        }
-        StringWriter sw = new StringWriter();
-        t.printStackTrace(new PrintWriter(sw));
-        return sw.toString().trim();
-    }
 }
