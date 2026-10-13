@@ -13,10 +13,12 @@ import java.util.regex.Pattern;
 import org.apache.commons.text.StringEscapeUtils;
 import org.commonmark.node.AbstractVisitor;
 import org.commonmark.node.Code;
+import org.commonmark.node.HardLineBreak;
 import org.commonmark.node.HtmlBlock;
 import org.commonmark.node.HtmlInline;
 import org.commonmark.node.Image;
 import org.commonmark.node.Node;
+import org.commonmark.node.SoftLineBreak;
 import org.commonmark.node.SourceSpan;
 import org.commonmark.node.Text;
 import org.commonmark.parser.IncludeSourceSpans;
@@ -44,9 +46,11 @@ public final class ExternalImages {
      * One external image. {@code start}/{@code end} delimit what a rewrite
      * replaces: the raw {@code src} value of an HTML image, or the whole
      * Markdown image. {@code url} is decoded (HTML entities, Markdown
-     * escapes), ready to fetch.
+     * escapes), ready to fetch. {@code alt} is the plain text for a media
+     * file's alt text; {@code altSource} is a Markdown image's alt exactly as
+     * written (null for an HTML image), so a rewrite changes only the URL.
      */
-    public record Ref(Kind kind, int start, int end, String url, String alt, String title) { }
+    public record Ref(Kind kind, int start, int end, String url, String alt, String altSource, String title) { }
 
     /** Every external image in text order, and the tags refused outright. */
     public record Scan(List<Ref> refs, List<String> refusals) {
@@ -99,7 +103,7 @@ public final class ExternalImages {
                 int[] range = range(image.getSourceSpans());
                 if (range.length == 2 && isExternal(image.getDestination(), ownHosts)) {
                     refs.add(new Ref(Kind.MARKDOWN, range[0], range[1], image.getDestination(),
-                            altOf(image), image.getTitle()));
+                            altOf(image), altSourceOf(text, image), image.getTitle()));
                 }
                 // no visitChildren: an image's children are its alt text
             }
@@ -127,18 +131,21 @@ public final class ExternalImages {
      * A ref with no local copy is left as it was.
      */
     public static String rewrite(String text, List<Ref> refs, Map<String, String> localUrls) {
-        StringBuilder out = new StringBuilder(text);
-        List<Ref> backwards = new ArrayList<>(refs);
-        backwards.sort(Comparator.comparingInt(Ref::start).reversed());
-        for (Ref ref : backwards) {
+        // One forward pass: replacing in place would shift the tail once per ref.
+        StringBuilder out = new StringBuilder(text.length() + 64);
+        List<Ref> ordered = new ArrayList<>(refs);
+        ordered.sort(Comparator.comparingInt(Ref::start));
+        int pos = 0;
+        for (Ref ref : ordered) {
             String local = localUrls.get(ref.url());
             if (local != null) {
-                out.replace(ref.start(), ref.end(), ref.kind() == Kind.HTML_SRC
+                out.append(text, pos, ref.start()).append(ref.kind() == Kind.HTML_SRC
                         ? StringEscapeUtils.escapeHtml4(local)
-                        : markdownImage(ref.alt(), local, ref.title()));
+                        : markdownImage(ref, local));
+                pos = ref.end();
             }
         }
-        return out.toString();
+        return out.append(text, pos, text.length()).toString();
     }
 
     /**
@@ -232,7 +239,7 @@ public final class ExternalImages {
                         + "responsive image: " + abbreviate(text.substring(open.start(), tagEnd)));
             }
             if (open.group(1) != null && isExternal(src, ownHosts)) {
-                refs.add(new Ref(Kind.HTML_SRC, srcStart, srcEnd, src, alt, null));
+                refs.add(new Ref(Kind.HTML_SRC, srcStart, srcEnd, src, alt, null, null));
             }
             // Resume after this tag, so a tag-looking run inside an attribute value is not a tag.
             open.region(tagEnd, range[1]);
@@ -261,18 +268,47 @@ public final class ExternalImages {
             public void visit(Code code) {
                 alt.append(code.getLiteral());
             }
+
+            @Override
+            public void visit(SoftLineBreak lineBreak) {
+                alt.append(' ');
+            }
+
+            @Override
+            public void visit(HardLineBreak lineBreak) {
+                alt.append(' ');
+            }
         });
         return alt.isEmpty() ? null : alt.toString();
     }
 
-    private static String markdownImage(String alt, String url, String title) {
-        StringBuilder md = new StringBuilder("![")
-                .append(alt == null ? "" : alt.replace("\\", "\\\\").replace("[", "\\[").replace("]", "\\]"))
-                .append("](").append(url);
+    /**
+     * The image's alt exactly as written: from its first child's span to its
+     * last child's, so line breaks, container prefixes, escapes and entities
+     * survive a rewrite. Null when the parser gave a child no span.
+     */
+    private static String altSourceOf(String text, Image image) {
+        Node first = image.getFirstChild();
+        if (first == null) {
+            return "";
+        }
+        int[] from = range(first.getSourceSpans());
+        int[] to = range(image.getLastChild().getSourceSpans());
+        return from.length == 2 && to.length == 2 ? text.substring(from[0], to[1]) : null;
+    }
+
+    private static String markdownImage(Ref ref, String url) {
+        String alt = ref.altSource() != null ? ref.altSource() : escapedAlt(ref.alt());
+        String title = ref.title();
+        StringBuilder md = new StringBuilder("![").append(alt).append("](").append(url);
         if (title != null && !title.isEmpty()) {
             md.append(" \"").append(title.replace("\\", "\\\\").replace("\"", "\\\"")).append('"');
         }
         return md.append(')').toString();
+    }
+
+    private static String escapedAlt(String alt) {
+        return alt == null ? "" : alt.replace("\\", "\\\\").replace("[", "\\[").replace("]", "\\]");
     }
 
     /** {@code value} cut to a readable length for a message. */

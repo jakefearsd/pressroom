@@ -93,7 +93,7 @@ class ExternalImagesTest {
                 "https://a.example/p.jpg", "https://blog.example.com/m/p",
                 "https://a.example/r.jpg", "https://blog.example.com/m/r"));
 
-        assertEquals("Look: ![The \\[old\\] pier](https://blog.example.com/m/p \"At \\\"dusk\\\"\") and "
+        assertEquals("Look: ![The [old] pier](https://blog.example.com/m/p \"At \\\"dusk\\\"\") and "
                 + "![r](https://blog.example.com/m/r)\n\n[ref]: https://a.example/r.jpg\n", rewritten);
     }
 
@@ -189,5 +189,34 @@ class ExternalImagesTest {
     void emptyTextHasNoImages() {
         assertTrue(ExternalImages.scan("", OWN).refs().isEmpty());
         assertTrue(ExternalImages.scan(null, OWN).refs().isEmpty());
+    }
+
+    /** Final review M5: only the URL changes; the alt's source text survives byte for byte. */
+    @Test
+    void aMultiLineAltKeepsItsLineBreakAndTheFilesAltReadsAsOneLine() {
+        String text = "![Torrey\nPines](https://ext.example/x.jpg)";
+        ExternalImages.Scan scan = ExternalImages.scan(text, OWN);
+
+        assertEquals("Torrey Pines", scan.refs().get(0).alt());
+        assertEquals("![Torrey\nPines](https://blog.example.com/m/1)", ExternalImages.rewrite(text, scan.refs(),
+                Map.of("https://ext.example/x.jpg", "https://blog.example.com/m/1")));
+    }
+
+    @Test
+    void escapesAndEntitiesInAnAltAreKeptVerbatim() {
+        String text = "![a\\*b\\* &lt;x&gt;](https://ext.example/y.jpg)";
+        ExternalImages.Scan scan = ExternalImages.scan(text, OWN);
+
+        assertEquals("![a\\*b\\* &lt;x&gt;](https://blog.example.com/m/2)", ExternalImages.rewrite(text, scan.refs(),
+                Map.of("https://ext.example/y.jpg", "https://blog.example.com/m/2")));
+    }
+
+    @Test
+    void manyReferencesAreRewrittenInOnePassKeepingTheTextBetween() {
+        String text = "a ![x](https://ext.example/1.jpg) b <img src=\"https://ext.example/1.jpg\"> c ![](https://ext.example/1.jpg) d";
+        ExternalImages.Scan scan = ExternalImages.scan(text, OWN);
+
+        assertEquals("a ![x](L) b <img src=\"L\"> c ![](L) d",
+                ExternalImages.rewrite(text, scan.refs(), Map.of("https://ext.example/1.jpg", "L")));
     }
 }
