@@ -49,7 +49,7 @@ resolves through the index at the end of `CLAUDE.md`.
 
 ## Travel (Stage 2 Wave 3)
 - Three shortcodes in `business/shortcodes`, registered in
-  `ShortcodeExpander.DEFAULT` like `[image]`/`[gallery]`: `[map]` with
+  `ShortcodeExpander.builtIn(...)` like `[image]`/`[gallery]`: `[map]` with
   `[pin lat lng label]` children (or `auto="<dir>"` mapping a directory's
   GPS-bearing photos, same private-directory refusal as `[gallery]`), `[faq]`
   with `[q]`/`[a]` pairs, and `[cta href label note]` (absolute http(s)
@@ -105,5 +105,5 @@ immediately before sanitization.
 - `[[name ...]]` / `[[/name]]` escape a registered shortcode to literal text;
   unknown names and malformed input pass through byte-for-byte.
 - New handlers implement `ShortcodeHandler` and register in
-  `defaultExpander()`; the required `ShortcodeCard` (label + snippet) feeds the
+  `ShortcodeExpander.builtIn(...)`; the required `ShortcodeCard` (label + snippet) feeds the
   editor's Insert menu, so a new shortcode cannot ship undiscoverable.
