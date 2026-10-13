@@ -25,7 +25,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -65,7 +64,15 @@ class JPAPersistenceStrategyRefreshTest {
     }
 
     @Test
-    void refreshingNothingDoesNothing() {
-        assertDoesNotThrow(() -> strategy.refresh(null));
+    void refreshingNullChangesNothingAndLeavesTheSessionFlushable() throws Exception {
+        User managed = TestUtils.weblogger().getUserManager().getUserByUserName(user.getUserName());
+        managed.setFullName("edited");
+
+        strategy.refresh(null);
+
+        assertEquals("edited", managed.getFullName(), "null is a no-op, not a refresh of everything");
+        TestUtils.endSession(true);
+        assertEquals("edited", TestUtils.weblogger().getUserManager()
+                .getUserByUserName(user.getUserName()).getFullName(), "the session was not poisoned");
     }
 }

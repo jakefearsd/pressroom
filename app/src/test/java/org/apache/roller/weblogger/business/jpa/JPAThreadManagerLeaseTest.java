@@ -17,6 +17,8 @@
  */
 package org.apache.roller.weblogger.business.jpa;
 
+import java.util.Date;
+
 import org.apache.roller.weblogger.TestUtils;
 import org.apache.roller.weblogger.business.TestTask;
 import org.apache.roller.weblogger.business.runnable.ThreadManager;
@@ -97,14 +99,21 @@ class JPAThreadManagerLeaseTest {
     }
 
     @Test
-    void aTaskLockSavedThroughTheManagerIsFoundByName() throws Exception {
+    void aSavedTaskLockComesBackWithTheChange() throws Exception {
         TaskLock lock = manager.getTaskLockByName(TestTask.NAME);
-        assertNotNull(lock);
-        int leased = lock.getTimeLeased();
+        Date original = lock.getLastRun();
+        try {
+            lock.setLastRun(new Date(1_000_000L));
+            manager.saveTaskLock(lock);
+            TestUtils.endSession(true);
 
-        manager.saveTaskLock(lock);
-        TestUtils.endSession(true);
-
-        assertEquals(leased, manager.getTaskLockByName(TestTask.NAME).getTimeLeased());
+            assertEquals(new Date(1_000_000L).getTime(),
+                    manager.getTaskLockByName(TestTask.NAME).getLastRun().getTime());
+        } finally {
+            TaskLock again = manager.getTaskLockByName(TestTask.NAME);
+            again.setLastRun(original);
+            manager.saveTaskLock(again);
+            TestUtils.endSession(true);
+        }
     }
 }

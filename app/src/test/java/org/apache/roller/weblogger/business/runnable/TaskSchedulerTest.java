@@ -113,14 +113,26 @@ class TaskSchedulerTest {
         assertTrue(sentinel.launched(), "the sentinel after the task under test must run");
     }
 
+    /**
+     * As {@link #passWithSentinel}, then proves each task stayed unlaunched:
+     * the pool runs tasks on separate threads, so the sentinel finishing says
+     * nothing about a wrongly launched task unless that task's latch is also
+     * given time to fire.
+     */
+    private void passLaunchingNone(Date now, CountingTask... tasks) throws Exception {
+        passWithSentinel(now, tasks);
+        for (CountingTask task : tasks) {
+            assertFalse(task.ran.await(250, TimeUnit.MILLISECONDS), "task must not have been launched");
+            assertEquals(0, task.runs.get());
+        }
+    }
+
     @Test
     void aTaskWithNoLockRecordIsSkippedAndTheNextTaskStillRuns() throws Exception {
         CountingTask unlocked = new CountingTask(weblogger, "unlocked", "immediate", 1);
         when(threadManager.getTaskLockByName("unlocked")).thenReturn(null);
 
-        passWithSentinel(at(10, 30), unlocked);
-
-        assertEquals(0, unlocked.runs.get(), "no tasklock row means the task was never registered");
+        passLaunchingNone(at(10, 30), unlocked);
     }
 
     @Test
@@ -139,9 +151,7 @@ class TaskSchedulerTest {
         CountingTask early = new CountingTask(weblogger, "early", "immediate", 60);
         when(threadManager.getTaskLockByName("early")).thenReturn(lockLastRun("early", at(10, 0)));
 
-        passWithSentinel(at(10, 30), early);
-
-        assertEquals(0, early.runs.get(), "next allowed run is 11:00; 10:30 is too early");
+        passLaunchingNone(at(10, 30), early);
     }
 
     private static Date daysBefore(Date from, int days) {
@@ -158,9 +168,7 @@ class TaskSchedulerTest {
         when(threadManager.getTaskLockByName("lateDaily"))
                 .thenReturn(lockLastRun("lateDaily", daysBefore(at(0, 0), 3)));
 
-        passWithSentinel(at(10, 30), lateDaily);
-
-        assertEquals(0, lateDaily.runs.get());
+        passLaunchingNone(at(10, 30), lateDaily);
     }
 
     @Test
@@ -179,8 +187,7 @@ class TaskSchedulerTest {
         CountingTask lateHourly = new CountingTask(weblogger, "lateHourly", "startOfHour", 60);
         when(threadManager.getTaskLockByName("lateHourly"))
                 .thenReturn(lockLastRun("lateHourly", at(7, 0)));
-        passWithSentinel(at(10, 30), lateHourly);
-        assertEquals(0, lateHourly.runs.get(), "10:30 is past the first two minutes of the hour");
+        passLaunchingNone(at(10, 30), lateHourly);
     }
 
     @Test
@@ -198,9 +205,7 @@ class TaskSchedulerTest {
         CountingTask broken = new CountingTask(weblogger, "broken", "immediate", 1);
         when(threadManager.getTaskLockByName("broken")).thenThrow(new WebloggerException("db down"));
 
-        passWithSentinel(at(10, 30), broken);
-
-        assertEquals(0, broken.runs.get());
+        passLaunchingNone(at(10, 30), broken);
     }
 
     @Test
