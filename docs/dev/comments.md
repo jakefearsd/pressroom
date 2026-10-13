@@ -175,11 +175,11 @@ by every controller in `ReaderRefusalSweepTest`.
 
 `CommentsController` (`/roller-ui/rendering`):
 
-- `GET /comments/session.rol?entry=<id>`: JSON, `Cache-Control: no-store`.
-  Anonymous: `{signedIn:false, signInUrl?}` (absent with SSO off; the return
+- `GET /comments/session.rol?entry=<id>`: JSON, `Cache-Control: no-store`; 404
+  for an unknown or unpublished entry. Anonymous: `{signedIn:false, signInUrl?}` (absent with SSO off; the return
   path is the entry's own path). Signed in but refused:
   `{signedIn:true, canPost:false, reason}` with `reason` one of `closed`,
-  `disabled`, `custom-domain`, `no-permission` (the `CommentRefusal` name,
+  `comments-off`, `disabled`, `custom-domain`, `no-permission` (the `CommentRefusal` name,
   lower case with hyphens; the script reads them, so a rename is a contract
   change). May post: `canPost`, `displayName`, `isOwner`, `csrf {header,token}`,
   `accountUrl`, `pending` (the account's own PENDING comments on this entry)
@@ -187,7 +187,7 @@ by every controller in `ReaderRefusalSweepTest`.
 - `POST /comments.rol` (JSON `{entry, body, replyTo?}`): 201 `{id,status}`, 400
   (body, bad reply), 401, 403 (no `comment`, disabled, or no CSRF token), 404
   (unknown/unpublished/closed entry, comments off, custom domain), 429.
-- `DELETE /comments/{id}.rol`: 204, or 404 when it is not the caller's.
+- `DELETE /comments/{id}.rol`: 204, 401 when anonymous, or 404 when it is not the caller's.
 
 **Why CSRF is fetched, not cached.** The entry page is shared and cached, so a
 token cannot be in it. The session endpoint, answering the signed-in reader

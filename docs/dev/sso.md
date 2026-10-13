@@ -107,9 +107,11 @@ pair).
 - Refused (`sso_refused`): email missing, blank or over 255 characters;
   `email_verified` not exactly boolean `true` (a string is not `true`).
 - Claims go through `ReaderClaims.firstScalar` (first value of a list). The
-  display name is the `name` claim with control and format characters
-  removed, whitespace collapsed, cut to 100 code points; else the email's
-  local part; else `Reader`.
+  new reader's display name follows the account page's rule
+  (`business/comments/DisplayNames`, 1 to 50 code points, not a weblog
+  member's screen name; `docs/dev/comments.md`): the `name` claim, else the
+  email's local part, else `Reader`, else the generated username. A
+  candidate the rule refuses is skipped for the next.
 - Two first sign-ins at once: the unique index decides. The loser's flush
   fails, it releases the persistence session and re-reads the winner's row.
 - Later sign-ins refresh `email` and leave the name alone.

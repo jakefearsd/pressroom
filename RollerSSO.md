@@ -5,9 +5,9 @@ in to the wiki at wiki.wikantik.com. Their first sign-in creates a **reader**
 account. A reader cannot use the admin or authoring UI, the API, MCP or
 private media. They can comment on entries, and manage their account page.
 
-**Current state:** Roller 0.1.16 on blog.wikantik.com contains the feature,
-but sign-in is **off**. It turns on when both Google credentials are in
-`.env`. Until then nothing changes for anyone.
+**Current state:** Roller 0.1.16 and later contain the feature. Sign-in is
+**off** until both Google credentials are in `.env`; until then nothing
+changes for anyone.
 
 Further reading:
 - `docker_deployment.md`, section "Reader sign-in (Google)": the deployment
@@ -134,8 +134,8 @@ app. Two settings are optional and rarely needed:
   - **The account page** (`/roller-ui/account.rol`, linked from the comment
     form): set a display name (not one that matches an author's screen name),
     list and delete their comments, or delete the account, which removes its
-    comments. An account that holds a weblog role or admin cannot delete itself
-    this way.
+    comments. An account that holds a weblog role or admin, or that created any
+    entry, cannot delete itself this way.
 - **Letting a reader write:**
   1. In **User Admin**, open the account, tick **Can write (editor)** and
      save.
