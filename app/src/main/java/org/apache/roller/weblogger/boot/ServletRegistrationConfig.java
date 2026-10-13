@@ -61,10 +61,6 @@ import org.springframework.web.servlet.DispatcherServlet;
  * exactly from the normative tables in the Stage 1B Task 3 brief (in turn
  * transcribed from {@code web.xml}'s own load-bearing ordering comments —
  * see the filter registrations below for why the order matters).
- *
- * <p>{@code DebugFilter} is intentionally not registered here: it had no
- * {@code <filter-mapping>} in {@code web.xml} either (dev-only, wired up
- * manually when needed).
  */
 @Configuration
 public class ServletRegistrationConfig {
