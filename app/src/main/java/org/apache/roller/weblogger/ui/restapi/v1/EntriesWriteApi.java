@@ -379,7 +379,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
             return;
         }
         throw ApiException.conflictOnField("anchor", holder.getStatus() == WeblogEntry.PubStatus.TRASHED
-                ? "anchor '" + anchor + "' is held by an entry in the trash; delete it forever to free it."
+                ? "anchor '" + anchor + "' is held by an entry in the trash; delete it forever (delete_forever) to free it."
                 : "anchor '" + anchor + "' is already used by another entry.");
     }
 

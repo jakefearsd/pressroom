@@ -97,6 +97,7 @@ class EntriesWriteApiAnchorTest {
 
         assertTrue(problem.get("detail").asString().contains("in the trash"));
         assertTrue(problem.get("detail").asString().contains("delete it forever"));
+        assertTrue(problem.get("detail").asString().contains("delete_forever"));
     }
 
     @Test
