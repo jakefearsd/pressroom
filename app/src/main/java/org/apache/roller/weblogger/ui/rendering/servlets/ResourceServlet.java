@@ -148,6 +148,12 @@ public class ResourceServlet extends HttpServlet {
                 MediaFileManager mmgr = weblogger.getMediaFileManager();
                 MediaFile mf = mmgr.getMediaFileByOriginalPath(weblog,
                         resourceRequest.getResourcePath());
+                // A private directory's files are not served publicly by any
+                // route (see MediaResourceServlet). Answer as for a file that
+                // does not exist, so nothing here reveals that it does.
+                if (mf.getDirectory() != null && mf.getDirectory().isPrivate()) {
+                    throw new WebloggerException("private media file");
+                }
                 resourceLastMod = mf.getLastModified();
                 resourceStream = mf.getInputStream();
 

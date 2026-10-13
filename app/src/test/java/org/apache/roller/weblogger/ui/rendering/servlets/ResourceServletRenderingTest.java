@@ -101,4 +101,41 @@ class ResourceServletRenderingTest {
                 "a reader who already has this file must not be sent it again -- every "
                         + "image on every page depends on this");
     }
+
+    // --- the originalPath fallback and private directories
+
+    private MockHttpServletResponse getByOriginalPath(String path) throws Exception {
+        MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
+                "/roller-ui/rendering/resources", "/resourceblog" + path);
+        return RenderingTestSupport.execute(RenderingTestSupport.resourceServlet(), request);
+    }
+
+    private void givenOriginalPath(MediaFile image, String path, boolean privateDirectory) throws Exception {
+        image.setOriginalPath(path);
+        MediaFileManager mfMgr = TestUtils.weblogger().getMediaFileManager();
+        mfMgr.updateMediaFile(TestUtils.getManagedWebsite(weblog), image);
+        if (privateDirectory) {
+            mfMgr.getMediaFile(image.getId()).getDirectory().setPrivate(true);
+        }
+        TestUtils.endSession(true);
+    }
+
+    @Test
+    void aFileInAPublicDirectoryIsStillServedByItsOriginalPath() throws Exception {
+        givenOriginalPath(TestUtils.setupImageMediaFile(weblog, "pub.jpg", "publicdir"), "/pub.jpg", false);
+
+        assertEquals(200, getByOriginalPath("/pub.jpg").getStatus());
+    }
+
+    /** Private files are not served publicly by any route; this one must answer exactly as for an unknown path. */
+    @Test
+    void aFileInAPrivateDirectoryIsNotServedByItsOriginalPath() throws Exception {
+        givenOriginalPath(TestUtils.setupImageMediaFile(weblog, "priv.jpg", "privatedir"), "/priv.jpg", true);
+
+        MockHttpServletResponse response = getByOriginalPath("/priv.jpg");
+
+        assertEquals(404, response.getStatus());
+        assertEquals(0, response.getContentAsByteArray().length);
+        assertEquals(getByOriginalPath("/no-such.jpg").getStatus(), response.getStatus());
+    }
 }
