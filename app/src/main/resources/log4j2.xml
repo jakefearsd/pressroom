@@ -35,7 +35,19 @@ limitations under the License.
              directory (which is what the embedded-Tomcat spring-boot:run dev
              server wants). -->
         <property name="logging.dir">${sys:roller.log.dir:-${sys:catalina.base:-.}/logs}</property>
-        <property name="logging.pattern">%-5p %d{yyyy-MM-dd HH:mm:ss} [%t] %c{1} - %m%n</property>
+        <!-- %encode{%m}{CRLF} writes a CR or LF inside a message as the two
+             characters \r or \n, so one log call is one line and a
+             reader-supplied value (a display name, a sign-in failure reason, a
+             path) cannot forge a line that reads as a separate event. This is
+             the fix for find-sec-bugs' CRLF_INJECTION_LOGS family, made once
+             here instead of at ~440 call sites; LogPatternTest pins it, and
+             every PatternLayout below must use this property.
+             Trade-off: exception stack traces stay multi-line (the implicit
+             %xEx PatternLayout appends is not encoded), because a one-line
+             trace is unreadable. The residual risk is a Throwable whose
+             message carries a reader's CR or LF: that message is written raw
+             on the trace's first line. -->
+        <property name="logging.pattern">%-5p %d{yyyy-MM-dd HH:mm:ss} [%t] %c{1} - %encode{%m}{CRLF}%n</property>
     </properties>
 
     <Appenders>
