@@ -773,9 +773,6 @@ public class EntryEditController extends BaseController {
                 // try/catch at all and would simply 500 a page view) if
                 // this threw instead.
                 break;
-            default:
-                log.warn("addStatusMessage: no status message defined for {}", pubStatus);
-                break;
         }
     }
 

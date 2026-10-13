@@ -30,13 +30,13 @@ import java.io.InputStream;
 public class FileContent {
     
     // the physical java.io.File backing this resource
-    private File resourceFile = null;
+    private File resourceFile;
     
     // the file Id of the resource
-    private String fileId = null;
+    private String fileId;
     
     // the weblog the resource is attached to
-    private Weblog weblog = null;
+    private Weblog weblog;
     
     
     public FileContent(Weblog weblog, String fileId, File file) {

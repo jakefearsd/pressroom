@@ -32,7 +32,7 @@ import java.util.Map;
  */
 public class ConfigDef {
     
-    private List<DisplayGroup> displayGroups = null;
+    private List<DisplayGroup> displayGroups;
     private String name = null;
 
     Map<String, PropertyDef> propertyDefs = null;

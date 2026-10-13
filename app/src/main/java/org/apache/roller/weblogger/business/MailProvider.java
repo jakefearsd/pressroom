@@ -53,16 +53,17 @@ public class MailProvider {
      * answers hangs startup forever. Package-private and non-final so the
      * test suite can shrink it rather than wait out the real default.
      */
+    @SuppressWarnings("PMD.MutableStaticState") // test seam: MailProviderTest shrinks it, see above
     static int connectTimeoutMillis = 30_000;
 
-    private Session session = null;
+    private Session session;
     
     private ConfigurationType type = ConfigurationType.JNDI_NAME;
     
-    private String mailHostname = null;
+    private String mailHostname;
     private int    mailPort = -1;
-    private String mailUsername = null;
-    private String mailPassword = null;
+    private String mailUsername;
+    private String mailPassword;
 
     
     public MailProvider() throws StartupException {
@@ -113,7 +114,7 @@ public class MailProvider {
                 props.setProperty("mail.smtp.auth", "true");
             }
             if (mailPort != -1) {
-                props.setProperty("mail.smtp.port", ""+mailPort);
+                props.setProperty("mail.smtp.port", String.valueOf(mailPort));
             }
             applySecurityProperties(props, hasCredentials);
             session = Session.getInstance(props, null);

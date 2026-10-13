@@ -140,6 +140,9 @@ public class RemoteImageFetcher implements AutoCloseable {
     }
 
     /** One request: a redirect's target, or a 200's body read under the cap, all within the deadline. */
+    // Not try-with-resources: the response must be closed AFTER get.cancel() (see
+    // the finally block), and a resource would close before that block runs.
+    @SuppressWarnings("PMD.UseTryWithResources")
     private Answer exchange(URI uri, long remainingNanos, long maxBytes) throws FetchRefusal {
         HttpGet get = new HttpGet(uri);
         get.setHeader(HttpHeaders.ACCEPT, "image/jpeg, image/png, image/gif, image/webp");

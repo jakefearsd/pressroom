@@ -74,6 +74,7 @@ public final class HTMLSanitizer {
                     + "the previous value, assign a new one for the duration of one test, and "
                     + "restore it in a finally. Making this final would remove the only seam those "
                     + "tests have for exercising both the sanitized and unsanitized code paths.")
+    @SuppressWarnings("PMD.MutableStaticState") // test seam, see the SpotBugs justification above
     public static Boolean xssEnabled =
             WebloggerConfig.getBooleanProperty("weblogAdminsUntrusted", Boolean.FALSE);
 

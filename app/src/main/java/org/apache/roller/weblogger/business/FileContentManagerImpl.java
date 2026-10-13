@@ -51,7 +51,7 @@ public class FileContentManagerImpl implements FileContentManager {
 
     private static final Logger log = LoggerFactory.getLogger(FileContentManagerImpl.class);
 
-    private String storageDir = null;
+    private String storageDir;
 
     /**
      * Create file content manager.

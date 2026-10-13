@@ -121,7 +121,7 @@ final class RenderingServletUtils {
             return;
         }
 
-        try {
+        try (resourceStream) {
             resourceStream.transferTo(response.getOutputStream());
 
         } catch (IOException ex) {
@@ -130,8 +130,6 @@ final class RenderingServletUtils {
                 response.reset();
                 response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             }
-        } finally {
-            resourceStream.close();
         }
     }
 

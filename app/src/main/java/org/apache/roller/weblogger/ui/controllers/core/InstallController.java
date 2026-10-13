@@ -201,9 +201,7 @@ public class InstallController extends BaseController {
 
     private String getDatabaseProductName() {
         String name = "unknown";
-        Connection con = null;
-        try {
-            con = WebloggerStartup.getDatabaseProvider().getConnection();
+        try (Connection con = WebloggerStartup.getDatabaseProvider().getConnection()) {
             name = con.getMetaData().getDatabaseProductName();
         } catch (Exception ignored) {
             // This is a best-effort probe for a diagnostics page shown before
@@ -211,14 +209,6 @@ public class InstallController extends BaseController {
             // answer getDatabaseProductName(), "unknown" is a fine fallback
             // for that page and the real failure is reported elsewhere in
             // the install flow.
-        } finally {
-            if (con != null) {
-                try {
-                    con.close();
-                } catch (Exception ex) {
-                    log.debug("Could not close probe connection to database", ex);
-                }
-            }
         }
         return name;
     }

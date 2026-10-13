@@ -34,7 +34,7 @@ import java.util.List;
  */
 public class RuntimeConfigDefs {
     
-    private List<ConfigDef> configDefs = null;
+    private List<ConfigDef> configDefs;
     
     
     public RuntimeConfigDefs() {

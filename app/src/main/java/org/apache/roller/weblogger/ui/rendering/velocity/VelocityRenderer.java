@@ -44,7 +44,7 @@ public class VelocityRenderer implements Renderer {
     private final Template renderTemplate;
 
     // the velocity template
-    private org.apache.velocity.Template velocityTemplate = null;
+    private org.apache.velocity.Template velocityTemplate;
 
     // a possible exception
     private Exception velocityException = null;

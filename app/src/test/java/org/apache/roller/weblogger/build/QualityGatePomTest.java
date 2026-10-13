@@ -168,7 +168,28 @@ class QualityGatePomTest {
         while (m.find()) {
             refs.add(m.group(1));
         }
-        assertEquals(List.of("rulesets/java/quickstart.xml", "category/java/security.xml"), refs,
+        assertEquals(List.of("rulesets/java/quickstart.xml", "category/java/security.xml",
+                "category/java/errorprone.xml/SimpleDateFormatNeedsLocale",
+                "category/java/errorprone.xml/UseProperClassLoader",
+                "category/java/errorprone.xml/MoreThanOneLogger",
+                "category/java/bestpractices.xml/UnusedAssignment",
+                "category/java/bestpractices.xml/UseTryWithResources",
+                "category/java/bestpractices.xml/SystemPrintln",
+                "category/java/bestpractices.xml/ExhaustiveSwitchHasDefault",
+                "category/java/bestpractices.xml/UnnecessaryVarargsArrayCreation",
+                "category/java/bestpractices.xml/UnnecessaryWarningSuppression",
+                "category/java/bestpractices.xml/AvoidPrintStackTrace",
+                "category/java/bestpractices.xml/AvoidReassigningLoopVariables",
+                "category/java/performance.xml/AddEmptyString",
+                "category/java/performance.xml/UseStringBufferForStringAppends",
+                "category/java/performance.xml/InefficientStringBuffering",
+                "category/java/codestyle.xml/ModifierOrder",
+                "category/java/codestyle.xml/UnnecessaryCast",
+                "category/java/codestyle.xml/UnnecessaryBoxing",
+                "category/java/codestyle.xml/UseDiamondOperator",
+                "category/java/design.xml/CollapsibleIfStatements",
+                "category/java/design.xml/MutableStaticState",
+                "category/java/design.xml/AvoidThrowingNullPointerException"), refs,
                 "config/pmd/ruleset.xml's <rule ref> set IS the gate's scope, not merely its exclusions. "
                 + "Deleting the security category, or swapping quickstart.xml for a narrower ruleset, "
                 + "silently shrinks the gate with no other test failing. Changing this set is a spec "

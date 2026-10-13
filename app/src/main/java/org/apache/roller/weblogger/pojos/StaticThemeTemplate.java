@@ -37,16 +37,16 @@ public class StaticThemeTemplate implements ThemeTemplate, Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private String id = null;
-    private String name = null;
-    private String description = null;
+    private String id;
+    private String name;
+    private String description;
     private ComponentType action = null;
-    private String link = null;
+    private String link;
     private String contents = null;
     private boolean hidden = false;
     private boolean navbar = false;
     private Date lastModified = new Date();
-    private TemplateLanguage templateLanguage = null;
+    private TemplateLanguage templateLanguage;
     private String outputContentType = null;
     private RenditionType type = RenditionType.STANDARD;
     

@@ -392,9 +392,6 @@ public class LuceneIndexManager implements IndexManager {
      * it safe: a reset cannot drop the manager's reference between the
      * lookup and the increment.
      */
-    // The reader is returned to the caller, who owns the reference just
-    // taken; releaseSharedIndexReader is where it is let go of.
-    @SuppressWarnings("PMD.CloseResource")
     public synchronized IndexReader acquireSharedIndexReader() {
         IndexReader shared = getSharedIndexReader();
         shared.incRef();
@@ -483,26 +480,15 @@ public class LuceneIndexManager implements IndexManager {
             return;
         }
 
-        IndexWriter writer = null;
+        IndexWriterConfig config = new IndexWriterConfig(
+                new LimitTokenCountAnalyzer(
+                        getAnalyzer(), 128));
 
-        try {
-
-            IndexWriterConfig config = new IndexWriterConfig(
-                    new LimitTokenCountAnalyzer(
-                            getAnalyzer(), 128));
-
-            writer = new IndexWriter(dir, config);
-
+        try (IndexWriter writer = new IndexWriter(dir, config)) {
+            // an empty commit is what writes the first segments file
+            writer.commit();
         } catch (IOException e) {
             log.error("Error creating index", e);
-        } finally {
-            if (writer != null) {
-                try {
-                    writer.close();
-                } catch (IOException ex) {
-                    log.warn("Unable to close IndexWriter.", ex);
-                }
-            }
         }
     }
 

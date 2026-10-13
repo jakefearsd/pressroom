@@ -36,7 +36,7 @@ public abstract class AbstractPager<T> implements Pager<T> {
     private static final Logger log = LoggerFactory.getLogger(AbstractPager.class);
 
     final URLStrategy urlStrategy;
-    private String url = null;
+    private String url;
     private int page = 0;
 
     /** How many items make up one page. */
@@ -166,7 +166,7 @@ public abstract class AbstractPager<T> implements Pager<T> {
      */
     private Map<String, String> pageParams(int forPage) {
         Map<String, String> params = new java.util.HashMap<>(linkParams());
-        params.put("page", "" + forPage);
+        params.put("page", String.valueOf(forPage));
         return params;
     }
 

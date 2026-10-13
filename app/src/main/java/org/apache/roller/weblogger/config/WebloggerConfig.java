@@ -38,19 +38,19 @@ import org.apache.roller.util.PropertyExpander;
  */
 public final class WebloggerConfig {
     
-    private final static String default_config = "/org/apache/roller/weblogger/config/roller.properties";
-    private final static String custom_config = "/roller-custom.properties";
-    private final static String junit_config = "/roller-junit.properties";
-    private final static String custom_jvm_param = "roller.custom.config";
+    private static final String default_config = "/org/apache/roller/weblogger/config/roller.properties";
+    private static final String custom_config = "/roller-custom.properties";
+    private static final String junit_config = "/roller-junit.properties";
+    private static final String custom_jvm_param = "roller.custom.config";
 
-    private final static String env_prefix = "ROLLER_";
+    private static final String env_prefix = "ROLLER_";
 
-    private final static Pattern SECRET_KEY =
+    private static final Pattern SECRET_KEY =
             Pattern.compile("password|token|secret", Pattern.CASE_INSENSITIVE);
 
-    private final static Properties config;
+    private static final Properties config;
 
-    private final static Logger log;
+    private static final Logger log;
     
 
     /*
@@ -61,82 +61,7 @@ public final class WebloggerConfig {
     static {
         config = new Properties();
 
-        runAtClassLoad(() -> {
-            // we'll need this to get at our properties files in the classpath
-            Class<?> configClass = Class.forName("org.apache.roller.weblogger.config.WebloggerConfig");
-
-            // first, lets load our default properties
-            try (InputStream is = configClass.getResourceAsStream(default_config)) {
-                config.load(is);
-            }
-            
-            // first, see if we can find our junit testing config
-            try (InputStream test = configClass.getResourceAsStream(junit_config)) {
-                
-                if (test != null) {
-
-                    config.load(test);
-                    System.out.println("Roller Weblogger: Successfully loaded junit properties file from classpath");
-                    System.out.println("File path : " + configClass.getResource(junit_config).getFile());
-
-                } else {
-
-                    // now, see if we can find our custom config
-                    try(InputStream custom = configClass.getResourceAsStream(custom_config)) {
-
-                        if (custom != null) {
-                            config.load(custom);
-                            System.out.println("Roller Weblogger: Successfully loaded custom properties file from classpath");
-                            System.out.println("File path : " + configClass.getResource(custom_config).getFile());
-                        } else {
-                            System.out.println("Roller Weblogger: No custom properties file found in classpath");
-                        }
-
-                        System.out.println("(To run eclipse junit local tests see docs/testing/roller-junit.properties)");
-                    }
-                }
-            }
-
-            // finally, check for an external config file
-            String envFile = System.getProperty(custom_jvm_param);
-            if(envFile != null && envFile.length() > 0) {
-                File customConfigFile = new File(envFile);
-
-                // make sure the file exists, then try and load it
-                if(customConfigFile.exists()) {
-                    try(InputStream is = new FileInputStream(customConfigFile)) {
-                        config.load(is);
-                    }
-                    System.out.println("Roller Weblogger: Successfully loaded custom properties from "+
-                            customConfigFile.getAbsolutePath());
-                } else {
-                    System.out.println("Roller Weblogger: Failed to load custom properties from "+
-                            customConfigFile.getAbsolutePath());
-                }
-
-            }
-
-            // Highest-precedence layer: ROLLER_* environment variables. Placed
-            // before property expansion below so an env-supplied value can
-            // still carry ${...} references.
-            applyEnvironmentOverrides(config, System.getenv());
-
-            // Now expand system properties for properties in the config.expandedProperties list,
-            // replacing them by their expanded values.
-            String expandedPropertiesDef = config.getProperty("config.expandedProperties");
-            if (expandedPropertiesDef != null) {
-                String[] expandedProperties = expandedPropertiesDef.split(",");
-                for (String expandedProperty : expandedProperties) {
-                    String propName = expandedProperty.trim();
-                    String initialValue = config.getProperty(propName);
-                    if (initialValue != null) {
-                        String expandedValue = PropertyExpander.expandSystemProperties(initialValue);
-                        config.setProperty(propName, expandedValue);
-                    }
-                }
-            }
-
-        });
+        runAtClassLoad(WebloggerConfig::loadLayers);
 
         // tell log4j2 to use the optionally specified config file instead of Roller's,
         // but only if it hasn't already been set with -D at JVM startup.
@@ -168,6 +93,90 @@ public final class WebloggerConfig {
     }
 
     /**
+     * Loads the default, junit, custom, environment and expanded layers into
+     * {@link #config}. It reports progress on stdout because it runs before
+     * logging can exist: the log4j2 configuration file is itself named by a
+     * property this method loads.
+     */
+    @SuppressWarnings("PMD.SystemPrintln") // bootstrap: runs before the logger exists, see above
+    private static void loadLayers() throws Exception {
+        // we'll need this to get at our properties files in the classpath
+        Class<?> configClass = Class.forName("org.apache.roller.weblogger.config.WebloggerConfig");
+
+        // first, lets load our default properties
+        try (InputStream is = configClass.getResourceAsStream(default_config)) {
+            config.load(is);
+        }
+        
+        // first, see if we can find our junit testing config
+        try (InputStream test = configClass.getResourceAsStream(junit_config)) {
+            
+            if (test != null) {
+
+                config.load(test);
+                System.out.println("Roller Weblogger: Successfully loaded junit properties file from classpath");
+                System.out.println("File path : " + configClass.getResource(junit_config).getFile());
+
+            } else {
+
+                // now, see if we can find our custom config
+                try(InputStream custom = configClass.getResourceAsStream(custom_config)) {
+
+                    if (custom != null) {
+                        config.load(custom);
+                        System.out.println("Roller Weblogger: Successfully loaded custom properties file from classpath");
+                        System.out.println("File path : " + configClass.getResource(custom_config).getFile());
+                    } else {
+                        System.out.println("Roller Weblogger: No custom properties file found in classpath");
+                    }
+
+                    System.out.println("(To run eclipse junit local tests see docs/testing/roller-junit.properties)");
+                }
+            }
+        }
+
+        // finally, check for an external config file
+        String envFile = System.getProperty(custom_jvm_param);
+        if(envFile != null && envFile.length() > 0) {
+            File customConfigFile = new File(envFile);
+
+            // make sure the file exists, then try and load it
+            if(customConfigFile.exists()) {
+                try(InputStream is = new FileInputStream(customConfigFile)) {
+                    config.load(is);
+                }
+                System.out.println("Roller Weblogger: Successfully loaded custom properties from "+
+                        customConfigFile.getAbsolutePath());
+            } else {
+                System.out.println("Roller Weblogger: Failed to load custom properties from "+
+                        customConfigFile.getAbsolutePath());
+            }
+
+        }
+
+        // Highest-precedence layer: ROLLER_* environment variables. Placed
+        // before property expansion below so an env-supplied value can
+        // still carry ${...} references.
+        applyEnvironmentOverrides(config, System.getenv());
+
+        // Now expand system properties for properties in the config.expandedProperties list,
+        // replacing them by their expanded values.
+        String expandedPropertiesDef = config.getProperty("config.expandedProperties");
+        if (expandedPropertiesDef != null) {
+            String[] expandedProperties = expandedPropertiesDef.split(",");
+            for (String expandedProperty : expandedProperties) {
+                String propName = expandedProperty.trim();
+                String initialValue = config.getProperty(propName);
+                if (initialValue != null) {
+                    String expandedValue = PropertyExpander.expandSystemProperties(initialValue);
+                    config.setProperty(propName, expandedValue);
+                }
+            }
+        }
+
+    }
+
+    /**
      * Runs {@code work}, escalating a {@link RuntimeException} (a
      * programming or configuration error) but only logging anything else (a
      * missing optional file, matched by the broad {@code Exception} catch
@@ -184,11 +193,18 @@ public final class WebloggerConfig {
         } catch (RuntimeException e) {
             // A RuntimeException here is a programming or configuration
             // error, not a missing optional file -- do not boot on it.
-            e.printStackTrace();
+            printBootstrapFailure(e);
             throw e;
         } catch (Exception e) {
-            e.printStackTrace();
+            printBootstrapFailure(e);
         }
+    }
+
+    // The logger does not exist yet when this runs (see loadLayers), so stderr
+    // is the only place the failure can go.
+    @SuppressWarnings("PMD.AvoidPrintStackTrace")
+    private static void printBootstrapFailure(Exception e) {
+        e.printStackTrace();
     }
 
     /** A block of work that may throw a checked exception. */
@@ -313,7 +329,7 @@ public final class WebloggerConfig {
             return defaultValue;
         }
 
-        return Boolean.valueOf(value);
+        return Boolean.parseBoolean(value);
     }
 
     /**

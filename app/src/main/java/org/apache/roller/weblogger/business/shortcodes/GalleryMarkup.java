@@ -328,7 +328,7 @@ public final class GalleryMarkup {
      * covers.
      */
     static String aspectRatioClass(double aspectRatio) {
-        long hundredths = Math.round(aspectRatio * 100 / AR_CLASS_STEP) * (long) AR_CLASS_STEP;
+        long hundredths = Math.round(aspectRatio * 100 / AR_CLASS_STEP) * AR_CLASS_STEP;
         long clamped = Math.max(MIN_AR_CLASS, Math.min(MAX_AR_CLASS, hundredths));
         return "ar-" + clamped;
     }

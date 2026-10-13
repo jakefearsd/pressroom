@@ -181,6 +181,9 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
      * reader before acquiring the current one, so this operation never holds
      * more than one reference.
      */
+    // acquired = null looks dead to PMD (it is overwritten next) but is not:
+    // if the acquire below throws, the field must already be clear.
+    @SuppressWarnings("PMD.UnusedAssignment")
     private synchronized IndexReader acquireReader() {
         if (closed) {
             return null;

@@ -180,6 +180,7 @@ public final class I18nMessages {
 			// private ResourceBundle.cacheList field by reflection, which the
 			// JDK now refuses: the call threw before the cached instance was
 			// evicted, so "reload messages" quietly did nothing at all.
+			@SuppressWarnings("PMD.UseProperClassLoader") // the bundles were loaded through this class's loader, so that is the cache to clear
 			ClassLoader loader = I18nMessages.class.getClassLoader();
 			if (loader != null) {
 				ResourceBundle.clearCache(loader);

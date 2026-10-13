@@ -449,13 +449,13 @@ public class MediaFile implements Serializable {
 
         if (getWidth() > getHeight()) {
             if (getWidth() > THUMBNAIL_MAX_WIDTH) {
-                newHeight = (int) ((float) getHeight() * ((float) THUMBNAIL_MAX_WIDTH / (float) getWidth()));
+                newHeight = (int) (getHeight() * ((float) THUMBNAIL_MAX_WIDTH / getWidth()));
                 newWidth = THUMBNAIL_MAX_WIDTH;
             }
 
         } else {
             if (getHeight() > THUMBNAIL_MAX_HEIGHT) {
-                newWidth = (int) ((float) getWidth() * ((float) THUMBNAIL_MAX_HEIGHT / (float) getHeight()));
+                newWidth = (int) (getWidth() * ((float) THUMBNAIL_MAX_HEIGHT / getHeight()));
                 newHeight = THUMBNAIL_MAX_HEIGHT;
             }
         }

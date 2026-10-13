@@ -40,7 +40,7 @@ public class WeblogsPager extends AbstractPager<WeblogWrapper> {
     private final Weblogger weblogger;
 
     private String letter = null;
-    private int sinceDays = -1;
+    private int sinceDays;
     
     // collection for the pager
     

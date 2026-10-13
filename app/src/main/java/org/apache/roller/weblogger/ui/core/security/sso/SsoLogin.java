@@ -111,6 +111,8 @@ public class SsoLogin {
     }
 
     /** Adds the sign-in endpoints to {@code http}, the UI chain. */
+    // javac rejects the diamond on this anonymous class: its generic postProcess(O) method cannot be inferred
+    @SuppressWarnings("PMD.UseDiamondOperator")
     public void applyTo(HttpSecurity http) {
         AuthenticationManager signIn = signInManager();
         http.oauth2Login(oauth -> oauth

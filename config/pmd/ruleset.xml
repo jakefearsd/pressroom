@@ -6,7 +6,8 @@
 
     <description>
         Roller's PMD gate: PMD's own quickstart set plus the security category,
-        minus six rules. Zero tolerance: see
+        minus six rules, plus 21 defect-finding rules chosen 2026-10 from the
+        other categories (see the groups below). Zero tolerance: see
         docs/superpowers/specs/2026-08-18-static-analysis-quality-gates-design.md.
 
         A rule is excluded only when violating it is SYSTEMATICALLY not a defect
@@ -71,4 +72,42 @@
     <!-- Currently zero violations. Included precisely because holding zero
          forever is free, and a future one is worth failing a build over. -->
     <rule ref="category/java/security.xml"/>
+
+    <!-- Rules chosen 2026-10 from PMD categories outside quickstart, each one a
+         defect class and each held at zero. Chosen individually, never as a
+         category: the rest of those categories is opinion or noise here. -->
+
+    <!-- Locale-dependent formatting and a classloader that breaks in a WAR;
+         two loggers in one class split its output. -->
+    <rule ref="category/java/errorprone.xml/SimpleDateFormatNeedsLocale"/>
+    <rule ref="category/java/errorprone.xml/UseProperClassLoader"/>
+    <rule ref="category/java/errorprone.xml/MoreThanOneLogger"/>
+
+    <!-- Dead stores (sometimes a value that was meant to be used), leaked
+         resources, console output in server code, a default that swallows
+         new enum constants, and suppressions that suppress nothing. -->
+    <rule ref="category/java/bestpractices.xml/UnusedAssignment"/>
+    <rule ref="category/java/bestpractices.xml/UseTryWithResources"/>
+    <rule ref="category/java/bestpractices.xml/SystemPrintln"/>
+    <rule ref="category/java/bestpractices.xml/ExhaustiveSwitchHasDefault"/>
+    <rule ref="category/java/bestpractices.xml/UnnecessaryVarargsArrayCreation"/>
+    <rule ref="category/java/bestpractices.xml/UnnecessaryWarningSuppression"/>
+    <rule ref="category/java/bestpractices.xml/AvoidPrintStackTrace"/>
+    <rule ref="category/java/bestpractices.xml/AvoidReassigningLoopVariables"/>
+
+    <!-- Needless string building. -->
+    <rule ref="category/java/performance.xml/AddEmptyString"/>
+    <rule ref="category/java/performance.xml/UseStringBufferForStringAppends"/>
+    <rule ref="category/java/performance.xml/InefficientStringBuffering"/>
+
+    <!-- Redundant or misleading syntax that hides what the code does. -->
+    <rule ref="category/java/codestyle.xml/ModifierOrder"/>
+    <rule ref="category/java/codestyle.xml/UnnecessaryCast"/>
+    <rule ref="category/java/codestyle.xml/UnnecessaryBoxing"/>
+    <rule ref="category/java/codestyle.xml/UseDiamondOperator"/>
+
+    <!-- Nested ifs, shared mutable statics, and NullPointerException thrown by hand. -->
+    <rule ref="category/java/design.xml/CollapsibleIfStatements"/>
+    <rule ref="category/java/design.xml/MutableStaticState"/>
+    <rule ref="category/java/design.xml/AvoidThrowingNullPointerException"/>
 </ruleset>

@@ -95,7 +95,7 @@ public class EntryAddWithMediaFileController extends MediaFileBase {
                         link = link.replace("<url>", weblogger.getUrlStrategy()
                                            .getMediaFileURL(mediaFile.getWeblog(), mediaFile.getId(), true))
                                    .replace("<name>", mediaFile.getName())
-                                   .replace("<size>", "" + mediaFile.getLength())
+                                   .replace("<size>", String.valueOf(mediaFile.getLength()))
                                    .replace("<type>", mediaFile.getContentType());
                     }
                     // A blank line between entries, not concatenated flush

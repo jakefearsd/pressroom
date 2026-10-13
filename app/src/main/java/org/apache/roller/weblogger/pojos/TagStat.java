@@ -57,7 +57,7 @@ public class TagStat implements java.io.Serializable {
     public String toString() {
         StringBuilder str = new StringBuilder("{");
 
-        str.append("name=" + name + " " + "count=" + count);
+        str.append("name=").append(name).append(" count=").append(count);
         str.append('}');
 
         return str.toString();

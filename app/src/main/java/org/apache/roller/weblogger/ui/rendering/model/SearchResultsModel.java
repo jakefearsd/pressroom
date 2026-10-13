@@ -60,7 +60,7 @@ public class SearchResultsModel extends PageModel {
 	private int hits = 0;
 	private int offset = 0;
 	private int limit = 0;
-	private Set<String> categories = new TreeSet<String>();
+	private Set<String> categories = new TreeSet<>();
 	private String errorMessage = "";
 
 	@Override

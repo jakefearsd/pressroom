@@ -181,7 +181,7 @@ public final class WebloggerRuntimeConfig {
             value = WebloggerConfig.getProperty(name);
         }
 
-        return value != null && Boolean.valueOf(value);
+        return value != null && Boolean.parseBoolean(value);
     }
     
     

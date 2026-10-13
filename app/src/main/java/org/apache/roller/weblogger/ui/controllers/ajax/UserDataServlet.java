@@ -83,7 +83,7 @@ public class UserDataServlet extends HttpServlet {
         boolean admin = false;
 
         // This user check can be removed as we protected by spring (see above).
-        WeblogRequest weblogRequest = null;
+        WeblogRequest weblogRequest;
         try {
             weblogRequest = new WeblogRequest(weblogger, request);
 

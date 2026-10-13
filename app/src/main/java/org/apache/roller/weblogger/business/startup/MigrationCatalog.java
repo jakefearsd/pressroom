@@ -62,6 +62,7 @@ public final class MigrationCatalog {
      *         classpath, which means the build did not copy them and the
      *         application would otherwise silently skip all schema setup.
      */
+    @SuppressWarnings("PMD.UseProperClassLoader") // the context loader is tried first; this is the fallback
     public static List<String> versions() {
         URL dir = Thread.currentThread().getContextClassLoader().getResource(MIGRATIONS_PATH);
         if (dir == null) {

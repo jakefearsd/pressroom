@@ -28,8 +28,8 @@ import java.util.Map;
 public class LRUCache2
 {
     private long timeout;
-    private Map<Object, CacheEntry> cache = null;
-    private Environment environment = null;
+    private Map<Object, CacheEntry> cache;
+    private Environment environment;
 
     /**
      * Create cache.
@@ -131,7 +131,7 @@ public class LRUCache2
     private static class CacheEntry
     {
         private Object value;
-        private long timeCached = -1;
+        private long timeCached;
 
         public CacheEntry(Object value, long timeCached)
         {

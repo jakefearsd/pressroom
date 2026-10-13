@@ -58,7 +58,7 @@ public class WeblogSharedTheme extends WeblogTheme {
 
     private static final Logger log = LoggerFactory.getLogger(WeblogSharedTheme.class);
     
-    private SharedTheme theme = null;
+    private SharedTheme theme;
 
     // The weblog-side template store; transient because WeblogTheme is
     // Serializable and a manager is not state worth serialising.

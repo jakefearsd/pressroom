@@ -59,7 +59,7 @@ public class SQLScriptRunner {
     public SQLScriptRunner(InputStream is) throws IOException {
 
         try (BufferedReader in = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
-            String command = "";
+            StringBuilder command = new StringBuilder();
             String line;
             // Tag of the currently open dollar-quote (may be the empty string for
             // "$$"), or null when not inside one.
@@ -96,22 +96,22 @@ public class SQLScriptRunner {
                     // a terminating ";".
 
                     // add line to current command
-                    command += line.trim();
+                    command.append(line.trim());
 
                     // scan the newly appended line for dollar-quote delimiters,
                     // toggling openTag as they're found
                     openTag = scanDollarQuotes(line, openTag);
 
-                    if (openTag == null && command.endsWith(";")) {
+                    if (openTag == null && command.length() > 0 && command.charAt(command.length() - 1) == ';') {
                         // ";" is end of command, so add completed command to list
                         String cmd = command.substring(0, command.length() - 1);
                         String[] cmdArray = StringUtils.split(cmd);
                         cmd = StringUtils.join(cmdArray, " ");
                         commands.add(cmd);
-                        command = "";
-                    } else if (StringUtils.isNotEmpty(command)) {
+                        command.setLength(0);
+                    } else if (command.length() > 0) {
                         // still more command coming so add space
-                        command += " ";
+                        command.append(' ');
                     }
                 }
             }

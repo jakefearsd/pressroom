@@ -48,10 +48,9 @@ public class MediaFileDirectoryComparator implements Comparator<MediaFileDirecto
 	 */
     @Override
 	public int compare(MediaFileDirectory dir1, MediaFileDirectory dir2) {
-		switch (this.type) {
-		    case NAME: return dir1.getName().compareTo(dir2.getName());
-		    default: return 0;
-		}
+		return switch (this.type) {
+		    case NAME -> dir1.getName().compareTo(dir2.getName());
+		};
 	}
 
 }

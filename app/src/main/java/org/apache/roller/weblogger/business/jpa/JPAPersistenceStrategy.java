@@ -97,7 +97,7 @@ public class JPAPersistenceStrategy {
     /**
      * The EntityManagerFactory for this Roller instance.
      */
-    private EntityManagerFactory emf = null;
+    private EntityManagerFactory emf;
     
             
     /**
@@ -328,6 +328,7 @@ public class JPAPersistenceStrategy {
                 + "\"> found in " + PERSISTENCE_XML_RESOURCE);
     }
 
+    @SuppressWarnings("PMD.UseProperClassLoader") // the context loader is tried first; this is the fallback
     private static ClassLoader currentClassLoader() {
         ClassLoader tccl = Thread.currentThread().getContextClassLoader();
         return tccl != null ? tccl : JPAPersistenceStrategy.class.getClassLoader();
@@ -585,6 +586,10 @@ public class JPAPersistenceStrategy {
      * IllegalStateException}, which without this guard was caught below and
      * logged at ERROR on every graceful stop.
      */
+    // Not try-with-resources: the EntityManager is acquired inside the guarded
+    // block, its failed close is logged at debug (a rollback failure is the
+    // error worth reporting), and the thread-local is removed after both.
+    @SuppressWarnings("PMD.UseTryWithResources")
     public void release() {
         // Whatever this thread's transaction did or did not commit, any
         // post-commit actions queued via runAfterCommit() and never drained

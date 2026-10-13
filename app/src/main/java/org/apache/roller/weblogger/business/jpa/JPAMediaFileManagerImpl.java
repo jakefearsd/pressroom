@@ -621,35 +621,16 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         if (filter.getSize() > 0) {
             params.add(size++, filter.getSize());
             whereClause.append(" AND m.length ");
-            switch (filter.getSizeFilterType()) {
-            case GT:
-                whereClause.append(">");
-                break;
-            case GTE:
-                whereClause.append(">=");
-                break;
-            case EQ:
-                whereClause.append("=");
-                break;
-            case LT:
-                whereClause.append("<");
-                break;
-            case LTE:
-                whereClause.append("<=");
-                break;
-            default:
-                // SizeFilterType is a closed, internal five-value enum whose
-                // only producer (MediaFileSearchBean) already normalizes any
-                // unrecognized request input to EQ before this method ever
-                // sees it, so every declared constant is handled above by
-                // name. Reaching here means a value was added to the enum
-                // without updating this switch -- silently falling back to
-                // "=" (as an earlier version of this code did) would run a
-                // syntactically valid but semantically wrong query instead
-                // of surfacing the gap, so this fails loudly instead.
-                throw new IllegalStateException(
-                        "Unsupported MediaFileFilter.SizeFilterType: " + filter.getSizeFilterType());
-            }
+            // An expression, not a statement: adding a SizeFilterType constant
+            // is then a compile error here, where a statement switch with a
+            // default would quietly run a wrong query.
+            whereClause.append(switch (filter.getSizeFilterType()) {
+                case GT -> ">";
+                case GTE -> ">=";
+                case EQ -> "=";
+                case LT -> "<";
+                case LTE -> "<=";
+            });
             whereClause.append(" ?").append(size);
         }
 
@@ -686,18 +667,11 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         }
 
         if (filter.getOrder() != null) {
-            switch (filter.getOrder()) {
-            case NAME:
-                orderBy.append(" order by m.name");
-                break;
-            case DATE_UPLOADED:
-                orderBy.append(" order by m.dateUploaded");
-                break;
-            case TYPE:
-                orderBy.append(" order by m.contentType");
-                break;
-            default:
-            }
+            orderBy.append(switch (filter.getOrder()) {
+                case NAME -> " order by m.name";
+                case DATE_UPLOADED -> " order by m.dateUploaded";
+                case TYPE -> " order by m.contentType";
+            });
         } else {
             orderBy.append(" order by m.name");
         }

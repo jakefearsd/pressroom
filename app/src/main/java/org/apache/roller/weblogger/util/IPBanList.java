@@ -51,7 +51,7 @@ public final class IPBanList {
     private ModifiedFile bannedIpsFile = null;
 
     // reference to our singleton instance
-    private static IPBanList instance = null;
+    private static IPBanList instance;
 
 
     static {
@@ -162,7 +162,7 @@ public final class IPBanList {
                     new FileReader(this.bannedIpsFile, StandardCharsets.UTF_8))) {
                 Set<String> newBannedIpList = newThreadSafeSet();
 
-                String ip = null;
+                String ip;
                 while((ip = in.readLine()) != null) {
                     newBannedIpList.add(ip);
                 }
@@ -192,7 +192,7 @@ public final class IPBanList {
 
         private static final long serialVersionUID = 1L;
 
-        private long myLastModified = 0;
+        private long myLastModified;
 
         public ModifiedFile(String filePath) {
             super(filePath);

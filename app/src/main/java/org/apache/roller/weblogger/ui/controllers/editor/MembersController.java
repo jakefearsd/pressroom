@@ -106,11 +106,10 @@ public class MembersController extends BaseController {
                     if (WeblogPermission.ADMIN.equals(sval)) {
                         numAdmins++;
                     }
-                    if (perms.getUserName().equals(user.getUserName())) {
-                        if (!WeblogPermission.ADMIN.equals(sval)) {
-                            error = true;
-                            addError(model, "memberPermissions.noSelfModifications", request);
-                        }
+                    if (perms.getUserName().equals(user.getUserName())
+                            && !WeblogPermission.ADMIN.equals(sval)) {
+                        error = true;
+                        addError(model, "memberPermissions.noSelfModifications", request);
                     }
                 }
             }
@@ -122,20 +121,18 @@ public class MembersController extends BaseController {
             for (WeblogPermission perms : permsList) {
                 User permUser = userMgr.getUserByUserName(perms.getUserName());
                 String sval = request.getParameter("perm-" + permUser.getId());
-                if (sval != null) {
-                    if (!error && !perms.hasAction(sval)) {
-                        if ("-1".equals(sval)) {
-                            userMgr.revokeWeblogPermission(
-                                    weblog, permUser, WeblogPermission.ALL_ACTIONS);
-                            removed++;
-                        } else {
-                            userMgr.revokeWeblogPermission(
-                                    weblog, permUser, WeblogPermission.ALL_ACTIONS);
-                            userMgr.grantWeblogPermission(
-                                    weblog, permUser,
-                                    Utilities.stringToStringList(sval, ","));
-                            changed++;
-                        }
+                if (sval != null && !error && !perms.hasAction(sval)) {
+                    if ("-1".equals(sval)) {
+                        userMgr.revokeWeblogPermission(
+                                weblog, permUser, WeblogPermission.ALL_ACTIONS);
+                        removed++;
+                    } else {
+                        userMgr.revokeWeblogPermission(
+                                weblog, permUser, WeblogPermission.ALL_ACTIONS);
+                        userMgr.grantWeblogPermission(
+                                weblog, permUser,
+                                Utilities.stringToStringList(sval, ","));
+                        changed++;
                     }
                 }
             }

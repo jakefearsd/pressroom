@@ -82,10 +82,6 @@ public class MediaResourceServlet extends HttpServlet {
     /**
      * Handles requests for user uploaded media file resources.
      */
-    // response.getOutputStream() is container-owned; the servlet container
-    // manages its lifecycle for the whole request, and this code must not
-    // be relied on to close it on every path.
-    @SuppressWarnings("PMD.CloseResource")
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -229,13 +225,13 @@ public class MediaResourceServlet extends HttpServlet {
         }
         response.setContentType(servedContentType);
 
-        OutputStream out;
-        try {
+        // make sure stream to resource file is closed
+        try (InputStream in = resourceStream) {
             // ok, lets serve up the file
             byte[] buf = new byte[RollerConstants.EIGHT_KB_IN_BYTES];
             int length;
-            out = response.getOutputStream();
-            while ((length = resourceStream.read(buf)) > 0) {
+            OutputStream out = response.getOutputStream();
+            while ((length = in.read(buf)) > 0) {
                 out.write(buf, 0, length);
             }
 
@@ -248,9 +244,6 @@ public class MediaResourceServlet extends HttpServlet {
                 response.reset();
                 response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             }
-        } finally {
-            // make sure stream to resource file is closed
-            resourceStream.close();
         }
 
     }

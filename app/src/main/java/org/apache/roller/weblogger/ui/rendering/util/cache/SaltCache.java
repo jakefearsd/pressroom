@@ -43,7 +43,7 @@ public final class SaltCache {
     // roller config properties that apply to this cache
     public static final String CACHE_ID = "cache.salt";
     
-    private Cache contentCache = null;
+    private Cache contentCache;
     
     // reference to our singleton instance
     private static final SaltCache singletonInstance = new SaltCache();

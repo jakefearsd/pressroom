@@ -94,7 +94,7 @@ public class StylesheetEditController extends BaseController {
         WeblogManager weblogManager = weblogger.getWeblogManager();
         ThemeManager themeManager = weblogger.getThemeManager();
 
-        ThemeTemplate stylesheet = null;
+        ThemeTemplate stylesheet;
         try {
             SharedTheme themeName = themeManager.getTheme(getActionWeblog(request).getEditorTheme());
             stylesheet = themeName.getStylesheet();

@@ -38,9 +38,9 @@ public class StaticTemplate implements Template, Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private String id = null;
-    private String name = null;
-    private String description = null;
+    private String id;
+    private String name;
+    private String description;
     private Date lastModified = new Date();
     private String  outputContentType = null;
     private transient TemplateRendition templateRendition;

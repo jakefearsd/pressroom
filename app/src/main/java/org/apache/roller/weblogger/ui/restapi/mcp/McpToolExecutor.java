@@ -29,6 +29,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * dispatches, and returns the API's own body -- as an error result when the
  * API refused. Validation of the values themselves is the API's.
  */
+// Two loggers on purpose: "calls" is the one-line-per-tool-call audit log, named for grepping.
+@SuppressWarnings("PMD.MoreThanOneLogger")
 public final class McpToolExecutor {
 
     private static final Logger log = LoggerFactory.getLogger(McpToolExecutor.class);

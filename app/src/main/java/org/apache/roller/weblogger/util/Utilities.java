@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -241,8 +242,8 @@ public final class Utilities {
                 // rel attribute (invalid HTML; browsers honour only the first)
                 buf.append(link);
             } else {
-                buf.append(link.substring(0, link.length() - 1)
-                        + " rel=\"nofollow\">");
+                buf.append(link, 0, link.length() - 1)
+                        .append(" rel=\"nofollow\">");
             }
             html = html.substring(end, html.length());
             m = mLinkPattern.matcher(html);
@@ -480,11 +481,9 @@ public final class Utilities {
         BufferedInputStream in = new BufferedInputStream(input);
         BufferedOutputStream out = new BufferedOutputStream(output);
         byte buffer[] = new byte[RollerConstants.EIGHT_KB_IN_BYTES];
-        for (int count = 0; count != -1;) {
-            count = in.read(buffer, 0, RollerConstants.EIGHT_KB_IN_BYTES);
-            if (count != -1) {
-                out.write(buffer, 0, count);
-            }
+        for (int count = in.read(buffer, 0, RollerConstants.EIGHT_KB_IN_BYTES); count != -1;
+                count = in.read(buffer, 0, RollerConstants.EIGHT_KB_IN_BYTES)) {
+            out.write(buffer, 0, count);
         }
 
         try {
@@ -733,7 +732,7 @@ public final class Utilities {
         StringBuilder ret = new StringBuilder(str.length());
         int start = 0;
         int beginTag = str.indexOf('<');
-        int endTag = 0;
+        int endTag;
         if (beginTag == -1) {
             return str;
         }
@@ -818,9 +817,7 @@ public final class Utilities {
      * @return
      */
     public static String stripInvalidTagCharacters(String tag) {
-        if (tag == null) {
-            throw new NullPointerException();
-        }
+        Objects.requireNonNull(tag);
 
         StringBuilder sb = new StringBuilder();
         char[] charArray = tag.toCharArray();

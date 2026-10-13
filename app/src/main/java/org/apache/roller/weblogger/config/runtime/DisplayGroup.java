@@ -34,7 +34,7 @@ import java.util.List;
  */
 public class DisplayGroup {
     
-    private List<PropertyDef> propertyDefs = null;
+    private List<PropertyDef> propertyDefs;
     private String name = null;
     private String key = null;
     

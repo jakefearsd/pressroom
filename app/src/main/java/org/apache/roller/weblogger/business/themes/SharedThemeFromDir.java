@@ -46,7 +46,7 @@ public class SharedThemeFromDir extends SharedTheme {
     private static final Logger log = LoggerFactory.getLogger(SharedThemeFromDir.class);
 
     // the filesystem directory where we should read this theme from
-    private String themeDir = null;
+    private String themeDir;
 
     // the theme preview image
     private transient ThemeResource previewImage = null;

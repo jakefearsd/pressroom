@@ -196,12 +196,12 @@ public class URLModel implements Model {
     
     
     public String tag(String tag) {
-        return urlStrategy.getWeblogCollectionURL(weblog, locale, null, null, Arrays.asList(new String[]{tag}) , -1, true);
+        return urlStrategy.getWeblogCollectionURL(weblog, locale, null, null, Arrays.asList(tag) , -1, true);
     }
     
     
     public String tag(String tag, int pageNum) {
-        return urlStrategy.getWeblogCollectionURL(weblog, locale, null, null, Arrays.asList(new String[]{tag}), pageNum, true);
+        return urlStrategy.getWeblogCollectionURL(weblog, locale, null, null, Arrays.asList(tag), pageNum, true);
     }    
     
     

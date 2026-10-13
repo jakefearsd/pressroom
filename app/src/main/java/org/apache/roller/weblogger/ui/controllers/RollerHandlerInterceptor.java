@@ -354,11 +354,9 @@ public class RollerHandlerInterceptor implements HandlerInterceptor {
             username = userDetails.getUsername();
         } else if (principal instanceof RollerOidcUser reader) {
             username = reader.getName();
-        } else if (principal instanceof String name) {
+        } else if (principal instanceof String name && !"anonymousUser".equals(name)) {
             // Some authentication tokens store the username directly as a String
-            if (!"anonymousUser".equals(name)) {
-                username = name;
-            }
+            username = name;
         }
 
         if (username == null) {

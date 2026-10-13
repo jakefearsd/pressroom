@@ -41,13 +41,13 @@ public class WeblogEntriesListPager extends AbstractPager<WeblogEntryWrapper> {
     /** The business tier this pager queries; handed in by the model that built it (plan Task 11). */
     private final Weblogger weblogger;
 
-    private String locale = null;
-    private int sinceDays = -1;
+    private String locale;
+    private int sinceDays;
     
-    private Weblog queryWeblog = null;
-    private User queryUser = null;
-    private String queryCat = null;
-    private List<String> queryTags = null;
+    private Weblog queryWeblog;
+    private User queryUser;
+    private String queryCat;
+    private List<String> queryTags;
     
     // entries for the pager
     

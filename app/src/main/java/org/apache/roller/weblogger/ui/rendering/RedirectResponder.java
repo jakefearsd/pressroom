@@ -41,6 +41,8 @@ import org.apache.roller.weblogger.pojos.WeblogRedirect;
  * not already decided to 404 -- that is the one way to break the design.
  * Spec: {@code docs/superpowers/specs/2026-08-24-url-redirects-design.md}.
  */
+// Two loggers on purpose: the second is the shared redirect audit log, named for grepping.
+@SuppressWarnings("PMD.MoreThanOneLogger")
 public class RedirectResponder {
 
     private static final Logger log = LoggerFactory.getLogger(RedirectResponder.class);

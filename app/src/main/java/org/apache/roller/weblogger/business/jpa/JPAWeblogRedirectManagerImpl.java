@@ -33,6 +33,8 @@ import org.apache.roller.weblogger.pojos.WeblogRedirect;
 /**
  * JPA implementation of {@link WeblogRedirectManager}.
  */
+// Two loggers on purpose: the second is the shared redirect audit log, named for grepping.
+@SuppressWarnings("PMD.MoreThanOneLogger")
 public class JPAWeblogRedirectManagerImpl implements WeblogRedirectManager {
 
     private static final Logger log =

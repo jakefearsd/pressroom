@@ -157,13 +157,12 @@ public class WeblogCacheWarmupJob implements Job {
                 
                 // render content.  use default size of about 24K for a standard page
                 CachedContent rendererOutput = new CachedContent(RollerConstants.TWENTYFOUR_KB_IN_BYTES);
-                try {
+                // closed even if render() threw, or the buffer's underlying
+                // stream/writer leaks on that path
+                try (rendererOutput) {
                     renderer.render(modelMap, rendererOutput.getCachedWriter());
-                } finally {
-                    // flush and close even if render() threw, or the buffer's
-                    // underlying stream/writer leaks on that path
+                    // flush() captures the bytes; it must precede the close
                     rendererOutput.flush();
-                    rendererOutput.close();
                 }
 
                 // now just put it in the cache

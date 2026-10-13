@@ -106,11 +106,11 @@ public class WeblogRequestMapper {
 
 
     // url patterns that are not allowed to be considered weblog handles
-    Set<String> restricted = null;
+    Set<String> restricted;
 
     // Reserved on a custom domain. See appProtectedUrls' comment in
     // roller.properties for why this is a strict subset of `restricted`.
-    Set<String> appRestricted = null;
+    Set<String> appRestricted;
 
     private final WebloggerProvider provider;
     private final Weblogger weblogger;
@@ -170,10 +170,6 @@ public class WeblogRequestMapper {
     public boolean handleRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         
-        // kinda silly, but we need to keep track of whether or not the url had
-        // a trailing slash so that we can act accordingly
-        boolean trailingSlash = false;
-        
         String weblogHandle = null;
         String weblogLocale = null;
         String weblogRequestContext = null;
@@ -196,7 +192,9 @@ public class WeblogRequestMapper {
             return false;
         }
         String servlet = normalized.path();
-        trailingSlash = normalized.trailingSlash();
+        // kinda silly, but we need to keep track of whether or not the url had
+        // a trailing slash so that we can act accordingly
+        boolean trailingSlash = normalized.trailingSlash();
         String pathInfo = null;
 
         // The first path segment, whatever it turns out to mean. On a custom

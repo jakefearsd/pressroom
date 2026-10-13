@@ -92,7 +92,7 @@ public class ThemeManagerImpl implements ThemeManager {
 
 	private final Weblogger roller;
 	// directory where themes are kept
-	private String themeDir = null;
+	private String themeDir;
 	// the Map contains ... (theme id, Theme)
 	private Map<String, SharedTheme> themes = null;
 
@@ -376,7 +376,7 @@ public class ThemeManagerImpl implements ThemeManager {
 				} else {
 					justPath = resourcePath.substring(0, resourcePath.lastIndexOf('/'));
 					if (!justPath.startsWith("/")) {
-                        justPath = "/" + justPath;
+                        justPath = "/".concat(justPath);
                     }
 					justName = resourcePath.substring(resourcePath.lastIndexOf('/') + 1);
 					mdir = fileMgr.getMediaFileDirectoryByName(weblog, justPath);

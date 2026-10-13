@@ -130,16 +130,14 @@ public final class MailUtil {
             sb.append(
                     MessageFormat.format(
                     resources.getString("weblogEntry.pendingEntrySubject"),
-                    new Object[] {
-                entry.getWebsite().getName(),
-                entry.getWebsite().getHandle()
-            }));
+                    entry.getWebsite().getName(),
+                    entry.getWebsite().getHandle()));
             subject = sb.toString();
             sb = new StringBuilder();
             sb.append(
                     MessageFormat.format(
                     resources.getString("weblogEntry.pendingEntryContent"),
-                    new Object[] { userName, userName, editURL })
+                    userName, userName, editURL)
                     );
             content = sb.toString();
             sendTextMessage(
@@ -252,15 +250,13 @@ public final class MailUtil {
         
         // First collect all the addresses together.
         Address[] remainingAddresses = message.getAllRecipients();
-        int nAddresses = remainingAddresses.length;
+        int nAddresses;
         boolean bFailedToSome = false;
         
         SendFailedException sendex = new SendFailedException("Unable to send message to some recipients");
         
-        Transport transport = mailProvider.getTransport();
-        
         // Try to send while there remain some potentially good addresses
-        try { 
+        try (Transport transport = mailProvider.getTransport()) {
             do {
                 // Avoid a loop if we are stuck
                 nAddresses = remainingAddresses.length;
@@ -278,8 +274,6 @@ public final class MailUtil {
             } while (remainingAddresses!=null && remainingAddresses.length>0 
                     && remainingAddresses.length!=nAddresses);
             
-        } finally {
-            transport.close();
         }
         
         if (bFailedToSome) {

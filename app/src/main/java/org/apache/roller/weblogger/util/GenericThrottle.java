@@ -42,7 +42,7 @@ public class GenericThrottle {
     private int interval = 0;
     
     // a cache to maintain the data
-    Cache clientHistoryCache = null;
+    Cache clientHistoryCache;
     
     
     public GenericThrottle(int thresh, int inter, int maxEntries) {
@@ -65,8 +65,8 @@ public class GenericThrottle {
         // cache props
         Map<String,String> cacheProps = new HashMap<>();
         cacheProps.put("id", "throttle");
-        cacheProps.put("size", ""+maxEntries);
-        cacheProps.put("timeout", ""+this.interval);
+        cacheProps.put("size", String.valueOf(maxEntries));
+        cacheProps.put("timeout", String.valueOf(this.interval));
         
         // get cache instance.  handler is null cuz we don't want to register it
         this.clientHistoryCache = CacheManager.constructCache(null, cacheProps);
