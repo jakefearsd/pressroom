@@ -67,6 +67,7 @@ class PageServletCachingTest {
     void setUp() throws Exception {
         RenderingTestSupport.ensureRenderingRuntime();
         RenderingTestSupport.clearRenderCaches();
+        clearPageCaches();
 
         user = TestUtils.setupUser("pagecacheuser");
         weblog = TestUtils.setupWeblog("pagecacheblog", user);
@@ -83,8 +84,19 @@ class PageServletCachingTest {
         TestUtils.endSession(true);
     }
 
+    /**
+     * CacheManager.clear() does not reach the per-weblog page cache, and these
+     * tests seed it with a sentinel under the key of a weblog whose handle every
+     * method reuses: an entry left behind would be served to the next method.
+     */
+    private static void clearPageCaches() {
+        RenderCaches.forPage(false).clear();
+        RenderCaches.forPage(true).clear();
+    }
+
     @AfterEach
     void tearDown() throws Exception {
+        clearPageCaches();
         TestUtils.teardownWeblog(weblog.getId());
         TestUtils.teardownUser(user.getUserName());
         TestUtils.endSession(true);
@@ -212,6 +224,11 @@ class PageServletCachingTest {
         String before = get(null).getContentAsString();
         assertFalse(before.isEmpty());
 
+        // An entry is expired only when it was cached strictly BEFORE the
+        // weblog's lastModified (LazyExpiringCacheEntry), so a change made in
+        // the same millisecond as the render reads as not yet stale. Now that
+        // this test really uses the cache, give the change its own millisecond.
+        Thread.sleep(5);
         Weblog managed = TestUtils.getManagedWebsite(weblog);
         managed.setName("Renamed while cached");
         managed.setLastModified(new Timestamp(Instant.now().toEpochMilli()));
