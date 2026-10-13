@@ -742,14 +742,16 @@ public class EntryEditController extends BaseController {
     // defensive branch is to call this directly.
     void addStatusMessage(PubStatus pubStatus, Model model, WeblogEntry entry, HttpServletRequest request) {
         // An expression, so the compiler rejects a new PubStatus constant here.
-        String[] message = switch (pubStatus) {
-            case DRAFT -> new String[] {"weblogEdit.draftSaved"};
+        // The arms are lambdas rather than values so each addMessage call stays a plain
+        // call site that MessageArgumentEscapingTest can scan.
+        Runnable toast = switch (pubStatus) {
+            case DRAFT -> () -> addMessage(model, "weblogEdit.draftSaved", request);
             // The href is built here, from the entry, and never from anything a
             // reader supplied: messages.jsp renders a message unescaped.
-            case PUBLISHED -> new String[] {"weblogEdit.publishedEntry", permalinkOf(entry)};
-            case SCHEDULED -> new String[] {"weblogEdit.scheduledEntry",
-                    DateUtil.fullDate(entry.getPubTime())};
-            case PENDING -> new String[] {"weblogEdit.submittedForReview"};
+            case PUBLISHED -> () -> addMessage(model, "weblogEdit.publishedEntry", permalinkOf(entry), request);
+            case SCHEDULED -> () -> addMessage(model, "weblogEdit.scheduledEntry",
+                    DateUtil.fullDate(entry.getPubTime()), request);
+            case PENDING -> () -> addMessage(model, "weblogEdit.submittedForReview", request);
             // Both callers (entryEditExecute and entryEditFirstSave)
             // already redirect a trashed entry to the trash screen
             // before reaching this method, so this should be
@@ -766,13 +768,8 @@ public class EntryEditController extends BaseController {
             // this threw instead.
             case TRASHED -> null;
         };
-        if (message == null) {
-            return;
-        }
-        if (message.length == 1) {
-            addMessage(model, message[0], request);
-        } else {
-            addMessage(model, message[0], message[1], request);
+        if (toast != null) {
+            toast.run();
         }
     }
 
