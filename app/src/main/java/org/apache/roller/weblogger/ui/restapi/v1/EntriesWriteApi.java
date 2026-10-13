@@ -14,6 +14,7 @@ import org.apache.roller.weblogger.pojos.WeblogCategory;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.controllers.EntryDeletion;
+import org.apache.roller.weblogger.ui.controllers.EntryFieldRules;
 import org.apache.roller.weblogger.ui.controllers.UISecurityEnforced;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
 import org.apache.roller.weblogger.ui.restapi.FieldErrors;
@@ -62,9 +63,17 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         FieldErrors errors = new FieldErrors();
         errors.check("title", () -> requireNotBlank("title", body.title()));
         errors.check("text", () -> requireNotBlank("text", body.text()));
+        if (body.anchor() != null) {
+            errors.check("anchor", () -> requireAnchorForm(body.anchor()));
+        }
         checkWrite(errors, weblog, entry, body, Set.of());
         errors.throwIfAny();
 
+        if (body.anchor() != null) {
+            requireAnchorFree(weblog, body.anchor());
+            // saveWeblogEntry generates an anchor only when none is set
+            entry.setAnchor(body.anchor());
+        }
         apply(entry, weblog, body, Set.of());
         // No explicit category fallback needed here:
         // JPAWeblogEntryManagerImpl.saveWeblogEntry already defaults a
@@ -96,6 +105,9 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         Set<String> cleared = new HashSet<>();
         errors.check("clear", () -> cleared.addAll(ClearFields.validate(body.clear(), body,
                 EntryDtos.ENTRY_CLEARABLE, EntryDtos.ENTRY_PAIRS)));
+        if (body.anchor() != null && !body.anchor().equals(entry.getAnchor())) {
+            errors.add("anchor", "anchor is set when an entry is created and cannot change.");
+        }
         checkWrite(errors, weblog, entry, body, cleared);
         errors.throwIfAny();
 
@@ -319,6 +331,32 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         if (value == null || value.isBlank()) {
             throw ApiException.invalidField(field, field + " is required.");
         }
+    }
+
+    private static void requireAnchorForm(String anchor) {
+        if (!EntryFieldRules.isValidAnchor(anchor)) {
+            throw ApiException.invalidField("anchor", "anchor must be lower-case letters and digits in words "
+                    + "joined by one '-' or '_', at most " + EntryFieldRules.ANCHOR_MAX_LENGTH
+                    + " characters, for example torrey-pines.");
+        }
+    }
+
+    /**
+     * A chosen anchor no entry of this weblog holds. A trashed entry still
+     * holds its anchor -- it can be restored to the same permalink -- so the
+     * message says how to free it. Not a field-format problem but a clash
+     * with stored state, hence 409, reported only once every other field
+     * passed: there is no point telling a caller about a clash in a write
+     * that would be refused anyway.
+     */
+    private void requireAnchorFree(Weblog weblog, String anchor) throws WebloggerException {
+        WeblogEntry holder = weblogger.getWeblogEntryManager().getWeblogEntryByAnchor(weblog, anchor);
+        if (holder == null) {
+            return;
+        }
+        throw ApiException.conflictOnField("anchor", holder.getStatus() == WeblogEntry.PubStatus.TRASHED
+                ? "anchor '" + anchor + "' is held by an entry in the trash; delete it forever to free it."
+                : "anchor '" + anchor + "' is already used by another entry.");
     }
 
     /**

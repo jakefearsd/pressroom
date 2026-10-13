@@ -30,6 +30,7 @@ final class EntryWrites {
     private String eventEnd;
     private String eventLocation;
     private Boolean commentsClosed;
+    private String anchor;
     private List<String> clear;
 
     private EntryWrites() {
@@ -59,12 +60,13 @@ final class EntryWrites {
     EntryWrites eventEnd(String value) { eventEnd = value; return this; }
     EntryWrites eventLocation(String value) { eventLocation = value; return this; }
     EntryWrites commentsClosed(Boolean value) { commentsClosed = value; return this; }
+    EntryWrites anchor(String value) { anchor = value; return this; }
     EntryWrites clear(List<String> value) { clear = value; return this; }
 
     EntryDtos.EntryWrite build() {
         return new EntryDtos.EntryWrite(title, summary, text, status, category, pubTime, tags,
                 metaTitle, searchDescription, canonicalUrl, noindex, featuredImageId, ogImageId,
                 jsonLdType, geoLatitude, geoLongitude, eventStart, eventEnd, eventLocation,
-                commentsClosed, clear);
+                commentsClosed, anchor, clear);
     }
 }

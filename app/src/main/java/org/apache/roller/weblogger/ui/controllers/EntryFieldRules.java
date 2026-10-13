@@ -52,6 +52,38 @@ public final class EntryFieldRules {
         // static rules only
     }
 
+    /** {@code weblogentry.anchor} is varchar(255) (V002__baseline_schema.sql). */
+    public static final int ANCHOR_MAX_LENGTH = 255;
+
+    /**
+     * Whether a caller may choose {@code anchor} as an entry's slug. Stricter
+     * than the anchors Roller generates or has stored, which may carry other
+     * characters: a chosen anchor is refused, never normalised, so the URL is
+     * exactly the one the caller asked for.
+     */
+    public static boolean isValidAnchor(String anchor) {
+        if (anchor == null || anchor.length() > ANCHOR_MAX_LENGTH) {
+            return false;
+        }
+        // A single pass, not a regex: a nested quantifier reads to SpotBugs as ReDoS,
+        // and this needs no backtracking. Lower-case letters and digits, in words
+        // joined by one '-' or '_'; the anchor may neither start nor end with a separator.
+        boolean atWordStart = true;
+        for (char c : anchor.toCharArray()) {
+            if (c == '-' || c == '_') {
+                if (atWordStart) {
+                    return false;
+                }
+                atWordStart = true;
+            } else if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+                atWordStart = false;
+            } else {
+                return false;
+            }
+        }
+        return !atWordStart;
+    }
+
     /**
      * HTML-escapes an entry title for storage. Null-safe: a null title
      * (never entered) stays null rather than becoming the literal string

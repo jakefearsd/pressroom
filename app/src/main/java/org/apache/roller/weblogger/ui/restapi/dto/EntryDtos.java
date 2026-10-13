@@ -193,6 +193,10 @@ public final class EntryDtos {
             String eventLocation,
             @Schema(description = "True to stop new comments on this entry; existing ones stay. Not clearable.")
             Boolean commentsClosed,
+            @Schema(description = "The entry's URL slug: lower-case letters and digits in words joined by - or _, "
+                    + "for example torrey-pines. Set only when the entry is created; omitted, it is made from the "
+                    + "title. Another entry of the weblog holding it, a trashed one included, answers 409.")
+            String anchor,
             @Schema(description = "On update, fields to remove: summary, metaTitle, searchDescription, "
                     + "canonicalUrl, featuredImageId, ogImageId, jsonLdType (back to BLOG_POSTING), "
                     + "geoLatitude with geoLongitude, eventStart, eventEnd, eventLocation. "

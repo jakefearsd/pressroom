@@ -6,6 +6,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.TimeZone;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -105,5 +107,26 @@ class EntryFieldRulesTest {
         assertFalse(EntryFieldRules.endsBeforeStart(a, a));
         assertFalse(EntryFieldRules.endsBeforeStart(null, a));
         assertFalse(EntryFieldRules.endsBeforeStart(a, null));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "torrey-pines", "torrey_pines", "a", "2026-berlin-wall", "x1-y2_z3"})
+    void lowerCaseWordsJoinedByOneSeparatorAreAValidAnchor(String anchor) {
+        assertTrue(EntryFieldRules.isValidAnchor(anchor));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Torrey", "torrey pines", "torrey--pines", "-x", "x-", "", "stra\u00dfe", "a/b", "a.b", "a-_b"})
+    void anythingElseIsNot(String anchor) {
+        assertFalse(EntryFieldRules.isValidAnchor(anchor));
+    }
+
+    @Test
+    void anAnchorMayBeAsLongAsTheColumnAndNoLonger() {
+        assertTrue(EntryFieldRules.isValidAnchor("a".repeat(255)));
+        assertFalse(EntryFieldRules.isValidAnchor("a".repeat(256)));
+        assertFalse(EntryFieldRules.isValidAnchor(null));
     }
 }
