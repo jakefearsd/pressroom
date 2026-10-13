@@ -23,12 +23,14 @@ public final class McpInstructions {
             and set it in one call (featuredImageAlt describes it), or `media import` it and set featuredImageId. \
             Importing the same image again returns the first copy.
             - `importExternalImages: true` on create or update imports every image the text loads from another \
-            site and points the text at the copies; if any image fails, nothing is written.
+            site and points the text at the copies; if any image fails, the entry is not written, but images \
+            already imported stay in the media library and a retry reuses them.
             - In entry text, `[image id=<media id> caption="..."]` places an imported image responsively; \
             `[gallery dir="<directory>"]`, `[map]` with `[pin lat=.. lng=.. label=".."]`, `[video url="..."]` \
             and `[faq]` with `[q]`/`[a]` are also available.
             - Give `anchor` on create to choose the URL slug (lower-case words joined by - or _); it cannot \
-            change later. A refused write lists every bad field in `errors`.
+            change later. Give it on create so a retried create answers 409 instead of making a second \
+            entry. A refused write lists every bad field in `errors`.
             - For an event, set jsonLdType EVENT with eventStart and eventEnd as wall-clock times in the \
             weblog's zone, for example 2026-08-02T19:30, and eventLocation.
             - Entries are DRAFT, PUBLISHED, PENDING or SCHEDULED. Trash, restore and delete_forever are \

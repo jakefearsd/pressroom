@@ -293,11 +293,11 @@ conflict (a taken handle or custom domain) is a 409 carrying `errors` too.
   "type": "https://roller.invalid/problems/invalid-request",
   "title": "Invalid request",
   "status": 400,
-  "detail": "Unknown category 'Travle'; it is one of: Food, Travel. geoLatitude must be between -90 and 90.",
+  "detail": "geoLatitude must be between -90 and 90. Unknown category 'Travle'; it is one of: Food, Travel.",
   "instance": "/api/v1/weblogs/myblog/entries",
   "errors": [
-    {"field": "category", "message": "Unknown category 'Travle'; it is one of: Food, Travel."},
-    {"field": "geoLatitude", "message": "geoLatitude must be between -90 and 90."}
+    {"field": "geoLatitude", "message": "geoLatitude must be between -90 and 90."},
+    {"field": "category", "message": "Unknown category 'Travle'; it is one of: Food, Travel."}
   ]
 }
 ```
@@ -486,14 +486,19 @@ the featured image, and takes `featuredImageAlt` as its alt text, all in the
 entry write. It cannot be combined with `featuredImageId` (or with clearing
 it), `featuredImageAlt` without a URL is a 400, and it needs uploads enabled
 for the site. The import follows the same rules as `media/imports`, and a
-refusal is a 400 on `featuredImageUrl`.
+refusal is a 400 on `featuredImageUrl`. A private default media directory
+refuses every import, because readers could not see the images: a 400 on
+`featuredImageUrl`, or on `text` when only body images are imported.
 
 **`importExternalImages: true`** on create or update imports each image the
 text loads from a host other than the site's own, and points the text at the
 local copy. Found are `<img src>` tags in HTML (the first `src` wins, as in a
 browser) and every Markdown image, reference-style ones included, never an
 image inside code. A reference-style image becomes an inline image pointing
-at the copy. Only the `src` value of an HTML tag is rewritten. An external
+at the copy. Only the `src` value of an HTML tag is rewritten, and a Markdown
+image keeps its alt text exactly as written. A PATCH without `text` scans and
+rewrites the stored text. A body image's alt text (`<img alt>` or the Markdown
+alt) fills the imported file's alt text when that is null. An external
 `srcset` is refused, not imported, so it is a 400 on `text`.
 
 - At most 10 distinct external URLs per write (`MAX_BODY_IMAGES`); more is a
@@ -571,7 +576,7 @@ on ports 80 and 443, following at most 3 redirects (each re-checked), within 30
 seconds overall. The site's per-file size limit and its uploads-enabled switch
 apply as they do for uploads. A refused URL is a 400 on `url` whose `detail` says why.
 Bytes already in the target directory (matched by content hash) answer **200** with that file, with
-no copy and no quota charge; a null `altText` is filled from the request, while `""` is kept.
+no copy and no quota charge. If the existing file has no alt text, it takes the request's `altText`; an existing `""` (decorative) is kept.
 In the MCP endpoint this is `media` with `action: "import"`.
 
 `MediaView.directory` is the owning directory's **id**, not its name —
