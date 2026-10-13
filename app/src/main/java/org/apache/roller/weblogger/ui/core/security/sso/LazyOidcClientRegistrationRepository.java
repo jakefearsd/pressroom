@@ -39,6 +39,10 @@ public class LazyOidcClientRegistrationRepository implements ClientRegistrationR
         if (!SsoSettings.REGISTRATION_ID.equals(registrationId) || !settings.enabled()) {
             return null;
         }
+        // Synchronous on purpose: the sign-in needs the registration now, a success is cached for
+        // the life of the process, and a failure is not, so the next sign-in retries. Three tries with
+        // no back-off keep an outage to three timeouts per sign-in; two racing first sign-ins may both
+        // fetch, which is harmless because compareAndSet keeps one.
         for (int attempt = 1; attempt <= ATTEMPTS && cached.get() == null; attempt++) {
             tryResolveOnce();
         }

@@ -77,6 +77,8 @@ public class ReaderAccounts {
         if (!Boolean.TRUE.equals(account.getEnabled())) {
             throw new ReaderSignInRefused("account disabled");
         }
+        // The provider owns the email, so it is refreshed on every sign-in; the display name is the
+        // reader's to edit and is set once at creation, never overwritten here.
         if (!claims.email().equals(account.getEmailAddress())) {
             account.setEmailAddress(claims.email());
             users.saveUser(account);
@@ -92,6 +94,10 @@ public class ReaderAccounts {
                     + "with a password at all (ReaderAccountStoreTest pins that).")
     private User newReader(UserManager users, ReaderClaims claims) throws WebloggerException {
         String userName = null;
+        // 5 draws is a bound, not an expectation: with 36^10 names a second draw is already a
+        // one-in-a-trillion event, so repeated misses mean the random source or the store is broken
+        // and failing the sign-in is right. The existence check is a courtesy; the unique index on
+        // username (ru_username_uq) decides a true race.
         for (int draw = 0; draw < MAX_DRAWS && userName == null; draw++) {
             StringBuilder candidate = new StringBuilder(PREFIX);
             for (int i = 0; i < SUFFIX_LENGTH; i++) {

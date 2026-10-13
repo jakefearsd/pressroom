@@ -40,6 +40,7 @@ public class ReaderOidcUserService implements OAuth2UserService<OidcUserRequest,
         OidcUser fromProvider = delegate.loadUser(userRequest);
         OidcIdToken idToken = fromProvider == null ? null : fromProvider.getIdToken();
         URL issuer = idToken == null ? null : idToken.getIssuer();
+        // Refused, not failed: with no (issuer, subject) there is no identity to bind an account to.
         if (issuer == null || fromProvider.getSubject() == null) {
             throw new OAuth2AuthenticationException(new OAuth2Error(REFUSED, "no issuer or subject", null));
         }

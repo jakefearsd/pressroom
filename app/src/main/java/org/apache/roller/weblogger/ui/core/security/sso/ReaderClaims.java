@@ -73,6 +73,9 @@ public record ReaderClaims(String issuer, String subject, String email, boolean 
         if (email.length() > MAX_EMAIL) {
             throw new ReaderSignInRefused("email too long");
         }
+        // Refuse rather than trust: without a provider-verified address an account could carry
+        // someone else's email. A provider that never sends email_verified is refused for everyone;
+        // that is the cost of not guessing.
         if (!emailVerified) {
             throw new ReaderSignInRefused("email not verified");
         }

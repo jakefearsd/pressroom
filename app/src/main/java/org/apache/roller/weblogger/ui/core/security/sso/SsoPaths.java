@@ -44,6 +44,8 @@ public final class SsoPaths {
 
     /** @return the request path without the context path */
     static String pathWithinApplication(HttpServletRequest request) {
+        // Raw, undecoded URI on purpose: the filter answers exactly its own path and nothing that
+        // merely normalises to it. A variant spelling falls through to the normal 404.
         return request.getRequestURI().substring(request.getContextPath().length());
     }
 }
