@@ -227,7 +227,8 @@ public class JPAWeblogManagerImpl implements WeblogManager {
 
         // remove permissions
         for (WeblogPermission perm : umgr.getWeblogPermissions(weblog)) {
-            umgr.revokeWeblogPermission(weblog, umgr.getUserByUserName(perm.getUserName()),
+            // enabled == null: a disabled member's permission must go too
+            umgr.revokeWeblogPermission(weblog, umgr.getUserByUserName(perm.getUserName(), null),
                     WeblogPermission.ALL_ACTIONS);
         }
         
@@ -511,7 +512,8 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         List<User> users = new ArrayList<>();
         List<WeblogPermission> perms = roller.getUserManager().getWeblogPermissions(weblog);
         for (WeblogPermission perm : perms) {
-            User user = roller.getUserManager().getUserByUserName(perm.getUserName());
+            // enabled == null so that enabledOnly=false really lists disabled members
+            User user = roller.getUserManager().getUserByUserName(perm.getUserName(), null);
             if (user == null) {
                 log.error("ERROR user is null, userName:{}", perm.getUserName());
                 continue;
