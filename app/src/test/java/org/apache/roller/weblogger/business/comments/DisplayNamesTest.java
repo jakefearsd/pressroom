@@ -134,6 +134,32 @@ class DisplayNamesTest {
         assertEquals(Refusal.TAKEN, DisplayNames.refusal(OWNER, null, users));
     }
 
+    /**
+     * Fullwidth and mathematical-bold letters draw the member's name in the
+     * letters it is spelled with, so beside a comment they read as the member.
+     * A character-by-character equalsIgnoreCase let both through, and missed
+     * full case folding too (Strau\u00DF is STRAUSS).
+     */
+    @Test
+    void aMembersNameIsTakenInCompatibilityLettersAndUnderFullCaseFolding() throws Exception {
+        String fullwidth = shifted(OWNER, 0xFF21, 0xFF41);
+        String mathematicalBold = shifted("WEBLOG owner", 0x1D400, 0x1D41A);
+
+        assertEquals(Refusal.TAKEN, DisplayNames.refusal(DisplayNames.storedForm(fullwidth), null, users));
+        assertEquals(Refusal.TAKEN, DisplayNames.refusal(DisplayNames.storedForm(mathematicalBold), null, users));
+        when(users.getScreenNamesOfWeblogMembers()).thenReturn(List.of("Strau\u00DF"));
+        assertEquals(Refusal.TAKEN, DisplayNames.refusal("STRAUSS", null, users));
+        assertNull(DisplayNames.refusal("Strausberg", null, users), "a different name is still free");
+    }
+
+    /** {@code ascii} with A-Z moved to start at {@code upper} and a-z at {@code lower}. */
+    private static String shifted(String ascii, int upper, int lower) {
+        StringBuilder out = new StringBuilder();
+        ascii.codePoints().forEach(c -> out.appendCodePoint(
+                c >= 'A' && c <= 'Z' ? upper + c - 'A' : c >= 'a' && c <= 'z' ? lower + c - 'a' : c));
+        return out.toString();
+    }
+
     /** A member keeping its own name matches only itself; a reader taking it is still refused. */
     @Test
     void aMemberMayKeepItsOwnName() throws Exception {

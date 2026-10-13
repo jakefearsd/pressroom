@@ -17,6 +17,8 @@
  */
 package org.apache.roller.weblogger.business.comments;
 
+import java.text.Normalizer;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 import org.apache.roller.weblogger.WebloggerException;
@@ -51,7 +53,7 @@ public final class DisplayNames {
     public enum Refusal {
         /** Empty, or longer than {@link #MAX_CODE_POINTS} code points, once stored. */
         LENGTH("account.name.length"),
-        /** A weblog member's screen name, case and spacing aside. */
+        /** A weblog member's screen name, case, spacing and compatibility letters aside. */
         TAKEN("account.name.taken"),
         /** Markup stripping never settled on a stored form. */
         UNSETTLED("account.name.invalid");
@@ -145,7 +147,22 @@ public final class DisplayNames {
     }
 
     private static boolean sameName(String existing, String name) {
-        return existing != null && normalize(existing).equalsIgnoreCase(name);
+        return existing != null && fold(normalize(existing)).equals(fold(name));
+    }
+
+    /**
+     * The form two names are compared in, as near to Unicode's
+     * toNFKC_Casefold as the JDK reaches: compatibility letters made plain
+     * (fullwidth and mathematical letters are the letters they draw), full
+     * case folding (upper then lower, so Strau&szlig; is strauss), and NFKC
+     * again for anything the folding produced. Letters from another script
+     * that merely look alike (a Cyrillic a) are not caught: that needs
+     * Unicode's confusables data, which the JDK does not carry.
+     */
+    private static String fold(String name) {
+        String plain = Normalizer.normalize(name, Normalizer.Form.NFKC);
+        String folded = plain.toUpperCase(Locale.ROOT).toLowerCase(Locale.ROOT);
+        return Normalizer.normalize(folded, Normalizer.Form.NFKC);
     }
 
     private static String asTheSetterStores(String name) {

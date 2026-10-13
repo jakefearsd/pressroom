@@ -286,8 +286,11 @@ shared with a reader's first sign-in (ruling R8): judged in exactly the form
 markup stripping until the setter keeps the name unchanged, since
 `HTMLSanitizer.sanitizeText` is not idempotent); 1 to 50 code points after
 stripping control and format characters and collapsing whitespace; refused if
-it equals, case-insensitively, the screen name of any weblog member
-(anti-impersonation; a member keeping their own name is exempt); saving
+it equals the screen name of any weblog member once both are NFKC-normalised
+and fully case-folded, so fullwidth or mathematical-bold letters, and `ß`
+against `SS`, are the same name (anti-impersonation; a member keeping their
+own name is exempt; look-alike letters from another script, a Cyrillic `а`,
+are not caught: that needs Unicode's confusables data); saving
 expires the weblogs showing it. At first sign-in (`ReaderAccounts`) a refused
 name claim falls back to the email's local part, then "Reader", then the
 generated username. The page lists the account's comments with Delete. Delete
