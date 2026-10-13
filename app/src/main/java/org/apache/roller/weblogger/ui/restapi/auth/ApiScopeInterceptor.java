@@ -123,6 +123,7 @@ public class ApiScopeInterceptor implements HandlerInterceptor {
 
     private static boolean isWrite(HttpServletRequest request) {
         String method = request.getMethod();
-        return !("GET".equalsIgnoreCase(method) || "HEAD".equalsIgnoreCase(method));
+        // Exactly GET or HEAD: methods are case-sensitive (RFC 9110), as Spring's dispatch is.
+        return !("GET".equals(method) || "HEAD".equals(method));
     }
 }

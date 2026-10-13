@@ -434,6 +434,17 @@ class SecurityConfigTest {
         assertFalse(isPublicAudiencePost(request("PUT", "/roller-ui/rendering/contact.rol")));
     }
 
+    /**
+     * HTTP methods are case-sensitive (RFC 9110), and so is Spring's dispatch:
+     * a request spelled "post" reaches no POST handler, so it has no business
+     * being exempted from CSRF either. The exemption is exactly POST.
+     */
+    @Test
+    void theExemptionIsForExactlyPostNotAnotherSpellingOfIt() throws Exception {
+        assertFalse(isPublicAudiencePost(request("post", "/roller-ui/rendering/contact.rol")));
+        assertFalse(isPublicAudiencePost(request("Post", "/newsletter/subscribe")));
+    }
+
     private static boolean isPublicAudiencePost(HttpServletRequest request) throws Exception {
         Method method = SecurityConfig.class.getDeclaredMethod("isPublicAudiencePost", HttpServletRequest.class);
         method.setAccessible(true);

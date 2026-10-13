@@ -116,6 +116,25 @@ class ApiScopeInterceptorTest {
     }
 
     /**
+     * HTTP methods are case-sensitive (RFC 9110): only GET and HEAD, spelled
+     * exactly, are reads. A read token sending "get" or "head" is refused as a
+     * write rather than waved through as a read that Spring would then route
+     * to no GET handler.
+     */
+    @Test
+    void onlyExactGetAndHeadAreReads() {
+        for (String spelling : List.of("get", "Head")) {
+            MockHttpServletRequest request = request(spelling, weblog("testblog"), "testblog", ApiToken.Role.READ);
+
+            ApiException thrown = assertThrows(ApiException.class,
+                    () -> interceptor.preHandle(request, new MockHttpServletResponse(), PLAIN), spelling);
+            assertEquals(403, thrown.getStatus(), spelling);
+        }
+        assertTrue(interceptor.preHandle(
+                request("HEAD", weblog("testblog"), "testblog", ApiToken.Role.READ), new MockHttpServletResponse(), PLAIN));
+    }
+
+    /**
      * The allowlist fix: a null role must not default to write-permitted.
      * Under the old {@code role == READ} denylist, {@code null == READ} is
      * false, so a null role was wrongly treated as permitted to write.

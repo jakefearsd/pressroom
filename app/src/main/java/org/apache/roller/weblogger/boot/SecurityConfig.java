@@ -445,7 +445,8 @@ public class SecurityConfig {
      * and the throttle.
      */
     private static boolean isPublicAudiencePost(HttpServletRequest request) {
-        if (!"POST".equalsIgnoreCase(request.getMethod())) {
+        // Exactly POST: methods are case-sensitive (RFC 9110), as Spring's dispatch is.
+        if (!"POST".equals(request.getMethod())) {
             return false;
         }
         String path = request.getRequestURI().substring(request.getContextPath().length());
