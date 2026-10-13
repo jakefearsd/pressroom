@@ -180,6 +180,9 @@ Fixture, mock and render-cache conventions for tests: `docs/dev/build-and-ci.md`
   one-offs are suppressed at the site with a reason. `bin/quality-report.sh
   [Rule]` lists sites. A tool bump that finds things gets fixes, not wider
   exclusions.
+- **javac `-Xlint:all` with `failOnWarning`**: zero warnings in main and test;
+  the disabled lints are exactly `options`, `processing`, `path` and
+  `this-escape` (`QualityGatePomTest`).
 - **SLF4J**: a `Throwable` stays the LAST argument and no `{}` consumes it,
   or the stack trace is silently dropped.
 - **i18n ratchets** (`MessageKeyTest`, `MessagePlaceholderContractTest`,

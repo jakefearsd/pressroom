@@ -57,6 +57,32 @@ resolves through the index at the end of `CLAUDE.md`.
 - Browser ITs run in CI (`mvn verify -Pit`) — see `it-selenium/`, and CI
   below for *when*.
 
+## Compiler warnings
+
+javac runs `-Xlint:all` with `failOnWarning` (parent pom,
+`maven-compiler-plugin`), so a new warning fails `compile` and `test-compile`
+in both modules: a deprecation, a removal, an unused try resource, a dangling
+doc comment. Since 2026-10, when 171 warnings (73 main, 98 test) were
+cleared. Four lints are off, a closed set that `QualityGatePomTest` pins, each
+with its reason beside it in the pom:
+
+- `options`, `processing`: advisory noise.
+- `path`: classpath housekeeping, not a code defect. `it-selenium` has no main
+  sources, so its `target/classes` never exists, and a clean `-Pit` build
+  failed on "bad path element" before one browser test ran.
+- `this-escape`: the javac twin of the excluded SpotBugs
+  `MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR`. Template methods called from
+  constructors are how the servlet and manager hierarchies are written, and
+  JPA entities may not be final.
+
+How to fix a warning:
+- Move to the replacement API, for example `Locale.of`, commons-lang3
+  `Strings.CS`, or `URI.toURL()` for the deprecated `new URL(String)`. That
+  last one is stricter: a raw space is refused as malformed.
+- Suppress at the narrowest element, with a reason, only when no replacement
+  exists or a framework contract requires the deprecated member.
+- In tests, an unused try-with-resources variable is written `_`.
+
 ## Static-analysis gates
 
 PMD, CPD and SpotBugs run at `verify` in the `app` module and fail the build
@@ -77,7 +103,7 @@ goes 13 -> 42 as the detector improved, and five rules did not exist in 7.17
 (`OverrideBothEqualsAndHashCodeOnComparable`, `LambdaCanBeMethodReference`,
 `UseStandardCharsets`, `AvoidInstanceofChecksInCatchClause`,
 `AvoidCatchingGenericException`). An unpinned plugin drifts the count
-silently on a routine bump; the `pmd-core`/`pmd-java` `7.26.0` override in
+silently on a routine bump; the `pmd-core`/`pmd-java` `7.27.0` override in
 the parent `pluginManagement` fixes it.
 
 Zero tolerance is affordable only because the rule set is narrow: **a rule
@@ -85,7 +111,48 @@ is excluded only when violating it is systematically not a defect in this
 architecture**, never because there are a lot of them.
 `UnnecessaryConstructor` is the clearest case — JPA entities must declare a
 no-arg constructor, so the rule is wrong here, not noisy. PMD's `codestyle`
-category (7,997 violations of format opinion) is not used at all.
+category as a whole (7,997 violations of format opinion) is not used; four of
+its rules are, by name (next paragraph).
+
+**21 rules named one by one (2026-10), each at zero.** Beyond quickstart and
+`security`, the ruleset lists rules picked for the defect class they catch,
+from a trial of every category against 0.1.17: errorprone
+`SimpleDateFormatNeedsLocale`, `UseProperClassLoader`, `MoreThanOneLogger`;
+bestpractices `UnusedAssignment`, `UseTryWithResources`, `SystemPrintln`,
+`ExhaustiveSwitchHasDefault`, `UnnecessaryVarargsArrayCreation`,
+`UnnecessaryWarningSuppression`, `AvoidPrintStackTrace`,
+`AvoidReassigningLoopVariables`; performance `AddEmptyString`,
+`UseStringBufferForStringAppends`, `InefficientStringBuffering`; codestyle
+`ModifierOrder`, `UnnecessaryCast`, `UnnecessaryBoxing`, `UseDiamondOperator`;
+design `CollapsibleIfStatements`, `MutableStaticState`,
+`AvoidThrowingNullPointerException`. They found 152 sites, all fixed or
+suppressed at the site; `QualityGatePomTest.pmdRulesetScopeIsPinned` pins the
+list. What they now enforce:
+
+- `UnusedAssignment` is the one that can find bugs (a value meant to be used
+  and never read). All 61 sites were dead initialisers.
+- `SimpleDateFormatNeedsLocale`: a wire format (permalink stamps, ISO-8601,
+  feeds) takes `Locale.ROOT`, or `Locale.US` where English names are needed.
+  Under a Thai default locale the old code wrote Buddhist-calendar years into
+  permalinks. A display format takes the weblog's or viewer's locale. Note
+  that `Locale.ROOT` abbreviates full month and day names (`MMMM` renders
+  "Dec"), so it is only for numeric or abbreviated patterns.
+- `ExhaustiveSwitchHasDefault`: an enum switch that covers every constant is
+  written as a switch expression with no `default`, so a new constant is a
+  compile error. A switch statement is not checked for exhaustiveness, which is
+  why `EntryEditController.addStatusMessage` became an expression whose arms
+  are lambdas (that also keeps each `addMessage` call scannable by
+  `MessageArgumentEscapingTest`).
+- `UnnecessaryWarningSuppression` keeps the suppressions honest: a
+  `@SuppressWarnings("PMD.X")` that no longer suppresses anything fails the
+  build. The 35 older reason comments were re-read against the code at the
+  same time; seven had gone stale and were corrected.
+
+Considered and left out: `ReplaceJavaUtilDate` (376 sites; the JPA pojos are
+`Date`-typed), `AvoidCatchingGenericException` (213),
+`UseConcurrentHashMap` (96), `AvoidLiteralsInIfCondition`,
+`AvoidDuplicateLiterals` and `RedundantFieldInitializer` (450). They are
+opinion or noise here.
 
 Six PMD rules and three SpotBugs families (469 of 603 raw SpotBugs findings)
 are excluded, each with a reason comment in the config file.
