@@ -128,6 +128,50 @@ class MailUtilTest {
         }
     }
 
+    /**
+     * An agent member who qualifies as a reviewer is left out of the notice, so
+     * one refused {@code @agents.invalid} recipient cannot fail the whole send;
+     * an agent as the entry's creator is not copied either.
+     */
+    @Test
+    void pendingEntryNoticeNeverAddressesAnAgent() throws Exception {
+        User author = new User();
+        author.setUserName("bot");
+        author.setEmailAddress("bot@agents.invalid");
+        author.setKind(User.Kind.AGENT);
+        User person = new User();
+        person.setUserName("reviewer");
+        person.setEmailAddress("reviewer@example.invalid");
+        User agent = new User();
+        agent.setUserName("bot2");
+        agent.setEmailAddress("bot2@agents.invalid");
+        agent.setKind(User.Kind.AGENT);
+
+        WeblogManager weblogs = mock(WeblogManager.class);
+        when(weblogs.getWeblogUsers(weblog, true)).thenReturn(List.of(agent, person));
+        URLStrategy urls = mock(URLStrategy.class);
+        when(urls.getEntryEditURL("mailblog", "entry-1", true)).thenReturn("https://site.invalid/e");
+        UserManager users = mock(UserManager.class);
+        when(users.getUserByUserName("bot")).thenReturn(author);
+        when(users.checkPermission(any(), any(User.class))).thenReturn(true);
+        Weblogger tier = mock(Weblogger.class);
+        when(tier.getWeblogManager()).thenReturn(weblogs);
+        when(tier.getUserManager()).thenReturn(users);
+        when(tier.getUrlStrategy()).thenReturn(urls);
+
+        WeblogEntry entry = new WeblogEntry();
+        entry.setId("entry-1");
+        entry.setWebsite(weblog);
+        entry.setCreatorUserName("bot");
+        entry.setTitle("Pending");
+
+        MailUtil.sendPendingEntryNotice(tier, entry);
+
+        MimeMessage message = mail.onlyMessage();
+        assertEquals(List.of("reviewer@example.invalid"), addresses(message, Message.RecipientType.TO));
+        assertTrue(addresses(message, Message.RecipientType.CC).isEmpty(), "the agent creator is not copied");
+    }
+
     // ------------------------------------------------------- configured or not
 
     @Test

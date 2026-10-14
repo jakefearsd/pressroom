@@ -177,6 +177,22 @@ class MailCommentNotifierTest {
     }
 
     @Test
+    void anAgentAdminMemberIsNeverMailed() throws Exception {
+        admin("amy", "amy@example.invalid", true);
+        User bot = user("bot", "bot@agents.invalid", true);
+        bot.setKind(User.Kind.AGENT);
+        permissions.add(new WeblogPermission(weblog, bot, List.of(WeblogPermission.ADMIN)));
+        when(mocks.getUserManager().getUserByUserName("bot")).thenReturn(bot);
+        when(mocks.getUserManager().getWeblogPermissions(weblog)).thenReturn(List.copyOf(permissions));
+
+        notifier.notifyHeld(comment);
+
+        assertEquals(1, mail.recipients().size(), "one email, to the person only");
+        assertEquals(1, mail.recipients().get(0).length);
+        assertEquals("amy@example.invalid", mail.recipients().get(0)[0].toString());
+    }
+
+    @Test
     void postOnlyMembersAreNotMailed() throws Exception {
         admin("amy", "amy@example.invalid", true);
         member("poster", "poster@example.invalid", WeblogPermission.POST);

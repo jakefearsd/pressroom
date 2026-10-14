@@ -143,7 +143,7 @@ public class MailCommentNotifier implements CommentNotifier {
         }
     }
 
-    /** Distinct email addresses of enabled {@code ADMIN} members who have one. */
+    /** Distinct email addresses of enabled {@code ADMIN} members who have one; agents are left out. */
     private List<String> adminAddresses(Weblog weblog) throws Exception {
         UserManager users = weblogger.getUserManager();
         List<String> addresses = new ArrayList<>();
@@ -152,7 +152,7 @@ public class MailCommentNotifier implements CommentNotifier {
                 continue;
             }
             User user = users.getUserByUserName(permission.getUserName());
-            if (user != null && !Boolean.FALSE.equals(user.getEnabled())
+            if (user != null && !user.isAgent() && !Boolean.FALSE.equals(user.getEnabled())
                     && StringUtils.isNotBlank(user.getEmailAddress())
                     && !addresses.contains(user.getEmailAddress())) {
                 addresses.add(user.getEmailAddress());

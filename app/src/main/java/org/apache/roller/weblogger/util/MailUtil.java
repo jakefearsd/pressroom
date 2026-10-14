@@ -100,7 +100,8 @@ public final class MailUtil {
             User creator = weblogger.getUserManager().getUserByUserName(entry.getCreatorUserName());
             String userName = creator.getUserName();
             String from = creator.getEmailAddress();
-            String cc[] = new String[] {from};
+            // an agent has no mailbox, so it is not copied on its own entry
+            String cc[] = creator.isAgent() ? new String[0] : new String[] {from};
             String bcc[] = new String[0];
             String to[];
             String subject;
@@ -110,9 +111,11 @@ public final class MailUtil {
             List<String> reviewers = new ArrayList<>();
             List<User> websiteUsers = wmgr.getWeblogUsers(entry.getWebsite(), true);
             
-            // build list of reviewers (website users with author permission)
+            // build list of reviewers (website users with author permission);
+            // agents are left out: nothing is mailed to one, and a single
+            // refused recipient would fail the notice for the people
             for (User websiteUser : websiteUsers) {
-                if (isAuthor(weblogger, entry.getWebsite(), websiteUser)
+                if (!websiteUser.isAgent() && isAuthor(weblogger, entry.getWebsite(), websiteUser)
                         && websiteUser.getEmailAddress() != null) {
                     reviewers.add(websiteUser.getEmailAddress());
                 }
