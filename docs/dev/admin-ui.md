@@ -244,9 +244,14 @@ Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`; 
 - **The token form, reveal and revoke live in `TokenFormController`**, the abstract base of
   `ProfileTokensController`, `AgentController` and `AdminTokensController`. The secret reaches
   `profileTokens!reveal.rol` only as a one-read flash attribute (`REVEALED_TOKEN`), never in a URL;
-  the reveal answers `Cache-Control: no-store`, and a reload says "already shown". Spring logs a
-  FlashMap's contents at TRACE and a response body at DEBUG: keep `org.springframework` at INFO in
-  production.
+  the reveal answers `Cache-Control: no-store`, and a reload says "already shown". The logging
+  risk is Spring writing the FlashMap's contents at TRACE for these JSP reveal views; the API's JSON
+  mint response body is the secret itself and Spring would write it at DEBUG. Keep `org.springframework`
+  at INFO in production.
+- **`revokeToken` answers a `RevokeOutcome`, never a boolean**: `REVOKED` (now, or already was),
+  `NOT_FOUND` (an unknown id, or a token outside the required owner) and `FAILED` (the store threw).
+  Revoke is the safety action, so a store failure is never reported as "no such token": the admin is
+  told to check the logs while the token may still be live. A new caller keeps the three cases apart.
 - **The last sign-in** is stamped by `LastLoginRecorder`, an `InteractiveAuthenticationSuccessEvent`
   listener: form login, remember-me and SSO publish that event and HTTP Basic does not, so an API call
   is not a sign-in. An agent's "last active" is its newest token use instead.

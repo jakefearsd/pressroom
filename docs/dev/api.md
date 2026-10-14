@@ -150,8 +150,9 @@ Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`.
 - **`TokenPins` is the one pin rule** (a member pins their own weblogs, a site admin any existing
   one), shared by `TokensApi` and the token form; `issueToken` records `issued_by`, the owner for a
   self-mint.
-- **Every account, membership and token change writes one INFO line through `AdminLog`** (logger
-  `roller.admin`, `by=` the actor). A token is named by `AdminLog.tokenDetails`, which leaves the
+- **Every account, membership and token change made from the Admin pages, Profile and the API writes one
+  INFO line through `AdminLog`** (logger `roller.admin`, `by=` the actor; the weblog Members page does
+  not, and that is out of scope). A token is named by `AdminLog.tokenDetails`, which leaves the
   secret out by construction; a controller never holds a second logger (`MoreThanOneLogger`).
 - **The API never changes an agent** (`AdminAccountGuard.requireNotAgent`); `kind` is reported by
   `/me` and the admin users list.
