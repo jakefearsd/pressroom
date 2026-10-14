@@ -170,6 +170,12 @@ public class ApiTokenAuthFilter extends OncePerRequestFilter {
             if (token == null) {
                 return;
             }
+            // Spec 2026-10-13, section 2: a disabled owner -- person or agent --
+            // gets a 401. Checked here, explicitly, rather than left to the
+            // enabled-only user lookup downstream that happens to refuse it.
+            if (!Boolean.TRUE.equals(token.getUser().getEnabled())) {
+                return;
+            }
             String userName = token.getUser().getUserName();
             ApiPrincipal principal =
                     new ApiPrincipal(userName, token.getScopeWeblog(), token.getScopeRole(), token.getId());

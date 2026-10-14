@@ -171,6 +171,57 @@ class ApiTokenAuthFilterTest {
         verify(weblogger, never()).release();
     }
 
+    private static ApiToken tokenOwnedBy(User owner) {
+        ApiToken t = new ApiToken();
+        t.setUser(owner);
+        t.setScopeRole(ApiToken.Role.POST);
+        return t;
+    }
+
+    private Authentication filterWith(ApiToken token) throws Exception {
+        ApiTokenManager mgr = mock(ApiTokenManager.class);
+        when(mgr.authenticate("rlr_owned")).thenReturn(token);
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/me");
+        request.addHeader("Authorization", "Bearer rlr_owned");
+        FilterChain chain = mock(FilterChain.class);
+
+        new ApiTokenAuthFilter(() -> mgr, provider, PROBLEM_WRITER)
+                .doFilter(request, new MockHttpServletResponse(), chain);
+
+        verify(chain).doFilter(any(), any());
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        SecurityContextHolder.clearContext();
+        return auth;
+    }
+
+    /** Criterion 7: checked here, explicitly, not left to the enabled-only user lookup downstream. */
+    @Test
+    void aDisabledPersonsTokenAuthenticatesNoOne() throws Exception {
+        User person = new User();
+        person.setUserName("jake");
+        person.setEnabled(Boolean.FALSE);
+
+        assertNull(filterWith(tokenOwnedBy(person)));
+        verify(weblogger).release();
+    }
+
+    /** Criterion 7: an agent likewise -- and re-enabling it makes the same token work again. */
+    @Test
+    void aDisabledAgentsTokenAuthenticatesNoOneUntilReEnabled() throws Exception {
+        User agent = new User();
+        agent.setUserName("bot");
+        agent.setKind(User.Kind.AGENT);
+        agent.setEnabled(Boolean.FALSE);
+        ApiToken token = tokenOwnedBy(agent);
+
+        assertNull(filterWith(token));
+
+        agent.setEnabled(Boolean.TRUE);
+        Authentication auth = filterWith(token);
+        assertNotNull(auth);
+        assertEquals("bot", auth.getPrincipal());
+    }
+
     @Test
     void aMissingOrNonBearerHeaderIsIgnored() throws Exception {
         ApiTokenManager mgr = mock(ApiTokenManager.class);
