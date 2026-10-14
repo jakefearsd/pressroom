@@ -429,7 +429,8 @@ class JspConsistencyTest {
             Map.entry("admin/UserEditController.java", List.of("admin/UserEdit.jsp")),
             Map.entry("admin/BusinessesController.java", List.of("admin/BusinessEdit.jsp")),
             // The token form's controls, shared by the agent page and Profile -> API tokens.
-            Map.entry("controllers/TokenFormController.java", List.of("core/TokenForm.jsp")));
+            Map.entry("controllers/TokenFormController.java", List.of("core/TokenForm.jsp")),
+            Map.entry("admin/AgentController.java", List.of("admin/AgentCreate.jsp", "admin/Agent.jsp")));
 
     private static final Path CONTROLLERS =
             Path.of("src/main/java/org/apache/roller/weblogger/ui/controllers");

@@ -292,6 +292,12 @@ public class RollerViewResolver implements ViewResolver, Ordered {
         addExtendedDefinition(".UserEdit", ".tiles-tabbedpage",
                 Map.of("content", "/WEB-INF/jsps/admin/UserEdit.jsp"));
 
+        addExtendedDefinition(".AgentCreate", ".tiles-tabbedpage",
+                Map.of("content", "/WEB-INF/jsps/admin/AgentCreate.jsp"));
+
+        addExtendedDefinition(".Agent", ".tiles-tabbedpage",
+                Map.of("content", "/WEB-INF/jsps/admin/Agent.jsp"));
+
         addExtendedDefinition(".Maintenance", ".tiles-tabbedpage",
                 Map.of("content", "/WEB-INF/jsps/admin/Maintenance.jsp"));
 

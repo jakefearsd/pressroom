@@ -22,11 +22,13 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -110,5 +112,23 @@ class AgentAccountsJspTest {
         String src = jsp("core/TokenForm.jsp");
         assertFalse(src.contains("name=\"weblog\""));
         assertTrue(src.contains("name=\"pin\""));
+    }
+
+    /** Criterion 6: an agent's pages carry no password field and no set-password link. */
+    @Test
+    void anAgentsPagesOfferNoPasswordAndNoSetPasswordLink() throws IOException {
+        for (String page : List.of("admin/Agent.jsp", "admin/AgentCreate.jsp")) {
+            String src = jsp(page);
+            assertFalse(src.contains("sendPasswordLink"), page);
+            assertFalse(src.contains("type=\"password\""), page);
+        }
+    }
+
+    /** Criteria 8 and 25: Disable and Enable each ask first. */
+    @Test
+    void enablingAndDisablingAnAgentAreConfirmed() throws IOException {
+        String form = formPostingTo(jsp("admin/Agent.jsp"), "agent!setEnabled.rol");
+        assertTrue(form.contains("id=\"agentDisableButton\"") && form.contains("id=\"agentEnableButton\""));
+        assertEquals(2, form.split("data-confirm=", -1).length - 1);
     }
 }

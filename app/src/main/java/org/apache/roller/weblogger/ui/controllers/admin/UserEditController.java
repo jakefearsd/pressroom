@@ -190,6 +190,13 @@ public class UserEditController extends BaseController {
             return AccountRows.showList(weblogger, model, null, null);
         }
 
+        if (user.isAgent()) {
+            // An agent has its own page, with no password and no set-password
+            // link (spec 2026-10-13, criterion 6). The name is restricted to
+            // username.allowedChars, so it needs no encoding in the query.
+            return "redirect:/roller-ui/admin/agent.rol?userName=" + user.getUserName();
+        }
+
         // populate form data from user profile data
         bean.copyFrom(user);
         bean.setAdministrator(isAdministrator(user));
@@ -225,6 +232,10 @@ public class UserEditController extends BaseController {
         User user = lookupUser(bean);
         if (user == null) {
             addError(model, "userAdmin.error.userNotFound", request);
+            return AccountRows.showList(weblogger, model, null, null);
+        }
+        if (user.isAgent()) {
+            addError(model, "agent.error.notAPerson", request);
             return AccountRows.showList(weblogger, model, null, null);
         }
         model.addAttribute("permissions", getPermissions(user));
@@ -358,6 +369,10 @@ public class UserEditController extends BaseController {
         User user = lookupUser(bean);
         if (user == null) {
             addError(model, "userAdmin.error.userNotFound", request);
+            return AccountRows.showList(weblogger, model, null, null);
+        }
+        if (user.isAgent()) {
+            addError(model, "agent.error.notAPerson", request);
             return AccountRows.showList(weblogger, model, null, null);
         }
 

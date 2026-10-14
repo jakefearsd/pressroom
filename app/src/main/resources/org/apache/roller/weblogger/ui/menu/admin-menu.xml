@@ -17,7 +17,7 @@ See comments in editor-menu.xml for info about attributes.
         <!-- globalPerms="admin" -->
         <menu-item action="userAdmin"
                    name="tabbedmenu.admin.userAdmin"
-                   subactions="createUser,modifyUser" />
+                   subactions="createUser,modifyUser,agent" />
 
         <!-- globalPerms="admin" -->
         <menu-item action="businesses"

@@ -1011,4 +1011,47 @@ class UserEditControllerTest {
         assertEquals(List.of(other), model.getAttribute("availableWeblogs"));
         assertEquals("jake", model.getAttribute("weblogsAccount"));
     }
+
+    private User storedAgent(String userName) throws WebloggerException {
+        User agent = storedUser(userName);
+        agent.setKind(User.Kind.AGENT);
+        return agent;
+    }
+
+    /** Criterion 6: an agent's admin page is its own page, which has no set-password control. */
+    @Test
+    void modifyingAnAgentOpensItsOwnPage() throws Exception {
+        storedAgent("bot1");
+        CreateUserBean bean = new CreateUserBean();
+        bean.setId("u1");
+
+        assertEquals("redirect:/roller-ui/admin/agent.rol?userName=bot1",
+                controller.modifyUserExecute(ControllerTestFixture.requestFor(null), model, bean));
+    }
+
+    /** Criteria 5 and 6: no set-password link is ever sent for an agent. */
+    @Test
+    void noSetPasswordLinkIsSentForAnAgent() throws Exception {
+        User agent = storedAgent("bot1");
+        when(weblogger.userManager().getUserByUserName("bot1", null)).thenReturn(agent);
+
+        String view = controller.sendPasswordLink(
+                ControllerTestFixture.requestFor(user("admin", "a@example.com")), model, "bot1");
+
+        assertEquals(".UserAdmin", view);
+        assertEquals(List.of("agent.error.notAPerson"), ControllerTestFixture.errors(model));
+        verify(weblogger.userTokenManager(), never()).issueToken(any(), any());
+    }
+
+    @Test
+    void savingAnAgentThroughThePersonFormIsRefused() throws Exception {
+        storedAgent("bot1");
+
+        String view = controller.modifyUserSave(
+                ControllerTestFixture.requestFor(user("admin", "a@example.com")), model, beanForExisting("u1", "bot1"));
+
+        assertEquals(".UserAdmin", view);
+        assertEquals(List.of("agent.error.notAPerson"), ControllerTestFixture.errors(model));
+        verify(weblogger.userManager(), never()).saveUser(any());
+    }
 }

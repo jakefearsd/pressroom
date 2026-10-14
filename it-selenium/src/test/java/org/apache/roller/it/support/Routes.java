@@ -242,6 +242,14 @@ public final class Routes {
             new Route("/roller-ui/admin/createUser.rol", Role.ADMIN, "",
                     "input[name='bean.userName']"),
 
+            // New agent (spec 2026-10-13): the create form.
+            new Route("/roller-ui/admin/createAgent.rol", Role.ADMIN, "",
+                    "form[action$='/roller-ui/admin/createAgent!save.rol']"),
+
+            // An agent's page, for the agent seed-it-data.sql creates -- the one
+            // route in this list that needs a query: a page needs its agent.
+            new Route("/roller-ui/admin/agent.rol", Role.ADMIN, "userName=it_agent", "#agentPage"),
+
             // SeoController's sitemap index. Not HTML: Chrome's built-in XML
             // viewer keeps the source document's elements in the DOM (inside
             // #webkit-xml-viewer-source-xml), so the root element works as a

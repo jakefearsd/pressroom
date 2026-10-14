@@ -176,7 +176,7 @@ class MenuDefinitionTest {
                 actions(adminMenu.getTabs().get(0)),
                 "The admin tab's screens come from admin-menu.xml. Maintenance joined it in "
                         + "W2 Task 7, moved off the blog-author tabs.");
-        assertEquals(Set.of("createUser", "modifyUser"),
+        assertEquals(Set.of("createUser", "modifyUser", "agent"),
                 item("admin", "tabbedmenu.admin", "userAdmin").getSubActions(),
                 "Creating and editing users must keep the User Admin item highlighted.");
     }

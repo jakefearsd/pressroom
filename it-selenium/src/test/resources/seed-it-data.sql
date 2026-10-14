@@ -46,6 +46,19 @@ INSERT INTO userrole (id, rolename, username)
 VALUES ('it-role-0000-0000-0000-000000000002', 'editor', 'it_admin')
 ON CONFLICT (id) DO NOTHING;
 
+-- An agent account (V033), so the route sweep can open an agent's page. An
+-- agent has no password and never signs in (spec 2026-10-13).
+INSERT INTO roller_user (id, username, passphrase, screenname, fullname,
+                         emailaddress, datecreated, locale, timezone, isenabled, kind, notes)
+VALUES ('it-agent-0000-0000-0000-000000000001',
+        'it_agent', NULL, 'IT Agent', 'IT Agent', 'it_agent@agents.invalid',
+        NOW(), 'en_US', 'UTC', true, 'AGENT', 'Seeded for the route sweep.')
+ON CONFLICT (username) DO NOTHING;
+
+INSERT INTO userrole (id, rolename, username)
+VALUES ('it-role-0000-0000-0000-000000000003', 'editor', 'it_agent')
+ON CONFLICT (id) DO NOTHING;
+
 -- One weblog: the ~20 /roller-ui/authoring/ routes all require a resolvable
 -- weblog= request parameter (see RollerHandlerInterceptor), so without this the
 -- reachability sweep could only reach the handful of global pages.
