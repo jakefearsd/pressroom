@@ -135,6 +135,9 @@ public class TokensApi {
             throw ApiException.forbidden("Token management requires Basic authentication.");
         }
         User user = requireUser();
+        // Read first: the log line names the token as the UI's does. A token that is
+        // not the caller's is refused below and never logged.
+        ApiToken described = weblogger.getApiTokenManager().getToken(id);
         boolean revoked = weblogger.getApiTokenManager().revoke(user, id);
         if (!revoked) {
             // Not 403: that would confirm the id exists and let one user
@@ -142,7 +145,7 @@ public class TokensApi {
             throw ApiException.notFound("No such token.");
         }
         weblogger.flush();
-        AdminLog.record("token.revoked", user, "id=" + id);
+        AdminLog.record("token.revoked", user, described == null ? "id=" + id : AdminLog.tokenDetails(described));
         return ResponseEntity.noContent().build();
     }
 

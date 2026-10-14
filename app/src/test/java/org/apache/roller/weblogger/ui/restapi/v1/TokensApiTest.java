@@ -1,6 +1,7 @@
 package org.apache.roller.weblogger.ui.restapi.v1;
 
 import org.apache.roller.testing.AdminLogCapture;
+import org.apache.roller.weblogger.ui.controllers.AdminLog;
 import org.apache.roller.weblogger.business.ApiTokenManager;
 import org.apache.roller.weblogger.business.UserManager;
 import org.apache.roller.weblogger.business.WeblogManager;
@@ -254,6 +255,45 @@ class TokensApiTest {
                 .andExpect(status().isNoContent());
 
         verify(weblogger).flush();
+    }
+
+    /** Final review M4: the API's revoke line carries what the UI's does, and still never a secret. */
+    @Test
+    void anApiRevokeIsLoggedWithTheTokensDetailsButNotItsSecret() throws Exception {
+        authenticateWithBasicAuth();
+        Weblogger weblogger = mockedWeblogger();
+        User owner = basicOwner(weblogger);
+        ApiToken token = issued(owner, "t-7", "rlr_neverInALog").token();
+        token.setTokenSha256("digest-neverInALog");
+        when(weblogger.getApiTokenManager().getToken("t-7")).thenReturn(token);
+        when(weblogger.getApiTokenManager().revoke(owner, "t-7")).thenReturn(true);
+
+        try (AdminLogCapture admin = AdminLogCapture.start()) {
+            mockMvc(new TokensApi(weblogger))
+                    .perform(delete("/v1/tokens/{id}", "t-7"))
+                    .andExpect(status().isNoContent());
+
+            assertEquals(List.of("token.revoked " + AdminLog.tokenDetails(token) + " by=owner"), admin.lines());
+            assertTrue(admin.lines().get(0).contains("label=ci owner=owner role=POST"), admin.lines().toString());
+            assertFalse(admin.lines().get(0).contains("neverInALog"), admin.lines().get(0));
+        }
+    }
+
+    /** A revoke of a token that is not the caller's writes no line at all. */
+    @Test
+    void aRefusedRevokeLogsNothing() throws Exception {
+        authenticateWithBasicAuth();
+        Weblogger weblogger = mockedWeblogger();
+        basicOwner(weblogger);
+        when(weblogger.getApiTokenManager().revoke(any(), anyString())).thenReturn(false);
+
+        try (AdminLogCapture admin = AdminLogCapture.start()) {
+            mockMvc(new TokensApi(weblogger))
+                    .perform(delete("/v1/tokens/{id}", "someone-elses-id"))
+                    .andExpect(status().isNotFound());
+
+            assertEquals(List.of(), admin.lines());
+        }
     }
 
     @Test
