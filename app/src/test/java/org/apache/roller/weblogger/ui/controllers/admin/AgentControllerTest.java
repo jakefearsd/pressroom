@@ -282,6 +282,40 @@ class AgentControllerTest {
         assertNotNull(model.getAttribute("permissions"));
     }
 
+    private void roleLookupFails() throws WebloggerException {
+        when(weblogger.userManager().checkPermission(
+                argThat(p -> p instanceof GlobalPermission g && g.hasAction(GlobalPermission.ADMIN)), eq(agent)))
+                .thenThrow(new WebloggerException("db down"));
+    }
+
+    /**
+     * Final review M7: a Site administrator box drawn unticked because the role could not be read would let
+     * the next Save of the name silently remove admin. No form is better than a form that lies.
+     */
+    @Test
+    void aRoleThatCannotBeReadShowsAnErrorInsteadOfTheDetailsForm() throws Exception {
+        stored();
+        roleLookupFails();
+
+        String view = controller.page(asAdmin(), model, "bot1");
+
+        assertEquals(".UserAdmin", view);
+        assertEquals(List.of("generic.error.check.logs"), ControllerTestFixture.errors(model));
+        assertNull(model.getAttribute("bean"));
+    }
+
+    @Test
+    void aRefusedMintAlsoShowsNoFormWhenTheRoleCannotBeRead() throws Exception {
+        stored();
+        roleLookupFails();
+
+        String view = controller.mint(asAdmin(), model, redirect, "bot1", "", "POST", "", "90");
+
+        assertEquals(".UserAdmin", view);
+        assertTrue(ControllerTestFixture.errors(model).contains("generic.error.check.logs"));
+        assertNull(model.getAttribute("bean"));
+    }
+
     @Test
     void aPersonOrAnUnknownNameIsNotAnAgentPage() throws Exception {
         User person = new User();

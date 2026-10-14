@@ -17,6 +17,7 @@
  */
 package org.apache.roller.weblogger.ui.controllers.admin;
 
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -162,7 +163,7 @@ public class AgentController extends TokenFormController {
             addError(model, "userAdmin.error.userNotFound", request);
             return AccountRows.showList(weblogger, model, null, null);
         }
-        return showAgent(model, agent, AgentBean.of(agent, isGlobalAdmin(agent)), new TokenFormValues());
+        return showAgentFromStore(request, model, agent, new TokenFormValues());
     }
 
     @PostMapping("/agent!save.rol")
@@ -251,7 +252,7 @@ public class AgentController extends TokenFormController {
         TokenFormValues values = new TokenFormValues(label, role, pin, expiry);
         ApiTokenManager.Issued issued = mintToken(agent, getAuthenticatedUser(request), values, model, request);
         if (issued == null) {
-            return showAgent(model, agent, AgentBean.of(agent, isGlobalAdmin(agent)), values);
+            return showAgentFromStore(request, model, agent, values);
         }
         return revealRedirect(issued, agent.getUserName(), redirectAttributes);
     }
@@ -273,6 +274,25 @@ public class AgentController extends TokenFormController {
         }
         redirectAttributes.addAttribute("userName", agent.getUserName());
         return "redirect:/roller-ui/admin/agent.rol";
+    }
+
+    /**
+     * The agent page with its details read from the store. This is a decision
+     * path, not a display one: the Site administrator box shows what a later
+     * Save will write, so a role that cannot be read must not render as
+     * "unticked" and let that Save remove it. The page is replaced by an error.
+     */
+    private String showAgentFromStore(HttpServletRequest request, Model model, User agent, TokenFormValues values) {
+        boolean siteAdmin;
+        try {
+            siteAdmin = weblogger.getUserManager().checkPermission(
+                    new GlobalPermission(Collections.singletonList(GlobalPermission.ADMIN)), agent);
+        } catch (WebloggerException e) {
+            log.error("Could not read whether the agent {} is a site administrator", agent.getUserName(), e);
+            addError(model, "generic.error.check.logs", request);
+            return AccountRows.showList(weblogger, model, null, null);
+        }
+        return showAgent(model, agent, AgentBean.of(agent, siteAdmin), values);
     }
 
     private String showAgent(Model model, User agent, AgentBean bean, TokenFormValues values) {
