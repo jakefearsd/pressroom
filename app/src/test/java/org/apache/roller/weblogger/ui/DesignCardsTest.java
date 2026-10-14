@@ -83,7 +83,9 @@ public class DesignCardsTest {
         // 18 since the comments-moderation card was withdrawn (it was drawn
         // against Comments.jsp, and the comment subsystem was removed in
         // W1), +1 for editor-markdown-surface.html (Task A10).
-        assertEquals(19, cards().size(),
+        // +3 for the agent-accounts cards (tables-users, forms-agent-page,
+        // forms-token-reveal; spec 2026-10-13, section 7).
+        assertEquals(22, cards().size(),
                 "expected the full committed card set; found: " + cards());
     }
 

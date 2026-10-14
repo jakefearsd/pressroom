@@ -1,0 +1,120 @@
+<!-- @dsCard group="Forms" name="Agent Page" subtitle="Details, one confirmed Disable, weblogs and tokens" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Agent Page</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: #131C1C;
+    color: #DCE7E5;
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding: 40px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .doc-head { margin-bottom: 28px; max-width: 900px; }
+  .doc-title { font-size: 20px; font-weight: 600; margin: 0 0 6px; text-wrap: balance; }
+  .doc-subtitle { font-size: 14.5px; line-height: 1.55; color: #8FA5A2; margin: 0; }
+  .t-light {
+    --paper:#F7F9F9; --surface:#FFFFFF; --ink:#17262A; --ink-soft:#5A6E72; --line:#DCE4E4;
+    --accent:#0F6E68; --accent-quiet:#E3F0EE; --good:#2F7D4F; --warn:#9A6A1F; --bad:#A33B2E; --focus:#2AA198;
+  }
+  .t-dark {
+    --paper:#131C1C; --surface:#1A2626; --ink:#DCE7E5; --ink-soft:#8FA5A2; --line:#2A3838;
+    --accent:#4FB3AA; --accent-quiet:#1E3230; --good:#6FBF8F; --warn:#D0A45C; --bad:#D0705F; --focus:#2AA198;
+  }
+  .panels { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .panel {
+    border-radius: 6px; padding: 24px; border: 1px solid var(--line);
+    background: var(--paper); color: var(--ink);
+    flex: 1 1 480px; min-width: 380px;
+  }
+  .panel-label {
+    font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--ink-soft); font-weight: 600; margin: 0 0 16px;
+  }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace; font-variant-numeric: tabular-nums; }
+  .btn {
+    display: inline-flex; align-items: center; font-size: 14px; font-weight: 600; padding: 7px 14px;
+    border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  .btn.danger { background: transparent; border-color: var(--bad); color: var(--bad); }
+  .btn.small { font-size: 12.5px; padding: 4px 10px; }
+  table.rows { width: 100%; border-collapse: collapse; }
+  table.rows th {
+    text-align: left; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--ink-soft); font-weight: 600; padding: 0 10px 10px; border-bottom: 1px solid var(--line);
+  }
+  table.rows td { padding: 11px 10px; border-bottom: 1px solid var(--line); font-size: 14.5px; vertical-align: middle; }
+  table.rows tr:last-child td { border-bottom: none; }
+  .pill { display: inline-flex; font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 99px; }
+  .pill.good { background: color-mix(in srgb, var(--good) 16%, var(--paper)); color: var(--good); }
+  .pill.bad { background: color-mix(in srgb, var(--bad) 14%, var(--paper)); color: var(--bad); }
+  .soft { color: var(--ink-soft); font-size: 12.5px; }
+  .section-head { font-size: 16px; font-weight: 600; margin: 24px 0 10px; }
+  .first { margin-top: 0; }
+  .field { margin-bottom: 12px; }
+  .label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .input { display: block; padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); font-size: 14.5px; }
+  .input.fixed { background: var(--paper); color: var(--ink-soft); }
+  .check { display: inline-flex; align-items: center; gap: 8px; font-size: 14.5px; }
+  .box { width: 16px; height: 16px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); }
+  .status { display: flex; align-items: center; gap: 12px; }
+  .add { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+</style>
+</head>
+<body>
+  <div class="doc-head">
+    <p class="doc-title">Agent Page</p>
+    <p class="doc-subtitle">An agent never signs in, so its page has no password and no set-password link. Save is the one primary action. Disable is a single destructive control that asks first and ends every token on its next request. Weblogs and API tokens are the same sections a person's page and the Profile use.</p>
+  </div>
+
+  <div class="panels">
+    <section class="panel t-light">
+      <p class="panel-label">Light</p>
+      <p class="section-head first">Details</p>
+      <div class="field"><span class="label">Username</span><span class="input fixed mono">publisher</span></div>
+      <div class="field"><span class="label">Name</span><span class="input">Publisher</span></div>
+      <div class="field"><span class="label">Notes</span><span class="input">Drafts and publishes the travel guides from the content pipeline.</span></div>
+      <div class="field"><span class="check"><span class="box"></span>Site administrator</span><p class="soft">With this on, an Admin token from this agent can use the site-wide admin API.</p></div>
+      <span class="btn primary">Save</span>
+
+      <p class="section-head">Status</p>
+      <div class="status"><span class="pill good">Enabled</span><span class="btn danger">Disable</span><span class="soft">Asks first.</span></div>
+
+      <p class="section-head">Weblogs</p>
+      <table class="rows">
+        <thead><tr><th>Name</th><th>Level</th><th></th></tr></thead>
+        <tbody><tr><td>Travel <span class="soft mono">travel</span></td><td><span class="input">Author</span></td><td><span class="btn small">Change</span> <span class="btn small">Remove</span></td></tr></tbody>
+      </table>
+      <div class="add"><span class="input">Food (food)</span><span class="input">Author</span><span class="btn">Add to weblog</span></div>
+
+      <p class="section-head">API tokens</p>
+      <table class="rows">
+        <thead><tr><th>Label</th><th>Role</th><th>Weblog</th><th>Last used</th><th>Expires</th><th></th></tr></thead>
+        <tbody><tr><td>publisher</td><td>Write</td><td class="mono">travel</td><td class="mono">2026-10-13 08:40</td><td class="mono">2027-01-11 08:00</td><td><span class="btn small">Revoke</span></td></tr></tbody>
+      </table>
+    </section>
+
+    <section class="panel t-dark">
+      <p class="panel-label">Dark</p>
+      <p class="section-head first">Details</p>
+      <div class="field"><span class="label">Username</span><span class="input fixed mono">publisher</span></div>
+      <div class="field"><span class="label">Name</span><span class="input">Publisher</span></div>
+      <span class="btn primary">Save</span>
+
+      <p class="section-head">Status</p>
+      <div class="status"><span class="pill bad">Disabled</span><span class="btn">Enable</span><span class="soft">None of its tokens work until it is enabled again.</span></div>
+
+      <p class="section-head">API tokens</p>
+      <table class="rows">
+        <thead><tr><th>Label</th><th>Role</th><th>Weblog</th><th>Last used</th><th>Expires</th><th></th></tr></thead>
+        <tbody><tr><td>publisher</td><td>Write</td><td class="mono">travel</td><td class="mono">2026-10-13 08:40</td><td class="mono">Never</td><td><span class="btn small">Revoke</span></td></tr></tbody>
+      </table>
+    </section>
+  </div>
+</body>
+</html>

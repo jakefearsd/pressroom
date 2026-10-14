@@ -1,0 +1,103 @@
+<!-- @dsCard group="Tables" name="Users List" subtitle="People and agents in one list: tabs, filter, kind and status" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Users List</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: #131C1C;
+    color: #DCE7E5;
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding: 40px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .doc-head { margin-bottom: 28px; max-width: 900px; }
+  .doc-title { font-size: 20px; font-weight: 600; margin: 0 0 6px; text-wrap: balance; }
+  .doc-subtitle { font-size: 14.5px; line-height: 1.55; color: #8FA5A2; margin: 0; }
+  .t-light {
+    --paper:#F7F9F9; --surface:#FFFFFF; --ink:#17262A; --ink-soft:#5A6E72; --line:#DCE4E4;
+    --accent:#0F6E68; --accent-quiet:#E3F0EE; --good:#2F7D4F; --warn:#9A6A1F; --bad:#A33B2E; --focus:#2AA198;
+  }
+  .t-dark {
+    --paper:#131C1C; --surface:#1A2626; --ink:#DCE7E5; --ink-soft:#8FA5A2; --line:#2A3838;
+    --accent:#4FB3AA; --accent-quiet:#1E3230; --good:#6FBF8F; --warn:#D0A45C; --bad:#D0705F; --focus:#2AA198;
+  }
+  .panels { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .panel {
+    border-radius: 6px; padding: 24px; border: 1px solid var(--line);
+    background: var(--paper); color: var(--ink);
+    flex: 1 1 480px; min-width: 380px;
+  }
+  .panel-label {
+    font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--ink-soft); font-weight: 600; margin: 0 0 16px;
+  }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace; font-variant-numeric: tabular-nums; }
+  .btn {
+    display: inline-flex; align-items: center; font-size: 14px; font-weight: 600; padding: 7px 14px;
+    border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  .btn.danger { background: transparent; border-color: var(--bad); color: var(--bad); }
+  .btn.small { font-size: 12.5px; padding: 4px 10px; }
+  table.rows { width: 100%; border-collapse: collapse; }
+  table.rows th {
+    text-align: left; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--ink-soft); font-weight: 600; padding: 0 10px 10px; border-bottom: 1px solid var(--line);
+  }
+  table.rows td { padding: 11px 10px; border-bottom: 1px solid var(--line); font-size: 14.5px; vertical-align: middle; }
+  table.rows tr:last-child td { border-bottom: none; }
+  .pill { display: inline-flex; font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 99px; }
+  .pill.good { background: color-mix(in srgb, var(--good) 16%, var(--paper)); color: var(--good); }
+  .pill.bad { background: color-mix(in srgb, var(--bad) 14%, var(--paper)); color: var(--bad); }
+  .soft { color: var(--ink-soft); font-size: 12.5px; }
+  .toolbar { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+  .tab { padding: 7px 12px; font-size: 14.5px; color: var(--ink-soft); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab.active { color: var(--ink); font-weight: 600; border-bottom-color: var(--accent); }
+  .filter { display: flex; gap: 8px; margin-bottom: 14px; }
+  .filter .field { flex: 1; padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink-soft); font-size: 14.5px; }
+  .name { font-weight: 600; color: var(--accent); display: block; }
+  .kind { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+</style>
+</head>
+<body>
+  <div class="doc-head">
+    <p class="doc-title">Users List</p>
+    <p class="doc-subtitle">Admin &rarr; Users. Every account in one list, people and agents alike. New person is the screen's one primary action; the tabs and the filter narrow the list on the server. Last active is a person's last sign-in, or an agent's newest token use.</p>
+  </div>
+
+  <div class="panels">
+    <section class="panel t-light">
+      <p class="panel-label">Light</p>
+      <div class="toolbar"><span class="btn primary">New person</span><span class="btn">New agent</span></div>
+      <div class="tabs"><span class="tab active">All</span><span class="tab">People</span><span class="tab">Agents</span></div>
+      <div class="filter"><span class="field">Username, name or email</span><span class="btn">Filter</span></div>
+      <table class="rows">
+        <thead><tr><th>Account</th><th>Kind</th><th>Role</th><th>Status</th><th>Weblogs</th><th>Last active</th></tr></thead>
+        <tbody>
+          <tr><td><span class="name">Jake Fear</span><span class="soft mono">jake</span></td><td class="kind">Person</td><td>Site admin</td><td><span class="pill good">Enabled</span></td><td class="mono">3</td><td class="mono">2026-10-13 09:12</td></tr>
+          <tr><td><span class="name">Publisher</span><span class="soft mono">publisher</span></td><td class="kind">Agent</td><td>Author</td><td><span class="pill good">Enabled</span></td><td class="mono">1</td><td class="mono">2026-10-13 08:40</td></tr>
+          <tr><td><span class="name">Old Importer</span><span class="soft mono">importer</span></td><td class="kind">Agent</td><td>Author</td><td><span class="pill bad">Disabled</span></td><td class="mono">0</td><td class="mono"></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="panel t-dark">
+      <p class="panel-label">Dark</p>
+      <div class="toolbar"><span class="btn primary">New person</span><span class="btn">New agent</span></div>
+      <div class="tabs"><span class="tab">All</span><span class="tab">People</span><span class="tab active">Agents</span></div>
+      <div class="filter"><span class="field">pub</span><span class="btn">Filter</span></div>
+      <table class="rows">
+        <thead><tr><th>Account</th><th>Kind</th><th>Role</th><th>Status</th><th>Weblogs</th><th>Last active</th></tr></thead>
+        <tbody>
+          <tr><td><span class="name">Publisher</span><span class="soft mono">publisher</span></td><td class="kind">Agent</td><td>Author</td><td><span class="pill good">Enabled</span></td><td class="mono">1</td><td class="mono">2026-10-13 08:40</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</body>
+</html>

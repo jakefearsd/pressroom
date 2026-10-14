@@ -178,6 +178,15 @@ so nobody redraws it.
   `DesignCardsTest` fails the build when this spec names a card that is not on
   disk, and that check is worth more than the breadcrumb.
 
+## Agent accounts and API tokens (2026-10-13)
+
+Drawn ahead of the JSPs, per the cards-first rule
+(`docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`, section 7):
+
+- `tables/`tables-users.html — group="Tables" — Admin → Users: New person (the one primary) and New agent, All / People / Agents tabs over a server-side filter, and rows with the name over its mono username, kind, role, an Enabled/Disabled pill, a weblog count and a mono last-active.
+- `forms/`forms-agent-page.html — group="Forms" — an agent's page: Details (fixed username, name, notes, the Site administrator switch, Save), Status (one Disable or Enable that asks first), Weblogs (a level per membership with Change and Remove, then Add to weblog) and API tokens.
+- `forms/`forms-token-reveal.html — group="Forms" — the token form (label; Read, Write or Admin; all its weblogs or one; 30, 90 or 365 days or never) and the one-time reveal: the secret and an MCP snippet, each with Copy, then Done; and the already-shown state.
+
 ## Quality bar
 
 Focus states visible; text-wrap balance on headings; tabular-nums wherever digits column; no horizontal scroll inside a panel; every color from the token set; both panels legible standalone.

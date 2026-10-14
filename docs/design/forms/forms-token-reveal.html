@@ -1,0 +1,99 @@
+<!-- @dsCard group="Forms" name="Token Form and Reveal" subtitle="Mint with a pin and an expiry; the secret shown once" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Token Form and Reveal</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: #131C1C;
+    color: #DCE7E5;
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding: 40px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .doc-head { margin-bottom: 28px; max-width: 900px; }
+  .doc-title { font-size: 20px; font-weight: 600; margin: 0 0 6px; text-wrap: balance; }
+  .doc-subtitle { font-size: 14.5px; line-height: 1.55; color: #8FA5A2; margin: 0; }
+  .t-light {
+    --paper:#F7F9F9; --surface:#FFFFFF; --ink:#17262A; --ink-soft:#5A6E72; --line:#DCE4E4;
+    --accent:#0F6E68; --accent-quiet:#E3F0EE; --good:#2F7D4F; --warn:#9A6A1F; --bad:#A33B2E; --focus:#2AA198;
+  }
+  .t-dark {
+    --paper:#131C1C; --surface:#1A2626; --ink:#DCE7E5; --ink-soft:#8FA5A2; --line:#2A3838;
+    --accent:#4FB3AA; --accent-quiet:#1E3230; --good:#6FBF8F; --warn:#D0A45C; --bad:#D0705F; --focus:#2AA198;
+  }
+  .panels { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .panel {
+    border-radius: 6px; padding: 24px; border: 1px solid var(--line);
+    background: var(--paper); color: var(--ink);
+    flex: 1 1 480px; min-width: 380px;
+  }
+  .panel-label {
+    font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--ink-soft); font-weight: 600; margin: 0 0 16px;
+  }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace; font-variant-numeric: tabular-nums; }
+  .btn {
+    display: inline-flex; align-items: center; font-size: 14px; font-weight: 600; padding: 7px 14px;
+    border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  .btn.danger { background: transparent; border-color: var(--bad); color: var(--bad); }
+  .btn.small { font-size: 12.5px; padding: 4px 10px; }
+  table.rows { width: 100%; border-collapse: collapse; }
+  table.rows th {
+    text-align: left; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--ink-soft); font-weight: 600; padding: 0 10px 10px; border-bottom: 1px solid var(--line);
+  }
+  table.rows td { padding: 11px 10px; border-bottom: 1px solid var(--line); font-size: 14.5px; vertical-align: middle; }
+  table.rows tr:last-child td { border-bottom: none; }
+  .pill { display: inline-flex; font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 99px; }
+  .pill.good { background: color-mix(in srgb, var(--good) 16%, var(--paper)); color: var(--good); }
+  .pill.bad { background: color-mix(in srgb, var(--bad) 14%, var(--paper)); color: var(--bad); }
+  .soft { color: var(--ink-soft); font-size: 12.5px; }
+  .section-head { font-size: 16px; font-weight: 600; margin: 24px 0 10px; }
+  .first { margin-top: 0; }
+  .field { margin-bottom: 12px; }
+  .label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .input { display: block; padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); font-size: 14.5px; }
+  .secret { display: flex; gap: 8px; align-items: stretch; margin-bottom: 12px; }
+  .secret .input { flex: 1; background: var(--accent-quiet); border-color: var(--accent); overflow-wrap: anywhere; }
+  .empty-title { font-weight: 600; font-size: 16px; margin: 0 0 4px; }
+</style>
+</head>
+<body>
+  <div class="doc-head">
+    <p class="doc-title">Token Form and Reveal</p>
+    <p class="doc-subtitle">One form on the agent page and the Profile. The weblog choices are the account's own weblogs (every weblog for a site admin). A created token lands on a page that shows the secret once, with an MCP snippet, and is never cached; loading it again says the token was already shown.</p>
+  </div>
+
+  <div class="panels">
+    <section class="panel t-light">
+      <p class="panel-label">Light &mdash; the form</p>
+      <div class="field"><span class="label">Label</span><span class="input">publisher</span></div>
+      <div class="field"><span class="label">Role</span><span class="input">Write</span></div>
+      <div class="field"><span class="label">Weblog</span><span class="input">All its weblogs</span></div>
+      <div class="field"><span class="label">Expires</span><span class="input">In 90 days</span></div>
+      <span class="btn">Create token</span>
+
+      <p class="section-head">Already shown</p>
+      <p class="empty-title">This token was already shown.</p>
+      <p class="soft">A token is shown only once. To get a new one, revoke it and create another.</p>
+    </section>
+
+    <section class="panel t-dark">
+      <p class="panel-label">Dark &mdash; the reveal</p>
+      <p class="section-head first">Your new token</p>
+      <p class="soft">Copy it now. This is the only time it is shown.</p>
+      <span class="label">Token</span>
+      <div class="secret"><span class="input mono">rlr_7hQ2c9Vb1kZ0pX4mW8sT3yN6aE5uR2dF</span><span class="btn">Copy</span></div>
+      <span class="label">MCP connection</span>
+      <div class="secret"><span class="input mono">claude mcp add --transport http roller https://blog.wikantik.com/api/mcp --header "Authorization: Bearer rlr_7hQ2c9Vb1kZ0pX4mW8sT3yN6aE5uR2dF"</span><span class="btn">Copy</span></div>
+      <span class="btn primary">Done</span>
+    </section>
+  </div>
+</body>
+</html>
