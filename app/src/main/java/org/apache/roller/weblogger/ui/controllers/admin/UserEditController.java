@@ -149,6 +149,10 @@ public class UserEditController extends BaseController {
                 }
 
                 weblogger.flush();
+                if (bean.isAdministrator()) {
+                    AdminLog.record("siteAdmin.granted", getAuthenticatedUser(request),
+                            "account=" + user.getUserName());
+                }
 
                 if (emailSetPasswordLink) {
                     issueAndMailPasswordSetLink(user, model, request, "userAdmin.userCreatedLinkSent");

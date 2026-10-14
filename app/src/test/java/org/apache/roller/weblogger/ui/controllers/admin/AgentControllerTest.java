@@ -173,6 +173,20 @@ class AgentControllerTest {
         verify(weblogger.userManager()).addAgent(any(User.class), eq(true));
     }
 
+    /** Final review I1: a grep for siteAdmin.granted must find an agent created as a site admin. */
+    @Test
+    void anAgentCreatedAsSiteAdminAlsoLogsTheGrant() throws Exception {
+        AgentBean bean = newAgent("bot1", "Publisher");
+        bean.setSiteAdmin(true);
+
+        try (AdminLogCapture log = AdminLogCapture.start()) {
+            controller.create(asAdmin(), model, redirect, bean);
+
+            assertEquals(List.of("agent.created agent=bot1 siteAdmin=true by=admin",
+                    "siteAdmin.granted account=bot1 by=admin"), log.lines());
+        }
+    }
+
     /** Criterion 3: the username follows username.allowedChars. */
     @Test
     void anAgentUserNameFollowsTheAllowedCharacters() throws Exception {
@@ -284,6 +298,20 @@ class AgentControllerTest {
             assertEquals(1, weblogger.flushCount());
             assertEquals(List.of("agent.disabled"), ControllerTestFixture.flashMessages(redirect));
             assertEquals(List.of("account.disabled account=bot1 by=admin"), log.lines());
+        }
+    }
+
+    /** Final review M3: a double submit changes nothing, so the audit log says nothing. */
+    @Test
+    void settingTheStateItAlreadyHasLogsNothing() throws Exception {
+        stored();
+
+        try (AdminLogCapture log = AdminLogCapture.start()) {
+            controller.setEnabled(asAdmin(), redirect, "bot1", "true");
+            agent.setEnabled(Boolean.FALSE);
+            controller.setEnabled(asAdmin(), redirect, "bot1", "false");
+
+            assertEquals(List.of(), log.lines());
         }
     }
 

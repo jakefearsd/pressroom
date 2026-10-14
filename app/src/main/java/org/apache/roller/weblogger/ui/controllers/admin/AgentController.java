@@ -143,6 +143,10 @@ public class AgentController extends TokenFormController {
         }
         AdminLog.record("agent.created", getAuthenticatedUser(request),
                 "agent=" + agent.getUserName() + " siteAdmin=" + bean.isSiteAdmin());
+        if (bean.isSiteAdmin()) {
+            // The same line the person editor and the agent page write, so one grep finds every grant.
+            AdminLog.record("siteAdmin.granted", getAuthenticatedUser(request), "account=" + agent.getUserName());
+        }
         addFlashMessage(redirectAttributes, "agent.created",
                 StringEscapeUtils.escapeHtml4(agent.getUserName()), request);
         redirectAttributes.addAttribute("userName", agent.getUserName());
@@ -213,12 +217,15 @@ public class AgentController extends TokenFormController {
             return "redirect:/roller-ui/admin/userAdmin.rol";
         }
         boolean enable = Boolean.parseBoolean(enabled);
+        boolean wasEnabled = !Boolean.FALSE.equals(agent.getEnabled());
         try {
             agent.setEnabled(enable);
             weblogger.getUserManager().saveUser(agent);
             weblogger.flush();
-            AdminLog.record(enable ? "account.enabled" : "account.disabled", getAuthenticatedUser(request),
-                    "account=" + agent.getUserName());
+            if (enable != wasEnabled) {
+                AdminLog.record(enable ? "account.enabled" : "account.disabled", getAuthenticatedUser(request),
+                        "account=" + agent.getUserName());
+            }
             addFlashMessage(redirectAttributes, enable ? "agent.enabled" : "agent.disabled", request);
         } catch (WebloggerException e) {
             log.error("Could not change whether the agent {} is enabled", agent.getUserName(), e);

@@ -257,6 +257,23 @@ class UserEditControllerTest {
         verify(weblogger.userManager()).grantRole(eq("admin"), any(User.class));
     }
 
+    /** Final review I1: creating a Site admin is the audit log's most important line, so it is written. */
+    @Test
+    void createUserAsSiteAdminLogsTheGrantAndAPlainOneLogsNothing() throws Exception {
+        try (AdminLogCapture log = AdminLogCapture.start()) {
+            controller.createUserSave(ControllerTestFixture.requestFor(user("admin", "a@example.com")), model,
+                    beanFor("plain", "secret-password"));
+            assertEquals(List.of(), log.lines());
+
+            CreateUserBean bean = beanFor("boss", "secret-password");
+            bean.setAdministrator(true);
+            controller.createUserSave(ControllerTestFixture.requestFor(user("admin", "a@example.com")),
+                    new ExtendedModelMap(), bean);
+
+            assertEquals(List.of("siteAdmin.granted account=boss by=admin"), log.lines());
+        }
+    }
+
     @Test
     void createUserKeepsTheFormWhenTheUserManagerRejectsTheAccount() throws Exception {
         // The manager throws this for a duplicate username, among other things.
