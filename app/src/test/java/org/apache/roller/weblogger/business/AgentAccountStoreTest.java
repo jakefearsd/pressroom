@@ -156,10 +156,21 @@ class AgentAccountStoreTest {
         assertTrue(stamped.getTime() >= before - 1_000L && stamped.getTime() <= System.currentTimeMillis() + 1_000L);
     }
 
+    /**
+     * Characterisation (final review, ledger T3): written to pass at once against the existing code. An
+     * unknown name creates no account and stamps nobody else.
+     */
     @Test
     void recordingASignInForAnUnknownNameDoesNothing() throws Exception {
-        mgr().recordLogin("junit_nosuchaccount" + suffix());
+        User bystander = addPerson("agentbystander" + suffix());
+        String unknown = "junit_nosuchaccount" + suffix();
+
+        mgr().recordLogin(unknown);
         TestUtils.endSession(true);
+
+        assertNull(mgr().getUserByUserName(unknown, null), "recording a sign-in must not create an account");
+        assertNull(mgr().getUserByUserName(bystander.getUserName(), null).getLastLogin(),
+                "nobody else's last sign-in may change");
     }
 
     /** Criterion 19, the store half: kind and text narrow the list, server-side. */
