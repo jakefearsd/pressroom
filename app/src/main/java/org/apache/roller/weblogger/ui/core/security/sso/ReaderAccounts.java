@@ -74,6 +74,11 @@ public class ReaderAccounts {
 
     private SignIn existingAccount(UserManager users, User account, ReaderClaims claims)
             throws ReaderSignInRefused, WebloggerException {
+        if (account.isAgent()) {
+            // An agent never signs in, through a provider or otherwise
+            // (spec 2026-10-13, section 2).
+            throw new ReaderSignInRefused("agent account");
+        }
         if (!Boolean.TRUE.equals(account.getEnabled())) {
             throw new ReaderSignInRefused("account disabled");
         }

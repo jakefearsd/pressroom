@@ -66,6 +66,13 @@ public class RollerUserDetailsService implements UserDetailsService {
                 // indistinguishable from an unknown user.
                 throw new UsernameNotFoundException("ERROR no password user: " + userName);
             }
+            if (userData.isAgent()) {
+                // Spec 2026-10-13: an agent never signs in -- form login,
+                // remember-me and HTTP Basic all arrive here. Thrown as "not
+                // found", which DaoAuthenticationProvider reports as the same
+                // "Bad credentials" a wrong password gets.
+                throw new UsernameNotFoundException("ERROR agent account: " + userName);
+            }
             List<SimpleGrantedAuthority> authorities = getAuthorities(userData, umgr);
             return new org.springframework.security.core.userdetails.User(
                     userData.getUserName(), userData.getPassword(),

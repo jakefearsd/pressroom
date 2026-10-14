@@ -123,6 +123,22 @@ class ReaderAccountsTest {
         assertEquals(first.user().getUserName(), mgr.getUserBySsoIdentity(ISSUER, sub).getUserName());
     }
 
+    /** Spec 2026-10-13, section 2: SSO never signs in as an agent. */
+    @Test
+    void aBoundAccountThatIsAnAgentIsRefused() throws Exception {
+        ReaderAccounts accounts = new ReaderAccounts(TestUtils.weblogger());
+        ReaderClaims c = claims("agent-sso@example.com", "A");
+        signIn(accounts, c);
+        TestUtils.endSession(true);
+        UserManager mgr = TestUtils.weblogger().getUserManager();
+        User bound = mgr.getUserBySsoIdentity(ISSUER, sub);
+        bound.setKind(User.Kind.AGENT);
+        mgr.saveUser(bound);
+        TestUtils.endSession(true);
+
+        assertThrows(ReaderSignInRefused.class, () -> accounts.signIn(c));
+    }
+
     @Test
     void laterSignInRefreshesEmailButKeepsAnEditedScreenName() throws Exception {
         ReaderAccounts accounts = new ReaderAccounts(TestUtils.weblogger());
