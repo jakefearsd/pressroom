@@ -78,7 +78,7 @@ public class UserDataServlet extends HttpServlet {
                     + "an error -- parsing simply keeps the declared default and there is "
                     + "nothing to act on. The names are written as text/plain, which a browser does "
                     + "not render as markup (Spring Security also sends nosniff), and the one "
-                    + "consumer, ajax-user.js, builds Option elements from them as text.")
+                    + "consumer is a scripted client that builds Option elements from them as text.")
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 

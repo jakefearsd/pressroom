@@ -567,13 +567,10 @@ class SsoSignInIT extends RollerIT {
 
     // ---------------------------------------------------------- user admin
 
-    /** Finds an account through User Admin's search and opens its edit page, as an admin gets there. */
+    /** Finds an account in Admin → Users by name and opens its page, as an admin gets there. */
     private void openUserEdit(String userName) {
-        openPath(USER_ADMIN);
-        $("#userName").should(visible).setValue(userName);
-        // The search box is itself bean.userName and holds the name just typed, so the
-        // wait below is only meaningful on the page that answers.
-        clickAndAwaitNewPage($("#user-submit"));
+        openPath(USER_ADMIN + "?q=" + userName);
+        clickAndAwaitNewPage($("a[data-username='" + userName + "']"));
         $("input[name='bean.userName']").should(visible).shouldHave(value(userName));
     }
 

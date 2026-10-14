@@ -134,18 +134,12 @@ class UserAdminIT extends RollerIT {
     }
 
     /**
-     * Finds a user through the admin search form and opens their edit page.
-     *
-     * <p>Goes through the form rather than straight to
-     * {@code modifyUser.rol?bean.userName=...}: the search-and-edit round trip
-     * is the only way an administrator actually reaches this page.
+     * Finds a user in Admin → Users and opens their page: filter by name,
+     * then follow the row's link, the way an administrator gets there.
      */
     private void openUserForEditing(String userName) {
-        openPath(USER_ADMIN);
-        $("#userName").should(visible).setValue(userName);
-        // The search box is itself named bean.userName and holds the name just
-        // typed, so the wait below is only meaningful on the page that answers.
-        clickAndAwaitNewPage($("#user-submit"));
+        openPath(USER_ADMIN + "?q=" + userName);
+        clickAndAwaitNewPage($("a[data-username='" + userName + "']"));
 
         $("input[name='bean.userName']").should(visible).shouldHave(value(userName));
     }

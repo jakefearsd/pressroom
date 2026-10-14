@@ -847,4 +847,13 @@ class UserEditControllerTest {
 
         assertTrue(((CreateUserBean) model.getAttribute("bean")).isWriter());
     }
+
+    /** Task 10: a save lands on the Users list, so it must carry the list's rows. */
+    @Test
+    void aSuccessfulCreateLandsOnAUsersListWithItsRows() throws Exception {
+        controller.createUserSave(ControllerTestFixture.requestFor(null), model, beanFor("listed", "secret"));
+
+        assertEquals(List.of(), model.getAttribute("accounts"));
+        assertEquals("", model.getAttribute("kindFilter"));
+    }
 }

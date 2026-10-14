@@ -1380,6 +1380,8 @@ time.data {
 .status-pill.status-trashed { background: color-mix(in srgb, var(--bad) 12%, var(--surface)); border-color: color-mix(in srgb, var(--bad) 35%, var(--surface)); }
 .status-pill.status-hidden { background: color-mix(in srgb, var(--bad) 12%, var(--surface)); border-color: color-mix(in srgb, var(--bad) 35%, var(--surface)); }
 .status-pill.status-unsaved { background: var(--paper); border-color: var(--line); color: var(--ink-soft); }
+.status-pill.status-enabled { background: color-mix(in srgb, var(--good) 18%, var(--surface)); border-color: color-mix(in srgb, var(--good) 45%, var(--surface)); }
+.status-pill.status-disabled { background: color-mix(in srgb, var(--bad) 12%, var(--surface)); border-color: color-mix(in srgb, var(--bad) 35%, var(--surface)); }
 
 /* ---- Selection bar (task B3) ----
    One shared bar for every list that offers bulk actions (Entries,

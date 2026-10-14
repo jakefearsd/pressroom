@@ -27,13 +27,13 @@ import org.apache.roller.weblogger.ui.controllers.BaseController;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-
+import org.springframework.web.bind.annotation.RequestParam;
 
 /**
- * Action which displays user admin search page.
+ * Admin → Users (spec 2026-10-13, section 4): every account, people and
+ * agents, with All / People / Agents tabs and a filter the server applies.
+ * It replaced a type-ahead search box that listed nothing until searched.
  */
 @Controller
 @RequestMapping("/roller-ui/admin")
@@ -64,27 +64,15 @@ public class UserAdminController extends BaseController {
         return "userAdmin";
     }
 
-    @ModelAttribute("bean")
-    public CreateUserBean getBean() {
-        return new CreateUserBean();
-    }
-
+    /**
+     * @param kind {@code people} or {@code agents} for a tab; anything else is All
+     * @param q    matched against username, name and email, ignoring case
+     */
     @GetMapping("/userAdmin.rol")
-    public String execute(HttpServletRequest request, Model model) {
+    public String execute(HttpServletRequest request, Model model,
+                          @RequestParam(name = "kind", required = false) String kind,
+                          @RequestParam(name = "q", required = false) String q) {
         populateCommonModel(request, model);
-
-        model.addAttribute("bean", new CreateUserBean());
-
-        return ".UserAdmin";
-    }
-
-    @PostMapping("/userAdmin!edit.rol")
-    public String edit(HttpServletRequest request, Model model,
-                       @ModelAttribute("bean") CreateUserBean bean) {
-        populateCommonModel(request, model);
-
-        model.addAttribute("bean", bean);
-
-        return "redirect:/roller-ui/admin/modifyUser.rol?bean.userName=" + bean.getUserName();
+        return AccountRows.showList(weblogger, model, kind, q);
     }
 }

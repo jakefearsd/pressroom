@@ -155,7 +155,7 @@ public class UserEditController extends BaseController {
                             StringEscapeUtils.escapeHtml4(bean.getUserName()), request);
                 }
                 model.addAttribute("bean", new CreateUserBean());
-                return ".UserAdmin";
+                return AccountRows.showList(weblogger, model, null, null);
 
             } catch (WebloggerException ex) {
                 log.error("ERROR in action", ex);
@@ -185,7 +185,7 @@ public class UserEditController extends BaseController {
             model.addAttribute("bean", bean);
             model.addAttribute("mailConfigured", PasswordLinkMailer.isReady());
             addLocalesAndTimezones(model);
-            return ".UserAdmin";
+            return AccountRows.showList(weblogger, model, null, null);
         }
 
         // populate form data from user profile data
@@ -222,7 +222,7 @@ public class UserEditController extends BaseController {
         User user = lookupUser(bean);
         if (user == null) {
             addError(model, "userAdmin.error.userNotFound", request);
-            return ".UserAdmin";
+            return AccountRows.showList(weblogger, model, null, null);
         }
         model.addAttribute("permissions", getPermissions(user));
         model.addAttribute("ssoBound", user.isSsoBound());
@@ -276,7 +276,7 @@ public class UserEditController extends BaseController {
                     expireIfRenamed(user, screenNameBefore);
                     model.addAttribute("bean", new CreateUserBean());
                     addMessage(model, "userAdmin.userSaved", request);
-                    return ".UserAdmin";
+                    return AccountRows.showList(weblogger, model, null, null);
                 }
 
                 // update Admin role as appropriate
@@ -304,7 +304,7 @@ public class UserEditController extends BaseController {
                 // successful edit: send user back to user admin page
                 model.addAttribute("bean", new CreateUserBean());
                 addMessage(model, "userAdmin.userSaved", request);
-                return ".UserAdmin";
+                return AccountRows.showList(weblogger, model, null, null);
 
             } catch (WebloggerException ex) {
                 log.error("ERROR in action", ex);
@@ -345,7 +345,7 @@ public class UserEditController extends BaseController {
         User user = lookupUser(bean);
         if (user == null) {
             addError(model, "userAdmin.error.userNotFound", request);
-            return ".UserAdmin";
+            return AccountRows.showList(weblogger, model, null, null);
         }
 
         bean.copyFrom(user);

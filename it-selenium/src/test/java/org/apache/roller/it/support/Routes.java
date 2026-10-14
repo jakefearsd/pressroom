@@ -204,7 +204,7 @@ public final class Routes {
                     ".settings-rail"),
 
             new Route("/roller-ui/admin/userAdmin.rol", Role.ADMIN, "",
-                    "form[action$='/roller-ui/admin/userAdmin!edit.rol']"),
+                    "#userListPage"),
 
             // Businesses: the list's own wrapper, and the edit form, which a
             // blank id opens empty (the new-business case), so neither needs seeding.
