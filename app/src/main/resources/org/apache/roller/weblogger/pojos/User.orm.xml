@@ -9,6 +9,12 @@
         <named-query name="User.getAll">
             <query>SELECT u FROM User u ORDER BY u.dateCreated DESC, u.id</query>
         </named-query>
+        <named-query name="User.getAllOrderByUserName">
+            <query>SELECT u FROM User u ORDER BY u.userName</query>
+        </named-query>
+        <named-query name="User.getByKindOrderByUserName">
+            <query>SELECT u FROM User u WHERE u.kind = ?1 ORDER BY u.userName</query>
+        </named-query>
         <named-query name="User.getByEnabled">
             <query>SELECT u FROM User u WHERE u.enabled = ?1</query>
         </named-query>
@@ -28,8 +34,9 @@
                  JPAUserManagerImpl.getUserByEmail.
                  Local accounts only: a reader who shares an author's address
                  must never capture the author's password reset (reader
-                 sign-in spec, criterion 33). -->
-            <query>SELECT u FROM User u WHERE u.emailAddress = ?1 AND u.enabled = ?2 AND u.ssoSubject IS NULL ORDER BY u.userName</query>
+                 sign-in spec, criterion 33).
+                 People only (V033): nothing is ever mailed to an agent. -->
+            <query>SELECT u FROM User u WHERE u.emailAddress = ?1 AND u.enabled = ?2 AND u.ssoSubject IS NULL AND u.kind = ?3 ORDER BY u.userName</query>
         </named-query>
         <named-query name="User.getScreenNamesOfWeblogMembers">
             <!-- A member is an account holding any weblog permission (pending

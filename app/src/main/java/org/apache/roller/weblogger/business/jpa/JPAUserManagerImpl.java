@@ -19,6 +19,8 @@
 package org.apache.roller.weblogger.business.jpa;
 
 import java.sql.Timestamp;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -222,6 +224,7 @@ public class JPAUserManagerImpl implements UserManager {
         TypedQuery<User> query = strategy.getNamedQuery("User.getByEmailAddress&Enabled", User.class);
         query.setParameter(1, emailAddress);
         query.setParameter(2, Boolean.TRUE);
+        query.setParameter(3, User.Kind.PERSON);
         // emailaddress has no unique constraint at the database level, so
         // more than one enabled account could share an address; the query is
         // ordered deterministically and this caps it to one so a duplicate
@@ -263,6 +266,71 @@ public class JPAUserManagerImpl implements UserManager {
         this.strategy.store(newUser);
         grantRole("reader", newUser);
     }
+
+    @Override
+    public void addAgent(User agent, boolean siteAdmin) throws WebloggerException {
+        if (agent == null || agent.getUserName() == null) {
+            throw new WebloggerException("cannot add an agent without a username");
+        }
+        if (agent.getPassword() != null) {
+            // Spec 2026-10-13: an agent never signs in. A password would be a
+            // second credential nobody can see or revoke from the agent page.
+            throw new WebloggerException("an agent account has no password");
+        }
+        if (getUserByUserName(agent.getUserName(), null) != null
+                || getUserByUserName(agent.getUserName().toLowerCase(Locale.ROOT), null) != null) {
+            throw new WebloggerException("error.add.user.userNameInUse");
+        }
+        agent.setKind(User.Kind.AGENT);
+        agent.setEnabled(Boolean.TRUE);
+        if (StringUtils.isBlank(agent.getEmailAddress())) {
+            agent.setEmailAddress(agent.getUserName() + "@" + User.AGENT_EMAIL_DOMAIN);
+        }
+        if (agent.getDateCreated() == null) {
+            agent.setDateCreated(new Date());
+        }
+        this.strategy.store(agent);
+        grantRole("editor", agent);
+        if (siteAdmin) {
+            grantRole("admin", agent);
+        }
+    }
+
+    @Override
+    public void recordLogin(String userName) throws WebloggerException {
+        User user = getUserByUserName(userName, null);
+        if (user != null) {
+            user.setLastLogin(new Date());
+            this.strategy.store(user);
+        }
+    }
+
+    @Override
+    public List<User> getAccounts(User.Kind kind, String text) throws WebloggerException {
+        TypedQuery<User> query;
+        if (kind == null) {
+            query = strategy.getNamedQuery("User.getAllOrderByUserName", User.class);
+        } else {
+            query = strategy.getNamedQuery("User.getByKindOrderByUserName", User.class);
+            query.setParameter(1, kind);
+        }
+        List<User> accounts = query.getResultList();
+        String needle = StringUtils.trimToNull(text);
+        if (needle == null) {
+            return accounts;
+        }
+        // Filtered here rather than in JPQL: a LIKE pattern would turn a
+        // typed % or _ into a wildcard, and the list is a few dozen rows.
+        return accounts.stream().filter(user -> mentions(user, needle)).toList();
+    }
+
+    private static boolean mentions(User user, String needle) {
+        return Strings.CI.contains(user.getUserName(), needle)
+                || Strings.CI.contains(user.getScreenName(), needle)
+                || Strings.CI.contains(user.getFullName(), needle)
+                || Strings.CI.contains(user.getEmailAddress(), needle);
+    }
+
 
     @Override
     public List<User> getUsers(Boolean enabled, Date startDate, Date endDate,

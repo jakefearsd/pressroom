@@ -151,6 +151,32 @@ public interface UserManager {
      */
     void addReader(User newUser) throws WebloggerException;
 
+    /**
+     * Stores a new agent account (spec 2026-10-13, section 1): kind AGENT,
+     * enabled, no password, and the {@code editor} role -- plus {@code admin}
+     * when {@code siteAdmin}. A blank email becomes
+     * {@code <userName>@agents.invalid}.
+     *
+     * @throws WebloggerException {@code error.add.user.userNameInUse} when the
+     *         username is taken; also when the agent carries a password
+     */
+    void addAgent(User agent, boolean siteAdmin) throws WebloggerException;
+
+    /**
+     * Stamps the named account's last sign-in with now. Enabled or not, an
+     * unknown name does nothing. Begins a transaction; the caller flushes.
+     */
+    void recordLogin(String userName) throws WebloggerException;
+
+    /**
+     * Every account, ordered by username, for the admin Users list.
+     *
+     * @param kind only this kind, or null for every account
+     * @param text kept when it occurs, ignoring case, in the username, screen
+     *             name, full name or email; blank for no filter
+     */
+    List<User> getAccounts(User.Kind kind, String text) throws WebloggerException;
+
 
     /**
      * Lookup a group of users.
