@@ -8,6 +8,16 @@ end). New lessons go into the matching `docs/dev/` file, not here — keep this
 file under ~20 KB. (It was 115 KB on 2026-09-20: ~55K tokens re-sent on every
 request, ~73% of a session's input.)
 
+<!-- SIMPLE-AGILITY-AGENT-HEADER-START -->
+## Simple Agility Architectural Context
+This repository is part of the **Simple Agility** small-business ecosystem:
+- **Role in Stack:** Canonical customer communication platform ([SA-7](https://wiki.wikantik.com/SimpleAgilityDecisionLog)), hosting public outreach blogs, the reseller showcase weblog, newsletter integration (listmonk), and native agent publishing via `/api/mcp` and API tokens ([RollerHub](https://wiki.wikantik.com/RollerHub)).
+- **Architecture Hub:** Refer to `SimpleAgilityStackHub` on Wikantik (`https://wiki.wikantik.com/SimpleAgilityStackHub`).
+- **Architectural Decisions:** Consult `SimpleAgilityDecisionLog` before changing cross-repo APIs, logging, or telemetry. Roller is adopting ECS JSON logging (SA-6) and `/metrics` (Phase 1).
+- **Active Initiatives & Coordination:** Check `SimpleAgilityAgentCoordination` (`https://wiki.wikantik.com/SimpleAgilityAgentCoordination`) for active tasks (`SA-INIT-01`, `SA-INIT-02`, `SA-INIT-03`).
+- **Role Boundary:** Implement and optimize Roller's core Java/Spring Boot capabilities, themes, and automation API; never break cross-product contracts or telemetry conventions.
+<!-- SIMPLE-AGILITY-AGENT-HEADER-END -->
+
 ## Important Rules
 
 - **Never commit or push unless explicitly asked.**
