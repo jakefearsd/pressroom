@@ -101,6 +101,8 @@ limitations under the License.
         <Logger name="roller.sso" level="info" additivity="false"> <AppenderRef ref="asyncRoller"/> </Logger>
         <!-- comment ids, statuses, usernames and refusal codes; never a body or an email address -->
         <Logger name="roller.comments" level="info" additivity="false"> <AppenderRef ref="asyncRoller"/> </Logger>
+        <!-- account, membership and API-token changes, each naming by=; never a token secret -->
+        <Logger name="roller.admin" level="info" additivity="false"> <AppenderRef ref="asyncRoller"/> </Logger>
         <Logger name="org.webjars"             level="info"  additivity="false"> <AppenderRef ref="asyncRoller"/> </Logger>
 
         <!-- server.log catches everything that hasn't been logged yet-->

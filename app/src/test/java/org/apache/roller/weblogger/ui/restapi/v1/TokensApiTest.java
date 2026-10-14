@@ -1,11 +1,15 @@
 package org.apache.roller.weblogger.ui.restapi.v1;
 
+import org.apache.roller.testing.AdminLogCapture;
 import org.apache.roller.weblogger.business.ApiTokenManager;
 import org.apache.roller.weblogger.business.UserManager;
+import org.apache.roller.weblogger.business.WeblogManager;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.ApiToken;
 import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.User;
+import org.apache.roller.weblogger.pojos.Weblog;
+import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.restapi.ApiExceptionHandler;
 import org.apache.roller.weblogger.ui.restapi.auth.ApiPrincipal;
 import org.junit.jupiter.api.AfterEach;
@@ -15,9 +19,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -26,6 +33,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.apache.roller.weblogger.ui.restapi.ErrorFieldMatchers.errorFieldIs;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Token-mints-token is a privilege-escalation path: it turns any leaked token
@@ -74,6 +83,8 @@ class TokensApiTest {
         // An author: holds the global login action. aReaderCannotMintAToken flips it.
         when(userManager.checkPermission(any(GlobalPermission.class), any(User.class))).thenReturn(true);
         when(weblogger.getUserManager()).thenReturn(userManager);
+        WeblogManager weblogManager = mock(WeblogManager.class);
+        when(weblogger.getWeblogManager()).thenReturn(weblogManager);
         return weblogger;
     }
 
@@ -172,6 +183,7 @@ class TokensApiTest {
         owner.setId("user-1");
         owner.setUserName("owner");
         when(weblogger.getUserManager().getUserByUserName("owner")).thenReturn(owner);
+        when(weblogger.getWeblogManager().getWeblogByHandle("testblog", null)).thenReturn(new Weblog());
 
         String rawToken = "rlr_knownRawSecretForTest";
         ApiToken persisted = new ApiToken();
@@ -468,6 +480,170 @@ class TokensApiTest {
                 .andExpect(status().isForbidden());
 
         verify(weblogger.getApiTokenManager(), never()).getTokens(any());
+    }
+
+
+    private static User basicOwner(Weblogger weblogger) throws Exception {
+        User owner = new User();
+        owner.setUserName("owner");
+        when(weblogger.getUserManager().getUserByUserName("owner")).thenReturn(owner);
+        return owner;
+    }
+
+    /** Only a check for the global admin action answers false; LOGIN stays true. */
+    private static void notASiteAdmin(Weblogger weblogger, User owner) throws Exception {
+        when(weblogger.getUserManager().checkPermission(
+                argThat(p -> p instanceof GlobalPermission g && g.hasAction(GlobalPermission.ADMIN)), eq(owner)))
+                .thenReturn(false);
+    }
+
+    private static ApiTokenManager.Issued issued(User owner, String id, String raw) {
+        ApiToken persisted = new ApiToken();
+        persisted.setId(id);
+        persisted.setUser(owner);
+        persisted.setLabel("ci");
+        persisted.setScopeRole(ApiToken.Role.POST);
+        persisted.setCreated(new Timestamp(System.currentTimeMillis()));
+        return new ApiTokenManager.Issued(raw, persisted);
+    }
+
+    /** Criterion 12: a weblog the caller is not a member of is a 400 on weblog. */
+    @Test
+    void mintingWithAForeignWeblogIsBadRequestOnWeblog() throws Exception {
+        authenticateWithBasicAuth();
+        Weblogger weblogger = mockedWeblogger();
+        User owner = basicOwner(weblogger);
+        notASiteAdmin(weblogger, owner);
+        Weblog foreign = new Weblog();
+        foreign.setHandle("foreign");
+        when(weblogger.getWeblogManager().getWeblogByHandle("foreign", null)).thenReturn(foreign);
+
+        mockMvc(new TokensApi(weblogger))
+                .perform(post("/v1/tokens").contentType("application/json")
+                        .content("{\"label\":\"x\",\"role\":\"POST\",\"weblog\":\"foreign\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("weblog"));
+
+        verify(weblogger.getApiTokenManager(), never()).issueToken(any(), anyString(), any(), any(), any());
+    }
+
+    /** Criterion 12: an unknown weblog likewise -- even for a site admin. */
+    @Test
+    void mintingWithAnUnknownWeblogIsBadRequestOnWeblog() throws Exception {
+        authenticateWithBasicAuth();
+        Weblogger weblogger = mockedWeblogger();
+        basicOwner(weblogger);
+
+        mockMvc(new TokensApi(weblogger))
+                .perform(post("/v1/tokens").contentType("application/json")
+                        .content("{\"label\":\"x\",\"role\":\"POST\",\"weblog\":\"nosuch\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("weblog"));
+    }
+
+    @Test
+    void aMemberMayPinTheirOwnWeblog() throws Exception {
+        authenticateWithBasicAuth();
+        Weblogger weblogger = mockedWeblogger();
+        User owner = basicOwner(weblogger);
+        notASiteAdmin(weblogger, owner);
+        Weblog mine = new Weblog();
+        mine.setHandle("mine");
+        when(weblogger.getWeblogManager().getWeblogByHandle("mine", null)).thenReturn(mine);
+        when(weblogger.getUserManager().getWeblogPermission(mine, owner))
+                .thenReturn(new WeblogPermission(mine, owner, List.of(WeblogPermission.POST)));
+        when(weblogger.getApiTokenManager().issueToken(any(), anyString(), any(), any(), any()))
+                .thenReturn(issued(owner, "t-7", "rlr_mine"));
+
+        mockMvc(new TokensApi(weblogger))
+                .perform(post("/v1/tokens").contentType("application/json")
+                        .content("{\"label\":\"ci\",\"role\":\"POST\",\"weblog\":\"mine\"}"))
+                .andExpect(status().isCreated());
+    }
+
+    /** Review focus 5: a site admin may pin any existing weblog. */
+    @Test
+    void aSiteAdminMayPinAnyExistingWeblog() throws Exception {
+        authenticateWithBasicAuth();
+        Weblogger weblogger = mockedWeblogger();
+        User owner = basicOwner(weblogger);
+        when(weblogger.getWeblogManager().getWeblogByHandle("anyblog", null)).thenReturn(new Weblog());
+        when(weblogger.getApiTokenManager().issueToken(any(), anyString(), any(), any(), any()))
+                .thenReturn(issued(owner, "t-8", "rlr_any"));
+
+        mockMvc(new TokensApi(weblogger))
+                .perform(post("/v1/tokens").contentType("application/json")
+                        .content("{\"label\":\"ci\",\"role\":\"ADMIN\",\"weblog\":\"anyblog\"}"))
+                .andExpect(status().isCreated());
+    }
+
+    /** Criterion 12: an expiry that is not in the future is a 400 on expiresAt. */
+    @Test
+    void anExpiryInThePastIsBadRequestOnExpiresAt() throws Exception {
+        authenticateWithBasicAuth();
+        Weblogger weblogger = mockedWeblogger();
+        basicOwner(weblogger);
+
+        mockMvc(new TokensApi(weblogger))
+                .perform(post("/v1/tokens").contentType("application/json")
+                        .content("{\"label\":\"x\",\"role\":\"POST\",\"expiresAt\":\"2020-01-02T03:04:05Z\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("expiresAt"));
+
+        verify(weblogger.getApiTokenManager(), never()).issueToken(any(), anyString(), any(), any(), any());
+    }
+
+    /** Criterion 12: the listing shows when a token was revoked, and nothing for a live one. */
+    @Test
+    void theListShowsWhenATokenWasRevoked() throws Exception {
+        authenticateWithBasicAuth();
+        Weblogger weblogger = mockedWeblogger();
+        User owner = basicOwner(weblogger);
+        ApiToken live = issued(owner, "t-live", "rlr_a").token();
+        ApiToken revoked = issued(owner, "t-revoked", "rlr_b").token();
+        revoked.setRevokedAt(Timestamp.from(Instant.parse("2026-10-01T00:00:00Z")));
+        when(weblogger.getApiTokenManager().getTokens(owner)).thenReturn(List.of(live, revoked));
+
+        String response = mockMvc(new TokensApi(weblogger))
+                .perform(get("/v1/tokens"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        tools.jackson.databind.JsonNode body = new tools.jackson.databind.ObjectMapper().readTree(response);
+        assertFalse(body.get(0).has("revokedAt"), response);
+        assertTrue(body.get(1).has("revokedAt"), response);
+    }
+
+    /**
+     * Spec 2026-10-13, section 6; review focus 1: a mint is logged on
+     * roller.admin, never with its secret. Only our own line is asserted
+     * here: the response body IS the secret, and Spring MVC's DEBUG "Writing
+     * [...]" line would carry it under a capture of every logger -- which is
+     * why production keeps org.springframework at INFO. The UI mint, which
+     * never writes the secret into a response body, is held to every logger
+     * at every level in Task 13.
+     */
+    @Test
+    void anApiMintIsLoggedWithoutItsSecret() throws Exception {
+        authenticateWithBasicAuth();
+        Weblogger weblogger = mockedWeblogger();
+        User owner = basicOwner(weblogger);
+        when(weblogger.getApiTokenManager().issueToken(any(), anyString(), any(), any(), any()))
+                .thenReturn(issued(owner, "t-9", "rlr_neverInALog"));
+
+        try (AdminLogCapture admin = AdminLogCapture.start()) {
+            mockMvc(new TokensApi(weblogger))
+                    .perform(post("/v1/tokens").contentType("application/json")
+                            .content("{\"label\":\"ci\",\"role\":\"POST\"}"))
+                    .andExpect(status().isCreated());
+
+            assertEquals(1, admin.lines().size(), admin.lines().toString());
+            String line = admin.lines().get(0);
+            for (String part : new String[] {"token.minted", "id=t-9", "label=ci", "owner=owner", "by=owner"}) {
+                assertTrue(line.contains(part), part + " in " + line);
+            }
+            assertFalse(line.contains("rlr_neverInALog"), line);
+        }
     }
 
     @Test

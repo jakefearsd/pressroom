@@ -1,6 +1,7 @@
 package org.apache.roller.weblogger.ui.restapi.v1;
 
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import org.apache.roller.weblogger.WebloggerException;
@@ -9,6 +10,8 @@ import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.ApiToken;
 import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.User;
+import org.apache.roller.weblogger.ui.controllers.AdminLog;
+import org.apache.roller.weblogger.ui.controllers.TokenPins;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
 import org.apache.roller.weblogger.ui.restapi.ColumnLimits;
 import org.apache.roller.weblogger.ui.restapi.auth.ApiPrincipal;
@@ -98,11 +101,13 @@ public class TokensApi {
         ColumnLimits.requireMaxLength("label", request.label(), ColumnLimits.TOKEN_LABEL);
         ColumnLimits.requireMaxLength("weblog", request.weblog(), ColumnLimits.TOKEN_WEBLOG);
         User user = requireUser();
-        Timestamp expiresAt = request.expiresAt() == null ? null : Timestamp.from(request.expiresAt());
+        requirePinnable(user, request.weblog());
+        Timestamp expiresAt = requireFuture(request.expiresAt());
 
         ApiTokenManager.Issued issued = weblogger.getApiTokenManager()
                 .issueToken(user, request.label(), request.weblog(), role, expiresAt);
         weblogger.flush();
+        AdminLog.record("token.minted", user, AdminLog.tokenDetails(issued.token()));
 
         TokenDtos.TokenView view = TokenDtos.toView(issued.token());
         return ResponseEntity.status(HttpStatus.CREATED).body(new TokenDtos.IssuedToken(issued.rawToken(), view));
@@ -137,7 +142,31 @@ public class TokensApi {
             throw ApiException.notFound("No such token.");
         }
         weblogger.flush();
+        AdminLog.record("token.revoked", user, "id=" + id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Spec 2026-10-13, section 3: a pin names a weblog the caller is a member
+     * of, or any existing weblog for a site admin -- the rule the token form
+     * applies, from {@link TokenPins}.
+     */
+    private void requirePinnable(User user, String weblog) throws WebloggerException {
+        if (!TokenPins.allows(weblogger, user, weblog)) {
+            throw ApiException.invalidField("weblog",
+                    "weblog must name a weblog you are a member of; '" + weblog + "' is not one.");
+        }
+    }
+
+    /** Null for a token that never expires; a 400 on expiresAt when it is not in the future. */
+    private static Timestamp requireFuture(Instant expiresAt) {
+        if (expiresAt == null) {
+            return null;
+        }
+        if (!expiresAt.isAfter(Instant.now())) {
+            throw ApiException.invalidField("expiresAt", "expiresAt must be in the future.");
+        }
+        return Timestamp.from(expiresAt);
     }
 
     private static void requireLabel(String label) {

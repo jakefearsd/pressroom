@@ -12,7 +12,7 @@ public final class TokenDtos {
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record TokenView(String id, String label, String scopeWeblog, String scopeRole,
-                            Instant created, Instant lastUsedAt, Instant expiresAt) { }
+                            Instant created, Instant lastUsedAt, Instant expiresAt, Instant revokedAt) { }
 
     public record IssueRequest(String label, String weblog, String role, Instant expiresAt) { }
 
@@ -27,7 +27,8 @@ public final class TokenDtos {
                 token.getScopeRole() == null ? null : token.getScopeRole().name(),
                 instant(token.getCreated()),
                 instant(token.getLastUsedAt()),
-                instant(token.getExpiresAt()));
+                instant(token.getExpiresAt()),
+                instant(token.getRevokedAt()));
     }
 
     private static Instant instant(Timestamp ts) {
