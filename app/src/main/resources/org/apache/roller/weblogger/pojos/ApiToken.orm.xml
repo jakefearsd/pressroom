@@ -44,6 +44,9 @@
             <basic name="revokedAt">
                 <column name="revoked_at" insertable="true" updatable="true" nullable="true"/>
             </basic>
+            <basic name="issuedBy">
+                <column name="issued_by" insertable="true" updatable="true" nullable="true"/>
+            </basic>
             <many-to-one name="user" target-entity="org.apache.roller.weblogger.pojos.User">
                 <join-column name="userid" insertable="true" updatable="true" nullable="false"/>
             </many-to-one>

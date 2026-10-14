@@ -48,6 +48,7 @@ public class ApiToken implements Serializable {
     private Timestamp lastUsedAt;
     private Timestamp expiresAt;
     private Timestamp revokedAt;
+    private String issuedBy;
 
     public ApiToken() {
     }
@@ -164,6 +165,19 @@ public class ApiToken implements Serializable {
 
     public void setRevokedAt(Timestamp revokedAt) {
         this.revokedAt = revokedAt;
+    }
+
+    /**
+     * The id of the user who minted this token -- the owner for a self-mint,
+     * a site admin for a token minted on an agent's page -- or null for a
+     * token minted before V033.
+     */
+    public String getIssuedBy() {
+        return issuedBy;
+    }
+
+    public void setIssuedBy(String issuedBy) {
+        this.issuedBy = issuedBy;
     }
 
     /** True when this token is neither revoked nor past its expiry. */

@@ -91,6 +91,17 @@
             <basic name="ssoSubject">
                 <column name="sso_subject" insertable="true" updatable="true" unique="false"/>
             </basic>
+            <basic name="kind">
+                <column name="kind" insertable="true" updatable="true" nullable="false"/>
+                <enumerated>STRING</enumerated>
+            </basic>
+            <basic name="notes">
+                <column name="notes" insertable="true" updatable="true" nullable="true"/>
+            </basic>
+            <basic name="lastLogin">
+                <column name="last_login" insertable="true" updatable="true" nullable="true"/>
+                <temporal>TIMESTAMP</temporal>
+            </basic>
             <basic name="dateCreated">
                 <column name="datecreated" insertable="true" updatable="true" unique="false"/>
                 <temporal>TIMESTAMP</temporal>

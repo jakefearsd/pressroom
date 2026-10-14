@@ -30,6 +30,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -148,5 +150,41 @@ class UserAccountTest {
         assertFalse("hunter2".equals(user.getPassword()),
                 "Storing the plain text would put every user's password in the database "
                         + "in the clear");
+    }
+
+    /** Spec 2026-10-13, section 1: every account is a person unless it is made an agent. */
+    @Test
+    void aNewAccountIsAPersonAndAnAgentSaysSo() {
+        User user = new User();
+        assertEquals(User.Kind.PERSON, user.getKind());
+        assertFalse(user.isAgent());
+
+        user.setKind(User.Kind.AGENT);
+        assertTrue(user.isAgent());
+    }
+
+    /** An agent has no password, so there is nothing to reset -- and no encoder is consulted. */
+    @Test
+    void anAgentHasNoPasswordToReset() {
+        User agent = new User();
+        agent.setKind(User.Kind.AGENT);
+
+        IllegalStateException refused = assertThrows(IllegalStateException.class,
+                () -> agent.resetPassword("anything-at-all"));
+
+        assertEquals("An agent account has no password.", refused.getMessage());
+        assertNull(agent.getPassword());
+    }
+
+    @Test
+    void theLastLoginCannotBeMutatedThroughItsAccessor() {
+        User user = new User();
+        assertNull(user.getLastLogin());
+        Date when = new Date(1_000L);
+        user.setLastLogin(when);
+        when.setTime(2_000L);
+        assertEquals(1_000L, user.getLastLogin().getTime());
+        user.getLastLogin().setTime(3_000L);
+        assertEquals(1_000L, user.getLastLogin().getTime());
     }
 }

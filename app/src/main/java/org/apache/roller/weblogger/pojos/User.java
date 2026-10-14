@@ -47,6 +47,9 @@ public class User implements Serializable {
     private String  locale;
     private String  timeZone;
     private Boolean enabled = Boolean.TRUE;
+    private Kind    kind = Kind.PERSON;
+    private String  notes;
+    private Date    lastLogin;
 
     public User() {
     }
@@ -102,6 +105,19 @@ public class User implements Serializable {
     /** Passphrase stored on an SSO-bound account; matches no password the encoder can produce. */
     public static final String SSO_PASSWORD_MARKER = "{bcrypt}!sso-bound";
 
+    /**
+     * What an account is (V033). A person signs in; an agent never does -- it
+     * has no password and works only through API tokens a site admin mints
+     * for it (spec 2026-10-13, Decisions).
+     */
+    public enum Kind { PERSON, AGENT }
+
+    /** The domain of the address an agent created with no email is given; never deliverable (RFC 2606). */
+    public static final String AGENT_EMAIL_DOMAIN = "agents.invalid";
+
+    /** roller_user.notes is varchar(1000). */
+    public static final int NOTES_MAX_LENGTH = 1000;
+
     /** True when this account signs in through an OpenID Connect identity rather than a password. */
     public boolean isSsoBound() {
         return ssoSubject != null;
@@ -137,6 +153,9 @@ public class User implements Serializable {
      * @param newPassword The new password to be set.
      */
     public void resetPassword(String newPassword) {
+        if (isAgent()) {
+            throw new IllegalStateException("An agent account has no password.");
+        }
         if (isSsoBound()) {
             throw new IllegalStateException("An account that signs in with single sign-on has no password.");
         }
@@ -231,6 +250,38 @@ public class User implements Serializable {
         this.enabled = enabled;
     }
     
+    /** Whether this account is a person or an agent; never null. */
+    public Kind getKind() {
+        return kind;
+    }
+
+    public void setKind(Kind kind) {
+        this.kind = kind;
+    }
+
+    /** True for an agent account: no password, no sign-in, API tokens only. */
+    public boolean isAgent() {
+        return kind == Kind.AGENT;
+    }
+
+    /** An agent's purpose, shown only in the admin UI; null for a person. */
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    /** The last successful interactive sign-in (form, remember-me or SSO), or null. */
+    public Date getLastLogin() {
+        return lastLogin == null ? null : (Date) lastLogin.clone();
+    }
+
+    public void setLastLogin(Date lastLogin) {
+        this.lastLogin = lastLogin == null ? null : (Date) lastLogin.clone();
+    }
+
     //------------------------------------------------------- Good citizenship
     
     @Override
