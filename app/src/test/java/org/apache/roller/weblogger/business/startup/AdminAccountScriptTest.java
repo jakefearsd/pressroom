@@ -367,6 +367,44 @@ class AdminAccountScriptTest {
         }
     }
 
+    /** Final review M2: a Site-administrator agent never signs in, so it is no admin account to count. */
+    @Test
+    void statusDoesNotCountAnAgentThatIsASiteAdmin() throws Exception {
+        String db = "admintool_status_agent";
+        try (Connection c = ScratchDatabase.migrated(db)) {
+            assertEquals(0, run(db, GOOD_PASSWORD + "\n", "create", "--username", "alice",
+                    "--email", "alice@example.com", "--password-stdin").exit());
+            try (Statement s = c.createStatement()) {
+                s.executeUpdate("UPDATE roller_user SET kind = 'AGENT' WHERE username = 'alice'");
+            }
+            Run r = run(db, "", "status");
+            assertEquals(3, r.exit(), "an agent holding admin is no admin account: " + r.stdout());
+            assertFalse(r.stdout().contains("alice"), r.stdout());
+        } finally {
+            ScratchDatabase.drop(db);
+        }
+    }
+
+    /** Final review M2: setting a password on an agent would only mislead; it can never sign in. */
+    @Test
+    void resetRefusesAnAgentAndChangesNothing() throws Exception {
+        String name = createWith(GOOD_PASSWORD);
+        try (Connection c = DriverManager.getConnection(RollerPostgresContainer.getJdbcUrl(),
+                RollerPostgresContainer.getUsername(), RollerPostgresContainer.getPassword());
+             PreparedStatement s = c.prepareStatement("UPDATE roller_user SET kind = 'AGENT' WHERE username = ?")) {
+            s.setString(1, name);
+            s.executeUpdate();
+        }
+        String before = passphraseOf(suiteDb(), name);
+
+        Run r = run(suiteDb(), "a brand new one\n", "reset-password", "--username", name, "--password-stdin");
+
+        assertEquals(1, r.exit(), r.stdout());
+        assertTrue(r.stderr().contains("agent"), r.stderr());
+        assertFalse(r.stdout().contains("password reset"), r.stdout());
+        assertEquals(before, passphraseOf(suiteDb(), name), "the agent's passphrase was touched");
+    }
+
     // --- acceptance criterion 3 ---
     @Test
     void thePasswordAppearsInNoOutputAndNoPsqlArgument() throws Exception {

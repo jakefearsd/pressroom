@@ -313,7 +313,7 @@ the first administrator is made from the host, in this order:
    password-reset mail cannot go out without it.
 3. **Set up mail**, next section: [Mail and account recovery](#mail-and-account-recovery).
 4. **Check it.** `docker compose -f docker-compose.prod.yml run --rm admin status`
-   lists the enabled admin accounts (and exits 3 with the create command if
+   lists the enabled admin accounts (people only; an agent never signs in) (and exits 3 with the create command if
    there are none).
 
 Then create a weblog.

@@ -128,12 +128,17 @@ SQL
 
 cmd_reset() {
     require_schema
-    local enabled
-    enabled=$(sql -v username="${USERNAME}" <<'SQL'
-SELECT isenabled FROM roller_user WHERE username = :'username';
+    local found enabled kind
+    found=$(sql -v username="${USERNAME}" <<'SQL'
+SELECT isenabled, kind FROM roller_user WHERE username = :'username';
 SQL
 ) || die "database error while looking up ${USERNAME}"
-    [[ -n "${enabled}" ]] || die "no account named ${USERNAME}"
+    [[ -n "${found}" ]] || die "no account named ${USERNAME}"
+    enabled="${found%%|*}"
+    kind="${found#*|}"
+    # An agent never signs in with a password; setting one would only mislead.
+    [[ "${kind}" == PERSON ]] \
+        || die "${USERNAME} is an agent and has no password: manage it from Admin > Users, agent page"
     read_password
     ROLLER_ADMIN_PASSWORD="${PASSWORD}" sql -v username="${USERNAME}" >/dev/null <<'SQL' || die "database error: password not changed"
 SET client_min_messages = warning;
@@ -160,6 +165,7 @@ cmd_status() {
     admins=$(sql <<'SQL'
 SELECT u.username FROM roller_user u
  WHERE u.isenabled
+   AND u.kind = 'PERSON'
    AND EXISTS (SELECT 1 FROM userrole r
                 WHERE r.username = u.username AND r.rolename = 'admin')
  ORDER BY u.username;
