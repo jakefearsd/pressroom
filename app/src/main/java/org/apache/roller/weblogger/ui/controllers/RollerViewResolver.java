@@ -216,6 +216,14 @@ public class RollerViewResolver implements ViewResolver, Ordered {
         addExtendedDefinition(".Profile", ".tiles-mainmenupage",
                 Map.of("content", "/WEB-INF/jsps/core/Profile.jsp"));
 
+        // Profile -> API tokens and the one-time reveal: signed-in, un-scoped
+        // screens in Profile's own chrome (spec 2026-10-13, section 3).
+        addExtendedDefinition(".ProfileTokens", ".tiles-mainmenupage",
+                Map.of("content", "/WEB-INF/jsps/core/ProfileTokens.jsp"));
+
+        addExtendedDefinition(".TokenReveal", ".tiles-mainmenupage",
+                Map.of("content", "/WEB-INF/jsps/core/TokenReveal.jsp"));
+
         // The reader's account page is the one admin-UI screen a reader can
         // open, and the rail has nowhere for a reader to go (its account link
         // opens the profile, which refuses readers), so it is simplepage: the

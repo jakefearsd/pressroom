@@ -147,6 +147,8 @@ class SecurityConfigTest {
                 "/roller-ui/login.rol",
                 "/roller-ui/login-redirect.rol",
                 "/roller-ui/profile.rol",
+                "/roller-ui/profileTokens.rol",
+                "/roller-ui/profileTokens!reveal.rol",
                 "/roller-ui/createWeblog.rol",
                 "/roller-ui/menu.rol",
                 "/roller-ui/menu!accept.rol",
@@ -255,6 +257,8 @@ class SecurityConfigTest {
     @ValueSource(strings = {
             "/roller-ui/login-redirect.rol",
             "/roller-ui/profile.rol",
+            "/roller-ui/profileTokens.rol",
+            "/roller-ui/profileTokens!reveal.rol",
             "/roller-ui/createWeblog.rol",
             "/roller-ui/menu.rol",
             "/roller-ui/menu!accept.rol",
@@ -310,6 +314,8 @@ class SecurityConfigTest {
     @ValueSource(strings = {
             "/roller-ui/login-redirect.rol",
             "/roller-ui/profile.rol",
+            "/roller-ui/profileTokens.rol",
+            "/roller-ui/profileTokens!reveal.rol",
             "/roller-ui/createWeblog.rol",
             "/roller-ui/menu.rol",
             "/roller-ui/menu!accept.rol",
@@ -319,6 +325,15 @@ class SecurityConfigTest {
     void editorAuthorityIsAllowedOnEditorSurfaces(String path) throws Exception {
         mockMvc.perform(get(path).with(user("editorUser").authorities(new SimpleGrantedAuthority("editor"))))
                 .andExpect(status().isOk());
+    }
+
+    /** A reader (SSO) holds neither editor nor admin, so the token pages -- the reveal included -- refuse them. */
+    @Test
+    void aReaderCannotReachTheTokenPages() throws Exception {
+        for (String path : new String[] {"/roller-ui/profileTokens.rol", "/roller-ui/profileTokens!reveal.rol"}) {
+            mockMvc.perform(get(path).with(user("readerUser").authorities(new SimpleGrantedAuthority("reader"))))
+                    .andExpect(status().isForbidden());
+        }
     }
 
     @ParameterizedTest

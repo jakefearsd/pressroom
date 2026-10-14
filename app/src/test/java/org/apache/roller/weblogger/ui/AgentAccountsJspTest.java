@@ -85,4 +85,30 @@ class AgentAccountsJspTest {
     void noMembershipFieldIsNamedWeblog() throws IOException {
         assertFalse(jsp("admin/UserWeblogs.jsp").contains("name=\"weblog\""));
     }
+
+    /** Criterion 25: revoking a token asks first. */
+    @Test
+    void revokingATokenIsConfirmed() throws IOException {
+        assertTrue(formPostingTo(jsp("core/TokenList.jsp"), "tokenRevokeAction").contains("data-confirm="));
+    }
+
+    /** Review focus 1: on the reveal page the secret is a form value, never part of a link. */
+    @Test
+    void theSecretIsNeverPartOfALink() throws IOException {
+        String src = jsp("core/TokenReveal.jsp");
+        assertTrue(src.contains("value=\"${fn:escapeXml(revealedToken)}\""));
+        Matcher hrefs = Pattern.compile("href=\"([^\"]*)\"").matcher(src);
+        while (hrefs.find()) {
+            assertFalse(hrefs.group(1).contains("revealedToken") || hrefs.group(1).contains("mcpSnippet"),
+                    hrefs.group());
+        }
+    }
+
+    /** The pin field is "pin", never "weblog": RollerHandlerInterceptor would read that as the action weblog. */
+    @Test
+    void theTokenPinFieldIsNotNamedWeblog() throws IOException {
+        String src = jsp("core/TokenForm.jsp");
+        assertFalse(src.contains("name=\"weblog\""));
+        assertTrue(src.contains("name=\"pin\""));
+    }
 }

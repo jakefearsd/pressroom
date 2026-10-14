@@ -107,6 +107,10 @@
 
 </form:form>
 
+<p class="mt-4">
+    <a href="<c:url value='/roller-ui/profileTokens.rol'/>" id="profileTokensLink"><spring:message code="apiTokens.profile.link"/></a>
+</p>
+
 <%-- -------------------------------------------------------- --%>
 
 <script type="text/javascript">

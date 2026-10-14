@@ -183,6 +183,13 @@ public final class Routes {
             new Route("/roller-ui/profile.rol", Role.EDITOR, "",
                     "form[action$='/roller-ui/profile!save.rol']"),
 
+            // Profile -> API tokens (spec 2026-10-13): the live tokens and the form.
+            new Route("/roller-ui/profileTokens.rol", Role.EDITOR, "", "#profileTokensPage"),
+
+            // The one-time reveal. Opened directly it has no flash secret, so it
+            // renders its "already shown" state -- still its own content tile.
+            new Route("/roller-ui/profileTokens!reveal.rol", Role.EDITOR, "", "#tokenRevealPage"),
+
             // The reader's account page. AccountController needs only the global
             // "comment" action, which readers hold -- but Role has no READER and
             // the sweep signs in as the seeded admin, who holds "comment" too, so

@@ -178,6 +178,17 @@ class RollerViewResolverTest {
         assertEquals("/WEB-INF/jsps/tiles/empty.jsp", request.getAttribute("tile_sidebar"));
     }
 
+    /** Profile → API tokens and its reveal are signed-in, un-scoped screens, like Profile itself. */
+    @Test
+    void theTokenScreensRenderThroughTheMainMenuLayout() throws Exception {
+        resolver.init();
+
+        assertEquals("/WEB-INF/jsps/core/ProfileTokens.jsp",
+                renderAndCapture(".ProfileTokens").getAttribute("tile_content"));
+        assertEquals("/WEB-INF/jsps/core/TokenReveal.jsp",
+                renderAndCapture(".TokenReveal").getAttribute("tile_content"));
+    }
+
     /**
      * The reader's account page is a reader's only admin-UI screen, and a
      * reader has nowhere on the rail to go: its account link opens the
@@ -217,7 +228,7 @@ class RollerViewResolverTest {
     private static String expectedLayout(String viewName) {
         return switch (viewName) {
             case ".Comments", ".Submissions" -> "/WEB-INF/jsps/tiles/tiles-tabbedpage.jsp";
-            case ".Profile" -> "/WEB-INF/jsps/tiles/tiles-mainmenupage.jsp";
+            case ".Profile", ".ProfileTokens", ".TokenReveal" -> "/WEB-INF/jsps/tiles/tiles-mainmenupage.jsp";
             case ".Account" -> "/WEB-INF/jsps/tiles/tiles-simplepage.jsp";
             default -> throw new IllegalArgumentException("no expected layout for " + viewName);
         };

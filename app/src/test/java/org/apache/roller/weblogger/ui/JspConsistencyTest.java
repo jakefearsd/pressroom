@@ -417,17 +417,19 @@ class JspConsistencyTest {
      * fails {@link #everyFieldErrorNamesAnIdThatExistsInItsJsp} -- an unmapped
      * caller is not silently skipped.
      */
-    private static final Map<String, List<String>> FIELD_ERROR_JSPS = Map.of(
-            "editor/WeblogConfigController.java", List.of("editor/WeblogConfig.jsp"),
-            "editor/CategoryEditController.java", List.of("editor/Categories.jsp"),
-            "editor/PageEditController.java", List.of("editor/PageEdit.jsp"),
-            "editor/EntryEditController.java", List.of("editor/EntryEdit.jsp"),
-            "editor/TemplatesController.java", List.of("editor/TemplatesSidebar.jsp"),
-            "editor/MembersController.java", List.of("editor/Members.jsp"),
-            "core/CreateWeblogController.java", List.of("core/CreateWeblog.jsp"),
-            "core/ProfileController.java", List.of("core/Profile.jsp"),
-            "admin/UserEditController.java", List.of("admin/UserEdit.jsp"),
-            "admin/BusinessesController.java", List.of("admin/BusinessEdit.jsp"));
+    private static final Map<String, List<String>> FIELD_ERROR_JSPS = Map.ofEntries(
+            Map.entry("editor/WeblogConfigController.java", List.of("editor/WeblogConfig.jsp")),
+            Map.entry("editor/CategoryEditController.java", List.of("editor/Categories.jsp")),
+            Map.entry("editor/PageEditController.java", List.of("editor/PageEdit.jsp")),
+            Map.entry("editor/EntryEditController.java", List.of("editor/EntryEdit.jsp")),
+            Map.entry("editor/TemplatesController.java", List.of("editor/TemplatesSidebar.jsp")),
+            Map.entry("editor/MembersController.java", List.of("editor/Members.jsp")),
+            Map.entry("core/CreateWeblogController.java", List.of("core/CreateWeblog.jsp")),
+            Map.entry("core/ProfileController.java", List.of("core/Profile.jsp")),
+            Map.entry("admin/UserEditController.java", List.of("admin/UserEdit.jsp")),
+            Map.entry("admin/BusinessesController.java", List.of("admin/BusinessEdit.jsp")),
+            // The token form's controls, shared by the agent page and Profile -> API tokens.
+            Map.entry("controllers/TokenFormController.java", List.of("core/TokenForm.jsp")));
 
     private static final Path CONTROLLERS =
             Path.of("src/main/java/org/apache/roller/weblogger/ui/controllers");
