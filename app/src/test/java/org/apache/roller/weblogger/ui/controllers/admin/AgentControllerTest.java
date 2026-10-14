@@ -210,6 +210,18 @@ class AgentControllerTest {
         verify(weblogger.userManager(), never()).addAgent(any(), eq(false));
     }
 
+    /** Final review M5: "Bot" beside an existing "bot" is the same field error, not "check the logs". */
+    @Test
+    void aUserNameTakenInAnotherCaseIsAFieldErrorOnTheUserName() throws Exception {
+        stored();
+
+        controller.create(asAdmin(), model, redirect, newAgent("BOT1", "Publisher"));
+
+        assertEquals(List.of("error.add.user.userNameInUse"), ControllerTestFixture.errors(model));
+        assertEquals(List.of("bean_userName"), ControllerTestFixture.invalidFields(model));
+        verify(weblogger.userManager(), never()).addAgent(any(), eq(false));
+    }
+
     @Test
     void aNameIsRequiredAndAGivenEmailMustBeValid() throws Exception {
         AgentBean bean = newAgent("bot2", "  ");

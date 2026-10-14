@@ -753,6 +753,18 @@ class UserEditControllerTest {
         verify(weblogger.userManager(), never()).addUser(any());
     }
 
+    /** Final review M5: a name that differs only in case from an existing one is taken too. */
+    @Test
+    void aUserNameTakenInAnotherCaseIsAFieldErrorOnTheUserName() throws Exception {
+        when(weblogger.userManager().getUserByUserName("taken", null)).thenReturn(user("taken", "t@example.com"));
+
+        controller.createUserSave(ControllerTestFixture.requestFor(null), model, beanFor("Taken", "long-enough"));
+
+        assertEquals(List.of("error.add.user.userNameInUse"), ControllerTestFixture.errors(model));
+        assertEquals(List.of("bean_userName"), ControllerTestFixture.invalidFields(model));
+        verify(weblogger.userManager(), never()).addUser(any());
+    }
+
     /** A check that could not run is not a check that passed (CLAUDE.md): a failed taken-check refuses. */
     @Test
     void aUserNameCheckThatCannotRunRefusesTheAccount() throws Exception {

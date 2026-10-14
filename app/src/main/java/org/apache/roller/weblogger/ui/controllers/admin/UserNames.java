@@ -18,6 +18,7 @@
 
 package org.apache.roller.weblogger.ui.controllers.admin;
 
+import java.util.Locale;
 import org.apache.commons.lang3.CharSetUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.roller.weblogger.WebloggerException;
@@ -56,7 +57,11 @@ final class UserNames {
             return "error.add.user.badUserName";
         }
         try {
-            return users.getUserByUserName(userName, null) == null ? null : "error.add.user.userNameInUse";
+            // The store also refuses a name whose lower-case form exists (JPAUserManagerImpl.addUser/addAgent),
+            // so the field error is raised here rather than as a generic failure after the save.
+            boolean taken = users.getUserByUserName(userName, null) != null
+                    || users.getUserByUserName(userName.toLowerCase(Locale.ROOT), null) != null;
+            return taken ? "error.add.user.userNameInUse" : null;
         } catch (WebloggerException e) {
             log.error("Could not check whether the username {} is taken", userName, e);
             return "generic.error.check.logs";
