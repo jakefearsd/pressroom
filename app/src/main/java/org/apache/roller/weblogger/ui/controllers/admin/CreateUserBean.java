@@ -41,6 +41,12 @@ public class CreateUserBean {
     private boolean administrator = false;
     /** The editor role, offered only for an SSO-bound account; set by the controller, never by copyFrom. */
     private boolean writer = false;
+    /** "Email a set-password link": offered, and the default, only while mail can deliver one. */
+    public static final String PASSWORD_LINK = "link";
+    /** "Set a password now". */
+    public static final String PASSWORD_NOW = "now";
+    /** {@link #PASSWORD_LINK} or {@link #PASSWORD_NOW}; create only. */
+    private String passwordMode;
     private List<String> list = new ArrayList<>();
 
     public List<String> getList() {
@@ -146,6 +152,14 @@ public class CreateUserBean {
 
     public void setWriter(boolean writer) {
         this.writer = writer;
+    }
+
+    public String getPasswordMode() {
+        return passwordMode;
+    }
+
+    public void setPasswordMode(String passwordMode) {
+        this.passwordMode = passwordMode;
     }
 
     public void copyTo(User dataHolder) {

@@ -125,9 +125,16 @@ class UserAdminIT extends RollerIT {
         $("input[name='bean.userName']").should(visible).setValue(userName);
         $("input[name='bean.screenName']").setValue("Screen " + userName);
         $("input[name='bean.fullName']").setValue("Full " + userName);
+        // "Set a password now" is offered beside the emailed link only while
+        // mail is configured; the password field is there either way.
+        if ($("#bean_passwordModeNow").exists()) {
+            $("#bean_passwordModeNow").click();
+        }
         $("input[name='bean.password']").setValue(PASSWORD);
-        $("input[name='bean.emailAddress']").setValue(userName + "@example.invalid");
-        $("input[name='bean.enabled']").should(exist).click();
+        // example.com, not .invalid: the form now validates the address.
+        $("input[name='bean.emailAddress']").setValue(userName + "@example.com");
+        // Enabled is ticked by default now (spec 2026-10-13, section 4).
+        $("input[name='bean.enabled']").shouldBe(checked);
         $("#save_button").click();
 
         $("#messages").should(exist);

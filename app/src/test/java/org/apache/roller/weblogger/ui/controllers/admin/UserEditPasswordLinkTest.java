@@ -174,6 +174,7 @@ class UserEditPasswordLinkTest {
         ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
         verify(weblogger.getUserManager()).addUser(saved.capture());
         User user = saved.getValue();
+        assertEquals(Boolean.TRUE, user.getEnabled(), "criterion 17: the account is created enabled");
         assertNotNull(user.getPassword(), "a usable (if never-disclosed) password must still be set");
         assertFalse(user.getPassword().isEmpty(), "the password must not be the empty string");
 
@@ -200,6 +201,22 @@ class UserEditPasswordLinkTest {
         }
     }
 
+    /** Criterion 17: the emailed link is offered only while mail is configured. */
+    @Test
+    void theLinkIsOfferedOnlyWhenMailIsConfigured() throws Exception {
+        controller.createUserExecute(ControllerTestFixture.requestFor(null), model);
+        assertEquals(Boolean.TRUE, model.getAttribute("mailConfigured"));
+
+        MockMailProvider.uninstall();
+        try {
+            ExtendedModelMap noMail = new ExtendedModelMap();
+            controller.createUserExecute(ControllerTestFixture.requestFor(null), noMail);
+            assertEquals(Boolean.FALSE, noMail.getAttribute("mailConfigured"));
+        } finally {
+            mail = MockMailProvider.install();
+        }
+    }
+
     // --- helpers ---
 
     private static User user(String userName, String email) {
@@ -214,6 +231,12 @@ class UserEditPasswordLinkTest {
         CreateUserBean bean = new CreateUserBean();
         bean.setUserName(userName);
         bean.setPassword(password);
+        bean.setScreenName("Screen " + userName);
+        bean.setFullName("Full " + userName);
+        bean.setEmailAddress(userName + "@example.com");
+        // "Email a set-password link" is the choice these tests exercise.
+        bean.setPasswordMode(CreateUserBean.PASSWORD_LINK);
+        bean.setEnabled(Boolean.TRUE);
         return bean;
     }
 }

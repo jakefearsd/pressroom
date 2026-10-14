@@ -103,7 +103,36 @@
         </div>
     </div>
 
-        <c:if test="${not ssoBound}">
+    <c:if test="${not ssoBound}">
+        <%-- Spec 2026-10-13, section 4: a new person either gets an emailed
+             set-password link -- offered, and the default, only while mail can
+             deliver one -- or a password set now. --%>
+        <c:if test="${actionName == 'createUser'}">
+            <c:choose>
+                <c:when test="${mailConfigured}">
+                    <fieldset class="row mb-3">
+                        <legend class="col-sm-3 col-form-label"><spring:message code="personForm.password"/></legend>
+                        <div class="col-sm-9">
+                            <div class="form-check">
+                                <input type="radio" class="form-check-input" id="bean_passwordModeLink"
+                                       name="bean.passwordMode" value="link"
+                                       <c:if test="${bean.passwordMode != 'now'}">checked="checked"</c:if>/>
+                                <label class="form-check-label" for="bean_passwordModeLink"><spring:message code="personForm.password.link"/></label>
+                            </div>
+                            <div class="form-check">
+                                <input type="radio" class="form-check-input" id="bean_passwordModeNow"
+                                       name="bean.passwordMode" value="now"
+                                       <c:if test="${bean.passwordMode == 'now'}">checked="checked"</c:if>/>
+                                <label class="form-check-label" for="bean_passwordModeNow"><spring:message code="personForm.password.now"/></label>
+                            </div>
+                        </div>
+                    </fieldset>
+                </c:when>
+                <c:otherwise>
+                    <input type="hidden" name="bean.passwordMode" value="now"/>
+                </c:otherwise>
+            </c:choose>
+        </c:if>
         <div class="row mb-3">
             <label class="col-sm-3 col-form-label" for="bean_password"><spring:message code="userSettings.password"/></label>
             <div class="col-sm-9">
@@ -111,12 +140,12 @@
                        autocomplete="new-password"
                        onkeyup="formChanged()" class="form-control"
                        title="<spring:message code='userAdmin.tip.password'/>"/>
-                <c:if test="${actionName == 'createUser' && mailConfigured}">
-                    <div class="form-text"><spring:message code="userAdmin.passwordOptionalWithMail"/></div>
+                <c:if test="${actionName == 'createUser'}">
+                    <div class="form-text"><spring:message code="personForm.password.tip"/></div>
                 </c:if>
             </div>
         </div>
-        </c:if>
+    </c:if>
 
 
     <div class="row mb-3">
@@ -167,6 +196,27 @@
     </div>
 
     <c:if test="${not ssoBound}">
+    <c:choose>
+    <c:when test="${actionName == 'createUser'}">
+    <%-- Spec 2026-10-13, section 4: Author or Site admin, Author by default.
+         Both are the editor role; Site admin adds admin. --%>
+    <fieldset class="row mb-3">
+        <legend class="col-sm-3 col-form-label"><spring:message code="personForm.role"/></legend>
+        <div class="col-sm-9">
+            <div class="form-check">
+                <input type="radio" class="form-check-input" id="bean_roleAuthor" name="bean.administrator" value="false"
+                    <c:if test="${not bean.administrator}">checked="checked"</c:if>/>
+                <label class="form-check-label" for="bean_roleAuthor"><spring:message code="personForm.role.author"/></label>
+            </div>
+            <div class="form-check">
+                <input type="radio" class="form-check-input" id="bean_roleAdmin" name="bean.administrator" value="true"
+                    <c:if test="${bean.administrator}">checked="checked"</c:if>/>
+                <label class="form-check-label" for="bean_roleAdmin"><spring:message code="personForm.role.siteAdmin"/></label>
+            </div>
+        </div>
+    </fieldset>
+    </c:when>
+    <c:otherwise>
     <div class="row mb-3">
         <label class="col-sm-3 col-form-label" for="bean_administrator"><spring:message code="userAdmin.userAdmin"/></label>
         <div class="col-sm-9">
@@ -175,6 +225,8 @@
                    title="<spring:message code='userAdmin.tip.userAdmin'/>"/>
         </div>
     </div>
+    </c:otherwise>
+    </c:choose>
     </c:if>
     <c:if test="${ssoBound}">
     <div class="row mb-3">

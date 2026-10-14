@@ -25,17 +25,17 @@ import java.util.Objects;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-import org.apache.commons.lang3.CharSetUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.validator.routines.EmailValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.UserManager;
 import org.apache.roller.weblogger.business.comments.CommentService;
-import org.apache.roller.weblogger.config.WebloggerConfig;
 import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.UserToken;
+import org.apache.roller.weblogger.ui.controllers.AdminLog;
 import org.apache.roller.weblogger.ui.controllers.BaseController;
 import org.apache.roller.weblogger.ui.controllers.core.PasswordLinkMailer;
 import org.apache.roller.weblogger.ui.core.RollerLoginSessionManager;
@@ -60,6 +60,8 @@ import org.apache.commons.text.StringEscapeUtils;
 public class UserEditController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(UserEditController.class);
+
+    private static final int MIN_PASSWORD_LENGTH = 8;
 
     private final CommentService comments;
 
@@ -100,6 +102,7 @@ public class UserEditController extends BaseController {
         CreateUserBean bean = new CreateUserBean();
         bean.setLocale(java.util.Locale.getDefault().toString());
         bean.setTimeZone(java.util.TimeZone.getDefault().getID());
+        bean.setEnabled(Boolean.TRUE);
 
         model.addAttribute("bean", bean);
         model.addAttribute("mailConfigured", PasswordLinkMailer.isReady());
@@ -126,11 +129,10 @@ public class UserEditController extends BaseController {
         if (!hasErrors(model)) {
             bean.copyTo(user);
 
-            // A blank password only reaches here when myValidate() let it
-            // through, which happens only when mail is ready to deliver a
-            // set-password link -- the account still needs SOME password, so
-            // it gets a random one nobody is ever told.
-            boolean emailSetPasswordLink = StringUtils.isEmpty(bean.getPassword());
+            // "Email a set-password link" (spec 2026-10-13, section 4): the
+            // account still needs SOME password, so it gets a random one
+            // nobody is ever told.
+            boolean emailSetPasswordLink = sendsSetPasswordLink(bean);
             user.resetPassword(emailSetPasswordLink ? TokenGenerator.newToken() : bean.getPassword());
 
             try {
@@ -239,6 +241,7 @@ public class UserEditController extends BaseController {
 
         if (!hasErrors(model)) {
             String screenNameBefore = user.getScreenName();
+            boolean enabledBefore = Boolean.TRUE.equals(user.getEnabled());
             bean.copyTo(user);
 
             // reset password if set
@@ -273,6 +276,7 @@ public class UserEditController extends BaseController {
                         mgr.revokeRole("editor", user);
                     }
                     weblogger.flush();
+                    logEnabledChange(enabledBefore, user, authUser);
                     expireIfRenamed(user, screenNameBefore);
                     model.addAttribute("bean", new CreateUserBean());
                     addMessage(model, "userAdmin.userSaved", request);
@@ -288,17 +292,24 @@ public class UserEditController extends BaseController {
                 }
                 // grant/revoke admin role if needed
                 boolean userEditingSelf = user.equals(authUser);
+                String roleEvent = null;
                 if (hasAdmin && !bean.isAdministrator()) {
                     if (!userEditingSelf) {
                         // revoke role
                         mgr.revokeRole("admin", user);
+                        roleEvent = "siteAdmin.removed";
                     } else {
                         addError(model, "userAdmin.cantChangeOwnRole", request);
                     }
                 } else if (!hasAdmin && bean.isAdministrator()) {
                     mgr.grantRole("admin", user);
+                    roleEvent = "siteAdmin.granted";
                 }
                 weblogger.flush();
+                logEnabledChange(enabledBefore, user, authUser);
+                if (roleEvent != null) {
+                    AdminLog.record(roleEvent, authUser, "account=" + user.getUserName());
+                }
                 expireIfRenamed(user, screenNameBefore);
 
                 // successful edit: send user back to user admin page
@@ -414,22 +425,27 @@ public class UserEditController extends BaseController {
     private void myValidate(CreateUserBean bean, User user, boolean isAdd,
                             Model model, HttpServletRequest request) {
         if (isAdd) {
-            String allowed = WebloggerConfig.getProperty("username.allowedChars");
-            if (allowed == null || allowed.isBlank()) {
-                allowed = UIUtils.DEFAULT_ALLOWED_CHARS;
+            String userNameProblem = UserNames.problem(bean.getUserName(), weblogger.getUserManager());
+            if (userNameProblem != null) {
+                addFieldError(model, "bean_userName", userNameProblem, request);
             }
-            String safe = CharSetUtils.keep(bean.getUserName(), allowed);
-
-            if (StringUtils.isEmpty(bean.getUserName())) {
-                addFieldError(model, "bean_userName", "error.add.user.missingUserName", request);
-            } else if (!safe.equals(bean.getUserName())) {
-                addFieldError(model, "bean_userName", "error.add.user.badUserName", request);
+            // Spec 2026-10-13, section 4: required on the server too, not
+            // only by the page's script.
+            if (StringUtils.isBlank(bean.getScreenName())) {
+                addFieldError(model, "bean_screenName", "personForm.error.screenName", request);
             }
-            // A blank password is only safe to accept when mail is ready to
-            // deliver a set-password link instead -- otherwise there is no
-            // way to hand the account over at all, so the old rule stands.
-            if (StringUtils.isEmpty(bean.getPassword()) && !PasswordLinkMailer.isReady()) {
-                addFieldError(model, "bean_password", "error.add.user.missingPassword", request);
+            if (StringUtils.isBlank(bean.getFullName())) {
+                addFieldError(model, "bean_fullName", "personForm.error.fullName", request);
+            }
+            if (!EmailValidator.getInstance().isValid(StringUtils.trimToEmpty(bean.getEmailAddress()))) {
+                addFieldError(model, "bean_email", "personForm.error.email", request);
+            }
+            if (!sendsSetPasswordLink(bean)) {
+                if (StringUtils.isEmpty(bean.getPassword())) {
+                    addFieldError(model, "bean_password", "error.add.user.missingPassword", request);
+                } else if (bean.getPassword().length() < MIN_PASSWORD_LENGTH) {
+                    addFieldError(model, "bean_password", "personForm.error.passwordTooShort", request);
+                }
             }
         } else {
             if (user.getUserName() == null) {
@@ -438,6 +454,24 @@ public class UserEditController extends BaseController {
             if (user.isSsoBound() && !StringUtils.isEmpty(bean.getPassword())) {
                 addFieldError(model, "bean_password", "userAdmin.error.ssoPassword", request);
             }
+        }
+    }
+
+    /**
+     * Whether a new person gets an emailed set-password link instead of a
+     * password now: chosen on the form, and possible only while mail can
+     * deliver one -- otherwise the account could never be handed over.
+     */
+    private static boolean sendsSetPasswordLink(CreateUserBean bean) {
+        return CreateUserBean.PASSWORD_LINK.equals(bean.getPasswordMode()) && PasswordLinkMailer.isReady();
+    }
+
+    /** Spec 2026-10-13, section 6: an account's Enabled flag changing is a roller.admin event. */
+    private static void logEnabledChange(boolean enabledBefore, User user, User actor) {
+        boolean enabledNow = Boolean.TRUE.equals(user.getEnabled());
+        if (enabledBefore != enabledNow) {
+            AdminLog.record(enabledNow ? "account.enabled" : "account.disabled", actor,
+                    "account=" + user.getUserName());
         }
     }
 

@@ -129,7 +129,7 @@ class ErrorCasesIT extends RollerIT {
         $("input[name='bean.screenName']").setValue("Impostor");
         $("input[name='bean.fullName']").setValue("Impostor");
         $("input[name='bean.password']").setValue("some-password");
-        $("input[name='bean.emailAddress']").setValue("impostor@example.invalid");
+        $("input[name='bean.emailAddress']").setValue("impostor@example.com");
         // Not click-then-settle: that read the form we had typed into, passed on it, and
         // signed out under the still-unsent POST, which then reached a dead session --
         // the 403 on createUser!save.rol (docs/dev/build-and-ci.md).

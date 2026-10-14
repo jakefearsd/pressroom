@@ -31,6 +31,7 @@ import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.core.RollerLoginSessionManager;
 import org.apache.roller.weblogger.ui.core.RollerSession;
+import org.apache.roller.testing.AdminLogCapture;
 import org.apache.roller.weblogger.TestUtils;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.junit.jupiter.api.AfterEach;
@@ -134,7 +135,8 @@ class UserEditControllerTest {
         String view = controller.createUserSave(ControllerTestFixture.requestFor(null), model, bean);
 
         assertEquals(".UserEdit", view, "a rejected form must be redisplayed, not confirmed");
-        assertEquals(List.of("error.add.user.missingUserName", "error.add.user.missingPassword"),
+        assertEquals(List.of("error.add.user.missingUserName", "personForm.error.screenName",
+                        "personForm.error.fullName", "personForm.error.email", "error.add.user.missingPassword"),
                 ControllerTestFixture.errors(model));
         verify(weblogger.userManager(), never()).addUser(any());
         // The redisplayed form still has to be a working page: menu, locale and
@@ -148,7 +150,7 @@ class UserEditControllerTest {
     void createUserRejectsUserNameWithCharactersOutsideTheAllowedSet() throws Exception {
         // username.allowedChars is A-Za-z0-9; a space or punctuation must not
         // reach the database, where the name becomes part of URLs and logins.
-        CreateUserBean bean = beanFor("jake fear", "secret");
+        CreateUserBean bean = beanFor("jake fear", "secret-password");
 
         String view = controller.createUserSave(ControllerTestFixture.requestFor(null), model, bean);
 
@@ -164,7 +166,7 @@ class UserEditControllerTest {
         // than its own built-in default.
         ControllerTestFixture.setConfigProperty(ALLOWED_CHARS, "A-Za-z0-9_");
 
-        controller.createUserSave(ControllerTestFixture.requestFor(null), model, beanFor("jake_fear", "secret"));
+        controller.createUserSave(ControllerTestFixture.requestFor(null), model, beanFor("jake_fear", "secret-password"));
 
         assertEquals(List.of(), ControllerTestFixture.errors(model));
         verify(weblogger.userManager()).addUser(any());
@@ -175,7 +177,7 @@ class UserEditControllerTest {
         // Deleting the property must not accidentally allow everything.
         ControllerTestFixture.setConfigProperty(ALLOWED_CHARS, null);
 
-        controller.createUserSave(ControllerTestFixture.requestFor(null), model, beanFor("jake_fear", "secret"));
+        controller.createUserSave(ControllerTestFixture.requestFor(null), model, beanFor("jake_fear", "secret-password"));
 
         assertEquals(List.of("error.add.user.badUserName"), ControllerTestFixture.errors(model));
         verify(weblogger.userManager(), never()).addUser(any());
@@ -185,7 +187,7 @@ class UserEditControllerTest {
     void anEmptyConfiguredCharacterSetFallsBackToTheBuiltInDefault() throws Exception {
         ControllerTestFixture.setConfigProperty(ALLOWED_CHARS, "   ");
 
-        controller.createUserSave(ControllerTestFixture.requestFor(null), model, beanFor("jake_fear", "secret"));
+        controller.createUserSave(ControllerTestFixture.requestFor(null), model, beanFor("jake_fear", "secret-password"));
 
         assertEquals(List.of("error.add.user.badUserName"), ControllerTestFixture.errors(model));
         verify(weblogger.userManager(), never()).addUser(any());
@@ -206,7 +208,7 @@ class UserEditControllerTest {
 
     @Test
     void createUserStoresTheProfileAndNeverStoresTheRawPassword() throws Exception {
-        CreateUserBean bean = beanFor("newbie", "secret");
+        CreateUserBean bean = beanFor("newbie", "secret-password");
         bean.setScreenName("New Bie");
         bean.setFullName("New B. Ie");
         bean.setEmailAddress("newbie@example.com");
@@ -231,7 +233,7 @@ class UserEditControllerTest {
         assertNotNull(user.getDateCreated(), "creation date is set by the controller, not the form");
         // Encoded by the configured PasswordEncoder -- the plaintext must not survive.
         assertTrue(new BCryptPasswordEncoder().matches(
-                        "secret", user.getPassword().substring("{bcrypt}".length())),
+                        "secret-password", user.getPassword().substring("{bcrypt}".length())),
                 "the submitted password should verify against the stored hash");
 
         verify(weblogger.weblogger()).flush();
@@ -242,10 +244,10 @@ class UserEditControllerTest {
 
     @Test
     void createUserGrantsTheAdminRoleOnlyWhenTheBoxIsTicked() throws Exception {
-        controller.createUserSave(ControllerTestFixture.requestFor(null), model, beanFor("plain", "secret"));
+        controller.createUserSave(ControllerTestFixture.requestFor(null), model, beanFor("plain", "secret-password"));
         verify(weblogger.userManager(), never()).grantRole(eq("admin"), any());
 
-        CreateUserBean bean = beanFor("boss", "secret");
+        CreateUserBean bean = beanFor("boss", "secret-password");
         bean.setAdministrator(true);
         ExtendedModelMap adminModel = new ExtendedModelMap();
 
@@ -261,7 +263,7 @@ class UserEditControllerTest {
                 .when(weblogger.userManager()).addUser(any());
 
         String view = controller.createUserSave(
-                ControllerTestFixture.requestFor(null), model, beanFor("taken", "secret"));
+                ControllerTestFixture.requestFor(null), model, beanFor("taken", "secret-password"));
 
         assertEquals(".UserEdit", view, "the admin must land back on the form, not on a success page");
         assertEquals(List.of("generic.error.check.logs"), ControllerTestFixture.errors(model));
@@ -662,12 +664,148 @@ class UserEditControllerTest {
         assertEquals("redirect:/roller-ui/admin/userAdmin.rol", controller.modifyUserCancel());
     }
 
+    // --- create a person (spec 2026-10-13, section 4) ---
+
+    /** Criterion 16: required on the server too, each against its own field. */
+    @Test
+    void createUserRefusesAMissingNameFullNameOrEmailServerSide() throws Exception {
+        CreateUserBean bean = beanFor("newbie", "long-enough");
+        bean.setScreenName("  ");
+        bean.setFullName(null);
+        bean.setEmailAddress("");
+
+        String view = controller.createUserSave(ControllerTestFixture.requestFor(null), model, bean);
+
+        assertEquals(".UserEdit", view);
+        assertEquals(List.of("personForm.error.screenName", "personForm.error.fullName", "personForm.error.email"),
+                ControllerTestFixture.errors(model));
+        assertEquals(List.of("bean_screenName", "bean_fullName", "bean_email"),
+                ControllerTestFixture.invalidFields(model));
+        verify(weblogger.userManager(), never()).addUser(any());
+    }
+
+    /** Criterion 16: an email the server cannot accept is refused against the email field. */
+    @Test
+    void createUserRefusesAnInvalidEmail() throws Exception {
+        CreateUserBean bean = beanFor("newbie", "long-enough");
+        bean.setEmailAddress("not-an-address");
+
+        controller.createUserSave(ControllerTestFixture.requestFor(null), model, bean);
+
+        assertEquals(List.of("personForm.error.email"), ControllerTestFixture.errors(model));
+        verify(weblogger.userManager(), never()).addUser(any());
+    }
+
+    /**
+     * An address ending {@code .invalid} is refused (it is not an IANA TLD),
+     * so the browser ITs type {@code @example.com}; nobody should "fix" them
+     * the other way.
+     */
+    @Test
+    void anAddressEndingDotInvalidIsRefusedOnTheEmailField() throws Exception {
+        CreateUserBean bean = beanFor("newbie", "long-enough");
+        bean.setEmailAddress("alice@example.invalid");
+
+        controller.createUserSave(ControllerTestFixture.requestFor(null), model, bean);
+
+        assertEquals(List.of("personForm.error.email"), ControllerTestFixture.errors(model));
+        assertEquals(List.of("bean_email"), ControllerTestFixture.invalidFields(model));
+        verify(weblogger.userManager(), never()).addUser(any());
+    }
+
+    /** Criterion 16: "Set a password now" needs at least 8 characters. */
+    @Test
+    void aPasswordShorterThanEightCharactersIsRefused() throws Exception {
+        controller.createUserSave(ControllerTestFixture.requestFor(null), model, beanFor("newbie", "seven77"));
+
+        assertEquals(List.of("personForm.error.passwordTooShort"), ControllerTestFixture.errors(model));
+        assertEquals(List.of("bean_password"), ControllerTestFixture.invalidFields(model));
+        verify(weblogger.userManager(), never()).addUser(any());
+    }
+
+    /** Criterion 3's rule holds for a person too: a taken username is a field error on the username. */
+    @Test
+    void aTakenUserNameIsAFieldErrorOnTheUserName() throws Exception {
+        when(weblogger.userManager().getUserByUserName("taken", null)).thenReturn(user("taken", "t@example.com"));
+
+        controller.createUserSave(ControllerTestFixture.requestFor(null), model, beanFor("taken", "long-enough"));
+
+        assertEquals(List.of("error.add.user.userNameInUse"), ControllerTestFixture.errors(model));
+        assertEquals(List.of("bean_userName"), ControllerTestFixture.invalidFields(model));
+        verify(weblogger.userManager(), never()).addUser(any());
+    }
+
+    /** A check that could not run is not a check that passed (CLAUDE.md): a failed taken-check refuses. */
+    @Test
+    void aUserNameCheckThatCannotRunRefusesTheAccount() throws Exception {
+        when(weblogger.userManager().getUserByUserName("newbie", null)).thenThrow(new WebloggerException("db down"));
+
+        controller.createUserSave(ControllerTestFixture.requestFor(null), model, beanFor("newbie", "long-enough"));
+
+        assertEquals(List.of("generic.error.check.logs"), ControllerTestFixture.errors(model));
+        assertEquals(List.of("bean_userName"), ControllerTestFixture.invalidFields(model));
+        verify(weblogger.userManager(), never()).addUser(any());
+    }
+
+    /** Criterion 16: the form starts enabled as an Author, and a default save makes exactly that. */
+    @Test
+    void aNewPersonIsEnabledByDefaultAsAnAuthor() throws Exception {
+        controller.createUserExecute(ControllerTestFixture.requestFor(null), model);
+        CreateUserBean form = (CreateUserBean) model.getAttribute("bean");
+        assertEquals(Boolean.TRUE, form.getEnabled());
+        assertFalse(form.isAdministrator());
+
+        controller.createUserSave(ControllerTestFixture.requestFor(null), new ExtendedModelMap(),
+                beanFor("author", "long-enough"));
+
+        ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
+        verify(weblogger.userManager()).addUser(saved.capture());
+        assertEquals(Boolean.TRUE, saved.getValue().getEnabled());
+        verify(weblogger.userManager(), never()).grantRole(eq("admin"), any());
+    }
+
+    /** Spec 2026-10-13, section 6: the person editor's Enabled box and admin role are roller.admin events. */
+    @Test
+    void disablingAPersonAndGrantingAdminAreLogged() throws Exception {
+        storedUser("jake");
+        CreateUserBean bean = beanForExisting("u1", "jake");
+        bean.setEnabled(Boolean.FALSE);
+        bean.setAdministrator(true);
+
+        try (AdminLogCapture log = AdminLogCapture.start()) {
+            controller.modifyUserSave(ControllerTestFixture.requestFor(user("admin", "a@example.com")), model, bean);
+
+            assertEquals(List.of("account.disabled account=jake by=admin", "siteAdmin.granted account=jake by=admin"),
+                    log.lines());
+        }
+    }
+
+    @Test
+    void aSaveThatChangesNeitherLogsNothing() throws Exception {
+        storedUser("jake");
+        CreateUserBean bean = beanForExisting("u1", "jake");
+        bean.setEnabled(Boolean.TRUE);
+
+        try (AdminLogCapture log = AdminLogCapture.start()) {
+            controller.modifyUserSave(ControllerTestFixture.requestFor(user("admin", "a@example.com")), model, bean);
+
+            assertEquals(List.of(), log.lines());
+        }
+    }
+
     // --- helpers ---
 
     private static CreateUserBean beanFor(String userName, String password) {
         CreateUserBean bean = new CreateUserBean();
         bean.setUserName(userName);
         bean.setPassword(password);
+        // Spec 2026-10-13, section 4: name, full name and a valid email are
+        // required on the server, so a bean meant to pass carries them.
+        bean.setScreenName("Screen " + userName);
+        bean.setFullName("Full " + userName);
+        bean.setEmailAddress("person@example.com");
+        bean.setPasswordMode(CreateUserBean.PASSWORD_NOW);
+        bean.setEnabled(Boolean.TRUE);
         return bean;
     }
 
@@ -714,13 +852,13 @@ class UserEditControllerTest {
 
         controller.createUserSave(ControllerTestFixture.requestFor(null), model, bean);
 
-        assertEquals(List.of("bean_userName", "bean_password"),
+        assertEquals(List.of("bean_userName", "bean_screenName", "bean_fullName", "bean_email", "bean_password"),
                 ControllerTestFixture.invalidFields(model));
     }
 
     @Test
     void aUserNameWithForbiddenCharactersMarksOnlyTheUserNameField() throws Exception {
-        CreateUserBean bean = beanFor("jake fear", "secret");
+        CreateUserBean bean = beanFor("jake fear", "secret-password");
 
         controller.createUserSave(ControllerTestFixture.requestFor(null), model, bean);
 
@@ -851,7 +989,7 @@ class UserEditControllerTest {
     /** Task 10: a save lands on the Users list, so it must carry the list's rows. */
     @Test
     void aSuccessfulCreateLandsOnAUsersListWithItsRows() throws Exception {
-        controller.createUserSave(ControllerTestFixture.requestFor(null), model, beanFor("listed", "secret"));
+        controller.createUserSave(ControllerTestFixture.requestFor(null), model, beanFor("listed", "secret-password"));
 
         assertEquals(List.of(), model.getAttribute("accounts"));
         assertEquals("", model.getAttribute("kindFilter"));
