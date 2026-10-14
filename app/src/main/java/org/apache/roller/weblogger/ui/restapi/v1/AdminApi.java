@@ -1,6 +1,7 @@
 package org.apache.roller.weblogger.ui.restapi.v1;
 
 import jakarta.mail.MessagingException;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -24,6 +25,7 @@ import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.RuntimeConfigProperty;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.UserToken;
+import org.apache.roller.weblogger.ui.controllers.AdminLog;
 import org.apache.roller.weblogger.ui.controllers.UISecurityEnforced;
 import org.apache.roller.weblogger.ui.controllers.core.PasswordLinkMailer;
 import org.apache.roller.weblogger.ui.controllers.util.UIUtils;
@@ -208,7 +210,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
     }
 
     @PatchMapping("/users/{userName}")
-    public AdminDtos.UserView patchUser(
+    public AdminDtos.UserView patchUser(HttpServletRequest request,
             @PathVariable("userName") String userName, @RequestBody AdminDtos.UserPatch body)
             throws WebloggerException {
         if (StringUtils.isBlank(userName)) {
@@ -219,7 +221,9 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         if (user == null) {
             throw ApiException.notFound("No such user.");
         }
+        AdminAccountGuard.requireNotAgent(user);
         AdminAccountGuard.requireNotAdmin(mgr, user);
+        boolean enabledBefore = Boolean.TRUE.equals(user.getEnabled());
 
         if (body.emailAddress() != null) {
             String emailAddress = body.emailAddress().trim();
@@ -243,6 +247,11 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
 
         mgr.saveUser(user);
         weblogger.flush();
+        boolean enabledNow = Boolean.TRUE.equals(user.getEnabled());
+        if (enabledBefore != enabledNow) {
+            AdminLog.record(enabledNow ? "account.enabled" : "account.disabled",
+                    (User) request.getAttribute("authenticatedUser"), "account=" + user.getUserName());
+        }
         return AdminDtos.toView(user, roles(user));
     }
 

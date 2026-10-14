@@ -31,4 +31,21 @@ class AdminAccountGuardTest {
         when(users.checkPermission(any(), any())).thenReturn(false);
         assertDoesNotThrow(() -> AdminAccountGuard.requireNotAdmin(users, new User()));
     }
+
+    /** Spec 2026-10-13, section 5: agent accounts are managed in the admin UI only. */
+    @Test
+    void anAgentAccountIsRefusedWith403() {
+        User agent = new User();
+        agent.setKind(User.Kind.AGENT);
+
+        ApiException ex = assertThrows(ApiException.class, () -> AdminAccountGuard.requireNotAgent(agent));
+
+        assertEquals(403, ex.getStatus());
+        assertEquals("Agent accounts are managed in the admin UI.", ex.getMessage());
+    }
+
+    @Test
+    void aPersonPassesTheAgentGuard() {
+        assertDoesNotThrow(() -> AdminAccountGuard.requireNotAgent(new User()));
+    }
 }

@@ -297,6 +297,17 @@ class MetaApiTest {
         assertFalse(body.has("weblogs"), body.toString());
     }
 
+    /** Criterion 22: /me reports whether the caller is a person or an agent. */
+    @Test
+    void meReportsTheAccountKind() throws Exception {
+        authenticateWithBasicAuth();
+        givenGlobalAdmin(false);
+        assertEquals("PERSON", me().get("kind").asString());
+
+        user.setKind(User.Kind.AGENT);
+        assertEquals("AGENT", me().get("kind").asString());
+    }
+
     // ---------------------------------------------------------------- helpers
 
     /** {@code GET /v1/me} as {@link #user}; asserts 200 and returns the body. */

@@ -27,7 +27,7 @@ public final class AdminDtos {
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record UserView(String userName, String screenName, String emailAddress,
-                            boolean enabled, List<String> globalRoles, boolean sso) {
+                            boolean enabled, List<String> globalRoles, boolean sso, String kind) {
     }
 
     /**
@@ -124,7 +124,7 @@ public final class AdminDtos {
 
     public static UserView toView(User user, List<String> roles) {
         return new UserView(user.getUserName(), user.getScreenName(), user.getEmailAddress(),
-                Boolean.TRUE.equals(user.getEnabled()), roles, user.isSsoBound());
+                Boolean.TRUE.equals(user.getEnabled()), roles, user.isSsoBound(), user.getKind().name());
     }
 
     public static WeblogView toView(Weblog weblog) {

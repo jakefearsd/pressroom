@@ -77,6 +77,7 @@ public class MetaApi {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("userName", user.getUserName());
         body.put("screenName", user.getScreenName());
+        body.put("kind", user.getKind().name());
         body.put("globalAdmin", isGlobalAdmin(user));
         body.put("tokenScope", principal == null ? Map.of() : Map.of(
                 "weblog", principal.scopeWeblog() == null ? "" : principal.scopeWeblog(),

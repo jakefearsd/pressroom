@@ -21,6 +21,9 @@ public final class AdminAccountGuard {
 
     public static final String DETAIL = "Admin accounts are managed in the admin UI.";
 
+    /** What an API route that would change an agent account answers (spec 2026-10-13, section 5). */
+    public static final String AGENT_DETAIL = "Agent accounts are managed in the admin UI.";
+
     private AdminAccountGuard() {
     }
 
@@ -28,6 +31,18 @@ public final class AdminAccountGuard {
         GlobalPermission admin = new GlobalPermission(List.of(GlobalPermission.ADMIN));
         if (users.checkPermission(admin, user)) {
             throw ApiException.forbidden(DETAIL);
+        }
+    }
+
+    /**
+     * Agents' identity and credentials stay with people: no API route may
+     * change an agent account, and so neither may MCP, a facade over the API.
+     * Checked before {@link #requireNotAdmin}, so a site-admin agent is
+     * refused as an agent.
+     */
+    public static void requireNotAgent(User user) {
+        if (user.isAgent()) {
+            throw ApiException.forbidden(AGENT_DETAIL);
         }
     }
 

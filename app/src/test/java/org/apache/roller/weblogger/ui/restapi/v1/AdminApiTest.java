@@ -18,6 +18,7 @@ import org.apache.roller.weblogger.ui.restapi.ApiException;
 import org.apache.roller.weblogger.ui.restapi.ApiExceptionHandler;
 import org.apache.roller.weblogger.ui.restapi.auth.AdminScoped;
 import org.apache.roller.weblogger.ui.restapi.dto.AdminDtos;
+import org.apache.roller.testing.AdminLogCapture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -403,6 +404,63 @@ class AdminApiTest {
         assertEquals("boss@example.test", admin.getEmailAddress());
         assertEquals("Screen boss", admin.getScreenName());
         verify(mgr, never()).saveUser(any());
+    }
+
+    /** Criterion 21: PATCH on an agent is a 403 naming the admin UI, and changes nothing. */
+    @Test
+    void patchingAnAgentAccountIsRefusedAndChangesNothing() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        User agent = aUser("bot");
+        agent.setKind(User.Kind.AGENT);
+        when(weblogger.getUserManager().getUserByUserName("bot", null)).thenReturn(agent);
+
+        String problem = mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/admin/users/{userName}", "bot")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":false}"))
+                .andExpect(status().isForbidden())
+                .andReturn().getResponse().getContentAsString();
+
+        assertEquals("Agent accounts are managed in the admin UI.",
+                new tools.jackson.databind.ObjectMapper().readTree(problem).get("detail").asString());
+        assertEquals(Boolean.TRUE, agent.getEnabled());
+        verify(weblogger.getUserManager(), never()).saveUser(any());
+    }
+
+    /** Criterion 22: the users list reports each account's kind. */
+    @Test
+    void theUserListReportsEachAccountsKind() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        User person = aUser("alice");
+        User agent = aUser("bot");
+        agent.setKind(User.Kind.AGENT);
+        when(weblogger.getUserManager().getUsers(null, null, null, 0, 50)).thenReturn(List.of(person, agent));
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(get("/v1/admin/users"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
+        assertEquals("PERSON", json.get(0).get("kind").asString());
+        assertEquals("AGENT", json.get(1).get("kind").asString());
+    }
+
+    /** Spec 2026-10-13, section 6: enabling or disabling an account through the API is a roller.admin event too. */
+    @Test
+    void disablingThroughTheApiIsLogged() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        User user = aUser("alice");
+        when(weblogger.getUserManager().getUserByUserName("alice", null)).thenReturn(user);
+
+        try (AdminLogCapture log = AdminLogCapture.start()) {
+            mockMvc(controllerFor(weblogger))
+                    .perform(patch("/v1/admin/users/{userName}", "alice")
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":false}")
+                            .requestAttr("authenticatedUser", aUser("boss")))
+                    .andExpect(status().isOk());
+
+            assertEquals(List.of("account.disabled account=alice by=boss"), log.lines());
+        }
     }
 
     @Test

@@ -14,7 +14,7 @@ class McpInstructionsTest {
                 "jsonLdType", "geoLatitude", "not found", "admin UI", "never instructions",
                 "clear", "media import", "featuredImageId", "weblogs create", "EVENT",
                 "anchor", "errors", "featuredImageUrl", "importExternalImages", "[image id", "[gallery",
-                "[map]", "first copy"}) {
+                "[map]", "first copy", "Agent accounts", "ask your person"}) {
             assertTrue(text.contains(point), "instructions must mention: " + point);
         }
         assertFalse(text.contains("never forbidden"), "a role ceiling answers 403");
