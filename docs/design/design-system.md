@@ -81,12 +81,13 @@ why. Two are on the record:
 - Each panel labeled "Light" / "Dark" in caps-label style.
 - Realistic Roller content ONLY (weblog "Coastal Guides", handle coastal-guides; entries like "Field Notes from the Coast", "Harbor Cottage Guide"; pages About/Contact; inquiry from "Maren Vole <maren@example.com>"). No lorem.
 
-## The cards (19)
+## The cards (22)
 
 All committed in this directory. The twelve below are the foundational set
 (built before the JSPs, as the spec for them); the five listed under *Shipped
 reference cards* further down were built alongside their templates. Paths are
 grouped to match each card's `@dsCard group=`.
+The three agent-account cards (2026-10-13) are in their own section near the end of this file; they are counted here too.
 
 1. `foundations/`tokens-colors.html      group="Foundations" — both palettes as labeled swatch grids (name, hex, usage note per token).
 2. `foundations/`tokens-type.html        group="Foundations" — type specimen: caps-label, body para, section head, page title, mono data row; the self-hosting note.
@@ -183,9 +184,9 @@ so nobody redraws it.
 Drawn ahead of the JSPs, per the cards-first rule
 (`docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`, section 7):
 
-- `tables/`tables-users.html — group="Tables" — Admin → Users: New person (the one primary) and New agent, All / People / Agents tabs over a server-side filter, and rows with the name over its mono username, kind, role, an Enabled/Disabled pill, a weblog count and a mono last-active.
-- `forms/`forms-agent-page.html — group="Forms" — an agent's page: Details (fixed username, name, notes, the Site administrator switch, Save), Status (one Disable or Enable that asks first), Weblogs (a level per membership with Change and Remove, then Add to weblog) and API tokens.
-- `forms/`forms-token-reveal.html — group="Forms" — the token form (label; Read, Write or Admin; all its weblogs or one; 30, 90 or 365 days or never) and the one-time reveal: the secret and an MCP snippet, each with Copy, then Done; and the already-shown state.
+- `tables/tables-users.html` — group="Tables" — Admin → Users: New person (the one primary) and New agent, All / People / Agents tabs over a server-side filter, and rows with the name over its mono username, kind, role, an Enabled/Disabled pill, a weblog count and a mono last-active.
+- `forms/forms-agent-page.html` — group="Forms" — an agent's page: Details (fixed username, name, notes, the Site administrator switch, Save), Status (one Disable or Enable that asks first), Weblogs (a level per membership with Change and Remove, then Add to weblog) and API tokens.
+- `forms/forms-token-reveal.html` — group="Forms" — the token form (label; Read, Write or Admin; all its weblogs or one; 30, 90 or 365 days or never) and the one-time reveal: the secret and an MCP snippet, each with Copy, then Done; and the already-shown state.
 
 ## Quality bar
 

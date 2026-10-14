@@ -64,6 +64,8 @@
   .box { width: 16px; height: 16px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); }
   .status { display: flex; align-items: center; gap: 12px; }
   .add { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+  .section-row { display: flex; justify-content: space-between; align-items: center; margin: 24px 0 10px; }
+  .section-row .section-head { margin: 0; }
 </style>
 </head>
 <body>
@@ -92,10 +94,10 @@
       </table>
       <div class="add"><span class="input">Food (food)</span><span class="input">Author</span><span class="btn">Add to weblog</span></div>
 
-      <p class="section-head">API tokens</p>
+      <div class="section-row"><p class="section-head">API tokens</p><span class="btn small">New token</span></div>
       <table class="rows">
-        <thead><tr><th>Label</th><th>Role</th><th>Weblog</th><th>Last used</th><th>Expires</th><th></th></tr></thead>
-        <tbody><tr><td>publisher</td><td>Write</td><td class="mono">travel</td><td class="mono">2026-10-13 08:40</td><td class="mono">2027-01-11 08:00</td><td><span class="btn small">Revoke</span></td></tr></tbody>
+        <thead><tr><th>Label</th><th>Role</th><th>Weblog</th><th>Created</th><th>Last used</th><th>Expires</th><th></th></tr></thead>
+        <tbody><tr><td>publisher</td><td>Write</td><td class="mono">travel</td><td class="mono">2026-10-13 07:55</td><td class="mono">2026-10-13 08:40</td><td class="mono">2027-01-11 08:00</td><td><span class="btn small">Revoke</span></td></tr></tbody>
       </table>
     </section>
 
@@ -109,10 +111,10 @@
       <p class="section-head">Status</p>
       <div class="status"><span class="pill bad">Disabled</span><span class="btn">Enable</span><span class="soft">None of its tokens work until it is enabled again.</span></div>
 
-      <p class="section-head">API tokens</p>
+      <div class="section-row"><p class="section-head">API tokens</p><span class="btn small">New token</span></div>
       <table class="rows">
-        <thead><tr><th>Label</th><th>Role</th><th>Weblog</th><th>Last used</th><th>Expires</th><th></th></tr></thead>
-        <tbody><tr><td>publisher</td><td>Write</td><td class="mono">travel</td><td class="mono">2026-10-13 08:40</td><td class="mono">Never</td><td><span class="btn small">Revoke</span></td></tr></tbody>
+        <thead><tr><th>Label</th><th>Role</th><th>Weblog</th><th>Created</th><th>Last used</th><th>Expires</th><th></th></tr></thead>
+        <tbody><tr><td>publisher</td><td>Write</td><td class="mono">travel</td><td class="mono">2026-09-02 10:20</td><td class="mono">2026-10-13 08:40</td><td class="mono">Never</td><td><span class="btn small">Revoke</span></td></tr></tbody>
       </table>
     </section>
   </div>
