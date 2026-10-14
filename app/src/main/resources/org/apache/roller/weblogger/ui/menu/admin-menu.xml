@@ -24,6 +24,10 @@ See comments in editor-menu.xml for info about attributes.
                    name="tabbedmenu.admin.businesses"
                    subactions="editBusiness" />
 
+        <!-- globalPerms="admin"; every API token on the site (spec 2026-10-13) -->
+        <menu-item action="apiTokens"
+                   name="tabbedmenu.admin.apiTokens" />
+
         <!-- globalPerms="admin" -->
         <menu-item action="maintenance"
                    name="tabbedmenu.admin.maintenance" />

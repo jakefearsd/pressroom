@@ -227,7 +227,7 @@ class RollerViewResolverTest {
 
     private static String expectedLayout(String viewName) {
         return switch (viewName) {
-            case ".Comments", ".Submissions", ".Agent", ".AgentCreate" -> "/WEB-INF/jsps/tiles/tiles-tabbedpage.jsp";
+            case ".Comments", ".Submissions", ".Agent", ".AgentCreate", ".ApiTokens" -> "/WEB-INF/jsps/tiles/tiles-tabbedpage.jsp";
             case ".Profile", ".ProfileTokens", ".TokenReveal" -> "/WEB-INF/jsps/tiles/tiles-mainmenupage.jsp";
             case ".Account" -> "/WEB-INF/jsps/tiles/tiles-simplepage.jsp";
             default -> throw new IllegalArgumentException("no expected layout for " + viewName);
@@ -240,5 +240,12 @@ class RollerViewResolverTest {
 
         assertEquals("/WEB-INF/jsps/admin/AgentCreate.jsp", renderAndCapture(".AgentCreate").getAttribute("tile_content"));
         assertEquals("/WEB-INF/jsps/admin/Agent.jsp", renderAndCapture(".Agent").getAttribute("tile_content"));
+    }
+
+    @Test
+    void theSiteTokenListRendersThroughTheTabbedLayout() throws Exception {
+        resolver.init();
+
+        assertEquals("/WEB-INF/jsps/admin/ApiTokens.jsp", renderAndCapture(".ApiTokens").getAttribute("tile_content"));
     }
 }

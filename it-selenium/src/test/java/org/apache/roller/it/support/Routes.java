@@ -218,6 +218,9 @@ public final class Routes {
             new Route("/roller-ui/admin/businesses.rol", Role.ADMIN, "",
                     "#businesses-list-marker"),
 
+            // Admin -> API tokens (spec 2026-10-13): every live token on the site.
+            new Route("/roller-ui/admin/apiTokens.rol", Role.ADMIN, "", "#apiTokensPage"),
+
             new Route("/roller-ui/admin/businesses!edit.rol", Role.ADMIN, "",
                     "form[action$='/roller-ui/admin/businesses!save.rol']"),
 

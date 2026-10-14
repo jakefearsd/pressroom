@@ -172,7 +172,7 @@ class MenuDefinitionTest {
         assertEquals(List.of("admin"), adminMenu.getTabs().get(0).getGlobalPermissionActions(),
                 "The whole admin menu hangs off the global admin permission. If this is lost, "
                         + "every logged-in user gets the server administration menu.");
-        assertEquals(List.of("globalConfig", "userAdmin", "businesses", "maintenance"),
+        assertEquals(List.of("globalConfig", "userAdmin", "businesses", "apiTokens", "maintenance"),
                 actions(adminMenu.getTabs().get(0)),
                 "The admin tab's screens come from admin-menu.xml. Maintenance joined it in "
                         + "W2 Task 7, moved off the blog-author tabs.");

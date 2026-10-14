@@ -94,6 +94,12 @@ class AgentAccountsJspTest {
         assertTrue(formPostingTo(jsp("core/TokenList.jsp"), "tokenRevokeAction").contains("data-confirm="));
     }
 
+    /** Criteria 14 and 25: a site admin's Revoke asks first. */
+    @Test
+    void revokingFromTheSiteListIsConfirmed() throws IOException {
+        assertTrue(formPostingTo(jsp("admin/ApiTokens.jsp"), "apiTokens!revoke.rol").contains("data-confirm="));
+    }
+
     /** Review focus 1: on the reveal page the secret is a form value, never part of a link. */
     @Test
     void theSecretIsNeverPartOfALink() throws IOException {
