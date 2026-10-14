@@ -198,6 +198,7 @@ public class UserEditController extends BaseController {
         model.addAttribute("ssoBound", user.isSsoBound());
         model.addAttribute("mailConfigured", PasswordLinkMailer.isReady());
         model.addAttribute("permissions", getPermissions(user));
+        UserWeblogsModel.populate(weblogger, model, user);
         addLocalesAndTimezones(model);
 
         return ".UserEdit";
@@ -227,6 +228,7 @@ public class UserEditController extends BaseController {
             return AccountRows.showList(weblogger, model, null, null);
         }
         model.addAttribute("permissions", getPermissions(user));
+        UserWeblogsModel.populate(weblogger, model, user);
         model.addAttribute("ssoBound", user.isSsoBound());
 
         // A bound account signs in through Google and must never hold admin
@@ -363,6 +365,7 @@ public class UserEditController extends BaseController {
         bean.setAdministrator(isAdministrator(user));
         model.addAttribute("bean", bean);
         model.addAttribute("permissions", getPermissions(user));
+        UserWeblogsModel.populate(weblogger, model, user);
         model.addAttribute("ssoBound", user.isSsoBound());
 
         if (user.isSsoBound()) {

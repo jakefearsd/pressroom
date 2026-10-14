@@ -1034,6 +1034,38 @@ class JspConsistencyTest {
                         + String.join("\n  ", violations));
     }
 
+    /**
+     * Criterion 25 (spec 2026-10-13): every POST form carries the CSRF token.
+     * Spring Security refuses a POST without it, so a form that lost it is a
+     * page that 403s on submit -- found by a person, not a test. Forms whose
+     * tag names its action before its method are not seen; new forms put
+     * method="post" first.
+     */
+    @Test
+    void everyPostFormCarriesACsrfInput() throws IOException {
+        Pattern formTag = Pattern.compile("<form\\b[^>]*>");
+        List<String> missing = new ArrayList<>();
+        int checked = 0;
+        for (Path jsp : jsps()) {
+            String src = withoutJspComments(Files.readString(jsp, StandardCharsets.UTF_8));
+            Matcher m = formTag.matcher(src);
+            while (m.find()) {
+                if (!m.group().toLowerCase(Locale.ROOT).matches("(?s).*method\\s*=\\s*\"post\".*")) {
+                    continue;
+                }
+                checked++;
+                int end = src.indexOf("</form>", m.end());
+                String body = end < 0 ? src.substring(m.end()) : src.substring(m.end(), end);
+                if (!body.contains("<sec:csrfInput/>")) {
+                    missing.add(jsp + ":" + lineOf(src, m.start()));
+                }
+            }
+        }
+        assertTrue(checked > 40,
+                "only " + checked + " POST forms found -- the scan is not looking where it thinks it is");
+        assertTrue(missing.isEmpty(), "POST forms with no <sec:csrfInput/>:\n  " + String.join("\n  ", missing));
+    }
+
     private static int lineOf(String src, int index) {
         return (int) src.substring(0, index).chars().filter(c -> c == '\n').count() + 1;
     }

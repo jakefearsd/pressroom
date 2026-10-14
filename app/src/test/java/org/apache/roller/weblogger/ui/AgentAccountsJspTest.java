@@ -22,9 +22,12 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -50,5 +53,36 @@ class AgentAccountsJspTest {
         int link = src.indexOf("id=\"bean_passwordModeLink\"");
         assertTrue(when >= 0 && link > when && link < src.indexOf("</c:when>", when),
                 "the link choice must render only while mail is configured");
+    }
+
+    /** The form whose action ends with {@code actionSuffix}, from its tag to its close. */
+    static String formPostingTo(String src, String actionSuffix) {
+        Matcher m = Pattern.compile("(?s)<form\\b[^>]*?action=\"[^\"]*" + Pattern.quote(actionSuffix)
+                + "[^\"]*\".*?</form>").matcher(src);
+        assertTrue(m.find(), "no form posting to " + actionSuffix);
+        return m.group();
+    }
+
+    /** Criterion 25: removing a membership asks first. */
+    @Test
+    void removingAMembershipIsConfirmed() throws IOException {
+        assertTrue(formPostingTo(jsp("admin/UserWeblogs.jsp"), "userWeblogs!remove.rol").contains("data-confirm="));
+    }
+
+    /** Criterion 18: with group blogging off the section says so instead of offering to add. */
+    @Test
+    void addingIsOfferedOnlyWhileGroupBloggingIsOn() throws IOException {
+        String src = jsp("admin/UserWeblogs.jsp");
+        int off = src.indexOf("<c:when test=\"${not groupBloggingEnabled}\">");
+        assertTrue(off >= 0, "the section has a group-blogging-off branch");
+        int offEnd = src.indexOf("</c:when>", off);
+        assertTrue(src.substring(off, offEnd).contains("userWeblogs.groupBloggingOff"));
+        assertTrue(src.indexOf("userWeblogs!grant.rol") > offEnd, "the add form sits outside that branch");
+    }
+
+    /** No field is named weblog: RollerHandlerInterceptor would read it as the action weblog. */
+    @Test
+    void noMembershipFieldIsNamedWeblog() throws IOException {
+        assertFalse(jsp("admin/UserWeblogs.jsp").contains("name=\"weblog\""));
     }
 }

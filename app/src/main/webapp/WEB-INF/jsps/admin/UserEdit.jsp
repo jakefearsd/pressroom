@@ -239,68 +239,6 @@
     </c:if>
 
 
-    <c:if test="${actionName == 'modifyUser'}">
-        <h3 class="section-head"><spring:message code="userAdmin.userWeblogs" /></h3>
-
-        <c:if test="${not empty permissions}">
-            <p><spring:message code="userAdmin.userMemberOf" />:</p>
-            <%-- rollertable for the token palette and the caps-label header
-                 row. That rule keys off the first <tr> of the table, so this
-                 table -- which had no header row at all -- needs one, or the
-                 first weblog's name would be rendered as the label. --%>
-            <table class="rollertable table" style="width: 80%">
-                <tr>
-                    <th scope="col" width="55%"><spring:message code="generic.name"/></th>
-                    <th scope="col" width="15%">&nbsp;</th>
-                    <th scope="col" width="15%">&nbsp;</th>
-                    <th scope="col" width="15%">&nbsp;</th>
-                </tr>
-                <c:forEach var="perms" items="${permissions}">
-                    <tr>
-                        <td width="%30">
-                            <a href='${urls.weblogAbsolute(perms.weblog)}'>
-                                ${fn:escapeXml(perms.weblog.name)} [${fn:escapeXml(perms.weblog.handle)}]
-                            </a>
-                        </td>
-                        <td width="%15">
-                            <c:url var="newEntry" value="/roller-ui/authoring/entryAdd.rol">
-                                <c:param name="weblog" value="${perms.weblog.handle}" />
-                            </c:url>
-                            <span class="bi bi-pencil" aria-hidden="true"></span>
-                            <a href='${newEntry}'>
-                            <spring:message code="userAdmin.newEntry" /></a>
-                        </td>
-                        <td width="%15">
-                            <c:url var="editEntries" value="/roller-ui/authoring/entries.rol">
-                                <c:param name="weblog" value="${perms.weblog.handle}" />
-                            </c:url>
-                            <span class="bi bi-pencil" aria-hidden="true"></span>
-                            <a href='${editEntries}'>
-                            <spring:message code="userAdmin.editEntries" /></a>
-                        </td>
-                        <td width="%15">
-                            <c:url var="manageWeblog" value="/roller-ui/authoring/weblogConfig.rol">
-                                <c:param name="weblog" value="${perms.weblog.handle}" />
-                            </c:url>
-                            <span class="bi bi-pencil" aria-hidden="true"></span>
-                            <a href='${manageWeblog}'>
-                            <spring:message code="userAdmin.manage" /></a>
-                        </td>
-                    </tr>
-                </c:forEach>
-            </table>
-        </c:if>
-        <%-- No action button: an administrator cannot grant weblog membership
-             from this form -- that happens on the weblog's own Members page,
-             which is per-weblog and needs a weblog picked first. --%>
-        <c:if test="${empty permissions}">
-            <div class="empty-state">
-                <p class="empty-state-title"><spring:message code="empty.userWeblogs.title" /></p>
-                <p class="empty-state-body"><spring:message code="userAdmin.userHasNoWeblogs" /></p>
-            </div>
-        </c:if>
-    </c:if>
-
     <div class="control mt-4">
         <button type="submit" class="btn btn-primary" id="save_button">
             <spring:message code="generic.save"/>
@@ -343,6 +281,11 @@
     </form>
 </c:if>
 
+
+<c:if test="${actionName == 'modifyUser' && not empty bean.id}">
+    <%-- Outside the save form: the section posts forms of its own. --%>
+    <jsp:include page="/WEB-INF/jsps/admin/UserWeblogs.jsp"/>
+</c:if>
 
 <script>
 

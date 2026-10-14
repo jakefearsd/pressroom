@@ -28,6 +28,7 @@ import org.apache.roller.weblogger.business.MockWeblogger;
 import org.apache.roller.weblogger.business.comments.CommentService;
 import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.User;
+import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.core.RollerLoginSessionManager;
 import org.apache.roller.weblogger.ui.core.RollerSession;
@@ -993,5 +994,21 @@ class UserEditControllerTest {
 
         assertEquals(List.of(), model.getAttribute("accounts"));
         assertEquals("", model.getAttribute("kindFilter"));
+    }
+
+    /** Task 12: a person's page carries the Weblogs section's model. */
+    @Test
+    void modifyOffersTheWeblogsTheAccountIsNotIn() throws Exception {
+        storedUser("jake");
+        Weblog other = new Weblog();
+        other.setHandle("other");
+        when(weblogger.weblogManager().getWeblogs(null, null, null, null, 0, -1)).thenReturn(List.of(other));
+        CreateUserBean bean = new CreateUserBean();
+        bean.setId("u1");
+
+        controller.modifyUserExecute(ControllerTestFixture.requestFor(null), model, bean);
+
+        assertEquals(List.of(other), model.getAttribute("availableWeblogs"));
+        assertEquals("jake", model.getAttribute("weblogsAccount"));
     }
 }

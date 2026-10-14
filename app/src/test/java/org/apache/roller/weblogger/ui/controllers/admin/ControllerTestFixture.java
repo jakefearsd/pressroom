@@ -43,6 +43,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.ui.Model;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -148,6 +149,20 @@ final class ControllerTestFixture {
     @SuppressWarnings("unchecked")
     static List<String> messages(Model model) {
         List<String> messages = (List<String>) model.getAttribute("messages");
+        return messages == null ? Collections.emptyList() : messages;
+    }
+
+    /** Errors a controller parked in flash scope to survive a redirect. */
+    @SuppressWarnings("unchecked")
+    static List<String> flashErrors(RedirectAttributes redirectAttributes) {
+        List<String> errors = (List<String>) redirectAttributes.getFlashAttributes().get("errors");
+        return errors == null ? Collections.emptyList() : errors;
+    }
+
+    /** Messages a controller parked in flash scope to survive a redirect. */
+    @SuppressWarnings("unchecked")
+    static List<String> flashMessages(RedirectAttributes redirectAttributes) {
+        List<String> messages = (List<String>) redirectAttributes.getFlashAttributes().get("messages");
         return messages == null ? Collections.emptyList() : messages;
     }
 
