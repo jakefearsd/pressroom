@@ -18,8 +18,10 @@
 package org.apache.roller.weblogger.business;
 
 import java.sql.Timestamp;
+import java.util.Date;
 
 import org.apache.roller.weblogger.TestUtils;
+import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.UserToken;
 import org.apache.roller.weblogger.util.TokenGenerator;
@@ -31,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Tests for {@link UserTokenManager}: hashed storage, single-use, expiry, and
@@ -231,5 +234,43 @@ class UserTokenManagerTest {
 
         // tearDown() below calls TestUtils.teardownUser(...); reaching it
         // without an exception is the assertion.
+    }
+
+    /** Criterion 5: a set-password link is never issued for an agent. */
+    @Test
+    void noLinkIsIssuedForAnAgent() throws Exception {
+        String name = "junit_tokenagent" + System.nanoTime();
+        User agent = new User();
+        agent.setUserName(name);
+        agent.setScreenName("Token Agent");
+        agent.setFullName("Token Agent");
+        agent.setDateCreated(new Date());
+        TestUtils.weblogger().getUserManager().addAgent(agent, false);
+        TestUtils.endSession(true);
+        try {
+            User managed = TestUtils.weblogger().getUserManager().getUserByUserName(name, null);
+
+            WebloggerException refused = assertThrows(WebloggerException.class,
+                    () -> manager().issueToken(managed, UserToken.Purpose.PASSWORD_SET));
+
+            assertEquals("An agent account has no password.", refused.getMessage());
+        } finally {
+            TestUtils.endSession(false);
+            TestUtils.teardownUser(name);
+            TestUtils.endSession(true);
+        }
+    }
+
+    /** Criterion 5: a link whose account is an agent does not validate, so the reset form refuses it. */
+    @Test
+    void aLinkHeldByAnAgentDoesNotValidate() throws Exception {
+        String raw = manager().issueToken(TestUtils.getManagedUser(user), UserToken.Purpose.PASSWORD_SET);
+        TestUtils.endSession(true);
+        User reloaded = TestUtils.weblogger().getUserManager().getUserByUserName(user.getUserName(), null);
+        reloaded.setKind(User.Kind.AGENT);
+        TestUtils.weblogger().getUserManager().saveUser(reloaded);
+        TestUtils.endSession(true);
+
+        assertNull(manager().validate(raw));
     }
 }

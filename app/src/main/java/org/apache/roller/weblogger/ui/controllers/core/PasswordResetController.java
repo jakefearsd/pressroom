@@ -226,9 +226,10 @@ public class PasswordResetController extends BaseController {
             return ".ResetPassword";
         }
 
-        if (user.isSsoBound()) {
-            // Defence in depth: no token should exist for a bound account,
-            // but resetPassword would throw for one.
+        if (user.isSsoBound() || user.isAgent()) {
+            // Defence in depth: no token should exist for a bound account nor
+            // for an agent, which has no password at all, but resetPassword
+            // would throw for either.
             model.addAttribute("resetTokenValid", false);
             return ".ResetPassword";
         }
@@ -304,11 +305,12 @@ public class PasswordResetController extends BaseController {
         }
         UserManager userManager = weblogger.getUserManager();
         User user = userManager.getUserByUserName(identifier, Boolean.TRUE);
-        if (user != null) {
-            // An SSO-bound account has no password to reset.
-            return user.isSsoBound() ? null : user;
+        if (user == null) {
+            user = userManager.getUserByEmail(identifier);
         }
-        return userManager.getUserByEmail(identifier);
+        // An SSO-bound account has no password to reset, and an agent has none
+        // at all (spec 2026-10-13, section 2): both read as unknown.
+        return user == null || user.isSsoBound() || user.isAgent() ? null : user;
     }
 
     /** The throttle key for an identifier: case-insensitive, distinct from a remote address. */

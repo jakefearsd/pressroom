@@ -589,4 +589,51 @@ class PasswordResetControllerTest {
         verify(mocks.getUserManager(), never()).saveUser(any());
         assertEquals(User.SSO_PASSWORD_MARKER, reader.getPassword());
     }
+
+    private static User agent(String userName) {
+        User agent = user(userName, userName + "@agents.invalid");
+        agent.setKind(User.Kind.AGENT);
+        return agent;
+    }
+
+    /** Criterion 5: an agent named by username reads as an unknown account and is sent nothing. */
+    @Test
+    void forgotPasswordNamingAnAgentSendsNothing() throws Exception {
+        when(mocks.getUserManager().getUserByUserName("bot", Boolean.TRUE)).thenReturn(agent("bot"));
+
+        String view = controller.forgotSend(request(), model, "bot");
+
+        assertEquals(".ForgotPassword", view);
+        assertEquals(List.of("forgotPassword.confirmation"), ControllerTestFixture.messages(model));
+        verify(mocks.getUserTokenManager(), never()).issueToken(any(), any());
+        assertTrue(mail.sent().isEmpty());
+    }
+
+    /** Criterion 5: and by email, should the store ever hand one back. */
+    @Test
+    void forgotPasswordByAnAgentsEmailSendsNothing() throws Exception {
+        when(mocks.getUserManager().getUserByEmail("ops@example.com")).thenReturn(agent("bot"));
+
+        controller.forgotSend(request(), model, "ops@example.com");
+
+        assertEquals(List.of("forgotPassword.confirmation"), ControllerTestFixture.messages(model));
+        verify(mocks.getUserTokenManager(), never()).issueToken(any(), any());
+        assertTrue(mail.sent().isEmpty());
+    }
+
+    /** Criterion 5: a set-password link presented for an agent is refused. */
+    @Test
+    void resetSaveRefusesAnAgent() throws Exception {
+        User bot = agent("bot");
+        when(mocks.getUserTokenManager().validate("good-token")).thenReturn(new UserToken());
+        when(mocks.getUserTokenManager().consume("good-token")).thenReturn(bot);
+
+        String view = controller.resetSave(request(), new MockHttpServletResponse(), model,
+                new RedirectAttributesModelMap(), "good-token", "newpassword1", "newpassword1");
+
+        assertEquals(".ResetPassword", view);
+        assertEquals(Boolean.FALSE, model.getAttribute("resetTokenValid"));
+        verify(mocks.getUserManager(), never()).saveUser(any());
+        assertNull(bot.getPassword());
+    }
 }

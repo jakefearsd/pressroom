@@ -48,6 +48,10 @@ public class JPAUserTokenManagerImpl implements UserTokenManager {
 
     @Override
     public String issueToken(User user, UserToken.Purpose purpose) throws WebloggerException {
+        if (user.isAgent()) {
+            // Nothing is ever mailed to an agent (spec 2026-10-13, section 1).
+            throw new WebloggerException("An agent account has no password.");
+        }
         String raw = TokenGenerator.newToken();
         UserToken token = new UserToken();
         token.setUser(user);
@@ -78,6 +82,10 @@ public class JPAUserTokenManagerImpl implements UserTokenManager {
             return null;
         }
         if (token.getExpires() == null || token.getExpires().before(new Date())) {
+            return null;
+        }
+        if (token.getUser() != null && token.getUser().isAgent()) {
+            // A link presented for an agent account is refused.
             return null;
         }
         return token;
