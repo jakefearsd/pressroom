@@ -37,6 +37,7 @@ import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.MailProvider;
 import org.apache.roller.weblogger.business.WeblogManager;
 import org.apache.roller.weblogger.business.Weblogger;
+import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.business.startup.WebloggerStartup;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
@@ -99,9 +100,15 @@ public final class MailUtil {
 
             User creator = weblogger.getUserManager().getUserByUserName(entry.getCreatorUserName());
             String userName = creator.getUserName();
-            String from = creator.getEmailAddress();
-            // an agent has no mailbox, so it is not copied on its own entry
-            String cc[] = creator.isAgent() ? new String[0] : new String[] {from};
+            // An agent has no mailbox: its @agents.invalid address is neither
+            // copied (nothing is mailed to an agent) nor used as the sender
+            // (relays check the sender and would refuse the notice for the
+            // people); the site address stands in, or none, leaving the
+            // session default. The body still names the agent.
+            String from = creator.isAgent()
+                    ? WebloggerRuntimeConfig.getProperty("site.adminemail")
+                    : creator.getEmailAddress();
+            String cc[] = creator.isAgent() || from == null ? new String[0] : new String[] {from};
             String bcc[] = new String[0];
             String to[];
             String subject;
@@ -122,6 +129,10 @@ public final class MailUtil {
             }
 
             to = reviewers.toArray(String[]::new);
+            if (to.length == 0) {
+                log.debug("No reviewer to tell about pending entry {}", entry.getId());
+                return;
+            }
             
             // Figure URL to entry edit page
             String editURL = weblogger.getUrlStrategy()

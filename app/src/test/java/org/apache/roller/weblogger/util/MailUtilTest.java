@@ -170,6 +170,43 @@ class MailUtilTest {
         MimeMessage message = mail.onlyMessage();
         assertEquals(List.of("reviewer@example.invalid"), addresses(message, Message.RecipientType.TO));
         assertTrue(addresses(message, Message.RecipientType.CC).isEmpty(), "the agent creator is not copied");
+        assertTrue(message.getFrom() == null || Arrays.stream(message.getFrom())
+                .noneMatch(a -> a.toString().contains("agents.invalid")),
+                "an agent's address is never the sender");
+        assertTrue(message.getContent().toString().contains("bot"), "the body still names the agent");
+    }
+
+    /** With only agents to tell, nobody is addressed: nothing is sent and nothing throws. */
+    @Test
+    void pendingEntryNoticeWithNobodyToTellSendsNothing() throws Exception {
+        User author = new User();
+        author.setUserName("bot");
+        author.setEmailAddress("bot@agents.invalid");
+        author.setKind(User.Kind.AGENT);
+        User agent = new User();
+        agent.setUserName("bot2");
+        agent.setEmailAddress("bot2@agents.invalid");
+        agent.setKind(User.Kind.AGENT);
+
+        WeblogManager weblogs = mock(WeblogManager.class);
+        when(weblogs.getWeblogUsers(weblog, true)).thenReturn(List.of(agent));
+        UserManager users = mock(UserManager.class);
+        when(users.getUserByUserName("bot")).thenReturn(author);
+        when(users.checkPermission(any(), any(User.class))).thenReturn(true);
+        Weblogger tier = mock(Weblogger.class);
+        when(tier.getWeblogManager()).thenReturn(weblogs);
+        when(tier.getUserManager()).thenReturn(users);
+        when(tier.getUrlStrategy()).thenReturn(mock(URLStrategy.class));
+
+        WeblogEntry entry = new WeblogEntry();
+        entry.setId("entry-1");
+        entry.setWebsite(weblog);
+        entry.setCreatorUserName("bot");
+        entry.setTitle("Pending");
+
+        MailUtil.sendPendingEntryNotice(tier, entry);
+
+        assertTrue(mail.sent().isEmpty(), "no message when there is nobody to tell");
     }
 
     // ------------------------------------------------------- configured or not
