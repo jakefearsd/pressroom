@@ -64,6 +64,11 @@ class WeblogCreateApiTest {
     }
 
     private ResultActions send(String json, boolean creationAllowed) throws Exception {
+        return send(json, creationAllowed, jake(), "admin@example.com");
+    }
+
+    private ResultActions send(String json, boolean creationAllowed, User creator, String siteEmail)
+            throws Exception {
         WeblogCreateApi controller = new WeblogCreateApi();
         controller.weblogger = weblogger;
         MockMvc mvc = MockMvcBuilders.standaloneSetup(controller)
@@ -74,12 +79,13 @@ class WeblogCreateApiTest {
                     .thenReturn(creationAllowed);
             runtime.when(() -> WebloggerRuntimeConfig.getBooleanProperty("groupblogging.enabled"))
                     .thenReturn(true);
+            runtime.when(() -> WebloggerRuntimeConfig.getProperty("site.adminemail")).thenReturn(siteEmail);
             config.when(() -> WebloggerConfig.getProperty("username.allowedChars")).thenReturn("A-Za-z0-9");
             config.when(() -> WebloggerConfig.getProperty("rendering.weblogMapper.rollerProtectedUrls"))
                     .thenReturn("api,page,search");
             config.when(() -> WebloggerConfig.getProperty("rendering.weblogMapper.userProtectedUrls"))
                     .thenReturn("");
-            return mvc.perform(post("/v1/weblogs").requestAttr("authenticatedUser", jake())
+            return mvc.perform(post("/v1/weblogs").requestAttr("authenticatedUser", creator)
                     .contentType(MediaType.APPLICATION_JSON).content(json));
         }
     }
@@ -106,6 +112,45 @@ class WeblogCreateApiTest {
         assertEquals("Europe/Berlin", weblog.getTimeZone());
         assertEquals("en_US", weblog.getLocale());
         assertEquals("jake@example.com", weblog.getEmailAddress());
+    }
+
+    private static User agent() {
+        User agent = jake();
+        agent.setUserName("bot1");
+        agent.setKind(User.Kind.AGENT);
+        agent.setEmailAddress("bot1@agents.invalid");
+        return agent;
+    }
+
+    private static final String BODY = "{\"handle\":\"travels\",\"name\":\"Travels\",\"theme\":\"journal\"}";
+
+    /** Final review I2: contact messages are mailed to the weblog's address, never to an agent. */
+    @Test
+    void aWeblogAnAgentCreatesTakesTheSitesAddressNotTheAgents() throws Exception {
+        send(BODY, true, agent(), " admin@example.com ").andExpect(status().isCreated());
+
+        ArgumentCaptor<Weblog> added = ArgumentCaptor.forClass(Weblog.class);
+        verify(weblogManager).addWeblog(added.capture());
+        assertEquals("admin@example.com", added.getValue().getEmailAddress());
+    }
+
+    @Test
+    void anAgentWithNoSiteAddressToFallBackOnMustGiveOne() throws Exception {
+        ResultActions result = send(BODY, true, agent(), "  ")
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("emailAddress"));
+        assertTrue(detailOf(result).contains("emailAddress is required"), detailOf(result));
+        verify(weblogManager, never()).addWeblog(any());
+    }
+
+    @Test
+    void anAddressTheAgentGivesIsKept() throws Exception {
+        send("{\"handle\":\"travels\",\"name\":\"Travels\",\"theme\":\"journal\","
+                + "\"emailAddress\":\"desk@example.com\"}", true, agent(), "").andExpect(status().isCreated());
+
+        ArgumentCaptor<Weblog> added = ArgumentCaptor.forClass(Weblog.class);
+        verify(weblogManager).addWeblog(added.capture());
+        assertEquals("desk@example.com", added.getValue().getEmailAddress());
     }
 
     @Test

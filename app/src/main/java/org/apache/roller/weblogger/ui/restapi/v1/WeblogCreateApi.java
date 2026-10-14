@@ -4,7 +4,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.roller.weblogger.WebloggerException;
+import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
@@ -44,6 +46,17 @@ public class WeblogCreateApi extends BaseApiController implements UISecurityEnfo
         }
         ColumnLimits.requireMaxLength("emailAddress", body.emailAddress(), ColumnLimits.WEBLOG_EMAIL_ADDRESS);
         CreateWeblogBean bean = AdminDtos.toBean(body, user);
+        if (user.isAgent() && StringUtils.isBlank(body.emailAddress())) {
+            // An agent's @agents.invalid address is no mailbox: readers' contact
+            // messages are mailed to the weblog's address, so the site's address
+            // stands in, and with none to give the agent must say where mail goes.
+            String siteAddress = WebloggerRuntimeConfig.getProperty("site.adminemail");
+            if (StringUtils.isBlank(siteAddress)) {
+                throw ApiException.invalidField("emailAddress",
+                        "emailAddress is required: an agent has no address of its own and this site has no default.");
+            }
+            bean.setEmailAddress(siteAddress.trim());
+        }
         List<WeblogCreationRules.Violation> broken = WeblogCreationRules.check(bean, context);
         if (!broken.isEmpty()) {
             String detail = broken.stream().map(WeblogCreationRules.Violation::detail)
