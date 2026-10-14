@@ -22,6 +22,7 @@ import java.util.List;
 import org.apache.roller.weblogger.business.WebloggerProvider;
 import org.apache.roller.weblogger.config.WebloggerConfig;
 import org.apache.roller.weblogger.ui.core.RollerContext;
+import org.apache.roller.weblogger.ui.core.security.LastLoginRecorder;
 import org.apache.roller.weblogger.ui.core.security.RollerRememberMeAuthenticationProvider;
 import org.apache.roller.weblogger.ui.core.security.RollerRememberMeServices;
 import org.apache.roller.weblogger.ui.core.security.RollerUserDetailsService;
@@ -107,6 +108,16 @@ public class SecurityConfig {
     @Bean
     public RollerRememberMeServices rollerRememberMeServices(RollerUserDetailsService userDetailsService) {
         return new RollerRememberMeServices(userDetailsService);
+    }
+
+    /**
+     * Stamps last_login on every form, remember-me and SSO sign-in (spec
+     * 2026-10-13, section 2). A bean so the context's event multicaster
+     * delivers the filters' InteractiveAuthenticationSuccessEvent to it.
+     */
+    @Bean
+    public LastLoginRecorder lastLoginRecorder(WebloggerProvider webloggerProvider) {
+        return new LastLoginRecorder(webloggerProvider);
     }
 
     /**

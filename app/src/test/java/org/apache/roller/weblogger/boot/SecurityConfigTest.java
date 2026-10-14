@@ -17,11 +17,15 @@
 package org.apache.roller.weblogger.boot;
 
 import java.lang.reflect.Method;
+import java.util.List;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import org.apache.roller.weblogger.TestUtils;
+import org.apache.roller.weblogger.business.MockWeblogger;
 import org.apache.roller.weblogger.business.WebloggerProvider;
 import org.apache.roller.weblogger.config.WebloggerConfig;
+import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.ui.core.security.RollerUserDetailsService;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -51,8 +55,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -465,5 +472,37 @@ class SecurityConfigTest {
         when(request.getRequestURI()).thenReturn(path);
         when(request.getContextPath()).thenReturn("");
         return request;
+    }
+
+    /**
+     * Criterion 20 through the real filter chain: the form-login filter
+     * publishes InteractiveAuthenticationSuccessEvent only because the
+     * configurer post-processes it with the context's event publisher, and
+     * LastLoginRecorder hears it only because SecurityConfig declares it.
+     * Either wire coming loose leaves last_login null forever, silently.
+     */
+    @Test
+    void aSuccessfulFormSignInRecordsTheLastLogin() throws Exception {
+        WebloggerProvider provider = context.getBean(WebloggerProvider.class);
+        MockWeblogger tier = MockWeblogger.create();
+        User alice = new User();
+        alice.setUserName("alice");
+        alice.setPassword(TestUtils.TEST_PASSWORD_HASH);
+        when(tier.userManager().getUserByUserName("alice")).thenReturn(alice);
+        when(tier.userManager().getRoles(alice)).thenReturn(List.of("editor"));
+        when(provider.isBootstrapped()).thenReturn(true);
+        when(provider.getWeblogger()).thenReturn(tier.weblogger());
+        try {
+            mockMvc.perform(formLogin("/roller_j_security_check")
+                            .user("j_username", "alice")
+                            .password("j_password", TestUtils.TEST_PASSWORD))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl("/roller-ui/login-redirect.rol"));
+
+            verify(tier.userManager()).recordLogin("alice");
+            assertEquals(1, tier.flushCount());
+        } finally {
+            reset(provider);
+        }
     }
 }
