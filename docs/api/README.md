@@ -9,7 +9,9 @@ users — everything the JSP admin UI can do, callable without a browser.
 > Roller version if you automate against this; do not assume forward
 > compatibility.
 
-There is **no web UI for minting a token**. The only route in is the CLI:
+Mint a token in the admin UI: **Profile → API tokens** for yourself, or an
+agent's page (**Admin → Users →** the agent) for an agent account. The secret
+is shown once. A script can mint one with the CLI instead:
 
 ```
 bin/roller-api auth login --url http://localhost:8083
@@ -69,6 +71,31 @@ printf '%s\n' "$PASSWORD" | bin/roller-api auth login \
 
 ## Getting a token
 
+### In the admin UI
+
+**Profile → API tokens** mints, lists and revokes your own tokens. A site
+admin does the same for an agent on the agent's page, and sees every token on
+the site under **Admin → API tokens** (owner, kind and issuer; a toggle adds
+revoked and expired ones). The form takes a label, a role (Read, Write or
+Admin: `READ`, `POST`, `ADMIN`), a weblog (all of the account's weblogs, or
+one it is a member of; a site admin may pick any) and an expiry (30, 90 or
+365 days, or never; 90 by default). The next page shows the secret once, with
+an MCP snippet to copy. It is never cached, and loading it again only says
+the token was already shown.
+
+### Agent accounts
+
+An agent is an account for software. It never signs in -- no password, no
+password reset, no single sign-on -- and works only through the tokens a site
+admin mints for it. A site admin creates it under **Admin → Users → New
+agent**, adds it to weblogs on its page, and may switch on **Site
+administrator**, which lets an `ADMIN` token from it use the site-wide admin
+API. Disabling an account, agent or person, stops every token it holds on the
+next request. Agent accounts, memberships and tokens are managed only in the
+admin UI: no API route creates or changes an agent, or mints a token for one.
+
+### With the API
+
 `POST /api/v1/tokens` (mint), plus `GET`/`DELETE` on the same resource
 (list/revoke), is where you use HTTP Basic authentication — your Roller
 username and password — because minting your first token can't itself
@@ -117,6 +144,12 @@ owning user can already reach. `expiresAt` is an optional ISO-8601 instant;
 omitted, the token never expires on its own — revoke it instead
 (`DELETE /api/v1/tokens/{id}`, Basic-auth only, same as list/issue).
 
+`weblog` must name a weblog you are a member of (a site admin may name any
+existing weblog); a foreign or unknown weblog is a 400 whose
+`errors[0].field` is `weblog`. `expiresAt` must be in the future, or it is a
+400 on `expiresAt`. `GET /api/v1/tokens` lists revoked tokens too, each with
+its `revokedAt`.
+
 `bin/roller-api auth login` wraps exactly this call (minting an `ADMIN`-role
 token under the label `roller-api cli`) and writes the URL and token to
 `~/.roller/credentials` (`chmod 600`). Every other `roller-api` subcommand
@@ -163,7 +196,7 @@ call to it is a 401 like anywhere else. `GET /api/v1/me` also lists the
 `permission` (`ADMIN`, `POST` or `EDIT_DRAFT`), sorted by handle: the one
 weblog a pinned token is limited to, or every weblog its user belongs to.
 This is how a token that is not a site admin finds its weblogs, since listing
-`/api/v1/weblogs` needs the admin role. Every other route
+`/api/v1/weblogs` needs the admin role. `GET /api/v1/me` also reports the account's `kind`: `PERSON` or `AGENT`. Every other route
 that resolves no weblog defaults to **deny**, not "unlimited because there
 was nothing to check": `/api/v1/admin/**` and the site-wide
 `/api/v1/weblogs` resource require `ADMIN` role via a separate, explicit
@@ -768,6 +801,11 @@ POST  /api/v1/weblogs
 PATCH /api/v1/weblogs/{handle}
 ```
 
+Each user in `GET /api/v1/admin/users` carries `kind`, `PERSON` or `AGENT`.
+`POST /api/v1/admin/users` creates people only. `PATCH
+/api/v1/admin/users/{userName}` on an agent answers 403 `Agent accounts are
+managed in the admin UI.`, as it does on an admin.
+
 **`POST /api/v1/weblogs` creates a weblog, and is not `ADMIN`-only.** It
 follows the Create Weblog page's rule: any user the page lets create a weblog
 may do it with a token whose role is `POST` or `ADMIN` and that is not limited
@@ -899,6 +937,9 @@ action beyond the token's role answers "forbidden", exactly as over REST.
 - **Admin accounts are read-only through the API**, and so through MCP. Changing one (for example
   `PATCH /api/v1/admin/users/{userName}` on an admin) answers 403 `Admin accounts are managed in the
   admin UI.` Disabling, deleting, re-addressing and role changes for admins happen in the admin UI.
+- **Agent accounts are read-only through the API**, and so through MCP: `PATCH
+  /api/v1/admin/users/{userName}` (the `users` tool's `update`) on an agent answers 403 `Agent accounts
+  are managed in the admin UI.` Weblog memberships and tokens are managed by a person in the admin UI.
 - **`site.absoluteurl` is read-only through the API.** `PATCH /api/v1/admin/config` (the
   `site_settings` tool) naming it answers 403 `site.absoluteurl is managed in the admin UI.` and
   applies nothing: it is the base of every password-reset link, so a stolen token able to change it

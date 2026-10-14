@@ -77,11 +77,12 @@ resolves through the index at the end of `CLAUDE.md`.
   `.empty-state`'s `font-weight`/`text-transform`/`letter-spacing` resets are
   load-bearing. `Pages.jsp`/`Submissions.jsp` render it as a sibling of the
   table in a `<c:otherwise>`; check the caller.
-- `roller-ui/scripts/ajax-user.js` is pulled in with `<%@ include %>`
-  (translation-time), so JSP scriptlets inside it **are** interpolated despite
-  the `.js` extension. `UserAdmin.jsp` is its only includer
-  (`// Used in: UserAdmin.jsp`; `MembersInvite.jsp` is gone,
-  `MembersController.grant()` adds collaborators directly).
+- **Admin → Users is a list, not a search box** (2026-10-13): every account,
+  All / People / Agents tabs and a `q` filter the server applies
+  (`UserManager.getAccounts`, case-insensitive over username, names and email).
+  `ajax-user.js` went with the search box; `UserDataServlet` has no page
+  consumer left. Every controller that lands on `.UserAdmin` builds the rows
+  through `AccountRows.showList`, or the page renders with none.
 - Enabling/disabling an account: the checkbox persists whatever happens, so
   only disable-then-sign-in proves it — `UserAdminIT`.
 - **One status pill for every entry/page publication state.**
@@ -225,3 +226,30 @@ resolves through the index at the end of `CLAUDE.md`.
   gone (W2, `V023__drop_w2_fossils.sql`); `removeWeblogCategory` has nothing
   to null out. `CategoryIT.deletingACategoryLeavesTheWeblogSaveable` still
   covers the general shape.
+
+## Agent accounts and API tokens
+
+Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`; cards
+`docs/design/tables/tables-users.html`, `forms/forms-agent-page.html`, `forms/forms-token-reveal.html`.
+
+- **The agent page** (`AgentController`, `/roller-ui/admin/agent.rol?userName=`): details, one
+  `data-confirm` Disable/Enable, the Weblogs section and the token section. No password field and no
+  set-password link; `modifyUser.rol` sends an agent there, and the person editor's save and
+  send-link actions refuse one (`agent.error.notAPerson`).
+- **The Weblogs section** (`UserWeblogs.jsp` + `UserWeblogsController`) is on a person's page and an
+  agent's page alike, with the Members page's rules: a weblog keeps one Admin, nothing is granted
+  while `groupblogging.enabled` is off (the section says so), a reader is never granted. Its weblog
+  field is `handle` and the token form's is `pin`: a field named `weblog` is read by
+  `RollerHandlerInterceptor` as the action weblog.
+- **The token form, reveal and revoke live in `TokenFormController`**, the abstract base of
+  `ProfileTokensController`, `AgentController` and `AdminTokensController`. The secret reaches
+  `profileTokens!reveal.rol` only as a one-read flash attribute (`REVEALED_TOKEN`), never in a URL;
+  the reveal answers `Cache-Control: no-store`, and a reload says "already shown". Spring logs a
+  FlashMap's contents at TRACE and a response body at DEBUG: keep `org.springframework` at INFO in
+  production.
+- **The last sign-in** is stamped by `LastLoginRecorder`, an `InteractiveAuthenticationSuccessEvent`
+  listener: form login, remember-me and SSO publish that event and HTTP Basic does not, so an API call
+  is not a sign-in. An agent's "last active" is its newest token use instead.
+- **New message keys go into all eight bundles** (English until translated);
+  `AgentAccountMessagesTest` checks the `userList.`, `personForm.`, `userWeblogs.`, `apiTokens.` and
+  `agent.` prefixes.

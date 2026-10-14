@@ -8,9 +8,9 @@ resolves through the index at the end of `CLAUDE.md`.
 ## Automation API
 `org.apache.roller.weblogger.ui.restapi` (`/api/v1`) is a REST surface for
 scripts and agents alongside the JSP admin UI. Reference and error contract:
-`docs/api/README.md`, the front door, since no UI mints a token
-(`bin/roller-api auth login` is the only route in). `/api/v1` is unstable while
-Roller is 0.x.
+`docs/api/README.md`, the front door. Tokens are minted in the admin UI
+(Profile → API tokens, or an agent's page) or with `bin/roller-api auth login`.
+`/api/v1` is unstable while Roller is 0.x.
 
 - **The `/api` prefix is a servlet-spec prefix mapping, not part of any
   `@RequestMapping`.** `ServletRegistrationConfig.API_URL_PATTERNS` (`/api/*`)
@@ -101,7 +101,7 @@ Roller is 0.x.
   API (403 `Admin accounts are managed in the admin UI.`).
   `AdminAccountGuard.UI_ONLY_SETTINGS` (today `site.absoluteurl`, the base of every password-reset
   link) are likewise never written through `PATCH /admin/config` (403, nothing applied); add a
-  setting there to protect it.
+  setting there to protect it. Agent accounts likewise: `requireNotAgent` answers 403 `Agent accounts are managed in the admin UI.`, and `patchUser` calls it before `requireNotAdmin`.
 - `McpEndpointServlet` refuses non-token callers (Basic is accepted chain-wide for `/v1/tokens`).
   `McpOriginValidator` refuses a foreign `Origin`. Each call logs one `roller.mcp` INFO line, with no
   argument values; the weblog appears only when it is handle-shaped (else `?`). That logger goes to
@@ -134,3 +134,24 @@ Roller is 0.x.
 - **`EntryImports.BUDGET` (60 s) and `MAX_BODY_IMAGES` (10).** Cloudflare ends a request at 100
   seconds, and the entry still has to save after the last fetch; each fetch has its own 30-second
   deadline, so the budget only decides whether a new fetch starts.
+
+## Agent accounts (2026-10-13)
+
+Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`.
+
+- **An agent is a `roller_user` with `kind = AGENT` (V033)**: no password (`passphrase` is nullable
+  since V033), the `editor` role plus `admin` when its Site administrator switch is on, created only
+  by `UserManager.addAgent`. Memberships, permissions and tokens are the people's machinery.
+- **Every sign-in gate refuses an agent, explicitly**: `RollerUserDetailsService` (form login,
+  remember-me and HTTP Basic all resolve accounts there), `ReaderAccounts` (SSO),
+  `JPAUserTokenManagerImpl.issueToken`/`validate` and `PasswordResetController.findUser` (reset and
+  set-password links). `ApiTokenAuthFilter` refuses a token whose owner is disabled, person or agent,
+  without relying on the enabled-only user lookup downstream.
+- **`TokenPins` is the one pin rule** (a member pins their own weblogs, a site admin any existing
+  one), shared by `TokensApi` and the token form; `issueToken` records `issued_by`, the owner for a
+  self-mint.
+- **Every account, membership and token change writes one INFO line through `AdminLog`** (logger
+  `roller.admin`, `by=` the actor). A token is named by `AdminLog.tokenDetails`, which leaves the
+  secret out by construction; a controller never holds a second logger (`MoreThanOneLogger`).
+- **The API never changes an agent** (`AdminAccountGuard.requireNotAgent`); `kind` is reported by
+  `/me` and the admin users list.
