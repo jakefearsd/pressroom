@@ -18,6 +18,7 @@
 
 package org.apache.roller.weblogger.ui.controllers.admin;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Locale;
 import org.apache.commons.lang3.CharSetUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -45,6 +46,11 @@ final class UserNames {
      * when it is acceptable. A taken-check that cannot run refuses it: a
      * check that could not run is not a check that passed.
      */
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Lower-cases a username only after the check above has confined it to "
+                    + "username.allowedChars (A-Za-z0-9 unless the operator widens it), to find an "
+                    + "existing account that differs only in case.")
     static String problem(String userName, UserManager users) {
         if (StringUtils.isEmpty(userName)) {
             return "error.add.user.missingUserName";
