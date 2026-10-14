@@ -1,6 +1,7 @@
 package org.apache.roller.weblogger.business;
 
 import java.sql.Timestamp;
+import java.util.List;
 import org.apache.roller.weblogger.TestUtils;
 import org.apache.roller.weblogger.pojos.ApiToken;
 import org.apache.roller.weblogger.pojos.User;
@@ -150,5 +151,94 @@ class ApiTokenManagerTest {
     void revokeRefusesAMissingOrBlankTokenId() throws Exception {
         assertFalse(mgr.revoke(user, null));
         assertFalse(mgr.revoke(user, "   "));
+    }
+
+    /** Spec 2026-10-13, section 3: a mint records who issued it. */
+    @Test
+    void aTokenRecordsWhoIssuedIt() throws Exception {
+        User admin = TestUtils.setupUser("apitokenissuer" + System.nanoTime());
+        TestUtils.endSession(true);
+        try {
+            ApiTokenManager.Issued issued = mgr.issueToken(user, "minted", null, ApiToken.Role.POST, null, admin);
+            TestUtils.endSession(true);
+
+            assertEquals(admin.getId(), mgr.getToken(issued.token().getId()).getIssuedBy());
+        } finally {
+            TestUtils.teardownUser(admin.getUserName());
+            TestUtils.endSession(true);
+        }
+    }
+
+    @Test
+    void aSelfMintRecordsTheOwnerAsTheIssuer() throws Exception {
+        ApiTokenManager.Issued issued = mgr.issueToken(user, "self", null, ApiToken.Role.READ, null);
+        TestUtils.endSession(true);
+
+        assertEquals(user.getId(), mgr.getToken(issued.token().getId()).getIssuedBy());
+    }
+
+    @Test
+    void getTokenFindsATokenByIdAndNothingForABlankOrUnknownId() throws Exception {
+        String id = mgr.issueToken(user, "findme", null, ApiToken.Role.READ, null).token().getId();
+        TestUtils.endSession(true);
+
+        assertEquals("findme", mgr.getToken(id).getLabel());
+        assertNull(mgr.getToken("no-such-token"));
+        assertNull(mgr.getToken("   "));
+        assertNull(mgr.getToken(null));
+    }
+
+    /** Criterion 14: revoking twice succeeds and changes nothing. */
+    @Test
+    void revokingTwiceKeepsTheFirstRevocation() throws Exception {
+        String raw = mgr.issueToken(user, "twice", null, ApiToken.Role.READ, null).rawToken();
+        TestUtils.endSession(true);
+        String id = mgr.authenticate(raw).getId();
+        TestUtils.endSession(true);
+
+        mgr.revoke(mgr.getToken(id));
+        TestUtils.endSession(true);
+        java.sql.Timestamp first = mgr.getToken(id).getRevokedAt();
+        assertNotNull(first);
+
+        mgr.revoke(mgr.getToken(id));
+        TestUtils.endSession(true);
+
+        assertEquals(first, mgr.getToken(id).getRevokedAt());
+        assertNull(mgr.authenticate(raw), "a revoked token authenticates no one");
+    }
+
+    @Test
+    void liveTokensLeaveOutRevokedAndExpiredOnes() throws Exception {
+        String live = mgr.issueToken(user, "live", null, ApiToken.Role.READ, null).token().getId();
+        String expired = mgr.issueToken(user, "expired", null, ApiToken.Role.READ,
+                new Timestamp(System.currentTimeMillis() - 60_000L)).token().getId();
+        String revoked = mgr.issueToken(user, "revoked", null, ApiToken.Role.READ, null).token().getId();
+        TestUtils.endSession(true);
+        mgr.revoke(mgr.getToken(revoked));
+        TestUtils.endSession(true);
+
+        List<String> ids = mgr.getLiveTokens(user).stream().map(ApiToken::getId).toList();
+
+        assertEquals(List.of(live), ids);
+        assertTrue(mgr.getTokens(user).stream().map(ApiToken::getId).toList().containsAll(
+                List.of(live, expired, revoked)), "getTokens still lists every token");
+    }
+
+    /** Criterion 13: the site list shows live tokens; the toggle adds revoked and expired ones. */
+    @Test
+    void theSiteListAddsInactiveTokensOnlyWhenAsked() throws Exception {
+        String live = mgr.issueToken(user, "site-live", null, ApiToken.Role.READ, null).token().getId();
+        String revoked = mgr.issueToken(user, "site-revoked", null, ApiToken.Role.READ, null).token().getId();
+        TestUtils.endSession(true);
+        mgr.revoke(mgr.getToken(revoked));
+        TestUtils.endSession(true);
+
+        List<String> liveOnly = mgr.getAllTokens(false).stream().map(ApiToken::getId).toList();
+        List<String> everything = mgr.getAllTokens(true).stream().map(ApiToken::getId).toList();
+
+        assertTrue(liveOnly.contains(live));
+        assertFalse(liveOnly.contains(revoked));
+        assertTrue(everything.containsAll(List.of(live, revoked)));
     }
 }

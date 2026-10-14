@@ -50,9 +50,18 @@ public interface ApiTokenManager {
     /**
      * Mints a token. {@link Issued#rawToken()} is the only time the secret
      * exists outside the caller's hands -- only its digest is stored.
+     *
+     * @param issuedBy the account minting it: the owner for a self-mint, a
+     *                 site admin minting for an agent; its id is recorded
      */
     Issued issueToken(User user, String label, String scopeWeblog,
-                      ApiToken.Role role, Timestamp expiresAt) throws WebloggerException;
+                      ApiToken.Role role, Timestamp expiresAt, User issuedBy) throws WebloggerException;
+
+    /** A self-mint, as {@code POST /api/v1/tokens} does: the owner is the issuer. */
+    default Issued issueToken(User user, String label, String scopeWeblog,
+                              ApiToken.Role role, Timestamp expiresAt) throws WebloggerException {
+        return issueToken(user, label, scopeWeblog, role, expiresAt, user);
+    }
 
     /** The token behind this secret, or null if unknown, expired or revoked. */
     ApiToken authenticate(String rawToken) throws WebloggerException;
@@ -61,4 +70,20 @@ public interface ApiTokenManager {
 
     /** Revokes {@code tokenId} if {@code user} owns it. False otherwise. */
     boolean revoke(User user, String tokenId) throws WebloggerException;
+
+    /** The token with this id, live or not, or null for a blank or unknown id. */
+    ApiToken getToken(String tokenId) throws WebloggerException;
+
+    /**
+     * Revokes {@code token} if it is not revoked already; revoking it again
+     * changes nothing. No ownership check: the caller decides who may revoke
+     * what. Like every write here it only begins a transaction; flush it.
+     */
+    void revoke(ApiToken token) throws WebloggerException;
+
+    /** {@code user}'s tokens that are neither revoked nor expired, newest first. */
+    List<ApiToken> getLiveTokens(User user) throws WebloggerException;
+
+    /** Every token on the site, newest first: only live ones unless {@code includeInactive}. */
+    List<ApiToken> getAllTokens(boolean includeInactive) throws WebloggerException;
 }

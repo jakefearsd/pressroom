@@ -15,6 +15,17 @@
         <named-query name="ApiToken.removeByUser">
             <query>DELETE FROM ApiToken t WHERE t.user = ?1</query>
         </named-query>
+        <named-query name="ApiToken.getLiveByUser">
+            <query>SELECT t FROM ApiToken t WHERE t.user = ?1 AND t.revokedAt IS NULL
+                   AND (t.expiresAt IS NULL OR t.expiresAt &gt; ?2) ORDER BY t.created DESC</query>
+        </named-query>
+        <named-query name="ApiToken.getAll">
+            <query>SELECT t FROM ApiToken t ORDER BY t.created DESC</query>
+        </named-query>
+        <named-query name="ApiToken.getAllLive">
+            <query>SELECT t FROM ApiToken t WHERE t.revokedAt IS NULL
+                   AND (t.expiresAt IS NULL OR t.expiresAt &gt; ?1) ORDER BY t.created DESC</query>
+        </named-query>
         <attributes>
             <id name="id">
                 <column name="id"/>

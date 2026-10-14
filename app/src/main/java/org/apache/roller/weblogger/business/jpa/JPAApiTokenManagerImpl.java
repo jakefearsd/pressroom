@@ -49,7 +49,7 @@ public class JPAApiTokenManagerImpl implements ApiTokenManager {
 
     @Override
     public Issued issueToken(User user, String label, String scopeWeblog,
-                             ApiToken.Role role, Timestamp expiresAt) throws WebloggerException {
+                             ApiToken.Role role, Timestamp expiresAt, User issuedBy) throws WebloggerException {
         String raw = TOKEN_PREFIX + TokenGenerator.newToken();
         ApiToken token = new ApiToken();
         token.setUser(user);
@@ -59,6 +59,7 @@ public class JPAApiTokenManagerImpl implements ApiTokenManager {
         token.setScopeRole(role);
         token.setCreated(new Timestamp(System.currentTimeMillis()));
         token.setExpiresAt(expiresAt);
+        token.setIssuedBy(issuedBy == null ? null : issuedBy.getId());
         strategy.store(token);
         return new Issued(raw, token);
     }
@@ -119,20 +120,48 @@ public class JPAApiTokenManagerImpl implements ApiTokenManager {
 
     @Override
     public boolean revoke(User user, String tokenId) throws WebloggerException {
-        if (tokenId == null || tokenId.isBlank()) {
-            return false;
-        }
-        ApiToken token = (ApiToken) strategy.load(ApiToken.class, tokenId);
+        ApiToken token = getToken(tokenId);
         // Ownership check, not a convenience: tokenId is client input and this
         // is a global by-id load, so without it any user could revoke any
         // other user's tokens.
         if (token == null || !token.getUser().getId().equals(user.getId())) {
             return false;
         }
+        revoke(token);
+        return true;
+    }
+
+    @Override
+    public ApiToken getToken(String tokenId) throws WebloggerException {
+        if (tokenId == null || tokenId.isBlank()) {
+            return null;
+        }
+        return (ApiToken) strategy.load(ApiToken.class, tokenId);
+    }
+
+    @Override
+    public void revoke(ApiToken token) throws WebloggerException {
         if (token.getRevokedAt() == null) {
             token.setRevokedAt(new Timestamp(System.currentTimeMillis()));
             strategy.store(token);
         }
-        return true;
+    }
+
+    @Override
+    public List<ApiToken> getLiveTokens(User user) throws WebloggerException {
+        TypedQuery<ApiToken> query = strategy.getNamedQuery("ApiToken.getLiveByUser", ApiToken.class);
+        query.setParameter(1, user);
+        query.setParameter(2, new Timestamp(System.currentTimeMillis()));
+        return query.getResultList();
+    }
+
+    @Override
+    public List<ApiToken> getAllTokens(boolean includeInactive) throws WebloggerException {
+        if (includeInactive) {
+            return strategy.getNamedQuery("ApiToken.getAll", ApiToken.class).getResultList();
+        }
+        TypedQuery<ApiToken> query = strategy.getNamedQuery("ApiToken.getAllLive", ApiToken.class);
+        query.setParameter(1, new Timestamp(System.currentTimeMillis()));
+        return query.getResultList();
     }
 }

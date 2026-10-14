@@ -83,6 +83,7 @@ public final class MockWeblogger {
     private final FormSubmissionManager formSubmissionManager = mock(FormSubmissionManager.class);
     private final EventManager eventManager = mock(EventManager.class);
     private final UserTokenManager userTokenManager = mock(UserTokenManager.class);
+    private final ApiTokenManager apiTokenManager = mock(ApiTokenManager.class);
     /**
      * A REAL renderer over the mocked collaborators, not a mock: rendering is a
      * pure function of the expander (built over this facade and its media
@@ -113,6 +114,7 @@ public final class MockWeblogger {
         when(weblogger.getFormSubmissionManager()).thenReturn(formSubmissionManager);
         when(weblogger.getEventManager()).thenReturn(eventManager);
         when(weblogger.getUserTokenManager()).thenReturn(userTokenManager);
+        when(weblogger.getApiTokenManager()).thenReturn(apiTokenManager);
         entryRenderer = new EntryRenderer(
                 ShortcodeExpander.builtIn(weblogger, mediaFileManager), pluginManager);
         when(weblogger.getEntryRenderer()).thenReturn(entryRenderer);
@@ -326,5 +328,13 @@ public final class MockWeblogger {
 
     public UserTokenManager userTokenManager() {
         return userTokenManager;
+    }
+
+    public ApiTokenManager getApiTokenManager() {
+        return apiTokenManager;
+    }
+
+    public ApiTokenManager apiTokenManager() {
+        return apiTokenManager;
     }
 }
