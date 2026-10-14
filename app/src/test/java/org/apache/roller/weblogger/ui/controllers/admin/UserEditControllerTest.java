@@ -243,6 +243,27 @@ class UserEditControllerTest {
                 "the form is cleared after a save so a refresh cannot create the user twice");
     }
 
+    /** Final review M10: the address is validated trimmed, so it is stored trimmed -- reset-by-email matches exactly. */
+    @Test
+    void thePersonsEmailIsStoredTrimmedOnCreateAndOnModify() throws Exception {
+        CreateUserBean bean = beanFor("newbie", "secret-password");
+        bean.setEmailAddress("  newbie@example.com \t");
+
+        controller.createUserSave(ControllerTestFixture.requestFor(null), model, bean);
+
+        ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
+        verify(weblogger.userManager()).addUser(saved.capture());
+        assertEquals("newbie@example.com", saved.getValue().getEmailAddress());
+
+        User stored = storedUser("jake");
+        CreateUserBean edit = beanForExisting("u1", "jake");
+        edit.setEmailAddress(" new@example.com ");
+
+        controller.modifyUserSave(ControllerTestFixture.requestFor(stored), new ExtendedModelMap(), edit);
+
+        assertEquals("new@example.com", stored.getEmailAddress());
+    }
+
     @Test
     void createUserGrantsTheAdminRoleOnlyWhenTheBoxIsTicked() throws Exception {
         controller.createUserSave(ControllerTestFixture.requestFor(null), model, beanFor("plain", "secret-password"));

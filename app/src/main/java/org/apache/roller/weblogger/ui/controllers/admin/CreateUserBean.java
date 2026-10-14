@@ -21,6 +21,7 @@ package org.apache.roller.weblogger.ui.controllers.admin;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.roller.weblogger.pojos.User;
 
 
@@ -166,7 +167,7 @@ public class CreateUserBean {
 
         dataHolder.setScreenName(this.screenName);
         dataHolder.setFullName(this.fullName);
-        dataHolder.setEmailAddress(this.emailAddress);
+        dataHolder.setEmailAddress(StringUtils.trim(this.emailAddress));
         dataHolder.setLocale(this.locale);
         dataHolder.setTimeZone(this.timeZone);
         dataHolder.setEnabled(this.enabled);
