@@ -5,6 +5,7 @@ import java.util.List;
 import org.apache.roller.weblogger.business.URLStrategy;
 import org.apache.roller.weblogger.business.WeblogEntryManager;
 import org.apache.roller.weblogger.business.Weblogger;
+import org.apache.roller.weblogger.business.search.IndexManager;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogCategory;
@@ -32,6 +33,7 @@ final class EntriesWriteApiFixture {
     final Weblogger weblogger = mock(Weblogger.class);
     final WeblogEntryManager entries = mock(WeblogEntryManager.class);
     final URLStrategy urls = mock(URLStrategy.class);
+    final IndexManager index = mock(IndexManager.class);
     final Weblog weblog = new Weblog();
     final EntriesWriteApi controller = new EntriesWriteApi();
 
@@ -41,6 +43,7 @@ final class EntriesWriteApiFixture {
         weblog.setTimeZone("UTC");
         when(weblogger.getWeblogEntryManager()).thenReturn(entries);
         when(weblogger.getUrlStrategy()).thenReturn(urls);
+        when(weblogger.getIndexManager()).thenReturn(index);
         when(entries.getWeblogCategories(weblog)).thenReturn(List.of(
                 new WeblogCategory(weblog, "Food", null, null),
                 new WeblogCategory(weblog, "Travel", null, null)));

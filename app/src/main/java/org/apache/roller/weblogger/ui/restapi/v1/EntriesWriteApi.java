@@ -101,6 +101,9 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         // category always exists.
         weblogger.getWeblogEntryManager().saveWeblogEntry(entry);
         weblogger.flush();
+        if (entry.isPublished()) {
+            weblogger.getIndexManager().addEntryReIndexOperation(entry);
+        }
 
         URI location = ServletUriComponentsBuilder.fromRequestUri(request)
                 .path("/{id}")
@@ -137,6 +140,13 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         apply(entry, weblog, imports.run(importPlan, weblog, body), cleared);
         weblogger.getWeblogEntryManager().saveWeblogEntry(entry);
         weblogger.flush();
+        // As EntryEditController's save: an entry that is no longer published
+        // leaves search, or search keeps offering a permalink that 404s.
+        if (entry.isPublished()) {
+            weblogger.getIndexManager().addEntryReIndexOperation(entry);
+        } else {
+            weblogger.getIndexManager().removeEntryIndexOperation(entry);
+        }
 
         return EntryDtos.toView(entry, permalink(entry));
     }

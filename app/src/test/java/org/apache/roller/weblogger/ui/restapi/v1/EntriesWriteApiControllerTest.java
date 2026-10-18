@@ -556,6 +556,97 @@ class EntriesWriteApiControllerTest {
     }
 
     /**
+     * A post the API publishes reaches site search the way an editor-published
+     * one does (EntryEditController queues it after the flush). The first
+     * agent-published post on blog.wikantik.com was live but matched no
+     * search, because create and update saved without touching the index.
+     */
+    @Test
+    void postWithPublishedStatusQueuesTheEntryForTheSearchIndex() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/entries")
+                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"x\",\"text\":\"y\",\"status\":\"PUBLISHED\"}"))
+                .andExpect(status().isCreated());
+
+        ArgumentCaptor<WeblogEntry> captor = ArgumentCaptor.forClass(WeblogEntry.class);
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(captor.capture());
+        verify(weblogger.getIndexManager()).addEntryReIndexOperation(captor.getValue());
+    }
+
+    /** A draft is not searchable, so creating one leaves the index alone. */
+    @Test
+    void postOfADraftLeavesTheSearchIndexAlone() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/entries")
+                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"x\",\"text\":\"y\",\"status\":\"DRAFT\"}"))
+                .andExpect(status().isCreated());
+
+        verify(weblogger.getIndexManager(), never()).addEntryReIndexOperation(any());
+    }
+
+    /** Publishing (or editing a published entry) through PATCH reindexes it. */
+    @Test
+    void patchLeavingTheEntryPublishedQueuesItForTheSearchIndex() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogEntry entry = new WeblogEntry();
+        entry.setId("entry-1");
+        entry.setWebsite(weblog);
+        entry.setTitle("existing");
+        entry.setText("existing body");
+        when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1")).thenReturn(entry);
+
+        mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
+                        .requestAttr("actionWeblog", weblog)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"PUBLISHED\"}"))
+                .andExpect(status().isOk());
+
+        verify(weblogger.getIndexManager()).addEntryReIndexOperation(entry);
+    }
+
+    /**
+     * Taking a published entry back to draft drops it from the index, as the
+     * editor's save does: otherwise search keeps offering a permalink that 404s.
+     */
+    @Test
+    void patchUnpublishingAnEntryRemovesItFromTheSearchIndex() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        WeblogEntry entry = new WeblogEntry();
+        entry.setId("entry-1");
+        entry.setWebsite(weblog);
+        entry.setTitle("existing");
+        entry.setText("existing body");
+        entry.setStatus(WeblogEntry.PubStatus.PUBLISHED);
+        entry.setPubTime(new java.sql.Timestamp(System.currentTimeMillis()));
+        when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1")).thenReturn(entry);
+
+        mockMvc(controllerFor(weblogger))
+                .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
+                        .requestAttr("actionWeblog", weblog)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"DRAFT\"}"))
+                .andExpect(status().isOk());
+
+        verify(weblogger.getIndexManager()).removeEntryIndexOperation(entry);
+        verify(weblogger.getIndexManager(), never()).addEntryReIndexOperation(any());
+    }
+
+    /**
      * Whole-branch review, Must Fix 3: SCHEDULED with no pubTime creates an
      * entry that can never publish. {@code applyPublishNowDefault} only
      * defaults a pubTime for PUBLISHED; ScheduledEntriesTask promotes a
