@@ -8,7 +8,7 @@ resolves through the index at the end of `CLAUDE.md`.
 ## Frontend build
 
 - Maven builds the editor's CodeMirror bundle: `frontend-maven-plugin`
-  fetches a pinned Node `v24.21.0` into `app/frontend/node/`, then `npm ci`
+  fetches a pinned Node `v24.22.0` into `app/frontend/node/`, then `npm ci`
   + esbuild at `generate-resources` (before every compile); never run `npm`
   by hand.
 - Output `app/src/main/webapp/roller-ui/scripts/roller-editor.js`

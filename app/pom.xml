@@ -33,16 +33,16 @@ limitations under the License.
     <packaging>war</packaging>
 
     <properties>
-        <asm.version>9.10.1</asm.version>
+        <asm.version>9.11</asm.version>
         <bouncycastle.version>1.86</bouncycastle.version>
         <commons-validator.version>1.11.0</commons-validator.version>
         <commons-beanutils.version>1.11.0</commons-beanutils.version>
         <commons-text.version>1.15.0</commons-text.version>
-        <eclipse-link.version>5.0.1</eclipse-link.version>
+        <eclipse-link.version>5.0.2</eclipse-link.version>
         <jdom2.version>2.0.6.1</jdom2.version>
-        <lucene.version>10.5.1</lucene.version>
+        <lucene.version>10.5.2</lucene.version>
         <maven-war.version>3.5.1</maven-war.version>
-        <pitest.version>1.30.0</pitest.version>
+        <pitest.version>1.30.1</pitest.version>
         <pitest-junit5.version>1.2.3</pitest-junit5.version>
         <!-- Overridden on the command line to scope a mutation run. -->
         <pit.targets>org.apache.roller.weblogger.util.*</pit.targets>
@@ -79,11 +79,11 @@ limitations under the License.
              When a future Spring Boot's BOM catches up, delete the override and
              let the BOM manage it again; that test fails if the deletion is
              premature, so the cleanup is safe to attempt. -->
-        <tomcat.security.version>11.0.25</tomcat.security.version>
+        <tomcat.security.version>11.0.27</tomcat.security.version>
         <!-- postgresql's override was deleted when Boot 4.1.1's BOM reached
              the 42.7.13 floor; DependencySecurityFloorTest still asserts it. -->
-        <jackson2.security.version>2.22.2</jackson2.security.version>
-        <jackson3.security.version>3.2.2</jackson3.security.version>
+        <jackson2.security.version>2.22.3</jackson2.security.version>
+        <jackson3.security.version>3.2.3</jackson3.security.version>
         <log4j2.security.version>2.26.1</log4j2.security.version>
     </properties>
 
@@ -427,7 +427,7 @@ limitations under the License.
         <dependency>
             <groupId>org.webjars.npm</groupId>
             <artifactId>bootstrap-icons</artifactId>
-            <version>1.13.1</version>
+            <version>1.13.2</version>
         </dependency>
 
         <!-- IBM Plex Sans/Mono ("Quiet Instrument" design tokens, see
@@ -482,7 +482,7 @@ limitations under the License.
         <dependency>
             <groupId>org.webjars.npm</groupId>
             <artifactId>cropperjs</artifactId>
-            <version>2.1.0</version>
+            <version>2.2.0</version>
         </dependency>
 
         <dependency>
@@ -669,7 +669,7 @@ limitations under the License.
         <dependency>
             <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
             <artifactId>owasp-java-html-sanitizer</artifactId>
-            <version>20260313.1</version>
+            <version>20261011.1</version>
         </dependency>
 
         <!-- Markdown: every entry is Markdown (Stage 2 Wave 4). Not managed by
@@ -678,22 +678,22 @@ limitations under the License.
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark</artifactId>
-            <version>0.30.0</version>
+            <version>0.30.1</version>
         </dependency>
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark-ext-gfm-tables</artifactId>
-            <version>0.30.0</version>
+            <version>0.30.1</version>
         </dependency>
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark-ext-gfm-strikethrough</artifactId>
-            <version>0.30.0</version>
+            <version>0.30.1</version>
         </dependency>
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark-ext-autolink</artifactId>
-            <version>0.30.0</version>
+            <version>0.30.1</version>
         </dependency>
 
         <!-- Spring deps. Versions are no longer pinned here: spring-boot-dependencies
@@ -789,7 +789,7 @@ limitations under the License.
         <dependency>
             <groupId>com.github.spotbugs</groupId>
             <artifactId>spotbugs-annotations</artifactId>
-            <version>4.10.4</version>
+            <version>4.10.5</version>
             <scope>provided</scope>
             <optional>true</optional>
         </dependency>
@@ -878,7 +878,7 @@ limitations under the License.
         <dependency>
             <groupId>org.instancio</groupId>
             <artifactId>instancio-junit</artifactId>
-            <version>6.0.0</version>
+            <version>6.1.0</version>
             <scope>test</scope>
         </dependency>
 

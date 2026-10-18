@@ -229,7 +229,7 @@
         <sec:csrfInput/>
     </form>
 
-    <c:url var="cropperJsURL" value="/webjars/cropperjs/2.1.0/dist/cropper.min.js"/>
+    <c:url var="cropperJsURL" value="/webjars/cropperjs/2.2.0/dist/cropper.min.js"/>
     <script src="${cropperJsURL}"></script>
     <script>
         (function () {

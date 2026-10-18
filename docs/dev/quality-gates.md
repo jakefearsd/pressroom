@@ -107,14 +107,14 @@ that (it printed `CPD @200` against a gate of 110 for eighteen days).
 The wave took the tree from 362 PMD / 134 SpotBugs / 4 CPD violations to
 zero; the temporary `pmd.max.violations` / `spotbugs.max.violations`
 ceilings and `maxAllowedViolations` wiring were deleted once it held there.
-**The PMD count is measured against the pinned PMD version (7.27.0 since
-2026-09-14; the wave was measured on 7.26.0), and the pin is load-bearing.** The maven-pmd-plugin's bundled 7.17 measured **307** on the
+**The PMD count is measured against the pinned PMD version (7.28.0 since
+2026-10-17, 7.27.0 from 2026-09-14; the wave was measured on 7.26.0), and the pin is load-bearing.** The maven-pmd-plugin's bundled 7.17 measured **307** on the
 same source and ruleset against **362** under 7.26.0: `CloseResource` alone
 goes 13 -> 42 as the detector improved, and five rules did not exist in 7.17
 (`OverrideBothEqualsAndHashCodeOnComparable`, `LambdaCanBeMethodReference`,
 `UseStandardCharsets`, `AvoidInstanceofChecksInCatchClause`,
 `AvoidCatchingGenericException`). An unpinned plugin drifts the count
-silently on a routine bump; the `pmd-core`/`pmd-java` `7.27.0` override in
+silently on a routine bump; the `pmd-core`/`pmd-java` `7.28.0` override in
 the parent `pluginManagement` fixes it.
 
 Zero tolerance is affordable only because the rule set is narrow: **a rule

@@ -24,11 +24,11 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WrapsDriver;
 import org.openqa.selenium.devtools.DevTools;
 import org.openqa.selenium.devtools.HasDevTools;
-import org.openqa.selenium.devtools.v153.network.Network;
-import org.openqa.selenium.devtools.v153.network.model.Cookie;
-import org.openqa.selenium.devtools.v153.page.Page;
-import org.openqa.selenium.devtools.v153.page.model.Frame;
-import org.openqa.selenium.devtools.v153.storage.Storage;
+import org.openqa.selenium.devtools.v155.network.Network;
+import org.openqa.selenium.devtools.v155.network.model.Cookie;
+import org.openqa.selenium.devtools.v155.page.Page;
+import org.openqa.selenium.devtools.v155.page.model.Frame;
+import org.openqa.selenium.devtools.v155.storage.Storage;
 
 import java.net.URI;
 import java.time.Duration;
@@ -524,7 +524,7 @@ public final class BrowserHealth {
      *
      * <p>That is not a hypothetical failure mode, it is the one this class is
      * most exposed to. The listeners are registered through a Chrome DevTools
-     * Protocol binding pinned to one CDP major ({@code devtools.v153}); Chrome
+     * Protocol binding pinned to one CDP major ({@code devtools.v155}); Chrome
      * ships a new major every few weeks, and Selenium answers a mismatch by
      * falling back to the nearest binding it has and logging a line nobody
      * reads. The fallback works until it doesn't, and the failure is silence.

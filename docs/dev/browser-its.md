@@ -191,7 +191,7 @@ mutators, not each other.
 Every check reports by finding something wrong in what it recorded, so
 **every one passes vacuously when nothing is recorded**: a recorder that has
 stopped seeing traffic turns the whole suite green at once. The listeners ride
-a CDP binding pinned to one Chrome major (`selenium-devtools-v153`); Chrome
+a CDP binding pinned to one Chrome major (`selenium-devtools-v155`); Chrome
 ships a new major every few weeks, and Selenium answers a mismatch by
 silently falling back to its nearest binding and logging a line nobody reads.
 

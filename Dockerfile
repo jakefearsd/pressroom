@@ -51,7 +51,7 @@ COPY bin/db/migrations bin/db/migrations
 
 # This step needs outbound network access beyond the obvious Maven/apt
 # fetches: app/pom.xml's generate-resources phase runs frontend-maven-plugin,
-# which downloads Node v24.21.0 from nodejs.org and then the editor bundle's
+# which downloads Node v24.22.0 from nodejs.org and then the editor bundle's
 # npm packages from registry.npmjs.org (see CLAUDE.md's "Frontend build" and
 # docker_deployment.md's "Test a release locally before deploying it"). This
 # stage starts clean every time -- no cached app/frontend/node/ or

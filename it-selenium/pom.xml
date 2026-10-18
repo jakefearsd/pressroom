@@ -43,8 +43,8 @@ limitations under the License.
 
     <properties>
         <!-- Versions match the sibling jspwiki/wikantik Selenide suite. -->
-        <selenide.version>7.18.1</selenide.version>
-        <selenium.version>4.49.0</selenium.version>
+        <selenide.version>7.19.0</selenide.version>
+        <selenium.version>4.51.0</selenium.version>
         <!-- Raised past selenide-core's transitive 5.6.2, which leaks a pooled
              connection whenever a response carries an unsupported
              Content-Encoding (CVE-2026-64607, pool-exhaustion DoS). This suite
@@ -211,15 +211,16 @@ limitations under the License.
              blind Network domain makes every BrowserHealth check pass vacuously
              rather than fail. Under 4.47.0 this said v150 while that same Selenium
              already shipped v151 and the local Chrome spoke 152: two majors
-             of drift that nothing reported beyond a log line. 4.49.0 ships
-             v151/v152/v153, and v153 is both the newest it has and what the
-             Chrome on this machine speaks. Chrome moved 152 to 153 during the
-             afternoon this pin was written, which is the cadence to expect.
+             of drift that nothing reported beyond a log line. 4.51.0 ships
+             v153/v154/v155, and v155 is both the newest it has and what the
+             Chrome on this machine speaks (2026-10-17). Chrome moved 152 to
+             153 during the afternoon the first pin was written, which is the
+             cadence to expect.
              BrowserHealth's own blindness check is the backstop for when Chrome
              moves past it again. -->
         <dependency>
             <groupId>org.seleniumhq.selenium</groupId>
-            <artifactId>selenium-devtools-v153</artifactId>
+            <artifactId>selenium-devtools-v155</artifactId>
             <version>${selenium.version}</version>
             <scope>test</scope>
         </dependency>
@@ -237,7 +238,7 @@ limitations under the License.
         <dependency>
             <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>3.2.2</version>
+            <version>3.2.3</version>
             <scope>test</scope>
         </dependency>
 

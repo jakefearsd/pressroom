@@ -215,7 +215,7 @@ limitations under the License.
                              from this runtime, and a floating major would move the
                              output under everyone. Downloaded once into app/frontend/node
                              (git-ignored); only the first build needs the network. -->
-                        <nodeVersion>v24.21.0</nodeVersion>
+                        <nodeVersion>v24.22.0</nodeVersion>
                         <installDirectory>${project.basedir}/frontend</installDirectory>
                     </configuration>
                 </plugin>
@@ -253,19 +253,19 @@ limitations under the License.
                         <dependency>
                             <groupId>net.sourceforge.pmd</groupId>
                             <artifactId>pmd-core</artifactId>
-                            <version>7.27.0</version>
+                            <version>7.28.0</version>
                         </dependency>
                         <dependency>
                             <groupId>net.sourceforge.pmd</groupId>
                             <artifactId>pmd-java</artifactId>
-                            <version>7.27.0</version>
+                            <version>7.28.0</version>
                         </dependency>
                     </dependencies>
                 </plugin>
                 <plugin>
                     <groupId>com.github.spotbugs</groupId>
                     <artifactId>spotbugs-maven-plugin</artifactId>
-                    <version>4.10.4.1</version>
+                    <version>4.10.5.0</version>
                     <configuration>
                         <effort>Max</effort>
                         <threshold>Low</threshold>
