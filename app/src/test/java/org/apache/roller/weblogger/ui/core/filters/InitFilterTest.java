@@ -296,6 +296,37 @@ public class InitFilterTest  {
         }
     }
 
+    /**
+     * A host UrlValidator rejects (a LAN name such as {@code docker1.lan}: no
+     * public suffix) may not latch the absolute url, but the relative one is
+     * only the context path and the same on every host. It used to stay null
+     * until a public request arrived, so every theme's {@code $url.site}
+     * printed literally and custom CSS was linked as {@code null/<handle>/...}
+     * -- and the page cache kept serving that broken render afterwards.
+     */
+    @Test
+    public void aHostTheValidatorRejectsStillSetsTheRelativeContextUrl() throws Exception {
+        String priorAbsolute = WebloggerRuntimeConfig.getAbsoluteContextURL();
+        String priorRelative = WebloggerRuntimeConfig.getRelativeContextURL();
+        try {
+            WebloggerRuntimeConfig.setRelativeContextURL(null);
+            MockHttpServletRequest request = new MockHttpServletRequest("GET", "/");
+            request.setServerName("docker1.lan");
+            request.setServerPort(8084);
+            request.setContextPath("");
+
+            new MockFilterChain(new HttpServlet() { }, plainFilter())
+                    .doFilter(request, new MockHttpServletResponse());
+
+            assertEquals("", WebloggerRuntimeConfig.getRelativeContextURL());
+            assertEquals(priorAbsolute, WebloggerRuntimeConfig.getAbsoluteContextURL(),
+                    "a rejected host must still not latch the absolute url");
+        } finally {
+            WebloggerRuntimeConfig.setAbsoluteContextURL(priorAbsolute);
+            WebloggerRuntimeConfig.setRelativeContextURL(priorRelative);
+        }
+    }
+
     // -------------------------------------------------- I2 (optional half):
     // refuse to latch a host VirtualHostRegistry resolves
     //

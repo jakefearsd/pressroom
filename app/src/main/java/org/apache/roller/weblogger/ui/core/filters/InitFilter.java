@@ -87,7 +87,15 @@ public class InitFilter implements Filter {
 
             // first request, lets do our initialization
             HttpServletRequest request = (HttpServletRequest) req;
-            
+
+            // The relative url is only the context path, the same whatever
+            // host the request named, so it is set even by a request that may
+            // not latch the absolute url below. Left null, every $url.site in
+            // a theme printed literally until a public request arrived (a LAN
+            // name such as docker1.lan fails the validator), and the page
+            // cache went on serving that broken render.
+            WebloggerRuntimeConfig.setRelativeContextURL(request.getContextPath());
+
             UrlValidator validator = new UrlValidator(
                             new String[]{"http", "https"},
                             UrlValidator.ALLOW_LOCAL_URLS); // for integration tests
