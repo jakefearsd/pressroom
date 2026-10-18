@@ -2,6 +2,7 @@ package org.apache.roller.weblogger.ui.restapi.auth;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.Map;
 import org.apache.roller.weblogger.pojos.ApiToken;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
@@ -9,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.servlet.HandlerMapping;
 
 /**
  * Applies the token's ceiling on top of the permission checks
@@ -81,8 +83,20 @@ public class ApiScopeInterceptor implements HandlerInterceptor {
             return;
         }
         if (!isWeblogScopeExempt(handler)) {
-            throw ApiException.notFound("No such weblog.");
+            // A {handle} the resolver could not find keeps the answer an
+            // existing weblog outside the pin gets, or the wording would tell
+            // which handles exist. Only a route with no {handle} at all, decided
+            // by its shape rather than by stored data, may say why.
+            throw ApiException.notFound(namesAWeblog(request)
+                    ? "No such weblog."
+                    : "This token is limited to the weblog '" + scopeWeblog + "', and this route is not "
+                            + "part of one weblog. Use a token with no weblog limit.");
         }
+    }
+
+    private static boolean namesAWeblog(HttpServletRequest request) {
+        return request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE) instanceof Map<?, ?> vars
+                && vars.containsKey("handle");
     }
 
     private static ApiPrincipal currentPrincipal() {

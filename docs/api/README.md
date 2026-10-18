@@ -202,7 +202,13 @@ was nothing to check": `/api/v1/admin/**` and the site-wide
 `/api/v1/weblogs` resource require `ADMIN` role via a separate, explicit
 annotation on the controller (not the weblog-pin exemption above), and the
 whole `/v1/tokens` resource (mint/list/revoke) refuses a Bearer-authenticated
-caller outright regardless of role — see the next section.
+caller outright regardless of role — see the next section. A weblog-pinned
+token, even an `ADMIN` one held by a site administrator, is therefore refused
+on `/api/v1/admin/**` and `/api/v1/weblogs` with a 404 whose detail says so
+(`This token is limited to the weblog '<handle>', and this route is not part
+of one weblog.`). Site-wide work needs a second token minted with no weblog.
+A route that names a weblog the caller cannot see still answers `No such
+weblog.`, whether or not that weblog exists.
 
 ## Making a request
 

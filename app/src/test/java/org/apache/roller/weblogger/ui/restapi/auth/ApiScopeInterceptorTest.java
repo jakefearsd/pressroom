@@ -2,6 +2,7 @@ package org.apache.roller.weblogger.ui.restapi.auth;
 
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Map;
 import org.apache.roller.weblogger.pojos.ApiToken;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
@@ -12,6 +13,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.method.HandlerMethod;
+import org.springframework.web.servlet.HandlerMapping;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -191,6 +193,41 @@ class ApiScopeInterceptorTest {
         ApiException thrown = assertThrows(ApiException.class,
                 () -> interceptor.preHandle(request, new MockHttpServletResponse(), NOT_EXEMPT));
         assertEquals(404, thrown.getStatus());
+    }
+
+    /**
+     * The denial says why. "No such weblog." on {@code /v1/admin/config} sent
+     * the publishing agent hunting for a missing weblog, when the cause was
+     * its own token's pin. Naming the pin leaks nothing: the holder can read
+     * it from {@code /v1/me}, and the route's shape, not any stored data,
+     * decides this branch.
+     */
+    @Test
+    void theDenialOnARouteWithNoWeblogNamesTheTokensPin() {
+        MockHttpServletRequest request = request("GET", null, "testblog", ApiToken.Role.ADMIN);
+
+        ApiException thrown = assertThrows(ApiException.class,
+                () -> interceptor.preHandle(request, new MockHttpServletResponse(), NOT_EXEMPT));
+        assertEquals("This token is limited to the weblog 'testblog', and this route is not "
+                + "part of one weblog. Use a token with no weblog limit.", thrown.getMessage());
+    }
+
+    /**
+     * Characterisation, passing before the message above existed: a route
+     * whose {@code {handle}} named a weblog the resolver did not find also
+     * arrives with no action weblog, and it must keep the answer an existing
+     * weblog outside the pin gets. Explaining the pin there would tell a
+     * pinned token which handles exist.
+     */
+    @Test
+    void aRouteNamingAnUnknownWeblogStillAnswersNoSuchWeblog() {
+        MockHttpServletRequest request = request("GET", null, "testblog", ApiToken.Role.ADMIN);
+        request.setAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, Map.of("handle", "ghost"));
+
+        ApiException thrown = assertThrows(ApiException.class,
+                () -> interceptor.preHandle(request, new MockHttpServletResponse(), NOT_EXEMPT));
+        assertEquals(404, thrown.getStatus());
+        assertEquals("No such weblog.", thrown.getMessage());
     }
 
     /** The explicit, narrow exception: a route marked @WeblogScopeExempt still works. */
