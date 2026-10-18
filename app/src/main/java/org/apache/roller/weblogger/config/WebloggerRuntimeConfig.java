@@ -22,6 +22,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.config.runtime.RuntimeConfigDefs;
@@ -284,12 +285,16 @@ public final class WebloggerRuntimeConfig {
      * boot. The row alone is not enough: its default is blank, so reading only
      * the row silently ignored the environment route the deployment runbook
      * documents, and every generated url took whichever host hit first.
+     *
+     * <p>A configured value loses any trailing slash: every caller appends
+     * "/" plus a path, so {@code https://host/} produced {@code https://host//path},
+     * which the site answers with 400.
      */
     public static String getAbsoluteContextURL() {
-        
+
         String absURL = getPropertyWithConfigFallback("site.absoluteurl");
         if(absURL != null && !absURL.isBlank()) {
-            return absURL;
+            return StringUtils.stripEnd(absURL, "/");
         }
         
         return absoluteContextURL;

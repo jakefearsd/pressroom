@@ -172,6 +172,29 @@ class WebloggerRuntimeConfigTest {
     }
 
     /**
+     * Every caller appends "/" plus a path, so a configured value typed with a
+     * trailing slash doubled it. Production had {@code https://blog.wikantik.com/}
+     * in Global Config, and Create Weblog previewed
+     * {@code https://blog.wikantik.com//wikantik} while every permalink, feed
+     * and sitemap entry carried the same {@code //} and answered 400.
+     */
+    @Test
+    void aTrailingSlashOnTheConfiguredSiteUrlIsDropped() {
+        try (RuntimeConfigAttachment _ =
+                     RuntimeConfigAttachment.answering("site.absoluteurl", "https://blog.example.com/")) {
+            assertEquals("https://blog.example.com", WebloggerRuntimeConfig.getAbsoluteContextURL());
+        }
+    }
+
+    /** The environment route takes the same normalisation as the row. */
+    @Test
+    void aTrailingSlashOnTheEnvironmentSiteUrlIsDropped() {
+        try (StaticConfigOverride _ = StaticConfigOverride.set("site.absoluteurl", "http://docker2.lan//")) {
+            assertEquals("http://docker2.lan", WebloggerRuntimeConfig.getAbsoluteContextURL());
+        }
+    }
+
+    /**
      * Characterisation: with neither the row nor the environment set (a blank
      * environment value trims to empty) the first-request latch is the last
      * resort, never an empty string. Passes before and after the fix.
