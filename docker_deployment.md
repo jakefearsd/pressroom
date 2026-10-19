@@ -1103,6 +1103,31 @@ rather than leaving the stack in a half-upgraded state without telling you.
 Always have a recent, verified backup before upgrading across a schema
 change (see [Backup and restore](#backup-and-restore)).
 
+### In one command
+
+`deploy/upgrade.sh` does every step above, in an order that changes nothing until it can
+finish. From a checkout, `bin/deploy-host.sh HOST VERSION` copies it to the host and runs
+it there. It is not a release asset, so on a host with no checkout, copy it over and run it
+from the deploy directory:
+
+```bash
+./upgrade.sh 0.2.3          # or: --no-backup, --prune
+```
+
+The steps, in order:
+
+1. Downloads the release's three files. If one is missing, it stops.
+2. Takes a backup through the `backup` service. If the backup fails, it stops.
+3. Shows how each downloaded file differs from the one in place.
+4. Keeps `.env` and the replaced files as `<name>.bak-<UTC stamp>`, then moves the new
+   files in and sets `IMAGE_VERSION`.
+5. Names any key the new `env.example` sets that your `.env` does not.
+6. Runs `./deploy.sh`.
+7. Checks that `app` is running the new image. An `IMAGE_VERSION` exported in your shell
+   overrides `.env` and would leave the old image up, healthy.
+
+It prints the one-line rollback, which restores the `.bak` files and reruns `./deploy.sh`.
+
 ### Upgrading PostgreSQL across a major version
 
 The server is pinned by digest, so a major upgrade is a deliberate edit to

@@ -164,6 +164,10 @@ java -Droller.custom.config=app/target/test-classes/roller-boot-dev.properties \
 ./roller status   # show applied migrations
 ./roller stop     # stop dev DB (data kept)
 ./roller reset    # DESTROY dev DB volume and rebuild
+
+# Release and deploy (docs/dev/build-and-ci.md, "Releasing and deploying")
+bin/release.sh 0.2.3 [--skip-verify] [--push]  # verify, bump, commit, tag; push only when asked
+bin/deploy-host.sh docker1 [VERSION]           # back up, upgrade, deploy.sh, check the image
 ```
 
 ### Testing

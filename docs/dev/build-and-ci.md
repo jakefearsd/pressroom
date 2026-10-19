@@ -156,6 +156,30 @@ A flake goes here once it is explained; a rerun that passes explains nothing.
   `Dockerfile`/`deploy/caddy/Dockerfile` (docker_deployment.md);
   `deploy.sh` only pulls — `docker-compose.prod.yml` has no `build:` stanza.
 
+**Releasing and deploying** is two commands; each script's header is its manual.
+
+```bash
+bin/release.sh 0.2.3 --push        # verify, bump, commit, tag, push, wait for release.yml
+bin/deploy-host.sh docker1 --url https://blog.wikantik.com/wikantik/
+```
+
+- `bin/release.sh` refuses a dirty tree, a branch other than master, a tree behind
+  origin, an existing tag, or a version not above the current one. It then runs
+  `mvn clean install` and the browser suite at both context paths (`--skip-verify`
+  when they already passed on this commit). Then it moves the four version strings
+  (the first `<version>` in each pom, and `IMAGE_VERSION` in `deploy/.env.example`),
+  commits `release: X.Y.Z` and tags. Without `--push` it stops and prints the push;
+  no agent passes `--push`.
+- `bin/deploy-host.sh HOST [VERSION]` copies `deploy/upgrade.sh` to the host's
+  deploy directory and runs it there. `upgrade.sh` downloads the release files first
+  and takes a backup; either failing stops it with nothing changed. It then keeps
+  `.env` and the replaced files as `*.bak-<UTC stamp>`, sets `IMAGE_VERSION`, runs
+  `deploy.sh` and checks that the app runs the new image. An exported
+  `IMAGE_VERSION` beats `.env` and would leave the old image up, healthy.
+- Tests: `ReleaseScriptTest`, `DeployHostScriptTest`, `UpgradeScriptTest`. They run
+  the real scripts against stub `mvn`/`gh`/`ssh`/`docker`, a scratch git repo and a
+  `file://` release.
+
 **The 403 on `POST /roller-ui/admin/createUser!save.rol` (mechanism
 established 2026-10-04; fixed).** Seen 2026-08-19 and 2026-09-14 in
 `ErrorCasesIT.aDuplicateUserNameIsRefused` (via `BrowserHealth`); the same
