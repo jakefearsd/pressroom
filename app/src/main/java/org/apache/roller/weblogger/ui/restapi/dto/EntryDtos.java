@@ -63,8 +63,12 @@ public final class EntryDtos {
     public record PreviewRequest(String text) {
     }
 
-    /** The rendered HTML fragment a preview call returns. */
-    public record PreviewView(String html) {
+    /**
+     * The rendered HTML fragment a preview call returns, and what in it will
+     * render badly on some theme or for some reader (never null; empty when
+     * nothing does). Advice only: the same text saves without complaint.
+     */
+    public record PreviewView(String html, List<String> warnings) {
     }
 
     /**

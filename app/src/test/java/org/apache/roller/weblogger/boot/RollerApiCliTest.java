@@ -1,8 +1,11 @@
 package org.apache.roller.weblogger.boot;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -274,5 +277,37 @@ class RollerApiCliTest {
         String body = cli();
         assertTrue(body.contains("--netrc-file"),
                 "login must keep using a netrc file for the credential");
+    }
+
+    /**
+     * Preview's HTML stays alone on stdout, so {@code > post.html} still
+     * works, and its warnings (inline colors, code blocks with no language)
+     * go to stderr where the author sees them. Runs the real script against
+     * a stub curl that answers what the API answers.
+     */
+    @Test
+    void entriesPreviewPrintsTheHtmlAndSendsItsWarningsToStderr(@TempDir Path dir) throws Exception {
+        Path bin = Files.createDirectories(dir.resolve("bin"));
+        Path curl = bin.resolve("curl");
+        Files.writeString(curl, "#!/bin/bash\nprintf '%s' "
+                + "'{\"html\":\"<p>hi</p>\",\"warnings\":[\"1 code block names no language\"]}'\n");
+        assertTrue(curl.toFile().setExecutable(true));
+        Path text = Files.writeString(dir.resolve("post.md"), "hi");
+        Path script = Path.of("..", "bin", "roller-api").toAbsolutePath();
+        ProcessBuilder pb = new ProcessBuilder("bash", script.toString(), "entries", "preview",
+                "--weblog", "w", "--text-file", text.toString());
+        pb.environment().put("PATH", bin + ":" + System.getenv("PATH"));
+        pb.environment().put("ROLLER_API_URL", "http://roller.invalid");
+        pb.environment().put("ROLLER_API_TOKEN", "t");
+        pb.environment().put("ROLLER_CREDENTIALS", dir.resolve("none").toString());
+        pb.redirectError(dir.resolve("stderr").toFile());
+        Process p = pb.start();
+        String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        assertTrue(p.waitFor(30, TimeUnit.SECONDS), "roller-api hung");
+        String err = Files.readString(dir.resolve("stderr"));
+
+        assertEquals(0, p.exitValue(), out + err);
+        assertEquals("<p>hi</p>\n", out);
+        assertEquals("warning: 1 code block names no language\n", err);
     }
 }

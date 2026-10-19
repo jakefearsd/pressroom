@@ -131,6 +131,11 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   and propagates at once, so a clash found during a write is never merged into the 400 list.
 - **`MediaImports` is the one import path**, shared by `media/imports` and the entry writes. It
   commits each file as it is stored (a file on disk must have its row), and logs the host only.
+- **Preview `warnings` come from `PreviewLint`, over the sanitizer's output.** Its attributes are
+  always double-quoted, so a pattern is exact enough. The warnings are advice, never a refusal: the
+  same text saves. There are two rules today: an inline `color`/`background` (the first agent post's
+  pale callouts were unreadable in the dark portfolio theme) and a code block naming no language.
+  The CLI prints them on stderr, so stdout stays the HTML.
 - **`EntryImports.BUDGET` (60 s) and `MAX_BODY_IMAGES` (10).** Cloudflare ends a request at 100
   seconds, and the entry still has to save after the last fetch; each fetch has its own 30-second
   deadline, so the budget only decides whether a new fetch starts.

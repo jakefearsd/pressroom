@@ -1078,6 +1078,49 @@ class EntriesWriteApiControllerTest {
                 "was: " + json.get("html").asString());
     }
 
+    /** A preview says what will render badly, so an agent can fix it before publishing. */
+    @Test
+    void previewWarnsAboutInlineColorsAndUnnamedCodeBlocks() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/entries/preview")
+                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":\"<div style=\\\"background-color:#f0f7ff\\\">Insight</div>\\n\\n"
+                                + "```\\nplain\\n```\\n\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        tools.jackson.databind.JsonNode warnings = new tools.jackson.databind.ObjectMapper().readTree(body)
+                .get("warnings");
+        assertEquals(2, warnings.size(), body);
+        assertTrue(warnings.get(0).asString().contains("> [!NOTE]"), body);
+        assertTrue(warnings.get(1).asString().startsWith("1 code block names no language"), body);
+    }
+
+    /** Clean text still carries the field, empty, so a client never null-checks it. */
+    @Test
+    void aCleanPreviewHasAnEmptyWarningsList() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/entries/preview")
+                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":\"> [!TIP]\\n> Use alerts.\\n\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        tools.jackson.databind.JsonNode warnings = new tools.jackson.databind.ObjectMapper().readTree(body)
+                .get("warnings");
+        assertTrue(warnings != null && warnings.isArray() && warnings.isEmpty(), body);
+    }
+
     /**
      * Guard from the wave's recurring "ordinary client input must not 500"
      * lesson: an empty request body renders an empty draft, not a 500 or an

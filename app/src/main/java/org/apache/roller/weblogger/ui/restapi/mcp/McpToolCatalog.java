@@ -43,8 +43,8 @@ public final class McpToolCatalog {
                             "POST " + W + "/entries/{id}/restore"),
                     action("delete_forever", "Permanently delete an entry that is already in the trash.",
                             "POST " + W + "/entries/{id}/delete-forever"),
-                    action("preview", "Render text exactly as it would publish, without saving; with id, in "
-                            + "that entry's context.", "POST " + W + "/entries/{id}/preview",
+                    action("preview", "Render text exactly as it would publish, without saving, with warnings "
+                            + "about what will render badly; with id, in that entry's context.", "POST " + W + "/entries/{id}/preview",
                             "POST " + W + "/entries/preview")),
             tool("categories", "A weblog's categories and tags.", false,
                     action("list", "List categories.", "GET " + W + "/categories"),

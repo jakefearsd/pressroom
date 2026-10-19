@@ -425,8 +425,30 @@ a wall-clock string in **the weblog's own timezone**, e.g. `2026-03-01T09:30`
 (see the repository's `CLAUDE.md`, "Entry editing", for why this is the
 weblog's zone specifically and not the caller's).
 
-**What `text` may hold.** Markdown, HTML, or both: HTML blocks pass through
-Markdown untouched, and bare paragraphs between them are wrapped in `<p>`.
+**What `text` may hold.** Write Markdown. Besides CommonMark, Roller renders:
+- GitHub tables, `~~strikethrough~~` and bare URLs as links.
+- GitHub alerts as callouts the theme styles:
+
+  ```markdown
+  > [!NOTE]
+  > Useful information a skimming reader should still see.
+  ```
+
+  The five types are `NOTE`, `TIP`, `IMPORTANT`, `WARNING` and `CAUTION`.
+- Fenced code that names its language (```` ```java ````), which readers see
+  highlighted, labelled, line-numbered and with a copy button. A block that
+  names no language gets no highlighting.
+- Headings with an `id` made from their text (`## Storage tier` becomes
+  `#storage-tier`, and a repeat becomes `#storage-tier-1`), so a section can
+  be linked to.
+
+Do not set a text color or background in an inline `style`. Weblog themes
+differ, some are dark, and a color picked for a light page can leave text
+unreadable on a dark one. Use an alert for a callout, and let the theme
+color everything else; preview warns about inline colors.
+
+HTML still works, mixed with Markdown: HTML blocks pass through Markdown
+untouched, and bare paragraphs between them are wrapped in `<p>`.
 An HTML block ends at a blank line, so a line indented four or more spaces
 just after a blank line becomes a code block.
 The sanitizer then removes scripts, event handlers, `<iframe>`/`<object>`
@@ -504,7 +526,11 @@ entry that does not exist yet) renders `{"text": "..."}` through the real
 pipeline — shortcode expansion, then Markdown, then sanitization — the exact
 sequence a saved entry goes through, so what you preview cannot disagree
 with what gets published. Nothing is persisted; this is the only way to see
-`[gallery]`/`[map]`/etc. expand before committing to a save.
+`[gallery]`/`[map]`/etc. expand before committing to a save. The response
+is `{"html": "...", "warnings": [...]}`. `warnings` lists what will render
+badly, and is empty when nothing will: an element that sets a text color
+or background inline, or a code block that names no language. Warnings are
+advice: the same text saves without complaint.
 
 ### Slugs and images
 

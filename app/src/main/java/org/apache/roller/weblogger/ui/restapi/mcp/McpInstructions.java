@@ -36,8 +36,10 @@ public final class McpInstructions {
             - Entries are DRAFT, PUBLISHED, PENDING or SCHEDULED. Trash, restore and delete_forever are \
             their own actions; restore always returns an entry as a DRAFT, and delete_forever only works \
             on an entry already in the trash.
-            - Entry text may be HTML, Markdown or both. An HTML block ends at a blank line. Use \
-            `entries preview` to see exactly what will be published.
+            - Write entry text as Markdown. A callout is a GitHub alert (> [!NOTE], [!TIP], [!WARNING]); \
+            fence code with its language (```java) for highlighting and a copy button. Never set colors \
+            inline: a theme may be dark. HTML still works; an HTML block ends at a blank line. \
+            `entries preview` shows what will publish, with `warnings`.
             - For a post about one place, set jsonLdType to TOURIST_ATTRACTION with geoLatitude and \
             geoLongitude.
             - Comments by signed-in readers: `comments list` with status PENDING shows held ones; `update` \

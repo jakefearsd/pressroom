@@ -485,11 +485,18 @@ entries_preview() {
     text="$(read_text_file "$text_file")"
     body="$(jq -n --arg text "$text" '{text: $text}')"
 
+    local path="/weblogs/${weblog}/entries/preview" response
     if [ -n "$id" ]; then
-        api POST "/weblogs/${weblog}/entries/${id}/preview" -d "$body" | jq -r '.html'
-    else
-        api POST "/weblogs/${weblog}/entries/preview" -d "$body" | jq -r '.html'
+        path="/weblogs/${weblog}/entries/${id}/preview"
     fi
+    if ! response="$(api POST "$path" -d "$body")"; then
+        printf '%s\n' "$response" >&2
+        exit 1
+    fi
+    # The HTML alone on stdout, so `> post.html` keeps working; the advice
+    # (inline colors, code blocks with no language) on stderr.
+    jq -r '.html' <<<"$response"
+    jq -r '.warnings[]? | "warning: " + .' <<<"$response" >&2
 }
 
 # ------------------------------------------------------------------ media

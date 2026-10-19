@@ -279,7 +279,8 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         // saveWeblogEntry -- a future change adding either here would
         // silently persist preview text over the stored entry.
         entry.setText(body == null || body.text() == null ? "" : body.text());
-        return new EntryDtos.PreviewView(weblogger.getEntryRenderer().transformedText(entry));
+        String html = weblogger.getEntryRenderer().transformedText(entry);
+        return new EntryDtos.PreviewView(html, PreviewLint.warnings(html));
     }
 
     /**
