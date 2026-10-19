@@ -32,6 +32,20 @@ resolves through the index at the end of `CLAUDE.md`.
   gzipped, served only to the two login-gated editors; accepted — dropping
   fenced-code highlighting (the bulk) costs a feature for bytes nobody else
   pays.
+- **A second bundle, `roller-content.js`, serves readers** (entry
+  `app/frontend/src/content.js`, same directory, same git-ignore, pinned by
+  `EditorBundlePomTest`): highlight.js `11.12.0` core with 20 explicitly
+  registered grammars, copy buttons, line numbers, heading anchors. ~83 KB
+  minified / ~27 KB gzipped, injected by the content-asset macro only on a
+  page with a code block or content heading to enhance. Its pure halves
+  (`content-core.js`, `highlighter.js`) are covered by
+  `test/content.test.mjs`. Being public, it is the one file under
+  `/roller-ui` that `ControlPlaneHostFilter` leaves on a custom domain. See
+  `themes-and-templates.md`, "Content assets".
+- Adding a dependency means regenerating `package-lock.json` with the
+  plugin's own Node, not a system one:
+  `cd app/frontend && node/node node/node_modules/npm/bin/npm-cli.js install <pkg>@<x.y.z> --save-exact`
+  (after one `generate-resources` has downloaded it).
 
 ## Testing Commands
 ```bash

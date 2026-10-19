@@ -178,6 +178,8 @@ a race:
   `uploads.enabled=false`; with uploads off the media page renders no
   buttons, and the failure reads
   `Element not found {button[formaction$='entryAddWithMediaFile.rol']}`).
+  `MarkdownContentIT`'s publishing test holds it read too, as McpIT's
+  weblog-creating methods do: it creates a weblog.
 - **`RollerIT.SHARED_MEDIA`** — held **write** by the five classes that
   upload, crop or delete media on the shared `WEBLOG_HANDLE` (`GalleryIT`,
   `MediaCropIT`, `MediaBulkUploadIT`, `EditorSeoIT`, `EditorUploadIT`); **read** by

@@ -142,3 +142,75 @@ resolves through the index at the end of `CLAUDE.md`.
   `#showAudienceAssets`/`#showWeblogCategoryLinksList`). Write "the showX
   macro" in a comment, never `#showX` — `ThemeStylesheetTest` scans every
   theme stylesheet for the bare form and fails the build.
+
+## Content assets (callouts, code blocks, heading anchors)
+
+The `showContentAssets` macro in `WEB-INF/velocity/weblog.vm` styles and
+enhances Markdown content for readers. It is called beside the map assets in
+all 18 heads that call those (each article theme's `weblog`, `permalink`,
+`searchresults`, `page` and `preview` templates, frontpage's `_header`, and the
+shared `templates/weblog/page.vm` and `preview.vm`). `ContentAssetsRenderingTest`
+renders every one and also scans the sources, so a new head that calls the
+map assets without this macro fails the build.
+
+- **The markup it relies on** is `MarkdownRenderer`'s, kept by
+  `HTMLSanitizer`. `> [!NOTE]` (and TIP, IMPORTANT, WARNING, CAUTION) becomes
+  `div.markdown-alert.markdown-alert-note` with a `p.markdown-alert-title`.
+  A fenced block becomes `pre > code.language-x`, or a bare `pre > code`.
+  Every heading gets an `id`.
+- **Scope.** Everything except the callouts and the `hljs-*` token classes
+  applies inside `$rollerContentScope` only: `.qj-prose`,
+  `.tg-entry-content`, `.pf-entry-content`, `.roller-preview-prose` (shared
+  preview) and `.roller-content` (the shared page fallback's `<article>`).
+  A custom theme opts in by putting `roller-content` on its content
+  container. The scope sits in `:where()`, so a theme's own rule for the same
+  element still wins. The heading anchor is the exception: it is specific
+  enough to beat a theme's content-link colour.
+- **Colour.** Each palette value is a `light-dark()` pair, resolved by the
+  theme's own `color-scheme`. Each such declaration follows a fallback for the
+  same property that is legible on any canvas: `inherit` for text, a
+  `color-mix(in srgb, currentColor N%, transparent)` tint for backgrounds.
+  Tints follow the text colour, so they suit any canvas. The only opaque
+  backgrounds are the diff lines, and those set their text colour from the same
+  scheme in the same rule. Both rules are pinned by
+  `ContentAssetsRenderingTest`. The light titles of the callouts are one Primer
+  step darker than their borders, because the GitHub base colours fall just
+  under 4.5:1 on a tinted cream or paper canvas.
+- **Contrast, measured** (WCAG ratio, worst case across portfolio, travel,
+  journal light/dark and the UA canvas the frontpage fallback pages use):
+  code text 12.2, line numbers 5.2, language label 5.8, copy button 11.0, inline-code chip
+  10.7, table header 11.9. Token colours: light keyword #cf222e is the lowest
+  at 4.6, every other token is 5.0 or better. Callout titles: light 6.1 or
+  better, dark 4.8 (caution on journal dark) or better. Callout body text
+  12.1 or better, heading `#` at its hover opacity 5.4. Portfolio: content
+  link 7.7, hover 10.3, captions and quotes (`--pf-muted`) 6.0. Journal
+  links: 5.8 light, 6.9 dark.
+- **Script.** A classic bootstrap, shaped like the map assets. It injects
+  `$url.site/roller-ui/scripts/roller-content.js` only after finding an
+  unprocessed `pre > code` or content `h2`-`h4` with an id. Each call hands
+  the bundle the selectors and the weblog's labels (`content.code.*`,
+  `content.heading.anchor`, escaped into data attributes). Blocks and
+  headings are marked once done (`data-roller-code`, `data-roller-anchor`),
+  which makes it re-runnable. It chains onto `window.rollerPreviewInit`, so
+  the editor's preview is enhanced after each swap. Highlighting never
+  auto-detects: an unknown or absent language keeps its copy button and line
+  numbers, with no colours. The gutter sits outside the `pre`, and the copy
+  button copies `code.textContent` minus the trailing newline.
+- **Custom domains.** `ControlPlaneHostFilter` 301s `/roller-ui/**` to the
+  site host. A redirected script is cross-origin and every theme's CSP is
+  `script-src 'self'`, so the filter exempts exactly
+  `/roller-ui/scripts/roller-content.js`. The editor bundle beside it is
+  still control plane.
+- **Theme fixes that came with it.** Portfolio's `body.pf a` (inherit, no
+  underline) stays for the chrome. Content links (`body.pf .pf-entry-content
+  a`) get the accent colour, an underline and a hover state, and captions
+  and quotes use `--pf-muted`. Journal's `.qj-prose a` (0,1,1) had never beaten
+  `body.qj a` (0,1,2), so post links rendered in the ink colour. The fix
+  prefixes it with `body.qj`. Both theme rules exclude `.cta-card` through
+  `:where(:not(...))`, which adds no specificity, so the heading anchor still
+  out-ranks them. Travel needed nothing. Frontpage renders no entry content
+  under `body.fd`: its pages and previews go through the shared fallbacks,
+  whose bodies carry no `fd` class, so their links keep the browser default.
+- Hex colours inside a Velocity template are safe only because no macro is
+  named like one (`#d29922` is literal text). The same goes for the theme
+  stylesheets, which Velocity renders too.
