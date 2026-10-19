@@ -283,6 +283,39 @@ body.pf a:hover {
     height: auto;
 }
 
+/* Links inside a post or page. body.pf a above makes every link inherit the
+   text colour with no underline -- right for the chrome (the name, the nav,
+   the cards), and the reason a link in prose read as plain text. Scoped to
+   the content container, so the chrome rule stands. The [cta] card is a link
+   with its own accent fill and is left to its rule below; :where() keeps that
+   exclusion from adding specificity, so the shared heading anchor (the
+   showContentAssets macro) still out-ranks this rule. #4FB3AA on #0e0e10 is
+   7.7:1, the hover mix 10.3:1. */
+body.pf .pf-entry-content a:where(:not(.cta-card)) {
+    color: var(--pf-accent);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+}
+
+body.pf .pf-entry-content a:where(:not(.cta-card)):hover {
+    color: color-mix(in srgb, var(--pf-accent) 70%, white);
+    text-decoration-thickness: 2px;
+}
+
+/* Captions and quotes take the muted token: #8f8f96 on #0e0e10 is 6.0:1.
+   Colour only on the caption -- the gallery grid sizes its own. */
+body.pf .pf-entry-content figcaption {
+    color: var(--pf-muted);
+}
+
+body.pf .pf-entry-content blockquote {
+    margin: 1.5rem 0;
+    padding: 0.25rem 0 0.25rem 1.1rem;
+    border-left: 2px solid var(--pf-accent);
+    color: var(--pf-muted);
+}
+
 .pf-entry-meta {
     margin-top: 2rem;
     color: var(--pf-muted);

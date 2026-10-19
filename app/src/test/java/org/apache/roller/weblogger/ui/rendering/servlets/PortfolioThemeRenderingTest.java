@@ -448,6 +448,45 @@ class PortfolioThemeRenderingTest {
     }
 
     /**
+     * {@code body.pf a} makes every link inherit the text colour with no
+     * underline -- right for the chrome (the name, the nav, the cards), and
+     * the reason a link inside a post read as plain text. Content links get
+     * the accent and an underline back, scoped to {@code .pf-entry-content}
+     * so the chrome rule above is untouched; captions and quotes drop to the
+     * muted token (#8f8f96 on #0e0e10 is 6.0:1).
+     */
+    @Test
+    void contentLinksCaptionsAndQuotesAreStyledInsideContentOnly() throws Exception {
+        String css = render("/" + HANDLE + "/page/portfolio-custom.css");
+
+        String chrome = rule(css, "body.pf a {");
+        assertTrue(chrome.contains("color: inherit;") && chrome.contains("text-decoration: none;"),
+                "the chrome link rule must stay as it was:\n" + chrome);
+
+        // :where() keeps the exclusion from adding specificity: the [cta]
+        // card is an accent-filled link of its own, and the shared heading
+        // anchor must still out-rank this rule.
+        String link = rule(css, "body.pf .pf-entry-content a:where(:not(.cta-card)) {");
+        assertTrue(link.contains("color: var(--pf-accent);"), link);
+        assertTrue(link.contains("text-decoration: underline;"), link);
+        String hover = rule(css, "body.pf .pf-entry-content a:where(:not(.cta-card)):hover {");
+        assertFalse(hover.isBlank(), "content links need a hover state");
+
+        assertTrue(rule(css, "body.pf .pf-entry-content figcaption {")
+                .contains("color: var(--pf-muted);"), css);
+        String quote = rule(css, "body.pf .pf-entry-content blockquote {");
+        assertTrue(quote.contains("border-left:") && quote.contains("color: var(--pf-muted);"), quote);
+    }
+
+    /** The body of the first rule with exactly this selector, or a failure naming it. */
+    private static String rule(String css, String selectorAndBrace) {
+        int at = css.indexOf("\n" + selectorAndBrace);
+        assertTrue(at >= 0, "expected a rule " + selectorAndBrace + " in:\n" + css);
+        int open = at + selectorAndBrace.length();
+        return css.substring(open, css.indexOf('}', open));
+    }
+
+    /**
      * The no-image entry card ({@code .pf-card-text}, see
      * {@code anEntryWithoutAFeaturedImageBecomesAQuietTextCard} above) trades
      * its former flat empty box for a teal wash off the theme's new accent

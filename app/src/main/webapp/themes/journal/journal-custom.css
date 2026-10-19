@@ -382,7 +382,10 @@ body.qj :focus-visible { outline: 2px solid var(--qj-focus); outline-offset: 2px
     max-width: 58ch;
 }
 .qj-prose p + p { margin-top: .875rem; }
-.qj-prose a { color: var(--qj-accent); }
+/* body.qj prefix: without it this (0,1,1) lost to body.qj a (0,1,2) and every
+   link in a post rendered in the ink colour. The [cta] card is a link with its
+   own treatment (below); :where() keeps excluding it from adding specificity. */
+body.qj .qj-prose a:where(:not(.cta-card)) { color: var(--qj-accent); }
 .qj-prose img { border-radius: var(--qj-radius); }
 
 /* pull-quote treatment -- every blockquote in the rendered entry body gets

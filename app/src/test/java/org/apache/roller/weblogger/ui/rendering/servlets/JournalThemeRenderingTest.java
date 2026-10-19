@@ -614,4 +614,26 @@ class JournalThemeRenderingTest {
         assertTrue(body.contains("/category/"),
                 "the crumb link must point at the entry's category:\n" + body);
     }
+
+    /**
+     * A link in the reading column is the accent colour, as the stylesheet
+     * always meant: {@code .qj-prose a} (0,1,1) never beat {@code body.qj a}
+     * (0,1,2), so every link in a post rendered in the ink colour, told apart
+     * only by the browser's default underline. The rule now carries the
+     * {@code body.qj} prefix it needs to win; #0F6E68 on #F7F9F9 is 5.8:1 and
+     * the dark palette's #4FB3AA on #131C1C 6.9:1.
+     */
+    @Test
+    void readingColumnLinksOutrankTheChromeLinkRule() throws Exception {
+        String css = render("/" + HANDLE + "/page/journal-custom.css");
+
+        assertTrue(css.contains("body.qj a { color: inherit; }"),
+                "the chrome link rule stays as it was:\n" + css);
+        // The [cta] card keeps its own ink-on-wash treatment; :where() keeps
+        // that exclusion from adding specificity of its own.
+        assertTrue(css.contains("body.qj .qj-prose a:where(:not(.cta-card)) { color: var(--qj-accent); }"),
+                "the reading-column rule must out-rank body.qj a:\n" + css);
+        assertFalse(css.contains("\n.qj-prose a {"),
+                "the dead, lower-specificity form must be gone:\n" + css);
+    }
 }
