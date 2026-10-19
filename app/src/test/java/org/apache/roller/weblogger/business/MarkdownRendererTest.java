@@ -17,6 +17,9 @@
  */
 package org.apache.roller.weblogger.business;
 
+import java.util.List;
+import java.util.Locale;
+import org.apache.roller.weblogger.util.HTMLSanitizer;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -41,7 +44,7 @@ class MarkdownRendererTest {
 
     @Test
     void rendersTheBasics() {
-        assertEquals("<h1>Iceland</h1>\n", MarkdownRenderer.render("# Iceland"));
+        assertEquals("<h1 id=\"iceland\">Iceland</h1>\n", MarkdownRenderer.render("# Iceland"));
         assertEquals("<p>A <strong>long</strong> drive.</p>\n",
                 MarkdownRenderer.render("A **long** drive."));
         assertTrue(MarkdownRenderer.render("- one\n- two").contains("<li>one</li>"));
@@ -56,6 +59,45 @@ class MarkdownRendererTest {
         assertTrue(MarkdownRenderer.render("See https://example.com for details")
                         .contains("<a href=\"https://example.com\">"),
                 "autolink extension");
+    }
+
+    /**
+     * GitHub's alert syntax is how an author (or an agent) writes a callout
+     * without inline colors, which a dark theme turns illegible: the theme
+     * styles the class instead.
+     */
+    @Test
+    void aGitHubAlertBecomesACalloutTheThemeStyles() {
+        for (String type : List.of("NOTE", "TIP", "IMPORTANT", "WARNING", "CAUTION")) {
+            String html = HTMLSanitizer.sanitize(MarkdownRenderer.render("> [!" + type + "]\n> Mind the gap."));
+
+            String lower = type.toLowerCase(Locale.ROOT);
+            assertTrue(html.contains("class=\"markdown-alert markdown-alert-" + lower + "\""), html);
+            assertTrue(html.contains("Mind the gap."), html);
+            assertFalse(html.contains("[!" + type + "]"), "no marker may reach a reader: " + html);
+            assertFalse(html.contains("<blockquote"), html);
+        }
+    }
+
+    /** A heading carries an id, so a section can be linked to: entry permalink plus #storage-tier. */
+    @Test
+    void headingsCarryAnIdThatSurvivesTheSanitizer() {
+        String html = HTMLSanitizer.sanitize(MarkdownRenderer.render("## Storage tier\n\ntext\n\n## Storage tier\n"));
+
+        assertTrue(html.contains("<h2 id=\"storage-tier\">Storage tier</h2>"), html);
+        assertTrue(html.contains("<h2 id=\"storage-tier-1\">Storage tier</h2>"), "a repeated heading: " + html);
+    }
+
+    /**
+     * The reader's code-block script highlights and labels by this class.
+     * Characterisation: it passed before that script existed, pinning what
+     * the script relies on.
+     */
+    @Test
+    void aFencedBlockKeepsItsLanguageThroughTheSanitizer() {
+        String html = HTMLSanitizer.sanitize(MarkdownRenderer.render("```java\nint x = 1;\n```\n"));
+
+        assertTrue(html.contains("<pre><code class=\"language-java\">"), html);
     }
 
     @Test

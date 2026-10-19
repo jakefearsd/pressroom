@@ -705,7 +705,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
 
         assertEquals(200, response.getStatusCode().value());
         String html = response.getBody();
-        assertTrue(html.contains("<h2>Opening hours</h2>"), html);
+        assertTrue(html.contains("<h2 id=\"opening-hours\">Opening hours</h2>"), html);
         assertTrue(html.contains("<strong>early</strong>"), html);
     }
 

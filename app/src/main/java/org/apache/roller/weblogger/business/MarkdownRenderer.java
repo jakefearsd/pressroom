@@ -21,8 +21,10 @@ import java.util.List;
 
 import org.commonmark.Extension;
 import org.commonmark.ext.autolink.AutolinkExtension;
+import org.commonmark.ext.gfm.alerts.AlertsExtension;
 import org.commonmark.ext.gfm.strikethrough.StrikethroughExtension;
 import org.commonmark.ext.gfm.tables.TablesExtension;
+import org.commonmark.ext.heading.anchor.HeadingAnchorExtension;
 import org.commonmark.parser.Parser;
 import org.commonmark.renderer.html.HtmlRenderer;
 
@@ -49,7 +51,8 @@ import org.commonmark.renderer.html.HtmlRenderer;
  *     parser afterwards would reflow and mangle them. See
  *     {@code WeblogEntry.render}.</li>
  * <li><b>Extensions are fixed, not configurable.</b> Tables, strikethrough and
- *     autolink are what a travel or photography post actually uses; making the
+ *     autolink are what a travel or photography post actually uses, and GitHub
+ *     alerts and heading ids are what a technical one does; making the
  *     set per-weblog would mean the same source rendering differently in two
  *     places, which is exactly the drift the shortcode parsers were designed
  *     to avoid.</li>
@@ -65,7 +68,12 @@ public final class MarkdownRenderer {
     static final List<Extension> EXTENSIONS = List.of(
             TablesExtension.create(),
             StrikethroughExtension.create(),
-            AutolinkExtension.create());
+            AutolinkExtension.create(),
+            // > [!NOTE] and its four siblings: a callout the theme styles, so
+            // an author never needs inline colors that one theme cannot read.
+            AlertsExtension.create(),
+            // An id on every heading, so a section can be linked to.
+            HeadingAnchorExtension.create());
 
     private static final Parser PARSER = Parser.builder()
             .extensions(EXTENSIONS)

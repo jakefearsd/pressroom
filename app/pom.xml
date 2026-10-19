@@ -673,7 +673,7 @@ limitations under the License.
         </dependency>
 
         <!-- Markdown: every entry is Markdown (Stage 2 Wave 4). Not managed by
-             the Boot BOM, so the version is pinned here; the three extensions
+             the Boot BOM, so the version is pinned here; the extensions
              are separate artifacts on purpose. -->
         <dependency>
             <groupId>org.commonmark</groupId>
@@ -693,6 +693,16 @@ limitations under the License.
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark-ext-autolink</artifactId>
+            <version>0.30.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark-ext-gfm-alerts</artifactId>
+            <version>0.30.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark-ext-heading-anchor</artifactId>
             <version>0.30.1</version>
         </dependency>
 

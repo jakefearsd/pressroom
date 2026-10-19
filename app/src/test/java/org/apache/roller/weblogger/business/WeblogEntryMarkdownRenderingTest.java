@@ -83,7 +83,7 @@ class WeblogEntryMarkdownRenderingTest {
         // No flag, no opt-in, no second format: markdown is what an entry is.
         String rendered = renderer().transformedText(entry("## Day one\n\nA **long** drive.\n"));
 
-        assertTrue(rendered.contains("<h2>Day one</h2>"), rendered);
+        assertTrue(rendered.contains("<h2 id=\"day-one\">Day one</h2>"), rendered);
         assertTrue(rendered.contains("<strong>long</strong>"), rendered);
         assertFalse(rendered.contains("## Day one"),
                 "no raw markdown may reach a reader: " + rendered);

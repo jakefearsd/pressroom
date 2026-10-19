@@ -1134,7 +1134,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
 
         assertEquals(200, response.getStatusCode().value());
         String html = response.getBody();
-        assertTrue(html.contains("<h2>Trip notes</h2>"), html);
+        assertTrue(html.contains("<h2 id=\"trip-notes\">Trip notes</h2>"), html);
         assertTrue(html.contains("<strong>long</strong>"), html);
     }
 
