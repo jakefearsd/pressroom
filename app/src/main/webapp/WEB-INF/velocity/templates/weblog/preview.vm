@@ -31,15 +31,16 @@ measure-free defaults and the shortcode assets right instead.
     .roller-preview { margin: 0; }
     .roller-preview-main { max-width: 46rem; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
     </style>
-    ## The same four the themes call, in the same order and for the same
-    ## reason: #showEmbedAssets binds on DOMContentLoaded, and the gallery and
-    ## map stylesheets arriving at the end of <body> would be a flash of
-    ## unstyled gallery/map. #showAudienceAssets is deliberately absent -- a
+    ## The same ones the themes call, in the same order and for the same
+    ## reason: #showEmbedAssets and the content assets bind on
+    ## DOMContentLoaded, and the gallery and map stylesheets arriving at the
+    ## end of <body> would be a flash of unstyled gallery/map. #showAudienceAssets is deliberately absent -- a
     ## [contact] or [subscribe] form in a preview would be a live, posting
     ## form on unsaved text.
     #showGalleryGridStyles()
     #showGalleryAssets()
     #showMapAssets()
+    #showContentAssets()
     #showEmbedAssets()
     #showPreviewShellScript()
 </head>

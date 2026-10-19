@@ -960,7 +960,8 @@ limitations under the License.
                         <phase>generate-resources</phase>
                         <configuration><arguments>run build</arguments></configuration>
                     </execution>
-                    <!-- The frontend's own node:test suite (stats.js, shortcodes.js).
+                    <!-- The frontend's own node:test suite (stats.js, shortcodes.js,
+                         and the reader bundle's content-core.js / highlighter.js).
                          Bound to `test` so `mvn -pl app test` runs it alongside the
                          Java suite; `${skipTests}` is the same property that gates
                          the Java surefire run below (via skipUnitTests), so

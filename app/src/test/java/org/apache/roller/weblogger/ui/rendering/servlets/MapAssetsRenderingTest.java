@@ -282,7 +282,7 @@ class MapAssetsRenderingTest {
     /**
      * The editor's live preview replaces {@code #previewArticle}'s innerHTML
      * on every push, and the asset scripts bind on {@code DOMContentLoaded} --
-     * which fired long before. So each of the three macros exposes a named
+     * which fired long before. So each of the four macros exposes a named
      * initialiser and chains it onto {@code window.rollerPreviewInit}, the seam
      * {@code #showPreviewShellScript} calls after each swap.
      *
@@ -300,15 +300,15 @@ class MapAssetsRenderingTest {
         String body = render("/" + HANDLE + "/entry/rerunnable-init-entry");
 
         for (String initialiser : new String[] {
-                "rollerInitGalleries", "rollerInitMaps", "rollerInitEmbeds" }) {
+                "rollerInitGalleries", "rollerInitMaps", "rollerInitEmbeds", "rollerInitContent" }) {
             assertTrue(body.contains("function " + initialiser + "("),
                     "journal permalink must declare " + initialiser + ":\n" + body);
             assertTrue(body.contains(initialiser + "(document)"),
                     "the public page must still initialise once on load via "
                             + initialiser + ":\n" + body);
         }
-        assertEquals(3, StringUtils.countMatches(body, "window.rollerPreviewInit ="),
-                "each of the three macros must chain onto the preview seam:\n" + body);
+        assertEquals(4, StringUtils.countMatches(body, "window.rollerPreviewInit ="),
+                "each of the four macros must chain onto the preview seam:\n" + body);
     }
 
     // ----------------------------------------------------------------- CSP

@@ -13,18 +13,37 @@
 
    The webapp root works in both shapes that matter: maven-war-plugin copies
    src/main/webapp into the WAR, and spring-boot:run (./roller dev) uses
-   src/main/webapp as the document root directly. The file itself is a build
-   output and is git-ignored; EditorBundlePomTest pins that. */
+   src/main/webapp as the document root directly. The files themselves are
+   build outputs and are git-ignored; EditorBundlePomTest pins that.
+
+   Two bundles. roller-editor.js serves the two login-gated editors.
+   roller-content.js serves READERS: weblog.vm's content-asset macro injects it
+   on a public page that has a code block or a content heading to enhance
+   (highlighting, copy buttons, line numbers, heading anchors). Being public,
+   it is also the one file under /roller-ui that ControlPlaneHostFilter leaves
+   on a weblog's custom domain -- a redirect to the site host would be
+   cross-origin and refused by every theme's script-src 'self'. */
 import { build } from 'esbuild';
 
-await build({
-  entryPoints: ['src/editor.js'],
+const common = {
   bundle: true,
   minify: true,
   format: 'iife',
-  globalName: 'RollerEditor',
   target: ['es2020'],
-  outfile: '../src/main/webapp/roller-ui/scripts/roller-editor.js',
   legalComments: 'none',
   logLevel: 'info'
+};
+
+await build({
+  ...common,
+  entryPoints: ['src/editor.js'],
+  globalName: 'RollerEditor',
+  outfile: '../src/main/webapp/roller-ui/scripts/roller-editor.js'
+});
+
+await build({
+  ...common,
+  entryPoints: ['src/content.js'],
+  globalName: 'RollerContent',
+  outfile: '../src/main/webapp/roller-ui/scripts/roller-content.js'
 });

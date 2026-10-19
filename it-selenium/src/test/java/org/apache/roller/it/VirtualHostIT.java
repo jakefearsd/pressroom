@@ -255,7 +255,8 @@ class VirtualHostIT extends RollerIT {
         String title = "Vhost render check " + nonce();
 
         loginAsAdmin();
-        String permalink = publishEntry(vhostHandle, title);
+        String permalink = publishEntry(vhostHandle, title,
+                "Body of " + title + "\n\n```java\npublic class Vhost {}\n```\n");
         logout();
         String anchor = anchorOf(permalink);
 
@@ -266,6 +267,12 @@ class VirtualHostIT extends RollerIT {
 
         openVhostPath("/entry/" + anchor);
         $("body").shouldHave(text(title));
+        // The code block's toolbar and colours come from roller-content.js,
+        // which lives under /roller-ui -- the control plane this filter sends
+        // to the site host. Redirected, the script would be cross-origin and
+        // refused by the theme's script-src 'self'; ControlPlaneHostFilter
+        // leaves that one file here, and this is what proves it.
+        $(".roller-code[data-language='java'] .hljs-keyword").should(exist);
         BrowserHealth.current().assertNoBrokenResources();
         BrowserHealth.current().assertNoFailedRequests();
     }
@@ -647,10 +654,14 @@ class VirtualHostIT extends RollerIT {
 
     /** Publishes one entry and returns its permalink (already domain-form, the custom domain is set first). */
     private String publishEntry(String handle, String title) {
+        return publishEntry(handle, title, "Body of " + title);
+    }
+
+    private String publishEntry(String handle, String title, String body) {
         openPath("/roller-ui/authoring/entryAdd.rol?weblog=" + handle);
         $("#entry").should(exist);
         $("input[name='bean.title']").setValue(title);
-        Editor.setText("Body of " + title);
+        Editor.setText(body);
         $("button[formaction$='entryAdd!publish.rol']").click();
 
         $(PERMALINK).should(exist);

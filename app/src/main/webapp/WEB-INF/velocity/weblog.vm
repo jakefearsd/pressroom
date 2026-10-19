@@ -904,6 +904,346 @@ window.rollerPreviewInit = (function (prev) {
 
 
 #**
+Reader-side styling and enhancement for Markdown content: GitHub-style
+callouts, code blocks, inline code, tables and heading anchors -- the content
+twin of #showMapAssets, and called from every head that calls it (the article
+themes' weblog, permalink, searchresults, page and preview templates,
+frontpage's _header, and the two shared fallbacks in templates/weblog).
+ContentAssetsRenderingTest counts them.
+
+The markup is MarkdownRenderer's, kept by HTMLSanitizer: > [!NOTE] (and TIP,
+IMPORTANT, WARNING, CAUTION) becomes div.markdown-alert.markdown-alert-note
+with a p.markdown-alert-title; a fenced block is pre > code.language-java, or a
+bare pre > code; inline code is a code outside pre; every heading carries an
+id.
+
+Two halves.
+
+The style block works with no script at all, and suits any theme without a
+per-theme rule. Every theme declares color-scheme (portfolio dark, travel
+light, journal and frontpage light dark), so each palette value is a
+light-dark() pair, and each such declaration follows a fallback of the same
+property that stays legible on any canvas: an inherited text colour, a
+translucent tint. Tints are color-mix() of currentColor, so a background
+always follows the text colour it sits under; the only opaque backgrounds
+(diff additions and deletions) set their own text colour from the same
+scheme in the same rule. ContentAssetsRenderingTest pins both rules. The
+WCAG ratios behind the colours are in docs/dev/themes-and-templates.md.
+
+Everything except the callouts and highlight.js token classes is scoped to
+the content containers named in $rollerContentScope -- one per bundled theme,
+roller-preview-prose for the shared preview shell and roller-content for the
+shared page fallback (and for a custom theme that wants these rules) -- so a
+theme's chrome is never touched. The scope sits inside :where(), adding no
+specificity, so a theme's own rule for the same element still wins; the
+heading anchor is the exception, specific enough to beat a theme's content
+link colour, because a # in a link colour reads as part of the heading text.
+
+The script half is a classic bootstrap, the shape of #showMapAssets: it
+injects roller-content.js (highlight.js and the DOM work; built from
+app/frontend/src/content.js) only after finding an unprocessed code block or
+content heading with an id, and hands it the selectors and the weblog's own
+words for the controls on every call. Re-runnable for the editor's preview,
+chained onto window.rollerPreviewInit like the others. The bundle lives
+under /roller-ui/scripts, the one static location this deployment serves,
+and ControlPlaneHostFilter leaves that one file on a weblog's custom domain:
+a redirect to the site host would be cross-origin under script-src 'self'.
+
+CSP: the bundle is same-origin script; the callout icons are data: SVG masks,
+covered by the img-src * data: every bundled head declares. Nothing else.
+*#
+#macro(showContentAssets)
+#set($rollerContentScope = ".qj-prose, .tg-entry-content, .pf-entry-content, .roller-preview-prose, .roller-content")
+<style>
+.markdown-alert {
+  margin: 1.25em 0;
+  padding: .75em 1em;
+  border-left: .25em solid;
+  border-left-color: color-mix(in srgb, currentColor 35%, transparent);
+  border-radius: 0 6px 6px 0;
+  background-color: color-mix(in srgb, currentColor 5%, transparent);
+}
+.markdown-alert > :first-child { margin-top: 0; }
+.markdown-alert > :last-child { margin-bottom: 0; }
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  align-items: center;
+  gap: .5em;
+  margin: 0 0 .5em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+@supports (mask: none) or (-webkit-mask: none) {
+  .markdown-alert .markdown-alert-title::before {
+    content: "";
+    flex: none;
+    width: 1em;
+    height: 1em;
+    background-color: currentColor;
+    -webkit-mask: var(--roller-alert-icon) center / contain no-repeat;
+    mask: var(--roller-alert-icon) center / contain no-repeat;
+  }
+}
+.markdown-alert-note {
+  --roller-alert-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1ZM8 3.75a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2ZM7.2 7h1.6v5.25H7.2Z'/%3E%3C/svg%3E");
+  border-left-color: color-mix(in srgb, currentColor 35%, transparent);
+  border-left-color: light-dark(#0969da, #4493f8);
+  background-color: color-mix(in srgb, currentColor 5%, transparent);
+  background-color: color-mix(in srgb, light-dark(#0969da, #4493f8) 8%, transparent);
+}
+.markdown-alert-note .markdown-alert-title { color: inherit; color: light-dark(#0550ae, #4493f8); }
+.markdown-alert-tip {
+  --roller-alert-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1a4.75 4.75 0 0 0-2.75 8.62V11.5h5.5V9.62A4.75 4.75 0 0 0 8 1ZM5.75 12.5h4.5V14a1 1 0 0 1-1 1h-2.5a1 1 0 0 1-1-1Z'/%3E%3C/svg%3E");
+  border-left-color: color-mix(in srgb, currentColor 35%, transparent);
+  border-left-color: light-dark(#1a7f37, #3fb950);
+  background-color: color-mix(in srgb, currentColor 5%, transparent);
+  background-color: color-mix(in srgb, light-dark(#1a7f37, #3fb950) 8%, transparent);
+}
+.markdown-alert-tip .markdown-alert-title { color: inherit; color: light-dark(#116329, #3fb950); }
+.markdown-alert-important {
+  --roller-alert-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M2.5 1.5h11a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H7.25L4 14.5v-3H2.5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1ZM7.2 3.5v4.25h1.6V3.5ZM7.2 8.75v1.5h1.6v-1.5Z'/%3E%3C/svg%3E");
+  border-left-color: color-mix(in srgb, currentColor 35%, transparent);
+  border-left-color: light-dark(#8250df, #ab7df8);
+  background-color: color-mix(in srgb, currentColor 5%, transparent);
+  background-color: color-mix(in srgb, light-dark(#8250df, #ab7df8) 8%, transparent);
+}
+.markdown-alert-important .markdown-alert-title { color: inherit; color: light-dark(#6639ba, #ab7df8); }
+.markdown-alert-warning {
+  --roller-alert-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M8 1l7.25 13.5H.75ZM7.2 5.5v4.5h1.6V5.5ZM7.2 11v1.6h1.6V11Z'/%3E%3C/svg%3E");
+  border-left-color: color-mix(in srgb, currentColor 35%, transparent);
+  border-left-color: light-dark(#9a6700, #d29922);
+  background-color: color-mix(in srgb, currentColor 5%, transparent);
+  background-color: color-mix(in srgb, light-dark(#9a6700, #d29922) 8%, transparent);
+}
+.markdown-alert-warning .markdown-alert-title { color: inherit; color: light-dark(#7d4e00, #d29922); }
+.markdown-alert-caution {
+  --roller-alert-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M5.1 1h5.8L15 5.1v5.8L10.9 15H5.1L1 10.9V5.1ZM7.2 4v5h1.6V4ZM7.2 10.25v1.6h1.6v-1.6Z'/%3E%3C/svg%3E");
+  border-left-color: color-mix(in srgb, currentColor 35%, transparent);
+  border-left-color: light-dark(#d1242f, #f85149);
+  background-color: color-mix(in srgb, currentColor 5%, transparent);
+  background-color: color-mix(in srgb, light-dark(#d1242f, #f85149) 8%, transparent);
+}
+.markdown-alert-caution .markdown-alert-title { color: inherit; color: light-dark(#a40e26, #f85149); }
+
+:where($rollerContentScope) pre {
+  margin: 1.25em 0;
+  padding: .85em 1em;
+  overflow-x: auto;
+  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  border-radius: 6px;
+  background-color: color-mix(in srgb, currentColor 5%, transparent);
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: .875em;
+  line-height: 1.55;
+  tab-size: 4;
+}
+:where($rollerContentScope) pre code {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  font: inherit;
+  white-space: pre;
+}
+:where($rollerContentScope) :not(pre) > code {
+  padding: .125em .375em;
+  border-radius: 4px;
+  background-color: color-mix(in srgb, currentColor 10%, transparent);
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: .875em;
+}
+.roller-code {
+  margin: 1.25em 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  border-radius: 6px;
+  background-color: color-mix(in srgb, currentColor 5%, transparent);
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: .875em;
+  line-height: 1.55;
+}
+.roller-code-bar {
+  display: flex;
+  align-items: center;
+  gap: .75em;
+  padding: .3em .5em .3em 1em;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  background-color: color-mix(in srgb, currentColor 4%, transparent);
+  font-size: .8571em;
+  line-height: 1.4;
+}
+.roller-code-lang { color: color-mix(in srgb, currentColor 75%, transparent); }
+.roller-code-copy {
+  margin-left: auto;
+  padding: .2em .75em;
+  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.roller-code-copy:hover,
+.roller-code-copy.is-copied { background-color: color-mix(in srgb, currentColor 10%, transparent); }
+.roller-code-body { display: flex; align-items: flex-start; }
+.roller-code .roller-code-body pre {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-size: 1em;
+}
+.roller-code-lines {
+  flex: none;
+  padding: .85em .75em .85em 1em;
+  border-right: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+  color: color-mix(in srgb, currentColor 70%, transparent);
+  text-align: right;
+  white-space: pre;
+  font-variant-numeric: tabular-nums;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.roller-code .roller-code-lines + pre { padding-left: .85em; }
+
+.hljs-doctag, .hljs-keyword, .hljs-meta .hljs-keyword, .hljs-template-tag,
+.hljs-template-variable, .hljs-type, .hljs-variable.language_ { color: inherit; color: light-dark(#cf222e, #ff7b72); }
+.hljs-title, .hljs-title.class_, .hljs-title.class_.inherited__,
+.hljs-title.function_ { color: inherit; color: light-dark(#6639ba, #d2a8ff); }
+.hljs-attr, .hljs-attribute, .hljs-literal, .hljs-meta, .hljs-number, .hljs-operator,
+.hljs-variable, .hljs-selector-attr, .hljs-selector-class,
+.hljs-selector-id { color: inherit; color: light-dark(#0550ae, #79c0ff); }
+.hljs-regexp, .hljs-string, .hljs-meta .hljs-string { color: inherit; color: light-dark(#0a3069, #a5d6ff); }
+.hljs-built_in, .hljs-symbol { color: inherit; color: light-dark(#953800, #ffa657); }
+.hljs-comment, .hljs-code, .hljs-formula { color: inherit; color: light-dark(#59636e, #8b949e); }
+.hljs-name, .hljs-quote, .hljs-selector-tag,
+.hljs-selector-pseudo { color: inherit; color: light-dark(#116329, #7ee787); }
+.hljs-section { color: inherit; color: light-dark(#0550ae, #79c0ff); font-weight: 600; }
+.hljs-bullet { color: inherit; color: light-dark(#953800, #f2cc60); }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 600; }
+.hljs-addition {
+  color: inherit;
+  color: light-dark(#116329, #aff5b4);
+  background-color: color-mix(in srgb, currentColor 12%, transparent);
+  background-color: light-dark(#dafbe1, #033a16);
+}
+.hljs-deletion {
+  color: inherit;
+  color: light-dark(#82071e, #ffdcd7);
+  background-color: color-mix(in srgb, currentColor 12%, transparent);
+  background-color: light-dark(#ffebe9, #67060c);
+}
+
+:where($rollerContentScope) table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 1.25em 0;
+  border-collapse: collapse;
+  font-size: .9375em;
+}
+:where($rollerContentScope) th,
+:where($rollerContentScope) td {
+  padding: .4em .75em;
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  vertical-align: top;
+}
+:where($rollerContentScope) th {
+  font-weight: 600;
+  background-color: color-mix(in srgb, currentColor 6%, transparent);
+}
+:where($rollerContentScope) th:not([align]) { text-align: start; }
+:where($rollerContentScope) tbody tr:nth-child(2n) { background-color: color-mix(in srgb, currentColor 3%, transparent); }
+
+:where($rollerContentScope) :is(h2, h3, h4)[id] { scroll-margin-top: 1rem; }
+body :is($rollerContentScope) :is(h2, h3, h4) > a.roller-heading-anchor {
+  margin-left: .35em;
+  padding: 0 .1em;
+  color: inherit;
+  font-weight: 400;
+  text-decoration: none;
+  opacity: 0;
+}
+body :is($rollerContentScope) :is(h2, h3, h4):hover > a.roller-heading-anchor,
+body :is($rollerContentScope) :is(h2, h3, h4) > a.roller-heading-anchor:focus-visible { opacity: .7; }
+body :is($rollerContentScope) :is(h2, h3, h4) > a.roller-heading-anchor:hover { opacity: 1; text-decoration: underline; }
+@media (hover: none) {
+  body :is($rollerContentScope) :is(h2, h3, h4) > a.roller-heading-anchor { opacity: .7; }
+}
+</style>
+<script data-copy="$utils.escapeHTML($text.get('content.code.copy'))" data-copied="$utils.escapeHTML($text.get('content.code.copied'))" data-copy-failed="$utils.escapeHTML($text.get('content.code.copyFailed'))" data-anchor="$utils.escapeHTML($text.get('content.heading.anchor'))">
+// The contract with roller-content.js, handed to it on every call rather
+// than known to it: an unprocessed code block, or an unprocessed heading
+// with an id, inside content. The not() halves are what make a second call
+// over a document that overlaps the first one safe, and what keep a page
+// with nothing left to do from loading the bundle at all.
+var rollerContent = {
+  code: ':is($rollerContentScope) pre:not([data-roller-code]) > code',
+  headings: ':is($rollerContentScope) :is(h2, h3, h4)[id]:not([data-roller-anchor])',
+  labels: (function (script) {
+    if (!script) { return {}; }
+    return {
+      copy: script.getAttribute('data-copy'),
+      copied: script.getAttribute('data-copied'),
+      copyFailed: script.getAttribute('data-copy-failed'),
+      anchor: script.getAttribute('data-anchor')
+    };
+  })(document.currentScript),
+  // 'idle' until the first block is found, 'loading' while the script
+  // element is in flight, 'ready' once window.RollerContent exists.
+  state: 'idle',
+  // Roots found while the bundle was still loading, enhanced when it lands.
+  queue: []
+};
+
+function rollerEnhanceContent(root) {
+  window.RollerContent.enhance(root, rollerContent);
+}
+
+// Re-runnable, because the editor's live preview swaps the article's
+// innerHTML long after DOMContentLoaded has fired.
+function rollerInitContent(root) {
+  var scope = root || document;
+  if (!scope.querySelector(rollerContent.code) && !scope.querySelector(rollerContent.headings)) { return; }
+  if (rollerContent.state === 'ready') { rollerEnhanceContent(scope); return; }
+  rollerContent.queue.push(scope);
+  if (rollerContent.state === 'loading') { return; }
+  rollerContent.state = 'loading';
+  var script = document.createElement('script');
+  script.src = '$url.site/roller-ui/scripts/roller-content.js';
+  script.onload = function () {
+    rollerContent.state = 'ready';
+    var queued = rollerContent.queue;
+    rollerContent.queue = [];
+    queued.forEach(function (queuedRoot) { rollerEnhanceContent(queuedRoot); });
+  };
+  // A failed load must not strand the state at 'loading': reset, so the
+  // next call (a preview push, say) tries again. The page stays readable
+  // either way -- every style above applies without the script.
+  script.onerror = function () {
+    rollerContent.state = 'idle';
+    rollerContent.queue = [];
+  };
+  document.head.appendChild(script);
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  rollerInitContent(document);
+});
+// The seam the preview shell's own script calls after each swap (see the
+// showPreviewShellScript macro below); chained so the gallery, map and
+// embed macros' own registrations survive.
+window.rollerPreviewInit = (function (prev) {
+  return function (root) { if (prev) { prev(root); } rollerInitContent(root); };
+})(window.rollerPreviewInit);
+</script>
+#end
+
+
+#**
 Client-side injection for the [contact] and [subscribe] placeholders -- the
 audience twin of #showEmbedAssets.
 

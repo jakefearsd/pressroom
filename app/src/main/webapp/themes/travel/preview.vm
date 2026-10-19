@@ -32,6 +32,7 @@ only ever one entry here.
     #showGalleryGridStyles()
     #showGalleryAssets()
     #showMapAssets()
+    #showContentAssets()
     #showEmbedAssets()
     #showPreviewShellScript()
 </head>

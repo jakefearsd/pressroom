@@ -32,6 +32,7 @@
     #showEmbedAssets()
     #showAudienceAssets()
     #showMapAssets()
+    #showContentAssets()
 </head>
 <!-- weblog -->
 <body class="tg">

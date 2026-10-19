@@ -25,6 +25,7 @@
     #showEmbedAssets()
     #showAudienceAssets()
     #showMapAssets()
+    #showContentAssets()
 </head>
 <!-- searchresults -->
 <body class="qj">

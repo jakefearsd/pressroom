@@ -56,6 +56,25 @@ class ControlPlaneHostFilterTest {
         assertFalse(ControlPlaneHostFilter.belongsToSiteHost("/roller-ui/rendering/page/blog"));
     }
 
+    /**
+     * The reader's content bundle (code highlighting, copy buttons, heading
+     * anchors) is a public asset that happens to live under /roller-ui/scripts,
+     * beside the editor's -- the webapp root is the one static location this
+     * deployment serves. Every theme's CSP is script-src 'self', so a 301 to
+     * the site host would make it cross-origin and the browser would refuse
+     * it: every code block on every vhost weblog would lose its toolbar and
+     * colours, with one console line to say so. Only that one file stays; the
+     * editor bundle, like the rest of /roller-ui, is control plane.
+     */
+    @Test
+    void theReadersContentBundleStaysButTheEditorsDoesNot() {
+        assertFalse(ControlPlaneHostFilter.belongsToSiteHost("/roller-ui/scripts/roller-content.js"));
+        assertTrue(ControlPlaneHostFilter.belongsToSiteHost("/roller-ui/scripts/roller-editor.js"));
+        assertTrue(ControlPlaneHostFilter.belongsToSiteHost("/roller-ui/scripts/roller-content.js.map"),
+                "the exemption is the one file, not a prefix");
+        assertTrue(ControlPlaneHostFilter.belongsToSiteHost("/roller-ui/scripts/"));
+    }
+
     @Test
     void aNullPathBelongsNowhere() {
         assertFalse(ControlPlaneHostFilter.belongsToSiteHost(null));
@@ -171,6 +190,20 @@ class ControlPlaneHostFilterTest {
         assertEquals(301, response.getStatus());
         assertEquals("https://control.example.com/roller-ui/menu.rol", response.getHeader("Location"));
         assertNull(chain.getRequest());
+    }
+
+    @Test
+    void theContentBundleIsServedOnTheCustomDomain() throws Exception {
+        givenSiteAbsoluteUrl(SITE_URL);
+        MockHttpServletRequest request = vhostRequest("GET", "/roller-ui/scripts/roller-content.js");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(request, response, chain);
+
+        assertEquals(200, response.getStatus());
+        assertNull(response.getHeader("Location"));
+        assertNotNull(chain.getRequest(), "the bundle must reach the container's static handler");
     }
 
     @Test

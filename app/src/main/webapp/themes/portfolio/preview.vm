@@ -33,6 +33,7 @@ uses.
     #showGalleryGridStyles()
     #showGalleryAssets()
     #showMapAssets()
+    #showContentAssets()
     #showEmbedAssets()
     #showPreviewShellScript()
 </head>

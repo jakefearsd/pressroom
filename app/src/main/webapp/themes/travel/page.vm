@@ -18,6 +18,7 @@
     #showEmbedAssets()
     #showAudienceAssets()
     #showMapAssets()
+    #showContentAssets()
 </head>
 <!-- page -->
 <body class="tg">

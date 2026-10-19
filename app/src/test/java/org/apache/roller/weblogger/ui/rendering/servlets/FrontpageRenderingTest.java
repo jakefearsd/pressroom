@@ -228,6 +228,9 @@ class FrontpageRenderingTest {
                 "#showSeoHead must contribute the canonical link:\n" + body);
         assertTrue(body.contains("frontpage-custom.css"),
                 "the head must link the theme stylesheet:\n" + body);
+        assertTrue(body.contains("function rollerInitContent(") && body.contains(".markdown-alert-note {"),
+                "the content-asset macro must be in the head, like every other theme's:\n" + body);
+        assertFalse(body.contains("#showContentAssets"), body);
         // a Velocity error would leak the raw directive or reference text
         assertFalse(body.contains("#showSeoHead"), body);
         assertFalse(body.contains("#showGalleryAssets"), body);

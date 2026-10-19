@@ -25,13 +25,16 @@ markup so a page does not look foreign inside any of them.
     #showAnalyticsTrackingCode($model.weblog)
     <link rel="stylesheet" href="$model.weblog.stylesheet">
     #showGalleryGridStyles()
-    ## These four belong in the head, beside the grid styles, exactly as every
+    ## These five belong in the head, beside the grid styles, exactly as every
     ## bundled theme calls them: #showEmbedAssets and #showAudienceAssets bind
     ## on DOMContentLoaded, and #showGalleryAssets/#showMapAssets ship
     ## stylesheets whose late arrival at the end of <body> is a flash of
-    ## unstyled gallery/map.
+    ## unstyled gallery/map. The content assets (callouts, code blocks, heading
+    ## anchors) style and enhance the article below, which carries their
+    ## roller-content class for that reason.
     #showGalleryAssets()
     #showMapAssets()
+    #showContentAssets()
     #showEmbedAssets()
     #showAudienceAssets()
 </head>
@@ -41,7 +44,7 @@ markup so a page does not look foreign inside any of them.
     <nav>#showPageLinks($model.weblog)</nav>
 </header>
 <main>
-    <article>
+    <article class="roller-content">
         <h1>$utils.escapeHTML($model.page.title)</h1>
         $model.page.renderedContent
     </article>

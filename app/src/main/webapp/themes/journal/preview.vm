@@ -29,6 +29,7 @@ the prose class itself, since there is only ever one entry here.
     #showGalleryGridStyles()
     #showGalleryAssets()
     #showMapAssets()
+    #showContentAssets()
     #showEmbedAssets()
     #showPreviewShellScript()
 </head>

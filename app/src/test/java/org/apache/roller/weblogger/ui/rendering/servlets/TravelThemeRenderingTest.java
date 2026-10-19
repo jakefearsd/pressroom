@@ -132,6 +132,10 @@ class TravelThemeRenderingTest {
                 "#showMapAssets must ship Leaflet -- this is the travel theme:\n" + body);
         assertTrue(body.contains("travel-custom.css"),
                 "the head must link the theme stylesheet override:\n" + body);
+        assertTrue(body.contains("function rollerInitContent(") && body.contains(".markdown-alert-note {"),
+                "the content-asset macro must be in the head: callouts, code blocks and "
+                        + "heading anchors in .tg-entry-content depend on it:\n" + body);
+        assertFalse(body.contains("#showContentAssets"), body);
         // a Velocity error would leak the raw directive or reference text
         assertFalse(body.contains("#showResponsiveImage"), body);
         assertFalse(body.contains("#showGalleryAssets"), body);

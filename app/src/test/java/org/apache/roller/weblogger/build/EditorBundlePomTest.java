@@ -24,6 +24,7 @@ class EditorBundlePomTest {
     private static final Path PARENT_POM = Path.of("..", "pom.xml");
     private static final Path PACKAGE_JSON = Path.of("frontend", "package.json");
     private static final Path HEAD_JSP = Path.of("src/main/webapp/WEB-INF/jsps/tiles/head.jsp");
+    private static final Path WEBLOG_VM = Path.of("src/main/webapp/WEB-INF/velocity/weblog.vm");
 
     @Test
     void theFrontendPluginIsPinnedInTheParentAndExecutedInApp() throws IOException {
@@ -72,6 +73,26 @@ class EditorBundlePomTest {
     }
 
     /**
+     * The reader's bundle (code highlighting, copy buttons, heading anchors) is
+     * the editor bundle's twin: same build, same webapp-root location, for the
+     * same reason -- it is the one static location this deployment serves. It
+     * is loaded by the content-asset macro in {@code weblog.vm}, not by a JSP,
+     * because it serves public pages.
+     */
+    @Test
+    void theReaderBundleLandsBesideTheEditorBundleWhereWeblogVmLoadsIt() throws IOException {
+        String build = Files.readString(Path.of("frontend", "build.mjs"));
+        assertTrue(build.contains("src/content.js"), "build.mjs must bundle the reader entry");
+        assertTrue(build.contains("src/main/webapp/roller-ui/scripts/roller-content.js"),
+                "the reader bundle must land in the webapp root beside roller-editor.js");
+        assertTrue(build.contains("globalName: 'RollerContent'"),
+                "the macro calls window.RollerContent.enhance, so the IIFE must expose it");
+        String weblogVm = Files.readString(WEBLOG_VM);
+        assertTrue(weblogVm.contains("$url.site/roller-ui/scripts/roller-content.js"),
+                "the content-asset macro must load the bundle under the context path");
+    }
+
+    /**
      * The retired editor and the icon font that existed only for its toolbar.
      * Checked as raw text over the whole file rather than as a dependency
      * lookup, so a comment that still explains why they are there fails too --
@@ -97,6 +118,8 @@ class EditorBundlePomTest {
         // what keeps it from being committed by the next `git add -A`.
         assertTrue(ignore.contains("app/src/main/webapp/roller-ui/scripts/roller-editor.js"),
                 "the built bundle must be git-ignored: it lives under src/main/webapp");
+        assertTrue(ignore.contains("app/src/main/webapp/roller-ui/scripts/roller-content.js"),
+                "the reader bundle must be git-ignored too: it lives beside the editor's");
         assertTrue(Files.exists(PACKAGE_JSON.resolveSibling("package-lock.json")),
                 "package-lock.json must be committed so npm ci is reproducible");
     }

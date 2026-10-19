@@ -39,6 +39,17 @@ public class ControlPlaneHostFilter implements Filter {
     /** The public rendering namespace, which must stay on the custom domain. */
     private static final String PUBLIC_RENDERING = "/roller-ui/rendering/";
 
+    /**
+     * The readers' content bundle (code highlighting, copy buttons, heading
+     * anchors), loaded by every theme's content-asset macro. A public asset
+     * that lives under /roller-ui only because the webapp root is the one
+     * static location this deployment serves (see app/frontend/build.mjs).
+     * Redirected, it would be cross-origin, and every theme's CSP is
+     * {@code script-src 'self'}. One file, not the directory: the editor's
+     * bundle beside it is control plane like the rest of /roller-ui.
+     */
+    private static final String READER_CONTENT_BUNDLE = "/roller-ui/scripts/roller-content.js";
+
     private final WebloggerProvider provider;
     private final Weblogger weblogger;
 
@@ -65,7 +76,7 @@ public class ControlPlaneHostFilter implements Filter {
         if (path == null) {
             return false;
         }
-        if (path.startsWith(PUBLIC_RENDERING)) {
+        if (path.startsWith(PUBLIC_RENDERING) || READER_CONTENT_BUNDLE.equals(path)) {
             return false;
         }
         return path.startsWith("/roller-ui/") || "/roller-ui".equals(path)
