@@ -23,6 +23,7 @@
    it is also the one file under /roller-ui that ControlPlaneHostFilter leaves
    on a weblog's custom domain -- a redirect to the site host would be
    cross-origin and refused by every theme's script-src 'self'. */
+import { readFileSync } from 'node:fs';
 import { build } from 'esbuild';
 
 const common = {
@@ -41,9 +42,15 @@ await build({
   outfile: '../src/main/webapp/roller-ui/scripts/roller-editor.js'
 });
 
+// highlight.js is BSD-3-Clause, whose notice a redistribution must carry,
+// and every reader's browser receives this file; legalComments 'none'
+// strips the library's own comments, so the notice is stated here.
+const hljsVersion = JSON.parse(readFileSync('node_modules/highlight.js/package.json', 'utf8')).version;
+
 await build({
   ...common,
   entryPoints: ['src/content.js'],
   globalName: 'RollerContent',
+  banner: { js: `/*! highlight.js ${hljsVersion} | BSD-3-Clause | Copyright (c) 2006, Ivan Sagalaev */` },
   outfile: '../src/main/webapp/roller-ui/scripts/roller-content.js'
 });

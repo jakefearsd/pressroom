@@ -93,6 +93,21 @@ class EditorBundlePomTest {
     }
 
     /**
+     * highlight.js is BSD-3-Clause, which asks a redistribution to carry its
+     * copyright notice; every reader's browser receives this bundle, and
+     * {@code legalComments: 'none'} strips the library's own comments. Reads
+     * the built file, which the frontend build writes before tests run.
+     */
+    @Test
+    void theReaderBundleCarriesHighlightJsLicenseNotice() throws IOException {
+        String bundle = Files.readString(Path.of("src/main/webapp/roller-ui/scripts/roller-content.js"));
+
+        assertTrue(bundle.startsWith("/*! highlight.js "), bundle.substring(0, Math.min(120, bundle.length())));
+        String notice = bundle.substring(0, bundle.indexOf("*/") + 2);
+        assertTrue(notice.contains("BSD-3-Clause") && notice.contains("Copyright (c) 2006, Ivan Sagalaev"), notice);
+    }
+
+    /**
      * The retired editor and the icon font that existed only for its toolbar.
      * Checked as raw text over the whole file rather than as a dependency
      * lookup, so a comment that still explains why they are there fails too --
