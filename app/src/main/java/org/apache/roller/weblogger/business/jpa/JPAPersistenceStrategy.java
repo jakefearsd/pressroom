@@ -185,6 +185,12 @@ public class JPAPersistenceStrategy {
             emfProps.setProperty(PersistenceUnitProperties.LOGIN_ENCRYPTOR,
                     PlaintextPasswordEncryptor.class.getName());
 
+            // Loaded rows are built without drawing a random UUID that the
+            // stored id overwrites at once. See
+            // MaterialisingInstantiationCustomizer.
+            emfProps.setProperty(PersistenceUnitProperties.SESSION_CUSTOMIZER,
+                    MaterialisingInstantiationCustomizer.class.getName());
+
             Enumeration<Object> keys = WebloggerConfig.keys();
             while (keys.hasMoreElements()) {
                 String key = (String) keys.nextElement();

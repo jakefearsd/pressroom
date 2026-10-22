@@ -21,7 +21,6 @@ import java.io.Serializable;
 import java.sql.Timestamp;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.roller.util.UUIDGenerator;
 
 /**
  * A long-lived, revocable credential for the automation API.
@@ -38,7 +37,7 @@ public class ApiToken implements Serializable {
     /** What a token may do, at most. Never a grant -- only a ceiling. */
     public enum Role { READ, POST, ADMIN }
 
-    private String id = UUIDGenerator.generateUUID();
+    private String id = EntityIds.newId();
     private User user;
     private String label;
     private String tokenSha256;

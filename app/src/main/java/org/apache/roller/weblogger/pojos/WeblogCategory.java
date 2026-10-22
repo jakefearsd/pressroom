@@ -21,7 +21,6 @@ package org.apache.roller.weblogger.pojos;
 import java.io.Serializable;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.roller.util.UUIDGenerator;
 import org.apache.roller.weblogger.util.Utilities;
 
 
@@ -33,7 +32,7 @@ public class WeblogCategory implements Serializable, Comparable<WeblogCategory> 
     public static final long serialVersionUID = 1435782148712018954L;
     
     // attributes
-    private String id = UUIDGenerator.generateUUID();
+    private String id = EntityIds.newId();
     private String name = null;
     private String description = null;
     private String image = null;

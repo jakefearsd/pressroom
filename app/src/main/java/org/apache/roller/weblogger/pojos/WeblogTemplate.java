@@ -20,7 +20,6 @@ package org.apache.roller.weblogger.pojos;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.roller.util.UUIDGenerator;
 import org.apache.roller.weblogger.WebloggerException;
 
 import java.io.Serializable;
@@ -43,7 +42,7 @@ public class WeblogTemplate implements ThemeTemplate, Serializable {
     private static final Set<String> requiredTemplates = Set.of("Weblog", "_day");
     
     // attributes
-    private String id = UUIDGenerator.generateUUID();
+    private String id = EntityIds.newId();
     private ComponentType action = null;
     private String  name = null;
     private String  description = null;

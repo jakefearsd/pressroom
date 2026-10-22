@@ -76,6 +76,24 @@ the SQL text (which carries the expanded `:app_user`) and every exception are
 logged at the point of failure instead (`InstallControllerTest`,
 `SQLScriptRunnerTest`).
 
+### Entity ids (`EntityIds`)
+
+Every entity's id field is initialised from `EntityIds.newId()`, so `new X()`
+has a random UUID before anything reads it (id-keyed maps, URLs, anchor
+claims). EclipseLink builds loaded rows, unit-of-work clones and backup
+clones through the same constructor; `MaterialisingInstantiationCustomizer`
+(set as `eclipselink.session.customizer` in `JPAPersistenceStrategy`) has it
+construct them inside `EntityIds.materialise`, where `newId()` answers null
+and the stored id is set straight after through `setId` (all mappings are
+PROPERTY access). Before this, each loaded entry drew ~3 UUIDs under the
+JVM-wide `SecureRandom` lock (~7% CPU under reader load). An entry's
+post-load revision snapshot is built id-less too and gets its id in
+`contentBeingReplaced`, only when it is about to be stored.
+`EntityLoadIdGenerationTest` pins zero generations per load across every
+mapped descriptor. A new entity needs nothing extra: a public no-argument
+constructor is picked up automatically; anything else silently keeps
+EclipseLink's default (generating) instantiation.
+
 ### Tag aggregates (`roller_weblogentrytagagg`)
 
 One row per (weblog, tag) and one site-wide row per tag (`websiteid IS

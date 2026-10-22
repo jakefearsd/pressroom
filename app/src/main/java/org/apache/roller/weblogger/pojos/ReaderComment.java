@@ -21,7 +21,6 @@ import java.io.Serializable;
 import java.util.Date;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.roller.util.UUIDGenerator;
 
 /**
  * A comment by a signed-in reader on an entry, or the owner's single reply to
@@ -37,7 +36,7 @@ public class ReaderComment implements Serializable {
         PENDING, PUBLISHED, HIDDEN
     }
 
-    private String id = UUIDGenerator.generateUUID();
+    private String id = EntityIds.newId();
     private WeblogEntry entry;
     private User author;
     private ReaderComment replyTo;

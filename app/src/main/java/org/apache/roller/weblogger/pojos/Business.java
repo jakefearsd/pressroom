@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.roller.util.UUIDGenerator;
 
 /**
  * The organisation behind one or more blogs. Stored once and referenced by
@@ -39,7 +38,7 @@ public class Business implements Serializable {
         Organization, LocalBusiness, ProfessionalService
     }
 
-    private String id = UUIDGenerator.generateUUID();
+    private String id = EntityIds.newId();
     private String name;
     private BusinessType businessType = BusinessType.Organization;
     private String websiteUrl;

@@ -25,7 +25,6 @@ import java.util.*;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.roller.util.UUIDGenerator;
 import org.apache.roller.weblogger.util.I18nUtils;
 import org.apache.roller.weblogger.util.Utilities;
 
@@ -44,7 +43,7 @@ public class Weblog implements Serializable {
 
     
     // Simple properties
-    private String  id               = UUIDGenerator.generateUUID();
+    private String  id               = EntityIds.newId();
     private String  handle           = null;
     private String  name             = null;
     private String  tagline          = null;

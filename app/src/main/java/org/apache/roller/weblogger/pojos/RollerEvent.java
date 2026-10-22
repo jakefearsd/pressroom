@@ -21,7 +21,6 @@ import java.io.Serializable;
 import java.sql.Timestamp;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.roller.util.UUIDGenerator;
 
 /**
  * A first-party outcome event: something the analytics tier cannot see from
@@ -42,7 +41,7 @@ public class RollerEvent implements Serializable {
         FORM_SUBMITTED, NEWSLETTER_SUBSCRIBED, ENTRY_PUBLISHED
     }
 
-    private String id = UUIDGenerator.generateUUID();
+    private String id = EntityIds.newId();
     private Weblog weblog;
     private EventType eventType;
     private String entryAnchor;

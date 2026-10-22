@@ -21,7 +21,6 @@ import java.io.Serializable;
 import java.sql.Timestamp;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.roller.util.UUIDGenerator;
 
 /**
  * A single-use, expiring account token serving both forgot-password and the
@@ -41,7 +40,7 @@ public class UserToken implements Serializable {
         PASSWORD_RESET, PASSWORD_SET
     }
 
-    private String id = UUIDGenerator.generateUUID();
+    private String id = EntityIds.newId();
     private User user;
     private String tokenSha256;
     private Purpose purpose;
