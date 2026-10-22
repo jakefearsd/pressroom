@@ -18,7 +18,10 @@
 package org.apache.roller.weblogger.business;
 
 import org.apache.roller.weblogger.business.startup.WebloggerStartup;
+import org.apache.roller.weblogger.TestUtils;
 import org.apache.roller.weblogger.config.RuntimeConfigAttachment;
+import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,13 +56,32 @@ class SpringWebloggerProviderTest {
     private RuntimeConfigAttachment previouslyAttached;
 
     @BeforeEach
-    void rememberAttachedRuntimeConfig() {
+    void rememberAttachedRuntimeConfig() throws Exception {
+        // The suite tier first: two tests below bootstrap it, and preserving
+        // before that would save "nothing attached" and restore it afterwards.
+        TestUtils.setupWeblogger();
         previouslyAttached = RuntimeConfigAttachment.preserve();
     }
 
     @AfterEach
     void restoreAttachedRuntimeConfig() {
         previouslyAttached.close();
+    }
+
+    /**
+     * Whatever order the JVM runs classes in, this one leaves the suite's tier
+     * attached. Run first, it is the class that bootstraps that tier, and the
+     * Release run of v0.2.4 (39787178605) showed what restoring "nothing
+     * attached" did: every later database-backed test read runtime config as
+     * null -- uploads disabled, revision retention 0 -- for 82 failures and 85
+     * errors, none of them in this class.
+     */
+    @AfterAll
+    static void leavesTheSuiteTierAttached() throws Exception {
+        PropertiesManager attached = WebloggerRuntimeConfig.attach(null);
+        WebloggerRuntimeConfig.attach(attached);
+        assertSame(TestUtils.weblogger().getPropertiesManager(), attached,
+                "the suite tier's properties manager must still answer runtime config");
     }
 
     // ------------------------------------------------ the bean contract (D2)
@@ -174,8 +196,8 @@ class SpringWebloggerProviderTest {
      * {@code TestUtils} drives on every run, so it is covered regardless.
      */
     private static SpringWebloggerProvider suiteProvider() throws Exception {
-        org.apache.roller.weblogger.TestUtils.setupWeblogger();
-        return org.apache.roller.weblogger.TestUtils.provider();
+        TestUtils.setupWeblogger();
+        return TestUtils.provider();
     }
 
     @Test
