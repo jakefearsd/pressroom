@@ -801,6 +801,11 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
                 }
             }
         }
+        // Dimensions, EXIF and blurhash are all printed by [image] and
+        // [gallery]; like every other media change this must move
+        // lastModified, the only thing that expires a rendered page or a kept
+        // entry render (EntryHtmlCache). Date updated by saveWeblog().
+        roller.getWeblogManager().saveWeblog(weblog);
         roller.flush();
         return count;
     }
