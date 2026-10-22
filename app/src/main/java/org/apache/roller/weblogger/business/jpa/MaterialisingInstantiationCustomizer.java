@@ -53,7 +53,8 @@ public class MaterialisingInstantiationCustomizer implements SessionCustomizer {
     }
 
     static Constructor<?> publicNoArgConstructor(Class<?> type) {
-        if (Modifier.isAbstract(type.getModifiers())) {
+        int modifiers = type.getModifiers();
+        if (Modifier.isAbstract(modifiers) || !Modifier.isPublic(modifiers)) {
             return null;
         }
         try {

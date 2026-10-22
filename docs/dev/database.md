@@ -90,9 +90,13 @@ JVM-wide `SecureRandom` lock (~7% CPU under reader load). An entry's
 post-load revision snapshot is built id-less too and gets its id in
 `contentBeingReplaced`, only when it is about to be stored.
 `EntityLoadIdGenerationTest` pins zero generations per load across every
-mapped descriptor. A new entity needs nothing extra: a public no-argument
-constructor is picked up automatically; anything else silently keeps
-EclipseLink's default (generating) instantiation.
+mapped descriptor. A new entity needs nothing extra: a public class with a
+public no-argument constructor is picked up automatically; anything else keeps
+EclipseLink's default (generating) instantiation, which that test's
+`everyMappedEntityIsMaterialisedWithoutGeneratingAnId` fails on. An operator-set
+`eclipselink.session.customizer` replaces this one, and the JNDI
+(`jpa.configurationType=jndi`) configuration never registers it: either
+silently loses the speed-up, never correctness.
 
 ### Tag aggregates (`roller_weblogentrytagagg`)
 

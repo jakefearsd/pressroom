@@ -40,6 +40,13 @@ class MaterialisingInstantiationCustomizerTest {
         }
     }
 
+    /** Public constructor, but the class itself is not public. */
+    static final class NotPublic {
+        public NotPublic() {
+            // a public constructor alone does not make the class reachable
+        }
+    }
+
     /** Fails to construct. */
     public static final class Explodes {
         public Explodes() {
@@ -53,6 +60,8 @@ class MaterialisingInstantiationCustomizerTest {
                 "abstract");
         assertNull(MaterialisingInstantiationCustomizer.publicNoArgConstructor(NeedsAnArgument.class),
                 "no public no-argument constructor");
+        assertNull(MaterialisingInstantiationCustomizer.publicNoArgConstructor(NotPublic.class),
+                "a class that is not public cannot be built through Constructor.newInstance");
     }
 
     @Test
