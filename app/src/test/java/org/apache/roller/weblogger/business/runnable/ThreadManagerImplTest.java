@@ -184,6 +184,45 @@ class ThreadManagerImplTest {
         assertTrue(done.get(), "the caller must not get control back before the work finishes");
     }
 
+    /**
+     * Every search runs through here, on a request thread. Waiting by polling
+     * {@code isDone()} with a half-second sleep made each search take at
+     * least 500 ms however fast Lucene answered (measured: 504 ms median,
+     * under 5% of the CPU). The work here takes 50 ms, long enough to still
+     * be running at the first check, so a polling wait cannot pass.
+     */
+    @Test
+    void executeInForegroundReturnsAsSoonAsTheWorkIsDone() throws Exception {
+        manager = new InMemoryThreadManager();
+
+        long start = System.nanoTime();
+        manager.executeInForeground(() -> {
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        long elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+
+        assertTrue(elapsedMs < 300, "50 ms of work took " + elapsedMs + " ms to hand back");
+    }
+
+    /**
+     * Characterisation test, passing against the polling version too: work
+     * that throws does not throw out of here. The callers judge the outcome
+     * themselves (a search with no results set is reported as a failed
+     * search), so this must stay true when the wait changes.
+     */
+    @Test
+    void executeInForegroundDoesNotRethrowWhatTheWorkThrows() {
+        manager = new InMemoryThreadManager();
+
+        assertDoesNotThrow(() -> manager.executeInForeground(() -> {
+            throw new IllegalStateException("index unreadable");
+        }));
+    }
+
     @Test
     void theDefaultLeaseIsAlwaysGrantedAndReleased() {
         manager = new InMemoryThreadManager();

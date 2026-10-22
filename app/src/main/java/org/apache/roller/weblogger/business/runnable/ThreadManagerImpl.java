@@ -21,6 +21,7 @@ package org.apache.roller.weblogger.business.runnable;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -29,7 +30,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.roller.util.RollerConstants;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.InitializationException;
 import org.apache.roller.weblogger.business.Weblogger;
@@ -146,12 +146,16 @@ public abstract class ThreadManagerImpl implements ThreadManager {
     public void executeInForeground(Runnable runnable)
             throws InterruptedException {
         Future<?> task = serviceScheduler.submit(runnable);
-        
-        // since this task is really meant to be executed within this calling 
-        // thread, here we can add a little code here to loop until it realizes 
-        // the task is done
-        while(!task.isDone()) {
-            Thread.sleep(RollerConstants.HALF_SEC_IN_MS);
+
+        // Block until the work is done, and not a moment longer. This used to
+        // poll isDone() with a half-second sleep, which made every search take
+        // at least 500 ms however fast Lucene answered. What the work threw
+        // stays here, as it always has: callers judge the outcome from the
+        // operation itself (a search with no results set is a failed search).
+        try {
+            task.get();
+        } catch (ExecutionException e) {
+            log.error("Foreground operation {} failed", runnable.getClass().getName(), e.getCause());
         }
     }
     

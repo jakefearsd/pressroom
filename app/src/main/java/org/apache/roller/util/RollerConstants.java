@@ -28,7 +28,6 @@ public final class RollerConstants {
 
     public static final int ONE_MB_IN_BYTES = ONE_KB_IN_BYTES * ONE_KB_IN_BYTES;
 
-    public static final int HALF_SEC_IN_MS = 500;
     public static final int SEC_IN_MS = 1000;
     public static final int MIN_IN_MS = 60 * SEC_IN_MS;
     public static final int FIFTEEN_MIN_IN_MS = 15 * MIN_IN_MS;
