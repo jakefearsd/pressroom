@@ -33,6 +33,7 @@ import org.apache.roller.weblogger.business.WeblogEntryManager;
 import org.apache.roller.weblogger.business.WeblogManager;
 import org.apache.roller.weblogger.business.WeblogPageManager;
 import org.apache.roller.weblogger.business.jpa.JPAPersistenceStrategy;
+import org.apache.roller.weblogger.config.StaticConfigOverride;
 import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.pojos.MediaFile;
 import org.apache.roller.weblogger.pojos.User;
@@ -281,6 +282,57 @@ class SeoControllerSitemapTest {
         page("contact", WeblogPage.PubStatus.PUBLISHED, false);
 
         assertTrue(sitemap().getBody().contains("/contact</loc>"));
+    }
+
+    @Test
+    void unpublishingAStaticPageProducesAFreshSitemap() throws Exception {
+        WeblogPage page = page("leaving", WeblogPage.PubStatus.PUBLISHED, false);
+        assertTrue(sitemap().getBody().contains("/leaving</loc>"), "fixture sanity check");
+
+        page.setStatus(WeblogPage.PubStatus.DRAFT);
+        pages().savePage(page);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+
+        assertFalse(sitemap().getBody().contains("/leaving</loc>"));
+    }
+
+    @Test
+    void deletingAStaticPageProducesAFreshSitemap() throws Exception {
+        WeblogPage page = page("doomed", WeblogPage.PubStatus.PUBLISHED, false);
+        assertTrue(sitemap().getBody().contains("/doomed</loc>"), "fixture sanity check");
+
+        pages().removePage(pages().getPageBySlug(TestUtils.getManagedWebsite(weblog), "doomed"));
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+
+        assertFalse(sitemap().getBody().contains("/doomed</loc>"));
+    }
+
+    /**
+     * A document over {@code cache.sitemap.maxBytes} is still served, with
+     * {@code Last-Modified} and 304s -- it is only rebuilt every time rather
+     * than held in memory.
+     */
+    @Test
+    void anOversizedSitemapIsServedAndRebuiltButNotCached() throws Exception {
+        entry("big-entry", PubStatus.PUBLISHED, 1, null, false);
+        long lastModified = TestUtils.getManagedWebsite(weblog).getLastModified().getTime();
+        try (StaticConfigOverride _ = StaticConfigOverride.set("cache.sitemap.maxBytes", "100")) {
+            controller = new SeoController();
+            inject(controller, "weblogger", TestUtils.weblogger());
+            ResponseEntity<String> first = sitemap();
+
+            List<String> queries = queriesWhileBuilding();
+
+            assertEquals(200, first.getStatusCode().value());
+            assertTrue(first.getBody().contains("/entry/big-entry"));
+            assertEquals(lastModified / 1000 * 1000, first.getHeaders().getLastModified());
+            assertEquals(1, queries.stream().filter(q -> q.contains("weblogentry")).count(),
+                    "an oversized document is rebuilt on every request: " + queries);
+            assertEquals(304, controller.weblogSitemap(HANDLE, ifModifiedSince(lastModified))
+                    .getStatusCode().value());
+        }
     }
 
     /**

@@ -21,7 +21,8 @@ resolves through the index at the end of `CLAUDE.md`.
   `If-Modified-Since` at or after `weblog.lastModified` answers 304 before
   any read; `SitemapCache` (`cache.sitemap.*`) holds one finished document
   per weblog handle and absolute weblog url, valid only while its stamped
-  `lastModified` still matches; a rebuild reads entries through
+  `lastModified` still matches, and never one over `cache.sitemap.maxBytes`
+  (2 MB; such a document is served but rebuilt each time); a rebuild reads entries through
   `WeblogEntryManager.getSitemapEntries` -- one native query of five columns
   with the featured image's privacy resolved by a join, never an entity or
   a per-image lookup. Anything that changes a sitemap's content must

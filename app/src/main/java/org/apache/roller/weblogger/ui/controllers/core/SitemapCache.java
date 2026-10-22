@@ -44,7 +44,10 @@ import org.apache.roller.weblogger.util.cache.CacheManager;
  * weblog and host however often a weblog is edited. Entry count is bounded by
  * {@code cache.sitemap.size} (LRU), age by {@code cache.sitemap.timeout} --
  * the backstop for any change that one day reaches a sitemap without moving
- * {@code lastModified}.
+ * {@code lastModified} -- and the size of any one entry by
+ * {@code cache.sitemap.maxBytes}: a count alone does not bound memory when a
+ * 50,000-url sitemap is ~15 MB. A larger document is still served (with
+ * {@code Last-Modified} and 304s), just rebuilt on every miss.
  *
  * <p>Thread safety: the backing {@link Cache} synchronizes every operation
  * and the stored value is immutable. Two concurrent misses both build the
@@ -60,22 +63,33 @@ final class SitemapCache {
 
     static final String CACHE_ID = "cache.sitemap";
 
+    /** About 2 MB: a weblog of several thousand entries. */
+    static final int DEFAULT_MAX_BYTES = 2 * 1024 * 1024;
+
     /** Null when the cache is disabled; every operation is then a miss. */
     private final Cache cache;
 
-    SitemapCache(Cache cache) {
+    /**
+     * The largest document held, measured in characters: a sitemap is ASCII
+     * (percent-encoded urls, ISO dates), so that is its size in bytes.
+     */
+    private final int maxBytes;
+
+    SitemapCache(Cache cache, int maxBytes) {
         this.cache = cache;
+        this.maxBytes = maxBytes;
     }
 
     /** The cache as {@code cache.sitemap.*} in the Roller properties configures it. */
     static SitemapCache fromConfig() {
         if (!WebloggerConfig.getBooleanProperty(CACHE_ID + ".enabled", true)) {
-            return new SitemapCache(null);
+            return new SitemapCache(null, 0);
         }
         return new SitemapCache(CacheManager.constructCache(null, Map.of(
                 "id", CACHE_ID,
                 "size", WebloggerConfig.getProperty(CACHE_ID + ".size", "100"),
-                "timeout", WebloggerConfig.getProperty(CACHE_ID + ".timeout", "3600"))));
+                "timeout", WebloggerConfig.getProperty(CACHE_ID + ".timeout", "3600"))),
+                WebloggerConfig.getIntProperty(CACHE_ID + ".maxBytes", DEFAULT_MAX_BYTES));
     }
 
     /**
@@ -93,8 +107,17 @@ final class SitemapCache {
         return null;
     }
 
+    /**
+     * Holds the document, unless it is over {@code maxBytes}: then the slot is
+     * emptied instead, so the version it supersedes does not linger either.
+     */
     void put(String handle, String weblogURL, long lastModified, String xml) {
-        if (cache != null) {
+        if (cache == null) {
+            return;
+        }
+        if (xml.length() > maxBytes) {
+            cache.remove(key(handle, weblogURL));
+        } else {
             cache.put(key(handle, weblogURL), new Version(lastModified, xml));
         }
     }

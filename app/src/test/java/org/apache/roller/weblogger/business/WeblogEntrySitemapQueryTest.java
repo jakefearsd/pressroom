@@ -111,6 +111,26 @@ class WeblogEntrySitemapQueryTest {
         assertEquals(List.of("third", "second"), rows.stream().map(SitemapEntry::anchor).toList());
     }
 
+    /**
+     * The old entity query ordered by pubtime alone, so entries published in
+     * the same instant came back in whatever order the plan produced. The
+     * id tiebreak makes that stable without changing any non-tied order.
+     */
+    @Test
+    void entriesPublishedInTheSameInstantAreOrderedById() throws Exception {
+        List<String> expected = new java.util.ArrayList<>();
+        java.util.Map<String, String> anchorById = new java.util.TreeMap<>();
+        for (int i = 0; i < 8; i++) {
+            WeblogEntry tied = entry(blog, "tied-" + i, PubStatus.PUBLISHED, 1, null, false);
+            anchorById.put(tied.getId(), tied.getAnchor());
+        }
+        expected.addAll(anchorById.values());
+
+        List<SitemapEntry> rows = entries().getSitemapEntries(TestUtils.getManagedWebsite(blog), 100);
+
+        assertEquals(expected, rows.stream().map(SitemapEntry::anchor).toList());
+    }
+
     private WeblogEntry entry(Weblog weblog, String anchor, PubStatus status, int hours,
             String imageId, boolean noindex) throws Exception {
         WeblogEntry created = TestUtils.setupWeblogEntry(anchor, weblog, user, status);

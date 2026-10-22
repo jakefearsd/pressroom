@@ -66,6 +66,35 @@ class SitemapCacheTest {
         }
     }
 
+    /**
+     * Count alone does not bound memory: one 50,000-url sitemap is ~15 MB, so
+     * a document over {@code cache.sitemap.maxBytes} is never held. Exactly
+     * at the threshold it still is.
+     */
+    @Test
+    void aDocumentOverTheByteThresholdIsNotHeld() {
+        try (StaticConfigOverride _ = StaticConfigOverride.set("cache.sitemap.maxBytes", "10")) {
+            SitemapCache cache = SitemapCache.fromConfig();
+            cache.put("fits", URL, 1L, "<1234567/>");
+            cache.put("over", URL, 1L, "<12345678/>");
+
+            assertEquals("<1234567/>", cache.get("fits", URL, 1L), "10 bytes is at the threshold");
+            assertNull(cache.get("over", URL, 1L), "11 bytes is over it");
+        }
+    }
+
+    @Test
+    void anOversizedRebuildDropsTheVersionItSupersedes() {
+        try (StaticConfigOverride _ = StaticConfigOverride.set("cache.sitemap.maxBytes", "10")) {
+            SitemapCache cache = SitemapCache.fromConfig();
+            cache.put("blog", URL, 1L, "<small/>");
+            cache.put("blog", URL, 2L, "<much-larger/>");
+
+            assertNull(cache.get("blog", URL, 1L), "the superseded version must not linger");
+            assertNull(cache.get("blog", URL, 2L));
+        }
+    }
+
     @Test
     void aDisabledCacheHoldsNothing() {
         try (StaticConfigOverride _ = StaticConfigOverride.set("cache.sitemap.enabled", "false")) {

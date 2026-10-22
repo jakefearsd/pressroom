@@ -690,7 +690,10 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
      * the whole sitemap in one round trip: the old way built every entry as
      * an entity and then looked each featured image up on its own. The
      * ordering is the entity query's own ({@code pubtime DESC}, nulls first
-     * as PostgreSQL sorts them) and is served by {@code we_combo2_idx}.
+     * as PostgreSQL sorts them) and is served by {@code we_combo2_idx}, plus
+     * an {@code id} tiebreak the entity query never had: entries published in
+     * the same instant used to come back in whatever order the plan produced,
+     * and now come back in a stable one. No non-tied order changes.
      */
     private static final String SITEMAP_ENTRIES =
             "SELECT e.anchor, e.pubtime, e.updatetime, e.noindex,"
@@ -699,7 +702,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
             + " LEFT JOIN roller_mediafile m ON m.id = e.featured_image_id"
             + " LEFT JOIN roller_mediafiledir d ON d.id = m.directoryid"
             + " WHERE e.websiteid = ?1 AND e.status = ?2"
-            + " ORDER BY e.pubtime DESC"
+            + " ORDER BY e.pubtime DESC, e.id"
             + " LIMIT ?3";
 
     /**
