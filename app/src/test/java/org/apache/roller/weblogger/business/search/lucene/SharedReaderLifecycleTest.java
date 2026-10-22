@@ -27,12 +27,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -58,6 +58,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -67,15 +68,15 @@ import static org.mockito.Mockito.when;
  * Every {@link IndexReader} the search tier opens is closed once nothing
  * uses it.
  *
- * <p>Searches share one cached reader, and every index write replaces it
- * ({@code resetSharedReader()}). The replaced reader used to be dropped
- * without being closed, so each write left its segment files open until
- * the garbage collector happened to finalize it -- a file-handle leak that
- * grows with write traffic. It cannot simply be closed at the reset: a
+ * <p>Searches share the manager's current searcher, and every index write
+ * replaces its reader ({@code refreshSearcher()}). A replaced reader once
+ * went unclosed, so each write left its segment files open until the
+ * garbage collector happened to finalize it -- a file-handle leak that grows
+ * with write traffic. It cannot simply be closed at the refresh either: a
  * search reads stored fields for its hits ({@code convertHitsToEntryList})
- * <em>after</em> it has let go of the index read lock, so a write can land
- * between a search's query and its conversion, and closing the reader
- * then would fail that search with {@code AlreadyClosedException}.
+ * <em>after</em> its query, with no lock held, so a write can land between
+ * the two, and closing the reader then would fail that search with
+ * {@code AlreadyClosedException}.
  *
  * <p>So these tests pin both halves: the superseded reader ends with a
  * reference count of zero (Lucene's own definition of closed), and a
@@ -85,7 +86,7 @@ import static org.mockito.Mockito.when;
  * conversion that throws -- must let go.
  *
  * <p>The tier is the same inline-{@link ThreadManager} Mockito double
- * {@link SharedReaderHandoffTest} uses, over a {@code @TempDir} index. The
+ * {@link SearchDuringWriteTest} uses, over a {@code @TempDir} index. The
  * write that overlaps a search is run from inside the search's conversion
  * hook, on the same thread, so the interleaving is fixed rather than raced.
  */
@@ -136,7 +137,7 @@ class SharedReaderLifecycleTest {
         manager = initialized(new LuceneIndexManager(roller));
         index(entry("first"));
         assertEquals(List.of("first"), titles(search(WORD)));
-        IndexReader before = manager.getSharedIndexReader();
+        IndexReader before = currentReader();
         assertEquals(1, before.getRefCount(),
                 "a finished search must hold no reference; only the manager's own remains");
 
@@ -178,7 +179,7 @@ class SharedReaderLifecycleTest {
                 "while the search converts, its own reference must be the only one left");
         assertEquals(0, used.get().getRefCount(),
                 "the superseded reader must close once the straddling search lets go of it");
-        assertNotSame(used.get(), manager.getSharedIndexReader());
+        assertNotSame(used.get(), currentReader());
         assertEquals(List.of("first", "second"), sortedTitles(search(WORD)),
                 "the next search must see the write");
     }
@@ -188,7 +189,7 @@ class SharedReaderLifecycleTest {
         manager = initialized(new LuceneIndexManager(roller));
         index(entry("first"));
         assertEquals(List.of(), titles(search("absentfromeveryentry")));
-        IndexReader before = manager.getSharedIndexReader();
+        IndexReader before = currentReader();
 
         index(entry("second"));
 
@@ -200,7 +201,7 @@ class SharedReaderLifecycleTest {
         manager = initialized(new LuceneIndexManager(roller));
         index(entry("first"));
         assertThrows(WebloggerException.class, () -> search("\"" + WORD));
-        IndexReader before = manager.getSharedIndexReader();
+        IndexReader before = currentReader();
 
         index(entry("second"));
 
@@ -213,7 +214,7 @@ class SharedReaderLifecycleTest {
         index(entry("first"));
         when(entries.getWeblogEntry("first")).thenThrow(new IllegalStateException("store down"));
         assertThrows(IllegalStateException.class, () -> search(WORD));
-        IndexReader before = manager.getSharedIndexReader();
+        IndexReader before = currentReader();
 
         index(entry("second"));
 
@@ -227,7 +228,7 @@ class SharedReaderLifecycleTest {
         for (int i = 0; i < 10; i++) {
             index(entry("entry-" + i));
             assertEquals(i + 1, search(WORD).getResults().size());
-            seen.add(manager.getSharedIndexReader());
+            seen.add(currentReader());
         }
 
         IndexReader current = seen.get(seen.size() - 1);
@@ -251,7 +252,7 @@ class SharedReaderLifecycleTest {
     void anOperationClosedBeforeItRunsTakesNoReference() throws Exception {
         manager = initialized(new LuceneIndexManager(roller));
         index(entry("first"));
-        IndexReader current = manager.getSharedIndexReader();
+        IndexReader current = currentReader();
 
         SearchOperation op = new SearchOperation(manager);
         op.setTerm(WORD);
@@ -320,48 +321,31 @@ class SharedReaderLifecycleTest {
                 }
             };
 
-            assertDoesNotThrow(() -> manager.releaseSharedIndexReader(failing));
+            assertDoesNotThrow(() -> manager.releaseSearcher(new IndexSearcher(failing)));
         }
     }
 
     /**
-     * {@code getSharedIndexReader()} lends the reader; a caller that closes
-     * it anyway (a misuse, but one {@code LuceneIndexManagerStartupTest}
-     * makes deliberately) leaves the manager's reference already gone. The
-     * reset must tolerate that -- as {@code shutdown()} always tolerated a
-     * double close -- and still forget the reader, or every later search
-     * would be handed a closed one.
+     * A reader closed behind the manager's back (a misuse, but one
+     * {@code LuceneIndexManagerStartupTest} makes deliberately) makes the
+     * next refresh fail. The refresh runs in a write's {@code finally}, so
+     * the failure must neither escape the write nor leave the index
+     * write-locked (every later write would wait on it forever), and the
+     * dead searchers must be dropped: the next search reopens from disk and
+     * sees the write.
      */
     @Test
-    void aReaderClosedBehindTheManagersBackIsStillForgottenOnReset() throws Exception {
+    void aWriteWhoseRefreshFailsReleasesTheLockAndTheNextSearchReopens() throws Exception {
         manager = initialized(new LuceneIndexManager(roller));
         index(entry("first"));
-        IndexReader lent = manager.getSharedIndexReader();
-        lent.close();
+        IndexReader dead = currentReader();
+        dead.close();
 
-        assertDoesNotThrow(manager::resetSharedReader);
+        assertDoesNotThrow(() -> index(entry("second")), "the refresh's failure escaped the write");
 
-        assertNotSame(lent, manager.getSharedIndexReader(), "the closed reader is still cached");
-        assertEquals(List.of("first"), titles(search(WORD)));
-    }
-
-    /**
-     * The same misuse met by a write: the reset runs in the write's
-     * {@code finally}, so whatever it does must neither escape the write nor
-     * leave the index write-locked (every later search and write would wait
-     * on it forever).
-     */
-    @Test
-    void aWriteThatMeetsAnAlreadyClosedReaderStillReleasesTheWriteLock() throws Exception {
-        manager = initialized(new LuceneIndexManager(roller));
-        index(entry("first"));
-        manager.getSharedIndexReader().close();
-
-        assertDoesNotThrow(() -> index(entry("second")), "the reset's failure escaped the write");
-
-        ReentrantReadWriteLock lock = (ReentrantReadWriteLock) manager.getReadWriteLock();
-        assertFalse(lock.isWriteLocked(), "the write left the index write-locked");
+        assertFalse(manager.getWriteLock().isLocked(), "the write left the index write-locked");
         assertEquals(List.of("first", "second"), sortedTitles(search(WORD)));
+        assertNotSame(dead, currentReader(), "the closed reader is still in use");
     }
 
     /**
@@ -373,22 +357,22 @@ class SharedReaderLifecycleTest {
     void shutdownToleratesAReaderAlreadyClosed() throws Exception {
         manager = initialized(new LuceneIndexManager(roller));
         index(entry("first"));
-        manager.getSharedIndexReader().close();
+        currentReader().close();
 
         assertDoesNotThrow(manager::shutdown);
         manager = null;
     }
 
     /**
-     * {@code initialize()} opens the reader directly. Run again on a manager
-     * already holding one, it must retire that reader, not overwrite the
-     * only reference to it.
+     * {@code initialize()} opens the searchers directly. Run again on a
+     * manager already holding them, it must retire their reader, not
+     * overwrite the only reference to it.
      */
     @Test
     void initializingAgainRetiresTheReaderAlreadyHeld() throws Exception {
         manager = initialized(new LuceneIndexManager(roller));
         index(entry("first"));
-        IndexReader held = manager.getSharedIndexReader();
+        IndexReader held = currentReader();
         // a clean previous run: no in-use marker, so the index is reopened
         // as it stands rather than discarded and rebuilt
         Files.deleteIfExists(indexDir.resolve(".index-inconsistent"));
@@ -397,6 +381,24 @@ class SharedReaderLifecycleTest {
 
         assertEquals(0, held.getRefCount(), "initialize() dropped a held reader without closing it");
         assertEquals(List.of("first"), titles(search(WORD)));
+    }
+
+    /**
+     * Once shut down, the manager holds no reader; a write that straggles in
+     * afterwards has no searchers to refresh and must not reopen any.
+     */
+    @Test
+    void aWriteAfterShutdownReopensNothing() throws Exception {
+        manager = initialized(new LuceneIndexManager(roller));
+        index(entry("first"));
+        IndexReader current = currentReader();
+        manager.shutdown();
+
+        assertDoesNotThrow(() -> index(entry("second")));
+
+        assertEquals(0, current.getRefCount(), "shutdown must close the current reader");
+        assertTrue(searcherManagerIsNull(), "the straggling write reopened the searchers");
+        manager = null;
     }
 
     // ---------------------------------------------------------------- helpers
@@ -410,6 +412,23 @@ class SharedReaderLifecycleTest {
 
     private void index(WeblogEntry entry) throws Exception {
         manager.addEntryIndexOperation(entry);
+    }
+
+    /**
+     * The manager's current reader. The reference taken to find it is handed
+     * straight back, so the counts the tests read are the manager's and the
+     * searches' alone.
+     */
+    private IndexReader currentReader() throws IOException {
+        IndexSearcher searcher = manager.acquireSearcher();
+        manager.releaseSearcher(searcher);
+        return searcher.getIndexReader();
+    }
+
+    private boolean searcherManagerIsNull() throws Exception {
+        Field field = LuceneIndexManager.class.getDeclaredField("searcherManager");
+        field.setAccessible(true);
+        return field.get(manager) == null;
     }
 
     private SearchResultList search(String term) throws Exception {

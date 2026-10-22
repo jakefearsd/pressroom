@@ -105,14 +105,13 @@ class LuceneIndexManagerSearchTest {
 
     /**
      * A directory holding no index is an error, not an empty result: the
-     * shared reader cannot be opened, and the search reports failure rather
+     * searchers cannot be opened, and the search reports failure rather
      * than "no matches", which would be indistinguishable from a working
      * index that simply found nothing.
      */
     @Test
     void aSearchWithNoIndexOnDiskFailsRatherThanFindingNothing() {
-        RuntimeException opening = assertThrows(RuntimeException.class, manager::getSharedIndexReader);
-        assertInstanceOf(IndexNotFoundException.class, opening.getCause());
+        assertThrows(IndexNotFoundException.class, manager::acquireSearcher);
 
         WebloggerException ex = assertThrows(WebloggerException.class,
                 () -> manager.search(WORD, "noindexblog", null, null, 0, 10, null));

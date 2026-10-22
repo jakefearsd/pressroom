@@ -18,6 +18,7 @@
 package org.apache.roller.weblogger.business.search;
 
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import org.slf4j.Logger;
@@ -86,9 +87,10 @@ public class IndexManagerTest {
         List<WeblogEntry> entries = createWeblogEntries(testWeblog, indexManager, entryManager);
 
         try {
-            SearchResultList result = indexManager.search("Enterprise",
-                testWeblog.getHandle(), null, testWeblog.getLocale(), 0, RESULTS_PER_PAGE,
-                TestUtils.weblogger().getUrlStrategy());
+            // Indexing is asynchronous, and a search does not wait for a
+            // write in progress (SearchDuringWriteTest): wait, bounded, for
+            // the writes to land rather than trusting the sleep above.
+            SearchResultList result = awaitHits(indexManager, "Enterprise", 2);
             assertEquals(2, result.getResults().size());
 
             result = indexManager.search("Tholian",
@@ -102,6 +104,22 @@ public class IndexManagerTest {
             }
             indexManager.removeWeblogIndex(testWeblog);
         }
+    }
+
+    private SearchResultList awaitHits(IndexManager indexManager, String term, int expected)
+            throws Exception {
+        long deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos();
+        SearchResultList result;
+        do {
+            result = indexManager.search(term,
+                testWeblog.getHandle(), null, testWeblog.getLocale(), 0, RESULTS_PER_PAGE,
+                TestUtils.weblogger().getUrlStrategy());
+            if (result.getResults().size() == expected) {
+                break;
+            }
+            Thread.sleep(50);
+        } while (System.nanoTime() < deadline);
+        return result;
     }
 
     /**

@@ -23,7 +23,6 @@ import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import jakarta.persistence.PersistenceException;
 
@@ -202,7 +201,7 @@ class IndexWriteOperationFailureTest {
 
         manager.removeEntryIndexOperation(entry);
 
-        assertFalse(((ReentrantReadWriteLock) manager.getReadWriteLock()).isWriteLocked(),
+        assertFalse(manager.getWriteLock().isLocked(),
                 "a failed write must release the write lock");
         indexed("unchecked-2");
         assertTrue(indexedDocs().containsKey("unchecked-2"), "the next write must go through");

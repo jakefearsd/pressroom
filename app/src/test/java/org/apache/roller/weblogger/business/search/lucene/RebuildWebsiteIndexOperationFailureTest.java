@@ -25,7 +25,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.MultiBits;
@@ -171,7 +170,7 @@ class RebuildWebsiteIndexOperationFailureTest {
         AtomicBoolean lockedDuringFetch = new AtomicBoolean(false);
         when(entries.getWeblogEntries(any())).thenAnswer(inv -> {
             lockedDuringFetch.set(
-                    ((ReentrantReadWriteLock) manager.getReadWriteLock()).isWriteLocked());
+                    manager.getWriteLock().isLocked());
             return List.of();
         });
 
@@ -192,7 +191,7 @@ class RebuildWebsiteIndexOperationFailureTest {
 
         manager.rebuildWeblogIndex(blog);
 
-        assertFalse(((ReentrantReadWriteLock) manager.getReadWriteLock()).isWriteLocked(),
+        assertFalse(manager.getWriteLock().isLocked(),
                 "a failed rebuild must release the write lock");
 
         index(entry("r3"));

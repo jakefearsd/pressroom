@@ -32,6 +32,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.Weblogger;
@@ -96,7 +97,7 @@ class LuceneIndexManagerStartupTest {
         assertFalse(second.isInconsistentAtStartup(),
                 "an index left by a clean shutdown must be trusted");
         verifyNoInteractions(secondThreads);
-        IndexReader reader = second.getSharedIndexReader();
+        IndexReader reader = currentReader(second);
         assertEquals(1, reader.numDocs(), "the existing document must survive the restart");
         assertTrue(Files.exists(indexDir.resolve(MARKER)), "startup must mark the index as in use");
 
@@ -122,7 +123,7 @@ class LuceneIndexManagerStartupTest {
         LuceneIndexManager crashed = managerOver(indexDir, mock(ThreadManager.class));
         crashed.initialize();
         addDocument(indexDir, "entry-written-before-the-crash");
-        crashed.getSharedIndexReader().close();
+        currentReader(crashed).close();
         // no crashed.shutdown(): the process died here
         assertTrue(Files.exists(indexDir.resolve(MARKER)), "precondition: the marker is left behind");
 
@@ -210,6 +211,13 @@ class LuceneIndexManagerStartupTest {
         setField(manager, "indexDir", indexDir.toString());
         setField(manager, "indexConsistencyMarker", new File(indexDir.toFile(), MARKER));
         return manager;
+    }
+
+    /** The manager's current reader, the reference taken to find it handed back. */
+    private static IndexReader currentReader(LuceneIndexManager manager) throws Exception {
+        IndexSearcher searcher = manager.acquireSearcher();
+        manager.releaseSearcher(searcher);
+        return searcher.getIndexReader();
     }
 
     private static void setField(Object target, String name, Object value) throws Exception {

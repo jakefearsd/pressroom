@@ -18,6 +18,8 @@
 /* Created on Aug 12, 2003 */
 package org.apache.roller.weblogger.business.search.lucene;
 
+import java.util.concurrent.locks.ReentrantLock;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,27 +36,33 @@ public abstract class WriteToIndexOperation extends IndexOperation {
     private static final Logger log =
             LoggerFactory.getLogger(WriteToIndexOperation.class);
 
+    /**
+     * Runs the write holding the manager's write lock, which serialises
+     * writers only; searches never take it. Before the lock is released --
+     * and so before the operation is done -- the manager's searchers are
+     * refreshed, so a search that starts once this returns sees the write.
+     */
     @Override
     public void run() {
+        ReentrantLock lock = manager.getWriteLock();
+        lock.lock();
         try {
-            manager.getReadWriteLock().writeLock().lock();
+            writeThenRefresh();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private void writeThenRefresh() {
+        try {
             log.debug("Starting search index operation");
             doRun();
             log.debug("Search index operation complete");
-
         } catch (Exception e) {
-            log.error("Error acquiring write lock on index", e);
-
-        } finally {
-            // Invalidate the cached reader BEFORE letting go of the lock. A
-            // search queued behind this write takes the read lock the instant
-            // it is released; reset afterwards and that search could still
-            // find the pre-write reader cached and answer without this write.
-            try {
-                manager.resetSharedReader();
-            } finally {
-                manager.getReadWriteLock().writeLock().unlock();
-            }
+            log.error("Error writing to the search index", e);
         }
+        // whether or not the write went through: a failed or rolled-back
+        // one changed nothing, and the refresh then finds nothing to open
+        manager.refreshSearcher();
     }
 }

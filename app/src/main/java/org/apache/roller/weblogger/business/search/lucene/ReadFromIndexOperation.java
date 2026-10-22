@@ -21,6 +21,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * An operation that only reads the index. It takes no lock: it reads through
+ * a searcher acquired from the manager, which an index write never blocks
+ * (see {@link LuceneIndexManager#acquireSearcher}).
+ *
  * @author aim4min
  */
 public abstract class ReadFromIndexOperation extends IndexOperation {
@@ -34,14 +38,10 @@ public abstract class ReadFromIndexOperation extends IndexOperation {
     @Override
     public final void run() {
         try {
-            manager.getReadWriteLock().readLock().lock();
             doRun();
-
         } catch (Exception e) {
-            log.error("Error acquiring read lock on index", e);
-        } finally {
-            manager.getReadWriteLock().readLock().unlock();
+            log.error("Error reading the search index", e);
         }
     }
-    
+
 }

@@ -134,8 +134,10 @@ A flake goes here once it is explained; a rerun that passes explains nothing.
   unordered thread pool. Fixed in production (reset before
   unlock) and in the test (`setUp` waits for its own entries). Reproduced
   naturally once in 240 with the JVM pinned to one core (`taskset -c 15`),
-  the test after `rebuilding...` as in CI; `SharedReaderHandoffTest` holds
-  the window open deterministically (fails every run without the fix).
+  the test after `rebuilding...` as in CI; `SharedReaderHandoffTest` held
+  the window open deterministically (fails every run without the fix). That
+  test and the read lock went in 2026-10, when searches stopped waiting for
+  writes at all (`SearchDuringWriteTest`; docs/dev/architecture.md, Search).
   Residual: the hit filter dropped an entry with `pubTime == now` (strict
   `before`), so publish-then-search in one millisecond found nothing; now
   `!after(now)` (`anEntryPublishedAtExactlyNowIsFound`, also `SearchResultsModel`).
