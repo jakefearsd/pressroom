@@ -275,7 +275,7 @@ class TagAggregateConcurrencyTest {
                     case 0 -> publish(weblog.getId(), "queue-a", "queued");
                     case 1 -> publish(otherWeblog.getId(), "queue-b", "queued");
                     default -> {
-                        awaitSessionsWaitingOnALock(2, Duration.ofSeconds(30));
+                        awaitSessionsBlockedBy(holder, 2, Duration.ofSeconds(30));
                         holder.commit();
                     }
                 }
@@ -313,7 +313,7 @@ class TagAggregateConcurrencyTest {
                     WeblogManager weblogs = TestUtils.weblogger().getWeblogManager();
                     weblogs.removeWeblog(weblogs.getWeblog(doomedId));
                 } else {
-                    awaitSessionsWaitingOnALock(1, Duration.ofSeconds(30));
+                    awaitSessionsBlockedBy(publisher, 1, Duration.ofSeconds(30));
                     publisher.commit();
                 }
             });
@@ -373,11 +373,12 @@ class TagAggregateConcurrencyTest {
         }
     }
 
+    /**
+     * Waits, up to {@code atMost}, for some session to be waiting on a lock;
+     * goes on regardless once the time is up (the caller's interleaving is
+     * a best effort, not a precondition).
+     */
     private static void awaitASessionWaitingOnALock(Duration atMost) throws Exception {
-        awaitSessionsWaitingOnALock(1, atMost);
-    }
-
-    private static void awaitSessionsWaitingOnALock(int sessions, Duration atMost) throws Exception {
         long deadline = System.nanoTime() + atMost.toNanos();
         try (Connection con = connection(); PreparedStatement ps = con.prepareStatement(
                 "SELECT count(*) FROM pg_stat_activity "
@@ -385,13 +386,50 @@ class TagAggregateConcurrencyTest {
             while (System.nanoTime() < deadline) {
                 try (ResultSet rs = ps.executeQuery()) {
                     rs.next();
-                    if (rs.getInt(1) >= sessions) {
+                    if (rs.getInt(1) > 0) {
                         return;
                     }
                 }
                 Thread.sleep(20);
             }
         }
+    }
+
+    /**
+     * Waits until {@code sessions} sessions are blocked behind {@code holder}'s
+     * transaction -- directly, or queued behind a session that is (a second
+     * waiter for a row waits on the first waiter's tuple lock) -- and fails
+     * at {@code atMost}: a test whose interleaving never happened has not
+     * tested it.
+     */
+    private static void awaitSessionsBlockedBy(Connection holder, int sessions, Duration atMost)
+            throws Exception {
+        int holderPid;
+        try (Statement st = holder.createStatement(); ResultSet rs = st.executeQuery("SELECT pg_backend_pid()")) {
+            rs.next();
+            holderPid = rs.getInt(1);
+        }
+        long deadline = System.nanoTime() + atMost.toNanos();
+        int blocked = 0;
+        try (Connection con = connection(); PreparedStatement ps = con.prepareStatement(
+                "SELECT count(*) FROM pg_stat_activity w "
+                        + "WHERE w.wait_event_type = 'Lock' AND (? = ANY(pg_blocking_pids(w.pid)) "
+                        + "OR EXISTS (SELECT 1 FROM unnest(pg_blocking_pids(w.pid)) b(pid) "
+                        + "WHERE ? = ANY(pg_blocking_pids(b.pid))))")) {
+            ps.setInt(1, holderPid);
+            ps.setInt(2, holderPid);
+            while (System.nanoTime() < deadline) {
+                try (ResultSet rs = ps.executeQuery()) {
+                    rs.next();
+                    blocked = rs.getInt(1);
+                    if (blocked >= sessions) {
+                        return;
+                    }
+                }
+                Thread.sleep(20);
+            }
+        }
+        fail(blocked + " of " + sessions + " sessions blocked behind the holder after " + atMost);
     }
 
     // ------------------------------------------------------------------ C
