@@ -23,7 +23,6 @@ import java.util.Locale;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
 import org.apache.lucene.queryparser.classic.ParseException;
@@ -41,11 +40,12 @@ import org.apache.roller.weblogger.business.search.IndexManager;
  * An operation that searches the index.
  *
  * <p>{@link AutoCloseable}: running it acquires a counted reference to the
- * shared reader, which it keeps after {@code run()} returns so the caller can
- * still read the hits' stored fields through {@link #getSearcher()} once the
- * index read lock is gone. Closing it lets go of that reference; a caller
- * that runs one must close it. (Running it again lets go of the previous
- * run's reader first, so it never holds more than one.)
+ * manager's current searcher, which it keeps after {@code run()} returns so
+ * the caller can still read the hits' stored fields through
+ * {@link #getSearcher()}, however many index writes land meanwhile. Closing
+ * it lets go of that reference; a caller that runs one must close it.
+ * (Running it again lets go of the previous run's searcher first, so it never
+ * holds more than one.)
  * 
  * @author Mindaugas Idzelis (min@idzelis.com)
  */
@@ -71,10 +71,10 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
     private IndexSearcher searcher;
     private TopFieldDocs searchresults;
 
-    // The reader this operation acquired, held until close(). Guarded by
+    // The searcher this operation acquired, held until close(). Guarded by
     // this operation's monitor, as is `closed`: run() executes on the
     // ThreadManager's pool thread while close() runs on the caller's.
-    private IndexReader acquired;
+    private IndexSearcher acquired;
     // Set by close(). A caller whose wait for run() was interrupted closes
     // the operation while run() may still be about to start; a run() that
     // finds it closed must not take a reference nobody will release.
@@ -110,11 +110,6 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
      * 
      * @see java.lang.Runnable#run()
      */
-    // The reader is the LuceneIndexManager's shared one, acquired with a
-    // counted reference that close() lets go of -- it must outlive this
-    // method, because the caller reads the hits' stored fields through
-    // getSearcher() afterwards. Closing it here would break that.
-    @SuppressWarnings("PMD.CloseResource")
     @Override
     protected void doRun() {
         final int docLimit = 500;
@@ -122,11 +117,13 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
         searcher = null;
 
         try {
-            IndexReader reader = acquireReader();
-            if (reader == null) {
+            // acquired with a counted reference that close() lets go of: it
+            // must outlive this method, because the caller reads the hits'
+            // stored fields through getSearcher() afterwards
+            searcher = acquireSearcher();
+            if (searcher == null) {
                 return;
             }
-            searcher = new IndexSearcher(reader);
 
             MultiFieldQueryParser multiParser = new MultiFieldQueryParser(
                     SEARCH_FIELDS, LuceneIndexManager.getAnalyzer());
@@ -171,35 +168,35 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
             // who cares?
             parseError = e.getMessage();
         }
-        // the reader stays acquired: close() lets go of it, after the
+        // the searcher stays acquired: close() lets go of it, after the
         // caller has finished reading hits through getSearcher()
     }
 
     /**
-     * Acquires the shared reader for this run, or returns null if the
+     * Acquires the current searcher for this run, or returns null if the
      * operation was already closed. A second run lets go of the first run's
-     * reader before acquiring the current one, so this operation never holds
-     * more than one reference.
+     * searcher before acquiring the current one, so this operation never
+     * holds more than one reference.
      */
     // acquired = null looks dead to PMD (it is overwritten next) but is not:
     // if the acquire below throws, the field must already be clear.
     @SuppressWarnings("PMD.UnusedAssignment")
-    private synchronized IndexReader acquireReader() {
+    private synchronized IndexSearcher acquireSearcher() throws IOException {
         if (closed) {
             return null;
         }
         if (acquired != null) {
-            manager.releaseSharedIndexReader(acquired);
+            manager.releaseSearcher(acquired);
             // cleared before re-acquiring: if that throws (no index on
             // disk), close() must not release this reference a second time
             acquired = null;
         }
-        acquired = manager.acquireSharedIndexReader();
+        acquired = manager.acquireSearcher();
         return acquired;
     }
 
     /**
-     * Lets go of the reader this operation acquired, if any; the reader
+     * Lets go of the searcher this operation acquired, if any; its reader
      * closes once nothing else holds it. Idempotent. After it,
      * {@link #getSearcher()} must not be used to read documents.
      */
@@ -207,7 +204,7 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
     public synchronized void close() {
         closed = true;
         if (acquired != null) {
-            manager.releaseSharedIndexReader(acquired);
+            manager.releaseSearcher(acquired);
             acquired = null;
         }
     }
@@ -219,16 +216,6 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
      */
     public IndexSearcher getSearcher() {
         return searcher;
-    }
-
-    /**
-     * Sets the searcher.
-     * 
-     * @param searcher
-     *            the new searcher
-     */
-    public void setSearcher(IndexSearcher searcher) {
-        this.searcher = searcher;
     }
 
     /**

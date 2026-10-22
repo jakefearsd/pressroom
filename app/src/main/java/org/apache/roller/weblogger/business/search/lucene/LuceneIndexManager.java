@@ -29,8 +29,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.beanutils.ConstructorUtils;
 import org.slf4j.Logger;
@@ -40,10 +39,11 @@ import org.apache.lucene.analysis.miscellaneous.LimitTokenCountAnalyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
@@ -70,7 +70,10 @@ import org.apache.roller.weblogger.pojos.wrapper.WeblogEntryWrapper;
  */
 public class LuceneIndexManager implements IndexManager {
 
-    private IndexReader reader;
+    // The searchers every search shares, refreshed by each index write before
+    // the write returns. Searches read it without a lock (volatile, and
+    // created lazily under this object's monitor); see acquireSearcher.
+    private volatile SearcherManager searcherManager;
     private final Weblogger roller;
 
     private static final Logger log = LoggerFactory.getLogger(LuceneIndexManager.class);
@@ -86,7 +89,13 @@ public class LuceneIndexManager implements IndexManager {
     // admin request thread, unrelated to the one that bootstrapped search.
     private volatile boolean inconsistentAtStartup = false;
 
-    private final ReadWriteLock rwl = new ReentrantReadWriteLock();
+    // Serialises index writes -- only one IndexWriter may hold the
+    // directory's lock -- and nothing else: searches never take it.
+    private final ReentrantLock writeLock = new ReentrantLock();
+
+    // A search that finds its searchers closed under it reopens them; this
+    // bounds how often before it gives up (see acquireSearcher).
+    private static final int MAX_ACQUIRE_ATTEMPTS = 3;
 
 
     /** The tier an {@link IndexOperation} resolves entry authors through. */
@@ -177,16 +186,20 @@ public class LuceneIndexManager implements IndexManager {
                 // test if the index is readable, if the version is outdated or it fails we rebuild.
                 try {
                     synchronized(this) {
-                        // retire any reader already held rather than
-                        // overwrite the only reference to it (and leak its
-                        // files): a no-op on the one startup call today
-                        resetSharedReader();
-                        reader = DirectoryReader.open(getIndexDirectory());
+                        // retire any searchers already held rather than
+                        // overwrite the only reference to them (and leak
+                        // their files): a no-op on the one startup call today
+                        closeSearcherManager();
+                        searcherManager = new SearcherManager(getIndexDirectory(), null);
                     }
                 } catch (IOException | IllegalArgumentException ex) {  // IAE for incompatible codecs
                     log.warn("Failed to open search index, scheduling rebuild.", ex);
                     inconsistentAtStartup = true;
                     deleteIndex();
+                    // an empty index in its place, as on the unclean-shutdown
+                    // path below: until the rebuild commits, searches (which
+                    // never wait for it) find nothing rather than fail
+                    createIndex(getIndexDirectory());
                 }
             } else {
                 log.debug("Creating index");
@@ -250,10 +263,10 @@ public class LuceneIndexManager implements IndexManager {
         URLStrategy urlStrategy) throws WebloggerException {
 
         // try-with-resources: the operation holds a counted reference to the
-        // reader it queried (see acquireSharedIndexReader), and it must hold
-        // it past the read lock, through convertHitsToEntryList's
-        // stored-field reads -- a write landing in between would otherwise
-        // close the reader under this search. Closing the operation here
+        // searcher it queried (see acquireSearcher), and it must hold it
+        // past the query, through convertHitsToEntryList's stored-field
+        // reads -- a write landing in between would otherwise close the
+        // reader under this search. Closing the operation here
         // lets go on every path out: hits, no hits, a query the parser
         // rejected, a conversion that threw.
         try (SearchOperation search = new SearchOperation(this)) {
@@ -286,8 +299,9 @@ public class LuceneIndexManager implements IndexManager {
         }
     }
 
-    public ReadWriteLock getReadWriteLock() {
-        return rwl;
+    /** The lock every index write holds for its whole writer session. */
+    public ReentrantLock getWriteLock() {
+        return writeLock;
     }
 
     @Override
@@ -350,83 +364,146 @@ public class LuceneIndexManager implements IndexManager {
     }
 
     /**
-     * Retires the cached reader after an index write, so the next search
-     * opens one that sees the write.
+     * The current searcher, with a reference counted for the caller, who
+     * must hand it to {@link #releaseSearcher} exactly once, in a
+     * {@code finally}. Never blocks on an index write: a write in progress is
+     * simply not visible yet, and every write {@linkplain #refreshSearcher
+     * refreshes} the searchers before it returns.
      *
-     * <p>The manager owns one reference to the cached reader (the one
-     * {@code DirectoryReader.open} returned) and drops it here. That closes
-     * the reader -- and its segment file handles -- at once if no search is
-     * using it, or when the last search that {@linkplain
-     * #acquireSharedIndexReader acquired} it lets go. Simply forgetting the
-     * reader, as this once did, left every superseded reader's files open
-     * until the garbage collector got to it; closing it outright would fail
-     * a search still converting its hits on it.
+     * <p>The reference is what keeps the reader open past a later refresh,
+     * which drops the manager's own reference to the reader it supersedes: a
+     * search reads its hits' stored fields ({@code convertHitsToEntryList})
+     * after the query, and a write can land in between.
+     *
+     * <p>Searchers closed between reading the field and acquiring from them
+     * (a failed refresh, {@code shutdown()}) are discarded and reopened, so
+     * that race costs a reopen, not a failed search. A search after
+     * {@code shutdown()} therefore reopens searchers nothing will close, as
+     * the lazily opened reader always did.
+     *
+     * @throws IOException if there is no readable index on disk (the
+     *     searchers are opened on first use)
      */
-    public synchronized void resetSharedReader() {
-        if (reader != null) {
+    // `current` is the manager's own long-lived SearcherManager, published to
+    // the field, not a resource this method owns: closeSearcherManager()
+    // closes it, on re-initialise, a failed refresh and shutdown.
+    @SuppressWarnings("PMD.CloseResource")
+    public IndexSearcher acquireSearcher() throws IOException {
+        for (int attempt = 1; ; attempt++) {
+            SearcherManager current = searcherManager;
+            if (current == null) {
+                synchronized (this) {
+                    current = searcherManager;
+                    if (current == null) {
+                        current = new SearcherManager(getIndexDirectory(), null);
+                        searcherManager = current;
+                    }
+                }
+            }
             try {
-                releaseSharedIndexReader(reader);
-            } finally {
-                // forgotten even if the release threw, or every later search
-                // would be handed the dead reader
-                reader = null;
+                return current.acquire();
+            } catch (AlreadyClosedException closed) {
+                // A failed refresh or shutdown() closed these searchers
+                // between the read above and the acquire: drop them (if
+                // nothing has replaced them yet) and open fresh ones. Bounded,
+                // so a manager that keeps closing under us fails the search
+                // rather than spinning.
+                if (attempt >= MAX_ACQUIRE_ATTEMPTS) {
+                    throw closed;
+                }
+                discardSearcherManager(current);
             }
         }
     }
 
     /**
-     * The cached reader, opened on first use, <em>borrowed</em>: the caller
-     * takes no reference, so the reader is only guaranteed open while the
-     * caller holds the index read lock (a write, which retires it, needs the
-     * write lock). Anything that uses the reader after letting go of that
-     * lock -- a search converting its hits -- must use
-     * {@link #acquireSharedIndexReader} instead.
-     */
-    public synchronized IndexReader getSharedIndexReader() {
-        if (reader == null) {
-            try {
-                reader = DirectoryReader.open(getIndexDirectory());
-            } catch (IOException ex) {
-                log.error("Error opening DirectoryReader", ex);
-                throw new RuntimeException(ex);
-            }
-        }
-        return reader;
-    }
-
-    /**
-     * The cached reader with a reference counted for the caller, which keeps
-     * it open across a later {@link #resetSharedReader} until the caller
-     * hands it to {@link #releaseSharedIndexReader} -- exactly once, in a
-     * {@code finally}. Taking the reference under this monitor is what makes
-     * it safe: a reset cannot drop the manager's reference between the
-     * lookup and the increment.
-     */
-    public synchronized IndexReader acquireSharedIndexReader() {
-        IndexReader shared = getSharedIndexReader();
-        shared.incRef();
-        return shared;
-    }
-
-    /**
-     * Lets go of one reference to a reader; the reader closes when its last
-     * reference goes. A failure to close is logged, not thrown: the caller
-     * is finished with the reader either way, and its answer (a search
-     * result, a write) does not depend on the close.
+     * Lets go of a searcher {@link #acquireSearcher} returned; its reader
+     * closes once nothing else holds it. A failure to close is logged, not
+     * thrown: the caller is finished with the reader either way, and its
+     * answer does not depend on the close. That includes a reader already
+     * closed ({@code AlreadyClosedException}, unchecked), so a release can
+     * never fail a search that has its answer.
      *
-     * <p>That includes a reader already closed ({@code AlreadyClosedException},
-     * unchecked): one lent by {@link #getSharedIndexReader} and closed by its
-     * borrower. The release runs in a write's {@code finally} and in
-     * {@code shutdown()}, where {@code WebloggerImpl.shutdown} stops the
-     * thread manager only after it returns -- and the {@code reader.close()}
-     * shutdown used before was idempotent -- so a second close must not
-     * throw from here either.
+     * <p>Decrements the reader directly rather than through the manager that
+     * handed it out, which a re-initialise or {@code shutdown()} may have
+     * closed and replaced since.
      */
-    public void releaseSharedIndexReader(IndexReader acquired) {
+    public void releaseSearcher(IndexSearcher acquired) {
         try {
-            acquired.decRef();
+            acquired.getIndexReader().decRef();
         } catch (IOException | AlreadyClosedException ex) {
             log.warn("Unable to close a search index reader.", ex);
+        }
+    }
+
+    /**
+     * Makes the latest commit visible to every search that starts after this
+     * returns; each index write calls it before it is done. Searches already
+     * running finish on the reader they hold, which closes when the last of
+     * them lets go.
+     *
+     * <p>If no searchers are open yet there is nothing to refresh: the first
+     * search opens them on the latest commit. Reading the field under the
+     * monitor matters there: a search opening them concurrently either
+     * finished before this looks (and is refreshed) or starts after it (and
+     * opens the commit this write made).
+     *
+     * <p>A refresh that fails (the reader closed behind the manager's back,
+     * an I/O error) is logged and the searchers are discarded, so the next
+     * search reopens them from disk rather than every search failing, or
+     * answering without this write, from then on.
+     */
+    // `current` is the field's SearcherManager, owned (and closed) by
+    // closeSearcherManager(), not by this method.
+    @SuppressWarnings("PMD.CloseResource")
+    void refreshSearcher() {
+        SearcherManager current;
+        synchronized (this) {
+            current = searcherManager;
+        }
+        if (current == null) {
+            return;
+        }
+        try {
+            current.maybeRefreshBlocking();
+        } catch (IOException | IllegalStateException ex) {
+            log.error("Unable to refresh the search index reader; reopening it on the next search", ex);
+            discardSearcherManager(current);
+        }
+    }
+
+    /**
+     * Closes and forgets {@code failed}, but only if it is still the
+     * installed instance: never one a concurrent re-initialise, or another
+     * search's reopen, has put in its place since.
+     */
+    // The == is deliberate identity, as above.
+    @SuppressWarnings("PMD.CompareObjectsWithEquals")
+    private synchronized void discardSearcherManager(SearcherManager failed) {
+        if (searcherManager == failed) {
+            closeSearcherManager();
+        }
+    }
+
+    /**
+     * Drops the manager's reference to its current reader and forgets the
+     * searchers, so the next search opens fresh ones. The reader closes now,
+     * or when the last search still holding it lets go. A close that fails
+     * (the reader already closed behind the manager's back) is logged; the
+     * searchers are forgotten either way.
+     */
+    // It is closed, explicitly, below; try-with-resources would not fit: the
+    // field must be cleared first, and a failed close is logged, not thrown.
+    @SuppressWarnings("PMD.CloseResource")
+    private synchronized void closeSearcherManager() {
+        SearcherManager current = searcherManager;
+        searcherManager = null;
+        if (current != null) {
+            try {
+                current.close();
+            } catch (IOException | IllegalStateException ex) {
+                log.warn("Unable to close the search index reader.", ex);
+            }
         }
     }
 
@@ -507,13 +584,6 @@ public class LuceneIndexManager implements IndexManager {
         // no-op
     }
 
-    // synchronized: matches getSharedIndexReader()/resetSharedReader() below
-    // -- every other access to `reader` holds this monitor, and an
-    // unguarded read here was the one inconsistent access
-    // (IS2_INCONSISTENT_SYNC). A method-level modifier, like its two
-    // siblings, rather than a synchronized(this) block around the existing
-    // body, so the already-untested body's lines are not re-indented into
-    // looking like new (and newly diff-covered) lines.
     @Override
     public synchronized void shutdown() {
 
@@ -529,11 +599,11 @@ public class LuceneIndexManager implements IndexManager {
             log.warn("Unable to delete search index consistency marker: {}", indexConsistencyMarker);
         }
 
-        // Drop the manager's own reference, as a write does: the reader
-        // closes now, or when a search still converting on it lets go. It is
-        // also forgotten, so a write that straggles in after shutdown does
-        // not release the same reference a second time.
-        resetSharedReader();
+        // Drop the manager's own reference: the reader closes now, or when a
+        // search still converting on it lets go. The searchers are also
+        // forgotten, so a write that straggles in after shutdown has nothing
+        // to refresh.
+        closeSearcherManager();
     }
 
     /**

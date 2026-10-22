@@ -120,21 +120,37 @@ templates).
   add/remove/rebuild operations
 - **Scope**: full-text across entries with category and locale filtering
 - **Index Location**: configurable work directory
-- **Reader lifecycle** (`LuceneIndexManager`): searches share one cached
-  `IndexReader`; every index write retires it with `resetSharedReader()`,
-  called *before* the write lock is released (or a search queued behind the
-  write answers from the stale reader — `SharedReaderHandoffTest`). The
-  reader is reference-counted: the manager owns one reference and drops it
-  on reset or `shutdown()`; a search takes its own with
-  `acquireSharedIndexReader()` and must hand it to
-  `releaseSharedIndexReader()` exactly once, in a `finally`. That is
-  required, not tidy-up: a search reads its hits' stored fields
-  (`convertHitsToEntryList`) *after* the read lock is gone, so a write can
-  retire the reader mid-search; closing it at reset fails that search with
-  `AlreadyClosedException`, and never closing it (the old behaviour) leaked
-  every superseded reader's segment file handles until GC.
+- **Searches never wait for writes** (`LuceneIndexManager`): searches share
+  a Lucene `SearcherManager` and take no lock; index writes serialise on
+  `getWriteLock()` (one `IndexWriter` per operation, opened, committed and
+  closed inside it) and nothing else touches that lock. Before a write
+  releases it, `refreshSearcher()` (`maybeRefreshBlocking`) makes the commit
+  visible, so a search that starts after a write *returns* sees it, while a
+  search during a write answers from the index as it was
+  (`SearchDuringWriteTest`; until 2026-10 searches took the read side of a
+  read/write lock and parked ~20 ms behind every entry save). Tests that
+  schedule a background write must therefore wait for it, bounded (see
+  `SearchIndexQueryTest.awaitTitles`), never rely on a search queueing
+  behind it. A refresh that fails discards the searchers so the next search
+  reopens from disk, and a search that finds its searchers closed under it
+  (that discard, or `shutdown()`) reopens them rather than failing; with
+  none open yet there is nothing to refresh (the
+  first search opens the latest commit — the field is read under the
+  monitor that lazy creation holds, so no commit slips between them). An
+  index unreadable at startup is replaced by an empty one before the full
+  rebuild is scheduled (as after an unclean shutdown), so searches during
+  that rebuild find nothing rather than fail.
+- **Reader lifecycle**: references are counted. The `SearcherManager` owns
+  one on the current reader and drops it on refresh, re-`initialize()` and
+  `shutdown()`; a search takes its own with `acquireSearcher()` and must hand
+  it to `releaseSearcher()` exactly once, in a `finally`. That is required,
+  not tidy-up: a search reads its hits' stored fields
+  (`convertHitsToEntryList`) *after* its query, so a write can retire the
+  reader mid-search; closing it at the refresh would fail that search with
+  `AlreadyClosedException`, and never closing it (the behaviour before the
+  2026-10 leak fix) leaked every superseded reader's segment files until GC.
   `SearchOperation` is `AutoCloseable` and holds the reference until
   closed — `search()` runs it in try-with-resources, and anything else that
-  runs one must close it. `getSharedIndexReader()` lends the reader without
-  a reference; it is safe only while the caller holds the read lock.
-  `SharedReaderLifecycleTest` pins all of this.
+  runs one must close it. `SharedReaderLifecycleTest` pins the counts and
+  `SearchDuringWriteTest` checks `/proc/self` for deleted index files still
+  held after many write/search cycles.

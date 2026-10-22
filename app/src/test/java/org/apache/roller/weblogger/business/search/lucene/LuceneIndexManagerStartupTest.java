@@ -32,6 +32,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.Weblogger;
@@ -46,7 +47,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -96,7 +99,7 @@ class LuceneIndexManagerStartupTest {
         assertFalse(second.isInconsistentAtStartup(),
                 "an index left by a clean shutdown must be trusted");
         verifyNoInteractions(secondThreads);
-        IndexReader reader = second.getSharedIndexReader();
+        IndexReader reader = currentReader(second);
         assertEquals(1, reader.numDocs(), "the existing document must survive the restart");
         assertTrue(Files.exists(indexDir.resolve(MARKER)), "startup must mark the index as in use");
 
@@ -122,7 +125,7 @@ class LuceneIndexManagerStartupTest {
         LuceneIndexManager crashed = managerOver(indexDir, mock(ThreadManager.class));
         crashed.initialize();
         addDocument(indexDir, "entry-written-before-the-crash");
-        crashed.getSharedIndexReader().close();
+        currentReader(crashed).close();
         // no crashed.shutdown(): the process died here
         assertTrue(Files.exists(indexDir.resolve(MARKER)), "precondition: the marker is left behind");
 
@@ -140,7 +143,9 @@ class LuceneIndexManagerStartupTest {
     /**
      * An index that exists but cannot be opened -- corrupt, or written by an
      * incompatible Lucene version -- is deleted and rebuilt rather than
-     * failing startup.
+     * failing startup. An empty index takes its place at once, as on the
+     * unclean-shutdown path, so until the rebuild commits a search finds
+     * nothing rather than failing: searches no longer wait for the rebuild.
      */
     @Test
     void anIndexThatCannotBeOpenedIsDeletedAndRebuilt(@TempDir Path tmp) throws Exception {
@@ -155,7 +160,17 @@ class LuceneIndexManagerStartupTest {
 
         assertTrue(manager.isInconsistentAtStartup());
         verify(threads).executeInBackground(isA(RebuildWebsiteIndexOperation.class));
-        assertFalse(Files.exists(segments), "the unreadable index files must be deleted");
+        assertEquals(0, numDocs(indexDir),
+                "the unreadable index must be replaced by an empty, readable one");
+        // searches run on the thread manager; this one runs them inline
+        doAnswer(inv -> {
+            ((Runnable) inv.getArgument(0)).run();
+            return null;
+        }).when(threads).executeInForeground(any(Runnable.class));
+        assertTrue(manager.search("anything", "rebuildingblog", null, null, 0, 10, null)
+                        .getResults().isEmpty(),
+                "a search during the rebuild must find nothing, not fail");
+        manager.shutdown();
     }
 
     /**
@@ -210,6 +225,13 @@ class LuceneIndexManagerStartupTest {
         setField(manager, "indexDir", indexDir.toString());
         setField(manager, "indexConsistencyMarker", new File(indexDir.toFile(), MARKER));
         return manager;
+    }
+
+    /** The manager's current reader, the reference taken to find it handed back. */
+    private static IndexReader currentReader(LuceneIndexManager manager) throws Exception {
+        IndexSearcher searcher = manager.acquireSearcher();
+        manager.releaseSearcher(searcher);
+        return searcher.getIndexReader();
     }
 
     private static void setField(Object target, String name, Object value) throws Exception {

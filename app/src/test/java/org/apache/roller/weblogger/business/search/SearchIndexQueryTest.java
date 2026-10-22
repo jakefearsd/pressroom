@@ -77,9 +77,10 @@ class SearchIndexQueryTest {
 
         // addEntryIndexOperation only schedules the write. Without these waits
         // every test's first search raced the setUp's own indexing (it nearly
-        // always returned with the write still in flight) and passed only
-        // because the search happened to queue behind it -- see
-        // SharedReaderHandoffTest for the window that ordering still left open.
+        // always returned with the write still in flight) and once passed only
+        // because the search happened to queue behind it. Searches no longer
+        // wait for a write in progress (SearchDuringWriteTest), so these waits
+        // are the only thing ordering the two.
         awaitTitles(blog.getHandle(), titles -> titles.contains("Hiking in Spain"),
                 "setUp's entry was never indexed");
         awaitTitles(otherBlog.getHandle(), titles -> titles.contains("Also about Spain"),

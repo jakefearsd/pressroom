@@ -73,11 +73,12 @@ public class AddEntryOperation extends WriteToIndexOperation {
             return;
         }
 
-        IndexWriter writer = beginWriting();
-
         // since this operation can be run on a separate thread we must treat
         // the weblog object passed in as a detached object which is proned to
-        // lazy initialization problems, so requery for the object now
+        // lazy initialization problems, so requery for the object now --
+        // before the writer opens, as ReIndexEntryOperation does: returning
+        // here with it open leaked the writer and the directory's
+        // write.lock, and every later write then failed to open its own
         try {
             WeblogEntryManager wMgr = roller.getWeblogEntryManager();
             this.data = wMgr.getWeblogEntry(this.data.getId());
@@ -86,6 +87,7 @@ public class AddEntryOperation extends WriteToIndexOperation {
             return;
         }
 
+        IndexWriter writer = beginWriting();
         try {
             // Only a published entry belongs in the search index -- the
             // same guard ReIndexEntryOperation applies on its own add path.
