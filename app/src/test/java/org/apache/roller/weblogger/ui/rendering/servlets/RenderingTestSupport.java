@@ -21,6 +21,9 @@ import jakarta.servlet.jsp.PageContext;
 import org.apache.roller.weblogger.TestUtils;
 import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.ui.core.RollerContext;
+import org.apache.roller.weblogger.ui.rendering.util.cache.SiteWideCache;
+import org.apache.roller.weblogger.ui.rendering.util.cache.WeblogFeedCache;
+import org.apache.roller.weblogger.ui.rendering.util.cache.WeblogPageCache;
 import org.apache.roller.weblogger.ui.rendering.velocity.RollerVelocity;
 import org.apache.roller.weblogger.util.cache.CacheManager;
 import org.mockito.Mockito;
@@ -67,9 +70,19 @@ public final class RenderingTestSupport {
         runtimeReady = true;
     }
 
-    /** Render caches are per-JVM singletons and nothing clears them between tests. */
+    /**
+     * Render caches are per-JVM singletons and nothing clears them between
+     * tests. The three servlet caches are also cleared by name: the cache
+     * tests build their own instances under the same ids, and registering one
+     * displaces the singleton from {@link CacheManager}, whose {@code clear()}
+     * then no longer reaches the cache the servlets read (a feed rendered
+     * earlier in the class came back from it).
+     */
     public static void clearRenderCaches() {
         CacheManager.clear();
+        WeblogPageCache.getInstance().clear();
+        WeblogFeedCache.getInstance().clear();
+        SiteWideCache.getInstance().clear();
     }
 
     private static void installServletContext() throws Exception {
