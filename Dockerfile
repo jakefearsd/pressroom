@@ -37,7 +37,7 @@
 # ROLLER_MAIL_* keys. See deploy/.env.example for the full set.
 
 # ---- Stage 1: build -------------------------------------------------------
-FROM maven:3.9-eclipse-temurin-25@sha256:e401a38b409619191be709faa61b2d9f00dc77c53bc8c9ff4c2f28b364948a08 AS builder
+FROM maven:3.9-eclipse-temurin-25@sha256:93b8a14ea2f412782e4e842651273b4d903e35cc496284f178fbbe2d67d00976 AS builder
 
 WORKDIR /build
 
@@ -51,7 +51,7 @@ COPY bin/db/migrations bin/db/migrations
 
 # This step needs outbound network access beyond the obvious Maven/apt
 # fetches: app/pom.xml's generate-resources phase runs frontend-maven-plugin,
-# which downloads Node v24.22.0 from nodejs.org and then the editor bundle's
+# which downloads Node v24.22.1 from nodejs.org and then the editor bundle's
 # npm packages from registry.npmjs.org (see CLAUDE.md's "Frontend build" and
 # docker_deployment.md's "Test a release locally before deploying it"). This
 # stage starts clean every time -- no cached app/frontend/node/ or
@@ -59,7 +59,7 @@ COPY bin/db/migrations bin/db/migrations
 RUN mvn -ntp -pl app -DskipTests package
 
 # ---- Stage 2: runtime -------------------------------------------------------
-FROM eclipse-temurin:25-jre@sha256:6e9581a150f9ad80d9154f6c9dc4e5df0d4f5eb545e788340e2271e2fb5d3870 AS runtime
+FROM eclipse-temurin:25-jre@sha256:dbb43d81099eec91e0800226ed2296d03146ee7857165b95112372ad0d67e87f AS runtime
 
 # curl is not in the base JRE image; installed for container healthchecks
 # against the management port (docker exec ... curl 8090/actuator/health --

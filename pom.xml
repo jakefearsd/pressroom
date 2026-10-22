@@ -196,7 +196,7 @@ limitations under the License.
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>versions-maven-plugin</artifactId>
-                    <version>2.22.0</version>
+                    <version>2.23.0</version>
                     <configuration>
                         <rulesUri>file:version-rules.xml</rulesUri>
                     </configuration>
@@ -215,7 +215,7 @@ limitations under the License.
                              from this runtime, and a floating major would move the
                              output under everyone. Downloaded once into app/frontend/node
                              (git-ignored); only the first build needs the network. -->
-                        <nodeVersion>v24.22.0</nodeVersion>
+                        <nodeVersion>v24.22.1</nodeVersion>
                         <installDirectory>${project.basedir}/frontend</installDirectory>
                     </configuration>
                 </plugin>

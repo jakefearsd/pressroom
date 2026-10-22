@@ -54,7 +54,7 @@ limitations under the License.
              this file's text: this module has no unit tests of its own and
              builds only under -Pit, so a floor asserted here would go unchecked
              on the push path. -->
-        <httpclient5.version>5.6.4</httpclient5.version>
+        <httpclient5.version>5.6.5</httpclient5.version>
         <!-- This module isn't a Spring Boot artifact and imports no BOM, so
              junit-jupiter needs an explicit pin (app/pom.xml gets its JUnit
              version for free from Spring Boot's dependencyManagement import;
@@ -238,7 +238,7 @@ limitations under the License.
         <dependency>
             <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>3.2.3</version>
+            <version>3.2.4</version>
             <scope>test</scope>
         </dependency>
 

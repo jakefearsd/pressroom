@@ -56,7 +56,7 @@ public class McpServerConfig {
                 .jsonMapper(new JacksonMcpJsonMapper(JsonMapper.builder().build()))
                 .messageEndpoint(ENDPOINT)
                 // the supplier runs per request, after bootstrap
-                .securityValidator(new McpOriginValidator(
+                .httpHeaderValidator(new McpOriginValidator(
                         () -> WebloggerRuntimeConfig.getPropertyWithConfigFallback("site.absoluteurl")))
                 .maxRequestSize(MAX_REQUEST_BYTES)
                 .contextExtractor(request ->

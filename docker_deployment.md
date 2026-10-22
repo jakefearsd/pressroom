@@ -1042,7 +1042,7 @@ equivalent rather than identical.
 Building the image needs outbound network access, and not only for the
 Maven/apt steps already implied by "a build": the builder stage's
 `generate-resources` phase runs `frontend-maven-plugin`, which fetches Node
-`v24.22.0` from `nodejs.org` and then the editor bundle's npm packages from
+`v24.22.1` from `nodejs.org` and then the editor bundle's npm packages from
 `registry.npmjs.org`, fresh, every time, because the builder stage starts
 from a clean `maven:3.9-eclipse-temurin-25` image with no cached
 `app/frontend/node/` or `node_modules/` on it. An air-gapped `docker build`

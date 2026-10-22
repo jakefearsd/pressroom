@@ -1,13 +1,10 @@
 package org.apache.roller.weblogger.ui.restapi.mcp;
 
 import java.net.URI;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.function.Supplier;
+import io.modelcontextprotocol.server.transport.HeaderAccessor;
+import io.modelcontextprotocol.server.transport.ServerHttpHeaderValidator;
 import io.modelcontextprotocol.server.transport.ServerTransportSecurityException;
-import io.modelcontextprotocol.server.transport.ServerTransportSecurityValidator;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 /**
  * A browser page can never drive /api/mcp: a request carrying an Origin
@@ -16,7 +13,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
  * passes. Host is deliberately not checked (custom domains, LAN names); the
  * SDK's DefaultServerTransportSecurityValidator would check both.
  */
-public final class McpOriginValidator implements ServerTransportSecurityValidator {
+public final class McpOriginValidator implements ServerHttpHeaderValidator {
 
     private final Supplier<String> siteAbsoluteUrl;
 
@@ -24,21 +21,12 @@ public final class McpOriginValidator implements ServerTransportSecurityValidato
         this.siteAbsoluteUrl = siteAbsoluteUrl;
     }
 
+    /** The accessor reads the servlet request, so the header name matches in any case. */
     @Override
-    @SuppressFBWarnings(
-            value = "IMPROPER_UNICODE",
-            justification = "Finds the Origin header by name: header names are ASCII tokens (Tomcat "
-                    + "refuses others), and the Origin value itself is compared exactly with the site's "
-                    + "origin.")
-    public void validateHeaders(Map<String, List<String>> headers) throws ServerTransportSecurityException {
-        for (Map.Entry<String, List<String>> header : headers.entrySet()) {
-            if (!"origin".equals(header.getKey().toLowerCase(Locale.ROOT))) {
-                continue;
-            }
-            for (String origin : header.getValue()) {
-                if (origin != null && !origin.isBlank() && !origin.equals(siteOrigin())) {
-                    throw new ServerTransportSecurityException(403, "Invalid Origin header");
-                }
+    public void validate(HeaderAccessor headers) throws ServerTransportSecurityException {
+        for (String origin : headers.getHeader("Origin")) {
+            if (origin != null && !origin.isBlank() && !origin.equals(siteOrigin())) {
+                throw new ServerTransportSecurityException(403, "Invalid Origin header");
             }
         }
     }

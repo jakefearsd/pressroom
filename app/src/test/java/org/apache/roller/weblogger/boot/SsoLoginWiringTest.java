@@ -279,6 +279,10 @@ class SsoLoginWiringTest {
      * the one the login page's checkbox posts, but {@code RollerRememberMeServices}
      * sets no parameter name and so reads Spring's default, {@code remember-me};
      * the first alone would leave this test passing with no protection in place.
+     *
+     * <p>The callback names its session the way a browser's cookie does. Spring
+     * rotates the id only when the requested one is valid, and since spring-test
+     * 7.0.10 a mock request that names no session id has none that is valid.
      */
     @Test
     void callbackNeverSetsARememberMeCookie() throws Exception {
@@ -288,6 +292,10 @@ class SsoLoginWiringTest {
         String before = session.getId();
 
         MvcResult r = onMvc.perform(get("/roller-ui/sso/callback").session(session)
+                        .with(request -> {
+                            request.setRequestedSessionId(before);
+                            return request;
+                        })
                         .param("code", "c").param("state", state)
                         .param("_spring_security_remember_me", "on")
                         .param(AbstractRememberMeServices.DEFAULT_PARAMETER, "on"))
