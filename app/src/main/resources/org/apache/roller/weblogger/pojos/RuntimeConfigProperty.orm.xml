@@ -9,6 +9,11 @@
         <named-query name="RuntimeConfigProperty.getAll">
             <query>SELECT r FROM RuntimeConfigProperty r</query>
         </named-query>
+        <!-- Values only, straight from the rows: what JPAPropertiesManagerImpl
+             remembers, never an entity a unit of work may have edited. -->
+        <named-query name="RuntimeConfigProperty.getAllValues">
+            <query>SELECT r.name, r.value FROM RuntimeConfigProperty r</query>
+        </named-query>
         <attributes>
             <id name="name">
                 <column name="name" unique="true" />

@@ -52,7 +52,19 @@ resolves through the index at the end of `CLAUDE.md`.
 ## Configuration scope
 - **Runtime** (`runtimeConfigDefs.xml` → `roller_properties` → Admin
   Settings): `WebloggerRuntimeConfig`, DB row first, else `WebloggerConfig`.
-  Hot.
+  Hot. `JPAPropertiesManagerImpl` remembers every row's committed value
+  (`RuntimeConfigSnapshot`, one projection query) and drops them whenever a
+  commit writes a `roller_properties` row (an EclipseLink row-write listener,
+  `JPAPersistenceStrategy.onRowWrite`: at the write and again once the commit
+  succeeds), so the next request reads any change, saved through
+  `saveProperty`/`saveProperties` or edited in place on the managed map
+  (`RuntimeConfigCacheTest`). `getProperty` returns a new unmanaged copy, which
+  saves because the save merges. `getProperties` hands out managed entities to
+  edit, so it begins the unit of work's transaction, and while a unit of work
+  has uncommitted work `getProperty` reads through its EntityManager: its own
+  edits are visible to it and nothing uncommitted is remembered. A row written
+  with SQL while the app runs is not seen until a restart (as with
+  EclipseLink's shared cache before).
 - **Startup** (`roller.properties` / `roller-custom.properties`): read once
   via `WebloggerConfig`; needs a restart.
 - **Per-weblog** (`Weblog` columns, Weblog Settings) and **per-entry**.

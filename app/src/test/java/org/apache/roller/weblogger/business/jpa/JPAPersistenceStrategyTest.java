@@ -188,6 +188,59 @@ class JPAPersistenceStrategyTest {
         }
     }
 
+    /**
+     * A row-write listener runs inside the commit that writes the row, so an
+     * action it queues with {@code runAfterCommit} lands after flush() took
+     * its snapshot of the queue; it must still run once that commit has
+     * succeeded -- for an insert, an update and a delete alike. (A delete
+     * may raise more than one event; what matters is that it raises one.)
+     */
+    @Test
+    void actionsQueuedByARowWriteListenerRunOnceTheCommitSucceeds() throws Exception {
+        RollerDatabaseExtension.ensureSchema();
+        if (!WebloggerStartup.isPrepared()) {
+            WebloggerStartup.prepare();
+        }
+
+        JPAPersistenceStrategy strategy =
+                new JPAPersistenceStrategy(WebloggerStartup.getDatabaseProvider());
+        try {
+            AtomicInteger written = new AtomicInteger();
+            AtomicInteger afterCommit = new AtomicInteger();
+            strategy.onRowWrite(Weblog.class, () -> {
+                written.incrementAndGet();
+                strategy.runAfterCommit(afterCommit::incrementAndGet);
+            });
+
+            Weblog weblog = new Weblog();
+            weblog.setName("Row Write Test Weblog");
+            weblog.setHandle("rowwritetest");
+            weblog.setEmailAddress("rowwritetest@dev.null");
+            weblog.setEditorTheme("journal");
+            weblog.setLocale("en_US");
+            weblog.setTimeZone("America/Los_Angeles");
+            weblog.setDateCreated(new Date());
+            weblog.setCreatorUserName("nobody");
+            strategy.store(weblog);
+            assertEquals(0, written.get(), "nothing is written before the commit");
+
+            strategy.flush();
+            assertEquals(1, written.get(), "the insert");
+            assertEquals(1, afterCommit.get(), "queued inside the commit, run after it");
+
+            weblog.setName("Row Write Test Weblog, renamed");
+            strategy.getEntityManager(true);
+            strategy.flush();
+            assertEquals(2, afterCommit.get(), "the update");
+
+            strategy.remove(weblog);
+            strategy.flush();
+            assertTrue(afterCommit.get() > 2, "the delete");
+        } finally {
+            strategy.shutdown();
+        }
+    }
+
     @Test
     void refreshOfAnEntityTheEntityManagerHasNeverSeenIsANoOpRatherThanThrowing() throws Exception {
         // EntityManager.refresh() throws for an entity that is not managed by
