@@ -50,7 +50,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -141,15 +143,16 @@ class SearchDuringWriteTest {
         CountDownLatch writing = new CountDownLatch(1);
         CountDownLatch finish = new CountDownLatch(1);
         WeblogEntry second = entry("second");
-        // AddEntryOperation re-fetches its entry with its IndexWriter already
-        // open, inside the write: the write is held right there.
+        // ReIndexEntryOperation -- what every production save schedules --
+        // re-fetches its entry inside the write, under the write lock: the
+        // write is held right there.
         when(entries.getWeblogEntry("second")).thenAnswer(inv -> {
             writing.countDown();
             assertTrue(finish.await(30, TimeUnit.SECONDS), "the test never let the write finish");
             return second;
         });
 
-        Thread writer = startWriter(() -> manager.addEntryIndexOperation(second));
+        Thread writer = startWriter(() -> manager.addEntryReIndexOperation(second));
         try {
             assertTrue(writing.await(10, TimeUnit.SECONDS), "the write never started");
 
@@ -159,6 +162,7 @@ class SearchDuringWriteTest {
             finish.countDown();
             writer.join(Duration.ofSeconds(30));
         }
+        assertFalse(writer.isAlive(), "the write never finished");
         assertNull(writerFailure.get(), "the write failed: " + writerFailure.get());
         assertEquals(List.of("first", "second"), sortedTitles(search()),
                 "the first search after the write returned must see it");
@@ -189,6 +193,7 @@ class SearchDuringWriteTest {
             finish.countDown();
             writer.join(Duration.ofSeconds(30));
         }
+        assertFalse(writer.isAlive(), "the write never finished");
         assertNull(writerFailure.get(), "the rebuild failed: " + writerFailure.get());
         assertEquals(List.of("rebuilt"), titles(search()),
                 "the first search after the rebuild returned must see exactly what it indexed");
@@ -226,6 +231,42 @@ class SearchDuringWriteTest {
         manager.rebuildWeblogIndex(blog);
 
         assertEquals(List.of("fresh"), titles(search()));
+    }
+
+    /**
+     * A write that dies with an {@link Error} after committing must still
+     * refresh the searchers, or every search keeps answering without that
+     * commit until some later write happens to refresh. The lock was always
+     * released in a {@code finally}; the refresh must be too.
+     */
+    @Test
+    void aWriteThatThrowsAnErrorAfterCommittingIsStillVisible() throws Exception {
+        index(entry("first"));
+        assertEquals(List.of("first"), titles(search()), "precondition");
+        WeblogEntry second = entry("second");
+        WriteToIndexOperation dying = new WriteToIndexOperation(manager) {
+            @Override
+            protected void doRun() {
+                try {
+                    beginWriting().addDocument(getDocument(second));
+                } catch (IOException e) {
+                    throw new IllegalStateException(e);
+                } finally {
+                    endWriting();
+                }
+                throw new SimulatedError();
+            }
+        };
+
+        assertThrows(SimulatedError.class, dying::run);
+
+        assertFalse(manager.getWriteLock().isLocked(), "the Error left the index write-locked");
+        assertEquals(List.of("first", "second"), sortedTitles(search()),
+                "the committed write must be visible although the operation died");
+    }
+
+    private static final class SimulatedError extends Error {
+        private static final long serialVersionUID = 1L;
     }
 
     /**
@@ -314,8 +355,9 @@ class SearchDuringWriteTest {
         return held;
     }
 
+    /** Indexes through ReIndexEntryOperation, the path every production save takes. */
     private void index(WeblogEntry entry) throws Exception {
-        manager.addEntryIndexOperation(entry);
+        manager.addEntryReIndexOperation(entry);
     }
 
     private SearchResultList search() throws Exception {

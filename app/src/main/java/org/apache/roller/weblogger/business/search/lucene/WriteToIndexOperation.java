@@ -60,9 +60,11 @@ public abstract class WriteToIndexOperation extends IndexOperation {
             log.debug("Search index operation complete");
         } catch (Exception e) {
             log.error("Error writing to the search index", e);
+        } finally {
+            // whether or not the write went through, and even if it died
+            // with an Error after committing: a failed or rolled-back write
+            // changed nothing, and the refresh then finds nothing to open
+            manager.refreshSearcher();
         }
-        // whether or not the write went through: a failed or rolled-back
-        // one changed nothing, and the refresh then finds nothing to open
-        manager.refreshSearcher();
     }
 }
