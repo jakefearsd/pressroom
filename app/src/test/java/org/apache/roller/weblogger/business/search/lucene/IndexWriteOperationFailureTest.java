@@ -164,6 +164,23 @@ class IndexWriteOperationFailureTest {
     }
 
     /**
+     * An add whose re-fetch fails has already opened its IndexWriter; it
+     * must still close it. Returning without that leaked the writer and the
+     * directory's {@code write.lock} with it, so every later write failed to
+     * open its own writer and the index silently stopped changing.
+     */
+    @Test
+    void anAddWhoseReFetchFailsStillLetsTheNextWriteThrough() throws Exception {
+        WeblogEntry entry = entry("add-refetch-fails");
+        when(entries.getWeblogEntry("add-refetch-fails")).thenThrow(new WebloggerException("database down"));
+
+        manager.addEntryIndexOperation(entry);
+
+        assertFalse(indexedDocs().containsKey("add-refetch-fails"));
+        indexed("after-the-failed-add");
+    }
+
+    /**
      * An author who cannot be looked up does not keep the entry out of the
      * index: it is indexed without an author field. The control entry, whose
      * author resolves, carries the lower-cased user name.
