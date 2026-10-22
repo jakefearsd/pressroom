@@ -49,13 +49,15 @@ import org.apache.roller.weblogger.pojos.WeblogEntry;
  * held the lock before it committed; and the transaction's own writes were
  * flushed by the first statement. A row at zero is deleted.
  *
- * <p>Why the sum is exact: every transaction that changes a weblog row takes
- * the tag's site-wide lock after that change and holds it to its commit. So
- * whichever transaction sums last took the lock after every other one
- * committed, and its fresh snapshot sees every weblog row as finally
- * committed; anyone summing earlier is followed by that one. Summing in the
- * locking statement itself would read from a snapshot taken before the wait,
- * and lose the entries of whoever held the lock
+ * <p>Why the sum is exact: {@code Recount.run} is the only runtime writer of
+ * the weblog rows (any writer added later must re-sum the site-wide row under
+ * its lock the same way), and every transaction that changes a weblog row
+ * takes the tag's site-wide lock after that change and holds it to its
+ * commit. So whichever transaction sums last took the lock after every
+ * other one committed, and its fresh snapshot sees every weblog row as
+ * finally committed; anyone summing earlier is followed by that one.
+ * Summing in the locking statement itself would read from a snapshot taken
+ * before the wait, and lose the entries of whoever held the lock
  * ({@code TagAggregateConcurrencyTest}). A weblog row at zero is deleted only
  * after the sum, and adds nothing to it either way. Deleting a weblog
  * recounts each of its rows the same way ({@link #recountWeblog}), so no row
@@ -163,10 +165,7 @@ final class TagAggregateStore {
      * a bulk DELETE of the weblog's rows would have taken their locks out of
      * order and left the site-wide rows unsummed.
      */
-    void recountWeblog(Weblog weblog) throws WebloggerException {
-        if (weblog == null) {
-            throw new WebloggerException("Website cannot be NULL.");
-        }
+    void recountWeblog(Weblog weblog) {
         pending().addWeblog(weblog.getId());
     }
 

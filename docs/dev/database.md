@@ -104,6 +104,9 @@ deadlock against single saves on these rows. **Weblog deletion**
 every tag whose tag rows it removes (named from those rows, so a draft
 published concurrently is recounted after it) and every tag the weblog
 still has a row for at commit; each falls to zero and leaves the sums.
+From its first tag to its commit it holds the site-wide rows of all those
+tags, so saves on any weblog touching them wait that long (a few
+statements per tag).
 Until 2026-10-22 it bulk-DELETEd the weblog's rows mid-transaction, out of
 lock order, and recounted only the names its rows had when it started, so
 a draft published in that window left its new tag's site-wide row
