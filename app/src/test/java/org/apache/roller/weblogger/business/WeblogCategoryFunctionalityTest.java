@@ -243,7 +243,44 @@ public class WeblogCategoryFunctionalityTest  {
         
         log.info("END");
     }
-    
+
+    /**
+     * Entries never change weblog: the tag aggregates count a tag row under
+     * the weblog it was written with (TagAggregateStore). A move into another
+     * weblog's category is refused, and nothing moves.
+     */
+    @Test
+    public void testMoveWeblogCategoryContentsRefusesAnotherWeblogsCategory() throws Exception {
+        WeblogEntryManager mgr = TestUtils.weblogger().getWeblogEntryManager();
+        Weblog other = TestUtils.setupWeblog("categoryTestOther", testUser);
+        WeblogCategory foreign = TestUtils.setupWeblogCategory(other, "catTest-foreign");
+        TestUtils.endSession(true);
+        WeblogEntry entry = null;
+        try {
+            testWeblog = TestUtils.getManagedWebsite(testWeblog);
+            testUser = TestUtils.getManagedUser(testUser);
+            WeblogCategory source = mgr.getWeblogCategory(cat1.getId());
+            entry = TestUtils.setupWeblogEntry("stays", source, testWeblog, testUser);
+            TestUtils.endSession(true);
+
+            WeblogCategory from = mgr.getWeblogCategory(cat1.getId());
+            WeblogCategory to = mgr.getWeblogCategory(foreign.getId());
+            assertThrows(WebloggerException.class, () -> mgr.moveWeblogCategoryContents(from, to));
+            TestUtils.endSession(false);
+
+            WeblogEntry reloaded = TestUtils.getManagedWeblogEntry(entry);
+            assertEquals(testWeblog.getId(), reloaded.getWebsite().getId());
+            assertEquals(cat1.getId(), reloaded.getCategory().getId());
+        } finally {
+            TestUtils.endSession(false);
+            if (entry != null) {
+                mgr.removeWeblogEntry(TestUtils.getManagedWeblogEntry(entry));
+            }
+            TestUtils.teardownWeblog(other.getId());
+            TestUtils.endSession(true);
+        }
+    }
+
 
     /** All (or only published) entries in a category, through the entry manager. */
     private static List<WeblogEntry> entriesIn(WeblogCategory category, boolean publishedOnly)

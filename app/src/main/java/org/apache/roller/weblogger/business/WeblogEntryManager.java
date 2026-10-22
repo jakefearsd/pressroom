@@ -205,7 +205,8 @@ public interface WeblogEntryManager {
     
     
     /**
-     * Recategorize all entries with one category to another.
+     * Recategorize all entries with one category to another of the same
+     * weblog; refused (WebloggerException) for another weblog's category.
      */
     void moveWeblogCategoryContents(WeblogCategory srcCat, WeblogCategory destCat)
             throws WebloggerException;
