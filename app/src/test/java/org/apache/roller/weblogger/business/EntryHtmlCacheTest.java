@@ -137,6 +137,16 @@ class EntryHtmlCacheTest {
     }
 
     @Test
+    void rerenderingAPartCountsOnlyItsNewSize() {
+        EntryHtmlCache cache = cache(100_000, 10_000);
+        cache.put("k1", V1, Part.TEXT, "<p>abc</p>");       // 2 * (2 + 4 + 7 + 10) = 46
+        cache.put("k1", V1, Part.TEXT, "<p>abcdef</p>");    // the 10-char part becomes 13
+
+        assertEquals(52L, cache.weight(), "the replaced part's bytes are released, not kept on the slot");
+        assertEquals("<p>abcdef</p>", cache.get("k1", V1, Part.TEXT));
+    }
+
+    @Test
     void aDisabledCacheMissesEverything() {
         try (StaticConfigOverride _ = StaticConfigOverride.set("cache.entryhtml.enabled", "false")) {
             EntryHtmlCache cache = EntryHtmlCache.fromConfig();

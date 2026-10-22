@@ -76,7 +76,10 @@ public final class EntryHtmlCache {
 
     static final String CACHE_ID = "cache.entryhtml";
 
-    /** The default budget, about a thousand typical entries. */
+    /**
+     * The default budget: some 4,500-7,000 typical entries (a ~500-char
+     * text, its two rendered parts and the key, at two bytes a char).
+     */
     static final long DEFAULT_MAX_BYTES = 16L * 1024 * 1024;
 
     /** The default slot age, the same hour as the page and feed caches. */

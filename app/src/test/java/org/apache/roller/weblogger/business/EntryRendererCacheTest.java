@@ -351,32 +351,75 @@ class EntryRendererCacheTest {
 
     // ------------------------------------------------------------- preview isolation
 
+    private static final String MORE = "https://example.com/more";
+
+    /** Fills every slot part a plain method could be served from. */
+    private void renderEveryPartLive() {
+        renderer.cachedTransformedText(entry);
+        renderer.cachedTransformedSummary(entry);
+        renderer.cachedDisplayContent(entry, null);
+        renderer.cachedDisplayContent(entry, MORE);
+    }
+
     @Test
     void theUncachedPathNeverReadsTheCache() {
-        renderer.cachedTransformedText(entry);
+        renderEveryPartLive();
         probeOutput = "two";
 
         assertEquals("<p>Body <b>two</b></p>\n", renderer.transformedText(entry),
                 "a preview must render the pipeline's current output, not the live cache's");
         assertEquals("<p>Teaser <b>two</b></p>\n", renderer.transformedSummary(entry));
         assertEquals("<p>Body <b>two</b></p>\n", renderer.displayContent(entry, null));
+        assertTrue(renderer.displayContent(entry, MORE).startsWith("<p>Teaser <b>two</b></p>"),
+                "nor may the teaser form");
     }
 
     @Test
-    void theUncachedPathNeverWritesTheCache() {
-        String live = renderer.cachedTransformedText(entry);
+    void theUncachedTextNeverWritesTheCache() {
+        assertPreviewLeavesTheLiveSlot(() -> renderer.transformedText(entry));
+    }
 
-        // The editor and API previews set unsaved text on the (possibly
-        // managed) entity and render it; that text must never reach readers.
-        String saved = entry.getText();
-        entry.setText("Unsaved draft [probe]");
-        String preview = renderer.transformedText(entry);
-        entry.setText(saved);
+    @Test
+    void theUncachedSummaryNeverWritesTheCache() {
+        assertPreviewLeavesTheLiveSlot(() -> renderer.transformedSummary(entry));
+    }
 
-        assertNotEquals(live, preview);
+    @Test
+    void theUncachedDisplayContentNeverWritesTheCache() {
+        assertPreviewLeavesTheLiveSlot(() -> renderer.displayContent(entry, null));
+    }
+
+    @Test
+    void theUncachedTeaserNeverWritesTheCache() {
+        assertPreviewLeavesTheLiveSlot(() -> renderer.displayContent(entry, MORE));
+    }
+
+    /**
+     * The editor and API previews set unsaved text on the (possibly managed)
+     * entity and render it; that text must never reach readers, and the
+     * render must not displace the live slot either.
+     */
+    private void assertPreviewLeavesTheLiveSlot(java.util.function.Supplier<String> preview) {
+        renderEveryPartLive();
+        String liveText = renderer.cachedTransformedText(entry);
+        String liveSummary = renderer.cachedTransformedSummary(entry);
+        String liveDisplay = renderer.cachedDisplayContent(entry, null);
+        String liveTeaser = renderer.cachedDisplayContent(entry, MORE);
+
+        String savedText = entry.getText();
+        String savedSummary = entry.getSummary();
+        entry.setText("Unsaved body [probe]");
+        entry.setSummary("Unsaved teaser [probe]");
+        assertTrue(preview.get().contains("Unsaved"));
+        entry.setText(savedText);
+        entry.setSummary(savedSummary);
+
         int before = probeRenders;
-        assertEquals(live, renderer.cachedTransformedText(entry));
-        assertEquals(before, probeRenders, "the live slot is still the one rendered from the saved text");
+        assertEquals(liveText, renderer.cachedTransformedText(entry));
+        assertEquals(liveSummary, renderer.cachedTransformedSummary(entry));
+        assertEquals(liveDisplay, renderer.cachedDisplayContent(entry, null));
+        assertEquals(liveTeaser, renderer.cachedDisplayContent(entry, MORE));
+        assertEquals(before, probeRenders, "every live part is still the one rendered from the saved entry");
     }
 
     // -------------------------------------------------- [image] reports its media's weblog
