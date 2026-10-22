@@ -54,7 +54,15 @@ import org.apache.roller.weblogger.pojos.WeblogEntry;
  * site-wide row, and only after every other write of the transaction has been
  * flushed. Two transactions therefore never wait on each other's aggregate
  * rows in a cycle, however many entries each saved; entry and weblog rows are
- * still locked in whatever order each transaction writes them.
+ * still locked in whatever order each transaction writes them. One
+ * exception: weblog deletion's bulk {@code removeByWeblog} DELETE locks that
+ * weblog's rows mid-transaction, outside this ordering, so a save into the
+ * weblog being deleted can deadlock with it (PostgreSQL aborts one side).
+ *
+ * <p>Relies on READ COMMITTED (a fresh snapshot per statement), which nothing
+ * pins; under REPEATABLE READ the lock statement fails with serialization
+ * errors instead (fails closed). {@code lastused} moves only when a row is
+ * created or its count changes, not on every save touching the tag.
  *
  * <p>Until the commit, a tag read inside the saving transaction still sees
  * the old counts. The SQL bypasses EclipseLink, so

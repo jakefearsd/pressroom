@@ -89,7 +89,17 @@ set to the count recomputed from the entries; a row at zero is deleted.
 Locks are taken once per transaction, by tag name (weblog rows, then the
 site-wide row), after all the transaction's other writes are flushed, so
 multi-entry transactions (ScheduledEntriesTask, bulk publish) cannot
-deadlock against single saves on these rows. Two earlier designs failed:
+deadlock against single saves on these rows. **One exception: weblog
+deletion** (`JPAWeblogManagerImpl.removeWeblogContents`) runs the bulk
+`WeblogEntryTagAggregate.removeByWeblog` DELETE mid-transaction, outside
+the hook, locking that weblog's aggregate rows in no particular order, so
+a save into the weblog being deleted can deadlock with it (PostgreSQL
+aborts one side). **The recount depends on READ COMMITTED** (a fresh
+snapshot per statement), which nothing pins; under REPEATABLE READ the lock
+statement would fail with serialization errors instead (fails closed).
+**`lastused`** (behind popular-tags-in-the-last-N-days) moves only when a
+row is created or its count actually changes, not on every save that
+touches the tag, as it did before 2026-10-22. Two earlier designs failed:
 an unlocked read-modify-write (duplicate keys and lost increments: a
 2026-10-22 profiling run had 21 HTTP 500s in 1,500 creates, 152 of 210 rows
 low), then atomic per-save deltas taken from the entry as loaded (two saves
