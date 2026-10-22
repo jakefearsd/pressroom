@@ -143,10 +143,11 @@ same-titled creates committed 8 entries with one anchor.
   A transaction that had already flushed a write before creating an entry
   could still wait here holding a row lock; nothing in Roller does that, and
   PostgreSQL would detect the cycle and abort one side.
-- **V035 resolved existing duplicates** by the order of the permalink query
-  (`ORDER BY pubtime DESC`, NULL first in PostgreSQL, then lower id); the
-  rest took the first free `<anchor>N`. None of them was reachable before:
-  `getWeblogEntryByAnchor`'s `getSingleResult` threw
-  `NonUniqueResultException` on a duplicated anchor. No redirect was added:
+- **V035 resolved existing duplicates.** None of them was reachable before
+  (`getWeblogEntryByAnchor`'s `getSingleResult` threw
+  `NonUniqueResultException` on a duplicated anchor), so it chose what the
+  URL serves for readers: the PUBLISHED entry keeps the anchor, then the
+  newest pubtime (NULL last), then the lower id; the rest took the first
+  free `<anchor>N`. No redirect was added:
   the old anchor serves the entry that kept it, and a rule fires only on a
   404.

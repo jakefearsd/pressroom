@@ -40,14 +40,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * V035 makes an entry's anchor unique within its weblog: duplicates left by
  * the create race are resolved, then {@code we_website_anchor_uq} is added.
  *
- * <p>Which duplicate keeps the anchor mirrors the permalink lookup's own
- * query, {@code WeblogEntry.getByWebsite&AnchorOrderByPubTimeDesc}: {@code
- * ORDER BY pubtime DESC}, which in PostgreSQL puts a NULL pubtime first. (The
- * lookup itself threw {@code NonUniqueResultException} on a duplicate, so no
- * duplicate was reachable at its permalink; the query's order is the only
- * stated preference.) Equal pubtimes fall back to the lower id. Every other
- * duplicate takes the first free {@code <anchor>N}, N = 1, 2, ..., the
- * suffix scheme {@code createAnchor} uses.
+ * <p>Which duplicate keeps the anchor is chosen for readers: the
+ * permalink lookup ({@code getSingleResult}) threw {@code
+ * NonUniqueResultException} on a duplicate, so no duplicate was reachable,
+ * and the URL should now serve the PUBLISHED one. Then the newest pubtime
+ * (NULL last), then the lower id. Every other duplicate takes the first free
+ * {@code <anchor>N}, N = 1, 2, ..., the suffix scheme {@code createAnchor}
+ * uses.
  */
 public class EntryAnchorMigrationTest {
 
@@ -57,7 +56,7 @@ public class EntryAnchorMigrationTest {
     private static final String LONG = "l".repeat(255);
 
     @Test
-    void theNewestDuplicateKeepsTheAnchorAndTheOthersTakeFreeSuffixes() throws Exception {
+    void thePublishedThenNewestDuplicateKeepsTheAnchorAndTheOthersTakeFreeSuffixes() throws Exception {
         String db = "migrationtest_anchor_dups";
         try (Connection con = databaseBefore(V035, db)) {
             seedDuplicates(con);
@@ -111,7 +110,8 @@ public class EntryAnchorMigrationTest {
 
     /**
      * Weblog w1: "dup" three times (pubtimes Feb, mid-Jan, Jan) while "dup1"
-     * is already taken; "nul" twice, one with no pubtime (NULL);
+     * is already taken; "nul" twice, one with no pubtime (NULL); "pub" as one
+     * published entry and two drafts, one of them newer and one never dated;
      * "tie" twice with the same pubtime; a 255-character anchor twice. Weblog
      * w2 holds "dup" once, which is no clash.
      */
@@ -126,6 +126,9 @@ public class EntryAnchorMigrationTest {
         exec(con, entry("dup-one", "w1", "c1", "dup1", "'2025-12-01T00:00:00Z'"));
         exec(con, entry("nul-set", "w1", "c1", "nul", "'2026-03-01T00:00:00Z'"));
         exec(con, entry("nul-unset", "w1", "c1", "nul", "NULL"));
+        exec(con, entry("pub-draft", "w1", "c1", "pub", "NULL", "DRAFT"));
+        exec(con, entry("pub-later-draft", "w1", "c1", "pub", "'2026-06-02T00:00:00Z'", "DRAFT"));
+        exec(con, entry("pub-published", "w1", "c1", "pub", "'2026-06-01T00:00:00Z'"));
         exec(con, entry("tie-b", "w1", "c1", "tie", "'2026-04-01T00:00:00Z'"));
         exec(con, entry("tie-a", "w1", "c1", "tie", "'2026-04-01T00:00:00Z'"));
         exec(con, entry("long-new", "w1", "c1", LONG, "'2026-05-02T00:00:00Z'"));
@@ -139,8 +142,11 @@ public class EntryAnchorMigrationTest {
         expected.put("dup-one", "dup1");
         expected.put("dup-midjan", "dup2");
         expected.put("dup-jan", "dup3");
-        expected.put("nul-unset", "nul");
-        expected.put("nul-set", "nul1");
+        expected.put("nul-set", "nul");
+        expected.put("nul-unset", "nul1");
+        expected.put("pub-published", "pub");
+        expected.put("pub-later-draft", "pub1");
+        expected.put("pub-draft", "pub2");
         expected.put("tie-a", "tie");
         expected.put("tie-b", "tie1");
         expected.put("long-new", LONG);
@@ -150,9 +156,14 @@ public class EntryAnchorMigrationTest {
     }
 
     private static String entry(String id, String weblog, String category, String anchor, String pubtime) {
+        return entry(id, weblog, category, anchor, pubtime, "PUBLISHED");
+    }
+
+    private static String entry(String id, String weblog, String category, String anchor, String pubtime,
+                                String status) {
         return "INSERT INTO weblogentry (id, anchor, creator, title, text, updatetime, pubtime, websiteid, "
                 + "categoryid, status) VALUES ('" + id + "', '" + anchor + "', 'u', 't', 'x', now(), " + pubtime
-                + ", '" + weblog + "', '" + category + "', 'PUBLISHED')";
+                + ", '" + weblog + "', '" + category + "', '" + status + "')";
     }
 
     /** Entry id to anchor. */

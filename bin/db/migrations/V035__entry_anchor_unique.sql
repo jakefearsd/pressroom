@@ -22,14 +22,13 @@
 -- form) committed several entries with one anchor. The permalink lookup
 -- (getSingleResult) then threw NonUniqueResultException for that anchor, so
 -- no duplicate was reachable at its permalink. This migration
---   1. resolves existing duplicates. The entry that keeps the anchor is the
---      one the lookup's own query puts first,
---      WeblogEntry.getByWebsite&AnchorOrderByPubTimeDesc: ORDER BY pubtime
---      DESC, which in PostgreSQL puts a NULL pubtime first; equal pubtimes
---      fall back to the lower id. Every other duplicate takes the first free
---      <anchor>N (N = 1, 2, ...), createAnchor's own suffix scheme, cut to
---      fit varchar(255). No redirect is added: the old anchor serves the
---      entry that kept it, and a redirect rule is consulted only on a 404.
+--   1. resolves existing duplicates. Since none was reachable, this chooses
+--      what the URL serves from now on, for readers: the PUBLISHED entry
+--      keeps the anchor, then the newest pubtime (NULL last), then the lower
+--      id. Every other duplicate takes the first free <anchor>N
+--      (N = 1, 2, ...), createAnchor's own suffix scheme, cut to fit
+--      varchar(255). No redirect is added: the old anchor serves the entry
+--      that kept it, and a redirect rule is consulted only on a 404.
 --   2. adds the unique index we_website_anchor_uq (websiteid, anchor), which
 --      also serves every lookup by anchor (it was a scan of the weblog's
 --      entries).
@@ -46,7 +45,8 @@ BEGIN
         SELECT id, websiteid, anchor
           FROM (SELECT id, websiteid, anchor,
                        row_number() OVER (PARTITION BY websiteid, anchor
-                                          ORDER BY pubtime DESC, id) AS rank
+                                          ORDER BY (status = 'PUBLISHED') DESC,
+                                                   pubtime DESC NULLS LAST, id) AS rank
                   FROM weblogentry) ranked
          WHERE rank > 1
          ORDER BY websiteid, anchor, rank
