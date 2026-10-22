@@ -55,14 +55,19 @@ resolves through the index at the end of `CLAUDE.md`.
   Hot. `JPAPropertiesManagerImpl` remembers every row's committed value
   (`RuntimeConfigSnapshot`, one projection query) and drops them whenever a
   commit writes a `roller_properties` row (an EclipseLink row-write listener,
-  `JPAPersistenceStrategy.onRowWrite`: at the write and again once the commit
-  succeeds), so the next request reads any change, saved through
+  `JPAPersistenceStrategy.onRowWrite`, once the commit succeeds: a read
+  between the row write and the commit loads the old rows, so only a drop
+  after the commit is enough; `RuntimeConfigCacheTest` races one), so the next request reads any change, saved through
   `saveProperty`/`saveProperties` or edited in place on the managed map
   (`RuntimeConfigCacheTest`). `getProperty` returns a new unmanaged copy, which
   saves because the save merges. `getProperties` hands out managed entities to
   edit, so it begins the unit of work's transaction, and while a unit of work
   has uncommitted work `getProperty` reads through its EntityManager: its own
-  edits are visible to it and nothing uncommitted is remembered. A row written
+  edits are visible to it and nothing uncommitted is remembered. Only until
+  that transaction ends, though: a managed property edited in place *after* a
+  commit in the same unit of work, with no new transaction begun, is not seen
+  by `getProperty` (the remembered values answer) until a later commit writes
+  it. Call `getProperties` again, or save, to edit after a commit. A row written
   with SQL while the app runs is not seen until a restart (as with
   EclipseLink's shared cache before).
 - **Startup** (`roller.properties` / `roller-custom.properties`): read once

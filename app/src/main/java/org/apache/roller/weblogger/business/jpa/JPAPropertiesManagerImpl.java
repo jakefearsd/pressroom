@@ -185,12 +185,15 @@ public class JPAPropertiesManagerImpl implements PropertiesManager {
     }
 
     /**
-     * As a commit writes a row, and again once it has committed: a concurrent
-     * read between the two may load the rows being replaced (see
-     * {@link RuntimeConfigSnapshot}), and nothing else would drop them.
+     * Once the commit that writes a row has succeeded, and not before: a read
+     * between the row write and the database commit loads the rows being
+     * replaced (see {@link RuntimeConfigSnapshot}), so only an invalidation
+     * after the commit drops everything stale. One at the write as well would
+     * change nothing -- the writing unit of work reads through its
+     * EntityManager, and any other reader before the commit sees the old
+     * rows either way.
      */
     private void invalidateCommittedValues() {
-        committed.invalidate();
         strategy.runAfterCommit(committed::invalidate);
     }
     

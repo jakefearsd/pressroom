@@ -19,6 +19,8 @@ package org.apache.roller.weblogger.business.jpa;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.roller.weblogger.TestUtils;
 import org.apache.roller.weblogger.business.PropertiesManager;
@@ -44,16 +46,52 @@ class RuntimeConfigCacheTest {
 
     private String original;
 
+    /**
+     * Reads {@link #NAME} on another thread from inside the next commit that
+     * writes a properties row, once armed: a reader that lands between the
+     * row write and the database commit. A row-write listener cannot be
+     * removed, so it is registered once per JVM and is inert unless armed.
+     */
+    private static final AtomicBoolean RACE_ARMED = new AtomicBoolean();
+    private static final AtomicReference<String> RACE_SAW = new AtomicReference<>();
+    private static boolean raceRegistered;
+
+    private static synchronized void registerRace() throws Exception {
+        if (raceRegistered) {
+            return;
+        }
+        QueryRecorder.strategy().onRowWrite(RuntimeConfigProperty.class, () -> {
+            if (RACE_ARMED.getAndSet(false)) {
+                Thread reader = new Thread(() -> {
+                    try {
+                        RACE_SAW.set(WebloggerRuntimeConfig.getProperty(NAME));
+                    } finally {
+                        TestUtils.weblogger().release();
+                    }
+                });
+                reader.start();
+                try {
+                    reader.join();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        });
+        raceRegistered = true;
+    }
+
     @BeforeEach
     void setUp() throws Exception {
         TestUtils.setupWeblogger();
         TestUtils.endSession(false);
         original = WebloggerRuntimeConfig.getProperty(NAME);
         TestUtils.endSession(false);
+        registerRace();
     }
 
     @AfterEach
     void tearDown() throws Exception {
+        RACE_ARMED.set(false);
         TestUtils.endSession(false);
         RuntimeConfigProperty prop = manager().getProperty(NAME);
         prop.setValue(original);
@@ -105,6 +143,28 @@ class RuntimeConfigCacheTest {
 
         assertEquals("saved through the API", WebloggerRuntimeConfig.getProperty(NAME));
         assertEquals("saved through the API", manager().getProperties().get(NAME).getValue());
+    }
+
+    /**
+     * A request that reads while the save commits -- after the row is written,
+     * before the database commit -- loads the old rows, and remembers them.
+     * Only the invalidation that runs once the commit has succeeded drops
+     * them; without it the old value is served from then on.
+     */
+    @Test
+    void aReadRacingTheCommitIsNotServedAfterIt() throws Exception {
+        assertEquals(original, WebloggerRuntimeConfig.getProperty(NAME));
+        TestUtils.endSession(false);
+
+        RuntimeConfigProperty prop = manager().getProperty(NAME);
+        prop.setValue("raced");
+        manager().saveProperty(prop);
+        RACE_ARMED.set(true);
+        TestUtils.weblogger().flush();
+        assertEquals(original, RACE_SAW.get(), "the racing read ran inside the commit");
+        TestUtils.endSession(false);
+
+        assertEquals("raced", WebloggerRuntimeConfig.getProperty(NAME));
     }
 
     @Test
