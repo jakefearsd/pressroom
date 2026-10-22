@@ -31,6 +31,7 @@ import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogCategory;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
 import org.apache.roller.weblogger.pojos.WeblogEntry.PubStatus;
+import org.apache.roller.weblogger.pojos.WeblogEntryRevision;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.internal.databaseaccess.DatabaseCall;
 import org.eclipse.persistence.internal.identitymaps.SoftCacheWeakIdentityMap;
@@ -132,6 +133,19 @@ class EntryCacheSizeTest {
             assertEquals(SoftCacheWeakIdentityMap.class, descriptor.getIdentityMapClass(), type.getName());
             assertEquals(1000, descriptor.getIdentityMapSize(), type.getName());
         }
+    }
+
+    /**
+     * A revision is a full copy of a post, stored on every save and read
+     * again only by the revisions screen and the next save of its entry:
+     * under the 1000 default a burst of re-saves would hold a thousand
+     * full texts nobody reads.
+     */
+    @Test
+    void revisionsCarryFullTextAndKeepOnlyAHundred() throws Exception {
+        ClassDescriptor revisions = server().getDescriptor(WeblogEntryRevision.class);
+        assertEquals(SoftCacheWeakIdentityMap.class, revisions.getIdentityMapClass());
+        assertEquals(100, revisions.getIdentityMapSize());
     }
 
     // ------------------------------------------------------- never stale
@@ -292,10 +306,15 @@ class EntryCacheSizeTest {
         return JpaHelper.getServerSession(strategy.getEntityManager(false).getEntityManagerFactory());
     }
 
-    /** Counts by-id reads of an entry on every session of the persistence unit. */
+    /**
+     * Counts by-id reads of an entry on every session of the persistence
+     * unit, made by the test's own thread, so a background task reading an
+     * entry meanwhile cannot fail the test.
+     */
     private static final class ByIdCounter extends SessionEventAdapter implements AutoCloseable {
         private final AtomicInteger reads;
         private final Server server;
+        private final Thread reader = Thread.currentThread();
 
         ByIdCounter(AtomicInteger reads) throws Exception {
             this.reads = reads;
@@ -305,7 +324,8 @@ class EntryCacheSizeTest {
 
         @Override
         public void preExecuteCall(SessionEvent event) {
-            if (event.getCall() instanceof DatabaseCall call && BY_ID.matcher(call.getSQLString()).find()) {
+            if (Thread.currentThread() == reader
+                    && event.getCall() instanceof DatabaseCall call && BY_ID.matcher(call.getSQLString()).find()) {
                 reads.incrementAndGet();
             }
         }
