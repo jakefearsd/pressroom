@@ -23,7 +23,6 @@ import java.util.Collections;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.roller.util.RollerConstants;
 import org.apache.roller.weblogger.TestUtils;
 import org.apache.roller.weblogger.business.WeblogEntryManager;
 import org.apache.roller.weblogger.pojos.User;
@@ -87,10 +86,9 @@ public class IndexManagerTest {
         List<WeblogEntry> entries = createWeblogEntries(testWeblog, indexManager, entryManager);
 
         try {
-            // Indexing is asynchronous, and a search does not wait for a
-            // write in progress (SearchDuringWriteTest): wait, bounded, for
-            // the writes to land rather than trusting the sleep above.
-            SearchResultList result = awaitHits(indexManager, "Enterprise", 2);
+            SearchResultList result = indexManager.search("Enterprise",
+                testWeblog.getHandle(), null, testWeblog.getLocale(), 0, RESULTS_PER_PAGE,
+                TestUtils.weblogger().getUrlStrategy());
             assertEquals(2, result.getResults().size());
 
             result = indexManager.search("Tholian",
@@ -106,24 +104,14 @@ public class IndexManagerTest {
         }
     }
 
-    private SearchResultList awaitHits(IndexManager indexManager, String term, int expected)
-            throws Exception {
-        long deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos();
-        SearchResultList result;
-        do {
-            result = indexManager.search(term,
-                testWeblog.getHandle(), null, testWeblog.getLocale(), 0, RESULTS_PER_PAGE,
-                TestUtils.weblogger().getUrlStrategy());
-            if (result.getResults().size() == expected) {
-                break;
-            }
-            Thread.sleep(50);
-        } while (System.nanoTime() < deadline);
-        return result;
-    }
-
     /**
-     * Create some weblog entries, two with some Star Trek content
+     * Create some weblog entries, two with some Star Trek content, and
+     * return once both are searchable.
+     *
+     * <p>Indexing is asynchronous, and a search does not wait for a write in
+     * progress ({@code SearchDuringWriteTest}), so this waits, bounded, for
+     * the two Star Trek entries to be found rather than sleeping a fixed
+     * time and hoping: every caller searches for them straight away.
      */
     public static List<WeblogEntry> createWeblogEntries(
         Weblog testWeblog,
@@ -177,7 +165,24 @@ public class IndexManagerTest {
             indexManager.addEntryIndexOperation(entry);
         }
 
-        Thread.sleep(RollerConstants.SEC_IN_MS);
+        awaitHits(testWeblog, indexManager, "Enterprise", 2);
         return entries;
+    }
+
+    private static void awaitHits(Weblog weblog, IndexManager indexManager, String term, int expected)
+            throws Exception {
+        long deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos();
+        int found;
+        do {
+            found = indexManager.search(term,
+                weblog.getHandle(), null, weblog.getLocale(), 0, RESULTS_PER_PAGE,
+                TestUtils.weblogger().getUrlStrategy()).getResults().size();
+            if (found == expected) {
+                return;
+            }
+            Thread.sleep(50);
+        } while (System.nanoTime() < deadline);
+        throw new AssertionError("'" + term + "' still found " + found + " entries, not "
+                + expected + ", 10 s after indexing was scheduled");
     }
 }
