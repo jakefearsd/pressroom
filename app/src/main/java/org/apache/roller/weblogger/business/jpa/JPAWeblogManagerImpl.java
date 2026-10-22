@@ -31,6 +31,7 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -71,6 +72,20 @@ public class JPAWeblogManagerImpl implements WeblogManager {
     // cached mapping of weblogHandles -> weblogIds
     private final Map<String, String> weblogHandleToIdMap = Collections.synchronizedMap(new HashMap<>());
 
+    /**
+     * Remembered for {@link #getTemplateByAction}: what was found for an
+     * action is a template id. Real ids are UUIDs, never empty.
+     */
+    private static final String NO_TEMPLATE = "";
+
+    /**
+     * Each weblog's template ids by action, at the stamp they were read at.
+     * Every render asks for the stylesheet override (and a custom theme for
+     * its templates) and the answer is usually "none", which was never
+     * remembered: one query per lookup, several per page.
+     */
+    private final WeblogStampedCache<Map<ComponentType, String>> templateIdsByAction;
+
     public JPAWeblogManagerImpl(Weblogger roller, JPAPersistenceStrategy strat,
                                 VirtualHostRegistry virtualHosts) {
         this.virtualHosts = virtualHosts;
@@ -78,11 +93,17 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         this.roller = roller;
         this.strategy = strat;
         this.tagAggregates = new TagAggregateStore(strat);
+        this.templateIdsByAction = new WeblogStampedCache<>(strat);
     }
     
     
     @Override
     public void release() {}
+
+    /** Whether template lookups are remembered for this weblog; for tests. */
+    boolean remembersTemplatesOf(String weblogId) {
+        return templateIdsByAction.remembers(weblogId);
+    }
     
     
     /**
@@ -127,6 +148,11 @@ public class JPAWeblogManagerImpl implements WeblogManager {
 
         // remove entry from cache mapping
         this.weblogHandleToIdMap.remove(weblog.getHandle());
+
+        // A deleted weblog's stamp never moves again, so nothing would ever
+        // replace its slot; once the delete is durable it is simply dropped.
+        String weblogId = weblog.getId();
+        strategy.runAfterCommit(() -> templateIdsByAction.forget(weblogId));
     }
     
     /**
@@ -174,9 +200,7 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         }
         
         // remove static pages
-        Query removePages = strategy.getNamedUpdate("WeblogPage.removeByWeblog");
-        removePages.setParameter(1, weblog);
-        removePages.executeUpdate();
+        roller.getWeblogPageManager().removePages(weblog);
 
         // roller_weblog_redirect rows FK the weblog with no cascade
         strategy.getNamedUpdate("WeblogRedirect.removeByWeblog")
@@ -558,16 +582,40 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         if (action == null) {
             throw new WebloggerException("Action name is null");
         }
+
+        Map<ComponentType, String> known = templateIdsByAction.get(weblog);
+        String knownId = known == null ? null : known.get(action);
+        if (NO_TEMPLATE.equals(knownId)) {
+            return null;
+        }
+        if (knownId != null) {
+            WeblogTemplate template = (WeblogTemplate) strategy.load(WeblogTemplate.class, knownId);
+            // A row deleted without a stamp move (none should be) is a miss,
+            // never an answer.
+            if (template != null && template.getAction() == action
+                    && weblog.getId().equals(template.getWeblog().getId())) {
+                return template;
+            }
+        }
         
         TypedQuery<WeblogTemplate> query = strategy.getNamedQuery("WeblogTemplate.getByAction",
                 WeblogTemplate.class);
         query.setParameter(1, weblog);
         query.setParameter(2, action);
+        WeblogTemplate found;
         try {
-            return query.getSingleResult();
+            found = query.getSingleResult();
         } catch (NoResultException e) {
-            return null;
-        }        
+            found = null;
+        }
+
+        Map<ComponentType, String> remembered = new EnumMap<>(ComponentType.class);
+        if (known != null) {
+            remembered.putAll(known);
+        }
+        remembered.put(action, found == null ? NO_TEMPLATE : found.getId());
+        templateIdsByAction.put(weblog, Collections.unmodifiableMap(remembered));
+        return found;
     }
     
     /**

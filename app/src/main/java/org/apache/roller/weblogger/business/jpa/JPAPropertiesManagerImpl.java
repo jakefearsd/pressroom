@@ -50,6 +50,12 @@ public class JPAPropertiesManagerImpl implements PropertiesManager {
         JPAPropertiesManagerImpl.class);
 
     private final JPAPersistenceStrategy strategy;
+
+    /**
+     * The committed values, read on every request (a dozen times a render)
+     * and changed only by a save through this manager, which invalidates them.
+     */
+    private final RuntimeConfigSnapshot committed = new RuntimeConfigSnapshot();
     
     
     /**
@@ -58,6 +64,10 @@ public class JPAPropertiesManagerImpl implements PropertiesManager {
     public JPAPropertiesManagerImpl(JPAPersistenceStrategy strategy) {
         log.debug("Instantiating JPA Properties Manager");
         this.strategy = strategy;
+        // Any committed write of a row, saved through here or not: an entity
+        // from getProperties() edited in place is written by whichever commit
+        // comes next.
+        strategy.onRowWrite(RuntimeConfigProperty.class, this::invalidateCommittedValues);
     }
     
     
@@ -88,11 +98,34 @@ public class JPAPropertiesManagerImpl implements PropertiesManager {
     
     /**
      * Retrieve a single property by name.
+     *
+     * <p>Answered from the remembered committed values as a new, unmanaged
+     * {@link RuntimeConfigProperty} each call; edit it and hand it to
+     * {@link #saveProperty}, which merges. Only while this unit of work has
+     * uncommitted work -- its own save may be among it -- is the row read
+     * through the EntityManager, as before.
      */
     @Override
     public RuntimeConfigProperty getProperty(String name) throws WebloggerException {
-        return (RuntimeConfigProperty) strategy
-            .load(RuntimeConfigProperty.class,name);
+        if (strategy.hasUncommittedWork()) {
+            return (RuntimeConfigProperty) strategy.load(RuntimeConfigProperty.class, name);
+        }
+        Map<String, String> values = committed.values(this::loadCommittedValues);
+        return values.containsKey(name) ? new RuntimeConfigProperty(name, values.get(name)) : null;
+    }
+
+    /**
+     * Every row's name and value. A projection reads the rows themselves, so
+     * an entity this unit of work edited and never saved cannot leak in; and
+     * {@link #getProperty} calls it only when there is nothing uncommitted.
+     */
+    private Map<String, String> loadCommittedValues() throws WebloggerException {
+        Map<String, String> values = new HashMap<>();
+        for (Object[] row : strategy.getNamedQuery("RuntimeConfigProperty.getAllValues",
+                Object[].class).getResultList()) {
+            values.put((String) row[0], (String) row[1]);
+        }
+        return values;
     }
 
 
@@ -102,10 +135,16 @@ public class JPAPropertiesManagerImpl implements PropertiesManager {
      * Properties are returned in a Map to make them easy to lookup.  The Map
      * uses the property name as the key and the RuntimeConfigProperty object
      * as the value.
+     *
+     * <p>They are managed entities, there to be edited, so this begins the
+     * unit of work's transaction: from here until it commits or is released,
+     * {@link #getProperty} reads through the EntityManager and sees the edits,
+     * saved or not, as it always has.
      */
     @Override
     public Map<String, RuntimeConfigProperty> getProperties() throws WebloggerException {
 
+        strategy.getEntityManager(true);
         Map<String, RuntimeConfigProperty> props = new HashMap<>();
         List<RuntimeConfigProperty> list = strategy.getNamedQuery("RuntimeConfigProperty.getAll",
                 RuntimeConfigProperty.class).getResultList();
@@ -123,12 +162,13 @@ public class JPAPropertiesManagerImpl implements PropertiesManager {
 
 
     /**
-     * Save a single property.
+     * Save a single property. Merged, so the unmanaged copy
+     * {@link #getProperty} hands out saves as well as a managed instance.
      */
     @Override
     public void saveProperty(RuntimeConfigProperty property) 
             throws WebloggerException {
-        this.strategy.store(property);
+        strategy.getEntityManager(true).merge(property);
     }
 
 
@@ -139,9 +179,22 @@ public class JPAPropertiesManagerImpl implements PropertiesManager {
     public void saveProperties(Map<String, RuntimeConfigProperty> properties) throws WebloggerException {
 
         // just go through the list and saveProperties each property
-        for (Object prop : properties.values()) {
-            this.strategy.store(prop);
+        for (RuntimeConfigProperty prop : properties.values()) {
+            strategy.getEntityManager(true).merge(prop);
         }
+    }
+
+    /**
+     * Once the commit that writes a row has succeeded, and not before: a read
+     * between the row write and the database commit loads the rows being
+     * replaced (see {@link RuntimeConfigSnapshot}), so only an invalidation
+     * after the commit drops everything stale. One at the write as well would
+     * change nothing -- the writing unit of work reads through its
+     * EntityManager, and any other reader before the commit sees the old
+     * rows either way.
+     */
+    private void invalidateCommittedValues() {
+        strategy.runAfterCommit(committed::invalidate);
     }
     
 

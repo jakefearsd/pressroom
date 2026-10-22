@@ -31,6 +31,7 @@ import org.apache.roller.weblogger.business.VirtualHostRegistry;
 import org.apache.roller.weblogger.business.WeblogManager;
 import org.apache.roller.weblogger.business.startup.WebloggerStartup;
 import org.apache.roller.weblogger.pojos.Weblog;
+import org.apache.roller.weblogger.pojos.WeblogPage;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -186,6 +187,145 @@ class JPAPersistenceStrategyTest {
         } finally {
             strategy.shutdown();
         }
+    }
+
+    /**
+     * A row-write listener runs inside the commit that writes the row, so an
+     * action it queues with {@code runAfterCommit} lands after flush() took
+     * its snapshot of the queue; it must still run once that commit has
+     * succeeded -- for an insert, an update and a delete alike. (A delete
+     * may raise more than one event; what matters is that it raises one.)
+     */
+    @Test
+    void actionsQueuedByARowWriteListenerRunOnceTheCommitSucceeds() throws Exception {
+        RollerDatabaseExtension.ensureSchema();
+        if (!WebloggerStartup.isPrepared()) {
+            WebloggerStartup.prepare();
+        }
+
+        JPAPersistenceStrategy strategy =
+                new JPAPersistenceStrategy(WebloggerStartup.getDatabaseProvider());
+        try {
+            AtomicInteger written = new AtomicInteger();
+            AtomicInteger afterCommit = new AtomicInteger();
+            strategy.onRowWrite(Weblog.class, () -> {
+                written.incrementAndGet();
+                strategy.runAfterCommit(afterCommit::incrementAndGet);
+            });
+
+            Weblog weblog = new Weblog();
+            weblog.setName("Row Write Test Weblog");
+            weblog.setHandle("rowwritetest");
+            weblog.setEmailAddress("rowwritetest@dev.null");
+            weblog.setEditorTheme("journal");
+            weblog.setLocale("en_US");
+            weblog.setTimeZone("America/Los_Angeles");
+            weblog.setDateCreated(new Date());
+            weblog.setCreatorUserName("nobody");
+            strategy.store(weblog);
+            assertEquals(0, written.get(), "nothing is written before the commit");
+
+            strategy.flush();
+            assertEquals(1, written.get(), "the insert");
+            assertEquals(1, afterCommit.get(), "queued inside the commit, run after it");
+
+            weblog.setName("Row Write Test Weblog, renamed");
+            strategy.getEntityManager(true);
+            strategy.flush();
+            assertEquals(2, afterCommit.get(), "the update");
+
+            strategy.remove(weblog);
+            strategy.flush();
+            assertTrue(afterCommit.get() > 2, "the delete");
+        } finally {
+            strategy.shutdown();
+        }
+    }
+
+    /**
+     * After-commit actions are independent: one that throws is logged and
+     * the rest still run, those queued by a row-write listener during the
+     * commit included -- a lost invalidation would leave a cache stale with
+     * nothing to correct it. The commit itself succeeded, so flush() does not
+     * report a failure.
+     */
+    @Test
+    void aThrowingAfterCommitActionDoesNotStopTheOthers() throws Exception {
+        RollerDatabaseExtension.ensureSchema();
+        if (!WebloggerStartup.isPrepared()) {
+            WebloggerStartup.prepare();
+        }
+
+        JPAPersistenceStrategy strategy =
+                new JPAPersistenceStrategy(WebloggerStartup.getDatabaseProvider());
+        try {
+            AtomicInteger queuedBefore = new AtomicInteger();
+            AtomicInteger queuedByTheCommit = new AtomicInteger();
+            strategy.onRowWrite(Weblog.class,
+                    () -> strategy.runAfterCommit(queuedByTheCommit::incrementAndGet));
+
+            Weblog weblog = throwawayWeblog("afterthrowtest");
+            strategy.store(weblog);
+            strategy.runAfterCommit(() -> {
+                throw new IllegalStateException("an after-commit action failed");
+            });
+            strategy.runAfterCommit(queuedBefore::incrementAndGet);
+
+            assertDoesNotThrow(strategy::flush);
+            assertEquals(1, queuedBefore.get(), "queued before the commit, after the throw");
+            assertEquals(1, queuedByTheCommit.get(), "queued by the commit");
+
+            strategy.remove(weblog);
+            strategy.flush();
+        } finally {
+            strategy.shutdown();
+        }
+    }
+
+    /**
+     * What a row-write listener queued inside a commit that then failed must
+     * not wait in the thread for a later, unrelated commit to run it.
+     */
+    @Test
+    void aFailedCommitDropsWhatItsListenersQueued() throws Exception {
+        RollerDatabaseExtension.ensureSchema();
+        if (!WebloggerStartup.isPrepared()) {
+            WebloggerStartup.prepare();
+        }
+
+        JPAPersistenceStrategy strategy =
+                new JPAPersistenceStrategy(WebloggerStartup.getDatabaseProvider());
+        try {
+            AtomicInteger ran = new AtomicInteger();
+            strategy.onRowWrite(Weblog.class, () -> strategy.runAfterCommit(ran::incrementAndGet));
+
+            // The weblog row is written (the listener queues), then the page
+            // without a weblog violates NOT NULL and the commit fails.
+            strategy.store(throwawayWeblog("failedcommitqueue"));
+            strategy.store(new WeblogPage());
+            assertThrows(WebloggerException.class, strategy::flush);
+
+            strategy.getEntityManager(false).clear();
+            strategy.getEntityManager(true);
+            strategy.flush(); // an unrelated, successful commit
+
+            assertEquals(0, ran.get(), "nothing from the failed commit runs after a later one");
+        } finally {
+            strategy.shutdown();
+        }
+    }
+
+    private static Weblog throwawayWeblog(String handle) {
+        Weblog weblog = new Weblog();
+        weblog.setName("Throwaway " + handle);
+        weblog.setHandle(handle);
+        weblog.setEmailAddress(handle + "@dev.null");
+        weblog.setEditorTheme("journal");
+        weblog.setLocale("en_US");
+        weblog.setTimeZone("America/Los_Angeles");
+        weblog.setDateCreated(new Date());
+        weblog.setCreatorUserName("nobody");
+        return weblog;
     }
 
     @Test

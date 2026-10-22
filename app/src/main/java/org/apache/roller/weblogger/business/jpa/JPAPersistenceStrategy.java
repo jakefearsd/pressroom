@@ -42,6 +42,9 @@ import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.config.WebloggerConfig;
 import org.eclipse.persistence.config.PersistenceUnitProperties;
+import org.eclipse.persistence.descriptors.DescriptorEvent;
+import org.eclipse.persistence.descriptors.DescriptorEventAdapter;
+import org.eclipse.persistence.jpa.JpaEntityManagerFactory;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.FlushModeType;
@@ -115,6 +118,13 @@ public class JPAPersistenceStrategy {
      * commits -- see {@link #beforeCommit} and {@link #flush()}. One per type.
      */
     private final ThreadLocal<Map<Class<?>, BeforeCommit>> pendingPreCommitActions = new ThreadLocal<>();
+
+    /**
+     * Set when this thread's commit failed, until {@link #release()}: the
+     * transaction is gone, but the unit of work's entities still hold what it
+     * tried to write. See {@link #hasUncommittedWork()}.
+     */
+    private final ThreadLocal<Boolean> failedCommit = new ThreadLocal<>();
 
     /** Work that runs in the transaction, immediately before its commit. */
     @FunctionalInterface
@@ -628,14 +638,62 @@ public class JPAPersistenceStrategy {
             EntityManager em = getEntityManager(true);
             em.getTransaction().commit();
         } catch (PersistenceException pe) {
+            failedCommit.set(Boolean.TRUE);
+            // Whatever a row-write listener queued inside the failed commit
+            // must not run after a later, unrelated one on this thread.
+            pendingPostCommitActions.remove();
             throw new WebloggerException(pe);
         }
 
-        if (actions != null) {
-            for (Runnable action : actions) {
+        // Queued while committing: by a row-write listener (onRowWrite), which
+        // runs inside the commit. Only a successful commit gets here.
+        List<Runnable> queuedByTheCommit = pendingPostCommitActions.get();
+        pendingPostCommitActions.remove();
+
+        runAll(actions);
+        runAll(queuedByTheCommit);
+    }
+
+    /**
+     * Runs each action whatever the others do. The commit has succeeded, so a
+     * failing action is logged rather than reported as a failed save, and it
+     * must not cost the actions after it (a cache invalidation lost here
+     * would leave the cache stale with nothing to correct it).
+     */
+    private static void runAll(List<Runnable> actions) {
+        if (actions == null) {
+            return;
+        }
+        for (Runnable action : actions) {
+            try {
                 action.run();
+            } catch (RuntimeException e) {
+                log.error("An after-commit action failed; the others still run", e);
             }
         }
+    }
+
+    /**
+     * Runs {@code onWrite} each time a row of {@code type} is inserted,
+     * updated or deleted, on the committing thread and inside its commit --
+     * whichever manager call or dirty-checked edit the write came from.
+     * {@link #runAfterCommit} works from there: the action runs once that
+     * commit has succeeded.
+     */
+    public void onRowWrite(Class<?> type, Runnable onWrite) {
+        DescriptorEventAdapter listener = new DescriptorEventAdapter() {
+            @Override
+            public void postWrite(DescriptorEvent event) {
+                onWrite.run();
+            }
+
+            @Override
+            public void postDelete(DescriptorEvent event) {
+                onWrite.run();
+            }
+        };
+        emf.unwrap(JpaEntityManagerFactory.class).getServerSession()
+                .getDescriptor(type).getEventManager().addListener(listener);
     }
     
     /**
@@ -663,6 +721,7 @@ public class JPAPersistenceStrategy {
         // LATER, unrelated transaction on a thread a pool hands out again.
         pendingPostCommitActions.remove();
         pendingPreCommitActions.remove();
+        failedCommit.remove();
 
         if (emf == null || !emf.isOpen()) {
             threadLocalEntityManager.remove();
@@ -749,6 +808,28 @@ public class JPAPersistenceStrategy {
         return em.find(clazz, id);
     }
     
+    /**
+     * Whether this thread's unit of work may see anything other than what is
+     * committed: it has begun a transaction (every write does: {@code store},
+     * {@code remove}, a bulk update, a flushing query) that has not committed
+     * yet, or its commit failed and it has not been released.
+     *
+     * <p>For caches of values read through the unit of work: while this is
+     * true they must neither answer nor be filled. The weblog it saved may
+     * carry a {@code lastModified} that never commits, or one that commits
+     * with changes the no-flush queries ({@link #getNamedQuery}) could not
+     * see; either, remembered, would be served as current. A unit of work
+     * that has only read sees exactly what is committed, apart from edits
+     * made to managed entities and never saved, which no query flushes.
+     */
+    public boolean hasUncommittedWork() {
+        if (failedCommit.get() != null) {
+            return true;
+        }
+        EntityManager em = threadLocalEntityManager.get();
+        return isTransactionActive(em);
+    }
+
     /**
      * Return true if a transaction is active on the current EntityManager.
      * @param em the persistence manager
