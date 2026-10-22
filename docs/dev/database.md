@@ -82,17 +82,27 @@ EclipseLink's shared cache keeps an entry's loaded tags with it, but it
 holds only about 100 entries (the default soft-weak identity map); beyond
 that an entry is weakly held and dropped at the next GC. Every list query
 still runs its SQL; a dropped entry is rebuilt from the row with its tags
-unloaded. **`WeblogEntry.tags` is therefore `<batch-fetch type="IN"/>`**
-(which is why `WeblogEntry.orm.xml`, alone, uses EclipseLink's ORM schema):
-the first rebuilt entry to need its tags loads them for every entry of that
-query result in one `entryid IN (...)` read. Before, a feed or an API list
-made one read per rebuilt entry (418,547 in a 4.5-minute profiling run),
-with concurrent renders queued on each entry's synchronized lazy load. Not
-JOIN or EXISTS batching: those re-run the list's selection without its
-LIMIT/OFFSET and read the whole weblog's tags. Edits merge into the cached
-entry at commit as before. `EntryTagsFetchRenderingTest` counts the reads and
-pins edit, create and delete freshness. The cache size itself is unchanged
-(a permalink still reads its one entry's tags when the entry was dropped).
+unloaded, and feeds and API lists then read each one's tags alone (418,547
+reads in a 4.5-minute profiling run, with concurrent renders queued on each
+entry's synchronized lazy load). **`getWeblogEntries` with `maxResults > 0`
+(a page: feeds, the API list, theme pagers) asks for an IN batch of
+`e.tags` by query hint and loads the tags before returning**: one
+`entryid IN (...)` read per page, nothing per entry. Theme list pages, which
+show no tags, now pay that one read when their entries were rebuilt.
+
+**Why not `<batch-fetch>` on the mapping** (tried, reverted): a batch value
+holder keeps the query that built its entry, and that query every row it
+read, text included, until the entry's tags are touched. A search reindex
+reads every published entry unbounded and touches no tag, so each entry
+left in the cache pinned the whole site's rows, and a permalink of one of
+them read the whole list's tags in a single IN. Loading at once leaves no
+holder pointing at the query; unbounded reads stay lazy, so a cached entry
+keeps at most its own row. Not JOIN or EXISTS batching either: those re-run
+the list's selection without its LIMIT/OFFSET. `EntryTagsFetchRenderingTest`
+counts the reads and pins edit, create and delete freshness;
+`EntryTagsRetentionTest` pins what a cached entry retains and what a later
+permalink reads. The cache size itself is unchanged (a permalink still reads
+its one entry's tags when the entry was dropped).
 
 ### Tag aggregates (`roller_weblogentrytagagg`)
 

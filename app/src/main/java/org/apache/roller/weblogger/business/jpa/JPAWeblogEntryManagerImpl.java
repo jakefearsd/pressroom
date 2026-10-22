@@ -22,8 +22,11 @@ import java.util.*;
 import java.text.SimpleDateFormat;
 import java.sql.Timestamp;
 import jakarta.persistence.NoResultException;
+import jakarta.persistence.PersistenceUnitUtil;
 import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
+import org.eclipse.persistence.annotations.BatchFetchType;
+import org.eclipse.persistence.config.QueryHints;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -692,7 +695,26 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         bindParams(query, params);
 
         setFirstMax( query, wesc.getOffset(), wesc.getMaxResults() );
-        return query.getResultList();
+        if (wesc.getMaxResults() <= 0) {
+            return query.getResultList();
+        }
+        // A page (a feed, an API list, a theme's list): read its entries'
+        // tags in one IN query instead of one per entry. EclipseLink's shared
+        // cache keeps only ~100 entries, so a page's entries are often rebuilt
+        // with their tags unloaded, and the feed and the API show every one.
+        // Loaded here, at once: an untouched batch holder keeps the whole
+        // query and every row it read (text included) alive in the cache.
+        // Unbounded lists (a reindex reads every entry) are left lazy, so a
+        // cached entry never pins more than its own row.
+        query.setHint(QueryHints.BATCH, "e.tags");
+        query.setHint(QueryHints.BATCH_TYPE, BatchFetchType.IN);
+        List<WeblogEntry> page = query.getResultList();
+        PersistenceUnitUtil loader = strategy.getEntityManager(false)
+                .getEntityManagerFactory().getPersistenceUnitUtil();
+        for (WeblogEntry entry : page) {
+            loader.load(entry, "tags");
+        }
+        return page;
     }
     
     /**

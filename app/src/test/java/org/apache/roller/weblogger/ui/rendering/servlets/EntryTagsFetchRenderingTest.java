@@ -133,6 +133,7 @@ class EntryTagsFetchRenderingTest {
             // as the entries API's list does: one query, then each entry's tags
             WeblogEntrySearchCriteria criteria = new WeblogEntrySearchCriteria();
             criteria.setWeblog(TestUtils.getManagedWebsite(weblog));
+            criteria.setMaxResults(21); // the API's default page of 20, plus its has-more row
             for (WeblogEntry entry : entryManager().getWeblogEntries(criteria)) {
                 names.add(entry.getTagsAsString());
             }
@@ -212,7 +213,7 @@ class EntryTagsFetchRenderingTest {
     @Test
     void aTagEditShowsWhenTheCachedEntryNeverLoadedItsTags() throws Exception {
         dropCachedEntries();
-        // what an API list or a sitemap does: entries read, tags never touched
+        // what a reindex does: every entry read (unbounded), tags never touched
         WeblogEntrySearchCriteria criteria = new WeblogEntrySearchCriteria();
         criteria.setWeblog(TestUtils.getManagedWebsite(weblog));
         assertEquals(ENTRIES, entryManager().getWeblogEntries(criteria).size());
