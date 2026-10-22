@@ -18,7 +18,6 @@
 package org.apache.roller.weblogger.business.jpa;
 
 import java.sql.Timestamp;
-import java.util.Date;
 import java.util.List;
 
 import jakarta.persistence.TypedQuery;
@@ -74,9 +73,8 @@ public class JPABusinessManagerImpl implements BusinessManager {
         // whose old lastModified keeps serving stale pages. So load the
         // users and set the field on the managed instances instead; the
         // flush writes the rows and the cache stays coherent (10-50 blogs).
-        Date touched = new Date(now.getTime());
         for (Weblog weblog : getWeblogsUsing(business)) {
-            weblog.setLastModified(touched);
+            weblog.touchLastModified();
             strategy.store(weblog);
         }
     }

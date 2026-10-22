@@ -356,6 +356,21 @@ public class Weblog implements Serializable {
         this.lastModified = lastModified;
     }
 
+    /**
+     * Records a visible change: moves {@code lastModified} to now, or one
+     * millisecond past its current value when the clock has not moved past
+     * it. Strictly forward, always: page, feed and sitemap caches expire
+     * only by comparing against this stamp, so two changes stamped in the
+     * same millisecond would let a document cached between them outlive the
+     * second. One millisecond is the column's own precision
+     * ({@code timestamp(3)}), so the step survives the round trip.
+     */
+    public void touchLastModified() {
+        long now = System.currentTimeMillis();
+        long next = lastModified == null ? now : Math.max(now, lastModified.getTime() + 1);
+        setLastModified(new Date(next));
+    }
+
     // getURL()/getAbsoluteURL() used to live here, reaching the URLStrategy
     // through the static service locator from inside a getter. They are built
     // by whoever holds the strategy now: WeblogWrapper.getURL()/getAbsoluteURL()

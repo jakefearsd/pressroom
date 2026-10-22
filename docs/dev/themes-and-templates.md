@@ -96,6 +96,15 @@ resolves through the index at the end of `CLAUDE.md`.
   `/<handle>/page/<link>` — including on a weblog running a *shared* theme,
   via `WeblogSharedTheme.getTemplateByLink`'s fallback to the weblog's own
   templates. `TemplateIT` asserts that end to end.
+- **`weblog.lastModified` only moves forward.** Every bump goes through
+  `Weblog.touchLastModified()` (`saveWeblog`, the business-profile touch):
+  now, or 1 ms past the stored value when the clock has not moved past it.
+  Two saves in one millisecond once stamped the same value, and a sitemap
+  cached between them was served after the second (the column is
+  `timestamp(3)`, so the 1 ms step survives storage;
+  `WeblogLastModifiedTest`). Never `setLastModified(new Date())` directly.
+  Not covered: two concurrent transactions that both read the same old
+  stamp in the same millisecond still write equal values.
 - **Render-cache expiry.** `saveTemplate`/`removeTemplate` bump
   `weblog.lastModified`, the only thing that expires a rendered page:
   `WeblogPageCache` and `WeblogFeedCache` both pass

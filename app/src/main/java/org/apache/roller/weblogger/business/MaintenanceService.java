@@ -18,7 +18,6 @@
 
 package org.apache.roller.weblogger.business;
 
-import java.util.Date;
 
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.pojos.Weblog;
@@ -51,7 +50,7 @@ public class MaintenanceService {
     /** Bumps {@code lastModified}, saves, flushes, and invalidates the page cache. */
     public void flushCache(Weblog weblog) throws WebloggerException {
         requireWeblog(weblog);
-        weblog.setLastModified(new Date());
+        // saveWeblog moves lastModified forward itself
         weblogger.getWeblogManager().saveWeblog(weblog);
         weblogger.flush();
         CacheManager.invalidate(weblog);
