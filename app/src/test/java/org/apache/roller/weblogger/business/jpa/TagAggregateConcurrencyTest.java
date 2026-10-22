@@ -24,10 +24,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -157,6 +159,102 @@ class TagAggregateConcurrencyTest {
 
         assertAggregateIsTrue("mix", weblog, otherWeblog);
         assertAggregateIsTrue("keep", weblog, otherWeblog);
+    }
+
+    /**
+     * Saves of the SAME entry, each loaded before any of them committed (a
+     * double-clicked publish, an API PATCH racing the editor, the scheduler
+     * promoting an entry the author is publishing). Each saw the entry as a
+     * draft, so a count derived from what each had loaded was added once per
+     * save.
+     */
+    @Test
+    @Timeout(120)
+    void concurrentPublishesOfOneDraftCountItOnce() throws Exception {
+        for (int round = 0; round < 3; round++) {
+            String tag = "same" + round;
+            String draft = create(weblog.getId(), PubStatus.DRAFT, "same", tag);
+            CyclicBarrier loaded = new CyclicBarrier(4);
+            assertNoFailures(inParallel(4, worker -> {
+                WeblogEntryManager mgr = TestUtils.weblogger().getWeblogEntryManager();
+                WeblogEntry entry = mgr.getWeblogEntry(draft);
+                loaded.await(30, TimeUnit.SECONDS);
+                entry.setStatus(PubStatus.PUBLISHED);
+                mgr.saveWeblogEntry(entry);
+            }), "round " + round);
+            assertAggregateIsTrue(tag, weblog);
+            assertEquals(1, storedTotal(weblog.getId(), tag));
+        }
+    }
+
+    /** Trash racing an unpublish of the same entry: uncounted once, not twice. */
+    @Test
+    @Timeout(120)
+    void aTrashRacingAnUnpublishOfOneEntryUncountsItOnce() throws Exception {
+        for (int round = 0; round < 3; round++) {
+            String tag = "gone" + round;
+            publish(weblog.getId(), "stays", tag);
+            String target = publish(weblog.getId(), "goes", tag);
+            CyclicBarrier loaded = new CyclicBarrier(2);
+            assertNoFailures(inParallel(2, worker -> {
+                WeblogEntryManager mgr = TestUtils.weblogger().getWeblogEntryManager();
+                WeblogEntry entry = mgr.getWeblogEntry(target);
+                loaded.await(30, TimeUnit.SECONDS);
+                if (worker == 0) {
+                    mgr.trashWeblogEntry(entry);
+                } else {
+                    entry.setStatus(PubStatus.DRAFT);
+                    mgr.saveWeblogEntry(entry);
+                }
+            }), "round " + round);
+            assertAggregateIsTrue(tag, weblog);
+            assertEquals(1, storedTotal(weblog.getId(), tag));
+        }
+    }
+
+    /**
+     * One transaction saving several entries (ScheduledEntriesTask, a bulk
+     * publish) touches tag b, then tag a; meanwhile a single save touches a
+     * and b. Taking each tag's row lock as each entry was saved made that a
+     * lock cycle. The multi-entry transaction goes on only once the single
+     * save is waiting on it (or after two seconds, if it never waits).
+     */
+    @Test
+    @Timeout(120)
+    void aMultiEntryTransactionAndAnOverlappingSaveDoNotDeadlock() throws Exception {
+        CountDownLatch firstSaved = new CountDownLatch(1);
+        assertNoFailures(inParallel(2, worker -> {
+            WeblogEntryManager mgr = TestUtils.weblogger().getWeblogEntryManager();
+            if (worker == 0) {
+                mgr.saveWeblogEntry(newEntry(weblog.getId(), PubStatus.PUBLISHED, "multi1", "dlb"));
+                firstSaved.countDown();
+                awaitASessionWaitingOnALock(Duration.ofSeconds(2));
+                mgr.saveWeblogEntry(newEntry(weblog.getId(), PubStatus.PUBLISHED, "multi2", "dla"));
+            } else {
+                firstSaved.await(30, TimeUnit.SECONDS);
+                mgr.saveWeblogEntry(newEntry(weblog.getId(), PubStatus.PUBLISHED, "single", "dla", "dlb"));
+            }
+        }), "multi-entry vs single save");
+        assertAggregateIsTrue("dla", weblog);
+        assertAggregateIsTrue("dlb", weblog);
+        assertEquals(2, storedTotal(weblog.getId(), "dla"));
+    }
+
+    private static void awaitASessionWaitingOnALock(Duration atMost) throws Exception {
+        long deadline = System.nanoTime() + atMost.toNanos();
+        try (Connection con = connection(); PreparedStatement ps = con.prepareStatement(
+                "SELECT count(*) FROM pg_stat_activity "
+                        + "WHERE datname = current_database() AND wait_event_type = 'Lock'")) {
+            while (System.nanoTime() < deadline) {
+                try (ResultSet rs = ps.executeQuery()) {
+                    rs.next();
+                    if (rs.getInt(1) > 0) {
+                        return;
+                    }
+                }
+                Thread.sleep(20);
+            }
+        }
     }
 
     // ------------------------------------------------------------------ C
@@ -304,6 +402,21 @@ class TagAggregateConcurrencyTest {
 
     /** Creates and saves a published entry carrying {@code tags}; returns its id. */
     private String publish(String weblogId, String anchorStem, String... tags) throws Exception {
+        return create(weblogId, PubStatus.PUBLISHED, anchorStem, tags);
+    }
+
+    /** Creates, saves and commits an entry; returns its id. */
+    private String create(String weblogId, PubStatus status, String anchorStem, String... tags)
+            throws Exception {
+        Weblogger tier = TestUtils.weblogger();
+        WeblogEntry entry = newEntry(weblogId, status, anchorStem, tags);
+        tier.getWeblogEntryManager().saveWeblogEntry(entry);
+        tier.flush();
+        return entry.getId();
+    }
+
+    private WeblogEntry newEntry(String weblogId, PubStatus status, String anchorStem, String... tags)
+            throws Exception {
         Weblogger tier = TestUtils.weblogger();
         Weblog w = tier.getWeblogManager().getWeblog(weblogId);
         WeblogEntry entry = new WeblogEntry();
@@ -315,13 +428,11 @@ class TagAggregateConcurrencyTest {
         Timestamp now = new Timestamp(System.currentTimeMillis());
         entry.setPubTime(now);
         entry.setUpdateTime(now);
-        entry.setStatus(PubStatus.PUBLISHED);
+        entry.setStatus(status);
         for (String tag : tags) {
             entry.addTag(tag);
         }
-        tier.getWeblogEntryManager().saveWeblogEntry(entry);
-        tier.flush();
-        return entry.getId();
+        return entry;
     }
 
     private static void retag(String entryId, String tags) throws Exception {

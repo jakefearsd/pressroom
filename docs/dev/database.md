@@ -80,14 +80,23 @@ logged at the point of failure instead (`InstallControllerTest`,
 
 One row per (weblog, tag) and one site-wide row per tag (`websiteid IS
 NULL`), each the number of PUBLISHED entries carrying the tag. **Only
-`TagAggregateStore` writes it**, with one `INSERT ... ON CONFLICT ON
-CONSTRAINT weta_weblog_tag_uq DO UPDATE SET total = total + delta` per row,
-in tag-name order, deleting only the rows it just took to zero or below.
-The read-modify-write it replaced (select; insert if absent, else store
-`total + delta`) failed concurrent saves with a duplicate key and lost
-increments (a 2026-10-22 profiling run: 21 HTTP 500s in 1,500 creates, 152
-of 210 rows low). V034 made the constraint `UNIQUE NULLS NOT DISTINCT`, so
-it also guards the site-wide rows a plain `UNIQUE` let duplicate, and
-recomputed every total. The entity is `cacheable="false"`: EclipseLink's
-shared cache never sees the native writes. `TagAggregateConcurrencyTest`
-reproduces both failures with a `CyclicBarrier`.
+`TagAggregateStore` writes it.** A save only names the tags it may have
+touched; just before the transaction commits (`JPAPersistenceStrategy.
+beforeCommit`), each touched row is locked with `INSERT ... ON CONFLICT ON
+CONSTRAINT weta_weblog_tag_uq DO UPDATE` and then, in a second statement
+(a fresh READ COMMITTED snapshot, so it sees whoever held the lock before),
+set to the count recomputed from the entries; a row at zero is deleted.
+Locks are taken once per transaction, by tag name (weblog rows, then the
+site-wide row), after all the transaction's other writes are flushed, so
+multi-entry transactions (ScheduledEntriesTask, bulk publish) cannot
+deadlock against single saves on these rows. Two earlier designs failed:
+an unlocked read-modify-write (duplicate keys and lost increments: a
+2026-10-22 profiling run had 21 HTTP 500s in 1,500 creates, 152 of 210 rows
+low), then atomic per-save deltas taken from the entry as loaded (two saves
+of the same entry, both loaded as a draft, each added the tag: a double-
+clicked publish counted 2). Tag reads inside the saving transaction see the
+old counts until it commits. V034 made the constraint `UNIQUE NULLS NOT
+DISTINCT`, so it also guards the site-wide rows a plain `UNIQUE` let
+duplicate, and recomputed every total. The entity is `cacheable="false"`:
+EclipseLink's shared cache never sees the native writes.
+`TagAggregateConcurrencyTest` reproduces each failure.

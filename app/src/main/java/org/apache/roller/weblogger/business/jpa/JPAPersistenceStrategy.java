@@ -24,8 +24,11 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Enumeration;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
+import java.util.function.Supplier;
 
 import javax.sql.DataSource;
 import javax.xml.parsers.DocumentBuilder;
@@ -93,6 +96,18 @@ public class JPAPersistenceStrategy {
      * commits -- see {@link #runAfterCommit} and {@link #flush()}.
      */
     private final ThreadLocal<List<Runnable>> pendingPostCommitActions = new ThreadLocal<>();
+
+    /**
+     * Work queued to run inside the CURRENT unit of work just before it
+     * commits -- see {@link #beforeCommit} and {@link #flush()}. One per type.
+     */
+    private final ThreadLocal<Map<Class<?>, BeforeCommit>> pendingPreCommitActions = new ThreadLocal<>();
+
+    /** Work that runs in the transaction, immediately before its commit. */
+    @FunctionalInterface
+    public interface BeforeCommit {
+        void run() throws WebloggerException;
+    }
 
     /**
      * The EntityManagerFactory for this Roller instance.
@@ -551,6 +566,26 @@ public class JPAPersistenceStrategy {
     }
 
     /**
+     * The {@code type} action queued for the CURRENT unit of work, queued
+     * from {@code factory} if there is none yet. It runs in {@link #flush()},
+     * inside the transaction and just before the commit, in the order the
+     * actions were first queued; {@link #release()} discards it.
+     *
+     * <p>For work that must see, and be serialised against, everything else
+     * the transaction wrote: {@code TagAggregateStore} recounts the tags a
+     * transaction touched here, so it takes each aggregate row lock once, in
+     * one order, after all of the transaction's other writes.
+     */
+    public <T extends BeforeCommit> T beforeCommit(Class<T> type, Supplier<T> factory) {
+        Map<Class<?>, BeforeCommit> actions = pendingPreCommitActions.get();
+        if (actions == null) {
+            actions = new LinkedHashMap<>();
+            pendingPreCommitActions.set(actions);
+        }
+        return type.cast(actions.computeIfAbsent(type, k -> factory.get()));
+    }
+
+    /**
      * Flush changes to the datastore, commit transaction, release em.
      * @throws org.apache.roller.weblogger.WebloggerException on any error
      */
@@ -562,8 +597,15 @@ public class JPAPersistenceStrategy {
         // below once the commit has genuinely succeeded.
         List<Runnable> actions = pendingPostCommitActions.get();
         pendingPostCommitActions.remove();
+        Map<Class<?>, BeforeCommit> preCommit = pendingPreCommitActions.get();
+        pendingPreCommitActions.remove();
 
         try {
+            if (preCommit != null) {
+                for (BeforeCommit action : preCommit.values()) {
+                    action.run();
+                }
+            }
             EntityManager em = getEntityManager(true);
             em.getTransaction().commit();
         } catch (PersistenceException pe) {
@@ -601,6 +643,7 @@ public class JPAPersistenceStrategy {
         // or simply no save this request) must not survive to run against a
         // LATER, unrelated transaction on a thread a pool hands out again.
         pendingPostCommitActions.remove();
+        pendingPreCommitActions.remove();
 
         if (emf == null || !emf.isOpen()) {
             threadLocalEntityManager.remove();
@@ -814,14 +857,14 @@ public class JPAPersistenceStrategy {
     }
 
     /**
-     * Native SQL statement in the current transaction (one is begun if none
-     * is active). Default flush mode, so pending changes are written first.
-     * For the few writes JPQL cannot express -- {@code TagAggregateStore}'s
-     * {@code INSERT ... ON CONFLICT} -- and only with constant SQL; values go
-     * through parameters.
+     * Native SQL in the current transaction (one is begun if none is
+     * active). Default flush mode, so pending changes are written first.
+     * For the little JPQL cannot express -- {@code TagAggregateStore}'s
+     * {@code INSERT ... ON CONFLICT} and recounts -- and only with constant
+     * SQL; values go through parameters.
      * @param sql the statement, never built from input
      */
-    public Query getNativeUpdate(String sql) {
+    public Query getNativeQuery(String sql) {
         EntityManager em = getEntityManager(true);
         return em.createNativeQuery(sql);
     }

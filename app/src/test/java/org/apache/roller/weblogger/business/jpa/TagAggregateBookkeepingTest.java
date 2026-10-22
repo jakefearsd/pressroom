@@ -164,6 +164,47 @@ class TagAggregateBookkeepingTest {
         assertTrue("x");
     }
 
+    // The next three state what controller tests used to pin through the
+    // removed refreshAggregates flag. They passed when written: they
+    // characterise behaviour that was already right.
+
+    @Test
+    void retaggingADraftCountsNothing() throws Exception {
+        String id = create(PubStatus.DRAFT, now(), "x");
+
+        update(id, entry -> entry.setTagsAsString("x y"));
+
+        assertEquals(0, weblogTotal(weblog.getId(), "x"));
+        assertEquals(0, weblogTotal(weblog.getId(), "y"));
+        assertTrue("x", "y");
+    }
+
+    @Test
+    void schedulingADraftCountsNothingYet() throws Exception {
+        String id = create(PubStatus.DRAFT, now(), "x");
+
+        update(id, entry -> {
+            entry.setPubTime(new Timestamp(System.currentTimeMillis() + 10 * RollerConstants.MIN_IN_MS));
+            entry.setStatus(PubStatus.SCHEDULED);
+        });
+
+        assertEquals(0, weblogTotal(weblog.getId(), "x"));
+        assertTrue("x");
+    }
+
+    @Test
+    void republishingAPublishedEntryLeavesItsCountAlone() throws Exception {
+        String id = create(PubStatus.PUBLISHED, now(), "x");
+
+        update(id, entry -> {
+            entry.setText("edited");
+            entry.setStatus(PubStatus.PUBLISHED);
+        });
+
+        assertEquals(1, weblogTotal(weblog.getId(), "x"));
+        assertTrue("x");
+    }
+
     @Test
     void savingTheSameEntryTwiceInOneSessionCountsItOnce() throws Exception {
         WeblogEntry entry = newEntry(PubStatus.PUBLISHED, now(), "x");

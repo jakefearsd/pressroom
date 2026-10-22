@@ -152,11 +152,13 @@ at runtime while unit tests (which call the method directly) pass;
 ## Tag counts
 
 A tag's count (`roller_weblogentrytagagg`, see `database.md`) is the number
-of PUBLISHED entries carrying it. **`saveWeblogEntry` derives every change
-itself**, from the entry's tags as loaded under `getLoadedStatus()` against
-its tags as saved under its final status (after the future-dated
-PUBLISHED→SCHEDULED switch); `removeWeblogEntry` uncounts by the loaded
-status too. Callers only set the status. The `refreshAggregates` flag every
+of PUBLISHED entries carrying it. **`saveWeblogEntry` and
+`removeWeblogEntry` only name the tags they touched** (the entry's tags,
+removed ones included, plus at commit whatever tags the entry has in the
+database); `TagAggregateStore` recounts those from the database at commit
+(see `database.md`). Nothing is derived from the entry as loaded, which a
+concurrent save of the same entry can have made stale. Callers only set
+the status. The `refreshAggregates` flag every
 caller had to remember was removed (2026-10-22): the API's PATCH never set
 it, so a draft published through the API was never counted and an
 unpublished one never uncounted; a tag dropped while unpublishing stayed

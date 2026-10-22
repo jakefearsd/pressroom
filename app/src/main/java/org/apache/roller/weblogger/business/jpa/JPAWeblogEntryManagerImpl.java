@@ -190,14 +190,14 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
             entry.setStatus(PubStatus.SCHEDULED);
         }
 
-        // A tag counts once for every PUBLISHED entry carrying it. What this
-        // save changes is read from the entry itself -- the tags it counted
-        // under as loaded against those it counts under as saved (so after the
-        // SCHEDULED switch above) -- never from a flag each caller must set.
-        Set<String> countedBefore = entry.getLoadedStatus() == PubStatus.PUBLISHED
-                ? persistedTagNames(entry) : Set.of();
-        Set<String> countedAfter = entry.isPublished() ? tagNames(entry.getTags()) : Set.of();
-        tagAggregates.apply(entry.getWebsite(), tagCountChanges(countedBefore, countedAfter));
+        // A tag counts once for every PUBLISHED entry carrying it. Every tag
+        // this save may have touched is recounted from the database at
+        // commit (TagAggregateStore), never derived from what this session
+        // believes the entry looked like before: a concurrent save of the
+        // same entry may have changed that.
+        Set<String> touched = tagNames(entry.getTags());
+        touched.addAll(tagNames(entry.getRemovedTags()));
+        tagAggregates.recount(entry, touched);
 
         for (WeblogEntryTag tag : entry.getRemovedTags()) {
             this.strategy.remove(tag);
@@ -331,11 +331,9 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         // keeps the shared cache from serving them after the entry is gone
         roller.getCommentManager().removeCommentsForEntry(entry);
 
-        // remove tag & tag aggregates; the entry counted as it was loaded
+        // remove tag & tag aggregates
         if (entry.getTags() != null) {
-            if (entry.getLoadedStatus() == PubStatus.PUBLISHED) {
-                tagAggregates.apply(weblog, tagCountChanges(persistedTagNames(entry), Set.of()));
-            }
+            tagAggregates.recount(weblog, tagNames(entry.getTags()));
             for (WeblogEntryTag tag : entry.getTags()) {
                 this.strategy.remove(tag);
             }
@@ -714,48 +712,12 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         }
     }
     
-    /**
-     * The tags the entry has in the database: those it carries now that were
-     * not added since it was loaded, and those removed since. By identity, not
-     * {@code equals}: a tag removed and then added back is a new object equal
-     * to the removed one, and it was in the database all along.
-     */
-    private static Set<String> persistedTagNames(WeblogEntry entry) {
-        Set<WeblogEntryTag> added = Collections.newSetFromMap(new IdentityHashMap<>());
-        added.addAll(entry.getAddedTags());
-        Set<String> names = new HashSet<>();
-        for (Collection<WeblogEntryTag> tags : List.of(entry.getTags(), entry.getRemovedTags())) {
-            for (WeblogEntryTag tag : tags) {
-                if (!added.contains(tag)) {
-                    names.add(tag.getName());
-                }
-            }
-        }
-        return names;
-    }
-
     private static Set<String> tagNames(Collection<WeblogEntryTag> tags) {
         Set<String> names = new HashSet<>();
         for (WeblogEntryTag tag : tags) {
             names.add(tag.getName());
         }
         return names;
-    }
-
-    /** +1 for each tag counted only after, -1 for each counted only before. */
-    private static Map<String, Integer> tagCountChanges(Set<String> before, Set<String> after) {
-        Map<String, Integer> changes = new HashMap<>();
-        for (String name : after) {
-            if (!before.contains(name)) {
-                changes.put(name, 1);
-            }
-        }
-        for (String name : before) {
-            if (!after.contains(name)) {
-                changes.put(name, -1);
-            }
-        }
-        return changes;
     }
 
     /**

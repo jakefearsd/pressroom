@@ -151,13 +151,13 @@ public class JPAWeblogManagerImpl implements WeblogManager {
             this.strategy.remove(tagData);
         }
         
-        // take this weblog's counts out of the site-wide tag aggregates (its
-        // own rows fall to zero and go with them)
-        Map<String, Integer> tagDeltas = new HashMap<>();
+        // recount this weblog's tags at commit: its own rows fall to zero
+        // and go, and the site-wide rows lose its entries
+        List<String> tagNames = new ArrayList<>();
         for (TagStat stat : emgr.getTags(weblog, null, null, 0, -1)) {
-            tagDeltas.merge(stat.getName(), -stat.getCount(), Integer::sum);
+            tagNames.add(stat.getName());
         }
-        tagAggregates.apply(weblog, tagDeltas);
+        tagAggregates.recount(weblog, tagNames);
         
         // delete whatever weblog tag aggregates remain
         Query removeAggs= strategy.getNamedUpdate(
