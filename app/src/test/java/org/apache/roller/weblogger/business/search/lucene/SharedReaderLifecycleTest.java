@@ -34,6 +34,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.roller.weblogger.WebloggerException;
@@ -346,6 +347,29 @@ class SharedReaderLifecycleTest {
         assertFalse(manager.getWriteLock().isLocked(), "the write left the index write-locked");
         assertEquals(List.of("first", "second"), sortedTitles(search(WORD)));
         assertNotSame(dead, currentReader(), "the closed reader is still in use");
+    }
+
+    /**
+     * A search reads the searchers' field and then acquires from it, with no
+     * lock between. A failed refresh or {@code shutdown()} can close them in
+     * that window, leaving the search holding closed searchers: it must
+     * discard them and open fresh ones rather than fail. Closing them
+     * behind the manager's back while the field still names them is that
+     * window, held open.
+     */
+    @Test
+    void aSearchThatFindsTheSearchersClosedUnderItReopensThem() throws Exception {
+        manager = initialized(new LuceneIndexManager(roller));
+        index(entry("first"));
+        IndexReader before = currentReader();
+        Field field = LuceneIndexManager.class.getDeclaredField("searcherManager");
+        field.setAccessible(true);
+        ((SearcherManager) field.get(manager)).close();
+
+        assertEquals(List.of("first"), titles(search(WORD)),
+                "a search that met closed searchers failed instead of reopening them");
+        assertEquals(0, before.getRefCount(), "the closed searchers' reader is still open");
+        assertNotSame(before, currentReader());
     }
 
     /**

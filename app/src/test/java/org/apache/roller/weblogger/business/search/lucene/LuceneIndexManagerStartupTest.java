@@ -47,7 +47,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -141,7 +143,9 @@ class LuceneIndexManagerStartupTest {
     /**
      * An index that exists but cannot be opened -- corrupt, or written by an
      * incompatible Lucene version -- is deleted and rebuilt rather than
-     * failing startup.
+     * failing startup. An empty index takes its place at once, as on the
+     * unclean-shutdown path, so until the rebuild commits a search finds
+     * nothing rather than failing: searches no longer wait for the rebuild.
      */
     @Test
     void anIndexThatCannotBeOpenedIsDeletedAndRebuilt(@TempDir Path tmp) throws Exception {
@@ -156,7 +160,17 @@ class LuceneIndexManagerStartupTest {
 
         assertTrue(manager.isInconsistentAtStartup());
         verify(threads).executeInBackground(isA(RebuildWebsiteIndexOperation.class));
-        assertFalse(Files.exists(segments), "the unreadable index files must be deleted");
+        assertEquals(0, numDocs(indexDir),
+                "the unreadable index must be replaced by an empty, readable one");
+        // searches run on the thread manager; this one runs them inline
+        doAnswer(inv -> {
+            ((Runnable) inv.getArgument(0)).run();
+            return null;
+        }).when(threads).executeInForeground(any(Runnable.class));
+        assertTrue(manager.search("anything", "rebuildingblog", null, null, 0, 10, null)
+                        .getResults().isEmpty(),
+                "a search during the rebuild must find nothing, not fail");
+        manager.shutdown();
     }
 
     /**

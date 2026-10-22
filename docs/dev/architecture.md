@@ -132,9 +132,14 @@ templates).
   schedule a background write must therefore wait for it, bounded (see
   `SearchIndexQueryTest.awaitTitles`), never rely on a search queueing
   behind it. A refresh that fails discards the searchers so the next search
-  reopens from disk; with none open yet there is nothing to refresh (the
+  reopens from disk, and a search that finds its searchers closed under it
+  (that discard, or `shutdown()`) reopens them rather than failing; with
+  none open yet there is nothing to refresh (the
   first search opens the latest commit — the field is read under the
-  monitor that lazy creation holds, so no commit slips between them).
+  monitor that lazy creation holds, so no commit slips between them). An
+  index unreadable at startup is replaced by an empty one before the full
+  rebuild is scheduled (as after an unclean shutdown), so searches during
+  that rebuild find nothing rather than fail.
 - **Reader lifecycle**: references are counted. The `SearcherManager` owns
   one on the current reader and drops it on refresh, re-`initialize()` and
   `shutdown()`; a search takes its own with `acquireSearcher()` and must hand

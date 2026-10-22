@@ -93,6 +93,10 @@ public class LuceneIndexManager implements IndexManager {
     // directory's lock -- and nothing else: searches never take it.
     private final ReentrantLock writeLock = new ReentrantLock();
 
+    // A search that finds its searchers closed under it reopens them; this
+    // bounds how often before it gives up (see acquireSearcher).
+    private static final int MAX_ACQUIRE_ATTEMPTS = 3;
+
 
     /** The tier an {@link IndexOperation} resolves entry authors through. */
     Weblogger weblogger() {
@@ -192,6 +196,10 @@ public class LuceneIndexManager implements IndexManager {
                     log.warn("Failed to open search index, scheduling rebuild.", ex);
                     inconsistentAtStartup = true;
                     deleteIndex();
+                    // an empty index in its place, as on the unclean-shutdown
+                    // path below: until the rebuild commits, searches (which
+                    // never wait for it) find nothing rather than fail
+                    createIndex(getIndexDirectory());
                 }
             } else {
                 log.debug("Creating index");
@@ -367,6 +375,12 @@ public class LuceneIndexManager implements IndexManager {
      * search reads its hits' stored fields ({@code convertHitsToEntryList})
      * after the query, and a write can land in between.
      *
+     * <p>Searchers closed between reading the field and acquiring from them
+     * (a failed refresh, {@code shutdown()}) are discarded and reopened, so
+     * that race costs a reopen, not a failed search. A search after
+     * {@code shutdown()} therefore reopens searchers nothing will close, as
+     * the lazily opened reader always did.
+     *
      * @throws IOException if there is no readable index on disk (the
      *     searchers are opened on first use)
      */
@@ -375,17 +389,31 @@ public class LuceneIndexManager implements IndexManager {
     // closes it, on re-initialise, a failed refresh and shutdown.
     @SuppressWarnings("PMD.CloseResource")
     public IndexSearcher acquireSearcher() throws IOException {
-        SearcherManager current = searcherManager;
-        if (current == null) {
-            synchronized (this) {
-                current = searcherManager;
-                if (current == null) {
-                    current = new SearcherManager(getIndexDirectory(), null);
-                    searcherManager = current;
+        for (int attempt = 1; ; attempt++) {
+            SearcherManager current = searcherManager;
+            if (current == null) {
+                synchronized (this) {
+                    current = searcherManager;
+                    if (current == null) {
+                        current = new SearcherManager(getIndexDirectory(), null);
+                        searcherManager = current;
+                    }
                 }
             }
+            try {
+                return current.acquire();
+            } catch (AlreadyClosedException closed) {
+                // A failed refresh or shutdown() closed these searchers
+                // between the read above and the acquire: drop them (if
+                // nothing has replaced them yet) and open fresh ones. Bounded,
+                // so a manager that keeps closing under us fails the search
+                // rather than spinning.
+                if (attempt >= MAX_ACQUIRE_ATTEMPTS) {
+                    throw closed;
+                }
+                discardSearcherManager(current);
+            }
         }
-        return current.acquire();
     }
 
     /**
@@ -426,10 +454,8 @@ public class LuceneIndexManager implements IndexManager {
      * answering without this write, from then on.
      */
     // `current` is the field's SearcherManager, owned (and closed) by
-    // closeSearcherManager(), not by this method. The == is deliberate
-    // identity: discard only the instance whose refresh failed, never one a
-    // concurrent re-initialise has installed since.
-    @SuppressWarnings({"PMD.CloseResource", "PMD.CompareObjectsWithEquals"})
+    // closeSearcherManager(), not by this method.
+    @SuppressWarnings("PMD.CloseResource")
     void refreshSearcher() {
         SearcherManager current;
         synchronized (this) {
@@ -442,11 +468,20 @@ public class LuceneIndexManager implements IndexManager {
             current.maybeRefreshBlocking();
         } catch (IOException | IllegalStateException ex) {
             log.error("Unable to refresh the search index reader; reopening it on the next search", ex);
-            synchronized (this) {
-                if (searcherManager == current) {
-                    closeSearcherManager();
-                }
-            }
+            discardSearcherManager(current);
+        }
+    }
+
+    /**
+     * Closes and forgets {@code failed}, but only if it is still the
+     * installed instance: never one a concurrent re-initialise, or another
+     * search's reopen, has put in its place since.
+     */
+    // The == is deliberate identity, as above.
+    @SuppressWarnings("PMD.CompareObjectsWithEquals")
+    private synchronized void discardSearcherManager(SearcherManager failed) {
+        if (searcherManager == failed) {
+            closeSearcherManager();
         }
     }
 
