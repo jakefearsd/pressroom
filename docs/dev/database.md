@@ -57,6 +57,62 @@ crash-looped on it. `JPAPersistenceStrategy` now sets
 ways); `JPAPersistenceStrategyPasswordTest` bootstraps against a real role
 with a hex password. Anything else that builds an EMF must do the same.
 
+### Shared cache sizes
+
+EclipseLink's shared cache is sized in `roller.properties`
+(`eclipselink.cache.*`, passed to the persistence unit with every other
+`eclipselink.` key; `persistence.xml` properties are **not** read, since
+`RollerPersistenceUnitInfo.getProperties()` is empty). Every type is
+`SoftWeak`: the N most recently cached objects are held softly, the rest
+weakly. **Entries 5000, revisions 100, everything else 1000.** Until
+2026-10-22 nothing was configured, so every type had EclipseLink's 100.
+
+- **Why it matters: a permalink is a find by id.**
+  `getWeblogEntryByAnchor` maps the anchor to an id
+  (`entryAnchorToIdMap`) and calls `em.find`, which costs no SQL while the
+  entry is cached. At 100, entries past the most recent 100 went at every GC
+  and the next permalink re-read the row: a profiling run (10 weblogs x ~3k
+  entries) ran `SELECT ... FROM weblogentry WHERE (id = $1)` 207,012 times
+  for 207,005 permalinks, and each rebuilt entry then lazily re-read its tags.
+  `EntryCacheSizeTest` reads 300 entries, collects garbage, reads them again:
+  200 row reads at 100, none now.
+- **Memory bound.** Measured per cached entry: ~4.4 KB with three tags,
+  plus the text (1 byte a character, 2 once it holds anything outside
+  Latin-1). 5000 entries is ~25 MB at 500-character posts and ~72 MB at
+  5,000. The other types that carry text or hold an entry:
+  - *Revisions* are full copies of a post, written on every save (which
+    also reads all of that entry's revisions) and read again only by the
+    revisions screen, so they keep 100 (~1.4 MB at 5,000 characters).
+  - *Tags, attributes and reader comments* keep the 1000 default, and each
+    holds its entry strongly, so up to ~3,000 entries beyond the 5000 can
+    stay live: a worst case of ~117 MB at 5,000-character posts. In practice
+    tags are cached with their own entry and overlap it. Comments are short
+    and are read on every permalink of their entry.
+  - The small types (weblogs, users, categories, templates, permissions,
+    media metadata) are at most a few MB at 1000.
+
+  All of it is soft or weak, so it is cleared under memory pressure before
+  an `OutOfMemoryError`.
+- **Never stale, by construction.** Roller is one JVM and writes through
+  JPA, which merges into the cache at commit (nothing on rollback); JPQL
+  bulk updates and deletes invalidate their class. The only native writes go
+  to `roller_weblogentrytagagg`, which is `cacheable="false"`. A row changed
+  with SQL behind the app's back (the admin account tool, a hand edit) stays
+  stale until a restart; a bigger cache makes that window longer, not new.
+- **The anchor map checks the anchor.** A hit whose entry now has another
+  anchor (or is gone) is dropped and the anchor looked up afresh, so a
+  renamed entry's old permalink 404s instead of serving it.
+- **The anchor map is bounded by the corpus:** one key per anchor that was
+  found (misses are not stored, `removeWeblogEntry` drops its key). Only a
+  deleted weblog's keys linger, each until its anchor is looked up again.
+- **Tuning** is a startup property: `eclipselink.cache.size.WeblogEntry` in
+  `roller-custom.properties` or `ROLLER_ECLIPSELINK_CACHE_SIZE_WEBLOGENTRY`.
+  **A `ROLLER_*` variable reaches only a key already in the loaded properties**
+  (it then takes that key's spelling). Any other arrives lowercased
+  (`eclipselink.cache.size.readercomment`), and EclipseLink matches entity
+  names case-sensitively, so it is ignored without an error: add the key to
+  `roller.properties` first, or set it in `roller-custom.properties`.
+
 ### Schema changes
 
 **Every schema-changing commit MUST add a numbered migration** under
