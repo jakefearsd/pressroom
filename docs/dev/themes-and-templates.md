@@ -117,6 +117,26 @@ resolves through the index at the end of `CLAUDE.md`.
   `get`/`put`/`remove`/`clear`); each subclass keeps its `CACHE_ID`, singleton
   and `generateKey`. `SiteWideCache` is deliberately outside that hierarchy —
   its `get` takes no timestamp, having no per-weblog expiry.
+- **Entry HTML cache.** `EntryRenderer`'s `cached*` methods -- what
+  `WeblogEntryWrapper` calls on every live render -- keep each published
+  entry's text, summary and display content in `EntryHtmlCache`
+  (`cache.entryhtml.*`: 16 MB total, one slot at most 1/16 of it, one hour),
+  so a page-cache miss no longer re-runs shortcodes + Markdown + sanitizer
+  for every entry on a list page. A slot is keyed by entry id, sanitizer
+  on/off, the weblog's absolute url (site url, captured address, custom
+  domain) and the relative context url, and is valid only while the entry's
+  text and summary (by value), `updateTime` and its weblog's `lastModified`
+  all match. Not kept: drafts (their saves do not bump `lastModified`), a
+  weblog with no stamp, any render while an entry plugin is registered, and
+  a render whose shortcodes read another weblog's data or failed a lookup
+  (`ShortcodeReads`, content-features.md, Shortcodes). **Previews never touch
+  it**: the plain `transformedText`/`displayContent` methods (editor and API
+  preview, newsletter) and a wrapper built with `PreviewURLStrategy` (the
+  preview servlet) always render. `CacheManager` does not reach it, by
+  design; a change that reaches entry output without moving `lastModified`
+  is a stale-content bug for the page cache and this one alike (rendition
+  regeneration was one; it now bumps). Off in `roller-boot-dev.properties`
+  with the other render caches.
 - **A Velocity resource loader that cannot report modification may not be
   cached; the two settings only ever change together.** With `cache=true`
   Velocity reuses a parse tree whenever `isSourceModified` says "not stale",

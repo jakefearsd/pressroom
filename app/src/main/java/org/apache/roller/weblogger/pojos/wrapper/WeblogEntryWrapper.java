@@ -25,6 +25,8 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.WebloggerException;
+import org.apache.roller.weblogger.business.EntryRenderer;
+import org.apache.roller.weblogger.business.PreviewURLStrategy;
 import org.apache.roller.weblogger.business.URLStrategy;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.JsonLdType;
@@ -243,23 +245,38 @@ public final class WeblogEntryWrapper {
     }
 
 
+    /**
+     * Whether this wrapper serves readers: everything but the preview
+     * servlet, which wraps with the preview url strategy. A live render goes
+     * through the entry-HTML cache; a preview of a draft or a theme must
+     * neither be served from it nor leave anything in it.
+     */
+    private boolean isLive() {
+        return !(urlStrategy instanceof PreviewURLStrategy);
+    }
+
+
     public String getTransformedText() {
-        return weblogger.getEntryRenderer().transformedText(this.pojo);
+        EntryRenderer renderer = weblogger.getEntryRenderer();
+        return isLive() ? renderer.cachedTransformedText(this.pojo) : renderer.transformedText(this.pojo);
     }
     
     
     public String getTransformedSummary() {
-        return weblogger.getEntryRenderer().transformedSummary(this.pojo);
+        EntryRenderer renderer = weblogger.getEntryRenderer();
+        return isLive() ? renderer.cachedTransformedSummary(this.pojo) : renderer.transformedSummary(this.pojo);
     }
     
     
     public String displayContent(String readMoreLink) {
-        return weblogger.getEntryRenderer().displayContent(this.pojo, readMoreLink);
+        EntryRenderer renderer = weblogger.getEntryRenderer();
+        return isLive() ? renderer.cachedDisplayContent(this.pojo, readMoreLink)
+                : renderer.displayContent(this.pojo, readMoreLink);
     }
     
     
     public String getDisplayContent() {
-        return weblogger.getEntryRenderer().displayContent(this.pojo, null);
+        return displayContent(null);
     }
 
 	public String getSearchDescription() {

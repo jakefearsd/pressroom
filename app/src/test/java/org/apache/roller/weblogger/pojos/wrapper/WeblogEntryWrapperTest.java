@@ -19,7 +19,9 @@ package org.apache.roller.weblogger.pojos.wrapper;
 
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.CommentManager;
+import org.apache.roller.weblogger.business.EntryRenderer;
 import org.apache.roller.weblogger.business.MediaFileManager;
+import org.apache.roller.weblogger.business.PreviewURLStrategy;
 import org.apache.roller.weblogger.business.URLStrategy;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.MediaFile;
@@ -43,6 +45,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -480,5 +483,47 @@ class WeblogEntryWrapperTest {
 
         assertTrue(wrapper.getComments().isEmpty());
         assertEquals(0L, wrapper.getCommentCount());
+    }
+
+    /**
+     * A reader's render goes through the entry-HTML cache; a preview --
+     * wrapped with the preview url strategy -- never reads or writes it, so
+     * a draft or a previewed theme can neither be served a live render nor
+     * leave one behind.
+     */
+    @Test
+    void aLiveRenderUsesTheEntryCacheAndAPreviewNeverDoes() {
+        EntryRenderer live = mock(EntryRenderer.class);
+        when(weblogger.getEntryRenderer()).thenReturn(live);
+
+        wrapper.getTransformedText();
+        wrapper.getTransformedSummary();
+        wrapper.getDisplayContent();
+        wrapper.displayContent("https://example.com/more");
+
+        verify(live).cachedTransformedText(entry);
+        verify(live).cachedTransformedSummary(entry);
+        verify(live).cachedDisplayContent(entry, null);
+        verify(live).cachedDisplayContent(entry, "https://example.com/more");
+        verify(live, never()).transformedText(any());
+        verify(live, never()).transformedSummary(any());
+        verify(live, never()).displayContent(any(), any());
+
+        EntryRenderer preview = mock(EntryRenderer.class);
+        when(weblogger.getEntryRenderer()).thenReturn(preview);
+        WeblogEntryWrapper previewed = WeblogEntryWrapper.wrap(entry, new PreviewURLStrategy("journal"), weblogger);
+
+        previewed.getTransformedText();
+        previewed.getTransformedSummary();
+        previewed.getDisplayContent();
+        previewed.displayContent("https://example.com/more");
+
+        verify(preview).transformedText(entry);
+        verify(preview).transformedSummary(entry);
+        verify(preview).displayContent(entry, null);
+        verify(preview).displayContent(entry, "https://example.com/more");
+        verify(preview, never()).cachedTransformedText(any());
+        verify(preview, never()).cachedTransformedSummary(any());
+        verify(preview, never()).cachedDisplayContent(any(), any());
     }
 }

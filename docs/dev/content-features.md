@@ -122,3 +122,14 @@ immediately before sanitization.
 - New handlers implement `ShortcodeHandler` and register in
   `ShortcodeExpander.builtIn(...)`; the required `ShortcodeCard` (label + snippet) feeds the
   editor's Insert menu, so a new shortcode cannot ship undiscoverable.
+- **A published entry's expanded HTML is kept** (`EntryHtmlCache`, see
+  themes-and-templates.md, "Entry HTML cache") until its weblog's
+  `lastModified` moves, so a handler's output may depend only on the entry,
+  its own weblog's data, and the site/context url. A handler that reads
+  anything else overrides the four-argument `render(..., ShortcodeReads)`
+  and reports it: `[image]` reports its media file's weblog (the id is
+  global, so it may be another weblog's, whose changes never move this
+  stamp), and `[image]`/`[gallery]`/`[map]` report `readFrom(null)` when a
+  lookup throws (the expander does too when a handler throws), so the
+  degraded "left as written" output is never kept. A
+  reported foreign or null read makes that render uncached.
