@@ -134,9 +134,12 @@ resolves through the index at the end of `CLAUDE.md`.
   `importTheme` saves a template and then looks templates up in the same
   transaction, and its no-flush queries cannot see the new row while the
   weblog already carries the stamp about to commit. A remembered id that no
-  longer resolves, or a page no longer published, is a miss (`removePages`
-  deletes in bulk and moves no stamp). A deleted weblog's slots are dropped
-  after its commit.
+  longer resolves, a template whose action or weblog changed, or a page no
+  longer published, is a miss: a bulk JPQL statement changes rows without
+  moving the stamp (`removePages` is one, and also drops the slot after its
+  commit, but a reader can land between the two). The stale-id tests in
+  `WeblogLookupCacheTest` reach each check with the slot still in place. A
+  deleted weblog's slots are dropped after its commit.
 - **A Velocity resource loader that cannot report modification may not be
   cached; the two settings only ever change together.** With `cache=true`
   Velocity reuses a parse tree whenever `isSourceModified` says "not stale",

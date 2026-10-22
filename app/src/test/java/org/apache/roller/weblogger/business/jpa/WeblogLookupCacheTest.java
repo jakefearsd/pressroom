@@ -20,6 +20,8 @@ package org.apache.roller.weblogger.business.jpa;
 import java.util.Date;
 import java.util.List;
 
+import jakarta.persistence.Query;
+
 import org.apache.roller.weblogger.TestUtils;
 import org.apache.roller.weblogger.business.WeblogManager;
 import org.apache.roller.weblogger.business.WeblogPageManager;
@@ -247,20 +249,81 @@ class WeblogLookupCacheTest {
         assertEquals(List.of("about"), publishedSlugs(), "page delete");
     }
 
-    /**
-     * {@code removePages} deletes in bulk and moves no stamp. A remembered id
-     * that no longer resolves is a miss, never a hole in the list.
-     */
+    // ------------------------------------------- stale ids at an unmoved stamp
+    //
+    // A bulk JPQL statement changes rows without moving the weblog's stamp,
+    // so the slot still answers for the current stamp with ids that no longer
+    // mean what they did. (removePages is one, but it also drops the slot
+    // after its commit; these reach the checks with the slot still in place.)
+
     @Test
-    void aRememberedPageThatNoLongerExistsIsAMiss() throws Exception {
-        savePage("about", WeblogPage.PubStatus.PUBLISHED, 10);
+    void aRememberedPageDeletedInBulkIsAMiss() throws Exception {
+        WeblogPage about = savePage("about", WeblogPage.PubStatus.PUBLISHED, 10);
         assertEquals(List.of("about"), publishedSlugs());
         TestUtils.endSession(false);
 
-        pages().removePages(managedWeblog());
-        TestUtils.endSession(true);
+        bulk("DELETE FROM WeblogPage p WHERE p.id = ?1", about.getId());
 
-        assertEquals(List.of(), publishedSlugs());
+        assertTrue(pageManager().remembersPagesOf(weblog.getId()), "the slot is still there");
+        assertEquals(List.of(), publishedSlugs(), "never a null in the nav list");
+    }
+
+    @Test
+    void aRememberedPageUnpublishedInBulkIsAMiss() throws Exception {
+        WeblogPage about = savePage("about", WeblogPage.PubStatus.PUBLISHED, 10);
+        assertEquals(List.of("about"), publishedSlugs());
+        TestUtils.endSession(false);
+
+        bulk("UPDATE WeblogPage p SET p.status = ?1 WHERE p.id = ?2",
+                WeblogPage.PubStatus.DRAFT, about.getId());
+
+        assertTrue(pageManager().remembersPagesOf(weblog.getId()), "the slot is still there");
+        assertEquals(List.of(), publishedSlugs(), "a draft never reaches the nav");
+    }
+
+    @Test
+    void aRememberedTemplateDeletedInBulkIsAMiss() throws Exception {
+        String id = saveBareStylesheet();
+        assertNotNull(stylesheet());
+        TestUtils.endSession(false);
+
+        bulk("DELETE FROM WeblogTemplate t WHERE t.id = ?1", id);
+
+        assertTrue(weblogManager().remembersTemplatesOf(weblog.getId()), "the slot is still there");
+        assertNull(stylesheet());
+    }
+
+    @Test
+    void aRememberedTemplateGivenAnotherActionIsAMiss() throws Exception {
+        String id = saveBareStylesheet();
+        assertNotNull(stylesheet());
+        TestUtils.endSession(false);
+
+        bulk("UPDATE WeblogTemplate t SET t.action = ?1 WHERE t.id = ?2", ComponentType.CUSTOM, id);
+
+        assertTrue(weblogManager().remembersTemplatesOf(weblog.getId()), "the slot is still there");
+        assertNull(stylesheet(), "a custom template is not the stylesheet");
+    }
+
+    @Test
+    void aRememberedTemplateMovedToAnotherWeblogIsAMiss() throws Exception {
+        Weblog other = TestUtils.setupWeblog("lookupcacheother", user);
+        TestUtils.endSession(true);
+        try {
+            String id = saveBareStylesheet();
+            assertNotNull(stylesheet());
+            TestUtils.endSession(false);
+
+            bulk("UPDATE WeblogTemplate t SET t.weblog = ?1 WHERE t.id = ?2",
+                    TestUtils.getManagedWebsite(other), id);
+
+            assertTrue(weblogManager().remembersTemplatesOf(weblog.getId()), "the slot is still there");
+            assertNull(stylesheet(), "another weblog's stylesheet is not this one's");
+        } finally {
+            TestUtils.endSession(false);
+            TestUtils.teardownWeblog(other.getId());
+            TestUtils.endSession(true);
+        }
     }
 
     /** As {@link #aRolledBackUnitOfWorkLeavesNothingBehind}, for the page list. */
@@ -370,6 +433,40 @@ class WeblogLookupCacheTest {
         rendition.setTemplate(css);
         rendition.setTemplateLanguage(TemplateLanguage.VELOCITY);
         weblogs().saveTemplateRendition(rendition);
+    }
+
+    /** A stylesheet template with no renditions, so a bulk delete has no children; committed. */
+    private String saveBareStylesheet() throws Exception {
+        WeblogTemplate template = new WeblogTemplate();
+        template.setWeblog(managedWeblog());
+        template.setAction(ComponentType.STYLESHEET);
+        template.setName("Stylesheet");
+        template.setLink("styles.css");
+        template.setDescription("stylesheet");
+        template.setHidden(false);
+        template.setNavbar(false);
+        template.setLastModified(new Date());
+        weblogs().saveTemplate(template);
+        TestUtils.endSession(true);
+        return template.getId();
+    }
+
+    /** A committed bulk JPQL statement: rows change, the weblog's stamp does not. */
+    private static void bulk(String jpql, Object... params) throws Exception {
+        Query query = QueryRecorder.strategy().getEntityManager(true).createQuery(jpql);
+        for (int i = 0; i < params.length; i++) {
+            query.setParameter(i + 1, params[i]);
+        }
+        assertEquals(1, query.executeUpdate(), jpql);
+        TestUtils.endSession(true);
+    }
+
+    private static JPAWeblogManagerImpl weblogManager() {
+        return (JPAWeblogManagerImpl) weblogs();
+    }
+
+    private static JPAWeblogPageManagerImpl pageManager() {
+        return (JPAWeblogPageManagerImpl) pages();
     }
 
     private WeblogPage savePage(String slug, WeblogPage.PubStatus status, int navOrder)
