@@ -110,3 +110,43 @@ DISTINCT`, so it also guards the site-wide rows a plain `UNIQUE` let
 duplicate, and recomputed every total. The entity is `cacheable="false"`:
 EclipseLink's shared cache never sees the native writes.
 `TagAggregateConcurrencyTest` reproduces each failure.
+
+### Entry anchors (`weblogentry.anchor`)
+
+An entry's anchor (its permalink slug) is unique within its weblog, and
+since V035 the database says so: `we_website_anchor_uq (websiteid, anchor)`,
+which also serves every lookup by anchor (permalinks, `createAnchor`'s check;
+before, a scan of the weblog's entries). **`saveWeblogEntry` claims an anchor
+under a lock** (`JPAWeblogEntryManagerImpl.claimAnchor`): whenever it
+generates one, or the entry's anchor differs from the one it was loaded with
+(`WeblogEntry.getLoadedAnchor`, null for a new entry), it first takes
+`pg_advisory_xact_lock` on `weblogentry.anchor:<weblog id>`
+(`JPAPersistenceStrategy.lockUntilCommit`), held until the transaction ends,
+then checks. A concurrent create waits, and its check (a fresh READ
+COMMITTED snapshot) sees the committed entry, so a generated anchor takes the
+next suffix (`title`, `title1`, ...) and a chosen one is refused with
+`AnchorTakenException` (the API's 409 on `anchor`). Per weblog, not per
+title: `foo1` generated from "foo" and `foo1` from "foo 1" are one anchor.
+Creates of a weblog are therefore serialised from the save to the commit;
+edits keep their anchor and take no lock. Before the lock, 8 concurrent
+same-titled creates committed 8 entries with one anchor.
+
+- **Do not call `beginEarlyTransaction` before the lock.** EclipseLink begins
+  the database transaction for a native query in an active transaction
+  (once), which is what puts the lock on the connection that commits. A
+  second `beginEarlyTransaction` nests it; the commit then ends only the
+  inner level, and the connection stays idle in transaction holding the lock
+  (a two-entry transaction stalled the next create of the weblog for 100 s).
+- **Lock order with the tag recount:** the lock is the first lock a create
+  takes (nothing is flushed first), and `TagAggregateStore` takes its row
+  locks only at commit, after every save, so a waiter here holds no tag row.
+  A transaction that had already flushed a write before creating an entry
+  could still wait here holding a row lock; nothing in Roller does that, and
+  PostgreSQL would detect the cycle and abort one side.
+- **V035 resolved existing duplicates** by the order of the permalink query
+  (`ORDER BY pubtime DESC`, NULL first in PostgreSQL, then lower id); the
+  rest took the first free `<anchor>N`. None of them was reachable before:
+  `getWeblogEntryByAnchor`'s `getSingleResult` threw
+  `NonUniqueResultException` on a duplicated anchor. No redirect was added:
+  the old anchor serves the entry that kept it, and a rule fires only on a
+  404.

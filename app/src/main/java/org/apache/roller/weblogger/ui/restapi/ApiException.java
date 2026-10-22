@@ -83,8 +83,13 @@ public class ApiException extends RuntimeException {
 
     /** A 409 about one request field, such as an entry anchor another entry already holds. */
     public static ApiException conflictOnField(String field, String detail) {
+        return conflictOnField(field, detail, null);
+    }
+
+    /** As above, chaining {@code cause} -- see the cause-carrying constructor. */
+    public static ApiException conflictOnField(String field, String detail, Throwable cause) {
         return new ApiException(409, TYPE_BASE + "conflict", "Conflict", detail,
-                List.of(new ApiProblem.FieldError(field, detail)));
+                List.of(new ApiProblem.FieldError(field, detail)), cause);
     }
 
     public static ApiException conflict(String detail) {

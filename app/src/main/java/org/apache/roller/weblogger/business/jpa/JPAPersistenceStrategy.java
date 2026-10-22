@@ -81,6 +81,10 @@ public class JPAPersistenceStrategy {
 
     private static final String PERSISTENCE_UNIT_NAME = "RollerPU";
 
+    /** In FROM, so it runs whatever the planner makes of the select list. */
+    private static final String LOCK_UNTIL_COMMIT =
+            "SELECT 1 FROM pg_advisory_xact_lock(hashtextextended(?1, 0))";
+
     private static final String PERSISTENCE_XML_RESOURCE = "META-INF/persistence.xml";
 
     private static final String ECLIPSELINK_PROVIDER_CLASS_NAME =
@@ -867,6 +871,33 @@ public class JPAPersistenceStrategy {
     public Query getNativeQuery(String sql) {
         EntityManager em = getEntityManager(true);
         return em.createNativeQuery(sql);
+    }
+
+    /**
+     * Takes a PostgreSQL transaction-scoped advisory lock on {@code key},
+     * waiting for whoever holds it; it is released when the current unit of
+     * work commits or rolls back ({@link #flush()}, {@link #release()}).
+     *
+     * <p>It is taken on the connection that will commit, not on a pooled
+     * read connection in autocommit, where it would end with the statement:
+     * EclipseLink begins the database transaction for a native query run in
+     * an active transaction ({@code QueryImpl.executeReadQuery}), once. Do not
+     * begin it here as well: {@code UnitOfWork.beginEarlyTransaction} does not
+     * check whether it already has, a second call nests the transaction, and
+     * the commit then ends only the inner level, leaving the connection idle
+     * in transaction and the lock held ({@code EntryAnchorUniquenessTest}
+     * pins both: held until the commit, released by it). Nothing is flushed
+     * first, so a caller that has not written yet holds no row lock while it
+     * waits here.
+     *
+     * @param key names what is locked; hashed to PostgreSQL's 64-bit lock key
+     */
+    public void lockUntilCommit(String key) {
+        EntityManager em = getEntityManager(true);
+        Query lock = em.createNativeQuery(LOCK_UNTIL_COMMIT);
+        lock.setFlushMode(FlushModeType.COMMIT);
+        lock.setParameter(1, key);
+        lock.getSingleResult();
     }
 
     /**

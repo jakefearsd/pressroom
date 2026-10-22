@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.roller.weblogger.WebloggerException;
+import org.apache.roller.weblogger.business.AnchorTakenException;
 import org.apache.roller.weblogger.business.fetch.RemoteImageFetcher;
 import org.apache.roller.weblogger.pojos.MediaFile;
 import org.apache.roller.weblogger.pojos.User;
@@ -99,7 +100,14 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         // categoryless entry to the weblog's first category -- the same
         // fallback CategoriesApi.delete relies on to guarantee at least one
         // category always exists.
-        weblogger.getWeblogEntryManager().saveWeblogEntry(entry);
+        try {
+            // Those checks are unlocked, so two creates choosing one anchor
+            // can both pass them. The save checks again under the weblog's
+            // anchor lock, held until the commit below, and refuses the loser.
+            weblogger.getWeblogEntryManager().saveWeblogEntry(entry);
+        } catch (AnchorTakenException taken) {
+            throw anchorConflict(taken.getAnchor(), taken.getHolderStatus(), taken);
+        }
         weblogger.flush();
         if (entry.isPublished()) {
             weblogger.getIndexManager().addEntryReIndexOperation(entry);
@@ -413,9 +421,14 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         if (holder == null) {
             return;
         }
-        throw ApiException.conflictOnField("anchor", holder.getStatus() == WeblogEntry.PubStatus.TRASHED
+        throw anchorConflict(anchor, holder.getStatus(), null);
+    }
+
+    private static ApiException anchorConflict(String anchor, WeblogEntry.PubStatus holderStatus,
+                                               Throwable cause) {
+        return ApiException.conflictOnField("anchor", holderStatus == WeblogEntry.PubStatus.TRASHED
                 ? "anchor '" + anchor + "' is held by an entry in the trash; delete it forever (delete_forever) to free it."
-                : "anchor '" + anchor + "' is already used by another entry.");
+                : "anchor '" + anchor + "' is already used by another entry.", cause);
     }
 
     /**

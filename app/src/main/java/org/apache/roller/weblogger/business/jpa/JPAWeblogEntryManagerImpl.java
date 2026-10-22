@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.roller.util.RollerConstants;
 import org.apache.roller.weblogger.WebloggerException;
+import org.apache.roller.weblogger.business.AnchorTakenException;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.RollerEvent;
 import org.apache.roller.weblogger.pojos.User;
@@ -59,6 +60,9 @@ import org.apache.roller.weblogger.business.WeblogEntryManager;
 public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     
     private static final Logger log = LoggerFactory.getLogger(JPAWeblogEntryManagerImpl.class);
+
+    /** Advisory-lock key prefix for a weblog's anchors; see claimAnchor. */
+    private static final String ANCHOR_LOCK_PREFIX = "weblogentry.anchor:";
     
     private final Weblogger roller;
     private final JPAPersistenceStrategy strategy;
@@ -178,9 +182,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
             entry.setLocale(entry.getWebsite().getLocale());
         }
         
-        if (entry.getAnchor() == null || entry.getAnchor().isBlank()) {
-            entry.setAnchor(this.createAnchor(entry));
-        }
+        claimAnchor(entry);
         
         // if the entry was published to future, set status as SCHEDULED
         // we only consider an entry future published if it is scheduled
@@ -773,6 +775,57 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     }
     
     /**
+     * Gives a new entry its anchor, or checks the one its caller chose, so
+     * that no two entries of a weblog ever share one.
+     *
+     * <p>Checking and then inserting is safe only if no other transaction can
+     * claim an anchor of this weblog in between; the INSERT itself happens at
+     * commit. So the check runs under a lock on the weblog's anchors
+     * ({@link JPAPersistenceStrategy#lockUntilCommit}), held until this
+     * transaction commits: a concurrent create waits, and its check, a fresh
+     * READ COMMITTED snapshot, then sees this entry. Per weblog rather than per
+     * title, because a generated {@code foo1} and a chosen or generated
+     * {@code foo1} from another title are the same anchor. Creates of one
+     * weblog are serialised from here to commit; edits, which keep the
+     * stored anchor, take no lock. The unique index {@code we_website_anchor_uq}
+     * (V035) is the backstop for any path that bypasses this.
+     *
+     * <p>No row lock is held while waiting, unless this transaction had
+     * already flushed a write -- nothing in Roller saves an entry after one --
+     * and the tag recount's aggregate row locks are taken only at commit,
+     * after this lock. A wait here is therefore never part of a lock cycle
+     * with {@link TagAggregateStore}.
+     *
+     * @throws AnchorTakenException for a chosen anchor another entry of the
+     *         weblog holds, a trashed one included
+     */
+    private void claimAnchor(WeblogEntry entry) throws WebloggerException {
+        String anchor = entry.getAnchor();
+        boolean generate = anchor == null || anchor.isBlank();
+        if (!generate && anchor.equals(entry.getLoadedAnchor())) {
+            return;
+        }
+        strategy.lockUntilCommit(ANCHOR_LOCK_PREFIX + entry.getWebsite().getId());
+        if (generate) {
+            entry.setAnchor(createAnchor(entry));
+            return;
+        }
+        for (WeblogEntry holder : entriesWithAnchor(entry.getWebsite(), anchor)) {
+            if (!holder.getId().equals(entry.getId())) {
+                throw new AnchorTakenException(anchor, holder.getStatus());
+            }
+        }
+    }
+
+    private List<WeblogEntry> entriesWithAnchor(Weblog weblog, String anchor) throws WebloggerException {
+        TypedQuery<WeblogEntry> q = strategy.getNamedQuery(
+                "WeblogEntry.getByWebsite&Anchor", WeblogEntry.class);
+        q.setParameter(1, weblog);
+        q.setParameter(2, anchor);
+        return q.getResultList();
+    }
+
+    /**
      * @inheritDoc
      */
     @Override
@@ -796,13 +849,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
                 name = base + count;
             }
             
-            TypedQuery<WeblogEntry> q = strategy.getNamedQuery(
-                    "WeblogEntry.getByWebsite&Anchor", WeblogEntry.class);
-            q.setParameter(1, entry.getWebsite());
-            q.setParameter(2, name);
-            List<WeblogEntry> results = q.getResultList();
-            
-            if (results.isEmpty()) {
+            if (entriesWithAnchor(entry.getWebsite(), name).isEmpty()) {
                 break;
             } else {
                 count++;
