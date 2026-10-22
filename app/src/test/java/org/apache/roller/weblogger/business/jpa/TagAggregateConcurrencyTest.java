@@ -218,10 +218,15 @@ class TagAggregateConcurrencyTest {
      * and b. Taking each tag's row lock as each entry was saved made that a
      * lock cycle. The multi-entry transaction goes on only once the single
      * save is waiting on it (or after two seconds, if it never waits).
+     *
+     * <p>The single save edits an existing entry: a second CREATE in the
+     * weblog would wait on the weblog's anchor lock (JPAWeblogEntryManagerImpl.
+     * claimAnchor) before touching any tag, and never overlap at the tag rows.
      */
     @Test
     @Timeout(120)
     void aMultiEntryTransactionAndAnOverlappingSaveDoNotDeadlock() throws Exception {
+        String existing = publish(weblog.getId(), "single");
         CountDownLatch firstSaved = new CountDownLatch(1);
         assertNoFailures(inParallel(2, worker -> {
             WeblogEntryManager mgr = TestUtils.weblogger().getWeblogEntryManager();
@@ -232,7 +237,7 @@ class TagAggregateConcurrencyTest {
                 mgr.saveWeblogEntry(newEntry(weblog.getId(), PubStatus.PUBLISHED, "multi2", "dla"));
             } else {
                 firstSaved.await(30, TimeUnit.SECONDS);
-                mgr.saveWeblogEntry(newEntry(weblog.getId(), PubStatus.PUBLISHED, "single", "dla", "dlb"));
+                retag(existing, "dla dlb");
             }
         }), "multi-entry vs single save");
         assertAggregateIsTrue("dla", weblog);

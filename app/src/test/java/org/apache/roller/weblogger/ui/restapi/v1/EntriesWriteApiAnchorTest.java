@@ -1,6 +1,7 @@
 package org.apache.roller.weblogger.ui.restapi.v1;
 
 import java.util.List;
+import org.apache.roller.weblogger.business.AnchorTakenException;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -110,6 +112,35 @@ class EntriesWriteApiAnchorTest {
 
         assertEquals(List.of("category"), EntriesWriteApiFixture.fields(problem));
         verify(fx.entries, never()).getWeblogEntryByAnchor(any(), any());
+    }
+
+    /**
+     * Two creates choosing one anchor both pass the API's own check; the
+     * manager, re-checking under the weblog's anchor lock, refuses the
+     * second. That is the same documented 409 on {@code anchor}, never a 500.
+     */
+    @Test
+    void anAnchorTakenByARaceAfterTheChecksIsTheSame409() throws Exception {
+        doThrow(new AnchorTakenException("torrey-pines", WeblogEntry.PubStatus.PUBLISHED))
+                .when(fx.entries).saveWeblogEntry(any());
+
+        JsonNode problem = EntriesWriteApiFixture.json(fx.send(post("/v1/weblogs/myblog/entries").content(
+                "{\"title\":\"t\",\"text\":\"x\",\"anchor\":\"torrey-pines\"}")).andExpect(status().isConflict()));
+
+        assertEquals(List.of("anchor"), EntriesWriteApiFixture.fields(problem));
+        assertEquals("anchor 'torrey-pines' is already used by another entry.", problem.get("detail").asString());
+    }
+
+    @Test
+    void anAnchorARacingEntryHoldsInTheTrashSaysHowToFreeIt() throws Exception {
+        doThrow(new AnchorTakenException("torrey-pines", WeblogEntry.PubStatus.TRASHED))
+                .when(fx.entries).saveWeblogEntry(any());
+
+        JsonNode problem = EntriesWriteApiFixture.json(fx.send(post("/v1/weblogs/myblog/entries").content(
+                "{\"title\":\"t\",\"text\":\"x\",\"anchor\":\"torrey-pines\"}")).andExpect(status().isConflict()));
+
+        assertEquals(List.of("anchor"), EntriesWriteApiFixture.fields(problem));
+        assertTrue(problem.get("detail").asString().contains("delete_forever"));
     }
 
     private WeblogEntry stored() throws Exception {

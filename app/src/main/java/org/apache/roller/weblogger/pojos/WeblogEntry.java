@@ -190,6 +190,10 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
      *  same post-load callback that snapshots content for revisions. */
     private transient PubStatus loadedStatus = null;
 
+    /** Anchor as loaded from the database (or last saved); null for a new
+     *  entry. A save claims an anchor only when it differs from this. */
+    private transient String loadedAnchor = null;
+
     /**
      * JPA {@code post-load} callback: remember the content as read from the
      * database. See WeblogEntry.orm.xml, which is where this is wired -- there
@@ -198,6 +202,7 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
     public void snapshotLoadedContent() {
         loadedContent = WeblogEntryRevision.of(this, null);
         loadedStatus = getStatus();
+        loadedAnchor = getAnchor();
         // what is loaded (or just saved) is the baseline the next save's tag
         // changes are measured from
         addedTags = new HashSet<>();
@@ -206,6 +211,10 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
 
     public PubStatus getLoadedStatus() {
         return loadedStatus;
+    }
+
+    public String getLoadedAnchor() {
+        return loadedAnchor;
     }
 
     /**

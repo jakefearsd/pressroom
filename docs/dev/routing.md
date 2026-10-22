@@ -56,7 +56,8 @@ screen).
 - **Entry anchors are immutable after create, so there is no entry-side hook** —
   `EntryBean` has no anchor field; `createAnchor` fires only when unset. The API's
   `anchor` sets one at create only (`EntryFieldRules.isValidAnchor`).
-  Migrated permalinks are manual rules.
+  Migrated permalinks are manual rules. An anchor is unique per weblog
+  (V035's index plus a lock at create; `database.md`, "Entry anchors").
 - **Hit bookkeeping is best-effort**: `recordHit` is one JPQL
   `UPDATE ... hit_count = hit_count + 1` (no load-modify-store) in its own
   try/catch. `hitCount`/`lastHitAt` are on the API list.

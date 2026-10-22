@@ -21,6 +21,7 @@ package org.apache.roller.weblogger.business.jpa;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Enumeration;
@@ -80,6 +81,18 @@ public class JPAPersistenceStrategy {
         LoggerFactory.getLogger(JPAPersistenceStrategy.class);
 
     private static final String PERSISTENCE_UNIT_NAME = "RollerPU";
+
+    /** In FROM, so it runs whatever the planner makes of the select list. */
+    private static final String LOCK_UNTIL_COMMIT =
+            "SELECT 1 FROM pg_advisory_xact_lock(hashtextextended(?1, 0))";
+
+    private static final String CURRENT_LOCK_TIMEOUT = "SELECT current_setting('lock_timeout')";
+
+    /** Transaction-local, so a rollback restores it too. */
+    private static final String SET_LOCK_TIMEOUT = "SELECT set_config('lock_timeout', ?1, true)";
+
+    /** PostgreSQL's lock_not_available: a lock_timeout expired. */
+    private static final String LOCK_NOT_AVAILABLE = "55P03";
 
     private static final String PERSISTENCE_XML_RESOURCE = "META-INF/persistence.xml";
 
@@ -867,6 +880,64 @@ public class JPAPersistenceStrategy {
     public Query getNativeQuery(String sql) {
         EntityManager em = getEntityManager(true);
         return em.createNativeQuery(sql);
+    }
+
+    /**
+     * Takes a PostgreSQL transaction-scoped advisory lock on {@code key},
+     * waiting at most {@code timeoutSeconds} for whoever holds it; it is
+     * released when the current unit of work commits or rolls back
+     * ({@link #flush()}, {@link #release()}).
+     *
+     * <p>It is taken on the connection that will commit, not on a pooled
+     * read connection in autocommit, where it would end with the statement:
+     * EclipseLink begins the database transaction for a native query run in
+     * an active transaction ({@code QueryImpl.executeReadQuery}), once. Do not
+     * begin it here as well: {@code UnitOfWork.beginEarlyTransaction} does not
+     * check whether it already has, a second call nests the transaction, and
+     * the commit then ends only the inner level, leaving the connection idle
+     * in transaction and the lock held ({@code EntryAnchorUniquenessTest}
+     * pins both: held until the commit, released by it). Nothing is flushed
+     * first, so a caller that has not written yet holds no row lock while it
+     * waits here.
+     *
+     * <p>The wait is bounded by a transaction-local {@code lock_timeout},
+     * put back as it was once the lock is held, so no other statement of the
+     * transaction inherits it. A timeout aborts the database transaction; the
+     * caller must fail the unit of work, which {@link #release()} rolls back.
+     *
+     * @param key names what is locked; hashed to PostgreSQL's 64-bit lock key
+     * @param timeoutSeconds the longest wait; 0 waits forever
+     * @return false when the wait timed out
+     */
+    public boolean lockUntilCommit(String key, int timeoutSeconds) throws WebloggerException {
+        EntityManager em = getEntityManager(true);
+        Object previous = nativeQuery(em, CURRENT_LOCK_TIMEOUT).getSingleResult();
+        nativeQuery(em, SET_LOCK_TIMEOUT).setParameter(1, timeoutSeconds + "s").getSingleResult();
+        try {
+            nativeQuery(em, LOCK_UNTIL_COMMIT).setParameter(1, key).getSingleResult();
+        } catch (PersistenceException e) {
+            if (hasSqlState(e, LOCK_NOT_AVAILABLE)) {
+                return false;
+            }
+            throw new WebloggerException("Could not take lock " + key, e);
+        }
+        nativeQuery(em, SET_LOCK_TIMEOUT).setParameter(1, previous).getSingleResult();
+        return true;
+    }
+
+    private static Query nativeQuery(EntityManager em, String sql) {
+        Query q = em.createNativeQuery(sql);
+        q.setFlushMode(FlushModeType.COMMIT);
+        return q;
+    }
+
+    private static boolean hasSqlState(Throwable failure, String sqlState) {
+        for (Throwable t = failure; t != null; t = t.getCause()) {
+            if (t instanceof SQLException sql && sqlState.equals(sql.getSQLState())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

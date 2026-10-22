@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.roller.util.RollerConstants;
 import org.apache.roller.weblogger.WebloggerException;
+import org.apache.roller.weblogger.business.AnchorTakenException;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.RollerEvent;
 import org.apache.roller.weblogger.pojos.User;
@@ -46,6 +47,7 @@ import org.apache.roller.weblogger.pojos.WeblogEntryTag;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogEntryAttribute;
 import org.apache.roller.weblogger.pojos.WeblogEntryRevision;
+import org.apache.roller.weblogger.config.WebloggerConfig;
 import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.util.DateUtil;
 import org.apache.roller.weblogger.business.WeblogEntryManager;
@@ -60,6 +62,17 @@ import org.apache.roller.weblogger.business.WeblogEntryManager;
 public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     
     private static final Logger log = LoggerFactory.getLogger(JPAWeblogEntryManagerImpl.class);
+
+    /** Advisory-lock key prefix for a weblog's anchors; see claimAnchor. */
+    private static final String ANCHOR_LOCK_PREFIX = "weblogentry.anchor:";
+
+    /** Startup property: the longest wait, in seconds, for a weblog's anchor lock. */
+    private static final String ANCHOR_LOCK_TIMEOUT = "weblogentry.anchor.lockTimeoutSeconds";
+
+    private static final int DEFAULT_ANCHOR_LOCK_TIMEOUT = 10;
+
+    /** {@code weblogentry.anchor} is varchar(255) (V002__baseline_schema.sql). */
+    private static final int ANCHOR_MAX_LENGTH = 255;
     
     private final Weblogger roller;
     private final JPAPersistenceStrategy strategy;
@@ -182,9 +195,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
             entry.setLocale(entry.getWebsite().getLocale());
         }
         
-        if (entry.getAnchor() == null || entry.getAnchor().isBlank()) {
-            entry.setAnchor(this.createAnchor(entry));
-        }
+        claimAnchor(entry);
         
         // if the entry was published to future, set status as SCHEDULED
         // we only consider an entry future published if it is scheduled
@@ -829,7 +840,121 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     }
     
     /**
+     * Gives a new entry its anchor, or checks the one its caller chose, so
+     * that no two entries of a weblog ever share one.
+     *
+     * <p>Checking and then inserting is safe only if no other transaction can
+     * claim an anchor of this weblog in between; the INSERT itself happens at
+     * commit. So the check runs under a lock on the weblog's anchors
+     * ({@link JPAPersistenceStrategy#lockUntilCommit}), held until this
+     * transaction commits: a concurrent create waits, and its check, a fresh
+     * READ COMMITTED snapshot, then sees this entry. Per weblog rather than per
+     * title, because a generated {@code foo1} (title "foo", "foo" taken) and a
+     * chosen {@code foo1}, or one generated from the title "foo1", are the
+     * same anchor. Creates of one weblog are serialised from here to commit;
+     * edits, which keep the stored anchor, take no lock. The unique index
+     * {@code we_website_anchor_uq} (V035) is the backstop for any path that
+     * bypasses this.
+     *
+     * <p>Within one transaction the database cannot answer: an entry saved
+     * earlier in it is not flushed until commit, and the check's query does
+     * not flush. So the anchors this transaction has claimed are kept too
+     * ({@link ClaimedAnchors}), and are consulted alongside the database.
+     *
+     * <p>The wait is bounded by {@code weblogentry.anchor.lockTimeoutSeconds}
+     * (startup property, default 10): a save that waits longer fails, and its
+     * transaction rolls back, rather than hanging a request thread behind a
+     * stuck holder.
+     *
+     * <p>No row lock is held while waiting, unless this transaction had
+     * already flushed a write -- nothing in Roller saves an entry after one --
+     * and the tag recount's aggregate row locks are taken only at commit,
+     * after this lock. A wait here is therefore never part of a lock cycle
+     * with {@link TagAggregateStore}.
+     *
+     * @throws AnchorTakenException for a chosen anchor another entry of the
+     *         weblog holds, a trashed one included, or one an entry saved
+     *         earlier in this transaction claimed
+     */
+    private void claimAnchor(WeblogEntry entry) throws WebloggerException {
+        String anchor = entry.getAnchor();
+        boolean generate = anchor == null || anchor.isBlank();
+        if (!generate && anchor.equals(entry.getLoadedAnchor())) {
+            return;
+        }
+        Weblog weblog = entry.getWebsite();
+        int timeout = WebloggerConfig.getIntProperty(ANCHOR_LOCK_TIMEOUT, DEFAULT_ANCHOR_LOCK_TIMEOUT);
+        if (!strategy.lockUntilCommit(ANCHOR_LOCK_PREFIX + weblog.getId(), timeout)) {
+            log.warn("Gave up after {}s waiting for the anchor lock of weblog {}; the save is refused",
+                    timeout, weblog.getHandle());
+            throw new WebloggerException("Timed out after " + timeout + "s waiting to claim an anchor in weblog "
+                    + weblog.getHandle() + ": another save of the weblog holds the lock");
+        }
+        ClaimedAnchors claimed = claimedAnchors();
+        if (generate) {
+            entry.setAnchor(createAnchor(entry));
+        } else {
+            List<WeblogEntry> holders = new ArrayList<>(entriesWithAnchor(weblog, anchor));
+            WeblogEntry claimer = claimed.holder(weblog, anchor);
+            if (claimer != null) {
+                holders.add(claimer);
+            }
+            for (WeblogEntry holder : holders) {
+                if (!holder.getId().equals(entry.getId())) {
+                    throw new AnchorTakenException(anchor, holder.getStatus());
+                }
+            }
+        }
+        claimed.add(weblog, entry.getAnchor(), entry);
+    }
+
+    private ClaimedAnchors claimedAnchors() {
+        return strategy.beforeCommit(ClaimedAnchors.class, ClaimedAnchors::new);
+    }
+
+    /**
+     * The anchors the CURRENT transaction has claimed, by weblog, for checks
+     * the database cannot answer until commit. Held as a before-commit action
+     * only for its lifetime: the strategy discards it when the unit of work
+     * commits ({@link JPAPersistenceStrategy#flush()}) or is released, so a
+     * pooled thread's next request never sees it. Running it does nothing.
+     */
+    static final class ClaimedAnchors implements JPAPersistenceStrategy.BeforeCommit {
+
+        private final Map<String, WeblogEntry> byWeblogAndAnchor = new HashMap<>();
+
+        WeblogEntry holder(Weblog weblog, String anchor) {
+            return byWeblogAndAnchor.get(key(weblog, anchor));
+        }
+
+        void add(Weblog weblog, String anchor, WeblogEntry entry) {
+            byWeblogAndAnchor.put(key(weblog, anchor), entry);
+        }
+
+        private static String key(Weblog weblog, String anchor) {
+            return weblog.getId() + '/' + anchor;
+        }
+
+        @Override
+        public void run() {
+            // nothing to do at commit; the claims were only needed until then
+        }
+    }
+
+    private List<WeblogEntry> entriesWithAnchor(Weblog weblog, String anchor) throws WebloggerException {
+        TypedQuery<WeblogEntry> q = strategy.getNamedQuery(
+                "WeblogEntry.getByWebsite&Anchor", WeblogEntry.class);
+        q.setParameter(1, weblog);
+        q.setParameter(2, anchor);
+        return q.getResultList();
+    }
+
+    /**
      * @inheritDoc
+     *
+     * <p>Free means held by no stored entry of the weblog and claimed by no
+     * entry saved earlier in the current transaction. The base is cut so that
+     * base and suffix fit {@code weblogentry.anchor}, varchar(255).
      */
     @Override
     public String createAnchor(WeblogEntry entry) throws WebloggerException {
@@ -842,31 +967,27 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         // across a change.
         char separator = WebloggerRuntimeConfig
                 .getBooleanProperty("weblogentry.title.useUnderscoreSeparator") ? '_' : '-';
-        // Check for uniqueness of anchor
         String base = entry.createAnchorBase(separator);
-        String name = base;
-        int count = 0;
-        
-        while (true) {
-            if (count > 0) {
-                name = base + count;
-            }
-            
-            TypedQuery<WeblogEntry> q = strategy.getNamedQuery(
-                    "WeblogEntry.getByWebsite&Anchor", WeblogEntry.class);
-            q.setParameter(1, entry.getWebsite());
-            q.setParameter(2, name);
-            List<WeblogEntry> results = q.getResultList();
-            
-            if (results.isEmpty()) {
-                break;
-            } else {
-                count++;
+        ClaimedAnchors claimed = claimedAnchors();
+        for (int count = 0; ; count++) {
+            String name = fitAnchor(base, count == 0 ? "" : String.valueOf(count));
+            if (claimed.holder(entry.getWebsite(), name) == null
+                    && entriesWithAnchor(entry.getWebsite(), name).isEmpty()) {
+                return name;
             }
         }
-        return name;
     }
-    
+
+    /** {@code base + suffix}, the base cut (never inside a surrogate pair) to fit the column. */
+    static String fitAnchor(String base, String suffix) {
+        int room = ANCHOR_MAX_LENGTH - suffix.length();
+        if (base.length() <= room) {
+            return base + suffix;
+        }
+        int cut = Character.isHighSurrogate(base.charAt(room - 1)) ? room - 1 : room;
+        return base.substring(0, cut) + suffix;
+    }
+
     /**
      * @inheritDoc
      */
