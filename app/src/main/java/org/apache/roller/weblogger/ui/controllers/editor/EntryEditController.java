@@ -153,7 +153,7 @@ public class EntryEditController extends BaseController {
         if ("saveDraft".equals(action)) {
             bean.setStatus(PubStatus.DRAFT.name());
         } else if ("publish".equals(action)) {
-            setPublishStatus(bean, entry, pubTime, request);
+            setPublishStatus(bean, pubTime, request);
         }
 
         String result = doSave(request, model, bean, entry, "entryAdd", pubTime);
@@ -576,11 +576,8 @@ public class EntryEditController extends BaseController {
 
         if ("saveDraft".equals(action)) {
             bean.setStatus(PubStatus.DRAFT.name());
-            if (entry.isPublished()) {
-                entry.setRefreshAggregates(true);
-            }
         } else if ("publish".equals(action)) {
-            setPublishStatus(bean, entry, pubTime, request);
+            setPublishStatus(bean, pubTime, request);
         }
 
         String result = doSave(request, model, bean, entry, "entryEdit", pubTime);
@@ -640,21 +637,16 @@ public class EntryEditController extends BaseController {
         }
     }
 
-    private void setPublishStatus(EntryBean bean, WeblogEntry entry, Timestamp pubTime,
-                                  HttpServletRequest request) {
+    // Tag counts need nothing here: saveWeblogEntry derives them from the
+    // entry's status as loaded against its status as saved.
+    private void setPublishStatus(EntryBean bean, Timestamp pubTime, HttpServletRequest request) {
         if (hasWeblogAction(getActionWeblog(request),
                 getAuthenticatedUser(request), WeblogPermission.POST)) {
             if (pubTime != null && pubTime.after(
                     new Date(System.currentTimeMillis() + RollerConstants.MIN_IN_MS))) {
                 bean.setStatus(PubStatus.SCHEDULED.name());
-                if (entry.isPublished()) {
-                    entry.setRefreshAggregates(true);
-                }
             } else {
                 bean.setStatus(PubStatus.PUBLISHED.name());
-                if (bean.getId() != null && !entry.isPublished()) {
-                    entry.setRefreshAggregates(true);
-                }
             }
         } else {
             bean.setStatus(PubStatus.PENDING.name());

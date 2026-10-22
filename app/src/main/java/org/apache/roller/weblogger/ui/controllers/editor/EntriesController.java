@@ -210,11 +210,6 @@ public class EntriesController extends BaseController {
         return applyToSelection(request, selectedEntries, bean, redirectAttributes,
                 mayPublish ? "weblogEntryQuery.bulkPublished" : "weblogEntryQuery.bulkSubmitted",
                 entry -> {
-                    if (target == PubStatus.PUBLISHED && !entry.isPublished()) {
-                        // The tag cloud counts published entries only, so a
-                        // draft becoming published must add all of its tags.
-                        entry.setRefreshAggregates(true);
-                    }
                     entry.setStatus(target);
                     entry.setUpdateTime(new Timestamp(System.currentTimeMillis()));
                     if (entry.isPublished() && entry.getPubTime() == null) {

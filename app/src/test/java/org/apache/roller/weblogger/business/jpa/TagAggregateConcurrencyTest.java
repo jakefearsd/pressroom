@@ -19,7 +19,6 @@ package org.apache.roller.weblogger.business.jpa;
 
 import java.lang.reflect.Field;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -35,7 +34,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.roller.testing.RollerPostgresContainer;
 import org.apache.roller.weblogger.TestUtils;
 import org.apache.roller.weblogger.business.WeblogEntryManager;
 import org.apache.roller.weblogger.business.Weblogger;
@@ -50,6 +48,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
+import static org.apache.roller.weblogger.business.jpa.TagAggregateRows.assertAggregateIsTrue;
+import static org.apache.roller.weblogger.business.jpa.TagAggregateRows.connection;
+import static org.apache.roller.weblogger.business.jpa.TagAggregateRows.storedTotals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -354,64 +355,12 @@ class TagAggregateConcurrencyTest {
         return root.getMessage();
     }
 
-    /**
-     * Exactly one row per weblog and one site-wide row (or none, at zero), each
-     * holding the number of PUBLISHED entries that carry the tag.
-     */
-    private static void assertAggregateIsTrue(String tag, Weblog... weblogs) throws SQLException {
-        for (Weblog w : weblogs) {
-            int truth = trueCount(w.getId(), tag);
-            assertEquals(truth == 0 ? List.of() : List.of(truth), storedTotals(w.getId(), tag),
-                    "weblog " + w.getHandle() + " / " + tag);
-        }
-        int siteTruth = trueCount(null, tag);
-        assertEquals(siteTruth == 0 ? List.of() : List.of(siteTruth), storedTotals(null, tag),
-                "site-wide / " + tag);
-    }
-
     private static int storedTotal(String weblogId, String tag) throws SQLException {
         List<Integer> totals = storedTotals(weblogId, tag);
         if (totals.size() != 1) {
             fail("expected one aggregate row for " + tag + ", found " + totals);
         }
         return totals.get(0);
-    }
-
-    private static List<Integer> storedTotals(String weblogId, String tag) throws SQLException {
-        String sql = weblogId == null
-                ? "SELECT total FROM roller_weblogentrytagagg WHERE websiteid IS NULL AND name = ?"
-                : "SELECT total FROM roller_weblogentrytagagg WHERE websiteid = ? AND name = ?";
-        try (Connection con = connection(); PreparedStatement ps = con.prepareStatement(sql)) {
-            int i = 1;
-            if (weblogId != null) {
-                ps.setString(i++, weblogId);
-            }
-            ps.setString(i, tag);
-            List<Integer> totals = new ArrayList<>();
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    totals.add(rs.getInt(1));
-                }
-            }
-            return totals;
-        }
-    }
-
-    private static int trueCount(String weblogId, String tag) throws SQLException {
-        String sql = "SELECT count(DISTINCT t.entryid) FROM roller_weblogentrytag t "
-                + "JOIN weblogentry e ON e.id = t.entryid "
-                + "WHERE e.status = 'PUBLISHED' AND t.name = ?"
-                + (weblogId == null ? "" : " AND e.websiteid = ?");
-        try (Connection con = connection(); PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, tag);
-            if (weblogId != null) {
-                ps.setString(2, weblogId);
-            }
-            try (ResultSet rs = ps.executeQuery()) {
-                rs.next();
-                return rs.getInt(1);
-            }
-        }
     }
 
     private static List<String> entryIdsTagged(String tag) throws SQLException {
@@ -437,10 +386,5 @@ class TagAggregateConcurrencyTest {
             }
         }
         return count;
-    }
-
-    private static Connection connection() throws SQLException {
-        return DriverManager.getConnection(RollerPostgresContainer.getJdbcUrl(),
-                RollerPostgresContainer.getUsername(), RollerPostgresContainer.getPassword());
     }
 }

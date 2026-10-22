@@ -170,7 +170,6 @@
             <transient name="tagsAsString"/>
             <transient name="addedTags"/>
             <transient name="removedTags"/>
-            <transient name="refreshAggregates"/>
         </attributes>
     </entity>
 </entity-mappings>

@@ -182,36 +182,25 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
             entry.setAnchor(this.createAnchor(entry));
         }
         
-        // Every tag-count change of this save is collected first and applied
-        // in one pass, so the rows are locked in a stable order.
-        Map<String, Integer> tagDeltas = new HashMap<>();
-        if (entry.isPublished()) {
-            // tag aggregates are updated only when entry published in order for
-            // tag cloud counts to match published articles
-            if (entry.getRefreshAggregates()) {
-                // blog entry wasn't published before, so all tags need to be incremented
-                addTagDeltas(tagDeltas, entry.getTags(), 1);
-            } else {
-                // only new tags need to be incremented
-                addTagDeltas(tagDeltas, entry.getAddedTags(), 1);
-            }
-            addTagDeltas(tagDeltas, entry.getRemovedTags(), -1);
-        } else if (entry.getRefreshAggregates()) {
-            // blog entry no longer published so need to reduce aggregate count
-            addTagDeltas(tagDeltas, entry.getTags(), -1);
-        }
-        tagAggregates.apply(entry.getWebsite(), tagDeltas);
-
-        for (WeblogEntryTag tag : entry.getRemovedTags()) {
-            this.strategy.remove(tag);
-        }
-
         // if the entry was published to future, set status as SCHEDULED
         // we only consider an entry future published if it is scheduled
         // more than 1 minute into the future
         if (PubStatus.PUBLISHED.equals(entry.getStatus()) &&
                 entry.getPubTime().after(new Date(System.currentTimeMillis() + RollerConstants.MIN_IN_MS))) {
             entry.setStatus(PubStatus.SCHEDULED);
+        }
+
+        // A tag counts once for every PUBLISHED entry carrying it. What this
+        // save changes is read from the entry itself -- the tags it counted
+        // under as loaded against those it counts under as saved (so after the
+        // SCHEDULED switch above) -- never from a flag each caller must set.
+        Set<String> countedBefore = entry.getLoadedStatus() == PubStatus.PUBLISHED
+                ? persistedTagNames(entry) : Set.of();
+        Set<String> countedAfter = entry.isPublished() ? tagNames(entry.getTags()) : Set.of();
+        tagAggregates.apply(entry.getWebsite(), tagCountChanges(countedBefore, countedAfter));
+
+        for (WeblogEntryTag tag : entry.getRemovedTags()) {
+            this.strategy.remove(tag);
         }
         
         // Store value object (creates new or updates existing)
@@ -342,12 +331,10 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         // keeps the shared cache from serving them after the entry is gone
         roller.getCommentManager().removeCommentsForEntry(entry);
 
-        // remove tag & tag aggregates
+        // remove tag & tag aggregates; the entry counted as it was loaded
         if (entry.getTags() != null) {
-            if (entry.isPublished()) {
-                Map<String, Integer> tagDeltas = new HashMap<>();
-                addTagDeltas(tagDeltas, entry.getTags(), -1);
-                tagAggregates.apply(weblog, tagDeltas);
+            if (entry.getLoadedStatus() == PubStatus.PUBLISHED) {
+                tagAggregates.apply(weblog, tagCountChanges(persistedTagNames(entry), Set.of()));
             }
             for (WeblogEntryTag tag : entry.getTags()) {
                 this.strategy.remove(tag);
@@ -379,26 +366,16 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
      * @inheritDoc
      *
      * <p>Goes through {@code saveWeblogEntry} like every other status change
-     * in this class, but its two most consequential effects -- the tag
-     * aggregate adjustment and the weblog {@code lastModified} bump -- are
-     * both gated inside {@code saveWeblogEntry} on the entry's NEW status
-     * being PUBLISHED, which TRASHED never is. Neither happens for free, so
-     * this method drives both explicitly itself, while it can still see
-     * that the entry WAS published (before the status flip below):
-     * <ul>
-     *   <li>{@code entry.setRefreshAggregates(true)} so
-     *       {@code saveWeblogEntry}'s tag-count adjustment fires and
-     *       decrements this entry's tags out of the tag cloud -- otherwise
-     *       they stay counted until the entry is purged, which with the
-     *       default "keep forever" retention is effectively never.</li>
-     *   <li>An explicit {@code saveWeblog} call bumps
-     *       {@code weblog.lastModified} directly -- {@code WeblogPageCache}
-     *       has no CacheHandler and expires a rendered page only by
-     *       comparing it against that timestamp (see the Templates section
-     *       of CLAUDE.md), so without this a reader keeps seeing a trashed
-     *       post on the cached home page until something unrelated happens
-     *       to bump it.</li>
-     * </ul>
+     * in this class, which takes a published entry's tags out of the tag
+     * counts (they follow the status as loaded against the status as saved).
+     * The weblog {@code lastModified} bump is gated inside
+     * {@code saveWeblogEntry} on the NEW status being PUBLISHED, which
+     * TRASHED never is, so this method makes an explicit {@code saveWeblog}
+     * call while it can still see that the entry WAS published --
+     * {@code WeblogPageCache} has no CacheHandler and expires a rendered page
+     * only by comparing it against that timestamp (see the Templates section
+     * of CLAUDE.md), so without this a reader keeps seeing a trashed post on
+     * the cached home page until something unrelated happens to bump it.
      *
      * <p>{@code saveWeblogEntry}'s revision recording compares only
      * title/text/summary, so a pure status change deposits no revision, and
@@ -409,9 +386,6 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     @Override
     public void trashWeblogEntry(WeblogEntry entry) throws WebloggerException {
         boolean wasPublished = entry.isPublished();
-        if (wasPublished) {
-            entry.setRefreshAggregates(true);
-        }
         entry.setStatus(PubStatus.TRASHED);
         entry.setTrashedAt(new Timestamp(System.currentTimeMillis()));
         saveWeblogEntry(entry);
@@ -431,8 +405,8 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
      * extra click to hit Publish again is the safer failure mode, so this
      * intentionally does not try to remember or infer the prior status.
      *
-     * <p>Unlike {@link #trashWeblogEntry}, this needs neither a tag
-     * aggregate refresh nor an explicit {@code weblog.lastModified} bump.
+     * <p>Unlike {@link #trashWeblogEntry}, this needs no explicit
+     * {@code weblog.lastModified} bump, and changes no tag counts.
      * TRASHED and DRAFT are both absent from every reader-facing query path
      * (see {@code WeblogEntrySearchCriteria}'s default exclusion of
      * TRASHED, and DRAFT was never included to begin with), so nothing a
@@ -740,11 +714,48 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         }
     }
     
-    private static void addTagDeltas(Map<String, Integer> deltas, Collection<WeblogEntryTag> tags,
-            int amount) {
-        for (WeblogEntryTag tag : tags) {
-            deltas.merge(tag.getName(), amount, Integer::sum);
+    /**
+     * The tags the entry has in the database: those it carries now that were
+     * not added since it was loaded, and those removed since. By identity, not
+     * {@code equals}: a tag removed and then added back is a new object equal
+     * to the removed one, and it was in the database all along.
+     */
+    private static Set<String> persistedTagNames(WeblogEntry entry) {
+        Set<WeblogEntryTag> added = Collections.newSetFromMap(new IdentityHashMap<>());
+        added.addAll(entry.getAddedTags());
+        Set<String> names = new HashSet<>();
+        for (Collection<WeblogEntryTag> tags : List.of(entry.getTags(), entry.getRemovedTags())) {
+            for (WeblogEntryTag tag : tags) {
+                if (!added.contains(tag)) {
+                    names.add(tag.getName());
+                }
+            }
         }
+        return names;
+    }
+
+    private static Set<String> tagNames(Collection<WeblogEntryTag> tags) {
+        Set<String> names = new HashSet<>();
+        for (WeblogEntryTag tag : tags) {
+            names.add(tag.getName());
+        }
+        return names;
+    }
+
+    /** +1 for each tag counted only after, -1 for each counted only before. */
+    private static Map<String, Integer> tagCountChanges(Set<String> before, Set<String> after) {
+        Map<String, Integer> changes = new HashMap<>();
+        for (String name : after) {
+            if (!before.contains(name)) {
+                changes.put(name, 1);
+            }
+        }
+        for (String name : before) {
+            if (!after.contains(name)) {
+                changes.put(name, -1);
+            }
+        }
+        return changes;
     }
 
     /**

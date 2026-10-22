@@ -149,6 +149,23 @@ build does not pass `-parameters`, so a bare `@RequestParam String id` throws
 at runtime while unit tests (which call the method directly) pass;
 `ControllerMetadataTest` fails on any unnamed one.
 
+## Tag counts
+
+A tag's count (`roller_weblogentrytagagg`, see `database.md`) is the number
+of PUBLISHED entries carrying it. **`saveWeblogEntry` derives every change
+itself**, from the entry's tags as loaded under `getLoadedStatus()` against
+its tags as saved under its final status (after the future-dated
+PUBLISHED→SCHEDULED switch); `removeWeblogEntry` uncounts by the loaded
+status too. Callers only set the status. The `refreshAggregates` flag every
+caller had to remember was removed (2026-10-22): the API's PATCH never set
+it, so a draft published through the API was never counted and an
+unpublished one never uncounted; a tag dropped while unpublishing stayed
+counted; a future-dated publish was counted before the switch to SCHEDULED
+and again on promotion; and a second save in one session counted its added
+tags twice, because `addedTags`/`removedTags` were never reset (now
+`snapshotLoadedContent` resets them). `TagAggregateBookkeepingTest` walks
+each transition.
+
 ## Trash (soft delete, W5)
 
 Deleting an entry moves it to a restorable trash; every design choice keeps
@@ -192,11 +209,9 @@ the new dimension from spreading.
     only `lastModified` expires a rendered page (see Templates), and
     `trashWeblogEntry` sets `TRASHED` before saving, so `saveWeblogEntry`'s
     `isPublished()` bump gate is false.
-  Trashing a published entry also sets `refreshAggregates`, or its tags stay
-  in the tag cloud until purge — at default retention, never. **Restore
-  deliberately does not**: `restoreWeblogEntry` lands on `DRAFT`,
-  `trashWeblogEntry` already decremented the tag counts, and re-incrementing
-  would over-count a draft's tags.
+  Trashing a published entry takes its tags out of the tag cloud and
+  restoring (to `DRAFT`) puts nothing back, both without help from the
+  caller: see Tag counts below.
 - **`entry.trash.retention.days`** — runtime property, default **30**, `-1`
   keeps forever. Swept by `TrashPurgeTask` beside `ScheduledEntriesTask`;
   re-read per sweep, not latched in `init()` (the third Configuration-scope

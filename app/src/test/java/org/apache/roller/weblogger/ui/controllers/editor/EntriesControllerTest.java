@@ -651,8 +651,6 @@ class EntriesControllerTest extends EditorControllerTestSupport {
         controller.bulkPublish(request, List.of("entry-1"), bean, newRedirectAttributes());
 
         assertNotNull(entry.getPubTime(), "a published entry must carry a publication time");
-        assertEquals(Boolean.TRUE, entry.getRefreshAggregates(),
-                "a draft becoming published must re-count its tags");
     }
 
     /**

@@ -100,7 +100,6 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
     // set to true when switching between pending/draft/scheduled and published
     // either the aggregate table needs the entry's tags added (for published)
     // or subtracted (anything else)
-    private Boolean   refreshAggregates = Boolean.FALSE;
 
     // Associated objects
     private Weblog        website  = null;
@@ -199,6 +198,10 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
     public void snapshotLoadedContent() {
         loadedContent = WeblogEntryRevision.of(this, null);
         loadedStatus = getStatus();
+        // what is loaded (or just saved) is the baseline the next save's tag
+        // changes are measured from
+        addedTags = new HashSet<>();
+        removedTags = new HashSet<>();
     }
 
     public PubStatus getLoadedStatus() {
@@ -1040,15 +1043,6 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
     /** Convenience method for checking status */
     public boolean isPublished() {
         return getStatus().equals(PubStatus.PUBLISHED);
-    }
-
-
-    public Boolean getRefreshAggregates() {
-        return refreshAggregates;
-    }
-
-    public void setRefreshAggregates(Boolean refreshAggregates) {
-        this.refreshAggregates = refreshAggregates;
     }
 
 }

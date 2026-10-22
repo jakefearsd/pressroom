@@ -556,28 +556,14 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
-    void revertingAPublishedEntryToDraftFlagsTheAggregatesForRefresh() throws Exception {
-        // Un-publishing changes the site's entry counts, so the aggregate
-        // tables have to be recomputed. Missing this leaves stale counts on the
-        // front page indefinitely.
+    void revertingAPublishedEntryToDraftSavesItAsADraft() throws Exception {
+        // The tag counts follow from the status change inside saveWeblogEntry
+        // (TagAggregateBookkeepingTest); the controller only sets the status.
         existingEntry(PubStatus.PUBLISHED);
 
         controller.entryEditSaveDraft(request, model, bean);
 
-        WeblogEntry saved = captureSavedEntry();
-        assertEquals(PubStatus.DRAFT, saved.getStatus());
-        assertTrue(saved.getRefreshAggregates(),
-                "Taking an entry off the site must trigger an aggregate refresh");
-    }
-
-    @Test
-    void savingAnAlreadyDraftEntryAsDraftDoesNotTouchTheAggregates() throws Exception {
-        existingEntry(PubStatus.DRAFT);
-
-        controller.entryEditSaveDraft(request, model, bean);
-
-        assertFalse(captureSavedEntry().getRefreshAggregates(),
-                "A draft-to-draft save changes no published counts, so it must not force a refresh");
+        assertEquals(PubStatus.DRAFT, captureSavedEntry().getStatus());
     }
 
     @Test
@@ -593,7 +579,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
-    void publishingAPreviouslyUnpublishedEntryFlagsTheAggregatesForRefresh() throws Exception {
+    void publishingAPreviouslyUnpublishedEntryPublishesAndIndexesIt() throws Exception {
         existingEntry(PubStatus.DRAFT);
         userMayPost = true;
 
@@ -601,15 +587,12 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
 
         WeblogEntry saved = captureSavedEntry();
         assertEquals(PubStatus.PUBLISHED, saved.getStatus());
-        assertTrue(saved.getRefreshAggregates(),
-                "Putting an entry on the site must trigger an aggregate refresh");
         verify(weblogger.getIndexManager()).addEntryReIndexOperation(saved);
     }
 
     @Test
-    void schedulingAnAlreadyPublishedEntryFlagsTheAggregatesForRefresh() throws Exception {
-        // Pushing a live post into the future takes it off the site now, so the
-        // published counts have to be recomputed just as un-publishing does.
+    void schedulingAnAlreadyPublishedEntrySchedulesIt() throws Exception {
+        // Pushing a live post into the future takes it off the site now.
         existingEntry(PubStatus.PUBLISHED);
         userMayPost = true;
         setBeanPubTime(new Date(System.currentTimeMillis() + 7L * 24 * 60 * 60 * 1000));
@@ -618,20 +601,6 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
 
         WeblogEntry saved = captureSavedEntry();
         assertEquals(PubStatus.SCHEDULED, saved.getStatus());
-        assertTrue(saved.getRefreshAggregates(),
-                "Scheduling a currently-published entry removes it from the site now");
-    }
-
-    @Test
-    void schedulingAnUnpublishedEntryDoesNotTouchTheAggregates() throws Exception {
-        existingEntry(PubStatus.DRAFT);
-        userMayPost = true;
-        setBeanPubTime(new Date(System.currentTimeMillis() + 7L * 24 * 60 * 60 * 1000));
-
-        controller.entryEditPublish(request, model, bean);
-
-        assertFalse(captureSavedEntry().getRefreshAggregates(),
-                "A draft was never counted, so scheduling it changes no totals");
     }
 
     @Test
@@ -772,17 +741,6 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
 
         assertTrue(((java.util.List<?>) model.getAttribute("categories")).isEmpty(),
                 "A null here would break the JSP outright");
-    }
-
-    @Test
-    void republishingAnAlreadyPublishedEntryDoesNotTouchTheAggregates() throws Exception {
-        existingEntry(PubStatus.PUBLISHED);
-        userMayPost = true;
-
-        controller.entryEditPublish(request, model, bean);
-
-        assertFalse(captureSavedEntry().getRefreshAggregates(),
-                "Editing a live entry does not change the published count");
     }
 
     @Test

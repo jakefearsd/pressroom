@@ -162,7 +162,6 @@ public class ScheduledEntriesTask extends RollerTaskWithLeasing {
 
             for (WeblogEntry entry : scheduledEntries) {
                 entry.setStatus(PubStatus.PUBLISHED);
-                entry.setRefreshAggregates(true);
                 wMgr.saveWeblogEntry(entry);
             }
 
