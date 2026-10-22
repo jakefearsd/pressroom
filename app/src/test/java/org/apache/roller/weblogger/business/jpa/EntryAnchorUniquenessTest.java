@@ -35,9 +35,11 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.roller.weblogger.TestUtils;
+import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.AnchorTakenException;
 import org.apache.roller.weblogger.business.WeblogEntryManager;
 import org.apache.roller.weblogger.business.Weblogger;
+import org.apache.roller.weblogger.config.StaticConfigOverride;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
@@ -68,6 +70,9 @@ class EntryAnchorUniquenessTest {
 
     private static final int WORKERS = 8;
     private static final int ROUNDS = 6;
+
+    /** Startup property bounding the wait for a weblog's anchor lock, in seconds. */
+    private static final String ANCHOR_LOCK_TIMEOUT = "weblogentry.anchor.lockTimeoutSeconds";
 
     private User user;
     private Weblog weblog;
@@ -156,6 +161,117 @@ class EntryAnchorUniquenessTest {
             assertEquals(0, rs.getInt(1), "no advisory lock outlives its transaction");
         }
         assertEquals(List.of("first-of-two"), anchorsLike("first-of-two"));
+    }
+
+    /**
+     * Two creates of one title in ONE transaction: the second's check cannot
+     * see the first entry's row, which is not flushed until commit, so the
+     * claims this transaction already made must be consulted too -- or both
+     * take the same anchor and the unique index fails the commit.
+     */
+    @Test
+    @Timeout(60)
+    void oneTransactionCreatingTwoEntriesWithOneTitleGivesThemTwoAnchors() throws Exception {
+        assertNoFailures(inParallel(1, worker -> {
+            save(newEntry("Twice over", null));
+            save(newEntry("Twice over", null));
+        }), "one transaction, one title twice");
+
+        assertEquals(List.of("twice-over", "twice-over1"), anchorsLike("twice-over"));
+    }
+
+    /** A chosen anchor an entry saved earlier in the same transaction claimed is refused at the save. */
+    @Test
+    @Timeout(60)
+    void oneTransactionChoosingOneAnchorTwiceIsRefusedAtTheSecondSave() throws Exception {
+        List<Throwable> failures = inParallel(1, worker -> {
+            save(newEntry("Pair one", "pair"));
+            save(newEntry("Pair two", "pair"));
+        });
+
+        assertEquals(1, failures.size());
+        assertInstanceOf(AnchorTakenException.class, failures.get(0), "not a commit-time 500: " + failures.get(0));
+        assertEquals(List.of(), anchorsLike("pair"), "the transaction rolled back");
+    }
+
+    /**
+     * The wait for the weblog's anchor lock is bounded: a holder that never
+     * lets go (a stuck request, a session idle in transaction) makes the next
+     * create fail, and roll back, within the bound -- not hang its thread.
+     */
+    @Test
+    @Timeout(60)
+    void aCreateGivesUpWhenTheAnchorLockIsHeldBeyondTheBound() throws Exception {
+        String handle = weblog.getHandle();
+        StaticConfigOverride bound = StaticConfigOverride.set(ANCHOR_LOCK_TIMEOUT, "1");
+        try (Connection holder = connection()) {
+            holder.setAutoCommit(false);
+            try (PreparedStatement lock = holder.prepareStatement(
+                    "SELECT 1 FROM pg_advisory_xact_lock(hashtextextended(?, 0))")) {
+                lock.setString(1, "weblogentry.anchor:" + weblog.getId());
+                lock.executeQuery().close();
+            }
+            ExecutorService pool = Executors.newSingleThreadExecutor();
+            try {
+                long started = System.nanoTime();
+                Future<Throwable> outcome = pool.submit(() -> {
+                    Weblogger tier = TestUtils.weblogger();
+                    try {
+                        save(newEntry("Stuck behind", null));
+                        tier.flush();
+                        return null;
+                    } catch (Exception e) {
+                        return e;
+                    } finally {
+                        tier.release();
+                    }
+                });
+                Throwable failure = outcome.get(10, TimeUnit.SECONDS);
+                long waited = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
+
+                assertInstanceOf(WebloggerException.class, failure, "the create must fail, not succeed");
+                assertTrue(failure.getMessage().contains(handle), failure.getMessage());
+                assertTrue(waited < 8000, "gave up after " + waited + " ms");
+            } finally {
+                holder.rollback();
+                pool.shutdownNow();
+            }
+        } finally {
+            bound.close();
+        }
+        assertEquals(List.of(), anchorsLike("stuck-behind"), "the failed create rolled back");
+    }
+
+    /**
+     * A one-word title as long as the column (title is varchar(255) too) gives
+     * an anchor that fits, and so does the suffixed anchor of its second use;
+     * an untitled entry's anchor comes from its text, which has no limit.
+     */
+    @Test
+    void anAnchorFromALongTitleOrTextFitsTheColumnSuffixIncluded() throws Exception {
+        for (int i = 0; i < 2; i++) {
+            save(newEntry("x".repeat(255), null));
+            TestUtils.weblogger().flush();
+            TestUtils.endSession(false);
+        }
+
+        assertEquals(List.of("x".repeat(254) + "1", "x".repeat(255)), anchorsLike("xxx"));
+
+        WeblogEntry untitled = newEntry("", null);
+        untitled.setText("y".repeat(300));
+        save(untitled);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(false);
+        assertEquals(List.of("y".repeat(255)), anchorsLike("yyy"));
+    }
+
+    /** A base cut to fit the column is never cut between the halves of a surrogate pair. */
+    @Test
+    void aCutBaseNeverSplitsASurrogatePair() {
+        String base = "a".repeat(254) + "\uD83D\uDE00";
+
+        assertEquals("a".repeat(254), JPAWeblogEntryManagerImpl.fitAnchor(base, ""));
+        assertEquals("a".repeat(254) + "1", JPAWeblogEntryManagerImpl.fitAnchor(base, "1"));
     }
 
     // ---------------------------------------------------------- chosen anchors

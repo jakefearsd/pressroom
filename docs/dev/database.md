@@ -126,11 +126,25 @@ then checks. A concurrent create waits, and its check (a fresh READ
 COMMITTED snapshot) sees the committed entry, so a generated anchor takes the
 next suffix (`title`, `title1`, ...) and a chosen one is refused with
 `AnchorTakenException` (the API's 409 on `anchor`). Per weblog, not per
-title: `foo1` generated from "foo" and `foo1` from "foo 1" are one anchor.
+title: `foo1` generated from "foo" (with `foo` taken), a chosen `foo1` and
+one generated from the one-word title "foo1" are one anchor ("foo 1" gives
+`foo-1`; `createAnchorBase` joins words with the separator).
 Creates of a weblog are therefore serialised from the save to the commit;
 edits keep their anchor and take no lock. Before the lock, 8 concurrent
 same-titled creates committed 8 entries with one anchor.
 
+- **Claims within one transaction:** the check's query does not flush, so
+  it cannot see an entry saved earlier in the same transaction. The
+  transaction's claims are kept in `ClaimedAnchors`, a no-op before-commit
+  action, so the strategy discards them on commit or release and a pooled
+  thread never carries them into another request. Two same-titled creates
+  in one transaction get `foo` and `foo1`.
+- **The wait is bounded:** `weblogentry.anchor.lockTimeoutSeconds` (startup,
+  default 10) is set as a transaction-local `lock_timeout` just for the lock
+  statement, then put back. A save that waits longer fails with a
+  `WebloggerException` naming the weblog (WARN log) and rolls back.
+- **Generated anchors fit the column:** the base is cut so base + suffix is
+  at most 255 (never inside a surrogate pair); V035 cuts the same way.
 - **Do not call `beginEarlyTransaction` before the lock.** EclipseLink begins
   the database transaction for a native query in an active transaction
   (once), which is what puts the lock on the connection that commits. A
