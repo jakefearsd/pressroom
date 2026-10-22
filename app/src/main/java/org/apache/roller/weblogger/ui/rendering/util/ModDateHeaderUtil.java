@@ -62,6 +62,39 @@ public final class ModDateHeaderUtil {
 	public static boolean respondIfNotModified(HttpServletRequest request,
 			HttpServletResponse response, long lastModifiedTimeMillis) {
 
+		if (isNotModifiedSince(request, lastModifiedTimeMillis)) {
+
+			log.debug("NOT MODIFIED {}", request.getRequestURL());
+
+			response.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
+
+			// Last-Modified must describe the resource, not echo whatever
+			// string the client sent as If-Modified-Since -- the caller
+			// already knows the resource's own last-modified time.
+			response.setDateHeader("Last-Modified", truncateToSeconds(lastModifiedTimeMillis));
+
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * True if the request carries an If-Modified-Since header naming a time
+	 * at or after {@code lastModifiedTimeMillis} <em>truncated to second
+	 * granularity</em> -- the decision {@link #respondIfNotModified} acts on,
+	 * for a caller that builds its own response. An absent or unparseable
+	 * header is never "not modified".
+	 *
+	 * @param request
+	 *            the request
+	 * @param lastModifiedTimeMillis
+	 *            the resource's last modified time in milliseconds
+	 * @return true if the client's copy is current
+	 */
+	public static boolean isNotModifiedSince(HttpServletRequest request,
+			long lastModifiedTimeMillis) {
+
 		long sinceDate;
 		try {
 			sinceDate = request.getDateHeader("If-Modified-Since");
@@ -71,8 +104,7 @@ public final class ModDateHeaderUtil {
 			return false;
 		}
 
-		// truncate to seconds
-		lastModifiedTimeMillis -= lastModifiedTimeMillis % RollerConstants.SEC_IN_MS;
+		long truncated = truncateToSeconds(lastModifiedTimeMillis);
 
 		if (log.isDebugEnabled()) {
 			SimpleDateFormat dateFormat = new SimpleDateFormat(
@@ -80,25 +112,15 @@ public final class ModDateHeaderUtil {
 			log.debug("since date = {}",
 					DateUtil.format(new Date(sinceDate), dateFormat));
 			log.debug("last mod date (trucated to seconds) = {}",
-					DateUtil.format(new Date(lastModifiedTimeMillis),
+					DateUtil.format(new Date(truncated),
 							dateFormat));
 		}
 
-		if (lastModifiedTimeMillis <= sinceDate) {
+		return truncated <= sinceDate;
+	}
 
-			log.debug("NOT MODIFIED {}", request.getRequestURL());
-
-			response.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
-
-			// Last-Modified must describe the resource, not echo whatever
-			// string the client sent as If-Modified-Since -- the caller
-			// already knows the resource's own last-modified time.
-			response.setDateHeader("Last-Modified", lastModifiedTimeMillis);
-
-			return true;
-		} else {
-			return false;
-		}
+	private static long truncateToSeconds(long millis) {
+		return millis - millis % RollerConstants.SEC_IN_MS;
 	}
 
 	/**

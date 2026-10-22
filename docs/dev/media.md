@@ -26,7 +26,10 @@ resolves through the index at the end of `CLAUDE.md`.
   MediaFileView): 404 on the base media path except for logged-in editors of
   the owning weblog (a permission on it **and** the global `login` action:
   a reader demoted from "Can write" keeps its weblog membership but holds no
-  `login`), excluded from sitemaps, refused by `[gallery]`. A pure
+  `login`), excluded from sitemaps, refused by `[gallery]`. The toggle
+  saves the weblog, bumping `lastModified`: that, not
+  `CacheManager.invalidate`, is what expires cached galleries and the
+  cached sitemap. A pure
   visibility flag with no bypass of any kind. The share-link feature that
   once punched a tokened hole through it (`ShareController`,
   `roller_share_link`) is gone and not coming back.

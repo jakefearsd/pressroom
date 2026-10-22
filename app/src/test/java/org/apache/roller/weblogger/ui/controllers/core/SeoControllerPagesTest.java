@@ -32,6 +32,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -99,7 +100,7 @@ class SeoControllerPagesTest {
         WeblogPage draft = savePage("secret", WeblogPage.PubStatus.DRAFT, false);
         WeblogPage noindexed = savePage("hidden", WeblogPage.PubStatus.PUBLISHED, true);
 
-        ResponseEntity<String> response = controller.weblogSitemap(weblog.getHandle());
+        ResponseEntity<String> response = controller.weblogSitemap(weblog.getHandle(), new MockHttpServletRequest());
 
         assertEquals(200, response.getStatusCode().value());
         String body = response.getBody();
@@ -133,7 +134,7 @@ class SeoControllerPagesTest {
     void weblogSitemapEncodesThePageSlugTheSameWayNavigationDoes() throws Exception {
         WeblogPage page = savePage("my page", WeblogPage.PubStatus.PUBLISHED, false);
 
-        String body = controller.weblogSitemap(weblog.getHandle()).getBody();
+        String body = controller.weblogSitemap(weblog.getHandle(), new MockHttpServletRequest()).getBody();
 
         assertNotNull(body);
         String expectedUrl = ABSOLUTE_CONTEXT + "/" + weblog.getHandle() + "/"

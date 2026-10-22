@@ -17,6 +17,7 @@
  */
 package org.apache.roller.weblogger.ui.controllers.core;
 
+import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.Date;
@@ -31,14 +32,13 @@ import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.URLStrategy;
 import org.apache.roller.weblogger.business.VirtualHostRegistry;
 import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
-import org.apache.roller.weblogger.pojos.MediaFile;
+import org.apache.roller.weblogger.business.SitemapEntry;
 import org.apache.roller.weblogger.pojos.Weblog;
-import org.apache.roller.weblogger.pojos.WeblogEntry;
-import org.apache.roller.weblogger.pojos.WeblogEntry.PubStatus;
-import org.apache.roller.weblogger.pojos.WeblogEntrySearchCriteria;
 import org.apache.roller.weblogger.pojos.WeblogPage;
 import org.apache.roller.weblogger.ui.controllers.BaseController;
+import org.apache.roller.weblogger.ui.rendering.util.ModDateHeaderUtil;
 import org.apache.roller.weblogger.util.URLUtilities;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -50,10 +50,13 @@ import org.springframework.web.bind.annotation.PathVariable;
  * index at {@code /sitemap.xml}, and one sitemap per weblog at
  * {@code /sitemap-<handle>.xml}.
  *
- * <p>Everything is generated per request, uncached: at this installation's
- * scale (10-50 weblogs, a few hundred entries each) regenerating the XML is
- * cheaper than wiring these documents into the render-cache invalidation
- * machinery.
+ * <p>{@code robots.txt} and the index are generated per request, uncached:
+ * they read one small list. The per-weblog sitemap is not -- regenerating it
+ * on every crawl grew linearly with the weblog and was measured at 42% of the
+ * application's CPU under load -- so it answers conditional GETs, is cached
+ * per weblog and host against {@code weblog.lastModified} (see
+ * {@link SitemapCache} for what that covers), and is rebuilt from a column
+ * projection rather than from entities.
  *
  * <p>The per-weblog sitemap lists the weblog home page plus every PUBLISHED
  * entry and PUBLISHED page that is not flagged {@code noindex} ({@code null}
@@ -84,6 +87,12 @@ public class SeoController extends BaseController {
     private static final String IMAGE_NS = "http://www.google.com/schemas/sitemap-image/1.1";
     private static final MediaType APPLICATION_XML_UTF8 =
             new MediaType("application", "xml", java.nio.charset.StandardCharsets.UTF_8);
+
+    /**
+     * Per controller instance: Spring holds one, and a test's own instance
+     * starts with an empty cache rather than inheriting another test's.
+     */
+    private final SitemapCache sitemapCache = SitemapCache.fromConfig();
 
     @Override
     public boolean isUserRequired() {
@@ -148,7 +157,7 @@ public class SeoController extends BaseController {
     public ResponseEntity<String> sitemapIndex(HttpServletRequest request) {
         String vhostHandle = weblogger.getVirtualHostRegistry().handleFor(request.getHeader("Host"));
         if (vhostHandle != null) {
-            return weblogSitemap(vhostHandle);
+            return weblogSitemap(vhostHandle, request);
         }
 
         List<Weblog> weblogs;
@@ -171,7 +180,7 @@ public class SeoController extends BaseController {
             xml.append("  <sitemap>\n");
             xml.append("    <loc>").append(escapeXml(absoluteContextURL()
                     + "/sitemap-" + weblog.getHandle() + ".xml")).append("</loc>\n");
-            appendLastmod(xml, "    ", weblog.getLastModified());
+            appendLastmod(xml, "    ", instant(weblog.getLastModified()));
             xml.append("  </sitemap>\n");
         }
         xml.append("</sitemapindex>\n");
@@ -185,13 +194,21 @@ public class SeoController extends BaseController {
      */
     static final int MAX_SITEMAP_URLS = 50_000;
 
-    /** Sitemap for one weblog: home page plus published, indexable entries. */
+    /**
+     * Sitemap for one weblog: home page plus published, indexable entries and
+     * pages.
+     *
+     * <p>Anonymous and crawled constantly, so it is cheap on every path: an
+     * {@code If-Modified-Since} at or after the weblog's {@code lastModified}
+     * is answered 304 before anything else is read; an unchanged weblog is
+     * served from {@link SitemapCache}; and a rebuild reads the entries as
+     * five columns in one query ({@code getSitemapEntries}) instead of as
+     * whole entities with a media lookup per featured image. Nothing is
+     * cached from a build that failed.
+     */
     @GetMapping("/sitemap-{handle}.xml")
-    @SuppressFBWarnings(
-            value = "POTENTIAL_XML_INJECTION",
-            justification = "Every value written into the XML goes through escapeXml(); the URLs are built "
-                    + "by the URL strategy from the stored weblog, entries and pages.")
-    public ResponseEntity<String> weblogSitemap(@PathVariable("handle") String handle) {
+    public ResponseEntity<String> weblogSitemap(@PathVariable("handle") String handle,
+            HttpServletRequest request) {
         Weblog weblog;
         try {
             weblog = weblogger.getWeblogManager().getWeblogByHandle(handle, Boolean.TRUE);
@@ -206,27 +223,51 @@ public class SeoController extends BaseController {
             return ResponseEntity.notFound().build();
         }
 
-        List<WeblogEntry> entries;
-        List<WeblogPage> pages;
-        try {
-            WeblogEntrySearchCriteria criteria = new WeblogEntrySearchCriteria();
-            criteria.setWeblog(weblog);
-            criteria.setStatus(PubStatus.PUBLISHED);
-            // Bounded, because this is an anonymous endpoint that loads every
-            // matching entry into memory and renders it. Unbounded it is a
-            // free amplification lever for anyone who can spell the URL, and
-            // the protocol caps a sitemap at 50,000 URLs anyway -- past that
-            // the file is invalid, so fetching more would be work done to
-            // produce something no crawler will accept.
-            criteria.setMaxResults(MAX_SITEMAP_URLS);
-            entries = weblogger.getWeblogEntryManager().getWeblogEntries(criteria);
-            pages = weblogger.getWeblogPageManager().getPublishedPages(weblog);
-        } catch (WebloggerException e) {
-            log.error("Error building the sitemap for weblog {}", handle, e);
-            return ResponseEntity.internalServerError().build();
+        Date lastModified = weblog.getLastModified();
+        if (lastModified != null
+                && ModDateHeaderUtil.isNotModifiedSince(request, lastModified.getTime())) {
+            return ResponseEntity.status(HttpStatus.NOT_MODIFIED)
+                    .lastModified(lastModified.getTime())
+                    .build();
         }
 
         URLStrategy urlStrategy = weblogger.getUrlStrategy();
+        String weblogURL = urlStrategy.getWeblogURL(weblog, null, true);
+        String xml = lastModified == null ? null
+                : sitemapCache.get(weblog.getHandle(), weblogURL, lastModified.getTime());
+        if (xml == null) {
+            try {
+                xml = buildWeblogSitemap(weblog, urlStrategy, weblogURL);
+            } catch (WebloggerException e) {
+                log.error("Error building the sitemap for weblog {}", handle, e);
+                return ResponseEntity.internalServerError().build();
+            }
+            if (lastModified != null) {
+                sitemapCache.put(weblog.getHandle(), weblogURL, lastModified.getTime(), xml);
+            }
+        }
+
+        ResponseEntity.BodyBuilder ok = ResponseEntity.ok().contentType(APPLICATION_XML_UTF8);
+        if (lastModified != null) {
+            ok.lastModified(lastModified.getTime());
+        }
+        return ok.body(xml);
+    }
+
+    @SuppressFBWarnings(
+            value = "POTENTIAL_XML_INJECTION",
+            justification = "Every value written into the XML goes through escapeXml(); the URLs are built "
+                    + "by the URL strategy from the stored weblog, entries and pages.")
+    private String buildWeblogSitemap(Weblog weblog, URLStrategy urlStrategy, String weblogURL)
+            throws WebloggerException {
+        // Bounded, because this is an anonymous endpoint. Unbounded it is a
+        // free amplification lever for anyone who can spell the URL, and the
+        // protocol caps a sitemap at 50,000 URLs anyway -- past that the file
+        // is invalid, so fetching more would be work done to produce
+        // something no crawler will accept.
+        List<SitemapEntry> entries = weblogger.getWeblogEntryManager()
+                .getSitemapEntries(weblog, MAX_SITEMAP_URLS);
+        List<WeblogPage> pages = weblogger.getWeblogPageManager().getPublishedPages(weblog);
 
         StringBuilder xml = new StringBuilder();
         xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -235,21 +276,19 @@ public class SeoController extends BaseController {
 
         // the weblog home page
         xml.append("  <url>\n");
-        xml.append("    <loc>").append(escapeXml(
-                urlStrategy.getWeblogURL(weblog, null, true))).append("</loc>\n");
-        appendLastmod(xml, "    ", weblog.getLastModified());
+        xml.append("    <loc>").append(escapeXml(weblogURL)).append("</loc>\n");
+        appendLastmod(xml, "    ", instant(weblog.getLastModified()));
         xml.append("  </url>\n");
 
-        for (WeblogEntry entry : entries) {
-            if (Boolean.TRUE.equals(entry.getNoindex())) {
+        for (SitemapEntry entry : entries) {
+            if (entry.noindex()) {
                 continue;
             }
             xml.append("  <url>\n");
             xml.append("    <loc>").append(escapeXml(urlStrategy.getWeblogEntryURL(
-                    weblog, null, entry.getAnchor(), true))).append("</loc>\n");
-            appendLastmod(xml, "    ",
-                    entry.getUpdateTime() != null ? entry.getUpdateTime() : entry.getPubTime());
-            appendFeaturedImage(xml, urlStrategy, weblog, entry);
+                    weblog, null, entry.anchor(), true))).append("</loc>\n");
+            appendLastmod(xml, "    ", entry.lastmod());
+            appendFeaturedImage(xml, urlStrategy, weblog, entry.publicImageId());
             xml.append("  </url>\n");
         }
 
@@ -267,51 +306,35 @@ public class SeoController extends BaseController {
             // free-form enough (spaces, punctuation) that the raw value is
             // not always a valid URL.
             xml.append("    <loc>").append(escapeXml(
-                    urlStrategy.getWeblogURL(weblog, null, true)
-                            + URLUtilities.encode(page.getSlug())))
+                    weblogURL + URLUtilities.encode(page.getSlug())))
                     .append("</loc>\n");
-            appendLastmod(xml, "    ", page.getUpdated());
+            appendLastmod(xml, "    ", instant(page.getUpdated()));
             xml.append("  </url>\n");
         }
         xml.append("</urlset>\n");
-        return xmlResponse(xml);
+        return xml.toString();
     }
 
     /**
-     * Emits an {@code image:image} element for the entry's featured image, if
-     * it has one that still resolves to a media file. A dangling id is skipped
-     * silently: the sitemap must stay valid even when a referenced upload was
-     * deleted after the entry was saved.
+     * Emits an {@code image:image} element for the entry's featured image.
+     * The query has already resolved it: a dangling id, and a file in a
+     * private directory (which 404s on the public media path, so advertising
+     * it would only dead-link), arrive as null and are skipped -- the sitemap
+     * must stay valid even when a referenced upload was deleted after the
+     * entry was saved.
      */
     @SuppressFBWarnings(
             value = "POTENTIAL_XML_INJECTION",
             justification = "The image URL is built by the URL strategy from the media file's id and goes "
                     + "through escapeXml().")
-    private void appendFeaturedImage(StringBuilder xml, URLStrategy urlStrategy,
-            Weblog weblog, WeblogEntry entry) {
-        String imageId = entry.getFeaturedImageId();
-        if (imageId == null || imageId.isBlank()) {
-            return;
-        }
-        MediaFile image = null;
-        try {
-            image = weblogger.getMediaFileManager().getMediaFile(imageId);
-        } catch (WebloggerException e) {
-            log.debug("Featured image {} of entry {} could not be loaded; omitting it from the sitemap",
-                    imageId, entry.getAnchor(), e);
-        }
-        if (image == null) {
-            return;
-        }
-        // A private directory's files 404 on the public media path and are
-        // not served publicly at all, so advertising them to crawlers would
-        // just dead-link.
-        if (image.getDirectory() != null && image.getDirectory().isPrivate()) {
+    private static void appendFeaturedImage(StringBuilder xml, URLStrategy urlStrategy,
+            Weblog weblog, String publicImageId) {
+        if (publicImageId == null) {
             return;
         }
         // Largest rendition of the pipeline's ladder; MediaResourceServlet
         // serves the original when no such rendition exists for the file.
-        String imageURL = urlStrategy.getMediaFileURL(weblog, image.getId(), true) + "?w=1600";
+        String imageURL = urlStrategy.getMediaFileURL(weblog, publicImageId, true) + "?w=1600";
         xml.append("    <image:image>\n");
         xml.append("      <image:loc>").append(escapeXml(imageURL)).append("</image:loc>\n");
         xml.append("    </image:image>\n");
@@ -323,19 +346,23 @@ public class SeoController extends BaseController {
                 .body(xml.toString());
     }
 
-    /** Appends a {@code lastmod} element in W3C datetime (UTC) if a date is known. */
+    /** Appends a {@code lastmod} element in W3C datetime (UTC) if a time is known. */
     @SuppressFBWarnings(
             value = "POTENTIAL_XML_INJECTION",
             justification = "Writes only a date formatted by DateTimeFormatter.ISO_INSTANT, and a constant "
                     + "indent.")
-    private static void appendLastmod(StringBuilder xml, String indent, Date date) {
-        if (date == null) {
+    private static void appendLastmod(StringBuilder xml, String indent, Instant time) {
+        if (time == null) {
             return;
         }
         xml.append(indent).append("<lastmod>")
                 .append(DateTimeFormatter.ISO_INSTANT.format(
-                        java.time.Instant.ofEpochSecond(date.getTime() / 1000)))
+                        Instant.ofEpochSecond(time.toEpochMilli() / 1000)))
                 .append("</lastmod>\n");
+    }
+
+    private static Instant instant(Date date) {
+        return date == null ? null : date.toInstant();
     }
 
     private static String absoluteContextURL() {

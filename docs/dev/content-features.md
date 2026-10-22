@@ -16,6 +16,20 @@ resolves through the index at the end of `CLAUDE.md`.
 - `SeoController` serves `/robots.txt`, `/sitemap.xml` (index) and
   `/sitemap-<handle>.xml` (via `*.xml`; a middle-wildcard servlet pattern is
   illegal).
+- **The per-weblog sitemap is cheap on purpose** (it was 42% of CPU and 59%
+  of DB time under load, as ~3% of requests). Three layers, in order:
+  `If-Modified-Since` at or after `weblog.lastModified` answers 304 before
+  any read; `SitemapCache` (`cache.sitemap.*`) holds one finished document
+  per weblog handle and absolute weblog url, valid only while its stamped
+  `lastModified` still matches; a rebuild reads entries through
+  `WeblogEntryManager.getSitemapEntries` -- one native query of five columns
+  with the featured image's privacy resolved by a join, never an entity or
+  a per-image lookup. Anything that changes a sitemap's content must
+  therefore bump `weblog.lastModified` (entry publish/update/unpublish/
+  trash/delete, page save/delete, the directory privacy toggle all do);
+  anything that changes its urls (`site.absoluteurl`, custom domain,
+  context path) changes the cache key instead. Pinned byte for byte by
+  `SeoControllerSitemapTest`.
 - **Business profiles.** A site admin owns shared `Business` rows
   (`/roller-ui/admin/businesses.rol`); a blog picks one in Settings and may
   add a place (`placeType` LodgingBusiness, locality, region, country,

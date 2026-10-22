@@ -27,7 +27,6 @@ import jakarta.servlet.http.HttpServlet;
 
 import org.apache.roller.weblogger.TestUtils;
 import org.apache.roller.weblogger.WebloggerException;
-import org.apache.roller.weblogger.business.MediaFileManager;
 import org.apache.roller.weblogger.business.URLStrategy;
 import org.apache.roller.weblogger.business.VirtualHostRegistry;
 import org.apache.roller.weblogger.business.WeblogEntryManager;
@@ -38,6 +37,7 @@ import org.apache.roller.weblogger.business.WebloggerProvider;
 import org.apache.roller.weblogger.config.StaticConfigOverride;
 import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.pojos.MediaFile;
+import org.apache.roller.weblogger.business.SitemapEntry;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
@@ -62,6 +62,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -251,7 +253,7 @@ class SeoControllerTest {
                 PubStatus.TRASHED, weblog, user);
         TestUtils.endSession(true);
 
-        ResponseEntity<String> response = controller.weblogSitemap(weblog.getHandle());
+        ResponseEntity<String> response = controller.weblogSitemap(weblog.getHandle(), new MockHttpServletRequest());
 
         assertEquals(200, response.getStatusCode().value());
         String body = response.getBody();
@@ -280,7 +282,7 @@ class SeoControllerTest {
         TestUtils.weblogger().getWeblogEntryManager().saveWeblogEntry(entry);
         TestUtils.endSession(true);
 
-        String body = controller.weblogSitemap(weblog.getHandle()).getBody();
+        String body = controller.weblogSitemap(weblog.getHandle(), new MockHttpServletRequest()).getBody();
 
         assertNotNull(body);
         Document doc = parse(body);
@@ -305,7 +307,7 @@ class SeoControllerTest {
         TestUtils.weblogger().getWeblogEntryManager().saveWeblogEntry(entry);
         TestUtils.endSession(true);
 
-        String body = controller.weblogSitemap(weblog.getHandle()).getBody();
+        String body = controller.weblogSitemap(weblog.getHandle(), new MockHttpServletRequest()).getBody();
 
         assertNotNull(body);
         parse(body);
@@ -324,7 +326,7 @@ class SeoControllerTest {
         TestUtils.weblogger().getWeblogEntryManager().saveWeblogEntry(entry);
         TestUtils.endSession(true);
 
-        String body = controller.weblogSitemap(weblog.getHandle()).getBody();
+        String body = controller.weblogSitemap(weblog.getHandle(), new MockHttpServletRequest()).getBody();
 
         assertNotNull(body);
         parse(body);
@@ -338,7 +340,7 @@ class SeoControllerTest {
     void weblogSitemapReturns404ForANonexistentHandle() {
         // valid handle syntax, no such weblog: exercises the plain null-lookup
         // path, not the invalid-handle exception below
-        ResponseEntity<String> response = controller.weblogSitemap("nosuchweblog");
+        ResponseEntity<String> response = controller.weblogSitemap("nosuchweblog", new MockHttpServletRequest());
         assertEquals(404, response.getStatusCode().value());
     }
 
@@ -346,7 +348,7 @@ class SeoControllerTest {
     void weblogSitemapReturns404ForASyntacticallyInvalidHandle() {
         // dashes fail getWeblogByHandle's alphanumeric validation, which
         // throws; crawlers probing /sitemap-*.xml must get a 404, not a 500
-        ResponseEntity<String> response = controller.weblogSitemap("no-such-weblog-handle");
+        ResponseEntity<String> response = controller.weblogSitemap("no-such-weblog-handle", new MockHttpServletRequest());
         assertEquals(404, response.getStatusCode().value());
     }
 
@@ -393,52 +395,86 @@ class SeoControllerTest {
         when(broken.getWeblogEntryManager()).thenReturn(entryManager);
         when(weblogManager.getWeblogByHandle("mockblog", Boolean.TRUE))
                 .thenReturn(activeWeblog("mockblog"));
-        when(entryManager.getWeblogEntries(any()))
+        when(broken.getUrlStrategy()).thenReturn(mock(URLStrategy.class));
+        when(entryManager.getSitemapEntries(any(), anyInt()))
                 .thenThrow(new WebloggerException("database down"));
         SeoController failing = new SeoController();
         inject(failing, "weblogger", broken);
 
-        ResponseEntity<String> response = failing.weblogSitemap("mockblog");
+        ResponseEntity<String> response = failing.weblogSitemap("mockblog", new MockHttpServletRequest());
 
         assertEquals(500, response.getStatusCode().value(),
                 "A failing entry query must surface as a server error, not a truncated sitemap");
     }
 
     /**
-     * Three edge cases in one document, asserted separately: a media-file
-     * lookup that <em>throws</em> (not just misses) must only cost the image
-     * entry; entries and weblogs without any dates must omit {@code lastmod}
+     * Fail closed: a build that fails part-way (entries read, pages not) is a
+     * 500 and leaves nothing in the cache, so the next request builds the
+     * whole document afresh rather than serving a partial one.
+     */
+    @Test
+    void aSitemapBuildThatFailsIsNotCached() throws Exception {
+        Weblogger flaky = mock(Weblogger.class);
+        WeblogManager weblogManager = mock(WeblogManager.class);
+        WeblogEntryManager entryManager = mock(WeblogEntryManager.class);
+        WeblogPageManager pageManager = mock(WeblogPageManager.class);
+        URLStrategy urlStrategy = mock(URLStrategy.class);
+        when(flaky.getWeblogManager()).thenReturn(weblogManager);
+        when(flaky.getWeblogEntryManager()).thenReturn(entryManager);
+        when(flaky.getWeblogPageManager()).thenReturn(pageManager);
+        when(flaky.getUrlStrategy()).thenReturn(urlStrategy);
+        Weblog mockWeblog = activeWeblog("mockblog");
+        mockWeblog.setLastModified(new java.util.Date(1_700_000_000_000L));
+        when(weblogManager.getWeblogByHandle("mockblog", Boolean.TRUE)).thenReturn(mockWeblog);
+        when(urlStrategy.getWeblogURL(mockWeblog, null, true)).thenReturn("https://example.com/mockblog/");
+        when(urlStrategy.getWeblogEntryURL(mockWeblog, null, "kept", true))
+                .thenReturn("https://example.com/mockblog/entry/kept");
+        when(entryManager.getSitemapEntries(mockWeblog, SeoController.MAX_SITEMAP_URLS))
+                .thenReturn(List.of(new SitemapEntry("kept", null, null, false, null)));
+        when(pageManager.getPublishedPages(mockWeblog))
+                .thenThrow(new WebloggerException("database down"))
+                .thenReturn(List.of());
+        SeoController controller = new SeoController();
+        inject(controller, "weblogger", flaky);
+
+        assertEquals(500, controller.weblogSitemap("mockblog", new MockHttpServletRequest())
+                .getStatusCode().value());
+        ResponseEntity<String> retry = controller.weblogSitemap("mockblog", new MockHttpServletRequest());
+
+        assertEquals(200, retry.getStatusCode().value());
+        assertTrue(retry.getBody().contains("<loc>https://example.com/mockblog/entry/kept</loc>"),
+                "the retry must build the whole document:\n" + retry.getBody());
+        verify(entryManager, times(2)).getSitemapEntries(mockWeblog, SeoController.MAX_SITEMAP_URLS);
+    }
+
+    /**
+     * Two edge cases in one document, asserted separately: entries and
+     * weblogs without any dates must omit {@code lastmod}
      * rather than emit an empty element; and a URL containing {@code &} must
      * be escaped on the wire yet round-trip back to the original through a
      * real XML parser.
      */
     @Test
-    void weblogSitemapSurvivesThrowingMediaLookupMissingDatesAndAmpersands() throws Exception {
+    void weblogSitemapSurvivesMissingDatesAndAmpersands() throws Exception {
         String rawEntryURL = "http://localhost:8080/roller/mockblog/entry/mock-entry?a=1&b=2";
 
         Weblogger broken = mock(Weblogger.class);
         WeblogManager weblogManager = mock(WeblogManager.class);
         WeblogEntryManager entryManager = mock(WeblogEntryManager.class);
         WeblogPageManager pageManager = mock(WeblogPageManager.class);
-        MediaFileManager mediaFileManager = mock(MediaFileManager.class);
         URLStrategy urlStrategy = mock(URLStrategy.class);
         when(broken.getWeblogManager()).thenReturn(weblogManager);
         when(broken.getWeblogEntryManager()).thenReturn(entryManager);
         when(broken.getWeblogPageManager()).thenReturn(pageManager);
-        when(broken.getMediaFileManager()).thenReturn(mediaFileManager);
         when(broken.getUrlStrategy()).thenReturn(urlStrategy);
 
         Weblog mockWeblog = activeWeblog("mockblog");
         when(weblogManager.getWeblogByHandle("mockblog", Boolean.TRUE)).thenReturn(mockWeblog);
         when(pageManager.getPublishedPages(mockWeblog)).thenReturn(List.of());
 
-        WeblogEntry entry = new WeblogEntry();
-        entry.setAnchor("mock-entry");
-        entry.setFeaturedImageId("throwing-image-id");
         // no pubTime, no updateTime -- appendLastmod must skip the element
-        when(entryManager.getWeblogEntries(any())).thenReturn(List.of(entry));
-        when(mediaFileManager.getMediaFile("throwing-image-id"))
-                .thenThrow(new WebloggerException("storage exploded"));
+        when(entryManager.getSitemapEntries(mockWeblog, SeoController.MAX_SITEMAP_URLS))
+                .thenReturn(List.of(new SitemapEntry("mock-entry", null, null, false, null)));
         when(urlStrategy.getWeblogURL(mockWeblog, null, true))
                 .thenReturn("http://localhost:8080/roller/mockblog/");
         when(urlStrategy.getWeblogEntryURL(mockWeblog, null, "mock-entry", true))
@@ -447,15 +483,14 @@ class SeoControllerTest {
         SeoController failing = new SeoController();
         inject(failing, "weblogger", broken);
 
-        ResponseEntity<String> response = failing.weblogSitemap("mockblog");
+        ResponseEntity<String> response = failing.weblogSitemap("mockblog", new MockHttpServletRequest());
 
-        assertEquals(200, response.getStatusCode().value(),
-                "A throwing media-file lookup must not take down the whole sitemap");
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(-1, response.getHeaders().getLastModified(),
+                "a weblog with no lastModified has none to report");
         String body = response.getBody();
         assertNotNull(body);
         Document doc = parse(body);
-        assertFalse(body.contains("image:loc"),
-                "The image whose lookup threw must be omitted:\n" + body);
         assertTrue(body.contains("/entry/mock-entry"),
                 "The entry itself must still be listed:\n" + body);
         assertFalse(body.contains("<lastmod>"),

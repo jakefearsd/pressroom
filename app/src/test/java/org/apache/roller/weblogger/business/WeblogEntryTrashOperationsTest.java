@@ -145,6 +145,53 @@ class WeblogEntryTrashOperationsTest {
     }
 
     /**
+     * Unpublishing is the same exit from the public pages as trashing, by
+     * way of {@code saveWeblogEntry} itself: an entry going from PUBLISHED to
+     * DRAFT must bump {@code weblog.lastModified}, or every cached page and
+     * the cached sitemap keep advertising it. The bump used to be gated on
+     * the NEW status alone, so only arriving at PUBLISHED counted.
+     */
+    @Test
+    void unpublishingAPublishedEntryBumpsTheWeblogsLastModified() throws Exception {
+        WeblogEntry created = TestUtils.setupWeblogEntry("unpublish-bumps", blog, user);
+        TestUtils.endSession(true);
+
+        Date before = freshLastModifiedBaseline();
+        Thread.sleep(5);
+
+        WeblogEntry managed = entries().getWeblogEntry(created.getId());
+        managed.setStatus(PubStatus.DRAFT);
+        entries().saveWeblogEntry(managed);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+
+        Date after = TestUtils.getManagedWebsite(blog).getLastModified();
+        assertTrue(after.after(before),
+                "unpublishing must bump weblog.lastModified or cached pages keep showing the entry");
+    }
+
+    /**
+     * Saving a draft that stays a draft changed nothing a reader could see,
+     * so it must not expire every cached page of the weblog.
+     */
+    @Test
+    void savingADraftThatStaysADraftDoesNotBumpTheWeblogsLastModified() throws Exception {
+        WeblogEntry created = TestUtils.setupWeblogEntry("draft-stays", blog, user, PubStatus.DRAFT);
+        TestUtils.endSession(true);
+
+        Date before = freshLastModifiedBaseline();
+        Thread.sleep(5);
+
+        WeblogEntry managed = entries().getWeblogEntry(created.getId());
+        managed.setText("still a draft");
+        entries().saveWeblogEntry(managed);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+
+        assertEquals(before, TestUtils.getManagedWebsite(blog).getLastModified());
+    }
+
+    /**
      * The tag cloud counts published entries only. Trashing a published
      * entry must decrement its tags out of the aggregate the same way
      * unpublishing does -- otherwise its tags stay counted until the entry

@@ -196,8 +196,11 @@ public class MediaFileViewController extends MediaFileBase {
     /**
      * Flips a directory's private flag. Private directories vanish from every
      * public surface (base media path, inline galleries, sitemap images) and
-     * are visible only to the blog's own members, so the page caches that
-     * may hold inline galleries of this directory are invalidated.
+     * are visible only to the blog's own members. Saving the weblog bumps
+     * its {@code lastModified}, which is what expires the rendered pages
+     * holding inline galleries of this directory and the cached sitemap
+     * advertising its images; {@code CacheManager.invalidate} reaches only
+     * the site-wide cache.
      */
     @PostMapping("/mediaFileView!togglePrivate.rol")
     public String togglePrivate(HttpServletRequest request, Model model,
@@ -210,6 +213,7 @@ public class MediaFileViewController extends MediaFileBase {
                 addError(model, "mediaFile.privacy.error", request);
             } else {
                 directory.setPrivate(!directory.isPrivate());
+                weblogger.getWeblogManager().saveWeblog(getActionWeblog(request));
                 weblogger.flush();
                 CacheManager.invalidate(getActionWeblog(request));
                 addMessage(model, "mediaFile.privacy.updated", request);

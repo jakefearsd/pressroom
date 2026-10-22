@@ -511,6 +511,22 @@ class MediaFileViewControllerTest extends EditorControllerTestSupport {
                 "a second toggle must flip it back");
     }
 
+    /**
+     * Rendered pages and the sitemap expire only through
+     * {@code weblog.lastModified} -- {@code CacheManager.invalidate} reaches
+     * neither -- so a toggle that does not save the weblog leaves a private
+     * directory's images in every cached gallery and in the cached sitemap.
+     */
+    @Test
+    void togglingPrivacySavesTheWeblogSoCachedPagesAndTheSitemapExpire() throws Exception {
+        when(weblogger.getMediaFileManager().getMediaFileDirectory("dir-2"))
+                .thenReturn(targetDirectory);
+
+        controller.togglePrivate(request, model, "dir-2", null);
+
+        verify(weblogger.getWeblogManager()).saveWeblog(weblog);
+    }
+
     @Test
     void aDirectoryFromAnotherWeblogsPrivacyCannotBeToggled() throws Exception {
         MediaFileDirectory foreign = directory("dir-x", "theirs");

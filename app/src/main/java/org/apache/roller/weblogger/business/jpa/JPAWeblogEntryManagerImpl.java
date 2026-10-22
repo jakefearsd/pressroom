@@ -34,6 +34,7 @@ import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.RollerEvent;
 import org.apache.roller.weblogger.pojos.User;
+import org.apache.roller.weblogger.business.SitemapEntry;
 import org.apache.roller.weblogger.pojos.WeblogEntrySearchCriteria;
 import org.apache.roller.weblogger.pojos.TagStat;
 import org.apache.roller.weblogger.pojos.TagStatComparator;
@@ -158,6 +159,9 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     @Override
     public void saveWeblogEntry(WeblogEntry entry) throws WebloggerException {
 
+        // Read before the save re-snapshots the loaded status below.
+        boolean wasPublished = entry.getLoadedStatus() == PubStatus.PUBLISHED;
+
         if (entry.getCategory() == null) {
             // Entry is invalid without category, so use the first one found.
             // removeWeblogCategory() guarantees there is one; if that invariant
@@ -237,8 +241,11 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         // would be replacing.
         entry.snapshotLoadedContent();
         
-        // update weblog last modified date.  date updated by saveWebsite()
-        if(entry.isPublished()) {
+        // update weblog last modified date.  date updated by saveWeblog().
+        // Leaving PUBLISHED counts as much as arriving there: an unpublished
+        // (or re-scheduled) entry must leave every cached page and sitemap,
+        // and those expire only through this timestamp.
+        if (entry.isPublished() || wasPublished) {
             roller.getWeblogManager().saveWeblog(entry.getWebsite());
         }
         
@@ -366,10 +373,10 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
      * <p>Goes through {@code saveWeblogEntry} like every other status change
      * in this class, which takes a published entry's tags out of the tag
      * counts (they follow the status as loaded against the status as saved).
-     * The weblog {@code lastModified} bump is gated inside
-     * {@code saveWeblogEntry} on the NEW status being PUBLISHED, which
-     * TRASHED never is, so this method makes an explicit {@code saveWeblog}
-     * call while it can still see that the entry WAS published --
+     * {@code saveWeblogEntry} bumps the weblog's {@code lastModified} when
+     * the entry was LOADED as PUBLISHED; this method also makes an explicit
+     * {@code saveWeblog} call from the in-memory status it saw before
+     * trashing, so an entry that was never loaded is covered too --
      * {@code WeblogPageCache} has no CacheHandler and expires a rendered page
      * only by comparing it against that timestamp (see the Templates section
      * of CLAUDE.md), so without this a reader keeps seeing a trashed post on
@@ -677,6 +684,52 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         return query.getResultList();
     }
     
+    /**
+     * Native, because the featured image is a bare id column with no mapped
+     * relationship to join through, and the point of this query is to answer
+     * the whole sitemap in one round trip: the old way built every entry as
+     * an entity and then looked each featured image up on its own. The
+     * ordering is the entity query's own ({@code pubtime DESC}, nulls first
+     * as PostgreSQL sorts them) and is served by {@code we_combo2_idx}.
+     */
+    private static final String SITEMAP_ENTRIES =
+            "SELECT e.anchor, e.pubtime, e.updatetime, e.noindex,"
+            + " CASE WHEN d.is_private THEN NULL ELSE m.id END"
+            + " FROM weblogentry e"
+            + " LEFT JOIN roller_mediafile m ON m.id = e.featured_image_id"
+            + " LEFT JOIN roller_mediafiledir d ON d.id = m.directoryid"
+            + " WHERE e.websiteid = ?1 AND e.status = ?2"
+            + " ORDER BY e.pubtime DESC"
+            + " LIMIT ?3";
+
+    /**
+     * @inheritDoc
+     */
+    @Override
+    public List<SitemapEntry> getSitemapEntries(Weblog weblog, int maxResults)
+            throws WebloggerException {
+        List<?> rows = strategy.getNativeQuery(SITEMAP_ENTRIES)
+                .setParameter(1, weblog.getId())
+                .setParameter(2, PubStatus.PUBLISHED.name())
+                .setParameter(3, maxResults)
+                .getResultList();
+        List<SitemapEntry> entries = new ArrayList<>(rows.size());
+        for (Object row : rows) {
+            Object[] columns = (Object[]) row;
+            entries.add(new SitemapEntry(
+                    (String) columns[0],
+                    instant(columns[1]),
+                    instant(columns[2]),
+                    Boolean.TRUE.equals(columns[3]),
+                    (String) columns[4]));
+        }
+        return entries;
+    }
+
+    private static java.time.Instant instant(Object timestamp) {
+        return timestamp == null ? null : ((Date) timestamp).toInstant();
+    }
+
     /**
      * @inheritDoc
      */

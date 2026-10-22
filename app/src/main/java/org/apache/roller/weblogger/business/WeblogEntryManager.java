@@ -125,6 +125,17 @@ public interface WeblogEntryManager {
             throws WebloggerException;
 
     /**
+     * The sitemap's view of a weblog's PUBLISHED entries -- anchor, times,
+     * noindex flag and publicly servable featured image -- newest
+     * publication first, at most {@code maxResults} rows, read in one query
+     * without building any entity. Rows flagged noindex are included (and
+     * count toward the cap), so a caller filters them exactly as it would
+     * have filtered entities.
+     */
+    List<SitemapEntry> getSitemapEntries(Weblog weblog, int maxResults)
+            throws WebloggerException;
+
+    /**
      * Get Weblog Entries grouped by day.
      * @param wesc WeblogEntrySearchCriteria object listing desired search parameters
      * @return Map of Lists of WeblogEntries keyed by calendar day

@@ -206,11 +206,14 @@ the new dimension from spreading.
     because the row was gone before the job ran, and re-added trashed entries
     once it survived. It now refuses to add a document for a
     non-`PUBLISHED` entry.
-  - **`weblog.lastModified` must be bumped explicitly when a published entry
-    is trashed.** `CacheManager.invalidate` never reaches `WeblogPageCache`;
-    only `lastModified` expires a rendered page (see Templates), and
-    `trashWeblogEntry` sets `TRASHED` before saving, so `saveWeblogEntry`'s
-    `isPublished()` bump gate is false.
+  - **`weblog.lastModified` must move whenever an entry enters or leaves
+    `PUBLISHED`.** `CacheManager.invalidate` never reaches `WeblogPageCache`
+    or the sitemap cache; only `lastModified` expires them (see Templates).
+    `saveWeblogEntry` bumps when the entry is published now **or was loaded
+    as published** (the second half was missing until 2026-10: unpublishing
+    left the entry on cached pages and in the sitemap). `trashWeblogEntry`
+    keeps its own explicit bump from the in-memory status, for an entry
+    that was never loaded.
   Trashing a published entry takes its tags out of the tag cloud and
   restoring (to `DRAFT`) puts nothing back, both without help from the
   caller: see Tag counts below.
