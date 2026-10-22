@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<entity-mappings version="3.0" xmlns="https://jakarta.ee/xml/ns/persistence/orm"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
-    xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence/orm https://jakarta.ee/xml/ns/persistence/orm_3_0.xsd">
+<!-- EclipseLink's own ORM schema (a superset of the JPA one), not the JPA
+     schema the other mapping files use: only it declares batch-fetch, used
+     for the entry's tags below. (EclipseLink does not validate mapping files
+     and reads the element under either namespace; this keeps the file valid
+     against the schema it names.) EntryTagsFetchRenderingTest counts the
+     queries the batch fetch saves. -->
+<entity-mappings version="5.0" xmlns="http://www.eclipse.org/eclipselink/xsds/persistence/orm"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.eclipse.org/eclipselink/xsds/persistence/orm http://www.eclipse.org/eclipselink/xsds/eclipselink_orm_5_0.xsd">
     <package>org.apache.roller.weblogger.pojos</package>
     <entity metadata-complete="true" name="WeblogEntry"
             class="org.apache.roller.weblogger.pojos.WeblogEntry" access="PROPERTY">
@@ -153,12 +159,22 @@
                     <cascade-remove />
                 </cascade>
             </one-to-many>
+            <!-- Batch-fetched: the first entry of a query result to need its
+                 tags reads the tags of every entry in that result, in one
+                 WHERE entryid IN (...) query, instead of one query per
+                 entry. A feed or an API list rebuilds its entries whenever
+                 the shared cache has dropped them (it keeps about 100), and
+                 each then read its tags alone. IN, not JOIN or EXISTS: those
+                 re-run the list's own selection, which a page's LIMIT/OFFSET
+                 does not carry, so they would read the tags of the whole
+                 weblog. A cached entry whose tags are loaded reads nothing. -->
             <one-to-many name="tags" mapped-by="weblogEntry" target-entity="org.apache.roller.weblogger.pojos.WeblogEntryTag" fetch="LAZY">
                 <order-by>name</order-by>
                 <cascade>
                     <cascade-persist /> <!-- Added so entry added by addTag() gets persisted -->
                     <cascade-remove />
                 </cascade>
+                <batch-fetch type="IN"/>
             </one-to-many>
             <transient name="categories"/>
             <transient name="displayTitle"/>

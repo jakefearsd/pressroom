@@ -76,6 +76,24 @@ the SQL text (which carries the expanded `:app_user`) and every exception are
 logged at the point of failure instead (`InstallControllerTest`,
 `SQLScriptRunnerTest`).
 
+### Entry tags and the shared cache
+
+EclipseLink's shared cache keeps an entry's loaded tags with it, but it
+holds only about 100 entries (the default soft-weak identity map); beyond
+that an entry is weakly held and dropped at the next GC. Every list query
+still runs its SQL; a dropped entry is rebuilt from the row with its tags
+unloaded. **`WeblogEntry.tags` is therefore `<batch-fetch type="IN"/>`**
+(which is why `WeblogEntry.orm.xml`, alone, uses EclipseLink's ORM schema):
+the first rebuilt entry to need its tags loads them for every entry of that
+query result in one `entryid IN (...)` read. Before, a feed or an API list
+made one read per rebuilt entry (418,547 in a 4.5-minute profiling run),
+with concurrent renders queued on each entry's synchronized lazy load. Not
+JOIN or EXISTS batching: those re-run the list's selection without its
+LIMIT/OFFSET and read the whole weblog's tags. Edits merge into the cached
+entry at commit as before. `EntryTagsFetchRenderingTest` counts the reads and
+pins edit, create and delete freshness. The cache size itself is unchanged
+(a permalink still reads its one entry's tags when the entry was dropped).
+
 ### Tag aggregates (`roller_weblogentrytagagg`)
 
 One row per (weblog, tag) and one site-wide row per tag (`websiteid IS
