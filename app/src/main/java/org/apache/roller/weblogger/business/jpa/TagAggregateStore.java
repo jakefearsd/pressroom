@@ -40,24 +40,41 @@ import org.apache.roller.weblogger.pojos.WeblogEntry;
  * from what the caller believes the entry looked like before. Just before the
  * transaction commits, each touched row is locked ({@code INSERT ... ON
  * CONFLICT ON CONSTRAINT weta_weblog_tag_uq DO UPDATE}), then set by a
- * separate statement to the count of published entries carrying the tag. In
- * READ COMMITTED that second statement takes a fresh snapshot, so it sees
- * whatever a transaction that held the lock before it committed; and the
- * transaction's own writes were flushed by the first statement. A row at zero
- * is deleted. This replaced, in turn, an unlocked select-then-insert-or-update
- * (duplicate keys, lost increments) and per-save deltas from the entry as
+ * separate statement: a weblog row to the count of that weblog's published
+ * entries carrying the tag, the site-wide row to the sum of the tag's weblog
+ * rows (each entry belongs to one weblog, so the sum is the site-wide count;
+ * reading one row per weblog instead of every entry carrying the tag is what
+ * keeps a save cheap on a large site). In READ COMMITTED that second
+ * statement takes a fresh snapshot, so it sees whatever a transaction that
+ * held the lock before it committed; and the transaction's own writes were
+ * flushed by the first statement. A row at zero is deleted.
+ *
+ * <p>Why the sum is exact: every transaction that changes a weblog row takes
+ * the tag's site-wide lock after that change and holds it to its commit. So
+ * whichever transaction sums last took the lock after every other one
+ * committed, and its fresh snapshot sees every weblog row as finally
+ * committed; anyone summing earlier is followed by that one. Summing in the
+ * locking statement itself would read from a snapshot taken before the wait,
+ * and lose the entries of whoever held the lock
+ * ({@code TagAggregateConcurrencyTest}). A weblog row at zero is deleted only
+ * after the sum, and adds nothing to it either way. Deleting a weblog
+ * recounts each of its rows the same way ({@link #recountWeblog}), so no row
+ * is ever removed without the site-wide row being re-summed under its lock.
+ *
+ * <p>This replaced, in turn, an unlocked select-then-insert-or-update
+ * (duplicate keys, lost increments), per-save deltas from the entry as
  * loaded (two saves of the same entry, both loaded before either committed,
- * each applied the same delta).
+ * each applied the same delta), and a site-wide recount that rescanned every
+ * entry carrying the tag (~20 ms a save on a 44k-entry site).
  *
  * <p>Lock order: a transaction takes its aggregate row locks once, at
  * commit, by tag name, each tag's weblog rows (by weblog id) before its
  * site-wide row, and only after every other write of the transaction has been
  * flushed. Two transactions therefore never wait on each other's aggregate
  * rows in a cycle, however many entries each saved; entry and weblog rows are
- * still locked in whatever order each transaction writes them. One
- * exception: weblog deletion's bulk {@code removeByWeblog} DELETE locks that
- * weblog's rows mid-transaction, outside this ordering, so a save into the
- * weblog being deleted can deadlock with it (PostgreSQL aborts one side).
+ * still locked in whatever order each transaction writes them. Weblog
+ * deletion follows the same order: it no longer deletes the weblog's rows
+ * mid-transaction, it recounts them to zero at commit.
  *
  * <p>Relies on READ COMMITTED (a fresh snapshot per statement), which nothing
  * pins; under REPEATABLE READ the lock statement fails with serialization
@@ -74,6 +91,9 @@ final class TagAggregateStore {
     private static final String TAGS_OF_ENTRY =
             "SELECT DISTINCT name FROM roller_weblogentrytag WHERE entryid = ?1";
 
+    private static final String TAGS_OF_WEBLOG =
+            "SELECT name FROM roller_weblogentrytagagg WHERE websiteid = ?1";
+
     private static final String LOCK_WEBLOG_ROW =
             "INSERT INTO roller_weblogentrytagagg (id, websiteid, name, total, lastused) "
             + "VALUES (?1, ?2, ?3, 0, ?4) "
@@ -84,20 +104,25 @@ final class TagAggregateStore {
             + "VALUES (?1, NULL, ?2, 0, ?3) "
             + "ON CONFLICT ON CONSTRAINT weta_weblog_tag_uq DO UPDATE SET total = roller_weblogentrytagagg.total";
 
+    /*
+     * A tag row carries its entry's weblog (WeblogEntry.addTag), and entries
+     * never change weblog, so t.websiteid narrows the tag rows to the
+     * weblog's through wet_weblog_name_entry_idx (V036) before the join;
+     * e.websiteid keeps the count defined by the entry, as V034 computes it.
+     */
     private static final String RECOUNT_WEBLOG_ROW =
             "UPDATE roller_weblogentrytagagg a "
             + "SET total = c.n, lastused = CASE WHEN a.total = c.n THEN a.lastused ELSE ?1 END "
             + "FROM (SELECT count(DISTINCT t.entryid) AS n FROM roller_weblogentrytag t "
             + "JOIN weblogentry e ON e.id = t.entryid "
-            + "WHERE e.status = 'PUBLISHED' AND t.name = ?2 AND e.websiteid = ?3) c "
-            + "WHERE a.name = ?4 AND a.websiteid = ?5";
+            + "WHERE e.status = 'PUBLISHED' AND t.name = ?2 AND t.websiteid = ?3 AND e.websiteid = ?4) c "
+            + "WHERE a.name = ?5 AND a.websiteid = ?6";
 
-    private static final String RECOUNT_SITE_ROW =
+    private static final String SUM_SITE_ROW =
             "UPDATE roller_weblogentrytagagg a "
             + "SET total = c.n, lastused = CASE WHEN a.total = c.n THEN a.lastused ELSE ?1 END "
-            + "FROM (SELECT count(DISTINCT t.entryid) AS n FROM roller_weblogentrytag t "
-            + "JOIN weblogentry e ON e.id = t.entryid "
-            + "WHERE e.status = 'PUBLISHED' AND t.name = ?2) c "
+            + "FROM (SELECT CAST(COALESCE(SUM(w.total), 0) AS integer) AS n FROM roller_weblogentrytagagg w "
+            + "WHERE w.name = ?2 AND w.websiteid IS NOT NULL) c "
             + "WHERE a.name = ?3 AND a.websiteid IS NULL";
 
     private static final String DELETE_EMPTY_ROWS =
@@ -130,6 +155,21 @@ final class TagAggregateStore {
         pending().addEntry(entry.getId(), entry.getWebsite().getId());
     }
 
+    /**
+     * Recount, at commit, every tag {@code weblog} then has a row for, read
+     * at commit. For weblog deletion, alongside {@link #recount(Weblog,
+     * Collection)} of the tags whose rows it removed: a row no tag row backs
+     * still falls to zero, goes, and comes out of the site-wide sum, where
+     * a bulk DELETE of the weblog's rows would have taken their locks out of
+     * order and left the site-wide rows unsummed.
+     */
+    void recountWeblog(Weblog weblog) throws WebloggerException {
+        if (weblog == null) {
+            throw new WebloggerException("Website cannot be NULL.");
+        }
+        pending().addWeblog(weblog.getId());
+    }
+
     private Recount pending() {
         return strategy.beforeCommit(Recount.class, () -> new Recount(strategy));
     }
@@ -142,6 +182,8 @@ final class TagAggregateStore {
         private final SortedMap<String, SortedSet<String>> weblogsByTag = new TreeMap<>();
         /** entry id to its weblog id */
         private final Map<String, String> entries = new LinkedHashMap<>();
+        /** ids of the weblogs whose every row to recount */
+        private final SortedSet<String> weblogs = new TreeSet<>();
 
         Recount(JPAPersistenceStrategy strategy) {
             this.strategy = strategy;
@@ -157,6 +199,10 @@ final class TagAggregateStore {
             entries.put(entryId, weblogId);
         }
 
+        void addWeblog(String weblogId) {
+            weblogs.add(weblogId);
+        }
+
         @Override
         public void run() {
             // The first statement flushes the transaction's pending writes,
@@ -165,6 +211,12 @@ final class TagAggregateStore {
                 for (Object name : strategy.getNativeQuery(TAGS_OF_ENTRY)
                         .setParameter(1, entry.getKey()).getResultList()) {
                     weblogsByTag.computeIfAbsent((String) name, k -> new TreeSet<>()).add(entry.getValue());
+                }
+            }
+            for (String weblogId : weblogs) {
+                for (Object name : strategy.getNativeQuery(TAGS_OF_WEBLOG)
+                        .setParameter(1, weblogId).getResultList()) {
+                    weblogsByTag.computeIfAbsent((String) name, k -> new TreeSet<>()).add(weblogId);
                 }
             }
             Timestamp now = new Timestamp(System.currentTimeMillis());
@@ -181,8 +233,9 @@ final class TagAggregateStore {
                             .setParameter(1, now)
                             .setParameter(2, name)
                             .setParameter(3, weblogId)
-                            .setParameter(4, name)
-                            .setParameter(5, weblogId)
+                            .setParameter(4, weblogId)
+                            .setParameter(5, name)
+                            .setParameter(6, weblogId)
                             .executeUpdate();
                 }
                 strategy.getNativeQuery(LOCK_SITE_ROW)
@@ -190,7 +243,8 @@ final class TagAggregateStore {
                         .setParameter(2, name)
                         .setParameter(3, now)
                         .executeUpdate();
-                strategy.getNativeQuery(RECOUNT_SITE_ROW)
+                // after every weblog row of the tag: the sum reads them
+                strategy.getNativeQuery(SUM_SITE_ROW)
                         .setParameter(1, now)
                         .setParameter(2, name)
                         .setParameter(3, name)

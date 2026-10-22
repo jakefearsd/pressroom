@@ -34,7 +34,9 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 import org.apache.roller.weblogger.business.MediaFileManager;
 import org.apache.roller.weblogger.business.UserManager;
@@ -43,7 +45,6 @@ import org.apache.roller.weblogger.business.WeblogEntryManager;
 import org.apache.roller.weblogger.business.WeblogManager;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.CustomTemplateRendition;
-import org.apache.roller.weblogger.pojos.TagStat;
 import org.apache.roller.weblogger.pojos.ThemeTemplate.ComponentType;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
@@ -144,26 +145,23 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         tagQuery.setParameter(1, weblog);
         List<WeblogEntryTag> results = tagQuery.getResultList();
         
+        Set<String> tagNames = new TreeSet<>();
         for (WeblogEntryTag tagData : results) {
             if (tagData.getWeblogEntry() != null) {
                 tagData.getWeblogEntry().getTags().remove(tagData);
             }
+            tagNames.add(tagData.getName());
             this.strategy.remove(tagData);
         }
         
-        // recount this weblog's tags at commit: its own rows fall to zero
-        // and go, and the site-wide rows lose its entries
-        List<String> tagNames = new ArrayList<>();
-        for (TagStat stat : emgr.getTags(weblog, null, null, 0, -1)) {
-            tagNames.add(stat.getName());
-        }
+        // Recount at commit, like any other change to tag rows, every tag
+        // whose rows this removes -- named from the rows themselves, so a
+        // tag a concurrent publish is counting is recounted after it -- and
+        // every tag the weblog then still has an aggregate row for. Each
+        // falls to zero and goes, and the site-wide sums lose it. Nothing
+        // deletes the rows outright: that took them out of the lock order.
         tagAggregates.recount(weblog, tagNames);
-        
-        // delete whatever weblog tag aggregates remain
-        Query removeAggs= strategy.getNamedUpdate(
-                "WeblogEntryTagAggregate.removeByWeblog");
-        removeAggs.setParameter(1, weblog);
-        removeAggs.executeUpdate();
+        tagAggregates.recountWeblog(weblog);
         
         // remove associated templates
         TypedQuery<WeblogTemplate> templateQuery = strategy.getNamedQuery("WeblogTemplate.getByWeblog",

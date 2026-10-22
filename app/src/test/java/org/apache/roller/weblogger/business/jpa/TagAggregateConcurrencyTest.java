@@ -38,6 +38,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.roller.weblogger.TestUtils;
 import org.apache.roller.weblogger.business.WeblogEntryManager;
+import org.apache.roller.weblogger.business.WeblogManager;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.TagStat;
 import org.apache.roller.weblogger.pojos.User;
@@ -245,7 +246,138 @@ class TagAggregateConcurrencyTest {
         assertEquals(2, storedTotal(weblog.getId(), "dla"));
     }
 
+    /**
+     * The site-wide row is the sum of the per-weblog rows, so it is exact
+     * only if whichever transaction writes it last sees every other weblog's
+     * row as committed. Two saves on different weblogs each update their own
+     * weblog row, then both queue on the site-wide row (held here by a third
+     * session so the queue is certain, not likely). The first through sums
+     * the other's row as last committed; the second, if it summed in the
+     * statement that waited for the lock, would sum from a snapshot taken
+     * before the first committed and lose its entry. It must sum in a later
+     * statement, whose snapshot includes the first.
+     *
+     * <p>Characterisation: passes against the entry-rescanning recount too;
+     * pins that the sum keeps the same lock-then-read shape.
+     */
+    @Test
+    @Timeout(120)
+    void savesOnTwoWeblogsQueuedOnTheSiteWideRowEachCountTheOther() throws Exception {
+        publish(weblog.getId(), "queueseed", "queued");
+        try (Connection holder = connection()) {
+            holder.setAutoCommit(false);
+            try (PreparedStatement lock = holder.prepareStatement(
+                    "SELECT total FROM roller_weblogentrytagagg WHERE websiteid IS NULL AND name = 'queued' FOR UPDATE")) {
+                lock.executeQuery().close();
+            }
+            List<Throwable> failures = inParallel(3, worker -> {
+                switch (worker) {
+                    case 0 -> publish(weblog.getId(), "queue-a", "queued");
+                    case 1 -> publish(otherWeblog.getId(), "queue-b", "queued");
+                    default -> {
+                        awaitSessionsWaitingOnALock(2, Duration.ofSeconds(30));
+                        holder.commit();
+                    }
+                }
+            });
+            assertNoFailures(failures, "two weblogs queued on the site-wide row");
+        }
+        assertAggregateIsTrue("queued", weblog, otherWeblog);
+        assertEquals(3, storedTotal(null, "queued"));
+    }
+
+    /**
+     * Deleting a weblog takes its rows out of every site-wide sum, including
+     * a row a concurrent save committed after the deletion started. Here a
+     * third session publishes one of the weblog's drafts, exactly as the
+     * store would (entry, then each tag's weblog row and site-wide row), and
+     * commits only once the deletion is waiting on it. The draft's
+     * {@code late} tag had no row when the deletion began; a deletion that
+     * took its tag names, or deleted the weblog's rows, before then would
+     * leave {@code late}'s rows counting an entry that no longer exists.
+     */
+    @Test
+    @Timeout(120)
+    void aDraftPublishedWhileItsWeblogIsDeletedLeavesNoCount() throws Exception {
+        Weblog doomed = TestUtils.setupWeblog("tagracedoomed", user);
+        TestUtils.endSession(true);
+        String doomedId = doomed.getId();
+        publish(doomedId, "held", "held");
+        String draft = create(doomedId, PubStatus.DRAFT, "late", "held", "late");
+
+        try (Connection publisher = connection()) {
+            publisher.setAutoCommit(false);
+            publishBehindTheStoresBack(publisher, draft, doomedId);
+            List<Throwable> failures = inParallel(2, worker -> {
+                if (worker == 0) {
+                    WeblogManager weblogs = TestUtils.weblogger().getWeblogManager();
+                    weblogs.removeWeblog(weblogs.getWeblog(doomedId));
+                } else {
+                    awaitSessionsWaitingOnALock(1, Duration.ofSeconds(30));
+                    publisher.commit();
+                }
+            });
+            assertNoFailures(failures, "weblog deletion racing a publish");
+        }
+        try {
+            assertFalse(weblogExists(doomedId), "the deletion committed");
+            assertEquals(List.of(), storedTotals(doomedId, "late"), "the deleted weblog's row");
+            assertEquals(List.of(), storedTotals(doomedId, "held"), "the deleted weblog's row");
+            assertAggregateIsTrue("late", weblog, otherWeblog);
+            assertAggregateIsTrue("held", weblog, otherWeblog);
+        } finally {
+            // on failure, leave no rows behind for the suites that start from none
+            try (Connection con = connection(); Statement st = con.createStatement()) {
+                st.executeUpdate("DELETE FROM roller_weblogentrytagagg WHERE name IN ('late', 'held')");
+            }
+        }
+    }
+
+    /**
+     * What a commit publishing {@code draft} (tagged held and late) writes,
+     * in the store's order, left uncommitted on {@code publisher}.
+     */
+    private static void publishBehindTheStoresBack(Connection publisher, String draft, String weblogId)
+            throws SQLException {
+        try (PreparedStatement ps = publisher.prepareStatement(
+                "UPDATE weblogentry SET status = 'PUBLISHED' WHERE id = ?")) {
+            ps.setString(1, draft);
+            assertEquals(1, ps.executeUpdate());
+        }
+        try (PreparedStatement ps = publisher.prepareStatement(
+                "UPDATE roller_weblogentrytagagg SET total = total + 1 "
+                        + "WHERE websiteid IS NOT DISTINCT FROM ? AND name = 'held'")) {
+            for (String id : new String[] {weblogId, null}) {
+                ps.setString(1, id);
+                assertEquals(1, ps.executeUpdate());
+            }
+        }
+        try (PreparedStatement ps = publisher.prepareStatement(
+                "INSERT INTO roller_weblogentrytagagg (id, websiteid, name, total, lastused) "
+                        + "VALUES (?, ?, 'late', 1, now())")) {
+            for (String id : new String[] {weblogId, null}) {
+                ps.setString(1, UUID.randomUUID().toString());
+                ps.setString(2, id);
+                ps.executeUpdate();
+            }
+        }
+    }
+
+    private static boolean weblogExists(String id) throws SQLException {
+        try (Connection con = connection();
+             PreparedStatement ps = con.prepareStatement("SELECT 1 FROM weblog WHERE id = ?")) {
+            ps.setString(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
     private static void awaitASessionWaitingOnALock(Duration atMost) throws Exception {
+        awaitSessionsWaitingOnALock(1, atMost);
+    }
+
+    private static void awaitSessionsWaitingOnALock(int sessions, Duration atMost) throws Exception {
         long deadline = System.nanoTime() + atMost.toNanos();
         try (Connection con = connection(); PreparedStatement ps = con.prepareStatement(
                 "SELECT count(*) FROM pg_stat_activity "
@@ -253,7 +385,7 @@ class TagAggregateConcurrencyTest {
             while (System.nanoTime() < deadline) {
                 try (ResultSet rs = ps.executeQuery()) {
                     rs.next();
-                    if (rs.getInt(1) > 0) {
+                    if (rs.getInt(1) >= sessions) {
                         return;
                     }
                 }

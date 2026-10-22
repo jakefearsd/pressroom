@@ -85,16 +85,32 @@ touched; just before the transaction commits (`JPAPersistenceStrategy.
 beforeCommit`), each touched row is locked with `INSERT ... ON CONFLICT ON
 CONSTRAINT weta_weblog_tag_uq DO UPDATE` and then, in a second statement
 (a fresh READ COMMITTED snapshot, so it sees whoever held the lock before),
-set to the count recomputed from the entries; a row at zero is deleted.
+recomputed: a weblog row from that weblog's entries, the site-wide row as
+the **sum of the tag's weblog rows** (each entry has one weblog, so it is the
+same number; until 2026-10-22 it rescanned every entry carrying the tag,
+~20 ms a save and the top database cost under load). A row at zero is
+deleted, after the sum. The sum is exact because every transaction that
+changes a weblog row takes the site-wide lock afterwards and holds it to
+commit, so the last to sum sees every other weblog row committed; summing
+inside the locking statement would use a pre-wait snapshot and lose the
+lock holder's entries (`TagAggregateConcurrencyTest`, the queued-saves
+test). The weblog recount narrows on the tag row's own `websiteid`
+(`wet_weblog_name_entry_idx`, V036).
 Locks are taken once per transaction, by tag name (weblog rows, then the
 site-wide row), after all the transaction's other writes are flushed, so
 multi-entry transactions (ScheduledEntriesTask, bulk publish) cannot
-deadlock against single saves on these rows. **One exception: weblog
-deletion** (`JPAWeblogManagerImpl.removeWeblogContents`) runs the bulk
-`WeblogEntryTagAggregate.removeByWeblog` DELETE mid-transaction, outside
-the hook, locking that weblog's aggregate rows in no particular order, so
-a save into the weblog being deleted can deadlock with it (PostgreSQL
-aborts one side). **The recount depends on READ COMMITTED** (a fresh
+deadlock against single saves on these rows. **Weblog deletion**
+(`JPAWeblogManagerImpl.removeWeblogContents`) recounts, in the same hook,
+every tag whose tag rows it removes (named from those rows, so a draft
+published concurrently is recounted after it) and every tag the weblog
+still has a row for at commit; each falls to zero and leaves the sums.
+Until 2026-10-22 it bulk-DELETEd the weblog's rows mid-transaction, out of
+lock order, and recounted only the names its rows had when it started, so
+a draft published in that window left its new tag's site-wide row
+counting a deleted entry. Note that weblog deletion commits more than once
+(`strategy.flush()` commits): the tag rows and aggregates go in its first
+commit, the entries later.
+**The recount depends on READ COMMITTED** (a fresh
 snapshot per statement), which nothing pins; under REPEATABLE READ the lock
 statement would fail with serialization errors instead (fails closed).
 **`lastused`** (behind popular-tags-in-the-last-N-days) moves only when a
