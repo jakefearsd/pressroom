@@ -824,11 +824,10 @@ public class WeblogEntryTest  {
                 assertEquals( expectedCount.intValue(), stat.getCount(), stat.getName());
             }
 
+        } finally {
+            TestUtils.endSession(false);
             TestUtils.teardownWeblog(testWeblog2.getId());
             TestUtils.endSession(true);
-
-        } catch (Throwable t) {
-            log.error("Unexpected error", t);
         }
         
         log.info("END");
