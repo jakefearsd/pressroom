@@ -19,7 +19,6 @@
 package org.apache.roller.weblogger.pojos;
 
 import java.util.Date;
-import org.apache.roller.util.UUIDGenerator;
 
 
 /**
@@ -29,7 +28,7 @@ public abstract class ObjectPermission extends RollerPermission {
 
     private static final long serialVersionUID = 1L;
 
-    protected String  id = UUIDGenerator.generateUUID();
+    protected String  id = EntityIds.newId();
     protected String  userName;
     protected String  objectType;
     protected String  objectId;

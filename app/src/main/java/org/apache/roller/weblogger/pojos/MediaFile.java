@@ -27,7 +27,6 @@ import java.util.Set;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.roller.util.UUIDGenerator;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.util.Utilities;
 
@@ -40,7 +39,7 @@ public class MediaFile implements Serializable {
     private static final long serialVersionUID = -6704258422169734004L;
 
 
-    private String id = UUIDGenerator.generateUUID();
+    private String id = EntityIds.newId();
 
     private String name;
     private String description;

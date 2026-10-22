@@ -20,7 +20,6 @@ package org.apache.roller.weblogger.pojos;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.roller.util.UUIDGenerator;
 
 
 /**
@@ -28,7 +27,7 @@ import org.apache.roller.util.UUIDGenerator;
  */
 public class WeblogEntryAttribute implements Comparable<WeblogEntryAttribute> {
     
-    private String id = UUIDGenerator.generateUUID();
+    private String id = EntityIds.newId();
     private WeblogEntry entry;
     private String name;
     private String value;

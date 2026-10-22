@@ -22,7 +22,6 @@ import java.io.Serializable;
 import java.util.Date;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.roller.util.UUIDGenerator;
 import org.apache.roller.weblogger.ui.core.RollerContext;
 import org.apache.roller.weblogger.util.HTMLSanitizer;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -35,7 +34,7 @@ public class User implements Serializable {
     
     private static final long serialVersionUID = -6354583200913127874L;
     
-    private String  id = UUIDGenerator.generateUUID();
+    private String  id = EntityIds.newId();
     private String  userName;
     private String  password;
     private String  screenName;

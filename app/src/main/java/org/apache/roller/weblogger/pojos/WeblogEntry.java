@@ -60,7 +60,7 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
     public enum PubStatus {DRAFT, PUBLISHED, PENDING, SCHEDULED, TRASHED}
 
     // Simple properies
-    private String    id            = UUIDGenerator.generateUUID();
+    private String    id            = EntityIds.newId();
     private String    title         = null;
     private String    link          = null;
     private String    summary       = null;
@@ -200,7 +200,10 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
      * is no annotation on this class because the mapping is metadata-complete.
      */
     public void snapshotLoadedContent() {
-        loadedContent = WeblogEntryRevision.of(this, null);
+        // Built without an id: most loaded entries are never saved, and every
+        // load would otherwise draw a UUID. contentBeingReplaced assigns one
+        // when the snapshot is actually going to be stored.
+        loadedContent = EntityIds.materialise(() -> WeblogEntryRevision.of(this, null));
         loadedStatus = getStatus();
         loadedAnchor = getAnchor();
         // what is loaded (or just saved) is the baseline the next save's tag
@@ -232,6 +235,9 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
     public WeblogEntryRevision contentBeingReplaced(String creator) {
         if (loadedContent == null || !loadedContent.differsFrom(this)) {
             return null;
+        }
+        if (loadedContent.getId() == null) {
+            loadedContent.setId(EntityIds.newId());
         }
         loadedContent.setCreator(creator);
         return loadedContent;

@@ -24,7 +24,6 @@ import java.time.Instant;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.roller.util.UUIDGenerator;
 
 /**
  * One entry's title, text and summary as they stood before a save.
@@ -42,7 +41,7 @@ public class WeblogEntryRevision implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private String id = UUIDGenerator.generateUUID();
+    private String id = EntityIds.newId();
     private WeblogEntry weblogEntry;
 
     /**

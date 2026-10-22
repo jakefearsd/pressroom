@@ -21,7 +21,6 @@ import java.io.Serializable;
 import java.sql.Timestamp;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.roller.util.UUIDGenerator;
 
 /**
  * A 301 rule for one weblog-relative URL that would otherwise 404.
@@ -44,7 +43,7 @@ public class WeblogRedirect implements Serializable {
         MANUAL, SLUG_HISTORY
     }
 
-    private String id = UUIDGenerator.generateUUID();
+    private String id = EntityIds.newId();
     private Weblog weblog;
     private String sourcePath;
     private String targetPath;

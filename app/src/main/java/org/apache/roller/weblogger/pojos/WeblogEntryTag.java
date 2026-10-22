@@ -21,7 +21,6 @@ import java.io.Serializable;
 import java.sql.Timestamp;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.roller.util.UUIDGenerator;
 
 
 /**
@@ -32,7 +31,7 @@ public class WeblogEntryTag implements Serializable {
     
     private static final long serialVersionUID = -2602052289337573384L;
     
-    private String id = UUIDGenerator.generateUUID();
+    private String id = EntityIds.newId();
     private Weblog website = null;
     private WeblogEntry weblogEntry = null;
     private String userName = null;

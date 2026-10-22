@@ -21,7 +21,6 @@ package org.apache.roller.weblogger.pojos;
 import java.io.Serializable;
 import java.util.Calendar;
 import java.util.Date;
-import org.apache.roller.util.UUIDGenerator;
 
 
 /**
@@ -31,7 +30,7 @@ public class TaskLock implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private String id = UUIDGenerator.generateUUID();
+    private String id = EntityIds.newId();
     private String name = null;
     private Date timeAcquired = null;
     private int timeLeased = 0;

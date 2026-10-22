@@ -21,7 +21,6 @@ import java.io.Serializable;
 import java.sql.Timestamp;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.roller.util.UUIDGenerator;
 import org.apache.roller.weblogger.business.shortcodes.ShortcodeContext;
 
 /**
@@ -40,7 +39,7 @@ public class WeblogPage implements ShortcodeContext, Serializable {
         DRAFT, PUBLISHED
     }
 
-    private String id = UUIDGenerator.generateUUID();
+    private String id = EntityIds.newId();
     private Weblog weblog;
     private String slug;
     private transient String loadedSlug;

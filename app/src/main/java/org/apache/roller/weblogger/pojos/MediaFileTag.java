@@ -22,7 +22,6 @@ import java.io.Serializable;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.roller.util.UUIDGenerator;
 
 /**
  * Represents the tag for media files.
@@ -32,7 +31,7 @@ public class MediaFileTag implements Serializable {
 
     private static final long serialVersionUID = -1349427373511141841L;
 
-    private String id = UUIDGenerator.generateUUID();
+    private String id = EntityIds.newId();
     private String name;
     private MediaFile mediaFile;
 

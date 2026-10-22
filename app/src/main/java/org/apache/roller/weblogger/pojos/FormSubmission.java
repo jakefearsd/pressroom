@@ -21,7 +21,6 @@ import java.io.Serializable;
 import java.sql.Timestamp;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.roller.util.UUIDGenerator;
 
 /**
  * A contact-form inquiry, persisted before any notification email is
@@ -34,7 +33,7 @@ public class FormSubmission implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private String id = UUIDGenerator.generateUUID();
+    private String id = EntityIds.newId();
     private Weblog weblog;
     private String name;
     private String email;

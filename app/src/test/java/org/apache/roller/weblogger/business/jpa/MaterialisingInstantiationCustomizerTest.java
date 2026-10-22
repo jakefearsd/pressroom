@@ -1,0 +1,86 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ *  contributor license agreements.  The ASF licenses this file to You
+ * under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.  For additional information regarding
+ * copyright in this work, please see the NOTICE file in the top level
+ * directory of this distribution.
+ */
+package org.apache.roller.weblogger.business.jpa;
+
+import org.apache.roller.weblogger.pojos.ObjectPermission;
+import org.apache.roller.weblogger.pojos.WeblogEntry;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+/**
+ * The pieces of {@link MaterialisingInstantiationCustomizer} that a real
+ * persistence unit cannot reach. That every mapped entity is built without an
+ * id is {@link EntityLoadIdGenerationTest}'s job.
+ */
+class MaterialisingInstantiationCustomizerTest {
+
+    /** Has no public no-argument constructor. */
+    public static final class NeedsAnArgument {
+        public NeedsAnArgument(String required) {
+            assertNotNull(required);
+        }
+    }
+
+    /** Public constructor, but the class itself is not public. */
+    static final class NotPublic {
+        public NotPublic() {
+            // a public constructor alone does not make the class reachable
+        }
+    }
+
+    /** Fails to construct. */
+    public static final class Explodes {
+        public Explodes() {
+            throw new IllegalArgumentException("boom");
+        }
+    }
+
+    @Test
+    void typesItCannotBuildKeepTheDefaultInstantiation() {
+        assertNull(MaterialisingInstantiationCustomizer.publicNoArgConstructor(ObjectPermission.class),
+                "abstract");
+        assertNull(MaterialisingInstantiationCustomizer.publicNoArgConstructor(NeedsAnArgument.class),
+                "no public no-argument constructor");
+        assertNull(MaterialisingInstantiationCustomizer.publicNoArgConstructor(NotPublic.class),
+                "a class that is not public cannot be built through Constructor.newInstance");
+    }
+
+    @Test
+    void theFactoryBuildsWithoutAnIdAndLeavesGenerationOnForTheApplication() {
+        Object built = new MaterialisingInstantiationCustomizer.Factory(
+                MaterialisingInstantiationCustomizer.publicNoArgConstructor(WeblogEntry.class)).newInstance();
+
+        assertNull(assertInstanceOf(WeblogEntry.class, built).getId());
+        assertNotNull(new WeblogEntry().getId());
+    }
+
+    @Test
+    void aConstructorFailureSurfacesAndDoesNotLeakTheSuspension() {
+        MaterialisingInstantiationCustomizer.Factory factory = new MaterialisingInstantiationCustomizer.Factory(
+                MaterialisingInstantiationCustomizer.publicNoArgConstructor(Explodes.class));
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class, factory::newInstance);
+
+        assertNotNull(failure.getCause());
+        assertNotNull(new WeblogEntry().getId());
+    }
+}

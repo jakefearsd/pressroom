@@ -21,7 +21,6 @@ package org.apache.roller.weblogger.pojos;
 import java.io.Serializable;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.roller.util.UUIDGenerator;
 
 
 /**
@@ -31,7 +30,7 @@ public class UserRole implements Serializable {
     
     public static final long serialVersionUID = -4254083071697970972L;
     
-    private String id = UUIDGenerator.generateUUID();
+    private String id = EntityIds.newId();
     private String userName;
     private String role;
     

@@ -35,7 +35,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Every persistent entity in {@code pojos} assigns itself a UUID in its field
- * initialiser rather than waiting for the database.
+ * initialiser rather than waiting for the database. (EclipseLink's own
+ * construction of loaded rows skips it: {@code EntityLoadIdGenerationTest}.)
  *
  * <p>That is what lets Roller build an object graph, put the objects in sets
  * and wire up their relationships before anything is flushed. An entity that
