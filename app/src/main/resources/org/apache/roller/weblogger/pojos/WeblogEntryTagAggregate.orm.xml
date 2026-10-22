@@ -17,9 +17,6 @@
         <named-query name="WeblogEntryTagAggregate.getPopularTagsByWebsite&amp;StartDate">
             <query>SELECT w.name, SUM(w.total) FROM WeblogEntryTagAggregate w WHERE w.weblog = ?1 AND w.lastUsed &gt;= ?2 GROUP BY w.name, w.total ORDER BY w.total DESC</query>
         </named-query>
-        <named-query name="WeblogEntryTagAggregate.removeByWeblog">
-            <query>DELETE FROM WeblogEntryTagAggregate w WHERE w.weblog = ?1</query>
-        </named-query>
         <named-query name="WeblogEntryTagAggregate.getPopularTagsByWebsiteNull">
             <query>SELECT w.name, SUM(w.total) FROM WeblogEntryTagAggregate w WHERE w.weblog IS NULL GROUP BY w.name, w.total ORDER BY w.total DESC</query>
         </named-query>

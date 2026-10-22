@@ -17,6 +17,8 @@
  */
 package org.apache.roller.weblogger.business.jpa;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.Timestamp;
 import java.util.UUID;
 
@@ -32,6 +34,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.apache.roller.weblogger.business.jpa.TagAggregateRows.assertAggregateIsTrue;
+import static org.apache.roller.weblogger.business.jpa.TagAggregateRows.connection;
 import static org.apache.roller.weblogger.business.jpa.TagAggregateRows.siteTotal;
 import static org.apache.roller.weblogger.business.jpa.TagAggregateRows.weblogTotal;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -262,6 +265,39 @@ class TagAggregateBookkeepingTest {
         assertEquals(1, siteTotal("x"));
         assertEquals(0, siteTotal("only"));
         assertTrue("x", "only");
+    }
+
+    /**
+     * The site-wide row is the sum of the tag's per-weblog rows, not a rescan
+     * of every entry carrying the tag across the site (14 ms a save on a
+     * 44k-entry site, the top database cost of a 2026-10-22 profiling run).
+     * The other weblog's row is set by hand to a total no entry backs, so the
+     * only way the site-wide row can reach it is by reading that row.
+     */
+    @Test
+    void theSiteWideRowIsTheSumOfTheWeblogRows() throws Exception {
+        Weblog other = TestUtils.setupWeblog("tagbooksum", user);
+        TestUtils.endSession(true);
+        try {
+            createIn(other, "summed");
+            try (Connection con = connection(); PreparedStatement ps = con.prepareStatement(
+                    "UPDATE roller_weblogentrytagagg SET total = 40 WHERE websiteid = ? AND name = 'summed'")) {
+                ps.setString(1, other.getId());
+                assertEquals(1, ps.executeUpdate());
+            }
+
+            create(PubStatus.PUBLISHED, now(), "summed");
+            create(PubStatus.PUBLISHED, now(), "summed");
+
+            assertEquals(2, weblogTotal(weblog.getId(), "summed"));
+            assertEquals(42, siteTotal("summed"));
+        } finally {
+            TestUtils.endSession(false);
+            TestUtils.teardownWeblog(other.getId());
+            TestUtils.endSession(true);
+        }
+        assertEquals(2, siteTotal("summed"), "what is left once the other weblog's row is gone");
+        assertTrue("summed");
     }
 
     // ------------------------------------------------------------- helpers

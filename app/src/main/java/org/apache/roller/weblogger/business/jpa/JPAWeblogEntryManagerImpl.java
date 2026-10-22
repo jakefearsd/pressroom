@@ -150,6 +150,13 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     public void moveWeblogCategoryContents(WeblogCategory srcCat,
             WeblogCategory destCat)
             throws WebloggerException {
+
+        // Entries never change weblog: the tag aggregates count each tag row
+        // under the weblog it was written with (TagAggregateStore), and a move
+        // would leave them counting it in the wrong one.
+        if (!srcCat.getWeblog().getId().equals(destCat.getWeblog().getId())) {
+            throw new WebloggerException("Cannot move entries to a category of another weblog");
+        }
         
         // get all entries in category and subcats
         // Trash included: a trashed entry must move with the category, not be
@@ -157,10 +164,8 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         List<WeblogEntry> results = getWeblogEntries(WeblogEntrySearchCriteria.forCategory(srcCat, false));
         
         // Loop through entries in src cat, assign them to dest cat
-        Weblog website = destCat.getWeblog();
         for (WeblogEntry entry : results) {
             entry.setCategory(destCat);
-            entry.setWebsite(website);
             this.strategy.store(entry);
         }
     }
