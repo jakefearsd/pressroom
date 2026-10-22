@@ -20,6 +20,7 @@ package org.apache.roller.weblogger.business.jpa;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.ApiTokenManager;
 import org.apache.roller.weblogger.business.DatabaseProvider;
+import org.apache.roller.weblogger.business.EntryHtmlCache;
 import org.apache.roller.weblogger.business.EntryRenderer;
 import org.apache.roller.weblogger.business.EventManager;
 import org.apache.roller.weblogger.business.FileContentManager;
@@ -201,8 +202,9 @@ public class WebloggerBeanConfig {
     }
 
     @Bean
-    public EntryRenderer entryRenderer(ShortcodeExpander shortcodeExpander, PluginManager pluginManager) {
-        return new EntryRenderer(shortcodeExpander, pluginManager);
+    public EntryRenderer entryRenderer(ShortcodeExpander shortcodeExpander, PluginManager pluginManager,
+                                       URLStrategy urlStrategy) {
+        return new EntryRenderer(shortcodeExpander, pluginManager, urlStrategy, EntryHtmlCache.fromConfig());
     }
 
     @Bean

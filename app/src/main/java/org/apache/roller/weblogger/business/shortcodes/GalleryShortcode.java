@@ -84,6 +84,13 @@ public class GalleryShortcode implements ShortcodeHandler {
 
     @Override
     public String render(Map<String, String> attributes, String body, ShortcodeContext content) {
+        return render(attributes, body, content, ShortcodeReads.IGNORED);
+    }
+
+    /** Reports a failed directory lookup to {@code reads}: a render that could not look is not kept. */
+    @Override
+    public String render(Map<String, String> attributes, String body, ShortcodeContext content,
+                         ShortcodeReads reads) {
         String directoryName = attributes.get("dir");
         if (StringUtils.isBlank(directoryName)) {
             log.debug("[gallery] shortcode without a dir attribute; leaving it as written");
@@ -120,6 +127,7 @@ public class GalleryShortcode implements ShortcodeHandler {
             // something is wrong, an empty block would not. Only the log says why.
             log.warn("[gallery] shortcode could not resolve directory \"{}\"",
                     directoryName, e);
+            reads.readFrom(null);
             return null;
         }
 

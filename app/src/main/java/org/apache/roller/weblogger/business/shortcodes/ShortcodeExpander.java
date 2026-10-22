@@ -188,7 +188,15 @@ public final class ShortcodeExpander {
      * or returns null leaves its shortcode in the output exactly as written.
      */
     public String expand(ShortcodeContext content, String text) {
-        return expand(content, text, 0);
+        return expand(content, text, ShortcodeReads.IGNORED, 0);
+    }
+
+    /**
+     * {@link #expand(ShortcodeContext, String)}, telling {@code reads} the
+     * owner of everything a handler looked up beyond the content's weblog.
+     */
+    public String expand(ShortcodeContext content, String text, ShortcodeReads reads) {
+        return expand(content, text, reads, 0);
     }
 
     @SuppressFBWarnings(
@@ -196,7 +204,7 @@ public final class ShortcodeExpander {
             justification = "Lower-cases a shortcode name to look up one of Roller's registered handlers, "
                     + "whose names are ASCII; it chooses only which built-in renders the author's content, "
                     + "and EntryRenderer's sanitizing step still follows.")
-    private String expand(ShortcodeContext content, String text, int depth) {
+    private String expand(ShortcodeContext content, String text, ShortcodeReads reads, int depth) {
         if (text == null || handlers.isEmpty() || depth > MAX_NESTING_DEPTH
                 || text.indexOf('[') < 0) {
             return text;
@@ -253,17 +261,19 @@ public final class ShortcodeExpander {
             if (!selfClosing) {
                 int closerAt = findMatchingCloser(text, name, matcher.end());
                 if (closerAt >= 0) {
-                    body = expand(content, text.substring(matcher.end(), closerAt), depth + 1);
+                    body = expand(content, text.substring(matcher.end(), closerAt), reads, depth + 1);
                     consumedEnd = closerAt + name.length() + 3; // "[/" + name + "]"
                 }
             }
 
             String replacement = null;
             try {
-                replacement = handler.render(parseAttributes(attributeText), body, content);
+                replacement = handler.render(parseAttributes(attributeText), body, content, reads);
             } catch (Exception e) {
                 log.warn("Shortcode [{}] handler failed; leaving the "
                         + "shortcode text as the author wrote it", name, e);
+                // a degraded render, not the render: never kept
+                reads.readFrom(null);
             }
             if (replacement != null) {
                 out.append(replacement);

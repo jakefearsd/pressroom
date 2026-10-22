@@ -220,9 +220,6 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         roller.flush();
         strategy.refresh(directory);
 
-        // update weblog last modified date. date updated by saveWeblog()
-        roller.getWeblogManager().saveWeblog(weblog);
-
         // The hash is taken from the bytes as they stream to disk, so an
         // upload of any size is hashed without being held in memory.
         MessageDigest sha256 = ContentHashes.sha256();
@@ -233,6 +230,22 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         if (mediaFile.isImageFile()) {
             updateThumbnail(mediaFile);
         }
+        touchAfterDerivedData(weblog);
+    }
+
+    /**
+     * Moves the weblog's lastModified once everything derived from new
+     * content -- dimensions, renditions, EXIF, GPS, blurhash -- has been
+     * written. updateThumbnail commits part of it midway (its flush), so a
+     * stamp moved before that call would be committed with the dimensions
+     * but ahead of the metadata: a page or entry render made in between is
+     * kept under the new stamp, without the metadata, until something else
+     * bumps it. Moved here, the stamp commits with the last write (the
+     * caller's flush), and anything rendered earlier carries the old one.
+     * Date updated by saveWeblog().
+     */
+    private void touchAfterDerivedData(Weblog weblog) throws WebloggerException {
+        roller.getWeblogManager().saveWeblog(weblog);
     }
 
     private void updateThumbnail(MediaFile mediaFile) {
@@ -410,6 +423,9 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         if (mediaFile.isImageFile()) {
             updateThumbnail(mediaFile);
         }
+        // updateMediaFile above already moved the stamp, before the content
+        // was even written; move it again past the derived data.
+        touchAfterDerivedData(weblog);
     }
 
     /**
@@ -801,6 +817,11 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
                 }
             }
         }
+        // Dimensions, EXIF and blurhash are all printed by [image] and
+        // [gallery]; like every other media change this must move
+        // lastModified, the only thing that expires a rendered page or a kept
+        // entry render (EntryHtmlCache). Date updated by saveWeblog().
+        roller.getWeblogManager().saveWeblog(weblog);
         roller.flush();
         return count;
     }

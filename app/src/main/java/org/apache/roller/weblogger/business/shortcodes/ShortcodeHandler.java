@@ -57,4 +57,15 @@ public interface ShortcodeHandler {
      *         instead of silently swallowing their markup)
      */
     String render(Map<String, String> attributes, String body, ShortcodeContext content);
+
+    /**
+     * {@link #render(Map, String, ShortcodeContext)}, reporting to
+     * {@code reads} the owner of anything it looked up beyond
+     * {@code content}'s own weblog. The expander always calls this form; a
+     * handler that reads only its content's weblog keeps the default.
+     */
+    default String render(Map<String, String> attributes, String body, ShortcodeContext content,
+                          ShortcodeReads reads) {
+        return render(attributes, body, content);
+    }
 }

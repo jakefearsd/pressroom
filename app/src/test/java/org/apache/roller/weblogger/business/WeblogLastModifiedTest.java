@@ -28,6 +28,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -108,5 +109,27 @@ class WeblogLastModifiedTest {
 
         assertTrue(detached.getLastModified().after(ahead),
                 "a stamp already at or past the clock must still advance");
+    }
+
+    /**
+     * Rebuilding renditions rewrites every image's stored dimensions, EXIF
+     * and blurhash, all of which [image] and [gallery] print; like every
+     * other media change it must move the weblog's {@code lastModified}, the
+     * only thing that expires a rendered page or a kept entry render.
+     */
+    @Test
+    void regeneratingRenditionsMovesTheWeblogsLastModified() throws Exception {
+        TestUtils.setupImageMediaFile(weblog, "regen-photo.jpg");
+        TestUtils.endSession(true);
+        long before = TestUtils.getManagedWebsite(weblog).getLastModified().getTime();
+        TestUtils.endSession(false);
+
+        int processed = TestUtils.weblogger().getMediaFileManager()
+                .regenerateRenditions(TestUtils.getManagedWebsite(weblog));
+        TestUtils.endSession(true);
+
+        assertEquals(1, processed);
+        long after = TestUtils.getManagedWebsite(weblog).getLastModified().getTime();
+        assertTrue(after > before, "lastModified " + before + " did not move: " + after);
     }
 }

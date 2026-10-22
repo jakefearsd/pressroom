@@ -75,6 +75,16 @@ public class ImageShortcode implements ShortcodeHandler {
     }
 
     @Override
+    public String render(Map<String, String> attributes, String body, ShortcodeContext content) {
+        return render(attributes, body, content, ShortcodeReads.IGNORED);
+    }
+
+    /**
+     * Reports the media file's weblog to {@code reads}: the id is global, so
+     * it may name another weblog's file, whose changes move that weblog's
+     * {@code lastModified} and never this entry's.
+     */
+    @Override
     @SuppressFBWarnings(
             value = "POTENTIAL_XML_INJECTION",
             justification = "src and srcset are built by the media wrapper from ids and widths, alt and "
@@ -82,7 +92,8 @@ public class ImageShortcode implements ShortcodeHandler {
                     + "markup; the expanded entry then passes through HTMLSanitizer, the one content "
                     + "boundary, whenever weblogAdminsUntrusted is on (the shipped default; with it off, "
                     + "authors are trusted with raw HTML anyway).")
-    public String render(Map<String, String> attributes, String body, ShortcodeContext content) {
+    public String render(Map<String, String> attributes, String body, ShortcodeContext content,
+                         ShortcodeReads reads) {
         String id = attributes.get("id");
         if (StringUtils.isBlank(id)) {
             log.debug("[image] shortcode without an id attribute; leaving it as written");
@@ -92,6 +103,9 @@ public class ImageShortcode implements ShortcodeHandler {
         MediaFileWrapper media;
         try {
             MediaFile mediaFile = weblogger.getMediaFileManager().getMediaFile(id);
+            if (mediaFile != null) {
+                reads.readFrom(mediaFile.getWeblog());
+            }
             if (mediaFile == null || !mediaFile.isImageFile()) {
                 log.debug("[image] shortcode id {} is not an image media file", id);
                 return null;
@@ -99,6 +113,7 @@ public class ImageShortcode implements ShortcodeHandler {
             media = MediaFileWrapper.wrap(mediaFile, weblogger.getUrlStrategy(), weblogger);
         } catch (Exception e) {
             log.warn("[image] shortcode could not resolve media file {}", id, e);
+            reads.readFrom(null);
             return null;
         }
 

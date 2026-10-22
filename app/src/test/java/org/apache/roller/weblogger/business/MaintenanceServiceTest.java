@@ -55,8 +55,11 @@ class MaintenanceServiceTest {
     }
 
     @Test
-    void regenerateRenditionsCompletesForAWeblogWithNoMedia() {
-        assertDoesNotThrow(() -> service.regenerateRenditions(weblog));
+    void regenerateRenditionsCompletesForAWeblogWithNoMedia() throws Exception {
+        // It saves the weblog too (moving lastModified, see
+        // WeblogLastModifiedTest), so, as for flushCache: an attached weblog.
+        Weblog attached = TestUtils.weblogger().getWeblogManager().getWeblog(weblog.getId());
+        assertDoesNotThrow(() -> service.regenerateRenditions(attached));
     }
 
     @Test

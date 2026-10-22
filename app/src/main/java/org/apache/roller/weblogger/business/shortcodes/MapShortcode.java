@@ -109,12 +109,19 @@ public class MapShortcode implements ShortcodeHandler {
                     + "[pin lat=\"48.8606\" lng=\"2.3376\" label=\"Louvre\"]\n[/map]");
 
     @Override
+    public String render(Map<String, String> attributes, String body, ShortcodeContext content) {
+        return render(attributes, body, content, ShortcodeReads.IGNORED);
+    }
+
+    /** Reports a failed directory lookup to {@code reads}: a render that could not look is not kept. */
+    @Override
     @SuppressFBWarnings(
             value = "IMPROPER_UNICODE",
             justification = "Reads the author's route attribute as true in any case; it decides only "
                     + "whether the author's own map draws a route.")
-    public String render(Map<String, String> attributes, String body, ShortcodeContext content) {
-        List<MapPins.Pin> pins = resolvePins(attributes, body, content, mediaFiles);
+    public String render(Map<String, String> attributes, String body, ShortcodeContext content,
+                         ShortcodeReads reads) {
+        List<MapPins.Pin> pins = resolvePins(attributes, body, content, mediaFiles, reads);
         if (pins == null) {
             return null;
         }
@@ -174,10 +181,10 @@ public class MapShortcode implements ShortcodeHandler {
      */
     @SuppressWarnings("PMD.ReturnEmptyCollectionRatherThanNull")
     public static List<MapPins.Pin> resolvePins(Map<String, String> attributes,
-            String body, ShortcodeContext content, MediaFileManager mediaFiles) {
+            String body, ShortcodeContext content, MediaFileManager mediaFiles, ShortcodeReads reads) {
         String auto = StringUtils.trimToNull(attributes.get("auto"));
         if (auto != null) {
-            return autoPins(auto, content, mediaFiles);
+            return autoPins(auto, content, mediaFiles, reads);
         }
         List<MapPins.Pin> pins = MapPins.parse(body);
         if (pins.isEmpty() && Strings.CI.contains(body, "[pin")) {
@@ -220,7 +227,7 @@ public class MapShortcode implements ShortcodeHandler {
 
             @Override
             public String render(Map<String, String> attributes, String body, ShortcodeContext c) {
-                List<MapPins.Pin> pins = resolvePins(attributes, body, c, mediaFiles);
+                List<MapPins.Pin> pins = resolvePins(attributes, body, c, mediaFiles, ShortcodeReads.IGNORED);
                 if (pins != null) {
                     collected.addAll(pins);
                 }
@@ -245,7 +252,7 @@ public class MapShortcode implements ShortcodeHandler {
      */
     @SuppressWarnings("PMD.ReturnEmptyCollectionRatherThanNull")
     private static List<MapPins.Pin> autoPins(String directoryName, ShortcodeContext content,
-            MediaFileManager mediaFiles) {
+            MediaFileManager mediaFiles, ShortcodeReads reads) {
         Weblog weblog = content == null ? null : content.getWeblog();
         if (weblog == null) {
             return null;
@@ -280,6 +287,7 @@ public class MapShortcode implements ShortcodeHandler {
             // something is wrong, an empty block would not. Only the log says why.
             log.warn("[map] shortcode could not resolve auto directory \"{}\"",
                     directoryName, e);
+            reads.readFrom(null);
             return null;
         }
         if (pins.isEmpty()) {
