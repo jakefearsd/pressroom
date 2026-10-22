@@ -633,12 +633,14 @@ public class JPAPersistenceStrategy {
             em.getTransaction().commit();
         } catch (PersistenceException pe) {
             failedCommit.set(Boolean.TRUE);
+            // Whatever a row-write listener queued inside the failed commit
+            // must not run after a later, unrelated one on this thread.
+            pendingPostCommitActions.remove();
             throw new WebloggerException(pe);
         }
 
         // Queued while committing: by a row-write listener (onRowWrite), which
-        // runs inside the commit. Only a successful commit gets here; after a
-        // failed one, release() discards them with the rest.
+        // runs inside the commit. Only a successful commit gets here.
         List<Runnable> queuedByTheCommit = pendingPostCommitActions.get();
         pendingPostCommitActions.remove();
 
@@ -646,10 +648,21 @@ public class JPAPersistenceStrategy {
         runAll(queuedByTheCommit);
     }
 
+    /**
+     * Runs each action whatever the others do. The commit has succeeded, so a
+     * failing action is logged rather than reported as a failed save, and it
+     * must not cost the actions after it (a cache invalidation lost here
+     * would leave the cache stale with nothing to correct it).
+     */
     private static void runAll(List<Runnable> actions) {
-        if (actions != null) {
-            for (Runnable action : actions) {
+        if (actions == null) {
+            return;
+        }
+        for (Runnable action : actions) {
+            try {
                 action.run();
+            } catch (RuntimeException e) {
+                log.error("An after-commit action failed; the others still run", e);
             }
         }
     }
