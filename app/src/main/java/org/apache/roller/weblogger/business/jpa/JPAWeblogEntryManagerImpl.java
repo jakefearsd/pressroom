@@ -41,7 +41,6 @@ import org.apache.roller.weblogger.pojos.TagStatCountComparator;
 import org.apache.roller.weblogger.pojos.WeblogCategory;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
 import org.apache.roller.weblogger.pojos.WeblogEntry.PubStatus;
-import org.apache.roller.weblogger.pojos.WeblogEntryTagAggregate;
 import org.apache.roller.weblogger.pojos.WeblogEntryTag;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogEntryAttribute;
@@ -63,6 +62,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     
     private final Weblogger roller;
     private final JPAPersistenceStrategy strategy;
+    private final TagAggregateStore tagAggregates;
     
     // cached mapping of entryAnchors -> entryIds
     private final Map<String, String> entryAnchorToIdMap = Collections.synchronizedMap(new HashMap<>());
@@ -77,6 +77,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         log.debug("Instantiating JPA Weblog Manager");
         this.roller = roller;
         this.strategy = strategy;
+        this.tagAggregates = new TagAggregateStore(strategy);
     }
     
     /**
@@ -181,31 +182,28 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
             entry.setAnchor(this.createAnchor(entry));
         }
         
+        // Every tag-count change of this save is collected first and applied
+        // in one pass, so the rows are locked in a stable order.
+        Map<String, Integer> tagDeltas = new HashMap<>();
         if (entry.isPublished()) {
             // tag aggregates are updated only when entry published in order for
             // tag cloud counts to match published articles
             if (entry.getRefreshAggregates()) {
                 // blog entry wasn't published before, so all tags need to be incremented
-                for (WeblogEntryTag tag : entry.getTags()) {
-                    updateTagCount(tag.getName(), entry.getWebsite(), 1);
-                }
+                addTagDeltas(tagDeltas, entry.getTags(), 1);
             } else {
                 // only new tags need to be incremented
-                for (WeblogEntryTag tag : entry.getAddedTags()) {
-                    updateTagCount(tag.getName(), entry.getWebsite(), 1);
-                }
+                addTagDeltas(tagDeltas, entry.getAddedTags(), 1);
             }
-        } else {
-            if (entry.getRefreshAggregates()) {
-                // blog entry no longer published so need to reduce aggregate count
-                for (WeblogEntryTag tag : entry.getTags()) {
-                    updateTagCount(tag.getName(), entry.getWebsite(), -1);
-                }
-            }
+            addTagDeltas(tagDeltas, entry.getRemovedTags(), -1);
+        } else if (entry.getRefreshAggregates()) {
+            // blog entry no longer published so need to reduce aggregate count
+            addTagDeltas(tagDeltas, entry.getTags(), -1);
         }
+        tagAggregates.apply(entry.getWebsite(), tagDeltas);
 
         for (WeblogEntryTag tag : entry.getRemovedTags()) {
-            removeWeblogEntryTag(tag);
+            this.strategy.remove(tag);
         }
 
         // if the entry was published to future, set status as SCHEDULED
@@ -346,8 +344,13 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
 
         // remove tag & tag aggregates
         if (entry.getTags() != null) {
+            if (entry.isPublished()) {
+                Map<String, Integer> tagDeltas = new HashMap<>();
+                addTagDeltas(tagDeltas, entry.getTags(), -1);
+                tagAggregates.apply(weblog, tagDeltas);
+            }
             for (WeblogEntryTag tag : entry.getTags()) {
-                removeWeblogEntryTag(tag);
+                this.strategy.remove(tag);
             }
         }
         
@@ -737,11 +740,11 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         }
     }
     
-    private void removeWeblogEntryTag(WeblogEntryTag tag) throws WebloggerException {
-        if (tag.getWeblogEntry().isPublished()) {
-            updateTagCount(tag.getName(), tag.getWeblogEntry().getWebsite(), -1);
+    private static void addTagDeltas(Map<String, Integer> deltas, Collection<WeblogEntryTag> tags,
+            int amount) {
+        for (WeblogEntryTag tag : tags) {
+            deltas.merge(tag.getName(), amount, Integer::sum);
         }
-        this.strategy.remove(tag);
     }
 
     /**
@@ -1151,77 +1154,6 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         return results != null && results.size() == tags.size();
     }
 
-    /**
-     * This method maintains the tag aggregate table up-to-date with total counts. More
-     * specifically every time this method is called it will act upon exactly two rows
-     * in the database (tag,website,count), one with website matching the argument passed
-     * and one where website is null. If the count ever reaches zero, the row must be deleted.
-     *
-     * @param name      The tag name
-     * @param website   The website to used when updating the stats.
-     * @param amount    The amount to increment the tag count (it can be positive or negative).
-     * @throws WebloggerException
-     */
-    private void updateTagCount(String name, Weblog website, int amount)
-    throws WebloggerException {
-        if (amount == 0) {
-            throw new WebloggerException("Tag increment amount cannot be zero.");
-        }
-        
-        if (website == null) {
-            throw new WebloggerException("Website cannot be NULL.");
-        }
-        
-        // The reason why add order lastUsed desc is to make sure we keep picking the most recent
-        // one in the case where we have multiple rows (clustered environment)
-        // eventually that second entry will have a very low total (most likely 1) and
-        // won't matter
-        TypedQuery<WeblogEntryTagAggregate> weblogQuery = strategy.getNamedQuery(
-                "WeblogEntryTagAggregate.getByName&WebsiteOrderByLastUsedDesc", WeblogEntryTagAggregate.class);
-        weblogQuery.setParameter(1, name);
-        weblogQuery.setParameter(2, website);
-        WeblogEntryTagAggregate weblogTagData;
-        try {
-            weblogTagData = weblogQuery.getSingleResult();
-        } catch (NoResultException e) {
-            weblogTagData = null;
-        }
-
-        TypedQuery<WeblogEntryTagAggregate> siteQuery = strategy.getNamedQuery(
-                "WeblogEntryTagAggregate.getByName&WebsiteNullOrderByLastUsedDesc", WeblogEntryTagAggregate.class);
-        siteQuery.setParameter(1, name);
-        WeblogEntryTagAggregate siteTagData;
-        try {
-            siteTagData = siteQuery.getSingleResult();
-        } catch (NoResultException e) {
-            siteTagData = null;
-        }
-        Timestamp lastUsed = new Timestamp(new Date().getTime());
-
-        upsertTagAggregate(weblogTagData, name, website, amount, lastUsed);
-        upsertTagAggregate(siteTagData, name, null, amount, lastUsed);
-
-        // delete all bad counts
-        Query removeq = strategy.getNamedUpdate(
-                "WeblogEntryTagAggregate.removeByTotalLessEqual");
-        removeq.setParameter(1, 0);
-        removeq.executeUpdate();
-    }
-
-    private void upsertTagAggregate(WeblogEntryTagAggregate tagData, String name,
-            Weblog website, int amount, Timestamp lastUsed) throws WebloggerException {
-        // create it only if we are going to need it.
-        if (tagData == null && amount > 0) {
-            tagData = new WeblogEntryTagAggregate(null, website, name, amount);
-            tagData.setLastUsed(lastUsed);
-            strategy.store(tagData);
-        } else if (tagData != null) {
-            tagData.setTotal(tagData.getTotal() + amount);
-            tagData.setLastUsed(lastUsed);
-            strategy.store(tagData);
-        }
-    }
-    
     private static void setFirstMax( Query query, int offset, int length )  {
         if (offset != 0) {
             query.setFirstResult(offset);

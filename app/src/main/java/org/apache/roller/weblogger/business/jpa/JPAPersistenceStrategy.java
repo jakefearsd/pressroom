@@ -814,6 +814,19 @@ public class JPAPersistenceStrategy {
     }
 
     /**
+     * Native SQL statement in the current transaction (one is begun if none
+     * is active). Default flush mode, so pending changes are written first.
+     * For the few writes JPQL cannot express -- {@code TagAggregateStore}'s
+     * {@code INSERT ... ON CONFLICT} -- and only with constant SQL; values go
+     * through parameters.
+     * @param sql the statement, never built from input
+     */
+    public Query getNativeUpdate(String sql) {
+        EntityManager em = getEntityManager(true);
+        return em.createNativeQuery(sql);
+    }
+
+    /**
      * Shut down the EntityManagerFactory. Tolerates being called more than
      * once: the {@code Weblogger} bean's {@code destroyMethod="shutdown"} and
      * a caller invoking {@code Weblogger.shutdown()} directly can both reach

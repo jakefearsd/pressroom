@@ -4,26 +4,21 @@
     xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence/orm https://jakarta.ee/xml/ns/persistence/orm_3_0.xsd">
 
     <package>org.apache.roller.weblogger.pojos</package>
+    <!-- cacheable="false": TagAggregateStore writes this table with native SQL,
+         which EclipseLink's shared cache never sees. Kept out of that cache, an
+         instance is always read from the database. -->
     <entity metadata-complete="true" name="WeblogEntryTagAggregate"
-            class="org.apache.roller.weblogger.pojos.WeblogEntryTagAggregate" access="PROPERTY">
+            class="org.apache.roller.weblogger.pojos.WeblogEntryTagAggregate" access="PROPERTY"
+            cacheable="false">
         <table name="roller_weblogentrytagagg"/>
-        <named-query name="WeblogEntryTagAggregate.getByName&amp;WebsiteOrderByLastUsedDesc">
-            <query>SELECT w FROM WeblogEntryTagAggregate w WHERE w.name = ?1 AND w.weblog = ?2 ORDER BY w.lastUsed DESC</query>
-        </named-query>
         <named-query name="WeblogEntryTagAggregate.getPopularTagsByWebsite">
             <query>SELECT w.name, SUM(w.total) FROM WeblogEntryTagAggregate w WHERE w.weblog = ?1 GROUP BY w.name, w.total ORDER BY w.total DESC</query>
         </named-query>
         <named-query name="WeblogEntryTagAggregate.getPopularTagsByWebsite&amp;StartDate">
             <query>SELECT w.name, SUM(w.total) FROM WeblogEntryTagAggregate w WHERE w.weblog = ?1 AND w.lastUsed &gt;= ?2 GROUP BY w.name, w.total ORDER BY w.total DESC</query>
         </named-query>
-        <named-query name="WeblogEntryTagAggregate.removeByTotalLessEqual">
-            <query>DELETE FROM WeblogEntryTagAggregate w WHERE w.total &lt;= ?1</query>
-        </named-query>
         <named-query name="WeblogEntryTagAggregate.removeByWeblog">
             <query>DELETE FROM WeblogEntryTagAggregate w WHERE w.weblog = ?1</query>
-        </named-query>
-        <named-query name="WeblogEntryTagAggregate.getByName&amp;WebsiteNullOrderByLastUsedDesc">
-            <query>SELECT w FROM WeblogEntryTagAggregate w WHERE w.name = ?1 AND w.weblog IS NULL ORDER BY w.lastUsed DESC</query>
         </named-query>
         <named-query name="WeblogEntryTagAggregate.getPopularTagsByWebsiteNull">
             <query>SELECT w.name, SUM(w.total) FROM WeblogEntryTagAggregate w WHERE w.weblog IS NULL GROUP BY w.name, w.total ORDER BY w.total DESC</query>

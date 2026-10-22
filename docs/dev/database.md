@@ -75,3 +75,19 @@ statement position ("statement 3 of 12"). The startup log (JDBC URL and user),
 the SQL text (which carries the expanded `:app_user`) and every exception are
 logged at the point of failure instead (`InstallControllerTest`,
 `SQLScriptRunnerTest`).
+
+### Tag aggregates (`roller_weblogentrytagagg`)
+
+One row per (weblog, tag) and one site-wide row per tag (`websiteid IS
+NULL`), each the number of PUBLISHED entries carrying the tag. **Only
+`TagAggregateStore` writes it**, with one `INSERT ... ON CONFLICT ON
+CONSTRAINT weta_weblog_tag_uq DO UPDATE SET total = total + delta` per row,
+in tag-name order, deleting only the rows it just took to zero or below.
+The read-modify-write it replaced (select; insert if absent, else store
+`total + delta`) failed concurrent saves with a duplicate key and lost
+increments (a 2026-10-22 profiling run: 21 HTTP 500s in 1,500 creates, 152
+of 210 rows low). V034 made the constraint `UNIQUE NULLS NOT DISTINCT`, so
+it also guards the site-wide rows a plain `UNIQUE` let duplicate, and
+recomputed every total. The entity is `cacheable="false"`: EclipseLink's
+shared cache never sees the native writes. `TagAggregateConcurrencyTest`
+reproduces both failures with a `CyclicBarrier`.
