@@ -116,6 +116,13 @@ public class JPAPersistenceStrategy {
      */
     private final ThreadLocal<Map<Class<?>, BeforeCommit>> pendingPreCommitActions = new ThreadLocal<>();
 
+    /**
+     * Set when this thread's commit failed, until {@link #release()}: the
+     * transaction is gone, but the unit of work's entities still hold what it
+     * tried to write. See {@link #hasUncommittedWork()}.
+     */
+    private final ThreadLocal<Boolean> failedCommit = new ThreadLocal<>();
+
     /** Work that runs in the transaction, immediately before its commit. */
     @FunctionalInterface
     public interface BeforeCommit {
@@ -622,6 +629,7 @@ public class JPAPersistenceStrategy {
             EntityManager em = getEntityManager(true);
             em.getTransaction().commit();
         } catch (PersistenceException pe) {
+            failedCommit.set(Boolean.TRUE);
             throw new WebloggerException(pe);
         }
 
@@ -657,6 +665,7 @@ public class JPAPersistenceStrategy {
         // LATER, unrelated transaction on a thread a pool hands out again.
         pendingPostCommitActions.remove();
         pendingPreCommitActions.remove();
+        failedCommit.remove();
 
         if (emf == null || !emf.isOpen()) {
             threadLocalEntityManager.remove();
@@ -743,6 +752,28 @@ public class JPAPersistenceStrategy {
         return em.find(clazz, id);
     }
     
+    /**
+     * Whether this thread's unit of work may see anything other than what is
+     * committed: it has begun a transaction (every write does: {@code store},
+     * {@code remove}, a bulk update, a flushing query) that has not committed
+     * yet, or its commit failed and it has not been released.
+     *
+     * <p>For caches of values read through the unit of work: while this is
+     * true they must neither answer nor be filled. The weblog it saved may
+     * carry a {@code lastModified} that never commits, or one that commits
+     * with changes the no-flush queries ({@link #getNamedQuery}) could not
+     * see; either, remembered, would be served as current. A unit of work
+     * that has only read sees exactly what is committed, apart from edits
+     * made to managed entities and never saved, which no query flushes.
+     */
+    public boolean hasUncommittedWork() {
+        if (failedCommit.get() != null) {
+            return true;
+        }
+        EntityManager em = threadLocalEntityManager.get();
+        return isTransactionActive(em);
+    }
+
     /**
      * Return true if a transaction is active on the current EntityManager.
      * @param em the persistence manager

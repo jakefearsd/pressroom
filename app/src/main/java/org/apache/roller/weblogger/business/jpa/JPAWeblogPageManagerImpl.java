@@ -18,6 +18,7 @@
 package org.apache.roller.weblogger.business.jpa;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 
 import jakarta.persistence.Query;
@@ -42,10 +43,22 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
     private final Weblogger roller;
     private final JPAPersistenceStrategy strategy;
 
+    /**
+     * Each weblog's published page ids, in nav order, at the stamp they were
+     * read at: every render's nav asks for them.
+     */
+    private final WeblogStampedCache<List<String>> publishedPageIds;
+
     protected JPAWeblogPageManagerImpl(Weblogger roller, JPAPersistenceStrategy strategy) {
         log.debug("Instantiating JPA Weblog Page Manager");
         this.roller = roller;
         this.strategy = strategy;
+        this.publishedPageIds = new WeblogStampedCache<>(strategy);
+    }
+
+    /** Whether the published pages are remembered for this weblog; for tests. */
+    boolean remembersPagesOf(String weblogId) {
+        return publishedPageIds.remembers(weblogId);
     }
 
     @Override
@@ -124,11 +137,38 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
 
     @Override
     public List<WeblogPage> getPublishedPages(Weblog weblog) throws WebloggerException {
+        List<String> known = publishedPageIds.get(weblog);
+        if (known != null) {
+            List<WeblogPage> remembered = new ArrayList<>(known.size());
+            if (resolvePublished(known, remembered)) {
+                return remembered;
+            }
+        }
         TypedQuery<WeblogPage> query = strategy.getNamedQuery(
                 "WeblogPage.getByWeblogAndStatus", WeblogPage.class);
         query.setParameter(1, weblog);
         query.setParameter(2, WeblogPage.PubStatus.PUBLISHED);
-        return query.getResultList();
+        List<WeblogPage> pages = query.getResultList();
+        publishedPageIds.put(weblog, pages.stream().map(WeblogPage::getId).toList());
+        return pages;
+    }
+
+    /**
+     * Loads the remembered pages through this unit of work into
+     * {@code pages}; false when one of them is gone or no longer published --
+     * a change that moved no stamp ({@link #removePages} deletes in bulk), so
+     * the list must be read again.
+     */
+    private boolean resolvePublished(List<String> ids, List<WeblogPage> pages)
+            throws WebloggerException {
+        for (String id : ids) {
+            WeblogPage page = (WeblogPage) strategy.load(WeblogPage.class, id);
+            if (page == null || page.getStatus() != WeblogPage.PubStatus.PUBLISHED) {
+                return false;
+            }
+            pages.add(page);
+        }
+        return true;
     }
 
     @Override
@@ -136,5 +176,12 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
         Query removePages = strategy.getNamedUpdate("WeblogPage.removeByWeblog");
         removePages.setParameter(1, weblog);
         removePages.executeUpdate();
+
+        // Moves no stamp. A remembered page that no longer resolves is a miss
+        // anyway; and removeWeblog deletes through here, after which the
+        // weblog's stamp never moves again, so its slot is dropped once the
+        // delete is durable.
+        String weblogId = weblog.getId();
+        strategy.runAfterCommit(() -> publishedPageIds.forget(weblogId));
     }
 }

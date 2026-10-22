@@ -117,6 +117,26 @@ resolves through the index at the end of `CLAUDE.md`.
   `get`/`put`/`remove`/`clear`); each subclass keeps its `CACHE_ID`, singleton
   and `generateKey`. `SiteWideCache` is deliberately outside that hierarchy —
   its `get` takes no timestamp, having no per-weblog expiry.
+- **Remembered lookups ride the same stamp.** Every render asks
+  `getTemplateByAction` for the stylesheet override (a custom theme for its
+  templates too) and `getPublishedPages` for the nav; both answers change only
+  when an author saves, and an absent override was never remembered (a
+  profiled reader load ran ~786k template and ~278k page selects). Both
+  managers now hold each weblog's answer as **ids** in a `WeblogStampedCache`
+  stamped with `weblog.lastModified` and resolve them with `em.find` in the
+  caller's own EntityManager (the shared cache answers; no entity outlives its
+  unit of work). Two rules keep it right. Every change to a template's
+  action/weblog or a page's status/order/existence must move the stamp
+  (`saveTemplate`, `removeTemplate`, `savePage`, `removePage`, `saveWeblog` do;
+  `WeblogLookupCacheTest` pins each path, theme switch included). And a unit
+  of work with `JPAPersistenceStrategy.hasUncommittedWork()` (an open
+  transaction, or a failed commit not yet released) neither reads nor fills:
+  `importTheme` saves a template and then looks templates up in the same
+  transaction, and its no-flush queries cannot see the new row while the
+  weblog already carries the stamp about to commit. A remembered id that no
+  longer resolves, or a page no longer published, is a miss (`removePages`
+  deletes in bulk and moves no stamp). A deleted weblog's slots are dropped
+  after its commit.
 - **A Velocity resource loader that cannot report modification may not be
   cached; the two settings only ever change together.** With `cache=true`
   Velocity reuses a parse tree whenever `isSourceModified` says "not stale",

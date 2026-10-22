@@ -250,7 +250,10 @@ purpose: merging would touch all 25 of `WeblogEntryManager`'s query paths.
 - **Rendering**: a theme may override the page template with one named
   `_page`, via the `StaticThemeTemplate`/`VelocityRendererFactory` fallback.
   `savePage`/`removePage` bump `weblog.lastModified`; no explicit eviction
-  (see Templates).
+  (see Templates). The bump also expires the remembered published-page list
+  behind `PageModel.getNavPages` (see "Remembered lookups ride the same stamp"
+  in `themes-and-templates.md`), so a page change that skipped `savePage`
+  would leave the nav stale too.
 - **Editor**: `PageEditController`/`PagesController` reuse the entry editor's
   shape via `PageBean`. `lookupPage` is the fourth by-id ownership member on
   `BaseController` beside `lookupEntry`/`lookupTemplate`/`lookupCategory`
