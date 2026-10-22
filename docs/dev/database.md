@@ -154,6 +154,35 @@ EclipseLink's default (generating) instantiation, which that test's
 (`jpa.configurationType=jndi`) configuration never registers it: either
 silently loses the speed-up, never correctness.
 
+### Entry tags and the shared cache
+
+EclipseLink's shared cache keeps an entry's loaded tags with it, but only
+for the entries it still holds (see "Shared cache sizes" above; at the old
+default of 100 an entry beyond that was weakly held and dropped at the next
+GC). Every list query
+still runs its SQL; a dropped entry is rebuilt from the row with its tags
+unloaded, and feeds and API lists then read each one's tags alone (418,547
+reads in a 4.5-minute profiling run, with concurrent renders queued on each
+entry's synchronized lazy load). **`getWeblogEntries` with `maxResults > 0`
+(a page: feeds, the API list, theme pagers) asks for an IN batch of
+`e.tags` by query hint and loads the tags before returning**: one
+`entryid IN (...)` read per page, nothing per entry. Theme list pages, which
+show no tags, now pay that one read when their entries were rebuilt.
+
+**Why not `<batch-fetch>` on the mapping** (tried, reverted): a batch value
+holder keeps the query that built its entry, and that query every row it
+read, text included, until the entry's tags are touched. A search reindex
+reads every published entry unbounded and touches no tag, so each entry
+left in the cache pinned the whole site's rows, and a permalink of one of
+them read the whole list's tags in a single IN. Loading at once leaves no
+holder pointing at the query; unbounded reads stay lazy, so a cached entry
+keeps at most its own row. Not JOIN or EXISTS batching either: those re-run
+the list's selection without its LIMIT/OFFSET. `EntryTagsFetchRenderingTest`
+counts the reads and pins edit, create and delete freshness;
+`EntryTagsRetentionTest` pins what a cached entry retains and what a later
+permalink reads. A permalink still reads its one entry's tags when the
+entry was dropped from the cache.
+
 ### Tag aggregates (`roller_weblogentrytagagg`)
 
 One row per (weblog, tag) and one site-wide row per tag (`websiteid IS
