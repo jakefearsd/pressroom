@@ -805,16 +805,17 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         // mapping key is combo of weblog + anchor
         String mappingKey = website.getHandle() + ":" + anchor;
         
-        // check cache first
-        // NOTE: if we ever allow changing anchors then this needs updating
+        // check cache first; the find is free while the entry is in
+        // EclipseLink's shared cache (sized in roller.properties)
         if(this.entryAnchorToIdMap.containsKey(mappingKey)) {
             
             WeblogEntry entry = this.getWeblogEntry(this.entryAnchorToIdMap.get(mappingKey));
-            if(entry != null) {
+            if(entry != null && anchor.equals(entry.getAnchor())) {
                 log.debug("entryAnchorToIdMap CACHE HIT - {}", mappingKey);
                 return entry;
             } else {
-                // mapping hit with lookup miss?  mapping must be old, remove it
+                // the entry is gone or now has another anchor: the mapping
+                // is old, so remove it and look the anchor up afresh
                 this.entryAnchorToIdMap.remove(mappingKey);
             }
         }

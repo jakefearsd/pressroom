@@ -57,6 +57,43 @@ crash-looped on it. `JPAPersistenceStrategy` now sets
 ways); `JPAPersistenceStrategyPasswordTest` bootstraps against a real role
 with a hex password. Anything else that builds an EMF must do the same.
 
+### Shared cache sizes
+
+EclipseLink's shared cache is sized in `roller.properties`
+(`eclipselink.cache.*`, passed to the persistence unit with every other
+`eclipselink.` key; `persistence.xml` properties are **not** read, since
+`RollerPersistenceUnitInfo.getProperties()` is empty). Every type is
+`SoftWeak`: the N most recently cached objects are held softly, the rest
+weakly. **Entries 5000, everything else 1000.** Until 2026-10-22 nothing was
+configured, so every type had EclipseLink's 100.
+
+- **Why it matters: a permalink is a find by id.**
+  `getWeblogEntryByAnchor` maps the anchor to an id
+  (`entryAnchorToIdMap`) and calls `em.find`, which costs no SQL while the
+  entry is cached. At 100, entries past the most recent 100 went at every GC
+  and the next permalink re-read the row: a profiling run (10 weblogs x ~3k
+  entries) ran `SELECT ... FROM weblogentry WHERE (id = $1)` 207,012 times
+  for 207,005 permalinks, and each rebuilt entry then lazily re-read its tags.
+  `EntryCacheSizeTest` reads 300 entries, collects garbage, reads them again:
+  200 row reads at 100, none now.
+- **Memory bound.** Measured per cached entry: ~4.4 KB with three tags,
+  plus the text (1 byte a character, 2 once it holds anything outside
+  Latin-1). 5000 entries is ~25 MB at 500-character posts and ~72 MB at
+  5,000. The soft half is cleared under memory pressure before an
+  `OutOfMemoryError`. The small types (weblogs, users, categories,
+  templates, permissions, media metadata) are at most a few MB at 1000.
+- **Never stale, by construction.** Roller is one JVM and writes through
+  JPA, which merges into the cache at commit (nothing on rollback); JPQL
+  bulk updates and deletes invalidate their class. The only native writes go
+  to `roller_weblogentrytagagg`, which is `cacheable="false"`. A row changed
+  with SQL behind the app's back (the admin account tool, a hand edit) stays
+  stale until a restart; a bigger cache makes that window longer, not new.
+- **The anchor map checks the anchor.** A hit whose entry now has another
+  anchor (or is gone) is dropped and the anchor looked up afresh, so a
+  renamed entry's old permalink 404s instead of serving it.
+- **Tuning** is a startup property: `eclipselink.cache.size.WeblogEntry` in
+  `roller-custom.properties` or `ROLLER_ECLIPSELINK_CACHE_SIZE_WEBLOGENTRY`.
+
 ### Schema changes
 
 **Every schema-changing commit MUST add a numbered migration** under
