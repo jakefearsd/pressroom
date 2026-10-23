@@ -23,14 +23,23 @@
 <c:choose>
 <c:when test="${template != null}">
 
+    <%-- These messages bring their own <p>s (in every bundle that defines
+         them), so the page wraps them in nothing; customThemeNoStylesheet
+         below has none and gets one here. --%>
     <spring:message code="stylesheetEdit.youCanCustomize"/>
 
-    <form id="stylesheetEditForm" action="${pageContext.request.contextPath}/roller-ui/authoring/stylesheetEdit!save.rol" method="post" class="form-vertical">
+    <form id="stylesheetEditForm" action="${pageContext.request.contextPath}/roller-ui/authoring/stylesheetEdit!save.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
 
-        <%-- Stylesheet content area --%>
-        <div class="tab-content">
-            <textarea name="contentsStandard" rows="30" cols="80" style="width:100%">${contentsStandard}</textarea>
+        <jsp:include page="/WEB-INF/jsps/editor/SessionExpiryBar.jsp"/>
+
+        <%-- Stylesheet content area. Escaped: raw, a "</textarea>" in the
+             CSS (a comment is enough) ended the field and the rest of the
+             stylesheet rendered as page markup. --%>
+        <div class="mb-3">
+            <label for="stylesheet_contentsStandard" class="form-label"><spring:message code="stylesheetEdit.source"/></label>
+            <textarea id="stylesheet_contentsStandard" name="contentsStandard" rows="30" cols="80"
+                      class="form-control" spellcheck="false">${fn:escapeXml(contentsStandard)}</textarea>
         </div>
 
         <%-- Save, Close and Resize text area buttons--%>
@@ -58,7 +67,7 @@
 
         <spring:message code="stylesheetEdit.sharedThemeWithStylesheet"/>
 
-        <form action="${pageContext.request.contextPath}/roller-ui/authoring/stylesheetEdit!copyStylesheet.rol" method="post" class="form-vertical">
+        <form action="${pageContext.request.contextPath}/roller-ui/authoring/stylesheetEdit!copyStylesheet.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
             <button type="submit" class="btn btn-primary"><spring:message code="stylesheetEdit.copyStylesheet"/></button>
         <sec:csrfInput/>
@@ -66,12 +75,12 @@
 
     </c:when>
 <c:otherwise>
-        <p><spring:message code="stylesheetEdit.sharedThemeNoStylesheetSupport"/></p>
+        <spring:message code="stylesheetEdit.sharedThemeNoStylesheetSupport"/>
     </c:otherwise>
 </c:choose>
 </c:when>
 <c:otherwise>
-    <spring:message code="stylesheetEdit.customThemeNoStylesheet"/>
+    <p><spring:message code="stylesheetEdit.customThemeNoStylesheet"/></p>
 </c:otherwise>
 </c:choose>
 

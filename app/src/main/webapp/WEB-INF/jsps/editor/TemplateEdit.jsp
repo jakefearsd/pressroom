@@ -33,6 +33,8 @@
     <input type="hidden" name="bean.id" value="${bean.id}"/>
     <input type="hidden" name="bean.type" value="${bean.type}"/>
 
+    <jsp:include page="/WEB-INF/jsps/editor/SessionExpiryBar.jsp"/>
+
     <%-- ================================================================== --%>
     <%-- Name, link and description: disabled when page is a required page --%>
 
@@ -65,23 +67,30 @@
                 <label class="col-sm-3 col-form-label" for="template_bean_link"><spring:message code="pageForm.link"/></label>
                 <div class="col-sm-9">
                     <%-- allow setting the path for a custom template --%>
-                    <input type="text" id="template_bean_link" name="bean.link" value="${fn:escapeXml(bean.link)}" size="50" class="form-control" onkeyup="updatePageURLDisplay()"/>
+                    <input type="text" id="template_bean_link" name="bean.link" value="${fn:escapeXml(bean.link)}" size="50" class="form-control"/>
                 </div>
             </div>
 
-            <%-- show preview of the full URL that will result from that path --%>
+            <%-- Preview of the full URL that will result from that path. The
+                 server decides the first state, so the resulting URL shows on
+                 load rather than only after the reader types; the script
+                 below keeps it current as they do. The values the script
+                 needs ride in data-* attributes, never in JS string literals:
+                 an attribute has one parser, fn:escapeXml is its escape. --%>
 
-            <div id="no_link" class="alert alert-danger" style="display: none; margin-top:3em; margin-bottom:2em; padding: 1em">
+            <div id="no_link" class="alert alert-danger" ${empty bean.link ? '' : 'hidden'}>
                 <spring:message code="pageForm.noUrl"/>
             </div>
 
-            <div id="good_link" class="alert alert-success"
-                 style="display: none; margin-top:3em; margin-bottom:2em; padding: 1em">
+            <div id="good_link" class="alert alert-success" ${empty bean.link ? 'hidden' : ''}
+                 data-weblog-url="${fn:escapeXml(urls.weblogAbsolute(actionWeblog))}"
+                 data-original-link="${fn:escapeXml(template.link)}"
+                 data-type="${fn:escapeXml(bean.type)}">
                 <spring:message code="pageForm.resultingUrlWillBe"/>
-                ${urls.weblogAbsolute(actionWeblog)}page/
-                <span id="linkPreview" style="color:var(--bad)">${fn:escapeXml(bean.link)}</span>
+                <span class="data">${fn:escapeXml(urls.weblogAbsolute(actionWeblog))}page/<span id="linkPreview">${fn:escapeXml(bean.link)}</span></span>
                 <c:if test="${template.link != null}">
-                    [<button type="button" class="btn btn-link" id="launchLink" onclick="launchPage()"><spring:message code="pageForm.launch"/></button>]
+                    <button type="button" class="btn btn-link p-0 align-baseline" id="launchLink"><spring:message code="pageForm.launch"/></button>
+                    <span id="linkChanged" class="form-text" hidden><spring:message code="pageForm.launch.linkChanged"/></span>
                 </c:if>
             </div>
 
@@ -106,14 +115,16 @@
     <%-- ================================================================== --%>
 
     <%-- Template content area --%>
-    <div class="tab-content">
-        <textarea name="bean.contentsStandard" rows="30" cols="80" style="width:100%">${fn:escapeXml(bean.contentsStandard)}</textarea>
+    <div class="mb-3">
+        <label for="template_bean_contentsStandard" class="form-label"><spring:message code="pageForm.source"/></label>
+        <textarea id="template_bean_contentsStandard" name="bean.contentsStandard" rows="30" cols="80"
+                  class="form-control" spellcheck="false">${fn:escapeXml(bean.contentsStandard)}</textarea>
     </div>
 
     <%-- ================================================================== --%>
     <%-- Save, Close and Resize text area buttons--%>
 
-    <button type="submit" class="btn btn-secondary"><spring:message code="generic.save"/></button>
+    <button type="submit" class="btn btn-primary"><spring:message code="generic.save"/></button>
     <input type="button" value='<spring:message code="generic.done"/>' class="btn btn-secondary"
            onclick="window.location='<c:url value="/roller-ui/authoring/templates.rol"><c:param name="weblog" value="${actionWeblog.handle}"/></c:url>'"/>
 
@@ -122,7 +133,7 @@
 
     <c:if test="${template.custom}">
 
-        <div id="accordion" style="margin-top:2em">
+        <div id="accordion" class="mt-4">
 
         <div class="card" id="panel-advanced">
 
@@ -177,7 +188,7 @@
                     <div class="row mb-3" id="manual-content-type-control-group" style="display:none">
                         <label class="col-sm-3 col-form-label" for="template_bean_manualContentType"><spring:message code="pageForm.useManualContentType"/></label>
                         <div class="col-sm-9">
-                            <input id="template_bean_manualContentType" type="text" name="bean.manualContentType" value="${bean.manualContentType}" class="form-control"/>
+                            <input id="template_bean_manualContentType" type="text" name="bean.manualContentType" value="${fn:escapeXml(bean.manualContentType)}" class="form-control"/>
                         </div>
                     </div>
 
@@ -195,38 +206,45 @@
 
 <script type="text/javascript">
 
-    var weblogURL = '${urls.weblogAbsolute(actionWeblog)}';
-    var originalLink = '${fn:escapeXml(bean.link)}';
-    var type = '${bean.type}';
-
     $(document).ready(function () {
 
         showContentTypeField();
         $("#template_bean_autoContentType").click(function(e) {
             showContentTypeField();
         });
+        $("#template_bean_link").on("input", updatePageURLDisplay);
+        $("#launchLink").on("click", launchPage);
+        if (document.getElementById("template_bean_link")) {
+            // Sync the first render too: after a refused save the field holds
+            // a link that is not the saved one yet.
+            updatePageURLDisplay();
+        }
     });
 
-    // Update page URL when user changes link
+    // Update the resulting URL as the reader edits the link. textContent,
+    // never jQuery's markup setter: the typed link is text, and as markup
+    // it would run.
     function updatePageURLDisplay() {
-        var link = $("#template_bean_link").val();
-        if (link !== "") {
-            $("#no_link").hide();
-            $("#good_link").show();
-            $("#linkPreview").html(link);
-        } else {
-            $("#good_link").hide();
-            $("#no_link").show();
+        var link = document.getElementById("template_bean_link").value;
+        var good = document.getElementById("good_link");
+        document.getElementById("no_link").hidden = link !== "";
+        good.hidden = link === "";
+        document.getElementById("linkPreview").textContent = link;
+
+        // A changed link would 404 until it is saved: say so beside the
+        // control and take the control away, rather than an alert box.
+        var launch = document.getElementById("launchLink");
+        if (launch) {
+            var changed = link !== good.dataset.originalLink;
+            launch.hidden = changed;
+            document.getElementById("linkChanged").hidden = !changed;
         }
     }
 
-    // Don't launch page if user has changed link, it'll be a 404
     function launchPage() {
-        if (originalLink != document.getElementById('template_bean_link').value) {
-            window.alert("<spring:message code='pageForm.launch.linkChanged' javaScriptEscape='true'/>");
-        } else {
-            window.open(weblogURL + 'page/' + originalLink + '?type=' + type, '_blank');
-        }
+        var good = document.getElementById("good_link");
+        window.open(good.dataset.weblogUrl + 'page/' + encodeURI(good.dataset.originalLink)
+            + '?type=' + encodeURIComponent(good.dataset.type), '_blank');
     }
 
     function showContentTypeField() {

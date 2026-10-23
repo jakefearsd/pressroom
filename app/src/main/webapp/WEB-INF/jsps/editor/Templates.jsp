@@ -37,27 +37,31 @@
          Its header rule keys off the first <tr> of the table, so the header
          row has to stay the first thing inside -- which is why the empty
          branch is a sibling of the table rather than a row in it. --%>
-    <table class="rollertable table table-striped"> <%-- of weblog templates --%>
+    <table class="rollertable table table-striped align-middle"> <%-- of weblog templates --%>
 
         <c:if test="${not empty templates}">
 
             <tr>
                 <th scope="col" width="30%"><spring:message code="generic.name"/></th>
-                <th scope="col" width="10"><spring:message code="pagesForm.action"/></th>
-                <th scope="col" width="55%"><spring:message code="generic.description"/></th>
-                <th scope="col" width="10"><spring:message code="pagesForm.remove"/></th>
+                <th scope="col" width="10%"><spring:message code="pagesForm.action"/></th>
+                <th scope="col" width="50%"><spring:message code="generic.description"/></th>
+                <th scope="col" width="10%" class="text-center"><spring:message code="pagesForm.remove"/></th>
             </tr>
 
             <c:forEach items="${templates}" var="p" varStatus="rowstatus">
                 <tr>
 
-                    <td style="vertical-align:middle">
+                    <td>
+                        <%-- Bootstrap Icons, as on every other list. A hidden
+                             template says so in words for a screen reader;
+                             the plain file icon is decoration. --%>
                         <c:choose>
 <c:when test="${! p.hidden}">
-                            <img src='<c:url value="/images/page_white.png"/>' alt=""/>
+                            <span class="bi bi-file-earmark-text" aria-hidden="true"></span>
                         </c:when>
 <c:otherwise>
-                            <img src='<c:url value="/images/page_white_gear.png"/>' alt=""/>
+                            <span class="bi bi-eye-slash" role="img"
+                                  aria-label="<spring:message code='pageForm.hidden'/>"></span>
                         </c:otherwise>
 </c:choose><c:url var="edit" value="/roller-ui/authoring/templateEdit.rol">
                             <c:param name="weblog" value="${actionWeblog.handle}"/>
@@ -66,11 +70,12 @@
                         <a href="${edit}"><c:out value="${p.name}"/></a>
                     </td>
 
-                    <td style="vertical-align:middle">${p.action.readableName}</td>
+                    <td>${p.action.readableName}</td>
 
-                    <td style="vertical-align:middle">${p.description}</td>
+                    <%-- Stored raw by TemplateEditBean: escape on the way out. --%>
+                    <td>${fn:escapeXml(p.description)}</td>
 
-                    <td class="center" style="vertical-align:middle">
+                    <td class="text-center">
                         <c:choose>
 <c:when test="${!p.required || !customTheme}">
                             <%-- A real submit button carrying its own name/value,
