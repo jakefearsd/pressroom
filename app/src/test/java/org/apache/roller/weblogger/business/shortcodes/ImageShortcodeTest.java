@@ -430,6 +430,13 @@ class ImageShortcodeTest {
         assertEquals(List.of(other), reads);
     }
 
+    /** With no weblog to own the image there is nothing it could belong to. */
+    @Test
+    void outsideAnyWeblogTheShortcodeIsLeftAsWritten() {
+        assertNull(shortcode.render(Map.of("id", "mf-1"), null, new WeblogEntry()));
+        assertNull(shortcode.render(Map.of("id", "mf-1"), null, null));
+    }
+
     private static MediaFile image(String id, Weblog owner, MediaFileDirectory directory) {
         MediaFile file = new MediaFile();
         file.setId(id);
