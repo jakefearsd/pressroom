@@ -822,6 +822,67 @@ class EntriesControllerTest extends EditorControllerTestSupport {
         return entry;
     }
 
+    // ------------------------------------------------ fit and finish (2026-10)
+
+    /**
+     * An entry title is stored HTML-escaped, so printing it through
+     * fn:escapeXml shows "Tom &amp;amp; Jerry" and a screen reader reads "amp";
+     * printing displayTitle bare is no answer either, because an UNTITLED
+     * entry's displayTitle is its body with tags stripped, and removeHTML keeps
+     * an unterminated tag verbatim. The controller hands the list one plain
+     * text label per entry, which the page escapes exactly once.
+     */
+    @Test
+    void eachEntryGetsAPlainTextTitleTheListEscapesOnce() throws Exception {
+        WeblogEntry titled = entryNamed("titled");
+        titled.setTitle("Tom &amp; Jerry");
+        WeblogEntry untitled = entryNamed("untitled");
+        untitled.setText("<p>a</p><img src=x onerror=alert(1)//");
+        when(weblogger.getWeblogEntryManager().getWeblogEntries(any())).thenReturn(List.of(titled, untitled));
+
+        controller.execute(request, model, bean);
+
+        @SuppressWarnings("unchecked")
+        Map<String, String> titles = (Map<String, String>) model.getAttribute("entryTitles");
+        assertNotNull(titles, "the list has no entryTitles map to label its rows with");
+        assertEquals("Tom & Jerry", titles.get("titled"), "the stored escaping must be undone exactly once");
+        String fallback = titles.get("untitled");
+        assertTrue(fallback.startsWith("a") && fallback.endsWith("<img src=x onerror=alert(1)//"),
+                "an untitled entry falls back to its text, still raw for the page to escape: " + fallback);
+    }
+
+    @Test
+    void anUnfilteredListIsNotReportedAsFiltered() throws Exception {
+        controller.execute(request, model, bean);
+
+        assertEquals(Boolean.FALSE, model.getAttribute("filtered"),
+                "the default list (status ALL, default sort) is the weblog's whole archive");
+    }
+
+    @Test
+    void aStatusChipOrATextSearchMarksTheListFiltered() throws Exception {
+        bean.setStatus("DRAFT");
+        controller.execute(request, model, bean);
+        assertEquals(Boolean.TRUE, model.getAttribute("filtered"), "a status chip narrows the list");
+
+        Model searched = newModel();
+        EntriesBean textBean = new EntriesBean();
+        textBean.setText("nothing like this");
+        controller.execute(request, searched, textBean);
+        assertEquals(Boolean.TRUE, searched.getAttribute("filtered"), "a text search narrows the list");
+    }
+
+    @Test
+    void choosingASortOrderIsNotAFilter() throws Exception {
+        bean.setSortBy(WeblogEntrySearchCriteria.SortBy.PUBLICATION_TIME);
+        bean.setStatus("ALL");
+
+        controller.execute(request, model, bean);
+
+        assertEquals(Boolean.FALSE, model.getAttribute("filtered"),
+                "sorting reorders the archive, it does not narrow it");
+    }
+
     private WeblogEntry entryNamed(String id) {
         WeblogEntry entry = new WeblogEntry();
         entry.setId(id);

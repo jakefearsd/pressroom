@@ -24,7 +24,10 @@
 <%-- ============================================================= --%>
 <%-- Next / previous links --%>
 
-<nav>
+<%-- Same pager markup as Entries.jsp and Comments.jsp; pageSize comes from
+     the controller, so the next-page test cannot drift from the query. --%>
+<c:if test="${page > 0 or (page + 1) * pageSize < submissionCount}">
+<nav aria-label="<spring:message code='pager.label'/>">
     <div class="d-flex justify-content-between">
         <c:if test="${page > 0}">
             <c:url var="prevUrl" value="/roller-ui/authoring/submissions.rol">
@@ -34,7 +37,7 @@
             <a href="${prevUrl}" class="btn btn-outline-secondary previous">
                 <span aria-hidden="true">&larr;</span> <spring:message code="pager.newer"/></a>
         </c:if>
-        <c:if test="${(page + 1) * 30 < submissionCount}">
+        <c:if test="${(page + 1) * pageSize < submissionCount}">
             <c:url var="nextUrl" value="/roller-ui/authoring/submissions.rol">
                 <c:param name="weblog" value="${actionWeblog.handle}"/>
                 <c:param name="page" value="${page + 1}"/>
@@ -44,6 +47,7 @@
         </c:if>
     </div>
 </nav>
+</c:if>
 
 <%-- One form around the whole table, following the Entries.jsp/Pages.jsp
      pattern: the row checkboxes and the delete-selected button both post
@@ -150,23 +154,21 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <div id="submissions-delete-modal-title" class="modal-title">
-                    <h3><spring:message code="submissions.bulkDeleteConfirm"/></h3>
-                    <p><spring:message code="submissions.bulkDeleteWarning"/></p>
-                </div>
+                <p id="submissions-delete-modal-title" class="modal-title"><spring:message code="submissions.bulkDeleteConfirm"/></p>
             </div>
             <div class="modal-body">
-                <p id="submissionsDeleteCount" class="form-control-plaintext"></p>
+                <p><spring:message code="submissions.bulkDeleteWarning"/></p>
+                <p id="submissionsDeleteCount" class="data" data-template="<spring:message code='selection.count'/>"></p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <spring:message code="generic.no"/>
+                    <spring:message code="generic.cancel"/>
                 </button>
                 <%-- Outside the form, so form= names the one carrying the
                      selection (same shape as Entries.jsp's confirm). --%>
                 <button type="submit" class="btn btn-danger" id="submissionsDeleteConfirm"
                         form="submissionsDeleteForm">
-                    <spring:message code="generic.yes"/>
+                    <spring:message code="generic.delete"/>
                 </button>
             </div>
         </div>
@@ -202,9 +204,9 @@
         var trigger = document.getElementById('submissionsDeleteSelected');
         if (trigger) {
             trigger.addEventListener('click', function () {
-                document.getElementById('submissionsDeleteCount').textContent =
-                        document.querySelectorAll('.submission-select:checked').length
-                        + " " + "<spring:message code='submissions.selectedCount' javaScriptEscape='true'/>";
+                var count = document.getElementById('submissionsDeleteCount');
+                count.textContent = count.dataset.template.replace('{0}',
+                        document.querySelectorAll('.submission-select:checked').length);
                 bootstrap.Modal.getOrCreateInstance(
                         document.getElementById('submissions-delete-modal')).show();
             });

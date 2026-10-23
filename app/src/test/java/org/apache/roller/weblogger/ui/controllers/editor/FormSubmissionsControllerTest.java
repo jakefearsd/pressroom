@@ -112,6 +112,16 @@ class FormSubmissionsControllerTest extends EditorControllerTestSupport {
         assertEquals(2, model.getAttribute("page"));
     }
 
+    /** The pager reads the page size from the model rather than hard-coding 30 in the JSP. */
+    @Test
+    void thePageSizeIsGivenToThePager() throws Exception {
+        when(submissionManager.getSubmissions(weblogA, 0, 30)).thenReturn(List.of());
+
+        controller.execute(requestFor(weblogA), model, 0);
+
+        assertEquals(30, model.getAttribute("pageSize"));
+    }
+
     @Test
     void aFailedListLookupIsReportedGenericallyRatherThanThrowing() throws Exception {
         when(submissionManager.getSubmissions(weblogA, 0, 30))

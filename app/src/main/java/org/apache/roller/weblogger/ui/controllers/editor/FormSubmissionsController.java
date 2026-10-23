@@ -135,6 +135,7 @@ public class FormSubmissionsController extends BaseController {
             model.addAttribute("submissions", mgr.getSubmissions(actionWeblog, page * COUNT, COUNT));
             model.addAttribute("submissionCount", mgr.getCount(actionWeblog));
             model.addAttribute("page", page);
+            model.addAttribute("pageSize", COUNT);
         } catch (WebloggerException ex) {
             log.error("Error getting form submissions for weblog - {}", actionWeblog.getHandle(), ex);
             addError(model, "generic.error.check.logs", request);

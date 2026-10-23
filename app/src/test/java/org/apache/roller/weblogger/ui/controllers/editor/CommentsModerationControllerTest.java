@@ -39,6 +39,7 @@ import org.springframework.ui.Model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -325,10 +326,38 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
         }
         assertTrue(fields >= 3, "expected display name, username and body, found " + fields);
         assertTrue(src.contains("white-space: pre-wrap"));
-        // The entry title is emitted bare, as Entries.jsp does: displayTitle is already escaped, so
-        // escaping again would show "Fish &amp; Chips".
-        assertTrue(src.contains("${c.entry.displayTitle}"));
-        assertFalse(src.contains("escapeXml(c.entry.displayTitle)"));
+        // The entry title is the controller's plain-text label escaped once, as on Entries.jsp: the
+        // stored title is already escaped (escaping it again shows "Fish &amp; Chips"), and an untitled
+        // entry's displayTitle is raw body text, so neither stored form is printed.
+        assertTrue(src.contains("${fn:escapeXml(entryTitles[c.entry.id])}"));
+        assertFalse(src.contains("c.entry.displayTitle"));
+    }
+
+    /** The pager reads the page size from the model rather than hard-coding 30 in the JSP. */
+    @Test
+    void thePageSizeIsGivenToThePager() throws Exception {
+        controller.execute("PENDING", 0, null, request, model);
+
+        assertEquals(30, model.getAttribute("pageSize"));
+    }
+
+    /**
+     * The entry column shows each comment's entry title as plain text for the
+     * page to escape once (see EntriesController.plainTitle): the stored title
+     * is already escaped, and an untitled entry's fallback is raw body text.
+     */
+    @Test
+    void eachCommentsEntryGetsAPlainTextTitle() throws Exception {
+        ReaderComment c = comment("c1", weblog, Status.PENDING, "hi");
+        c.getEntry().setTitle("Tom &amp; Jerry");
+        when(manager.getComments(weblog, Status.PENDING, null, 0, 30)).thenReturn(List.of(c));
+
+        controller.execute("PENDING", 0, null, request, model);
+
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, String> titles = (java.util.Map<String, String>) model.getAttribute("entryTitles");
+        assertNotNull(titles, "the moderation list has no entryTitles map");
+        assertEquals("Tom & Jerry", titles.get("entry-c1"));
     }
 
     private ReaderComment comment(String id, Weblog w, Status status, String body) throws Exception {

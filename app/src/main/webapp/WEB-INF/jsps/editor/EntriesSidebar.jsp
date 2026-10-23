@@ -31,8 +31,11 @@
     <label for="entries_bean_categoryName"><spring:message code="weblogEntryQuery.label.category"/></label>
     <select id="entries_bean_categoryName" name="bean.categoryName" class="form-select" size="1">
 <option value="" ${empty bean.categoryName ? 'selected' : ''}><spring:message code="weblogEntryQuery.label.anyCategory"/></option>
+<%-- Category names are author input: escaped in the value and the text
+     (CategoryEditController refusing HTML characters today is a rule in
+     another file, not this page's defence). --%>
 <c:forEach items="${categories}" var="opt">
-<option value="${opt.name}" ${opt.name == bean.categoryName ? 'selected' : ''}>${opt.name}</option>
+<option value="${fn:escapeXml(opt.name)}" ${opt.name == bean.categoryName ? 'selected' : ''}>${fn:escapeXml(opt.name)}</option>
 </c:forEach>
 </select>
 
@@ -55,14 +58,14 @@
         <label for="entries_bean_startDateString" class="form-label">
             <spring:message code="weblogEntryQuery.label.startDate"/>
         </label>
-        <input type="date" id="entries_bean_startDateString" name="bean.startDateString" value="${bean.startDateString}" class="form-control"/>
+        <input type="date" id="entries_bean_startDateString" name="bean.startDateString" value="${fn:escapeXml(bean.startDateString)}" class="form-control"/>
     </div>
 
     <div class="mb-3">
         <label for="entries_bean_endDateString" class="form-label">
             <spring:message code="weblogEntryQuery.label.endDate"/>
         </label>
-        <input type="date" id="entries_bean_endDateString" name="bean.endDateString" value="${bean.endDateString}" class="form-control"/>
+        <input type="date" id="entries_bean_endDateString" name="bean.endDateString" value="${fn:escapeXml(bean.endDateString)}" class="form-control"/>
     </div>
 
     <br/>
