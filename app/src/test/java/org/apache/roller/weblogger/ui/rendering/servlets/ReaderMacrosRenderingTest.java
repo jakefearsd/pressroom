@@ -74,6 +74,21 @@ class ReaderMacrosRenderingTest {
         return source.substring(start, source.indexOf("\n#end", start));
     }
 
+    /**
+     * The custom-theme meta-description macro (kept for older custom themes)
+     * printed the weblog's "about" and an entry's search description bare
+     * into an attribute. Both are text -- the wrapper's about is reduced to
+     * text, quotes intact -- so one quote closed the attribute.
+     */
+    @Test
+    void theLegacyMetaDescriptionMacroEscapesWhatItPrints() throws IOException {
+        String body = macro("showMetaDescription");
+
+        assertTrue(body.contains("content=\"$utils.escapeHTML($model.weblog.about)\""), body);
+        assertTrue(body.contains("content=\"$utils.escapeHTML($model.weblogEntry.searchDescription)\""), body);
+        assertFalse(body.contains("content=\"$model."), body);
+    }
+
     /** Finding 24: a feed reader names the subscription after the feed's title. */
     @Test
     void theMainFeedIsAdvertisedUnderTheWeblogsName() throws Exception {

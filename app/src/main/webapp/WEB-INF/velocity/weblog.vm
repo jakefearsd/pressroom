@@ -427,10 +427,10 @@ will be created.
 #macro(showMetaDescription)
     #if ($model.permalink)
         #if ($utils.isNotEmpty($model.weblogEntry.searchDescription))
-            <meta name="description" content="$model.weblogEntry.searchDescription">
+            <meta name="description" content="$utils.escapeHTML($model.weblogEntry.searchDescription)">
         #end
     #elseif ($utils.isNotEmpty($model.weblog.about))
-        <meta name="description" content="$model.weblog.about">
+        <meta name="description" content="$utils.escapeHTML($model.weblog.about)">
     #end
 #end
 
