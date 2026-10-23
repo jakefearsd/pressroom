@@ -18,7 +18,7 @@
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
 
 <p class="subtitle">
-    <spring:message code="pageForm.subtitle" arguments="${fn:escapeXml(bean.name)},${actionWeblog.handle}"/>
+    <spring:message code="pageForm.subtitle" arguments="${[fn:escapeXml(bean.name), actionWeblog.handle]}"/>
 </p>
 
 <c:choose>

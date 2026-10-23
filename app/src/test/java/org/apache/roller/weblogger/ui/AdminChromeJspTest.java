@@ -113,7 +113,7 @@ class AdminChromeJspTest {
     @Test
     void deletingABusinessNamesIt() {
         assertTrue(jsp("admin/Businesses.jsp").contains(
-                "<spring:message code=\"businesses.delete.confirm\" arguments=\"${b.name}\""));
+                "<spring:message code=\"businesses.delete.confirm\" arguments=\"${[b.name]}\""));
     }
 
     /**

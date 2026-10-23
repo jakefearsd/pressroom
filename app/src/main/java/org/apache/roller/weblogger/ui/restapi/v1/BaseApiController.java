@@ -1,5 +1,6 @@
 package org.apache.roller.weblogger.ui.restapi.v1;
 
+import org.apache.commons.lang3.StringUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.User;
@@ -45,12 +46,14 @@ public abstract class BaseApiController {
      * The value of a parameter that also answers to an older, deprecated
      * name: whichever was sent, and the same value under both is fine. Two
      * different values are a 400 naming the alias, never a silent choice.
+     * An empty value counts as not sent ({@code ?directoryId=X&dir=} is
+     * X), and when neither name carries a value the answer is null.
      */
     protected static String eitherName(String name, String value, String alias, String aliasValue) {
-        if (value == null) {
-            return aliasValue;
+        if (StringUtils.isBlank(value)) {
+            return StringUtils.isBlank(aliasValue) ? null : aliasValue;
         }
-        if (aliasValue != null && !aliasValue.equals(value)) {
+        if (StringUtils.isNotBlank(aliasValue) && !aliasValue.equals(value)) {
             throw ApiException.invalidField(alias, alias + " is the old name of " + name
                     + " and names a different value; send " + name + " only.");
         }

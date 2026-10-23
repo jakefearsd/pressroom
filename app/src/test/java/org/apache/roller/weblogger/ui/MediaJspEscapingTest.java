@@ -47,9 +47,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>An output position is anywhere but the attributes of the JSTL tags that
  * print nothing ({@code c:if}, {@code c:when}, {@code c:forEach},
- * {@code c:set}; {@code c:url} and {@code c:param}, whose values are
- * URL-encoded). {@code <spring:message arguments>} counts as output: the tag
- * does not escape its arguments.
+ * {@code c:set}; {@code c:param}, whose values are URL-encoded; and a
+ * {@code c:url} that stores into a {@code var} -- one without prints its
+ * value, which JSTL does not encode). {@code <spring:message arguments>}
+ * counts as output: the tag does not escape its arguments.
  */
 class MediaJspEscapingTest {
 
@@ -81,18 +82,34 @@ class MediaJspEscapingTest {
             // ResourceBundle lookups on the search bean.
             "bean.typeLabel", "bean.sizeFilterTypeLabel", "bean.sizeUnitLabel");
 
-    /** Calls whose result is safe whatever they are given. */
-    private static final Pattern SAFE_CALL = Pattern.compile(
-            // fn:escapeXml escapes; fn:length is a number; urls.* is
-            // URLStrategy output built from ids (CLAUDE.md, "Escaping").
-            "(fn:escapeXml|fn:length|urls\\.[A-Za-z]+)\\(.*\\)");
+    /**
+     * Calls whose result is safe whatever they are given: fn:escapeXml
+     * escapes; fn:length is a number; urls.* is URLStrategy output built from
+     * ids (CLAUDE.md, "Escaping"). Only the opening is matched here; {@link
+     * #isOneSafeCall} also requires that its parenthesis closes at the very
+     * end, so the expression is that one call and not, say, a ternary that
+     * happens to start and end with one.
+     */
+    private static final Pattern SAFE_CALL_START = Pattern.compile(
+            "(?:fn:escapeXml|fn:length|urls\\.[A-Za-z]+)\\(");
+
+    /** An EL list, {@code [a, b]}: the spring:message form that keeps commas. */
+    private static final Pattern EL_LIST = Pattern.compile("\\[(.*)]", Pattern.DOTALL);
 
     /** A ternary that prints one of two string literals. */
     private static final Pattern LITERAL_TERNARY =
             Pattern.compile(".*\\?\\s*'[^']*'\\s*:\\s*'[^']*'");
 
-    /** A {@code <c:url var=..>} result: its parameters went through c:param. */
-    private static final Pattern URL_VARIABLE = Pattern.compile("[A-Za-z]+(URL|Url)");
+    /**
+     * A {@code <c:url var=..>}: its result is safe, its parameters having gone
+     * through c:param. Trusted by where the variable came from, never by its
+     * name -- a {@code <c:set var="xUrl">} is any value at all.
+     */
+    private static final Pattern URL_VAR_DECLARATION =
+            Pattern.compile("<c:url\\b[^>]*?\\bvar\\s*=\\s*[\"']([A-Za-z_][A-Za-z0-9_]*)[\"']");
+
+    private static final Pattern SET_VAR_DECLARATION =
+            Pattern.compile("<c:set\\b[^>]*?\\bvar\\s*=\\s*[\"']([A-Za-z_][A-Za-z0-9_]*)[\"']");
 
     private static final Pattern EL = Pattern.compile("\\$\\{([^}]*)}");
 
@@ -129,6 +146,30 @@ class MediaJspEscapingTest {
                 rawExpressionsIn("T.jsp", jsp));
     }
 
+    /**
+     * Three ways the scan used to be talked out of a raw sink: a
+     * {@code <c:url>} with no {@code var} prints its value (JSTL encodes only
+     * {@code c:param}); a variable named like a url is trusted only when a
+     * {@code <c:url var>} made it; and a "safe call" is safe only when the
+     * whole expression is that one call, not a ternary that starts and ends
+     * with one.
+     */
+    @Test
+    void theScanCannotBeTalkedOutOfARawSink() {
+        String jsp = """
+                <c:url value="${dir.name}"/>
+                <c:set var="xUrl" value="${dir.name}"/>
+                <a href="${xUrl}">x</a>
+                <p>${fn:length(a) > 0 ? dir.name : fn:length(b)}</p>
+                <c:url var="goodUrl" value="/x.rol"><c:param name="d" value="${dir.name}"/></c:url>
+                <a href="${goodUrl}">${fn:length(dir.name)} ${fn:escapeXml(fn:trim(dir.name))}</a>
+                """;
+
+        assertEquals(List.of("T.jsp:1  ${dir.name}", "T.jsp:3  ${xUrl}",
+                        "T.jsp:4  ${fn:length(a) > 0 ? dir.name : fn:length(b)}"),
+                rawExpressionsIn("T.jsp", jsp));
+    }
+
     private static List<Path> mediaJsps() throws IOException {
         try (Stream<Path> files = Files.list(EDITOR_JSPS)) {
             return files.filter(p -> p.getFileName().toString().startsWith("MediaFile"))
@@ -149,11 +190,21 @@ class MediaJspEscapingTest {
             }
         }
 
+        Set<String> urlVariables = new java.util.HashSet<>();
+        Matcher declared = URL_VAR_DECLARATION.matcher(source);
+        while (declared.find()) {
+            urlVariables.add(declared.group(1));
+        }
+        Matcher reassigned = SET_VAR_DECLARATION.matcher(source);
+        while (reassigned.find()) {
+            urlVariables.remove(reassigned.group(1));
+        }
+
         List<String> raw = new ArrayList<>();
         Matcher el = EL.matcher(source);
         while (el.find()) {
             String expression = el.group(1).strip();
-            if (insideNonPrintingTag(masked, el.start()) || safe(expression)) {
+            if (insideNonPrintingTag(masked, el.start()) || safe(expression, urlVariables)) {
                 continue;
             }
             int line = (int) source.chars().limit(el.start()).filter(c -> c == '\n').count() + 1;
@@ -169,13 +220,76 @@ class MediaJspEscapingTest {
             return false;
         }
         Matcher tag = Pattern.compile("<([A-Za-z]+:[A-Za-z]+)").matcher(before.substring(open));
-        return tag.lookingAt() && NON_PRINTING_TAGS.contains(tag.group(1));
+        if (!tag.lookingAt() || !NON_PRINTING_TAGS.contains(tag.group(1))) {
+            return false;
+        }
+        if (!"c:url".equals(tag.group(1))) {
+            return true;
+        }
+        // <c:url value="${x}"/> with no var PRINTS the url, and JSTL
+        // encodes only c:param values, never the value attribute.
+        String text = masked.toString();
+        int close = text.indexOf('>', at);
+        String whole = text.substring(open, close < 0 ? text.length() : close);
+        return Pattern.compile("\\bvar\\s*=").matcher(whole).find();
     }
 
-    private static boolean safe(String expression) {
+    private static boolean safe(String expression, Set<String> urlVariables) {
+        Matcher list = EL_LIST.matcher(expression);
+        if (list.matches()) {
+            List<String> elements = splitTopLevel(list.group(1));
+            return !elements.isEmpty() && elements.stream().allMatch(e -> safe(e, urlVariables));
+        }
         return SAFE.contains(expression)
-                || SAFE_CALL.matcher(expression).matches()
+                || isOneSafeCall(expression)
                 || LITERAL_TERNARY.matcher(expression).matches()
-                || URL_VARIABLE.matcher(expression).matches();
+                || urlVariables.contains(expression);
+    }
+
+    /** One safe call, whose opening parenthesis closes at the expression's end. */
+    private static boolean isOneSafeCall(String expression) {
+        Matcher start = SAFE_CALL_START.matcher(expression);
+        if (!start.lookingAt()) {
+            return false;
+        }
+        int depth = 1;
+        for (int i = start.end(); i < expression.length(); i++) {
+            char c = expression.charAt(i);
+            if (c == '\'' || c == '"') {
+                int end = expression.indexOf(c, i + 1);
+                if (end < 0) {
+                    return false;
+                }
+                i = end;
+            } else if (c == '(') {
+                depth++;
+            } else if (c == ')' && --depth == 0) {
+                return i == expression.length() - 1;
+            }
+        }
+        return false;
+    }
+
+    /** Splits on commas outside parentheses, brackets and quotes. */
+    private static List<String> splitTopLevel(String text) {
+        List<String> parts = new ArrayList<>();
+        int depth = 0;
+        int from = 0;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '\'' || c == '"') {
+                int end = text.indexOf(c, i + 1);
+                i = end < 0 ? text.length() : end;
+            } else if (c == '(' || c == '[') {
+                depth++;
+            } else if (c == ')' || c == ']') {
+                depth--;
+            } else if (c == ',' && depth == 0) {
+                parts.add(text.substring(from, i).strip());
+                from = i + 1;
+            }
+        }
+        parts.add(text.substring(from).strip());
+        return parts;
     }
 }

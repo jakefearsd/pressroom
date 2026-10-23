@@ -28,6 +28,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -92,6 +93,18 @@ class EditorJspEscapingTest {
             "bean.content",
             "bean.contentsStandard",
             "bean.userName",
+            // The template screens' own author text: a template's description,
+            // a stylesheet's source, a typed content type, the refused new
+            // template name echoed back, and the current theme's name.
+            "p.description",
+            "contentsStandard",
+            "manualContentType",
+            "newTmplName",
+            "currentThemeName",
+            // The SEO drawer's picked-image ids: String bean fields the
+            // author's own POST fills, reflected into value="...".
+            "bean.featuredImageId",
+            "bean.ogImageId",
             // The moderation page's reader-controlled fields (reader comments).
             "author.screenName",
             "author.userName",
@@ -136,6 +149,20 @@ class EditorJspEscapingTest {
         assertTrue(violations.isEmpty(), "raw on the account page: " + violations);
     }
 
+    /** A raw field inside an EL list is as raw as a bare one; a wrapped one is not. */
+    @Test
+    void theScanSeesIntoAnElList(@org.junit.jupiter.api.io.TempDir Path dir) throws IOException {
+        Path jsp = dir.resolve("T.jsp");
+        Files.writeString(jsp, """
+                <spring:message code="a" arguments="${[bean.title]}"/>
+                <spring:message code="b" arguments="${[actionWeblog.handle, entry.title]}"/>
+                <spring:message code="c" arguments="${[fn:escapeXml(bean.title), x]}"/>
+                """);
+        List<String> violations = new ArrayList<>();
+        scan(jsp, violations);
+        assertEquals(2, violations.size(), String.valueOf(violations));
+    }
+
     private static void scan(Path jsp, List<String> violations) {
         final String source;
         try {
@@ -164,6 +191,16 @@ class EditorJspEscapingTest {
             while (m.find()) {
                 int line = (int) source.chars().limit(m.start()).filter(c -> c == '\n').count() + 1;
                 violations.add(jsp.getFileName() + ":" + line + "  " + m.group().strip());
+            }
+            // The same raw access as an element of an EL list, ${[a, b]}:
+            // the form spring:message arguments take so commas survive.
+            Matcher inList = Pattern.compile(
+                            "\\$\\{\\s*\\[(?:[^}]*?,)?\\s*(?:[A-Za-z][A-Za-z0-9_]*\\.)*"
+                                    + Pattern.quote(expr) + "\\s*[,\\]]")
+                    .matcher(source);
+            while (inList.find()) {
+                int line = (int) source.chars().limit(inList.start()).filter(c -> c == '\n').count() + 1;
+                violations.add(jsp.getFileName() + ":" + line + "  " + inList.group().strip());
             }
         }
     }
