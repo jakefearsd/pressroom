@@ -43,7 +43,10 @@
         </a>
     </c:forEach>
 </nav>
+<%-- Only on the tabs that offer Hide: the Hidden tab offers Delete alone. --%>
+<c:if test="${status != 'HIDDEN'}">
 <p class="form-text"><spring:message code="comments.hideVsDelete"/></p>
+</c:if>
 
 <%-- Same pager markup as Entries.jsp and Submissions.jsp; pageSize comes
      from the controller. --%>
@@ -106,7 +109,7 @@
             </th>
             <th scope="col" class="rollertable"><spring:message code="comments.column.writer"/></th>
             <th scope="col" class="rollertable"><spring:message code="comments.column.comment"/></th>
-            <th scope="col" class="rollertable"><spring:message code="comments.column.entry"/></th>
+            <th scope="col" class="rollertable" width="20%"><spring:message code="comments.column.entry"/></th>
             <th scope="col" class="rollertable"><spring:message code="comments.column.date"/></th>
             <th scope="col" class="rollertable"></th>
         </tr>

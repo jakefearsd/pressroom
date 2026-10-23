@@ -249,6 +249,56 @@ class ListScreensJspTest {
         assertFalse(src.contains("value=\"${bean.endDateString}\""), "the end date is reflected raw");
     }
 
+    // ------------------------------------------------------------ visual audit
+
+    /**
+     * Visual 24: Category, Tags and Search rendered at normal weight while the
+     * two dates were bold -- only the dates carried .form-label -- and the
+     * casing was mixed. One label role, one group per field, sentence case.
+     */
+    @Test
+    void everySidebarFieldHasTheSameLabelInItsOwnGroup() throws IOException {
+        String src = read(SIDEBAR);
+        Matcher labels = Pattern.compile("<label\\b[^>]*>").matcher(src);
+        int count = 0;
+        while (labels.find()) {
+            count++;
+            assertTrue(labels.group().contains("class=\"form-label\""), "a sidebar label is not a .form-label: "
+                    + labels.group());
+        }
+        assertEquals(6, count, "category, tags, text, two dates and sort each have one label");
+        assertFalse(src.contains("<br/>"), "the sidebar still spaces fields with <br/>");
+
+        Properties props = bundle();
+        assertEquals("Start date", props.getProperty("weblogEntryQuery.label.startDate"));
+        assertEquals("End date", props.getProperty("weblogEntryQuery.label.endDate"));
+        assertEquals("Search text", props.getProperty("weblogEntryQuery.label.text"));
+    }
+
+    /** Visual 14: at 1280 the Published and Updated cells wrapped to three lines. */
+    @Test
+    void theEntryTimestampsDoNotWrap() throws IOException {
+        String src = read(ENTRIES);
+        assertTrue(src.contains("<td class=\"data text-nowrap\"><rc:date value=\"${post.pubTime}\"/></td>"),
+                "the Published cell can wrap");
+        assertTrue(src.contains("<td class=\"data text-nowrap\"><rc:date value=\"${post.updateTime}\"/></td>"),
+                "the Updated cell can wrap");
+    }
+
+    /**
+     * Visual 41: the Hide-versus-Delete help showed on the Hidden tab, which
+     * offers no Hide; and the entry title took the width the comment needed.
+     */
+    @Test
+    void commentsHelpShowsOnlyWhereHideIsOfferedAndTheCommentColumnGetsTheRoom() throws IOException {
+        String src = read(COMMENTS);
+        assertTrue(Pattern.compile("<c:if test=\"\\$\\{status != 'HIDDEN'}\">\\s*"
+                        + "<p class=\"form-text\"><spring:message code=\"comments.hideVsDelete\"/></p>").matcher(src).find(),
+                "the hide-versus-delete help is not limited to the tabs that offer Hide");
+        assertTrue(src.contains("<th scope=\"col\" class=\"rollertable\" width=\"20%\"><spring:message code=\"comments.column.entry\"/></th>"),
+                "the Entry column is not capped, so it squeezes the comment");
+    }
+
     private static int countOccurrences(String haystack, String needle) {
         int count = 0;
         for (int i = haystack.indexOf(needle); i >= 0; i = haystack.indexOf(needle, i + needle.length())) {

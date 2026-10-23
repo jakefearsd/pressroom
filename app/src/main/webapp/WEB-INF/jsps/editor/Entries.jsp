@@ -208,9 +208,9 @@
          always meant (see DateTag). The <c:if>s these cells used to carry
          and the message-bundle date pattern they used to resolve are both
          the tag's job now. --%>
-    <td class="data"><rc:date value="${post.pubTime}"/></td>
+    <td class="data text-nowrap"><rc:date value="${post.pubTime}"/></td>
 
-    <td class="data"><rc:date value="${post.updateTime}"/></td>
+    <td class="data text-nowrap"><rc:date value="${post.updateTime}"/></td>
 
     <%-- The title is the row's primary target and it opens the EDITOR. This
          is the authoring surface: clicking a post's name here means "open

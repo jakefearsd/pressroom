@@ -28,7 +28,10 @@
     <%-- ========================================================= --%>
     <%-- filter by category --%>
 
-    <label for="entries_bean_categoryName"><spring:message code="weblogEntryQuery.label.category"/></label>
+    <%-- Every field is a div.mb-3 with a .form-label, the one label role:
+         only the two dates used to carry it, so they alone rendered bold. --%>
+    <div class="mb-3">
+    <label for="entries_bean_categoryName" class="form-label"><spring:message code="weblogEntryQuery.label.category"/></label>
     <select id="entries_bean_categoryName" name="bean.categoryName" class="form-select" size="1">
 <option value="" ${empty bean.categoryName ? 'selected' : ''}><spring:message code="weblogEntryQuery.label.anyCategory"/></option>
 <%-- Category names are author input: escaped in the value and the text
@@ -38,18 +41,23 @@
 <option value="${fn:escapeXml(opt.name)}" ${opt.name == bean.categoryName ? 'selected' : ''}>${fn:escapeXml(opt.name)}</option>
 </c:forEach>
 </select>
+    </div>
 
     <%-- ========================================================= --%>
     <%-- filter by tag --%>
 
-    <label for="entries_bean_tagsAsString"><spring:message code="weblogEntryQuery.label.tags"/></label>
-    <input type="text" id="entries_bean_tagsAsString" name="bean.tagsAsString" value="${fn:escapeXml(bean.tagsAsString)}" size="14" class="form-control"/>
+    <div class="mb-3">
+        <label for="entries_bean_tagsAsString" class="form-label"><spring:message code="weblogEntryQuery.label.tags"/></label>
+        <input type="text" id="entries_bean_tagsAsString" name="bean.tagsAsString" value="${fn:escapeXml(bean.tagsAsString)}" size="14" class="form-control"/>
+    </div>
 
     <%-- ========================================================= --%>
     <%-- filter by text --%>
 
-    <label for="entries_bean_text"><spring:message code="weblogEntryQuery.label.text"/></label>
-    <input type="text" id="entries_bean_text" name="bean.text" value="${fn:escapeXml(bean.text)}" size="14" class="form-control"/>
+    <div class="mb-3">
+        <label for="entries_bean_text" class="form-label"><spring:message code="weblogEntryQuery.label.text"/></label>
+        <input type="text" id="entries_bean_text" name="bean.text" value="${fn:escapeXml(bean.text)}" size="14" class="form-control"/>
+    </div>
 
     <%-- ========================================================= --%>
     <%-- filter by date --%>
@@ -67,8 +75,6 @@
         </label>
         <input type="date" id="entries_bean_endDateString" name="bean.endDateString" value="${fn:escapeXml(bean.endDateString)}" class="form-control"/>
     </div>
-
-    <br/>
 
     <%-- ========================================================= --%>
     <%-- the status the chips chose --%>
@@ -96,14 +102,14 @@
          is wired by a delegated listener in roller.js keyed off
          data-submit-on-change, never an inline onchange -- behaviour lives
          in the script, the same rule data-confirm follows. --%>
-    <label for="entries_bean_sortBy"><spring:message code="weblogEntryQuery.label.sortBy"/></label>
+    <div class="mb-3">
+    <label for="entries_bean_sortBy" class="form-label"><spring:message code="weblogEntryQuery.label.sortBy"/></label>
     <select id="entries_bean_sortBy" name="bean.sortBy" class="form-select" size="1" data-submit-on-change>
 <c:forEach items="${sortByOptions}" var="opt">
 <option value="${opt.key}" ${opt.key == bean.sortBy ? 'selected' : ''}>${opt.value}</option>
 </c:forEach>
 </select>
-
-    <br/>
+    </div>
 
     <%-- ========================================================= --%>
     <%-- filter button --%>
