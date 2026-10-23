@@ -267,8 +267,9 @@ same-titled creates committed 8 entries with one anchor.
   in one transaction get `foo` and `foo1`.
 - **The wait is bounded:** `weblogentry.anchor.lockTimeoutSeconds` (startup,
   default 10) is set as a transaction-local `lock_timeout` just for the lock
-  statement, then put back. A save that waits longer fails with a
-  `WebloggerException` naming the weblog (WARN log) and rolls back.
+  statement, then put back. A save that waits longer fails with an
+  `AnchorLockTimeoutException` naming the weblog and the bound (WARN log)
+  and rolls back; it is transient, so a client may simply retry.
 - **Generated anchors fit the column:** the base is cut so base + suffix is
   at most 255 (never inside a surrogate pair); V035 cuts the same way.
 - **Do not call `beginEarlyTransaction` before the lock.** EclipseLink begins

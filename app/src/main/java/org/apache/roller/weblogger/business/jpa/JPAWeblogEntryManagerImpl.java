@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.roller.util.RollerConstants;
 import org.apache.roller.weblogger.WebloggerException;
+import org.apache.roller.weblogger.business.AnchorLockTimeoutException;
 import org.apache.roller.weblogger.business.AnchorTakenException;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.RollerEvent;
@@ -930,6 +931,8 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
      * @throws AnchorTakenException for a chosen anchor another entry of the
      *         weblog holds, a trashed one included, or one an entry saved
      *         earlier in this transaction claimed
+     * @throws AnchorLockTimeoutException when the lock was not granted within
+     *         the bound: transient, so a caller may tell its client to retry
      */
     private void claimAnchor(WeblogEntry entry) throws WebloggerException {
         String anchor = entry.getAnchor();
@@ -942,8 +945,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         if (!strategy.lockUntilCommit(ANCHOR_LOCK_PREFIX + weblog.getId(), timeout)) {
             log.warn("Gave up after {}s waiting for the anchor lock of weblog {}; the save is refused",
                     timeout, weblog.getHandle());
-            throw new WebloggerException("Timed out after " + timeout + "s waiting to claim an anchor in weblog "
-                    + weblog.getHandle() + ": another save of the weblog holds the lock");
+            throw new AnchorLockTimeoutException(weblog.getHandle(), timeout);
         }
         ClaimedAnchors claimed = claimedAnchors();
         if (generate) {
