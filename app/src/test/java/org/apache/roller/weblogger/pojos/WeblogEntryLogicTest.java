@@ -17,12 +17,15 @@
  */
 package org.apache.roller.weblogger.pojos;
 
+import org.apache.roller.util.UUIDGenerator;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.pojos.WeblogEntry.PubStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -31,6 +34,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 
 /**
  * Covers the computed properties of {@link WeblogEntry} -- the parts that are
@@ -532,5 +538,44 @@ class WeblogEntryLogicTest {
         entry.addTag("travel");
 
         assertEquals(updated, entry.getTags().iterator().next().getTime());
+    }
+
+    // ------------------------------------------------------------- copies and revisions
+
+    /**
+     * A copy needs one id, not two: {@code new WeblogEntry()} drew one that
+     * {@code setData} then overwrote with the original's, before the copy
+     * drew its real one (each a {@code SecureRandom} draw under a JVM-wide lock).
+     */
+    @Test
+    void copyAsDraftDrawsExactlyOneId() throws Exception {
+        entry.setTitle("Original");
+        entry.setId("original-id");
+        try (MockedStatic<UUIDGenerator> generator = mockStatic(UUIDGenerator.class, CALLS_REAL_METHODS)) {
+            WeblogEntry copy = entry.copyAsDraft("Copy");
+
+            assertNotNull(copy.getId());
+            assertFalse("original-id".equals(copy.getId()), "the copy has its own identity");
+            generator.verify(UUIDGenerator::generateUUID, times(1));
+        }
+    }
+
+    /**
+     * A revision is stamped when the save that displaces the content runs,
+     * not when the entry was loaded: the pruner and the rail order by it, and
+     * load order is not save order.
+     */
+    @Test
+    void theDisplacedContentIsStampedAtSaveTimeNotLoadTime() throws Exception {
+        entry.setTitle("Loaded");
+        entry.snapshotLoadedContent();
+        Thread.sleep(5);
+        Timestamp beforeTheSave = Timestamp.from(Instant.now());
+
+        entry.setTitle("Edited");
+        WeblogEntryRevision displaced = entry.contentBeingReplaced("alice");
+
+        assertFalse(displaced.getCreated().before(beforeTheSave),
+                "stamped " + displaced.getCreated() + ", before the save began at " + beforeTheSave);
     }
 }

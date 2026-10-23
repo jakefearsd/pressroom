@@ -49,6 +49,10 @@ public class WeblogEntryRevision implements Serializable {
      * column keeps microseconds, and two saves of one entry really can land in
      * the same millisecond. Ordering revisions is not cosmetic -- it decides
      * which one the pruner drops.
+     *
+     * <p>An entry's snapshot is built when it is loaded, so this initial
+     * value is the load time; {@code WeblogEntry.contentBeingReplaced}
+     * restamps it when the displacing save actually runs.
      */
     private Timestamp created = Timestamp.from(Instant.now());
     private String creator;
@@ -60,8 +64,8 @@ public class WeblogEntryRevision implements Serializable {
     }
 
     /**
-     * A snapshot of this entry's current content, not yet associated with a
-     * creation time other than now.
+     * A snapshot of this entry's current content, stamped with the current
+     * time until the save that stores it restamps it.
      *
      * @param entry   the entry being snapshotted, whose CURRENT (pre-save)
      *                content is copied

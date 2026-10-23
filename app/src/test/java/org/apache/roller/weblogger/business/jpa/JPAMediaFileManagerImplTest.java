@@ -133,11 +133,12 @@ class JPAMediaFileManagerImplTest {
         loggerConfig.addAppender(appender, null, null);
         try {
             mfMgr.removeMediaFile(testWeblog, saved);
+            // the files leave the disk once the removal commits
+            TestUtils.endSession(true);
         } finally {
             loggerConfig.removeAppender("JPAMediaFileManagerImplTest-capture");
             appender.stop();
         }
-        TestUtils.endSession(true);
 
         List<LogEvent> quietDeletes = captured.stream()
                 .filter(event -> event.getMessage().getFormattedMessage()

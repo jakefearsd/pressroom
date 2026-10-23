@@ -141,8 +141,14 @@ incidental re-save) — minor PII residue worth clearing.
   callback (`WeblogEntry.snapshotLoadedContent`) because `saveWeblogEntry`
   only sees the caller's NEW values. Runtime property
   `entry.revisions.retention`: **-1 (default) keeps everything**, 0 records
-  none, n>0 prunes to the n newest in the save's own transaction. Rendered as
-  a rail box below the publish rail, own form/CSRF per restore button.
+  none, n>0 prunes to the n newest. The revision (and its prune) is written
+  AFTER the save commits, in its own transaction on its own EntityManager
+  (`JPAWeblogEntryManagerImpl.storeRevision`): in the save's transaction a
+  refused revision row failed the commit and lost the save. A failure costs
+  only the revision (WARN); a save that rolls back records none. `created`
+  is stamped when the save runs (`contentBeingReplaced`), not at load: the
+  pruner orders by it. Rendered as a rail box below the publish rail, own
+  form/CSRF per restore button.
 
 **Controllers: always name `@RequestParam`/`@PathVariable` explicitly.** The
 build does not pass `-parameters`, so a bare `@RequestParam String id` throws

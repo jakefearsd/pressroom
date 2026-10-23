@@ -35,7 +35,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.roller.weblogger.TestUtils;
-import org.apache.roller.weblogger.WebloggerException;
+import org.apache.roller.weblogger.business.AnchorLockTimeoutException;
 import org.apache.roller.weblogger.business.AnchorTakenException;
 import org.apache.roller.weblogger.business.WeblogEntryManager;
 import org.apache.roller.weblogger.business.Weblogger;
@@ -229,7 +229,11 @@ class EntryAnchorUniquenessTest {
                 Throwable failure = outcome.get(10, TimeUnit.SECONDS);
                 long waited = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
 
-                assertInstanceOf(WebloggerException.class, failure, "the create must fail, not succeed");
+                // typed, so the API and MCP can answer "retry" rather than an opaque 500
+                AnchorLockTimeoutException timedOut =
+                        assertInstanceOf(AnchorLockTimeoutException.class, failure, "not a timeout: " + failure);
+                assertEquals(handle, timedOut.getWeblogHandle());
+                assertEquals(1, timedOut.getTimeoutSeconds());
                 assertTrue(failure.getMessage().contains(handle), failure.getMessage());
                 assertTrue(waited < 8000, "gave up after " + waited + " ms");
             } finally {
