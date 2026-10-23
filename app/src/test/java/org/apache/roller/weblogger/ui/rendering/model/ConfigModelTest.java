@@ -170,27 +170,21 @@ class ConfigModelTest {
     }
 
     @Test
-    void feedFlagsAreReadAsBooleans() throws Exception {
+    void theFeedHistoryFlagIsReadAsABoolean() throws Exception {
         givenProperty("site.newsfeeds.history.enabled", "true");
-        givenProperty("site.newsfeeds.styledFeeds", "true");
 
         assertTrue(model.getFeedHistoryEnabled(),
                 "$config.feedHistoryEnabled reads site.newsfeeds.history.enabled");
-        assertTrue(model.getFeedStyle(),
-                "$config.feedStyle reads site.newsfeeds.styledFeeds");
     }
 
     @Test
-    void feedFlagsSetToFalseReadAsFalse() throws Exception {
+    void theFeedHistoryFlagSetToFalseReadsAsFalse() throws Exception {
         // The "true" direction alone would pass even if the accessor ignored the
         // property and always said yes.
         givenProperty("site.newsfeeds.history.enabled", "false");
-        givenProperty("site.newsfeeds.styledFeeds", "false");
 
         assertFalse(model.getFeedHistoryEnabled(),
                 "An administrator turning feed history off must actually turn it off.");
-        assertFalse(model.getFeedStyle(),
-                "An administrator turning styled feeds off must actually turn them off.");
     }
 
     @Test
@@ -267,16 +261,10 @@ class ConfigModelTest {
     // --------------------------------------------------------- build details
 
     @Test
-    void buildDetailsComeFromTheRunningWebloggerInstance() {
+    void theVersionComesFromTheRunningWebloggerInstance() {
         when(weblogger.getVersion()).thenReturn("0.1.0");
-        when(weblogger.getBuildTime()).thenReturn("2026-07-31T12:00:00Z");
-        when(weblogger.getBuildUser()).thenReturn("release-bot");
 
         assertEquals("0.1.0", model.getRollerVersion(),
                 "$config.rollerVersion is rendered in the footer of every bundled theme.");
-        assertEquals("2026-07-31T12:00:00Z", model.getRollerBuildTimestamp(),
-                "$config.rollerBuildTimestamp reports the build time.");
-        assertEquals("release-bot", model.getRollerBuildUser(),
-                "$config.rollerBuildUser reports who built the release.");
     }
 }

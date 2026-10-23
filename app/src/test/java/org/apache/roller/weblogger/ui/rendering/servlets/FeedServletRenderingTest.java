@@ -106,6 +106,28 @@ class FeedServletRenderingTest {
                 categoryId, "the id is the feed's self link:\n" + category);
     }
 
+    /**
+     * A feed URL that carries two parameters joins them with {@code &}; the
+     * self link and the id printed it bare, so {@code ?cat=X&excerpts=true}
+     * was a feed no XML parser would read.
+     */
+    @Test
+    void aFeedWhoseSelfLinkCarriesTwoParametersIsWellFormed() throws Exception {
+        TestUtils.setupWeblogEntry("two-param-entry", weblog, user);
+        TestUtils.endSession(true);
+        MockHttpServletRequest request = RenderingTestSupport
+                .anonymousGet("/roller-ui/rendering/feed", "/" + handle + "/entries/atom");
+        request.setParameter("cat", "General");
+        request.setParameter("excerpts", "true");
+        String body = RenderingTestSupport.execute(RenderingTestSupport.feedServlet(), request)
+                .getContentAsString();
+
+        assertTrue(between(body, "<id>", "</id>").contains("&amp;"), "the id must be escaped:\n" + body);
+        javax.xml.parsers.DocumentBuilderFactory dbf = javax.xml.parsers.DocumentBuilderFactory.newInstance();
+        dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        dbf.newDocumentBuilder().parse(new org.xml.sax.InputSource(new java.io.StringReader(body)));
+    }
+
     private static String between(String body, String start, String end) {
         int from = body.indexOf(start);
         assertTrue(from >= 0, "no " + start + " in:\n" + body);

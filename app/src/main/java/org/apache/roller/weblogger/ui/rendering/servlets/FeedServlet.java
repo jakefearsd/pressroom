@@ -143,7 +143,7 @@ public class FeedServlet extends HttpServlet {
         // set last-modified date
         ModDateHeaderUtil.setLastModifiedHeader(response, lastModified);
 
-        String contentType = negotiateContentType(request, feedRequest);
+        String contentType = negotiateContentType(feedRequest);
         if (contentType != null) {
             response.setContentType(contentType);
         }
@@ -259,23 +259,12 @@ public class FeedServlet extends HttpServlet {
      * The content type a feed should be served as, or null to leave whatever
      * the container defaults to.
      *
-     * <p>The browser case is the interesting one: a browser asking for a feed
-     * gets text/xml so it renders in the window, rather than the correct feed
-     * type, which makes it offer a download instead. That is a deliberate
-     * lie told to browsers and only to browsers, and only when the site has
-     * styled feeds turned on.
+     * <p>Atom, for every client. A browser that accepted anything used to be
+     * told {@code text/xml} so it would run the feed's XSLT stylesheet
+     * ({@code site.newsfeeds.styledFeeds}); browsers are removing XSLT and the
+     * feed no longer names a stylesheet, so the setting and that branch went.
      */
-    private static String negotiateContentType(HttpServletRequest request,
-                                               WeblogFeedRequest feedRequest) {
-
-        String accepts = request.getHeader("Accept");
-        String userAgent = request.getHeader("User-Agent");
-
-        if (WebloggerRuntimeConfig.getBooleanProperty("site.newsfeeds.styledFeeds")
-                && accepts != null && accepts.contains("*/*")
-                && userAgent != null && userAgent.startsWith("Mozilla")) {
-            return "text/xml";
-        }
+    private static String negotiateContentType(WeblogFeedRequest feedRequest) {
         if ("atom".equals(feedRequest.getFormat())) {
             return "application/atom+xml; charset=utf-8";
         }
