@@ -25,7 +25,7 @@
 
 <p class="subtitle"><spring:message code="agent.subtitle" arguments="${fn:escapeXml(bean.userName)}"/></p>
 
-<h3 class="section-head"><spring:message code="agent.details"/></h3>
+<h2 class="section-head"><spring:message code="agent.details"/></h2>
 <form method="post" action="<c:url value='/roller-ui/admin/agent!save.rol'/>" class="form-stacked" id="agentDetailsForm">
     <sec:csrfInput/>
     <input type="hidden" name="bean.userName" value="${fn:escapeXml(bean.userName)}"/>
@@ -58,7 +58,7 @@
     <button type="submit" class="btn btn-primary" id="agentSaveButton"><spring:message code="generic.save"/></button>
 </form>
 
-<h3 class="section-head"><spring:message code="agent.status"/></h3>
+<h2 class="section-head"><spring:message code="agent.status"/></h2>
 <form method="post" action="<c:url value='/roller-ui/admin/agent!setEnabled.rol'/>"
       class="d-flex flex-wrap align-items-center gap-3" id="agentEnabledForm">
     <sec:csrfInput/>
@@ -87,10 +87,10 @@
 
 <jsp:include page="/WEB-INF/jsps/admin/UserWeblogs.jsp"/>
 
-<h3 class="section-head"><spring:message code="agent.tokens"/></h3>
+<h2 class="section-head"><spring:message code="agent.tokens"/></h2>
 <jsp:include page="/WEB-INF/jsps/core/TokenList.jsp"/>
 
-<h3 class="section-head"><spring:message code="apiTokens.new"/></h3>
+<h2 class="section-head"><spring:message code="apiTokens.new"/></h2>
 <jsp:include page="/WEB-INF/jsps/core/TokenForm.jsp"/>
 
 </div>

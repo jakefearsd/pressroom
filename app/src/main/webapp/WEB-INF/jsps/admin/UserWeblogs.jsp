@@ -24,7 +24,7 @@
      availableWeblogs. Levels and labels are the Members page's own. The
      weblog field is "handle", never "weblog". Remove asks first. --%>
 <section id="userWeblogsSection" class="mt-4">
-<h3 class="section-head"><spring:message code="userAdmin.userWeblogs"/></h3>
+<h2 class="section-head"><spring:message code="userAdmin.userWeblogs"/></h2>
 
 <c:choose>
     <c:when test="${not empty permissions}">

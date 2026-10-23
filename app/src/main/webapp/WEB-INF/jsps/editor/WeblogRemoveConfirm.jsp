@@ -22,7 +22,7 @@
 </p>
 
 <p style="margin-bottom: 3em">
-    <spring:message code="websiteRemove.youSure" arguments="${actionWeblog.name}"/>
+    <spring:message code="websiteRemove.youSure" arguments="${fn:escapeXml(actionWeblog.name)}"/>
     <br/>
     <br/>
     <span class="warning">
@@ -35,7 +35,7 @@
 
         <form action="${pageContext.request.contextPath}/roller-ui/authoring/weblogRemove!remove.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
-            <button type="submit" class="btn btn-danger"><spring:message code="generic.yesRemove"/></button>
+            <button type="submit" class="btn btn-danger"><spring:message code="websiteSettings.button.remove"/></button>
         <sec:csrfInput/>
 </form>
 

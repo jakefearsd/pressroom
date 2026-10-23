@@ -42,7 +42,7 @@
 
     <c:forEach var="dg" items="${globalConfigDef.displayGroups}">
 
-        <h3 class="section-head" id="cfg-${fn:escapeXml(dg.key)}"><spring:message code="${dg.key}"/></h3>
+        <h2 class="section-head" id="cfg-${fn:escapeXml(dg.key)}"><spring:message code="${dg.key}"/></h2>
 
         <c:forEach var="pd" items="${dg.propertyDefs}">
 
@@ -182,7 +182,7 @@
              translated in every locale bundle for the weblog-settings rail.
              Reused rather than adding a second key for the same word, the way
              MainMenu.jsp reuses the inviteMember.* role names. --%>
-        <h3 class="section-head"><spring:message code="websiteSettings.sections"/></h3>
+        <h2 class="section-head"><spring:message code="websiteSettings.sections"/></h2>
         <nav class="section-index" id="globalConfigSectionIndex"
              aria-label="<spring:message code="websiteSettings.sections"/>">
             <c:forEach var="dg" items="${globalConfigDef.displayGroups}" varStatus="dgStatus">

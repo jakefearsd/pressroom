@@ -159,8 +159,8 @@ public final class Routes {
 
             // Landing page for authorization failures. RollerHandlerInterceptor
             // redirects here; it previously had no handler at all, so every denial
-            // produced a bare 404. denied.jsp's only distinctive element is its h2.
-            new Route("/roller-ui/access-denied.rol", Role.ANONYMOUS, "", "h2"),
+            // produced a bare 404. denied.jsp's only distinctive element is its h1#accessDenied.
+            new Route("/roller-ui/access-denied.rol", Role.ANONYMOUS, "", "h1#accessDenied"),
             // What / shows while no weblog is the front page; public.
             new Route("/roller-ui/siteDirectory.rol", Role.ANONYMOUS, "", "#siteDirectory"),
 
@@ -172,13 +172,13 @@ public final class Routes {
             // three card headings are not. The marker is an app-owned class
             // (not card-title) because Setup.jsp's headings sit in .card-header,
             // not .card-body, where Bootstrap 5's card-title is normally used.
-            new Route("/roller-ui/setup.rol", Role.ADMIN, "", "h3.setup-section-title"),
+            new Route("/roller-ui/setup.rol", Role.ADMIN, "", "h2.setup-section-title"),
 
             // The weblog list only renders under
             // <c:if test="${not empty existingPermissions}">, which holds because
             // seed-it-data.sql grants it_admin a permission on it_weblog. If the
             // seed ever stops granting it, this marker is the thing that fails.
-            new Route("/roller-ui/menu.rol", Role.EDITOR, "", "h3.mm_weblog_name"),
+            new Route("/roller-ui/menu.rol", Role.EDITOR, "", "h2.mm_weblog_name"),
 
             new Route("/roller-ui/profile.rol", Role.EDITOR, "",
                     "form[action$='/roller-ui/profile!save.rol']"),

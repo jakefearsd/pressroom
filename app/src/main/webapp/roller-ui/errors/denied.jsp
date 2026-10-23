@@ -26,7 +26,7 @@
      client -- see 404.jsp's equivalent comment for the same fix applied to
      the container-level error pages. Hardcoded English. --%>
 <div class="card card-body">
-    <h2 class="roller-page-title">Access denied</h2>
+    <h1 class="roller-page-title" id="accessDenied">Access denied</h1>
     <p>You don't have permission to do that. The usual reasons:</p>
     <ul>
         <li>The entry belongs to a weblog you can't edit -- or you already

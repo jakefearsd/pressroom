@@ -32,10 +32,18 @@ incidental re-save) — minor PII residue worth clearing.
   **emphasis elsewhere is weight, never size**), the permalink as a mono line
   with a copy control, the untouched `EntryEditor.jsp` include. Rail: Publish
   box (status pill, the one visible time field, submit buttons), Organize box
-  (category/tags; locale is a hidden input), SEO drawer (SEO & Social
-  Sharing card, collapsed), newsletter/revisions boxes
+  (category/tags; locale is a hidden input), SEO drawer ("SEO and
+  sharing", `weblogEdit.seoSettings`, collapsed; PageEdit shares the
+  label), newsletter/revisions boxes
   (`.editor-box`/`.rail-group-label`; no Bootstrap `.card` in the rail),
-  Delete as a quiet text link, last. The `#entry` form is `display:contents`
+  Delete as a quiet text link, last. **The submit buttons follow the
+  entry's state**: on an entry that is already published, an author sees
+  **Update** (primary, re-publishes) and **Unpublish** (back to draft),
+  not Publish / Save draft, and Ctrl+S (Cmd+S) clicks Update — the button
+  carrying `data-save-shortcut`. Before that, Ctrl+S on a live entry
+  clicked Save draft and silently unpublished it. A new, never-saved entry's
+  status line reads "Not saved" (`editorNotYetSaved`).
+  The `#entry` form is `display:contents`
   so the newsletter/revisions boxes' own `<form>`s (own CSRF token and POST
   target) sit in the rail's grid column without nesting.
 - **`bean.pubTimeLocal` is the only pubtime field and means the WEBLOG's
@@ -69,8 +77,13 @@ incidental re-save) — minor PII residue worth clearing.
   build"); one global, `RollerEditor.create(options)`, called from
   `EditorScript.jsp`. `EditorSurface.jsp` (markup) and `EditorScript.jsp`
   (script) are shared verbatim by the entry and page editors. `options`
-  carries `onSave`/`onPublish`/`onHelp`, bound to `Mod-s`/`Mod-Enter`/`Mod-/`
-  ahead of CM6's keymap (unsupplied: CM6's default). Exactly three seam
+  carries `onSave`/`onPublish`/`onHelp` and `onBold`/`onItalic`/`onLink`,
+  bound to `Mod-s`/`Mod-Enter`/`Mod-/` and `Mod-b`/`Mod-i`/`Mod-k`
+  (`app/frontend/src/keys.js`, `hostBindings`; Mod is Ctrl, Cmd on macOS)
+  at `Prec.highest`, ahead of CM6's keymap — so Mod-i is italic, not
+  `selectParentSyntax`, and Ctrl+B/K never reach the browser's bookmarks
+  or search bar (unsupplied: CM6's default). The bold/italic/link bindings
+  run the toolbar's own commands. Exactly three seam
   functions — `insertMediaFile`, `rollerSetEntryText`, `rollerGetEntryText` —
   so replacing the editor is one file; Browser ITs use those and the `Editor`
   test helper, never CM6's API.

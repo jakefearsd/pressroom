@@ -59,14 +59,14 @@
                  overrides .section-head's caps role for that (roller.css; the
                  pair is pinned by JspConsistencyTest) and carries the icon/label gap (roller.css) that used to
                  be a hardcoded &nbsp;, and stays regardless because
-                 RouteSweepIT identifies menu.rol by "h3.mm_weblog_name"
+                 RouteSweepIT identifies menu.rol by "h2.mm_weblog_name"
                  (Routes.java). Rename neither the element nor the class
                  without moving that marker in the same commit. --%>
-            <h3 class="mm_weblog_name section-head">
+            <h2 class="mm_weblog_name section-head">
                 <span class="bi bi-folder2-open" aria-hidden="true"></span>
                 <a href="${fn:escapeXml(urls.weblogAbsolute(perms.weblog))}">${fn:escapeXml(perms.weblog.name)}</a>
                 <span class="data">${fn:escapeXml(perms.weblog.handle)}</span>
-            </h3>
+            </h2>
 
             <p><c:out value="${perms.weblog.about}" escapeXml="false"/></p>
 

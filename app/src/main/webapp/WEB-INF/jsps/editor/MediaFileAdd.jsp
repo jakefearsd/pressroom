@@ -49,9 +49,9 @@
          means past the first file. --%>
     <div class="card">
         <div class="card-header">
-            <h3 class="section-head">
+            <h2 class="section-head">
                 <spring:message code="mediaFileAdd.fileLocation"/>
-            </h3>
+            </h2>
         </div>
         <div class="card-body">
             <div id="mediaDropZone" class="media-dropzone"

@@ -139,11 +139,11 @@
 
             <div class="card-header">
 
-                <h3 class="section-head">
+                <h2 class="section-head">
                     <a class="collapsed" data-bs-toggle="collapse" data-bs-target="#collapseAdvanced" href="#">
                         <spring:message code="pageForm.advancedSettings"/>
                     </a>
-                </h3>
+                </h2>
 
             </div>
 

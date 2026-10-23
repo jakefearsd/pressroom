@@ -29,12 +29,12 @@
 
 <div class="card">
     <div class="card-header">
-        <h3 class="setup-section-title">
+        <h2 class="setup-section-title">
             <spring:message code="index.createUser"/>
             <c:if test="${userCount > 0}"> -
                 <spring:message code="index.createUserDone" arguments="${userCount}"/>
             </c:if>
-        </h3>
+        </h2>
     </div>
 
     <div class="card-body">
@@ -53,12 +53,12 @@
 
 <div class="card">
     <div class="card-header">
-        <h3 class="setup-section-title">
+        <h2 class="setup-section-title">
             <spring:message code="index.createWeblog"/>
             <c:if test="${blogCount > 0}"> -
                 <spring:message code="index.createWeblogDone" arguments="${blogCount}"/>
             </c:if>
-        </h3>
+        </h2>
     </div>
 
     <div class="card-body">
@@ -78,9 +78,9 @@
 
 <div class="card">
     <div class="card-header">
-        <h3 class="setup-section-title">
+        <h2 class="setup-section-title">
             <spring:message code="index.setFrontpage"/>
-        </h3>
+        </h2>
     </div>
 
     <div class="card-body">

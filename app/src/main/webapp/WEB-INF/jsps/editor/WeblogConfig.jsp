@@ -42,7 +42,7 @@
 
     <%-- ***** General settings ***** --%>
 
-    <h3 class="section-head" id="settings-general"><spring:message code="websiteSettings.generalSettings"/></h3>
+    <h2 class="section-head" id="settings-general"><spring:message code="websiteSettings.generalSettings"/></h2>
 
     <%-- The one question this page never answered: what URL is this?
          Read-only, because the handle (and the custom domain below) are what
@@ -132,7 +132,7 @@
 
     <%-- ***** Language/i18n settings ***** --%>
 
-    <h3 class="section-head" id="settings-language"><spring:message code="websiteSettings.languageSettings"/></h3>
+    <h2 class="section-head" id="settings-language"><spring:message code="websiteSettings.languageSettings"/></h2>
 
     <div class="row mb-3">
         <label class="col-sm-3 col-form-label" for="weblog_bean_locale"><spring:message code="createWebsite.locale"/></label>
@@ -158,7 +158,7 @@
 
     <%-- ***** Analytics settings ***** --%>
 
-    <h3 class="section-head" id="settings-analytics"><spring:message code="websiteSettings.analyticsSettings"/></h3>
+    <h2 class="section-head" id="settings-analytics"><spring:message code="websiteSettings.analyticsSettings"/></h2>
 
     <div class="row mb-3">
         <label class="col-sm-3 col-form-label" for="weblog_bean_analyticsSiteId"><spring:message code="websiteSettings.analyticsSiteId"/></label>
@@ -188,7 +188,7 @@
 
     <%-- ***** Newsletter settings ***** --%>
 
-    <h3 class="section-head" id="settings-newsletter"><spring:message code="websiteSettings.newsletterSettings"/></h3>
+    <h2 class="section-head" id="settings-newsletter"><spring:message code="websiteSettings.newsletterSettings"/></h2>
 
     <div class="row mb-3">
         <label class="col-sm-3 col-form-label" for="weblog_bean_newsletterListUuid"><spring:message code="websiteSettings.newsletterListUuid"/></label>
@@ -200,7 +200,7 @@
 
     <%-- ***** Business settings ***** --%>
 
-    <h3 class="section-head" id="settings-business"><spring:message code="websiteSettings.businessSettings"/></h3>
+    <h2 class="section-head" id="settings-business"><spring:message code="websiteSettings.businessSettings"/></h2>
 
     <div class="row mb-3">
         <label class="col-sm-3 col-form-label" for="weblog_bean_businessId"><spring:message code="websiteSettings.business"/></label>
@@ -283,7 +283,7 @@
 
     <%-- ***** Custom domain settings ***** --%>
 
-    <h3 class="section-head" id="settings-customdomain"><spring:message code="websiteSettings.customDomainSettings"/></h3>
+    <h2 class="section-head" id="settings-customdomain"><spring:message code="websiteSettings.customDomainSettings"/></h2>
 
     <div class="row mb-3">
         <label class="col-sm-3 col-form-label" for="weblog_bean_customDomain"><spring:message code="websiteSettings.customDomain"/></label>
@@ -312,7 +312,7 @@
 <aside class="settings-rail">
 
     <div class="rail-box settings-rail-index">
-        <h3 class="section-head"><spring:message code="websiteSettings.sections"/></h3>
+        <h2 class="section-head"><spring:message code="websiteSettings.sections"/></h2>
         <nav class="section-index" id="settingsSectionIndex"
              aria-label="<spring:message code="websiteSettings.sections"/>">
             <a href="#settings-general" class="is-current"><spring:message code="websiteSettings.generalSettings"/></a>

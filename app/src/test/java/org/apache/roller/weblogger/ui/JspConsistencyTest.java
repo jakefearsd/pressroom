@@ -17,6 +17,7 @@
 */
 package org.apache.roller.weblogger.ui;
 
+import org.apache.roller.weblogger.ui.controllers.RollerViewResolver;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -24,11 +25,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -677,7 +680,8 @@ class JspConsistencyTest {
      * the handle and entry count wear the mono data face, and the actions are
      * one primary "New entry" beside plain {@code .quiet-link}s.
      *
-     * <p>{@code h3.mm_weblog_name} survives the restyle deliberately:
+     * <p>{@code h2.mm_weblog_name} (an h3 until the heading sweep put it one
+     * level under the page's h1) survives the restyle deliberately:
      * {@code Routes.java} identifies {@code menu.rol} by that selector, so
      * renaming it here without moving the marker in the same commit fails
      * {@code RouteSweepIT}.
@@ -693,8 +697,8 @@ class JspConsistencyTest {
 
         assertTrue(markup.contains("class=\"weblog-row\""),
                 "each weblog must be a .weblog-row");
-        assertTrue(markup.contains("<h3 class=\"mm_weblog_name section-head\">"),
-                "h3.mm_weblog_name is Routes.java's marker for menu.rol -- keep it");
+        assertTrue(markup.contains("<h2 class=\"mm_weblog_name section-head\">"),
+                "h2.mm_weblog_name is Routes.java's marker for menu.rol -- keep it");
         assertTrue(markup.contains("class=\"weblog-actions\""),
                 "the row's actions belong in a .weblog-actions strip");
         assertTrue(markup.contains("class=\"quiet-link\""),
@@ -903,6 +907,151 @@ class JspConsistencyTest {
                 "no JSP may skip a heading level to h4/h5: " + violations);
     }
 
+    /** The whole webapp, so the {@code roller-ui/errors} pages are scanned too. */
+    static final Path WEBAPP = Path.of("src/main/webapp");
+
+    private static final Pattern HEADING_TAG = Pattern.compile("<h([1-6])\\b");
+
+    /**
+     * Layouts whose document only ever opens in an iframe inside a modal on
+     * an admin page that the tabbed layout already titled {@code h1} (the
+     * media editor and the image chooser).
+     * Their content continues that page's outline, so it starts at h2 like
+     * any other admin fragment rather than printing a second h1.
+     */
+    private static final Set<String> IFRAMED_LAYOUTS = Set.of("/WEB-INF/jsps/tiles/tiles-popuppage.jsp");
+
+    /**
+     * No heading skips a level, counting from the title the page's layout
+     * already printed.
+     *
+     * <p>The h4/h5 ban above was written when the layouts titled every page
+     * {@code h2.roller-page-title} and the cards used {@code h3}. The layouts
+     * moved to {@code h1}, and the cards stayed {@code h3.section-head}, so
+     * fourteen screens went h1 to h3 with nothing in between -- a gap a
+     * screen reader's heading list shows as a missing section -- and the scan
+     * could not see it, because it judged each file alone. Two pages had the
+     * opposite fault: {@code denied.jsp} and the install pages sit in layouts
+     * that print no title, and opened at {@code h2} with no {@code h1} at all.
+     *
+     * <p>So each content JSP is judged from its layout, which this reads from
+     * {@code RollerViewResolver} itself: under a layout that prints an
+     * {@code h1}, the fragment starts at h2 and may not print a second h1.
+     * Under one that prints none, the fragment must open with the h1. A JSP
+     * no view names is a whole document when it has an {@code <html>} (it
+     * starts at h1) and otherwise an include into the admin chrome (h2).
+     * Within a file, a heading may go at most one level below the one before.
+     * The one layout read differently is the popup ({@link #IFRAMED_LAYOUTS}).
+     *
+     * <p>The emphasis rule is untouched by any of this: the level is for the
+     * outline, the class carries the look ({@code .section-head} is the 12px
+     * caps label whether it is an h2 or an h3).
+     */
+    @Test
+    void noHeadingSkipsALevelBelowItsPageTitle() throws IOException {
+        Map<Path, Integer> titledBy = layoutTitleLevels();
+        assertEquals(0, titledBy.get(WEBAPP.resolve("roller-ui/errors/denied.jsp")),
+                "the error layout prints no title -- did the view map stop being read?");
+        assertEquals(1, titledBy.get(JSPS.resolve("core/Login.jsp")),
+                "the login layout prints the h1 -- did the view map stop being read?");
+
+        List<String> violations = new ArrayList<>();
+        for (Path jsp : everyServedJsp()) {
+            String src = blankJspComments(Files.readString(jsp, StandardCharsets.UTF_8));
+            int base = titledBy.getOrDefault(jsp, src.contains("<html") ? 0 : 1);
+            violations.addAll(headingSkips(WEBAPP.relativize(jsp).toString(), src, base));
+        }
+
+        assertEquals(List.of(), violations,
+                "a heading skips a level (h2.section-head is the card/section level under the "
+                        + "layout's h1; a page in the error or install layout titles itself h1)");
+    }
+
+    /** The scan itself, on planted markup. */
+    @Test
+    void theHeadingScanCountsFromTheLayoutsTitle() {
+        assertEquals(List.of(),
+                headingSkips("A.jsp", "<h2 class=\"section-head\">a</h2><h3>b</h3><h2>c</h2>", 1));
+        assertEquals(List.of("B.jsp:2  h3 follows h1"),
+                headingSkips("B.jsp", "<div>\n<h3 class=\"section-head\">a</h3>", 1));
+        assertEquals(List.of("C.jsp:1  h1 under a layout that already printed the h1"),
+                headingSkips("C.jsp", "<h1>a</h1>", 1));
+        assertEquals(List.of("D.jsp:1  h2 follows h0"),
+                headingSkips("D.jsp", "<h2 class=\"roller-page-title\">Access denied</h2>", 0));
+        assertEquals(List.of(),
+                headingSkips("E.jsp", "<h1>one branch</h1><h1>another branch</h1><header>", 0));
+    }
+
+    private static List<String> headingSkips(String name, String src, int base) {
+        List<String> skips = new ArrayList<>();
+        int previous = base;
+        Matcher heading = HEADING_TAG.matcher(src);
+        while (heading.find()) {
+            int level = Integer.parseInt(heading.group(1));
+            if (level <= base) {
+                skips.add(name + ":" + lineOf(src, heading.start()) + "  h" + level
+                        + " under a layout that already printed the h" + base);
+            } else if (level > previous + 1) {
+                skips.add(name + ":" + lineOf(src, heading.start()) + "  h" + level
+                        + " follows h" + previous);
+            }
+            previous = level;
+        }
+        return skips;
+    }
+
+    private static List<Path> everyServedJsp() throws IOException {
+        try (Stream<Path> walk = Files.walk(WEBAPP)) {
+            List<Path> all = walk.filter(p -> p.toString().endsWith(".jsp")).sorted().toList();
+            assertTrue(all.size() > 60, "found only " + all.size() + " JSPs under " + WEBAPP);
+            return all;
+        }
+    }
+
+    /**
+     * For each content JSP a view names: the heading level its layout has
+     * already used -- 1 when the layout prints an {@code h1}, else 0. A JSP
+     * two views share takes the stricter (lower) one. Read by recording what
+     * {@code RollerViewResolver.init()} registers, so a new view or a layout
+     * swap is seen without this test being told.
+     */
+    private static Map<Path, Integer> layoutTitleLevels() throws IOException {
+        Map<String, String> layoutOf = new HashMap<>();
+        Map<String, String> contentOf = new HashMap<>();
+        RollerViewResolver recorder = new RollerViewResolver() {
+            @Override
+            public void addDefinition(String name, String layout, Map<String, String> attributes) {
+                super.addDefinition(name, layout, attributes);
+                layoutOf.put(name, layout);
+                contentOf.put(name, attributes.get("content"));
+            }
+
+            @Override
+            public void addExtendedDefinition(String name, String extendsName,
+                                              Map<String, String> overrides) {
+                super.addExtendedDefinition(name, extendsName, overrides);
+                layoutOf.put(name, layoutOf.get(extendsName));
+                contentOf.put(name, overrides.getOrDefault("content", contentOf.get(extendsName)));
+            }
+        };
+        recorder.init();
+
+        Map<Path, Integer> levels = new HashMap<>();
+        for (Map.Entry<String, String> view : contentOf.entrySet()) {
+            String content = view.getValue();
+            if (content == null || !content.endsWith(".jsp")) {
+                continue;   // a base definition: its content is "${content}"
+            }
+            String layoutPath = layoutOf.get(view.getKey());
+            Path layout = WEBAPP.resolve(layoutPath.substring(1));
+            int level = IFRAMED_LAYOUTS.contains(layoutPath)
+                    || withoutJspComments(Files.readString(layout, StandardCharsets.UTF_8))
+                            .contains("<h1") ? 1 : 0;
+            levels.merge(WEBAPP.resolve(content.substring(1)), level, Math::min);
+        }
+        return levels;
+    }
+
     /**
      * Task B11: no {@code <str:...>} markup, because there is no {@code str}
      * taglib to interpret it.
@@ -1091,6 +1240,313 @@ class JspConsistencyTest {
      */
     private static String withoutJspComments(String src) {
         return src.replaceAll("(?s)<%--.*?--%>", "");
+    }
+
+    // ------------------------------------------------------------------
+    // Author-controlled EL: every printed expression in every JSP
+
+    /** JSTL/JSP tags whose attribute values are never printed as markup. */
+    private static final Set<String> EL_NON_PRINTING_TAGS = Set.of(
+            "c:if", "c:when", "c:choose", "c:forEach", "c:set", "c:remove",
+            // URL-encoded by the tag.
+            "c:url", "c:param",
+            // Include paths and message keys, not output.
+            "jsp:include", "jsp:param", "fmt:message",
+            // Formats a java.util.Date / Instant.
+            "rc:date");
+
+    /** {@code <spring:message>} attributes that name things rather than print them. */
+    private static final Set<String> MESSAGE_TAG_NAMING_ATTRIBUTES = Set.of(
+            "code", "var", "scope", "htmlEscape", "javaScriptEscape", "argumentSeparator");
+
+    /**
+     * Bare expressions that are safe to print, each with what makes it so.
+     * The shapes in {@link #safeExpression} cover the rest: anything wrapped in
+     * {@code fn:escapeXml}, {@code fn:length}, a {@code urls.*} call, a
+     * ternary between two literals, an entity's {@code .id} (a server-made
+     * UUID; {@code bean.id} excluded, being bound from the request), and a
+     * page variable this file set from safe parts.
+     */
+    private static final Set<String> SAFE_EL = Set.of(
+            // The servlet container's own context path.
+            "pageContext.request.contextPath",
+            // CreateWeblogController refuses a handle outside username.allowedChars.
+            "actionWeblog.handle",
+            // A locale tag, a session timeout in seconds, the CSRF token pair.
+            "pageContext.response.locale.toLanguageTag()", "pageContext.session.maxInactiveInterval",
+            "_csrf.parameterName", "_csrf.token",
+            // Layout attributes: a message key, or getText() bundle text.
+            "pageTitle",
+            // Controller constants: action names and URL fragments.
+            "mainAction", "deleteAction", "actionName", "editorFieldName",
+            // EditorSurface.jsp's contract: the caller fn:escapeXml'd it (PageEdit/EntryEdit).
+            "editorFieldValue",
+            // Entity ids the controller put in the model after a lookup.
+            "directoryId", "categoryId",
+            // Build constants.
+            "rollerVersion", "fn:substring(rollerRevision, 0, 7)",
+            // Property names from runtimeConfigDefs.xml, and their numeric sizes.
+            "pd.nameWithUnderbars", "pd.rows", "pd.cols",
+            // Theme ids from theme.xml, a weblog's theme id, a validated time zone id.
+            "themeId", "themes[0].id", "actionWeblog.editorTheme", "actionWeblog.timeZone",
+            // A template action's enum label; an entry status enum; KeyValueObject
+            // lists built from constants and bundle text; Locale / time zone ids.
+            "p.action.readableName", "fn:toLowerCase(pillStatus)", "opt.key", "opt.value", "opt",
+            // The database product name the JDBC driver reports.
+            "databaseProductName",
+            // Numbers.
+            "mediaFile.thumbnailWidth", "mediaFile.thumbnailHeight",
+            "newImage.width", "newImage.height", "newImage.length", "newFile.length",
+            "p.navOrder", "row.weblogCount", "perms.entryCount", "perms.pendingCommentCount",
+            "userCount", "blogCount", "maxEntriesPerPage", "maxSameAs", "trashRetentionDays",
+            "commentsPublished", "commentsPending",
+            // Booleans.
+            "true", "categoryInUse", "mediaFile.isImageFile()", "card.usesMediaChooser",
+            // Numeric bean fields: MediaFileBean's width/height/length/focal point,
+            // MediaFileSearchBean.size, WeblogConfigBean.entryDisplayCount,
+            // PageBean.navOrder, EntryBean's Double coordinates.
+            "bean.width", "bean.height", "bean.length", "bean.focalX", "bean.focalY", "bean.size",
+            "bean.entryDisplayCount", "bean.navOrder", "bean.geoLatitude", "bean.geoLongitude",
+            // ResourceBundle text the media search bean looks up.
+            "bean.typeLabel", "bean.sizeFilterTypeLabel", "bean.sizeUnitLabel",
+            // URLStrategy output built from ids (like urls.*), and the relative
+            // context URL (BaseController's siteURL).
+            "previewURL", "featuredImageThumbnailUrl", "ogImageThumbnailUrl", "siteURL",
+            // LoginController HtmlUtils.htmlEscape's the provider label into it.
+            "ssoLabelArgs",
+            // EntryEdit.jsp's <c:set> body: an <rc:date>.
+            "newsletterSentAtText",
+            // Set by EntryEdit/PageEdit, printed by their includes: the context
+            // path, the handle and a constant.
+            "draftNewKey",
+            // tiles/messages.jsp: controllers escape every user-typed argument
+            // (MessageArgumentEscapingTest), and the messages are bundle text.
+            "msg", "error");
+
+    /**
+     * Printed raw today and not yet fixed: {@code "path  expression"}, the path
+     * relative to {@code src/main/webapp}. Each is a known sink handed to the
+     * file's owner -- a real one (an untitled entry's display title is raw
+     * body text; a weblog's or the site's name is stored as typed) or a
+     * request-bound {@code bean.*} field reflected after a refused save.
+     * This set only shrinks: fixing a site means deleting its line, and a new
+     * raw expression fails the scan instead of being added here.
+     */
+    private static final Set<String> KNOWN_RAW_EL = Set.of(
+            // Stored: an untitled entry's display title is its body text
+            // through Utilities.removeHTML, which keeps an unterminated tag
+            // ("<img src=x onerror=...//") verbatim. Entries.jsp/Comments.jsp
+            // fixed it with controller-built plain titles printed once through
+            // fn:escapeXml; these two still print it bare.
+            "WEB-INF/jsps/editor/Trash.jsp  entry.displayTitle",
+            "WEB-INF/jsps/core/Account.jsp  c.entry.displayTitle",
+            // The same display title, appended to the browser-tab title by
+            // EntryEditController and printed through <spring:message text>.
+            "WEB-INF/jsps/tiles/tiles-tabbedpage.jsp  tabTitle",
+            "WEB-INF/jsps/tiles/tiles-mainmenupage.jsp  tabTitle",
+            // Stored through removeHTML only, printed with escapeXml="false".
+            "WEB-INF/jsps/core/MainMenu.jsp  perms.weblog.about",
+            // Typed by a site admin in Configuration; printed in every banner.
+            "WEB-INF/jsps/tiles/bannerStatus.jsp  rc:getProp('site.name')",
+            // Not verified safe for every account source (SSO, the admin API).
+            "WEB-INF/jsps/tiles/userStatus.jsp  authenticatedUser.userName",
+            // Request-bound String bean fields (and the draft key and removeId
+            // built from them), reflected after a refused save. CSRF limits it
+            // to the user's own request, but a quote still breaks the field.
+            "WEB-INF/jsps/core/CreateWeblog.jsp  bean.theme",
+            "WEB-INF/jsps/editor/Categories.jsp  bean.id",
+            "WEB-INF/jsps/editor/Categories.jsp  removeId",
+            "WEB-INF/jsps/editor/Entries.jsp  removeId",
+            "WEB-INF/jsps/editor/EntryEdit.jsp  bean.featuredImageId",
+            "WEB-INF/jsps/editor/EntryEdit.jsp  bean.id",
+            "WEB-INF/jsps/editor/EntryEdit.jsp  bean.locale",
+            "WEB-INF/jsps/editor/EntryEdit.jsp  bean.ogImageId",
+            "WEB-INF/jsps/editor/EntryEdit.jsp  bean.pubTimeLocal",
+            "WEB-INF/jsps/editor/EntryEdit.jsp  bean.status",
+            "WEB-INF/jsps/editor/EntryEdit.jsp  removeId",
+            "WEB-INF/jsps/editor/EntryEditor.jsp  draftKey",
+            "WEB-INF/jsps/editor/PageEdit.jsp  bean.id",
+            "WEB-INF/jsps/editor/PageEdit.jsp  bean.ogImageId",
+            "WEB-INF/jsps/editor/PageEdit.jsp  draftKey",
+            "WEB-INF/jsps/editor/TemplateEdit.jsp  bean.action",
+            "WEB-INF/jsps/editor/TemplateEdit.jsp  bean.id",
+            "WEB-INF/jsps/editor/TemplateEdit.jsp  bean.type");
+
+    private static final Pattern EL_EXPRESSION = Pattern.compile("\\$\\{([^}]*)}");
+
+    private static final Pattern SAFE_EL_CALL =
+            Pattern.compile("(fn:escapeXml|fn:length|urls\\.[A-Za-z]+)\\(.*\\)");
+
+    private static final Pattern LITERAL_TERNARY = Pattern.compile(".*\\?\\s*'[^']*'\\s*:\\s*'[^']*'");
+
+    private static final Pattern ENTITY_ID = Pattern.compile("(?!bean\\.)[A-Za-z]+(\\.[A-Za-z]+)*\\.id");
+
+    private static final Pattern TAG_NAME = Pattern.compile("<([A-Za-z]+:[A-Za-z]+|[A-Za-z][A-Za-z0-9]*)");
+
+    private static final Pattern OPEN_ATTRIBUTE = Pattern.compile("([A-Za-z_:-]+)\\s*=\\s*[\"'][^\"']*$");
+
+    private static final Pattern VAR_TAG = Pattern.compile(
+            "<(spring:message|c:url|c:set)\\b([^>]*?)\\bvar\\s*=\\s*\"([A-Za-z_]+)\"([^>]*)>", Pattern.DOTALL);
+
+    /**
+     * Every EL expression a JSP prints is escaped, or known to be safe.
+     *
+     * <p>Three packages each added a scan for their own JSPs -- media's
+     * {@code MediaJspEscapingTest}, templates' {@code TemplateJspsTest},
+     * entries' {@code ListScreensJspTest} -- because CLAUDE.md's escaping rule
+     * ("author-controlled EL goes through {@code fn:escapeXml}") was enforced
+     * nowhere else. This inverts it for the whole tree: a printed expression
+     * must be wrapped, or on {@link #SAFE_EL} with the reason, or on the
+     * shrink-only {@link #KNOWN_RAW_EL}. A printed position is anywhere but
+     * the attributes of a tag that prints nothing ({@link #EL_NON_PRINTING_TAGS}),
+     * {@code <c:out>} (which escapes unless told not to), the Spring
+     * {@code form:} tags (which escape by default), and the naming attributes
+     * of {@code <spring:message>}. Its {@code arguments} count as printed, as
+     * the tag does not escape them; when the tag only sets a {@code var}, the
+     * var carries the taint to wherever it is printed.
+     */
+    @Test
+    void everyPrintedExpressionIsEscapedOrKnownSafe() throws IOException {
+        Set<String> raw = new TreeSet<>();
+        for (Path jsp : everyServedJsp()) {
+            for (String site : rawExpressions(blankJspComments(Files.readString(jsp, StandardCharsets.UTF_8)))) {
+                raw.add(WEBAPP.relativize(jsp) + "  " + site);
+            }
+        }
+
+        assertEquals(new TreeSet<>(KNOWN_RAW_EL), raw,
+                "printed EL that is neither escaped nor known safe -- wrap it in ${fn:escapeXml(...)}, "
+                        + "or add it to SAFE_EL with what makes it safe (a fixed site leaves KNOWN_RAW_EL)");
+    }
+
+    /** The scan itself, on planted markup. */
+    @Test
+    void theEscapingScanTellsAPrintedExpressionFromASafeOne() {
+        String jsp = """
+                <c:if test="${not empty dir.name}">
+                <c:set var="base" value="${pageContext.request.contextPath}/roller-ui"/>
+                <c:set var="tainted" value="${dir.name}"/>
+                <c:url var="backUrl" value="/x.rol"><c:param name="d" value="${dir.name}"/></c:url>
+                <spring:message code="k" arguments="${dir.name}" var="prompt"/>
+                <spring:message code="k" arguments="${fn:escapeXml(dir.name)}" var="cleanPrompt"/>
+                <p>${dir.name}</p>
+                <spring:message code="k" arguments="${dir.title}"/>
+                <a href="${backUrl}" data-confirm="${prompt}" title="${cleanPrompt}">${fn:escapeXml(dir.name)}</a>
+                <form action="${base}/x.rol"><input name="id" value="${post.id}"/><input value="${bean.id}"/></form>
+                <c:out value="${dir.label}"/><c:out value="${dir.about}" escapeXml="false"/>
+                <option ${opt.id == dir.id ? 'selected' : ''}>${tainted}</option>
+                </c:if>
+                """;
+
+        assertEquals(List.of("dir.name", "dir.title", "prompt", "bean.id", "dir.about", "tainted"),
+                rawExpressions(jsp));
+    }
+
+    private static List<String> rawExpressions(String source) {
+        // Blank every expression's body first, so a '<' or '>' inside one
+        // (fn:length(x) > 0) cannot be taken for a tag boundary.
+        StringBuilder maskedBuilder = new StringBuilder(source);
+        Matcher all = EL_EXPRESSION.matcher(source);
+        while (all.find()) {
+            for (int i = all.start(1); i < all.end(1); i++) {
+                maskedBuilder.setCharAt(i, ' ');
+            }
+        }
+        String masked = maskedBuilder.toString();
+        Set<String> cleanVars = cleanVariables(source);
+
+        List<String> raw = new ArrayList<>();
+        Matcher el = EL_EXPRESSION.matcher(source);
+        while (el.find()) {
+            String expression = el.group(1).strip();
+            if (!printedAt(masked, el.start()) || safeExpression(expression, cleanVars)) {
+                continue;
+            }
+            raw.add(expression);
+        }
+        return raw;
+    }
+
+    /** False when the expression at {@code at} sits in an attribute that prints nothing. */
+    private static boolean printedAt(String masked, int at) {
+        String before = masked.substring(0, at);
+        int open = before.lastIndexOf('<');
+        if (open < 0 || before.lastIndexOf('>') > open) {
+            return true;    // text content
+        }
+        Matcher name = TAG_NAME.matcher(before.substring(open));
+        if (!name.lookingAt()) {
+            return true;
+        }
+        String tagName = name.group(1);
+        int close = masked.indexOf('>', at);
+        String tag = masked.substring(open, close < 0 ? masked.length() : close);
+        Matcher attribute = OPEN_ATTRIBUTE.matcher(before.substring(open));
+        String attributeName = attribute.find() ? attribute.group(1) : "";
+        if (EL_NON_PRINTING_TAGS.contains(tagName) || tagName.startsWith("form:")) {
+            return false;
+        }
+        if ("c:out".equals(tagName)) {
+            return tag.contains("escapeXml=\"false\"");
+        }
+        if ("spring:message".equals(tagName)) {
+            boolean setsAVar = tag.matches("(?s).*\\bvar\\s*=.*");
+            return !(MESSAGE_TAG_NAMING_ATTRIBUTES.contains(attributeName)
+                    || tag.contains("htmlEscape=\"true\"")
+                    || ("arguments".equals(attributeName) && setsAVar));
+        }
+        return true;
+    }
+
+    /**
+     * Page variables this file sets from nothing but safe parts: a
+     * {@code <c:url var>}, a {@code <spring:message var>} whose arguments are
+     * all safe, a {@code <c:set var value>} whose value is. A name set
+     * anywhere from an unsafe part is never clean.
+     */
+    private static Set<String> cleanVariables(String source) {
+        Set<String> clean = new HashSet<>();
+        Set<String> tainted = new HashSet<>();
+        for (int pass = 0; pass < 2; pass++) {
+            Matcher tag = VAR_TAG.matcher(source);
+            while (tag.find()) {
+                String name = tag.group(3);
+                String attributes = tag.group(2) + " " + tag.group(4);
+                boolean safe = "c:url".equals(tag.group(1));
+                if (!safe) {
+                    Matcher value = Pattern.compile("\\b(arguments|value)\\s*=\\s*\"([^\"]*)\"").matcher(attributes);
+                    safe = !"c:set".equals(tag.group(1)) || value.find();
+                    value.reset();
+                    while (value.find()) {
+                        Matcher inner = EL_EXPRESSION.matcher(value.group(2));
+                        while (inner.find()) {
+                            safe &= safeExpression(inner.group(1).strip(), clean);
+                        }
+                    }
+                }
+                (safe ? clean : tainted).add(name);
+            }
+        }
+        clean.removeAll(tainted);
+        return clean;
+    }
+
+    private static boolean safeExpression(String expression, Set<String> cleanVars) {
+        return SAFE_EL.contains(expression)
+                || cleanVars.contains(expression)
+                || SAFE_EL_CALL.matcher(expression).matches()
+                || LITERAL_TERNARY.matcher(expression).matches()
+                || ENTITY_ID.matcher(expression).matches();
+    }
+
+    /** {@link #withoutJspComments}, keeping each comment's newlines so line numbers stay true. */
+    private static String blankJspComments(String src) {
+        Matcher comment = Pattern.compile("(?s)<%--.*?--%>").matcher(src);
+        StringBuilder out = new StringBuilder();
+        while (comment.find()) {
+            comment.appendReplacement(out, comment.group().replaceAll("[^\\n]", ""));
+        }
+        return comment.appendTail(out).toString();
     }
 
     private static int countOccurrences(String haystack, String needle) {
