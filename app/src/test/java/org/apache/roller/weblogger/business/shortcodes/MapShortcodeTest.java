@@ -106,10 +106,36 @@ class MapShortcodeTest {
         assertEquals("<div class=\"travel-map\" data-pins=\""
                 + "[{&quot;lat&quot;:48.8584,&quot;lng&quot;:2.2945,"
                 + "&quot;label&quot;:&quot;Eiffel Tower&quot;},"
-                + "{&quot;lat&quot;:48.8606,&quot;lng&quot;:2.3376}]\"></div>", html);
+                + "{&quot;lat&quot;:48.8606,&quot;lng&quot;:2.3376}]\"></div>"
+                + "<ol class=\"travel-map-pins\"><li>Eiffel Tower</li></ol>", html);
         assertFalse(html.contains("\n"),
                 "the payload must be one line; the sanitizer destroys a tag "
                         + "whose attribute value contains a newline");
+    }
+
+    // ------------------------------------------------------- the text fallback
+
+    /**
+     * The map is an empty div until Leaflet runs: a screen reader, a feed
+     * reader and a reader without JavaScript got nothing, not even the pin
+     * labels the author wrote. The labels follow the div as a list, on the
+     * same line (a newline would end the commonmark HTML block).
+     */
+    @Test
+    void theLabelledPinsFollowTheMapAsAList() {
+        String html = render(Map.of(),
+                "[pin lat=\"48.8584\" lng=\"2.2945\" label=\"Eiffel Tower\"]\n"
+                        + "[pin lat=\"48.8606\" lng=\"2.3376\"]\n"
+                        + "[pin lat=\"48.853\" lng=\"2.3499\" label=\"Fish & <b>Chips</b>\"]");
+
+        assertTrue(html.endsWith("></div><ol class=\"travel-map-pins\"><li>Eiffel Tower</li>"
+                + "<li>Fish &amp; &lt;b&gt;Chips&lt;/b&gt;</li></ol>"), html);
+        assertFalse(html.contains("\n"), html);
+    }
+
+    @Test
+    void pinsWithoutLabelsAddNoList() {
+        assertFalse(render(Map.of(), "[pin lat=\"1\" lng=\"2\"]").contains("<ol"));
     }
 
     @Test
