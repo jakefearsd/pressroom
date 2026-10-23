@@ -102,15 +102,14 @@ app. Two settings are optional and rarely needed:
    reporting `https` and the public host. Check `TRUSTED_PROXIES` in `.env`;
    it must be the `cloudflare` host, 192.168.5.50.
 2. **Google was reachable at startup.** Roller probes Google's discovery
-   document once at startup. Its log lines go only to `roller.log` inside the
-   container, not to `docker compose logs`:
+   document once at startup and logs the result to the app's log:
 
    ```bash
-   docker compose -f docker-compose.prod.yml exec app grep "OIDC discovery" /app/logs/roller.log
+   docker compose -f docker-compose.prod.yml logs app | grep "OIDC discovery"
    ```
 
-   Expect `OIDC discovery reachable`. A recreated container starts a fresh
-   `roller.log`.
+   Expect `OIDC discovery reachable`. The log belongs to the container, so a
+   deploy (which recreates it) starts it afresh.
 3. **The login page shows the button.** Open
    `https://blog.wikantik.com/roller-ui/login.rol`; it shows "Sign in with
    Google".
@@ -160,14 +159,15 @@ app. Two settings are optional and rarely needed:
 ## When something goes wrong
 
 A failed sign-in lands on the login page with a message. Each attempt also
-writes one line to `roller.log`:
+writes one line to the app's log (`docker compose -f docker-compose.prod.yml
+logs app`):
 - `Reader sign-in refused or failed: <code> (<reason>)` for a failure;
 - `Reader <name> signed in (new account|existing account)` for a success.
 
 | What you see | Meaning | Fix |
 |---|---|---|
 | Google shows `redirect_uri_mismatch` | The redirect URI in the Google client is not exactly `https://blog.wikantik.com/roller-ui/sso/callback`. | Correct it in the Google console (step 1). |
-| "Sign-in with your account provider is not available right now" (`sso=unavailable`) | No Absolute URL is set, or Google's discovery document could not be fetched. The log then shows `OIDC discovery for … failed`. | Set the Absolute URL (step 3); check docker2's outbound network. The next sign-in retries; no restart needed. |
+| "Sign-in with your account provider is not available right now" (`sso=unavailable`) | No Absolute URL is set, or Google's discovery document could not be fetched. The log then shows `OIDC discovery for … failed`. | Set the Absolute URL (step 3); check the deploy host's outbound network. The next sign-in retries; no restart needed. |
 | "This account cannot sign in here…" (`sso=refused`) | The account is disabled, or Google did not confirm the email address. The log line names the reason. | Re-enable it in User Admin, or ask the reader to verify their email with Google. |
 | "Sign-in did not complete" (`sso=failed`) | The return from Google was invalid: an expired or forged request, a cancelled consent, or a token exchange failure. | Try again from the public URL. If it repeats, check the log line's reason and that the client secret in `.env` is current. |
 | The browser keeps redirecting to `/roller-ui/sso/start` | The proxy reports the wrong scheme or host (see step 5.1). | Fix `TRUSTED_PROXIES`. |
@@ -183,5 +183,5 @@ writes one line to `roller.log`:
 | Scopes requested | `openid profile email` |
 | Account binding | Google's issuer plus subject (`sub`), stored in `roller_user.sso_issuer`/`sso_subject` (migration V030) |
 | Reader username | `reader-` plus 10 random characters |
-| Log file | `/app/logs/roller.log` in the app container (logger `roller.sso`) |
+| Log | `docker compose -f docker-compose.prod.yml logs app`; also `/app/logs/roller.log` in the app container (logger `roller.sso`) |
 | Released in | Roller 0.1.16 |
