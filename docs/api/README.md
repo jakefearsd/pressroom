@@ -260,8 +260,9 @@ In the MCP endpoint `clear` is an argument of the `update` actions.
 ## Pagination
 
 List endpoints (`GET .../entries`, `GET .../comments`, `GET .../audit/seo`,
-`GET /api/v1/admin/users`, `GET /api/v1/weblogs`) accept `?offset=` and
-`?limit=`. **Out-of-range values are a 400, never silently clamped or
+`GET .../media`, `GET /api/v1/admin/users`, `GET /api/v1/weblogs`) accept
+`?offset=` and `?limit=` (`GET .../media` only pages when asked; see
+[Media](#media)). **Out-of-range values are a 400, never silently clamped or
 wrapped**: `limit` below 1, or a negative `offset`, is rejected outright
 before any query runs — a permissive endpoint would otherwise let
 `limit=-2` reach the database layer's "no limit" sentinel and read the
@@ -269,7 +270,7 @@ entire table. A `limit` above the endpoint's cap (200, uniformly) is
 silently capped rather than rejected — the one place this API *does*
 clamp instead of refusing.
 
-**The page envelope is not uniform across these five endpoints — check the
+**The page envelope is not uniform across these six endpoints — check the
 shape before assuming a field exists.**
 
 - `GET .../entries` returns an `EntryPage`: `{items, offset, limit, hasMore}`.
@@ -281,8 +282,9 @@ shape before assuming a field exists.**
   **every** gappy entry the search found, not just the current page, so an
   agent can read the shape of the problem without paging through it —
   `entries` alone is the `offset`/`limit`-sliced page.
-- `GET /api/v1/admin/users` and `GET /api/v1/weblogs` return a **bare JSON
-  array**, `[UserView, ...]` / `[WeblogView, ...]` — no envelope, no
+- `GET /api/v1/admin/users`, `GET /api/v1/weblogs` and `GET .../media` return
+  a **bare JSON array**, `[UserView, ...]` / `[WeblogView, ...]` /
+  `[MediaView, ...]` — no envelope, no
   `total`, no `hasMore` at all. Getting fewer items back than the requested
   `limit` is the only signal that you have reached the end.
 
@@ -611,7 +613,7 @@ per-weblog tag cloud has never been large enough to need it.
 ## Media
 
 ```
-GET    /api/v1/weblogs/{handle}/media[?dir={directoryId}]
+GET    /api/v1/weblogs/{handle}/media[?directoryId=&offset=&limit=]
 GET    /api/v1/weblogs/{handle}/media/{id}
 POST   /api/v1/weblogs/{handle}/media           multipart upload, one or more files
 POST   /api/v1/weblogs/{handle}/media/imports   import an image from a URL
@@ -620,6 +622,13 @@ DELETE /api/v1/weblogs/{handle}/media/{id}
 GET    /api/v1/weblogs/{handle}/media/directories
 POST   /api/v1/weblogs/{handle}/media/directories
 ```
+
+`GET .../media` returns a bare array of `MediaView`s sorted by name. With
+`directoryId`, only that directory's files (`dir` is its old name and still
+works; sending both with different values is a 400). With `offset`/`limit`, a
+page of the sorted list (limit capped at 200); **without either, every file**,
+as before, which on a large photo library is a long response, blurhashes
+included, so page it. A page shorter than `limit` is the last one.
 
 **Upload is a batch, and a batch is not a transaction.** Send one or more
 `file` parts (`multipart/form-data`), optionally `directoryId` to file them
@@ -722,7 +731,7 @@ for diagnosis.
 ## Comments
 
 ```
-GET    /api/v1/weblogs/{handle}/comments[?status=&entry=&limit=&offset=]
+GET    /api/v1/weblogs/{handle}/comments[?status=&entryId=&limit=&offset=]
 GET    /api/v1/weblogs/{handle}/comments/{id}
 PATCH  /api/v1/weblogs/{handle}/comments/{id}
 DELETE /api/v1/weblogs/{handle}/comments/{id}
@@ -735,8 +744,9 @@ that does not exist, answers 404. Moderation keeps working when comments are
 switched off on the weblog, so existing comments stay listable and actionable.
 
 `GET` lists newest first, as `{"items": [...], "offset", "limit", "hasMore"}`.
-`status` is `PENDING` (held for approval), `PUBLISHED` or `HIDDEN`; `entry` is
-an entry id of the same weblog (another weblog's entry is a 404); `limit`
+`status` is `PENDING` (held for approval), `PUBLISHED` or `HIDDEN`; `entryId` is
+an entry id of the same weblog (another weblog's entry is a 404; `entry` is its
+old name and still works); `limit`
 defaults to 50 with a maximum of 200.
 
 **The comment view:** `id`, `entryId`, `entryTitle`, `status`, `body`,

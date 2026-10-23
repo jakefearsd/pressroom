@@ -165,6 +165,22 @@ class CommentsApiTest {
         assertEquals("PENDING", page.get("items").get(0).get("status").asString());
     }
 
+    /** {@code entryId} is the name the comment view and the rest of the API use; {@code entry} stays as its alias. */
+    @Test
+    void listTakesEntryIdAndStillTakesEntry() throws Exception {
+        when(entries.getWeblogEntry("e1")).thenReturn(entry);
+        when(comments.getComments(eq(weblog), eq(null), eq(entry), anyInt(), anyInt())).thenReturn(List.of());
+
+        ok(get(BASE).requestAttr("actionWeblog", weblog).param("entryId", "e1"));
+        ok(get(BASE).requestAttr("actionWeblog", weblog).param("entry", "e1"));
+        ok(get(BASE).requestAttr("actionWeblog", weblog).param("entryId", "e1").param("entry", "e1"));
+        verify(comments, org.mockito.Mockito.times(3)).getComments(weblog, null, entry, 0, 51);
+
+        mvc.perform(get(BASE).requestAttr("actionWeblog", weblog).param("entryId", "e1").param("entry", "e2"))
+                .andExpect(status().isBadRequest())
+                .andExpect(org.apache.roller.weblogger.ui.restapi.ErrorFieldMatchers.errorFieldIs("entry"));
+    }
+
     @Test
     void listDefaultsToFiftyAndCapsAtTwoHundred() throws Exception {
         when(comments.getComments(eq(weblog), eq(null), eq(null), anyInt(), anyInt())).thenReturn(List.of());

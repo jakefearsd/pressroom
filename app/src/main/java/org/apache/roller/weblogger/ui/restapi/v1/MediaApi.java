@@ -1,5 +1,6 @@
 package org.apache.roller.weblogger.ui.restapi.v1;
 
+import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.ArrayList;
@@ -21,6 +22,7 @@ import org.apache.roller.weblogger.ui.controllers.WeblogOwnership;
 import org.apache.roller.weblogger.ui.controllers.UISecurityEnforced;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
 import org.apache.roller.weblogger.ui.restapi.MediaImports;
+import org.apache.roller.weblogger.ui.restapi.Paging;
 import org.apache.roller.weblogger.ui.restapi.dto.ClearFields;
 import org.apache.roller.weblogger.ui.restapi.ColumnLimits;
 import org.apache.roller.weblogger.ui.restapi.dto.MediaDtos;
@@ -60,26 +62,47 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @RequestMapping("/v1/weblogs/{handle}/media")
 public class MediaApi extends BaseApiController implements UISecurityEnforced {
 
+    // 200 is the documented cap for every list endpoint (docs/api/README.md, Pagination); the cap is
+    // repeated in each controller, so change all of them together.
+    private static final int MAX_LIMIT = 200;
+
     @Autowired
     RemoteImageFetcher imageFetcher;
 
     /**
-     * The weblog's media files. With {@code dir}, only that directory's
-     * files (ownership-checked, 404 for an unknown or foreign directory
-     * id); without it, every file in the weblog regardless of directory,
-     * via the same {@code searchMediaFiles} path the JSP search screen
-     * uses with an otherwise-empty filter. Sorted by name for a stable,
-     * deterministic order -- neither source guarantees one on its own.
+     * The weblog's media files. With {@code directoryId} (or its old name
+     * {@code dir}), only that directory's files (ownership-checked, 404 for
+     * an unknown or foreign directory id); without it, every file in the
+     * weblog regardless of directory, via the same {@code searchMediaFiles}
+     * path the JSP search screen uses with an otherwise-empty filter. Sorted
+     * by name for a stable, deterministic order -- neither source guarantees
+     * one on its own.
+     *
+     * <p>{@code offset}/{@code limit} slice that sorted list, so a large
+     * library can be read a page at a time; the response stays the bare
+     * array it always was, and without either parameter it is the whole
+     * list, as before. A limit is capped at {@link #MAX_LIMIT}.
      */
     @GetMapping("")
     public List<MediaDtos.MediaView> list(
             HttpServletRequest request,
-            @RequestParam(value = "dir", required = false) String dir) throws WebloggerException {
+            // No @Parameter: the media tool shares one directoryId argument across actions, and
+            // MediaImport's text (the import default) is the one it must carry (ToolSchemasTest).
+            @RequestParam(value = "directoryId", required = false) String directoryId,
+            @Parameter(description = "Deprecated: the old name of directoryId.")
+            @RequestParam(value = "dir", required = false) String dir,
+            @Parameter(description = "Skip this many files of the name-sorted list. Default 0.")
+            @RequestParam(value = "offset", required = false) Integer offset,
+            @Parameter(description = "At most this many files (capped at 200). Without it, every file.")
+            @RequestParam(value = "limit", required = false) Integer limit) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
+        int from = offset == null ? 0 : offset;
+        Paging.requireRange(limit == null ? 1 : limit, from);
+        String wanted = eitherName("directoryId", directoryId, "dir", dir);
 
         List<MediaFile> files;
-        if (StringUtils.isNotBlank(dir)) {
-            files = new ArrayList<>(requireDirectory(request, dir).getMediaFiles());
+        if (StringUtils.isNotBlank(wanted)) {
+            files = new ArrayList<>(requireDirectory(request, wanted).getMediaFiles());
         } else {
             // Copied into a mutable list -- searchMediaFiles's contract
             // makes no promise the returned list supports sort(), and this
@@ -88,7 +111,8 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
         }
         files.sort(Comparator.comparing(MediaFile::getName, Comparator.nullsLast(String::compareToIgnoreCase)));
 
-        return files.stream().map(f -> MediaDtos.toView(f, url(weblog, f))).toList();
+        long size = limit == null ? Long.MAX_VALUE : Math.min(limit, MAX_LIMIT);
+        return files.stream().skip(from).limit(size).map(f -> MediaDtos.toView(f, url(weblog, f))).toList();
     }
 
     @GetMapping("/{id}")
