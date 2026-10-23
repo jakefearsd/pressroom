@@ -19,48 +19,54 @@
 
 <p class="subtitle"><spring:message code="businesses.subtitle"/></p>
 
-<spring:message code="businesses.delete.confirm" var="businessDeleteConfirm"/>
 <div id="businesses-list-marker">
 
-<p>
-    <c:url var="newBusinessUrl" value="/roller-ui/admin/businesses!edit.rol"/>
-    <a href="${newBusinessUrl}" class="btn btn-primary" id="business-new"><spring:message code="businesses.new"/></a>
-</p>
-
+<c:url var="newBusinessUrl" value="/roller-ui/admin/businesses!edit.rol"/>
 <c:choose>
 <c:when test="${empty businesses}">
+    <%-- An invitation: the one action lives inside the empty state, and
+         #business-new (BusinessProfileIT) is on whichever button renders. --%>
     <div class="empty-state">
         <p class="empty-state-title"><spring:message code="businesses.empty"/></p>
+        <p class="empty-state-body"><spring:message code="businesses.empty.body"/></p>
+        <a href="${newBusinessUrl}" class="btn btn-primary" id="business-new"><spring:message code="businesses.new"/></a>
     </div>
 </c:when>
 <c:otherwise>
+<div class="list-actions">
+    <a href="${newBusinessUrl}" class="btn btn-primary btn-sm" id="business-new"><spring:message code="businesses.new"/></a>
+</div>
+<spring:message code="generic.edit" var="editLabel"/>
+<spring:message code="generic.delete" var="deleteLabel"/>
+<spring:message code="mainPage.actions" var="actionsLabel"/>
 <table class="rollertable table table-striped" width="100%">
     <tr>
         <th scope="col"><spring:message code="businesses.name"/></th>
         <th scope="col"><spring:message code="businesses.type"/></th>
         <th scope="col"><spring:message code="businesses.usedBy"/></th>
-        <th scope="col">&nbsp;</th>
-        <th scope="col">&nbsp;</th>
+        <th scope="col" class="row-actions"><span class="visually-hidden">${actionsLabel}</span></th>
     </tr>
     <c:forEach var="b" items="${businesses}">
     <tr>
         <td>${fn:escapeXml(b.name)}</td>
         <td><spring:message code="businesses.type.${b.businessType}"/></td>
         <td>${fn:escapeXml(usage[b.id])}</td>
-        <td>
+        <td class="row-actions">
             <c:url var="editBusinessUrl" value="/roller-ui/admin/businesses!edit.rol">
                 <c:param name="id" value="${b.id}"/>
             </c:url>
-            <a href="${editBusinessUrl}"><spring:message code="generic.edit"/></a>
-        </td>
-        <td>
+            <a href="${editBusinessUrl}" class="row-action"
+               aria-label="${editLabel}: ${fn:escapeXml(b.name)}"><span class="bi bi-pencil-square" aria-hidden="true"></span></a>
+            <%-- The prompt names the business: formatted with the RAW name,
+                 then escaped once for the attribute (see roller.js on why
+                 data-confirm is safe with fn:escapeXml). --%>
+            <spring:message code="businesses.delete.confirm" arguments="${b.name}" var="businessDeleteConfirm"/>
             <form method="post" action="<c:url value='/roller-ui/admin/businesses!delete.rol'/>">
                 <sec:csrfInput/>
                 <input type="hidden" name="id" value="${fn:escapeXml(b.id)}"/>
-                <button type="submit" class="btn btn-link p-0 align-baseline border-0 text-danger"
-                        data-confirm="${fn:escapeXml(businessDeleteConfirm)}">
-                    <spring:message code="generic.delete"/>
-                </button>
+                <button type="submit" class="row-action row-action-danger"
+                        data-confirm="${fn:escapeXml(businessDeleteConfirm)}"
+                        aria-label="${deleteLabel}: ${fn:escapeXml(b.name)}"><span class="bi bi-trash" aria-hidden="true"></span></button>
             </form>
         </td>
     </tr>

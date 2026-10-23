@@ -20,9 +20,19 @@
 <p class="subtitle">
     <spring:message code="categoriesForm.subtitle" arguments="${actionWeblog.handle}"/>
 </p>
-<p class="pagetip">
-    <spring:message code="categoriesForm.rootPrompt"/>
-</p>
+
+<%-- The list's one "New ..." action, in the card above the table as on
+     Pages, Businesses and Users (it used to be a link in the sidebar, which
+     landed above the whole page on a phone). An empty list carries the action
+     in its empty state instead, so exactly one of the two renders and
+     id="addCategoryButton" (what CategoryIT keys on) is on whichever does. --%>
+<c:if test="${not empty allCategories}">
+<div class="list-actions">
+    <button type="button" id="addCategoryButton" class="btn btn-primary btn-sm" onclick="showCategoryAddModal()">
+        <spring:message code="categoriesForm.addCategory"/>
+    </button>
+</div>
+</c:if>
 
 <%-- A plain table. It used to be wrapped in a form posting to
      categories!move.rol, left over from a bulk-move UI whose checkboxes and
@@ -37,15 +47,15 @@
      sit outside the c:choose, so an empty weblog rendered a full four-column
      header above a single colspan="6" strip -- on a four-column table. The
      invitation below is a sibling of the table, not a row inside it. --%>
+    <div class="table-responsive">
     <table id="category-table" class="rollertable table table-striped" width="100%">
 
         <c:if test="${not empty allCategories}">
 
             <tr class="rollertable">
                 <th scope="col" width="30%"><spring:message code="generic.name"/></th>
-                <th scope="col" width="50%"><spring:message code="generic.description"/></th>
-                <th scope="col" width="10%"><spring:message code="generic.edit"/></th>
-                <th scope="col" width="10%"><spring:message code="categoriesForm.remove"/></th>
+                <th scope="col"><spring:message code="generic.description"/></th>
+                <th scope="col" class="row-actions"><span class="visually-hidden"><spring:message code="mainPage.actions"/></span></th>
             </tr>
 
             <c:forEach items="${allCategories}" var="category" varStatus="rowstatus">
@@ -57,7 +67,7 @@
 
                     <td>${fn:escapeXml(category.description)}</td>
 
-                    <td class="text-center">
+                    <td class="row-actions">
 
                         <c:set var="categoryId" value="${category.id}"/>
                         <c:set var="categoryName" value="${fn:escapeXml(category.name)}"/>
@@ -72,22 +82,19 @@
                              this control a permanent SyntaxError. Delegated
                              handler below (same convention as
                              MediaFileView.jsp:493). --%>
-                        <button type="button" class="btn btn-link p-0 align-baseline border-0 category-edit-btn"
+                        <button type="button" class="row-action category-edit-btn"
                                 data-category-id="${categoryId}" data-category-name="${categoryName}"
                                 data-category-desc="${categoryDesc}" data-category-image="${categoryImage}"
                                 aria-label="<spring:message code='generic.edit'/>: ${categoryName}">
                             <span class="bi bi-pencil-square" aria-hidden="true"></span>
                         </button>
 
-                    </td>
-
-                    <td class="rollertable text-center">
                         <c:if test="${fn:length(allCategories) > 1}">
 
                             <c:set var="categoryId" value="${category.id}"/>
                             <c:set var="categoryName" value="${fn:escapeXml(category.name)}"/>
                             <c:set var="categoryInUse" value="${categoriesInUse.contains(category.id)}"/>
-                            <button type="button" class="btn btn-link p-0 align-baseline border-0 category-delete-btn"
+                            <button type="button" class="row-action row-action-danger category-delete-btn"
                                     data-category-id="${categoryId}" data-category-name="${categoryName}"
                                     data-category-in-use="${categoryInUse}"
                                     aria-label="<spring:message code='categoriesForm.remove'/>: ${categoryName}">
@@ -103,19 +110,16 @@
         </c:if>
 
     </table>
+    </div>
 
 <%-- Empty state: an invitation, not a strip of table. showCategoryAddModal()
-     is declared by CategoriesSidebar.jsp, which always renders alongside this
-     tile, and drives the same #category-edit-modal the sidebar link opens.
-     Both this button and the sidebar's are now <button>s (a11y sweep), so
-     CategoryIT can no longer disambiguate them by element type; it reaches
-     the sidebar one by its id (#addCategoryButton, see CategoriesSidebar.jsp)
-     instead, which is why THIS button deliberately has no id of its own. --%>
+     (below) drives the same #category-edit-modal as the button above the
+     table; only one of the two renders. --%>
 <c:if test="${empty allCategories}">
     <div class="empty-state">
         <p class="empty-state-title"><spring:message code="empty.categories.title"/></p>
         <p class="empty-state-body"><spring:message code="empty.categories.body"/></p>
-        <button type="button" class="btn btn-primary" onclick="showCategoryAddModal()">
+        <button type="button" id="addCategoryButton" class="btn btn-primary" onclick="showCategoryAddModal()">
             <spring:message code="empty.categories.action"/>
         </button>
     </div>
@@ -205,7 +209,7 @@
 
     function showCategoryEditModal( id, name, desc, image ) {
         feedbackAreaEdit.html("");
-        $('#category-edit-title').html('<spring:message code="categoryForm.edit.title"/>');
+        $('#category-edit-title').text('<spring:message code="categoryForm.edit.title" javaScriptEscape="true"/>');
 
         categoryField('bean.id').val(id);
         categoryField('bean.name').val(name);
@@ -226,7 +230,7 @@
 
         if (!categoryName || categoryName.trim() === '') {
             saveCategoryButton.prop("disabled", true);
-            feedbackAreaEdit.html('<spring:message code="categoryForm.requiredFields"/>');
+            feedbackAreaEdit.text('<spring:message code="categoryForm.requiredFields" javaScriptEscape="true"/>');
             feedbackAreaEdit.css("color", "var(--bad)");
             return;
         }
@@ -234,7 +238,7 @@
         if (imageURL && imageURL.trim() !== '') {
             if (!isValidUrl(imageURL)) {
                 saveCategoryButton.prop("disabled", true);
-                feedbackAreaEdit.html('<spring:message code="categoryForm.badURL"/>');
+                feedbackAreaEdit.text('<spring:message code="categoryForm.badURL" javaScriptEscape="true"/>');
                 feedbackAreaEdit.css("color", "var(--bad)");
                 return;
             }
@@ -260,7 +264,7 @@
         // if name is empty reject and show error message
         var enteredName = categoryField('bean.name').val();
         if (!enteredName || enteredName.trim() === "") {
-            feedbackAreaEdit.html('<spring:message code="categoryForm.requiredFields"/>');
+            feedbackAreaEdit.text('<spring:message code="categoryForm.requiredFields" javaScriptEscape="true"/>');
             feedbackAreaEdit.css("color", "var(--bad)");
             return;
         }
@@ -293,7 +297,7 @@
             // breaks the moment a message gains a placeholder, which is
             // exactly what happened.
             feedbackAreaEdit.css("color", "var(--good)");
-            feedbackAreaEdit.html('<spring:message code="generic.success"/>');
+            feedbackAreaEdit.text('<spring:message code="generic.success" javaScriptEscape="true"/>');
             bootstrap.Modal.getOrCreateInstance(document.getElementById('category-edit-modal')).hide();
             location.reload(true);
 
@@ -301,7 +305,7 @@
         // "TypeError: $.ajax(...).done(...).error is not a function" on every
         // single save.
         }).fail(function () {
-            feedbackAreaEdit.html('<spring:message code="generic.error.check.logs"/>');
+            feedbackAreaEdit.text('<spring:message code="generic.error.check.logs" javaScriptEscape="true"/>');
             feedbackAreaEdit.css("color", "var(--bad)");
         });
     }
@@ -422,5 +426,37 @@
             }
         });
     }
+
+</script>
+
+<script>
+
+    function showCategoryAddModal() {
+
+        feedbackAreaEdit.html("");
+        $('#category-edit-title').text('<spring:message code="categoryForm.add.title" javaScriptEscape="true"/>');
+
+        // categoryField() (above) reaches the inputs by name; the ids these lines used to
+        // use (#categoryEditForm_bean_name and friends) were generated by
+        // Struts and no longer exist, so clearing the form did nothing and Add
+        // opened showing whatever was last in it -- when it opened at all.
+        categoryField('bean.id').val("");
+        categoryField('bean.name').val("");
+        categoryField('bean.description').val("");
+        categoryField('bean.image').val("");
+
+        validateCategory();
+
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('category-edit-modal')).show();
+    }
+
+    <%-- Focus has to wait for shown.bs.modal: Bootstrap animates the dialog
+         in, and an element inside a display:none subtree cannot take focus.
+         Bound once on the element, not per open. --%>
+    $(document).ready(function () {
+        $('#category-edit-modal').on('shown.bs.modal', function () {
+            categoryField('bean.name').trigger('focus');
+        });
+    });
 
 </script>

@@ -317,6 +317,11 @@ label,
     color: var(--warn) !important;
 }
 
+/* Bootstrap's muted grey is not a token; the quiet register is --ink-soft. */
+.text-muted {
+    color: var(--ink-soft) !important;
+}
+
 .text-danger {
     color: var(--bad) !important;
 }
@@ -1409,6 +1414,64 @@ time.data {
     text-overflow: ellipsis;
     white-space: nowrap;
     vertical-align: bottom;
+}
+
+/* ---- Row actions: one pattern on every list ----
+   Edit and delete are icon buttons (each with an aria-label naming the row)
+   in one unlabelled, right-aligned last column: Categories, Pages and
+   Businesses each used to do this a different way (labelled columns, red
+   text links, outline buttons). The icons sit at --ink-soft so a column of
+   them stays quiet; hover says what they do. Callers: <td class="row-actions">
+   holding .row-action links/buttons, .row-action-danger on delete. */
+.row-actions {
+    text-align: right;
+    white-space: nowrap;
+    width: 1%;
+}
+
+.row-action {
+    display: inline-block;
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+    color: var(--ink-soft);
+    line-height: 1.4;
+    text-decoration: none;
+}
+
+.row-action + .row-action,
+.row-action + form,
+form + .row-action {
+    margin-left: 8px;
+}
+
+.row-actions form {
+    display: inline;
+}
+
+.row-action:hover,
+.row-action:focus-visible {
+    color: var(--accent);
+}
+
+.row-action-danger:hover,
+.row-action-danger:focus-visible {
+    color: var(--bad);
+}
+
+/* The primary "New ..." action of a list screen: one small button above the
+   table, in the card, on every list (Pages, Categories, Businesses, Users). */
+.list-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+/* Pages renders the strip around a guarded button (JspConsistencyTest pins
+   that shape), so an empty list leaves it holding no element. */
+.list-actions:not(:has(*)) {
+    display: none;
 }
 
 /* ---- Entries list rows (task B5) ----
