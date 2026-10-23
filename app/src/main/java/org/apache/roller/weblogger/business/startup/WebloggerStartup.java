@@ -37,7 +37,9 @@ public final class WebloggerStartup {
     
     private static final Logger log = LoggerFactory.getLogger(WebloggerStartup.class);
     
-    private static boolean prepared = false;
+    // volatile: written by the boot thread or by an install-wizard request
+    // (createDatabase/upgradeDatabase), read by every other request thread.
+    private static volatile boolean prepared = false;
 
     private static DatabaseProvider dbProvider = null;
     private static StartupException dbProviderException = null;
