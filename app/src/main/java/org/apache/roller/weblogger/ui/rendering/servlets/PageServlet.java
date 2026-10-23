@@ -380,8 +380,8 @@ public class PageServlet extends HttpServlet {
      * separate jobs and could only be exercised end to end. The order of the
      * branches below is the behaviour: an explicitly named page never falls
      * through to the default (asking for a page that does not exist is a
-     * 404, not the front page), a tags index likewise, and only a permalink
-     * is allowed to fall back.
+     * 404, not the front page), while a tags index and a permalink fall back
+     * to the default template when the theme has no template of their own.
      */
     static ThemeTemplate selectTemplate(WeblogPageRequest pageRequest, Weblog weblog, ThemeManager themes) {
 
@@ -426,14 +426,17 @@ public class PageServlet extends HttpServlet {
             return pageRequest.getWeblogPage();
         }
 
-        // If request specified tags section index, then look for a custom
-        // template. Also no fallback.
+        // A tags index uses the theme's tagsIndex template when it has one
+        // and otherwise falls back to the default template below, whose pager
+        // already filters by pageRequest.getTags(). No bundled theme ships a
+        // tagsIndex template, and every theme's permalink links its tags here,
+        // so without the fallback every tag link 404ed. An unknown tag
+        // combination is still a 404, through rejectionReason.
         if ("tags".equals(pageRequest.getContext()) && pageRequest.getTags() != null) {
             try {
-                return themes.getTheme(weblog).getTemplateByAction(ComponentType.TAGSINDEX);
+                page = themes.getTheme(weblog).getTemplateByAction(ComponentType.TAGSINDEX);
             } catch (Exception e) {
                 log.error("Error getting weblog page for action 'tagsIndex'", e);
-                return null;
             }
         }
 

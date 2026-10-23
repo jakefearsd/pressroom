@@ -170,15 +170,36 @@ class PageServletDecisionTest {
         assertEquals(named, PageServlet.selectTemplate(pageRequest, weblog, weblogger.getThemeManager()));
     }
 
+    /**
+     * No bundled theme ships a tagsIndex template, yet every theme's
+     * permalink links its tags at {@code /<handle>/tags/<tag>}. Those links
+     * used to 404; a tags index now falls back to the theme's default
+     * template, whose pager already filters by the request's tags. An unknown
+     * tag combination is still a 404, through {@code rejectionReason}.
+     */
     @Test
-    void aTagsIndexWithoutACustomTemplateIsNotFound() throws Exception {
+    void aTagsIndexWithoutACustomTemplateFallsBackToTheDefault() throws Exception {
+        ThemeTemplate defaultTemplate = mock(ThemeTemplate.class);
         when(pageRequest.getContext()).thenReturn("tags");
         when(pageRequest.getTags()).thenReturn(List.of("spain"));
         when(theme.getTemplateByAction(ComponentType.TAGSINDEX)).thenReturn(null);
+        when(theme.getDefaultTemplate()).thenReturn(defaultTemplate);
+
+        assertEquals(defaultTemplate,
+                PageServlet.selectTemplate(pageRequest, weblog, weblogger.getThemeManager()),
+                "a tags index without its own template renders through the default");
+    }
+
+    @Test
+    void aTagsIndexPrefersATagsIndexTemplateWhenTheThemeHasOne() throws Exception {
+        ThemeTemplate tagsIndex = mock(ThemeTemplate.class);
+        when(pageRequest.getContext()).thenReturn("tags");
+        when(pageRequest.getTags()).thenReturn(List.of("spain"));
+        when(theme.getTemplateByAction(ComponentType.TAGSINDEX)).thenReturn(tagsIndex);
         when(theme.getDefaultTemplate()).thenReturn(mock(ThemeTemplate.class));
 
-        assertNull(PageServlet.selectTemplate(pageRequest, weblog, weblogger.getThemeManager()),
-                "a tags index has no default to fall back to either");
+        assertEquals(tagsIndex,
+                PageServlet.selectTemplate(pageRequest, weblog, weblogger.getThemeManager()));
     }
 
     /**
