@@ -17,6 +17,8 @@
  */
 package org.apache.roller.weblogger.business.shortcodes;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.roller.weblogger.WebloggerException;
@@ -24,6 +26,7 @@ import org.apache.roller.weblogger.business.MediaFileManager;
 import org.apache.roller.weblogger.business.URLStrategy;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.MediaFile;
+import org.apache.roller.weblogger.pojos.MediaFileDirectory;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
 import org.junit.jupiter.api.BeforeEach;
@@ -328,6 +331,78 @@ class ImageShortcodeTest {
     void aNonImageMediaFileIsLeftAsWritten() {
         photo.setContentType("application/pdf");
         assertNull(render(Map.of("id", "mf-1"), null));
+    }
+
+    // ------------------------------------------- only this weblog's public images
+
+    /**
+     * The id is global. Before this check any entry could embed any weblog's
+     * image by id -- its alt text, filename, dimensions and blurhash, and an
+     * advertised URL -- whatever that weblog thought of it.
+     */
+    @Test
+    void anotherWeblogsImageIsLeftAsWritten() throws Exception {
+        Weblog other = new Weblog();
+        other.setHandle("other");
+        MediaFile theirs = image("theirs", other, null);
+        when(mediaFileManager.getMediaFile("theirs")).thenReturn(theirs);
+
+        assertNull(render(Map.of("id", "theirs"), null));
+    }
+
+    /** The directory's weblog is the owner when it disagrees with the file's own field. */
+    @Test
+    void theOwnerIsTheDirectorysWeblog() throws Exception {
+        Weblog other = new Weblog();
+        other.setHandle("other");
+        MediaFile filedElsewhere = image("elsewhere", weblog, new MediaFileDirectory(other, "trip", null));
+        when(mediaFileManager.getMediaFile("elsewhere")).thenReturn(filedElsewhere);
+
+        assertNull(render(Map.of("id", "elsewhere"), null));
+    }
+
+    /** A private directory is never rendered inline, by [gallery] or by [image]. */
+    @Test
+    void anImageInAPrivateDirectoryIsLeftAsWritten() throws Exception {
+        MediaFileDirectory hidden = new MediaFileDirectory(weblog, "drafts", null);
+        hidden.setPrivate(true);
+        when(mediaFileManager.getMediaFile("hidden")).thenReturn(image("hidden", weblog, hidden));
+
+        assertNull(render(Map.of("id", "hidden"), null));
+    }
+
+    @Test
+    void thisWeblogsImageInAPublicDirectoryRenders() throws Exception {
+        MediaFileDirectory trip = new MediaFileDirectory(weblog, "trip", null);
+        when(mediaFileManager.getMediaFile("mine")).thenReturn(image("mine", weblog, trip));
+
+        assertTrue(render(Map.of("id", "mine"), null).startsWith("<figure class=\"shortcode-image\">"));
+    }
+
+    /**
+     * The render cache keeps an entry's HTML only while everything it read
+     * was its own weblog's: a refused foreign id is still reported, so the
+     * cache does not keep the refusal.
+     */
+    @Test
+    void aForeignIdIsStillReportedAsAForeignRead() throws Exception {
+        Weblog other = new Weblog();
+        other.setHandle("other");
+        when(mediaFileManager.getMediaFile("theirs")).thenReturn(image("theirs", other, null));
+        List<Weblog> reads = new ArrayList<>();
+
+        assertNull(shortcode.render(Map.of("id", "theirs"), null, entry, reads::add));
+        assertEquals(List.of(other), reads);
+    }
+
+    private static MediaFile image(String id, Weblog owner, MediaFileDirectory directory) {
+        MediaFile file = new MediaFile();
+        file.setId(id);
+        file.setWeblog(owner);
+        file.setDirectory(directory);
+        file.setName(id + ".jpg");
+        file.setContentType("image/jpeg");
+        return file;
     }
 
     @Test
