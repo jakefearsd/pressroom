@@ -735,7 +735,8 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
      */
     private static final String SITEMAP_ENTRIES =
             "SELECT e.anchor, e.pubtime, e.updatetime, e.noindex,"
-            + " CASE WHEN d.is_private THEN NULL ELSE m.id END"
+            + " CASE WHEN d.is_private THEN NULL ELSE m.id END,"
+            + " e.canonical_url"
             + " FROM weblogentry e"
             + " LEFT JOIN roller_mediafile m ON m.id = e.featured_image_id"
             + " LEFT JOIN roller_mediafiledir d ON d.id = m.directoryid"
@@ -762,7 +763,8 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
                     instant(columns[1]),
                     instant(columns[2]),
                     Boolean.TRUE.equals(columns[3]),
-                    (String) columns[4]));
+                    (String) columns[4],
+                    (String) columns[5]));
         }
         return entries;
     }
