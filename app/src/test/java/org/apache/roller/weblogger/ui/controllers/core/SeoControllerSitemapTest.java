@@ -196,6 +196,41 @@ class SeoControllerSitemapTest {
         assertFalse(body.contains("elsewhere.example.com"), body);
     }
 
+    /**
+     * A self-canonical written a little differently from the address the
+     * sitemap builds -- a trailing slash, the other scheme, a host in
+     * capitals, a percent-encoded character -- still names the item itself,
+     * and the item stays in its own sitemap.
+     */
+    @Test
+    void aSelfCanonicalSpelledDifferentlyStillKeepsTheItem() throws Exception {
+        // Not localhost: the canonical validator refuses a local host, so a
+        // localhost canonical is no override at all and would prove nothing.
+        String context = "http://blog.example.com:8080/roller";
+        WebloggerRuntimeConfig.setAbsoluteContextURL(context);
+        try {
+            String root = context + "/" + HANDLE + "/";
+            WeblogEntry slash = entry("slash-entry", PubStatus.PUBLISHED, 1, null, false);
+            WeblogEntry scheme = entry("scheme-entry", PubStatus.PUBLISHED, 2, null, false);
+            WeblogEntry encoded = entry("encoded-entry", PubStatus.PUBLISHED, 3, null, false);
+            WeblogEntry elsewhere = entry("elsewhere-entry", PubStatus.PUBLISHED, 4, null, false);
+            canonical(slash, root + "entry/slash-entry/");
+            canonical(scheme, "https://BLOG.example.com:8080/roller/" + HANDLE + "/entry/scheme-entry");
+            canonical(encoded, root + "entry/%65ncoded-entry");
+            canonical(elsewhere, root + "entry/some-other-entry");
+
+            String body = sitemap().getBody();
+
+            for (String anchor : new String[]{"slash-entry", "scheme-entry", "encoded-entry"}) {
+                assertTrue(body.contains("<loc>" + root + "entry/" + anchor + "</loc>"),
+                        anchor + ": a canonical naming the entry itself keeps it:\n" + body);
+            }
+            assertFalse(body.contains("elsewhere-entry"), "a different path is still elsewhere:\n" + body);
+        } finally {
+            WebloggerRuntimeConfig.setAbsoluteContextURL(ABSOLUTE_CONTEXT);
+        }
+    }
+
     private void canonical(WeblogEntry entry, String url) throws Exception {
         WeblogEntry managed = TestUtils.getManagedWeblogEntry(entry);
         managed.setCanonicalUrl(url);
