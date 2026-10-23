@@ -32,11 +32,9 @@
     <spring:message code="${subtitleKey}" arguments="${fn:escapeXml(bean.userName)}"/>
 </p>
 
-<p class="pagetip">
-    <c:if test="${actionName == 'createUser'}">
-        <spring:message code="userAdmin.addInstructions"/>
-    </c:if>
-</p>
+<c:if test="${actionName == 'createUser'}">
+    <p class="pagetip"><spring:message code="userAdmin.addInstructions"/></p>
+</c:if>
 
 <c:if test="${ssoBound}">
     <p class="form-text" id="ssoBoundMarker"><spring:message code="userAdmin.ssoBound"/></p>
@@ -66,9 +64,10 @@
                 <label class="col-sm-3 col-form-label" for="bean_userName"><spring:message code="userSettings.username"/></label>
                 <div class="col-sm-9">
                     <input type="text" id="bean_userName" name="bean.userName" value="${fn:escapeXml(bean.userName)}"
-                           size="30" maxlength="30" onkeyup="formChanged()"
+                           size="30" maxlength="30"
                            readonly="readonly" class="form-control"
-                           title="<spring:message code='userSettings.tip.username'/>"/>
+                           aria-describedby="bean_userName_help"/>
+                    <div class="form-text" id="bean_userName_help"><spring:message code="userSettings.tip.username"/></div>
                 </div>
             </div>
         </c:when>
@@ -77,8 +76,9 @@
                 <label class="col-sm-3 col-form-label" for="bean_userName"><spring:message code="userSettings.username"/></label>
                 <div class="col-sm-9">
                     <input type="text" id="bean_userName" name="bean.userName" value="${fn:escapeXml(bean.userName)}"
-                           size="30" maxlength="30" onkeyup="formChanged()" class="form-control" autofocus
-                           title="<spring:message code='userAdmin.tip.userName'/>"/>
+                           size="30" maxlength="30" class="form-control" autofocus
+                           aria-describedby="bean_userName_help"/>
+                    <div class="form-text" id="bean_userName_help"><spring:message code="userAdmin.tip.userName"/></div>
                 </div>
             </div>
         </c:otherwise>
@@ -89,8 +89,7 @@
         <div class="col-sm-9">
             <input type="text" id="bean_screenName" name="bean.screenName"
                    <c:if test="${actionName == 'modifyUser'}">autofocus</c:if> value="${fn:escapeXml(bean.screenName)}"
-                   size="30" maxlength="30" onkeyup="formChanged()" class="form-control"
-                   title="<spring:message code='userAdmin.tip.screenName'/>"/>
+                   size="30" maxlength="30" class="form-control"/>
         </div>
     </div>
 
@@ -98,8 +97,7 @@
         <label class="col-sm-3 col-form-label" for="bean_fullName"><spring:message code="userSettings.fullname"/></label>
         <div class="col-sm-9">
             <input type="text" id="bean_fullName" name="bean.fullName" value="${fn:escapeXml(bean.fullName)}"
-                   size="30" maxlength="30" onkeyup="formChanged()" class="form-control"
-                   title="<spring:message code='userAdmin.tip.fullName'/>"/>
+                   size="30" maxlength="30" class="form-control"/>
         </div>
     </div>
 
@@ -137,12 +135,15 @@
             <label class="col-sm-3 col-form-label" for="bean_password"><spring:message code="userSettings.password"/></label>
             <div class="col-sm-9">
                 <input type="password" id="bean_password" name="bean.password" size="30"
-                       autocomplete="new-password"
-                       onkeyup="formChanged()" class="form-control"
-                       title="<spring:message code='userAdmin.tip.password'/>"/>
-                <c:if test="${actionName == 'createUser'}">
-                    <div class="form-text"><spring:message code="personForm.password.tip"/></div>
-                </c:if>
+                       autocomplete="new-password" class="form-control"/>
+                <c:choose>
+                    <c:when test="${actionName == 'createUser'}">
+                        <div class="form-text"><spring:message code="personForm.password.tip"/></div>
+                    </c:when>
+                    <c:otherwise>
+                        <div class="form-text"><spring:message code="userAdmin.tip.password"/></div>
+                    </c:otherwise>
+                </c:choose>
             </div>
         </div>
     </c:if>
@@ -152,16 +153,15 @@
         <label class="col-sm-3 col-form-label" for="bean_email"><spring:message code="userSettings.email"/></label>
         <div class="col-sm-9">
             <input type="text" id="bean_email" name="bean.emailAddress" value="${fn:escapeXml(bean.emailAddress)}"
-                   size="30" maxlength="255" onkeyup="formChanged()" class="form-control"
-                   title="<spring:message code='userAdmin.tip.email'/>"/>
+                   size="30" maxlength="255" class="form-control"/>
+            <div class="form-text"><spring:message code="userAdmin.tip.email"/></div>
         </div>
     </div>
 
     <div class="row mb-3">
         <label class="col-sm-3 col-form-label" for="bean_locale"><spring:message code="userSettings.locale"/></label>
         <div class="col-sm-9">
-            <select id="bean_locale" name="bean.locale" class="form-select"
-                    title="<spring:message code='userAdmin.tip.locale'/>">
+            <select id="bean_locale" name="bean.locale" class="form-select">
                 <c:forEach var="loc" items="${localesList}">
                     <option value="${fn:escapeXml(loc)}"
                         <c:if test="${loc == bean.locale}">selected="selected"</c:if>
@@ -174,8 +174,7 @@
     <div class="row mb-3">
         <label class="col-sm-3 col-form-label" for="bean_timeZone"><spring:message code="userSettings.timeZone"/></label>
         <div class="col-sm-9">
-            <select id="bean_timeZone" name="bean.timeZone" class="form-select"
-                    title="<spring:message code='userAdmin.tip.timeZone'/>">
+            <select id="bean_timeZone" name="bean.timeZone" class="form-select">
                 <c:forEach var="tz" items="${timeZonesList}">
                     <option value="${fn:escapeXml(tz)}"
                         <c:if test="${tz == bean.timeZone}">selected="selected"</c:if>
@@ -189,8 +188,7 @@
         <label class="col-sm-3 col-form-label" for="bean_enabled"><spring:message code="userAdmin.enabled"/></label>
         <div class="col-sm-9">
             <input type="checkbox" id="bean_enabled" class="form-check-input" name="bean.enabled" value="true"
-                <c:if test="${bean.enabled}">checked="checked"</c:if>
-                   title="<spring:message code='userAdmin.tip.enabled'/>"/>
+                <c:if test="${bean.enabled}">checked="checked"</c:if>/>
             <div class="form-text"><spring:message code="userAdmin.enabled.signsOutNote"/></div>
         </div>
     </div>
@@ -221,8 +219,8 @@
         <label class="col-sm-3 col-form-label" for="bean_administrator"><spring:message code="userAdmin.userAdmin"/></label>
         <div class="col-sm-9">
             <input type="checkbox" id="bean_administrator" class="form-check-input" name="bean.administrator" value="true"
-                <c:if test="${bean.administrator}">checked="checked"</c:if>
-                   title="<spring:message code='userAdmin.tip.userAdmin'/>"/>
+                <c:if test="${bean.administrator}">checked="checked"</c:if>/>
+            <div class="form-text"><spring:message code="userAdmin.tip.userAdmin"/></div>
         </div>
     </div>
     </c:otherwise>
@@ -287,41 +285,8 @@
     <jsp:include page="/WEB-INF/jsps/admin/UserWeblogs.jsp"/>
 </c:if>
 
-<script>
-
-    <%-- A script here used to focus the form's first element on load. The
-         first element of this form is the hidden CSRF input, so it focused
-         the hidden input -- i.e. nothing. The autofocus attribute on the
-         first real field does what it was trying to do. --%>
-    let saveButton;
-
-    $( document ).ready(function() {
-        saveButton = $("#save_button");
-        formChanged()
-    });
-
-    function formChanged() {
-        // Screen name, full name and email -- the three fields the save button
-        // waits on. The username is deliberately NOT among them; it is checked
-        // server-side. (An earlier version read the first of these through
-        // id="bean_userName", which at the time sat on the SCREEN NAME input.
-        // That id belongs to the username field now, so the old note about it
-        // would read as a live warning about code that no longer exists.)
-        let screenName = $("#bean_screenName:first").val();
-        let fullName = $("#bean_fullName:first").val();
-        let email = $("#bean_email:first").val();
-
-        let valid = (screenName && screenName.trim().length > 0
-            && fullName && fullName.trim().length > 0
-            && email && email.trim().length > 0
-            && validateEmail(email));
-
-        if (valid) {
-            saveButton.prop("disabled", false);
-        } else {
-            saveButton.prop("disabled", true);
-        }
-    }
-
-</script>
-
+<%-- No client-side gate on Save: it used to stay disabled until an onkeyup
+     check passed, so autofill or a mouse paste left it disabled with no reason
+     given. UserEditController answers each required field with addFieldError,
+     which marks and focuses the field (data-invalid-fields). The autofocus
+     attribute on the first real field replaces the old focus script. --%>

@@ -270,7 +270,7 @@ public class RollerViewResolver implements ViewResolver, Ordered {
 
         addExtendedDefinition(".Bootstrap", ".tiles-installpage",
                 Map.of(
-                        "content", "/WEB-INF/jsps/core/UnknownError.jsp",
+                        "content", "/WEB-INF/jsps/core/Bootstrap.jsp",
                         "footer",  "/WEB-INF/jsps/tiles/empty.jsp",
                         "banner",  "/WEB-INF/jsps/tiles/bannerInstallation.jsp"
                 ));

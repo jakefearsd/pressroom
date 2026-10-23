@@ -101,6 +101,25 @@ class WebContainerConfigTest {
         JspPropertyGroupDescriptor group = descriptor.getJspPropertyGroups().iterator().next();
         assertEquals(List.of("*.jsp"), List.copyOf(group.getUrlPatterns()));
         assertEquals("UTF-8", group.getPageEncoding());
-        assertEquals("true", group.getTrimDirectiveWhitespaces());
+        assertEquals("false", group.getTrimDirectiveWhitespaces(),
+                "trim-directive-whitespaces deletes the whitespace between an action and the "
+                        + "next tag outright, gluing words together (Main Menu's \"Entries2\")");
+    }
+
+    /**
+     * Jasper splits template text at every tag, so the whitespace between
+     * {@code <spring:message/>} and a following {@code <span>} is a text node
+     * of its own; trimming deleted it, and Main Menu read "Entries2" and the
+     * entry editor "...first.Open weblog settings". {@code trimSpaces=single}
+     * keeps the output compact (each whitespace-only node becomes one space)
+     * without joining words.
+     */
+    @Test
+    void whitespaceOnlyTemplateTextCollapsesToOneSpaceRatherThanVanishing() {
+        TomcatServletWebServerFactory factory = new TomcatServletWebServerFactory();
+
+        config.rollerTomcatCustomizer().customize(factory);
+
+        assertEquals("single", factory.getSettings().getJsp().getInitParameters().get("trimSpaces"));
     }
 }

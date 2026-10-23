@@ -52,6 +52,20 @@
 
         <div class="col-md-3 roller-column-left">
 
+            <%-- Below md the rail and the page's sidebar fold behind this
+                 button: stacked above the content they pushed the page
+                 itself a screen and more down (the entry editor's title sat
+                 at y=1327 on a phone). From md up .d-md-block keeps the
+                 column shown whatever the collapse state, so desktop is
+                 unchanged. --%>
+            <spring:message code="adminRail.toggle" var="railToggleLabel"/>
+            <button type="button" class="btn btn-secondary btn-sm d-md-none rail-toggle"
+                    data-bs-toggle="collapse" data-bs-target="#adminRailColumn"
+                    aria-expanded="false" aria-controls="adminRailColumn">
+                <span class="bi bi-list" aria-hidden="true"></span> ${railToggleLabel}
+            </button>
+            <div class="collapse d-md-block" id="adminRailColumn">
+
             <nav class="rail" id="adminRail">
 
                 <c:if test="${not empty authenticatedUser or not empty actionWeblog}">
@@ -89,9 +103,13 @@
 
             </nav>
 
-            <aside class="sidebar" id="adminSidebar">
-                <jsp:include page="${tile_sidebar}"/>
-            </aside>
+            <c:if test="${tile_sidebar != '/WEB-INF/jsps/tiles/empty.jsp'}">
+                <aside class="sidebar" id="adminSidebar">
+                    <jsp:include page="${tile_sidebar}"/>
+                </aside>
+            </c:if>
+
+            </div>
 
         </div>
 

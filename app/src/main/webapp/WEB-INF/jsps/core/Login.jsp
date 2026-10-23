@@ -22,7 +22,11 @@
 
 
 
-        <form method="post" id="loginForm" class="form-signin"
+<%-- One centred column for the form and the ways around it (SSO, a lost
+     password), so the links line up with the fields rather than the page
+     edge. --%>
+<div class="form-signin">
+        <form method="post" id="loginForm"
               action="<c:url value='/roller_j_security_check'/>">
 
             <%-- .section-head, not <legend>: a legend outside a fieldset is
@@ -34,15 +38,13 @@
             <div class="mb-3">
                 <label for="j_username" class="form-label"> <spring:message code="loginPage.userName"/> </label>
                 <input type="text" class="form-control" name="j_username" id="j_username"
-                       autocomplete="username"
-                       placeholder="<spring:message code='loginPage.userName'/>"/>
+                       autocomplete="username"/>
             </div>
 
             <div class="mb-3">
                 <label for="j_password" class="form-label"> <spring:message code="loginPage.password"/> </label>
                 <input type="password" class="form-control" name="j_password" id="j_password"
-                       autocomplete="current-password"
-                       placeholder="<spring:message code='loginPage.password'/>"/>
+                       autocomplete="current-password"/>
             </div>
 
             <c:if test="${rememberMeEnabled}">
@@ -72,6 +74,7 @@
 
 <p class="mt-3"><a href="<c:url value='/roller-ui/forgotPassword.rol'/>">
     <spring:message code="loginPage.forgotPassword"/></a></p>
+</div><%-- .form-signin --%>
 
 <script>
 

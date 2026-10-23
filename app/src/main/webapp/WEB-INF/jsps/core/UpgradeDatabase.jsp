@@ -23,9 +23,9 @@
 
     <h2 class="roller-page-title"><spring:message code="installer.errorUpgradingTables"/></h2>
     <p><spring:message code="installer.errorUpgradingTablesExplanation"/></p>
-    <pre>
-        <c:forEach items="${messages}" var="msg">${fn:escapeXml(msg)}<br/></c:forEach>
-    </pre>
+<pre>
+<c:forEach items="${messages}" var="msg">${fn:escapeXml(msg)}<br/></c:forEach>
+</pre>
 
 </c:when>
 <c:when test="${upgradeRequired}">
@@ -49,20 +49,12 @@
     <h2 class="roller-page-title"><spring:message code="installer.tablesUpgraded"/></h2>
 
     <p><spring:message code="installer.tablesUpgradedExplanation"/></p>
-    <c:url value="/roller-ui/install/install!bootstrap.rol" var="bootstrapUrl"/>
-    <p>
-        <spring:message code="installer.tryBootstrapping" arguments="${bootstrapUrl}" />
-    </p>
 
-    <pre>
-        <c:forEach items="${messages}" var="msg">${fn:escapeXml(msg)}<br/></c:forEach>
-    </pre>
+<pre>
+<c:forEach items="${messages}" var="msg">${fn:escapeXml(msg)}<br/></c:forEach>
+</pre>
 
-    <form action="${pageContext.request.contextPath}/roller-ui/install/install!bootstrap.rol" method="post">
-        <sec:csrfInput/>
-        <spring:message code="installer.finishUpgrade" var="finishUpgradeLabel"/>
-        <button type="submit" class="btn btn-primary">${finishUpgradeLabel}</button>
-    </form>
+    <jsp:include page="/WEB-INF/jsps/core/InstallStart.jsp"/>
 
 </c:otherwise>
 </c:choose>

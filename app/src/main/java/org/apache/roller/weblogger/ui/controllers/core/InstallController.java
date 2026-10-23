@@ -101,7 +101,8 @@ public class InstallController extends BaseController {
 
         // Prepared but not running: RollerLifecycle logged why the bootstrap
         // failed at startup, or install!bootstrap.rol starts it from here.
-        model.addAttribute("pageTitle", "installer.error.unknown.pageTitle");
+        // Nothing has gone wrong yet, so the page offers the start button.
+        model.addAttribute("pageTitle", "installer.start.pageTitle");
         return ".Bootstrap";
     }
 
@@ -159,10 +160,7 @@ public class InstallController extends BaseController {
     public String bootstrap(HttpServletRequest request, Model model) {
         // populateCommonModel skipped - runs before bootstrap
 
-        log.info("ENTERING");
-
         if (webloggerProvider.isBootstrapped()) {
-            log.info("EXITING - already bootstrapped, forwarding to Roller");
             return "redirect:/";
         }
 
@@ -173,7 +171,7 @@ public class InstallController extends BaseController {
             // a single Spring context, then initializes it
             webloggerProvider.bootstrap();
 
-            log.info("EXITING - Bootstrap successful, forwarding to Roller");
+            log.info("Roller started from the installer");
             return "redirect:/";
 
         } catch (Exception ex) {
@@ -182,8 +180,8 @@ public class InstallController extends BaseController {
             log.error("Roller could not be bootstrapped from the installer", ex);
         }
 
-        log.info("EXITING - Bootstrap failed, forwarding to error page");
-        model.addAttribute("pageTitle", "installer.error.unknown.pageTitle");
+        model.addAttribute("pageTitle", "installer.start.pageTitle");
+        model.addAttribute("startFailed", true);
         return ".Bootstrap";
     }
 

@@ -32,7 +32,7 @@
     <section class="mb-4">
         <h2 class="section-head"><spring:message code="account.name.heading"/></h2>
         <p><spring:message code="account.name.current"/> <strong>${fn:escapeXml(account.screenName)}</strong></p>
-        <form id="accountNameForm" method="post" action="${saveNameUrl}">
+        <form id="accountNameForm" class="form-stacked" method="post" action="${saveNameUrl}">
             <sec:csrfInput/>
             <div class="mb-3">
                 <label class="form-label" for="screenName"><spring:message code="account.name.label"/></label>
@@ -50,13 +50,14 @@
         <spring:message var="deleteCommentConfirm" code="account.comment.delete.confirm"/>
         <c:choose>
         <c:when test="${not empty comments}">
+        <div class="table-responsive">
         <table class="rollertable table table-striped">
             <tr>
                 <th scope="col" class="rollertable"><spring:message code="account.column.status"/></th>
                 <th scope="col" class="rollertable"><spring:message code="comments.column.comment"/></th>
                 <th scope="col" class="rollertable"><spring:message code="comments.column.entry"/></th>
                 <th scope="col" class="rollertable"><spring:message code="comments.column.date"/></th>
-                <th scope="col" class="rollertable"></th>
+                <th scope="col" class="rollertable row-actions"><span class="visually-hidden"><spring:message code="mainPage.actions"/></span></th>
             </tr>
             <c:forEach items="${comments}" var="c">
             <tr>
@@ -73,24 +74,25 @@
                     </c:otherwise>
                     </c:choose>
                 </td>
-                <td><div style="white-space: pre-wrap;">${fn:escapeXml(c.body)}</div></td>
+                <td><div class="pre-wrap">${fn:escapeXml(c.body)}</div></td>
                 <td>
                     <a href="${urls.entry(c.entry)}">${c.entry.displayTitle}</a>
                     <div class="form-text">${fn:escapeXml(c.entry.website.name)}</div>
                 </td>
                 <td class="data"><rc:date value="${c.created}"/></td>
-                <td>
+                <td class="row-actions">
                     <form method="post" action="${deleteCommentUrl}">
                         <sec:csrfInput/>
                         <input type="hidden" name="id" value="${fn:escapeXml(c.id)}"/>
-                        <button type="submit" class="btn btn-outline-danger btn-sm"
-                                data-confirm="${fn:escapeXml(deleteCommentConfirm)}">
-                            <spring:message code="account.comment.delete"/></button>
+                        <button type="submit" class="row-action row-action-danger"
+                                data-confirm="${fn:escapeXml(deleteCommentConfirm)}"
+                                aria-label="<spring:message code='account.comment.delete'/>"><span class="bi bi-trash" aria-hidden="true"></span></button>
                     </form>
                 </td>
             </tr>
             </c:forEach>
         </table>
+        </div>
         </c:when>
         <c:otherwise>
         <div class="empty-state">

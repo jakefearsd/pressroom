@@ -16,6 +16,7 @@
   directory of this distribution.
 --%>
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
+<%@ page session="false" %>
 <!doctype html>
 <html lang="${pageContext.response.locale.toLanguageTag()}">
 <head>
@@ -39,10 +40,11 @@
         <div class="col-md-1"></div>
         <main class="col-md-10">
 
-            <h1 class="roller-page-title"><spring:message code="${pageTitle}" text="${pageTitle}"/></h1>
-            <jsp:include page="${tile_messages}"/>
+            <%-- Title and messages inside the card, as on every other layout. --%>
             <div class="card">
                 <div class="card-body">
+                    <h1 class="roller-page-title"><spring:message code="${pageTitle}" text="${pageTitle}"/></h1>
+                    <jsp:include page="${tile_messages}"/>
                     <jsp:include page="${tile_content}"/>
                 </div>
             </div>

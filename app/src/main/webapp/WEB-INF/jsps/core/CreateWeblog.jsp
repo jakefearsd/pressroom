@@ -44,16 +44,13 @@
         </div>
     </div>
 
-    <div class="row mb-3">
-        <label class="col-sm-3"></label>
-        <div class="col-sm-9">
-            <spring:message code="createWebsite.weblogUrl" />:&nbsp;
-            <%-- A live preview of the URL the handle will produce, not an
-                 error: --accent, not the red it used to be hardcoded to. --%>
-            ${absoluteSiteURL}/<span id="handlePreview" class="handle-preview"><c:choose><c:when test="${bean.handle != null}">${fn:escapeXml(bean.handle)}</c:when><c:otherwise>handle</c:otherwise></c:choose></span>
-            <br>
-        </div>
-    </div>
+    <%-- A live preview of the URL the handle will produce, not an error:
+         --accent, not the red it used to be hardcoded to. Blank until the
+         handle has something in it (it printed the English word "handle"). --%>
+    <p class="form-text mb-3">
+        <spring:message code="createWebsite.weblogUrl" />:
+        ${fn:escapeXml(absoluteSiteURL)}/<span id="handlePreview" class="handle-preview">${fn:escapeXml(bean.handle)}</span>
+    </p>
 
     <spring:message code="CreateWeblog.error.emailAddressNull" var="emailRequired"/>
     <spring:message code="CreateWeblog.error.emailAddressInvalid" var="emailInvalid"/>
@@ -61,7 +58,7 @@
         <spring:message code="createWebsite.emailAddress" var="emailLabel"/>
         <label class="col-sm-3 col-form-label" for="emailAddress">${emailLabel}</label>
         <div class="col-sm-9">
-            <form:input path="emailAddress" id="emailAddress" cssClass="form-control validate-email" size="40" maxlength="50"
+            <form:input path="emailAddress" id="emailAddress" cssClass="form-control validate-email" size="40" maxlength="255"
                         data-msg="${emailInvalid}" data-msg-required="${emailRequired}" required="required"/>
         </div>
     </div>
@@ -99,8 +96,7 @@
 
     <button type="submit" class="btn btn-primary"><spring:message code="createWebsite.button.save"/></button>
 
-    <input class="btn btn-secondary" type="button" value="<spring:message code='generic.cancel'/>"
-           onclick="window.location='<c:url value='/roller-ui/menu.rol'/>'"/>
+    <a class="btn btn-secondary" href="<c:url value='/roller-ui/menu.rol'/>"><spring:message code="generic.cancel"/></a>
 
 </form:form>
 
@@ -128,14 +124,7 @@
     });
 
     function handlePreview(handle) {
-        previewSpan = document.getElementById("handlePreview");
-        var n1 = previewSpan.childNodes[0];
-        var n2 = document.createTextNode(handle.value);
-        if (handle.value == null) {
-            previewSpan.appendChild(n2);
-        } else {
-            previewSpan.replaceChild(n2, n1);
-        }
+        document.getElementById("handlePreview").textContent = handle.value;
     }
 
     function previewImage(themeId) {

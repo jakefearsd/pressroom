@@ -177,7 +177,7 @@
 
 <aside class="settings-rail">
 
-    <div class="rail-box">
+    <div class="rail-box settings-rail-index">
         <%-- websiteSettings.sections is the bare word "Sections", already
              translated in every locale bundle for the weblog-settings rail.
              Reused rather than adding a second key for the same word, the way

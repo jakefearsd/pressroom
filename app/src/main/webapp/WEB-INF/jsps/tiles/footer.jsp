@@ -16,6 +16,7 @@
   directory of this distribution.
 --%>
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
+<%@ page session="false" %>
 
 
 <%-- The business tier is reached through the WebloggerProvider bean, never a
@@ -44,7 +45,9 @@
      rendering empty parens. --%>
 <c:choose>
 <c:when test="${not empty rollerVersion}">
-<spring:message code="footer.productName" arguments="${rollerVersion},${rollerRevision}"/>
+<%-- The short revision: the full 40-character hash scrolled the footer
+     sideways at phone width, and seven characters identify a commit. --%>
+<spring:message code="footer.productName" arguments="${rollerVersion},${fn:substring(rollerRevision, 0, 7)}"/>
 </c:when>
 <c:otherwise>
 <spring:message code="footer.productNameNoVersion"/>

@@ -188,6 +188,41 @@ class GlobalConfigControllerTest {
         verify(weblogger.weblogger(), never()).flush();
     }
 
+    /**
+     * The properties are managed entities, and JPAPropertiesManagerImpl says an
+     * in-place edit is written by whichever commit comes next. Validation
+     * used to set each value as it went, so a form refused for one bad
+     * integer still left every edit before (and after) it dirty in the
+     * thread's EntityManager. A check that refuses must change nothing.
+     */
+    @Test
+    void aRefusedFormLeavesEveryStoredPropertyUnchanged() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = properties("site.name", "Old Name");
+        stored.put("site.pages.maxEntries", new RuntimeConfigProperty("site.pages.maxEntries", "30"));
+        stored.put("uploads.enabled", new RuntimeConfigProperty("uploads.enabled", "true"));
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+        HttpServletRequest request = request();
+        when(request.getParameter("site.name")).thenReturn("New Name");
+        when(request.getParameter("site.pages.maxEntries")).thenReturn("many");
+        // uploads.enabled is unticked, so it would turn off
+
+        controller.save(request, model);
+
+        assertEquals(1, ControllerTestFixture.errors(model).size());
+        assertEquals("Old Name", stored.get("site.name").getValue(), "a valid edit on a refused form is not applied");
+        assertEquals("30", stored.get("site.pages.maxEntries").getValue());
+        assertEquals("true", stored.get("uploads.enabled").getValue());
+        verify(weblogger.propertiesManager(), never()).saveProperties(any());
+
+        // The form comes back with what the admin typed, so nothing is lost.
+        @SuppressWarnings("unchecked")
+        Map<String, RuntimeConfigProperty> shown =
+                (Map<String, RuntimeConfigProperty>) model.getAttribute("properties");
+        assertEquals("New Name", shown.get("site.name").getValue());
+        assertEquals("many", shown.get("site.pages.maxEntries").getValue());
+        assertEquals("false", shown.get("uploads.enabled").getValue());
+    }
+
     @Test
     void anInvalidIntegerValueIsEscapedInTheErrorMessage() throws Exception {
         // The submitted value is echoed straight back into messages.jsp's

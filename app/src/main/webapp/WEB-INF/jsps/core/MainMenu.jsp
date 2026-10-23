@@ -54,8 +54,10 @@
              recommended action. --%>
         <div class="weblog-row">
 
-            <%-- .section-head carries the caps-label type role; mm_weblog_name
-                 now also carries the icon/label gap (roller.css) that used to
+            <%-- The weblog's name, at weight 600 in ink: a name to pick, not a
+                 caps-label section header in link blue. .mm_weblog_name
+                 overrides .section-head's caps role for that (roller.css; the
+                 pair is pinned by JspConsistencyTest) and carries the icon/label gap (roller.css) that used to
                  be a hardcoded &nbsp;, and stays regardless because
                  RouteSweepIT identifies menu.rol by "h3.mm_weblog_name"
                  (Routes.java). Rename neither the element nor the class
@@ -120,8 +122,8 @@
                     <c:url value="/roller-ui/authoring/comments.rol" var="pendingComments">
                         <c:param name="weblog" value="${perms.weblog.handle}"/>
                     </c:url>
-                    <a href="${pendingComments}" class="quiet-link">
-                        <span class="badge text-bg-warning"><spring:message code="mainMenu.pendingComments" arguments="${perms.pendingCommentCount}"/></span>
+                    <a href="${pendingComments}" class="status-pill status-pending">
+                        <spring:message code="mainMenu.pendingComments" arguments="${perms.pendingCommentCount}"/>
                     </a>
                 </c:if>
 

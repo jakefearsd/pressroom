@@ -67,6 +67,7 @@
 
 <c:choose>
     <c:when test="${not empty accounts}">
+        <div class="table-responsive">
         <table class="rollertable table" id="userListTable">
             <tr>
                 <th scope="col"><spring:message code="userList.column.account"/></th>
@@ -114,10 +115,18 @@
                         </c:choose>
                     </td>
                     <td class="data">${row.weblogCount}</td>
-                    <td class="data"><rc:date value="${row.lastActive}"/></td>
+                    <td class="data">
+                        <c:choose>
+                            <c:when test="${row.lastActive != null}"><rc:date value="${row.lastActive}"/></c:when>
+                            <%-- Never signed in (or, for an agent, no token used):
+                                 a blank cell read as missing data. --%>
+                            <c:otherwise><span class="text-muted"><spring:message code="userList.lastActive.never"/></span></c:otherwise>
+                        </c:choose>
+                    </td>
                 </tr>
             </c:forEach>
         </table>
+        </div>
     </c:when>
     <c:otherwise>
         <div class="empty-state">

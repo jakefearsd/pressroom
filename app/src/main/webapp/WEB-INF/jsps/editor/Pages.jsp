@@ -21,16 +21,18 @@
     <spring:message code="weblogPagesForm.subtitle" arguments="${actionWeblog.handle}"/>
 </p>
 
-<p class="pagetip">
-    <c:url var="addUrl" value="/roller-ui/authoring/pageEdit.rol">
-        <c:param name="weblog" value="${actionWeblog.handle}"/>
-    </c:url>
-    <c:if test="${not empty pages}">
+<c:url var="addUrl" value="/roller-ui/authoring/pageEdit.rol">
+    <c:param name="weblog" value="${actionWeblog.handle}"/>
+</c:url>
+<%-- The list's one "New ..." action, above the table; an empty list carries
+     it in its empty state instead. --%>
+<div class="list-actions">
+<c:if test="${not empty pages}">
     <a href="${addUrl}" class="btn btn-primary btn-sm">
         <spring:message code="weblogPagesForm.add"/>
     </a>
-    </c:if>
-</p>
+</c:if>
+</div>
 
 <%-- One form around the whole table, following Entries.jsp's pattern: the
      remove action is a submit button carrying its own name/value per row,
@@ -44,6 +46,7 @@
     <c:choose>
     <c:when test="${not empty pages}">
 
+    <div class="table-responsive">
     <table class="rollertable table table-striped" width="100%">
 
             <tr>
@@ -52,8 +55,7 @@
                 <th scope="col" class="rollertable" width="10%"><spring:message code="weblogEdit.status"/></th>
                 <th scope="col" class="rollertable" width="10%"><spring:message code="weblogPagesForm.showInNav"/></th>
                 <th scope="col" class="rollertable" width="10%"><spring:message code="weblogPagesForm.navOrder"/></th>
-                <th scope="col" class="rollertable" width="5%"> </th>
-                <th scope="col" class="rollertable" width="5%"> </th>
+                <th scope="col" class="rollertable row-actions"><span class="visually-hidden"><spring:message code="mainPage.actions"/></span></th>
             </tr>
 
             <c:forEach items="${pages}" var="p">
@@ -95,12 +97,10 @@
                     </td>
                     <td>${p.showInNav ? '&#10003;' : ''}</td>
                     <td class="data">${p.navOrder}</td>
-                    <td>
-                        <a href="${editUrl}" aria-label="<spring:message code='generic.edit'/>: ${fn:escapeXml(p.title)}">
+                    <td class="row-actions">
+                        <a href="${editUrl}" class="row-action" aria-label="<spring:message code='generic.edit'/>: ${fn:escapeXml(p.title)}">
                             <span class="bi bi-pencil-square" aria-hidden="true" title="<spring:message code="generic.edit"/>"></span>
                         </a>
-                    </td>
-                    <td>
                         <%-- A real submit button carrying its own name/value, not
                              a hidden field a delegated click handler had to
                              populate first. data-confirm, not an inline
@@ -111,7 +111,7 @@
                              onclick-string approach a permanent SyntaxError. An
                              HTML attribute has no second parser, so data-confirm
                              is safe with the same escape. --%>
-                        <button type="submit" class="btn btn-link p-0 align-baseline border-0 page-delete-btn"
+                        <button type="submit" class="row-action row-action-danger page-delete-btn"
                                 name="removeId" value="${p.id}"
                                 data-confirm="${pageDeleteConfirmBase}: '${fn:escapeXml(p.title)}'?"
                                 aria-label="<spring:message code='generic.delete'/>: ${fn:escapeXml(p.title)}">
@@ -122,6 +122,7 @@
             </c:forEach>
 
     </table>
+    </div>
 
     </c:when>
     <c:otherwise>

@@ -19,12 +19,18 @@
      (SiteDirectoryController). The description, weblog names and taglines
      are all stored as typed, so each is escaped here. --%>
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
+<%@ page session="false" %>
+<%-- session="false" here and on every tile the simple page includes: a JSP
+     with the default session="true" calls request.getSession() just to
+     render, so the public site root handed every anonymous reader (and
+     crawler) a JSESSIONID it never needed. Nothing these pages render reads
+     the session; a signed-in user's existing session is untouched. --%>
 
 <div id="siteDirectory">
 
     <c:set var="siteDescription" value="${rc:getProp('site.description')}"/>
     <c:if test="${not empty siteDescription}">
-        <p class="lead">${fn:escapeXml(siteDescription)}</p>
+        <p>${fn:escapeXml(siteDescription)}</p>
     </c:if>
 
     <c:choose>
@@ -32,12 +38,14 @@
             <p><spring:message code="siteDirectory.empty"/></p>
         </c:when>
         <c:otherwise>
-            <ul class="list-unstyled">
+            <%-- One quiet row per weblog, as on Main Menu: the name at weight
+                 600 (emphasis is weight, never size), its tagline under it. --%>
+            <ul class="list-unstyled site-directory">
                 <c:forEach var="weblog" items="${weblogs}">
-                    <li class="mb-3">
-                        <a href="${fn:escapeXml(urls.weblogAbsolute(weblog))}">${fn:escapeXml(weblog.name)}</a>
+                    <li>
+                        <a class="site-directory-name" href="${fn:escapeXml(urls.weblogAbsolute(weblog))}">${fn:escapeXml(weblog.name)}</a>
                         <c:if test="${not empty weblog.tagline}">
-                            <div class="text-muted">${fn:escapeXml(weblog.tagline)}</div>
+                            <div class="site-directory-tagline">${fn:escapeXml(weblog.tagline)}</div>
                         </c:if>
                     </li>
                 </c:forEach>

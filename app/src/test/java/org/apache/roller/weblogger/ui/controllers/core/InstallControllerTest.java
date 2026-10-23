@@ -136,13 +136,14 @@ class InstallControllerTest {
      */
     @Test
     void theInstallerErrorPagesPrintNoDiagnostics() throws Exception {
-        for (String page : List.of("DatabaseError.jsp", "UnknownError.jsp")) {
+        for (String page : List.of("DatabaseError.jsp", "Bootstrap.jsp")) {
             String jsp = java.nio.file.Files.readString(
                     java.nio.file.Path.of("src/main/webapp/WEB-INF/jsps/core", page));
             for (String forbidden : List.of("${messages}", "rootCause", "StackTrace", "['class']")) {
                 assertFalse(jsp.contains(forbidden), page + " prints " + forbidden);
             }
-            assertTrue(jsp.contains("installer.detailsInServerLog"), page + " points at the server log");
+            assertTrue(jsp.contains("installer.detailsInServerLog") || jsp.contains("installer.startFailedExplanation"),
+                    page + " points at the server log");
         }
     }
 
@@ -166,7 +167,9 @@ class InstallControllerTest {
         }
 
         assertEquals(".Bootstrap", view);
-        assertEquals("installer.error.unknown.pageTitle", model.getAttribute("pageTitle"));
+        assertEquals("installer.start.pageTitle", model.getAttribute("pageTitle"));
+        assertEquals(Boolean.TRUE, model.getAttribute("startFailed"),
+                "the page says the start failed, not that the tables are merely ready");
         assertNothingDiagnostic(model);
         assertTrue(errors.stream().anyMatch(line -> line.contains("bootstrap")),
                 "the failure is logged at ERROR: " + errors);
@@ -207,6 +210,9 @@ class InstallControllerTest {
         String view = controller.execute(request(), model);
 
         assertEquals(".Bootstrap", view);
+        assertEquals("installer.start.pageTitle", model.getAttribute("pageTitle"),
+                "nothing has gone wrong: the page is not titled as an unknown error");
+        assertFalse(model.containsAttribute("startFailed"));
         assertNothingDiagnostic(model);
     }
 
@@ -389,7 +395,10 @@ class InstallControllerTest {
             }
 
             assertEquals(".Bootstrap", view, failure.toString());
-            assertEquals("installer.error.unknown.pageTitle", each.getAttribute("pageTitle"));
+            assertEquals("installer.start.pageTitle", each.getAttribute("pageTitle"));
+            assertEquals(Boolean.TRUE, each.getAttribute("startFailed"));
+            assertFalse(logged.stream().anyMatch(line -> line.contains("ENTERING") || line.contains("EXITING")),
+                    "no leftover method-trace lines: " + logged);
             assertNothingDiagnostic(each);
             assertTrue(logged.contains(failure.getClass().getName() + ": " + failure.getMessage()),
                     "logged with its exception: " + logged);

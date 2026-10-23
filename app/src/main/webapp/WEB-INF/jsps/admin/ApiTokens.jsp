@@ -40,6 +40,7 @@
 <c:choose>
     <c:when test="${not empty tokenRows}">
         <spring:message code="apiTokens.revoke.confirm" var="revokeConfirm"/>
+        <div class="table-responsive">
         <table class="rollertable table" id="apiTokensTable">
             <tr>
                 <th scope="col"><spring:message code="apiTokens.owner"/></th>
@@ -47,7 +48,6 @@
                 <th scope="col"><spring:message code="apiTokens.label"/></th>
                 <th scope="col"><spring:message code="apiTokens.role"/></th>
                 <th scope="col"><spring:message code="apiTokens.weblog"/></th>
-                <th scope="col"><spring:message code="apiTokens.issuedBy"/></th>
                 <th scope="col"><spring:message code="apiTokens.created"/></th>
                 <th scope="col"><spring:message code="apiTokens.lastUsed"/></th>
                 <th scope="col"><spring:message code="apiTokens.expiry"/></th>
@@ -55,7 +55,14 @@
             </tr>
             <c:forEach var="row" items="${tokenRows}">
                 <tr>
-                    <td>${fn:escapeXml(row.token.user.userName)}</td>
+                    <td>
+                        ${fn:escapeXml(row.token.user.userName)}
+                        <%-- Issued by is usually the owner again; a column of
+                             its own for that squeezed the table. --%>
+                        <c:if test="${not empty row.issuedBy and row.issuedBy != row.token.user.userName}">
+                            <div class="entry-meta"><spring:message code="apiTokens.issuedBy"/>: <span class="data">${fn:escapeXml(row.issuedBy)}</span></div>
+                        </c:if>
+                    </td>
                     <td>
                         <c:choose>
                             <c:when test="${row.token.user.agent}"><spring:message code="userList.kind.agent"/></c:when>
@@ -76,12 +83,16 @@
                             <c:otherwise><span class="data">${fn:escapeXml(row.token.scopeWeblog)}</span></c:otherwise>
                         </c:choose>
                     </td>
-                    <td class="data">${fn:escapeXml(row.issuedBy)}</td>
-                    <td class="data"><rc:date value="${row.token.created}"/></td>
-                    <td class="data"><rc:date value="${row.token.lastUsedAt}"/></td>
-                    <td class="data">
+                    <td class="data text-nowrap"><rc:date value="${row.token.created}"/></td>
+                    <td class="data text-nowrap">
                         <c:choose>
-                            <c:when test="${empty row.token.expiresAt}"><spring:message code="apiTokens.expiry.never"/></c:when>
+                            <c:when test="${empty row.token.lastUsedAt}"><span class="data-none"><spring:message code="apiTokens.lastUsed.never"/></span></c:when>
+                            <c:otherwise><rc:date value="${row.token.lastUsedAt}"/></c:otherwise>
+                        </c:choose>
+                    </td>
+                    <td class="data text-nowrap">
+                        <c:choose>
+                            <c:when test="${empty row.token.expiresAt}"><span class="data-none"><spring:message code="apiTokens.expiry.never"/></span></c:when>
                             <c:otherwise><rc:date value="${row.token.expiresAt}"/></c:otherwise>
                         </c:choose>
                     </td>
@@ -108,6 +119,7 @@
                 </tr>
             </c:forEach>
         </table>
+        </div>
     </c:when>
     <c:otherwise>
         <div class="empty-state">

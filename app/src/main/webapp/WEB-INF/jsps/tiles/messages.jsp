@@ -16,6 +16,7 @@
   directory of this distribution.
 --%>
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
+<%@ page session="false" %>
 
 <script>
     $(document).ready(function () {
@@ -56,5 +57,3 @@
         </ul>
     </div>
 </c:if>
-
-<!-- ALERT_END: this comment needed for AJAX error handling -->

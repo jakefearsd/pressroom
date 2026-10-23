@@ -34,6 +34,30 @@
     --bs-body-bg: var(--paper);
     --bs-body-color: var(--ink);
     --bs-border-color: var(--line);
+    /* Components that read the link colour through a variable (.nav-link,
+       pagination, dropdown links) follow the accent too. */
+    --bs-link-color: var(--accent);
+    --bs-link-hover-color: color-mix(in srgb, var(--accent) 75%, var(--ink));
+    /* Native radios, checkboxes and range inputs take the accent rather than
+       the browser's own blue (Members' permission radios, for one). */
+    accent-color: var(--accent);
+    /* Native scrollbars and pickers follow the theme (a white scrollbar
+       under a dark .table-responsive otherwise). */
+    color-scheme: light dark;
+}
+
+/* Links. Bootstrap paints <a> from --bs-link-color-rgb, an r,g,b triplet
+   that cannot be written from a hex token, so admin links stayed Bootstrap
+   blue in both modes -- 3.85:1 on the dark surface, failing AA on the 12px
+   caps labels. The colour is set directly instead. These two rules come
+   first on purpose: every later class-scoped link rule (.quiet-link,
+   .rail-link, .section-index a, ...) wins over them. */
+a {
+    color: var(--accent);
+}
+
+a:hover {
+    color: var(--bs-link-hover-color);
 }
 
 table {
@@ -147,6 +171,17 @@ p {
 .btn-sm {
     padding: 4px 10px;
     font-size: 12px;
+}
+
+/* The current one of a row of filter chips or tabs (Entries' status chips,
+   Users' All/People/Agents). .btn-secondary and .btn-outline-secondary both
+   ride the quiet .btn treatment above, so without this the chip that says
+   "you are here" looked exactly like the ones that do not. */
+.btn[aria-current="page"] {
+    --bs-btn-bg: var(--accent-quiet);
+    --bs-btn-border-color: var(--accent);
+    --bs-btn-hover-border-color: var(--accent);
+    --bs-btn-active-border-color: var(--accent);
 }
 
 /* Hover/active shade toward --ink, NOT toward black. In light mode --ink is
@@ -279,6 +314,22 @@ label,
     margin-top: 12px;
 }
 
+/* Bootstrap's stock yellow on the surface is about 1.6:1 and has no dark
+   value; --warn reads in both modes (WeblogConfig's custom-domain note). */
+.text-warning {
+    color: var(--warn) !important;
+}
+
+/* Plain text whose line breaks are the writer's (a comment body). */
+.pre-wrap {
+    white-space: pre-wrap;
+}
+
+/* Bootstrap's muted grey is not a token; the quiet register is --ink-soft. */
+.text-muted {
+    color: var(--ink-soft) !important;
+}
+
 .text-danger {
     color: var(--bad) !important;
 }
@@ -359,7 +410,7 @@ label,
     margin-left: 0;
 }
 
-.form-stacked .row.mb-3 > label.col-sm-3,
+.form-stacked .row.mb-3 > .col-sm-3,
 .form-stacked .row.mb-3 > .col-sm-9,
 .form-stacked .row.mb-3 > .offset-sm-3 {
     display: block;
@@ -371,7 +422,9 @@ label,
     padding-left: 0;
 }
 
-.form-stacked .row.mb-3 > label.col-sm-3 {
+/* Any label-column element, not only <label>: Weblog settings' read-only
+   "Blog URL" is a <span> and sat indented by the column's own padding. */
+.form-stacked .row.mb-3 > .col-sm-3 {
     padding-top: 0;
     margin-bottom: 4px;
 }
@@ -413,6 +466,12 @@ label,
 .weblog-switcher .dropdown-item.active {
     background: var(--accent-quiet);
     color: var(--ink);
+}
+
+/* The phone-width Menu button that unfolds the rail and sidebar (the
+   layouts' #adminRailColumn); hidden from md up by .d-md-none. */
+.rail-toggle {
+    margin-bottom: 12px;
 }
 
 /* ---- The rail: context header + tool groups ---- */
@@ -538,10 +597,36 @@ p.pagetip {
 
 /* The icon/label gap used to be a hardcoded &nbsp; in MainMenu.jsp -- a
    non-breaking space is content, and it does not scale with the type. */
-.mm_weblog_name {
+/* Doubled class: beats .section-head (which the h3 also carries, for the
+   Routes marker) wherever the two rules sit in this file. The name is a
+   name to pick, at weight 600 in ink -- not a 12px caps label. */
+.mm_weblog_name.section-head {
     display: flex;
     align-items: center;
     gap: 6px;
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: 14.5px;
+    font-weight: 600;
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--ink);
+}
+
+.mm_weblog_name a {
+    color: var(--ink);
+    text-decoration: none;
+}
+
+.mm_weblog_name a:hover {
+    color: var(--accent);
+    text-decoration: underline;
+}
+
+.mm_weblog_name .data {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--ink-soft);
 }
 
 .mm_subtable_label {
@@ -758,25 +843,32 @@ table.mm_table_actions td {
     .editor-grid {
         grid-template-columns: 1fr;
     }
+    /* order: the writing surface (title, body) comes before the publish
+       rail on a phone, not a screen and a half below it. */
     .editor-main {
         grid-column: 1;
         grid-row: auto;
+        order: -1;
     }
+    /* grid-row: auto as well: the rail's desktop grid-row: 1 would
+       otherwise pin it above the writing surface whatever its order. */
     .editor-rail,
     .editor-rail-extra {
         grid-column: 1;
+        grid-row: auto;
     }
 }
 
 /* The title is layout hierarchy, not emphasis: the one large element on the
-   page, capped at the card's 26px serif. Everything else stays on the type
-   scale -- emphasis is weight, never size. */
+   page, capped at 26px. Everything else stays on the type scale -- emphasis
+   is weight, never size. Plex Sans at 600, not the card's Plex Serif: no
+   @font-face for the serif ships, so it fell back to Georgia/Times. */
 .editor-title {
     width: 100%;
     padding: 0;
     border: none;
     background: transparent;
-    font-family: "IBM Plex Serif", Georgia, serif;
+    font-family: var(--font-ui);
     font-size: 26px;
     font-weight: 600;
     line-height: 1.25;
@@ -1077,6 +1169,10 @@ table.mm_table_actions td {
    anyone holds in their head while scrolling, and Save used to sit below all
    of them. */
 .settings-grid {
+    /* The first group's caps label is the column's first child, which
+       .section-head:first-child pulls flush to the top: without this it sat
+       hard against the intro paragraph above the form. */
+    margin-top: 24px;
     display: grid;
     grid-template-columns: minmax(0, 1fr) 252px;
     gap: 24px;
@@ -1131,6 +1227,12 @@ table.mm_table_actions td {
     .settings-rail {
         position: static;
     }
+
+    /* Single column: the rail falls below every field, where a jump list
+       to the sections above it no longer helps. Save stays. */
+    .settings-rail-index {
+        display: none;
+    }
 }
 
 /* ---- Main menu: one quiet row per weblog ----
@@ -1144,9 +1246,34 @@ table.mm_table_actions td {
 
 .weblog-actions {
     display: flex;
-    gap: 16px;
+    flex-wrap: wrap;
+    gap: 8px 16px;
     align-items: center;
     margin-top: 8px;
+}
+
+.weblog-actions > * {
+    white-space: nowrap;
+}
+
+/* ---- Site directory: the public root while no weblog fronts the site ---- */
+.site-directory li {
+    padding: 12px 0;
+    border-top: 1px solid var(--line);
+}
+
+.site-directory-name {
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.site-directory-name:hover {
+    text-decoration: underline;
+}
+
+.site-directory-tagline {
+    margin-top: 2px;
+    color: var(--ink-soft);
 }
 
 /* ---- Theme chooser: a grid of cards ----
@@ -1301,6 +1428,91 @@ time.data {
     font-variant-numeric: tabular-nums;
 }
 
+/* A word standing where a value would be ("Never") inside a data cell:
+   the UI face, quiet, not mono. */
+.data-none {
+    font-family: var(--font-ui);
+    color: var(--ink-soft);
+}
+
+/* "2026-10-23 04:44" is one value: at 16px mono a narrow column broke it
+   into three lines (Entries' Published/Updated, API tokens' Created and
+   Last used). */
+time.data {
+    white-space: nowrap;
+}
+
+/* Comments moderation: the Entry column (4th) is context, the Comment column
+   is the content. An uncapped entry title took ~300px at 1280 and squeezed
+   short comments onto several lines; it is cut with an ellipsis instead
+   (the full title stays in the link's text for readers and screen readers). */
+#commentsModerationForm table.rollertable td:nth-child(4) a {
+    display: inline-block;
+    max-width: 16em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+}
+
+/* ---- Row actions: one pattern on every list ----
+   Edit and delete are icon buttons (each with an aria-label naming the row)
+   in one unlabelled, right-aligned last column: Categories, Pages and
+   Businesses each used to do this a different way (labelled columns, red
+   text links, outline buttons). The icons sit at --ink-soft so a column of
+   them stays quiet; hover says what they do. Callers: <td class="row-actions">
+   holding .row-action links/buttons, .row-action-danger on delete. */
+.row-actions {
+    text-align: right;
+    white-space: nowrap;
+    width: 1%;
+}
+
+.row-action {
+    display: inline-block;
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+    color: var(--ink-soft);
+    line-height: 1.4;
+    text-decoration: none;
+}
+
+.row-action + .row-action,
+.row-action + form,
+form + .row-action {
+    margin-left: 8px;
+}
+
+.row-actions form {
+    display: inline;
+}
+
+.row-action:hover,
+.row-action:focus-visible {
+    color: var(--accent);
+}
+
+.row-action-danger:hover,
+.row-action-danger:focus-visible {
+    color: var(--bad);
+}
+
+/* The primary "New ..." action of a list screen: one small button above the
+   table, in the card, on every list (Pages, Categories, Businesses, Users). */
+.list-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+/* Pages renders the strip around a guarded button (JspConsistencyTest pins
+   that shape), so an empty list leaves it holding no element. */
+.list-actions:not(:has(*)) {
+    display: none;
+}
+
 /* ---- Entries list rows (task B5) ----
    The title is the row's primary target, so it carries the weight -- 600,
    not a larger size: emphasis in this system is weight, never size. Under
@@ -1382,6 +1594,10 @@ time.data {
 .status-pill.status-unsaved { background: var(--paper); border-color: var(--line); color: var(--ink-soft); }
 .status-pill.status-enabled { background: color-mix(in srgb, var(--good) 18%, var(--surface)); border-color: color-mix(in srgb, var(--good) 45%, var(--surface)); }
 .status-pill.status-disabled { background: color-mix(in srgb, var(--bad) 12%, var(--surface)); border-color: color-mix(in srgb, var(--bad) 35%, var(--surface)); }
+/* A pill that is also a link (Main Menu's "N awaiting approval"): the pill
+   is the affordance, so no underline; hover deepens the border. */
+a.status-pill { text-decoration: none; }
+a.status-pill:hover { color: var(--ink); border-color: var(--accent); }
 
 /* ---- Selection bar (task B3) ----
    One shared bar for every list that offers bulk actions (Entries,
@@ -1471,8 +1687,10 @@ time.data {
     color: var(--accent);
 }
 
+/* min(): a plain 30em overrode .img-fluid's 100% cap, so the preview
+   overflowed a 390px screen. */
 .theme-thumb {
-    max-width: 30em;
+    max-width: min(30em, 100%);
 }
 
 /* Maintenance: one bordered row per operation, so the three long-running
@@ -1503,7 +1721,8 @@ body {
     position: absolute;
     bottom: 0;
     width: 100%;
-    height: 60px;
+    min-height: 60px;
+    overflow-wrap: anywhere;
     background-color: var(--paper);
     border-top: 1px solid var(--line);
     padding: 1.5em;
@@ -1680,19 +1899,6 @@ div.image-controls input {
    The JS now toggles this class instead of writing colors directly. */
 .field-invalid-highlight {
     background: color-mix(in srgb, var(--bad) 20%, var(--surface));
-}
-
-/* MainMenu's entry count is the one remaining Bootstrap badge. The status
-   badges that used to sit alongside it are gone from this file (task B1):
-   Entries.jsp/Pages.jsp were converted to the .status-pill component above.
-   EntryEdit.jsp/PageEdit.jsp still emit the old badge markup -- they are
-   owned by the parallel editor-rebuild worktree and are converted by the
-   post-merge task M1 -- so their badges render in stock unstyled Bootstrap
-   colors until then; that is a known, accepted transitional gap, not a
-   regression to fix here. */
-.badge.bg-secondary {
-    background-color: color-mix(in srgb, var(--line) 55%, var(--surface)) !important;
-    color: var(--ink-soft) !important;
 }
 
 /* Quiet Instrument: flash messages (tiles/messages.jsp, #messages/#errors --
