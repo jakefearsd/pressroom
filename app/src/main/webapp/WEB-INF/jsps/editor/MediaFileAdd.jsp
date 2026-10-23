@@ -25,7 +25,7 @@
 
 <form id="entry" class="form-stacked guard-submit" action="${pageContext.request.contextPath}/roller-ui/authoring/mediaFileAdd!save.rol" method="POST" enctype="multipart/form-data">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
-    <input type="hidden" name="directoryName" value="${directoryName}"/>
+    <input type="hidden" name="directoryName" value="${fn:escapeXml(directoryName)}"/>
 
     <%-- The folder select stays ABOVE the drop zone. It is not optional the
          way the three text fields below are -- it decides where the batch
@@ -36,7 +36,7 @@
         <div class="col-sm-9">
             <select id="mfadd_bean_directoryId" name="bean.directoryId" class="form-select">
                 <c:forEach items="${allDirectories}" var="opt">
-                    <option value="${opt.id}" ${opt.id == bean.directoryId ? 'selected' : ''}>${opt.name}</option>
+                    <option value="${opt.id}" ${opt.id == bean.directoryId ? 'selected' : ''}>${fn:escapeXml(opt.name)}</option>
                 </c:forEach>
             </select>
         </div>

@@ -25,15 +25,15 @@
 
 <form id="entry" class="form-stacked" action="${pageContext.request.contextPath}/roller-ui/authoring/mediaFileEdit!save.rol" method="POST" enctype="multipart/form-data">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
-    <input type="hidden" name="mediaFileId" value="${mediaFileId}" id="mediaFileId"/>
-    <input type="hidden" name="bean.permalink" value="${bean.permalink}"/>
+    <input type="hidden" name="mediaFileId" value="${fn:escapeXml(mediaFileId)}" id="mediaFileId"/>
+    <input type="hidden" name="bean.permalink" value="${fn:escapeXml(bean.permalink)}"/>
 
     <c:if test="${bean.isImage}">
         <div class="row mb-3">
             <span class="col-form-label col-sm-3"><spring:message code="mediaFileEdit.thumbnail"/></span>
             <div class="col-sm-9">
-                <a href='${bean.permalink}' target="_blank">
-                    <img alt="" src='${bean.thumbnailURL}'
+                <a href='${fn:escapeXml(bean.permalink)}' target="_blank">
+                    <img alt="" src='${fn:escapeXml(bean.thumbnailURL)}'
                          title='<spring:message code="mediaFileEdit.clickToView"/>'/>
                 </a>
             </div>
@@ -46,7 +46,7 @@
             <span class="col-form-label col-sm-3"><spring:message code="mediaFileEdit.focalPoint"/></span>
             <div class="col-sm-9">
                 <div id="focalPicker" style="position:relative; display:inline-block; cursor:crosshair; line-height:0">
-                    <img id="focalImage" src='${bean.permalink}' alt=""
+                    <img id="focalImage" src='${fn:escapeXml(bean.permalink)}' alt=""
                          style="max-width:240px; max-height:240px; display:block"/>
                     <span id="focalMarker"
                           style="position:absolute; width:14px; height:14px; margin:-7px 0 0 -7px;
@@ -80,7 +80,7 @@
 
         <div class="col-sm-9">
 
-            <spring:message code="mediaFileEdit.fileTypeSize" arguments="${bean.contentType},${bean.length}"/>
+            <spring:message code="mediaFileEdit.fileTypeSize" arguments="${fn:escapeXml(bean.contentType)},${bean.length}"/>
 
             <c:if test="${bean.isImage}">
                 <spring:message code="mediaFileEdit.fileDimensions" arguments="${bean.width},${bean.height}"/>
@@ -95,7 +95,7 @@
         <div class="col-sm-9">
 
             <input type="text" id="clip_text" size="57"
-                   value='${bean.permalink}' readonly />
+                   value='${fn:escapeXml(bean.permalink)}' readonly />
 
             <c:url var="linkIconURL" value="/roller-ui/images/clippy.svg"/>
             <button class="clipbutton" data-clipboard-target="#clip_text" type="button"
@@ -196,7 +196,7 @@
     <p class="pagetip"><spring:message code="mediaFileEdit.crop.tip"/></p>
 
     <cropper-canvas id="cropCanvas" background style="width:100%; height:360px">
-        <cropper-image id="cropImage" src='${bean.permalink}' alt=""></cropper-image>
+        <cropper-image id="cropImage" src='${fn:escapeXml(bean.permalink)}' alt=""></cropper-image>
         <cropper-shade hidden></cropper-shade>
         <cropper-handle action="select" plain></cropper-handle>
         <cropper-selection id="cropSelection" initial-coverage="0.9" movable resizable>
@@ -216,7 +216,7 @@
 
     <form id="cropForm" class="mt-2 guard-submit" action="${pageContext.request.contextPath}/roller-ui/authoring/mediaFileEdit!crop.rol" method="POST">
         <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
-        <input type="hidden" name="mediaFileId" value="${mediaFileId}"/>
+        <input type="hidden" name="mediaFileId" value="${fn:escapeXml(mediaFileId)}"/>
         <input type="hidden" name="cropX" id="cropX" value="0"/>
         <input type="hidden" name="cropY" id="cropY" value="0"/>
         <input type="hidden" name="cropWidth" id="cropWidth" value="0"/>

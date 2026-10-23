@@ -124,7 +124,8 @@ public class MediaFileAddController extends MediaFileBase {
                             fileName = fileName.substring(0, terminated).trim();
                         }
                         if (fileName.indexOf('/') != -1 || fileName.indexOf('\\') != -1 || fileName.contains("..")) {
-                            addError(model, "uploadFiles.error.badPath", fileName, request);
+                            addError(model, "uploadFiles.error.badPath",
+                                    StringEscapeUtils.escapeHtml4(fileName), request);
                             continue;
                         }
                     }
@@ -176,7 +177,14 @@ public class MediaFileAddController extends MediaFileBase {
                 if (args == null || args.length == 0) {
                     addError(model, msg.getKey(), request);
                 } else {
-                    addError(model, msg.getKey(), (Object[]) args, request);
+                    // The manager's refusals carry the uploaded file's name and
+                    // content type, both sent by the browser; the banner is
+                    // printed unescaped.
+                    Object[] escaped = new Object[args.length];
+                    for (int i = 0; i < args.length; i++) {
+                        escaped[i] = StringEscapeUtils.escapeHtml4(args[i]);
+                    }
+                    addError(model, msg.getKey(), escaped, request);
                 }
             }
 

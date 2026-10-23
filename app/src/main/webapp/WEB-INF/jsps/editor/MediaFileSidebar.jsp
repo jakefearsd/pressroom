@@ -99,7 +99,7 @@
     <input type="hidden" name="bean.sizeFilterType" value="mediaFileView.gt"/>
 
     <label for="beanTags"><spring:message code="mediaFileView.tags"/></label>
-    <input type="text" name="bean.tags" value="${bean.tags}" id="beanTags" maxlength="50" class="form-control"/>
+    <input type="text" name="bean.tags" value="${fn:escapeXml(bean.tags)}" id="beanTags" maxlength="50" class="form-control"/>
 
     <button type="submit" id="searchButton" class="btn btn-primary"><spring:message code="mediaFileView.search"/></button>
 

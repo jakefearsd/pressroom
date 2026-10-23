@@ -76,7 +76,7 @@
         </c:if>
         <c:if test="${not empty bean.tags}">
             <li>
-                <spring:message code="mediaFileView.filesTagged" arguments="${bean.tags}"/>
+                <spring:message code="mediaFileView.filesTagged" arguments="${fn:escapeXml(bean.tags)}"/>
             </li>
         </c:if>
     </ul>
@@ -86,7 +86,7 @@
 <c:otherwise>
 
     <p class="subtitle">
-        <spring:message code="mediaFileView.folderName"/>: ${currentDirectory.name}
+        <spring:message code="mediaFileView.folderName"/>: ${fn:escapeXml(currentDirectory.name)}
     </p>
     <p class="pagetip">
         <spring:message code="mediaFileView.dirPageTip"/>
@@ -98,7 +98,7 @@
     <form id="mediaFileViewForm" name="mediaFileViewForm" action="${pageContext.request.contextPath}/roller-ui/authoring/mediaFileView.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
         <input type="hidden" name="directoryId" value="${directoryId}"/>
-        <input type="hidden" name="newDirectoryName" value="${newDirectoryName}"/>
+        <input type="hidden" name="newDirectoryName" value="${fn:escapeXml(newDirectoryName)}"/>
         <input type="hidden" name="mediaFileId" value=""/>
 
         <div class="image-controls">
@@ -108,7 +108,7 @@
                 <span><spring:message code="mediaFileView.viewFolder"/>:</span>
                 <select name="viewDirectoryId" id="viewDirectoryMenu" class="form-select" onchange="onView()">
 <c:forEach items="${allDirectories}" var="opt">
-<option value="${opt.id}" ${opt.id == viewDirectoryId ? 'selected' : ''}>${opt.name}</option>
+<option value="${opt.id}" ${opt.id == viewDirectoryId ? 'selected' : ''}>${fn:escapeXml(opt.name)}</option>
 </c:forEach>
 </select>
             </c:if>
@@ -300,7 +300,7 @@
 
                     <select name="selectedDirectory" id="moveTargetMenu" class="form-select" style="display: inline; width: 15em">
 <c:forEach items="${allDirectories}" var="opt">
-<option value="${opt.id}" ${opt.id == selectedDirectory ? 'selected' : ''}>${opt.name}</option>
+<option value="${opt.id}" ${opt.id == selectedDirectory ? 'selected' : ''}>${fn:escapeXml(opt.name)}</option>
 </c:forEach>
 </select>
 

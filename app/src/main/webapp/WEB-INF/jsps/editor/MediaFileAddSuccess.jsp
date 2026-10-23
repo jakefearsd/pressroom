@@ -60,7 +60,7 @@
 
                             <p>
                                 <b><spring:message code="mediaFileSuccess.type"/></b>
-                                ${newImage.contentType}
+                                ${fn:escapeXml(newImage.contentType)}
                             </p>
 
                             <p>
@@ -127,7 +127,7 @@
 
                             <p>
                                 <b><spring:message code="mediaFileSuccess.type"/></b>
-                                ${newFile.contentType},&nbsp;
+                                ${fn:escapeXml(newFile.contentType)},&nbsp;
 
                                 <b><spring:message code="mediaFileSuccess.size"/></b>
                                 <%-- No dimensions here: this loop is the
