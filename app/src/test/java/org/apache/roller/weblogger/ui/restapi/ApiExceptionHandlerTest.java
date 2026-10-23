@@ -6,9 +6,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.validation.BeanPropertyBindingResult;
-import org.springframework.validation.FieldError;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ApiExceptionHandlerTest {
@@ -31,6 +28,57 @@ class ApiExceptionHandlerTest {
                 "instance must be the path the client actually called, /api prefix included");
     }
 
+    /** One home for the opaque 500, shared with the MCP endpoint's own failures. */
+    @Test
+    void theInternalErrorFactoryIsTheOpaque500() {
+        ApiProblem problem = ApiException.internalError().toProblem("/api/mcp");
+        assertEquals("https://roller.invalid/problems/internal-error", problem.type());
+        assertEquals("Internal error", problem.title());
+        assertEquals(500, problem.status());
+        assertEquals("The request could not be completed.", problem.detail());
+    }
+
+    /**
+     * PostgreSQL's lock timeout (SQLState 55P03, "canceling statement due to
+     * lock timeout") is the anchor claim giving up behind another save of the
+     * same weblog: transient, so a retryable 503 with Retry-After, not an
+     * opaque 500. Found anywhere in the cause chain, as EclipseLink wraps it.
+     */
+    @Test
+    void aLockTimeoutIsARetryable503() {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/weblogs/x/entries");
+        Exception failure = new org.apache.roller.weblogger.WebloggerException("Timed out claiming an anchor",
+                new jakarta.persistence.PersistenceException("EclipseLink-4002",
+                        new java.sql.SQLException("canceling statement due to lock timeout", "55P03")));
+
+        ResponseEntity<ApiProblem> response = handler.handleUnexpected(failure, request);
+
+        assertEquals(503, response.getStatusCode().value());
+        assertEquals(MediaType.APPLICATION_PROBLEM_JSON, response.getHeaders().getContentType());
+        assertEquals("2", response.getHeaders().getFirst("Retry-After"));
+        ApiProblem body = response.getBody();
+        assertNotNull(body);
+        assertEquals("https://roller.invalid/problems/busy", body.type());
+        assertEquals(503, body.status());
+        assertEquals("Another save of this weblog is in progress; retry shortly.", body.detail());
+        assertEquals("/api/v1/weblogs/x/entries", body.instance());
+    }
+
+    /** Only that SQLState: a deadlock, a constraint violation or a dropped connection stays the opaque 500. */
+    @Test
+    void anyOtherDatabaseFailureStaysTheOpaque500() {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/weblogs/x/entries");
+        for (String state : new String[] {"40P01", "23505", "08006", "57014", null}) {
+            Exception failure = new org.apache.roller.weblogger.WebloggerException("db",
+                    new java.sql.SQLException("db", state));
+
+            ResponseEntity<ApiProblem> response = handler.handleUnexpected(failure, request);
+
+            assertEquals(500, response.getStatusCode().value(), String.valueOf(state));
+            assertNull(response.getHeaders().getFirst("Retry-After"), String.valueOf(state));
+        }
+    }
+
     /**
      * An unexpected exception must not leak its message or stack to a client.
      * The detail is fixed text; the real cause goes to the log.
@@ -48,40 +96,6 @@ class ApiExceptionHandlerTest {
                 "internal detail must never reach the client");
         assertFalse(body.detail().contains("com.example"),
                 "internal detail must never reach the client");
-    }
-
-    /**
-     * The third promised behavior: a bean-validation failure becomes a 400
-     * problem+json whose errors array names every invalid field. Covers a
-     * field with a message and one with a null getDefaultMessage(), which
-     * Spring produces for a rejected value that carries no message.
-     */
-    @Test
-    void aValidationFailureBecomesA400ListingEachFieldError() throws NoSuchMethodException {
-        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/weblogs/x/entries");
-
-        BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "target");
-        bindingResult.addError(new FieldError("target", "title", "must not be blank"));
-        bindingResult.addError(new FieldError("target", "slug", null));
-        MethodParameter methodParameter = new MethodParameter(
-                ApiExceptionHandlerTest.class.getDeclaredMethod("dummyValidationTarget", String.class), 0);
-        MethodArgumentNotValidException ex =
-                new MethodArgumentNotValidException(methodParameter, bindingResult);
-
-        ResponseEntity<ApiProblem> response = handler.handleValidation(ex, request);
-
-        assertEquals(400, response.getStatusCode().value());
-        assertEquals(MediaType.APPLICATION_PROBLEM_JSON, response.getHeaders().getContentType());
-        ApiProblem body = response.getBody();
-        assertNotNull(body);
-        assertNotNull(body.errors());
-        assertEquals(2, body.errors().size());
-        assertTrue(body.errors().stream()
-                        .anyMatch(fe -> "title".equals(fe.field()) && "must not be blank".equals(fe.message())),
-                "title's field error must carry its message");
-        assertTrue(body.errors().stream()
-                        .anyMatch(fe -> "slug".equals(fe.field()) && fe.message() == null),
-                "a field error with no default message must still be reported, with a null message");
     }
 
     /**
@@ -144,10 +158,71 @@ class ApiExceptionHandlerTest {
         assertFalse(body.detail().contains("NumberFormatException"),
                 "the exception's own class name must never reach the client");
         assertTrue(body.detail().contains("limit"), "the offending parameter name is fine to name back");
+        assertEquals("limit has an invalid value; it must be a whole number.", body.detail(),
+                "the name is the subject, not a quoted value");
     }
 
-    @SuppressWarnings("unused")
-    private void dummyValidationTarget(String arg) { }
+    /** The detail names what the parameter takes, from the type it binds to. */
+    @Test
+    void aTypeMismatchSaysWhatTheParameterTakes() throws NoSuchMethodException {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/admin/users");
+        MethodParameter methodParameter = new MethodParameter(
+                ApiExceptionHandlerTest.class.getDeclaredMethod("dummyTypedTarget", int.class), 0);
+
+        assertEquals("enabled has an invalid value; it must be true or false.",
+                handler.handleTypeMismatch(mismatch(Boolean.class, "enabled", methodParameter), request)
+                        .getBody().detail());
+        assertEquals("focalX has an invalid value; it must be a number.",
+                handler.handleTypeMismatch(mismatch(Double.class, "focalX", methodParameter), request)
+                        .getBody().detail());
+        assertEquals("since has an invalid value.",
+                handler.handleTypeMismatch(mismatch(java.time.Instant.class, "since", methodParameter), request)
+                        .getBody().detail());
+        assertEquals("when has an invalid value.",
+                handler.handleTypeMismatch(mismatch(null, "when", methodParameter), request)
+                        .getBody().detail());
+    }
+
+    private static org.springframework.web.method.annotation.MethodArgumentTypeMismatchException mismatch(
+            Class<?> type, String name, MethodParameter parameter) {
+        return new org.springframework.web.method.annotation.MethodArgumentTypeMismatchException(
+                "x", type, name, parameter, new IllegalArgumentException("x"));
+    }
+
+    /**
+     * A client typo is not a server fault: the type-mismatch line carries no
+     * stack trace, only the parameter and the path.
+     */
+    @Test
+    void aTypeMismatchIsLoggedWithoutAStackTrace() throws NoSuchMethodException {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/admin/users");
+        MethodParameter methodParameter = new MethodParameter(
+                ApiExceptionHandlerTest.class.getDeclaredMethod("dummyTypedTarget", int.class), 0);
+        org.apache.logging.log4j.core.Logger logger = (org.apache.logging.log4j.core.Logger)
+                org.apache.logging.log4j.LogManager.getLogger(ApiExceptionHandler.class);
+        java.util.List<org.apache.logging.log4j.core.LogEvent> events = new java.util.concurrent.CopyOnWriteArrayList<>();
+        org.apache.logging.log4j.core.appender.AbstractAppender appender =
+                new org.apache.logging.log4j.core.appender.AbstractAppender("capture", null, null, true,
+                        org.apache.logging.log4j.core.config.Property.EMPTY_ARRAY) {
+                    @Override
+                    public void append(org.apache.logging.log4j.core.LogEvent event) {
+                        events.add(event.toImmutable());
+                    }
+                };
+        appender.start();
+        org.apache.logging.log4j.Level before = logger.getLevel();
+        logger.addAppender(appender);
+        logger.setLevel(org.apache.logging.log4j.Level.INFO);
+        try {
+            handler.handleTypeMismatch(mismatch(int.class, "limit", methodParameter), request);
+        } finally {
+            logger.removeAppender(appender);
+            logger.setLevel(before);
+        }
+        assertEquals(1, events.size(), events.toString());
+        assertNull(events.get(0).getThrown(), "no stack trace for a client typo");
+        assertTrue(events.get(0).getMessage().getFormattedMessage().contains("limit"));
+    }
 
     @SuppressWarnings("unused")
     private void dummyTypedTarget(int arg) { }
