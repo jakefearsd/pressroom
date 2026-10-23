@@ -17,6 +17,14 @@
  */
 package org.apache.roller.weblogger.business;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.roller.weblogger.business.EntryHtmlCache.Inputs;
@@ -26,6 +34,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * {@link EntryHtmlCache}: one slot per entry and host, valid only for the
@@ -174,5 +183,95 @@ class EntryHtmlCacheTest {
         EntryHtmlCache cache = EntryHtmlCache.fromConfig();
         assertEquals(16L * 1024 * 1024, cache.maxBytes());
         assertEquals(3_600_000L, cache.timeoutMillis());
+    }
+
+    // ------------------------------------------------------------- concurrency
+
+    /**
+     * Every entry render on every thread reads this cache, so a hit may not
+     * wait on anything another thread holds -- above all not on an eviction
+     * in progress. The eviction here is held open by the test seam; a
+     * cache-wide monitor (the first version) makes the read wait it out.
+     */
+    @Test
+    void aHitDoesNotWaitForAnEvictionInProgress() throws Exception {
+        EntryHtmlCache cache = cache(140, 140);
+        String html = "<p>abc</p>";                     // 46 bytes a slot: three fit
+        cache.put("k1", V1, Part.TEXT, html);
+        cache.put("k2", V1, Part.TEXT, html);
+        cache.put("k3", V1, Part.TEXT, html);
+
+        CountDownLatch evicting = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        cache.evictionHook = () -> {
+            evicting.countDown();
+            try {
+                release.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        };
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> writer = pool.submit(() -> cache.put("k4", V1, Part.TEXT, html));
+            assertTrue(evicting.await(10, TimeUnit.SECONDS), "the fourth slot must start an eviction");
+
+            Future<String> reader = pool.submit(() -> cache.get("k1", V1, Part.TEXT));
+            assertEquals(html, reader.get(2, TimeUnit.SECONDS),
+                    "a hit must be served while another thread is evicting");
+
+            release.countDown();
+            writer.get(10, TimeUnit.SECONDS);
+        } finally {
+            release.countDown();
+            pool.shutdownNow();
+        }
+    }
+
+    /**
+     * Many threads putting, re-rendering parts, superseding inputs and
+     * reading, with the budget forcing eviction throughout: the running
+     * weight never goes negative, ends in agreement with the slots actually
+     * held, and within the budget once the churn has stopped.
+     */
+    @Test
+    void theWeightStaysExactAndBoundedUnderConcurrentChurn() throws Exception {
+        long budget = 20_000;
+        EntryHtmlCache cache = cache(budget, 2_000);
+        int threads = 8;
+        int iterations = 20_000;
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        List<Future<Long>> lowest = new ArrayList<>();
+        try {
+            for (int t = 0; t < threads; t++) {
+                Random random = new Random(t);
+                lowest.add(pool.submit(() -> {
+                    start.await();
+                    long min = Long.MAX_VALUE;
+                    for (int i = 0; i < iterations; i++) {
+                        String key = "k" + random.nextInt(200);
+                        Inputs inputs = new Inputs(random.nextInt(3), 1L, "text", "summary");
+                        Part part = Part.values()[random.nextInt(Part.values().length)];
+                        if (random.nextBoolean()) {
+                            cache.put(key, inputs, part, "x".repeat(random.nextInt(400)));
+                        } else {
+                            cache.get(key, inputs, part);
+                        }
+                        min = Math.min(min, cache.weight());
+                    }
+                    return min;
+                }));
+            }
+            start.countDown();
+            for (Future<Long> f : lowest) {
+                assertTrue(f.get(60, TimeUnit.SECONDS) >= 0, "the running weight went negative");
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+
+        assertEquals(cache.weighHeld(), cache.weight(), "the counter must agree with the slots held");
+        assertTrue(cache.weight() <= budget, "over budget once the churn stopped: " + cache.weight());
     }
 }
