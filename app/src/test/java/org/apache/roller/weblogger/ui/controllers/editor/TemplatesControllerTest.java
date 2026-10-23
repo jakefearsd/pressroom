@@ -31,6 +31,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.ui.Model;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -58,11 +59,13 @@ class TemplatesControllerTest extends EditorControllerTestSupport {
 
     private TemplatesController controller;
     private Model model;
+    private RedirectAttributes redirectAttributes;
 
     @BeforeEach
     void setUp() throws Exception {
         controller = prepare(new TemplatesController());
         model = newModel();
+        redirectAttributes = newRedirectAttributes();
         weblog.setEditorTheme(WeblogTheme.CUSTOM);
 
         // The controller resolves the weblog's theme through its injected facade's
@@ -150,7 +153,7 @@ class TemplatesControllerTest extends EditorControllerTestSupport {
 
     @Test
     void addRejectsAnEmptyName() throws Exception {
-        controller.add(request, model, "", ComponentType.CUSTOM);
+        controller.add(request, model, redirectAttributes, "", ComponentType.CUSTOM);
 
         assertTrue(errors(model).contains("Template.error.nameNull"),
                 "Expected a nameNull error, got: " + errors(model));
@@ -161,7 +164,7 @@ class TemplatesControllerTest extends EditorControllerTestSupport {
     void addRejectsANameThatIsTooLong() throws Exception {
         String tooLong = "x".repeat(RollerConstants.TEXTWIDTH_255 + 1);
 
-        controller.add(request, model, tooLong, ComponentType.CUSTOM);
+        controller.add(request, model, redirectAttributes, tooLong, ComponentType.CUSTOM);
 
         assertTrue(errors(model).contains("Template.error.nameSize"),
                 "Expected a nameSize error, got: " + errors(model));
@@ -170,7 +173,7 @@ class TemplatesControllerTest extends EditorControllerTestSupport {
 
     @Test
     void addRejectsANullAction() throws Exception {
-        controller.add(request, model, "MyTemplate", null);
+        controller.add(request, model, redirectAttributes, "MyTemplate", null);
 
         assertTrue(errors(model).contains("Template.error.actionNull"),
                 "Expected an actionNull error, got: " + errors(model));
@@ -182,7 +185,7 @@ class TemplatesControllerTest extends EditorControllerTestSupport {
         WeblogTemplate existing = templateNamed("MyTemplate", ComponentType.CUSTOM);
         when(weblogger.getWeblogManager().getTemplateByName(weblog, "MyTemplate")).thenReturn(existing);
 
-        controller.add(request, model, "MyTemplate", ComponentType.CUSTOM);
+        controller.add(request, model, redirectAttributes, "MyTemplate", ComponentType.CUSTOM);
 
         assertTrue(errors(model).contains("pagesForm.error.alreadyExists"),
                 "Expected an alreadyExists error, got: " + errors(model));
@@ -195,7 +198,7 @@ class TemplatesControllerTest extends EditorControllerTestSupport {
         WeblogTemplate existing = templateNamed("MyTemplate", ComponentType.CUSTOM);
         when(weblogger.getWeblogManager().getTemplateByName(weblog, "MyTemplate")).thenReturn(existing);
 
-        controller.add(request, model, "MyTemplate", ComponentType.CUSTOM);
+        controller.add(request, model, redirectAttributes, "MyTemplate", ComponentType.CUSTOM);
 
         assertTrue(errors(model).contains("duplicate:MyTemplate"), "Got: " + errors(model));
     }
@@ -209,7 +212,7 @@ class TemplatesControllerTest extends EditorControllerTestSupport {
         WeblogTemplate existing = templateNamed("<b>MyTemplate</b>", ComponentType.CUSTOM);
         when(weblogger.getWeblogManager().getTemplateByName(weblog, "<b>MyTemplate</b>")).thenReturn(existing);
 
-        controller.add(request, model, "<b>MyTemplate</b>", ComponentType.CUSTOM);
+        controller.add(request, model, redirectAttributes, "<b>MyTemplate</b>", ComponentType.CUSTOM);
 
         assertTrue(errors(model).contains("duplicate:&lt;b&gt;MyTemplate&lt;/b&gt;"),
                 "Expected the template name HTML-escaped, got: " + errors(model));
@@ -219,7 +222,7 @@ class TemplatesControllerTest extends EditorControllerTestSupport {
     void addingACustomTemplateSetsItsLinkToItsName() throws Exception {
         when(weblogger.getWeblogManager().getTemplates(weblog)).thenReturn(List.of());
 
-        controller.add(request, model, "MyTemplate", ComponentType.CUSTOM);
+        controller.add(request, model, redirectAttributes, "MyTemplate", ComponentType.CUSTOM);
 
         ArgumentCaptor<WeblogTemplate> saved = ArgumentCaptor.forClass(WeblogTemplate.class);
         verify(weblogger.getWeblogManager()).saveTemplate(saved.capture());
@@ -233,7 +236,7 @@ class TemplatesControllerTest extends EditorControllerTestSupport {
     void addingAWeblogTemplateForcesTheDefaultPageNameAndSavesTheWeblog() throws Exception {
         when(weblogger.getWeblogManager().getTemplates(weblog)).thenReturn(List.of());
 
-        controller.add(request, model, "AnythingAtAll", ComponentType.WEBLOG);
+        controller.add(request, model, redirectAttributes, "AnythingAtAll", ComponentType.WEBLOG);
 
         ArgumentCaptor<WeblogTemplate> saved = ArgumentCaptor.forClass(WeblogTemplate.class);
         verify(weblogger.getWeblogManager()).saveTemplate(saved.capture());
@@ -247,7 +250,7 @@ class TemplatesControllerTest extends EditorControllerTestSupport {
         registerMessage("pageForm.newTemplateContent", "-- new template body --");
         when(weblogger.getWeblogManager().getTemplates(weblog)).thenReturn(List.of());
 
-        controller.add(request, model, "MyTemplate", ComponentType.CUSTOM);
+        controller.add(request, model, redirectAttributes, "MyTemplate", ComponentType.CUSTOM);
 
         ArgumentCaptor<org.apache.roller.weblogger.pojos.CustomTemplateRendition> rendition =
                 ArgumentCaptor.forClass(org.apache.roller.weblogger.pojos.CustomTemplateRendition.class);
@@ -261,7 +264,7 @@ class TemplatesControllerTest extends EditorControllerTestSupport {
         when(weblogger.getWeblogManager().getTemplates(weblog)).thenReturn(List.of());
         doThrow(new WebloggerException("boom")).when(weblogger.getWeblogManager()).saveTemplate(any());
 
-        String view = controller.add(request, model, "MyTemplate", ComponentType.CUSTOM);
+        String view = controller.add(request, model, redirectAttributes, "MyTemplate", ComponentType.CUSTOM);
 
         assertEquals(".Templates", view);
         assertTrue(errors(model).contains("generic.error.check.logs"),
@@ -276,10 +279,10 @@ class TemplatesControllerTest extends EditorControllerTestSupport {
         registerMessage("pagesForm.added", "added:{0}");
         when(weblogger.getWeblogManager().getTemplates(weblog)).thenReturn(List.of());
 
-        controller.add(request, model, "MyTemplate", ComponentType.CUSTOM);
+        controller.add(request, model, redirectAttributes, "MyTemplate", ComponentType.CUSTOM);
 
-        assertTrue(messages(model).contains("added:MyTemplate"),
-                "Expected a success notice naming the template, got: " + messages(model));
+        assertTrue(flashMessages(redirectAttributes).contains("added:MyTemplate"),
+                "Expected a success notice naming the template, got: " + flashMessages(redirectAttributes));
     }
 
     @Test
@@ -290,10 +293,10 @@ class TemplatesControllerTest extends EditorControllerTestSupport {
         registerMessage("pagesForm.added", "added:{0}");
         when(weblogger.getWeblogManager().getTemplates(weblog)).thenReturn(List.of());
 
-        controller.add(request, model, "<b>MyTemplate</b>", ComponentType.CUSTOM);
+        controller.add(request, model, redirectAttributes, "<b>MyTemplate</b>", ComponentType.CUSTOM);
 
-        assertTrue(messages(model).contains("added:&lt;b&gt;MyTemplate&lt;/b&gt;"),
-                "Expected the template name HTML-escaped, got: " + messages(model));
+        assertTrue(flashMessages(redirectAttributes).contains("added:&lt;b&gt;MyTemplate&lt;/b&gt;"),
+                "Expected the template name HTML-escaped, got: " + flashMessages(redirectAttributes));
     }
 
     @Test
@@ -303,10 +306,10 @@ class TemplatesControllerTest extends EditorControllerTestSupport {
         registerMessage("pagesForm.added", "added:{0}");
         when(weblogger.getWeblogManager().getTemplates(weblog)).thenReturn(List.of());
 
-        controller.add(request, model, "AnythingAtAll", ComponentType.WEBLOG);
+        controller.add(request, model, redirectAttributes, "AnythingAtAll", ComponentType.WEBLOG);
 
-        assertTrue(messages(model).contains("added:" + WeblogTemplate.DEFAULT_PAGE),
-                "Expected the stored name, not the submitted one, got: " + messages(model));
+        assertTrue(flashMessages(redirectAttributes).contains("added:" + WeblogTemplate.DEFAULT_PAGE),
+                "Expected the stored name, not the submitted one, got: " + flashMessages(redirectAttributes));
     }
 
     @Test
@@ -315,10 +318,12 @@ class TemplatesControllerTest extends EditorControllerTestSupport {
         when(weblogger.getWeblogManager().getTemplates(weblog)).thenReturn(List.of());
         doThrow(new WebloggerException("boom")).when(weblogger.getWeblogManager()).saveTemplate(any());
 
-        controller.add(request, model, "MyTemplate", ComponentType.CUSTOM);
+        controller.add(request, model, redirectAttributes, "MyTemplate", ComponentType.CUSTOM);
 
         assertTrue(messages(model).isEmpty(),
                 "A failed add must not also claim success: " + messages(model));
+        assertTrue(flashMessages(redirectAttributes).isEmpty(),
+                "A failed add must not queue a success notice either: " + flashMessages(redirectAttributes));
     }
 
     @Test
@@ -327,11 +332,48 @@ class TemplatesControllerTest extends EditorControllerTestSupport {
         // would render with stale data alongside the new error.
         when(weblogger.getWeblogManager().getTemplates(weblog)).thenReturn(List.of());
 
-        String view = controller.add(request, model, "", ComponentType.CUSTOM);
+        String view = controller.add(request, model, redirectAttributes, "", ComponentType.CUSTOM);
 
         assertEquals(".Templates", view);
         assertTrue(model.containsAttribute("templates"),
                 "loadTemplatesList must always run, even after a validation failure");
+    }
+
+    @Test
+    void addKeepsTheTypedNameAndActionAfterAValidationError() throws Exception {
+        // The sidebar field reads ${newTmplName}; before this the handler
+        // never put it back in the model, so "name too long" highlighted an
+        // EMPTY field and the reader's text was gone.
+        String tooLong = "x".repeat(RollerConstants.TEXTWIDTH_255 + 1);
+        when(weblogger.getWeblogManager().getTemplates(weblog)).thenReturn(List.of());
+
+        controller.add(request, model, redirectAttributes, tooLong, ComponentType.SEARCH);
+
+        assertEquals(tooLong, model.getAttribute("newTmplName"));
+        assertEquals(ComponentType.SEARCH, model.getAttribute("newTmplAction"));
+    }
+
+    @Test
+    void addKeepsTheTypedNameWhenItAlreadyExists() throws Exception {
+        WeblogTemplate existing = templateNamed("MyTemplate", ComponentType.CUSTOM);
+        when(weblogger.getWeblogManager().getTemplateByName(weblog, "MyTemplate")).thenReturn(existing);
+        when(weblogger.getWeblogManager().getTemplates(weblog)).thenReturn(List.of(existing));
+
+        String view = controller.add(request, model, redirectAttributes, "MyTemplate", ComponentType.CUSTOM);
+
+        assertEquals(".Templates", view, "a refused add renders in place, errors and all");
+        assertEquals("MyTemplate", model.getAttribute("newTmplName"));
+    }
+
+    @Test
+    void aSuccessfulAddRedirectsSoAReloadDoesNotResubmit() throws Exception {
+        when(weblogger.getWeblogManager().getTemplates(weblog)).thenReturn(List.of());
+
+        String view = controller.add(request, model, redirectAttributes, "MyTemplate", ComponentType.CUSTOM);
+
+        assertEquals("redirect:/roller-ui/authoring/templates.rol?weblog=" + WEBLOG_HANDLE, view);
+        assertFalse(model.containsAttribute("newTmplName"),
+                "after a success the field starts empty for the next template");
     }
 
     // --- remove ---
@@ -542,14 +584,14 @@ class TemplatesControllerTest extends EditorControllerTestSupport {
 
     @Test
     void aRefusedTemplateNameMarksTheNameField() throws Exception {
-        controller.add(request, model, "", ComponentType.CUSTOM);
+        controller.add(request, model, redirectAttributes, "", ComponentType.CUSTOM);
 
         assertEquals(List.of("newTmplName"), invalidFields(model));
     }
 
     @Test
     void aMissingTemplateActionMarksTheActionSelect() throws Exception {
-        controller.add(request, model, "MyTemplate", null);
+        controller.add(request, model, redirectAttributes, "MyTemplate", null);
 
         assertEquals(List.of("newTmplAction"), invalidFields(model));
     }

@@ -45,6 +45,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
  * Templates listing page.
@@ -78,7 +79,7 @@ public class TemplatesController extends BaseController {
     }
 
     @PostMapping("/templates!add.rol")
-    public String add(HttpServletRequest request, Model model,
+    public String add(HttpServletRequest request, Model model, RedirectAttributes redirectAttributes,
                       @RequestParam(value = "newTmplName", required = false) String newTmplName,
                       @RequestParam(value = "newTmplAction", required = false) ComponentType newTmplAction) {
         populateCommonModel(request, model);
@@ -115,7 +116,13 @@ public class TemplatesController extends BaseController {
                 }
 
                 weblogger.flush();
-                addMessage(model, "pagesForm.added", StringEscapeUtils.escapeHtml4(newTemplate.getName()), request);
+                // Post/redirect/get: rendering the list straight from this POST
+                // meant a reload re-submitted the add (and answered "already
+                // exists" for the template it had just created).
+                addFlashMessage(redirectAttributes, "pagesForm.added",
+                        StringEscapeUtils.escapeHtml4(newTemplate.getName()), request);
+                return "redirect:/roller-ui/authoring/templates.rol?weblog="
+                        + getActionWeblog(request).getHandle();
 
             } catch (WebloggerException ex) {
                 log.error("Error adding new template for weblog - {}", getActionWeblog(request).getHandle(), ex);
@@ -123,6 +130,10 @@ public class TemplatesController extends BaseController {
             }
         }
 
+        // Refused or failed: render in place with what the reader typed, so
+        // the highlighted field holds their text rather than coming back empty.
+        model.addAttribute("newTmplName", newTmplName);
+        model.addAttribute("newTmplAction", newTmplAction);
         loadTemplatesList(request, model);
         return ".Templates";
     }
