@@ -268,4 +268,22 @@ class AdminChromeJspTest {
         assertTrue(src.contains("class=\"pre-wrap\""));
         assertTrue(src.contains("<td class=\"row-actions\">"), "the comment's delete is a row action");
     }
+
+    /**
+     * Admin API tokens squeezed ten columns into the card: "Issued by" (a
+     * column of its own, usually the owner again) now sits under the owner
+     * only when it differs; a never-used token says Never in the UI face
+     * rather than leaving a blank; the table scrolls at phone width and its
+     * timestamps never wrap.
+     */
+    @Test
+    void theAdminTokenListIsNarrowerAndSaysNever() {
+        String src = jsp("admin/ApiTokens.jsp");
+        assertFalse(src.contains("<th scope=\"col\"><spring:message code=\"apiTokens.issuedBy\"/></th>"),
+                "Issued by is still a column of its own");
+        assertTrue(src.contains("row.issuedBy != row.token.user.userName"), "issued-by shows only when it differs");
+        assertTrue(src.contains("apiTokens.lastUsed.never"), "a never-used token says so");
+        assertTrue(src.contains("<div class=\"table-responsive\">"));
+        assertTrue(src.contains("<td class=\"data text-nowrap\">"));
+    }
 }
