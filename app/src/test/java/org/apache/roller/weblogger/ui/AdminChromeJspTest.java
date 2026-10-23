@@ -25,6 +25,7 @@ import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -130,5 +131,58 @@ class AdminChromeJspTest {
             assertTrue(m.group().contains("javaScriptEscape=\"true\""), "not JS-escaped: " + m.group());
         }
         assertTrue(seen > 0, "the scan found no JS-string messages at all");
+    }
+
+    /**
+     * The permission levels came in a different order on each screen (and
+     * Members' own grant form disagreed with its table). One order now:
+     * Administrator, Author, Limited -- Author still preselected on a grant.
+     */
+    @Test
+    void permissionLevelsAreAlwaysAdministratorAuthorLimited() {
+        java.util.regex.Pattern options = java.util.regex.Pattern.compile(
+                "<option value=\"admin\"[^>]*>.*?</option>\\s*<option value=\"post\"[^>]*>.*?</option>"
+                        + "\\s*<option value=\"edit_draft\"", java.util.regex.Pattern.DOTALL);
+        for (String screen : java.util.List.of("editor/Members.jsp", "admin/UserWeblogs.jsp")) {
+            String src = jsp(screen);
+            java.util.regex.Matcher m = options.matcher(src);
+            int lists = 0;
+            while (m.find()) {
+                lists++;
+            }
+            int selects = src.split("<option value=\"admin\"", -1).length - 1;
+            assertTrue(selects > 0 && lists == selects,
+                    screen + ": " + lists + " of " + selects + " level lists are in the house order");
+        }
+        assertTrue(jsp("editor/Members.jsp").contains("<option value=\"post\" selected"),
+                "a new member is still an Author by default");
+    }
+
+    /**
+     * The copy says "you are not allowed to demote or remove yourself", but
+     * the caller's own row had every radio live; the server then refused the
+     * save. The non-admin choices are disabled on that row (the admin radio
+     * stays live, so the save still carries the one admin it needs).
+     */
+    @Test
+    void membersCannotPickADemotionForThemselves() {
+        String src = jsp("editor/Members.jsp");
+        assertTrue(src.contains("<c:set var=\"selfRow\" value=\"${perm.user.userName == authenticatedUser.userName}\"/>"),
+                "Members.jsp knows which row is the caller's own");
+        assertEquals(3, src.split(java.util.regex.Pattern.quote("<c:if test=\"${selfRow}\">disabled</c:if>"), -1).length - 1,
+                "Author, Limited and Remove are disabled on the caller's own row");
+        assertTrue(src.contains("<div class=\"table-responsive\">"), "the table scrolls inside its card at phone width");
+    }
+
+    /**
+     * "No weblogs yet." over "User is a member of no weblogs." said the same
+     * thing twice, and the list opened with "...the following weblog(s):".
+     */
+    @Test
+    void theAccountWeblogsSectionSaysThingsOnce() {
+        String src = jsp("admin/UserWeblogs.jsp");
+        assertFalse(src.contains("userAdmin.userMemberOf"), "the lead-in sentence above the table is gone");
+        assertFalse(src.contains("userAdmin.userHasNoWeblogs"), "the empty state's body no longer repeats its title");
+        assertTrue(src.contains("userWeblogs.empty.body"), "the empty state points at the add form");
     }
 }

@@ -49,11 +49,12 @@
             <spring:message code="yourWebsites.permission"/>
         </label>
         <select class="form-select" name="permissionString" id="grantPermission">
-            <option value="post" selected>
-                <spring:message code="memberPermissions.author"/>
-            </option>
+            <%-- The house order, the table's: Administrator, Author, Limited. --%>
             <option value="admin">
                 <spring:message code="memberPermissions.administrator"/>
+            </option>
+            <option value="post" selected>
+                <spring:message code="memberPermissions.author"/>
             </option>
             <option value="edit_draft">
                 <spring:message code="memberPermissions.limited"/>
@@ -83,6 +84,7 @@
          (Routes.java). --%>
     <c:if test="${not empty weblogPermissions}">
 
+    <div class="table-responsive">
     <table class="rollertable table table-striped">
         <tr>
            <th scope="col" class="rollertable" width="20%">
@@ -102,11 +104,16 @@
            </th>
         </tr>
         <c:forEach items="${weblogPermissions}" var="perm">
+                <%-- The caller's own row: "you are not allowed to demote or
+                     remove yourself" (the save refuses it), so only the admin
+                     radio stays live. It must: a disabled radio is not
+                     submitted, and the save needs the one admin. --%>
+                <c:set var="selfRow" value="${perm.user.userName == authenticatedUser.userName}"/>
                 <tr>
                 <td class="rollertable">
                     <span class="bi bi-person" aria-hidden="true"></span>
-	                ${perm.user.userName}
-                </td>               
+	                ${fn:escapeXml(perm.user.userName)}
+                </td>
                 <td class="rollertable">
                     <input type="radio" 
                         <c:if test='${perm.hasAction("admin")}'>checked</c:if>
@@ -116,24 +123,27 @@
                 <td class="rollertable">
 	                <input type="radio" 
                         <c:if test='${perm.hasAction("post")}'>checked</c:if>
+                        <c:if test="${selfRow}">disabled</c:if>
                         name='perm-${perm.user.id}' value="post"
                         aria-label="<spring:message code='memberPermissions.author'/>: ${fn:escapeXml(perm.user.userName)}" />
                 </td>                
                 <td class="rollertable">
                     <input type="radio" 
                         <c:if test='${perm.hasAction("edit_draft")}'>checked</c:if>
+                        <c:if test="${selfRow}">disabled</c:if>
                         name='perm-${perm.user.id}' value="edit_draft"
                         aria-label="<spring:message code='memberPermissions.limited'/>: ${fn:escapeXml(perm.user.userName)}" />
                 </td>                
                 <td class="rollertable">
-                    <input type="radio" 
+                    <input type="radio"
+                        <c:if test="${selfRow}">disabled</c:if>
                         name='perm-${perm.user.id}' value="-1"
                         aria-label="<spring:message code='memberPermissions.remove'/>: ${fn:escapeXml(perm.user.userName)}" />
                 </td>
            </tr>
        </c:forEach>
     </table>
-    <br />
+    </div>
 
     <div class="control">
        <button type="submit" class="btn btn-primary"><spring:message code="generic.save"/></button>

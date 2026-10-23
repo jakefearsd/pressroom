@@ -28,7 +28,7 @@
 
 <c:choose>
     <c:when test="${not empty permissions}">
-        <p><spring:message code="userAdmin.userMemberOf"/>:</p>
+        <div class="table-responsive">
         <table class="rollertable table" id="userWeblogsTable">
             <tr>
                 <th scope="col"><spring:message code="generic.name"/></th>
@@ -76,11 +76,16 @@
                 </tr>
             </c:forEach>
         </table>
+        </div>
     </c:when>
     <c:otherwise>
         <div class="empty-state">
             <p class="empty-state-title"><spring:message code="empty.userWeblogs.title"/></p>
-            <p class="empty-state-body"><spring:message code="userAdmin.userHasNoWeblogs"/></p>
+            <%-- One sentence, pointing at the add form below; when there is no
+                 form, the note below it says why, so the body says nothing. --%>
+            <c:if test="${groupBloggingEnabled and not empty availableWeblogs}">
+                <p class="empty-state-body"><spring:message code="userWeblogs.empty.body"/></p>
+            </c:if>
         </div>
     </c:otherwise>
 </c:choose>
@@ -108,8 +113,8 @@
             <div>
                 <label for="userWeblogsAddLevel" class="form-label"><spring:message code="userWeblogs.level"/></label>
                 <select class="form-select" name="level" id="userWeblogsAddLevel">
-                    <option value="post" selected="selected"><spring:message code="memberPermissions.author"/></option>
                     <option value="admin"><spring:message code="memberPermissions.administrator"/></option>
+                    <option value="post" selected="selected"><spring:message code="memberPermissions.author"/></option>
                     <option value="edit_draft"><spring:message code="memberPermissions.limited"/></option>
                 </select>
             </div>
