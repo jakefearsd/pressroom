@@ -39,13 +39,17 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import org.apache.roller.weblogger.business.FileContentManager;
 import org.apache.roller.weblogger.business.MediaFileManager;
+import org.apache.roller.weblogger.business.RenditionSupport;
 import org.apache.roller.weblogger.business.UserManager;
 import org.apache.roller.weblogger.business.VirtualHostRegistry;
 import org.apache.roller.weblogger.business.WeblogEntryManager;
 import org.apache.roller.weblogger.business.WeblogManager;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.CustomTemplateRendition;
+import org.apache.roller.weblogger.pojos.MediaFile;
+import org.apache.roller.weblogger.pojos.MediaFileDirectory;
 import org.apache.roller.weblogger.pojos.ThemeTemplate.ComponentType;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
@@ -156,8 +160,19 @@ public class JPAWeblogManagerImpl implements WeblogManager {
     }
     
     /**
-     * convenience method for removing contents of a weblog.
-     * TODO BACKEND: use manager methods instead of queries here
+     * Removes everything that hangs off a weblog, in the caller's transaction.
+     *
+     * <p>Nothing here commits: a failure anywhere leaves the weblog whole once
+     * the caller's unit of work is released. Until 2026-10-22 this committed
+     * three times on the way, so a failure after the first commit left a
+     * weblog with no templates, pages or media, and after the second one with
+     * no entries. The {@link #writePending} calls write what is queued so far
+     * without committing: the bulk deletes after them must see the rows the
+     * unit of work removed.
+     *
+     * <p>Media files leave the disk only once the deletion has committed
+     * ({@link JPAPersistenceStrategy#runAfterCommit}): a file deleted before
+     * the commit is gone for good if the commit then fails.
      */
     private void removeWeblogContents(Weblog weblog)
     throws  WebloggerException {
@@ -214,15 +229,8 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         strategy.getNamedUpdate("FormSubmission.removeByWeblog")
                 .setParameter(1, weblog).executeUpdate();
 
-        // remove mediafile metadata
-        // remove uploaded files
-        MediaFileManager mfmgr = roller.getMediaFileManager();
-        mfmgr.removeAllFiles(weblog);
-        //List<MediaFileDirectory> dirs = mmgr.getMediaFileDirectories(weblog);
-        //for (MediaFileDirectory dir : dirs) {
-            //this.strategy.remove(dir);
-        //}
-        this.strategy.flush();
+        removeMediaFiles(weblog);
+        writePending();
 
         // remove entry revisions before the entries they hang off. Deleting
         // them per-entry would work too, but one statement is cheaper than one
@@ -239,7 +247,7 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         for (WeblogEntry entry : entries) {
             emgr.removeWeblogEntry(entry);
         }
-        this.strategy.flush();
+        writePending();
         
         // delete all weblog categories
         Query removeCategories= strategy.getNamedUpdate("WeblogCategory.removeByWeblog");
@@ -253,9 +261,55 @@ public class JPAWeblogManagerImpl implements WeblogManager {
                     WeblogPermission.ALL_ACTIONS);
         }
         
-        // flush the changes before returning. This is required as there is a
+        // write the changes before returning. This is required as there is a
         // circular dependency between WeblogCategory and Weblog
-        this.strategy.flush();        
+        writePending();
+    }
+
+    /**
+     * The weblog's media directories, files and file tags (the directory
+     * cascades to its files, a file to its tags), and, once that commits,
+     * each file's original, thumbnail and renditions on disk.
+     * {@code MediaFileManager.removeAllFiles} is not used here: it commits per
+     * directory and deletes from disk at once.
+     */
+    private void removeMediaFiles(Weblog weblog) throws WebloggerException {
+        List<String> fileIds = new ArrayList<>();
+        MediaFileManager mfmgr = roller.getMediaFileManager();
+        for (MediaFileDirectory dir : new ArrayList<>(mfmgr.getMediaFileDirectories(weblog))) {
+            for (MediaFile file : dir.getMediaFiles()) {
+                fileIds.add(file.getId());
+            }
+            weblog.getMediaFileDirectories().remove(dir);
+            strategy.remove(dir);
+        }
+        if (fileIds.isEmpty()) {
+            return;
+        }
+        FileContentManager content = roller.getFileContentManager();
+        strategy.runAfterCommit(() -> {
+            for (String fileId : fileIds) {
+                deleteFileQuietly(content, weblog, fileId);
+                deleteFileQuietly(content, weblog, fileId + "_sm");
+                for (String renditionId : RenditionSupport.renditionFileIds(fileId)) {
+                    deleteFileQuietly(content, weblog, renditionId);
+                }
+            }
+        });
+    }
+
+    /** A rendition never generated, or a file already gone, is not an error. */
+    private static void deleteFileQuietly(FileContentManager content, Weblog weblog, String fileId) {
+        try {
+            content.deleteFile(weblog, fileId);
+        } catch (WebloggerException e) {
+            log.debug("File to be deleted already unavailable in the file store: {}", fileId, e);
+        }
+    }
+
+    /** Writes the unit of work's pending changes, inside its transaction, without committing. */
+    private void writePending() {
+        strategy.getEntityManager(true).flush();
     }
     
     /**

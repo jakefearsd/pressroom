@@ -217,9 +217,11 @@ statements per tag).
 Until 2026-10-22 it bulk-DELETEd the weblog's rows mid-transaction, out of
 lock order, and recounted only the names its rows had when it started, so
 a draft published in that window left its new tag's site-wide row
-counting a deleted entry. Note that weblog deletion commits more than once
-(`strategy.flush()` commits): the tag rows and aggregates go in its first
-commit, the entries later.
+counting a deleted entry. Weblog deletion is one transaction (until
+2026-10-22 it committed three times on the way, so a failure part-way left
+a weblog without its media, or without its entries); its tag rows,
+aggregates, entries and categories go in the one commit, and its media
+files leave the disk only after it (`WeblogDeletionAtomicityTest`).
 **The recount depends on READ COMMITTED** (a fresh
 snapshot per statement), which nothing pins; under REPEATABLE READ the lock
 statement would fail with serialization errors instead (fails closed).
