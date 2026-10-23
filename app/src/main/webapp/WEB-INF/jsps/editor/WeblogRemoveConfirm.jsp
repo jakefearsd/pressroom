@@ -35,7 +35,7 @@
 
         <form action="${pageContext.request.contextPath}/roller-ui/authoring/weblogRemove!remove.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
-            <button type="submit" class="btn btn-danger"><spring:message code="generic.yesRemove"/></button>
+            <button type="submit" class="btn btn-danger"><spring:message code="websiteSettings.button.remove"/></button>
         <sec:csrfInput/>
 </form>
 

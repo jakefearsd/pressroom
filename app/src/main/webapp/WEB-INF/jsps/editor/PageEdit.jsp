@@ -334,8 +334,8 @@
                      .modal-footer left-to-right in DOM order, so the reading
                      order IS the markup order (task B7). --%>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><spring:message code="generic.no"/></button>
-                    <button type="submit" class="btn btn-danger"><spring:message code="generic.yes"/></button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><spring:message code="generic.cancel"/></button>
+                    <button type="submit" class="btn btn-danger"><spring:message code="generic.delete"/></button>
                 </div>
                 <sec:csrfInput/>
             </form>
