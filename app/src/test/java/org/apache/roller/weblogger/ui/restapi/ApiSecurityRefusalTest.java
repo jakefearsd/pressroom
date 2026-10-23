@@ -149,12 +149,34 @@ class ApiSecurityRefusalTest {
                 "an unresolved weblog is a missing resource, not a forbidden one");
     }
 
+    /**
+     * A caller holding no role on an existing weblog gets the same 404 as for
+     * a handle that does not exist: a 403 here would confirm the handle, and
+     * let any token holder probe which weblogs exist (README, Errors: 404,
+     * never 403, for what the caller may not see).
+     */
     @Test
-    void anApiCallerWithoutPermissionOnTheWeblogIsForbidden() throws Exception {
+    void anApiCallerWithNoRoleOnTheWeblogGetsNotFoundNotForbidden() throws Exception {
         signInAsAlice();
         nameWeblogInPath("aliceblog");
         when(weblogger.userManager().checkPermission(any(WeblogPermission.class), any()))
                 .thenReturn(false);
+
+        ApiException refusal = refusalFrom(
+                new ApiController(true, List.of(), true, List.of("post")));
+
+        assertEquals(404, refusal.getStatus());
+        assertEquals("No such weblog.", refusal.getMessage());
+    }
+
+    /** A member below the required level already knows the weblog exists: that stays 403. */
+    @Test
+    void aMemberBelowTheRequiredLevelIsForbidden() throws Exception {
+        signInAsAlice();
+        nameWeblogInPath("aliceblog");
+        when(weblogger.userManager().checkPermission(any(WeblogPermission.class), any()))
+                .thenAnswer(call -> ((WeblogPermission) call.getArgument(0))
+                        .getActionsAsList().equals(List.of(WeblogPermission.EDIT_DRAFT)));
 
         ApiException refusal = refusalFrom(
                 new ApiController(true, List.of(), true, List.of("post")));

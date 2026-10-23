@@ -150,7 +150,14 @@ public class RollerHandlerInterceptor implements HandlerInterceptor {
             if (!umgr.checkPermission(required, authenticatedUser)) {
                 log.debug("DENIED: user {} does not have weblog permission = {}",
                         authenticatedUser.getUserName(), required);
-                return deny(apiHandler, RollerHandlerInterceptor::forbidden,
+                // An api caller holding no role on the weblog at all gets the 404 an
+                // unknown handle gets: a 403 would confirm the handle exists. A member
+                // below the required level already knows it does, so stays 403.
+                boolean member = !apiHandler || umgr.checkPermission(
+                        new WeblogPermission(actionWeblog, List.of(WeblogPermission.EDIT_DRAFT)),
+                        authenticatedUser);
+                return deny(apiHandler,
+                        member ? RollerHandlerInterceptor::forbidden : () -> ApiException.notFound("No such weblog."),
                         ACCESS_DENIED_URL, request, response);
             }
         }
