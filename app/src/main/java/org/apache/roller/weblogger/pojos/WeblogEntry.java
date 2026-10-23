@@ -265,7 +265,9 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
      *                 anchor is derived from it at save time
      */
     public WeblogEntry copyAsDraft(String newTitle) throws WebloggerException {
-        WeblogEntry copy = new WeblogEntry();
+        // Constructed id-less: setData copies the original's id over whatever
+        // the constructor drew, and the copy's own id is drawn just below.
+        WeblogEntry copy = EntityIds.materialise(WeblogEntry::new);
         copy.setData(this);
         copy.setId(UUIDGenerator.generateUUID());
         copy.setTitle(newTitle);
