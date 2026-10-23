@@ -28,11 +28,15 @@
 <%-- ============================================================= --%>
 <%-- Next / previous links --%>
 
-<nav>
+<%-- Rendered only when there is somewhere to go: an empty <nav> is still a
+     landmark a screen reader announces. The same markup as the bottom
+     pager, Submissions.jsp and Comments.jsp. --%>
+<c:if test="${pager.prevLink != null or pager.nextLink != null}">
+<nav aria-label="<spring:message code='pager.label'/>">
     <div class="d-flex justify-content-between">
         <c:if test="${pager.prevLink != null}">
             <a href="${fn:escapeXml(pager.prevLink)}" class="btn btn-outline-secondary previous">
-                <span aria-hidden="true">&larr;</span><spring:message code="pager.newer"/></a>
+                <span aria-hidden="true">&larr;</span> <spring:message code="pager.newer"/></a>
         </c:if>
         <c:if test="${pager.nextLink != null}">
             <a href="${fn:escapeXml(pager.nextLink)}" class="btn btn-outline-secondary next ms-auto"><spring:message code="pager.older"/>
@@ -40,6 +44,7 @@
         </c:if>
     </div>
 </nav>
+</c:if>
 
 
 <%-- ============================================================= --%>
@@ -195,7 +200,7 @@
     <td>
         <input type="checkbox" class="form-check-input entry-select"
                name="selectedEntries" value="${post.id}"
-               aria-label="${fn:escapeXml(post.title)}"/>
+               aria-label="${fn:escapeXml(entryTitles[post.id])}"/>
     </td>
 
     <%-- <rc:date/> renders nothing at all for a null value and formats in
@@ -203,9 +208,9 @@
          always meant (see DateTag). The <c:if>s these cells used to carry
          and the message-bundle date pattern they used to resolve are both
          the tag's job now. --%>
-    <td class="data"><rc:date value="${post.pubTime}"/></td>
+    <td class="data text-nowrap"><rc:date value="${post.pubTime}"/></td>
 
-    <td class="data"><rc:date value="${post.updateTime}"/></td>
+    <td class="data text-nowrap"><rc:date value="${post.updateTime}"/></td>
 
     <%-- The title is the row's primary target and it opens the EDITOR. This
          is the authoring surface: clicking a post's name here means "open
@@ -214,10 +219,14 @@
          pencil column that existed only to reach the editor is gone, since
          the title now does its whole job.
 
-         post.displayTitle is entry title text, which EntryBean.copyTo stored
-         HTML-escaped at save time; it is emitted bare here for the same
-         reason every theme emits $entry.title bare (escaping again renders
-         &amp;amp;). post.anchor is machine-derived from the title
+         entryTitles[post.id] is the controller's plain-text label
+         (EntriesController.plainTitle), escaped here exactly once -- in this
+         link and in every aria-label and data-* attribute below. Neither
+         stored form will do: a title is stored HTML-escaped, so
+         fn:escapeXml(post.title) renders &amp;amp; (and the delete modal,
+         filled through .text(), showed "Tom &amp; Jerry"); and an untitled
+         entry's displayTitle is its body with tags stripped, unescaped, so
+         printing it bare was markup injection. post.anchor is machine-derived from the title
          (createAnchorBase strips every non-alphanumeric character) and so
          cannot carry markup today -- it is escaped anyway, because that
          property is an invariant of one method somewhere else, not of this
@@ -227,7 +236,7 @@
             <c:param name="weblog" value="${actionWeblog.handle}"/>
             <c:param name="bean.id" value="${post.id}"/>
         </c:url>
-        <a class="entry-title" href="${editUrl}">${post.displayTitle}</a>
+        <a class="entry-title" href="${editUrl}">${fn:escapeXml(entryTitles[post.id])}</a>
         <div class="entry-meta">
             <span class="data">${fn:escapeXml(post.anchor)}</span><c:if test="${post.status.name() == 'PUBLISHED'}"> &#183;
             <a class="quiet-link" href="${fn:escapeXml(urls.entry(post))}" target="_blank" rel="noopener"><spring:message code="generic.view"/></a></c:if>
@@ -265,7 +274,7 @@
              without a hidden field per row. --%>
         <button type="submit" name="duplicateId" value="${post.id}"
                 class="btn btn-link p-0 align-baseline border-0"
-                aria-label="<spring:message code='generic.duplicate'/>: ${fn:escapeXml(post.title)}"
+                aria-label="<spring:message code='generic.duplicate'/>: ${fn:escapeXml(entryTitles[post.id])}"
                 formaction="${pageContext.request.contextPath}/roller-ui/authoring/entries!duplicate.rol">
             <span class="bi bi-files" aria-hidden="true"
                   title="<spring:message code="generic.duplicate"/>">
@@ -281,8 +290,8 @@
              made this control a permanent SyntaxError. Delegated handler
              below (same convention as MediaFileView.jsp:493). --%>
         <button type="button" class="btn btn-link p-0 align-baseline border-0 entry-delete-btn"
-                data-entry-id="${post.id}" data-entry-title="${fn:escapeXml(post.title)}"
-                aria-label="<spring:message code='generic.delete'/>: ${fn:escapeXml(post.title)}">
+                data-entry-id="${post.id}" data-entry-title="${fn:escapeXml(entryTitles[post.id])}"
+                aria-label="<spring:message code='generic.delete'/>: ${fn:escapeXml(entryTitles[post.id])}">
             <span class="bi bi-trash" aria-hidden="true"
                   title="<spring:message code="generic.delete"/>">
             </span>
@@ -301,7 +310,8 @@
 <%-- ============================================================= --%>
 <%-- Next / previous links --%>
 
-<nav>
+<c:if test="${pager.prevLink != null or pager.nextLink != null}">
+<nav aria-label="<spring:message code='pager.label'/>">
     <div class="d-flex justify-content-between">
         <c:if test="${pager.prevLink != null}">
             <a href="${fn:escapeXml(pager.prevLink)}" class="btn btn-outline-secondary previous">
@@ -313,17 +323,36 @@
         </c:if>
     </div>
 </nav>
+</c:if>
 
+<%-- Two empty states. A filter (status chip, category, tag, text, dates)
+     that matches nothing is not an empty weblog, and inviting a first post
+     there is wrong; the controller's "filtered" says which this is. Clear
+     filters goes to the bare list. --%>
 <c:if test="${empty pager.items}">
     <div class="empty-state">
-        <p class="empty-state-title"><spring:message code="empty.entries.title"/></p>
-        <p class="empty-state-body"><spring:message code="empty.entries.body"/></p>
-        <c:url var="emptyEntriesAddUrl" value="/roller-ui/authoring/entryAdd.rol">
-            <c:param name="weblog" value="${actionWeblog.handle}"/>
-        </c:url>
-        <a href="${emptyEntriesAddUrl}" class="btn btn-primary">
-            <spring:message code="empty.entries.action"/>
-        </a>
+        <c:choose>
+        <c:when test="${filtered}">
+            <p class="empty-state-title"><spring:message code="empty.entries.filtered.title"/></p>
+            <p class="empty-state-body"><spring:message code="empty.entries.filtered.body"/></p>
+            <c:url var="clearFiltersUrl" value="/roller-ui/authoring/entries.rol">
+                <c:param name="weblog" value="${actionWeblog.handle}"/>
+            </c:url>
+            <a href="${clearFiltersUrl}" class="btn btn-secondary">
+                <spring:message code="empty.entries.filtered.action"/>
+            </a>
+        </c:when>
+        <c:otherwise>
+            <p class="empty-state-title"><spring:message code="empty.entries.title"/></p>
+            <p class="empty-state-body"><spring:message code="empty.entries.body"/></p>
+            <c:url var="emptyEntriesAddUrl" value="/roller-ui/authoring/entryAdd.rol">
+                <c:param name="weblog" value="${actionWeblog.handle}"/>
+            </c:url>
+            <a href="${emptyEntriesAddUrl}" class="btn btn-primary">
+                <spring:message code="empty.entries.action"/>
+            </a>
+        </c:otherwise>
+        </c:choose>
     </div>
 </c:if>
 </div>
@@ -341,40 +370,24 @@
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
                 <input type="hidden" name="removeId" value="${removeId}" id="removeId"/>
 
+                <%-- One title in the header (a <p class="modal-title">, the
+                     caps-label role); the entry's name and the sentence are
+                     the body. The answers name the action. No entry-id row:
+                     an internal UUID tells an author nothing. --%>
                 <div class="modal-header">
-                    <div id="delete-entry-modal-title" class="modal-title">
-                        <h3><spring:message code="weblogEntryRemove.removeWeblogEntry"/></h3>
-                        <p><spring:message code="weblogEntryRemove.areYouSure"/></p>
-                    </div>
+                    <p id="delete-entry-modal-title" class="modal-title"><spring:message code="weblogEntryRemove.removeWeblogEntry"/></p>
                 </div>
 
                 <div class="modal-body">
-
-                    <div class="row mb-3">
-                        <span class="col-sm-3 col-form-label">
-                            <spring:message code="weblogEntryRemove.entryTitle"/>
-                        </span>
-                        <div class="col-sm-9">
-                            <p class="form-control-plaintext" id="postTitleLabel"></p>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <span class="col-sm-3 col-form-label">
-                            <spring:message code="weblogEntryRemove.entryId"/>
-                        </span>
-                        <div class="col-sm-9">
-                            <p class="form-control-plaintext" id="postIdLabel"></p>
-                        </div>
-                    </div>
-
+                    <p><strong id="postTitleLabel"></strong></p>
+                    <p><spring:message code="weblogEntryRemove.areYouSure"/></p>
                 </div>
 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <spring:message code="generic.no"/>
+                        <spring:message code="generic.cancel"/>
                     </button>
-                    <button type="submit" class="btn btn-danger"><spring:message code="generic.yes"/></button>
+                    <button type="submit" class="btn btn-danger"><spring:message code="weblogEntryRemove.moveToTrash"/></button>
                 </div>
 
             <sec:csrfInput/>
@@ -393,24 +406,25 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <div id="bulk-delete-modal-title" class="modal-title">
-                    <h3><spring:message code="weblogEntryQuery.bulkDeleteConfirm"/></h3>
-                    <p><spring:message code="weblogEntryQuery.bulkDeleteWarning"/></p>
-                </div>
+                <p id="bulk-delete-modal-title" class="modal-title"><spring:message code="weblogEntryQuery.bulkDeleteConfirm"/></p>
             </div>
+            <%-- The count is the selection bar's own "{0} selected" message,
+                 filled in by the script below: one translatable string with
+                 its placeholder, never a number glued onto a fragment. --%>
             <div class="modal-body">
-                <p id="bulkDeleteCount" class="form-control-plaintext"></p>
+                <p><spring:message code="weblogEntryQuery.bulkDeleteWarning"/></p>
+                <p id="bulkDeleteCount" class="data" data-template="<spring:message code='selection.count'/>"></p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <spring:message code="generic.no"/>
+                    <spring:message code="generic.cancel"/>
                 </button>
                 <%-- Submits the table's form, which is where the selection
                      lives; this button is outside it, hence the form= --%>
                 <button type="submit" class="btn btn-danger" id="bulkDeleteConfirm"
                         form="entriesBulkForm"
                         formaction="${pageContext.request.contextPath}/roller-ui/authoring/entries!bulkDelete.rol">
-                    <spring:message code="generic.yes"/>
+                    <spring:message code="weblogEntryRemove.moveToTrash"/>
                 </button>
             </div>
         </div>
@@ -419,7 +433,6 @@
 
 <script>
     function showDeleteModal( postId, postTitle ) {
-        $('#postIdLabel').html(postId);
         $('#postTitleLabel').text(postTitle);
         $('#removeId').val(postId);
         bootstrap.Modal.getOrCreateInstance(document.getElementById('delete-entry-modal')).show();
@@ -450,8 +463,8 @@
         });
 
         $("#bulkDeleteButton").on('click', function () {
-            $("#bulkDeleteCount").text(
-                    selection().length + " " + "<spring:message code="weblogEntryQuery.selectedCount"/>");
+            var count = document.getElementById('bulkDeleteCount');
+            count.textContent = count.dataset.template.replace('{0}', selection().length);
             bootstrap.Modal.getOrCreateInstance(document.getElementById('bulk-delete-modal')).show();
         });
     });

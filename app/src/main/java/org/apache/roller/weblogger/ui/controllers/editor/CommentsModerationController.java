@@ -18,7 +18,9 @@
 package org.apache.roller.weblogger.ui.controllers.editor;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -225,6 +227,19 @@ public class CommentsModerationController extends BaseController {
         return Status.PENDING;
     }
 
+    /** Each listed comment's entry title as plain text, by entry id (see EntriesController.plainTitle). */
+    private static Map<String, String> entryTitles(List<ReaderComment> shown) {
+        Map<String, String> titles = new HashMap<>();
+        if (shown != null) {
+            for (ReaderComment c : shown) {
+                if (c.getEntry() != null) {
+                    titles.put(c.getEntry().getId(), EntriesController.plainTitle(c.getEntry()));
+                }
+            }
+        }
+        return titles;
+    }
+
     /** The page as asked, held to 0..MAX_PAGE: it is client input, multiplied into an offset. */
     static int clampPage(int page) {
         return Math.clamp(page, 0, MAX_PAGE);
@@ -235,6 +250,7 @@ public class CommentsModerationController extends BaseController {
         int page = clampPage(requestedPage);
         model.addAttribute("status", status.name());
         model.addAttribute("page", page);
+        model.addAttribute("pageSize", COUNT);
         try {
             WeblogEntry entry = null;
             if (entryId != null && !entryId.isEmpty()) {
@@ -245,7 +261,9 @@ public class CommentsModerationController extends BaseController {
                 }
             }
             CommentManager mgr = weblogger.getCommentManager();
-            model.addAttribute("comments", mgr.getComments(actionWeblog, status, entry, page * COUNT, COUNT));
+            List<ReaderComment> shown = mgr.getComments(actionWeblog, status, entry, page * COUNT, COUNT);
+            model.addAttribute("comments", shown);
+            model.addAttribute("entryTitles", entryTitles(shown));
             // What the list shows, counted: the pager's "Older" link reads it.
             model.addAttribute("commentCount", mgr.countComments(actionWeblog, status, entry));
         } catch (WebloggerException ex) {

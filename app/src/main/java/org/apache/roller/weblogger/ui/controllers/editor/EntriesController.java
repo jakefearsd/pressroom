@@ -29,6 +29,7 @@ import java.util.Map;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.WebloggerException;
@@ -136,6 +137,8 @@ public class EntriesController extends BaseController {
 
         String baseUrl = buildBaseUrl(request, bean);
         model.addAttribute("pager", new EntriesPager(baseUrl, bean.getPage(), entries, hasMore));
+        model.addAttribute("entryTitles", plainTitles(entries));
+        model.addAttribute("filtered", isFiltered(bean));
         model.addAttribute("categories", getCategories(request));
         model.addAttribute("sortByOptions", getSortByOptions(request));
         List<KeyValueObject> statusOptions = getStatusOptions(request);
@@ -373,6 +376,46 @@ public class EntriesController extends BaseController {
             params.remove("bean.status", "ALL");
         }
         return "redirect:" + ENTRIES_PATH + URLUtilities.getQueryString(params);
+    }
+
+    /**
+     * Whether the author narrowed the list, so an empty result means "nothing
+     * matched" rather than "this weblog has no entries". The sort order and
+     * the "ALL" status are the defaults wearing a value, not filters -- the
+     * same two {@link #backToList} drops for the same reason.
+     */
+    private boolean isFiltered(EntriesBean bean) {
+        Map<String, String> params = filterParams(bean);
+        params.remove("bean.sortBy");
+        params.remove("bean.status", "ALL");
+        return !params.isEmpty();
+    }
+
+    /** Each entry's {@link #plainTitle}, by entry id; empty for a failed lookup. */
+    static Map<String, String> plainTitles(List<WeblogEntry> entries) {
+        Map<String, String> titles = new HashMap<>();
+        if (entries != null) {
+            for (WeblogEntry entry : entries) {
+                titles.put(entry.getId(), plainTitle(entry));
+            }
+        }
+        return titles;
+    }
+
+    /**
+     * An entry's display title as plain text, for a JSP to escape exactly once
+     * with {@code fn:escapeXml} -- in element content and attributes alike.
+     *
+     * <p>Neither stored form is safe to print as it stands. A title is stored
+     * HTML-escaped (see {@code EntryFieldRules.escapeTitle}), so escaping it
+     * again shows "Tom &amp;amp; Jerry" and a screen reader reads "amp". An
+     * UNTITLED entry's {@code getDisplayTitle()} is its body with tags removed
+     * -- not escaped, and {@code Utilities.removeHTML} keeps an unterminated
+     * tag verbatim -- so printing it bare is markup injection. Unescaping the
+     * one and leaving the other as text gives both the same shape: raw text.
+     */
+    static String plainTitle(WeblogEntry entry) {
+        return StringEscapeUtils.unescapeHtml4(entry.getDisplayTitle());
     }
 
     // Package-private rather than public: widened only so the test can call it
