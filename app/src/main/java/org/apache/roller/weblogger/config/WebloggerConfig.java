@@ -144,7 +144,7 @@ public final class WebloggerConfig {
                         note(false, "Loaded the custom properties from the classpath: "
                                 + configClass.getResource(custom_config).getFile());
                     } else {
-                        note(false, "No roller-custom.properties on the classpath");
+                        note(false, "No custom properties file found on the classpath (roller-custom.properties)");
                     }
                 }
             }
