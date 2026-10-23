@@ -1273,7 +1273,8 @@ class EntriesWriteApiControllerTest {
     }
 
     private static final String EVENT_FORMAT_DETAIL =
-            "eventStart must be a wall-clock time in the weblog's zone, for example 2026-08-02T19:30.";
+            "eventStart must be a wall-clock time in the weblog's zone, for example 2026-08-02T19:30, "
+                    + "or an instant such as 2026-08-02T17:30:00Z.";
 
     @Test
     void anEventIsWrittenInTheWeblogsZoneAndReadBackAsInstants() throws Exception {
@@ -1306,7 +1307,7 @@ class EntriesWriteApiControllerTest {
     }
 
     @Test
-    void anEventTimeWithAnOffsetIsA400ShowingTheFormat() throws Exception {
+    void anUnreadableEventTimeIsA400ShowingTheFormat() throws Exception {
         Weblogger weblogger = mockedWeblogger();
 
         String body = mockMvc(controllerFor(weblogger))
@@ -1314,7 +1315,7 @@ class EntriesWriteApiControllerTest {
                         .requestAttr("actionWeblog", aBerlinWeblog())
                         .requestAttr("authenticatedUser", aUser("maiia"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"t\",\"text\":\"x\",\"eventStart\":\"2026-08-02T19:30+02:00\"}"))
+                        .content("{\"title\":\"t\",\"text\":\"x\",\"eventStart\":\"2 August, 19:30\"}"))
                 .andExpect(status().isBadRequest())
                 .andReturn().getResponse().getContentAsString();
 

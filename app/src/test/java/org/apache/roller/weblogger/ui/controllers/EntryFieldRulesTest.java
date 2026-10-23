@@ -88,7 +88,24 @@ class EntryFieldRulesTest {
                 EntryFieldRules.parseEventTime("2026-08-02T19:30:00", BERLIN).toInstant(), "seconds are accepted");
         assertNull(EntryFieldRules.parseEventTime("  ", BERLIN));
         assertThrows(DateTimeParseException.class,
-                () -> EntryFieldRules.parseEventTime("2026-08-02T19:30+02:00", BERLIN));
+                () -> EntryFieldRules.parseEventTime("2026-08-02 19:30", BERLIN));
+    }
+
+    /**
+     * The API reads times back as instants ({@code ...Z}); what it returns
+     * must be writable again, so an instant or an explicit offset names its
+     * own moment, whatever the weblog's zone. Wall-clock text with no offset
+     * is still the weblog's zone.
+     */
+    @Test
+    void anInstantOrAnOffsetNamesItsOwnMoment() {
+        Instant moment = Instant.parse("2026-08-02T17:30:00Z");
+        assertEquals(moment, EntryFieldRules.parsePubTime("2026-08-02T17:30:00Z", BERLIN).toInstant());
+        assertEquals(moment, EntryFieldRules.parsePubTime("2026-08-02T17:30Z", BERLIN).toInstant());
+        assertEquals(moment, EntryFieldRules.parsePubTime("2026-08-02T19:30+02:00", BERLIN).toInstant());
+        assertEquals(moment, EntryFieldRules.parseEventTime(" 2026-08-02T17:30:00Z ", BERLIN).toInstant());
+        assertThrows(DateTimeParseException.class,
+                () -> EntryFieldRules.parsePubTime("2026-08-02T17:30:00Q", BERLIN));
     }
 
     @Test

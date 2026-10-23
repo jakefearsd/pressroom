@@ -20,6 +20,7 @@ package org.apache.roller.weblogger.ui.controllers;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Locale;
@@ -40,7 +41,8 @@ import org.apache.commons.text.StringEscapeUtils;
  *       theme emits {@code $entry.title} bare. A PAGE title is the opposite --
  *       stored raw, escaped at render -- so copying this rule to the page side
  *       double-encodes and copying the page rule here is stored XSS.</li>
- *   <li>A pubtime is wall-clock time in the WEBLOG's zone. Blank means
+ *   <li>A pubtime is wall-clock time in the WEBLOG's zone, unless it carries
+ *       its own offset or {@code Z}. Blank means
  *       "publish now"; an unparseable non-blank value throws, so a mistyped
  *       time blocks the save instead of silently publishing immediately.</li>
  *   <li>An event time is wall-clock time in the WEBLOG's zone, like a pubtime.</li>
@@ -96,7 +98,9 @@ public final class EntryFieldRules {
     /**
      * Parses a {@code datetime-local} wall-clock string -- what an
      * {@code <input type="datetime-local">} submits -- as time in {@code
-     * zone}. A blank value means "no time chosen" and returns null, which
+     * zone}. A value carrying {@code Z} or an offset ({@code
+     * 2026-03-01T08:30:00Z}, {@code ...T09:30+01:00}) is read as the instant
+     * it names instead, so the API accepts back the instants it returns. A blank value means "no time chosen" and returns null, which
      * callers read as "publish now". A non-blank value that will not parse
      * throws {@link DateTimeParseException} rather than being silently
      * discarded: a mistyped pubtime must surface as a validation error, not
@@ -106,8 +110,24 @@ public final class EntryFieldRules {
         if (StringUtils.isBlank(wallClock)) {
             return null;
         }
-        LocalDateTime local = LocalDateTime.parse(wallClock.trim());
+        String text = wallClock.trim();
+        if (hasOffset(text)) {
+            // An instant ("...Z") or an explicit offset names its own moment: what the
+            // API reads back is an instant, and it must be writable again unchanged.
+            return Timestamp.from(OffsetDateTime.parse(text).toInstant());
+        }
+        LocalDateTime local = LocalDateTime.parse(text);
         return Timestamp.from(local.atZone(zone.toZoneId()).toInstant());
+    }
+
+    /** True when the time part ends in Z or carries a +/- offset; the date's own dashes do not count. */
+    private static boolean hasOffset(String text) {
+        int t = text.indexOf('T');
+        if (t < 0) {
+            return false;
+        }
+        String time = text.substring(t + 1);
+        return time.endsWith("Z") || time.endsWith("z") || time.indexOf('+') >= 0 || time.indexOf('-') >= 0;
     }
 
     private static final DateTimeFormatter WALL_CLOCK =

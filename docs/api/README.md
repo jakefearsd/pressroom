@@ -423,7 +423,12 @@ omitted; publishing with no `pubTime` supplied means "now", not an error.
 `EntryView.category` reads back — and an unknown name is a 400. `pubTime` is
 a wall-clock string in **the weblog's own timezone**, e.g. `2026-03-01T09:30`
 (see the repository's `CLAUDE.md`, "Entry editing", for why this is the
-weblog's zone specifically and not the caller's).
+weblog's zone specifically and not the caller's). **`EntryView` reads every
+time back as an instant** (`2026-03-01T08:30:00Z` for 09:30 in Berlin in
+winter), and a write accepts that form too: a value ending in `Z` or carrying
+an offset (`2026-03-01T09:30+01:00`) names its own moment whatever the
+weblog's zone, so a GET followed by a PATCH of the same `pubTime` changes
+nothing.
 
 **What `text` may hold.** Write Markdown. Besides CommonMark, Roller renders:
 - GitHub tables, `~~strikethrough~~` and bare URLs as links.
@@ -488,8 +493,9 @@ All three fields come back on `EntryView` under the same names.
 
 **Events.** An `EVENT` takes `eventStart`, `eventEnd` and `eventLocation`.
 `eventStart` and `eventEnd` are wall-clock strings in **the weblog's own
-timezone**, in the format `pubTime` takes (`2026-08-02T19:30`; seconds are
-accepted, an offset such as `+02:00` is a 400 whose detail shows the format).
+timezone**, in the formats `pubTime` takes (`2026-08-02T19:30`; seconds are
+accepted, and so is an instant or an offset such as `2026-08-02T17:30:00Z` or
+`2026-08-02T19:30+02:00`; anything else is a 400 whose detail shows the format).
 `eventEnd` before `eventStart` is a 400 (`eventEnd must not be before
 eventStart.`). `EntryView` returns both as instants (`2026-08-02T17:30:00Z` for
 19:30 in Berlin in summer), and the permalink's `Event` block carries the same

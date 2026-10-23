@@ -119,7 +119,10 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   never gain a config switch. Any change to `PublicAddresses` updates the table test at the range's
   edges.
 - **Event times:** wall-clock times in the weblog's zone, editor and API alike
-  (`EntryFieldRules.parseEventTime`/`formatWallClock`).
+  (`EntryFieldRules.parseEventTime`/`formatWallClock`). A value with `Z` or an
+  offset is the instant it names (`EntryFieldRules.parsePubTime`), because
+  `EntryView` reads every time back as an instant and a GET-then-PATCH must
+  round-trip (`EntryTimeRoundTripTest`).
 - **Import logging:** `roller.media.import` logs the host only.
 
 ## Entry writes: check, import, apply
