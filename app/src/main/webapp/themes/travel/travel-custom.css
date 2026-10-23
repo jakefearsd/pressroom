@@ -410,6 +410,13 @@ body.tg .video-embed { border-radius: var(--tg-radius); overflow: hidden; }
 /* the showNextPrevSearchControl macro's hit count (was an <h3>, now a status line). */
 body.tg .search-summary { margin: 0 0 .75rem; font-size: .75rem; color: var(--tg-muted); }
 
+/* The search pager macro's own nav: previous results on the left, more on
+ * the right, and a lone "More results" still on the right. The hit line
+ * above the search-again form is a status line, quiet like the summary. */
+body.tg .search-pager { display: flex; justify-content: space-between; gap: 1rem; }
+body.tg .search-pager-next { margin-left: auto; }
+body.tg .search-hits { margin: 0 0 .5rem; font-size: .75rem; color: var(--tg-muted); }
+
 /* ---- business card ----
  * the footer card for a blog with a business or place; the markup is the
  * showBusinessCard macro's. Tokens only, so light and dark follow the theme. */

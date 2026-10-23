@@ -148,6 +148,73 @@ class ThemePolishTest {
         assertTrue(offenders.isEmpty(), String.join("\n  ", offenders));
     }
 
+    /**
+     * A date archive renders through weblog.vm too, and said nothing about
+     * which month or day it lists. Each article theme names it, in the tab and
+     * on the page, from {@code $model.weblogDateLabel}.
+     */
+    @Test
+    void everyThemesEntryListNamesADateArchive() throws IOException {
+        List<String> offenders = new ArrayList<>();
+        for (Path template : themeFiles(".vm")) {
+            if (!"weblog.vm".equals(template.getFileName().toString())
+                    || "frontpage".equals(template.getParent().getFileName().toString())) {
+                continue;
+            }
+            String src = read(template);
+            String title = src.substring(src.indexOf("<head>"), src.indexOf("</head>"));
+            String main = src.substring(src.indexOf("</head>"));
+            if (!title.contains("$model.weblogDateLabel")) {
+                offenders.add(name(template) + ": <title> does not name the date archive");
+            }
+            if (!main.contains("-view-name\">$utils.escapeHTML($model.weblogDateLabel)<")) {
+                offenders.add(name(template) + ": no heading names the date archive");
+            }
+        }
+        assertTrue(offenders.isEmpty(), String.join("\n  ", offenders));
+    }
+
+    /**
+     * The search pager macro emits its own labelled {@code <nav>}; the themes
+     * wrapped the call in a second one, so the page carried a navigation
+     * landmark holding the status line and another navigation landmark.
+     */
+    @Test
+    void theSearchPagerIsNotNestedInsideAnotherNav() throws IOException {
+        List<String> offenders = new ArrayList<>();
+        for (Path template : themeFiles(".vm")) {
+            String src = read(template);
+            int call = src.indexOf("#showNextPrevSearchControl(");
+            if (call < 0) {
+                continue;
+            }
+            String before = src.substring(0, call);
+            if (before.lastIndexOf("<nav") > before.lastIndexOf("</nav>")) {
+                offenders.add(name(template) + ": the search pager call sits inside a <nav>");
+            }
+        }
+        assertTrue(offenders.isEmpty(), String.join("\n  ", offenders));
+    }
+
+    /**
+     * {@code search-pager} (previous left, more right) and {@code search-hits}
+     * are the shared macros' classes; a theme that does not style them shows
+     * two bare links run together and a hit line in body type.
+     */
+    @Test
+    void everyThemeWithSearchResultsStylesTheSearchPagerAndHitLine() throws IOException {
+        List<String> offenders = new ArrayList<>();
+        for (Path css : themeFiles("-custom.css")) {
+            String src = read(css);
+            for (String selector : new String[]{".search-pager", ".search-hits"}) {
+                if (!src.contains(selector)) {
+                    offenders.add(name(css) + ": no " + selector + " rule");
+                }
+            }
+        }
+        assertTrue(offenders.isEmpty(), String.join("\n  ", offenders));
+    }
+
     /** A search results page whose title omits the query is the same problem. */
     @Test
     void everySearchResultsTitleNamesTheQuery() throws IOException {

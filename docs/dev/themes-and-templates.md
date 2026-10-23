@@ -17,8 +17,8 @@ resolves through the index at the end of `CLAUDE.md`.
   `ThemeCspCoverageTest` enforces it for any theme CSS referencing
   `@font-face`, checking `/webjars/` fonts via
   `getResource("META-INF/resources/webjars/...")`, not the filesystem (Plex
-  is classpath-served, not under `webapp/`). All three ship a `_page`
-  template (see Themes); `journal`'s is covered for the `[contact]` slot and
+  is classpath-served, not under `webapp/`). All four bundled themes ship a
+  `_page` template (see Themes); `journal`'s is covered for the `[contact]` slot and
   the draft-404 case.
 - **Retired**: `basic`, `fauxcoly`, `gaurav` — directories deleted;
   `V018__retire_legacy_themes.sql` moves any weblog still on one to `journal`
@@ -79,7 +79,8 @@ resolves through the index at the end of `CLAUDE.md`.
   `ThemeEditController.save` checks it; the shared-theme branch never has. A
   weblog already on a custom theme is grandfathered (disabling the option
   must not strand it).
-- `journal`, `travel` and `portfolio` each ship a `_page` template
+- Every bundled theme (`journal`, `travel`, `portfolio`, and since the
+  2026-10 fit-and-finish pass `frontpage`) ships a `_page` template
   (`themes/<id>/page.vm`); a `WeblogPage` reaches it via the
   `StaticThemeTemplate` fallback, so a static page renders in the theme's
   own chrome (travel's `tg-header`, portfolio's dark frame), not the fallback
@@ -87,6 +88,21 @@ resolves through the index at the end of `CLAUDE.md`.
   `PortfolioThemeRenderingTest` pin this: a page carrying `[contact]` must
   render through the theme's header/prose classes and ship the audience
   assets in the head, with an `assertFalse` on the fallback `<h1>`.
+
+- **Titles, headings and voice (all bundled themes).** A `<title>` names
+  the view first and the weblog second, joined by an em dash: "Entry —
+  Weblog", "Category — Weblog", "Tagged x — Weblog", "October 2026 —
+  Weblog" (date archive, from `$model.weblogDateLabel`); an entry's or
+  page's own meta title stands alone. On a reading page (permalink, page)
+  the entry or page title is the `h1` and the site name steps down to a `p`
+  with the same class; on a list the site name is the `h1` and the view
+  heading (`xx-view-name`) an `h2`. A list view (category, tag, date
+  archive) says what it is in an `xx-view` block and has its own empty
+  sentence. The themes' fixed reader copy ("Tagged", "Archive", the empty
+  sentences) is English by decision, not bundle keys.
+- The search pager macro emits its own labelled `<nav class="search-pager">`
+  and the hit line `p.search-hits`; a theme wraps it in a `div`, never a
+  second `nav`, and styles both (`ThemePolishTest`).
 
 ## Templates
 - Add/edit/remove live in `TemplatesController` and `TemplateEditController`;
@@ -263,8 +279,8 @@ map assets without this macro fails the build.
   prefixes it with `body.qj`. Both theme rules exclude `.cta-card` through
   `:where(:not(...))`, which adds no specificity, so the heading anchor still
   out-ranks them. Travel needed nothing. Frontpage renders no entry content
-  under `body.fd`: its pages and previews go through the shared fallbacks,
-  whose bodies carry no `fd` class, so their links keep the browser default.
+  of its own; its static pages go through its own `page.vm` (`fd-page`,
+  `fd-prose`), and only its previews use the shared fallback.
 - Hex colours inside a Velocity template are safe only because no macro is
   named like one (`#d29922` is literal text). The same goes for the theme
   stylesheets, which Velocity renders too.

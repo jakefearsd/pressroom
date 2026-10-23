@@ -646,6 +646,13 @@ body.qj .video-embed { border-radius: var(--qj-radius); overflow: hidden; }
  * paragraph -- it needs the size the heading used to give it. */
 body.qj .search-summary { margin: 0 0 .75rem; font-size: .75rem; color: var(--qj-ink-soft); }
 
+/* The search pager macro's own nav: previous results on the left, more on
+ * the right, and a lone "More results" still on the right. The hit line
+ * above the search-again form is a status line, quiet like the summary. */
+body.qj .search-pager { display: flex; justify-content: space-between; gap: 1rem; }
+body.qj .search-pager-next { margin-left: auto; }
+body.qj .search-hits { margin: 0 0 .5rem; font-size: .75rem; color: var(--qj-ink-soft); }
+
 /* ---- business card ----
  * the footer card for a blog with a business or place; the markup is the
  * showBusinessCard macro's. Tokens only, so light and dark follow the theme. */
