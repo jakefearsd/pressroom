@@ -24,7 +24,7 @@
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
 
     <label for="newTmplName"><spring:message code="generic.name"/></label>
-    <input id="newTmplName" type="text" name="newTmplName" value="${newTmplName}" maxlength="255" class="form-control"/>
+    <input id="newTmplName" type="text" name="newTmplName" value="${fn:escapeXml(newTmplName)}" maxlength="255" class="form-control"/>
 
     <c:if test="${not empty availableActions}">
         <label for="newTmplAction"><spring:message code="pagesForm.action"/></label>

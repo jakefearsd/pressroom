@@ -23,7 +23,7 @@
 
 <script src="<c:url value='/theme/scripts/roller-guard-submit.js'/>"></script>
 
-<form action="${pageContext.request.contextPath}/roller-ui/authoring/themeEdit!save.rol" method="post" class="form-vertical guard-submit">
+<form action="${pageContext.request.contextPath}/roller-ui/authoring/themeEdit!save.rol" method="post" class="guard-submit">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
 
     <%-- Two choices side-by-side: choose Shared or Custom Theme.
@@ -40,9 +40,11 @@
     <c:choose>
     <c:when test="${customThemeAllowed}">
 
-    <div class="row row-display-flex">
+    <%-- Side by side from md up; stacked on a phone, where two half-width
+         cards squeezed their descriptions into a word per line. --%>
+    <div class="row row-display-flex g-3">
 
-        <div class="col-6">
+        <div class="col-12 col-md-6">
             <div class="card">
                 <div class="card-body" id="sharedChooser">
                     <%-- .section-head, not a bare h3: this labels the chooser
@@ -58,7 +60,7 @@
             </div>
         </div>
 
-        <div class="col-6">
+        <div class="col-12 col-md-6">
             <div class="card">
                 <div class="card-body" id="customChooser">
                     <h3 class="section-head">
@@ -83,17 +85,18 @@
 
     <div id="sharedNoChange" style="display:none;">
 
-        <%-- you have shared theme X --%>
-        <p class="lead">
-            <spring:message code="themeEditor.yourCurrentTheme"/>&nbsp;<b>${currentThemeName}</b>
-            <c:choose>
-<c:when test="${sharedThemeCustomStylesheet}">
-                <spring:message code="themeEditor.yourCustomStylesheet"/>
-            </c:when>
-<c:otherwise>
-                <spring:message code="themeEditor.yourThemeStyleSheet"/>
-            </c:otherwise>
-</c:choose></p>
+        <%-- "Your weblog uses the X theme." A plain paragraph: p.lead was
+             20px, the page title's size; the theme name carries the
+             emphasis, by weight (the <b> is in the message). The old
+             trailing clause ("using the Shared Theme default stylesheet")
+             was jargon about the normal case; only the exception, a custom
+             stylesheet copy, is worth a sentence. --%>
+        <p class="mt-3">
+            <spring:message code="themeEditor.currentTheme" arguments="${fn:escapeXml(currentThemeName)}"/>
+            <c:if test="${sharedThemeCustomStylesheet}">
+                <spring:message code="themeEditor.customStylesheetNote"/>
+            </c:if>
+        </p>
 
         <p><a href="${urls.weblogAbsolute(actionWeblog)}" target="_blank" rel="noopener">
             <spring:message code="themeEditor.viewYourBlog"/></a></p>
@@ -111,7 +114,9 @@
              ThemeDataServlet). Every card is a <label> wrapping its radio, so
              the whole card is the hit target and the browser does the
              grouping; the change listener is delegated, not inline. --%>
-        <p class="lead" id="themeChooserLabel"><spring:message code="themeEditor.selectTheme"/></p>
+        <%-- The caps-label role, not p.lead's 20px: this names the card grid
+             below (aria-labelledby), the way a section head does. --%>
+        <p class="section-head" id="themeChooserLabel"><spring:message code="themeEditor.selectTheme"/></p>
 
         <%-- The current theme id may name no card at all: a blank
              selectedThemeId (the weblog is on a custom theme), OR a non-blank
@@ -175,7 +180,7 @@
 
     <div id="sharedChangeToShared" style="display:none;">
 
-        <div class="alert alert-warning" style="margin-top:3em; margin-bottom:2em; padding: 1em">
+        <div class="alert alert-warning my-4">
             <spring:message code="themeEditor.proposedSharedThemeChange"/>
         </div>
 
@@ -184,7 +189,7 @@
         <button type="button" name="themePreview" class="btn btn-secondary"
             onclick="fullPreview()"><spring:message code="themeEditor.preview"/></button>
 
-        <button type="submit" class="btn btn-secondary"
+        <button type="submit" class="btn btn-primary"
                 data-busy-label="<spring:message code='themeEditor.saving'/>"><spring:message code="themeEditor.save"/></button>
 
         <button type="button" class="btn btn-secondary" onclick="cancelChanges()"><spring:message code="generic.cancel"/></button>
@@ -193,7 +198,7 @@
 
     <div id="sharedChangeToCustom" style="display:none;">
 
-        <div class="alert alert-warning" style="margin-top:3em; margin-bottom:2em; padding: 1em">
+        <div class="alert alert-warning my-4">
             <spring:message code="themeEditor.proposedSharedChangeToCustom"/>
         </div>
 
@@ -209,7 +214,7 @@
             <label><input type="checkbox" name="importTheme" value="true" ${importTheme ? 'checked' : ''}/> <spring:message code="themeEditor.importAndOverwriteTemplates"/></label>
         </c:otherwise>
 </c:choose><%-- Update button --%>
-        <button type="submit" class="btn btn-secondary"
+        <button type="submit" class="btn btn-primary"
                 data-busy-label="<spring:message code='themeEditor.saving'/>"><spring:message code="themeEditor.save"/></button>
 
         <button type="button" class="btn btn-secondary" onclick="cancelChanges()"><spring:message code="generic.cancel"/></button>
@@ -217,7 +222,7 @@
     </div>
 
     <div id="customNoChange" style="display:none;">
-        <p class="lead"><spring:message code="themeEditor.youAreUsingACustomTheme"/></p>
+        <p class="mt-3"><spring:message code="themeEditor.youAreUsingACustomTheme"/></p>
 
         <p><a href="${urls.weblogAbsolute(actionWeblog)}" target="_blank" rel="noopener">
             <spring:message code="themeEditor.viewYourBlog"/></a></p>
@@ -225,7 +230,7 @@
 
     <div id="customChangeToShared" style="display:none;">
 
-        <div class="alert alert-warning" style="margin-top:3em; margin-bottom:2em; padding: 1em">
+        <div class="alert alert-warning my-4">
             <spring:message code="themeEditor.proposedChangeToShared"/>
         </div>
 
@@ -234,7 +239,7 @@
         <button type="button" name="themePreview" class="btn btn-secondary"
             onclick="fullPreview()"><spring:message code="themeEditor.preview"/></button>
 
-        <button type="submit" class="btn btn-secondary"
+        <button type="submit" class="btn btn-primary"
                 data-busy-label="<spring:message code='themeEditor.saving'/>"><spring:message code="themeEditor.save"/></button>
 
         <button type="button" class="btn btn-secondary" onclick="cancelChanges()"><spring:message code="generic.cancel"/></button>
