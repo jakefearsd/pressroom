@@ -112,7 +112,7 @@ class AuthoringJourneyIT extends RollerIT {
         // --- edit ---------------------------------------------------------------
         String editedTitle = title + " (edited)";
         openEditorFor(title);
-        $("input[name='bean.title']").setValue(editedTitle);
+        $("[name='bean.title']").setValue(editedTitle);
         clickPublish("entryEdit");
 
         $(PERMALINK).should(exist);
@@ -185,7 +185,7 @@ class AuthoringJourneyIT extends RollerIT {
 
         openPath(ENTRY_ADD);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue(title);
+        $("[name='bean.title']").setValue(title);
         Editor.type("Published from the keyboard " + suffix + ".");
 
         $(Editor.CONTENT).sendKeys(Keys.chord(Keys.CONTROL, Keys.ENTER));
@@ -212,7 +212,7 @@ class AuthoringJourneyIT extends RollerIT {
 
         openPath(ENTRY_ADD);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue(title);
+        $("[name='bean.title']").setValue(title);
         Editor.type("Saved from the keyboard " + suffix + ".");
 
         $(Editor.CONTENT).sendKeys(Keys.chord(Keys.CONTROL, "s"));
@@ -246,7 +246,7 @@ class AuthoringJourneyIT extends RollerIT {
      */
     private void writeEntry(String title, String body) {
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue(title);
+        $("[name='bean.title']").setValue(title);
 
         Editor.setText(body);
     }

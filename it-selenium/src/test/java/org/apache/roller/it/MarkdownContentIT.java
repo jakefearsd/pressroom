@@ -221,7 +221,7 @@ class MarkdownContentIT extends RollerIT {
     /** Publishes the fixture body on the weblog and returns the entry's permalink. */
     private String publish(String handle, String title) {
         openEditorInWriteMode(handle);
-        $("input[name='bean.title']").setValue(title);
+        $("[name='bean.title']").setValue(title);
         Editor.setText(BODY);
         clickAndAwaitNewPage($("button[formaction$='entryAdd!publish.rol']"));
         String permalink = $("#entry_bean_permalink").should(exist).getAttribute("href");

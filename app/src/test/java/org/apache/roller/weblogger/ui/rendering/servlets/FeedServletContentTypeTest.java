@@ -13,10 +13,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The type a feed is served as. A browser that accepts anything gets
- * {@code text/xml} so it shows the styled feed instead of offering a
- * download; every other client gets the real Atom type. Styled feeds are on by
- * default (site.newsfeeds.styledFeeds).
+ * The type a feed is served as: Atom, for every client.
+ *
+ * <p>A browser that accepted anything used to be told {@code text/xml} so it
+ * would run the feed's XSLT stylesheet ({@code site.newsfeeds.styledFeeds}).
+ * Browsers are removing XSLT and the feed no longer names a stylesheet, so
+ * that lie bought nothing; the setting and the branch are gone.
  */
 class FeedServletContentTypeTest {
 
@@ -55,11 +57,11 @@ class FeedServletContentTypeTest {
     }
 
     @Test
-    void aBrowserAcceptingAnythingIsServedTextXmlSoItRendersTheStyledFeed() throws Exception {
+    void aBrowserAcceptingAnythingIsServedTheRealAtomTypeToo() throws Exception {
         MockHttpServletResponse response = atom("text/html,*/*;q=0.8", "Mozilla/5.0 (X11; Linux)");
 
         assertEquals(200, response.getStatus());
-        assertTrue(response.getContentType().startsWith("text/xml"), response.getContentType());
+        assertTrue(response.getContentType().startsWith("application/atom+xml"), response.getContentType());
     }
 
     @Test

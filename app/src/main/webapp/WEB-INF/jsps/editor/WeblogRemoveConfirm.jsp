@@ -22,7 +22,7 @@
 </p>
 
 <p style="margin-bottom: 3em">
-    <spring:message code="websiteRemove.youSure" arguments="${fn:escapeXml(actionWeblog.name)}"/>
+    <spring:message code="websiteRemove.youSure" arguments="${[fn:escapeXml(actionWeblog.name)]}"/>
     <br/>
     <br/>
     <span class="warning">

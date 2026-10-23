@@ -98,7 +98,7 @@ class MarkdownPreviewIT extends RollerIT {
         String suffix = Long.toString(System.nanoTime(), 36);
 
         openEditorInWriteMode();
-        $("input[name='bean.title']").setValue("IT Preview " + suffix);
+        $("[name='bean.title']").setValue("IT Preview " + suffix);
         Editor.setText("## Heading " + suffix + "\n\nA **bold** word.\n");
 
         $(PREVIEW_BUTTON).should(visible).click();

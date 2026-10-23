@@ -17,11 +17,14 @@
  */
 package org.apache.roller.weblogger.ui.controllers.core;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -331,7 +334,55 @@ public class SeoController extends BaseController {
     private static boolean canonicalElsewhere(String canonicalUrl, String loc) {
         return StringUtils.isNotBlank(canonicalUrl)
                 && CANONICAL_URL_VALIDATOR.isValid(canonicalUrl)
-                && !canonicalUrl.equals(loc);
+                && !sameAddress(canonicalUrl, loc);
+    }
+
+    /**
+     * Whether two absolute URLs name the same page, the way an author writes a
+     * self-canonical rather than the way the sitemap spells it: the scheme
+     * (http or https), the host's case, a trailing slash and percent-encoding
+     * in the path make no difference. Host, port, path and query otherwise
+     * must match. A value that does not parse is compared as written.
+     */
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Case-insensitive equality of a URL's scheme and host, which RFC 3986 defines as "
+                    + "case-insensitive; the answer only decides whether an item is listed in its own sitemap, "
+                    + "never access.")
+    static boolean sameAddress(String a, String b) {
+        if (a.equals(b)) {
+            return true;
+        }
+        try {
+            URI x = new URI(a);
+            URI y = new URI(b);
+            return x.getHost() != null && x.getHost().equalsIgnoreCase(y.getHost())
+                    && effectivePort(x) == effectivePort(y)
+                    && pathOf(x).equals(pathOf(y))
+                    && Objects.equals(x.getRawQuery(), y.getRawQuery());
+        } catch (URISyntaxException e) {
+            return false;
+        }
+    }
+
+    /**
+     * The port, with the scheme's own default counted as none, so
+     * http://h, http://h:80 and https://h:443 all agree.
+     */
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Case-insensitive equality of a URL's scheme and host, which RFC 3986 defines as "
+                    + "case-insensitive; the answer only decides whether an item is listed in its own sitemap, "
+                    + "never access.")
+    private static int effectivePort(URI uri) {
+        int port = uri.getPort();
+        int schemeDefault = "https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
+        return port == schemeDefault ? -1 : port;
+    }
+
+    private static String pathOf(URI uri) {
+        String path = uri.getPath() == null ? "" : uri.getPath();
+        return path.endsWith("/") ? path.substring(0, path.length() - 1) : path;
     }
 
     /**

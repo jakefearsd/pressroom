@@ -751,6 +751,13 @@ body.pf .search-summary {
     color: var(--pf-muted);
 }
 
+/* The search pager macro's own nav: previous results on the left, more on
+ * the right, and a lone "More results" still on the right. The hit line
+ * above the search-again form is a status line, quiet like the summary. */
+body.pf .search-pager { display: flex; justify-content: space-between; gap: 1rem; }
+body.pf .search-pager-next { margin-left: auto; }
+body.pf .search-hits { margin: 0 0 .5rem; font-size: .75rem; color: var(--pf-muted); }
+
 /* ---- business card ----
  * the footer card for a blog with a business or place; the markup is the
  * showBusinessCard macro's. Tokens only, so light and dark follow the theme. */

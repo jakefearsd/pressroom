@@ -171,12 +171,15 @@
         </div>
 
         <%-- title: the page's one piece of layout hierarchy. Large serif,
-             borderless -- emphasis elsewhere is weight, never size. --%>
-        <input type="text" name="bean.title" value="${fn:escapeXml(bean.title)}" maxlength="255"
-               autofocus
-               class="editor-title"
-               placeholder="<spring:message code="weblogEdit.title"/>"
-               aria-label="<spring:message code="weblogEdit.title"/>"/>
+             borderless -- emphasis elsewhere is weight, never size. 
+             A one-row textarea so a long title wraps (EditorScript.jsp keeps
+             it to one line and grows it). No whitespace inside the element:
+             it would become part of the title. --%>
+        <textarea name="bean.title" rows="1" maxlength="255"
+                  autofocus
+                  class="editor-title"
+                  placeholder="<spring:message code="weblogEdit.title"/>"
+                  aria-label="<spring:message code="weblogEdit.title"/>">${fn:escapeXml(bean.title)}</textarea>
 
         <%-- permalink: small mono line with a copy control --%>
         <c:if test="${actionName == 'entryEdit'}">
@@ -362,7 +365,7 @@
                     <%-- featured image --%>
                     <div class="editor-seo-group" role="group" aria-labelledby="seo_featuredImage_label">
                         <span class="editor-field-label" id="seo_featuredImage_label"><spring:message code="weblogEdit.featuredImage"/></span>
-                        <input type="hidden" id="seo_featuredImageId" name="bean.featuredImageId" value="${bean.featuredImageId}"/>
+                        <input type="hidden" id="seo_featuredImageId" name="bean.featuredImageId" value="${fn:escapeXml(bean.featuredImageId)}"/>
                         <div class="mb-2">
                             <img id="seo_featuredImage_preview" src="${featuredImageThumbnailUrl}" alt=""
                                  style="max-height:120px;${empty featuredImageThumbnailUrl ? 'display:none;' : ''}"/>
@@ -376,7 +379,7 @@
                     <%-- social share (Open Graph) image; when unset the featured image is used --%>
                     <div class="editor-seo-group" role="group" aria-labelledby="seo_ogImage_label">
                         <span class="editor-field-label" id="seo_ogImage_label"><spring:message code="weblogEdit.ogImage"/></span>
-                        <input type="hidden" id="seo_ogImageId" name="bean.ogImageId" value="${bean.ogImageId}"/>
+                        <input type="hidden" id="seo_ogImageId" name="bean.ogImageId" value="${fn:escapeXml(bean.ogImageId)}"/>
                         <div class="mb-2">
                             <img id="seo_ogImage_preview" src="${ogImageThumbnailUrl}" alt=""
                                  style="max-height:120px;${empty ogImageThumbnailUrl ? 'display:none;' : ''}"/>
@@ -488,7 +491,7 @@
                      <time> element through intact. --%>
                 <c:set var="newsletterSentAtText"><rc:date value="${entry.newsletterSentAt}"/></c:set>
                 <p class="pagetip" id="newsletterSentAt">
-                    <spring:message code="newsletter.sentAt" arguments="${newsletterSentAtText}"/>
+                    <spring:message code="newsletter.sentAt" arguments="${[newsletterSentAtText]}"/>
                 </p>
             </c:when>
             <c:when test="${empty actionWeblog.newsletterListUuid}">
@@ -793,7 +796,7 @@
     <%-- SEO panel: search-snippet preview fed from the title/description fields --%>
 
     function updateSeoSnippet() {
-        var title = $('#seo_metaTitle').val() || $("input[name='bean.title']").val() || '';
+        var title = $('#seo_metaTitle').val() || $("[name='bean.title']").val() || '';
         var description = $('#seo_metaDescription').val() || '';
         $('#seo_snippet_title').text(title);
         $('#seo_snippet_description').text(description);
@@ -811,7 +814,7 @@
 
     $(document).ready(function () {
         updateSeoSnippet();
-        $("#seo_metaTitle, #seo_metaDescription, input[name='bean.title']").on('input', updateSeoSnippet);
+        $("#seo_metaTitle, #seo_metaDescription, [name='bean.title']").on('input', updateSeoSnippet);
         updateSeoJsonLdRows();
         $('#seo_jsonldType').on('change', updateSeoJsonLdRows);
     });

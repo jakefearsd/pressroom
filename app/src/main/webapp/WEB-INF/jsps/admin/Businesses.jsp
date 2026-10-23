@@ -39,6 +39,7 @@
 <spring:message code="generic.edit" var="editLabel"/>
 <spring:message code="generic.delete" var="deleteLabel"/>
 <spring:message code="mainPage.actions" var="actionsLabel"/>
+<div class="table-responsive">
 <table class="rollertable table table-striped" width="100%">
     <tr>
         <th scope="col"><spring:message code="businesses.name"/></th>
@@ -60,7 +61,7 @@
             <%-- The prompt names the business: formatted with the RAW name,
                  then escaped once for the attribute (see roller.js on why
                  data-confirm is safe with fn:escapeXml). --%>
-            <spring:message code="businesses.delete.confirm" arguments="${b.name}" var="businessDeleteConfirm"/>
+            <spring:message code="businesses.delete.confirm" arguments="${[b.name]}" var="businessDeleteConfirm"/>
             <form method="post" action="<c:url value='/roller-ui/admin/businesses!delete.rol'/>">
                 <sec:csrfInput/>
                 <input type="hidden" name="id" value="${fn:escapeXml(b.id)}"/>
@@ -72,6 +73,7 @@
     </tr>
     </c:forEach>
 </table>
+</div>
 </c:otherwise>
 </c:choose>
 

@@ -1,5 +1,15 @@
 package org.apache.roller.weblogger.ui.rendering.servlets;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.appender.AbstractAppender;
+import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.logging.log4j.core.config.Property;
 import org.apache.roller.weblogger.TestUtils;
 import org.apache.roller.weblogger.business.WeblogManager;
 import org.apache.roller.weblogger.pojos.CustomTemplateRendition;
@@ -87,6 +97,52 @@ class RenderErrorStatusTest {
         assertTrue(response.getContentAsString().contains("<!-- error-parse -->"),
                 "the reader still gets the error block:\n" + response.getContentAsString());
         assertNull(cached(request), "a page with an error block must never be cached");
+    }
+
+    /**
+     * A broken template is never cached, so it is re-rendered on every
+     * request; a full ERROR stack trace each time would bury every other
+     * line of the log under one crawler. The first failure for a template
+     * (and for each new save of it) is an ERROR with the trace, the repeats
+     * are DEBUG. Both paths, the parse failure and the mid-render one.
+     */
+    @Test
+    void aTemplateThatKeepsFailingLogsItsStackTraceOnce() throws Exception {
+        saveCustomTemplate("unparsable2", "#if($model.weblog.name\n<p>never closed</p>");
+        saveCustomTemplate("failing2", "#parse(\"no-such-template.vm\")");
+        List<LogEvent> events = new ArrayList<>();
+        String loggerName = "org.apache.roller.weblogger.ui.rendering.velocity.VelocityRenderer";
+        AbstractAppender appender = new AbstractAppender("velocity-capture", null, null, true,
+                Property.EMPTY_ARRAY) {
+            @Override
+            public void append(LogEvent event) {
+                events.add(event.toImmutable());
+            }
+        };
+        appender.start();
+        LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+        LoggerConfig lc = new LoggerConfig(loggerName, Level.DEBUG, false);
+        lc.addAppender(appender, Level.DEBUG, null);
+        ctx.getConfiguration().addLogger(loggerName, lc);
+        ctx.updateLoggers();
+        try {
+            for (String link : new String[]{"unparsable2", "failing2"}) {
+                events.clear();
+                for (int i = 0; i < 3; i++) {
+                    assertEquals(500, render(get(link)).getStatus());
+                }
+                List<LogEvent> errors = events.stream().filter(e -> e.getLevel() == Level.ERROR).toList();
+                assertEquals(1, errors.size(), link + ": one ERROR, not one per request: " + events);
+                assertNotNull(errors.get(0).getThrown(), link + ": the one ERROR carries the stack trace");
+                assertEquals(2, events.stream().filter(e -> e.getLevel() == Level.DEBUG
+                        && e.getMessage().getFormattedMessage().contains("again")).count(),
+                        link + ": the repeats are DEBUG: " + events);
+            }
+        } finally {
+            ctx.getConfiguration().removeLogger(loggerName);
+            ctx.updateLoggers();
+            appender.stop();
+        }
     }
 
     @Test

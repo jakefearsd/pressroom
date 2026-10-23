@@ -568,6 +568,26 @@ class JournalThemeRenderingTest {
                 "the empty wording must be the category one:\n" + body);
     }
 
+    /**
+     * A date archive rendered exactly like the home page: "All" was the
+     * current category and nothing on the page or in the tab said which month
+     * the reader was looking at. Empty, it said "Nothing has been published
+     * here yet", which is false for a weblog with entries in other months.
+     */
+    @Test
+    void theDateArchiveNamesItsMonthAndSaysSoWhenEmpty() throws Exception {
+        String body = render("/" + HANDLE + "/date/202001");
+
+        assertTrue(body.contains("<title>January 2020 \u2014 Test Weblog</title>"),
+                "the date archive must name its month in the title:\n" + body);
+        assertTrue(body.contains("<h2 class=\"qj-view-name\">January 2020</h2>"),
+                "the date archive must name its month on the page:\n" + body);
+        assertTrue(body.contains("Nothing was published in January 2020."),
+                "the empty wording must be the archive one:\n" + body);
+        assertFalse(body.contains("weblogDateLabel"),
+                "a reference Velocity could not resolve prints as literal text:\n" + body);
+    }
+
     /** A search results tab that says only "Search results" names nothing. */
     @Test
     void theSearchResultsTitleNamesTheQuery() throws Exception {

@@ -660,7 +660,7 @@ class VirtualHostIT extends RollerIT {
     private String publishEntry(String handle, String title, String body) {
         openPath("/roller-ui/authoring/entryAdd.rol?weblog=" + handle);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue(title);
+        $("[name='bean.title']").setValue(title);
         Editor.setText(body);
         $("button[formaction$='entryAdd!publish.rol']").click();
 

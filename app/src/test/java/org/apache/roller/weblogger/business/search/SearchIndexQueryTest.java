@@ -188,7 +188,49 @@ class SearchIndexQueryTest {
                 "a category with nothing in it must return nothing: " + inNothing);
     }
 
+    /**
+     * Deleting a weblog takes its documents out of the index. Nothing called
+     * removeWeblogIndex, so a deleted weblog's documents stayed forever: the
+     * results page dropped them (their entries are gone) but they still
+     * counted, and "N entries match" and the next-page link overcounted.
+     * Checked on the raw index, under the results filter.
+     */
+    @Test
+    void deletingAWeblogTakesItsDocumentsOutOfTheIndex() throws Exception {
+        Weblog doomed = TestUtils.setupWeblog("searchdoomed", user);
+        TestUtils.endSession(true);
+        indexed("doomed-post", null, doomed, "Doomed", "soon gone quokkaword");
+        TestUtils.endSession(true);
+        awaitIndexedCount(doomed.getHandle(), 1);
+
+        TestUtils.teardownWeblog(doomed.getId());
+        TestUtils.endSession(true);
+
+        awaitIndexedCount(doomed.getHandle(), 0);
+    }
+
     // ---------------------------------------------------------------- helpers
+
+    /** Polls the raw index (no results filter) until the weblog holds this many matching documents. */
+    private static void awaitIndexedCount(String handle, int expected) throws Exception {
+        long deadline = System.nanoTime() + java.time.Duration.ofSeconds(10).toNanos();
+        int count = -2;
+        while (System.nanoTime() < deadline) {
+            try (org.apache.roller.weblogger.business.search.lucene.SearchOperation op =
+                         new org.apache.roller.weblogger.business.search.lucene.SearchOperation(
+                                 TestUtils.weblogger().getIndexManager())) {
+                op.setTerm("quokkaword");
+                op.setWeblogHandle(handle);
+                op.run();
+                count = op.getResultsCount();
+            }
+            if (count == expected) {
+                return;
+            }
+            Thread.sleep(50);
+        }
+        throw new AssertionError(handle + ": expected " + expected + " indexed documents, still " + count);
+    }
 
     private static SearchResultList search(String term, String handle) throws Exception {
         return TestUtils.weblogger().getIndexManager().search(

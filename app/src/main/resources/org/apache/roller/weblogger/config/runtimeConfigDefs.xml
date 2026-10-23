@@ -112,10 +112,6 @@
          <type>integer</type>
          <default-value>30</default-value>
       </property-def>
-      <property-def  name="site.newsfeeds.styledFeeds"  key="configForm.styledFeeds">
-         <type>boolean</type>
-         <default-value>true</default-value>
-      </property-def>
       <!-- How many revisions to keep per entry. -1 keeps everything, which is
            the shipped behaviour: nothing is pruned unless an installation asks
            for it. 0 records no revisions at all. -->

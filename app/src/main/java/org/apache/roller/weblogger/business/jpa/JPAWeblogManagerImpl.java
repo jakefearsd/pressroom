@@ -45,6 +45,7 @@ import org.apache.roller.weblogger.business.UserManager;
 import org.apache.roller.weblogger.business.VirtualHostRegistry;
 import org.apache.roller.weblogger.business.WeblogEntryManager;
 import org.apache.roller.weblogger.business.WeblogManager;
+import org.apache.roller.weblogger.business.search.IndexManager;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.CustomTemplateRendition;
 import org.apache.roller.weblogger.pojos.MediaFile;
@@ -156,6 +157,19 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         // replace its slot; once the delete is durable it is simply dropped.
         String weblogId = weblog.getId();
         strategy.runAfterCommit(() -> templateIdsByAction.forget(weblogId));
+
+        // Its search documents go too, once the delete is durable (a rolled
+        // back delete keeps a weblog whose index is intact). Nothing removed
+        // them before: search dropped them from the page, their entries being
+        // gone, but they still counted towards every total.
+        IndexManager index = roller.getIndexManager();
+        strategy.runAfterCommit(() -> {
+            try {
+                index.removeWeblogIndex(weblog);
+            } catch (WebloggerException e) {
+                log.warn("Could not remove deleted weblog {} from the search index", weblog.getHandle(), e);
+            }
+        });
     }
     
     /**

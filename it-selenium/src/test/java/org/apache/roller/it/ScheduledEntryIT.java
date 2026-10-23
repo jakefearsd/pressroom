@@ -128,7 +128,7 @@ class ScheduledEntryIT extends RollerIT {
     private void scheduleEntry(String handle, String title) {
         openPath("/roller-ui/authoring/entryAdd.rol?weblog=" + handle);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue(title);
+        $("[name='bean.title']").setValue(title);
         Editor.setText("Body of " + title);
 
         executeJavaScript("document.getElementsByName('bean.pubTimeLocal')[0].value = arguments[0];",
@@ -163,7 +163,7 @@ class ScheduledEntryIT extends RollerIT {
     private String publishEntry(String handle, String title) {
         openPath("/roller-ui/authoring/entryAdd.rol?weblog=" + handle);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue(title);
+        $("[name='bean.title']").setValue(title);
         Editor.setText("Body of " + title);
         $("button[formaction$='entryAdd!publish.rol']").click();
 

@@ -107,7 +107,7 @@ class GalleryIT extends RollerIT {
         // --- author and publish the gallery entry ---------------------------
         openPath(ENTRY_ADD);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue("IT Gallery " + suffix);
+        $("[name='bean.title']").setValue("IT Gallery " + suffix);
         Editor.setText("<p>Shot log " + suffix + "</p><p>[gallery dir=\"default\"]</p>");
         $("button[formaction$='entryAdd!publish.rol']").click();
         $(PERMALINK).should(exist);

@@ -46,7 +46,7 @@ public class RemoveWebsiteIndexOperation extends WriteToIndexOperation {
     // ~ Instance fields
     // ========================================================
 
-    private Weblog website;
+    private final Weblog website;
     private Weblogger roller;
 
     // ~ Constructors
@@ -77,12 +77,19 @@ public class RemoveWebsiteIndexOperation extends WriteToIndexOperation {
     protected void doRun() {
         Date start = new Date();
 
-        // since this operation can be run on a separate thread we must treat
-        // the weblog object passed in as a detached object which is proned to
-        // lazy initialization problems, so requery for the object now
+        // The handle as it was given: a weblog being deleted is removed from
+        // the index after its delete commits, when it can no longer be
+        // re-queried. A weblog that still exists is re-queried, since this
+        // operation can run on a separate thread and the object passed in is
+        // detached.
+        String handle = website.getHandle();
+        String name = website.getName();
         try {
-            this.website = roller.getWeblogManager().getWeblog(
-                    this.website.getId());
+            Weblog current = roller.getWeblogManager().getWeblog(website.getId());
+            if (current != null) {
+                handle = current.getHandle();
+                name = current.getName();
+            }
         } catch (WebloggerException ex) {
             log.error("Error getting website object", ex);
             return;
@@ -91,10 +98,6 @@ public class RemoveWebsiteIndexOperation extends WriteToIndexOperation {
         IndexWriter writer = beginWriting();
         try {
             if (writer != null) {
-                String handle = null;
-                if (website != null) {
-                    handle = website.getHandle();
-                }
                 Term tHandle = IndexUtil.getTerm(FieldConstants.WEBSITE_HANDLE,
                         handle);
 
@@ -111,9 +114,6 @@ public class RemoveWebsiteIndexOperation extends WriteToIndexOperation {
         Date end = new Date();
         double length = (end.getTime() - start.getTime()) / (double) RollerConstants.SEC_IN_MS;
 
-        if (website != null) {
-            log.info("Completed deleting indices for website '{}' in '{}' seconds",
-                    website.getName(), length);
-        }
+        log.info("Completed deleting indices for website '{}' in '{}' seconds", name, length);
     }
 }

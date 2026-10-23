@@ -86,7 +86,7 @@
             <c:if test='${perms.hasAction("admin")}'><spring:message code="inviteMember.administrator" var="roleLabel"/><c:set var="permLabels" value="${roleLabel}"/></c:if>
             <c:if test='${perms.hasAction("post")}'><spring:message code="inviteMember.author" var="roleLabel"/><c:set var="permLabels" value="${empty permLabels ? roleLabel : permLabels.concat(', ').concat(roleLabel)}"/></c:if>
             <c:if test='${perms.hasAction("edit_draft")}'><spring:message code="inviteMember.limited" var="roleLabel"/><c:set var="permLabels" value="${empty permLabels ? roleLabel : permLabels.concat(', ').concat(roleLabel)}"/></c:if>
-            <p><spring:message code="yourWebsites.permission.summary" arguments="${fn:escapeXml(permLabels)}"/></p>
+            <p><spring:message code="yourWebsites.permission.summary" arguments="${[fn:escapeXml(permLabels)]}"/></p>
 
             <%-- One recommended action, then the quiet ways in. The four
                  equally-loud buttons this replaced were a toolbar: nothing in

@@ -21,6 +21,9 @@
     #set($tagTitle = "")
     #foreach($titleTag in $model.tags)#if($tagTitle != "")#set($tagTitle = "${tagTitle}, ")#end#set($tagTitle = "${tagTitle}${titleTag}")#end
     <title>Tagged $utils.escapeHTML($tagTitle) — $model.weblog.name</title>
+    #elseif($model.weblogDateLabel)
+    ## A date archive (/date/202610): "October 2026", in the weblog's locale.
+    <title>$utils.escapeHTML($model.weblogDateLabel) — $model.weblog.name</title>
     #else
     <title>$model.weblog.name</title>
     #end
@@ -75,6 +78,11 @@
         <p class="qj-view-label">Tagged</p>
         <h2 class="qj-view-name">$utils.escapeHTML($tagTitle)</h2>
     </div>
+    #elseif($model.weblogDateLabel)
+    <div class="qj-view">
+        <p class="qj-view-label">Archive</p>
+        <h2 class="qj-view-name">$utils.escapeHTML($model.weblogDateLabel)</h2>
+    </div>
     #end
     <div class="qj-entries">
         #if($pagerDays.isEmpty())
@@ -82,6 +90,11 @@
         <p class="qj-list-empty">Nothing has been filed under this category yet.</p>
         #elseif($model.tags && !$model.tags.isEmpty())
         <p class="qj-list-empty">No entries carry that tag yet.</p>
+        #elseif($model.weblogDateLabel)
+        ## "in October 2026", "on October 22, 2026"
+        #set($archiveWhen = "in")
+        #if($model.weblogDate.length() == 8)#set($archiveWhen = "on")#end
+        <p class="qj-list-empty">Nothing was published $archiveWhen $utils.escapeHTML($model.weblogDateLabel).</p>
         #else
         <p class="qj-list-empty">Nothing has been published here yet. The first entry will appear on this page.</p>
         #end

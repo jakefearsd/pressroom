@@ -325,19 +325,25 @@ body.fd :focus-visible { outline: 2px solid var(--fd-focus); outline-offset: 2px
 /* the showNextPrevSearchControl macro's hit count (was an <h3>, now a status line). */
 body.fd .search-summary { margin: 0 0 .75rem; font-size: .75rem; color: var(--fd-ink-soft); }
 
+/* The search pager macro's own nav: previous results on the left, more on
+ * the right, and a lone "More results" still on the right. The hit line
+ * above the search-again form is a status line, quiet like the summary. */
+body.fd .search-pager { display: flex; justify-content: space-between; gap: 1rem; }
+body.fd .search-pager-next { margin-left: auto; }
+body.fd .search-hits { margin: 0 0 .5rem; font-size: .75rem; color: var(--fd-ink-soft); }
+
 /* ---- search results ----
  * The showWeblogSearchAgainForm macro's unclassed controls rendered as raw OS
  * widgets here: the three article themes style #searchAgain, this one never
  * had. Same treatment as the .fd-search form below. */
 .fd-search-again { margin-bottom: 1.25rem; font-size: .90625rem; color: var(--fd-ink-soft); }
-#searchAgain form { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: .5rem 0 0 !important; }
-#searchAgain br { display: none; }
+#searchAgain form { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: .5rem 0 0; }
 #searchAgain input.text,
 #searchAgain select,
 #searchAgain input.button {
     font: inherit;
     font-size: .90625rem;
-    padding: .5rem .7rem !important;
+    padding: .5rem .7rem;
     border: 1px solid var(--fd-line);
     border-radius: var(--fd-radius);
     background: var(--fd-surface);

@@ -101,6 +101,7 @@
         <button type="button" class="btn btn-danger" id="commentsDeleteSelected"><spring:message code="comments.delete"/></button>
     </div>
 
+    <div class="table-responsive">
     <table class="rollertable table table-striped" width="100%">
         <tr>
             <th scope="col" class="rollertable" width="3%">
@@ -175,6 +176,7 @@
             </tr>
         </c:forEach>
     </table>
+    </div>
 
     </c:when>
     <c:otherwise>

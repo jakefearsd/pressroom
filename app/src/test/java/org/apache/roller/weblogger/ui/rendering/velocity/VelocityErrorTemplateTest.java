@@ -81,6 +81,20 @@ class VelocityErrorTemplateTest {
         assertNoExceptionDetail(ERROR_PAGE);
     }
 
+    /**
+     * The site name is admin-typed text; every other template escapes it, and
+     * renderException puts {@code $utils} in the error context for exactly
+     * this.
+     */
+    @Test
+    void theSiteNameIsEscapedOnTheErrorPages() throws IOException {
+        for (Path path : new Path[]{ERROR_PAGE, ERROR_PARSE}) {
+            String source = read(path).replace("$utils.escapeHTML($config.siteName)", "");
+            assertFalse(source.contains("$config.siteName"),
+                    path + " prints the site name unescaped:\n" + source);
+        }
+    }
+
     @Test
     void theParseErrorTemplateShowsNoExceptionDetail() throws IOException {
         assertNoExceptionDetail(ERROR_PARSE);

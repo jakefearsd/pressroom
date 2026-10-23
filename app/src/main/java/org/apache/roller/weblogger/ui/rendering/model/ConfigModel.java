@@ -79,10 +79,6 @@ public class ConfigModel implements Model {
         return getIntProperty("site.newsfeeds.defaultEntries");
     }
     
-    public boolean getFeedStyle() {
-        return getBooleanProperty("site.newsfeeds.styledFeeds");
-    }
-    
     /** @deprecated Trackbacks have been removed. Always returns false. */
     @Deprecated
     public boolean getTrackbacksEnabled() {
@@ -93,18 +89,6 @@ public class ConfigModel implements Model {
     /** Get Roller version string */
     public String getRollerVersion() {
         return weblogger.getVersion();
-    }
-    
-    
-    /** Get timestamp of Roller build */
-    public String getRollerBuildTimestamp() {
-        return weblogger.getBuildTime();
-    }
-    
-    
-    /** Get username who created Roller build */
-    public String getRollerBuildUser() {
-        return weblogger.getBuildUser();
     }
 
     /**

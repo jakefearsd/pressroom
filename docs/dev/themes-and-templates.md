@@ -112,6 +112,21 @@ resolves through the index at the end of `CLAUDE.md`.
   into the templates in English, a deliberate decision rather than a gap;
   `ThemeChromeConsistencyTest` pins the hard-coded words.
 
+- **Titles, headings and voice (all bundled themes).** A `<title>` names
+  the view first and the weblog second, joined by an em dash: "Entry —
+  Weblog", "Category — Weblog", "Tagged x — Weblog", "October 2026 —
+  Weblog" (date archive, from `$model.weblogDateLabel`); an entry's or
+  page's own meta title stands alone. On a reading page (permalink, page)
+  the entry or page title is the `h1` and the site name steps down to a `p`
+  with the same class; on a list the site name is the `h1` and the view
+  heading (`xx-view-name`) an `h2`. A list view (category, tag, date
+  archive) says what it is in an `xx-view` block and has its own empty
+  sentence. The themes' fixed reader copy ("Tagged", "Archive", the empty
+  sentences) is English by decision, not bundle keys.
+- The search pager macro emits its own labelled `<nav class="search-pager">`
+  and the hit line `p.search-hits`; a theme wraps it in a `div`, never a
+  second `nav`, and styles both (`ThemePolishTest`).
+
 ## Templates
 - Add/edit/remove live in `TemplatesController` and `TemplateEditController`;
   both resolve client ids through `BaseController.lookupTemplate` (pinned by

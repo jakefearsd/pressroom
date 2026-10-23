@@ -68,6 +68,16 @@ limitations under the License.
                 <OnStartupTriggeringPolicy />
                 <SizeBasedTriggeringPolicy size="8 MB"/>
             </Policies>
+            <!-- Rolled files are kept to the newest ten (about 80 MB at most):
+                 the file rolls on every start and at 8 MB, and nothing else
+                 ever deleted one, so a long-lived container filled up. -->
+            <DefaultRolloverStrategy>
+                <Delete basePath="${logging.dir}" maxDepth="1">
+                    <IfFileName glob="roller-*.log.gz">
+                        <IfAccumulatedFileCount exceeds="10"/>
+                    </IfFileName>
+                </Delete>
+            </DefaultRolloverStrategy>
         </RollingFile>
 
         <!-- if you use this log4j2 config in the server classpath.

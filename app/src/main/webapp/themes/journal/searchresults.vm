@@ -46,9 +46,11 @@
     <div class="qj-search-head">
         #showWeblogSearchAgainForm($model.weblog)
         #if($model.hits > 0)
-        <nav class="qj-pager qj-search-pager" aria-label="More search results">
+        ## A div, not a nav: the macro emits its own labelled nav for the
+        ## links, and a second one around it nested two landmarks.
+        <div class="qj-pager qj-search-pager">
             #showNextPrevSearchControl($pager)
-        </nav>
+        </div>
         #end
     </div>
     ## SearchResultsModel.getErrorMessage() carries a WebloggerException's

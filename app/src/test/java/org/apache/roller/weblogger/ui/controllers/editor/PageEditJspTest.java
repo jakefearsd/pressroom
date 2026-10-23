@@ -197,7 +197,7 @@ class PageEditJspTest {
     @Test
     void theTitleAndSlugAreEscapedWhereTheyAreRendered() throws IOException {
         String jsp = read(PAGE_EDIT);
-        assertTrue(jsp.contains("value=\"${fn:escapeXml(bean.title)}\""),
+        assertTrue(jsp.contains(">${fn:escapeXml(bean.title)}</textarea>"),
                 "a page title is stored RAW (PageBean.copyTo does no escaping), so "
                         + "the edit form is the boundary -- see CLAUDE.md, Themes");
         assertTrue(jsp.contains("value=\"${fn:escapeXml(bean.slug)}\""),

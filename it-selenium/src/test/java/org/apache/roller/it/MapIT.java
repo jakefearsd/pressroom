@@ -80,7 +80,7 @@ class MapIT extends RollerIT {
         // --- author and publish the map entry -------------------------------
         openPath(ENTRY_ADD);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue("IT Map " + suffix);
+        $("[name='bean.title']").setValue("IT Map " + suffix);
         Editor.setText("<p>Route notes " + suffix + "</p>"
                         + "<p>[map route=\"true\"]"
                         + "[pin lat=\"48.8584\" lng=\"2.2945\" label=\"" + label + "\"]"

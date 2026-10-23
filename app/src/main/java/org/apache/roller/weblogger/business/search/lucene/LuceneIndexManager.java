@@ -680,7 +680,12 @@ public class LuceneIndexManager implements IndexManager {
                 categories = categorySet;
             }
 
-            return new SearchResultList(results, categories, limit, offset, hits.length);
+            // What this page had to drop (a stale document: its entry gone or
+            // no longer published) is not counted either. The query already
+            // left out future-dated entries; this covers what the index has
+            // not caught up with.
+            int dropped = limit - results.size();
+            return new SearchResultList(results, categories, limit, offset, hits.length - dropped);
 
         } catch (IOException e) {
             throw new WebloggerException(e);

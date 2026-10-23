@@ -258,6 +258,8 @@ final class MessageUsageScanner {
         return names;
     }
 
+    private static final Pattern EL_LIST_ARGUMENTS = Pattern.compile("\\$\\{\\s*\\[(.*)]\\s*}", Pattern.DOTALL);
+
     /**
      * Counts the top-level, comma-separated arguments of a {@code
      * <spring:message arguments="...">} attribute, ignoring commas nested inside
@@ -266,6 +268,12 @@ final class MessageUsageScanner {
     private static int countTagArguments(String value) {
         if (value.isBlank()) {
             return 0;
+        }
+        // ${[a, b]}: an EL list, which the tag takes as the argument array
+        // without splitting (how a value that may hold a comma is passed).
+        Matcher list = EL_LIST_ARGUMENTS.matcher(value);
+        if (list.matches()) {
+            return list.group(1).isBlank() ? 0 : splitTopLevel(list.group(1)).size();
         }
         int depth = 0;
         int count = 1;

@@ -131,7 +131,7 @@ class TrashIT extends RollerIT {
     private String publishEntry(String title) {
         openPath(ENTRY_ADD);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue(title);
+        $("[name='bean.title']").setValue(title);
         Editor.setText("Body of " + title);
         $("button[formaction$='entryAdd!publish.rol']").click();
 

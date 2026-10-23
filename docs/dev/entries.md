@@ -83,7 +83,10 @@ incidental re-save) — minor PII residue worth clearing.
   at `Prec.highest`, ahead of CM6's keymap — so Mod-i is italic, not
   `selectParentSyntax`, and Ctrl+B/K never reach the browser's bookmarks
   or search bar (unsupplied: CM6's default). The bold/italic/link bindings
-  run the toolbar's own commands. Exactly three seam
+  run the toolbar's own commands. The title is a one-row
+  `textarea[name='bean.title']` that wraps and grows (`rollerFitTitle`);
+  Enter moves to the body and a pasted line break becomes a space, so ITs
+  select it as `[name='bean.title']`, never `input[...]`. Exactly three seam
   functions — `insertMediaFile`, `rollerSetEntryText`, `rollerGetEntryText` —
   so replacing the editor is one file; Browser ITs use those and the `Editor`
   test helper, never CM6's API.

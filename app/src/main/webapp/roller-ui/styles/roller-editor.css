@@ -90,3 +90,15 @@ button.editor-drawer:focus-visible { outline: 2px solid var(--focus); outline-of
     font-weight: 600;
     src: url("../../webjars/ibm__plex-serif/2.0.0/fonts/complete/woff2/IBMPlexSerif-SemiBold.woff2") format("woff2");
 }
+
+/* The title is a one-row textarea so a long title wraps instead of being cut
+   off (EditorScript.jsp, rollerFitTitle, sets its height to its text;
+   field-sizing does the same without script where a browser has it). Its
+   face and size are roller.css's .editor-title; this only takes away what a
+   textarea adds: the resize handle, the scrollbar and the inline baseline gap. */
+textarea.editor-title {
+    display: block;
+    resize: none;
+    overflow: hidden;
+    field-sizing: content;
+}

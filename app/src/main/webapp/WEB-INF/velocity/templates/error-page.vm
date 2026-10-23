@@ -56,7 +56,7 @@
         <p class="code">500</p>
         <h1>$text.get("errorPage.title")</h1>
         <p>$text.get("errorPage.message")</p>
-        <p><a href="$url.absoluteSite">$config.siteName</a></p>
+        <p><a href="$url.absoluteSite">$utils.escapeHTML($config.siteName)</a></p>
     </main>
 </body>
 </html>

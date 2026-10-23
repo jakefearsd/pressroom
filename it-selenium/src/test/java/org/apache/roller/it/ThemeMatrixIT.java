@@ -209,7 +209,7 @@ class ThemeMatrixIT extends RollerIT {
     private String publishRichEntry(String handle, String title, String mediaFileId) {
         openPath("/roller-ui/authoring/entryAdd.rol?weblog=" + handle);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue(title);
+        $("[name='bean.title']").setValue(title);
         Editor.setText("<p>Fixture body for the theme matrix.</p>"
                         + "<p>[image id=\"" + mediaFileId + "\" alt=\"A hawk\""
                         + " caption=\"Hawk over the valley\"]</p>"

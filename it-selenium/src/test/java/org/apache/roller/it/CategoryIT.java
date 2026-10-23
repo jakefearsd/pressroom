@@ -293,7 +293,7 @@ class CategoryIT extends RollerIT {
     private void publishEntryInCategory(String title, String body, String categoryName) {
         openPath(ENTRY_ADD);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue(title);
+        $("[name='bean.title']").setValue(title);
         Editor.setText(body);
         $("select[name='bean.categoryId']").selectOptionContainingText(categoryName);
         $("button[formaction$='entryAdd!publish.rol']").click();

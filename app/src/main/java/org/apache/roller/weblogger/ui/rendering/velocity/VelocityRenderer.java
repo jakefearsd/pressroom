@@ -19,7 +19,9 @@
 package org.apache.roller.weblogger.ui.rendering.velocity;
 
 import java.io.Writer;
+import java.util.Date;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,6 +51,15 @@ public class VelocityRenderer implements Renderer {
     // a possible exception
     private Exception velocityException = null;
 
+    /**
+     * The last-modified stamp each failing template was last logged at in
+     * full. A broken template is never cached, so it fails again on every
+     * request; one ERROR with the stack trace per template and save says
+     * everything, and a trace per crawler hit would bury the rest of the log.
+     * One entry per template id that has ever failed, so it stays small.
+     */
+    private static final Map<String, Long> LOGGED_FAILURES = new ConcurrentHashMap<>();
+
     public VelocityRenderer(Template template) throws Exception {
 
         // the Template we are supposed to render
@@ -71,7 +82,7 @@ public class VelocityRenderer implements Renderer {
             // in the case of a velocity error we want to render an
             // error page instead so the user knows what was wrong; the
             // detail goes to the log, never to the reader
-            log.error("Template {} could not be loaded; rendering the error page", template.getId(), ex);
+            logFailure(template, "Template {} could not be loaded; rendering the error page", ex);
             velocityException = ex;
 
             // need to lookup error page template
@@ -83,6 +94,23 @@ public class VelocityRenderer implements Renderer {
 
             // throw if back to the caller
             throw ex;
+        }
+    }
+
+    /**
+     * Logs a template failure: ERROR with the stack trace the first time this
+     * template fails at its current last-modified stamp (so a new save that is
+     * still broken is reported again), DEBUG for every repeat.
+     */
+    private static void logFailure(Template template, String message, Exception ex) {
+        Date modified = template.getLastModified();
+        long stamp = modified == null ? Long.MIN_VALUE : modified.getTime();
+        Long previous = LOGGED_FAILURES.put(String.valueOf(template.getId()), stamp);
+        if (previous == null || previous != stamp) {
+            log.error(message, template.getId(), ex);
+        } else {
+            log.debug("Template {} failed again; its stack trace was logged once for this version",
+                    template.getId());
         }
     }
 
@@ -129,8 +157,7 @@ public class VelocityRenderer implements Renderer {
             // in the case of a velocity error including a page we want to
             // render an error page instead so the user knows what was wrong;
             // the detail goes to the log, never to the reader
-            log.error("Error rendering template {}; splicing in the error block",
-                    renderTemplate.getId(), ex);
+            logFailure(renderTemplate, "Error rendering template {}; splicing in the error block", ex);
             velocityException = ex;
 
             // need to lookup parse error template

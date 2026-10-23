@@ -74,6 +74,33 @@ class LogRoutingTest {
         assertTrue(reaches(refs(roller), wrapped, "roller"), "org.apache.roller still writes roller.log");
     }
 
+    /**
+     * roller.log rolls on every start and at 8 MB, and nothing deleted the
+     * rolled {@code .gz} files, so inside a long-lived container they
+     * accumulated without bound. The rollover keeps a bounded set: a Delete
+     * action matching the rolled files, capped by count.
+     */
+    @Test
+    void rolledLogFilesAreBounded() throws Exception {
+        NodeList files = config().getElementsByTagName("RollingFile");
+        assertTrue(files.getLength() > 0, "roller.log is a rolling file");
+        for (int i = 0; i < files.getLength(); i++) {
+            Element file = (Element) files.item(i);
+            NodeList strategies = file.getElementsByTagName("DefaultRolloverStrategy");
+            assertEquals(1, strategies.getLength(), file.getAttribute("name") + " has no rollover strategy");
+            Element strategy = (Element) strategies.item(0);
+            NodeList deletes = strategy.getElementsByTagName("Delete");
+            assertEquals(1, deletes.getLength(), file.getAttribute("name") + " never deletes rolled files");
+            Element delete = (Element) deletes.item(0);
+            NodeList globs = delete.getElementsByTagName("IfFileName");
+            assertEquals(1, globs.getLength(), "the delete names which files it may remove");
+            assertTrue(((Element) globs.item(0)).getAttribute("glob").endsWith(".log.gz"),
+                    "the delete may remove only rolled logs");
+            assertEquals(1, delete.getElementsByTagName("IfAccumulatedFileCount").getLength(),
+                    "the delete keeps a bounded count");
+        }
+    }
+
     private static boolean reaches(Set<String> start, Map<String, Set<String>> wrapped, String target) {
         Deque<String> todo = new ArrayDeque<>(start);
         Set<String> seen = new HashSet<>();

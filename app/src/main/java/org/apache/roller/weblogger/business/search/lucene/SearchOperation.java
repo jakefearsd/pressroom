@@ -23,6 +23,7 @@ import java.util.Locale;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
 import org.apache.lucene.queryparser.classic.ParseException;
@@ -34,6 +35,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopFieldDocs;
+import org.apache.lucene.util.BytesRef;
 import org.apache.roller.weblogger.business.search.IndexManager;
 
 /**
@@ -157,6 +159,17 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
                     .add(new TermQuery(localeTerm), BooleanClause.Occur.MUST)
                     .build();
             }
+
+            // A future-dated entry is in the index but never on a results
+            // page, so it is left out here rather than after the fact: the
+            // total a reader is told ("N entries match", whether there is a
+            // next page) is the hit count. PUBLISHED holds the pub time as
+            // Timestamp#toString, whose text order is time order.
+            query = new BooleanQuery.Builder()
+                .add(query, BooleanClause.Occur.MUST)
+                .add(SortedDocValuesField.newSlowRangeQuery(FieldConstants.PUBLISHED, null,
+                        new BytesRef(manager.now().toString()), true, true), BooleanClause.Occur.FILTER)
+                .build();
 
             searchresults = searcher.search(query, docLimit, SORTER);
 

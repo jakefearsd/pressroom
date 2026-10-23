@@ -130,7 +130,9 @@ class MediaBulkUploadIT extends RollerIT {
     }
 
     /**
-     * The success page's Cancel must return to the media view.
+     * The success page's way out ("Done"; it read "Cancel" until the upload
+     * having already happened made that word wrong) must return to the media
+     * view.
      *
      * <p>It used to be a typeless {@code <button onclick='window.load(url)'>}
      * inside an action-less POST form, so it threw a TypeError and then
@@ -139,8 +141,8 @@ class MediaBulkUploadIT extends RollerIT {
      * which is why the bug survived a passing IT suite.
      */
     @Test
-    void cancelOnTheSuccessPageReturnsToTheMediaView() throws IOException {
-        String name = "cancel-" + System.nanoTime() + ".png";
+    void doneOnTheSuccessPageReturnsToTheMediaView() throws IOException {
+        String name = "done-" + System.nanoTime() + ".png";
 
         enableUploads();
         openPath(MEDIA_ADD);
@@ -153,11 +155,11 @@ class MediaBulkUploadIT extends RollerIT {
         // page-wide, which matched a nav link in the surrounding chrome -- it
         // passed against the broken page by clicking something else entirely.
         // Matching either <a> or <button> keeps the assertion about behaviour
-        // (does Cancel navigate?) rather than markup, which the unit test pins.
-        clickAndAwaitNewPage($$("#entry a, #entry button").findBy(text("Cancel")).should(exist));
+        // (does Done navigate?) rather than markup, which the unit test pins.
+        clickAndAwaitNewPage($$("#entry a, #entry button").findBy(text("Done")).should(exist));
 
         assertTrue(WebDriverRunner.url().contains("mediaFileView.rol"),
-                "Cancel must land on the media view, not re-post the upload; was: "
+                "Done must land on the media view, not re-post the upload; was: "
                         + WebDriverRunner.url());
         $("img[alt='" + name + "']").should(exist);
     }
@@ -175,7 +177,7 @@ class MediaBulkUploadIT extends RollerIT {
         // --- author and publish an entry carrying [image id=...] -----------
         openPath(ENTRY_ADD);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue("IT Alt Image " + suffix);
+        $("[name='bean.title']").setValue("IT Alt Image " + suffix);
         Editor.setText("<p>Alt text entry " + suffix + "</p><p>[image id=" + mediaFileId + "]</p>");
         $("button[formaction$='entryAdd!publish.rol']").click();
         $(PERMALINK).should(exist);
@@ -209,7 +211,7 @@ class MediaBulkUploadIT extends RollerIT {
 
         openPath(ENTRY_ADD);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue("IT Gallery Alt " + suffix);
+        $("[name='bean.title']").setValue("IT Gallery Alt " + suffix);
         Editor.setText("<p>Gallery alt entry " + suffix + "</p><p>[gallery dir=\"default\"]</p>");
         $("button[formaction$='entryAdd!publish.rol']").click();
         $(PERMALINK).should(exist);

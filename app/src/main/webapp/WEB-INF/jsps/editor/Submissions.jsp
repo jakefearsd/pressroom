@@ -77,6 +77,7 @@
         </button>
     </div>
 
+    <div class="table-responsive">
     <table class="rollertable table table-striped" width="100%">
 
             <tr>
@@ -133,6 +134,7 @@
             </c:forEach>
 
     </table>
+    </div>
 
     </c:when>
     <c:otherwise>
