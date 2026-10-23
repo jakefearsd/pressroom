@@ -584,8 +584,27 @@ class UtilitiesModelTest {
 
     @Test
     void iso8601DayIsJustTheCalendarDay() {
-        assertEquals("2024-01-15", model().formatIso8601Day(localNoon(2024, 1, 15)),
+        assertEquals("2024-01-15", model().formatIso8601Day(utc("2024-01-15T12:00:00Z")),
                 "The day-only ISO format must be yyyy-MM-dd with no time part.");
+    }
+
+    /**
+     * The day in a {@code <time datetime>} has to be the day the visible
+     * date beside it shows, and {@code formatDate} renders in the weblog's
+     * zone. The ISO day used the JVM's zone instead (UTC in the container),
+     * so an evening post in a western weblog carried tomorrow's datetime.
+     * Two zones 25 hours apart, one instant: whatever zone the JVM runs in,
+     * at least one of these fails if the weblog's zone is ignored.
+     */
+    @Test
+    void iso8601DayIsTheDayInTheWeblogsTimeZone() {
+        Date instant = utc("2024-01-15T12:00:00Z");
+        assertEquals("2024-01-16",
+                modelFor(weblog("en_US", "Pacific/Kiritimati")).formatIso8601Day(instant),
+                "UTC+14: noon UTC is already the next day");
+        assertEquals("2024-01-15",
+                modelFor(weblog("en_US", "Pacific/Pago_Pago")).formatIso8601Day(instant),
+                "UTC-11: noon UTC is still the same day");
     }
 
     @Test

@@ -298,8 +298,9 @@ class CommentsSectionRenderingTest {
         assertTrue(a.startsWith("<article class=\"comment\" id=\"comment-" + c1.getId() + "\">"), a);
         assertTrue(a.contains("<span class=\"comment-name\">Ana</span>"), a);
         assertFalse(a.contains("comment-badge"), "a reader's comment carries no Author badge:\n" + a);
-        // in the weblog's zone (Los Angeles): 12:00 UTC is the morning of the 4th
-        assertTrue(Pattern.compile("<time datetime=\"2026-03-0[45]T[^\"]+\">4 Mar 2026</time>")
+        // in the weblog's zone (Los Angeles): 12:00 UTC is the morning of the
+        // 4th; the same "MMMM d, yyyy" the themes' bylines use
+        assertTrue(Pattern.compile("<time datetime=\"2026-03-0[45]T[^\"]+\">March 4, 2026</time>")
                 .matcher(a).find(), a);
         assertTrue(a.contains("<div class=\"comment-body\"><p>body-c1</p></div>"), a);
     }

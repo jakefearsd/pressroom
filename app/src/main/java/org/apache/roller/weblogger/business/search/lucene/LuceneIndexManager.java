@@ -680,7 +680,7 @@ public class LuceneIndexManager implements IndexManager {
                 categories = categorySet;
             }
 
-            return new SearchResultList(results, categories, limit, offset);
+            return new SearchResultList(results, categories, limit, offset, hits.length);
 
         } catch (IOException e) {
             throw new WebloggerException(e);

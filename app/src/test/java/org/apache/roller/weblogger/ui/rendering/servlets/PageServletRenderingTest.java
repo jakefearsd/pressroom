@@ -118,6 +118,26 @@ class PageServletRenderingTest {
                 "the raw shortcode text must not leak to readers:\n" + body);
     }
 
+    /**
+     * The container's 404 page offered only "Return to the home page", the
+     * site root, to a reader who had been on a weblog. A 404 decided inside a
+     * weblog now leaves that weblog's name and address on the request, where
+     * 404.jsp offers "Back to" it.
+     */
+    @Test
+    void aNotFoundInsideAWeblogLeavesTheWeblogForTheErrorPage() throws Exception {
+        MockHttpServletRequest request = RenderingTestSupport
+                .anonymousGet("/roller-ui/rendering/page", "/pagerenderblog/entry/no-such-entry");
+        MockHttpServletResponse response = RenderingTestSupport
+                .execute(RenderingTestSupport.pageServlet(), request);
+
+        assertEquals(404, response.getStatus());
+        assertEquals("Test Weblog", request.getAttribute(PageServlet.NOT_FOUND_WEBLOG_NAME));
+        assertTrue(String.valueOf(request.getAttribute(PageServlet.NOT_FOUND_WEBLOG_URL))
+                        .endsWith("/pagerenderblog/"),
+                "the weblog's own address: " + request.getAttribute(PageServlet.NOT_FOUND_WEBLOG_URL));
+    }
+
     @Test
     void draftEntryPermalinkIsNotFound() throws Exception {
         Weblog managed = TestUtils.getManagedWebsite(weblog);
@@ -209,6 +229,37 @@ class PageServletRenderingTest {
     }
 
     /**
+     * Every theme's permalink links its tags at {@code /<handle>/tags/<tag>},
+     * and no bundled theme ships a tagsIndex template, so those links used
+     * to 404. The default template now answers them, and its pager filters by
+     * the tag: the tagged entry is listed and the untagged one is not. An
+     * unknown tag is still a 404.
+     */
+    @Test
+    void aTagArchiveListsOnlyTheTaggedEntries() throws Exception {
+        WeblogEntry tagged = TestUtils.setupWeblogEntry("tag-archive-hit", weblog, user);
+        tagged.addTag("harbour");
+        TestUtils.weblogger().getWeblogEntryManager().saveWeblogEntry(tagged);
+        TestUtils.setupWeblogEntry("tag-archive-miss", weblog, user);
+        TestUtils.endSession(true);
+
+        MockHttpServletResponse response = RenderingTestSupport.execute(
+                RenderingTestSupport.pageServlet(), RenderingTestSupport.anonymousGet(
+                        "/roller-ui/rendering/page", "/pagerenderblog/tags/harbour"));
+
+        assertEquals(200, response.getStatus());
+        String body = response.getContentAsString();
+        assertTrue(body.contains("tag-archive-hit"), "the tagged entry must be listed:\n" + body);
+        assertFalse(body.contains("tag-archive-miss"),
+                "an entry without the tag must not be listed:\n" + body);
+
+        MockHttpServletResponse unknown = RenderingTestSupport.execute(
+                RenderingTestSupport.pageServlet(), RenderingTestSupport.anonymousGet(
+                        "/roller-ui/rendering/page", "/pagerenderblog/tags/no-such-tag"));
+        assertEquals(404, unknown.getStatus(), "an unknown tag is still not found");
+    }
+
+    /**
      * {@code #showAutodiscoveryLinks} built its tag-feed title from
      * {@code $model.tags.toString()} -- the model holds a {@code List}, so
      * the title in the head literally read "Entries tagged [travel] (Atom)",
@@ -223,9 +274,8 @@ class PageServletRenderingTest {
         entry.addTag("travel");
         TestUtils.weblogger().getWeblogEntryManager().saveWeblogEntry(entry);
         TestUtils.endSession(true);
-        // No bundled theme ships a TAGSINDEX template, so /<handle>/tags/<tag>
-        // 404s everywhere; the reachable route to a non-null $model.tags is
-        // the ?tags= parameter on a custom page (WeblogPageRequest:159).
+        // The ?tags= parameter on a custom page (WeblogPageRequest) reaches a
+        // non-null $model.tags with nothing but this macro on the page.
         saveCustomTemplate("tagfeed", "<head>#showAutodiscoveryLinks($model.weblog)</head>");
 
         MockHttpServletRequest request = RenderingTestSupport
@@ -236,7 +286,7 @@ class PageServletRenderingTest {
 
         assertEquals(200, response.getStatus());
         String body = response.getContentAsString();
-        assertTrue(body.contains("title=\"Entries tagged travel (Atom)\""),
+        assertTrue(body.contains("title=\"Test Weblog — tagged travel\""),
                 "the tag feed's discovery title must read as prose, not as a "
                         + "Java List.toString():\n" + body);
         assertFalse(body.contains("tagged [travel]"),
@@ -266,7 +316,7 @@ class PageServletRenderingTest {
 
         assertEquals(200, response.getStatus());
         String body = response.getContentAsString();
-        assertTrue(body.contains("title=\"Entries for category Tools &amp; Toys (Atom)\""),
+        assertTrue(body.contains("title=\"Test Weblog — Tools &amp; Toys\""),
                 "the category feed's discovery title must escape the raw "
                         + "wrapper value:\n" + body);
     }

@@ -49,9 +49,12 @@ class SearchServletRenderingTest {
         assertEquals(200, response.getStatus());
         assertTrue(response.getContentType().startsWith("text/html"));
         String body = response.getContentAsString();
-        assertTrue(body.contains("Entries found for"),
-                "search results template must render the search-again form's "
-                        + "hit count (macro.weblog.searchhits):\n" + body);
+        assertTrue(body.contains("id=\"searchAgain\""),
+                "search results template must render the search-again form:\n" + body);
+        // a zero-hit search says so once, in the theme's empty state: no
+        // "0 entries match" line above it (macro.weblog.searchhits)
+        assertFalse(body.contains("class=\"search-hits\""),
+                "a zero-hit search prints no hit line:\n" + body);
         assertTrue(body.contains("Test Weblog"),
                 "weblog name must appear on the search page:\n" + body);
     }

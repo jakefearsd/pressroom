@@ -203,11 +203,9 @@ class ThemeReferenceLeakTest {
         scan(failures, theme + " category", page(base + "/category/" + CATEGORY, 200));
         scan(failures, theme + " month archive", page(base + "/date/" + fixture.monthArchive(), 200));
         scan(failures, theme + " day archive", page(base + "/date/" + fixture.dayArchive(), 200));
-        // No tag view: no bundled theme ships a TAGSINDEX template, so
-        // /tags/<tag> 404s, and the only other route to $model.tags is the
-        // ?tags= parameter on a *named* page -- but every theme's main
-        // template is hidden=true and PageServlet 404s a hidden named page.
-        // The tagged entry's tags render on every page above instead.
+        // No bundled theme ships a TAGSINDEX template; a tag archive renders
+        // through the theme's default template (PageServlet.selectTemplate).
+        scan(failures, theme + " tag archive", page(base + "/tags/" + TAG, 200));
         scan(failures, theme + " static page", page(base + "/" + PAGE_SLUG, 200));
         scan(failures, theme + " search results", search(base, "leak"));
         scan(failures, theme + " 404", page(base + "/entry/no-such-anchor", 404));

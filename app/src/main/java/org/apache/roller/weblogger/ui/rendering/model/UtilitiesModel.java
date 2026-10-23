@@ -235,10 +235,19 @@ public class UtilitiesModel implements Model {
     }
     
     /**
-     * Format date in ISO-8601 format.
+     * The calendar day ({@code yyyy-MM-dd}) in the weblog's time zone: the
+     * machine-readable twin of the visible date {@link #formatDate} prints
+     * beside it in a {@code <time datetime>}. It used the JVM's zone (UTC in
+     * the container), so an evening post in a western weblog carried the
+     * next day.
      */
     public String formatIso8601Day(Date d) {
-        return DateUtil.formatIso8601Day(d);
+        if (d == null) {
+            return "";
+        }
+        SimpleDateFormat format = DateUtil.getIso8601DayDateFormat();
+        format.setTimeZone(weblog.getTimeZoneInstance());
+        return format.format(d);
     }
     
     /**

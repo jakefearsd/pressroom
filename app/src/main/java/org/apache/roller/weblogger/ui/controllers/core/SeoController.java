@@ -26,6 +26,8 @@ import java.util.List;
 import jakarta.servlet.http.HttpServletRequest;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.validator.routines.UrlValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.WebloggerException;
@@ -194,6 +196,10 @@ public class SeoController extends BaseController {
      */
     static final int MAX_SITEMAP_URLS = 50_000;
 
+    /** PageModel's canonical-URL allowlist; see {@link #canonicalElsewhere}. */
+    private static final UrlValidator CANONICAL_URL_VALIDATOR =
+            new UrlValidator(new String[] {"http", "https"});
+
     /**
      * Sitemap for one weblog: home page plus published, indexable entries and
      * pages.
@@ -202,7 +208,7 @@ public class SeoController extends BaseController {
      * {@code If-Modified-Since} at or after the weblog's {@code lastModified}
      * is answered 304 before anything else is read; an unchanged weblog is
      * served from {@link SitemapCache}; and a rebuild reads the entries as
-     * five columns in one query ({@code getSitemapEntries}) instead of as
+     * six columns in one query ({@code getSitemapEntries}) instead of as
      * whole entities with a media lookup per featured image. Nothing is
      * cached from a build that failed.
      */
@@ -281,12 +287,12 @@ public class SeoController extends BaseController {
         xml.append("  </url>\n");
 
         for (SitemapEntry entry : entries) {
-            if (entry.noindex()) {
+            String loc = urlStrategy.getWeblogEntryURL(weblog, null, entry.anchor(), true);
+            if (entry.noindex() || canonicalElsewhere(entry.canonicalUrl(), loc)) {
                 continue;
             }
             xml.append("  <url>\n");
-            xml.append("    <loc>").append(escapeXml(urlStrategy.getWeblogEntryURL(
-                    weblog, null, entry.anchor(), true))).append("</loc>\n");
+            xml.append("    <loc>").append(escapeXml(loc)).append("</loc>\n");
             appendLastmod(xml, "    ", entry.lastmod());
             appendFeaturedImage(xml, urlStrategy, weblog, entry.publicImageId());
             xml.append("  </url>\n");
@@ -297,22 +303,35 @@ public class SeoController extends BaseController {
         // same reason it is for entries -- a page excluded from search must be
         // excluded from what we hand the crawler.
         for (WeblogPage page : pages) {
-            if (Boolean.TRUE.equals(page.getNoindex())) {
-                continue;
-            }
-            xml.append("  <url>\n");
             // Match URLModel#staticPage's encoding exactly: that is the same
             // /<handle>/<slug> URL the theme's own nav emits, and a slug is
             // free-form enough (spaces, punctuation) that the raw value is
             // not always a valid URL.
-            xml.append("    <loc>").append(escapeXml(
-                    weblogURL + URLUtilities.encode(page.getSlug())))
-                    .append("</loc>\n");
+            String loc = weblogURL + URLUtilities.encode(page.getSlug());
+            if (Boolean.TRUE.equals(page.getNoindex())
+                    || canonicalElsewhere(page.getCanonicalUrl(), loc)) {
+                continue;
+            }
+            xml.append("  <url>\n");
+            xml.append("    <loc>").append(escapeXml(loc)).append("</loc>\n");
             appendLastmod(xml, "    ", instant(page.getUpdated()));
             xml.append("  </url>\n");
         }
         xml.append("</urlset>\n");
         return xml.toString();
+    }
+
+    /**
+     * Whether a stored canonical-URL override names an address other than
+     * the item's own. Such an item is not this site's to submit: Search
+     * Console reports it as "Submitted URL not selected as canonical". The
+     * test for a real override is PageModel's, which emits it in the head: a
+     * blank value or one that is not an absolute http(s) URL is no override.
+     */
+    private static boolean canonicalElsewhere(String canonicalUrl, String loc) {
+        return StringUtils.isNotBlank(canonicalUrl)
+                && CANONICAL_URL_VALIDATOR.isValid(canonicalUrl)
+                && !canonicalUrl.equals(loc);
     }
 
     /**

@@ -31,6 +31,7 @@ import org.apache.roller.weblogger.util.I18nMessages;
 import org.apache.roller.weblogger.ui.rendering.Renderer;
 import org.apache.roller.weblogger.ui.rendering.RendererManager;
 import org.apache.roller.weblogger.ui.rendering.model.ModelLoader;
+import org.apache.roller.weblogger.ui.rendering.velocity.VelocityRenderer;
 import org.apache.roller.weblogger.util.cache.CachedContent;
 
 import jakarta.servlet.http.HttpServletResponse;
@@ -125,11 +126,17 @@ final class RenderingServletUtils {
             resourceStream.transferTo(response.getOutputStream());
 
         } catch (IOException ex) {
-            log.error("Error writing resource file for {}", logContext, ex);
-            if (!response.isCommitted()) {
-                response.reset();
-                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            if (response.isCommitted()) {
+                // Bytes had already gone out, so this is the write side
+                // failing: the reader closed the connection (Tomcat's
+                // ClientAbortException). Not a server error, and once per
+                // abandoned download it buried the real ones.
+                log.debug("Reader went away while serving {}: {}", logContext, ex.toString());
+                return;
             }
+            log.error("Error writing resource file for {}", logContext, ex);
+            response.reset();
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -200,6 +207,11 @@ final class RenderingServletUtils {
      *                     request data and are routinely bunk, so this fires for
      *                     ordinary bad input rather than for anything an
      *                     operator can act on.
+     * <p>A template that rendered an error (see
+     * {@link VelocityRenderer#renderedError()}) still sends its body, but as
+     * a 500, and comes back as null like every other completed error, so no
+     * caller caches it.
+     *
      * @return the rendered bytes, for a caller that wants to cache them, or
      *         null when the response has already been completed with an error
      *         and the caller must simply return
@@ -228,6 +240,13 @@ final class RenderingServletUtils {
             return null;
         }
 
+        boolean renderedError = renderer instanceof VelocityRenderer velocity
+                && velocity.renderedError();
+        if (renderedError) {
+            log.debug("Rendered the error template for {}; answering 500, not caching", logContext);
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        }
+
         log.debug("Flushing response output");
         if (contentType != null) {
             response.setContentType(contentType);
@@ -235,7 +254,7 @@ final class RenderingServletUtils {
         response.setContentLength(rendererOutput.getContent().length);
         response.getOutputStream().write(rendererOutput.getContent());
 
-        return rendererOutput;
+        return renderedError ? null : rendererOutput;
     }
 
     /**

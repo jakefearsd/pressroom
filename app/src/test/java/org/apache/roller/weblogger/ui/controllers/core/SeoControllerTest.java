@@ -430,7 +430,7 @@ class SeoControllerTest {
         when(urlStrategy.getWeblogEntryURL(mockWeblog, null, "kept", true))
                 .thenReturn("https://example.com/mockblog/entry/kept");
         when(entryManager.getSitemapEntries(mockWeblog, SeoController.MAX_SITEMAP_URLS))
-                .thenReturn(List.of(new SitemapEntry("kept", null, null, false, null)));
+                .thenReturn(List.of(new SitemapEntry("kept", null, null, false, null, null)));
         when(pageManager.getPublishedPages(mockWeblog))
                 .thenThrow(new WebloggerException("database down"))
                 .thenReturn(List.of());
@@ -474,7 +474,7 @@ class SeoControllerTest {
 
         // no pubTime, no updateTime -- appendLastmod must skip the element
         when(entryManager.getSitemapEntries(mockWeblog, SeoController.MAX_SITEMAP_URLS))
-                .thenReturn(List.of(new SitemapEntry("mock-entry", null, null, false, null)));
+                .thenReturn(List.of(new SitemapEntry("mock-entry", null, null, false, null, null)));
         when(urlStrategy.getWeblogURL(mockWeblog, null, true))
                 .thenReturn("http://localhost:8080/roller/mockblog/");
         when(urlStrategy.getWeblogEntryURL(mockWeblog, null, "mock-entry", true))

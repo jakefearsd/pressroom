@@ -46,6 +46,7 @@ import org.junit.jupiter.api.Test;
 import static org.apache.roller.weblogger.business.search.IndexManagerTest.createWeblogEntries;
 import static org.apache.roller.weblogger.ui.rendering.util.WeblogSearchRequest.SEARCH_SERVLET;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -110,6 +111,41 @@ class SearchResultsModelTest {
             for (WeblogEntry entry : entries) {
                 indexManager.removeEntryIndexOperation(TestUtils.getManagedWeblogEntry(entry));
             }
+            indexManager.removeWeblogIndex(testWeblog);
+        }
+    }
+
+    /**
+     * The hit count is every match, not the page that was read: it was set
+     * from the size of the current page, so twelve matches read "10" and
+     * "Showing 11 - 10 of total 10" on page 2, and the pager, which offers a
+     * next page only when hits exceed offset plus limit, never offered one.
+     */
+    @Test
+    void theHitCountIsEveryMatchAndThePagerOffersTheNextPage() throws Exception {
+        IndexManager indexManager = TestUtils.weblogger().getIndexManager();
+        int matches = SearchResultsModel.RESULTS_PER_PAGE + 2;
+        try {
+            for (int i = 0; i < matches; i++) {
+                WeblogEntry entry = TestUtils.setupWeblogEntry("hits-entry-" + i, testWeblog, testUser);
+                entry.setPubTime(new java.sql.Timestamp(System.currentTimeMillis() - 60_000L));
+                TestUtils.weblogger().getWeblogEntryManager().saveWeblogEntry(entry);
+                TestUtils.endSession(true);
+                indexManager.addEntryIndexOperation(TestUtils.getManagedWeblogEntry(entry));
+            }
+            SearchResultsModel model = executeSearch("blah");
+            long deadline = System.nanoTime() + java.time.Duration.ofSeconds(10).toNanos();
+            while (model.getHits() != matches && System.nanoTime() < deadline) {
+                Thread.sleep(50);
+                model = executeSearch("blah");
+            }
+
+            assertEquals(matches, model.getHits(), "every match counts, not just this page");
+            assertEquals(0, model.getOffset());
+            assertEquals(SearchResultsModel.RESULTS_PER_PAGE, model.getLimit());
+            assertNotNull(model.getWeblogEntriesPager().getNextLink(),
+                    "twelve matches at ten a page must offer a second page");
+        } finally {
             indexManager.removeWeblogIndex(testWeblog);
         }
     }

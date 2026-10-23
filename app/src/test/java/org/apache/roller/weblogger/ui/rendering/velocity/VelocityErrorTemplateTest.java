@@ -33,7 +33,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>These templates are what a <em>reader</em> sees when a theme blows up
  * mid-render: {@code error-page.vm} replaces the whole page and
  * {@code error-parse.vm} is spliced in where a failed {@code #parse} would
- * have gone -- both at HTTP 200, on a public weblog, to anyone. They used to
+ * have gone -- on a public weblog, to anyone (as a 500 now, never cached:
+ * see RenderErrorStatusTest). They used to
  * print the exception's message, its {@code getClass().getName()} and the
  * template source that threw, which is precisely the detail
  * {@code roller-ui/errors/error.jsp} refuses to show for the same class of
@@ -117,6 +118,27 @@ class VelocityErrorTemplateTest {
                 "the <style> block must be closed properly:\n" + source);
         assertFalse(source.contains("</style\n"),
                 "the </style tag is missing its '>':\n" + source);
+    }
+
+    /**
+     * A reader saw a red table banner reading "Unexpected Exception", with
+     * no dark mode, and a red block spliced into a themed page. The page is
+     * now error.jsp's calm card in the quiet palette, light and dark; the
+     * spliced block is one neutral line in the theme's own colours.
+     */
+    @Test
+    void theErrorTemplatesAreCalmAndFollowTheColourScheme() throws IOException {
+        String page = read(ERROR_PAGE);
+        assertTrue(page.contains("@media (prefers-color-scheme: dark)"), "the error page has a dark palette");
+        assertFalse(page.contains("<table"), "no table banner:\n" + page);
+        String parse = read(ERROR_PARSE);
+        assertTrue(parse.contains("role=\"alert\""), "the spliced line is announced:\n" + parse);
+        for (String source : new String[] {page, parse}) {
+            for (String red : new String[] {"#f00", "#c00", "#fcc", "#CC0000", "red;"}) {
+                assertFalse(source.contains(red), "no red: " + red + "\n" + source);
+            }
+            assertFalse(source.contains("<span") && source.contains("<ul"), "no list inside a span");
+        }
     }
 
     /** error.jsp carries the viewport meta; this page is read on phones too. */

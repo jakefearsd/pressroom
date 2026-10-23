@@ -18,20 +18,11 @@
 #*
  Velocity #parse error include page.
 
- This is spliced into a public weblog page, at HTTP 200, for any reader. It
- used to print the exception message, the template that threw, and the
- exception class name -- exactly the detail roller-ui/errors/error.jsp
- refuses to show for the same class of failure. The detail belongs in the
- server log; the reader gets the same neutral wording error.jsp uses.
+ Spliced into a themed page where a failed #parse would have gone. The
+ response is then sent as HTTP 500 and never cached (RenderErrorStatusTest).
+ One neutral line that inherits the theme's own colours and type: no
+ exception detail (that goes to the server log), no red block.
  Pinned by VelocityErrorTemplateTest.
 *#
 <!-- error-parse -->
-<div style="padding: 10px;white-space: normal;">
-  <h2 style="background-color: inherit;color: #CC0000;margin: 0;padding: 0;">$text.get("errorPage.title")</h2>
-  <span style="display: block;background-color: #fcc;color: #c00;border: 1px solid red;margin: 15px 0px;padding: 10px;font-weight: bold;">
-    <ul style="list-style-type: none;margin-top: 0;margin-left: 0;margin-bottom: 0;padding: 3px;">
-      <li>$text.get("errorPage.message")</li>
-      <li>Please try again, and contact your site administrator if the problem continues.</li>
-    </ul>
-  </span>
-</div>
+<p class="roller-render-error" role="alert" style="margin: 1em 0; padding: .75em 1em; border: 1px solid currentColor; border-radius: 6px;"><strong>$text.get("errorPage.title")</strong> $text.get("errorPage.message")</p>

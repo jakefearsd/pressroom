@@ -20,7 +20,7 @@ package org.apache.roller.weblogger.business;
 import java.time.Instant;
 
 /**
- * The five facts about one published entry that a sitemap needs, read as
+ * The six facts about one published entry that a sitemap needs, read as
  * columns rather than as a
  * {@link org.apache.roller.weblogger.pojos.WeblogEntry}: building whole
  * entities (text, summary and every other column) for a document that uses
@@ -35,9 +35,12 @@ import java.time.Instant;
  * @param publicImageId the featured image's id when it names a media file
  *                      in a directory that is not private, otherwise null --
  *                      a dangling id or a private file is never advertised
+ * @param canonicalUrl  the entry's stored canonical-URL override, as stored
+ *                      (null, blank, or not yet validated); the sitemap
+ *                      leaves out an entry canonical to another address
  */
 public record SitemapEntry(String anchor, Instant pubTime, Instant updateTime,
-        boolean noindex, String publicImageId) {
+        boolean noindex, String publicImageId, String canonicalUrl) {
 
     /** The time a sitemap reports for the entry: its update, else its publication. */
     public Instant lastmod() {

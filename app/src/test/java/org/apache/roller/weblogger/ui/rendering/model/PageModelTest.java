@@ -595,4 +595,36 @@ class PageModelTest {
         assertNull(model.getCanonicalUrl(),
                 "Search pages must not claim a canonical URL.");
     }
+
+    // ------------------------------------------------------- date archives
+
+    /**
+     * A date archive had no heading to show, because the model exposed
+     * neither the archive's date nor a readable label for it. The label is
+     * the month or day in the weblog's own language, and null off an archive.
+     */
+    @Test
+    void aDateArchiveHasAReadableLabelInTheWeblogsLanguage() throws Exception {
+        WeblogPageRequest month = pageRequest();
+        month.setWeblogDate("202610");
+        assertEquals("202610", modelFor(month).getWeblogDate());
+        assertEquals("October 2026", modelFor(month).getWeblogDateLabel());
+
+        WeblogPageRequest day = pageRequest();
+        day.setWeblogDate("20261022");
+        assertEquals("October 22, 2026", modelFor(day).getWeblogDateLabel());
+
+        weblog.setLocale("de_DE");
+        assertEquals("Oktober 2026", modelFor(month).getWeblogDateLabel());
+    }
+
+    @Test
+    void noDateOrAnImpossibleOneHasNoLabel() throws Exception {
+        assertNull(modelFor(pageRequest()).getWeblogDate());
+        assertNull(modelFor(pageRequest()).getWeblogDateLabel());
+
+        WeblogPageRequest impossible = pageRequest();
+        impossible.setWeblogDate("202613");
+        assertNull(modelFor(impossible).getWeblogDateLabel(), "month 13 is no archive");
+    }
 }

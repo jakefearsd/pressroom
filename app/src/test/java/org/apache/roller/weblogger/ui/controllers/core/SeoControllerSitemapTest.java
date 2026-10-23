@@ -161,6 +161,57 @@ class SeoControllerSitemapTest {
     }
 
     /**
+     * An entry or page whose canonical override names another address is
+     * not this site's to submit: Search Console reports it as "Submitted URL
+     * not selected as canonical". It is left out. An override that names the
+     * item's own address keeps it, and a value that is not an http(s) URL is
+     * no override at all (PageModel ignores it in the head the same way).
+     */
+    @Test
+    void anItemWhoseCanonicalPointsElsewhereIsLeftOut() throws Exception {
+        String root = ABSOLUTE_CONTEXT + "/" + HANDLE + "/";
+        WeblogEntry syndicated = entry("syndicated-entry", PubStatus.PUBLISHED, 1, null, false);
+        WeblogEntry selfCanonical = entry("self-canonical-entry", PubStatus.PUBLISHED, 2, null, false);
+        WeblogEntry bogusCanonical = entry("bogus-canonical-entry", PubStatus.PUBLISHED, 3, null, false);
+        canonical(syndicated, "https://elsewhere.example.com/original");
+        canonical(selfCanonical, root + "entry/self-canonical-entry");
+        canonical(bogusCanonical, "javascript:alert(1)");
+        WeblogPage movedPage = page("moved", WeblogPage.PubStatus.PUBLISHED, false);
+        WeblogPage ownPage = page("own", WeblogPage.PubStatus.PUBLISHED, false);
+        canonical(movedPage, "https://elsewhere.example.com/moved");
+        canonical(ownPage, root + "own");
+
+        String body = sitemap().getBody();
+
+        assertFalse(body.contains("syndicated-entry"),
+                "an entry canonical to another site must not be submitted:\n" + body);
+        assertFalse(body.contains(root + "moved<"),
+                "a page canonical to another site must not be submitted:\n" + body);
+        assertTrue(body.contains("<loc>" + root + "entry/self-canonical-entry</loc>"),
+                "a canonical naming the entry itself keeps it:\n" + body);
+        assertTrue(body.contains("<loc>" + root + "entry/bogus-canonical-entry</loc>"),
+                "a non-http canonical is no override:\n" + body);
+        assertTrue(body.contains("<loc>" + root + "own</loc>"),
+                "a canonical naming the page itself keeps it:\n" + body);
+        assertFalse(body.contains("elsewhere.example.com"), body);
+    }
+
+    private void canonical(WeblogEntry entry, String url) throws Exception {
+        WeblogEntry managed = TestUtils.getManagedWeblogEntry(entry);
+        managed.setCanonicalUrl(url);
+        entries().saveWeblogEntry(managed);
+        TestUtils.endSession(true);
+    }
+
+    private void canonical(WeblogPage page, String url) throws Exception {
+        WeblogPage managed = pages().getPageBySlug(TestUtils.getManagedWebsite(weblog), page.getSlug());
+        managed.setCanonicalUrl(url);
+        pages().savePage(managed);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+    }
+
+    /**
      * The sitemap reads five columns of each entry; it must not build whole
      * entities (text, summary and every other column) to get them, nor look
      * each featured image up on its own. Before the fix this built a

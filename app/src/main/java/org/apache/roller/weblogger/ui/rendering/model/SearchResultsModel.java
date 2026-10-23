@@ -96,7 +96,9 @@ public class SearchResultsModel extends PageModel {
 				RESULTS_PER_PAGE,
 				urlStrategy
 			);
-			hits = searchResultList.getResults().size();
+			// every match the index can page through, not this page's size:
+			// the reader's "N found" and the pager's next link both read it
+			hits = searchResultList.getTotalHits();
 			offset = searchResultList.getOffset();
 			limit = searchResultList.getLimit();
 			categories = searchResultList.getCategories();
