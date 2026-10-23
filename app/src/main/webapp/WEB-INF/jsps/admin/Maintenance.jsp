@@ -56,7 +56,7 @@
                 <c:if test="${selectedWeblog == null}">selected="selected"</c:if>
                 disabled="disabled"><spring:message code="maintenance.select.placeholder"/></option>
             <c:forEach var="w" items="${weblogs}">
-                <option value="${fn:escapeXml(w.id)}"
+                <option value="${fn:escapeXml(w.id)}" data-handle="${fn:escapeXml(w.handle)}"
                     <c:if test="${selectedWeblog != null && selectedWeblog.id == w.id}">selected="selected"</c:if>
                 >${fn:escapeXml(w.name)} (${fn:escapeXml(w.handle)})</option>
             </c:forEach>
@@ -68,9 +68,17 @@
          sentences with buttons somewhere in it. The two long-running ones
          confirm and NAME the selected weblog first: the <select> above is the
          only thing that says which weblog an unlabelled "Rebuild" acts on,
-         and it is easy to have scrolled past. --%>
-    <c:set var="selectedWeblogLabel"
-           value="${selectedWeblog == null ? '' : selectedWeblog.handle}"/>
+         and it is easy to have scrolled past.
+
+         The name is NOT baked in at render time: selectedWeblog is null on a
+         first visit (the prompt read "... for ?") and the admin changes the
+         select after the page has rendered. Each button carries its prompt as
+         a data-confirm-template with weblogToken where the handle goes; the
+         script at the end writes the live data-confirm from the chosen
+         option's data-handle, on load and on every change. With nothing
+         chosen there is no prompt to name, and the server refuses with
+         maintenance.error.noSuchWeblog. --%>
+    <c:set var="weblogToken" value="@WEBLOG@"/>
 
     <div class="maintenance-op">
         <p><spring:message code="maintenance.prompt.flush"/></p>
@@ -82,30 +90,59 @@
          JS-string position is decoded by the HTML parser before the JS
          compiles, so one apostrophe in a translated value breaks the handler
          and the button submits with NO confirmation. See roller.js.
-         Single-escaped on purpose -- the ARGUMENT is entity-escaped above and
-         the attribute is quoted with a double quote, so the browser hands
-         dataset.confirm the exact literal text. Do NOT wrap this in
-         fn:escapeXml as well: that double-encodes and the dialog reads
-         "o&#039;brien". The bundle values must not contain a raw double
-         quote; AdminJspHygieneTest pins that. --%>
+         Escaped exactly once, as a whole: the template's argument is the
+         plain token, so fn:escapeXml on the formatted message is the one
+         escape the attribute needs and the browser hands the script the
+         literal text. The live data-confirm rendered for a selected weblog
+         escapes the handle the same way. The bundle values must not contain
+         a raw double quote; AdminJspHygieneTest pins that. --%>
     <c:if test="${rc:getBooleanProp('search.enabled')}">
-        <spring:message code="maintenance.confirm.index" arguments="${fn:escapeXml(selectedWeblogLabel)}" var="confirmIndex"/>
+        <spring:message code="maintenance.confirm.index" arguments="${weblogToken}" var="confirmIndex"/>
         <div class="maintenance-op">
             <p><spring:message code="maintenance.prompt.index"/></p>
             <button type="submit" class="btn btn-secondary"
-                    data-confirm="${confirmIndex}"
+                    data-confirm-template="${fn:escapeXml(confirmIndex)}"
+                    <c:if test="${selectedWeblog != null}">data-confirm="${fn:escapeXml(fn:replace(confirmIndex, weblogToken, selectedWeblog.handle))}"</c:if>
                     data-busy-label="<spring:message code='maintenance.index.building'/>"
                     formaction="${pageContext.request.contextPath}/roller-ui/admin/maintenance!index.rol"><spring:message code="maintenance.button.index"/></button>
         </div>
     </c:if>
 
-    <spring:message code="maintenance.confirm.regenerateRenditions" arguments="${fn:escapeXml(selectedWeblogLabel)}" var="confirmRenditions"/>
+    <spring:message code="maintenance.confirm.regenerateRenditions" arguments="${weblogToken}" var="confirmRenditions"/>
     <div class="maintenance-op">
         <p><spring:message code="maintenance.prompt.regenerateRenditions"/></p>
         <button type="submit" class="btn btn-secondary"
-                data-confirm="${confirmRenditions}"
+                data-confirm-template="${fn:escapeXml(confirmRenditions)}"
+                <c:if test="${selectedWeblog != null}">data-confirm="${fn:escapeXml(fn:replace(confirmRenditions, weblogToken, selectedWeblog.handle))}"</c:if>
                 data-busy-label="<spring:message code='maintenance.regenerateRenditions.building'/>"
                 formaction="${pageContext.request.contextPath}/roller-ui/admin/maintenance!regenerateRenditions.rol"><spring:message code="maintenance.button.regenerateRenditions"/></button>
     </div>
 
 </form>
+
+<script>
+    // Rewrites each long operation's prompt so it names the weblog the
+    // select currently holds (see the comment above the first operation).
+    (function () {
+        var select = document.getElementById("maintenanceWeblog");
+        if (!select) {
+            return;
+        }
+        var token = "${weblogToken}";
+        function rewrite() {
+            var option = select.options[select.selectedIndex];
+            var handle = option ? option.getAttribute("data-handle") : null;
+            var buttons = select.form.querySelectorAll("[data-confirm-template]");
+            for (var i = 0; i < buttons.length; i++) {
+                if (handle) {
+                    buttons[i].setAttribute("data-confirm",
+                            buttons[i].getAttribute("data-confirm-template").split(token).join(handle));
+                } else {
+                    buttons[i].removeAttribute("data-confirm");
+                }
+            }
+        }
+        select.addEventListener("change", rewrite);
+        rewrite();
+    })();
+</script>

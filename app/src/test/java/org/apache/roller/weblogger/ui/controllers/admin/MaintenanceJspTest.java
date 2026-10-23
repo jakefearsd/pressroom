@@ -24,6 +24,8 @@ import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -105,5 +107,61 @@ class MaintenanceJspTest {
                     "A second <option> appears to start before the first one ends -- "
                             + "the scan itself is confused, not the markup");
         }
+    }
+
+    /**
+     * The two long operations confirm and name their weblog, but the name
+     * was baked in at render time from {@code selectedWeblog}, which is null
+     * on a first visit: the prompt read "Rebuild the search index for ? ...",
+     * and it kept that (or a previous) name after the admin chose another
+     * weblog in the select. Each button now carries a template, the live
+     * {@code data-confirm} is rendered only once a weblog is selected, and a
+     * change listener on the select rewrites it from the chosen option.
+     */
+    @Test
+    void theConfirmPromptsFollowTheSelectedWeblog() throws IOException {
+        String source = Files.readString(JSP, StandardCharsets.UTF_8);
+
+        for (String key : new String[] {"maintenance.confirm.index",
+                "maintenance.confirm.regenerateRenditions"}) {
+            int at = source.indexOf("code=\"" + key + "\"");
+            assertTrue(at >= 0, "Expected " + key + " in " + JSP);
+        }
+        assertEquals(2, count(source, "data-confirm-template="),
+                "Both long-operation buttons must carry a data-confirm-template the select can "
+                        + "rewrite their prompt from");
+        assertFalse(source.contains("selectedWeblogLabel"),
+                "The prompt must not be built from a render-time label: it is empty on a first "
+                        + "visit (\"for ?\") and goes stale when the admin picks another weblog");
+        for (String live : liveConfirms(source)) {
+            assertTrue(live.contains("selectedWeblog != null"),
+                    "A rendered data-confirm must be conditional on a weblog being selected, or "
+                            + "the first visit prompts \"for ?\". Found: " + live);
+        }
+        assertTrue(source.contains("data-handle=\"${fn:escapeXml(w.handle)}\""),
+                "Each weblog option must expose its handle for the prompt");
+        assertTrue(source.contains("getElementById(\"maintenanceWeblog\")")
+                        && source.contains("\"change\""),
+                "A change listener on #maintenanceWeblog must rewrite the prompts");
+    }
+
+    private static int count(String haystack, String needle) {
+        int n = 0;
+        for (int i = haystack.indexOf(needle); i >= 0; i = haystack.indexOf(needle, i + 1)) {
+            n++;
+        }
+        return n;
+    }
+
+    /** The lines that render a live data-confirm attribute. */
+    private static java.util.List<String> liveConfirms(String source) {
+        java.util.List<String> found = new java.util.ArrayList<>();
+        String[] lines = source.split("\n");
+        for (int i = 0; i < lines.length; i++) {
+            if (lines[i].contains("data-confirm=")) {
+                found.add(lines[i]);
+            }
+        }
+        return found;
     }
 }
