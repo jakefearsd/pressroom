@@ -41,7 +41,6 @@ import java.util.TreeSet;
 
 import org.apache.roller.weblogger.business.FileContentManager;
 import org.apache.roller.weblogger.business.MediaFileManager;
-import org.apache.roller.weblogger.business.RenditionSupport;
 import org.apache.roller.weblogger.business.UserManager;
 import org.apache.roller.weblogger.business.VirtualHostRegistry;
 import org.apache.roller.weblogger.business.WeblogEntryManager;
@@ -271,7 +270,7 @@ public class JPAWeblogManagerImpl implements WeblogManager {
      * cascades to its files, a file to its tags), and, once that commits,
      * each file's original, thumbnail and renditions on disk.
      * {@code MediaFileManager.removeAllFiles} is not used here: it commits per
-     * directory and deletes from disk at once.
+     * directory.
      */
     private void removeMediaFiles(Weblog weblog) throws WebloggerException {
         List<String> fileIds = new ArrayList<>();
@@ -289,22 +288,9 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         FileContentManager content = roller.getFileContentManager();
         strategy.runAfterCommit(() -> {
             for (String fileId : fileIds) {
-                deleteFileQuietly(content, weblog, fileId);
-                deleteFileQuietly(content, weblog, fileId + "_sm");
-                for (String renditionId : RenditionSupport.renditionFileIds(fileId)) {
-                    deleteFileQuietly(content, weblog, renditionId);
-                }
+                JPAMediaFileManagerImpl.deleteContentQuietly(content, weblog, fileId);
             }
         });
-    }
-
-    /** A rendition never generated, or a file already gone, is not an error. */
-    private static void deleteFileQuietly(FileContentManager content, Weblog weblog, String fileId) {
-        try {
-            content.deleteFile(weblog, fileId);
-        } catch (WebloggerException e) {
-            log.debug("File to be deleted already unavailable in the file store: {}", fileId, e);
-        }
     }
 
     /** Writes the unit of work's pending changes, inside its transaction, without committing. */

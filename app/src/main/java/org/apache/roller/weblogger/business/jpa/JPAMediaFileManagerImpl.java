@@ -606,7 +606,10 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         // update weblog last modified date. date updated by saveWeblog()
         roller.getWeblogManager().saveWeblog(weblog);
 
-        deleteContentQuietly(cmgr, weblog, mediaFile.getId());
+        // Off the disk only once the row's removal has committed: deleted
+        // now, a rollback would leave the row pointing at nothing.
+        String fileId = mediaFile.getId();
+        strategy.runAfterCommit(() -> deleteContentQuietly(cmgr, weblog, fileId));
     }
 
     /**
@@ -617,7 +620,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
      * cwebp was unavailable) must not prevent the others from being
      * cleaned up.
      */
-    private void deleteContentQuietly(FileContentManager cmgr, Weblog weblog, String mediaFileId) {
+    static void deleteContentQuietly(FileContentManager cmgr, Weblog weblog, String mediaFileId) {
         deleteFileQuietly(cmgr, weblog, mediaFileId);
         deleteFileQuietly(cmgr, weblog, mediaFileId + "_sm");
         for (String renditionId : RenditionSupport.renditionFileIds(mediaFileId)) {
@@ -625,7 +628,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         }
     }
 
-    private void deleteFileQuietly(FileContentManager cmgr, Weblog weblog, String fileId) {
+    private static void deleteFileQuietly(FileContentManager cmgr, Weblog weblog, String fileId) {
         try {
             cmgr.deleteFile(weblog, fileId);
         } catch (Exception e) {
@@ -749,11 +752,19 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
             return;
         }
         FileContentManager cmgr = roller.getFileContentManager();
+        Weblog weblog = dir.getWeblog();
+        List<String> fileIds = new ArrayList<>();
         Set<MediaFile> files = dir.getMediaFiles();
         for (MediaFile mf : files) {
-            deleteContentQuietly(cmgr, dir.getWeblog(), mf.getId());
+            fileIds.add(mf.getId());
             this.strategy.remove(mf);
         }
+        // Off the disk only once the commit just below has removed the rows.
+        strategy.runAfterCommit(() -> {
+            for (String fileId : fileIds) {
+                deleteContentQuietly(cmgr, weblog, fileId);
+            }
+        });
 
         dir.getWeblog().getMediaFileDirectories().remove(dir);
 
