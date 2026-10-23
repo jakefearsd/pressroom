@@ -1357,16 +1357,13 @@ class JspConsistencyTest {
             "WEB-INF/jsps/editor/Categories.jsp  bean.id",
             "WEB-INF/jsps/editor/Categories.jsp  removeId",
             "WEB-INF/jsps/editor/Entries.jsp  removeId",
-            "WEB-INF/jsps/editor/EntryEdit.jsp  bean.featuredImageId",
             "WEB-INF/jsps/editor/EntryEdit.jsp  bean.id",
             "WEB-INF/jsps/editor/EntryEdit.jsp  bean.locale",
-            "WEB-INF/jsps/editor/EntryEdit.jsp  bean.ogImageId",
             "WEB-INF/jsps/editor/EntryEdit.jsp  bean.pubTimeLocal",
             "WEB-INF/jsps/editor/EntryEdit.jsp  bean.status",
             "WEB-INF/jsps/editor/EntryEdit.jsp  removeId",
             "WEB-INF/jsps/editor/EntryEditor.jsp  draftKey",
             "WEB-INF/jsps/editor/PageEdit.jsp  bean.id",
-            "WEB-INF/jsps/editor/PageEdit.jsp  bean.ogImageId",
             "WEB-INF/jsps/editor/PageEdit.jsp  draftKey",
             "WEB-INF/jsps/editor/TemplateEdit.jsp  bean.action",
             "WEB-INF/jsps/editor/TemplateEdit.jsp  bean.id",
@@ -1374,8 +1371,8 @@ class JspConsistencyTest {
 
     private static final Pattern EL_EXPRESSION = Pattern.compile("\\$\\{([^}]*)}");
 
-    private static final Pattern SAFE_EL_CALL =
-            Pattern.compile("(fn:escapeXml|fn:length|urls\\.[A-Za-z]+)\\(.*\\)");
+    private static final Pattern SAFE_EL_CALL_START =
+            Pattern.compile("(fn:escapeXml|fn:length|urls\\.[A-Za-z]+)\\(");
 
     private static final Pattern LITERAL_TERNARY = Pattern.compile(".*\\?\\s*'[^']*'\\s*:\\s*'[^']*'");
 
@@ -1439,6 +1436,29 @@ class JspConsistencyTest {
                 """;
 
         assertEquals(List.of("dir.name", "dir.title", "prompt", "bean.id", "dir.about", "tainted"),
+                rawExpressions(jsp));
+    }
+
+    /**
+     * A one-element EL list, {@code ${[x]}}, is how a free-text argument
+     * keeps its commas past {@code <spring:message>} (MessageArgumentCommaTest).
+     * The list is as safe as its elements: every one escaped or known safe,
+     * and a single raw one taints it. A safe call is ONE call whose
+     * parenthesis closes at the end, so {@code fn:escapeXml(a)} cannot carry
+     * a raw tail past the scan.
+     */
+    @Test
+    void theEscapingScanReadsAnElListByItsElements() {
+        String jsp = """
+                <spring:message code="k" arguments="${[fn:escapeXml(dir.name)]}"/>
+                <spring:message code="k" arguments="${[fn:escapeXml(dir.name, ','), actionWeblog.handle]}"/>
+                <spring:message code="k" arguments="${[fn:escapeXml(dir.name), dir.title]}"/>
+                <spring:message code="k" arguments="${[]}"/>
+                <p>${fn:escapeXml(dir.name) += fn:trim(dir.title)}</p>
+                """;
+
+        assertEquals(List.of("[fn:escapeXml(dir.name), dir.title]", "[]",
+                        "fn:escapeXml(dir.name) += fn:trim(dir.title)"),
                 rawExpressions(jsp));
     }
 
@@ -1532,9 +1552,13 @@ class JspConsistencyTest {
     }
 
     private static boolean safeExpression(String expression, Set<String> cleanVars) {
+        List<String> elements = ElExpressions.listElements(expression);
+        if (elements != null) {
+            return !elements.isEmpty() && elements.stream().allMatch(e -> safeExpression(e, cleanVars));
+        }
         return SAFE_EL.contains(expression)
                 || cleanVars.contains(expression)
-                || SAFE_EL_CALL.matcher(expression).matches()
+                || ElExpressions.isOneCall(expression, SAFE_EL_CALL_START)
                 || LITERAL_TERNARY.matcher(expression).matches()
                 || ENTITY_ID.matcher(expression).matches();
     }

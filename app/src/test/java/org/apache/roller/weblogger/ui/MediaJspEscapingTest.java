@@ -86,15 +86,12 @@ class MediaJspEscapingTest {
      * Calls whose result is safe whatever they are given: fn:escapeXml
      * escapes; fn:length is a number; urls.* is URLStrategy output built from
      * ids (CLAUDE.md, "Escaping"). Only the opening is matched here; {@link
-     * #isOneSafeCall} also requires that its parenthesis closes at the very
+     * ElExpressions#isOneCall} also requires that its parenthesis closes at the very
      * end, so the expression is that one call and not, say, a ternary that
      * happens to start and end with one.
      */
     private static final Pattern SAFE_CALL_START = Pattern.compile(
             "(?:fn:escapeXml|fn:length|urls\\.[A-Za-z]+)\\(");
-
-    /** An EL list, {@code [a, b]}: the spring:message form that keeps commas. */
-    private static final Pattern EL_LIST = Pattern.compile("\\[(.*)]", Pattern.DOTALL);
 
     /** A ternary that prints one of two string literals. */
     private static final Pattern LITERAL_TERNARY =
@@ -235,61 +232,13 @@ class MediaJspEscapingTest {
     }
 
     private static boolean safe(String expression, Set<String> urlVariables) {
-        Matcher list = EL_LIST.matcher(expression);
-        if (list.matches()) {
-            List<String> elements = splitTopLevel(list.group(1));
+        List<String> elements = ElExpressions.listElements(expression);
+        if (elements != null) {
             return !elements.isEmpty() && elements.stream().allMatch(e -> safe(e, urlVariables));
         }
         return SAFE.contains(expression)
-                || isOneSafeCall(expression)
+                || ElExpressions.isOneCall(expression, SAFE_CALL_START)
                 || LITERAL_TERNARY.matcher(expression).matches()
                 || urlVariables.contains(expression);
-    }
-
-    /** One safe call, whose opening parenthesis closes at the expression's end. */
-    private static boolean isOneSafeCall(String expression) {
-        Matcher start = SAFE_CALL_START.matcher(expression);
-        if (!start.lookingAt()) {
-            return false;
-        }
-        int depth = 1;
-        for (int i = start.end(); i < expression.length(); i++) {
-            char c = expression.charAt(i);
-            if (c == '\'' || c == '"') {
-                int end = expression.indexOf(c, i + 1);
-                if (end < 0) {
-                    return false;
-                }
-                i = end;
-            } else if (c == '(') {
-                depth++;
-            } else if (c == ')' && --depth == 0) {
-                return i == expression.length() - 1;
-            }
-        }
-        return false;
-    }
-
-    /** Splits on commas outside parentheses, brackets and quotes. */
-    private static List<String> splitTopLevel(String text) {
-        List<String> parts = new ArrayList<>();
-        int depth = 0;
-        int from = 0;
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (c == '\'' || c == '"') {
-                int end = text.indexOf(c, i + 1);
-                i = end < 0 ? text.length() : end;
-            } else if (c == '(' || c == '[') {
-                depth++;
-            } else if (c == ')' || c == ']') {
-                depth--;
-            } else if (c == ',' && depth == 0) {
-                parts.add(text.substring(from, i).strip());
-                from = i + 1;
-            }
-        }
-        parts.add(text.substring(from).strip());
-        return parts;
     }
 }

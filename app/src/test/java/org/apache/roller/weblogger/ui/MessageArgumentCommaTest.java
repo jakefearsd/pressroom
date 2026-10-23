@@ -63,7 +63,7 @@ class MessageArgumentCommaTest {
     void freeTextArgumentsArePassedAsAList() throws IOException {
         Map<String, String> sites = Map.of(
                 "admin/Businesses.jsp", "arguments=\"${[b.name]}\"",
-                "editor/WeblogRemoveConfirm.jsp", "arguments=\"${[actionWeblog.name]}\"",
+                "editor/WeblogRemoveConfirm.jsp", "arguments=\"${[fn:escapeXml(actionWeblog.name)]}\"",
                 "editor/EntryEdit.jsp", "arguments=\"${[newsletterSentAtText]}\"",
                 "core/MainMenu.jsp", "arguments=\"${[fn:escapeXml(permLabels)]}\"",
                 "editor/MediaFileView.jsp", "arguments=\"${[fn:escapeXml(bean.name)]}\"",
