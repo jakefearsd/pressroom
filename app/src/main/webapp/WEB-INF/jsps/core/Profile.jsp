@@ -17,7 +17,7 @@
 --%>
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
 
-<p class="subtitle"><spring:message code="userAdmin.title.editUser"/></p>
+<p class="subtitle"><spring:message code="yourProfile.subtitle"/></p>
 
 
 
