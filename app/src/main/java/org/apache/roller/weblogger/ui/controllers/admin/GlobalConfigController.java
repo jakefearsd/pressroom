@@ -114,13 +114,15 @@ public class GlobalConfigController extends BaseController {
         model.addAttribute("globalConfigDef", globalConfigDef);
         model.addAttribute("weblogs", weblogs);
 
-        // only set values for properties that are already defined
-        RuntimeConfigProperty updProp;
-        String incomingProp;
+        // Validate everything first and mutate nothing until it all passes.
+        // The properties are managed entities, and an in-place edit is written
+        // by whichever commit comes next (JPAPropertiesManagerImpl), so a
+        // refused form that had set values as it went would still change the
+        // site. Only properties that are already defined are processed.
+        Map<String, String> accepted = new LinkedHashMap<>();
         for (Map.Entry<String, RuntimeConfigProperty> propEntry : properties.entrySet()) {
             String propName = propEntry.getKey();
-            updProp = propEntry.getValue();
-            incomingProp = request.getParameter(updProp.getName());
+            String incomingProp = request.getParameter(propEntry.getValue().getName());
 
             PropertyDef propertyDef = globalConfigDef.getPropertyDef(propName);
             if (propertyDef == null) {
@@ -129,42 +131,29 @@ public class GlobalConfigController extends BaseController {
             }
 
             if ("boolean".equals(propertyDef.getType())) {
-                try {
-                    if (incomingProp == null) {
-                        updProp.setValue("false");
-                    } else {
-                        boolean value = Boolean.parseBoolean(incomingProp);
-                        updProp.setValue(Boolean.toString(value));
-                    }
-                    log.debug("Set boolean {} = {}", propName, incomingProp);
-                } catch (Exception nfe) {
-                    String propDesc = bundle.getString(propertyDef.getKey());
-                    addError(model, "ConfigForm.invalidBooleanProperty", new Object[]{propDesc, StringEscapeUtils.escapeHtml4(incomingProp)}, request);
-                }
+                // an unticked checkbox submits nothing, so absent means false
+                accepted.put(propName, Boolean.toString(Boolean.parseBoolean(incomingProp)));
 
             } else if (incomingProp != null && "integer".equals(propertyDef.getType())) {
                 try {
                     Integer.parseInt(incomingProp);
-                    updProp.setValue(incomingProp);
-                    log.debug("Set integer {} = {}", propName, incomingProp);
                 } catch (NumberFormatException nfe) {
                     String propDesc = bundle.getString(propertyDef.getKey());
                     addError(model, "ConfigForm.invalidIntegerProperty", new Object[]{propDesc, StringEscapeUtils.escapeHtml4(incomingProp)}, request);
                 }
+                accepted.put(propName, incomingProp);
 
             } else if (incomingProp != null && "float".equals(propertyDef.getType())) {
                 try {
                     Float.parseFloat(incomingProp);
-                    updProp.setValue(incomingProp);
-                    log.debug("Set float {} = {}", propName, incomingProp);
                 } catch (NumberFormatException nfe) {
                     String propDesc = bundle.getString(propertyDef.getKey());
                     addError(model, "ConfigForm.invalidFloatProperty", new Object[]{propDesc, StringEscapeUtils.escapeHtml4(incomingProp)}, request);
                 }
+                accepted.put(propName, incomingProp);
 
             } else if (incomingProp != null) {
-                updProp.setValue(incomingProp.trim());
-                log.debug("Set something {} = {}", propName, incomingProp);
+                accepted.put(propName, incomingProp.trim());
 
             } else if (!FRONTPAGE_WEBLOG_HANDLE.equals(propName)) {
                 // Missing from the form. The front-page weblog is exempt: it is
@@ -175,7 +164,21 @@ public class GlobalConfigController extends BaseController {
         }
 
         if (hasErrors(model)) {
+            // Re-render what the admin typed, on detached copies: the managed
+            // entities stay exactly as stored.
+            Map<String, RuntimeConfigProperty> shown = new LinkedHashMap<>();
+            for (Map.Entry<String, RuntimeConfigProperty> propEntry : properties.entrySet()) {
+                String propName = propEntry.getKey();
+                shown.put(propName, new RuntimeConfigProperty(propName,
+                        accepted.getOrDefault(propName, propEntry.getValue().getValue())));
+            }
+            model.addAttribute("properties", shown);
             return ".GlobalConfig";
+        }
+
+        for (Map.Entry<String, String> change : accepted.entrySet()) {
+            properties.get(change.getKey()).setValue(change.getValue());
+            log.debug("Set {} = {}", change.getKey(), change.getValue());
         }
 
         try {
