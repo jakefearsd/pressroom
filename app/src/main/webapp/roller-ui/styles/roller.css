@@ -41,6 +41,9 @@
     /* Native radios, checkboxes and range inputs take the accent rather than
        the browser's own blue (Members' permission radios, for one). */
     accent-color: var(--accent);
+    /* Native scrollbars and pickers follow the theme (a white scrollbar
+       under a dark .table-responsive otherwise). */
+    color-scheme: light dark;
 }
 
 /* Links. Bootstrap paints <a> from --bs-link-color-rgb, an r,g,b triplet
@@ -465,6 +468,12 @@ label,
     color: var(--ink);
 }
 
+/* The phone-width Menu button that unfolds the rail and sidebar (the
+   layouts' #adminRailColumn); hidden from md up by .d-md-none. */
+.rail-toggle {
+    margin-bottom: 12px;
+}
+
 /* ---- The rail: context header + tool groups ---- */
 
 .rail {
@@ -834,13 +843,19 @@ table.mm_table_actions td {
     .editor-grid {
         grid-template-columns: 1fr;
     }
+    /* order: the writing surface (title, body) comes before the publish
+       rail on a phone, not a screen and a half below it. */
     .editor-main {
         grid-column: 1;
         grid-row: auto;
+        order: -1;
     }
+    /* grid-row: auto as well: the rail's desktop grid-row: 1 would
+       otherwise pin it above the writing surface whatever its order. */
     .editor-rail,
     .editor-rail-extra {
         grid-column: 1;
+        grid-row: auto;
     }
 }
 
