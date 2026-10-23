@@ -13,6 +13,9 @@
         <p class="t"><a href="$utils.escapeHTML($entry.permalink)">$utils.truncateNicely($utils.removeHTML($entry.title), 50, 50, "...")</a></p>
         ## $entry.website.name is a WeblogWrapper property, already escaped
         ## by WeblogWrapper#getName -- see weblog.vm's fd-dir comment.
-        <p class="from">from <a href="$utils.escapeHTML($entry.website.URL)"><b>$entry.website.name</b></a></p>
+        ## $fdPinned is set by weblog.vm around its pinned block only: those rows
+        ## sit above newer posts, and without a word they read as dates out of
+        ## order.
+        <p class="from">#if($fdPinned)<span class="pin">Pinned</span> #end from <a href="$utils.escapeHTML($entry.website.URL)"><b>$entry.website.name</b></a></p>
     </div>
 </div>

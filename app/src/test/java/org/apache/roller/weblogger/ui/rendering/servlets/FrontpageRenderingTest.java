@@ -103,13 +103,17 @@ class FrontpageRenderingTest {
      * 'self' at the same relative position journal's CSP does among its own
      * directives (ThemeCspCoverageTest
      * #everyFontAThemeAsksForIsShippedAndAllowedByItsPolicy enforces the
-     * pairing for every theme, not just this one). Frontpage never called
-     * #showEmbedAssets, so unlike journal there is no frame-src to carry.
+     * pairing for every theme, not just this one). The frame-src arrived
+     * with the theme's own _page: a static page on the front-door weblog can
+     * carry a [video], which the shared fallback page could play, so the
+     * shared head now calls #showEmbedAssets and names the two providers
+     * exactly as journal does.
      */
     private static final String CSP_FRONTPAGE =
             "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; "
                     + "script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
-                    + "img-src * data:; font-src 'self'; base-uri 'self'; connect-src 'self'; "
+                    + "img-src * data:; frame-src https://www.youtube-nocookie.com "
+                    + "https://player.vimeo.com; font-src 'self'; base-uri 'self'; connect-src 'self'; "
                     + "form-action 'self'; frame-ancestors 'none'\">";
 
     private User siteUser;
@@ -318,7 +322,7 @@ class FrontpageRenderingTest {
         // the only thing that distinguishes this tab's <title> from the front
         // door's -- they were identical, and #includeTemplate is a #parse, so
         // if context sharing ever stops working this is where it shows.
-        assertTrue(body.contains("<title>Weblog Directory : "),
+        assertTrue(body.contains("<title>Directory \u2014 "),
                 "the directory page must name itself in the title:\n" + body);
     }
 
@@ -489,5 +493,157 @@ class FrontpageRenderingTest {
         assertTrue(body.contains("<span class=\"live\" aria-hidden=\"true\">"),
                 "the always-green live dot is decorative and must be hidden from "
                         + "assistive technology:\n" + body);
+    }
+
+    // ------------------------------------------------- fit and finish (0.3.0)
+
+    private static int occurrences(String body, String needle) {
+        int count = 0;
+        for (int at = body.indexOf(needle); at >= 0; at = body.indexOf(needle, at + 1)) {
+            count++;
+        }
+        return count;
+    }
+
+    /**
+     * Nothing excluded the pinned block's entries from the pager's own items,
+     * so a recent pinned entry was listed twice on the first page, and its
+     * row carried no sign of why it sat above newer ones.
+     */
+    @Test
+    void aRecentPinnedEntryIsListedOnceAndSaysItIsPinned() throws Exception {
+        WeblogEntry pinned = TestUtils.setupWeblogEntry("pinned-and-recent", contributorWeblog,
+                contributorUser);
+        WeblogEntryManager mgr = TestUtils.weblogger().getWeblogEntryManager();
+        WeblogEntry managed = mgr.getWeblogEntry(pinned.getId());
+        managed.setPinnedToMain(true);
+        mgr.saveWeblogEntry(managed);
+        TestUtils.endSession(true);
+        contributorEntry("an-ordinary-entry");
+
+        String body = render("/" + SITE_HANDLE + "/");
+
+        assertEquals(1, occurrences(body, "/entry/pinned-and-recent\""),
+                "the pinned entry must be listed once, in the pinned block:\n" + body);
+        assertEquals(1, occurrences(body, "<span class=\"pin\">Pinned</span>"),
+                "only the pinned row carries the label:\n" + body);
+        assertTrue(body.indexOf("pinned-and-recent") < body.indexOf("an-ordinary-entry"),
+                "and it leads the list:\n" + body);
+    }
+
+    /** Journal's Newer/Older steps, in place of "&lt; Previous | Next &gt;". */
+    @Test
+    void theFrontDoorPagerStepsBackToOlderPosts() throws Exception {
+        for (int i = 0; i < 26; i++) {
+            contributorEntry("paged-entry-" + i);
+        }
+
+        String body = render("/" + SITE_HANDLE + "/");
+
+        int nav = body.indexOf("aria-label=\"More entries\"");
+        assertTrue(nav >= 0, "a second page of posts needs a pager:\n" + body);
+        String pager = body.substring(nav, body.indexOf("</nav>", nav));
+        assertTrue(pager.contains("rel=\"next\""), pager);
+        assertTrue(pager.contains(">Older</span>"), pager);
+        assertFalse(pager.contains("&gt;") || pager.contains("&lt;") || pager.contains("|"),
+                "the legacy strip must be gone:\n" + pager);
+    }
+
+    /** The tab you are on is marked, for sight and for assistive technology. */
+    @Test
+    void theTabsMarkTheViewYouAreOn() throws Exception {
+        String home = render("/" + SITE_HANDLE + "/");
+        assertTrue(home.contains("aria-current=\"page\">Recent posts</a>"),
+                "the home tab must be current on the front door:\n" + home);
+        assertFalse(home.contains("aria-current=\"page\">Directory</a>"), home);
+
+        String directory = render("/" + SITE_HANDLE + "/page/directory");
+        assertTrue(directory.contains("aria-current=\"page\">Directory</a>"),
+                "the directory tab must be current on the directory:\n" + directory);
+        assertFalse(directory.contains("aria-current=\"page\">Recent posts</a>"), directory);
+    }
+
+    /**
+     * The search branch was keyed on {@code $model.results}, an empty map on
+     * a search that found nothing -- and Velocity's #if treats an empty map
+     * as false, so a reader who searched for something absent got the front
+     * door back with no word about their search.
+     */
+    @Test
+    void aSearchThatFindsNothingSaysSoInsteadOfShowingTheFrontDoor() throws Exception {
+        MockHttpServletRequest request = RenderingTestSupport
+                .anonymousGet("/roller-ui/rendering/search", "/" + SITE_HANDLE);
+        request.setParameter("q", "zzznope");
+        MockHttpServletResponse response = RenderingTestSupport
+                .execute(RenderingTestSupport.searchServlet(), request);
+        assertEquals(200, response.getStatus());
+        String body = response.getContentAsString();
+
+        assertTrue(body.contains("<h2 class=\"fd-label\">Search results</h2>"), body);
+        assertTrue(body.contains("No posts matched that search."),
+                "a zero-hit search must say so:\n" + body);
+        assertFalse(body.contains("Latest across the site"),
+                "and must not fall back to the front door:\n" + body);
+        assertTrue(body.contains("<title>Search: zzznope \u2014 "),
+                "the tab must name the search:\n" + body);
+        assertTrue(body.contains("<h2 class=\"fd-label\">Search all posts</h2>"),
+                "the bottom form searches posts, not blogs:\n" + body);
+    }
+
+    /**
+     * The grid listed weblogs CREATED in the last 365 days under the heading
+     * "Weblogs", so on a small site it would shrink and then vanish a year
+     * after launch while the heading went on promising weblogs.
+     */
+    @Test
+    void theWeblogsGridKeepsAWeblogOlderThanAYear() throws Exception {
+        Weblog managed = TestUtils.getManagedWebsite(contributorWeblog);
+        managed.setDateCreated(new java.util.Date(System.currentTimeMillis()
+                - java.util.concurrent.TimeUnit.DAYS.toMillis(800)));
+        TestUtils.weblogger().getWeblogManager().saveWeblog(managed);
+        TestUtils.endSession(true);
+
+        String body = render("/" + SITE_HANDLE + "/");
+
+        int grid = body.indexOf("<div class=\"fd-dir\">");
+        assertTrue(grid >= 0, "the weblogs grid must render:\n" + body);
+        assertTrue(body.indexOf(CONTRIBUTOR_HANDLE, grid) > grid,
+                "a two-year-old weblog is still a weblog of this site:\n" + body);
+    }
+
+    /**
+     * Frontpage shipped no _page, so a static page on the front-door weblog
+     * rendered through the shared fallback: no fd class on the body, so the
+     * browser-default look inside an otherwise designed site.
+     */
+    @Test
+    void aStaticPageOnTheFrontDoorWeblogWearsTheFrontDoorChrome() throws Exception {
+        org.apache.roller.weblogger.pojos.WeblogPage page =
+                new org.apache.roller.weblogger.pojos.WeblogPage();
+        page.setWeblog(TestUtils.getManagedWebsite(siteWeblog));
+        page.setSlug("about");
+        page.setTitle("About <this> site");
+        page.setContent("Who runs the site. [contact]");
+        page.setStatus(org.apache.roller.weblogger.pojos.WeblogPage.PubStatus.PUBLISHED);
+        TestUtils.weblogger().getWeblogPageManager().savePage(page);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+
+        String body = render("/" + SITE_HANDLE + "/about");
+
+        assertFrontpageHead(body);
+        assertTrue(body.contains("<body class=\"fd\">"), "the page must wear the fd chrome:\n" + body);
+        assertTrue(body.contains("class=\"fd-topbar\""), body);
+        assertTrue(body.contains("<h1 class=\"fd-page-title\">About &lt;this&gt; site</h1>"),
+                "the raw page title must be escaped once, as the page's h1:\n" + body);
+        assertEquals(1, occurrences(body, "<h1"),
+                "the site name steps down to a paragraph on a page with its own title:\n" + body);
+        assertTrue(body.contains("<article class=\"fd-page roller-content\">"),
+                "the content sits in the content-asset scope:\n" + body);
+        assertTrue(body.contains("contact-form-slot"), "shortcodes must expand:\n" + body);
+        assertTrue(body.contains(".video-embed"),
+                "a [video] on the page must still play, as it did in the fallback:\n" + body);
+        assertTrue(body.contains("<title>About &lt;this&gt; site \u2014 "), body);
+        assertFalse(body.contains("<h1>About"), "not the bare fallback template:\n" + body);
     }
 }

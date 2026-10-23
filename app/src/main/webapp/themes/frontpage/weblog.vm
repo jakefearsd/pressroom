@@ -1,9 +1,21 @@
+## The search branch is keyed on $model.searchResults (PageModel answers
+## false, SearchResultsModel true). It used to test $model.results, which is
+## an empty map on a search that found nothing -- and Velocity's #if treats
+## an empty map as false, so that search got the front door back with no word
+## about the query. The title is set before the header is included, since the
+## header renders the document head; rawTerm is unescaped and _header escapes
+## it once.
+#if($model.searchResults)
+    #set($fdPageTitle = "Search: $model.rawTerm")
+#else
+    #set($fdTab = "home")
+#end
 #includeTemplate($model.weblog "_header")
 
 #set($maxResults = 25)
 #set($since = 365)
 
-#if (!$model.results)
+#if(!$model.searchResults)
     ## 1) SITE-WIDE entries (the default)
     #set($pager = $site.getWeblogEntriesPager($since, $maxResults))
 
@@ -15,30 +27,53 @@
     <div class="fd-posts">
     ## Pinned entries belong at the top of the front page -- that's the
     ## FIRST page of the pager (prevLink null), not the LAST (nextLink null).
+    ## Their ids are remembered so the pager's own items below skip them: a
+    ## recent pinned entry is also one of the newest, and was listed twice.
+    #set($pinnedIds = [])
     #if(!$pager.prevLink)
         #set($pinnedEntries = $site.getPinnedWeblogEntries(5))
+        #set($fdPinned = true)
         #foreach($pinnedEntry in $pinnedEntries)
             #set($entry = $pinnedEntry)
+            #set($pinnedAdded = $pinnedIds.add($pinnedEntry.id))
             #includeTemplate($model.weblog "_entry")
         #end
+        #set($fdPinned = false)
     #end
 
+    #set($fdListed = 0)
     #foreach($entry in $pager.items)
+        #if(!$pinnedIds.contains($entry.id))
+        #set($fdListed = $fdListed + 1)
         #includeTemplate($model.weblog "_entry")
+        #end
+    #end
+    #if($fdListed == 0 && $pinnedIds.isEmpty())
+        <p class="fd-list-empty">Nothing has been published across the site yet. New posts from every weblog will appear here.</p>
     #end
     </div>
 
-    <nav class="fd-pager" aria-label="More entries">
-    #if($pager.prevLink)
-       <a href="$pager.prevLink">&lt; $pager.prevName</a>
-    #end
-    #if($pager.nextLink && $pager.prevLink)
-       &nbsp;|&nbsp;
-    #end
-    #if($pager.nextLink)
-       <a href="$pager.nextLink">$pager.nextName &gt;</a>
-    #end
+    ## Journal's Newer/Older steps, in place of "&lt; Previous | Next &gt;". The
+    ## site pager runs newest first, so getNextLink() is older posts and
+    ## getPrevLink() newer ones; the older step comes first, on the left.
+    #if($pager.prevLink || $pager.nextLink)
+    <nav class="fd-pager fd-steps" aria-label="More entries">
+        #if($pager.nextLink)
+        <a class="fd-step fd-step-back" href="$pager.nextLink" rel="next">
+            <span class="fd-step-label">$text.get("pager.older")</span>
+            <span class="fd-step-title">Earlier posts</span>
+        </a>
+        #else
+        <span class="fd-step fd-step-empty"></span>
+        #end
+        #if($pager.prevLink)
+        <a class="fd-step fd-step-fwd" href="$pager.prevLink" rel="prev">
+            <span class="fd-step-label">$text.get("pager.newer")</span>
+            <span class="fd-step-title">More recent posts</span>
+        </a>
+        #end
     </nav>
+    #end
 
 #else
     ## We've got search results to display
@@ -51,6 +86,14 @@
             #showNextPrevSearchControl($pager)
         #end
     </div>
+    ## The same two sentences as the article themes' searchresults.vm, the
+    ## error first because a failed search also reports zero hits. The
+    ## exception text is internal detail and never printed.
+    #if($utils.isNotEmpty($model.errorMessage))
+    <p class="fd-search-error">Search is temporarily unavailable. Please try again shortly.</p>
+    #elseif($model.hits == 0)
+    <p class="fd-search-empty">No posts matched that search. Try a different word, or a shorter phrase.</p>
+    #end
 
     <div class="fd-posts">
     #set($map = $pager.getEntries())
@@ -64,7 +107,12 @@
 
 #end
 
-#set($newblogs = $site.getNewWeblogs($since, $maxResults))
+## Every visible weblog, newest first, not only those CREATED in the last
+## $since days: on a small site that window emptied a year after launch and
+## the grid vanished under its own heading. getNewWeblogs takes a day count
+## and has no "no limit" value (-1 means "since tomorrow"), hence a century.
+#set($allTime = 36500)
+#set($newblogs = $site.getNewWeblogs($allTime, $maxResults))
 #if(!$newblogs.isEmpty())
 <h2 class="fd-label">Weblogs</h2>
 <div class="fd-dir">
@@ -89,8 +137,9 @@
     <a href='$url.feed.entries.atom' title='Combined Atom feed for site.'>Subscribe to the combined Atom feed</a>
 </div>
 
+## It searches entries across every weblog, not the weblogs themselves.
 <div class="fd-search">
-    <h2 class="fd-label">Search for blogs</h2>
+    <h2 class="fd-label">Search all posts</h2>
     #showWeblogSearchForm($model.weblog false)
 </div>
 

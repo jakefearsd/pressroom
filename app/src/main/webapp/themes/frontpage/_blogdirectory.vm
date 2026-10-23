@@ -38,14 +38,24 @@
 #end
 </div>
 
-<nav class="fd-pager" aria-label="More weblogs">
-#if($weblogsPager.prevLink)
-   <a href="$weblogsPager.prevLink">&lt; $weblogsPager.prevName</a>
-#end
-#if($weblogsPager.nextLink && $weblogsPager.prevLink)
-   &nbsp;|&nbsp;
-#end
-#if($weblogsPager.nextLink)
-   <a href="$weblogsPager.nextLink">$weblogsPager.nextName &gt;</a>
-#end
+## The same step pager as the front door's, in place of the
+## "&lt; Previous | Next &gt;" strip. The directory runs in a fixed order
+## rather than through time, so the steps say Previous and Next.
+#if($weblogsPager.prevLink || $weblogsPager.nextLink)
+<nav class="fd-pager fd-steps" aria-label="More weblogs">
+    #if($weblogsPager.prevLink)
+    <a class="fd-step fd-step-back" href="$weblogsPager.prevLink" rel="prev">
+        <span class="fd-step-label">Previous</span>
+        <span class="fd-step-title">Previous weblogs</span>
+    </a>
+    #else
+    <span class="fd-step fd-step-empty"></span>
+    #end
+    #if($weblogsPager.nextLink)
+    <a class="fd-step fd-step-fwd" href="$weblogsPager.nextLink" rel="next">
+        <span class="fd-step-label">Next</span>
+        <span class="fd-step-title">More weblogs</span>
+    </a>
+    #end
 </nav>
+#end

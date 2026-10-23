@@ -97,17 +97,20 @@ class PageRoutingTest {
     // ------------------------------------------- the fallback page template
 
     /**
-     * Switches the weblog to the one bundled theme with no {@code _page}
-     * template (frontpage; journal/portfolio/travel all ship one), which is
-     * what makes {@code WEB-INF/velocity/templates/weblog/page.vm} -- the
+     * Switches the weblog to a custom theme with no templates of its own, so
+     * it has no {@code _page} -- which is what makes
+     * {@code WEB-INF/velocity/templates/weblog/page.vm}, the
      * {@code StaticThemeTemplate} fallback every unthemed page falls through
-     * to -- the thing that actually renders. Nothing else in the suite
-     * renders it, which is how it kept a head the other reader templates had
-     * all outgrown.
+     * to, the thing that actually renders. Every bundled theme ships a
+     * {@code _page} (frontpage's arrived last, in the 0.3.0 fit-and-finish
+     * pass; until then this used frontpage), so a custom theme -- the case
+     * the fallback exists for -- is the only route left. Nothing else in the
+     * suite renders it, which is how it kept a head the other reader
+     * templates had all outgrown.
      */
     private void useAThemeWithNoPageTemplate() throws Exception {
         Weblog managed = TestUtils.getManagedWebsite(weblog);
-        managed.setEditorTheme("frontpage");
+        managed.setEditorTheme(org.apache.roller.weblogger.pojos.WeblogTheme.CUSTOM);
         TestUtils.weblogger().getWeblogManager().saveWeblog(managed);
         TestUtils.endSession(true);
         RenderingTestSupport.clearRenderCaches();
