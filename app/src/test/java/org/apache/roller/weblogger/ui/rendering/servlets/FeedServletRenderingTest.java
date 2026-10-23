@@ -11,6 +11,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -70,13 +71,46 @@ class FeedServletRenderingTest {
         String body = response.getContentAsString();
         assertTrue(body.contains("<feed"), "must be an Atom document:\n" + body);
         assertTrue(body.contains("atom-entry"), "entry must appear in the feed:\n" + body);
-        // W2: RSS is gone but styled feeds (site.newsfeeds.styledFeeds,
-        // default on) must still work for the surviving Atom feeds -- the
-        // stylesheet PI is what turns a bare XML download into a styled page
-        // when a browser requests it directly.
-        assertTrue(body.contains("<?xml-stylesheet type=\"text/xsl\" "
-                        + "href=\"http://localhost:8080/roller/roller-ui/styles/atom.xsl\" media=\"screen\"?>"),
-                "a styled feed must carry the atom.xsl stylesheet PI:\n" + body);
+        // Browsers are removing XSLT (Chrome already bannered every feed
+        // that asked for it), so the feed no longer asks for atom.xsl.
+        assertFalse(body.contains("xml-stylesheet"),
+                "the feed must not ask for an XSLT stylesheet:\n" + body);
+        // the Firefox 2 sniffing workaround: a 500-byte comment of digits
+        assertFalse(body.contains("123456789101112"),
+                "the feed must not open with the Firefox feed workaround comment:\n" + body);
+        assertTrue(body.startsWith("<?xml"), "the XML declaration comes first:\n" + body);
+    }
+
+    /**
+     * Atom requires each feed's {@code <id>} to be its own, and the main,
+     * category and tag feeds all declared the main feed's URL, so a reader
+     * that keys subscriptions by id merged them. The id is now the feed's own
+     * {@code rel="self"} address.
+     */
+    @Test
+    void aCategoryFeedHasItsOwnIdWhichIsItsSelfLink() throws Exception {
+        TestUtils.setupWeblogEntry("cat-feed-entry", weblog, user);
+        TestUtils.endSession(true);
+
+        String main = feed("entries/atom").getContentAsString();
+        MockHttpServletRequest request = RenderingTestSupport
+                .anonymousGet("/roller-ui/rendering/feed", "/" + handle + "/entries/atom");
+        request.setParameter("cat", "General");
+        String category = RenderingTestSupport.execute(RenderingTestSupport.feedServlet(), request)
+                .getContentAsString();
+
+        String mainId = between(main, "<id>", "</id>");
+        String categoryId = between(category, "<id>", "</id>");
+        assertNotEquals(mainId, categoryId, "the category feed needs an id of its own:\n" + category);
+        assertEquals(between(category, "<link rel=\"self\" type=\"application/atom+xml\" href=\"", "\""),
+                categoryId, "the id is the feed's self link:\n" + category);
+    }
+
+    private static String between(String body, String start, String end) {
+        int from = body.indexOf(start);
+        assertTrue(from >= 0, "no " + start + " in:\n" + body);
+        from += start.length();
+        return body.substring(from, body.indexOf(end, from));
     }
 
     /**
