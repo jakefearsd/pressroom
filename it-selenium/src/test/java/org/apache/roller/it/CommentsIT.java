@@ -356,7 +356,8 @@ class CommentsIT extends RollerIT {
         // admin created it, so its permission row holds "admin" alone, not "post".
         loginAsAdmin();
         openPath(MENU);
-        $("a[href*='/roller-ui/authoring/comments.rol?weblog=" + otherHandle + "'] .badge")
+        // The link itself is the pill (it was a link wrapping a .badge).
+        $("a.status-pill[href*='/roller-ui/authoring/comments.rol?weblog=" + otherHandle + "']")
                 .shouldHave(text("awaiting approval"));
         openPath(moderation(otherHandle, null));
         $$(MODERATION_ROWS).findBy(text(body)).should(exist);
@@ -977,7 +978,7 @@ class CommentsIT extends RollerIT {
     private Entry publishEntry(String handle, String title) {
         openPath("/roller-ui/authoring/entryAdd.rol?weblog=" + handle);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue(title);
+        $("[name='bean.title']").setValue(title);
         Editor.setText("Body of " + title);
         clickAndAwaitNewPage($("button[formaction$='entryAdd!publish.rol']"));
         String permalink = $(PERMALINK).should(exist).getAttribute("href");

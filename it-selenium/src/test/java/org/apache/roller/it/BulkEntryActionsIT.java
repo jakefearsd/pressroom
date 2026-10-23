@@ -90,7 +90,7 @@ class BulkEntryActionsIT extends RollerIT {
     private String saveDraft(String title, String body) {
         openPath(ENTRY_ADD);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue(title);
+        $("[name='bean.title']").setValue(title);
         Editor.setText(body);
         $("button[formaction$='entryAdd!saveDraft.rol']").click();
 

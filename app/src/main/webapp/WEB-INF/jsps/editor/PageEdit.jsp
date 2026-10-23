@@ -119,12 +119,15 @@
         </div>
 
         <%-- title: the page's one piece of layout hierarchy. Large serif,
-             borderless -- emphasis elsewhere is weight, never size. --%>
-        <input type="text" id="page_bean_title" name="bean.title" value="${fn:escapeXml(bean.title)}" maxlength="255"
-               autofocus
-               class="editor-title"
-               placeholder="<spring:message code="weblogEdit.title"/>"
-               aria-label="<spring:message code="weblogEdit.title"/>"/>
+             borderless -- emphasis elsewhere is weight, never size. 
+             A one-row textarea so a long title wraps (EditorScript.jsp keeps
+             it to one line and grows it). No whitespace inside the element:
+             it would become part of the title. --%>
+        <textarea id="page_bean_title" name="bean.title" rows="1" maxlength="255"
+                  autofocus
+                  class="editor-title"
+                  placeholder="<spring:message code="weblogEdit.title"/>"
+                  aria-label="<spring:message code="weblogEdit.title"/>">${fn:escapeXml(bean.title)}</textarea>
 
         <%-- The page's address, editable in place: the weblog's own root as a
              quiet prefix and the slug as the only thing an author types. A
@@ -263,7 +266,7 @@
                     <div class="row mb-3" role="group" aria-labelledby="seo_ogImage_label">
                         <span class="col-sm-3 col-form-label" id="seo_ogImage_label"><spring:message code="weblogEdit.ogImage"/></span>
                         <div class="col-sm-9">
-                            <input type="hidden" id="seo_ogImageId" name="bean.ogImageId" value="${bean.ogImageId}"/>
+                            <input type="hidden" id="seo_ogImageId" name="bean.ogImageId" value="${fn:escapeXml(bean.ogImageId)}"/>
                             <div class="mb-2">
                                 <img id="seo_ogImage_preview" src="${ogImageThumbnailUrl}" alt=""
                                      style="max-height:120px;${empty ogImageThumbnailUrl ? 'display:none;' : ''}"/>

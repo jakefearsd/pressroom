@@ -95,7 +95,7 @@ class EditorSeoIT extends RollerIT {
         // --- write the entry and fill the SEO card --------------------------
         openPath(ENTRY_ADD);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue(title);
+        $("[name='bean.title']").setValue(title);
         Editor.setText("Body of the SEO journey entry " + suffix + ".");
 
         // The SEO card starts collapsed; open it the way an author would.
@@ -158,7 +158,7 @@ class EditorSeoIT extends RollerIT {
 
         openPath(ENTRY_ADD);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue(title);
+        $("[name='bean.title']").setValue(title);
         Editor.setText("Body of the structured-data entry " + suffix + ".");
 
         $("a[data-bs-target='#collapseSeo']").click();
@@ -210,7 +210,7 @@ class EditorSeoIT extends RollerIT {
 
         openPath(ENTRY_ADD);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue(title);
+        $("[name='bean.title']").setValue(title);
         Editor.root();
 
         // insert via the toolbar's image control, as an author would

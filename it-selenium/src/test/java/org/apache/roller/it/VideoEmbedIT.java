@@ -71,7 +71,7 @@ class VideoEmbedIT extends RollerIT {
         // --- author and publish an entry carrying [video] --------------------
         openPath(ENTRY_ADD);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue("IT Video " + suffix);
+        $("[name='bean.title']").setValue("IT Video " + suffix);
         Editor.setText("<p>Watch this.</p><p>[video url=\"https://youtu.be/" + VIDEO_ID + "\"]</p>");
         $("button[formaction$='entryAdd!publish.rol']").click();
 

@@ -189,7 +189,7 @@ class SearchIT extends RollerIT {
 
     private void writeEntry(String title, String body) {
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue(title);
+        $("[name='bean.title']").setValue(title);
         Editor.setText(body);
     }
 

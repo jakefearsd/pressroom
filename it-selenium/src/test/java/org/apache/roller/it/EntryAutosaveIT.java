@@ -97,7 +97,7 @@ class EntryAutosaveIT extends RollerIT {
 
         openPath(ENTRY_ADD);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue("IT Autosave " + suffix);
+        $("[name='bean.title']").setValue("IT Autosave " + suffix);
         Editor.setText(body);
 
         waitForDraftSnapshot(entryDraftKey("entryAdd", "new"));
@@ -119,7 +119,7 @@ class EntryAutosaveIT extends RollerIT {
 
         openPath(ENTRY_ADD);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue("IT Autosave Saved " + suffix);
+        $("[name='bean.title']").setValue("IT Autosave Saved " + suffix);
         Editor.setText(body);
 
         String newDraftKey = entryDraftKey("entryAdd", "new");
@@ -199,7 +199,7 @@ class EntryAutosaveIT extends RollerIT {
 
         openPath(ENTRY_ADD);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue("IT Autosave Discard " + suffix);
+        $("[name='bean.title']").setValue("IT Autosave Discard " + suffix);
         Editor.setText(body);
 
         waitForDraftSnapshot(entryDraftKey("entryAdd", "new"));
@@ -231,7 +231,7 @@ class EntryAutosaveIT extends RollerIT {
         $("#entry").should(exist);
         $("#editorStatusSave").shouldHave(text("Saved"));
 
-        $("input[name='bean.title']").setValue("Status Line " + suffix);
+        $("[name='bean.title']").setValue("Status Line " + suffix);
         Editor.setText("one two three four five");
 
         $("#editorStatusWords").shouldHave(text("5 words"));
@@ -268,7 +268,7 @@ class EntryAutosaveIT extends RollerIT {
     private String saveDraftFromAddForm(String title, String body) {
         openPath(ENTRY_ADD);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue(title);
+        $("[name='bean.title']").setValue(title);
         Editor.setText(body);
         $("button[formaction$='entryAdd!saveDraft.rol']").click();
         $("input[name='bean.id']").should(exist);

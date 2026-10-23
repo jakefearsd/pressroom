@@ -135,6 +135,62 @@ class EditorSurfaceJspTest {
                 "a picker's non-image refusal must happen before, and instead of, closing: " + select);
     }
 
+    /**
+     * The refusal above is the backstop; the chooser a picker opens lists
+     * images only in the first place. Insert-media still lists every file,
+     * since a non-image goes into the text as a link.
+     */
+    @Test
+    void aPickerOpensTheChooserOnImagesOnly() throws IOException {
+        String open = function(read(SCRIPT), "onClickMediaFileInsert");
+        assertTrue(open.contains("if (pickerTarget) {") && open.contains("imagesOnly=true"),
+                "only a picker asks the chooser for images only: " + open);
+    }
+
+    /**
+     * An upload refused as a whole (uploads off, no files) answers with a
+     * top-level detail and no results; the editor showed its generic
+     * "upload failed" instead of saying why.
+     */
+    @Test
+    void aWholeUploadRefusalShowsTheServersDetail() throws IOException {
+        String upload = function(read(SCRIPT), "rollerUploadImages");
+        assertTrue(upload.contains("(res.body && res.body.detail)"),
+                "a refusal with no results must show the body's own detail: " + upload);
+    }
+
+    /**
+     * A long title was cut off mid-word in a single-line input, on both
+     * editors. It is a one-row textarea that wraps and grows; the script
+     * keeps it one logical line (Enter moves on, a pasted break is a space).
+     */
+    @Test
+    void aLongTitleWrapsInsteadOfBeingCutOff() throws IOException {
+        for (Path screen : new Path[]{
+                Paths.get("src/main/webapp/WEB-INF/jsps/editor/EntryEdit.jsp"),
+                Paths.get("src/main/webapp/WEB-INF/jsps/editor/PageEdit.jsp")}) {
+            String jsp = read(screen);
+            int at = jsp.indexOf("class=\"editor-title\"");
+            assertTrue(at > 0, screen + ": the title field must exist");
+            String tag = jsp.substring(jsp.lastIndexOf('<', at), jsp.indexOf('>', at) + 1);
+            assertTrue(tag.startsWith("<textarea") && tag.contains("name=\"bean.title\"")
+                            && tag.contains("rows=\"1\""),
+                    screen + ": the title is a one-row textarea: " + tag);
+            assertTrue(jsp.contains("rows=\"1\"") && jsp.contains(">${fn:escapeXml(bean.title)}</textarea>"),
+                    screen + ": the title's text is the escaped textarea body, with no stray whitespace");
+            assertFalse(jsp.contains("input[name='bean.title']"),
+                    screen + ": a script still looks for the title as an input");
+        }
+        String fit = function(read(SCRIPT), "rollerFitTitle");
+        assertTrue(fit.contains("scrollHeight"), "the title grows to its text: " + fit);
+        String js = read(SCRIPT);
+        assertTrue(js.contains("e.key === 'Enter' && !e.isComposing"),
+                "Enter leaves the title (but not mid-IME composition)");
+        assertTrue(read(Paths.get("src/main/webapp/roller-ui/styles/roller-editor.css"))
+                        .contains("textarea.editor-title"),
+                "the editor stylesheet takes the textarea's resize handle and scrollbar away");
+    }
+
     @Test
     void theWritingSurfaceAndTheSummaryHaveNames() throws IOException {
         String surface = read(SURFACE);

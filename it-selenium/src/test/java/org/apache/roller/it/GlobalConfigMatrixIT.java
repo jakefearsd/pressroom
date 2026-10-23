@@ -180,7 +180,7 @@ class GlobalConfigMatrixIT extends RollerIT {
     private String publishEntry(String handle, String title) {
         openPath("/roller-ui/authoring/entryAdd.rol?weblog=" + handle);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue(title);
+        $("[name='bean.title']").setValue(title);
         Editor.setText("Body of " + title);
         $("button[formaction$='entryAdd!publish.rol']").click();
 

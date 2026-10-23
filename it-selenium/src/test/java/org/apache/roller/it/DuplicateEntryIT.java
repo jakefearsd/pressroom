@@ -72,7 +72,7 @@ class DuplicateEntryIT extends RollerIT {
         assertNotEquals(originalId, copyId,
                 "the redirect landed on the original, so the author would edit the published post");
 
-        $("input[name='bean.title']").shouldHave(value("Copy of " + title));
+        $("[name='bean.title']").shouldHave(value("Copy of " + title));
         String copyText = Editor.getText();
         assertTrue(copyText != null && copyText.contains(body),
                 "the copy did not carry the original's text; it holds: " + copyText);
@@ -87,7 +87,7 @@ class DuplicateEntryIT extends RollerIT {
     private String publishEntry(String title, String body) {
         openPath(ENTRY_ADD);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue(title);
+        $("[name='bean.title']").setValue(title);
         Editor.setText(body);
         $("button[formaction$='entryAdd!publish.rol']").click();
 

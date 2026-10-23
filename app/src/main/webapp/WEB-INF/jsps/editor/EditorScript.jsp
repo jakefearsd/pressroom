@@ -508,7 +508,11 @@
                         rollerReplaceInEditor(placeholder, '[image id="' + result.id + '"]');
                     } else {
                         rollerDropPlaceholder(placeholder);
-                        rollerStatusError((result && result.detail) || '<spring:message code="editor.uploadFailed" javaScriptEscape="true"/>');
+                        <%-- A per-file refusal names its file; a refusal of the
+                             whole request (uploads off, no files) has no
+                             results and says why at the top level. --%>
+                        rollerStatusError((result && result.detail) || (res.body && res.body.detail)
+                                || '<spring:message code="editor.uploadFailed" javaScriptEscape="true"/>');
                     }
                 })
                 .catch(function () {
@@ -540,6 +544,42 @@
         window.setTimeout(function () { el.remove(); }, 8000);
     }
 
+    <%-- The title is a one-row textarea, not an input, so a long title
+         wraps and the field grows to show all of it (an input cut it off
+         mid-word). It is still one line of text: Enter moves on to the body
+         rather than starting a second line -- except while an IME is
+         composing, where Enter commits the composition -- and a pasted line
+         break becomes a space. --%>
+    function rollerFitTitle(title) {
+        title.style.height = 'auto';
+        title.style.height = title.scrollHeight + 'px';
+    }
+
+    (function () {
+        var title = document.querySelector('textarea.editor-title');
+        if (!title) { return; }
+        title.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.isComposing) {
+                e.preventDefault();
+                if (window.rollerEditor && rollerEditor.view) { rollerEditor.view.focus(); }
+            }
+        });
+        title.addEventListener('input', function () {
+            if (/[\r\n]/.test(title.value)) {
+                var caret = title.selectionStart;
+                title.value = title.value.replace(/\s*[\r\n]+\s*/g, ' ');
+                caret = Math.min(caret, title.value.length);
+                title.setSelectionRange(caret, caret);
+            }
+            rollerFitTitle(title);
+        });
+        <%-- A restored draft sets the value without an input event, and a
+             narrower window rewraps it: measure again on both. --%>
+        title.addEventListener('focus', function () { rollerFitTitle(title); });
+        window.addEventListener('resize', function () { rollerFitTitle(title); });
+        rollerFitTitle(title);
+    })();
+
     <%-- Media chooser --%>
 
     <%-- Opens the media chooser. With no argument the chosen file is inserted
@@ -553,7 +593,14 @@
         <c:url var="mediaFileImageChooser" value="/roller-ui/authoring/overlay/mediaFileImageChooser.rol">
         <c:param name="weblog" value="${actionWeblog.handle}"/>
         </c:url>
-        $("#mediaFileEditor").attr('src', '${mediaFileImageChooser}');
+        var chooserUrl = '${mediaFileImageChooser}';
+        <%-- A picker takes an image, so its chooser lists images only (the
+             refusal in onSelectMediaFile stays as the backstop). Insert-media
+             lists every file: a non-image goes in as a link. --%>
+        if (pickerTarget) {
+            chooserUrl += (chooserUrl.indexOf('?') < 0 ? '?' : '&') + 'imagesOnly=true';
+        }
+        $("#mediaFileEditor").attr('src', chooserUrl);
         bootstrap.Modal.getOrCreateInstance(document.getElementById('mediafile_edit_lightbox')).show();
     }
 

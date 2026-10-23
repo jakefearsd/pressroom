@@ -21,6 +21,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.Map;
 
 import org.apache.roller.weblogger.WebloggerException;
@@ -602,6 +603,33 @@ class MediaFileAddControllerTest extends EditorControllerTestSupport {
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
         assertEquals("uploads.disabled", response.getBody().get("error"));
         verify(weblogger.getMediaFileManager(), never()).createMediaFile(any(), any(), any());
+    }
+
+    /**
+     * The editor shows a response's {@code detail} when it has no
+     * {@code results}; the error code alone is a token, not a sentence.
+     */
+    @Test
+    void theUploadsDisabledResponseCarriesAReadableDetail() throws Exception {
+        givenRuntimeProperty("uploads.enabled", "false");
+
+        ResponseEntity<Map<String, Object>> response = controller.upload(request, null,
+                new MultipartFile[]{upload("photo.jpg", "image/jpeg", "binary")});
+
+        assertEquals("File upload is disabled for this site.", response.getBody().get("detail"));
+    }
+
+    /** The detail is in the reader's language: the request locale, not the server's. */
+    @Test
+    void theNoFilesResponseCarriesADetailInTheRequestLocale() throws Exception {
+        when(request.getLocale()).thenReturn(Locale.JAPANESE);
+
+        ResponseEntity<Map<String, Object>> response = controller.upload(request, null, new MultipartFile[0]);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("no.files", response.getBody().get("error"));
+        assertEquals("\u30A2\u30C3\u30D7\u30ED\u30FC\u30C9\u3059\u308B\u30D5\u30A1\u30A4\u30EB\u3092\u9078\u629E",
+                response.getBody().get("detail"));
     }
 
     @Test

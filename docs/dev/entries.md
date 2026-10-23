@@ -32,8 +32,8 @@ incidental re-save) — minor PII residue worth clearing.
   **emphasis elsewhere is weight, never size**), the permalink as a mono line
   with a copy control, the untouched `EntryEditor.jsp` include. Rail: Publish
   box (status pill, the one visible time field, submit buttons), Organize box
-  (category/tags; locale is a hidden input), SEO drawer (SEO & Social
-  Sharing card, collapsed), newsletter/revisions boxes
+  (category/tags; locale is a hidden input), SEO drawer ("SEO and
+  sharing", collapsed), newsletter/revisions boxes
   (`.editor-box`/`.rail-group-label`; no Bootstrap `.card` in the rail),
   Delete as a quiet text link, last. The `#entry` form is `display:contents`
   so the newsletter/revisions boxes' own `<form>`s (own CSRF token and POST
@@ -70,7 +70,11 @@ incidental re-save) — minor PII residue worth clearing.
   `EditorScript.jsp`. `EditorSurface.jsp` (markup) and `EditorScript.jsp`
   (script) are shared verbatim by the entry and page editors. `options`
   carries `onSave`/`onPublish`/`onHelp`, bound to `Mod-s`/`Mod-Enter`/`Mod-/`
-  ahead of CM6's keymap (unsupplied: CM6's default). Exactly three seam
+  ahead of CM6's keymap (unsupplied: CM6's default); `keys.js` also binds
+  `Mod-b`/`Mod-i`/`Mod-k` (bold, italic, link). The title is a one-row
+  `textarea[name='bean.title']` that wraps and grows (`rollerFitTitle`);
+  Enter moves to the body and a pasted line break becomes a space, so ITs
+  select it as `[name='bean.title']`, never `input[...]`. Exactly three seam
   functions — `insertMediaFile`, `rollerSetEntryText`, `rollerGetEntryText` —
   so replacing the editor is one file; Browser ITs use those and the `Editor`
   test helper, never CM6's API.

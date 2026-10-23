@@ -37,6 +37,7 @@ import org.apache.roller.weblogger.pojos.MediaFile;
 import org.apache.roller.weblogger.pojos.MediaFileDirectory;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.ui.controllers.MediaUploads;
+import org.apache.roller.weblogger.util.I18nMessages;
 import org.apache.roller.weblogger.util.RollerMessages;
 import org.apache.roller.weblogger.util.RollerMessages.RollerMessage;
 import org.apache.roller.weblogger.util.Utilities;
@@ -227,11 +228,19 @@ public class MediaFileAddController extends MediaFileBase {
             @RequestParam(value = "directoryId", required = false) String directoryId,
             @RequestParam(value = "file", required = false) MultipartFile[] files) throws WebloggerException {
         Weblog weblog = getActionWeblog(request);
+        // A refusal of the whole request carries a sentence in the reader's
+        // language beside its code: the editor shows "detail" when there are
+        // no per-file results to show.
+        I18nMessages text = I18nMessages.getMessages(request.getLocale());
         if (!WebloggerRuntimeConfig.getBooleanProperty("uploads.enabled")) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "uploads.disabled"));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "uploads.disabled",
+                    "detail", text.getString("mediaUploads.detail.disabled")));
         }
         if (files == null || files.length == 0) {
-            return ResponseEntity.badRequest().body(Map.of("error", "no.files"));
+            // The upload form's own prompt ("Choose media files to upload")
+            // is exactly the instruction this refusal needs.
+            return ResponseEntity.badRequest().body(Map.of("error", "no.files",
+                    "detail", text.getString("mediaFileAdd.fileLocation")));
         }
 
         MediaFileManager mfm = weblogger.getMediaFileManager();
@@ -249,7 +258,7 @@ public class MediaFileAddController extends MediaFileBase {
         List<Map<String, Object>> results = new ArrayList<>();
         int created = 0;
         for (MultipartFile file : files) {
-            MediaUploads.Result r = MediaUploads.store(file, weblog, directory, mfm, messages);
+            MediaUploads.Result r = MediaUploads.store(file, weblog, directory, mfm, messages, request.getLocale());
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("fileName", r.fileName());
             row.put("status", r.status());

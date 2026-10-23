@@ -202,7 +202,7 @@ class MediaCropIT extends RollerIT {
         // --- publish an entry embedding the cropped image --------------------
         openPath(ENTRY_ADD);
         $("#entry").should(exist);
-        $("input[name='bean.title']").setValue("IT Crop " + suffix);
+        $("[name='bean.title']").setValue("IT Crop " + suffix);
         Editor.setText("<p>Cropped image entry " + suffix + " [image id=" + mediaFileId + "]</p>");
 
         $("button[formaction$='entryAdd!publish.rol']").click();
