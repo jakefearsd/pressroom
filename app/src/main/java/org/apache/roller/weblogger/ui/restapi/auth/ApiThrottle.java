@@ -30,9 +30,13 @@ public final class ApiThrottle {
      */
     private final Boolean forcedEnabled;
 
-    private ApiThrottle(GenericThrottle throttle, Boolean forcedEnabled) {
+    /** The window length, which is also the longest a throttled caller can have left to wait. */
+    private final int intervalSeconds;
+
+    private ApiThrottle(GenericThrottle throttle, Boolean forcedEnabled, int intervalSeconds) {
         this.throttle = throttle;
         this.forcedEnabled = forcedEnabled;
+        this.intervalSeconds = intervalSeconds;
     }
 
     /** The production throttle, sized from {@code roller.properties}. */
@@ -44,19 +48,19 @@ public final class ApiThrottle {
         // lenient for that caller; it never locks anyone out.
         int maxEntries = intProperty("api.throttle.maxentries", 500);
         return new ApiThrottle(
-                new GenericThrottle(threshold, interval * RollerConstants.SEC_IN_MS, maxEntries), null);
+                new GenericThrottle(threshold, interval * RollerConstants.SEC_IN_MS, maxEntries), null, interval);
     }
 
     /** A throttle sized directly, bypassing runtime config entirely. */
     static ApiThrottle forTesting(int threshold, int intervalSeconds) {
         return new ApiThrottle(
                 new GenericThrottle(threshold, intervalSeconds * RollerConstants.SEC_IN_MS, 1000),
-                Boolean.TRUE);
+                Boolean.TRUE, intervalSeconds);
     }
 
     /** A throttle that never throttles, for {@code api.throttle.enabled=false}. */
     static ApiThrottle disabled() {
-        return new ApiThrottle(null, Boolean.FALSE);
+        return new ApiThrottle(null, Boolean.FALSE, 0);
     }
 
     /**
@@ -68,6 +72,16 @@ public final class ApiThrottle {
                 ? forcedEnabled
                 : WebloggerRuntimeConfig.getBooleanProperty("api.throttle.enabled");
         return enabled && throttle.processHit(key);
+    }
+
+    /**
+     * The {@code Retry-After} a throttled caller is told, in seconds. A window
+     * opens at a caller's first request and lasts the interval, so the whole
+     * interval is never too short a wait; {@code GenericThrottle} does not
+     * expose when the window opened, which would make it exact.
+     */
+    public int retryAfterSeconds() {
+        return intervalSeconds;
     }
 
     private static int intProperty(String name, int fallback) {
