@@ -67,13 +67,15 @@ needs lives in two published images (`ghcr.io/jakefearsd/roller` and
 `ghcr.io/jakefearsd/roller-caddy`) — nothing is bind-mounted from a working
 tree. The host needs exactly three files, all attached to the GitHub Release
 for the version you're deploying: `docker-compose.prod.yml`, `env.example`,
-and `deploy.sh`. Download them into one directory, e.g. `/opt/roller`:
+and `deploy.sh`. Download them into one directory, e.g. `/opt/roller`. The
+`latest` links below name the newest release; for a particular one, use
+`releases/download/v<version>/` instead, as [Upgrades](#upgrades) does:
 
 ```bash
 mkdir -p /opt/roller && cd /opt/roller
-curl -LO https://github.com/jakefearsd/roller/releases/download/v0.1.0/docker-compose.prod.yml
-curl -LO https://github.com/jakefearsd/roller/releases/download/v0.1.0/env.example
-curl -LO https://github.com/jakefearsd/roller/releases/download/v0.1.0/deploy.sh
+curl -LO https://github.com/jakefearsd/roller/releases/latest/download/docker-compose.prod.yml
+curl -LO https://github.com/jakefearsd/roller/releases/latest/download/env.example
+curl -LO https://github.com/jakefearsd/roller/releases/latest/download/deploy.sh
 chmod +x deploy.sh
 mv env.example .env
 ```
@@ -138,9 +140,13 @@ environment-variable-configured container.
   so on for any key documented in
   `app/src/main/resources/org/apache/roller/weblogger/config/roller.properties`.
   The variables `.env.example` ships (and their meaning) are:
-  - `ROLLER_INSTALLATION_TYPE=auto` — checks the schema at startup; by then
-    the `provision` service has already applied every pending migration (see
-    [First run](#first-run)).
+  - `ROLLER_INSTALLATION_TYPE=auto` — the app applies no migration itself;
+    by then the `provision` service has already applied every pending one
+    (see [First run](#first-run)). If one is still pending, the app does not
+    start and every request, public pages included, lands on the install
+    wizard: check `docker compose -f docker-compose.prod.yml logs provision`.
+    (The other value, `manual`, the built-in default, applies pending
+    migrations silently at startup. The names read backwards.)
   - `ROLLER_DATABASE_CONFIGURATIONTYPE`, `ROLLER_DATABASE_JDBC_DRIVERCLASS`,
     `ROLLER_DATABASE_JDBC_CONNECTIONURL` — fixed by the image's layout and the
     compose network (the connection URL's host is the `postgres` service
@@ -233,7 +239,7 @@ over the LAN. For that layout:
    The app takes its whole configuration from `.env`, so any `.env` change
    recreates the app as well as Caddy: expect a short restart.
 3. **Point the connector** at `http://<this host>:<SITE_HTTP_PORT>`, for
-   example `http://docker2.lan:8080`, and let it pass the request's `Host`
+   for example `http://<host>.lan:8080`, and let it pass the request's `Host`
    header through unchanged. `cloudflared` does by default.
 4. **Set the site's address.** In Admin -> Global Config, set **Absolute URL
    to site (if required)** to the public `https://` address. Feed ids, the
@@ -558,6 +564,16 @@ docker compose -f docker-compose.prod.yml logs -f postgres
 docker compose -f docker-compose.prod.yml logs -f backup
 ```
 
+Every Roller logger writes to the app container's standard output, which is
+what `logs app` shows (sign-in, comment and admin-audit lines included). The
+same lines also go to `/app/logs/roller.log` inside the container. Both
+belong to the container, so a deploy, which recreates it, starts both
+afresh. Save what you need first:
+
+```bash
+docker compose -f docker-compose.prod.yml logs --no-color app > app-$(date +%F-%H%M).log
+```
+
 ## Analytics
 
 The stack ships [Umami](https://umami.is): self-hosted, cookie-free page
@@ -836,26 +852,21 @@ Developer notes: `docs/dev/sso.md`.
    Config value wins when both are set. The callback is built from this
    address, never from the visitor's host, and with none set sign-in answers
    "unavailable".
-4. **Add the credentials** to `~/roller/.env` on docker2 as
+4. **Add the credentials** to `.env` on the deploy host as
    `ROLLER_SSO_OIDC_CLIENT_ID` and `ROLLER_SSO_OIDC_CLIENT_SECRET`, then run
    `./deploy.sh`. The compose file does not change. The client secret goes
    only into `.env`: never into Global Config, a commit, a chat or a ticket.
-5. **Check it.** The login page shows "Sign in with Google", and
-   `roller.log` has the self-check's success line ("OIDC discovery
-   reachable"). The sign-in lines go only to that file, never to the
-   console, so `docker compose logs app` does not show them; read the file
-   inside the container:
+5. **Check it.** The login page shows "Sign in with Google", and the app
+   log has the self-check's success line ("OIDC discovery reachable"):
 
    ```bash
-   docker compose -f docker-compose.prod.yml exec app grep "OIDC discovery" /app/logs/roller.log
+   docker compose -f docker-compose.prod.yml logs app | grep "OIDC discovery"
    ```
 
-   `/app/logs` is in the container, not the `/data` volume, so a recreated
-   container starts a fresh `roller.log`. Then test the sign-in itself at
-   the public URL, `https://blog.wikantik.com/roller-ui/login.rol`. A
-   sign-in started on the LAN address (`http://docker2.lan:8080`) redirects
-   there first, because Google returns the browser to the Absolute URL's
-   host.
+   Then test the sign-in itself at the public URL,
+   `https://blog.wikantik.com/roller-ui/login.rol`. A sign-in started on a
+   LAN address (`http://<host>.lan:8080`) redirects there first, because
+   Google returns the browser to the Absolute URL's host.
 
 `ROLLER_SSO_OIDC_DISCOVERY_URI` and `ROLLER_SSO_PROVIDER_LABEL` are optional;
 the defaults are Google's discovery document and the label "Google".
@@ -1260,6 +1271,11 @@ one-off DB access for debugging, use `docker compose exec postgres psql
 Reset mail needs both the `ROLLER_MAIL_*` SMTP settings in `.env` (applied
 with `up -d --force-recreate app`) and the **Site Administrator's email address** in Admin -> Global
 Config (`site.adminemail`). Check both; see [Mail and account recovery](#mail-and-account-recovery).
+If the relay did not answer when the app started, the log has one line,
+`Mail is unavailable: the mail server at <host>:<port> did not answer (...)`.
+The app tries the relay again on the next mail it sends, at most once a
+minute, so once the relay is back, a second reset request a minute later
+goes through without a restart.
 
 **The new password from `reset-password` doesn't work**
 

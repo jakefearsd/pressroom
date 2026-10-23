@@ -25,7 +25,14 @@ resolves through the index at the end of `CLAUDE.md`.
   reader-supplied value cannot forge a line in `roller.log`. Stack traces
   stay multi-line and are not encoded. Every `PatternLayout` must keep that
   property (`LogPatternTest`); grepping `roller.log` line by line works as
-  before.
+  before. **Every logger reaches the console (stdout)**, the named ones
+  through `asyncRoller`, which feeds both the file and the console
+  (`LogRoutingTest`): in the container `roller.log` is not on a volume, so
+  stdout (`docker compose logs app`) is the copy operators read. The layout
+  is the pattern above, not ECS JSON: SA-6's ECS layout needs
+  `log4j-layout-template-json`, which is not a dependency yet.
+  `WebloggerConfig` loads before logging exists, so it keeps what it found
+  and logs it once the logger is up; it never prints to stdout.
 
 ### Development vs Production
 - **Development**: PostgreSQL via `docker-compose.yml` (postgres only; the
