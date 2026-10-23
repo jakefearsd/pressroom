@@ -566,9 +566,11 @@ docker compose -f docker-compose.prod.yml logs -f backup
 
 Every Roller logger writes to the app container's standard output, which is
 what `logs app` shows (sign-in, comment and admin-audit lines included). The
-same lines also go to `/app/logs/roller.log` inside the container. Both
-belong to the container, so a deploy, which recreates it, starts both
-afresh. Save what you need first:
+same lines also go to `/app/logs/roller.log` inside the container. Every
+service's container log is rotated by Docker: `docker-compose.prod.yml` caps
+each at five 10 MB files (the `x-logging` block), so the oldest lines drop
+off a busy log. Both logs belong to the container, so a deploy, which
+recreates it, starts both afresh. Save what you need first:
 
 ```bash
 docker compose -f docker-compose.prod.yml logs --no-color app > app-$(date +%F-%H%M).log
