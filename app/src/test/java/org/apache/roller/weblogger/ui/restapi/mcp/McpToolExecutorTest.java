@@ -130,6 +130,28 @@ class McpToolExecutorTest {
         assertTrue(dispatched.isEmpty());
     }
 
+    /**
+     * The 500 MCP builds itself is REST's opaque internal-error problem
+     * (README, Errors), not a bare {status,title} with an HTTP reason phrase.
+     */
+    private static final String OPAQUE_500 = "{\"type\":\"https://roller.invalid/problems/internal-error\","
+            + "\"title\":\"Internal error\",\"status\":500,\"detail\":\"The request could not be completed.\"}";
+
+    /** A refusal MCP makes itself is the same problem shape a REST 400 is: a type, its title, the instance. */
+    @Test
+    void aRefusalMcpMakesItselfIsARestShapedProblem() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/mcp");
+        CallToolResult result = executor.call(request, tool("entries"), Map.of("action", "get", "weblog", "b"));
+
+        assertTrue(result.isError());
+        tools.jackson.databind.JsonNode problem = new tools.jackson.databind.ObjectMapper().readTree(text(result));
+        assertEquals("https://roller.invalid/problems/invalid-request", problem.get("type").asString());
+        assertEquals("Invalid request", problem.get("title").asString());
+        assertEquals(400, problem.get("status").asInt());
+        assertEquals("/api/mcp", problem.get("instance").asString());
+        assertTrue(problem.get("detail").asString().contains("`id`"), text(result));
+    }
+
     @Test
     void aMissingRequiredArgumentIsAToolErrorAndNothingIsDispatched() {
         CallToolResult result = call("entries", Map.of("action", "get", "weblog", "b"));
@@ -192,7 +214,7 @@ class McpToolExecutorTest {
                     .call(new MockHttpServletRequest(), tool("whoami"), Map.of());
 
             assertTrue(result.isError());
-            assertEquals("{\"status\":500,\"title\":\"Internal Server Error\"}", text(result));
+            assertEquals(OPAQUE_500, text(result));
         }
     }
 
@@ -215,13 +237,30 @@ class McpToolExecutorTest {
         assertTrue(text(result).contains("This token is read-only."), text(result));
     }
 
+    /**
+     * A busy 503 (the anchor-lock timeout) reaches the agent as a tool error
+     * carrying REST's own problem, retry advice in its detail: the
+     * Retry-After header does not travel through MCP.
+     */
+    @Test
+    void aBusyReplyIsAToolErrorCarryingTheRetryableProblem() {
+        String busy = "{\"type\":\"https://roller.invalid/problems/busy\",\"title\":\"Busy\",\"status\":503,"
+                + "\"detail\":\"Another save of this weblog is in progress; retry shortly.\"}";
+        nextReply = new ApiReply(503, "application/problem+json", busy);
+
+        CallToolResult result = call("entries", Map.of("action", "create", "weblog", "b", "title", "t"));
+
+        assertTrue(result.isError());
+        assertEquals(busy, text(result));
+    }
+
     @Test
     void anEmptyOrNonJsonErrorBodyBecomesAProblemShape() {
         nextReply = new ApiReply(405, "text/html", "<html>nope</html>");
         CallToolResult result = call("entries", Map.of("action", "list", "weblog", "b"));
 
         assertTrue(result.isError());
-        assertEquals("{\"status\":405,\"title\":\"Method Not Allowed\"}", text(result));
+        assertEquals("{\"type\":\"about:blank\",\"title\":\"Method Not Allowed\",\"status\":405}", text(result));
     }
 
     @Test
@@ -343,7 +382,7 @@ class McpToolExecutorTest {
         List<String> logged = logged(() -> result[0] = call("entries", args));
 
         assertTrue(result[0].isError());
-        assertEquals("{\"status\":500,\"title\":\"Internal Server Error\"}", text(result[0]));
+        assertEquals(OPAQUE_500, text(result[0]));
         assertTrue(dispatched.isEmpty());
         assertEquals(1, logged.size(), logged.toString());
         assertTrue(logged.get(0).contains("status=500") && logged.get(0).contains("tool=entries"), logged.get(0));
@@ -361,11 +400,11 @@ class McpToolExecutorTest {
     void anErrorReplyWithNoContentTypeOrABlankJsonBodyBecomesAProblemShape() {
         nextReply = new ApiReply(500, null, "{\"leak\":\"internal detail\"}");
         CallToolResult noType = call("entries", Map.of("action", "list", "weblog", "b"));
-        assertEquals("{\"status\":500,\"title\":\"Internal Server Error\"}", text(noType));
+        assertEquals(OPAQUE_500, text(noType));
 
         nextReply = new ApiReply(404, "application/json", "  ");
         CallToolResult blank = call("entries", Map.of("action", "list", "weblog", "b"));
-        assertEquals("{\"status\":404,\"title\":\"Not Found\"}", text(blank));
+        assertEquals("{\"type\":\"about:blank\",\"title\":\"Not Found\",\"status\":404}", text(blank));
     }
 
     @Test

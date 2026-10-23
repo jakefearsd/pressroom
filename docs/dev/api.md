@@ -56,7 +56,10 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
 - **A resource the caller may not see is 404, never 403**, in every `*Api`
   controller: a pin-excluded weblog, a foreign entry/category/media/page id and
   a missing id are indistinguishable — a 403 would leak that the resource
-  exists. `ApiScopeInterceptor.checkWeblogScope` and every `requireX` helper in
+  exists. So is a weblog the caller holds no role on:
+  `RollerHandlerInterceptor` answers an API caller who fails the weblog
+  permission check 404 unless they hold at least `EDIT_DRAFT` there (a member
+  below the required level stays 403; `ApiSecurityRefusalTest`). `ApiScopeInterceptor.checkWeblogScope` and every `requireX` helper in
   `BaseApiController` follow this.
 - **The OpenAPI document is machine-readable, not a browser explorer.**
   `springdoc-openapi-starter-webmvc-api` serves `GET /api/v1/openapi.json`
@@ -119,7 +122,10 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   never gain a config switch. Any change to `PublicAddresses` updates the table test at the range's
   edges.
 - **Event times:** wall-clock times in the weblog's zone, editor and API alike
-  (`EntryFieldRules.parseEventTime`/`formatWallClock`).
+  (`EntryFieldRules.parseEventTime`/`formatWallClock`). A value with `Z` or an
+  offset is the instant it names (`EntryFieldRules.parsePubTime`), because
+  `EntryView` reads every time back as an instant and a GET-then-PATCH must
+  round-trip (`EntryTimeRoundTripTest`).
 - **Import logging:** `roller.media.import` logs the host only.
 
 ## Entry writes: check, import, apply

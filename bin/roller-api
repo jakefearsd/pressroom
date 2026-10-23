@@ -21,6 +21,11 @@ CRED_FILE="${ROLLER_CREDENTIALS:-$HOME/.roller/credentials}"
 
 die() { printf '%s\n' "$*" >&2; exit 1; }
 
+# Called as `need_arg "$@"` from a flag's case branch, before reading $2: a
+# flag given last with no value is refused by name instead of dying on set -u
+# with "$2: unbound variable".
+need_arg() { [ $# -ge 2 ] || die "$1 needs a value."; }
+
 # Every temp file this script ever creates (a netrc file during login, an
 # upload response body during a multipart upload) is registered here and
 # removed on ANY exit path, including a set -e abort partway through --
@@ -112,8 +117,8 @@ cmd_auth_login() {
     local url="" user="" password_stdin=0
     while [ $# -gt 0 ]; do
         case "$1" in
-            --url)  url="$2";  shift 2 ;;
-            --user) user="$2"; shift 2 ;;
+            --url)  need_arg "$@"; url="$2";  shift 2 ;;
+            --user) need_arg "$@"; user="$2"; shift 2 ;;
             --password-stdin) password_stdin=1; shift ;;
             *) die "Unknown option: $1" ;;
         esac
@@ -212,8 +217,10 @@ usage_entries() {
   entries list    --weblog H [--status S] [--category C] [--tags T,T] [--text S] [--locale L]
                   [--limit N] [--offset N]
   entries get     --weblog H --id ID
-  entries create  --weblog H --title T --text-file F [--status S] [--category C] [--tags T,T]
-                  [--pub-time T]
+  entries create  --weblog H --title T --text-file F [--publish] [--status S] [--category C]
+                  [--tags T,T] [--pub-time T] [--meta-title T] [--search-description D]
+                  [--canonical-url U] [--noindex true|false] [--featured-image-id ID]
+                  [--og-image-id ID]
   entries patch   --weblog H --id ID [--title T] [--text-file F] [--status S] [--category C]
                   [--tags T,T] [--pub-time T] [--meta-title T] [--search-description D]
                   [--canonical-url U] [--noindex true|false] [--featured-image-id ID]
@@ -244,14 +251,14 @@ entries_list() {
     local weblog="" status="" category="" tags="" text="" locale="" offset="" limit=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --weblog)   weblog="$2";   shift 2 ;;
-            --status)   status="$2";   shift 2 ;;
-            --category) category="$2"; shift 2 ;;
-            --tags)     tags="$2";     shift 2 ;;
-            --text)     text="$2";     shift 2 ;;
-            --locale)   locale="$2";   shift 2 ;;
-            --offset)   offset="$2";   shift 2 ;;
-            --limit)    limit="$2";    shift 2 ;;
+            --weblog)   need_arg "$@"; weblog="$2";   shift 2 ;;
+            --status)   need_arg "$@"; status="$2";   shift 2 ;;
+            --category) need_arg "$@"; category="$2"; shift 2 ;;
+            --tags)     need_arg "$@"; tags="$2";     shift 2 ;;
+            --text)     need_arg "$@"; text="$2";     shift 2 ;;
+            --locale)   need_arg "$@"; locale="$2";   shift 2 ;;
+            --offset)   need_arg "$@"; offset="$2";   shift 2 ;;
+            --limit)    need_arg "$@"; limit="$2";    shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -278,8 +285,8 @@ entries_get() {
     local weblog="" id=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --weblog) weblog="$2"; shift 2 ;;
-            --id)     id="$2";     shift 2 ;;
+            --weblog) need_arg "$@"; weblog="$2"; shift 2 ;;
+            --id)     need_arg "$@"; id="$2";     shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -350,20 +357,20 @@ entries_create() {
           noindex="" featured_image_id="" og_image_id=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --weblog)             weblog="$2";             shift 2 ;;
-            --title)              title="$2";              shift 2 ;;
-            --text-file)          text_file="$2";           shift 2 ;;
+            --weblog)             need_arg "$@"; weblog="$2";             shift 2 ;;
+            --title)              need_arg "$@"; title="$2";              shift 2 ;;
+            --text-file)          need_arg "$@"; text_file="$2";           shift 2 ;;
             --publish)            publish=1;                shift 1 ;;
-            --status)             status="$2";              shift 2 ;;
-            --category)           category="$2";            shift 2 ;;
-            --tags)               tags="$2";                shift 2 ;;
-            --pub-time)           pub_time="$2";             shift 2 ;;
-            --meta-title)         meta_title="$2";           shift 2 ;;
-            --search-description) search_description="$2";   shift 2 ;;
-            --canonical-url)      canonical_url="$2";        shift 2 ;;
-            --noindex)            noindex="$2";              shift 2 ;;
-            --featured-image-id)  featured_image_id="$2";    shift 2 ;;
-            --og-image-id)        og_image_id="$2";          shift 2 ;;
+            --status)             need_arg "$@"; status="$2";              shift 2 ;;
+            --category)           need_arg "$@"; category="$2";            shift 2 ;;
+            --tags)               need_arg "$@"; tags="$2";                shift 2 ;;
+            --pub-time)           need_arg "$@"; pub_time="$2";             shift 2 ;;
+            --meta-title)         need_arg "$@"; meta_title="$2";           shift 2 ;;
+            --search-description) need_arg "$@"; search_description="$2";   shift 2 ;;
+            --canonical-url)      need_arg "$@"; canonical_url="$2";        shift 2 ;;
+            --noindex)            need_arg "$@"; noindex="$2";              shift 2 ;;
+            --featured-image-id)  need_arg "$@"; featured_image_id="$2";    shift 2 ;;
+            --og-image-id)        need_arg "$@"; og_image_id="$2";          shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -388,20 +395,20 @@ entries_patch() {
           noindex="" featured_image_id="" og_image_id=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --weblog)             weblog="$2";             shift 2 ;;
-            --id)                 id="$2";                  shift 2 ;;
-            --title)              title="$2";               shift 2 ;;
-            --text-file)          text_file="$2";           shift 2 ;;
-            --status)             status="$2";              shift 2 ;;
-            --category)           category="$2";            shift 2 ;;
-            --tags)               tags="$2";                shift 2 ;;
-            --pub-time)           pub_time="$2";             shift 2 ;;
-            --meta-title)         meta_title="$2";           shift 2 ;;
-            --search-description) search_description="$2";   shift 2 ;;
-            --canonical-url)      canonical_url="$2";        shift 2 ;;
-            --noindex)            noindex="$2";              shift 2 ;;
-            --featured-image-id)  featured_image_id="$2";    shift 2 ;;
-            --og-image-id)        og_image_id="$2";          shift 2 ;;
+            --weblog)             need_arg "$@"; weblog="$2";             shift 2 ;;
+            --id)                 need_arg "$@"; id="$2";                  shift 2 ;;
+            --title)              need_arg "$@"; title="$2";               shift 2 ;;
+            --text-file)          need_arg "$@"; text_file="$2";           shift 2 ;;
+            --status)             need_arg "$@"; status="$2";              shift 2 ;;
+            --category)           need_arg "$@"; category="$2";            shift 2 ;;
+            --tags)               need_arg "$@"; tags="$2";                shift 2 ;;
+            --pub-time)           need_arg "$@"; pub_time="$2";             shift 2 ;;
+            --meta-title)         need_arg "$@"; meta_title="$2";           shift 2 ;;
+            --search-description) need_arg "$@"; search_description="$2";   shift 2 ;;
+            --canonical-url)      need_arg "$@"; canonical_url="$2";        shift 2 ;;
+            --noindex)            need_arg "$@"; noindex="$2";              shift 2 ;;
+            --featured-image-id)  need_arg "$@"; featured_image_id="$2";    shift 2 ;;
+            --og-image-id)        need_arg "$@"; og_image_id="$2";          shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -420,8 +427,8 @@ entries_trash() {
     local weblog="" id=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --weblog) weblog="$2"; shift 2 ;;
-            --id)     id="$2";     shift 2 ;;
+            --weblog) need_arg "$@"; weblog="$2"; shift 2 ;;
+            --id)     need_arg "$@"; id="$2";     shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -440,8 +447,8 @@ entries_restore() {
     local weblog="" id=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --weblog) weblog="$2"; shift 2 ;;
-            --id)     id="$2";     shift 2 ;;
+            --weblog) need_arg "$@"; weblog="$2"; shift 2 ;;
+            --id)     need_arg "$@"; id="$2";     shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -454,8 +461,8 @@ entries_delete_forever() {
     local weblog="" id=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --weblog) weblog="$2"; shift 2 ;;
-            --id)     id="$2";     shift 2 ;;
+            --weblog) need_arg "$@"; weblog="$2"; shift 2 ;;
+            --id)     need_arg "$@"; id="$2";     shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -472,9 +479,9 @@ entries_preview() {
     local weblog="" id="" text_file=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --weblog)    weblog="$2";    shift 2 ;;
-            --id)        id="$2";        shift 2 ;;
-            --text-file) text_file="$2"; shift 2 ;;
+            --weblog)    need_arg "$@"; weblog="$2";    shift 2 ;;
+            --id)        need_arg "$@"; id="$2";        shift 2 ;;
+            --text-file) need_arg "$@"; text_file="$2"; shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -531,8 +538,8 @@ media_list() {
     local weblog="" dir=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --weblog) weblog="$2"; shift 2 ;;
-            --dir)    dir="$2";    shift 2 ;;
+            --weblog) need_arg "$@"; weblog="$2"; shift 2 ;;
+            --dir)    need_arg "$@"; dir="$2";    shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -548,8 +555,8 @@ media_get() {
     local weblog="" id=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --weblog) weblog="$2"; shift 2 ;;
-            --id)     id="$2";     shift 2 ;;
+            --weblog) need_arg "$@"; weblog="$2"; shift 2 ;;
+            --id)     need_arg "$@"; id="$2";     shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -567,8 +574,8 @@ media_upload() {
     local weblog="" dir_id="" files=()
     while [ $# -gt 0 ]; do
         case "$1" in
-            --weblog) weblog="$2"; shift 2 ;;
-            --dir-id) dir_id="$2"; shift 2 ;;
+            --weblog) need_arg "$@"; weblog="$2"; shift 2 ;;
+            --dir-id) need_arg "$@"; dir_id="$2"; shift 2 ;;
             --) shift; while [ $# -gt 0 ]; do files+=("$1"); shift; done ;;
             -*) die "Unknown option: $1" ;;
             *) files+=("$1"); shift ;;
@@ -626,13 +633,13 @@ media_patch() {
     local weblog="" id="" alt_text="" name="" focal_x="" focal_y="" dir_id=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --weblog)   weblog="$2";   shift 2 ;;
-            --id)       id="$2";       shift 2 ;;
-            --alt-text) alt_text="$2"; shift 2 ;;
-            --name)     name="$2";     shift 2 ;;
-            --focal-x)  focal_x="$2";  shift 2 ;;
-            --focal-y)  focal_y="$2";  shift 2 ;;
-            --dir-id)   dir_id="$2";   shift 2 ;;
+            --weblog)   need_arg "$@"; weblog="$2";   shift 2 ;;
+            --id)       need_arg "$@"; id="$2";       shift 2 ;;
+            --alt-text) need_arg "$@"; alt_text="$2"; shift 2 ;;
+            --name)     need_arg "$@"; name="$2";     shift 2 ;;
+            --focal-x)  need_arg "$@"; focal_x="$2";  shift 2 ;;
+            --focal-y)  need_arg "$@"; focal_y="$2";  shift 2 ;;
+            --dir-id)   need_arg "$@"; dir_id="$2";   shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -665,8 +672,8 @@ media_delete() {
     local weblog="" id=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --weblog) weblog="$2"; shift 2 ;;
-            --id)     id="$2";     shift 2 ;;
+            --weblog) need_arg "$@"; weblog="$2"; shift 2 ;;
+            --id)     need_arg "$@"; id="$2";     shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -681,7 +688,7 @@ media_dirs() {
     local weblog=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --weblog) weblog="$2"; shift 2 ;;
+            --weblog) need_arg "$@"; weblog="$2"; shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -693,9 +700,9 @@ media_create_dir() {
     local weblog="" name="" description=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --weblog)      weblog="$2";      shift 2 ;;
-            --name)        name="$2";        shift 2 ;;
-            --description) description="$2"; shift 2 ;;
+            --weblog)      need_arg "$@"; weblog="$2";      shift 2 ;;
+            --name)        need_arg "$@"; name="$2";        shift 2 ;;
+            --description) need_arg "$@"; description="$2"; shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -730,10 +737,10 @@ audit_seo() {
     local weblog="" status="" offset="" limit=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --weblog) weblog="$2"; shift 2 ;;
-            --status) status="$2"; shift 2 ;;
-            --offset) offset="$2"; shift 2 ;;
-            --limit)  limit="$2";  shift 2 ;;
+            --weblog) need_arg "$@"; weblog="$2"; shift 2 ;;
+            --status) need_arg "$@"; status="$2"; shift 2 ;;
+            --offset) need_arg "$@"; offset="$2"; shift 2 ;;
+            --limit)  need_arg "$@"; limit="$2";  shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -751,7 +758,7 @@ audit_media() {
     local weblog=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --weblog) weblog="$2"; shift 2 ;;
+            --weblog) need_arg "$@"; weblog="$2"; shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -763,7 +770,7 @@ audit_media() {
 
 usage_admin() {
     cat <<'EOF'
-  admin reindex --weblog H
+  admin rebuild-index --weblog H       (old name: admin reindex)
   admin flush-cache --weblog H
   admin regenerate-renditions --weblog H
   admin users list [--enabled true|false] [--offset N] [--limit N]
@@ -781,7 +788,7 @@ EOF
 cmd_admin() {
     local sub="${1:-}"; shift || true
     case "$sub" in
-        reindex)                 admin_action rebuild-index "$@" ;;
+        rebuild-index|reindex)   admin_action rebuild-index "$@" ;;
         flush-cache)             admin_action flush-cache "$@" ;;
         regenerate-renditions)   admin_action regenerate-renditions "$@" ;;
         users)   admin_users "$@" ;;
@@ -796,7 +803,7 @@ admin_action() {
     local weblog=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --weblog) weblog="$2"; shift 2 ;;
+            --weblog) need_arg "$@"; weblog="$2"; shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -818,9 +825,9 @@ admin_users_list() {
     local enabled="" offset="" limit=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --enabled) enabled="$2"; shift 2 ;;
-            --offset)  offset="$2";  shift 2 ;;
-            --limit)   limit="$2";   shift 2 ;;
+            --enabled) need_arg "$@"; enabled="$2"; shift 2 ;;
+            --offset)  need_arg "$@"; offset="$2";  shift 2 ;;
+            --limit)   need_arg "$@"; limit="$2";   shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -835,9 +842,9 @@ admin_users_create() {
     local user_name="" email="" screen_name=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --user-name)   user_name="$2";   shift 2 ;;
-            --email)       email="$2";       shift 2 ;;
-            --screen-name) screen_name="$2"; shift 2 ;;
+            --user-name)   need_arg "$@"; user_name="$2";   shift 2 ;;
+            --email)       need_arg "$@"; email="$2";       shift 2 ;;
+            --screen-name) need_arg "$@"; screen_name="$2"; shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -854,10 +861,10 @@ admin_users_patch() {
     local user_name="" email="" screen_name="" enabled=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --user-name)   user_name="$2";   shift 2 ;;
-            --email)       email="$2";       shift 2 ;;
-            --screen-name) screen_name="$2"; shift 2 ;;
-            --enabled)     enabled="$2";     shift 2 ;;
+            --user-name)   need_arg "$@"; user_name="$2";   shift 2 ;;
+            --email)       need_arg "$@"; email="$2";       shift 2 ;;
+            --screen-name) need_arg "$@"; screen_name="$2"; shift 2 ;;
+            --enabled)     need_arg "$@"; enabled="$2";     shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -909,8 +916,8 @@ admin_weblogs_list() {
     local offset="" limit=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --offset) offset="$2"; shift 2 ;;
-            --limit)  limit="$2";  shift 2 ;;
+            --offset) need_arg "$@"; offset="$2"; shift 2 ;;
+            --limit)  need_arg "$@"; limit="$2";  shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -924,7 +931,7 @@ admin_weblogs_get() {
     local weblog=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --weblog) weblog="$2"; shift 2 ;;
+            --weblog) need_arg "$@"; weblog="$2"; shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -936,14 +943,14 @@ admin_weblogs_patch() {
     local weblog="" name="" tagline="" active="" locale="" timezone="" entry_display_count="" email=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --weblog)              weblog="$2";              shift 2 ;;
-            --name)                name="$2";                shift 2 ;;
-            --tagline)             tagline="$2";              shift 2 ;;
-            --active)              active="$2";               shift 2 ;;
-            --locale)              locale="$2";               shift 2 ;;
-            --timezone)            timezone="$2";             shift 2 ;;
-            --entry-display-count) entry_display_count="$2";  shift 2 ;;
-            --email)               email="$2";                shift 2 ;;
+            --weblog)              need_arg "$@"; weblog="$2";              shift 2 ;;
+            --name)                need_arg "$@"; name="$2";                shift 2 ;;
+            --tagline)             need_arg "$@"; tagline="$2";              shift 2 ;;
+            --active)              need_arg "$@"; active="$2";               shift 2 ;;
+            --locale)              need_arg "$@"; locale="$2";               shift 2 ;;
+            --timezone)            need_arg "$@"; timezone="$2";             shift 2 ;;
+            --entry-display-count) need_arg "$@"; entry_display_count="$2";  shift 2 ;;
+            --email)               need_arg "$@"; email="$2";                shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -972,6 +979,13 @@ admin_weblogs_patch() {
 
 # -------------------------------------------------------------------- misc
 
+usage_auth() {
+    cat <<'EOF'
+  auth login --url URL [--user NAME] [--password-stdin]
+  auth status
+EOF
+}
+
 usage() {
     cat <<'EOF'
 roller-api -- Roller automation API client
@@ -989,22 +1003,22 @@ roller-api -- Roller automation API client
   auth status                          show who the stored token belongs to
 
   entries list    --weblog H [--status S] [--limit N]
-  entries create  --weblog H --title T --text-file F [--publish]
+  entries create  --weblog H --title T --text-file F [--publish] [SEO flags]
   entries patch   --weblog H --id ID [--search-description D] [--meta-title T]
   entries preview --weblog H --text-file F
 
   media upload --weblog H [--dir-id D] FILE...
-  media patch  --weblog H --id ID --alt-text TEXT [--dir-id D]
+  media patch  --weblog H --id ID [--alt-text TEXT] [--dir-id D]
 
   audit seo   --weblog H
   audit media --weblog H
 
-  admin reindex --weblog H
+  admin rebuild-index --weblog H
   admin flush-cache --weblog H
   admin regenerate-renditions --weblog H
 
-Run 'roller-api <group> --help'-shaped usage (e.g. `roller-api entries`
-with no subcommand) to see every subcommand of a group.
+Run 'roller-api <group> --help' to see every subcommand of a group and its
+flags (groups: auth, entries, media, audit, admin).
 EOF
 }
 
@@ -1051,10 +1065,16 @@ main() {
             case "$sub" in
                 login)  cmd_auth_login "$@" ;;
                 status) cmd_auth_status ;;
+                -h|--help|help) usage_auth ;;
                 *) usage; exit 1 ;;
             esac
             ;;
-        entries|media|audit|admin) load_credentials; "cmd_${group}" "$@" ;;
+        entries|media|audit|admin)
+            # Help needs no credentials, and asking for it is not a usage error.
+            case "${1:-}" in
+                -h|--help|help) "usage_${group}"; exit 0 ;;
+            esac
+            load_credentials; "cmd_${group}" "$@" ;;
         -h|--help|help) usage ;;
         *) usage; exit 1 ;;
     esac

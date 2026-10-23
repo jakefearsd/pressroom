@@ -144,7 +144,7 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
     private void requireSlugAvailable(Weblog weblog, String slug, String excludingId) throws WebloggerException {
         WeblogPage existing = weblogger.getWeblogPageManager().getPageBySlug(weblog, slug);
         if (existing != null && !existing.getId().equals(excludingId)) {
-            throw ApiException.conflict("A page with slug '" + slug + "' already exists.");
+            throw ApiException.conflictOnField("slug", "A page with slug '" + slug + "' already exists.");
         }
     }
 

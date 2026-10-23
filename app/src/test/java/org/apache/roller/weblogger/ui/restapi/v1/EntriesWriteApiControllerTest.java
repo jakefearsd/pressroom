@@ -1264,6 +1264,38 @@ class EntriesWriteApiControllerTest {
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
     }
 
+    // ------------------------------------------------------------ anchor lock
+
+    /**
+     * Under heavy concurrent creates the anchor claim can give up waiting for
+     * the weblog's lock. That is transient: a 503 problem with Retry-After,
+     * not the opaque 500 a bare WebloggerException gets.
+     */
+    @Test
+    void aCreateThatTimesOutOnTheAnchorLockIsARetryable503() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        WeblogEntryManager entryManager = weblogger.getWeblogEntryManager();
+        org.mockito.Mockito.doThrow(new org.apache.roller.weblogger.business.AnchorLockTimeoutException("myblog", 10))
+                .when(entryManager).saveWeblogEntry(any());
+
+        var response = mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/entries")
+                        .requestAttr("actionWeblog", aWeblog("myblog"))
+                        .requestAttr("authenticatedUser", aUser("maiia"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"t\",\"text\":\"x\"}"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andReturn().getResponse();
+
+        assertEquals("10", response.getHeader("Retry-After"));
+        tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper()
+                .readTree(response.getContentAsString());
+        assertEquals("https://roller.invalid/problems/busy", json.get("type").asString());
+        assertEquals("Another save of this weblog is in progress; retry shortly.", json.get("detail").asString());
+        verify(weblogger, never()).flush();
+    }
+
     // ------------------------------------------------------------ event times
 
     private static Weblog aBerlinWeblog() {
@@ -1273,7 +1305,8 @@ class EntriesWriteApiControllerTest {
     }
 
     private static final String EVENT_FORMAT_DETAIL =
-            "eventStart must be a wall-clock time in the weblog's zone, for example 2026-08-02T19:30.";
+            "eventStart must be a wall-clock time in the weblog's zone, for example 2026-08-02T19:30, "
+                    + "or an instant such as 2026-08-02T17:30:00Z.";
 
     @Test
     void anEventIsWrittenInTheWeblogsZoneAndReadBackAsInstants() throws Exception {
@@ -1306,7 +1339,7 @@ class EntriesWriteApiControllerTest {
     }
 
     @Test
-    void anEventTimeWithAnOffsetIsA400ShowingTheFormat() throws Exception {
+    void anUnreadableEventTimeIsA400ShowingTheFormat() throws Exception {
         Weblogger weblogger = mockedWeblogger();
 
         String body = mockMvc(controllerFor(weblogger))
@@ -1314,7 +1347,7 @@ class EntriesWriteApiControllerTest {
                         .requestAttr("actionWeblog", aBerlinWeblog())
                         .requestAttr("authenticatedUser", aUser("maiia"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"t\",\"text\":\"x\",\"eventStart\":\"2026-08-02T19:30+02:00\"}"))
+                        .content("{\"title\":\"t\",\"text\":\"x\",\"eventStart\":\"2 August, 19:30\"}"))
                 .andExpect(status().isBadRequest())
                 .andReturn().getResponse().getContentAsString();
 

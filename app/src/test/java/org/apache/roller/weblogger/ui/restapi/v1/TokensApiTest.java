@@ -89,6 +89,22 @@ class TokensApiTest {
         return weblogger;
     }
 
+    /**
+     * No authenticated caller at all is a 401, as everywhere else in the API
+     * (README, Errors): a 403 would say "you, specifically, may not".
+     * Unreachable behind the security chain today; pinned so the answer
+     * stays right if the chain ever lets one through.
+     */
+    @Test
+    void noAuthenticatedCallerIsA401() throws Exception {
+        String body = mockMvc(new TokensApi(mockedWeblogger()))
+                .perform(get("/v1/tokens"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(body.contains("Authentication required."), body);
+    }
+
     @Test
     void aBearerAuthenticatedCallerCannotMintAToken() throws Exception {
         authenticateWithABearerToken();
@@ -388,16 +404,17 @@ class TokensApiTest {
      * with {@code currentUser()}, which returns null rather than throwing
      * when there is no authentication at all -- a null then reached {@code
      * ApiTokenManager.revoke} as its owner argument. {@code requireUser()}
-     * closes that: no authentication is a clean 403, not undefined manager
-     * behaviour on a null owner.
+     * closes that: no authentication is a clean 401 (it was a 403 until the
+     * fit-and-finish pass; README promises 401 for no credential), not
+     * undefined manager behaviour on a null owner.
      */
     @Test
-    void revokeWithNoAuthenticationAtAllIsForbidden() throws Exception {
+    void revokeWithNoAuthenticationAtAllIsUnauthorized() throws Exception {
         Weblogger weblogger = mockedWeblogger();
 
         mockMvc(new TokensApi(weblogger))
                 .perform(delete("/v1/tokens/{id}", "some-id"))
-                .andExpect(status().isForbidden())
+                .andExpect(status().isUnauthorized())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getApiTokenManager(), never()).revoke(any(), anyString());
@@ -503,12 +520,12 @@ class TokensApiTest {
         Weblogger weblogger = mockedWeblogger();
 
         mockMvc(new TokensApi(weblogger)).perform(get("/v1/tokens"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
 
         verify(weblogger.getUserManager(), never()).getUserByUserName(anyString());
     }
 
-    /** A user lookup that fails is "not authenticated" (403), never a token list or a 500. */
+    /** A user lookup that fails is "not authenticated" (401), never a token list or a 500. */
     @Test
     void aFailedUserLookupIsTreatedAsNotAuthenticated() throws Exception {
         authenticateWithBasicAuth();
@@ -517,7 +534,7 @@ class TokensApiTest {
                 .thenThrow(new org.apache.roller.weblogger.WebloggerException("db down"));
 
         mockMvc(new TokensApi(weblogger)).perform(get("/v1/tokens"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
 
         verify(weblogger.getApiTokenManager(), never()).getTokens(any());
     }

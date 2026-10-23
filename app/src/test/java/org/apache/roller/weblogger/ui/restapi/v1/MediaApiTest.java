@@ -219,6 +219,78 @@ class MediaApiTest {
         assertTrue(json.get(0).get("url").asString().endsWith("/cat.jpg-id"));
     }
 
+    /**
+     * The list pages when asked: offset and limit slice the name-sorted list
+     * (still a bare array, as before); without either, the whole list, as
+     * before. A limit is capped at 200 like every list; a bad range is a 400.
+     */
+    @Test
+    void listPagesWhenGivenOffsetAndLimit() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        MediaFileDirectory dir = aDirectory(weblog, "default");
+        List<MediaFile> files = new java.util.ArrayList<>();
+        for (String name : List.of("e.jpg", "a.jpg", "d.jpg", "b.jpg", "c.jpg")) {
+            files.add(aMediaFile(dir, name));
+        }
+        when(weblogger.getMediaFileManager()
+                        .searchMediaFiles(org.mockito.ArgumentMatchers.eq(weblog), any(MediaFileFilter.class)))
+                .thenReturn(files);
+        MockMvc mvc = mockMvc(controllerFor(weblogger));
+        tools.jackson.databind.ObjectMapper json = new tools.jackson.databind.ObjectMapper();
+
+        tools.jackson.databind.JsonNode page = json.readTree(mvc.perform(get("/v1/weblogs/myblog/media")
+                        .param("offset", "1").param("limit", "2").requestAttr("actionWeblog", weblog))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertEquals(2, page.size());
+        assertEquals("b.jpg", page.get(0).get("name").asString());
+        assertEquals("c.jpg", page.get(1).get("name").asString());
+
+        tools.jackson.databind.JsonNode rest = json.readTree(mvc.perform(get("/v1/weblogs/myblog/media")
+                        .param("offset", "3").requestAttr("actionWeblog", weblog))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertEquals(2, rest.size(), "an offset alone gives the rest of the list");
+
+        tools.jackson.databind.JsonNode past = json.readTree(mvc.perform(get("/v1/weblogs/myblog/media")
+                        .param("offset", "9").param("limit", "2").requestAttr("actionWeblog", weblog))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertEquals(0, past.size(), "past the end is an empty page, not an error");
+
+        assertEquals(5, json.readTree(mvc.perform(get("/v1/weblogs/myblog/media")
+                        .param("limit", "5000").requestAttr("actionWeblog", weblog))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).size());
+
+        mvc.perform(get("/v1/weblogs/myblog/media").param("limit", "0").requestAttr("actionWeblog", weblog))
+                .andExpect(status().isBadRequest()).andExpect(errorFieldIs("limit"));
+        mvc.perform(get("/v1/weblogs/myblog/media").param("offset", "-1").requestAttr("actionWeblog", weblog))
+                .andExpect(status().isBadRequest()).andExpect(errorFieldIs("offset"));
+    }
+
+    /** {@code directoryId} is the name the rest of the API uses; {@code dir} stays as its alias. */
+    @Test
+    void listTakesDirectoryIdAndStillTakesDir() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        MediaFileDirectory dir = aDirectory(weblog, "gallery");
+        dir.getMediaFiles().add(aMediaFile(dir, "beach.jpg"));
+        MediaFileDirectory other = aDirectory(weblog, "other");
+        when(weblogger.getMediaFileManager().getMediaFileDirectory(dir.getId())).thenReturn(dir);
+        when(weblogger.getMediaFileManager().getMediaFileDirectory(other.getId())).thenReturn(other);
+        MockMvc mvc = mockMvc(controllerFor(weblogger));
+
+        String body = mvc.perform(get("/v1/weblogs/myblog/media").param("directoryId", dir.getId())
+                        .requestAttr("actionWeblog", weblog))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertEquals("beach.jpg", new tools.jackson.databind.ObjectMapper().readTree(body).get(0).get("name").asString());
+        mvc.perform(get("/v1/weblogs/myblog/media").param("directoryId", dir.getId()).param("dir", dir.getId())
+                        .requestAttr("actionWeblog", weblog))
+                .andExpect(status().isOk());
+        mvc.perform(get("/v1/weblogs/myblog/media").param("directoryId", dir.getId()).param("dir", other.getId())
+                        .requestAttr("actionWeblog", weblog))
+                .andExpect(status().isBadRequest()).andExpect(errorFieldIs("dir"));
+        verify(weblogger.getMediaFileManager(), never()).searchMediaFiles(any(), any());
+    }
+
     @Test
     void listFiltersToASingleOwnedDirectoryWhenDirIsGiven() throws Exception {
         Weblogger weblogger = mockedWeblogger();
@@ -549,6 +621,7 @@ class MediaApiTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"existing\"}"))
                 .andExpect(status().isConflict())
+                .andExpect(errorFieldIs("name"))
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getMediaFileManager(), never()).createMediaFileDirectory(any(), any());
@@ -614,6 +687,7 @@ class MediaApiTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"/existing\"}"))
                 .andExpect(status().isConflict())
+                .andExpect(errorFieldIs("name"))
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getMediaFileManager(), never()).createMediaFileDirectory(any(), any());

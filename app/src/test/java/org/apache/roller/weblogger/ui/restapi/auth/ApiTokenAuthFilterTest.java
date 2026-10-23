@@ -268,5 +268,8 @@ class ApiTokenAuthFilterTest {
         JsonNode body = OBJECT_MAPPER.readTree(response.getContentAsByteArray());
         assertEquals(429, body.get("status").asInt());
         verifyNoInteractions(secondChain);
+        // The window opens at the caller's first request and lasts the interval, so the
+        // interval is never too short a wait (RFC 9110, Retry-After in delay-seconds).
+        assertEquals("60", response.getHeader("Retry-After"));
     }
 }

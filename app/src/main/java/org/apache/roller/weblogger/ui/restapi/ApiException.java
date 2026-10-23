@@ -96,8 +96,22 @@ public class ApiException extends RuntimeException {
         return new ApiException(409, TYPE_BASE + "conflict", "Conflict", detail);
     }
 
-    public static ApiException quotaExceeded(String detail) {
-        return new ApiException(413, TYPE_BASE + "quota-exceeded", "Upload quota exceeded", detail);
+    /**
+     * The opaque 500: fixed text, because an unexpected exception's message
+     * routinely carries schema names, file paths and connection strings. The
+     * cause belongs in the log, never in the body.
+     */
+    public static ApiException internalError() {
+        return new ApiException(500, TYPE_BASE + "internal-error", "Internal error",
+                "The request could not be completed.");
+    }
+
+    /**
+     * A transient refusal the caller should retry after a short wait: the
+     * server is healthy, but the work collided with other work in progress.
+     */
+    public static ApiException busy(String detail) {
+        return new ApiException(503, TYPE_BASE + "busy", "Busy", detail);
     }
 
     public static ApiException throttled(String detail) {

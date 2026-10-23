@@ -154,7 +154,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         // reach addUser and fail as a bare, unguarded WebloggerException.
         if (mgr.getUserByUserName(userName, null) != null
                 || mgr.getUserByUserName(userName.toLowerCase(Locale.ROOT), null) != null) {
-            throw ApiException.conflict("A user named '" + userName + "' already exists.");
+            throw ApiException.conflictOnField("userName", "A user named '" + userName + "' already exists.");
         }
 
         if (!PasswordLinkMailer.isReady()) {

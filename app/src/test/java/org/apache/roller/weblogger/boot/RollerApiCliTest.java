@@ -310,4 +310,97 @@ class RollerApiCliTest {
         assertEquals("<p>hi</p>\n", out);
         assertEquals("warning: 1 code block names no language\n", err);
     }
+
+    /** What one run of the real script printed and returned. */
+    private record Run(int exit, String out, String err) { }
+
+    /**
+     * Runs bin/roller-api with a stub curl that prints the URL it was given,
+     * so a test can see which route a command reaches. {@code credentials}
+     * false runs with no URL, no token and no credentials file.
+     */
+    private static Run run(Path dir, boolean credentials, String... args) throws Exception {
+        Path bin = Files.createDirectories(dir.resolve("bin"));
+        Path curl = bin.resolve("curl");
+        Files.writeString(curl, "#!/bin/bash\nfor a in \"$@\"; do last=\"$a\"; done\n"
+                + "printf '{\"url\":\"%s\"}' \"$last\"\n");
+        assertTrue(curl.toFile().setExecutable(true));
+        Path script = Path.of("..", "bin", "roller-api").toAbsolutePath();
+        java.util.List<String> command = new java.util.ArrayList<>(java.util.List.of("bash", script.toString()));
+        command.addAll(java.util.List.of(args));
+        ProcessBuilder pb = new ProcessBuilder(command);
+        pb.environment().put("PATH", bin + ":" + System.getenv("PATH"));
+        pb.environment().remove("ROLLER_API_URL");
+        pb.environment().remove("ROLLER_API_TOKEN");
+        if (credentials) {
+            pb.environment().put("ROLLER_API_URL", "http://roller.invalid");
+            pb.environment().put("ROLLER_API_TOKEN", "t");
+        }
+        pb.environment().put("ROLLER_CREDENTIALS", dir.resolve("none").toString());
+        Path stderr = dir.resolve("stderr-" + System.nanoTime());
+        pb.redirectError(stderr.toFile());
+        Process p = pb.start();
+        String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        assertTrue(p.waitFor(30, TimeUnit.SECONDS), "roller-api hung");
+        return new Run(p.exitValue(), out, Files.readString(stderr));
+    }
+
+    /**
+     * {@code <group> --help} is a request for help, not a usage error: it
+     * prints the group's subcommands and exits 0, and needs no credentials
+     * (it used to exit 1, after first demanding a token).
+     */
+    @Test
+    void everyGroupAnswersHelpWithItsUsageAndExitsZero(@TempDir Path dir) throws Exception {
+        String[][] cases = {
+            {"entries", "entries create"}, {"media", "media upload"}, {"audit", "audit seo"},
+            {"admin", "admin rebuild-index"}, {"auth", "auth login"},
+        };
+        for (String[] c : cases) {
+            for (String flag : new String[] {"--help", "-h", "help"}) {
+                Run r = run(dir, false, c[0], flag);
+                assertEquals(0, r.exit(), c[0] + " " + flag + ": " + r.out() + r.err());
+                assertTrue(r.out().contains(c[1]), c[0] + " " + flag + ": " + r.out());
+            }
+        }
+        Run top = run(dir, false, "--help");
+        assertEquals(0, top.exit(), top.err());
+        assertTrue(top.out().contains("roller-api <group> --help"), top.out());
+        assertFalse(top.out().contains("'-shaped"), "the garbled help line is gone: " + top.out());
+    }
+
+    /** The top-level summary agrees with the group usages: alt text is optional, --publish exists. */
+    @Test
+    void theTopLevelHelpAgreesWithTheGroupUsages(@TempDir Path dir) throws Exception {
+        String top = run(dir, false, "--help").out();
+        assertTrue(top.contains("media patch  --weblog H --id ID [--alt-text TEXT]"), top);
+        String entries = run(dir, false, "entries", "--help").out();
+        for (String flag : new String[] {"--publish", "--meta-title", "--search-description", "--canonical-url",
+                "--noindex", "--featured-image-id", "--og-image-id"}) {
+            int create = entries.indexOf("entries create");
+            int patch = entries.indexOf("entries patch");
+            assertTrue(entries.substring(create, patch).contains(flag), "entries create usage lacks " + flag);
+        }
+    }
+
+    /** A flag given last with no value is a clear refusal, never bash's "$2: unbound variable". */
+    @Test
+    void aFlagMissingItsValueIsRefusedByName(@TempDir Path dir) throws Exception {
+        Run r = run(dir, true, "entries", "list", "--weblog");
+
+        assertEquals(1, r.exit(), r.out() + r.err());
+        assertEquals("--weblog needs a value.\n", r.err());
+        assertFalse(r.err().contains("unbound variable"), r.err());
+    }
+
+    /** {@code admin rebuild-index} is the REST and MCP name; {@code reindex} stays as its alias. */
+    @Test
+    void rebuildIndexIsTheCommandAndReindexStillWorks(@TempDir Path dir) throws Exception {
+        for (String name : new String[] {"rebuild-index", "reindex"}) {
+            Run r = run(dir, true, "admin", name, "--weblog", "w");
+            assertEquals(0, r.exit(), name + ": " + r.out() + r.err());
+            assertTrue(r.out().contains("http://roller.invalid/api/v1/admin/weblogs/w/actions/rebuild-index"),
+                    name + ": " + r.out());
+        }
+    }
 }

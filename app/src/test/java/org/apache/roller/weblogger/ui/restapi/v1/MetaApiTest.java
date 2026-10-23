@@ -94,12 +94,12 @@ class MetaApiTest {
     }
 
     @Test
-    void meWithoutAnAuthenticatedUserIsA403Problem() throws Exception {
+    void meWithoutAnAuthenticatedUserIsA401Problem() throws Exception {
         JsonNode body = json(mockMvc.perform(get("/v1/me"))
-                .andExpect(status().isForbidden())
+                .andExpect(status().isUnauthorized())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json")));
 
-        assertEquals("Not authenticated.", body.get("detail").asString());
+        assertEquals("Authentication required.", body.get("detail").asString());
     }
 
     /**

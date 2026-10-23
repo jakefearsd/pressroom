@@ -68,7 +68,7 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
             ColumnLimits.requireMaxLength("description", body.description(), ColumnLimits.CATEGORY_DESCRIPTION);
         }
         if (weblog.hasCategory(name)) {
-            throw ApiException.conflict("A category named '" + name + "' already exists.");
+            throw ApiException.conflictOnField("name", "A category named '" + name + "' already exists.");
         }
 
         WeblogCategory category = new WeblogCategory(weblog, name, body.description(), null);
@@ -102,7 +102,7 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
                 WeblogCategory existing =
                         weblogger.getWeblogEntryManager().getWeblogCategoryByName(weblog, name);
                 if (existing != null && !existing.getId().equals(category.getId())) {
-                    throw ApiException.conflict("A category named '" + name + "' already exists.");
+                    throw ApiException.conflictOnField("name", "A category named '" + name + "' already exists.");
                 }
                 category.setName(name);
             }

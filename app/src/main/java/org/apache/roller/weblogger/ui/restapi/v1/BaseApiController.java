@@ -41,6 +41,22 @@ public abstract class BaseApiController {
         throw ApiException.notFound("No such weblog.");
     }
 
+    /**
+     * The value of a parameter that also answers to an older, deprecated
+     * name: whichever was sent, and the same value under both is fine. Two
+     * different values are a 400 naming the alias, never a silent choice.
+     */
+    protected static String eitherName(String name, String value, String alias, String aliasValue) {
+        if (value == null) {
+            return aliasValue;
+        }
+        if (aliasValue != null && !aliasValue.equals(value)) {
+            throw ApiException.invalidField(alias, alias + " is the old name of " + name
+                    + " and names a different value; send " + name + " only.");
+        }
+        return value;
+    }
+
     /** The signed-in user the handler interceptor stored, or a 401. */
     protected User requireAuthenticatedUser(HttpServletRequest request) {
         Object user = request.getAttribute("authenticatedUser");

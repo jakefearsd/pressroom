@@ -17,6 +17,7 @@
  */
 package org.apache.roller.weblogger.ui.restapi.v1;
 
+import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.List;
@@ -73,7 +74,10 @@ public class CommentsApi extends BaseApiController implements UISecurityEnforced
     @GetMapping("")
     public CommentDtos.CommentPage list(HttpServletRequest request,
             @RequestParam(value = "status", required = false) String status,
-            @RequestParam(value = "entry", required = false) String entryId,
+            @Parameter(description = "Only this entry's comments: an entry id of this weblog.")
+            @RequestParam(value = "entryId", required = false) String entryId,
+            @Parameter(description = "Deprecated: the old name of entryId.")
+            @RequestParam(value = "entry", required = false) String entryAlias,
             @RequestParam(value = "offset", defaultValue = "0") int offset,
             @RequestParam(value = "limit", defaultValue = "50") int limit) throws WebloggerException {
         Paging.requireRange(limit, offset);
@@ -83,8 +87,9 @@ public class CommentsApi extends BaseApiController implements UISecurityEnforced
             wanted = parse(status);
         }
         WeblogEntry entry = null;
-        if (entryId != null) {
-            entry = requireEntry(request, entryId);
+        String wantedEntry = eitherName("entryId", entryId, "entry", entryAlias);
+        if (wantedEntry != null) {
+            entry = requireEntry(request, wantedEntry);
         }
         int bounded = Math.min(limit, MAX_LIMIT);
         // One extra row decides hasMore without a count query.

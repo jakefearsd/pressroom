@@ -104,6 +104,7 @@ public class ApiTokenAuthFilter extends OncePerRequestFilter {
         ApiProblem problem = ApiException
                 .throttled("Too many requests. Slow down and retry.")
                 .toProblem(request.getRequestURI());
+        response.setHeader("Retry-After", Integer.toString(throttle.retryAfterSeconds()));
         problemWriter.write(response, problem);
     }
 

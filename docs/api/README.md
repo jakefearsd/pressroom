@@ -18,7 +18,8 @@ bin/roller-api auth login --url http://localhost:8083
 ```
 
 Everything below assumes a Roller running at that URL (the default for
-`./roller dev`; see the repository's `CLAUDE.md`). In production, substitute
+`./roller dev`, which serves from the root; see the repository's
+`CLAUDE.md`, "Build and Development Commands"). In production, substitute
 your site's own origin.
 
 ### Local development
@@ -133,10 +134,8 @@ curl -sS -u alice:hunter2 \
 
 The raw secret is in the **`token`** field, and it is shown exactly once —
 neither this endpoint nor `GET /api/v1/tokens` will ever show it again. The
-`info` object is a `TokenView`, the same shape `GET`/`DELETE` on this
-resource return. (An earlier plan draft called this field `token_info`; the
-shipped field name is `info` — check the response shape, not this document,
-if the two ever disagree.)
+`info` object is a `TokenView`, the same shape each item of
+`GET /api/v1/tokens` has. (`DELETE` answers 204 with no body.)
 
 `role` is one of `READ`, `POST`, `ADMIN` (see [Token scopes](#token-scopes)).
 `weblog` is optional; omit it for a token that may act on every weblog its
@@ -260,8 +259,9 @@ In the MCP endpoint `clear` is an argument of the `update` actions.
 ## Pagination
 
 List endpoints (`GET .../entries`, `GET .../comments`, `GET .../audit/seo`,
-`GET /api/v1/admin/users`, `GET /api/v1/weblogs`) accept `?offset=` and
-`?limit=`. **Out-of-range values are a 400, never silently clamped or
+`GET .../media`, `GET /api/v1/admin/users`, `GET /api/v1/weblogs`) accept
+`?offset=` and `?limit=` (`GET .../media` only pages when asked; see
+[Media](#media)). **Out-of-range values are a 400, never silently clamped or
 wrapped**: `limit` below 1, or a negative `offset`, is rejected outright
 before any query runs — a permissive endpoint would otherwise let
 `limit=-2` reach the database layer's "no limit" sentinel and read the
@@ -269,7 +269,7 @@ entire table. A `limit` above the endpoint's cap (200, uniformly) is
 silently capped rather than rejected — the one place this API *does*
 clamp instead of refusing.
 
-**The page envelope is not uniform across these five endpoints — check the
+**The page envelope is not uniform across these six endpoints — check the
 shape before assuming a field exists.**
 
 - `GET .../entries` returns an `EntryPage`: `{items, offset, limit, hasMore}`.
@@ -281,8 +281,9 @@ shape before assuming a field exists.**
   **every** gappy entry the search found, not just the current page, so an
   agent can read the shape of the problem without paging through it —
   `entries` alone is the `offset`/`limit`-sliced page.
-- `GET /api/v1/admin/users` and `GET /api/v1/weblogs` return a **bare JSON
-  array**, `[UserView, ...]` / `[WeblogView, ...]` — no envelope, no
+- `GET /api/v1/admin/users`, `GET /api/v1/weblogs` and `GET .../media` return
+  a **bare JSON array**, `[UserView, ...]` / `[WeblogView, ...]` /
+  `[MediaView, ...]` — no envelope, no
   `total`, no `hasMore` at all. Getting fewer items back than the requested
   `limit` is the only signal that you have reached the end.
 
@@ -325,7 +326,9 @@ update lists every bad field at once, and `detail` joins those messages with
 one space; a 400 that is not about one field (unparseable JSON, a missing
 body) carries no `errors`, so treat the array as optional. A weblog create or
 settings PATCH reports one `errors` entry per violated rule, and a single
-conflict (a taken handle or custom domain) is a 409 carrying `errors` too.
+conflict (a taken handle or custom domain) is a 409 carrying `errors` too. So
+is every taken name: a category or directory `name`, a page `slug`, a user's
+`userName`, and an entry's `anchor`.
 
 ```json
 {
@@ -345,26 +348,25 @@ conflict (a taken handle or custom domain) is a 409 carrying `errors` too.
 |--------|---------|
 | 400 | Malformed request: bad JSON, an out-of-range `limit`/`offset`, an unknown status/role, a missing required field. |
 | 401 | No credential, or a Bearer token that is missing, malformed, unknown, expired or revoked. |
-| 403 | Authenticated, but the token's own scope refuses this call (wrong role, or an admin-only route with a non-`ADMIN` token). |
-| 404 | The resource does not exist, **or the caller may not see it.** A weblog outside a token's pin, a foreign entry/category/page/media id, and a genuinely-missing id are all 404 — never 403, because a 403 there would confirm the resource exists under someone else's weblog. Also what an unmapped path under `/api/...` answers — see the note above on why that one is plain `application/json`, not a problem body. |
+| 403 | Authenticated, but the token's own scope refuses this call (wrong role, or an admin-only route with a non-`ADMIN` token), or the caller is a member of the weblog below the role the call needs. |
+| 404 | The resource does not exist, **or the caller may not see it.** A weblog outside a token's pin, a weblog the caller holds no role on, a foreign entry/category/page/media id, and a genuinely-missing id are all 404 — never 403, because a 403 there would confirm the resource exists under someone else's weblog. Also what an unmapped path under `/api/...` answers — see the note above on why that one is plain `application/json`, not a problem body. |
 | 405 | The path exists but not for this HTTP verb (e.g. `DELETE` on a collection endpoint that only supports `GET`/`POST`). Plain `application/json` from Boot's own `/error`, not a problem body — see the note above. |
 | 409 | The request conflicts with the resource's current state: trashing an already-trashed entry, restoring one that isn't trashed, PATCHing a trashed entry (restore it first), a duplicate category/directory/page-slug name, deleting a weblog's last category, publishing a comment its author deleted, an `anchor` another entry of the weblog holds (a trashed one included). |
 | 413 | A multipart request body larger than `spring.servlet.multipart.max-request-size` (1GB). Plain `application/json` from Boot's own `/error`, not a problem body — see the note above. Distinct from the per-file media-quota refusal below, which is never a whole-request 413. |
 | 415 | `POST .../media` without a `multipart/form-data` body. Plain `application/json`, not a problem body — see the note above. |
 | 429 | Throttled — see below. |
+| 503 | Busy: the request collided with other work in progress and should be retried. Today only an entry create (REST or MCP) that waited longer than `weblogentry.anchor.lockTimeoutSeconds` (default 10) for another save of the same weblog to finish claiming its anchor. The problem's `type` ends in `/busy`, its `detail` is `Another save of this weblog is in progress; retry shortly.`, and the REST response carries `Retry-After` set to that timeout in seconds. Nothing was saved, so retrying the same request is safe. No other failure is a 503. |
 | 500 | Unexpected server error. The response body never carries exception detail (message, stack trace, class name) — those are logged server-side only. |
 | 502 | An upstream dependency this endpoint depends on failed after the request itself already succeeded — today only `POST /api/v1/admin/users` when the account was created but its set-password email could not be sent; the account survives and is resendable, so this is not retried as a fresh create. |
 
-`ApiException` also has a `quotaExceeded()` factory that would answer 413,
-but **no endpoint calls it today** — a media upload that would exceed a
-quota is not a whole-request 413, it is a per-file `"quota_exceeded"`
-`status` string inside that file's own `results[]` entry (see
-[Media](#media)). Don't build a client that branches on 413 for a quota
-refusal; check `results[].status` instead. The 413 you *can* actually get
-is the framework-level one in the table above — a request body over
-`spring.servlet.multipart.max-request-size` — which is a different
-mechanism entirely (enforced by `DispatcherServlet` before any handler
-runs) and carries no `results[]` body at all.
+A media upload that would exceed a quota is not a whole-request 413: it is a
+per-file `"quota_exceeded"` `status` string inside that file's own
+`results[]` entry (see [Media](#media)). Check `results[].status`, not the
+status code. The only 413 is the framework-level one in the table above.
+
+A query parameter that will not convert to its type (`?limit=abc`) is a 400
+naming it in `errors`, with a detail such as `limit has an invalid value; it
+must be a whole number.`
 
 ## The throttle
 
@@ -382,7 +384,10 @@ per-source-address before that. A throttled request gets a
 here, built and written outside the normal Spring MVC dispatch path (the
 throttle check runs in a servlet filter, ahead of authentication) so a
 throttled client sees the same error contract as everywhere else, not a
-bare connection reset or an HTML error page.
+bare connection reset or an HTML error page. The 429 carries `Retry-After`,
+in seconds: the throttle interval (60 by default). A window opens at the
+caller's first request and lasts the interval, so waiting that long always
+clears it.
 
 ## Entries
 
@@ -422,8 +427,13 @@ omitted; publishing with no `pubTime` supplied means "now", not an error.
 `category` names a category **by name**, not id — the same shape
 `EntryView.category` reads back — and an unknown name is a 400. `pubTime` is
 a wall-clock string in **the weblog's own timezone**, e.g. `2026-03-01T09:30`
-(see the repository's `CLAUDE.md`, "Entry editing", for why this is the
-weblog's zone specifically and not the caller's).
+(see [docs/dev/entries.md, "Entry editing"](../dev/entries.md#entry-editing)
+for why this is the weblog's zone specifically and not the caller's). **`EntryView` reads every
+time back as an instant** (`2026-03-01T08:30:00Z` for 09:30 in Berlin in
+winter), and a write accepts that form too: a value ending in `Z` or carrying
+an offset (`2026-03-01T09:30+01:00`) names its own moment whatever the
+weblog's zone, so a GET followed by a PATCH of the same `pubTime` changes
+nothing.
 
 **What `text` may hold.** Write Markdown. Besides CommonMark, Roller renders:
 - GitHub tables, `~~strikethrough~~` and bare URLs as links.
@@ -488,8 +498,9 @@ All three fields come back on `EntryView` under the same names.
 
 **Events.** An `EVENT` takes `eventStart`, `eventEnd` and `eventLocation`.
 `eventStart` and `eventEnd` are wall-clock strings in **the weblog's own
-timezone**, in the format `pubTime` takes (`2026-08-02T19:30`; seconds are
-accepted, an offset such as `+02:00` is a 400 whose detail shows the format).
+timezone**, in the formats `pubTime` takes (`2026-08-02T19:30`; seconds are
+accepted, and so is an instant or an offset such as `2026-08-02T17:30:00Z` or
+`2026-08-02T19:30+02:00`; anything else is a 400 whose detail shows the format).
 `eventEnd` before `eventStart` is a 400 (`eventEnd must not be before
 eventStart.`). `EntryView` returns both as instants (`2026-08-02T17:30:00Z` for
 19:30 in Berlin in summer), and the permalink's `Event` block carries the same
@@ -518,8 +529,8 @@ never one.
 `GET .../entries` accepts `?status=`, `?category=`, `?tags=` (repeatable),
 `?text=` (free-text search), `?locale=`, plus `offset`/`limit`. Naming no
 `status` at all excludes the trash by construction (`?status=TRASHED` is the
-only way to see it — see the repository's `CLAUDE.md`, "Trash", for why the
-whole API's trash-safety property lives in that one default).
+only way to see it — see [docs/dev/entries.md, "Trash"](../dev/entries.md#trash-soft-delete-w5)
+for why the whole API's trash-safety property lives in that one default).
 
 **Preview** (`POST .../entries/{id}/preview` or `.../entries/preview` for an
 entry that does not exist yet) renders `{"text": "..."}` through the real
@@ -601,7 +612,7 @@ per-weblog tag cloud has never been large enough to need it.
 ## Media
 
 ```
-GET    /api/v1/weblogs/{handle}/media[?dir={directoryId}]
+GET    /api/v1/weblogs/{handle}/media[?directoryId=&offset=&limit=]
 GET    /api/v1/weblogs/{handle}/media/{id}
 POST   /api/v1/weblogs/{handle}/media           multipart upload, one or more files
 POST   /api/v1/weblogs/{handle}/media/imports   import an image from a URL
@@ -610,6 +621,13 @@ DELETE /api/v1/weblogs/{handle}/media/{id}
 GET    /api/v1/weblogs/{handle}/media/directories
 POST   /api/v1/weblogs/{handle}/media/directories
 ```
+
+`GET .../media` returns a bare array of `MediaView`s sorted by name. With
+`directoryId`, only that directory's files (`dir` is its old name and still
+works; sending both with different values is a 400). With `offset`/`limit`, a
+page of the sorted list (limit capped at 200); **without either, every file**,
+as before, which on a large photo library is a long response, blurhashes
+included, so page it. A page shorter than `limit` is the last one.
 
 **Upload is a batch, and a batch is not a transaction.** Send one or more
 `file` parts (`multipart/form-data`), optionally `directoryId` to file them
@@ -671,16 +689,17 @@ DELETE /api/v1/weblogs/{handle}/pages/{id}
 
 `POST`-role required. `status` is one of `DRAFT`/`PUBLISHED` only — pages
 have no trash, no PENDING/SCHEDULED states, and no scheduling story at all
-(see the repository's `CLAUDE.md`, "Pages", for why pages are a separate
-entity from entries and deliberately excluded from the trash design). `slug`
+(see [docs/dev/entries.md, "Pages"](../dev/entries.md#pages) for why pages are
+a separate entity from entries and deliberately excluded from the trash design). `slug`
 is validated against the same reserved-word list (`ReservedSlugs`) the
 renderer's own URL parser uses, and checked for a duplicate against the
 weblog, before either ever reaches the database — both are 400/409 here
 rather than an opaque 500. Unlike an entry title, **a page title is stored
 raw, not HTML-escaped** — this API does not double-encode it, matching how
-every bundled theme's page template escapes it at render time instead (see
-CLAUDE.md's title-escaping asymmetry note if you are consuming both
-`EntryView.title` and `PageView.title` in the same client).
+every bundled theme's page template escapes it at render time instead (the
+"Escaping" hazard in the repository's `CLAUDE.md`, if you are consuming both
+`EntryView.title` and `PageView.title` in the same client: the first is
+entity-escaped, the second raw).
 
 ## Redirects
 
@@ -693,8 +712,8 @@ DELETE /api/v1/weblogs/{handle}/redirects/{id}
 `POST`-role required. A redirect rule answers a weblog URL **that would
 otherwise 404** with a 301 to live content — it can never shadow anything
 that is actually being served, because the lookup only runs at points where
-a 404 has already been decided (see the repository's `CLAUDE.md`,
-"Redirects"). This is the only admin surface for rules: a site migration is
+a 404 has already been decided (see
+[docs/dev/routing.md, "Redirects"](../dev/routing.md#redirects-301s-for-urls-that-would-otherwise-404)). This is the only admin surface for rules: a site migration is
 a script emitting exact rules through `POST`, and renaming a page's slug
 mints its own `SLUG_HISTORY` rule with no API call at all.
 
@@ -712,7 +731,7 @@ for diagnosis.
 ## Comments
 
 ```
-GET    /api/v1/weblogs/{handle}/comments[?status=&entry=&limit=&offset=]
+GET    /api/v1/weblogs/{handle}/comments[?status=&entryId=&limit=&offset=]
 GET    /api/v1/weblogs/{handle}/comments/{id}
 PATCH  /api/v1/weblogs/{handle}/comments/{id}
 DELETE /api/v1/weblogs/{handle}/comments/{id}
@@ -725,8 +744,9 @@ that does not exist, answers 404. Moderation keeps working when comments are
 switched off on the weblog, so existing comments stay listable and actionable.
 
 `GET` lists newest first, as `{"items": [...], "offset", "limit", "hasMore"}`.
-`status` is `PENDING` (held for approval), `PUBLISHED` or `HIDDEN`; `entry` is
-an entry id of the same weblog (another weblog's entry is a 404); `limit`
+`status` is `PENDING` (held for approval), `PUBLISHED` or `HIDDEN`; `entryId` is
+an entry id of the same weblog (another weblog's entry is a 404; `entry` is its
+old name and still works); `limit`
 defaults to 50 with a maximum of 200.
 
 **The comment view:** `id`, `entryId`, `entryTitle`, `status`, `body`,
@@ -1006,7 +1026,12 @@ A tool takes `action` (except `whoami`) and that action's arguments, named as in
 `weblog` is a handle, and body fields keep their names. An argument the action does not take is
 refused, never ignored. An argument that fills part of the route's path (`weblog`, `id`, `userName`)
 must be one path segment: an empty value, `.`, `..`, or a value containing `/`, `\` or `;` is
-refused. A refusal from the API is a tool error whose text is the API's problem body. Not available
+refused. A refusal from the API is a tool error whose text is the API's problem body. A refusal
+the MCP endpoint makes itself (an unknown action, a missing or inapplicable argument) is a tool
+error carrying the same problem shape as a REST 400 (`type`, `title` `Invalid request`, `status`,
+`detail`, `instance`), and a failure it cannot explain is REST's opaque internal-error problem. A
+503 arrives as a tool error with the `/busy` problem; the `Retry-After` header does not travel
+through MCP, so wait about the lock timeout (10 seconds by default) before retrying. Not available
 through MCP: minting, listing or revoking tokens, and uploading media from local files.
 
 ## The OpenAPI document
@@ -1030,11 +1055,29 @@ and open it in any external OpenAPI viewer/editor.
 A thin `curl`+`jq` wrapper covering most of the above:
 `auth login`/`auth status`, `entries {list,get,create,patch,trash,restore,
 delete-forever,preview}`, `media {list,get,upload,patch,delete,dirs,
-create-dir}`, `audit {seo,media}`, and `admin {reindex,flush-cache,
-regenerate-renditions,users,config,weblogs}`. Run any group with no
-subcommand (e.g. `bin/roller-api entries`) to see that group's full usage.
-It does not yet wrap categories, tags or pages — call those with `curl`
-directly, using the paths documented above, until a subcommand exists.
+create-dir}`, `audit {seo,media}`, and `admin {rebuild-index,flush-cache,
+regenerate-renditions,users,config,weblogs}` (`admin reindex` is the old
+name of `rebuild-index` and still works). `bin/roller-api <group> --help`
+prints that group's full usage. It does not wrap categories and tags, pages,
+redirects, comments, weblog creation (`POST /api/v1/weblogs`), media imports
+by URL, or listing and revoking tokens: call those with `curl`, using the
+paths documented above, or through MCP.
+
+The CLI, REST and MCP name some operations differently:
+
+| `bin/roller-api` | REST | MCP tool `action` |
+|---|---|---|
+| `entries patch` | `PATCH .../entries/{id}` | `entries` `update` |
+| `entries delete-forever` | `POST .../entries/{id}/delete-forever` | `entries` `delete_forever` |
+| `media patch` | `PATCH .../media/{id}` | `media` `update` |
+| `media dirs` / `media create-dir` | `GET`/`POST .../media/directories` | `media` `list_directories` / `create_directory` |
+| `media upload` | `POST .../media` (multipart) | not available; `media` `import` fetches from a URL instead |
+| `admin rebuild-index` | `POST /api/v1/admin/weblogs/{handle}/actions/rebuild-index` | `maintenance` `rebuild_index` |
+| `admin flush-cache` | `.../actions/flush-cache` | `maintenance` `flush_cache` |
+| `admin users patch` | `PATCH /api/v1/admin/users/{userName}` | `users` `update` |
+| `admin config list` / `set` | `GET`/`PATCH /api/v1/admin/config` | `site_settings` `get` / `update` |
+| `admin weblogs patch` | `PATCH /api/v1/weblogs/{handle}` | `weblogs` `update` |
+| `auth status` | `GET /api/v1/me` | `whoami` |
 A leading `--url URL`/`--token TOKEN`, before the command name, overrides
 `ROLLER_API_URL`/`ROLLER_API_TOKEN` and `~/.roller/credentials` for a single
 one-off call against a different instance, without touching either.

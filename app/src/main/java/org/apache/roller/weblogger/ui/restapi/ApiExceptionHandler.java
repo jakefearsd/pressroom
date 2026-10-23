@@ -1,13 +1,12 @@
 package org.apache.roller.weblogger.ui.restapi;
 
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.List;
+import org.apache.roller.weblogger.business.AnchorLockTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -26,16 +25,6 @@ public class ApiExceptionHandler {
         return ResponseEntity.status(ex.getStatus())
                 .contentType(MediaType.APPLICATION_PROBLEM_JSON)
                 .body(ex.toProblem(request.getRequestURI()));
-    }
-
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiProblem> handleValidation(MethodArgumentNotValidException ex,
-                                                       HttpServletRequest request) {
-        List<ApiProblem.FieldError> errors = ex.getBindingResult().getFieldErrors().stream()
-                .map(fe -> new ApiProblem.FieldError(fe.getField(), fe.getDefaultMessage()))
-                .toList();
-        return handleApiException(
-                ApiException.validation("One or more fields are invalid.", errors), request);
     }
 
     /**
@@ -69,15 +58,50 @@ public class ApiExceptionHandler {
      * this API's own published contract); the rejected VALUE and the
      * conversion exception's own message are not, for the same leak-risk
      * reason {@link #handleMalformedBody} withholds the parser's message.
+     * A client typo is not a server fault, so the log line carries no stack
+     * trace.
      */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiProblem> handleTypeMismatch(MethodArgumentTypeMismatchException ex,
                                                           HttpServletRequest request) {
-        log.info("Type mismatch for parameter '{}' at {}", ex.getName(), request.getRequestURI(),
-                ex);
+        log.info("Type mismatch for parameter '{}' at {}", ex.getName(), request.getRequestURI());
         return handleApiException(
-                ApiException.invalidField(ex.getName(), "'" + ex.getName() + "' is not a valid value for this parameter."),
+                ApiException.invalidField(ex.getName(), ex.getName() + " has an invalid value" + takes(ex.getRequiredType())),
                 request);
+    }
+
+    /** The rest of the type-mismatch sentence: what the parameter takes, when its type says so. */
+    private static String takes(Class<?> type) {
+        if (type == int.class || type == Integer.class || type == long.class || type == Long.class) {
+            return "; it must be a whole number.";
+        }
+        if (type == double.class || type == Double.class || type == float.class || type == Float.class) {
+            return "; it must be a number.";
+        }
+        if (type == boolean.class || type == Boolean.class) {
+            return "; it must be true or false.";
+        }
+        return ".";
+    }
+
+    /**
+     * A save gave up waiting for its weblog's anchor lock (another save of the
+     * same weblog held it past {@code weblogentry.anchor.lockTimeoutSeconds}).
+     * Nothing was saved and nothing is wrong with the request, so it is a
+     * retryable 503, with Retry-After set to the lock timeout the exception
+     * carries. Expected under load, so a WARN with no stack trace. MCP forwards
+     * to the same route, so its tool error carries this same problem.
+     */
+    @ExceptionHandler(AnchorLockTimeoutException.class)
+    public ResponseEntity<ApiProblem> handleAnchorLockTimeout(AnchorLockTimeoutException ex,
+                                                               HttpServletRequest request) {
+        log.warn("Anchor lock timeout after {}s for weblog {} at {}; answered 503",
+                ex.getTimeoutSeconds(), ex.getWeblogHandle(), request.getRequestURI());
+        return ResponseEntity.status(503)
+                .header("Retry-After", Integer.toString(Math.max(1, ex.getTimeoutSeconds())))
+                .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                .body(ApiException.busy("Another save of this weblog is in progress; retry shortly.")
+                        .toProblem(request.getRequestURI()));
     }
 
     /**
@@ -88,10 +112,6 @@ public class ApiExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiProblem> handleUnexpected(Exception ex, HttpServletRequest request) {
         log.error("Unhandled API exception at {}", request.getRequestURI(), ex);
-        ApiException opaque = new ApiException(500,
-                "https://roller.invalid/problems/internal-error",
-                "Internal error",
-                "The request could not be completed.");
-        return handleApiException(opaque, request);
+        return handleApiException(ApiException.internalError(), request);
     }
 }

@@ -13,6 +13,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.mock.web.MockMultipartFile;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -160,8 +161,35 @@ class MediaUploadsDecisionTest {
 
     @Test
     void aRefusalWithoutItsArgumentsStillReadsSensibly() throws Exception {
-        assertTrue(refusedWith("error.upload.dirmax").detail().contains("configured MB storage limit"));
-        assertTrue(refusedWith("error.upload.filemax", "20").detail().contains("configured MB per-file limit"));
+        assertEquals("Adding this file would exceed this weblog's storage limit.",
+                refusedWith("error.upload.dirmax").detail());
+        assertEquals("This file is larger than the per-file size limit.",
+                refusedWith("error.upload.filemax", "20").detail());
+    }
+
+    /**
+     * The author sees these strings verbatim (the editor's paste/drop shows
+     * them), so they come from the message bundle, in the locale asked for,
+     * and a message key the mapping does not know is never shown as text.
+     */
+    @Test
+    void everyDetailComesFromTheBundleAndNoKeyIsEverShown() throws Exception {
+        java.util.Properties bundle = new java.util.Properties();
+        try (var in = getClass().getResourceAsStream("/ApplicationResources.properties")) {
+            bundle.load(new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8));
+        }
+        assertEquals(bundle.getProperty("mediaUploads.detail.forbiddenFile"),
+                refusedWith("error.upload.forbiddenFile").detail());
+        assertEquals(bundle.getProperty("mediaUploads.detail.disabled"),
+                refusedWith("error.upload.disabled").detail());
+        assertEquals(bundle.getProperty("error.upload.failed"),
+                refusedWith("error.upload.somethingNew").detail());
+
+        RollerMessages messages = new RollerMessages();
+        messages.addError("error.upload.dirmax", new String[] {"20", "2"});
+        assertEquals("Adding this file would exceed this weblog's 20 MB storage limit.",
+                MediaUploads.refusal("a.png", messages, java.util.Locale.GERMAN).detail(),
+                "a locale with no translation falls back to the default bundle");
     }
 
     @Test
@@ -176,7 +204,8 @@ class MediaUploadsDecisionTest {
 
         MediaUploads.Result other = refusedWith("error.upload.somethingNew");
         assertEquals("error", other.status());
-        assertEquals("Upload failed: error.upload.somethingNew", other.detail());
+        assertEquals("Upload failed.", other.detail());
+        assertFalse(other.detail().contains("error.upload"), "a message key is never shown to the author");
     }
 
     @Test

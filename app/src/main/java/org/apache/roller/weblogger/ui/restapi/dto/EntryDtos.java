@@ -171,7 +171,8 @@ public final class EntryDtos {
                     + "default category.")
             String category,
             @Schema(description = "Wall-clock publication time in the weblog's own timezone, for example "
-                    + "2026-03-01T09:30. Publishing without one means now; SCHEDULED needs one.")
+                    + "2026-03-01T09:30, or an instant with Z or an offset (2026-03-01T08:30:00Z, the form "
+                    + "an entry is read back with). Publishing without one means now; SCHEDULED needs one.")
             String pubTime,
             @Schema(description = "The entry's tags. On update, replaces the whole set.")
             List<String> tags,
@@ -189,7 +190,7 @@ public final class EntryDtos {
             @Schema(description = "Longitude in decimal degrees, -180 to 180.")
             Double geoLongitude,
             @Schema(description = "With EVENT: the start, wall-clock time in the weblog's zone, "
-                    + "for example 2026-08-02T19:30.")
+                    + "for example 2026-08-02T19:30, or an instant such as 2026-08-02T17:30:00Z.")
             String eventStart,
             @Schema(description = "The end, in the same form; not before eventStart.")
             String eventEnd,
@@ -361,7 +362,8 @@ public final class EntryDtos {
             return EntryFieldRules.parsePubTime(raw, weblog.getTimeZoneInstance());
         } catch (DateTimeParseException e) {
             throw ApiException.badRequest(
-                    "pubTime must be a wall-clock time in the weblog's zone, for example 2026-03-01T09:30.", e);
+                    "pubTime must be a wall-clock time in the weblog's zone, for example 2026-03-01T09:30, "
+                            + "or an instant such as 2026-03-01T08:30:00Z.", e);
         }
     }
 
@@ -403,7 +405,8 @@ public final class EntryDtos {
 
     /** A blank value is refused, not read as "remove": removing is clear's job. */
     private static Timestamp eventTime(String field, String raw, Weblog weblog) {
-        String detail = field + " must be a wall-clock time in the weblog's zone, for example 2026-08-02T19:30.";
+        String detail = field + " must be a wall-clock time in the weblog's zone, for example 2026-08-02T19:30, "
+                + "or an instant such as 2026-08-02T17:30:00Z.";
         if (raw.isBlank()) {
             throw ApiException.badRequest(detail);
         }
