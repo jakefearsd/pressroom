@@ -110,6 +110,26 @@ class ListScreensJspTest {
     }
 
     /**
+     * An empty moderation tab says what would be there: one body sentence per
+     * tab under the shared "No comments here." title (admin/visual 37).
+     */
+    @Test
+    void eachEmptyCommentsTabSaysWhatWouldBeThere() throws IOException {
+        String comments = read(COMMENTS);
+        int empty = comments.indexOf("<div class=\"empty-state\">");
+        assertTrue(empty >= 0, "Comments.jsp has no empty state");
+        String state = comments.substring(empty, comments.indexOf("</div>", empty));
+        Properties props = bundle();
+        for (String tab : new String[] {"PENDING", "PUBLISHED", "HIDDEN"}) {
+            String key = "comments.none." + tab.toLowerCase(java.util.Locale.ROOT);
+            assertTrue(state.contains("<c:when test=\"${status == '" + tab + "'}\"><spring:message code=\"" + key + "\"/>"),
+                    "the empty " + tab + " tab has no sentence of its own");
+            assertTrue(props.containsKey(key), key + " is not in the bundle");
+        }
+        assertTrue(state.contains("<p class=\"empty-state-body\">"), "the sentence is not the empty state's body line");
+    }
+
+    /**
      * An entry title is stored escaped, so fn:escapeXml(post.title) printed
      * "Tom &amp;amp; Jerry" into the checkbox, duplicate and delete labels and
      * the delete modal. Every label now comes from the controller's plain-text

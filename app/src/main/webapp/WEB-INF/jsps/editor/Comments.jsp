@@ -182,6 +182,11 @@
     <c:otherwise>
     <div class="empty-state">
         <p class="empty-state-title"><spring:message code="comments.none"/></p>
+        <p class="empty-state-body"><c:choose>
+            <c:when test="${status == 'PENDING'}"><spring:message code="comments.none.pending"/></c:when>
+            <c:when test="${status == 'PUBLISHED'}"><spring:message code="comments.none.published"/></c:when>
+            <c:when test="${status == 'HIDDEN'}"><spring:message code="comments.none.hidden"/></c:when>
+        </c:choose></p>
     </div>
     </c:otherwise>
     </c:choose>
