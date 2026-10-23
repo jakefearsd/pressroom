@@ -171,19 +171,40 @@ public final class MediaUploads {
         return store(Source.of(upload), weblog, directory, mfm, messages);
     }
 
-    /** {@link #store(MultipartFile, Weblog, MediaFileDirectory, MediaFileManager, RollerMessages)} for any {@link Source}. */
+    /**
+     * {@link #store(MultipartFile, Weblog, MediaFileDirectory, MediaFileManager, RollerMessages)}
+     * with each refusal's detail in {@code locale}: the editor's paste/drop
+     * shows the detail to the author, so it passes the request's locale.
+     */
+    public static Result store(MultipartFile upload, Weblog weblog, MediaFileDirectory directory,
+            MediaFileManager mfm, RollerMessages messages, Locale locale) throws WebloggerException {
+        return store(Source.of(upload), weblog, directory, mfm, messages, locale);
+    }
+
+    /**
+     * {@link #store(MultipartFile, Weblog, MediaFileDirectory, MediaFileManager, RollerMessages)} for any
+     * {@link Source}, details in the default locale -- an API response has no request locale to honour.
+     */
     public static Result store(Source upload, Weblog weblog, MediaFileDirectory directory,
             MediaFileManager mfm, RollerMessages messages) throws WebloggerException {
+        return store(upload, weblog, directory, mfm, messages, Locale.getDefault());
+    }
+
+    /** The general form: any {@link Source}, every refusal's detail from the bundle in {@code locale}. */
+    public static Result store(Source upload, Weblog weblog, MediaFileDirectory directory,
+            MediaFileManager mfm, RollerMessages messages, Locale locale) throws WebloggerException {
+        I18nMessages text = I18nMessages.getMessages(locale);
         String fileName = upload.fileName();
         if (StringUtils.isBlank(fileName)) {
-            return new Result(fileName == null ? "(unnamed)" : fileName, "error", "A file name is required.", null);
+            return new Result(fileName == null ? "(unnamed)" : fileName, "error",
+                    text.getString("mediaUploads.detail.nameRequired"), null);
         }
         if (upload.isEmpty()) {
-            return new Result(fileName, "error", "The file is empty.", null);
+            return new Result(fileName, "error", text.getString("mediaUploads.detail.empty"), null);
         }
         if (fileName.length() > MEDIA_NAME_MAX) {
             return new Result(fileName, "error",
-                    "File name must be " + MEDIA_NAME_MAX + " characters or fewer.", null);
+                    text.getString("mediaUploads.detail.nameTooLong", new Object[] {MEDIA_NAME_MAX}), null);
         }
 
         // roller_mediafile.content_type is varchar(50) -- a real-world MIME
@@ -200,16 +221,15 @@ public final class MediaUploads {
         // refusal path that opened the stream at all.
         String contentType = effectiveContentType(upload, fileName);
         if (contentType != null && contentType.length() > MEDIA_CONTENT_TYPE_MAX) {
-            return new Result(fileName, "error",
-                    "Content type '" + contentType + "' is longer than "
-                            + MEDIA_CONTENT_TYPE_MAX + " characters.", null);
+            return new Result(fileName, "error", text.getString("mediaUploads.detail.contentTypeTooLong",
+                    new Object[] {contentType, MEDIA_CONTENT_TYPE_MAX}), null);
         }
 
         MediaFile created = buildMediaFile(upload, weblog, directory, fileName, contentType);
         int before = messages.getErrorCount();
         mfm.createMediaFile(weblog, created, messages);
         if (before != messages.getErrorCount()) {
-            return refusal(fileName, messages);
+            return refusal(fileName, messages, locale);
         }
         return new Result(fileName, "created", null, created);
     }
@@ -297,37 +317,49 @@ public final class MediaUploads {
      * not a DTO concern.
      */
     public static Result refusal(String fileName, RollerMessages messages) {
+        return refusal(fileName, messages, Locale.getDefault());
+    }
+
+    /**
+     * {@link #refusal(String, RollerMessages)} with the detail in {@code
+     * locale}. Every detail is a bundle sentence; a key the mapping does not
+     * know becomes the generic "Upload failed.", never the key itself.
+     */
+    public static Result refusal(String fileName, RollerMessages messages, Locale locale) {
+        I18nMessages text = I18nMessages.getMessages(locale);
         RollerMessages.RollerMessage last = null;
         Iterator<RollerMessages.RollerMessage> it = messages.getErrors();
         while (it.hasNext()) {
             last = it.next();
         }
         if (last == null) {
-            // No message at all: the only detail here that is not derived from a
-            // key, so it comes from the bundle rather than being spelled out in
-            // Java. The default locale is the right one -- an API response has no
-            // request locale to honour, unlike the JSP surface.
-            return new Result(fileName, "error",
-                    I18nMessages.getMessages(Locale.getDefault()).getString("error.upload.failed"), null);
+            return new Result(fileName, "error", text.getString("error.upload.failed"), null);
         }
         String status = switch (last.getKey()) {
             case "error.upload.dirmax", "error.upload.filemax" -> "quota_exceeded";
             case "error.upload.forbiddenFile" -> "forbidden_extension";
             default -> "error";
         };
-        return new Result(fileName, status, detailFor(last), null);
+        return new Result(fileName, status, detailFor(last, text), null);
     }
 
-    private static String detailFor(RollerMessages.RollerMessage msg) {
+    /**
+     * The manager's own keys carry HTML ({@code <b>}) and the file name, so
+     * the detail is a plain sentence of its own, with the limit when the
+     * manager supplied it.
+     */
+    private static String detailFor(RollerMessages.RollerMessage msg, I18nMessages text) {
         String[] args = msg.getArgs();
         return switch (msg.getKey()) {
-            case "error.upload.dirmax" -> "Adding this file would exceed this weblog's "
-                    + (args != null && args.length > 0 ? args[0] : "configured") + " MB storage limit.";
-            case "error.upload.filemax" -> "This file is larger than the "
-                    + (args != null && args.length > 1 ? args[1] : "configured") + " MB per-file limit.";
-            case "error.upload.forbiddenFile" -> "Files of this type may not be uploaded.";
-            case "error.upload.disabled" -> "File upload is disabled for this site.";
-            default -> "Upload failed: " + msg.getKey();
+            case "error.upload.dirmax" -> args != null && args.length > 0
+                    ? text.getString("mediaUploads.detail.dirmax", new Object[] {args[0]})
+                    : text.getString("mediaUploads.detail.dirmaxUnknown");
+            case "error.upload.filemax" -> args != null && args.length > 1
+                    ? text.getString("mediaUploads.detail.filemax", new Object[] {args[1]})
+                    : text.getString("mediaUploads.detail.filemaxUnknown");
+            case "error.upload.forbiddenFile" -> text.getString("mediaUploads.detail.forbiddenFile");
+            case "error.upload.disabled" -> text.getString("mediaUploads.detail.disabled");
+            default -> text.getString("error.upload.failed");
         };
     }
 }
