@@ -272,6 +272,7 @@ class PagesApiTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"slug\":\"about\",\"title\":\"Second About\"}"))
                 .andExpect(status().isConflict())
+                .andExpect(errorFieldIs("slug"))
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getWeblogPageManager(), never()).savePage(any());
@@ -356,6 +357,7 @@ class PagesApiTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"slug\":\"contact\"}"))
                 .andExpect(status().isConflict())
+                .andExpect(errorFieldIs("slug"))
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getWeblogPageManager(), never()).savePage(any());

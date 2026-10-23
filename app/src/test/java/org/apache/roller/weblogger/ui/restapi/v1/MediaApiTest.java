@@ -549,6 +549,7 @@ class MediaApiTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"existing\"}"))
                 .andExpect(status().isConflict())
+                .andExpect(errorFieldIs("name"))
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getMediaFileManager(), never()).createMediaFileDirectory(any(), any());
@@ -614,6 +615,7 @@ class MediaApiTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"/existing\"}"))
                 .andExpect(status().isConflict())
+                .andExpect(errorFieldIs("name"))
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getMediaFileManager(), never()).createMediaFileDirectory(any(), any());

@@ -311,7 +311,7 @@ public class MediaApi extends BaseApiController implements UISecurityEnforced {
         }
         ColumnLimits.requireMaxLength("name", normalized, ColumnLimits.DIRECTORY_NAME);
         if (weblog.hasMediaFileDirectory(normalized)) {
-            throw ApiException.conflict("A directory named '" + normalized + "' already exists.");
+            throw ApiException.conflictOnField("name", "A directory named '" + normalized + "' already exists.");
         }
         if (body.description() != null) {
             ColumnLimits.requireMaxLength("description", body.description(), ColumnLimits.DIRECTORY_DESCRIPTION);

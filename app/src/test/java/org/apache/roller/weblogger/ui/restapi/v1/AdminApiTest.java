@@ -27,6 +27,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import static org.apache.roller.weblogger.ui.restapi.ErrorFieldMatchers.errorFieldIs;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -304,6 +305,7 @@ class AdminApiTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"userName\":\"alice\",\"emailAddress\":\"a@example.test\"}"))
                 .andExpect(status().isConflict())
+                .andExpect(errorFieldIs("userName"))
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getUserManager(), never()).addUser(any());

@@ -189,7 +189,7 @@ public class TokensApi {
     private User requireUser() throws WebloggerException {
         User user = currentUser();
         if (user == null) {
-            throw ApiException.forbidden("Not authenticated.");
+            throw ApiException.unauthorized("Authentication required.");
         }
         // A reader (SSO sign-in) holds no global login action: it may not use
         // the API, and so may not mint, list or revoke tokens.

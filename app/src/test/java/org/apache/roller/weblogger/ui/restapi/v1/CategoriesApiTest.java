@@ -216,6 +216,7 @@ class CategoriesApiTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Recipes\"}"))
                 .andExpect(status().isConflict())
+                .andExpect(errorFieldIs("name"))
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogCategory(any());
@@ -483,6 +484,7 @@ class CategoriesApiTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Taken\"}"))
                 .andExpect(status().isConflict())
+                .andExpect(errorFieldIs("name"))
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogCategory(any());
