@@ -78,19 +78,35 @@ public class WebContainerConfig {
      */
     @Bean
     public WebServerFactoryCustomizer<TomcatServletWebServerFactory> rollerTomcatCustomizer() {
-        return factory -> factory.addContextCustomizers(context -> {
-            context.addWelcomeFile("index.jsp");
+        return factory -> {
+            // Whitespace. Jasper splits template text at every tag, so the
+            // line break between <spring:message/> and a following <span> is
+            // a whitespace-only text node of its own. web.xml's
+            // trim-directive-whitespaces deleted every such node, which
+            // glued words together ("Entries2" on Main Menu). Jasper's
+            // trimSpaces=single keeps the output just as compact -- each
+            // whitespace-only node becomes one space -- without joining
+            // words. Only nodes that are entirely whitespace change, and
+            // every JSP renders HTML, where a run of whitespace outside
+            // <pre>/<textarea> is one space anyway. This customizer runs
+            // after Boot's own (unordered beans sort last), so
+            // server.servlet.jsp cannot replace it.
+            factory.getSettings().getJsp().getInitParameters().put("trimSpaces", "single");
+            factory.addContextCustomizers(WebContainerConfig::customizeContext);
+        };
+    }
 
-            JspPropertyGroup group = new JspPropertyGroup();
-            group.addUrlPattern("*.jsp");
-            group.setPageEncoding("UTF-8");
-            // Removes whitespace caused by JSP tags, same as web.xml's
-            // <trim-directive-whitespaces>true</trim-directive-whitespaces>.
-            group.setTrimWhitespace("true");
+    private static void customizeContext(org.apache.catalina.Context context) {
+        context.addWelcomeFile("index.jsp");
 
-            context.setJspConfigDescriptor(new JspConfigDescriptorImpl(
-                    List.of(new JspPropertyGroupDescriptorImpl(group)),
-                    Collections.emptyList()));
-        });
+        JspPropertyGroup group = new JspPropertyGroup();
+        group.addUrlPattern("*.jsp");
+        group.setPageEncoding("UTF-8");
+        // Off: trimSpaces=single (above) replaces it.
+        group.setTrimWhitespace("false");
+
+        context.setJspConfigDescriptor(new JspConfigDescriptorImpl(
+                List.of(new JspPropertyGroupDescriptorImpl(group)),
+                Collections.emptyList()));
     }
 }
