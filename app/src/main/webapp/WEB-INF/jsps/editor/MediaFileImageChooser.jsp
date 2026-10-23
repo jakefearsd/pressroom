@@ -25,9 +25,15 @@
      coerce a List to Boolean, which 500s the whole chooser overlay. --%>
 <c:if test="${not empty childFiles or not empty allDirectories}">
 
-    <form id="mediaFileChooserForm" name="mediaFileChooserForm" action="${pageContext.request.contextPath}/roller-ui/authoring/mediaFileImageChooser.rol" method="post" class="form-vertical">
+    <%-- A GET to the overlay path the controller maps: this only reloads the
+         chooser on another folder. It used to POST to a path nothing serves.
+         imagesOnly rides along, or the featured-image picker would start
+         offering PDFs after one folder change. --%>
+    <form id="mediaFileChooserForm" name="mediaFileChooserForm" action="${pageContext.request.contextPath}/roller-ui/authoring/overlay/mediaFileImageChooser.rol" method="get" class="form-vertical">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
-        <input type="hidden" name="mediaFileId" value=""/>
+        <c:if test="${imagesOnly}">
+            <input type="hidden" name="imagesOnly" value="true"/>
+        </c:if>
 
         <p class="pagetip"><spring:message code="mediaFileImageChooser.pageTip"/></p>
 
@@ -123,7 +129,6 @@
 
         <div style="clear:left;"></div>
 
-    <sec:csrfInput/>
 </form>
 
 </c:if>

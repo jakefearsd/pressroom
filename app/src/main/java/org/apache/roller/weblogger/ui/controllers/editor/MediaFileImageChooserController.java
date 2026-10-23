@@ -72,9 +72,11 @@ public class MediaFileImageChooserController extends MediaFileBase {
     @GetMapping("/mediaFileImageChooser.rol")
     public String execute(HttpServletRequest request, Model model,
                           @RequestParam(value = "directoryId", required = false) String directoryId,
-                          @RequestParam(value = "directoryName", required = false) String directoryName) {
+                          @RequestParam(value = "directoryName", required = false) String directoryName,
+                          @RequestParam(value = "imagesOnly", required = false) boolean imagesOnly) {
         populateCommonModel(request, model);
         model.addAttribute("overlayMode", true);
+        model.addAttribute("imagesOnly", imagesOnly);
 
         MediaFileManager manager = weblogger.getMediaFileManager();
         try {
@@ -97,7 +99,12 @@ public class MediaFileImageChooserController extends MediaFileBase {
                 directoryId = directory.getId();
             }
 
+            // imagesOnly: the featured-image and social-image pickers, where
+            // a non-image could only be refused after it was clicked.
             List<MediaFile> childFiles = new ArrayList<>(directory.getMediaFiles());
+            if (imagesOnly) {
+                childFiles.removeIf(file -> !file.isImageFile());
+            }
             childFiles.sort(new MediaFileComparator(MediaFileComparatorType.NAME));
 
             model.addAttribute("childFiles", childFiles);

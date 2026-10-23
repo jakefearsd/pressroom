@@ -73,7 +73,7 @@ class MediaFileImageChooserControllerTest extends EditorControllerTestSupport {
         when(weblogger.getMediaFileManager().getMediaFileDirectory("dir-2"))
                 .thenReturn(targetDirectory);
 
-        String view = controller.execute(request, model, "dir-2", null);
+        String view = controller.execute(request, model, "dir-2", null, false);
 
         assertEquals(".MediaFileImageChooser", view);
         assertEquals(targetDirectory, model.getAttribute("currentDirectory"));
@@ -85,7 +85,7 @@ class MediaFileImageChooserControllerTest extends EditorControllerTestSupport {
         when(weblogger.getMediaFileManager().getMediaFileDirectoryByName(weblog, "photos"))
                 .thenReturn(targetDirectory);
 
-        controller.execute(request, model, null, "photos");
+        controller.execute(request, model, null, "photos", false);
 
         assertEquals(targetDirectory, model.getAttribute("currentDirectory"));
         assertEquals("dir-2", model.getAttribute("directoryId"),
@@ -94,11 +94,33 @@ class MediaFileImageChooserControllerTest extends EditorControllerTestSupport {
 
     @Test
     void withNeitherIdNorNameTheDefaultDirectoryIsShown() {
-        String view = controller.execute(request, model, null, null);
+        String view = controller.execute(request, model, null, null, false);
 
         assertEquals(".MediaFileImageChooser", view);
         assertEquals(defaultDirectory, model.getAttribute("currentDirectory"));
         assertEquals("dir-1", model.getAttribute("directoryId"));
+    }
+
+    /**
+     * The featured-image and social-image pickers open the chooser with
+     * imagesOnly: a PDF offered there could only be refused after the click.
+     */
+    @Test
+    void inImagesOnlyModeOnlyImagesAreOffered() {
+        MediaFile photo = mediaFile("file-a", "alpha.jpg");
+        MediaFile pdf = mediaFile("file-b", "brochure.pdf");
+        pdf.setContentType("application/pdf");
+        defaultDirectory.getMediaFiles().add(photo);
+        defaultDirectory.getMediaFiles().add(pdf);
+
+        controller.execute(request, model, null, null, true);
+        assertEquals(List.of(photo), model.getAttribute("childFiles"));
+        assertEquals(true, model.getAttribute("imagesOnly"), "the folder switcher must keep the mode");
+
+        Model insertMode = newModel();
+        controller.execute(request, insertMode, null, null, false);
+        assertEquals(List.of(photo, pdf), insertMode.getAttribute("childFiles"),
+                "inserting into the text, any file can be linked");
     }
 
     @Test
@@ -108,7 +130,7 @@ class MediaFileImageChooserControllerTest extends EditorControllerTestSupport {
         defaultDirectory.getMediaFiles().add(beta);
         defaultDirectory.getMediaFiles().add(alpha);
 
-        controller.execute(request, model, null, null);
+        controller.execute(request, model, null, null, false);
 
         assertEquals(List.of(alpha, beta), model.getAttribute("childFiles"),
                 "The overlay picker has no client-side sort, so this ordering is what is shown");
@@ -120,7 +142,7 @@ class MediaFileImageChooserControllerTest extends EditorControllerTestSupport {
         // false only when the directory being listed AND the directory currently
         // being browsed are both named "default" - i.e. the default folder does
         // not list itself as a place to navigate to when you're already there.
-        controller.execute(request, model, null, null);
+        controller.execute(request, model, null, null, false);
 
         @SuppressWarnings("unchecked")
         List<MediaFileDirectory> allDirectories =
@@ -137,7 +159,7 @@ class MediaFileImageChooserControllerTest extends EditorControllerTestSupport {
         when(weblogger.getMediaFileManager().getMediaFileDirectoryByName(weblog, "photos"))
                 .thenReturn(targetDirectory);
 
-        controller.execute(request, model, null, "photos");
+        controller.execute(request, model, null, "photos", false);
 
         @SuppressWarnings("unchecked")
         List<MediaFileDirectory> allDirectories =
@@ -151,7 +173,7 @@ class MediaFileImageChooserControllerTest extends EditorControllerTestSupport {
         when(weblogger.getMediaFileManager().getMediaFileDirectoryByName(weblog, "photos"))
                 .thenReturn(targetDirectory);
 
-        controller.execute(request, model, null, "photos");
+        controller.execute(request, model, null, "photos", false);
 
         @SuppressWarnings("unchecked")
         List<KeyValueObject> hierarchy =
@@ -166,7 +188,7 @@ class MediaFileImageChooserControllerTest extends EditorControllerTestSupport {
         when(weblogger.getMediaFileManager().getDefaultMediaFileDirectory(weblog))
                 .thenThrow(new WebloggerException("database down"));
 
-        String view = controller.execute(request, model, null, null);
+        String view = controller.execute(request, model, null, null, false);
 
         assertEquals(".MediaFileImageChooser", view,
                 "The overlay view must always be returned, success or failure");
@@ -187,7 +209,7 @@ class MediaFileImageChooserControllerTest extends EditorControllerTestSupport {
         foreign.getMediaFiles().add(mediaFile("file-x", "their-photo.jpg"));
         when(weblogger.getMediaFileManager().getMediaFileDirectory("dir-x")).thenReturn(foreign);
 
-        String view = controller.execute(request, model, "dir-x", null);
+        String view = controller.execute(request, model, "dir-x", null, false);
 
         assertEquals(".MediaFileImageChooser", view);
         assertNull(model.getAttribute("currentDirectory"));
