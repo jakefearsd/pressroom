@@ -286,4 +286,20 @@ class AdminChromeJspTest {
         assertTrue(src.contains("<div class=\"table-responsive\">"));
         assertTrue(src.contains("<td class=\"data text-nowrap\">"));
     }
+
+    /**
+     * The sign-in page: "Forgot your password?" (and the SSO button) sat
+     * outside the centred form column, flush with the page edge, and the
+     * placeholders only repeated the labels above them.
+     */
+    @Test
+    void theSignInLinksSitInTheFormColumnAndNoPlaceholderRepeatsALabel() {
+        String src = jsp("core/Login.jsp");
+        int column = src.indexOf("<div class=\"form-signin\">");
+        int forgot = src.indexOf("loginPage.forgotPassword");
+        int end = src.indexOf("</div><%-- .form-signin --%>");
+        assertTrue(column >= 0 && forgot > column && end > forgot,
+                "the forgot-password link is outside the form column");
+        assertFalse(src.contains("placeholder="), "a placeholder repeats its label");
+    }
 }
