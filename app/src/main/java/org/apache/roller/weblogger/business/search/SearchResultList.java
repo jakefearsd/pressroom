@@ -27,14 +27,27 @@ import org.apache.roller.weblogger.pojos.wrapper.WeblogEntryWrapper;
 public class SearchResultList {
     int limit;
     int offset;
+    int totalHits;
     Set<String> categories;
     List<WeblogEntryWrapper> results;
+
+    /**
+     * @param totalHits every match the search can page through, not just this
+     *                  page's -- what a reader is told was found, and what
+     *                  decides whether there is a next page
+     */
     public SearchResultList(
-        List<WeblogEntryWrapper> results, Set<String> categories, int limit, int offset) {
+        List<WeblogEntryWrapper> results, Set<String> categories, int limit, int offset,
+        int totalHits) {
         this.results = results;
         this.categories = categories;
         this.limit = limit;
         this.offset = offset;
+        this.totalHits = totalHits;
+    }
+
+    public int getTotalHits() {
+        return totalHits;
     }
     public int getLimit() {
         return limit;
