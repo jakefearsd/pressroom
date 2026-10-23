@@ -18,7 +18,8 @@ bin/roller-api auth login --url http://localhost:8083
 ```
 
 Everything below assumes a Roller running at that URL (the default for
-`./roller dev`; see the repository's `CLAUDE.md`). In production, substitute
+`./roller dev`, which serves from the root; see the repository's
+`CLAUDE.md`, "Build and Development Commands"). In production, substitute
 your site's own origin.
 
 ### Local development
@@ -133,10 +134,8 @@ curl -sS -u alice:hunter2 \
 
 The raw secret is in the **`token`** field, and it is shown exactly once —
 neither this endpoint nor `GET /api/v1/tokens` will ever show it again. The
-`info` object is a `TokenView`, the same shape `GET`/`DELETE` on this
-resource return. (An earlier plan draft called this field `token_info`; the
-shipped field name is `info` — check the response shape, not this document,
-if the two ever disagree.)
+`info` object is a `TokenView`, the same shape each item of
+`GET /api/v1/tokens` has. (`DELETE` answers 204 with no body.)
 
 `role` is one of `READ`, `POST`, `ADMIN` (see [Token scopes](#token-scopes)).
 `weblog` is optional; omit it for a token that may act on every weblog its
@@ -428,8 +427,8 @@ omitted; publishing with no `pubTime` supplied means "now", not an error.
 `category` names a category **by name**, not id — the same shape
 `EntryView.category` reads back — and an unknown name is a 400. `pubTime` is
 a wall-clock string in **the weblog's own timezone**, e.g. `2026-03-01T09:30`
-(see the repository's `CLAUDE.md`, "Entry editing", for why this is the
-weblog's zone specifically and not the caller's). **`EntryView` reads every
+(see [docs/dev/entries.md, "Entry editing"](../dev/entries.md#entry-editing)
+for why this is the weblog's zone specifically and not the caller's). **`EntryView` reads every
 time back as an instant** (`2026-03-01T08:30:00Z` for 09:30 in Berlin in
 winter), and a write accepts that form too: a value ending in `Z` or carrying
 an offset (`2026-03-01T09:30+01:00`) names its own moment whatever the
@@ -530,8 +529,8 @@ never one.
 `GET .../entries` accepts `?status=`, `?category=`, `?tags=` (repeatable),
 `?text=` (free-text search), `?locale=`, plus `offset`/`limit`. Naming no
 `status` at all excludes the trash by construction (`?status=TRASHED` is the
-only way to see it — see the repository's `CLAUDE.md`, "Trash", for why the
-whole API's trash-safety property lives in that one default).
+only way to see it — see [docs/dev/entries.md, "Trash"](../dev/entries.md#trash-soft-delete-w5)
+for why the whole API's trash-safety property lives in that one default).
 
 **Preview** (`POST .../entries/{id}/preview` or `.../entries/preview` for an
 entry that does not exist yet) renders `{"text": "..."}` through the real
@@ -690,16 +689,17 @@ DELETE /api/v1/weblogs/{handle}/pages/{id}
 
 `POST`-role required. `status` is one of `DRAFT`/`PUBLISHED` only — pages
 have no trash, no PENDING/SCHEDULED states, and no scheduling story at all
-(see the repository's `CLAUDE.md`, "Pages", for why pages are a separate
-entity from entries and deliberately excluded from the trash design). `slug`
+(see [docs/dev/entries.md, "Pages"](../dev/entries.md#pages) for why pages are
+a separate entity from entries and deliberately excluded from the trash design). `slug`
 is validated against the same reserved-word list (`ReservedSlugs`) the
 renderer's own URL parser uses, and checked for a duplicate against the
 weblog, before either ever reaches the database — both are 400/409 here
 rather than an opaque 500. Unlike an entry title, **a page title is stored
 raw, not HTML-escaped** — this API does not double-encode it, matching how
-every bundled theme's page template escapes it at render time instead (see
-CLAUDE.md's title-escaping asymmetry note if you are consuming both
-`EntryView.title` and `PageView.title` in the same client).
+every bundled theme's page template escapes it at render time instead (the
+"Escaping" hazard in the repository's `CLAUDE.md`, if you are consuming both
+`EntryView.title` and `PageView.title` in the same client: the first is
+entity-escaped, the second raw).
 
 ## Redirects
 
@@ -712,8 +712,8 @@ DELETE /api/v1/weblogs/{handle}/redirects/{id}
 `POST`-role required. A redirect rule answers a weblog URL **that would
 otherwise 404** with a 301 to live content — it can never shadow anything
 that is actually being served, because the lookup only runs at points where
-a 404 has already been decided (see the repository's `CLAUDE.md`,
-"Redirects"). This is the only admin surface for rules: a site migration is
+a 404 has already been decided (see
+[docs/dev/routing.md, "Redirects"](../dev/routing.md#redirects-301s-for-urls-that-would-otherwise-404)). This is the only admin surface for rules: a site migration is
 a script emitting exact rules through `POST`, and renaming a page's slug
 mints its own `SLUG_HISTORY` rule with no API call at all.
 
@@ -1055,11 +1055,29 @@ and open it in any external OpenAPI viewer/editor.
 A thin `curl`+`jq` wrapper covering most of the above:
 `auth login`/`auth status`, `entries {list,get,create,patch,trash,restore,
 delete-forever,preview}`, `media {list,get,upload,patch,delete,dirs,
-create-dir}`, `audit {seo,media}`, and `admin {reindex,flush-cache,
-regenerate-renditions,users,config,weblogs}`. Run any group with no
-subcommand (e.g. `bin/roller-api entries`) to see that group's full usage.
-It does not yet wrap categories, tags or pages — call those with `curl`
-directly, using the paths documented above, until a subcommand exists.
+create-dir}`, `audit {seo,media}`, and `admin {rebuild-index,flush-cache,
+regenerate-renditions,users,config,weblogs}` (`admin reindex` is the old
+name of `rebuild-index` and still works). `bin/roller-api <group> --help`
+prints that group's full usage. It does not wrap categories and tags, pages,
+redirects, comments, weblog creation (`POST /api/v1/weblogs`), media imports
+by URL, or listing and revoking tokens: call those with `curl`, using the
+paths documented above, or through MCP.
+
+The CLI, REST and MCP name some operations differently:
+
+| `bin/roller-api` | REST | MCP tool `action` |
+|---|---|---|
+| `entries patch` | `PATCH .../entries/{id}` | `entries` `update` |
+| `entries delete-forever` | `POST .../entries/{id}/delete-forever` | `entries` `delete_forever` |
+| `media patch` | `PATCH .../media/{id}` | `media` `update` |
+| `media dirs` / `media create-dir` | `GET`/`POST .../media/directories` | `media` `list_directories` / `create_directory` |
+| `media upload` | `POST .../media` (multipart) | not available; `media` `import` fetches from a URL instead |
+| `admin rebuild-index` | `POST /api/v1/admin/weblogs/{handle}/actions/rebuild-index` | `maintenance` `rebuild_index` |
+| `admin flush-cache` | `.../actions/flush-cache` | `maintenance` `flush_cache` |
+| `admin users patch` | `PATCH /api/v1/admin/users/{userName}` | `users` `update` |
+| `admin config list` / `set` | `GET`/`PATCH /api/v1/admin/config` | `site_settings` `get` / `update` |
+| `admin weblogs patch` | `PATCH /api/v1/weblogs/{handle}` | `weblogs` `update` |
+| `auth status` | `GET /api/v1/me` | `whoami` |
 A leading `--url URL`/`--token TOKEN`, before the command name, overrides
 `ROLLER_API_URL`/`ROLLER_API_TOKEN` and `~/.roller/credentials` for a single
 one-off call against a different instance, without touching either.
