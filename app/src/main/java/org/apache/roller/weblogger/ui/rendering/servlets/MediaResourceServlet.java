@@ -232,20 +232,36 @@ public class MediaResourceServlet extends HttpServlet {
             int length;
             OutputStream out = response.getOutputStream();
             while ((length = in.read(buf)) > 0) {
-                out.write(buf, 0, length);
+                try {
+                    out.write(buf, 0, length);
+                } catch (IOException gone) {
+                    readerWentAway(mediaFile, gone);
+                    return;
+                }
+            }
+            try {
+                out.close();
+            } catch (IOException gone) {
+                readerWentAway(mediaFile, gone);
             }
 
-            // close output stream
-            out.close();
-
         } catch (Exception ex) {
-            log.error("ERROR", ex);
+            log.error("ERROR serving media file {}", mediaFile.getId(), ex);
             if (!response.isCommitted()) {
                 response.reset();
                 response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             }
         }
 
+    }
+
+    /**
+     * A write to the reader failed: they left mid-file (Tomcat's
+     * ClientAbortException), which is routine on a gallery page and not a
+     * server error. A failure to READ the file still reaches the ERROR above.
+     */
+    private static void readerWentAway(MediaFile mediaFile, IOException gone) {
+        log.debug("Reader went away while media file {} was being served: {}", mediaFile.getId(), gone.toString());
     }
 
     /**

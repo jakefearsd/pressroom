@@ -63,8 +63,9 @@ public class SpringFirewallExceptionFilter implements Filter {
             HttpServletRequest req = (HttpServletRequest) request;
             HttpServletResponse resp = (HttpServletResponse) response;
             
-            // url seems to be dangerous -> log & 404
-            log.warn("request rejected: {} cause: {}", req.getRequestURL(), ex.getMessage());
+            // url seems to be dangerous -> 404. DEBUG, not WARN: scanners trip
+            // the firewall constantly, and a WARN per probe buried real warnings.
+            log.debug("request rejected: {} cause: {}", req.getRequestURL(), ex.getMessage());
             resp.sendError(HttpServletResponse.SC_NOT_FOUND);
             
         }
