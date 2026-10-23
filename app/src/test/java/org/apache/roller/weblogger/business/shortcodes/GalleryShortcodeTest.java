@@ -320,6 +320,16 @@ class GalleryShortcodeTest {
         assertFalse(html.contains("hawk.jpg"), html);
     }
 
+    /** The description is the figure's caption: it describes the picture better than a filename. */
+    @Test
+    void withoutStoredAltTextTheDescriptionIsTheAlt() {
+        image("mf-1", "IMG_2034.jpg", 100, 100).setDescription("Sunset over the pier");
+
+        String html = render(Map.of("dir", "album"));
+
+        assertTrue(html.contains(" alt=\"Sunset over the pier\""), html);
+    }
+
     @Test
     void blankStoredAltTextFallsBackToTheFileNameRatherThanEmittingAnEmptyAlt() {
         // An author who types alt text and later clears the field leaves ""
@@ -331,16 +341,16 @@ class GalleryShortcodeTest {
 
         String html = render(Map.of("dir", "album"));
 
-        assertTrue(html.contains(" alt=\"hawk.jpg\""), html);
+        assertTrue(html.contains(" alt=\"hawk\""), html);
     }
 
     @Test
-    void withoutStoredAltTextTheFileNameIsUsedUnchanged() {
+    void withoutStoredAltTextOrADescriptionTheFileNameIsUsedWithoutItsExtension() {
         image("mf-1", "hawk.jpg", 100, 100);
 
         String html = render(Map.of("dir", "album"));
 
-        assertTrue(html.contains(" alt=\"hawk.jpg\""), html);
+        assertTrue(html.contains(" alt=\"hawk\""), html);
     }
 
     @Test

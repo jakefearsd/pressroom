@@ -30,6 +30,7 @@ import org.apache.roller.weblogger.pojos.MediaFileDirectory;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.wrapper.MediaFileWrapper;
 import org.apache.roller.weblogger.util.HTMLSanitizer;
+import org.apache.roller.weblogger.util.Utilities;
 
 /**
  * The built-in {@code [image id=<mediaFileId> caption="..." alt="..."]}
@@ -170,10 +171,14 @@ public class ImageShortcode implements ShortcodeHandler {
         // altText link below it is gated on blankness instead: an author who
         // clears the edit field leaves "" behind and has no way to express
         // "decorative" through that field, so a blank altText still falls
-        // through to the filename rather than being taken as an assertion.
+        // through to the caption and the filename rather than being taken as an assertion.
+        // Between the stored alt text and the filename sits the caption the
+        // author wrote for this placement (as plain text): it describes the
+        // picture, where "IMG_2034.jpg" describes nothing.
         String alt = attributes.containsKey("alt")
                 ? attributes.get("alt")
-                : firstNonBlank(media.getAltText(), media.getName());
+                : firstNonBlank(media.getAltText(), captionText(body, attributes.get("caption")),
+                        GalleryMarkup.fileNameAsAlt(media.getName()));
         html.append(" alt=\"").append(escape(StringUtils.defaultString(alt))).append('"');
         html.append(" loading=\"lazy\" decoding=\"async\"");
         if (StringUtils.isNotBlank(media.getBlurhash())) {
@@ -213,6 +218,12 @@ public class ImageShortcode implements ShortcodeHandler {
         return mediaFile.getDirectory() != null && mediaFile.getDirectory().isPrivate();
     }
 
+    /** The caption as plain text: a body caption's markup removed, whitespace collapsed. */
+    private static String captionText(String body, String captionAttribute) {
+        String caption = StringUtils.isNotBlank(body) ? Utilities.removeHTML(body) : captionAttribute;
+        return StringUtils.normalizeSpace(caption);
+    }
+
     private static String escape(String value) {
         return value == null ? null : HTMLSanitizer.htmlEncodeApexesAndTags(value);
     }
@@ -224,7 +235,7 @@ public class ImageShortcode implements ShortcodeHandler {
      * and a helper whose whole job is producing an attribute value must never
      * hand back something that stringifies to the literal text {@code null}.
      * A blank string counts as absent at every link of the alt chain (stored
-     * alt text, then filename): an author who clears the alt field leaves
+     * alt text, then the caption, then the filename): an author who clears the alt field leaves
      * {@code ""} behind, and emitting that verbatim would assert the image is
      * decorative, which is wrong for a photograph and would also hide it from
      * the "missing alt text" marker.

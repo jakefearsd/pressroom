@@ -191,10 +191,45 @@ class ImageShortcodeTest {
     }
 
     @Test
-    void altComesFromTheAttributeAndFallsBackToTheFileName() {
+    void altComesFromTheAttributeAndFallsBackToTheFileNameWithoutItsExtension() {
         assertTrue(render(Map.of("id", "mf-1", "alt", "Hawk in flight"), null)
                 .contains(" alt=\"Hawk in flight\""));
-        assertTrue(render(Map.of("id", "mf-1"), null).contains(" alt=\"hawk.jpg\""));
+        assertTrue(render(Map.of("id", "mf-1"), null).contains(" alt=\"hawk\""));
+    }
+
+    /**
+     * With no alt attribute and no stored alt text, the caption the author
+     * wrote describes the picture better than its filename: a screen reader
+     * announcing "IMG_2034.jpg" tells the reader nothing.
+     */
+    @Test
+    void withoutAltTextTheCaptionAttributeIsTheAlt() {
+        String html = render(Map.of("id", "mf-1", "caption", "A \"red\" hawk"), null);
+        assertTrue(html.contains(" alt=\"A &quot;red&quot; hawk\""), html);
+    }
+
+    @Test
+    void withoutAltTextABodyCaptionIsTheAltAsPlainText() {
+        String html = render(Map.of("id", "mf-1"), "A <em>proud</em>\n hawk");
+        assertTrue(html.contains(" alt=\"A proud hawk\""), html);
+    }
+
+    @Test
+    void storedAltTextBeatsTheCaption() {
+        photo.setAltText("A red-tailed hawk");
+        String html = render(Map.of("id", "mf-1", "caption", "Day two"), null);
+        assertTrue(html.contains(" alt=\"A red-tailed hawk\""), html);
+    }
+
+    /** The last resort reads as words: no extension, no underscores or hyphens. */
+    @Test
+    void theFileNameFallbackDropsTheExtensionAndSeparators() {
+        photo.setName("IMG_2034--sunset-pier.final.jpg");
+        assertTrue(render(Map.of("id", "mf-1"), null).contains(" alt=\"IMG 2034 sunset pier.final\""));
+
+        photo.setName(".jpg");
+        assertTrue(render(Map.of("id", "mf-1"), null).contains(" alt=\".jpg\""),
+                "a name that is all extension is kept rather than emptied");
     }
 
     @Test
@@ -226,7 +261,7 @@ class ImageShortcodeTest {
 
         String html = render(Map.of("id", "mf-1"), null);
 
-        assertTrue(html.contains(" alt=\"hawk.jpg\""), html);
+        assertTrue(html.contains(" alt=\"hawk\""), html);
     }
 
     @Test
@@ -269,7 +304,7 @@ class ImageShortcodeTest {
                 .contains(" alt=\"A red-tailed hawk banking against a clear sky\""));
 
         photo.setAltText(null);
-        assertTrue(render(Map.of("id", "mf-1"), null).contains(" alt=\"hawk.jpg\""));
+        assertTrue(render(Map.of("id", "mf-1"), null).contains(" alt=\"hawk\""));
     }
 
     @Test
