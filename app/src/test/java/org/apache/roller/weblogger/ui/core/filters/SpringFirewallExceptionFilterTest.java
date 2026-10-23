@@ -2,6 +2,8 @@ package org.apache.roller.weblogger.ui.core.filters;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import org.apache.logging.log4j.Level;
+import org.apache.roller.weblogger.ui.core.security.sso.SsoLogCapture;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -11,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -36,6 +39,26 @@ class SpringFirewallExceptionFilterTest {
 
         assertEquals(404, response.getStatus());
         assertEquals("", response.getContentAsString(), "nothing about the rejection is echoed to the client");
+    }
+
+    /**
+     * Scanners trip the firewall constantly; a WARN per probe, full URL and
+     * all, drowned the log. The rejection is still there at DEBUG.
+     */
+    @Test
+    void aRejectionIsLoggedAtDebugNotWarn() throws Exception {
+        doThrow(new RequestRejectedException("The request was rejected because the URL was not normalized"))
+                .when(chain).doFilter(request, response);
+
+        try (SsoLogCapture capture = SsoLogCapture.everyLogger()) {
+            filter.doFilter(request, response, chain);
+
+            assertTrue(capture.lines(Level.WARN).isEmpty(), "warned: " + capture.lines(Level.WARN));
+            assertTrue(capture.lines(Level.INFO).isEmpty(), "logged at INFO: " + capture.lines(Level.INFO));
+            assertTrue(capture.lines(Level.DEBUG).stream().anyMatch(line -> line.contains("not normalized")),
+                    "the rejection is kept at DEBUG: " + capture.lines(Level.DEBUG));
+        }
+        assertEquals(404, response.getStatus());
     }
 
     @Test

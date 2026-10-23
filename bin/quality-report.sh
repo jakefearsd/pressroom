@@ -9,6 +9,16 @@
 # the PMD+SpotBugs report goals were OOM-killed twice under default heap
 # during the SLF4J migration's batch 7.
 set -euo pipefail
+
+usage() { awk '/^#!/{next} !/^#/{exit} {sub(/^# ?/,""); print}' "$0"; }
+
+# Before the cd and the build: --help is not a rule name. No rule name starts
+# with a dash, so any other flag is a mistake too.
+case "${1:-}" in
+    -h|--help) usage; exit 0 ;;
+    -*) usage >&2; exit 2 ;;
+esac
+
 cd "$(dirname "$0")/.."
 
 RULE="${1:-}"

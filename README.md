@@ -1,10 +1,10 @@
 # Roller
 
-Roller is a Java-based, multi-user blog server, substantially simplified: PostgreSQL only, Markdown only, no comment subsystem, no Planet aggregator, and a Spring Boot executable WAR in place of the old servlet-container deployment.
+Roller is a Java-based, multi-user blog server, substantially simplified: PostgreSQL only, Markdown only, no Planet aggregator, and a Spring Boot executable WAR in place of the old servlet-container deployment. It adds what a small business's blogs need today: reader comments behind Google sign-in, a newsletter, privacy-friendly analytics, and an API and MCP endpoint that let scripts and AI agents publish.
 
 It is an independent fork of [Apache Roller](https://roller.apache.org), which was created in 2002 and is maintained by the Apache Software Foundation. This project is not affiliated with or endorsed by the ASF.
 
-**Current Version:** 0.1.0 | **License:** Apache 2.0 | **Java:** 25
+**Releases:** [GitHub Releases](https://github.com/jakefearsd/roller/releases) | **License:** Apache 2.0 | **Java:** 25
 
 ---
 
@@ -17,7 +17,7 @@ It is an independent fork of [Apache Roller](https://roller.apache.org), which w
 - Admin-managed user accounts: create, edit, disable, and assign global roles (`UserAdmin.jsp`)
 
 ### Content Authoring
-- Rich text and source-code editing of blog entries with draft, pending, and published states
+- Markdown editing (CodeMirror 6) with a live preview, revisions, and draft, pending, and published states
 - Schedule entries for future publication
 - Organize content with categories and tags
 - Upload and manage media files (images, podcasts, attachments) in folder hierarchies (`MediaFileManager`)
@@ -27,6 +27,17 @@ It is an independent fork of [Apache Roller](https://roller.apache.org), which w
 - Apache Velocity template engine with a rich set of page models for full layout control
 - In-app template editor for per-weblog customization
 - Separate templates for main page, single-entry permalink, day archive, search results, and sidebar
+
+### Readers
+- Comments from readers signed in with Google (`docs/dev/comments.md`, [`RollerSSO.md`](RollerSSO.md)); no anonymous comments
+- Newsletter sign-up and sending through a bundled [listmonk](https://listmonk.app)
+- Cookie-free page analytics through a bundled [Umami](https://umami.is), served from the blog's own domain
+- SEO: sitemaps, canonical URLs, and JSON-LD structured data
+
+### Automation
+- REST API under `/api/v1` with per-account API tokens, and an MCP endpoint at `/api/mcp` for AI agents ([API reference](docs/api/README.md))
+- `bin/roller-api`, a command-line client for the API
+- Agent accounts, whose tokens are managed in the admin UI
 
 ### Search
 - Full-text search powered by Apache Lucene with background indexing
@@ -78,7 +89,7 @@ mvn -DskipTests=true install
                  # runs spring-boot:run
 ```
 
-Browse to http://localhost:8083/roller and sign in as `admin`.
+Browse to http://localhost:8083/ and sign in as `admin`.
 
 The password is generated on that first run, printed once, and stored in
 `.roller-dev-secret` (mode 0600, git-ignored) — `cat` it any time. Edit that
@@ -101,21 +112,27 @@ JPEG/PNG-only rendition ladder and everything else works the same.
 
 ```bash
 mvn -DskipTests=true -pl app install
-java -jar app/target/roller.war --server.port=8083 \
-    -Droller.custom.config=app/target/test-classes/roller-boot-dev.properties
+java -Droller.custom.config=app/target/test-classes/roller-boot-dev.properties \
+    -jar app/target/roller.war --server.port=8083
 ```
+
+`-Droller.custom.config` is a JVM system property, so it goes before `-jar`.
+After it, it is a program argument that nothing reads, and startup fails with
+"No custom properties file found".
 
 No Maven plugin or IDE involved — the WAR embeds Tomcat and runs standalone
 (requires a running, migrated PostgreSQL; `./roller db` starts one).
 
-### Option 3: Docker / production stack
+### Option 3: PostgreSQL via compose
+
+`./roller dev` starts PostgreSQL for you. To run it yourself instead:
 
 ```bash
-git clone https://github.com/jakefearsd/roller.git
-cd roller
 docker compose up -d   # starts PostgreSQL only, for local dev
-./roller dev            # applies migrations, runs the app
+./roller migrate       # applies the migrations
 ```
+
+### Production
 
 Pre-built images are published to GHCR only when a `v*.*.*` tag is pushed —
 pushing to master publishes nothing. For a real
@@ -141,6 +158,8 @@ and one-command upgrades — see the production stack
 ## Documentation
 
 - **[Production Deployment Runbook](docker_deployment.md)** — Fresh-VPS Docker deployment, TLS, backups, upgrades
+- **[API reference](docs/api/README.md)** — the REST API, the MCP endpoint and `bin/roller-api`
+- **[Reader sign-in](RollerSSO.md)** — setting up Google sign-in for reader comments
 - **[Design System](docs/design/design-system.md)** — the admin UI's tokens, type scale and layout rules
 
 ---
@@ -160,10 +179,11 @@ and one-command upgrades — see the production stack
 
 ## Testing
 
-- ~2,985 JUnit tests run against a real PostgreSQL container (Testcontainers) —
-  no mocked persistence layer. `mvn test` (needs Docker).
+- Several thousand JUnit tests run against a real PostgreSQL container
+  (Testcontainers), with no mocked persistence layer. `mvn test` (needs Docker).
 - JaCoCo coverage floors are enforced at `verify` and only ever move up; see
-  `CLAUDE.md` for the coverage-gate and diff-coverage commands.
+  [`docs/dev/quality-gates.md`](docs/dev/quality-gates.md) for the coverage and
+  static-analysis gates.
 - Browser integration tests (`it-selenium/`) drive the packaged executable WAR
   end to end; run them with `mvn verify -Pit`.
 

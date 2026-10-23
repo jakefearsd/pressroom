@@ -222,6 +222,7 @@ barrier", has the family and `IT_LATE_CLICK_MS`.
 The general rule stands: on the next unexplained 403, read
 `it-selenium/target/it-work/roller-<run id>/roller.log` (the IT app runs
 `CsrfFilter`, `ExceptionTranslationFilter` and the interceptor at DEBUG for
-this), and capture what else was in flight from the failsafe report
+this; every named logger also writes to the console, so the run's stdout log
+beside it carries the same lines), and capture what else was in flight from the failsafe report
 timestamps BEFORE rerunning anything -- an isolated rerun overwrites
 `it-selenium/target/failsafe-reports`.

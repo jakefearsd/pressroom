@@ -79,11 +79,11 @@ thread `roller-sso-selfcheck`, started on `ApplicationReadyEvent`, three
 attempts, 2 s then 4 s apart) probes once and only logs: INFO "OIDC discovery
 reachable" on success. It never fails startup.
 
-Logger `roller.sso` goes to `roller.log` **only** (`additivity="false"` in
-`log4j2.xml`): never the console, so `docker compose logs app` never shows
-it. In the container the file is `/app/logs/roller.log` (the working
-directory's `logs/`, not the `/data` volume, so a recreated container starts
-a fresh one). One INFO per sign-in (username,
+Logger `roller.sso` goes to `asyncRoller` (`additivity="false"` in
+`log4j2.xml`), which writes both `roller.log` and the console, so `docker
+compose logs app` shows it (`LogRoutingTest`). In the container the file is
+`/app/logs/roller.log` (the working directory's `logs/`, not the `/data`
+volume, so a recreated container starts a fresh one). One INFO per sign-in (username,
 new or existing), one WARN per refusal or failure (code and reason). No
 email, token or secret is ever logged; `WebloggerConfig` masks `secret` keys.
 

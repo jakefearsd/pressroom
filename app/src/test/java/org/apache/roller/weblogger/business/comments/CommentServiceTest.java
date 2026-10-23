@@ -650,7 +650,10 @@ class CommentServiceTest {
         }
     }
 
-    /** The comments logger writes to roller.log at INFO, as roller.sso does, not to the console. */
+    /**
+     * The comments logger writes at INFO through asyncRoller, as roller.sso does: to roller.log and
+     * the console both (LogRoutingTest pins the console half).
+     */
     @Test
     void theCommentsLoggerWritesToRollerLog() throws Exception {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();

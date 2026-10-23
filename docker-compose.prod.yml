@@ -37,10 +37,22 @@
 # production -- they exist so the same file serves a local run where
 # UMAMI_DOMAIN/LISTMONK_DOMAIN are bare ports instead of hostnames.
 
+# Container-log rotation, shared by every service. Docker's default json-file
+# driver never rotates, and the app writes its whole log to stdout, so without
+# this the host's /var/lib/docker grows until the disk fills. 5 x 10 MB per
+# container; `docker compose logs` reads across the rotated files.
+# ProductionComposeTest pins it on every service.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
 
   postgres:
     image: postgres:18@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280
+    logging: *logging
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-rollerdb}
       POSTGRES_USER: ${POSTGRES_USER:-roller}
@@ -72,6 +84,7 @@ services:
   # the view they install depends on a table only umami itself creates.
   provision:
     image: ghcr.io/jakefearsd/roller:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
+    logging: *logging
     entrypoint: ["/app/provision.sh"]
     restart: "no"
     depends_on:
@@ -95,6 +108,7 @@ services:
   # from .env. See docker_deployment.md, "First run".
   admin:
     image: ghcr.io/jakefearsd/roller:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
+    logging: *logging
     entrypoint: ["/app/admin-account.sh"]
     profiles: ["tools"]
     restart: "no"
@@ -110,6 +124,7 @@ services:
 
   app:
     image: ghcr.io/jakefearsd/roller:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
+    logging: *logging
     depends_on:
       provision:
         condition: service_completed_successfully
@@ -140,6 +155,7 @@ services:
 
   caddy:
     image: ghcr.io/jakefearsd/roller-caddy:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
+    logging: *logging
     depends_on:
       - app
       - umami
@@ -196,6 +212,7 @@ services:
     # moved tag could otherwise swap umami out mid-deploy; postgresql-latest is
     # a floating tag and this stack's other third-party images are all pinned.
     image: docker.umami.is/umami-software/umami@sha256:87312d334d009ee67ee0d2fba8fed01435547cc468e452243aef5133a9984d48
+    logging: *logging
     depends_on:
       provision:
         condition: service_completed_successfully
@@ -220,6 +237,7 @@ services:
   # missing. ProductionComposeTest pins that nothing gates on it.
   analytics-views:
     image: ghcr.io/jakefearsd/roller:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
+    logging: *logging
     entrypoint: ["/app/analytics-views.sh"]
     restart: "no"
     depends_on:
@@ -244,6 +262,7 @@ services:
     # image's own --help), so the command block needs no edit; listmonk runs
     # its own schema upgrade on first boot.
     image: listmonk/listmonk@sha256:f535d59e14991337a9f2d570273685378ae86b0d7698c3e00da444e3bc205286
+    logging: *logging
     depends_on:
       provision:
         condition: service_completed_successfully
@@ -270,6 +289,7 @@ services:
     # The app image, for pg_dump/psql plus the baked-in backup scripts. See
     # /app/backup/backup.sh for the RESTORE procedure.
     image: ghcr.io/jakefearsd/roller:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
+    logging: *logging
     entrypoint: ["/app/backup/loop.sh"]
     # Runs as root, unlike every other use of this image: the roller-backups
     # volume is created root-owned, and the unprivileged `roller` user the image

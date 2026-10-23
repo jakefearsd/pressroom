@@ -21,8 +21,10 @@ package org.apache.roller.weblogger.config;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
@@ -51,6 +53,13 @@ public final class WebloggerConfig {
 
     private static final Properties config;
 
+    /**
+     * What {@link #loadLayers} found, kept until the logger exists and then
+     * logged: the layers load first because one of them may name the log4j2
+     * configuration file.
+     */
+    private static final List<BootNote> bootNotes = new ArrayList<>();
+
     private static final Logger log;
     
 
@@ -78,6 +87,13 @@ public final class WebloggerConfig {
         
         // finally we can start logging...
         log = LoggerFactory.getLogger(WebloggerConfig.class);
+        for (BootNote note : bootNotes) {
+            if (note.warning()) {
+                log.warn("{}", note.text());
+            } else {
+                log.info("{}", note.text());
+            }
+        }
 
         // some debugging for those that want it
         if(log.isDebugEnabled()) {
@@ -95,11 +111,11 @@ public final class WebloggerConfig {
 
     /**
      * Loads the default, junit, custom, environment and expanded layers into
-     * {@link #config}. It reports progress on stdout because it runs before
-     * logging can exist: the log4j2 configuration file is itself named by a
-     * property this method loads.
+     * {@link #config}. It runs before logging can exist (the log4j2
+     * configuration file is itself named by a property this method loads), so
+     * what it finds goes into {@link #bootNotes}, which the static initializer
+     * logs once the logger is up.
      */
-    @SuppressWarnings("PMD.SystemPrintln") // bootstrap: runs before the logger exists, see above
     private static void loadLayers() throws Exception {
         // we'll need this to get at our properties files in the classpath
         Class<?> configClass = Class.forName("org.apache.roller.weblogger.config.WebloggerConfig");
@@ -115,8 +131,8 @@ public final class WebloggerConfig {
             if (test != null) {
 
                 config.load(test);
-                System.out.println("Roller Weblogger: Successfully loaded junit properties file from classpath");
-                System.out.println("File path : " + configClass.getResource(junit_config).getFile());
+                note(false, "Loaded the junit properties from the classpath: "
+                        + configClass.getResource(junit_config).getFile());
 
             } else {
 
@@ -125,13 +141,11 @@ public final class WebloggerConfig {
 
                     if (custom != null) {
                         config.load(custom);
-                        System.out.println("Roller Weblogger: Successfully loaded custom properties file from classpath");
-                        System.out.println("File path : " + configClass.getResource(custom_config).getFile());
+                        note(false, "Loaded the custom properties from the classpath: "
+                                + configClass.getResource(custom_config).getFile());
                     } else {
-                        System.out.println("Roller Weblogger: No custom properties file found in classpath");
+                        note(false, "No custom properties file found on the classpath (roller-custom.properties)");
                     }
-
-                    System.out.println("(To run eclipse junit local tests see docs/testing/roller-junit.properties)");
                 }
             }
         }
@@ -146,11 +160,10 @@ public final class WebloggerConfig {
                 try(InputStream is = new FileInputStream(customConfigFile)) {
                     config.load(is);
                 }
-                System.out.println("Roller Weblogger: Successfully loaded custom properties from "+
-                        customConfigFile.getAbsolutePath());
+                note(false, "Loaded the custom properties from " + customConfigFile.getAbsolutePath());
             } else {
-                System.out.println("Roller Weblogger: Failed to load custom properties from "+
-                        customConfigFile.getAbsolutePath());
+                note(true, "No custom properties file at " + customConfigFile.getAbsolutePath()
+                        + " (named by -D" + custom_jvm_param + "); carrying on without it");
             }
 
         }
@@ -210,6 +223,18 @@ public final class WebloggerConfig {
                     + "to the server's stderr, which reaches the container log and never a response.")
     private static void printBootstrapFailure(Exception e) {
         e.printStackTrace();
+    }
+
+    private static void note(boolean warning, String text) {
+        bootNotes.add(new BootNote(warning, text));
+    }
+
+    /** One finding of {@link #loadLayers}, logged at WARN or INFO once logging is up. */
+    private record BootNote(boolean warning, String text) {}
+
+    /** What loading the configuration layers reported, in order. Package-private for its test. */
+    static List<String> bootReport() {
+        return bootNotes.stream().map(BootNote::text).toList();
     }
 
     /** A block of work that may throw a checked exception. */

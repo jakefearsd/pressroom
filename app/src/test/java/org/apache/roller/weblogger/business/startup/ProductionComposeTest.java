@@ -283,6 +283,28 @@ class ProductionComposeTest {
         assertFalse(loopback.isEmpty(), "expected caddy's loopback console ports; did they move?");
     }
 
+    /**
+     * Docker's default json-file driver never rotates, and every Roller logger
+     * now writes to stdout: without these options the host's container logs
+     * grow until the disk fills. One-shots included -- an exited container
+     * keeps its log until it is removed.
+     */
+    @SuppressWarnings("unchecked")
+    @Test
+    void everyServiceRotatesItsContainerLog() {
+        services().forEach((name, raw) -> {
+            Map<String, Object> logging = (Map<String, Object>) ((Map<String, Object>) raw).get("logging");
+            assertNotNull(logging, name + " sets no logging options, so its container log never rotates");
+            assertEquals("json-file", String.valueOf(logging.get("driver")), name);
+            Map<String, Object> options = (Map<String, Object>) logging.get("options");
+            assertNotNull(options, name + " has no logging options");
+            assertTrue(String.valueOf(options.get("max-size")).matches("\\d+m"),
+                    name + " caps each log file in megabytes: " + options);
+            assertTrue(String.valueOf(options.get("max-file")).matches("\\d+"),
+                    name + " keeps a bounded number of rotated files: " + options);
+        });
+    }
+
     @Test
     void theAppTakesItsConfigurationFromEnvFile() {
         assertEquals(".env", String.valueOf(service("app").get("env_file")),
