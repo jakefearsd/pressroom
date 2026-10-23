@@ -1648,8 +1648,10 @@ a.status-pill:hover { color: var(--ink); border-color: var(--accent); }
     color: var(--accent);
 }
 
+/* min(): a plain 30em overrode .img-fluid's 100% cap, so the preview
+   overflowed a 390px screen. */
 .theme-thumb {
-    max-width: 30em;
+    max-width: min(30em, 100%);
 }
 
 /* Maintenance: one bordered row per operation, so the three long-running

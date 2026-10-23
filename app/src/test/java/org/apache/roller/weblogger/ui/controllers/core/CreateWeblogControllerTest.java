@@ -125,6 +125,40 @@ class CreateWeblogControllerTest {
         assertEquals(List.of(journal), model.getAttribute("themes"));
     }
 
+    /**
+     * The picker defaulted to whichever theme listed first (Portfolio,
+     * alphabetically), though Journal is the neutral default its own
+     * description promises. A fresh form preselects Journal when it is enabled.
+     */
+    @Test
+    void aFreshFormPreselectsTheJournalTheme() {
+        org.apache.roller.weblogger.business.themes.SharedTheme portfolio =
+                org.mockito.Mockito.mock(org.apache.roller.weblogger.business.themes.SharedTheme.class);
+        when(portfolio.getId()).thenReturn("portfolio");
+        org.apache.roller.weblogger.business.themes.SharedTheme journal =
+                org.mockito.Mockito.mock(org.apache.roller.weblogger.business.themes.SharedTheme.class);
+        when(journal.getId()).thenReturn("journal");
+        when(weblogger.themeManager().getEnabledThemesList()).thenReturn(List.of(portfolio, journal));
+        CreateWeblogBean bean = new CreateWeblogBean();
+
+        controller.execute(ControllerTestFixture.requestFor(user("jake")), model, bean);
+
+        assertEquals("journal", bean.getTheme());
+    }
+
+    @Test
+    void withoutTheJournalThemeTheFormLeavesTheChoiceToTheList() {
+        org.apache.roller.weblogger.business.themes.SharedTheme portfolio =
+                org.mockito.Mockito.mock(org.apache.roller.weblogger.business.themes.SharedTheme.class);
+        when(portfolio.getId()).thenReturn("portfolio");
+        when(weblogger.themeManager().getEnabledThemesList()).thenReturn(List.of(portfolio));
+        CreateWeblogBean bean = new CreateWeblogBean();
+
+        controller.execute(ControllerTestFixture.requestFor(user("jake")), model, bean);
+
+        assertEquals(null, bean.getTheme());
+    }
+
     @Test
     void creatingAWeblogNeedsNoWeblogAndSuppliesItsOwnFormBean() {
         // The page exists for users who have no weblog yet, so requiring one

@@ -209,4 +209,45 @@ class AdminChromeJspTest {
         assertFalse(src.contains("<p class=\"pagetip\">\n    <c:if"),
                 "the edit screen renders an empty pagetip");
     }
+
+    /**
+     * Create weblog: the URL preview printed the English word "handle" until
+     * the user typed, an empty label sat in front of it, and the email field
+     * stopped at 50 characters where every other one allows 255.
+     */
+    @Test
+    void theCreateWeblogFormHasNoPlaceholderWordOrEmptyLabel() {
+        String src = jsp("core/CreateWeblog.jsp");
+        assertFalse(src.contains("<c:otherwise>handle</c:otherwise>"), "the preview still prints \"handle\"");
+        assertFalse(src.contains("<label class=\"col-sm-3\"></label>"), "an empty label is still rendered");
+        assertTrue(src.contains("id=\"emailAddress\" cssClass=\"form-control validate-email\" size=\"40\" maxlength=\"255\""),
+                "the email field allows 255 characters");
+    }
+
+    /**
+     * Cancel was built four ways; a navigating Cancel is a link styled as a
+     * button, which works without script.
+     */
+    @Test
+    void aNavigatingCancelIsALink() {
+        for (String screen : java.util.List.of("core/CreateWeblog.jsp", "core/Profile.jsp")) {
+            String src = jsp(screen);
+            assertFalse(src.contains("onclick=\"window.location="), screen + " still navigates from an onclick");
+            assertTrue(src.contains("class=\"btn btn-secondary\" href=\"<c:url value='/roller-ui/menu.rol'/>\""),
+                    screen + "'s Cancel is not a link");
+        }
+    }
+
+    /**
+     * Every other layout puts the page title inside the content card; the
+     * simple page (Create weblog, Account, the site directory) left it
+     * floating above.
+     */
+    @Test
+    void theSimplePageTitleSitsInsideTheCard() {
+        String src = jsp("tiles/tiles-simplepage.jsp");
+        int card = src.indexOf("<div class=\"card-body\">");
+        int title = src.indexOf("<h1 class=\"roller-page-title\">");
+        assertTrue(card >= 0 && title > card, "the h1 is rendered outside the card");
+    }
 }

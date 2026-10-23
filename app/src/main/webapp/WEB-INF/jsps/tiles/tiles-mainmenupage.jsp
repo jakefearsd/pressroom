@@ -89,9 +89,11 @@
 
             </nav>
 
-            <aside class="sidebar" id="adminSidebar">
-                <jsp:include page="${tile_sidebar}"/>
-            </aside>
+            <c:if test="${tile_sidebar != '/WEB-INF/jsps/tiles/empty.jsp'}">
+                <aside class="sidebar" id="adminSidebar">
+                    <jsp:include page="${tile_sidebar}"/>
+                </aside>
+            </c:if>
 
         </div>
 

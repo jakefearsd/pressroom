@@ -77,7 +77,7 @@ public class CreateWeblogController extends BaseController {
                           @ModelAttribute("bean") CreateWeblogBean bean) {
 
         populateCommonModel(request, model);
-        addListsToModel(model);
+        List<SharedTheme> themes = addListsToModel(model);
 
         User user = getAuthenticatedUser(request);
 
@@ -98,6 +98,12 @@ public class CreateWeblogController extends BaseController {
         bean.setLocale(user.getLocale());
         bean.setTimeZone(user.getTimeZone());
         bean.setEmailAddress(user.getEmailAddress());
+        // Journal is the neutral default its own description promises; with
+        // no preselection the picker fell to whichever theme listed first.
+        if (bean.getTheme() == null
+                && themes.stream().anyMatch(t -> DEFAULT_THEME_ID.equals(t.getId()))) {
+            bean.setTheme(DEFAULT_THEME_ID);
+        }
 
         return ".CreateWeblog";
     }
@@ -171,7 +177,10 @@ public class CreateWeblogController extends BaseController {
      */
     private static final String SITEWIDE_ONLY_THEME_ID = "frontpage";
 
-    private void addListsToModel(Model model) {
+    /** The theme a fresh form preselects, when it is enabled. */
+    private static final String DEFAULT_THEME_ID = "journal";
+
+    private List<SharedTheme> addListsToModel(Model model) {
         model.addAttribute("localesList", UIUtils.getLocales());
         model.addAttribute("timeZonesList", UIUtils.getTimeZones());
 
@@ -180,5 +189,6 @@ public class CreateWeblogController extends BaseController {
                 .filter(t -> !SITEWIDE_ONLY_THEME_ID.equals(t.getId()))
                 .toList();
         model.addAttribute("themes", themes);
+        return themes;
     }
 }
