@@ -444,6 +444,32 @@ class MediaFileAddControllerTest extends EditorControllerTestSupport {
                 "Expected both arguments substituted into the message, got: " + errors(model));
     }
 
+    /**
+     * messages.jsp prints banners unescaped, and both refusals carry the
+     * uploaded file's name -- text the browser sent, so markup in it would
+     * render as markup.
+     */
+    @Test
+    void aRefusedFilesNameIsEscapedInTheBanner() throws Exception {
+        registerMessage("error.upload.forbiddenFile", "File <b>{0}</b> content-type <b>{1}</b> not allowed");
+        registerMessage("uploadFiles.error.badPath", "Bad name: {0}");
+        org.mockito.Mockito.doAnswer(invocation -> {
+            org.apache.roller.weblogger.util.RollerMessages messages = invocation.getArgument(2);
+            messages.addError("error.upload.forbiddenFile", new String[]{"<i>x.exe", "a/<b>"});
+            return null;
+        }).when(weblogger.getMediaFileManager()).createMediaFile(any(), any(), any());
+
+        controller.save(request, model, bean, new MultipartFile[]{
+                upload("<i>x.exe", "application/octet-stream", "x"),
+                upload("<i>a</i>/b.jpg", "image/jpeg", "x")});
+
+        assertTrue(errors(model).contains(
+                        "File <b>&lt;i&gt;x.exe</b> content-type <b>a/&lt;b&gt;</b> not allowed"),
+                "the manager's arguments must be escaped, got: " + errors(model));
+        assertTrue(errors(model).contains("Bad name: &lt;i&gt;a&lt;/i&gt;/b.jpg"),
+                "the refused name must be escaped, got: " + errors(model));
+    }
+
     @Test
     void aManagerRefusalOfOneFileDoesNotHideAnotherFilesSuccessInTheSameBatch() throws Exception {
         org.mockito.Mockito.doAnswer(invocation -> {

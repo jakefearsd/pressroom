@@ -26,8 +26,11 @@ import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.business.RenditionSupport;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.MediaFile;
+import org.apache.roller.weblogger.pojos.MediaFileDirectory;
+import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.wrapper.MediaFileWrapper;
 import org.apache.roller.weblogger.util.HTMLSanitizer;
+import org.apache.roller.weblogger.util.Utilities;
 
 /**
  * The built-in {@code [image id=<mediaFileId> caption="..." alt="..."]}
@@ -39,7 +42,8 @@ import org.apache.roller.weblogger.util.HTMLSanitizer;
  * <p>A body ({@code [image id=x]caption markup[/image]}) is used as the
  * caption verbatim -- it is entry HTML like any other and flows through the
  * downstream sanitizer -- while a {@code caption} attribute is escaped.
- * When the media file cannot be resolved the handler returns null so the
+ * When the media file cannot be resolved -- unknown, not an image, another
+ * weblog's, or in a private directory -- the handler returns null so the
  * expander leaves the shortcode text visible to the author.
  */
 public class ImageShortcode implements ShortcodeHandler {
@@ -100,14 +104,31 @@ public class ImageShortcode implements ShortcodeHandler {
             return null;
         }
 
+        Weblog weblog = content == null ? null : content.getWeblog();
+        if (weblog == null) {
+            log.debug("[image] shortcode outside any weblog; leaving it as written");
+            return null;
+        }
+
         MediaFileWrapper media;
         try {
             MediaFile mediaFile = weblogger.getMediaFileManager().getMediaFile(id);
+            Weblog owner = mediaFile == null ? null : ownerOf(mediaFile);
             if (mediaFile != null) {
-                reads.readFrom(mediaFile.getWeblog());
+                // Reported before the checks below, refusal included: the
+                // render cache keeps nothing that read another weblog.
+                reads.readFrom(owner);
             }
             if (mediaFile == null || !mediaFile.isImageFile()) {
                 log.debug("[image] shortcode id {} is not an image media file", id);
+                return null;
+            }
+            // The id is global, so it can name any weblog's file. Only this
+            // weblog's images outside every private directory render: the
+            // same rule the API applies to featuredImageId, and the one
+            // [gallery] applies to a private directory.
+            if (owner == null || !weblog.getId().equals(owner.getId()) || isPrivate(mediaFile)) {
+                log.debug("[image] shortcode id {} is not a public image of weblog {}", id, weblog.getHandle());
                 return null;
             }
             media = MediaFileWrapper.wrap(mediaFile, weblogger.getUrlStrategy(), weblogger);
@@ -150,10 +171,14 @@ public class ImageShortcode implements ShortcodeHandler {
         // altText link below it is gated on blankness instead: an author who
         // clears the edit field leaves "" behind and has no way to express
         // "decorative" through that field, so a blank altText still falls
-        // through to the filename rather than being taken as an assertion.
+        // through to the caption and the filename rather than being taken as an assertion.
+        // Between the stored alt text and the filename sits the caption the
+        // author wrote for this placement (as plain text): it describes the
+        // picture, where "IMG_2034.jpg" describes nothing.
         String alt = attributes.containsKey("alt")
                 ? attributes.get("alt")
-                : firstNonBlank(media.getAltText(), media.getName());
+                : firstNonBlank(media.getAltText(), captionText(body, attributes.get("caption")),
+                        GalleryMarkup.fileNameAsAlt(media.getName()));
         html.append(" alt=\"").append(escape(StringUtils.defaultString(alt))).append('"');
         html.append(" loading=\"lazy\" decoding=\"async\"");
         if (StringUtils.isNotBlank(media.getBlurhash())) {
@@ -179,6 +204,26 @@ public class ImageShortcode implements ShortcodeHandler {
         return html.toString();
     }
 
+    /**
+     * The weblog that owns a media file: its directory's, falling back to
+     * the file's own field (the shape {@code WeblogOwnership.mediaFile}
+     * uses; business code cannot import it, and it swallows exceptions).
+     */
+    private static Weblog ownerOf(MediaFile mediaFile) {
+        MediaFileDirectory directory = mediaFile.getDirectory();
+        return directory != null && directory.getWeblog() != null ? directory.getWeblog() : mediaFile.getWeblog();
+    }
+
+    private static boolean isPrivate(MediaFile mediaFile) {
+        return mediaFile.getDirectory() != null && mediaFile.getDirectory().isPrivate();
+    }
+
+    /** The caption as plain text: a body caption's markup removed, whitespace collapsed. */
+    private static String captionText(String body, String captionAttribute) {
+        String caption = StringUtils.isNotBlank(body) ? Utilities.removeHTML(body) : captionAttribute;
+        return StringUtils.normalizeSpace(caption);
+    }
+
     private static String escape(String value) {
         return value == null ? null : HTMLSanitizer.htmlEncodeApexesAndTags(value);
     }
@@ -190,7 +235,7 @@ public class ImageShortcode implements ShortcodeHandler {
      * and a helper whose whole job is producing an attribute value must never
      * hand back something that stringifies to the literal text {@code null}.
      * A blank string counts as absent at every link of the alt chain (stored
-     * alt text, then filename): an author who clears the alt field leaves
+     * alt text, then the caption, then the filename): an author who clears the alt field leaves
      * {@code ""} behind, and emitting that verbatim would assert the image is
      * decorative, which is wrong for a photograph and would also hide it from
      * the "missing alt text" marker.

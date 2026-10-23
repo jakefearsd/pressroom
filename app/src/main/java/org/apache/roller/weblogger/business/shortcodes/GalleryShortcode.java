@@ -53,7 +53,7 @@ import org.apache.roller.weblogger.pojos.wrapper.MediaFileWrapper;
  * <p>Returns null -- the expander's "leave the shortcode text exactly as
  * written" failure signal -- when the {@code dir} attribute is missing, the
  * directory does not exist, it is {@linkplain MediaFileDirectory#isPrivate()
- * private} (share-page rendering is a separate, gated path), or it contains
+ * private} (a private directory is never rendered inline), or it contains
  * no image files.
  */
 public class GalleryShortcode implements ShortcodeHandler {
@@ -111,8 +111,8 @@ public class GalleryShortcode implements ShortcodeHandler {
                 return null;
             }
             if (directory.isPrivate()) {
-                // A private directory is only reachable through its share
-                // link (Wave 2 T5); the normal render path must not leak it.
+                // A private directory is never rendered inline: its files
+                // are for the weblog's own editors only.
                 log.debug("[gallery] shortcode dir \"{}\" is private; not rendering it inline",
                         directoryName);
                 return null;
@@ -142,8 +142,8 @@ public class GalleryShortcode implements ShortcodeHandler {
         }
 
         int rowHeight = parsePositiveInt(attributes.get("row"), 0);
-        // Emission is shared with the share-page renderer (GalleryMarkup);
-        // the inline path always uses the public permalink URL space.
+        // Emission lives in GalleryMarkup, which the theme macros also use;
+        // the inline path uses the public permalink URL space.
         return GalleryMarkup.grid(images, rowHeight, GalleryMarkup.PERMALINKS);
     }
 

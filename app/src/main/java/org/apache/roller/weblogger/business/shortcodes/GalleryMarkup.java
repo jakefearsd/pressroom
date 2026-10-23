@@ -180,7 +180,8 @@ public final class GalleryMarkup {
                     .append("\" height=\"").append(image.getHeight()).append('"');
         }
         html.append(" alt=\"")
-                .append(escape(firstNonBlank(image.getAltText(), image.getName())))
+                .append(escape(firstNonBlank(image.getAltText(), image.getDescription(),
+                        fileNameAsAlt(image.getName()))))
                 .append('"');
         html.append(" loading=\"lazy\" decoding=\"async\"");
         if (StringUtils.isNotBlank(image.getBlurhash())) {
@@ -352,13 +353,29 @@ public final class GalleryMarkup {
     }
 
     /**
+     * A filename as the alt chain's last resort, read as words: the
+     * extension dropped and runs of {@code _}/{@code -} turned into spaces,
+     * so a screen reader says "IMG 2034 sunset", not "IMG_2034-sunset.jpg".
+     * A name with nothing left after that is kept as it was. Shared with
+     * {@link ImageShortcode}.
+     */
+    static String fileNameAsAlt(String name) {
+        String trimmed = StringUtils.strip(StringUtils.defaultString(name));
+        int dot = trimmed.lastIndexOf('.');
+        String stem = dot > 0 ? trimmed.substring(0, dot) : trimmed;
+        String words = StringUtils.normalizeSpace(stem.replaceAll("[_-]+", " "));
+        return words.isEmpty() ? trimmed : words;
+    }
+
+    /**
      * The first candidate that is neither null nor blank, or {@code ""} if
      * every candidate is -- never {@code null}, because the only caller
      * appends the result straight into an {@code alt="..."} attribute value,
      * and a helper whose whole job is producing an attribute value must never
      * hand back something that stringifies to the literal text {@code null}.
      * A blank string counts as absent at every link of the alt chain (stored
-     * alt text, then filename): an author who clears the alt field leaves
+     * alt text, then the description -- the figure's caption -- then the
+     * filename): an author who clears the alt field leaves
      * {@code ""} behind, and emitting that verbatim would assert the image is
      * decorative, which is wrong for a photograph and would also hide it from
      * the "missing alt text" marker.

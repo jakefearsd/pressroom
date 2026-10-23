@@ -17,6 +17,8 @@
  */
 package org.apache.roller.weblogger.business.shortcodes;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.roller.weblogger.WebloggerException;
@@ -24,6 +26,7 @@ import org.apache.roller.weblogger.business.MediaFileManager;
 import org.apache.roller.weblogger.business.URLStrategy;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.MediaFile;
+import org.apache.roller.weblogger.pojos.MediaFileDirectory;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
 import org.junit.jupiter.api.BeforeEach;
@@ -188,10 +191,45 @@ class ImageShortcodeTest {
     }
 
     @Test
-    void altComesFromTheAttributeAndFallsBackToTheFileName() {
+    void altComesFromTheAttributeAndFallsBackToTheFileNameWithoutItsExtension() {
         assertTrue(render(Map.of("id", "mf-1", "alt", "Hawk in flight"), null)
                 .contains(" alt=\"Hawk in flight\""));
-        assertTrue(render(Map.of("id", "mf-1"), null).contains(" alt=\"hawk.jpg\""));
+        assertTrue(render(Map.of("id", "mf-1"), null).contains(" alt=\"hawk\""));
+    }
+
+    /**
+     * With no alt attribute and no stored alt text, the caption the author
+     * wrote describes the picture better than its filename: a screen reader
+     * announcing "IMG_2034.jpg" tells the reader nothing.
+     */
+    @Test
+    void withoutAltTextTheCaptionAttributeIsTheAlt() {
+        String html = render(Map.of("id", "mf-1", "caption", "A \"red\" hawk"), null);
+        assertTrue(html.contains(" alt=\"A &quot;red&quot; hawk\""), html);
+    }
+
+    @Test
+    void withoutAltTextABodyCaptionIsTheAltAsPlainText() {
+        String html = render(Map.of("id", "mf-1"), "A <em>proud</em>\n hawk");
+        assertTrue(html.contains(" alt=\"A proud hawk\""), html);
+    }
+
+    @Test
+    void storedAltTextBeatsTheCaption() {
+        photo.setAltText("A red-tailed hawk");
+        String html = render(Map.of("id", "mf-1", "caption", "Day two"), null);
+        assertTrue(html.contains(" alt=\"A red-tailed hawk\""), html);
+    }
+
+    /** The last resort reads as words: no extension, no underscores or hyphens. */
+    @Test
+    void theFileNameFallbackDropsTheExtensionAndSeparators() {
+        photo.setName("IMG_2034--sunset-pier.final.jpg");
+        assertTrue(render(Map.of("id", "mf-1"), null).contains(" alt=\"IMG 2034 sunset pier.final\""));
+
+        photo.setName(".jpg");
+        assertTrue(render(Map.of("id", "mf-1"), null).contains(" alt=\".jpg\""),
+                "a name that is all extension is kept rather than emptied");
     }
 
     @Test
@@ -223,7 +261,7 @@ class ImageShortcodeTest {
 
         String html = render(Map.of("id", "mf-1"), null);
 
-        assertTrue(html.contains(" alt=\"hawk.jpg\""), html);
+        assertTrue(html.contains(" alt=\"hawk\""), html);
     }
 
     @Test
@@ -266,7 +304,7 @@ class ImageShortcodeTest {
                 .contains(" alt=\"A red-tailed hawk banking against a clear sky\""));
 
         photo.setAltText(null);
-        assertTrue(render(Map.of("id", "mf-1"), null).contains(" alt=\"hawk.jpg\""));
+        assertTrue(render(Map.of("id", "mf-1"), null).contains(" alt=\"hawk\""));
     }
 
     @Test
@@ -328,6 +366,85 @@ class ImageShortcodeTest {
     void aNonImageMediaFileIsLeftAsWritten() {
         photo.setContentType("application/pdf");
         assertNull(render(Map.of("id", "mf-1"), null));
+    }
+
+    // ------------------------------------------- only this weblog's public images
+
+    /**
+     * The id is global. Before this check any entry could embed any weblog's
+     * image by id -- its alt text, filename, dimensions and blurhash, and an
+     * advertised URL -- whatever that weblog thought of it.
+     */
+    @Test
+    void anotherWeblogsImageIsLeftAsWritten() throws Exception {
+        Weblog other = new Weblog();
+        other.setHandle("other");
+        MediaFile theirs = image("theirs", other, null);
+        when(mediaFileManager.getMediaFile("theirs")).thenReturn(theirs);
+
+        assertNull(render(Map.of("id", "theirs"), null));
+    }
+
+    /** The directory's weblog is the owner when it disagrees with the file's own field. */
+    @Test
+    void theOwnerIsTheDirectorysWeblog() throws Exception {
+        Weblog other = new Weblog();
+        other.setHandle("other");
+        MediaFile filedElsewhere = image("elsewhere", weblog, new MediaFileDirectory(other, "trip", null));
+        when(mediaFileManager.getMediaFile("elsewhere")).thenReturn(filedElsewhere);
+
+        assertNull(render(Map.of("id", "elsewhere"), null));
+    }
+
+    /** A private directory is never rendered inline, by [gallery] or by [image]. */
+    @Test
+    void anImageInAPrivateDirectoryIsLeftAsWritten() throws Exception {
+        MediaFileDirectory hidden = new MediaFileDirectory(weblog, "drafts", null);
+        hidden.setPrivate(true);
+        when(mediaFileManager.getMediaFile("hidden")).thenReturn(image("hidden", weblog, hidden));
+
+        assertNull(render(Map.of("id", "hidden"), null));
+    }
+
+    @Test
+    void thisWeblogsImageInAPublicDirectoryRenders() throws Exception {
+        MediaFileDirectory trip = new MediaFileDirectory(weblog, "trip", null);
+        when(mediaFileManager.getMediaFile("mine")).thenReturn(image("mine", weblog, trip));
+
+        assertTrue(render(Map.of("id", "mine"), null).startsWith("<figure class=\"shortcode-image\">"));
+    }
+
+    /**
+     * The render cache keeps an entry's HTML only while everything it read
+     * was its own weblog's: a refused foreign id is still reported, so the
+     * cache does not keep the refusal.
+     */
+    @Test
+    void aForeignIdIsStillReportedAsAForeignRead() throws Exception {
+        Weblog other = new Weblog();
+        other.setHandle("other");
+        when(mediaFileManager.getMediaFile("theirs")).thenReturn(image("theirs", other, null));
+        List<Weblog> reads = new ArrayList<>();
+
+        assertNull(shortcode.render(Map.of("id", "theirs"), null, entry, reads::add));
+        assertEquals(List.of(other), reads);
+    }
+
+    /** With no weblog to own the image there is nothing it could belong to. */
+    @Test
+    void outsideAnyWeblogTheShortcodeIsLeftAsWritten() {
+        assertNull(shortcode.render(Map.of("id", "mf-1"), null, new WeblogEntry()));
+        assertNull(shortcode.render(Map.of("id", "mf-1"), null, null));
+    }
+
+    private static MediaFile image(String id, Weblog owner, MediaFileDirectory directory) {
+        MediaFile file = new MediaFile();
+        file.setId(id);
+        file.setWeblog(owner);
+        file.setDirectory(directory);
+        file.setName(id + ".jpg");
+        file.setContentType("image/jpeg");
+        return file;
     }
 
     @Test

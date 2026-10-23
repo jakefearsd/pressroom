@@ -25,15 +25,17 @@
 
 <form id="entry" class="form-stacked" action="${pageContext.request.contextPath}/roller-ui/authoring/mediaFileEdit!save.rol" method="POST" enctype="multipart/form-data">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
-    <input type="hidden" name="mediaFileId" value="${mediaFileId}" id="mediaFileId"/>
-    <input type="hidden" name="bean.permalink" value="${bean.permalink}"/>
+    <input type="hidden" name="mediaFileId" value="${fn:escapeXml(mediaFileId)}" id="mediaFileId"/>
+    <input type="hidden" name="bean.permalink" value="${fn:escapeXml(bean.permalink)}"/>
 
     <c:if test="${bean.isImage}">
         <div class="row mb-3">
             <span class="col-form-label col-sm-3"><spring:message code="mediaFileEdit.thumbnail"/></span>
             <div class="col-sm-9">
-                <a href='${bean.permalink}' target="_blank">
-                    <img alt="" src='${bean.thumbnailURL}'
+                <%-- The image is the link's only content, so its alt is the
+                     link's name: what the link does, not what the image is. --%>
+                <a href='${fn:escapeXml(bean.permalink)}' target="_blank">
+                    <img alt="<spring:message code='mediaFileEdit.clickToView'/>" src='${fn:escapeXml(bean.thumbnailURL)}'
                          title='<spring:message code="mediaFileEdit.clickToView"/>'/>
                 </a>
             </div>
@@ -45,8 +47,13 @@
         <div class="row mb-3">
             <span class="col-form-label col-sm-3"><spring:message code="mediaFileEdit.focalPoint"/></span>
             <div class="col-sm-9">
-                <div id="focalPicker" style="position:relative; display:inline-block; cursor:crosshair; line-height:0">
-                    <img id="focalImage" src='${bean.permalink}' alt=""
+                <%-- A 480px rendition: the box is at most 240px, and the
+                     original can be many megabytes. The picker takes focus so
+                     the arrow keys can move the point (script below). --%>
+                <div id="focalPicker" tabindex="0" aria-describedby="focalTip focalKeys"
+                     aria-label="<spring:message code='mediaFileEdit.focalPoint'/>"
+                     style="position:relative; display:inline-block; cursor:crosshair; line-height:0">
+                    <img id="focalImage" src='${fn:escapeXml(bean.permalink)}?w=480' alt=""
                          style="max-width:240px; max-height:240px; display:block"/>
                     <span id="focalMarker"
                           style="position:absolute; width:14px; height:14px; margin:-7px 0 0 -7px;
@@ -55,7 +62,8 @@
                                  box-shadow:0 0 3px var(--ink);
                                  pointer-events:none; display:none"></span>
                 </div>
-                <div class="form-text"><spring:message code="mediaFileEdit.focalPoint.tip"/></div>
+                <div id="focalTip" class="form-text"><spring:message code="mediaFileEdit.focalPoint.tip"/></div>
+                <div id="focalKeys" class="form-text"><spring:message code="mediaFileEdit.focalPoint.keys"/></div>
                 <button type="button" id="clearFocalButton" class="btn btn-sm btn-outline-secondary mt-1">
                     <spring:message code="mediaFileEdit.focalPoint.clear"/>
                 </button>
@@ -80,7 +88,7 @@
 
         <div class="col-sm-9">
 
-            <spring:message code="mediaFileEdit.fileTypeSize" arguments="${bean.contentType},${bean.length}"/>
+            <spring:message code="mediaFileEdit.fileTypeSize" arguments="${fn:escapeXml(bean.contentType)},${bean.length}"/>
 
             <c:if test="${bean.isImage}">
                 <spring:message code="mediaFileEdit.fileDimensions" arguments="${bean.width},${bean.height}"/>
@@ -95,13 +103,10 @@
         <div class="col-sm-9">
 
             <input type="text" id="clip_text" size="57"
-                   value='${bean.permalink}' readonly />
+                   value='${fn:escapeXml(bean.permalink)}' readonly />
 
-            <c:url var="linkIconURL" value="/roller-ui/images/clippy.svg"/>
-            <button class="clipbutton" data-clipboard-target="#clip_text" type="button"
-                    aria-label="<spring:message code='generic.copyToClipboard'/>">
-                <img src='${linkIconURL}' alt="" style="width:0.9em; height:0.9em">
-            </button>
+            <button class="btn btn-secondary btn-sm clipbutton" data-clipboard-target="#clip_text" type="button"
+                    aria-label="<spring:message code='generic.copyToClipboard'/>"><spring:message code="generic.copy"/></button>
 
         </div>
     </div>
@@ -118,10 +123,8 @@
             <input type="text" id="clip_shortcode" size="57"
                    value='[image id="${fn:escapeXml(mediaFileId)}"]' readonly />
 
-            <button class="clipbutton" data-clipboard-target="#clip_shortcode" type="button"
-                    aria-label="<spring:message code='generic.copyToClipboard'/>">
-                <img src='${linkIconURL}' alt="" style="width:0.9em; height:0.9em">
-            </button>
+            <button class="btn btn-secondary btn-sm clipbutton" data-clipboard-target="#clip_shortcode" type="button"
+                    aria-label="<spring:message code='generic.copyToClipboard'/>"><spring:message code="generic.copy"/></button>
 
             <div class="form-text"><spring:message code="mediaFileEdit.shortcode.tip"/></div>
 
@@ -196,7 +199,7 @@
     <p class="pagetip"><spring:message code="mediaFileEdit.crop.tip"/></p>
 
     <cropper-canvas id="cropCanvas" background style="width:100%; height:360px">
-        <cropper-image id="cropImage" src='${bean.permalink}' alt=""></cropper-image>
+        <cropper-image id="cropImage" src='${fn:escapeXml(bean.permalink)}' alt=""></cropper-image>
         <cropper-shade hidden></cropper-shade>
         <cropper-handle action="select" plain></cropper-handle>
         <cropper-selection id="cropSelection" initial-coverage="0.9" movable resizable>
@@ -216,7 +219,7 @@
 
     <form id="cropForm" class="mt-2 guard-submit" action="${pageContext.request.contextPath}/roller-ui/authoring/mediaFileEdit!crop.rol" method="POST">
         <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
-        <input type="hidden" name="mediaFileId" value="${mediaFileId}"/>
+        <input type="hidden" name="mediaFileId" value="${fn:escapeXml(mediaFileId)}"/>
         <input type="hidden" name="cropX" id="cropX" value="0"/>
         <input type="hidden" name="cropY" id="cropY" value="0"/>
         <input type="hidden" name="cropWidth" id="cropWidth" value="0"/>
@@ -358,6 +361,25 @@
             if (focalX.value !== '' && focalY.value !== '') {
                 showMarker(parseFloat(focalX.value), parseFloat(focalY.value));
             }
+
+            // The keyboard path: arrows nudge the point by 5% (1% with
+            // Shift), starting from the centre when none is set yet.
+            var STEPS = {ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1]};
+            picker.addEventListener('keydown', function (event) {
+                var step = STEPS[event.key];
+                if (!step) {
+                    return;
+                }
+                event.preventDefault();
+                var size = event.shiftKey ? 0.01 : 0.05;
+                var fx = focalX.value === '' ? 0.5 : parseFloat(focalX.value);
+                var fy = focalY.value === '' ? 0.5 : parseFloat(focalY.value);
+                fx = Math.min(1, Math.max(0, fx + step[0] * size));
+                fy = Math.min(1, Math.max(0, fy + step[1] * size));
+                focalX.value = fx.toFixed(3);
+                focalY.value = fy.toFixed(3);
+                showMarker(fx, fy);
+            });
 
             picker.addEventListener('click', function (event) {
                 var image = document.getElementById('focalImage');

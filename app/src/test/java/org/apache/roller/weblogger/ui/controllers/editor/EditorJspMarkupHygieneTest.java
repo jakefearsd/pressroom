@@ -168,7 +168,7 @@ class EditorJspMarkupHygieneTest {
         List<String> missing = new ArrayList<>();
         record Expected(String jsp, String needle, String what) { }
         List<Expected> expected = List.of(
-                new Expected("MediaFileAddSuccess.jsp", "class=\"clipbutton\"",
+                new Expected("MediaFileAddSuccess.jsp", "data-clipboard-target=\"#clip_image_",
                         "the just-uploaded URL must be copyable"),
                 new Expected("MediaFileEdit.jsp", "clip_shortcode",
                         "the canonical [image] embed string must be shown and copyable"),

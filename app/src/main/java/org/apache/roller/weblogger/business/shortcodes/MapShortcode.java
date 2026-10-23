@@ -40,7 +40,8 @@ import org.apache.roller.weblogger.util.HTMLSanitizer;
  * payload in {@code data-pins} (the theme-side {@code #showMapAssets} macro
  * initialises the map from {@code dataset.pins}; the sanitizer never lets a
  * {@code <script>} through entry content, so there is deliberately no
- * script here).
+ * script here), followed by an {@code <ol class="travel-map-pins">} of the
+ * labelled pins as the map's text fallback.
  *
  * <p>Three source forms:
  * <ul>
@@ -153,7 +154,32 @@ public class MapShortcode implements ShortcodeHandler {
             html.append(" data-route=\"true\"");
         }
         html.append("></div>");
+        appendPinList(html, pins);
         return html.toString();
+    }
+
+    /**
+     * The labelled pins as an {@code <ol class="travel-map-pins">} after the
+     * map: without it a screen reader, a feed reader or a reader without
+     * JavaScript got an empty div, and none of the places the author named.
+     * The map bootstrap may hide it visually once the map is drawn. Same line
+     * as the div: a newline would end the commonmark HTML block around it.
+     */
+    @SuppressFBWarnings(
+            value = "POTENTIAL_XML_INJECTION",
+            justification = "Each label goes through escape() (&, quotes and angle brackets encoded) before it "
+                    + "is appended as list-item text, and the expanded entry then passes through "
+                    + "HTMLSanitizer, the one content boundary.")
+    private static void appendPinList(StringBuilder html, List<MapPins.Pin> pins) {
+        List<String> labels = pins.stream().map(MapPins.Pin::label).filter(StringUtils::isNotBlank).toList();
+        if (labels.isEmpty()) {
+            return;
+        }
+        html.append("<ol class=\"travel-map-pins\">");
+        for (String label : labels) {
+            html.append("<li>").append(escape(StringUtils.normalizeSpace(label))).append("</li>");
+        }
+        html.append("</ol>");
     }
 
     /**

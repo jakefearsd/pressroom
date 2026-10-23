@@ -25,9 +25,15 @@
      coerce a List to Boolean, which 500s the whole chooser overlay. --%>
 <c:if test="${not empty childFiles or not empty allDirectories}">
 
-    <form id="mediaFileChooserForm" name="mediaFileChooserForm" action="${pageContext.request.contextPath}/roller-ui/authoring/mediaFileImageChooser.rol" method="post" class="form-vertical">
+    <%-- A GET to the overlay path the controller maps: this only reloads the
+         chooser on another folder. It used to POST to a path nothing serves.
+         imagesOnly rides along, or the featured-image picker would start
+         offering PDFs after one folder change. --%>
+    <form id="mediaFileChooserForm" name="mediaFileChooserForm" action="${pageContext.request.contextPath}/roller-ui/authoring/overlay/mediaFileImageChooser.rol" method="get" class="form-vertical">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
-        <input type="hidden" name="mediaFileId" value=""/>
+        <c:if test="${imagesOnly}">
+            <input type="hidden" name="imagesOnly" value="true"/>
+        </c:if>
 
         <p class="pagetip"><spring:message code="mediaFileImageChooser.pageTip"/></p>
 
@@ -87,8 +93,9 @@
                                      e.g. "Maiia's portrait.jpg" made the tile
                                      permanently unclickable. See the delegated
                                      click binding below (same convention as
-                                     MediaFileView.jsp:493). --%>
-                                <div class="mediaObject"
+                                     MediaFileView.jsp's tiles). --%>
+                                <div class="mediaObject" role="button" tabindex="0"
+                                     aria-label="${fn:escapeXml(mediaFile.name)}"
                                      data-media-file-name="${fn:escapeXml(mediaFile.name)}"
                                      data-media-file-url="${fn:escapeXml(mediaFileURL)}"
                                      data-media-file-is-image="${mediaFile.isImageFile()}"
@@ -102,7 +109,7 @@
                                              alt='${fn:escapeXml(mediaFile.name)}'/>
                                     </c:when>
 <c:otherwise>
-                                        <span class="bi bi-file-earmark" aria-hidden="true"></span>
+                                        <span class="bi bi-file-earmark fs-1" aria-hidden="true"></span>
                                     </c:otherwise>
                                     </c:choose>
                                 </div>
@@ -122,7 +129,6 @@
 
         <div style="clear:left;"></div>
 
-    <sec:csrfInput/>
 </form>
 
 </c:if>
@@ -143,6 +149,20 @@
     $(document).on('click', '.mediaObject', function () {
         onSelectMediaFile(this.dataset.mediaFileName, this.dataset.mediaFileUrl,
                 this.dataset.mediaFileIsImage, this.dataset.mediaFileId);
+    });
+
+    <%-- A tile is role="button" with tabindex="0", so a keyboard user can
+         reach it; Enter and Space activate it the way they activate a real
+         button, and focus shows the same highlight as hover. --%>
+    $(document).on('keydown', '.mediaObject', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            this.click();
+        }
+    });
+
+    $(document).on('focusin focusout', '.mediaObject', function (event) {
+        highlight(this.parentNode, event.type === 'focusin');
     });
 
     function highlight(el, flag) {

@@ -60,7 +60,7 @@
 
                             <p>
                                 <b><spring:message code="mediaFileSuccess.type"/></b>
-                                ${newImage.contentType}
+                                ${fn:escapeXml(newImage.contentType)}
                             </p>
 
                             <p>
@@ -82,12 +82,9 @@
                                        id="clip_image_${newImage.id}" size="57"
                                        value='${urls.media(newImage)}' readonly
                                        aria-label="<spring:message code='mediaFileSuccess.link'/>"/>
-                                <button class="clipbutton" type="button"
+                                <button class="btn btn-secondary btn-sm clipbutton" type="button"
                                         data-clipboard-target="#clip_image_${newImage.id}"
-                                        aria-label="<spring:message code='generic.copyToClipboard'/>">
-                                    <img src='<c:url value="/roller-ui/images/clippy.svg"/>' alt=""
-                                         style="width:0.9em; height:0.9em">
-                                </button>
+                                        aria-label="<spring:message code='generic.copyToClipboard'/>"><spring:message code="generic.copy"/></button>
                             </p>
                         </div>
 
@@ -127,7 +124,7 @@
 
                             <p>
                                 <b><spring:message code="mediaFileSuccess.type"/></b>
-                                ${newFile.contentType},&nbsp;
+                                ${fn:escapeXml(newFile.contentType)},&nbsp;
 
                                 <b><spring:message code="mediaFileSuccess.size"/></b>
                                 <%-- No dimensions here: this loop is the
@@ -146,12 +143,9 @@
                                        id="clip_file_${newFile.id}" size="57"
                                        value='${urls.media(newFile)}' readonly
                                        aria-label="<spring:message code='mediaFileSuccess.link'/>"/>
-                                <button class="clipbutton" type="button"
+                                <button class="btn btn-secondary btn-sm clipbutton" type="button"
                                         data-clipboard-target="#clip_file_${newFile.id}"
-                                        aria-label="<spring:message code='generic.copyToClipboard'/>">
-                                    <img src='<c:url value="/roller-ui/images/clippy.svg"/>' alt=""
-                                         style="width:0.9em; height:0.9em">
-                                </button>
+                                        aria-label="<spring:message code='generic.copyToClipboard'/>"><spring:message code="generic.copy"/></button>
                             </p>
                         </div>
 
@@ -195,7 +189,9 @@
 
         <button type="submit" id="createPostButton" class="btn btn-primary" formaction="${pageContext.request.contextPath}/roller-ui/authoring/entryAddWithMediaFile.rol"><spring:message code="mediaFileSuccess.createPost"/></button>
 
-        <%-- Anchors, not buttons. These two navigate; only "create post" above
+        <%-- "Done", not "Cancel": the upload has happened, and nothing here
+             undoes it.
+             Anchors, not buttons. These two navigate; only "create post" above
              submits. As typeless <button>s inside this action-less form they
              defaulted to type="submit", so each one re-POSTed to the upload
              endpoint -- and their onclick called window.load(), which is not a
@@ -209,7 +205,7 @@
         </a>
 
         <a href="${mediaFileViewURL}" class="btn btn-secondary">
-            <spring:message code="generic.cancel"/>
+            <spring:message code="generic.done"/>
         </a>
     </div>
 
