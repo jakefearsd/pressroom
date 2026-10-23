@@ -11,9 +11,9 @@
     ## (escapeXml10), so it is emitted bare here exactly like
     ## $model.weblog.name above; escaping it again would double-encode.
     #if($utils.isNotEmpty($model.term))
-    <title>Search: $model.term : $model.weblog.name</title>
+    <title>Search: $model.term — $model.weblog.name</title>
     #else
-    <title>Search results : $model.weblog.name</title>
+    <title>Search results — $model.weblog.name</title>
     #end
     <link href="$url.absoluteSite/favicon.svg" rel="icon" type="image/svg+xml" />
     #showAutodiscoveryLinks($model.weblog)
@@ -34,6 +34,7 @@
 <header class="qj-head">
     <h1 class="qj-site"><a href="$url.home">$model.weblog.name</a></h1>
     <nav class="qj-nav">
+        #showWeblogCategoryLinksList()
         <ul>
         #showPageLinks($model.weblog)
         </ul>
@@ -66,6 +67,14 @@
         #showWeblogEntriesPager($pager)
     </div>
 </main>
+
+<footer class="qj-footer">
+    <form class="qj-search" role="search" method="get" action="$url.search">
+        <input type="search" name="q" placeholder="Search the journal" aria-label="$text.get("macro.weblog.searchbutton")">
+    </form>
+    #showSubscribeForm($model.weblog "Get new entries by email")
+    #showBusinessCard($model.weblog "Book a stay")
+</footer>
 
 </body>
 </html>

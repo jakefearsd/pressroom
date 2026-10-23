@@ -3,14 +3,25 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src * data:; font-src 'self'; base-uri 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'">
-    ## directory.vm #sets $fdPageTitle before including this header and
-    ## weblog.vm does not, so the front door keeps the bare site name while
-    ## the directory says which view it is. #includeTemplate is a #parse, and
-    ## a #parse shares the caller's context -- that is what makes a plain #set
-    ## in the including template visible here.
-    #if($fdPageTitle)
-    <title>$utils.escapeHTML($fdPageTitle) : $utils.escapeHTML($config.siteName)</title>
+    ## frame-src names the two [video] providers, as journal's policy does: a
+    ## static page on this weblog renders through page.vm, which shares this
+    ## head, and can embed a video like a page on any other theme.
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src * data:; frame-src https://www.youtube-nocookie.com https://player.vimeo.com; font-src 'self'; base-uri 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'">
+    ## The including template #sets what this header needs before including
+    ## it: #includeTemplate is a #parse, and a #parse shares the caller's
+    ## context, so a plain #set there is visible here.
+    ##   $fdPageTitle -- the view's name (raw; escaped here), joined to the
+    ##                   site name with the em dash every theme uses
+    ##   $fdMetaTitle -- a static page's SEO meta title, which is the WHOLE
+    ##                   title (the editor's search preview shows it alone)
+    ##   $fdTab       -- "home" or "directory": the tab marked current
+    ##   $fdReading   -- true on a page whose own title is the h1, so the
+    ##                   site name steps down to a paragraph
+    ## The front door itself sets only $fdTab and keeps the bare site name.
+    #if($fdMetaTitle)
+    <title>$utils.escapeHTML($fdMetaTitle)</title>
+    #elseif($fdPageTitle)
+    <title>$utils.escapeHTML($fdPageTitle) — $utils.escapeHTML($config.siteName)</title>
     #else
     <title>$utils.escapeHTML($config.siteName)</title>
     #end
@@ -21,6 +32,7 @@
     <link rel="stylesheet" href="$model.weblog.stylesheet">
     #showGalleryGridStyles()
     #showGalleryAssets()
+    #showEmbedAssets()
     #showMapAssets()
     #showContentAssets()
     #showAudienceAssets()
@@ -31,25 +43,31 @@
 <header class="fd-topbar">
     <a class="fd-topbar-brand" href="$url.absoluteSite">$utils.escapeHTML($config.siteName)</a>
     <nav class="fd-topbar-links">
+        ## The same three keys the admin banner (bannerStatus.jsp) reads, so
+        ## the front door and the admin chrome always use the same words.
         #if(!$utils.isUserAuthenticated())
-        <a href="$url.login">Login</a>
+        <a href="$url.login">$text.get("navigationBar.login")</a>
         #else
         #if($utils.isUserAuthor())
-        <a href="$url.absoluteSite/roller-ui/menu.rol">Main Menu</a>
+        <a href="$url.absoluteSite/roller-ui/menu.rol">$text.get("mainPage.mainMenu")</a>
         #end
-        <a href="$url.logout">Logout</a>
+        <a href="$url.logout">$text.get("navigationBar.logout")</a>
         #end
     </nav>
 </header>
 
 <main class="fd-main" id="main">
   <div class="fd-hero">
+      #if($fdReading)
+      <p class="fd-site"><a href="$url.home">$utils.escapeHTML($config.siteName)</a></p>
+      #else
       <h1 class="fd-site"><a href="$url.home">$utils.escapeHTML($config.siteName)</a></h1>
+      #end
       #if($utils.isNotEmpty($config.siteDescription))
       <p class="fd-tag">$utils.escapeHTML($config.siteDescription)</p>
       #end
   </div>
-  <nav class="fd-tabs">
-      <a href="$url.home">Recent Entries</a>
-      <a href="$url.page("directory")">Weblog Directory</a>
+  <nav class="fd-tabs" aria-label="Site">
+      <a href="$url.home"#if($fdTab == "home") aria-current="page"#end>Recent posts</a>
+      <a href="$url.page("directory")"#if($fdTab == "directory") aria-current="page"#end>Directory</a>
   </nav>

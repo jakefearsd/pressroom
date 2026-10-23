@@ -111,6 +111,20 @@
         </rendition>
     </template>
     
+    <!-- the front-door weblog's static pages, in the fd chrome rather than
+         the shared fallback (PageServlet looks a theme's _page up by name) -->
+    <template action="custom">
+        <name>_page</name>
+        <description>_page</description>
+        <navbar>false</navbar>
+        <hidden>true</hidden>
+        <contentType>text/html</contentType>
+        <rendition>
+            <contentsFile>page.vm</contentsFile>
+            <templateLanguage>velocity</templateLanguage>
+        </rendition>
+    </template>
+
     <template action="custom">
         <name>directory</name>
         <description>weblog directory</description>

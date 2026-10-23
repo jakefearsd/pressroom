@@ -1,0 +1,24 @@
+## The front-door weblog's static pages ("About this site"), in the front
+## door's own chrome. Without a _page of its own this theme fell through to
+## the shared templates/weblog/page.vm, whose body carries no fd class -- a
+## browser-default page inside an otherwise designed site.
+##
+## Built from _header/_footer like the other two views, so the head (CSP,
+## SEO, analytics, every asset macro) stays in one place. The page's own
+## title is the h1 here, so the header steps the site name down to a
+## paragraph ($fdReading). $model.page.title is stored RAW (PageBean.copyTo),
+## so it is escaped below and by the header; a meta title is the whole tab
+## title, as on every theme.
+#set($fdPageTitle = $model.page.title)
+#set($fdMetaTitle = $model.page.metaTitle)
+#set($fdReading = true)
+#includeTemplate($model.weblog "_header")
+
+## roller-content puts the article inside the content assets' scope
+## (callouts, code blocks, heading anchors), as the shared fallback did.
+<article class="fd-page roller-content">
+    <h1 class="fd-page-title">$utils.escapeHTML($model.page.title)</h1>
+    <div class="fd-prose">$model.page.renderedContent</div>
+</article>
+
+#includeTemplate($model.weblog "_footer")

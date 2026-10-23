@@ -25,13 +25,15 @@
         </figure>
         #end
         <div class="pf-entry-body">
-            <h2 class="pf-entry-title">$entry.title</h2>
+            ## The reading view's own title is the page's h1; the weblog
+            ## name in the header is a paragraph on this page.
+            <h1 class="pf-entry-title">$entry.title</h1>
             <div class="pf-entry-content">$entry.displayContent</div>
             <p class="pf-entry-meta">
                 <time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time>
                 &middot; <a href="$url.category($entry.category.name)">$utils.escapeHTML($entry.category.name)</a>
                 #if($utils.isUserAuthorizedToAuthor($entry.website))
-                &middot; <a href="$url.editEntry($entry.anchor)">Edit</a>
+                &middot; <a href="$url.editEntry($entry.anchor)">$text.get("generic.edit")</a>
                 #end
             </p>
             ## After the meta line, which is itself after the content here:
@@ -56,13 +58,13 @@
             #set($cardAlt = $utils.unescapeHTML($entry.title))
             #if($utils.isNotEmpty($entry.featuredImage.altText))#set($cardAlt = $entry.featuredImage.altText)#end
             #showResponsiveImage($entry.featuredImage $cardAlt "(max-width: 640px) 100vw, 40vw" "pf-card-img")
-            <h3 class="pf-card-title">$entry.title</h3>
+            <h2 class="pf-card-title">$entry.title</h2>
         </a>
     </figure>
         #else
     <figure class="pf-card pf-card-text">
         <a class="pf-card-link" href="$url.entry($entry.anchor)">
-            <h3 class="pf-card-title">$entry.title</h3>
+            <h2 class="pf-card-title">$entry.title</h2>
             <time class="pf-card-date" datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time>
         </a>
     </figure>

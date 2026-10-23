@@ -132,6 +132,18 @@ body.pf a:hover {
     color: var(--pf-fg);
 }
 
+/* The current category was a colour change alone (muted to fg), which the
+ * hover state shares. Weight and an underline make it a state of its own;
+ * [aria-current] is the same state for assistive technology. */
+.pf-nav ul.rCategory li.selected a,
+.pf-nav ul.rCategory a[aria-current="page"] {
+    color: var(--pf-fg);
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.45em;
+}
+
 /* justified front-page grid (same --ar convention as .jgrid) */
 
 .pf-main {
@@ -278,6 +290,12 @@ body.pf a:hover {
     letter-spacing: 0.05em;
 }
 
+/* A long bare URL is one unbreakable word; without this the page scrolled
+   sideways at phone width. */
+.pf-entry-content {
+    overflow-wrap: anywhere;
+}
+
 .pf-entry-content img {
     max-width: 100%;
     height: auto;
@@ -364,6 +382,101 @@ body.pf .pf-entry-content blockquote {
 
 .pf-pager a:hover {
     color: var(--pf-fg);
+}
+
+/* Journal's Newer/Older steps, in portfolio's voice: the pager's letterspaced
+   caps for the label, the neighbour's title beneath it in the body face. One
+   column as wide as the reading column; older on the left. */
+.pf-steps {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: 2rem 1.25rem;
+    text-align: left;
+}
+
+.pf-step {
+    display: block;
+    min-width: 0;
+}
+
+.pf-step-back {
+    grid-column: 1;
+}
+
+.pf-step-fwd {
+    grid-column: 2;
+    text-align: right;
+}
+
+.pf-step-label {
+    display: block;
+    font-weight: 600;
+}
+
+.pf-step-title {
+    display: block;
+    margin-top: 0.35rem;
+    color: var(--pf-fg);
+    font-size: .90625rem;
+    letter-spacing: 0.01em;
+    text-transform: none;
+    line-height: 1.4;
+}
+
+.pf-step:hover .pf-step-title {
+    color: var(--pf-accent);
+}
+
+@media (max-width: 560px) {
+    .pf-steps {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+
+    .pf-step-fwd {
+        grid-column: 1;
+        text-align: left;
+    }
+
+    .pf-step-empty {
+        display: none;
+    }
+}
+
+/* view heading (category and tag views): centred under the nav, the nav's
+   caps for the label and the entry-title voice for the name */
+.pf-view {
+    text-align: center;
+    padding: 0 1rem 2rem;
+}
+
+.pf-view-label {
+    margin: 0;
+    color: var(--pf-muted);
+    font-size: .75rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.pf-view-name {
+    margin: 0.4rem 0 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    overflow-wrap: anywhere;
+}
+
+/* The comments section sat flush against the viewport's left edge: the
+   permalink's main has no padding (the hero runs edge to edge), and the
+   section is a sibling of the entry, not inside .pf-entry-body. Same measure
+   and gutter as the reading column above it. */
+body.pf .comments {
+    max-width: 46rem;
+    margin: 3rem auto 0;
+    padding: 0 1.25rem;
 }
 
 /* footer + search --------------------------------------- */
@@ -453,6 +566,7 @@ body.pf .newsletter-subscribe label:first-child {
 
 body.pf .contact-form input,
 body.pf .contact-form textarea,
+body.pf .comments .comment-form textarea,
 body.pf .newsletter-subscribe input[type=email] {
     display: block;
     width: 100%;
@@ -470,6 +584,7 @@ body.pf .newsletter-subscribe input[type=email] {
 
 body.pf .contact-form input:focus,
 body.pf .contact-form textarea:focus,
+body.pf .comments .comment-form textarea:focus,
 body.pf .newsletter-subscribe input[type=email]:focus {
     outline: 2px solid var(--pf-accent);
     outline-offset: 1px;
@@ -489,6 +604,7 @@ body.pf .newsletter-subscribe .audience-hp {
 }
 
 body.pf .contact-form button,
+body.pf .comments .comment-form button,
 body.pf .newsletter-subscribe button {
     margin-top: 1rem;
     padding: 0.55rem 1.35rem;
@@ -504,6 +620,7 @@ body.pf .newsletter-subscribe button {
 }
 
 body.pf .contact-form button:hover,
+body.pf .comments .comment-form button:hover,
 body.pf .newsletter-subscribe button:hover {
     background: color-mix(in srgb, var(--pf-accent) 85%, white);
 }

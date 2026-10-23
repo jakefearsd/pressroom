@@ -113,10 +113,10 @@ class ContentAssetsRenderingTest {
     }
 
     /**
-     * frontpage renders no entry content of its own, but its header is the
-     * head of every page it does render, and its weblog's static pages and
-     * previews go through the shared fallback templates -- all three carry
-     * the macro.
+     * frontpage's header is the head of every page it renders, its own
+     * static pages (page.vm) included; a custom theme with no _page reaches
+     * the shared fallback page template, and previews go through the shared
+     * preview shell -- all of them carry the macro once.
      */
     @Test
     void frontpageAndTheSharedFallbackTemplatesShipTheAssetsOnce() throws Exception {
@@ -124,6 +124,12 @@ class ContentAssetsRenderingTest {
         assertAssetsExactlyOnce(render("/" + HANDLE), "frontpage _header.vm");
 
         savePage("about", "About", "Some **text**.");
+        String themed = render("/" + HANDLE + "/about");
+        assertTrue(themed.contains("<article class=\"fd-page roller-content\">"),
+                "frontpage's own _page must put its article in the content scope:\n" + themed);
+        assertAssetsExactlyOnce(themed, "frontpage page.vm");
+
+        switchTheme(org.apache.roller.weblogger.pojos.WeblogTheme.CUSTOM);
         String page = render("/" + HANDLE + "/about");
         assertTrue(page.contains("<article class=\"roller-content\">"),
                 "the fallback page's article must be a content container, or its "

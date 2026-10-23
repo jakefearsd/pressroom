@@ -13,12 +13,14 @@
     ## back RAW from WeblogCategoryWrapper#getName and is escaped here; the tag
     ## list is joined by hand because List#toString would put its brackets into
     ## the title (the same bug #showAutodiscoveryLinks fixed for its own).
+    ## The em dash between view and weblog is every theme's separator, the
+    ## same one the admin layouts put between a page and its weblog.
     #if($model.weblogCategory)
-    <title>$utils.escapeHTML($model.weblogCategory.name) : $model.weblog.name</title>
+    <title>$utils.escapeHTML($model.weblogCategory.name) — $model.weblog.name</title>
     #elseif($model.tags && !$model.tags.isEmpty())
     #set($tagTitle = "")
     #foreach($titleTag in $model.tags)#if($tagTitle != "")#set($tagTitle = "${tagTitle}, ")#end#set($tagTitle = "${tagTitle}${titleTag}")#end
-    <title>Tagged $utils.escapeHTML($tagTitle) : $model.weblog.name</title>
+    <title>Tagged $utils.escapeHTML($tagTitle) — $model.weblog.name</title>
     #else
     <title>$model.weblog.name</title>
     #end
@@ -58,6 +60,22 @@
     ## from a stale link. The wording differs per view because "nothing here
     ## yet" means three different things to the reader in those three places.
     #set($pagerDays = $pager.getEntries())
+    ## The view says what it is on the page as well as in the tab: a reader
+    ## who followed a tag chip from a post otherwise lands on a list that
+    ## looks exactly like the home page. Tag views reach this template
+    ## through the default-template fallback for /tags/<tag>. $tagTitle is
+    ## the joined list the <title> branch above built.
+    #if($model.weblogCategory)
+    <div class="qj-view">
+        <p class="qj-view-label">$text.get("mainPage.category")</p>
+        <h2 class="qj-view-name">$utils.escapeHTML($model.weblogCategory.name)</h2>
+    </div>
+    #elseif($model.tags && !$model.tags.isEmpty())
+    <div class="qj-view">
+        <p class="qj-view-label">Tagged</p>
+        <h2 class="qj-view-name">$utils.escapeHTML($tagTitle)</h2>
+    </div>
+    #end
     <div class="qj-entries">
         #if($pagerDays.isEmpty())
         #if($model.weblogCategory)
@@ -78,24 +96,25 @@
     ## and the pager supplies nothing worth printing as a title.
     #if($pager.prevLink || $pager.nextLink)
     <nav class="qj-pager qj-steps" aria-label="More entries">
-        ## getPrevLink() moves toward the present (newer entries); getNextLink()
-        ## moves further back through the archive (older entries) --
-        ## AbstractWeblogEntriesPager.java:146-178. The rel attributes below
-        ## already track that correctly and must not move; only the label and
-        ## the qj-step-back/qj-step-fwd grid-column class (older stays visually
-        ## left) are tied to the correct link here.
-        #if($pager.prevLink)
-        <a class="qj-step qj-step-fwd" href="$pager.prevLink" rel="prev">
-            <span class="qj-step-label">Newer</span>
-            <span class="qj-step-title">More recent entries</span>
+        ## getNextLink() moves further back through the archive (older
+        ## entries); getPrevLink() moves toward the present (newer entries) --
+        ## AbstractWeblogEntriesPager.java:146-178. The rel attributes track
+        ## that and must not move. Older is emitted FIRST, as on the permalink:
+        ## grid auto-placement puts it in the left column, so "older on the
+        ## left" holds on every page -- emitted second, page one put Older on
+        ## the right and a middle page wrapped it onto a second row.
+        #if($pager.nextLink)
+        <a class="qj-step qj-step-back" href="$pager.nextLink" rel="next">
+            <span class="qj-step-label">$text.get("pager.older")</span>
+            <span class="qj-step-title">Earlier entries</span>
         </a>
         #else
         <span class="qj-step qj-step-empty"></span>
         #end
-        #if($pager.nextLink)
-        <a class="qj-step qj-step-back" href="$pager.nextLink" rel="next">
-            <span class="qj-step-label">Older</span>
-            <span class="qj-step-title">Earlier entries</span>
+        #if($pager.prevLink)
+        <a class="qj-step qj-step-fwd" href="$pager.prevLink" rel="prev">
+            <span class="qj-step-label">$text.get("pager.newer")</span>
+            <span class="qj-step-title">More recent entries</span>
         </a>
         #end
     </nav>
@@ -104,7 +123,7 @@
 
 <footer class="qj-footer">
     <form class="qj-search" role="search" method="get" action="$url.search">
-        <input type="search" name="q" placeholder="Search the journal" aria-label="Search">
+        <input type="search" name="q" placeholder="Search the journal" aria-label="$text.get("macro.weblog.searchbutton")">
     </form>
     #showSubscribeForm($model.weblog "Get new entries by email")
     #showBusinessCard($model.weblog "Book a stay")

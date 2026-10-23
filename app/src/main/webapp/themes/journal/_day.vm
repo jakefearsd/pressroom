@@ -21,16 +21,24 @@
         ## .qj-crumb a rule in journal-custom.css was written for a link
         ## that had never been emitted.
         <p class="qj-crumb"><a href="$url.category($entry.category.name)">$utils.escapeHTML($entry.category.name)</a></p>
-        <h2 class="qj-h1">$entry.title</h2>
+        ## The reading view's own title is the page's h1 (the weblog name in
+        ## the header steps down to a paragraph here), so a "##" heading in
+        ## the post body is an h2 beneath it rather than its equal.
+        <h1 class="qj-h1">$entry.title</h1>
         <p class="qj-byline">
             <span>By $utils.escapeHTML($entry.creator.screenName)</span>
             <time class="d" datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time>
+            ## Travel and portfolio have always offered this; the page cache is
+            ## keyed per user (WeblogPageCache), so a reader never gets it.
+            #if($utils.isUserAuthorizedToAuthor($entry.website))
+            <a class="qj-edit" href="$url.editEntry($entry.anchor)">$text.get("generic.edit")</a>
+            #end
         </p>
         <div class="qj-prose">$entry.displayContent</div>
         ## Last thing in the reading view, after the prose: a reader who has
         ## just finished the piece is the one looking for more of the subject.
-        ## $url.tag builds the archive url; the tag pages existed all along
-        ## and no bundled theme had ever linked to one.
+        ## $url.tag builds /<handle>/tags/<tag>, which renders through
+        ## weblog.vm (the default-template fallback) with a "Tagged" heading.
         #if(!$entry.tags.isEmpty())
         <p class="qj-tags">#showEntryTags($entry)</p>
         #end
@@ -44,7 +52,7 @@
     ## <time> element, where it belongs.
     <p class="qj-date"><time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMM d")<br><span class="y">$utils.formatDate($entry.pubTime, "yyyy")</span></time></p>
     <div>
-        <h3 class="qj-title"><a href="$url.entry($entry.anchor)">$entry.title</a></h3>
+        <h2 class="qj-title"><a href="$url.entry($entry.anchor)">$entry.title</a></h2>
         ## Every row gets a line of prose. The search description is the author's
         ## own summary and wins when set, but most entries never get one, and a
         ## row that collapses to a bare title breaks the list's rhythm -- two of

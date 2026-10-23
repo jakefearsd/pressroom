@@ -203,7 +203,7 @@ class PortfolioThemeRenderingTest {
         assertTrue(body.contains("<picture>"), body);
         assertTrue(body.contains(BASE + "/mediaresource/" + imageId),
                 "the card image must come off the rendition ladder:\n" + body);
-        assertTrue(body.contains("<h3 class=\"pf-card-title\">grid-entry</h3>"),
+        assertTrue(body.contains("<h2 class=\"pf-card-title\">grid-entry</h2>"),
                 "the card carries the title overlay:\n" + body);
         assertTrue(body.contains("<a class=\"pf-card-link\" href=\"" + BASE
                         + "/entry/grid-entry\">"),
@@ -220,7 +220,7 @@ class PortfolioThemeRenderingTest {
         assertPortfolioHead(body);
         assertTrue(body.contains("<figure class=\"pf-card pf-card-text\">"),
                 "imageless entries must still get a card:\n" + body);
-        assertTrue(body.contains("<h3 class=\"pf-card-title\">bare-entry</h3>"), body);
+        assertTrue(body.contains("<h2 class=\"pf-card-title\">bare-entry</h2>"), body);
         assertFalse(body.contains("<picture>"),
                 "no responsive image may be emitted without a featured image:\n" + body);
         // The no-image card trades its former bare title for title + mono
@@ -252,7 +252,7 @@ class PortfolioThemeRenderingTest {
         assertTrue(body.contains("class=\"pf-hero-img\""), body);
         assertTrue(body.contains("sizes=\"100vw\""),
                 "the hero is full-bleed, so it declares 100vw:\n" + body);
-        assertTrue(body.contains("<h2 class=\"pf-entry-title\">hero-entry</h2>"), body);
+        assertTrue(body.contains("<h1 class=\"pf-entry-title\">hero-entry</h1>"), body);
         assertTrue(body.contains("blah blah entry"),
                 "the entry content must render below the hero:\n" + body);
         assertFalse(body.contains("pf-comments"),
@@ -272,7 +272,7 @@ class PortfolioThemeRenderingTest {
         assertFalse(body.contains("pf-hero"),
                 "no hero markup may appear without a featured image:\n" + body);
         assertFalse(body.contains("<picture>"), body);
-        assertTrue(body.contains("<h2 class=\"pf-entry-title\">plain-entry</h2>"), body);
+        assertTrue(body.contains("<h1 class=\"pf-entry-title\">plain-entry</h1>"), body);
         assertTrue(body.contains("blah blah entry"), body);
     }
 
@@ -416,7 +416,7 @@ class PortfolioThemeRenderingTest {
         assertPortfolioHead(body);
         assertTrue(body.contains("class=\"pf-header\""),
                 "the page must wear the portfolio header chrome:\n" + body);
-        assertTrue(body.contains("<h2 class=\"pf-entry-title\">About This Work</h2>"),
+        assertTrue(body.contains("<h1 class=\"pf-entry-title\">About This Work</h1>"),
                 "the page title must render as the entry title, the same class "
                         + "the permalink uses:\n" + body);
         assertTrue(body.contains("class=\"pf-entry-content\">"),
@@ -491,7 +491,7 @@ class PortfolioThemeRenderingTest {
      * {@code anEntryWithoutAFeaturedImageBecomesAQuietTextCard} above) trades
      * its former flat empty box for a teal wash off the theme's new accent
      * token -- CSS only, the pinned {@code figure.pf-card.pf-card-text} /
-     * {@code h3.pf-card-title} markup does not change.
+     * {@code h2.pf-card-title} markup does not change.
      */
     @Test
     void theNoImageCardGetsATealWashFromTheNewAccentToken() throws Exception {
