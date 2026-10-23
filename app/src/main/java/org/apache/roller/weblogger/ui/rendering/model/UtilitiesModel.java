@@ -74,7 +74,7 @@ public class UtilitiesModel implements Model {
     
     /**
      * The justified-grid stylesheet for galleries, so the theme macro emits
-     * exactly what the share pages do.
+     * exactly what the {@code [gallery]} shortcode emits.
      *
      * <p>Generated in {@link GalleryMarkup#gridStyles()} from the same
      * constants that produce the {@code ar-NNN} classes, which is what stops

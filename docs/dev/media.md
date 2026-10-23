@@ -29,7 +29,9 @@ resolves through the index at the end of `CLAUDE.md`.
   `login`), excluded from sitemaps, refused by `[gallery]`. The toggle
   saves the weblog, bumping `lastModified`: that, not
   `CacheManager.invalidate`, is what expires cached galleries and the
-  cached sitemap. A pure
+  cached sitemap. `[image id=..]` refuses the same way (renders nothing):
+  the id is global, so it also refuses another weblog's file, the rule the
+  API applies to `featuredImageId`. A pure
   visibility flag with no bypass of any kind. The share-link feature that
   once punched a tokened hole through it (`ShareController`,
   `roller_share_link`) is gone and not coming back.
@@ -37,14 +39,19 @@ resolves through the index at the end of `CLAUDE.md`.
   `MediaFile.getName()`, the filename. The chain:
   - `ImageShortcode`: an `alt` attribute **present** on the shortcode wins
     verbatim, *including empty* (`[image id=".." alt=""]` means decorative).
-    Only an **absent** attribute falls to `altText`, then the filename.
-  - `GalleryMarkup`: `altText` → filename (no per-image override attribute).
+    Only an **absent** attribute falls to `altText`, then the caption (body
+    or `caption` attribute, as plain text: markup removed, whitespace
+    collapsed), then the filename as words.
+  - `GalleryMarkup`: `altText` → `description` (the figure's caption) →
+    filename as words (no per-image override attribute).
   - At the `altText` link, **blank counts as absent** at both sites — an
     author who clears the edit field did not declare the image decorative,
     and the field cannot express that. Deliberately unlike the
     shortcode-attribute link.
   - `firstNonBlank` returns `""`, never null (null once rendered a literal
     `alt="null"` in `GalleryMarkup`).
+  - "Filename as words" is `GalleryMarkup.fileNameAsAlt`: the extension and
+    the `-`/`_` separators are stripped, so `IMG_2034.jpg` reads "IMG 2034".
   - **The filename stays the last fallback rather than `alt=""`**: empty alt
     asserts "decorative", wrong for a photograph, and would hide undescribed
     images from the marker.
