@@ -1,7 +1,7 @@
 package org.apache.roller.weblogger.ui.restapi;
 
 import jakarta.servlet.http.HttpServletRequest;
-import java.sql.SQLException;
+import org.apache.roller.weblogger.business.AnchorLockTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
@@ -19,19 +19,6 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 public class ApiExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
-
-    /**
-     * PostgreSQL's lock_not_available: a statement gave up waiting for a lock
-     * ({@code lock_timeout}). Today only the anchor claim sets a lock timeout
-     * (pg_advisory_xact_lock, {@code weblogentry.anchor.lockTimeoutSeconds}),
-     * so it means another save of the same weblog held on longer than that.
-     * Only this SQLState is retryable here; every other database failure stays
-     * the opaque 500.
-     */
-    private static final String LOCK_NOT_AVAILABLE = "55P03";
-
-    /** The holder has already kept the lock past the timeout, so a short wait is enough to try again. */
-    private static final String LOCK_TIMEOUT_RETRY_AFTER_SECONDS = "2";
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ApiProblem> handleApiException(ApiException ex, HttpServletRequest request) {
@@ -97,14 +84,24 @@ public class ApiExceptionHandler {
         return ".";
     }
 
-    /** True when a {@link SQLException} with SQLState 55P03 is anywhere in {@code failure}'s cause chain. */
-    static boolean isLockTimeout(Throwable failure) {
-        for (Throwable t = failure; t != null; t = t.getCause() == t ? null : t.getCause()) {
-            if (t instanceof SQLException sql && LOCK_NOT_AVAILABLE.equals(sql.getSQLState())) {
-                return true;
-            }
-        }
-        return false;
+    /**
+     * A save gave up waiting for its weblog's anchor lock (another save of the
+     * same weblog held it past {@code weblogentry.anchor.lockTimeoutSeconds}).
+     * Nothing was saved and nothing is wrong with the request, so it is a
+     * retryable 503, with Retry-After set to the lock timeout the exception
+     * carries. Expected under load, so a WARN with no stack trace. MCP forwards
+     * to the same route, so its tool error carries this same problem.
+     */
+    @ExceptionHandler(AnchorLockTimeoutException.class)
+    public ResponseEntity<ApiProblem> handleAnchorLockTimeout(AnchorLockTimeoutException ex,
+                                                               HttpServletRequest request) {
+        log.warn("Anchor lock timeout after {}s for weblog {} at {}; answered 503",
+                ex.getTimeoutSeconds(), ex.getWeblogHandle(), request.getRequestURI());
+        return ResponseEntity.status(503)
+                .header("Retry-After", Integer.toString(Math.max(1, ex.getTimeoutSeconds())))
+                .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                .body(ApiException.busy("Another save of this weblog is in progress; retry shortly.")
+                        .toProblem(request.getRequestURI()));
     }
 
     /**
@@ -114,14 +111,6 @@ public class ApiExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiProblem> handleUnexpected(Exception ex, HttpServletRequest request) {
-        if (isLockTimeout(ex)) {
-            log.warn("Lock timeout at {}; answered 503 for a retry", request.getRequestURI());
-            return ResponseEntity.status(503)
-                    .header("Retry-After", LOCK_TIMEOUT_RETRY_AFTER_SECONDS)
-                    .contentType(MediaType.APPLICATION_PROBLEM_JSON)
-                    .body(ApiException.busy("Another save of this weblog is in progress; retry shortly.")
-                            .toProblem(request.getRequestURI()));
-        }
         log.error("Unhandled API exception at {}", request.getRequestURI(), ex);
         return handleApiException(ApiException.internalError(), request);
     }

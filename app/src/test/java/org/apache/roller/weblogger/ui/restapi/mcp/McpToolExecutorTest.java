@@ -237,6 +237,23 @@ class McpToolExecutorTest {
         assertTrue(text(result).contains("This token is read-only."), text(result));
     }
 
+    /**
+     * A busy 503 (the anchor-lock timeout) reaches the agent as a tool error
+     * carrying REST's own problem, retry advice in its detail: the
+     * Retry-After header does not travel through MCP.
+     */
+    @Test
+    void aBusyReplyIsAToolErrorCarryingTheRetryableProblem() {
+        String busy = "{\"type\":\"https://roller.invalid/problems/busy\",\"title\":\"Busy\",\"status\":503,"
+                + "\"detail\":\"Another save of this weblog is in progress; retry shortly.\"}";
+        nextReply = new ApiReply(503, "application/problem+json", busy);
+
+        CallToolResult result = call("entries", Map.of("action", "create", "weblog", "b", "title", "t"));
+
+        assertTrue(result.isError());
+        assertEquals(busy, text(result));
+    }
+
     @Test
     void anEmptyOrNonJsonErrorBodyBecomesAProblemShape() {
         nextReply = new ApiReply(405, "text/html", "<html>nope</html>");

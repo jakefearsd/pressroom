@@ -39,44 +39,40 @@ class ApiExceptionHandlerTest {
     }
 
     /**
-     * PostgreSQL's lock timeout (SQLState 55P03, "canceling statement due to
-     * lock timeout") is the anchor claim giving up behind another save of the
-     * same weblog: transient, so a retryable 503 with Retry-After, not an
-     * opaque 500. Found anywhere in the cause chain, as EclipseLink wraps it.
+     * The anchor claim giving up behind another save of the same weblog is
+     * transient: a retryable 503 with Retry-After (the lock timeout, which
+     * the exception carries), not an opaque 500.
      */
     @Test
-    void aLockTimeoutIsARetryable503() {
-        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/weblogs/x/entries");
-        Exception failure = new org.apache.roller.weblogger.WebloggerException("Timed out claiming an anchor",
-                new jakarta.persistence.PersistenceException("EclipseLink-4002",
-                        new java.sql.SQLException("canceling statement due to lock timeout", "55P03")));
+    void anAnchorLockTimeoutIsARetryable503() {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/weblogs/myblog/entries");
 
-        ResponseEntity<ApiProblem> response = handler.handleUnexpected(failure, request);
+        ResponseEntity<ApiProblem> response = handler.handleAnchorLockTimeout(
+                new org.apache.roller.weblogger.business.AnchorLockTimeoutException("myblog", 10), request);
 
         assertEquals(503, response.getStatusCode().value());
         assertEquals(MediaType.APPLICATION_PROBLEM_JSON, response.getHeaders().getContentType());
-        assertEquals("2", response.getHeaders().getFirst("Retry-After"));
+        assertEquals("10", response.getHeaders().getFirst("Retry-After"));
         ApiProblem body = response.getBody();
         assertNotNull(body);
         assertEquals("https://roller.invalid/problems/busy", body.type());
+        assertEquals("Busy", body.title());
         assertEquals(503, body.status());
         assertEquals("Another save of this weblog is in progress; retry shortly.", body.detail());
-        assertEquals("/api/v1/weblogs/x/entries", body.instance());
+        assertEquals("/api/v1/weblogs/myblog/entries", body.instance());
     }
 
-    /** Only that SQLState: a deadlock, a constraint violation or a dropped connection stays the opaque 500. */
+    /** Any other failure, a database one included, stays the opaque 500 with no Retry-After. */
     @Test
-    void anyOtherDatabaseFailureStaysTheOpaque500() {
+    void anyOtherFailureStaysTheOpaque500() {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/weblogs/x/entries");
-        for (String state : new String[] {"40P01", "23505", "08006", "57014", null}) {
-            Exception failure = new org.apache.roller.weblogger.WebloggerException("db",
-                    new java.sql.SQLException("db", state));
+        Exception failure = new org.apache.roller.weblogger.WebloggerException("db",
+                new java.sql.SQLException("canceling statement due to lock timeout", "55P03"));
 
-            ResponseEntity<ApiProblem> response = handler.handleUnexpected(failure, request);
+        ResponseEntity<ApiProblem> response = handler.handleUnexpected(failure, request);
 
-            assertEquals(500, response.getStatusCode().value(), String.valueOf(state));
-            assertNull(response.getHeaders().getFirst("Retry-After"), String.valueOf(state));
-        }
+        assertEquals(500, response.getStatusCode().value());
+        assertNull(response.getHeaders().getFirst("Retry-After"));
     }
 
     /**

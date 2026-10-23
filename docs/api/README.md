@@ -356,7 +356,7 @@ is every taken name: a category or directory `name`, a page `slug`, a user's
 | 413 | A multipart request body larger than `spring.servlet.multipart.max-request-size` (1GB). Plain `application/json` from Boot's own `/error`, not a problem body — see the note above. Distinct from the per-file media-quota refusal below, which is never a whole-request 413. |
 | 415 | `POST .../media` without a `multipart/form-data` body. Plain `application/json`, not a problem body — see the note above. |
 | 429 | Throttled — see below. |
-| 503 | Busy: the request collided with other work in progress and should be retried. Today only an entry create (REST or MCP) that waited longer than `weblogentry.anchor.lockTimeoutSeconds` (default 10) for another save of the same weblog to finish claiming its anchor (PostgreSQL's lock timeout, SQLState `55P03`). The problem's `type` ends in `/busy`, its `detail` is `Another save of this weblog is in progress; retry shortly.`, and the REST response carries `Retry-After: 2`. Nothing was saved. No other database failure is a 503; they stay the opaque 500. |
+| 503 | Busy: the request collided with other work in progress and should be retried. Today only an entry create (REST or MCP) that waited longer than `weblogentry.anchor.lockTimeoutSeconds` (default 10) for another save of the same weblog to finish claiming its anchor. The problem's `type` ends in `/busy`, its `detail` is `Another save of this weblog is in progress; retry shortly.`, and the REST response carries `Retry-After` set to that timeout in seconds. Nothing was saved, so retrying the same request is safe. No other failure is a 503. |
 | 500 | Unexpected server error. The response body never carries exception detail (message, stack trace, class name) — those are logged server-side only. |
 | 502 | An upstream dependency this endpoint depends on failed after the request itself already succeeded — today only `POST /api/v1/admin/users` when the account was created but its set-password email could not be sent; the account survives and is resendable, so this is not retried as a fresh create. |
 
@@ -1031,7 +1031,7 @@ the MCP endpoint makes itself (an unknown action, a missing or inapplicable argu
 error carrying the same problem shape as a REST 400 (`type`, `title` `Invalid request`, `status`,
 `detail`, `instance`), and a failure it cannot explain is REST's opaque internal-error problem. A
 503 arrives as a tool error with the `/busy` problem; the `Retry-After` header does not travel
-through MCP, so wait a couple of seconds before retrying. Not available
+through MCP, so wait about the lock timeout (10 seconds by default) before retrying. Not available
 through MCP: minting, listing or revoking tokens, and uploading media from local files.
 
 ## The OpenAPI document
