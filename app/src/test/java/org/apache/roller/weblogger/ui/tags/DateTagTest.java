@@ -32,6 +32,7 @@ import org.springframework.mock.web.MockPageContext;
 import org.springframework.mock.web.MockServletContext;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests for {@link DateTag}, the one place the admin UI turns a
@@ -111,8 +112,33 @@ class DateTagTest {
         expected.setTimeZone(TimeZone.getDefault());
 
         assertEquals("<time datetime=\"2026-09-09T14:30:00Z\" class=\"data\">"
-                        + expected.format(WHEN) + "</time>",
+                        + expected.format(WHEN) + " " + jvmZoneLabel() + "</time>",
                 render(null, WHEN, null));
+    }
+
+    /**
+     * With no weblog to lend its clock (API tokens, Users, Account), the
+     * text is the JVM's zone, UTC in the container image, and a bare
+     * "14:05" reads as the reader's own local time. So the zone is named.
+     * A weblog's own zone is not: the page is about that weblog, and its
+     * settings say which zone it keeps.
+     */
+    @Test
+    void aTimeInTheServersZoneSaysWhichZoneItIs() throws Exception {
+        String rendered = render(null, WHEN, null);
+        String label = jvmZoneLabel();
+        assertTrue(!label.isBlank() && rendered.endsWith(" " + label + "</time>"),
+                "expected the zone named after the time: " + rendered);
+        assertTrue(render(weblogIn("Asia/Tokyo"), WHEN, null).endsWith("23:30</time>"),
+                "a weblog's own zone is not appended");
+        Weblog noZone = new Weblog();
+        assertTrue(render(noZone, WHEN, null).endsWith(" " + label + "</time>"),
+                "a weblog with no zone of its own falls back to the server's, and says so");
+    }
+
+    private static String jvmZoneLabel() {
+        return java.time.format.DateTimeFormatter.ofPattern("zzz", Locale.ROOT)
+                .withZone(TimeZone.getDefault().toZoneId()).format(WHEN.toInstant());
     }
 
     /**
@@ -131,7 +157,7 @@ class DateTagTest {
         expected.setTimeZone(TimeZone.getDefault());
 
         assertEquals("<time datetime=\"2026-09-09T14:30:00Z\" class=\"data\">"
-                        + expected.format(WHEN) + "</time>",
+                        + expected.format(WHEN) + " " + jvmZoneLabel() + "</time>",
                 render("not a weblog", WHEN, null));
     }
 

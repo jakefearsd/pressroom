@@ -62,6 +62,11 @@ import org.apache.roller.weblogger.pojos.Weblog;
  * that is a different job from prose, and a localized date format does it
  * worse rather than better.
  *
+ * <p>On a page with no action weblog (API tokens, Users, Account) the text
+ * is in the JVM's zone, which is nobody's clock in particular, so the zone's
+ * short name follows the time ({@code 2026-10-22 14:05 UTC}). A weblog's own
+ * zone is not named: the page is about that weblog.
+ *
  * <p>A null value renders <em>nothing</em> -- not an empty {@code <time>}.
  * Every caller used to wrap the format call in its own
  * {@code <c:if test="${x != null}">}; the tag owning that check is what let
@@ -92,10 +97,18 @@ public class DateTag extends SimpleTagSupport {
             return;
         }
         Instant instant = value.toInstant();
+        ZoneId weblogZone = weblogZone();
+        ZoneId zone = weblogZone == null ? TimeZone.getDefault().toZoneId() : weblogZone;
         String display = DateTimeFormatter
                 .ofPattern(pattern == null ? DEFAULT_PATTERN : pattern, Locale.ROOT)
-                .withZone(resolveZone())
+                .withZone(zone)
                 .format(instant);
+        if (weblogZone == null) {
+            // Nobody's clock in particular (UTC in the container image): a
+            // bare "14:05" would read as the reader's own local time.
+            display = display + " " + DateTimeFormatter.ofPattern("zzz", Locale.ROOT)
+                    .withZone(zone).format(instant);
+        }
 
         getJspContext().getOut().write("<time datetime=\""
                 + DateTimeFormatter.ISO_INSTANT.format(instant)
@@ -109,24 +122,24 @@ public class DateTag extends SimpleTagSupport {
     }
 
     /**
-     * The action weblog's zone when the request has one, the JVM default
-     * otherwise.
+     * The action weblog's zone when the request has one, else null: the
+     * caller then uses the JVM default and names it after the time.
      *
      * <p>Note it reads {@code getTimeZone()} before calling
      * {@code getTimeZoneInstance()}. That accessor <em>writes</em> when the
      * column is null ({@code roller_weblog.timezone} is nullable), which on a
      * managed entity during view rendering would dirty the weblog and let the
      * persistence session flush a column nobody asked to change. The guard
-     * returns the identical zone that accessor would have -- the JVM default --
-     * without the write.
+     * falls to the identical zone that accessor would have -- the JVM default
+     * -- without the write.
      */
-    private ZoneId resolveZone() {
+    private ZoneId weblogZone() {
         if (getJspContext() instanceof PageContext pageContext) {
             Object attribute = pageContext.getRequest().getAttribute("actionWeblog");
             if (attribute instanceof Weblog weblog && weblog.getTimeZone() != null) {
                 return weblog.getTimeZoneInstance().toZoneId();
             }
         }
-        return TimeZone.getDefault().toZoneId();
+        return null;
     }
 }
