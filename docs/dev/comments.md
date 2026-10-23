@@ -324,9 +324,12 @@ no foreign key).
 - **A double-submitted reply** hits the unique index (SQL state 23505,
   `rrc_reply_to_uq`) at flush; the service maps it to `BAD_REPLY` and releases
   the persistence session, not a 500.
-- **Entry titles are stored escaped.** `Comments.jsp` once escaped
-  `displayTitle` again (a test even locked the double escape in). Emit it bare,
-  as `Entries.jsp` does.
+- **Entry titles are stored escaped, and an untitled entry's `displayTitle`
+  is raw body text.** `Comments.jsp` once escaped `displayTitle` again (a test
+  even locked the double escape in); emitting it bare instead let an
+  unterminated `<img onerror>` in an untitled body through. Print the
+  controller's plain `entryTitles` label once through `fn:escapeXml`, as
+  `Entries.jsp`, `Trash.jsp` and `Account.jsp` do (docs/dev/admin-ui.md).
 - **The cached page must carry no usernames** (R7): an earlier `data-author`
   exposed an owner's login name on every page they commented on.
 - **A test that closes a Spring context can detach runtime config for the

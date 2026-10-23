@@ -181,6 +181,18 @@ resolves through the index at the end of `CLAUDE.md`.
   against `/` and reserved names, never quotes), so the scan strips the three
   permitted forms from the whole attribute value and fails on any `${` left;
   it also sees the inline `<c:url .../>` spelling.
+- **Every printed EL expression in every JSP is escaped or named safe**
+  (`JspConsistencyTest.everyPrintedExpressionIsEscapedOrKnownSafe`): wrap it
+  in `fn:escapeXml`, or add it to `SAFE_EL` with what makes it safe. Its
+  shrink-only `KNOWN_RAW_EL` is empty (since 2026-10); do not refill it. A
+  `${[a, b]}` list is as safe as its elements. The scan cannot see a
+  scriptlet, so `<%= %>` prints nothing but `request.getContextPath()`
+  (`noJspPrintsAScriptletExpressionButTheContextPath`). An entry's title is
+  printed from the controller's plain label (`EntriesController.plainTitle`
+  / `plainTitles`, the `entryTitles` map, the editor's `tabTitle`) through
+  `fn:escapeXml` exactly once, never as `displayTitle` (an untitled entry's
+  is raw body text) and never as the stored title escaped again. A weblog's
+  "about" is plain text, escaped on the Main Menu.
 - **A message argument reaches the reader UNESCAPED, so escape it at the call
   site.** `tiles/messages.jsp` renders `${msg}` bare and
   `<c:out value="${error}" escapeXml="false"/>`, deliberately (several
