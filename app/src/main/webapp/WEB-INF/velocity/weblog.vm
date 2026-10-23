@@ -1935,9 +1935,7 @@ emitting the raw one are both bugs; they just look identical in the source.
     <ul class="rCategory">
     ## "All" is the current view only on the plain entry list: not on a
     ## category, tag, date archive, permalink or static page, each of which
-    ## shows less than all. $model.weblogDate needs PageModel#getWeblogDate;
-    ## until it exists the reference is null and a date archive still marks
-    ## "All" (Velocity's lenient #if reads a missing member as false).
+    ## shows less than all ($model.weblogDate is the archive's yyyyMM[dd]).
     #set($catsAllCurrent = !$model.weblogCategory && !$model.permalink && !$model.page && !($model.tags && !$model.tags.isEmpty()) && !$model.weblogDate)
     #if ($catsAllCurrent)
         <li class="selected"><a href="$url.home" aria-current="page">$text.get("generic.all")</a></li>

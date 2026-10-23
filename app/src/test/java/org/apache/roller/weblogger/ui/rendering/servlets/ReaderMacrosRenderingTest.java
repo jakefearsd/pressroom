@@ -119,6 +119,19 @@ class ReaderMacrosRenderingTest {
         assertTrue(body.contains("<meta property=\"og:title\" content=\"Test Weblog\">"), body);
     }
 
+    /** Finding 18: a date archive shows less than all, so "All" is not its current page. */
+    @Test
+    void aDateArchiveDoesNotMarkAllAsCurrent() throws Exception {
+        TestUtils.setupWeblogEntry("date-view-entry", weblog, user);
+        TestUtils.endSession(true);
+        String month = new java.text.SimpleDateFormat("yyyyMM", java.util.Locale.ROOT).format(new java.util.Date());
+
+        String body = render("/" + HANDLE + "/date/" + month);
+
+        assertFalse(Pattern.compile("aria-current=\"page\">All<").matcher(body).find(),
+                "\"All\" is not the current page on a date archive:\n" + body);
+    }
+
     /** Findings 31 and 32: the comment form's visible label and the no-sign-in sentence. */
     @Test
     void theCommentsSlotCarriesTheLabelAndTheNoSignInSentence() throws Exception {

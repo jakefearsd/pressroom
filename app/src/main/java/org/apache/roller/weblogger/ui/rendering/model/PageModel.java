@@ -18,6 +18,12 @@
 
 package org.apache.roller.weblogger.ui.rendering.model; 
 
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.format.FormatStyle;
+import java.util.Locale;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -332,6 +338,42 @@ public class PageModel implements Model {
     }
     
     
+    /**
+     * The date archive this request names, as the URL carries it
+     * ({@code yyyyMM} or {@code yyyyMMdd}), or null off a date archive.
+     */
+    public String getWeblogDate() {
+        return pageRequest.getWeblogDate();
+    }
+
+    /**
+     * The date archive as a reader would name it, in the weblog's language:
+     * "October 2026" for a month, "October 22, 2026" for a day (the
+     * locale's long date). Null off a date archive, and for a date the URL
+     * syntax allows but the calendar does not (month 13): such an archive
+     * simply lists nothing, and a heading naming it would be a guess.
+     */
+    public String getWeblogDateLabel() {
+        String date = pageRequest.getWeblogDate();
+        if (date == null) {
+            return null;
+        }
+        Locale locale = weblog.getLocaleInstance();
+        try {
+            if (date.length() == 8) {
+                return LocalDate.parse(date, DateTimeFormatter.BASIC_ISO_DATE)
+                        .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).withLocale(locale));
+            }
+            // LLLL is the stand-alone month name: "Oktober 2026", and the
+            // nominative in languages that inflect it after a day number
+            return YearMonth.parse(date, DateTimeFormatter.ofPattern("uuuuMM", Locale.ROOT))
+                    .format(DateTimeFormatter.ofPattern("LLLL uuuu", locale));
+        } catch (DateTimeParseException e) {
+            log.debug("No label for date archive {}", date, e);
+            return null;
+        }
+    }
+
     /**
      * Returns the list of tags specified in the request /tags/foo+bar
      */

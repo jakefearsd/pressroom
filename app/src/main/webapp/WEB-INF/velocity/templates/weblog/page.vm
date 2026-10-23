@@ -17,9 +17,15 @@ markup so a page does not look foreign inside any of them.
     ## $model.weblog.name is pre-escaped by WeblogWrapper#getName
     ## (StringEscapeUtils.escapeHtml4) -- emit it bare, or it double-encodes
     ## ("&amp;" -> "&amp;amp;"), same as every bundled theme does. The page
-    ## title is the opposite: PageBean.copyTo stores it raw, so #showPageTitle
-    ## escapes it.
-    <title>#showPageTitle($model.page) : $model.weblog.name</title>
+    ## title is the opposite: PageBean.copyTo stores it raw, so it is
+    ## escaped here.
+    ## The themes' title rule: "Page — Weblog", or an author's meta title
+    ## alone (they write a complete one there). Both raw, so both escaped.
+    #if($utils.isNotEmpty($model.page.metaTitle))
+    <title>$utils.escapeHTML($model.page.metaTitle)</title>
+    #else
+    <title>$utils.escapeHTML($model.page.title) — $model.weblog.name</title>
+    #end
     <link href="$url.absoluteSite/favicon.svg" rel="icon" type="image/svg+xml" />
     #showAutodiscoveryLinks($model.weblog)
     #showSeoHead()
