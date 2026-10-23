@@ -185,4 +185,28 @@ class AdminChromeJspTest {
         assertFalse(src.contains("userAdmin.userHasNoWeblogs"), "the empty state's body no longer repeats its title");
         assertTrue(src.contains("userWeblogs.empty.body"), "the empty state points at the add form");
     }
+
+    /**
+     * The user editor kept its field help in {@code title=} tooltips (gone on
+     * touch, unread by most screen readers) and disabled Save from an
+     * {@code onkeyup} check, so autofill or a mouse paste left it disabled
+     * with no reason given. The server already answers each field with
+     * {@code addFieldError}; the help that matters is visible
+     * {@code .form-text}, and Save is always live.
+     */
+    @Test
+    void theUserEditorShowsItsHelpAndNeverDisablesSave() {
+        String src = jsp("admin/UserEdit.jsp");
+        assertFalse(src.contains("title=\"<spring:message"), "field help is still in a title= tooltip");
+        assertFalse(src.contains("formChanged"), "Save is still gated by a keyup check");
+        assertFalse(src.contains("prop(\"disabled\""), "Save is still disabled by script");
+        for (String tip : java.util.List.of("userAdmin.tip.userName", "userSettings.tip.username",
+                "userAdmin.tip.email", "userAdmin.tip.password")) {
+            assertTrue(java.util.regex.Pattern.compile("<div class=\"form-text\"[^>]*><spring:message code=\""
+                            + java.util.regex.Pattern.quote(tip) + "\"/></div>").matcher(src).find(),
+                    tip + " is not visible help under its field");
+        }
+        assertFalse(src.contains("<p class=\"pagetip\">\n    <c:if"),
+                "the edit screen renders an empty pagetip");
+    }
 }
