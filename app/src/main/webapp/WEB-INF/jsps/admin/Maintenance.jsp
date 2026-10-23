@@ -122,7 +122,8 @@
 
 <script>
     // Rewrites each long operation's prompt so it names the weblog the
-    // select currently holds (see the comment above the first operation).
+    // select currently holds (see the comment above the first operation),
+    // and keeps the actions disabled until one is chosen.
     (function () {
         var select = document.getElementById("maintenanceWeblog");
         if (!select) {
@@ -132,6 +133,12 @@
         function rewrite() {
             var option = select.options[select.selectedIndex];
             var handle = option ? option.getAttribute("data-handle") : null;
+            // Every action acts on the chosen weblog, so none is live
+            // before there is one.
+            var actions = select.form.querySelectorAll("button[type=submit]");
+            for (var a = 0; a < actions.length; a++) {
+                actions[a].disabled = !handle;
+            }
             var buttons = select.form.querySelectorAll("[data-confirm-template]");
             for (var i = 0; i < buttons.length; i++) {
                 if (handle) {

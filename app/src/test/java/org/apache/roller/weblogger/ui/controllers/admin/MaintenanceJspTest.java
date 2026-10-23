@@ -145,6 +145,20 @@ class MaintenanceJspTest {
                 "A change listener on #maintenanceWeblog must rewrite the prompts");
     }
 
+    /**
+     * The three action buttons were live before any weblog was chosen, so a
+     * click could only earn "No such weblog". The script that names the
+     * weblog in the prompts also keeps every action disabled until one is.
+     */
+    @Test
+    void theActionsWaitForAWeblog() throws IOException {
+        String source = Files.readString(JSP, StandardCharsets.UTF_8);
+        assertTrue(source.contains("querySelectorAll(\"button[type=submit]\")"),
+                "the script reaches every action button");
+        assertTrue(source.contains(".disabled = !handle"),
+                "an action stays disabled while no weblog is chosen");
+    }
+
     private static int count(String haystack, String needle) {
         int n = 0;
         for (int i = haystack.indexOf(needle); i >= 0; i = haystack.indexOf(needle, i + 1)) {
