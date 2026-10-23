@@ -1852,14 +1852,6 @@ span.button {
     padding-left:0;
 }
 
-div.image-controls,
-div.image-controls div,
-div.image-controls span,
-div.image-controls select,
-div.image-controls input {
-    display: inline;
-}
-
 
 /* theme edit */
 

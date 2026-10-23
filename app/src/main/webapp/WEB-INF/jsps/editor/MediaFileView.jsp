@@ -108,8 +108,7 @@
         <input type="hidden" name="newDirectoryName" value="${fn:escapeXml(newDirectoryName)}"/>
         <input type="hidden" name="mediaFileId" value=""/>
 
-        <%-- Labels above their fields, as on every other admin form. Not
-             .image-controls: roller.css makes everything inside that inline. --%>
+        <%-- Labels above their fields, as on every other admin form. --%>
         <div class="media-view-controls d-flex flex-wrap gap-3 mb-3">
 
             <c:if test="${not empty allDirectories}">

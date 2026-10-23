@@ -218,17 +218,19 @@ class EditorSurfaceJspTest {
     }
 
     /**
-     * The entry and page titles are set in IBM Plex Serif, which the admin
-     * tokens never loaded, so it fell back to Georgia. The editor's own
-     * stylesheet (loaded only on the two editor screens) loads the one weight
-     * the title uses; WebjarReferenceTest checks the url resolves.
+     * The entry and page titles are set in the UI face (roller.css's
+     * .editor-title: Plex Sans at 600 -- emphasis is weight, never size).
+     * They were Plex Serif once, and the editor stylesheet still loaded a
+     * serif face nothing used any more.
      */
     @Test
-    void theEditorTitleFaceIsLoaded() throws IOException {
-        String css = read(Paths.get("src/main/webapp/roller-ui/styles/roller-editor.css"));
-        int face = css.indexOf("font-family: \"IBM Plex Serif\"");
-        assertTrue(face >= 0 && css.lastIndexOf("@font-face", face) >= 0, "no @font-face for IBM Plex Serif");
-        assertTrue(css.contains("IBMPlexSerif-SemiBold.woff2"), "the title is weight 600");
+    void theEditorTitleIsInTheUiFaceAndNoUnusedFaceShips() throws IOException {
+        String editorCss = read(Paths.get("src/main/webapp/roller-ui/styles/roller-editor.css"));
+        String rollerCss = read(Paths.get("src/main/webapp/roller-ui/styles/roller.css"));
+        int title = rollerCss.indexOf(".editor-title {");
+        assertTrue(title >= 0 && rollerCss.substring(title, rollerCss.indexOf('}', title))
+                .contains("font-family: var(--font-ui);"), "the editor title is not in the UI face");
+        assertFalse(editorCss.contains("IBM Plex Serif"), "roller-editor.css loads a face no rule uses");
     }
 
     /**
