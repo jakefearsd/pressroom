@@ -264,17 +264,32 @@ public class EntryEditController extends BaseController {
         }
 
         StringBuilder html = new StringBuilder("<div class=\"revision-diff\">");
+        int empty = html.length();
         appendDiff(html, getText("weblogEdit.title", request),
                 revision.getTitle(), entry.getTitle());
         appendDiff(html, getText("weblogEdit.summary", request),
                 revision.getSummary(), entry.getSummary());
         appendDiff(html, getText("weblogEdit.content", request),
                 revision.getText(), entry.getText());
+        // Right after a Restore the newest revision often matches the entry
+        // exactly; with every section omitted the modal would open blank.
+        if (html.length() == empty) {
+            appendNoChanges(html, getText("weblogEdit.revisionSame", request));
+        }
         html.append("</div>");
 
         return ResponseEntity.ok()
                 .contentType(MediaType.valueOf("text/html;charset=UTF-8"))
                 .body(html.toString());
+    }
+
+    /** The empty state: a revision identical to the entry as it stands. */
+    @SuppressFBWarnings(
+            value = "POTENTIAL_XML_INJECTION",
+            justification = "The message comes from the bundle and goes through HTMLSanitizer.htmlEncodeTag "
+                    + "into element content: with < and > encoded no tag can open there.")
+    private static void appendNoChanges(StringBuilder html, String message) {
+        html.append("<p class=\"revision-diff-same\">").append(HTMLSanitizer.htmlEncodeTag(message)).append("</p>");
     }
 
     /**
@@ -285,14 +300,17 @@ public class EntryEditController extends BaseController {
     @SuppressFBWarnings(
             value = "POTENTIAL_XML_INJECTION",
             justification = "The label and every diff line go through HTMLSanitizer.htmlEncodeTag into "
-                    + "element content (h5, span inside pre): with < and > encoded no tag can open there. "
+                    + "element content (p, span inside pre): with < and > encoded no tag can open there. "
                     + "The diff is shown only to the entry's editors.")
     private void appendDiff(StringBuilder html, String label, String before, String after) {
         List<TextDiff.Line> lines = TextDiff.diff(before, after);
         if (lines.isEmpty()) {
             return;
         }
-        html.append("<h5>").append(HTMLSanitizer.htmlEncodeTag(label)).append("</h5><pre>");
+        // A caps label, not a heading: the modal's own title is a <p>, so an
+        // <h5> here would be a heading with nothing above it.
+        html.append("<p class=\"rail-group-label\">").append(HTMLSanitizer.htmlEncodeTag(label))
+                .append("</p><pre>");
         for (TextDiff.Line line : lines) {
             String cssClass = switch (line.kind()) {
                 case ADDED -> "diff-added";

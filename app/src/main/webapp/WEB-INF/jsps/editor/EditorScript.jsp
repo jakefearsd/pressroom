@@ -82,6 +82,21 @@
         bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('editorGuide')).show();
     };
 
+    <%-- CodeMirror's "Mod" bindings answer to Cmd on a Mac, so that is the
+         key the tooltips and the guide should name there. Same platform test
+         CodeMirror itself makes. The markup says Ctrl; this only rewrites it. --%>
+    function rollerShowMacModifier() {
+        if (!/Mac|iP(hone|[oa]d)/.test(navigator.platform || '')) {
+            return;
+        }
+        document.querySelectorAll('#editorGuide .editor-mod').forEach(function (k) {
+            k.textContent = '\u2318';
+        });
+        document.querySelectorAll('#editorToolbar [data-shortcut]').forEach(function (b) {
+            b.title = b.title.replace('Ctrl+', '\u2318');
+        });
+    }
+
     <%-- Word count / reading time. Split from rollerUpdateStatus() below so
          the one-time call right after the editor is created (to seed existing
          content's word count on first paint) does not also mark a freshly
@@ -163,7 +178,7 @@
             ul: function () { rollerEditor.toggleLinePrefix('- '); },
             ol: function () { rollerEditor.toggleLinePrefix('1. '); },
             link: function () { rollerEditor.wrapSelection('[', '](https://)', '<spring:message code="editor.linkPlaceholder" javaScriptEscape="true"/>'); },
-            code: function () { rollerEditor.wrapSelection('`', '`', 'code'); },
+            code: function () { rollerEditor.wrapSelection('`', '`', '<spring:message code="editor.codePlaceholder" javaScriptEscape="true"/>'); },
             table: function () { rollerEditor.insert('\n| <spring:message code="editor.tableHeader" javaScriptEscape="true"/> | <spring:message code="editor.tableHeader" javaScriptEscape="true"/> |\n| --- | --- |\n|  |  |\n'); },
             image: function () { onClickMediaFileInsert(); },
             help: function () { if (window.rollerOpenGuide) { window.rollerOpenGuide(); } }
@@ -187,6 +202,12 @@
             onSave: window.rollerSaveDraft,
             onPublish: window.rollerPublish,
             onHelp: commands.help,
+            <%-- The shortcuts the toolbar tooltips and the guide advertise.
+                 Bound in the editor only: outside it there is no selection to
+                 format, and the keys keep their browser meaning. --%>
+            onBold: commands.bold,
+            onItalic: commands.italic,
+            onLink: commands.link,
             onUpload: rollerUploadImages,
             onChange: function () {
                 <%-- A listener that throws must not stop the ones after it:
@@ -201,6 +222,8 @@
                 });
             }
         });
+
+        rollerShowMacModifier();
 
         <%-- The preview follows the text. Registered on the page's own fan-out
              array, not on the editor, so an editor swap carries it along. --%>
@@ -470,7 +493,8 @@
         (function next() {
             var file = queue.shift();
             if (!file) { return; }
-            var placeholder = '[uploading ' + file.name.replace(/[\[\]]/g, '') + '…]';
+            var placeholder = '[<spring:message code="editor.uploadingPlaceholder" javaScriptEscape="true"/> '
+                    + file.name.replace(/[\[\]]/g, '') + '…]';
             rollerEditor.insert(placeholder + '\n');
             var form = new FormData();
             form.append('file', file, file.name);
@@ -508,7 +532,7 @@
          textContent -- never innerHTML -- so it cannot carry markup even
          though it did not come from a message key with a known-safe shape. --%>
     function rollerStatusError(message) {
-        var status = document.getElementById('editorStatus');
+        var status = document.getElementById('editorStatusAlerts');
         var el = document.createElement('span');
         el.className = 'is-error';
         el.textContent = message;
@@ -525,6 +549,7 @@
     function onClickMediaFileInsert(pickerTarget) {
         window.mediaPickerTarget = pickerTarget || null;
         window.mediaLightboxCloseRequested = false;
+        document.getElementById('mediaChooserRefusal').hidden = true;
         <c:url var="mediaFileImageChooser" value="/roller-ui/authoring/overlay/mediaFileImageChooser.rol">
         <c:param name="weblog" value="${actionWeblog.handle}"/>
         </c:url>
@@ -552,9 +577,16 @@
         }
     });
 
-    <%-- Callback from MediaFileImageChooser.jsp inside the iframe. The id is a
-         later addition; callers that only pass (name, url, isImage) still work. --%>
+    <%-- Callback from MediaFileImageChooser.jsp inside the iframe, which
+         always passes the id. --%>
     function onSelectMediaFile(name, url, isImage, id) {
+        <%-- A featured/social picker takes an image. Anything else used to
+             close the chooser and silently do nothing; now it says so and
+             stays open for another pick. --%>
+        if (window.mediaPickerTarget && (isImage !== "true" || !id)) {
+            document.getElementById('mediaChooserRefusal').hidden = false;
+            return;
+        }
         closeMediaFileLightbox();
         $("#mediaFileEditor").attr('src', 'about:blank');
         if (window.mediaPickerTarget) {
@@ -564,20 +596,27 @@
             return;
         }
         if (isImage === "true") {
-            if (id) {
-                <%-- The [image] shortcode expands at render time into a
-                     responsive <figure><picture> with the full srcset ladder,
-                     so authors get the rendition pipeline automatically.
-                     Existing content with the old raw <img> markup is left
-                     exactly as it is. --%>
-                insertMediaFile('[image id="' + id + '"]');
-            } else {
-                <%-- Historic fallback for callers that never pass the id. --%>
-                insertMediaFile('<a href="' + url + '"><img src="' + url + '?t=true" alt="' + name + '" /></a>');
-            }
+            <%-- The [image] shortcode expands at render time into a
+                 responsive <figure><picture> with the full srcset ladder,
+                 so authors get the rendition pipeline automatically.
+                 Existing content with the old raw <img> markup is left
+                 exactly as it is. --%>
+            insertMediaFile('[image id="' + id + '"]');
         } else {
-            insertMediaFile('<a href="' + url + '">' + name + '</a>');
+            insertMediaFile(rollerMarkdownLink(name, url));
         }
+    }
+
+    <%-- Entries are Markdown, so a non-image file goes in as a Markdown link,
+         not raw HTML. Brackets in the name would end the link text, and a
+         space or parenthesis in the URL would end the destination, so both
+         are neutralised. --%>
+    function rollerMarkdownLink(name, url) {
+        var text = String(name).replace(/[\[\]]/g, '');
+        var href = String(url).replace(/[ ()]/g, function (c) {
+            return { ' ': '%20', '(': '%28', ')': '%29' }[c];
+        });
+        return '[' + text + '](' + href + ')';
     }
 
     <%-- SEO drawer image pickers. Generic over the target because both

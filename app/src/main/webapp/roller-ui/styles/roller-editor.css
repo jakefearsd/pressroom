@@ -57,3 +57,36 @@
 .editor-guide-table td { padding: 4px 0; vertical-align: top; }
 .editor-guide-table td:first-child { width: 45%; padding-right: 12px; }
 .editor-guide-table code, .editor-guide-table kbd { font-family: var(--font-data); font-size: 13.5px; background: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+
+/* Split mode at phone width: two ~170px panes are too narrow to write or to
+   read in, and the mode persists, so it would stick. Stack them instead, at
+   the same breakpoint the editor grid drops its rail. */
+@media (max-width: 760px) {
+    .editor-surface[data-mode="split"] .editor-panes { grid-template-columns: 1fr; }
+    .editor-surface[data-mode="split"] .editor-preview-pane { border-left: 0; border-top: 1px solid var(--line); }
+}
+
+/* The Summary drawer's toggle is a <button> (it toggles, it goes nowhere);
+   take off the browser's button dress so it reads exactly like the anchor
+   .editor-drawer toggles in roller.css. */
+button.editor-drawer { width: 100%; padding: 0; border: 0; background: none; text-align: left; line-height: inherit; cursor: pointer; }
+button.editor-drawer:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+/* The rail's SEO drawer: labels sit above full-width fields, like the
+   Publish and Organize boxes; the checkboxes take the same rhythm. */
+.editor-seo-check { margin-top: 12px; }
+
+/* The image pickers' refusal sits at the start of the chooser's footer,
+   pushing the Close button to the right. */
+.editor-chooser-refusal { margin: 0 auto 0 0; font-size: 14.5px; color: var(--bad); }
+
+/* The entry and page titles are set in Plex Serif (roller.css, .editor-title),
+   which the admin tokens do not load; without this the title fell back to
+   Georgia. Only the one weight the title uses, and only on the two editor
+   screens that load this file. WebjarReferenceTest resolves the url. */
+@font-face {
+    font-family: "IBM Plex Serif";
+    font-style: normal;
+    font-weight: 600;
+    src: url("../../webjars/ibm__plex-serif/2.0.0/fonts/complete/woff2/IBMPlexSerif-SemiBold.woff2") format("woff2");
+}
