@@ -1279,7 +1279,30 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         assertTrue(body.contains("<span class=\"diff-same\">  kept</span>"), body);
         assertTrue(body.contains("<span class=\"diff-removed\">- old line</span>"), body);
         assertTrue(body.contains("<span class=\"diff-added\">+ new line</span>"), body);
-        assertEquals(1, body.split("<h5>", -1).length - 1, "only the changed section is shown: " + body);
+        assertEquals(1, body.split("<p class=\"rail-group-label\">", -1).length - 1,
+                "only the changed section is shown: " + body);
+        assertFalse(body.contains("<h5"), "a section label under a <p> modal title is no heading: " + body);
+    }
+
+    /**
+     * Right after a Restore the newest revision often matches the entry
+     * exactly; the Compare modal opened blank then.
+     */
+    @Test
+    void aRevisionThatMatchesTheEntrySaysSoInsteadOfShowingNothing() throws Exception {
+        WeblogEntry entry = existingEntry(PubStatus.PUBLISHED);
+        entry.setTitle("Same title");
+        entry.setSummary(null);
+        entry.setText("same text");
+        WeblogEntryRevision revision = revisionOf(entry, "r1");
+        revision.setTitle("Same title");
+        revision.setSummary(null);
+        revision.setText("same text");
+
+        String body = controller.entryEditRevisionDiff(request, "entry-1", "r1").getBody();
+
+        assertTrue(body.contains("<p class=\"revision-diff-same\">weblogEdit.revisionSame</p>"), body);
+        assertFalse(body.contains("<pre>"), body);
     }
 
     @Test

@@ -26,6 +26,8 @@ import java.nio.file.Paths;
 
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -266,5 +268,112 @@ class EntryEditJspTest {
         assertTrue(jsp.contains("code=\"weblogEdit.commentCounts\""), "counts line");
         assertTrue(jsp.contains("/roller-ui/authoring/comments.rol"), "links to the moderation page");
         assertTrue(jsp.contains("actionWeblog.commentsEnabled"), "shown only when comments are on");
+    }
+
+    /**
+     * Category names are rejected at entry if they carry HTML characters, but
+     * the option is escaped anyway: that check lives in another controller,
+     * and the API is a second way in.
+     */
+    @Test
+    void theCategoryOptionNameIsEscaped() throws IOException {
+        String jsp = read();
+        assertFalse(jsp.contains(">${opt.name}</option>"), "a bare category name in the Organize select");
+        assertTrue(jsp.contains(">${fn:escapeXml(opt.name)}</option>"));
+    }
+
+    /**
+     * The SEO drawer sits in the 252px rail. Bootstrap's horizontal grid gave
+     * its labels a ~60px column beside a ~170px field above 576px; the rail's
+     * other boxes put the label above a full-width field, and so does this.
+     */
+    @Test
+    void theSeoDrawerPutsLabelsAboveFields() throws IOException {
+        String jsp = read();
+        int start = jsp.indexOf("id=\"collapseSeo\"");
+        int end = jsp.indexOf("<sec:csrfInput/>", start);
+        assertTrue(start >= 0 && end > start, "the SEO drawer must exist");
+        String drawer = jsp.substring(start, end);
+        assertFalse(drawer.contains("col-sm-"), "no horizontal-form grid in the rail");
+        assertFalse(drawer.contains("offset-sm-"), "no horizontal-form grid in the rail");
+        assertFalse(drawer.contains("col-form-label"), "labels take the rail's editor-field-label role");
+    }
+
+    /**
+     * Delete moves the entry to the trash, so the dialog says that and its
+     * action button names it. The entry's internal id is no business of the
+     * author's, a two-line confirm needs no large dialog, and every other
+     * modal on the page has a close control.
+     */
+    @Test
+    void theDeleteDialogSaysTrashAndOffersCancel() throws IOException {
+        String jsp = read();
+        int start = jsp.indexOf("id=\"delete-entry-modal\"");
+        assertTrue(start >= 0, "the delete modal must exist");
+        String modal = jsp.substring(start, jsp.indexOf("<%-- ====", start));
+        assertFalse(modal.contains("modal-lg"), "a confirm is a default-size dialog");
+        assertTrue(modal.contains("class=\"btn-close\""), "the dialog needs a close control");
+        assertFalse(modal.contains("weblogEntryRemove.entryId"), "the internal id is not shown to the author");
+        assertFalse(modal.contains("generic.yes") || modal.contains("generic.no"), "Yes/No do not say what happens");
+        assertTrue(modal.contains("code=\"generic.cancel\""));
+        assertTrue(modal.contains("code=\"weblogEntryRemove.moveToTrash\""));
+        assertTrue(modal.contains("<p id=\"delete-entry-modal-title\" class=\"modal-title\">"));
+        int body = modal.indexOf("class=\"modal-body\"");
+        assertTrue(body >= 0 && modal.indexOf("weblogEntryRemove.areYouSure", body) > body,
+                "the sentence is in the body, not the title");
+        assertEquals(1, modal.split("type=\"submit\"", -1).length - 1,
+                "exactly one submit: the ITs click #delete-entry-modal button[type='submit']");
+        assertFalse(jsp.contains("postIdLabel"), "nothing writes the removed id row");
+    }
+
+    /**
+     * A title is stored HTML-escaped, so {@code fn:escapeXml(entry.title)}
+     * escaped it twice: "Tom &amp;amp; Jerry" in the attribute, and the
+     * modal (filled through .text()) showed "Tom &amp; Jerry". The bean holds
+     * the unescaped title (EntryBean.copyFrom), so escaping that is once.
+     */
+    @Test
+    void theDeleteControlEscapesTheTitleExactlyOnce() throws IOException {
+        String jsp = read();
+        assertFalse(jsp.contains("fn:escapeXml(entry.title)"), "the stored title is already escaped");
+        assertTrue(jsp.contains("data-entry-title=\"${fn:escapeXml(bean.title)}\""));
+    }
+
+    @Test
+    void theNewsletterDialogDismissesWithCancel() throws IOException {
+        String jsp = read();
+        int start = jsp.indexOf("id=\"newsletter-confirm-modal\"");
+        assertTrue(start >= 0, "the newsletter modal must exist");
+        String modal = jsp.substring(start, jsp.indexOf("</form>", start));
+        assertFalse(modal.contains("generic.no"));
+        assertTrue(modal.contains("code=\"generic.cancel\""));
+    }
+
+    /**
+     * The JSP config trims whitespace-only template text, so the space
+     * between the no-list sentence and its link vanished ("first.Open weblog
+     * settings"). An explicit space survives trimming.
+     */
+    @Test
+    void theNewsletterNoListSentenceKeepsItsSpaceBeforeTheLink() throws IOException {
+        assertTrue(read().contains("<spring:message code=\"newsletter.noList\"/>&#32;"));
+    }
+
+    /**
+     * On a published entry "Publish" beside "Save draft" did not say that
+     * Save draft takes the entry down. The buttons say Update and Unpublish
+     * there, and Ctrl+S -- "save" -- follows Update rather than unpublishing.
+     */
+    @Test
+    void aPublishedEntryOffersUpdateAndUnpublish() throws IOException {
+        String jsp = read();
+        assertTrue(jsp.contains("<spring:message code=\"weblogEdit.update\"/>"), "Update on a live entry");
+        assertTrue(jsp.contains("<spring:message code=\"weblogEdit.unpublish\"/>"), "Unpublish on a live entry");
+        int update = jsp.indexOf("<spring:message code=\"weblogEdit.update\"/>");
+        String updateButton = jsp.substring(jsp.lastIndexOf("<button", update), update);
+        assertTrue(updateButton.contains("data-save-shortcut"), "Ctrl+S must click Update on a live entry: " + updateButton);
+        String editor = Files.readString(Paths.get("src/main/webapp/WEB-INF/jsps/editor/EntryEditor.jsp"),
+                StandardCharsets.UTF_8);
+        assertTrue(editor.contains("#entry button[data-save-shortcut]"), "Ctrl+S clicks the marked button");
     }
 }

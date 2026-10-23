@@ -109,11 +109,11 @@ class EntryEditorJspGuideTest {
         int guideStart = jsp.indexOf("id=\"editorGuide\"");
         assertTrue(guideStart > 0, "the guide must exist");
         String guide = jsp.substring(guideStart);
-        assertTrue(guide.contains("<kbd>Ctrl</kbd>+<kbd>S</kbd>"),
+        assertTrue(guide.contains("<kbd class=\"editor-mod\">Ctrl</kbd>+<kbd>S</kbd>"),
                 "the keyboard table must name Ctrl+S");
-        assertTrue(guide.contains("<kbd>Ctrl</kbd>+<kbd>Enter</kbd>"),
+        assertTrue(guide.contains("<kbd class=\"editor-mod\">Ctrl</kbd>+<kbd>Enter</kbd>"),
                 "the keyboard table must name Ctrl+Enter");
-        assertTrue(guide.contains("<kbd>Ctrl</kbd>+<kbd>/</kbd>"),
+        assertTrue(guide.contains("<kbd class=\"editor-mod\">Ctrl</kbd>+<kbd>/</kbd>"),
                 "the keyboard table must name Ctrl+/");
     }
 
@@ -135,7 +135,7 @@ class EntryEditorJspGuideTest {
         int guideStart = jsp.indexOf("id=\"editorGuide\"");
         assertTrue(guideStart > 0, "the guide must exist");
         String guide = jsp.substring(guideStart);
-        assertTrue(guide.contains("<kbd>Ctrl</kbd>+<kbd>Enter</kbd></td>"
+        assertTrue(guide.contains("<kbd class=\"editor-mod\">Ctrl</kbd>+<kbd>Enter</kbd></td>"
                         + "<td><spring:message code=\"${editorPrimaryActionKey}\"/></td>"),
                 "the guide's Ctrl+Enter row must render editorPrimaryActionKey -- a "
                         + "hardcoded weblogEdit.post mislabels the page editor's Save");

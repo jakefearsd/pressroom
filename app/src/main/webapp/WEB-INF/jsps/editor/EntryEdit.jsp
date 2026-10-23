@@ -251,8 +251,17 @@
                    value="${bean.pubTimeLocal}" class="editor-dt"/>
             <div class="editor-tz">${actionWeblog.timeZone}</div>
 
+            <%-- On a published entry the draft button takes the entry down, so
+                 there the pair reads Update / Unpublish, and Ctrl+S (data-save-
+                 shortcut, read by EntryEditor.jsp) follows Update: "save" must
+                 not unpublish a live entry. --%>
+            <c:set var="entryLive" value="${userAnAuthor and bean.published}"/>
             <div class="editor-btnrow">
                 <c:choose>
+<c:when test="${entryLive}">
+                    <%-- update a live entry --%>
+                    <button type="submit" class="btn btn-primary" data-save-shortcut formaction="${pageContext.request.contextPath}/roller-ui/authoring/${mainAction}!publish.rol"><spring:message code="weblogEdit.update"/></button>
+                </c:when>
 <c:when test="${userAnAuthor}">
                     <%-- publish --%>
                     <button type="submit" class="btn btn-primary" formaction="${pageContext.request.contextPath}/roller-ui/authoring/${mainAction}!publish.rol"><spring:message code="weblogEdit.post"/></button>
@@ -262,8 +271,16 @@
                     <button type="submit" class="btn btn-primary" formaction="${pageContext.request.contextPath}/roller-ui/authoring/${mainAction}!publish.rol"><spring:message code="weblogEdit.submitForReview"/></button>
                 </c:otherwise>
 </c:choose>
-                <%-- save draft --%>
-                <button type="submit" class="btn btn-secondary" formaction="${pageContext.request.contextPath}/roller-ui/authoring/${mainAction}!saveDraft.rol"><spring:message code="weblogEdit.save"/></button>
+                <c:choose>
+<c:when test="${entryLive}">
+                    <%-- back to draft: unpublishes --%>
+                    <button type="submit" class="btn btn-secondary" formaction="${pageContext.request.contextPath}/roller-ui/authoring/${mainAction}!saveDraft.rol"><spring:message code="weblogEdit.unpublish"/></button>
+                </c:when>
+<c:otherwise>
+                    <%-- save draft --%>
+                    <button type="submit" class="btn btn-secondary" data-save-shortcut formaction="${pageContext.request.contextPath}/roller-ui/authoring/${mainAction}!saveDraft.rol"><spring:message code="weblogEdit.save"/></button>
+                </c:otherwise>
+</c:choose>
             </div>
 
             <c:if test="${actionName == 'entryEdit'}">
@@ -290,7 +307,7 @@
             <label class="editor-field-label" for="entry_bean_categoryId"><spring:message code="weblogEdit.category"/></label>
             <select name="bean.categoryId" id="entry_bean_categoryId" class="form-select">
 <c:forEach items="${categories}" var="opt">
-<option value="${opt.id}" ${opt.id == bean.categoryId ? 'selected' : ''}>${opt.name}</option>
+<option value="${opt.id}" ${opt.id == bean.categoryId ? 'selected' : ''}>${fn:escapeXml(opt.name)}</option>
 </c:forEach>
 </select>
 
@@ -311,20 +328,12 @@
                 <div class="editor-drawer-body">
 
                     <%-- meta title (falls back to the entry title on the public page) --%>
-                    <div class="row mb-3">
-                        <label class="col-sm-3 col-form-label" for="seo_metaTitle"><spring:message code="weblogEdit.metaTitle"/></label>
-                        <div class="col-sm-9">
-                            <input type="text" id="seo_metaTitle" name="bean.metaTitle" value="${fn:escapeXml(bean.metaTitle)}" maxlength="255" class="form-control"/>
-                        </div>
-                    </div>
+                    <label class="editor-field-label" for="seo_metaTitle"><spring:message code="weblogEdit.metaTitle"/></label>
+                    <input type="text" id="seo_metaTitle" name="bean.metaTitle" value="${fn:escapeXml(bean.metaTitle)}" maxlength="255" class="form-control"/>
 
                     <%-- meta description (the entry's searchDescription column) --%>
-                    <div class="row mb-3">
-                        <label class="col-sm-3 col-form-label" for="seo_metaDescription"><spring:message code="weblogEdit.metaDescription"/></label>
-                        <div class="col-sm-9">
-                            <input type="text" id="seo_metaDescription" name="bean.searchDescription" value="${fn:escapeXml(bean.searchDescription)}" maxlength="255" class="form-control"/>
-                        </div>
-                    </div>
+                    <label class="editor-field-label" for="seo_metaDescription"><spring:message code="weblogEdit.metaDescription"/></label>
+                    <input type="text" id="seo_metaDescription" name="bean.searchDescription" value="${fn:escapeXml(bean.searchDescription)}" maxlength="255" class="form-control"/>
 
                     <%-- Lightweight search-snippet preview, fed by JS from the
                          title/description fields.
@@ -341,63 +350,51 @@
 
                          The rules themselves live in roller.css beside the
                          other .editor-* rules. --%>
-                    <div class="row mb-3">
-                        <span class="col-sm-3 col-form-label"><spring:message code="weblogEdit.snippetPreview"/></span>
-                        <div class="col-sm-9">
-                            <div id="seo_snippet_preview" class="border rounded p-2 bg-body">
-                                <div id="seo_snippet_title" class="seo-snippet-title"></div>
-                                <div id="seo_snippet_url" class="seo-snippet-url"><c:choose><c:when test="${actionName == 'entryEdit'}">${urls.entry(entry)}</c:when><c:otherwise>${urls.weblogAbsolute(actionWeblog)}<spring:message code="weblogEdit.snippetPreview.placeholderSlug"/></c:otherwise></c:choose></div>
-                                <div id="seo_snippet_description" class="seo-snippet-description"></div>
-                            </div>
+                    <div class="editor-seo-group">
+                        <span class="editor-field-label"><spring:message code="weblogEdit.snippetPreview"/></span>
+                        <div id="seo_snippet_preview" class="border rounded p-2 bg-body">
+                            <div id="seo_snippet_title" class="seo-snippet-title"></div>
+                            <div id="seo_snippet_url" class="seo-snippet-url"><c:choose><c:when test="${actionName == 'entryEdit'}">${urls.entry(entry)}</c:when><c:otherwise>${urls.weblogAbsolute(actionWeblog)}<spring:message code="weblogEdit.snippetPreview.placeholderSlug"/></c:otherwise></c:choose></div>
+                            <div id="seo_snippet_description" class="seo-snippet-description"></div>
                         </div>
                     </div>
 
                     <%-- featured image --%>
-                    <div class="row mb-3" role="group" aria-labelledby="seo_featuredImage_label">
-                        <span class="col-sm-3 col-form-label" id="seo_featuredImage_label"><spring:message code="weblogEdit.featuredImage"/></span>
-                        <div class="col-sm-9">
-                            <input type="hidden" id="seo_featuredImageId" name="bean.featuredImageId" value="${bean.featuredImageId}"/>
-                            <div class="mb-2">
-                                <img id="seo_featuredImage_preview" src="${featuredImageThumbnailUrl}" alt=""
-                                     style="max-height:120px;${empty featuredImageThumbnailUrl ? 'display:none;' : ''}"/>
-                            </div>
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="openImagePicker('featuredImage')"><spring:message code="weblogEdit.chooseImage"/></button>
-                            <button type="button" class="btn btn-outline-danger btn-sm" id="seo_featuredImage_clear"
-                                    style="${empty bean.featuredImageId ? 'display:none;' : ''}"
-                                    onclick="clearPickedImage('featuredImage')"><spring:message code="weblogEdit.clearImage"/></button>
+                    <div class="editor-seo-group" role="group" aria-labelledby="seo_featuredImage_label">
+                        <span class="editor-field-label" id="seo_featuredImage_label"><spring:message code="weblogEdit.featuredImage"/></span>
+                        <input type="hidden" id="seo_featuredImageId" name="bean.featuredImageId" value="${bean.featuredImageId}"/>
+                        <div class="mb-2">
+                            <img id="seo_featuredImage_preview" src="${featuredImageThumbnailUrl}" alt=""
+                                 style="max-height:120px;${empty featuredImageThumbnailUrl ? 'display:none;' : ''}"/>
                         </div>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="openImagePicker('featuredImage')"><spring:message code="weblogEdit.chooseImage"/></button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" id="seo_featuredImage_clear"
+                                style="${empty bean.featuredImageId ? 'display:none;' : ''}"
+                                onclick="clearPickedImage('featuredImage')"><spring:message code="weblogEdit.clearImage"/></button>
                     </div>
 
                     <%-- social share (Open Graph) image; when unset the featured image is used --%>
-                    <div class="row mb-3" role="group" aria-labelledby="seo_ogImage_label">
-                        <span class="col-sm-3 col-form-label" id="seo_ogImage_label"><spring:message code="weblogEdit.ogImage"/></span>
-                        <div class="col-sm-9">
-                            <input type="hidden" id="seo_ogImageId" name="bean.ogImageId" value="${bean.ogImageId}"/>
-                            <div class="mb-2">
-                                <img id="seo_ogImage_preview" src="${ogImageThumbnailUrl}" alt=""
-                                     style="max-height:120px;${empty ogImageThumbnailUrl ? 'display:none;' : ''}"/>
-                            </div>
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="openImagePicker('ogImage')"><spring:message code="weblogEdit.chooseImage"/></button>
-                            <button type="button" class="btn btn-outline-danger btn-sm" id="seo_ogImage_clear"
-                                    style="${empty bean.ogImageId ? 'display:none;' : ''}"
-                                    onclick="clearPickedImage('ogImage')"><spring:message code="weblogEdit.clearImage"/></button>
+                    <div class="editor-seo-group" role="group" aria-labelledby="seo_ogImage_label">
+                        <span class="editor-field-label" id="seo_ogImage_label"><spring:message code="weblogEdit.ogImage"/></span>
+                        <input type="hidden" id="seo_ogImageId" name="bean.ogImageId" value="${bean.ogImageId}"/>
+                        <div class="mb-2">
+                            <img id="seo_ogImage_preview" src="${ogImageThumbnailUrl}" alt=""
+                                 style="max-height:120px;${empty ogImageThumbnailUrl ? 'display:none;' : ''}"/>
                         </div>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="openImagePicker('ogImage')"><spring:message code="weblogEdit.chooseImage"/></button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" id="seo_ogImage_clear"
+                                style="${empty bean.ogImageId ? 'display:none;' : ''}"
+                                onclick="clearPickedImage('ogImage')"><spring:message code="weblogEdit.clearImage"/></button>
                     </div>
 
                     <%-- canonical URL override --%>
-                    <div class="row mb-3">
-                        <label class="col-sm-3 col-form-label" for="seo_canonicalUrl"><spring:message code="weblogEdit.canonicalUrl"/></label>
-                        <div class="col-sm-9">
-                            <input type="text" id="seo_canonicalUrl" name="bean.canonicalUrl" value="${fn:escapeXml(bean.canonicalUrl)}" maxlength="255" class="form-control"/>
-                        </div>
-                    </div>
+                    <label class="editor-field-label" for="seo_canonicalUrl"><spring:message code="weblogEdit.canonicalUrl"/></label>
+                    <input type="text" id="seo_canonicalUrl" name="bean.canonicalUrl" value="${fn:escapeXml(bean.canonicalUrl)}" maxlength="255" class="form-control"/>
 
                     <%-- noindex --%>
-                    <div class="row mb-3">
-                        <div class="offset-sm-3 col-sm-9">
-                            <div class="form-check">
-                                <label class="form-check-label"><input type="checkbox" class="form-check-input" id="seo_noindex" name="bean.noindex" value="true" ${bean.noindex ? 'checked' : ''}/> <spring:message code="weblogEdit.noindex"/></label>
-                            </div>
+                    <div class="editor-seo-check">
+                        <div class="form-check">
+                            <label class="form-check-label"><input type="checkbox" class="form-check-input" id="seo_noindex" name="bean.noindex" value="true" ${bean.noindex ? 'checked' : ''}/> <spring:message code="weblogEdit.noindex"/></label>
                         </div>
                     </div>
 
@@ -406,19 +403,17 @@
                          on a weblog that has comments on, to a member who may moderate
                          (the controller counts only for them). It counts top-level
                          comments, as the entry page's heading does. --%>
-                    <div class="row mb-3">
-                        <div class="offset-sm-3 col-sm-9">
-                            <div class="form-check">
-                                <label class="form-check-label"><input type="checkbox" class="form-check-input" id="comments_closed" name="bean.commentsClosed" value="true" ${bean.commentsClosed ? 'checked' : ''}/> <spring:message code="weblogEdit.commentsClosed"/></label>
-                            </div>
-                            <c:if test="${actionWeblog.commentsEnabled and not empty bean.id and not empty commentsPublished}">
-                                <c:url value="/roller-ui/authoring/comments.rol" var="entryCommentsUrl">
-                                    <c:param name="weblog" value="${actionWeblog.handle}"/>
-                                    <c:param name="entry" value="${bean.id}"/>
-                                </c:url>
-                                <a class="small" id="entryCommentCounts" href="${entryCommentsUrl}"><spring:message code="weblogEdit.commentCounts" arguments="${commentsPublished},${commentsPending}"/></a>
-                            </c:if>
+                    <div class="editor-seo-check">
+                        <div class="form-check">
+                            <label class="form-check-label"><input type="checkbox" class="form-check-input" id="comments_closed" name="bean.commentsClosed" value="true" ${bean.commentsClosed ? 'checked' : ''}/> <spring:message code="weblogEdit.commentsClosed"/></label>
                         </div>
+                        <c:if test="${actionWeblog.commentsEnabled and not empty bean.id and not empty commentsPublished}">
+                            <c:url value="/roller-ui/authoring/comments.rol" var="entryCommentsUrl">
+                                <c:param name="weblog" value="${actionWeblog.handle}"/>
+                                <c:param name="entry" value="${bean.id}"/>
+                            </c:url>
+                            <a class="small" id="entryCommentCounts" href="${entryCommentsUrl}"><spring:message code="weblogEdit.commentCounts" arguments="${commentsPublished},${commentsPending}"/></a>
+                        </c:if>
                     </div>
 
                     <%-- structured data: the schema.org type this entry's head declares.
@@ -426,61 +421,37 @@
                          updateSeoJsonLdRows() and stay in the DOM when hidden, so
                          switching type never silently drops dates the author
                          already entered. --%>
-                    <div class="row mb-3">
-                        <label class="col-sm-3 col-form-label" for="seo_jsonldType"><spring:message code="weblogEdit.jsonLdType"/></label>
-                        <div class="col-sm-9">
-                            <select id="seo_jsonldType" name="bean.jsonLdType" class="form-select">
-                                <option value="BLOG_POSTING" ${empty bean.jsonLdType or bean.jsonLdType == 'BLOG_POSTING' ? 'selected' : ''}><spring:message code="weblogEdit.jsonLdType.blogPosting"/></option>
-                                <option value="TOURIST_ATTRACTION" ${bean.jsonLdType == 'TOURIST_ATTRACTION' ? 'selected' : ''}><spring:message code="weblogEdit.jsonLdType.touristAttraction"/></option>
-                                <option value="TOURIST_TRIP" ${bean.jsonLdType == 'TOURIST_TRIP' ? 'selected' : ''}><spring:message code="weblogEdit.jsonLdType.touristTrip"/></option>
-                                <option value="EVENT" ${bean.jsonLdType == 'EVENT' ? 'selected' : ''}><spring:message code="weblogEdit.jsonLdType.event"/></option>
-                                <option value="FAQ_PAGE" ${bean.jsonLdType == 'FAQ_PAGE' ? 'selected' : ''}><spring:message code="weblogEdit.jsonLdType.faqPage"/></option>
-                            </select>
-                            <div class="form-text"><spring:message code="weblogEdit.jsonLdType.tip"/></div>
-                        </div>
-                    </div>
+                    <label class="editor-field-label" for="seo_jsonldType"><spring:message code="weblogEdit.jsonLdType"/></label>
+                    <select id="seo_jsonldType" name="bean.jsonLdType" class="form-select">
+                        <option value="BLOG_POSTING" ${empty bean.jsonLdType or bean.jsonLdType == 'BLOG_POSTING' ? 'selected' : ''}><spring:message code="weblogEdit.jsonLdType.blogPosting"/></option>
+                        <option value="TOURIST_ATTRACTION" ${bean.jsonLdType == 'TOURIST_ATTRACTION' ? 'selected' : ''}><spring:message code="weblogEdit.jsonLdType.touristAttraction"/></option>
+                        <option value="TOURIST_TRIP" ${bean.jsonLdType == 'TOURIST_TRIP' ? 'selected' : ''}><spring:message code="weblogEdit.jsonLdType.touristTrip"/></option>
+                        <option value="EVENT" ${bean.jsonLdType == 'EVENT' ? 'selected' : ''}><spring:message code="weblogEdit.jsonLdType.event"/></option>
+                        <option value="FAQ_PAGE" ${bean.jsonLdType == 'FAQ_PAGE' ? 'selected' : ''}><spring:message code="weblogEdit.jsonLdType.faqPage"/></option>
+                    </select>
+                    <div class="form-text"><spring:message code="weblogEdit.jsonLdType.tip"/></div>
 
                     <%-- coordinates: a TouristAttraction's geo, and the default centre
                          for a bare [map]. Always shown, because the [map] use has
                          nothing to do with the structured-data type -- an ordinary
                          blog post may well want a map of where it happened. --%>
                     <div id="seo_row_geo">
-                        <div class="row mb-3">
-                            <label class="col-sm-3 col-form-label" for="seo_geoLatitude"><spring:message code="weblogEdit.geoLatitude"/></label>
-                            <div class="col-sm-9">
-                                <input type="number" step="any" min="-90" max="90" id="seo_geoLatitude" name="bean.geoLatitude" value="${bean.geoLatitude}" class="form-control"/>
-                            </div>
-                        </div>
-                        <div class="row mb-3">
-                            <label class="col-sm-3 col-form-label" for="seo_geoLongitude"><spring:message code="weblogEdit.geoLongitude"/></label>
-                            <div class="col-sm-9">
-                                <input type="number" step="any" min="-180" max="180" id="seo_geoLongitude" name="bean.geoLongitude" value="${bean.geoLongitude}" class="form-control"/>
-                                <div class="form-text"><spring:message code="weblogEdit.geoCoordinates.tip"/></div>
-                            </div>
-                        </div>
+                        <label class="editor-field-label" for="seo_geoLatitude"><spring:message code="weblogEdit.geoLatitude"/></label>
+                        <input type="number" step="any" min="-90" max="90" id="seo_geoLatitude" name="bean.geoLatitude" value="${bean.geoLatitude}" class="form-control"/>
+                        <label class="editor-field-label" for="seo_geoLongitude"><spring:message code="weblogEdit.geoLongitude"/></label>
+                        <input type="number" step="any" min="-180" max="180" id="seo_geoLongitude" name="bean.geoLongitude" value="${bean.geoLongitude}" class="form-control"/>
+                        <div class="form-text"><spring:message code="weblogEdit.geoCoordinates.tip"/></div>
                     </div>
 
                     <%-- event schedule and venue --%>
                     <div id="seo_row_event" style="${bean.jsonLdType == 'EVENT' ? '' : 'display:none;'}">
-                        <div class="row mb-3">
-                            <label class="col-sm-3 col-form-label" for="seo_eventStart"><spring:message code="weblogEdit.eventStart"/></label>
-                            <div class="col-sm-9">
-                                <input type="datetime-local" id="seo_eventStart" name="bean.eventStartLocal" value="${fn:escapeXml(bean.eventStartLocal)}" class="form-control"/>
-                                <div class="form-text"><spring:message code="weblogEdit.eventStart.tip"/></div>
-                            </div>
-                        </div>
-                        <div class="row mb-3">
-                            <label class="col-sm-3 col-form-label" for="seo_eventEnd"><spring:message code="weblogEdit.eventEnd"/></label>
-                            <div class="col-sm-9">
-                                <input type="datetime-local" id="seo_eventEnd" name="bean.eventEndLocal" value="${fn:escapeXml(bean.eventEndLocal)}" class="form-control"/>
-                            </div>
-                        </div>
-                        <div class="row mb-3">
-                            <label class="col-sm-3 col-form-label" for="seo_eventLocation"><spring:message code="weblogEdit.eventLocation"/></label>
-                            <div class="col-sm-9">
-                                <input type="text" id="seo_eventLocation" name="bean.eventLocation" value="${fn:escapeXml(bean.eventLocation)}" maxlength="255" class="form-control"/>
-                            </div>
-                        </div>
+                        <label class="editor-field-label" for="seo_eventStart"><spring:message code="weblogEdit.eventStart"/></label>
+                        <input type="datetime-local" id="seo_eventStart" name="bean.eventStartLocal" value="${fn:escapeXml(bean.eventStartLocal)}" class="form-control"/>
+                        <div class="form-text"><spring:message code="weblogEdit.eventStart.tip"/></div>
+                        <label class="editor-field-label" for="seo_eventEnd"><spring:message code="weblogEdit.eventEnd"/></label>
+                        <input type="datetime-local" id="seo_eventEnd" name="bean.eventEndLocal" value="${fn:escapeXml(bean.eventEndLocal)}" class="form-control"/>
+                        <label class="editor-field-label" for="seo_eventLocation"><spring:message code="weblogEdit.eventLocation"/></label>
+                        <input type="text" id="seo_eventLocation" name="bean.eventLocation" value="${fn:escapeXml(bean.eventLocation)}" maxlength="255" class="form-control"/>
                     </div>
 
                 </div>
@@ -522,7 +493,9 @@
             </c:when>
             <c:when test="${empty actionWeblog.newsletterListUuid}">
                 <p class="pagetip" id="newsletterNoList">
-                    <spring:message code="newsletter.noList"/>
+                    <%-- &#32;: the JSP config trims whitespace-only text, which
+                         glued the sentence to its link. --%>
+                    <spring:message code="newsletter.noList"/>&#32;
                     <c:url value="/roller-ui/authoring/weblogConfig.rol" var="newsletterWeblogConfigUrl">
                         <c:param name="weblog" value="${actionWeblog.handle}"/>
                     </c:url>
@@ -588,8 +561,8 @@
          permanent SyntaxError. See the delegated handler below (same
          convention as MediaFileView.jsp:493). --%>
     <button type="button" id="deleteEntryButton" class="delete-link editor-rail-extra"
-            data-entry-id="${entry.id}" data-entry-title="${fn:escapeXml(entry.title)}"
-            aria-label="<spring:message code='weblogEdit.deleteEntry'/>: ${fn:escapeXml(entry.title)}"><spring:message code="weblogEdit.deleteEntry"/></button>
+            data-entry-id="${entry.id}" data-entry-title="${fn:escapeXml(bean.title)}"
+            aria-label="<spring:message code='weblogEdit.deleteEntry'/>: ${fn:escapeXml(bean.title)}"><spring:message code="weblogEdit.deleteEntry"/></button>
 </c:if>
 
 </div><%-- /editor-grid --%>
@@ -622,7 +595,7 @@
                          reading order IS the markup order (task B7). --%>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                            <spring:message code="generic.no"/>
+                            <spring:message code="generic.cancel"/>
                         </button>
                         <button type="submit" class="btn btn-primary" id="confirmSendNewsletterButton"
                                 data-busy-label="<spring:message code='newsletter.sending'/>">
@@ -666,6 +639,7 @@
         #revisionDiffBody .diff-added { background-color: color-mix(in srgb, var(--good) 15%, var(--surface)); display: block; }
         #revisionDiffBody .diff-removed { background-color: color-mix(in srgb, var(--bad) 15%, var(--surface)); display: block; }
         #revisionDiffBody .diff-same { color: var(--ink-soft); display: block; }
+        #revisionDiffBody .revision-diff-same { margin: 0; color: var(--ink-soft); }
     </style>
 
     <script>
@@ -675,7 +649,7 @@
         $(function () {
             $(".revision-diff-button").on('click', function () {
                 var revisionId = this.dataset.revisionId;
-                $("#revisionDiffBody").text('<spring:message code="weblogEdit.previewLoading"/>');
+                $("#revisionDiffBody").text('<spring:message code="weblogEdit.previewLoading" javaScriptEscape="true"/>');
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('revision-diff-modal')).show();
                 $.ajax({
                     type: 'POST',
@@ -688,7 +662,7 @@
                     },
                     success: function (html) { $("#revisionDiffBody").html(html); },
                     error: function () {
-                        $("#revisionDiffBody").text('<spring:message code="weblogEdit.previewFailed"/>');
+                        $("#revisionDiffBody").text('<spring:message code="weblogEdit.previewFailed" javaScriptEscape="true"/>');
                     }
                 });
             });
@@ -703,7 +677,11 @@
 
 <div id="delete-entry-modal" class="modal delete-entry-modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="delete-entry-modal-title">
 
-    <div class="modal-dialog modal-lg">
+    <%-- Default size: a two-line confirm needs no large dialog. Delete moves
+         the entry to the trash, so the title and the action button say that
+         rather than "Delete" and "Yes". The entry's internal id is not shown:
+         it is the form's business, not the author's. --%>
+    <div class="modal-dialog">
 
         <div class="modal-content">
 
@@ -720,30 +698,14 @@
                      it introduces. --%>
                 <div class="modal-header">
                     <p id="delete-entry-modal-title" class="modal-title"><spring:message code="weblogEntryRemove.removeWeblogEntry"/></p>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<spring:message code='generic.close'/>"></button>
                 </div>
 
+                <%-- The same shape as the list screen's delete modal
+                     (Entries.jsp): the title, then the sentence. --%>
                 <div class="modal-body">
-
-                    <p><spring:message code="weblogEntryRemove.areYouSure"/></p>
-
-                    <div class="row mb-3">
-                        <span class="col-sm-3 col-form-label">
-                            <spring:message code="weblogEntryRemove.entryTitle"/>
-                        </span>
-                        <div class="col-sm-9">
-                            <p class="form-control-plaintext" id="postTitleLabel"></p>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <span class="col-sm-3 col-form-label">
-                            <spring:message code="weblogEntryRemove.entryId"/>
-                        </span>
-                        <div class="col-sm-9">
-                            <p class="form-control-plaintext" id="postIdLabel"></p>
-                        </div>
-                    </div>
-
+                    <p><strong id="postTitleLabel"></strong></p>
+                    <p class="mb-0"><spring:message code="weblogEntryRemove.areYouSure"/></p>
                 </div>
 
                 <%-- Dismiss first, destructive last: Bootstrap packs a
@@ -751,9 +713,9 @@
                      order IS the markup order (task B7). --%>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <spring:message code="generic.no"/>
+                        <spring:message code="generic.cancel"/>
                     </button>
-                    <button type="submit" class="btn btn-danger"><spring:message code="generic.yes"/></button>
+                    <button type="submit" class="btn btn-danger"><spring:message code="weblogEntryRemove.moveToTrash"/></button>
                 </div>
 
             <sec:csrfInput/>
@@ -775,7 +737,6 @@
 
 
     function showDeleteModal(postId, postTitle) {
-        $('#postIdLabel').html(postId);
         $('#postTitleLabel').text(postTitle);
         $('#removeId').val(postId);
         bootstrap.Modal.getOrCreateInstance(document.getElementById('delete-entry-modal')).show();

@@ -36,6 +36,13 @@
 <%-- The shared guide's Ctrl+Enter row reads this key -- Post here, Save on
      the page editor, which has no separate publish action. --%>
 <c:set var="editorPrimaryActionKey" scope="request" value="weblogEdit.post"/>
+<%-- A new entry has no row yet, so the status line must not open on "Saved". --%>
+<c:set var="editorNotYetSaved" scope="request" value="${empty bean.id}"/>
+<%-- On a live entry Ctrl+S updates it rather than unpublishing (see the
+     Publish box in EntryEdit.jsp), and the guide says so. --%>
+<c:if test="${userAnAuthor and bean.published}">
+    <c:set var="editorSaveActionKey" scope="request" value="weblogEdit.update"/>
+</c:if>
 
 <jsp:include page="/WEB-INF/jsps/editor/EditorSurface.jsp"/>
 
@@ -44,12 +51,16 @@
      enclosing .editor-box -- this one sits in the main column, not the
      rail. --%>
 
-<a class="editor-drawer collapsed" data-bs-toggle="collapse" data-bs-target="#collapseSummaryEditor" href="#">
+<%-- A button, not an href="#" anchor: it toggles, it goes nowhere. The
+     textarea is named for itself, since the toggle above is no label. --%>
+<button type="button" class="editor-drawer collapsed" data-bs-toggle="collapse" data-bs-target="#collapseSummaryEditor"
+        aria-expanded="false" aria-controls="collapseSummaryEditor">
     <spring:message code="weblogEdit.summary"/>
-</a>
+</button>
 <div id="collapseSummaryEditor" class="collapse">
     <div class="editor-drawer-body">
-        <textarea name="bean.summary" id="edit_summary" rows="10" class="col-sm-12">${fn:escapeXml(bean.summary)}</textarea>
+        <textarea name="bean.summary" id="edit_summary" rows="10" class="col-sm-12"
+                  aria-label="<spring:message code='weblogEdit.summary'/>">${fn:escapeXml(bean.summary)}</textarea>
     </div>
 </div>
 
@@ -67,9 +78,11 @@
          Click the real buttons rather than submitting the form: the buttons
          carry the formaction that decides draft-vs-publish, and a bare
          form.submit() would post to the form's own action and silently pick
-         the wrong one. --%>
+         the wrong one. Ctrl+S clicks whichever button EntryEdit.jsp marks:
+         Save draft, or Update on a published entry, where Save draft would
+         unpublish it. --%>
     function rollerSaveDraft() {
-        var button = document.querySelector("#entry button[formaction$='saveDraft.rol']");
+        var button = document.querySelector("#entry button[data-save-shortcut]");
         if (button) {
             button.click();
         }

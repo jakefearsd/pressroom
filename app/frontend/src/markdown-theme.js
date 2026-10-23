@@ -20,7 +20,6 @@ export const rollerTheme = EditorView.theme({
   '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
     backgroundColor: 'var(--accent-quiet)'
   },
-  '.cm-activeLine': { backgroundColor: 'transparent' },
   '.cm-gutters': { display: 'none' },
   '.cm-placeholder': { color: 'var(--ink-soft)', fontStyle: 'normal' },
   '.cm-scroller': { fontFamily: 'inherit', overflow: 'auto' },

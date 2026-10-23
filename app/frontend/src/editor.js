@@ -1,6 +1,6 @@
 import { EditorState, Prec } from '@codemirror/state';
 import { EditorView, keymap, placeholder as placeholderExt, drawSelection,
-         dropCursor, highlightActiveLine, ViewPlugin, Decoration } from '@codemirror/view';
+         dropCursor, ViewPlugin, Decoration } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { markdown, markdownLanguage, markdownKeymap } from '@codemirror/lang-markdown';
 import { bracketMatching } from '@codemirror/language';
@@ -9,6 +9,7 @@ import { search, searchKeymap } from '@codemirror/search';
 import { rollerTheme, rollerHighlighting } from './markdown-theme.js';
 import { shortcodeRanges } from './shortcodes.js';
 import { wordCount, readingMinutes } from './stats.js';
+import { hostBindings } from './keys.js';
 
 const shortcodeMark = Decoration.mark({ class: 'roller-shortcode' });
 
@@ -64,35 +65,14 @@ function fileHandler(onUpload) {
   });
 }
 
-/* Save / publish / guide are bound INSIDE the editor, above defaultKeymap,
-   because defaultKeymap already claims two of the three: Mod-Enter is
-   insertBlankLine and Mod-/ is toggleComment. Leaving them to the host page's
-   document-level keydown handler does not work -- a default binding that runs
-   calls preventDefault WITHOUT stopPropagation, so the event still reaches
-   document, where that handler deliberately bails on an already-handled
-   event. (It has to: the bail is what stops one Ctrl+S being served twice.)
-
-   Returning true here is the other half of the same contract: CodeMirror
-   preventDefaults the key, the document handler stands down, and the shortcut
-   fires exactly once. A key the host supplied no callback for returns false
-   instead of swallowing it, so the editor's own default still applies. */
-function hostKeymap(options) {
-  const bind = (handler) => () => {
-    if (!handler) return false;
-    handler();
-    return true;
-  };
-  return Prec.highest(keymap.of([
-    { key: 'Mod-s', run: bind(options.onSave) },
-    { key: 'Mod-Enter', run: bind(options.onPublish) },
-    { key: 'Mod-/', run: bind(options.onHelp) }
-  ]));
-}
-
 export function create(options) {
   const textarea = options.textarea;
   const shortcodes = options.shortcodes || [];
   const names = shortcodes.map((s) => s.name);
+  /* The contenteditable is what assistive technology lands on, and the
+     labelled textarea it replaces is hidden -- so the textarea's own name
+     moves across with it. */
+  const label = options.label || textarea.getAttribute('aria-label') || '';
   const changeListener = EditorView.updateListener.of((update) => {
     if (update.docChanged) {
       textarea.value = update.state.doc.toString();
@@ -106,7 +86,6 @@ export function create(options) {
       history(),
       drawSelection(),
       dropCursor(),
-      highlightActiveLine(),
       bracketMatching(),
       closeBrackets(),
       search({ top: true }),
@@ -114,11 +93,13 @@ export function create(options) {
       rollerHighlighting,
       rollerTheme,
       EditorView.lineWrapping,
+      EditorView.contentAttributes.of({ 'aria-label': label }),
       placeholderExt(options.placeholder || ''),
       shortcodePlugin(names),
       shortcodeCompletion(shortcodes),
       fileHandler(options.onUpload),
-      hostKeymap(options),
+      /* Above defaultKeymap: see keys.js for why each key is here. */
+      Prec.highest(keymap.of(hostBindings(options))),
       keymap.of([...markdownKeymap, ...searchKeymap, ...historyKeymap, ...defaultKeymap, indentWithTab]),
       changeListener
     ]
