@@ -23,6 +23,7 @@
 <c:choose>
     <c:when test="${not empty tokens}">
         <spring:message code="apiTokens.revoke.confirm" var="revokeConfirm"/>
+        <div class="table-responsive">
         <table class="rollertable table" id="tokenListTable">
             <tr>
                 <th scope="col"><spring:message code="apiTokens.label"/></th>
@@ -72,6 +73,7 @@
                 </tr>
             </c:forEach>
         </table>
+        </div>
     </c:when>
     <c:otherwise>
         <div class="empty-state" id="tokenListEmpty">
