@@ -18,63 +18,45 @@
 #*
  Whole-page Velocity render error.
 
- This is what a reader gets, at HTTP 200, on a public weblog whose theme
- blew up. It used to print the exception message, the template that threw,
- and the exception class name -- exactly the detail
- roller-ui/errors/error.jsp refuses to show for the same class of failure
- ("neither the exception message nor its class name is for a reader to
- see"). The detail belongs in the server log, which is untouched; the reader
- gets the same neutral wording error.jsp uses. Pinned by
- VelocityErrorTemplateTest.
+ What a reader gets on a public weblog whose template would not load. It is
+ sent as HTTP 500 and never cached (VelocityRenderer.renderedError and
+ RenderingServletUtils.renderAndFlush; RenderErrorStatusTest). It shows no
+ exception detail -- that goes to the server log -- only the same calm card,
+ palette and wording as roller-ui/errors/error.jsp, in light and dark.
+ Pinned by VelocityErrorTemplateTest.
 *#
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>$text.get("errorPage.title")</title>
     <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <title>$text.get("errorPage.title")</title>
     <style>
-      a {text-decoration: none;}
-      .bannerStatusBox a, .bannerStatusBox a {font-weight: bold;}
-      .bannerLeft {padding: 4px 15px 4px 10px;}
-      .bannerRight {padding: 4px 10px 4px 15px;text-align: right;}
-      .bannerBox {width: 100%;background: #f00;} 
-      #banner {margin: 0px;padding: 0px 0px 0px 0px;}
-      .bannerStatusBox {width: 100%;border: grey 1px solid;}
-      .bannerStatusBox {background: none repeat scroll 0 0 #AD3431;color: white;}
-      .bannerStatusBox a {color: white;}
-      .bannerStatusBox a:link {color: white;}
-      .bannerStatusBox a:visited {color: white;}
-      span.error {display: block;background-color: #fcc;color: #c00;border: 1px solid red;margin: 25px 0px;padding: 10px;font-weight: bold;}
-      span.error ul {list-style-type: none;margin-top: 0px;margin-left: 0;margin-bottom: 0;padding: 3px;}
+      :root { color-scheme: light dark; --paper: #F7F9F9; --surface: #FFFFFF; --ink: #17262A;
+        --ink-soft: #5A6E72; --line: #DCE4E4; --accent: #0F6E68; }
+      @media (prefers-color-scheme: dark) {
+        :root { --paper: #131C1C; --surface: #1A2626; --ink: #DCE7E5;
+          --ink-soft: #8FA5A2; --line: #2A3838; --accent: #4FB3AA; }
+      }
+      body { margin: 0; padding: 4rem 1rem; background: var(--paper); color: var(--ink);
+        font-family: "IBM Plex Sans", system-ui, sans-serif; line-height: 1.5; }
+      .box { max-width: 32rem; margin: 0 auto; padding: 1.5rem; background: var(--surface);
+        border: 1px solid var(--line); border-radius: 6px; }
+      .code { margin: 0 0 .5rem; font-size: 12px; font-weight: 600; letter-spacing: .08em;
+        text-transform: uppercase; color: var(--ink-soft); }
+      h1 { margin: 0 0 .5rem; font-size: 1.25rem; font-weight: 600; }
+      p { margin: 0 0 .75rem; color: var(--ink-soft); }
+      a { color: var(--accent); font-weight: 600; }
     </style>
-  </head>
-  <!-- error-page -->
-  <body>
-
-    <div id="banner">
-      <div id="bannerStatusBox">
-          <table class="bannerStatusBox" cellpadding="0" cellspacing="0">
-            <tr>
-                <td class="bannerLeft"></td>
-                <td class="bannerRight">
-                   <a href="$url.absoluteSite">$config.siteName</a>
-                </td>
-            </tr>
-        </table>
-      </div>
-    </div>
-
-    <div style="padding: 15px 25px 25px 25px">
-      <h2 class="error">$text.get("errorPage.title")</h2>
-      <span class="error">
-        <ul>
-          <li>$text.get("errorPage.message")</li>
-          <li>Please try again, and contact your site administrator if the problem continues.</li>
-        </ul>
-      </span>
-    </div>
-
-  </body>
+</head>
+<!-- error-page -->
+<body>
+    <main class="box">
+        <p class="code">500</p>
+        <h1>$text.get("errorPage.title")</h1>
+        <p>$text.get("errorPage.message")</p>
+        <p><a href="$url.absoluteSite">$config.siteName</a></p>
+    </main>
+</body>
 </html>

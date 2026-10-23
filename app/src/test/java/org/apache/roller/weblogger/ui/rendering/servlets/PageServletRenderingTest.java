@@ -118,6 +118,26 @@ class PageServletRenderingTest {
                 "the raw shortcode text must not leak to readers:\n" + body);
     }
 
+    /**
+     * The container's 404 page offered only "Return to the home page", the
+     * site root, to a reader who had been on a weblog. A 404 decided inside a
+     * weblog now leaves that weblog's name and address on the request, where
+     * 404.jsp offers "Back to" it.
+     */
+    @Test
+    void aNotFoundInsideAWeblogLeavesTheWeblogForTheErrorPage() throws Exception {
+        MockHttpServletRequest request = RenderingTestSupport
+                .anonymousGet("/roller-ui/rendering/page", "/pagerenderblog/entry/no-such-entry");
+        MockHttpServletResponse response = RenderingTestSupport
+                .execute(RenderingTestSupport.pageServlet(), request);
+
+        assertEquals(404, response.getStatus());
+        assertEquals("Test Weblog", request.getAttribute(PageServlet.NOT_FOUND_WEBLOG_NAME));
+        assertTrue(String.valueOf(request.getAttribute(PageServlet.NOT_FOUND_WEBLOG_URL))
+                        .endsWith("/pagerenderblog/"),
+                "the weblog's own address: " + request.getAttribute(PageServlet.NOT_FOUND_WEBLOG_URL));
+    }
+
     @Test
     void draftEntryPermalinkIsNotFound() throws Exception {
         Weblog managed = TestUtils.getManagedWebsite(weblog);
@@ -266,7 +286,7 @@ class PageServletRenderingTest {
 
         assertEquals(200, response.getStatus());
         String body = response.getContentAsString();
-        assertTrue(body.contains("title=\"Entries tagged travel (Atom)\""),
+        assertTrue(body.contains("title=\"Test Weblog — tagged travel\""),
                 "the tag feed's discovery title must read as prose, not as a "
                         + "Java List.toString():\n" + body);
         assertFalse(body.contains("tagged [travel]"),
@@ -296,7 +316,7 @@ class PageServletRenderingTest {
 
         assertEquals(200, response.getStatus());
         String body = response.getContentAsString();
-        assertTrue(body.contains("title=\"Entries for category Tools &amp; Toys (Atom)\""),
+        assertTrue(body.contains("title=\"Test Weblog — Tools &amp; Toys\""),
                 "the category feed's discovery title must escape the raw "
                         + "wrapper value:\n" + body);
     }

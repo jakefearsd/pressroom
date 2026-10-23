@@ -32,7 +32,9 @@ These are the documented macros in order defined in this file:
     #showGalleryAssets()
     #showMapAssets()
     #showEmbedAssets()
+    #showContentAssets()
     #showAudienceAssets()
+    #showPreviewShellScript()
 
     #showWeblogEntriesPager($pager)
     #showNextPrevEntriesControl($pager)
@@ -42,17 +44,18 @@ These are the documented macros in order defined in this file:
     #showPageLinks($weblog)
     #showAtomFeedsList($weblog)                      [custom-theme API]
 
-    #showPageMenu($weblog)
-    #showAuthorMenu($vertical)
-    #showAdminMenu($vertical)
+    #showPageMenu($weblog)                           [custom-theme API]
+    #showAuthorMenu($vertical)                       [custom-theme API]
+    #showAdminMenu($vertical)                        [custom-theme API]
 
     #showWeblogSearchForm($weblog $showCatChooser)
     #showWeblogSearchAgainForm($weblog)
     #showNextPrevSearchControl($pager)
 
-    #showEntryTags($entry)                           [custom-theme API]
+    #showEntryTags($entry)
     #showSubscribeForm($weblog $prompt)
     #showComments($weblog $entry)
+    #showBusinessCard($weblog $bookLabel)
 
 [custom-theme API] marks a macro no bundled theme calls. They are kept
 deliberately: a weblog switched to WeblogTheme.CUSTOM owns its templates from
@@ -66,7 +69,7 @@ jQuery-Mobile macros (#showMobileNextPrevEntriesControl,
 #showMobileSearchAgainForm, #showMobileNextPrevSearchControl,
 #showMobilePopupDialog). They emitted data-role="popup"/"navbar"/"listview"
 markup for a library this application has never shipped, so they could not
-work for a custom theme either -- unlike the four above, which do. Deleted
+work for a custom theme either -- unlike the ones marked above, which do. Deleted
 with them: #_showCommonJavascript (cookie helpers plus an ActiveXObject
 XMLHttpRequest fallback) and #_Jave. This contents list had spelled the first
 of those #_showCommonJavaScript, a name Velocity's case-sensitive macro
@@ -99,7 +102,10 @@ advertises nothing.
 #macro(showAutodiscoveryLinks $weblog)
     ## main feed urls are always available, except on the search results page
     #if (!$model.searchResults)
-    <link rel="alternate" type="application/atom+xml" title="Recent Entries (Atom)"  href="$url.feed.entries.atom" />
+    ## A feed reader shows this title as the subscription's name, so it is
+    ## the weblog's own name (WeblogWrapper has already escaped it), not a
+    ## generic "Recent Entries" that reads the same for every blog.
+    <link rel="alternate" type="application/atom+xml" title="$model.weblog.name"  href="$url.feed.entries.atom" />
 
     #if ($model.tags)
       ## $model.tags is a List: .toString() put its brackets and separator
@@ -108,12 +114,12 @@ advertises nothing.
       ## double-quoted attribute.
       #set($tagTitle = "")
       #foreach($feedTag in $model.tags)#if($tagTitle != "")#set($tagTitle = "${tagTitle}, ")#end#set($tagTitle = "${tagTitle}${feedTag}")#end
-      <link rel="alternate" type="application/atom+xml" title="Entries tagged $utils.escapeHTML($tagTitle) (Atom)"  href="$url.feed.entries.atomByTags($model.tags, false)" />
+      <link rel="alternate" type="application/atom+xml" title="$text.get("macro.weblog.feed.tagged", [$model.weblog.name, $utils.escapeHTML($tagTitle)])"  href="$url.feed.entries.atomByTags($model.tags, false)" />
     #elseif ($model.weblogCategory)
       ## WeblogCategoryWrapper#getName returns the pojo value raw, so the
       ## escape has to happen here (unlike $model.weblog.name, which the
       ## wrapper has already escaped).
-      <link rel="alternate" type="application/atom+xml" title="Entries for category $utils.escapeHTML($model.weblogCategory.name) (Atom)"  href="$url.feed.entries.atom($model.weblogCategory.name, false)" />
+      <link rel="alternate" type="application/atom+xml" title="$text.get("macro.weblog.feed.category", [$model.weblog.name, $utils.escapeHTML($model.weblogCategory.name)])"  href="$url.feed.entries.atom($model.weblogCategory.name, false)" />
     #end
     #end
 #end
@@ -247,8 +253,21 @@ containing "</script>" cannot terminate the inline JSON-LD block).
         #set($seoTitleAttr = $model.weblog.name)
         #set($seoTitleJson = $utils.escapeJson($model.weblog.pojo.name))
     #end
+    ## A category or tag view is its own page, and its <title> names the
+    ## category or tag; the share card says the same. Only og:title changes:
+    ## the Blog JSON-LD below describes the weblog, whose name this is.
+    #set($seoOgTitle = $seoTitleAttr)
+    #if (!$seoEntry && !$seoPage && !$model.searchResults)
+        #if ($model.tags && !$model.tags.isEmpty())
+            #set($seoOgTags = "")
+            #foreach($seoOgTag in $model.tags)#if($seoOgTags != "")#set($seoOgTags = "${seoOgTags}, ")#end#set($seoOgTags = "${seoOgTags}${seoOgTag}")#end
+            #set($seoOgTitle = "$utils.escapeHTML($seoOgTags) — $model.weblog.name")
+        #elseif ($model.weblogCategory)
+            #set($seoOgTitle = "$utils.escapeHTML($model.weblogCategory.name) — $model.weblog.name")
+        #end
+    #end
     <meta property="og:type" content="#if($seoEntry)article#{else}website#end">
-    <meta property="og:title" content="$seoTitleAttr">
+    <meta property="og:title" content="$seoOgTitle">
     #if ($seoDescription)
     <meta property="og:description" content="$utils.escapeHTML($seoDescription)">
     #end
@@ -630,8 +649,8 @@ small <style> block giving .travel-map a height (a Leaflet container with no
 height renders nothing at all), and a bootstrap script that turns every
 <div class="travel-map"> the shortcode emitted into a real map.
 
-Call it from every theme head, next to #showGalleryAssets -- all 13
-#showSeoHead call sites across the four bundled themes, plus the
+Call it from every theme head, next to #showGalleryAssets -- every head that
+calls #showSeoHead in the four bundled themes, plus the
 templates/weblog/page.vm fallback. Missing one is a silent failure: the div
 still renders and simply never becomes a map. MapAssetsRenderingTest counts
 them, with each theme's own page.vm covered by its own rendering test.
@@ -673,8 +692,9 @@ analytics.umami.basePath, and never author or reader input.
 CSP: every asset is same-origin, Leaflet has no eval/fetch and injects no
 stylesheet, so the themes' policy covers it unchanged except for one thing --
 Leaflet paints aborted and out-of-range tiles with a data: GIF placeholder
-and CSP3's * wildcard does not match data:, which is why all seven declaring
-heads carry `img-src * data:`. Do not add a restrictive Referrer-Policy (the
+and CSP3's * wildcard does not match data:, which is why every head that
+declares a CSP carries `img-src * data:` (MapAssetsRenderingTest counts the
+heads). Do not add a restrictive Referrer-Policy (the
 OSM policy forbids it) or require-trusted-types-for 'script' (Leaflet assigns
 innerHTML in eleven places and would throw).
 
@@ -689,6 +709,8 @@ app/pom.xml -- update both together.
 <style>
 .travel-map { height: 380px; max-width: 100%; margin: 1em 0; }
 .travel-map .leaflet-popup-content { word-break: break-word; }
+.travel-map-pins.is-mapped { position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 </style>
 <script>
 // Leaflet is loaded once per document and then reused; 'idle' until the
@@ -808,6 +830,19 @@ function rollerCreateMap(el) {
   }
   if (!points.length && !center) { return; }
 
+  // A canvas of tiles says nothing to a screen reader: the container is a
+  // named region, and the pin list the shortcode prints for feeds and
+  // no-script readers (ol.travel-map-pins, inside or right after the div)
+  // is kept for assistive technology but hidden from sight once the map
+  // stands in for it.
+  el.setAttribute('role', 'region');
+  el.setAttribute('aria-label', points.length && points[0][2] ? 'Map: ' + points[0][2] : 'Map');
+  var pinList = el.querySelector('.travel-map-pins');
+  if (!pinList && el.nextElementSibling && el.nextElementSibling.classList.contains('travel-map-pins')) {
+    pinList = el.nextElementSibling;
+  }
+  if (pinList) { pinList.classList.add('is-mapped'); }
+
   // A view has to exist before layers are added; fitBounds refines it below.
   var start = center || [points[0][0], points[0][1]];
   var map = L.map(el).setView(start, authorZoom ? zoom : 13);
@@ -858,6 +893,7 @@ frame-src but not connect-src for these hosts.
 .video-embed::after { content: "\25B6"; position: absolute; inset: 0; display: flex;
   align-items: center; justify-content: center; font-size: 3rem; color: #fff;
   text-shadow: 0 0 12px rgba(0,0,0,.7); pointer-events: none; }
+.video-embed:focus-visible { outline: 3px solid currentColor; outline-offset: 2px; }
 .video-embed.is-playing { cursor: default; }
 .video-embed.is-playing::after { display: none; }
 </style>
@@ -871,6 +907,21 @@ function rollerInitEmbeds(root) {
   if (!embeds.length) { return; }
   Array.prototype.forEach.call(embeds, function (embed) {
     embed.dataset.rollerEmbed = '1';
+    // Set here, not by the shortcode: the sanitizer strips these from
+    // authored content. Without them the placeholder is a div with a click
+    // handler, which a keyboard cannot reach and a screen reader cannot name.
+    var figure = embed.closest('figure');
+    var caption = figure ? figure.querySelector('figcaption') : null;
+    var captionText = caption ? caption.textContent.trim() : '';
+    embed.setAttribute('role', 'button');
+    embed.setAttribute('tabindex', '0');
+    embed.setAttribute('aria-label', captionText ? 'Play video: ' + captionText : 'Play video');
+    embed.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        embed.click();
+      }
+    });
     embed.addEventListener('click', function () {
       if (embed.classList.contains('is-playing')) { return; }
       var provider = embed.getAttribute('data-provider');
@@ -887,6 +938,10 @@ function rollerInitEmbeds(root) {
       embed.innerHTML = '';
       embed.appendChild(frame);
       embed.classList.add('is-playing');
+      // the frame is the control now
+      embed.removeAttribute('role');
+      embed.removeAttribute('tabindex');
+      embed.removeAttribute('aria-label');
     });
   });
 }
@@ -1256,6 +1311,14 @@ The hidden "website" field is a honeypot: bots fill every field, humans
 never see it. elapsedMs is a naive-bot timer: the server refuses a submit
 faster than a human could type. Neither is secret; neither needs to be.
 
+Every visible word of the two forms comes from the bundle (audience.*), in
+the weblog's locale, through the rollerAudienceText object below: escaped
+for HTML where it is spliced into a form's markup, and for a JavaScript
+string everywhere. The status line under each form is role="status", so
+"sent" and "failed" are announced, and a 429 (the throttle) and a 400 (a
+field the server refused) each say what they mean rather than "try again
+later".
+
 It also turns the comments slot of the showComments macro into the comment form, in
 the block between the "comments" markers, from the session endpoint (see the
 comment there). That block is pinned by CommentsScriptSourceTest: no markup
@@ -1275,8 +1338,32 @@ Velocity would read as references or directives.
 .audience-message { margin-top: .75em; }
 </style>
 <script>
+var rollerAudienceText = {
+  name: "$utils.escapeJson($utils.escapeHTML($text.get("audience.contact.name")))",
+  email: "$utils.escapeJson($utils.escapeHTML($text.get("audience.email")))",
+  subject: "$utils.escapeJson($utils.escapeHTML($text.get("audience.contact.subject")))",
+  message: "$utils.escapeJson($utils.escapeHTML($text.get("audience.contact.message")))",
+  send: "$utils.escapeJson($utils.escapeHTML($text.get("audience.contact.send")))",
+  subscribe: "$utils.escapeJson($utils.escapeHTML($text.get("audience.subscribe.button")))",
+  sending: "$utils.escapeJson($text.get("audience.contact.sending"))",
+  sent: "$utils.escapeJson($text.get("audience.contact.sent"))",
+  subscribing: "$utils.escapeJson($text.get("audience.subscribe.subscribing"))",
+  subscribed: "$utils.escapeJson($text.get("audience.subscribe.done"))",
+  failed: "$utils.escapeJson($text.get("audience.failed"))",
+  invalid: "$utils.escapeJson($text.get("audience.invalid"))",
+  rateLimited: "$utils.escapeJson($text.get("audience.rateLimited"))"
+};
 document.addEventListener('DOMContentLoaded', function () {
   var loadedAt = Date.now();
+  var words = rollerAudienceText;
+
+  // What a refused submit says: the throttle and a refused field each name
+  // their cause; anything else is the generic failure.
+  function failureText(response) {
+    if (response.status === 429) { return words.rateLimited; }
+    if (response.status === 400) { return words.invalid; }
+    return words.failed;
+  }
 
   function showMessage(container, text) {
     var p = container.querySelector('.audience-message');
@@ -1305,16 +1392,16 @@ document.addEventListener('DOMContentLoaded', function () {
     var form = document.createElement('form');
     form.className = 'contact-form';
     form.innerHTML =
-        '<label>Name <input name="name" required maxlength="255"></label>'
-      + '<label>Email <input type="email" name="email" required maxlength="255" autocomplete="email"></label>'
-      + '<label>Subject <input name="subject" maxlength="255"></label>'
-      + '<label>Message <textarea name="message" required maxlength="4000"></textarea></label>'
+        '<label>' + words.name + ' <input name="name" required maxlength="255" autocomplete="name"></label>'
+      + '<label>' + words.email + ' <input type="email" name="email" required maxlength="255" autocomplete="email"></label>'
+      + '<label>' + words.subject + ' <input name="subject" maxlength="255"></label>'
+      + '<label>' + words.message + ' <textarea name="message" required maxlength="4000"></textarea></label>'
       + '<label class="audience-hp" aria-hidden="true">Website <input name="website" tabindex="-1" autocomplete="off"></label>'
-      + '<button type="submit">Send</button>'
-      + '<p class="audience-message" hidden></p>';
+      + '<button type="submit">' + words.send + '</button>'
+      + '<p class="audience-message" role="status" hidden></p>';
     form.addEventListener('submit', function (e) {
       e.preventDefault();
-      showMessage(form, 'Sending…');
+      showMessage(form, words.sending);
       fetch(endpoint, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -1329,12 +1416,10 @@ document.addEventListener('DOMContentLoaded', function () {
           source: window.location.pathname
         })
       }).then(function (response) {
-        showMessage(form, response.ok
-            ? 'Thanks — your message has been sent.'
-            : 'Sorry, that did not work. Please try again later.');
+        showMessage(form, response.ok ? words.sent : failureText(response));
         if (response.ok) { form.querySelector('button').disabled = true; }
       }).catch(function () {
-        showMessage(form, 'Sorry, that did not work. Please try again later.');
+        showMessage(form, words.failed);
       });
     });
     slot.appendChild(form);
@@ -1347,13 +1432,13 @@ document.addEventListener('DOMContentLoaded', function () {
     var form = document.createElement('form');
     form.className = 'newsletter-subscribe';
     form.innerHTML =
-        '<label>Email <input type="email" name="email" required maxlength="255" autocomplete="email" placeholder="you@example.com"></label>'
+        '<label>' + words.email + ' <input type="email" name="email" required maxlength="255" autocomplete="email" placeholder="you@example.com"></label>'
       + '<label class="audience-hp" aria-hidden="true">Website <input name="website" tabindex="-1" autocomplete="off"></label>'
-      + '<button type="submit">Subscribe</button>'
-      + '<p class="audience-message" hidden></p>';
+      + '<button type="submit">' + words.subscribe + '</button>'
+      + '<p class="audience-message" role="status" hidden></p>';
     form.addEventListener('submit', function (e) {
       e.preventDefault();
-      showMessage(form, 'Subscribing…');
+      showMessage(form, words.subscribing);
       fetch(endpoint, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -1365,10 +1450,9 @@ document.addEventListener('DOMContentLoaded', function () {
         })
       }).then(function (response) {
         showMessage(form, (response.ok || response.status === 409)
-            ? 'Thanks — please check your email to confirm.'
-            : 'Sorry, that did not work. Please try again later.');
+            ? words.subscribed : failureText(response));
       }).catch(function () {
-        showMessage(form, 'Sorry, that did not work. Please try again later.');
+        showMessage(form, words.failed);
       });
     });
     slot.appendChild(form);
@@ -1453,6 +1537,8 @@ document.addEventListener('DOMContentLoaded', function () {
       removeConfirm: slot.getAttribute('data-msg-delete-confirm'),
       removeFailed: slot.getAttribute('data-msg-delete-failed'),
       post: slot.getAttribute('data-msg-post'),
+      label: slot.getAttribute('data-msg-label'),
+      noSignIn: slot.getAttribute('data-msg-no-sign-in'),
       closed: slot.getAttribute('data-msg-closed'),
       notAllowed: slot.getAttribute('data-msg-not-allowed')
     };
@@ -1656,16 +1742,19 @@ document.addEventListener('DOMContentLoaded', function () {
       showWhoami();
       textarea = element('textarea');
       textarea.name = 'body';
+      textarea.id = 'comment-text-' + entryId;
       textarea.maxLength = 4000;
       textarea.required = true;
       textarea.rows = 5;
-      textarea.setAttribute('aria-label', text.post);
-      button = element('button', null, text.post);
+      var label = element('label', 'comment-label', text.label);
+      label.htmlFor = textarea.id;
+      button = element('button', 'comment-submit', text.post);
       button.type = 'submit';
       message = element('p', 'comment-message');
       message.hidden = true;
       message.setAttribute('role', 'status');
       form.appendChild(whoami);
+      form.appendChild(label);
       form.appendChild(textarea);
       form.appendChild(button);
       form.appendChild(message);
@@ -1681,12 +1770,12 @@ document.addEventListener('DOMContentLoaded', function () {
     getSession().then(function (answer) {
       if (!answer) { return; }
       if (!answer.signedIn) {
+        // No sign-in link (reader sign-in is off) still gets a sentence, or
+        // the reader sees a Comments heading with no word on joining in.
         var link = signInLink(answer.signInUrl);
-        if (link) {
-          var note = element('p', 'comments-note');
-          note.appendChild(link);
-          slot.appendChild(note);
-        }
+        var note = element('p', 'comments-note', link ? null : text.noSignIn);
+        if (link) { note.appendChild(link); }
+        slot.appendChild(note);
       } else if (!answer.canPost) {
         slot.appendChild(element('p', 'comments-note', reasonText(answer.reason)));
       } else {
@@ -1844,15 +1933,25 @@ emitting the raw one are both bugs; they just look identical in the source.
 *#
 #macro(showWeblogCategoryLinksList)
     <ul class="rCategory">
-    #if ($model.weblogCategory || $model.permalink)
-        <li><a href="$url.home">$text.get("generic.all")</a></li>
+    ## "All" is the current view only on the plain entry list: not on a
+    ## category, tag, date archive, permalink or static page, each of which
+    ## shows less than all. $model.weblogDate needs PageModel#getWeblogDate;
+    ## until it exists the reference is null and a date archive still marks
+    ## "All" (Velocity's lenient #if reads a missing member as false).
+    #set($catsAllCurrent = !$model.weblogCategory && !$model.permalink && !$model.page && !($model.tags && !$model.tags.isEmpty()) && !$model.weblogDate)
+    #if ($catsAllCurrent)
+        <li class="selected"><a href="$url.home" aria-current="page">$text.get("generic.all")</a></li>
     #else
-        <li class="selected"><a href="$url.home">$text.get("generic.all")</a></li>
+        <li><a href="$url.home">$text.get("generic.all")</a></li>
     #end
     #set($cats = $model.weblog.getWeblogCategories())
     #foreach($cat in $cats)
-        #if ($model.weblogCategory && $model.weblogCategory.name == $cat.name || ($model.permalink && $model.weblogEntry.category.name == $cat.name))
-            <li class="selected"><a href="$url.category($cat.name)">$utils.escapeHTML($cat.name)</a></li>
+        ## aria-current="page" on the category's own view; on a permalink the
+        ## entry's category is the current item of the set, not this page.
+        #if ($model.weblogCategory && $model.weblogCategory.name == $cat.name)
+            <li class="selected"><a href="$url.category($cat.name)" aria-current="page">$utils.escapeHTML($cat.name)</a></li>
+        #elseif ($model.permalink && $model.weblogEntry.category.name == $cat.name)
+            <li class="selected"><a href="$url.category($cat.name)" aria-current="true">$utils.escapeHTML($cat.name)</a></li>
         #else
             <li><a href="$url.category($cat.name)">$utils.escapeHTML($cat.name)</a></li>
         #end
@@ -1986,17 +2085,19 @@ Show search form for a weblog.
 The input's id is q-main, not q: #showWeblogSearchAgainForm below builds a
 second search control, the frontpage renders BOTH on one document when a
 search returns results, and two elements sharing one id is invalid markup
-that makes any id selector or getElementById pick whichever came first. The
-validator below reads form.q by NAME and is unaffected by the id.
+that makes any id selector or getElementById pick whichever came first.
+
+An empty search is refused by the input's own required attribute; it used
+to be an alert() from an inline validator script.
 *#
 #macro(showWeblogSearchForm $weblog $showCatChooser)
-    <form id="searchForm" role="search" method="get" action="$url.search" style="margin: 0; padding: 0" onsubmit="return validateSearch(this)">
+    <form id="searchForm" role="search" method="get" action="$url.search">
         <p>
-          <input type="text" id="q-main" name="q" size="10" class="text small" maxlength="255" value="#if($model.term)$model.term#end" aria-label="$text.get( "macro.weblog.searchbutton" )" />
+          <input type="text" id="q-main" name="q" class="text" required maxlength="255" value="#if($model.term)$model.term#end" aria-label="$text.get( "macro.weblog.searchbutton" )" />
           #if( $showCatChooser )
             #set( $cats = $model.weblog.getWeblogCategories())
             <select name="cat" aria-label="$text.get( "mainPage.category" )">
-              <option value="">- $text.get("mainPage.category") -</option>
+              <option value="">$text.get("macro.searchresults.incategory")</option>
               ## Compared against $model.weblogCategory.name, not $model.term:
               ## the term is the search query, so this select never re-selected
               ## the category the reader was already in unless the two happened
@@ -2010,27 +2111,22 @@ validator below reads form.q by NAME and is unaffected by the id.
           <input type="submit" class="button" value="$text.get( "macro.weblog.searchbutton" )" id="searchbutton" />
         </p>
     </form>
-    <script>
-        function validateSearch(form) {
-            if (form.q.value == "") {
-                alert("$text.get("macro.weblog.searchalert")");
-                form.q.focus();
-                return false;
-            }
-            return true;
-        }
-    </script>
 #end
 
 
 #**
 Show search again form for a weblog.
+
+The hit line is printed only when something matched: a zero-hit search gets
+the theme's own "no entries matched" sentence, and "0 entries match" above
+it said the same thing twice. Layout is the theme's (#searchAgain rules in
+each stylesheet); nothing here is styled inline.
 *#
 #macro(showWeblogSearchAgainForm $weblog)
     <div id="searchAgain">
-        $text.get( "macro.weblog.searchhits", [$model.term, $model.hits])
-        <form role="search" method="get" action="$url.search" style="margin: 5px">
-          <input type="text" id="q-again" name="q" class="text medium" maxlength="255" value="$model.term" style="padding-left: 1px" aria-label="$text.get( "macro.weblog.searchbutton" )" /><br />
+        #if($model.hits > 0)<p class="search-hits">$text.get( "macro.weblog.searchhits", [$model.term, $model.hits])</p>#end
+        <form role="search" method="get" action="$url.search">
+          <input type="text" id="q-again" name="q" class="text medium" required maxlength="255" value="$model.term" aria-label="$text.get( "macro.weblog.searchbutton" )" />
           #set( $cats = $model.weblog.getWeblogCategories())
           #if(!$site && $cats && $cats.size() > 1)
             <select name="cat" class="select" aria-label="$text.get( "mainPage.category" )">
@@ -2062,24 +2158,15 @@ Show next/prev pager for search results.
        $text.get("searchSummary.text", [$min, $max, $model.hits])
     </p>
 
-    #set($prevLink = false)
-    #set($nextLink = false)
-    #if ($pager.prevLink)
-        #set($prevLink = $pager.prevLink)
-        #set($prevName = $pager.prevName)
-    #end
-    #if ($pager.nextLink)
-        #set($nextLink = $pager.nextLink)
-        #set($nextName = $pager.nextName)
-    #end
-    #if ($prevLink)
-        &laquo; <a href="$prevLink">$prevName</a> |
-    #end
-    #if ($prevLink || $nextLink)
-        <a href="$pager.getHomeLink()">$pager.getHomeName()</a>
-    #end
-    #if ($nextLink)
-        | <a href="$nextLink">$nextName</a> &raquo;
+    ## Previous on the left, more on the right, and no "Main" in between:
+    ## search results are not a run of entries the weblog's home belongs to.
+    ## The nav is emitted only when there is somewhere to go, so a single
+    ## page of results leaves no empty landmark behind.
+    #if ($pager.prevLink || $pager.nextLink)
+    <nav class="search-pager" aria-label="$text.get("searchPager.label")">
+        #if ($pager.prevLink)<a class="search-pager-prev" rel="prev" href="$pager.prevLink">$pager.prevName</a>#end
+        #if ($pager.nextLink)<a class="search-pager-next" rel="next" href="$pager.nextLink">$pager.nextName</a>#end
+    </nav>
     #end
 #end
 
@@ -2090,13 +2177,10 @@ Show next/prev pager for search results.
 #**
  Display a list of tag urls for the tags on a given entry.
 
- Kept as custom-theme API; no bundled theme calls it, and that is deliberate
- rather than an oversight. $url.tag() points at /tags/<tag>, which needs a
- TAGSINDEX template to render -- none of the four bundled themes ships one, so
- every link this macro emits would 404 on journal, travel, portfolio and
- frontpage alike. A custom theme that DOES supply that template can call it
- and the links work. Do not wire it into a bundled theme without shipping the
- template first.
+ The three article themes call it from their permalinks. $url.tag() points
+ at /tags/<tag>, which a theme's tagsIndex template renders when it has one;
+ no bundled theme does, so PageServlet falls back to the theme's default
+ template, whose pager filters by the tag (PageServlet.selectTemplate).
 *#
 #macro(showEntryTags $entry)
 
@@ -2189,8 +2273,12 @@ before a word, which Velocity can read as a directive or a macro call.
 .comments .comment-pending { opacity: .8; }
 .comments .comment-pending .comment-body { white-space: pre-wrap; }
 .comments .comment-whoami { font-size: .9em; margin: 0 0 .5rem; }
-.comments .comment-form textarea { display: block; width: 100%; min-height: 6em; padding: .4em; box-sizing: border-box; font: inherit; }
-.comments .comment-form button { margin-top: .5rem; padding: .4em 1.2em; }
+.comments .comment-form .comment-label { display: block; margin: 0 0 .25rem; font-weight: 600; }
+.comments .comment-form textarea { display: block; width: 100%; min-height: 6em; padding: .4em; box-sizing: border-box; font: inherit;
+  color: inherit; background: transparent; border: 1px solid rgba(127, 127, 127, .5); border-radius: 4px; }
+.comments .comment-form .comment-submit { margin-top: .5rem; padding: .4em 1.2em; font: inherit; font-weight: 600; color: inherit;
+  background: transparent; border: 1px solid currentColor; border-radius: 4px; cursor: pointer; }
+.comments .comment-form .comment-submit:disabled { opacity: .6; cursor: default; }
 .comments .comment-message { margin: .75rem 0 0; }
 .comments .comment-delete { margin-left: auto; padding: 0; border: 0; background: none; color: inherit;
   font: inherit; font-size: .85em; text-decoration: underline; cursor: pointer; }
@@ -2226,7 +2314,8 @@ before a word, which Velocity can read as a directive or a macro call.
        data-msg-account="$utils.escapeHTML($text.get("comments.yourAccount"))" data-msg-delete="$utils.escapeHTML($text.get("comments.deleteOwn"))"
        data-msg-delete-confirm="$utils.escapeHTML($text.get("comments.deleteOwn.confirm"))" data-msg-post="$utils.escapeHTML($text.get("comments.post"))"
        data-msg-delete-failed="$utils.escapeHTML($text.get("comments.deleteOwn.failed"))" data-msg-closed="$utils.escapeHTML($text.get("comments.closed"))"
-       data-msg-not-allowed="$utils.escapeHTML($text.get("comments.notAllowed"))"></div>
+       data-msg-not-allowed="$utils.escapeHTML($text.get("comments.notAllowed"))" data-msg-label="$utils.escapeHTML($text.get("comments.label"))"
+       data-msg-no-sign-in="$utils.escapeHTML($text.get("comments.noSignIn"))"></div>
   #end
 </section>
 #end

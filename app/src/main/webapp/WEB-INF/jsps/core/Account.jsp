@@ -30,28 +30,27 @@
 <div id="accountPage">
 
     <section class="mb-4">
-        <h2 class="h5"><spring:message code="account.name.heading"/></h2>
+        <h2 class="section-head"><spring:message code="account.name.heading"/></h2>
         <p><spring:message code="account.name.current"/> <strong>${fn:escapeXml(account.screenName)}</strong></p>
         <form id="accountNameForm" method="post" action="${saveNameUrl}">
             <sec:csrfInput/>
-            <div class="row mb-3">
-                <label class="col-sm-3 col-form-label" for="screenName"><spring:message code="account.name.label"/></label>
-                <div class="col-sm-9">
-                    <input type="text" id="screenName" name="screenName" class="form-control"
-                           value="${fn:escapeXml(nameValue)}" maxlength="200" required/>
-                    <div class="form-text"><spring:message code="account.name.help"/></div>
-                </div>
+            <div class="mb-3">
+                <label class="form-label" for="screenName"><spring:message code="account.name.label"/></label>
+                <input type="text" id="screenName" name="screenName" class="form-control"
+                       value="${fn:escapeXml(nameValue)}" maxlength="200" required
+                       aria-describedby="screenNameHelp"/>
+                <div class="form-text" id="screenNameHelp"><spring:message code="account.name.help"/></div>
             </div>
             <button type="submit" class="btn btn-primary"><spring:message code="account.name.save"/></button>
         </form>
     </section>
 
     <section class="mb-4">
-        <h2 class="h5"><spring:message code="account.comments.heading"/></h2>
+        <h2 class="section-head"><spring:message code="account.comments.heading"/></h2>
         <spring:message var="deleteCommentConfirm" code="account.comment.delete.confirm"/>
         <c:choose>
         <c:when test="${not empty comments}">
-        <table class="rollertable table table-striped" width="100%">
+        <table class="rollertable table table-striped">
             <tr>
                 <th scope="col" class="rollertable"><spring:message code="account.column.status"/></th>
                 <th scope="col" class="rollertable"><spring:message code="comments.column.comment"/></th>
@@ -102,7 +101,7 @@
     </section>
 
     <section id="accountDelete">
-        <h2 class="h5"><spring:message code="account.delete.heading"/></h2>
+        <h2 class="section-head"><spring:message code="account.delete.heading"/></h2>
         <c:choose>
         <c:when test="${not empty deleteRefusal}">
             <%-- A weblog member or an administrator: the reason, not the button. --%>
