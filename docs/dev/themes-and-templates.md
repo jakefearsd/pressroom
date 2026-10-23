@@ -17,9 +17,9 @@ resolves through the index at the end of `CLAUDE.md`.
   `ThemeCspCoverageTest` enforces it for any theme CSS referencing
   `@font-face`, checking `/webjars/` fonts via
   `getResource("META-INF/resources/webjars/...")`, not the filesystem (Plex
-  is classpath-served, not under `webapp/`). All three ship a `_page`
-  template (see Themes); `journal`'s is covered for the `[contact]` slot and
-  the draft-404 case.
+  is classpath-served, not under `webapp/`). Every shared theme, `frontpage`
+  included, ships a `_page` template (see Themes); `journal`'s is covered for
+  the `[contact]` slot and the draft-404 case.
 - **Retired**: `basic`, `fauxcoly`, `gaurav` — directories deleted;
   `V018__retire_legacy_themes.sql` moves any weblog still on one to `journal`
   (idempotent; a custom-theme weblog, `'custom'` in `editortheme`, is
@@ -79,14 +79,38 @@ resolves through the index at the end of `CLAUDE.md`.
   `ThemeEditController.save` checks it; the shared-theme branch never has. A
   weblog already on a custom theme is grandfathered (disabling the option
   must not strand it).
-- `journal`, `travel` and `portfolio` each ship a `_page` template
-  (`themes/<id>/page.vm`); a `WeblogPage` reaches it via the
+- `journal`, `travel`, `portfolio` and `frontpage` each ship a `_page` template
+  (`themes/<id>/page.vm`; frontpage's is built on its `_header`/`_footer`,
+  `article.fd-page.roller-content` with `.fd-prose`, and keeps the shared
+  header's embed assets so a `[video]` still plays); a `WeblogPage` reaches it via the
   `StaticThemeTemplate` fallback, so a static page renders in the theme's
   own chrome (travel's `tg-header`, portfolio's dark frame), not the fallback
   template's bare `<h1>`. `TravelThemeRenderingTest`/
   `PortfolioThemeRenderingTest` pin this: a page carrying `[contact]` must
   render through the theme's header/prose classes and ship the audience
   assets in the head, with an `assertFalse` on the fallback `<h1>`.
+- **The `<title>` rule, every theme.** The separator is " — " (an em dash,
+  the one the admin layouts use): "Entry — Weblog", "Page — Weblog",
+  "Search: q — Site". On a permalink or a page, a meta title set in the
+  editor's SEO drawer is the WHOLE `<title>`, with no weblog name appended,
+  because the editor's search preview shows it alone. The shared fallback
+  `templates/weblog/page.vm` follows the same rule.
+- **The heading rule, every theme.** A list page (home, category, tag,
+  date archive, search) is titled by the site name, an `h1`; each entry
+  title in the list is an `h2`. A reading page (permalink, page, frontpage's
+  `_page`) is titled by the entry or page title, an `h1`, and the site name
+  becomes a `<p>` with the same class, so it looks the same and a body's
+  Markdown `##` lands one level under the title. A category or tag view
+  adds an `xx-view` caps label plus an `h2.xx-view-name`.
+  `ThemeChromeConsistencyTest`/`ThemeChromeRenderingTest` pin both rules.
+- **Theme copy stays English on purpose.** Chrome words that already have
+  bundle keys use them (`pager.newer`/`pager.older`, `generic.edit`,
+  `macro.weblog.searchbutton`, `mainPage.category`, and the frontpage
+  header's `navigationBar.login`/`navigationBar.logout`/`mainPage.mainMenu`,
+  shared with `bannerStatus.jsp`). The theme's own voice — empty states,
+  prompts, step titles, "Tagged", "Skip to content", "Pinned" — is written
+  into the templates in English, a deliberate decision rather than a gap;
+  `ThemeChromeConsistencyTest` pins the hard-coded words.
 
 ## Templates
 - Add/edit/remove live in `TemplatesController` and `TemplateEditController`;
@@ -262,9 +286,10 @@ map assets without this macro fails the build.
   `body.qj a` (0,1,2), so post links rendered in the ink colour. The fix
   prefixes it with `body.qj`. Both theme rules exclude `.cta-card` through
   `:where(:not(...))`, which adds no specificity, so the heading anchor still
-  out-ranks them. Travel needed nothing. Frontpage renders no entry content
-  under `body.fd`: its pages and previews go through the shared fallbacks,
-  whose bodies carry no `fd` class, so their links keep the browser default.
+  out-ranks them. Travel needed nothing. Frontpage's static pages render
+  under `body.fd` through its own `_page` (`.fd-prose`); its previews still
+  go through the shared fallback, whose body carries no `fd` class, so links
+  there keep the browser default.
 - Hex colours inside a Velocity template are safe only because no macro is
   named like one (`#d29922` is literal text). The same goes for the theme
   stylesheets, which Velocity renders too.
