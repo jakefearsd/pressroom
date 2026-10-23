@@ -126,11 +126,17 @@ final class RenderingServletUtils {
             resourceStream.transferTo(response.getOutputStream());
 
         } catch (IOException ex) {
-            log.error("Error writing resource file for {}", logContext, ex);
-            if (!response.isCommitted()) {
-                response.reset();
-                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            if (response.isCommitted()) {
+                // Bytes had already gone out, so this is the write side
+                // failing: the reader closed the connection (Tomcat's
+                // ClientAbortException). Not a server error, and once per
+                // abandoned download it buried the real ones.
+                log.debug("Reader went away while serving {}: {}", logContext, ex.toString());
+                return;
             }
+            log.error("Error writing resource file for {}", logContext, ex);
+            response.reset();
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
     }
 

@@ -17,14 +17,23 @@
  */
 package org.apache.roller.weblogger.ui.rendering.servlets;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Map;
 
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.WriteListener;
+import org.apache.catalina.connector.ClientAbortException;
+import org.apache.logging.log4j.Level;
+import org.apache.roller.weblogger.ui.core.security.sso.SsoLogCapture;
 import org.apache.roller.weblogger.ui.rendering.RenderingException;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests for {@link RenderingServletUtils}.
@@ -66,5 +75,82 @@ class RenderingServletUtilsTest {
 
         assertNull(output);
         assertEquals(404, response.getStatus());
+    }
+
+    /**
+     * A reader who leaves mid-download is not a server error: Tomcat reports
+     * the closed connection as a ClientAbortException on the next write, once
+     * the response is committed. That was logged at ERROR with a stack trace,
+     * once per abandoned file (MediaResourceServlet has the same rule).
+     */
+    @Test
+    void aReaderWhoLeavesMidDownloadIsLoggedAtDebugOnly() throws Exception {
+        AbandonedResponse response = new AbandonedResponse();
+
+        try (SsoLogCapture capture = SsoLogCapture.everyLogger()) {
+            RenderingServletUtils.streamResource(
+                    new ByteArrayInputStream(new byte[] {1, 2, 3}), response, "theme file journal/x.css");
+
+            assertTrue(capture.lines(Level.ERROR).isEmpty(), "logged as an error: " + capture.lines(Level.ERROR));
+            assertTrue(capture.lines(Level.WARN).isEmpty(), "logged as a warning: " + capture.lines(Level.WARN));
+            assertTrue(capture.lines(Level.DEBUG).stream().anyMatch(line -> line.contains("journal/x.css")),
+                    "the abandoned file is still named at DEBUG: " + capture.lines(Level.DEBUG));
+        }
+        assertEquals(200, response.getStatus(), "nothing is sent after the reader has gone");
+    }
+
+    /** A file that cannot be read is a real failure: ERROR, naming it, and a 500. */
+    @Test
+    void aFileThatCannotBeReadIsAnErrorThatNamesIt() throws Exception {
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        InputStream unreadable = new InputStream() {
+            @Override
+            public int read() throws IOException {
+                throw new IOException("disk gone");
+            }
+        };
+
+        try (SsoLogCapture capture = SsoLogCapture.everyLogger()) {
+            RenderingServletUtils.streamResource(unreadable, response, "theme file journal/y.css");
+
+            assertTrue(capture.lines(Level.ERROR).stream().anyMatch(line -> line.contains("journal/y.css")),
+                    "a read failure is an error naming the file: " + capture.lines(Level.ERROR));
+        }
+        assertEquals(500, response.getStatus());
+    }
+
+    /** A response whose reader closed the connection once the first bytes went out. */
+    private static final class AbandonedResponse extends MockHttpServletResponse {
+        private final ServletOutputStream gone = new ServletOutputStream() {
+            @Override
+            public void write(int b) throws IOException {
+                throw abort();
+            }
+
+            @Override
+            public void write(byte[] b, int off, int len) throws IOException {
+                throw abort();
+            }
+
+            @Override
+            public boolean isReady() {
+                return true;
+            }
+
+            @Override
+            public void setWriteListener(WriteListener listener) {
+                // not asynchronous
+            }
+        };
+
+        private IOException abort() {
+            setCommitted(true);
+            return new ClientAbortException(new IOException("Broken pipe"));
+        }
+
+        @Override
+        public ServletOutputStream getOutputStream() {
+            return gone;
+        }
     }
 }
