@@ -188,9 +188,12 @@ class EntriesApiDispatchTest {
      * WeblogPermission EntriesApi declares must be refused before the
      * handler runs, on a real {@code {handle}}-carrying REST route -- not
      * merely in a unit test of WeblogOwnership or ApiException in
-     * isolation. Refused with a clean 403 problem+json, NOT a 3xx redirect
+     * isolation. Refused with a clean problem+json, NOT a 3xx redirect
      * to an HTML page an automation client cannot parse -- the fix round 1
-     * bug this test was rewritten to catch (see the class javadoc).
+     * bug this test was rewritten to catch (see the class javadoc). A caller
+     * holding no role on the weblog at all gets 404, as for an unknown
+     * handle, so the refusal never confirms the weblog exists
+     * (ApiSecurityRefusalTest pins the member-below-level 403).
      */
     @Test
     void aCallerLackingTheRequiredWeblogPermissionIsRefused() throws Exception {
@@ -199,7 +202,7 @@ class EntriesApiDispatchTest {
 
         mockMvc.perform(get("/api/v1/weblogs/myblog/entries")
                         .servletPath("/api").pathInfo("/v1/weblogs/myblog/entries"))
-                .andExpect(status().isForbidden())
+                .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
     }
 
