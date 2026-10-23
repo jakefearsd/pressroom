@@ -34,6 +34,27 @@
     --bs-body-bg: var(--paper);
     --bs-body-color: var(--ink);
     --bs-border-color: var(--line);
+    /* Components that read the link colour through a variable (.nav-link,
+       pagination, dropdown links) follow the accent too. */
+    --bs-link-color: var(--accent);
+    --bs-link-hover-color: color-mix(in srgb, var(--accent) 75%, var(--ink));
+    /* Native radios, checkboxes and range inputs take the accent rather than
+       the browser's own blue (Members' permission radios, for one). */
+    accent-color: var(--accent);
+}
+
+/* Links. Bootstrap paints <a> from --bs-link-color-rgb, an r,g,b triplet
+   that cannot be written from a hex token, so admin links stayed Bootstrap
+   blue in both modes -- 3.85:1 on the dark surface, failing AA on the 12px
+   caps labels. The colour is set directly instead. These two rules come
+   first on purpose: every later class-scoped link rule (.quiet-link,
+   .rail-link, .section-index a, ...) wins over them. */
+a {
+    color: var(--accent);
+}
+
+a:hover {
+    color: var(--bs-link-hover-color);
 }
 
 table {
@@ -147,6 +168,17 @@ p {
 .btn-sm {
     padding: 4px 10px;
     font-size: 12px;
+}
+
+/* The current one of a row of filter chips or tabs (Entries' status chips,
+   Users' All/People/Agents). .btn-secondary and .btn-outline-secondary both
+   ride the quiet .btn treatment above, so without this the chip that says
+   "you are here" looked exactly like the ones that do not. */
+.btn[aria-current="page"] {
+    --bs-btn-bg: var(--accent-quiet);
+    --bs-btn-border-color: var(--accent);
+    --bs-btn-hover-border-color: var(--accent);
+    --bs-btn-active-border-color: var(--accent);
 }
 
 /* Hover/active shade toward --ink, NOT toward black. In light mode --ink is
@@ -277,6 +309,12 @@ label,
    padding it with a Bootstrap utility instead. */
 .control {
     margin-top: 12px;
+}
+
+/* Bootstrap's stock yellow on the surface is about 1.6:1 and has no dark
+   value; --warn reads in both modes (WeblogConfig's custom-domain note). */
+.text-warning {
+    color: var(--warn) !important;
 }
 
 .text-danger {
@@ -538,10 +576,36 @@ p.pagetip {
 
 /* The icon/label gap used to be a hardcoded &nbsp; in MainMenu.jsp -- a
    non-breaking space is content, and it does not scale with the type. */
-.mm_weblog_name {
+/* Doubled class: beats .section-head (which the h3 also carries, for the
+   Routes marker) wherever the two rules sit in this file. The name is a
+   name to pick, at weight 600 in ink -- not a 12px caps label. */
+.mm_weblog_name.section-head {
     display: flex;
     align-items: center;
     gap: 6px;
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: 14.5px;
+    font-weight: 600;
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--ink);
+}
+
+.mm_weblog_name a {
+    color: var(--ink);
+    text-decoration: none;
+}
+
+.mm_weblog_name a:hover {
+    color: var(--accent);
+    text-decoration: underline;
+}
+
+.mm_weblog_name .data {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--ink-soft);
 }
 
 .mm_subtable_label {
@@ -769,14 +833,15 @@ table.mm_table_actions td {
 }
 
 /* The title is layout hierarchy, not emphasis: the one large element on the
-   page, capped at the card's 26px serif. Everything else stays on the type
-   scale -- emphasis is weight, never size. */
+   page, capped at 26px. Everything else stays on the type scale -- emphasis
+   is weight, never size. Plex Sans at 600, not the card's Plex Serif: no
+   @font-face for the serif ships, so it fell back to Georgia/Times. */
 .editor-title {
     width: 100%;
     padding: 0;
     border: none;
     background: transparent;
-    font-family: "IBM Plex Serif", Georgia, serif;
+    font-family: var(--font-ui);
     font-size: 26px;
     font-weight: 600;
     line-height: 1.25;
@@ -1144,9 +1209,34 @@ table.mm_table_actions td {
 
 .weblog-actions {
     display: flex;
-    gap: 16px;
+    flex-wrap: wrap;
+    gap: 8px 16px;
     align-items: center;
     margin-top: 8px;
+}
+
+.weblog-actions > * {
+    white-space: nowrap;
+}
+
+/* ---- Site directory: the public root while no weblog fronts the site ---- */
+.site-directory li {
+    padding: 12px 0;
+    border-top: 1px solid var(--line);
+}
+
+.site-directory-name {
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.site-directory-name:hover {
+    text-decoration: underline;
+}
+
+.site-directory-tagline {
+    margin-top: 2px;
+    color: var(--ink-soft);
 }
 
 /* ---- Theme chooser: a grid of cards ----
@@ -1301,6 +1391,26 @@ time.data {
     font-variant-numeric: tabular-nums;
 }
 
+/* "2026-10-23 04:44" is one value: at 16px mono a narrow column broke it
+   into three lines (Entries' Published/Updated, API tokens' Created and
+   Last used). */
+time.data {
+    white-space: nowrap;
+}
+
+/* Comments moderation: the Entry column (4th) is context, the Comment column
+   is the content. An uncapped entry title took ~300px at 1280 and squeezed
+   short comments onto several lines; it is cut with an ellipsis instead
+   (the full title stays in the link's text for readers and screen readers). */
+#commentsModerationForm table.rollertable td:nth-child(4) a {
+    display: inline-block;
+    max-width: 16em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+}
+
 /* ---- Entries list rows (task B5) ----
    The title is the row's primary target, so it carries the weight -- 600,
    not a larger size: emphasis in this system is weight, never size. Under
@@ -1382,6 +1492,10 @@ time.data {
 .status-pill.status-unsaved { background: var(--paper); border-color: var(--line); color: var(--ink-soft); }
 .status-pill.status-enabled { background: color-mix(in srgb, var(--good) 18%, var(--surface)); border-color: color-mix(in srgb, var(--good) 45%, var(--surface)); }
 .status-pill.status-disabled { background: color-mix(in srgb, var(--bad) 12%, var(--surface)); border-color: color-mix(in srgb, var(--bad) 35%, var(--surface)); }
+/* A pill that is also a link (Main Menu's "N awaiting approval"): the pill
+   is the affordance, so no underline; hover deepens the border. */
+a.status-pill { text-decoration: none; }
+a.status-pill:hover { color: var(--ink); border-color: var(--accent); }
 
 /* ---- Selection bar (task B3) ----
    One shared bar for every list that offers bulk actions (Entries,
@@ -1503,7 +1617,8 @@ body {
     position: absolute;
     bottom: 0;
     width: 100%;
-    height: 60px;
+    min-height: 60px;
+    overflow-wrap: anywhere;
     background-color: var(--paper);
     border-top: 1px solid var(--line);
     padding: 1.5em;
@@ -1680,19 +1795,6 @@ div.image-controls input {
    The JS now toggles this class instead of writing colors directly. */
 .field-invalid-highlight {
     background: color-mix(in srgb, var(--bad) 20%, var(--surface));
-}
-
-/* MainMenu's entry count is the one remaining Bootstrap badge. The status
-   badges that used to sit alongside it are gone from this file (task B1):
-   Entries.jsp/Pages.jsp were converted to the .status-pill component above.
-   EntryEdit.jsp/PageEdit.jsp still emit the old badge markup -- they are
-   owned by the parallel editor-rebuild worktree and are converted by the
-   post-merge task M1 -- so their badges render in stock unstyled Bootstrap
-   colors until then; that is a known, accepted transitional gap, not a
-   regression to fix here. */
-.badge.bg-secondary {
-    background-color: color-mix(in srgb, var(--line) 55%, var(--surface)) !important;
-    color: var(--ink-soft) !important;
 }
 
 /* Quiet Instrument: flash messages (tiles/messages.jsp, #messages/#errors --

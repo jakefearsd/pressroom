@@ -56,5 +56,3 @@
         </ul>
     </div>
 </c:if>
-
-<!-- ALERT_END: this comment needed for AJAX error handling -->
