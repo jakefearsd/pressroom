@@ -85,19 +85,18 @@
 
     <div id="sharedNoChange" style="display:none;">
 
-        <%-- you have shared theme X. A plain paragraph: p.lead was 20px,
-             the page title's size; the theme name carries the emphasis, by
-             weight. --%>
+        <%-- "Your weblog uses the X theme." A plain paragraph: p.lead was
+             20px, the page title's size; the theme name carries the
+             emphasis, by weight (the <b> is in the message). The old
+             trailing clause ("using the Shared Theme default stylesheet")
+             was jargon about the normal case; only the exception, a custom
+             stylesheet copy, is worth a sentence. --%>
         <p class="mt-3">
-            <spring:message code="themeEditor.yourCurrentTheme"/>&nbsp;<b>${fn:escapeXml(currentThemeName)}</b>
-            <c:choose>
-<c:when test="${sharedThemeCustomStylesheet}">
-                <spring:message code="themeEditor.yourCustomStylesheet"/>
-            </c:when>
-<c:otherwise>
-                <spring:message code="themeEditor.yourThemeStyleSheet"/>
-            </c:otherwise>
-</c:choose></p>
+            <spring:message code="themeEditor.currentTheme" arguments="${fn:escapeXml(currentThemeName)}"/>
+            <c:if test="${sharedThemeCustomStylesheet}">
+                <spring:message code="themeEditor.customStylesheetNote"/>
+            </c:if>
+        </p>
 
         <p><a href="${urls.weblogAbsolute(actionWeblog)}" target="_blank" rel="noopener">
             <spring:message code="themeEditor.viewYourBlog"/></a></p>
@@ -115,7 +114,9 @@
              ThemeDataServlet). Every card is a <label> wrapping its radio, so
              the whole card is the hit target and the browser does the
              grouping; the change listener is delegated, not inline. --%>
-        <p class="mt-3" id="themeChooserLabel"><spring:message code="themeEditor.selectTheme"/></p>
+        <%-- The caps-label role, not p.lead's 20px: this names the card grid
+             below (aria-labelledby), the way a section head does. --%>
+        <p class="section-head" id="themeChooserLabel"><spring:message code="themeEditor.selectTheme"/></p>
 
         <%-- The current theme id may name no card at all: a blank
              selectedThemeId (the weblog is on a custom theme), OR a non-blank

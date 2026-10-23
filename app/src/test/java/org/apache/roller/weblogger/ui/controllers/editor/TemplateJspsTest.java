@@ -194,6 +194,28 @@ class TemplateJspsTest {
     }
 
     @Test
+    void theThemeChooserIsLabelledInTheCapsLabelRole() throws IOException {
+        // Visual audit 17: "Select a new shared theme" names the card grid
+        // below it, so it takes the section-head role, not a body paragraph.
+        assertTrue(markup(THEME_EDIT).contains("<p class=\"section-head\" id=\"themeChooserLabel\">"),
+                "the chooser's label is a caps-label");
+    }
+
+    @Test
+    void theCurrentThemeLineIsOnePlainSentence() throws IOException {
+        // Visual audit 36: "Your current theme is X using the Shared Theme
+        // default stylesheet." was jargon about the normal case.
+        String src = markup(THEME_EDIT);
+        assertTrue(src.contains("<spring:message code=\"themeEditor.currentTheme\" "
+                        + "arguments=\"${fn:escapeXml(currentThemeName)}\"/>"),
+                "one sentence naming the theme, its name escaped");
+        assertFalse(src.contains("themeEditor.yourThemeStyleSheet"),
+                "the default-stylesheet clause is gone");
+        assertFalse(src.contains("themeEditor.yourCurrentTheme"),
+                "the sentence fragment it was built from is gone");
+    }
+
+    @Test
     void noAlertCarriesInlineSpacing() throws IOException {
         for (Path jsp : List.of(THEME_EDIT, TEMPLATE_EDIT)) {
             assertFalse(markup(jsp).contains("margin-top:3em"),
