@@ -619,7 +619,10 @@ class MediaFileAddControllerTest extends EditorControllerTestSupport {
         assertEquals("File upload is disabled for this site.", response.getBody().get("detail"));
     }
 
-    /** The detail is in the reader's language: the request locale, not the server's. */
+    /**
+     * The detail is in the reader's language: the request locale, not the
+     * server's. It is its own sentence, not the upload form's prompt.
+     */
     @Test
     void theNoFilesResponseCarriesADetailInTheRequestLocale() throws Exception {
         when(request.getLocale()).thenReturn(Locale.JAPANESE);
@@ -628,7 +631,7 @@ class MediaFileAddControllerTest extends EditorControllerTestSupport {
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("no.files", response.getBody().get("error"));
-        assertEquals("\u30A2\u30C3\u30D7\u30ED\u30FC\u30C9\u3059\u308B\u30D5\u30A1\u30A4\u30EB\u3092\u9078\u629E",
+        assertEquals("\u30A2\u30C3\u30D7\u30ED\u30FC\u30C9\u3059\u308B\u30D5\u30A1\u30A4\u30EB\u30921\u3064\u4EE5\u4E0A\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
                 response.getBody().get("detail"));
     }
 

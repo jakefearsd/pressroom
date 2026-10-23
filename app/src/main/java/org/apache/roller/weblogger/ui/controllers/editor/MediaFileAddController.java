@@ -237,10 +237,8 @@ public class MediaFileAddController extends MediaFileBase {
                     "detail", text.getString("mediaUploads.detail.disabled")));
         }
         if (files == null || files.length == 0) {
-            // The upload form's own prompt ("Choose media files to upload")
-            // is exactly the instruction this refusal needs.
             return ResponseEntity.badRequest().body(Map.of("error", "no.files",
-                    "detail", text.getString("mediaFileAdd.fileLocation")));
+                    "detail", text.getString("mediaUploads.detail.noFiles")));
         }
 
         MediaFileManager mfm = weblogger.getMediaFileManager();
