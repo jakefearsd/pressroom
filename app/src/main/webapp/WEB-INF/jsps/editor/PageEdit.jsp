@@ -94,7 +94,7 @@
 <form id="pageEditForm" method="post" class="form-stacked editor-form"
       action="${pageContext.request.contextPath}/roller-ui/authoring/pageEdit!save.rol">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
-    <input type="hidden" name="bean.id" value="${bean.id}"/>
+    <input type="hidden" name="bean.id" value="${fn:escapeXml(bean.id)}"/>
 
     <%-- ================================================================== --%>
     <%-- The writing surface: title, address, editor --%>
@@ -309,7 +309,7 @@
                  control a permanent SyntaxError. See the delegated handler
                  below (same convention as MediaFileView.jsp:493). --%>
             <button type="button" id="deletePageButton" class="delete-link"
-                    data-page-id="${bean.id}" data-page-title="${fn:escapeXml(bean.title)}"
+                    data-page-id="${fn:escapeXml(bean.id)}" data-page-title="${fn:escapeXml(bean.title)}"
                     aria-label="<spring:message code='generic.delete'/>: ${fn:escapeXml(bean.title)}"><spring:message code="generic.delete"/></button>
         </c:if>
 
@@ -399,7 +399,7 @@
         if (window.rollerDraft) {
             window.rollerDraft.install({
                 form: document.getElementById('pageEditForm'),
-                key: '${draftKey}',
+                key: '${fn:escapeXml(draftKey)}',
                 staleKeys: ['${draftNewKey}'],
                 bar: document.getElementById('draftRecoveryBar'),
                 csrfName: '${_csrf.parameterName}',

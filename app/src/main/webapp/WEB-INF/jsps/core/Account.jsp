@@ -20,8 +20,9 @@
 <%-- The reader's account page (AccountController). Everything a reader typed
      -- the display name, its echo in the form, and the comment bodies -- goes
      through fn:escapeXml; a body is plain text shown with pre-wrap, never
-     HTML. The entry title is the entry's displayTitle, emitted bare as
-     Comments.jsp does: it is stored escaped already. --%>
+     HTML. The entry title is the controller's plain-text entryTitles label,
+     escaped once as Comments.jsp does: the stored title is already escaped,
+     and an untitled entry's displayTitle is raw body text. --%>
 
 <c:url var="saveNameUrl" value="/roller-ui/account!saveName.rol"/>
 <c:url var="deleteCommentUrl" value="/roller-ui/account!deleteComment.rol"/>
@@ -76,7 +77,7 @@
                 </td>
                 <td><div class="pre-wrap">${fn:escapeXml(c.body)}</div></td>
                 <td>
-                    <a href="${urls.entry(c.entry)}">${c.entry.displayTitle}</a>
+                    <a href="${urls.entry(c.entry)}">${fn:escapeXml(entryTitles[c.entry.id])}</a>
                     <div class="form-text">${fn:escapeXml(c.entry.website.name)}</div>
                 </td>
                 <td class="data"><rc:date value="${c.created}"/></td>

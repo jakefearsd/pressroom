@@ -21,6 +21,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -711,6 +712,39 @@ class AccountControllerTest {
 
         assertEquals("redirect:/roller-ui/account.rol", view);
         assertEquals(List.of("generic.error.check.logs"), flashErrors(flash));
+    }
+
+    /**
+     * Each comment's entry is labelled by a plain-text title the page escapes
+     * once (EntriesController.plainTitle): a stored title is already escaped,
+     * and an UNTITLED entry's displayTitle is its body with complete tags
+     * stripped, so an unterminated {@code <img onerror>} survives into it.
+     */
+    @Test
+    void eachCommentsEntryGetsAPlainTextTitleThePageEscapesOnce() throws Exception {
+        AccountController controller = mockedController();
+        User account = account("reader-x");
+        WeblogEntry titled = new WeblogEntry();
+        titled.setId("e-titled");
+        titled.setTitle("Tom &amp; Jerry");
+        WeblogEntry untitled = new WeblogEntry();
+        untitled.setId("e-untitled");
+        untitled.setText("<img src=x onerror=alert(1)//");
+        ReaderComment onTitled = new ReaderComment();
+        onTitled.setEntry(titled);
+        ReaderComment onUntitled = new ReaderComment();
+        onUntitled.setEntry(untitled);
+        when(mocked.commentManager().getCommentsByAuthor(account)).thenReturn(List.of(onTitled, onUntitled));
+        Model model = new ExtendedModelMap();
+
+        controller.execute(requestFor(account), model);
+
+        @SuppressWarnings("unchecked")
+        Map<String, String> titles = (Map<String, String>) model.getAttribute("entryTitles");
+        assertNotNull(titles, "the page has no plain entry titles to label its comments with");
+        assertEquals("Tom & Jerry", titles.get("e-titled"));
+        assertEquals("<img src=x onerror=alert(1)//", titles.get("e-untitled"),
+                "raw text, for the page to escape exactly once");
     }
 
     /** A display path: what cannot be read shows empty, with an error, rather than failing the page. */

@@ -135,10 +135,10 @@
 
 <form id="entry" method="post" class="form-stacked editor-form">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
-    <input type="hidden" name="bean.status" value="${bean.status}"/>
+    <input type="hidden" name="bean.status" value="${fn:escapeXml(bean.status)}"/>
     <c:choose>
 <c:when test="${actionName == 'entryEdit'}">
-        <input type="hidden" name="bean.id" value="${bean.id}"/>
+        <input type="hidden" name="bean.id" value="${fn:escapeXml(bean.id)}"/>
     </c:when>
 </c:choose>
 
@@ -251,7 +251,7 @@
 
             <label class="editor-field-label" for="entry_bean_pubTimeLocal"><spring:message code="weblogEdit.pubTime"/></label>
             <input type="datetime-local" name="bean.pubTimeLocal" id="entry_bean_pubTimeLocal"
-                   value="${bean.pubTimeLocal}" class="editor-dt"/>
+                   value="${fn:escapeXml(bean.pubTimeLocal)}" class="editor-dt"/>
             <div class="editor-tz">${actionWeblog.timeZone}</div>
 
             <%-- On a published entry the draft button takes the entry down, so
@@ -317,7 +317,7 @@
             <label class="editor-field-label" for="entry_bean_tagsAsString"><spring:message code="weblogEdit.tags"/></label>
             <input type="text" name="bean.tagsAsString" value="${fn:escapeXml(bean.tagsAsString)}" id="entry_bean_tagsAsString" maxlength="255" class="form-control"/>
 
-            <input type="hidden" name="bean.locale" value="${bean.locale}"/>
+            <input type="hidden" name="bean.locale" value="${fn:escapeXml(bean.locale)}"/>
         </div>
 
         <%-- SEO and social sharing: the whole card survives intact behind a
@@ -692,7 +692,7 @@
 
             <form class="form-stacked" action="${pageContext.request.contextPath}/roller-ui/authoring/${deleteAction}.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
-                <input type="hidden" name="removeId" value="${removeId}" id="removeId"/>
+                <input type="hidden" name="removeId" value="${fn:escapeXml(removeId)}" id="removeId"/>
 
                 <%-- One title, one role. This header used to wrap an <h3>
                      AND the "are you sure" sentence inside the .modal-title

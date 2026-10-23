@@ -32,9 +32,11 @@ import org.apache.roller.weblogger.business.comments.CommentRules;
 import org.apache.roller.weblogger.business.comments.CommentService;
 import org.apache.roller.weblogger.business.comments.DisplayNames;
 import org.apache.roller.weblogger.pojos.GlobalPermission;
+import org.apache.roller.weblogger.pojos.ReaderComment;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.ui.controllers.BaseController;
+import org.apache.roller.weblogger.ui.controllers.editor.EntriesController;
 import org.apache.roller.weblogger.ui.core.RollerLoginSessionManager;
 import org.apache.roller.weblogger.ui.core.RollerSession;
 import org.slf4j.Logger;
@@ -275,9 +277,13 @@ public class AccountController extends BaseController {
             return;
         }
         try {
-            model.addAttribute("comments", weblogger.getCommentManager().getCommentsByAuthor(account).stream()
+            List<ReaderComment> comments = weblogger.getCommentManager().getCommentsByAuthor(account).stream()
                     .filter(c -> !CommentRules.isTombstone(c))
-                    .toList());
+                    .toList();
+            model.addAttribute("comments", comments);
+            // Each comment's entry, labelled once through fn:escapeXml (EntriesController.plainTitle).
+            model.addAttribute("entryTitles", EntriesController.plainTitles(comments.stream()
+                    .map(ReaderComment::getEntry).filter(Objects::nonNull).toList()));
             model.addAttribute("deleteRefusal", deletionRefusal(account));
         } catch (WebloggerException ex) {
             log.error("Could not load the account page of {}", account.getUserName(), ex);

@@ -370,7 +370,7 @@
             
             <form class="form-stacked" action="${pageContext.request.contextPath}/roller-ui/authoring/${deleteAction}.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
-                <input type="hidden" name="removeId" value="${removeId}" id="removeId"/>
+                <input type="hidden" name="removeId" value="${fn:escapeXml(removeId)}" id="removeId"/>
 
                 <%-- One title in the header (a <p class="modal-title">, the
                      caps-label role); the entry's name and the sentence are

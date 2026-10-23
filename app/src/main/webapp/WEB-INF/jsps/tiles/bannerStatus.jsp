@@ -29,7 +29,7 @@
              below carried the same destination under site.shortName, so the
              one control every reader expects to be a home link did nothing
              and a redundant one did the job. --%>
-        <a class="navbar-brand" href="<c:url value='/'/>">${rc:getProp('site.name')}</a>
+        <a class="navbar-brand" href="<c:url value='/'/>">${fn:escapeXml(rc:getProp('site.name'))}</a>
 
         <%-- Only rendered when populateCommonModel found two or more weblogs
              for the signed-in user -- a one-weblog session's top bar is

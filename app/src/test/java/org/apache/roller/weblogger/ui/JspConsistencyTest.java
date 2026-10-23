@@ -1324,50 +1324,16 @@ class JspConsistencyTest {
             "msg", "error");
 
     /**
-     * Printed raw today and not yet fixed: {@code "path  expression"}, the path
-     * relative to {@code src/main/webapp}. Each is a known sink handed to the
-     * file's owner -- a real one (an untitled entry's display title is raw
-     * body text; a weblog's or the site's name is stored as typed) or a
-     * request-bound {@code bean.*} field reflected after a refused save.
-     * This set only shrinks: fixing a site means deleting its line, and a new
-     * raw expression fails the scan instead of being added here.
+     * Printed raw and not yet fixed: {@code "path  expression"}, the path
+     * relative to {@code src/main/webapp}. Empty since the seal package
+     * (2026-10): the untitled-entry titles, the site names, the weblog's
+     * "about" text and the request-bound {@code bean.*} fields reflected after
+     * a refused save are all escaped now (StoredTextRenderingTest renders the
+     * stored ones). This set only shrinks: a new raw expression fails the scan
+     * instead of being added here -- escape it, or add it to SAFE_EL with what
+     * makes it safe.
      */
-    private static final Set<String> KNOWN_RAW_EL = Set.of(
-            // Stored: an untitled entry's display title is its body text
-            // through Utilities.removeHTML, which keeps an unterminated tag
-            // ("<img src=x onerror=...//") verbatim. Entries.jsp/Comments.jsp
-            // fixed it with controller-built plain titles printed once through
-            // fn:escapeXml; these two still print it bare.
-            "WEB-INF/jsps/editor/Trash.jsp  entry.displayTitle",
-            "WEB-INF/jsps/core/Account.jsp  c.entry.displayTitle",
-            // The same display title, appended to the browser-tab title by
-            // EntryEditController and printed through <spring:message text>.
-            "WEB-INF/jsps/tiles/tiles-tabbedpage.jsp  tabTitle",
-            "WEB-INF/jsps/tiles/tiles-mainmenupage.jsp  tabTitle",
-            // Stored through removeHTML only, printed with escapeXml="false".
-            "WEB-INF/jsps/core/MainMenu.jsp  perms.weblog.about",
-            // Typed by a site admin in Configuration; printed in every banner.
-            "WEB-INF/jsps/tiles/bannerStatus.jsp  rc:getProp('site.name')",
-            // Not verified safe for every account source (SSO, the admin API).
-            "WEB-INF/jsps/tiles/userStatus.jsp  authenticatedUser.userName",
-            // Request-bound String bean fields (and the draft key and removeId
-            // built from them), reflected after a refused save. CSRF limits it
-            // to the user's own request, but a quote still breaks the field.
-            "WEB-INF/jsps/core/CreateWeblog.jsp  bean.theme",
-            "WEB-INF/jsps/editor/Categories.jsp  bean.id",
-            "WEB-INF/jsps/editor/Categories.jsp  removeId",
-            "WEB-INF/jsps/editor/Entries.jsp  removeId",
-            "WEB-INF/jsps/editor/EntryEdit.jsp  bean.id",
-            "WEB-INF/jsps/editor/EntryEdit.jsp  bean.locale",
-            "WEB-INF/jsps/editor/EntryEdit.jsp  bean.pubTimeLocal",
-            "WEB-INF/jsps/editor/EntryEdit.jsp  bean.status",
-            "WEB-INF/jsps/editor/EntryEdit.jsp  removeId",
-            "WEB-INF/jsps/editor/EntryEditor.jsp  draftKey",
-            "WEB-INF/jsps/editor/PageEdit.jsp  bean.id",
-            "WEB-INF/jsps/editor/PageEdit.jsp  draftKey",
-            "WEB-INF/jsps/editor/TemplateEdit.jsp  bean.action",
-            "WEB-INF/jsps/editor/TemplateEdit.jsp  bean.id",
-            "WEB-INF/jsps/editor/TemplateEdit.jsp  bean.type");
+    private static final Set<String> KNOWN_RAW_EL = Set.of();
 
     private static final Pattern EL_EXPRESSION = Pattern.compile("\\$\\{([^}]*)}");
 
@@ -1414,6 +1380,27 @@ class JspConsistencyTest {
         assertEquals(new TreeSet<>(KNOWN_RAW_EL), raw,
                 "printed EL that is neither escaped nor known safe -- wrap it in ${fn:escapeXml(...)}, "
                         + "or add it to SAFE_EL with what makes it safe (a fixed site leaves KNOWN_RAW_EL)");
+    }
+
+    /**
+     * The EL scan above cannot see a scriptlet expression, and six layouts
+     * printed the admin-typed {@code site.shortName} into {@code <title>}
+     * through one, unescaped. The only one left is the container's context
+     * path; anything else is EL, where the scan can judge it.
+     */
+    @Test
+    void noJspPrintsAScriptletExpressionButTheContextPath() throws IOException {
+        Pattern scriptlet = Pattern.compile("<%=(.*?)%>", Pattern.DOTALL);
+        List<String> found = new ArrayList<>();
+        for (Path jsp : everyServedJsp()) {
+            Matcher m = scriptlet.matcher(blankJspComments(Files.readString(jsp, StandardCharsets.UTF_8)));
+            while (m.find()) {
+                if (!"request.getContextPath()".equals(m.group(1).strip())) {
+                    found.add(WEBAPP.relativize(jsp) + "  " + m.group(1).strip());
+                }
+            }
+        }
+        assertEquals(List.of(), found, "print it as EL, escaped or known safe");
     }
 
     /** The scan itself, on planted markup. */

@@ -69,7 +69,7 @@
 
 <c:forEach items="${trashedEntries}" var="entry">
     <tr>
-        <td>${entry.displayTitle}</td>
+        <td>${fn:escapeXml(entryTitles[entry.id])}</td>
         <td class="data"><rc:date value="${entry.trashedAt}"/></td>
         <td>${fn:escapeXml(entry.category.name)}</td>
         <td>

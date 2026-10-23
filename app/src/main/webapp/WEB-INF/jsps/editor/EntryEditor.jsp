@@ -139,7 +139,7 @@
         if (window.rollerDraft) {
             window.rollerDraft.install({
                 form: document.getElementById('entry'),
-                key: '${draftKey}',
+                key: '${fn:escapeXml(draftKey)}',
                 staleKeys: ['${draftNewKey}'],
                 bar: document.getElementById('draftRecoveryBar'),
                 csrfName: '${_csrf.parameterName}',

@@ -280,6 +280,23 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
                         + model.getAttribute("tabTitle"));
     }
 
+    /**
+     * The tab title is plain text the layout escapes once, like the entry
+     * lists' titles (EntriesController.plainTitle): the stored title is
+     * already escaped, so passing it through as it stands made the layout
+     * choose between double-escaping it and printing an untitled entry's raw
+     * body text into {@code <title>}.
+     */
+    @Test
+    void theTabTitleIsPlainTextForTheLayoutToEscape() throws Exception {
+        existingEntry(PubStatus.DRAFT).setTitle("Tom &amp; Jerry");
+
+        controller.entryEditExecute(request, model, bean, newRedirectAttributes());
+
+        assertTrue(String.valueOf(model.getAttribute("tabTitle")).startsWith("Tom & Jerry \u2014 "),
+                "tabTitle must carry the title as text, was: " + model.getAttribute("tabTitle"));
+    }
+
     /** Criterion 25 (settings half): the editor shows the entry's comment counts when comments are on. */
     @Test
     void theEditorCarriesTheCommentCountsWhenTheWeblogHasCommentsOn() throws Exception {

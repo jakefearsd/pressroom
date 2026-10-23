@@ -117,7 +117,7 @@
         previewImage('${themes[0].id}');
         </c:when>
         <c:otherwise>
-        previewImage('${bean.theme}');
+        previewImage('${fn:escapeXml(bean.theme)}');
         </c:otherwise>
         </c:choose>
 

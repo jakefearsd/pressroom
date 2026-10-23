@@ -142,7 +142,7 @@
             <div class="modal-body">
                 <form id="categoryEditForm" class="form-stacked" action="${pageContext.request.contextPath}/roller-ui/authoring/categoryEdit.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
-                    <input type="hidden" name="bean.id" value="${bean.id}"/>
+                    <input type="hidden" name="bean.id" value="${fn:escapeXml(bean.id)}"/>
 
                     <div class="row mb-3">
                         <label class="col-sm-3 col-form-label" for="category_bean_name"><spring:message code="generic.name"/></label>
@@ -331,7 +331,7 @@
 
             <form id="categoryRemoveForm" action="${pageContext.request.contextPath}/roller-ui/authoring/categoryRemove!remove.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
-                <input type="hidden" name="removeId" value="${removeId}"/>
+                <input type="hidden" name="removeId" value="${fn:escapeXml(removeId)}"/>
 
                 <div class="modal-body">
 

@@ -392,7 +392,7 @@ public class EntriesController extends BaseController {
     }
 
     /** Each entry's {@link #plainTitle}, by entry id; empty for a failed lookup. */
-    static Map<String, String> plainTitles(List<WeblogEntry> entries) {
+    public static Map<String, String> plainTitles(List<WeblogEntry> entries) {
         Map<String, String> titles = new HashMap<>();
         if (entries != null) {
             for (WeblogEntry entry : entries) {
@@ -414,7 +414,7 @@ public class EntriesController extends BaseController {
      * tag verbatim -- so printing it bare is markup injection. Unescaping the
      * one and leaving the other as text gives both the same shape: raw text.
      */
-    static String plainTitle(WeblogEntry entry) {
+    public static String plainTitle(WeblogEntry entry) {
         return StringEscapeUtils.unescapeHtml4(entry.getDisplayTitle());
     }
 

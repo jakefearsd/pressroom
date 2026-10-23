@@ -26,7 +26,7 @@
       <%-- A denial or a stack trace both land here. RedirectController names
            a pageTitle for the denied path; anything else falls back to the
            generic `error` key rather than a blank tab. --%>
-      <title><%= org.apache.roller.weblogger.config.WebloggerRuntimeConfig.getProperty("site.shortName") %>: <c:choose><c:when test="${empty pageTitle}"><spring:message code="error"/></c:when><c:otherwise><spring:message code="${pageTitle}" text="${pageTitle}"/></c:otherwise></c:choose></title>
+      <title>${fn:escapeXml(rc:getProp('site.shortName'))}: <c:choose><c:when test="${empty pageTitle}"><spring:message code="error"/></c:when><c:otherwise><spring:message code="${pageTitle}" text="${pageTitle}"/></c:otherwise></c:choose></title>
       <jsp:include page="${tile_head}" />
       <style>
           <jsp:include page="${tile_styles}" />

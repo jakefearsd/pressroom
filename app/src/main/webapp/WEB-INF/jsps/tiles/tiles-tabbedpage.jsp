@@ -33,9 +33,10 @@
          "<entry title> - Edit entry", so a dozen open tabs are told apart).
          pageTitle is what the <h1 class="roller-page-title"> below renders, so
          it must NOT carry that append -- the two attributes exist to let the
-         tab and the heading differ. Rendered through spring:message exactly as
-         pageTitle is, so escaping is unchanged either way. --%>
-    <title><%= org.apache.roller.weblogger.config.WebloggerRuntimeConfig.getProperty("site.shortName") %>: <c:choose><c:when test="${not empty tabTitle}"><spring:message code="${tabTitle}" text="${tabTitle}"/></c:when><c:otherwise><spring:message code="${pageTitle}" text="${pageTitle}"/></c:otherwise></c:choose><c:if test="${not empty actionWeblog}"> &#8212; ${fn:escapeXml(actionWeblog.handle)}</c:if></title>
+         tab and the heading differ. It is never a message key: the controller
+         builds it as plain text (EntriesController.plainTitle) and it is
+         escaped exactly once here, as the site's short name is. --%>
+    <title>${fn:escapeXml(rc:getProp('site.shortName'))}: <c:choose><c:when test="${not empty tabTitle}">${fn:escapeXml(tabTitle)}</c:when><c:otherwise><spring:message code="${pageTitle}" text="${pageTitle}"/></c:otherwise></c:choose><c:if test="${not empty actionWeblog}"> &#8212; ${fn:escapeXml(actionWeblog.handle)}</c:if></title>
     <jsp:include page="${tile_head}"/>
     <style>
         <jsp:include page="${tile_styles}" />

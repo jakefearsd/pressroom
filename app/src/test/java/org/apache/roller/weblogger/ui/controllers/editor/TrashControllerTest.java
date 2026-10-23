@@ -19,6 +19,7 @@ package org.apache.roller.weblogger.ui.controllers.editor;
 
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.pojos.Weblog;
@@ -34,6 +35,7 @@ import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -101,6 +103,29 @@ class TrashControllerTest extends EditorControllerTestSupport {
 
         assertEquals(".Trash", view);
         assertEquals(trashed, model.getAttribute("trashedEntries"));
+    }
+
+    /**
+     * Each row is labelled by a plain-text title the page escapes once
+     * (EntriesController.plainTitle): a stored title is already escaped, and
+     * an UNTITLED entry's displayTitle is its body with complete tags
+     * stripped, so an unterminated {@code <img onerror>} survives into it.
+     */
+    @Test
+    void eachTrashedEntryGetsAPlainTextTitleThePageEscapesOnce() throws Exception {
+        WeblogEntry titled = trashedEntry("entry-1", "Tom &amp; Jerry");
+        WeblogEntry untitled = trashedEntry("entry-2", "");
+        untitled.setText("<img src=x onerror=alert(1)//");
+        when(weblogger.getWeblogEntryManager().getTrashedEntries(weblog)).thenReturn(List.of(titled, untitled));
+
+        controller.execute(request, model);
+
+        @SuppressWarnings("unchecked")
+        Map<String, String> titles = (Map<String, String>) model.getAttribute("entryTitles");
+        assertNotNull(titles, "the list has no plain entry titles to label its rows with");
+        assertEquals("Tom & Jerry", titles.get("entry-1"));
+        assertEquals("<img src=x onerror=alert(1)//", titles.get("entry-2"),
+                "raw text, for the page to escape exactly once");
     }
 
     /**

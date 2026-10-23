@@ -103,6 +103,8 @@ public class TrashController extends BaseController {
             addError(model, "generic.error.check.logs", request);
         }
         model.addAttribute("trashedEntries", trashedEntries);
+        // Labels printed once through fn:escapeXml (EntriesController.plainTitle).
+        model.addAttribute("entryTitles", EntriesController.plainTitles(trashedEntries));
         // Read per request, not latched: entry.trash.retention.days is a
         // RUNTIME property (Admin Settings), so a value cached at init would
         // show a retention the purge task no longer honours. TrashPurgeTask

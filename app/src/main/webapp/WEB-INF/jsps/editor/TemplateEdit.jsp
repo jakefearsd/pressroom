@@ -30,8 +30,8 @@
 </c:otherwise>
 </c:choose><form id="template" class="form-stacked" action="${pageContext.request.contextPath}/roller-ui/authoring/templateEdit!save.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
-    <input type="hidden" name="bean.id" value="${bean.id}"/>
-    <input type="hidden" name="bean.type" value="${bean.type}"/>
+    <input type="hidden" name="bean.id" value="${fn:escapeXml(bean.id)}"/>
+    <input type="hidden" name="bean.type" value="${fn:escapeXml(bean.type)}"/>
 
     <jsp:include page="/WEB-INF/jsps/editor/SessionExpiryBar.jsp"/>
 
@@ -56,7 +56,7 @@
     <div class="row mb-3">
         <label class="col-sm-3 col-form-label" for="template_bean_action"><spring:message code="pageForm.action"/></label>
         <div class="col-sm-9">
-            <input id="template_bean_action" type="text" name="bean.action" value="${bean.action}" size="50" readonly class="form-control"/>
+            <input id="template_bean_action" type="text" name="bean.action" value="${fn:escapeXml(bean.action)}" size="50" readonly class="form-control"/>
         </div>
     </div>
 

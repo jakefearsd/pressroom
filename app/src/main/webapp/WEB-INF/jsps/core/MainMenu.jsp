@@ -68,7 +68,7 @@
                 <span class="data">${fn:escapeXml(perms.weblog.handle)}</span>
             </h2>
 
-            <p><c:out value="${perms.weblog.about}" escapeXml="false"/></p>
+            <p>${fn:escapeXml(perms.weblog.about)}</p>
 
             <%-- Humanized, localized labels -- this used to print the raw
                  WeblogPermission action constants (ADMIN/POST/EDIT_DRAFT) in

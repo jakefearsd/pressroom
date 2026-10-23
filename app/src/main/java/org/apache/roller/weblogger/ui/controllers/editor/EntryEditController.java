@@ -810,7 +810,8 @@ public class EntryEditController extends BaseController {
         // an id check alone does NOT exclude (a unit test caught the add
         // screen rendering a leading em dash with nothing before it).
         if (StringUtils.isNotBlank(entry.getDisplayTitle())) {
-            model.addAttribute("tabTitle", entry.getDisplayTitle()
+            // Plain text: the layouts print it once through fn:escapeXml.
+            model.addAttribute("tabTitle", EntriesController.plainTitle(entry)
                     + " \u2014 " + model.getAttribute("pageTitle"));
         }
 
