@@ -407,7 +407,7 @@ label,
     margin-left: 0;
 }
 
-.form-stacked .row.mb-3 > label.col-sm-3,
+.form-stacked .row.mb-3 > .col-sm-3,
 .form-stacked .row.mb-3 > .col-sm-9,
 .form-stacked .row.mb-3 > .offset-sm-3 {
     display: block;
@@ -419,7 +419,9 @@ label,
     padding-left: 0;
 }
 
-.form-stacked .row.mb-3 > label.col-sm-3 {
+/* Any label-column element, not only <label>: Weblog settings' read-only
+   "Blog URL" is a <span> and sat indented by the column's own padding. */
+.form-stacked .row.mb-3 > .col-sm-3 {
     padding-top: 0;
     margin-bottom: 4px;
 }
@@ -1152,6 +1154,10 @@ table.mm_table_actions td {
    anyone holds in their head while scrolling, and Save used to sit below all
    of them. */
 .settings-grid {
+    /* The first group's caps label is the column's first child, which
+       .section-head:first-child pulls flush to the top: without this it sat
+       hard against the intro paragraph above the form. */
+    margin-top: 24px;
     display: grid;
     grid-template-columns: minmax(0, 1fr) 252px;
     gap: 24px;
@@ -1205,6 +1211,12 @@ table.mm_table_actions td {
 
     .settings-rail {
         position: static;
+    }
+
+    /* Single column: the rail falls below every field, where a jump list
+       to the sections above it no longer helps. Save stays. */
+    .settings-rail-index {
+        display: none;
     }
 }
 

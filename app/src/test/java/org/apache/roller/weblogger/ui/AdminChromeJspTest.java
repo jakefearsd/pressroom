@@ -302,4 +302,22 @@ class AdminChromeJspTest {
                 "the forgot-password link is outside the form column");
         assertFalse(src.contains("placeholder="), "a placeholder repeats its label");
     }
+
+    /**
+     * Weblog settings listed locales as raw codes ("en_US") where Profile and
+     * Create weblog show "English (United States)"; and below 900px its
+     * section index fell to the bottom of the page, after every field, where
+     * it no longer helps (same on Site settings). The index box is marked so
+     * the narrow layout can drop it.
+     */
+    @Test
+    void theSettingsPagesNameLocalesAndMarkTheirSectionIndex() {
+        String weblog = jsp("editor/WeblogConfig.jsp");
+        assertTrue(weblog.contains(">${fn:escapeXml(opt.displayName)}</option>"),
+                "Weblog settings shows locale codes, not names");
+        for (String screen : java.util.List.of("editor/WeblogConfig.jsp", "admin/GlobalConfig.jsp")) {
+            assertTrue(jsp(screen).contains("<div class=\"rail-box settings-rail-index\">"),
+                    screen + "'s section index box is not marked");
+        }
+    }
 }

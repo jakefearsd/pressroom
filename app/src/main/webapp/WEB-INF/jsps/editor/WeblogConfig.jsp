@@ -139,7 +139,7 @@
         <div class="col-sm-9">
             <select id="weblog_bean_locale" name="bean.locale" class="form-select">
                 <c:forEach items="${localesList}" var="opt">
-                    <option value="${opt}" ${opt == bean.locale ? 'selected' : ''}>${opt}</option>
+                    <option value="${opt}" ${opt == bean.locale ? 'selected' : ''}>${fn:escapeXml(opt.displayName)}</option>
                 </c:forEach>
             </select>
         </div>
@@ -311,7 +311,7 @@
 
 <aside class="settings-rail">
 
-    <div class="rail-box">
+    <div class="rail-box settings-rail-index">
         <h3 class="section-head"><spring:message code="websiteSettings.sections"/></h3>
         <nav class="section-index" id="settingsSectionIndex"
              aria-label="<spring:message code="websiteSettings.sections"/>">
