@@ -325,7 +325,9 @@ update lists every bad field at once, and `detail` joins those messages with
 one space; a 400 that is not about one field (unparseable JSON, a missing
 body) carries no `errors`, so treat the array as optional. A weblog create or
 settings PATCH reports one `errors` entry per violated rule, and a single
-conflict (a taken handle or custom domain) is a 409 carrying `errors` too.
+conflict (a taken handle or custom domain) is a 409 carrying `errors` too. So
+is every taken name: a category or directory `name`, a page `slug`, a user's
+`userName`, and an entry's `anchor`.
 
 ```json
 {
@@ -352,19 +354,18 @@ conflict (a taken handle or custom domain) is a 409 carrying `errors` too.
 | 413 | A multipart request body larger than `spring.servlet.multipart.max-request-size` (1GB). Plain `application/json` from Boot's own `/error`, not a problem body — see the note above. Distinct from the per-file media-quota refusal below, which is never a whole-request 413. |
 | 415 | `POST .../media` without a `multipart/form-data` body. Plain `application/json`, not a problem body — see the note above. |
 | 429 | Throttled — see below. |
+| 503 | Busy: the request collided with other work in progress and should be retried. Today only an entry create (REST or MCP) that waited longer than `weblogentry.anchor.lockTimeoutSeconds` (default 10) for another save of the same weblog to finish claiming its anchor (PostgreSQL's lock timeout, SQLState `55P03`). The problem's `type` ends in `/busy`, its `detail` is `Another save of this weblog is in progress; retry shortly.`, and the REST response carries `Retry-After: 2`. Nothing was saved. No other database failure is a 503; they stay the opaque 500. |
 | 500 | Unexpected server error. The response body never carries exception detail (message, stack trace, class name) — those are logged server-side only. |
 | 502 | An upstream dependency this endpoint depends on failed after the request itself already succeeded — today only `POST /api/v1/admin/users` when the account was created but its set-password email could not be sent; the account survives and is resendable, so this is not retried as a fresh create. |
 
-`ApiException` also has a `quotaExceeded()` factory that would answer 413,
-but **no endpoint calls it today** — a media upload that would exceed a
-quota is not a whole-request 413, it is a per-file `"quota_exceeded"`
-`status` string inside that file's own `results[]` entry (see
-[Media](#media)). Don't build a client that branches on 413 for a quota
-refusal; check `results[].status` instead. The 413 you *can* actually get
-is the framework-level one in the table above — a request body over
-`spring.servlet.multipart.max-request-size` — which is a different
-mechanism entirely (enforced by `DispatcherServlet` before any handler
-runs) and carries no `results[]` body at all.
+A media upload that would exceed a quota is not a whole-request 413: it is a
+per-file `"quota_exceeded"` `status` string inside that file's own
+`results[]` entry (see [Media](#media)). Check `results[].status`, not the
+status code. The only 413 is the framework-level one in the table above.
+
+A query parameter that will not convert to its type (`?limit=abc`) is a 400
+naming it in `errors`, with a detail such as `limit has an invalid value; it
+must be a whole number.`
 
 ## The throttle
 
@@ -382,7 +383,10 @@ per-source-address before that. A throttled request gets a
 here, built and written outside the normal Spring MVC dispatch path (the
 throttle check runs in a servlet filter, ahead of authentication) so a
 throttled client sees the same error contract as everywhere else, not a
-bare connection reset or an HTML error page.
+bare connection reset or an HTML error page. The 429 carries `Retry-After`,
+in seconds: the throttle interval (60 by default). A window opens at the
+caller's first request and lasts the interval, so waiting that long always
+clears it.
 
 ## Entries
 
@@ -1012,7 +1016,12 @@ A tool takes `action` (except `whoami`) and that action's arguments, named as in
 `weblog` is a handle, and body fields keep their names. An argument the action does not take is
 refused, never ignored. An argument that fills part of the route's path (`weblog`, `id`, `userName`)
 must be one path segment: an empty value, `.`, `..`, or a value containing `/`, `\` or `;` is
-refused. A refusal from the API is a tool error whose text is the API's problem body. Not available
+refused. A refusal from the API is a tool error whose text is the API's problem body. A refusal
+the MCP endpoint makes itself (an unknown action, a missing or inapplicable argument) is a tool
+error carrying the same problem shape as a REST 400 (`type`, `title` `Invalid request`, `status`,
+`detail`, `instance`), and a failure it cannot explain is REST's opaque internal-error problem. A
+503 arrives as a tool error with the `/busy` problem; the `Retry-After` header does not travel
+through MCP, so wait a couple of seconds before retrying. Not available
 through MCP: minting, listing or revoking tokens, and uploading media from local files.
 
 ## The OpenAPI document
