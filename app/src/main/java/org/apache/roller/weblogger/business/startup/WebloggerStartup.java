@@ -19,6 +19,10 @@
 package org.apache.roller.weblogger.business.startup;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.LongSupplier;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.business.DatabaseProvider;
@@ -38,7 +42,27 @@ public final class WebloggerStartup {
     private static DatabaseProvider dbProvider = null;
     private static StartupException dbProviderException = null;
 
-    private static MailProvider mailProvider = null;
+    /**
+     * How long a configured relay that did not answer is left alone before the
+     * next use tries it again. Bounds a relay that stays down to one connection
+     * attempt (at most the provider's connect timeout) per interval.
+     */
+    static final long MAIL_RETRY_INTERVAL_MILLIS = 60_000L;
+
+    private static final long NEVER = Long.MAX_VALUE;
+
+    private static final MailProviderFactory REAL_MAIL = MailProvider::new;
+
+    private static volatile MailProvider mailProvider = null;
+
+    /** When the next use may try the relay again; {@link #NEVER} when there is nothing to retry. */
+    private static final AtomicLong nextMailRetry = new AtomicLong(NEVER);
+
+    /** host:port or JNDI name, for the log lines; set at boot. */
+    private static volatile String mailTarget = "";
+
+    private static MailProviderFactory mailFactory = REAL_MAIL;
+    private static LongSupplier clock = System::currentTimeMillis;
 
 
     // non-instantiable
@@ -81,10 +105,87 @@ public final class WebloggerStartup {
     /**
      * Get a reference to the currently configured MailProvider, if available.
      *
+     * <p>A relay configured in properties mode that did not answer at boot is
+     * tried again here, on the next use, at most once per
+     * {@link #MAIL_RETRY_INTERVAL_MILLIS}; one caller makes the attempt and any
+     * other caller meanwhile gets null rather than waiting on the connection.
+     * Without this, a relay that was briefly down at boot left mail (and so
+     * password reset) off until the next restart.
+     *
      * @return MailProvider The configured mail provider, or null if none configured.
      */
     public static MailProvider getMailProvider() {
-        return mailProvider;
+        MailProvider provider = mailProvider;
+        return provider != null ? provider : retryMail();
+    }
+
+    private static MailProvider retryMail() {
+        long due = nextMailRetry.get();
+        long now = clock.getAsLong();
+        if (now < due || !nextMailRetry.compareAndSet(due, now + MAIL_RETRY_INTERVAL_MILLIS)) {
+            return null;
+        }
+        try {
+            MailProvider provider = mailFactory.create();
+            mailProvider = provider;
+            nextMailRetry.set(NEVER);
+            log.info("Mail is available: connected to the mail server at {}", mailTarget);
+            return provider;
+        } catch (StartupException ex) {
+            log.debug("The mail server at {} still does not answer; next try in {} s",
+                    mailTarget, MAIL_RETRY_INTERVAL_MILLIS / 1000, ex);
+            return null;
+        }
+    }
+
+    /**
+     * Build the mail provider from the configuration, as {@link #prepare()}
+     * does at boot. A failure is one WARN line naming the relay and the cause,
+     * with the stack trace at DEBUG. Package-private for its test.
+     */
+    static void setUpMail() {
+        nextMailRetry.set(NEVER);
+        boolean relay = "properties".equals(WebloggerConfig.getProperty("mail.configurationType"))
+                && StringUtils.isNotBlank(WebloggerConfig.getProperty("mail.hostname"));
+        mailTarget = relay ? relayAddress() : "JNDI name " + WebloggerConfig.getProperty("mail.jndi.name");
+        try {
+            mailProvider = mailFactory.create();
+        } catch (StartupException ex) {
+            mailProvider = null;
+            String cause = ExceptionUtils.getRootCauseMessage(ex);
+            if (relay) {
+                nextMailRetry.set(clock.getAsLong() + MAIL_RETRY_INTERVAL_MILLIS);
+                log.warn("Mail is unavailable: the mail server at {} did not answer ({}). Password reset "
+                        + "and notification mail are off until it does; the next mail sent tries again, "
+                        + "at most once a minute.", mailTarget, cause);
+            } else {
+                log.warn("Mail is not configured ({}): password reset and notification mail are off. "
+                        + "Set the mail.* properties (ROLLER_MAIL_* in a container).", cause);
+            }
+            log.debug("Mail provider setup failed", ex);
+        }
+    }
+
+    private static String relayAddress() {
+        String port = WebloggerConfig.getProperty("mail.port");
+        String host = WebloggerConfig.getProperty("mail.hostname").trim();
+        return StringUtils.isBlank(port) ? host : host + ":" + port.trim();
+    }
+
+    /** Builds a mail provider; {@link MailProvider}'s constructor connects. */
+    @FunctionalInterface
+    interface MailProviderFactory {
+        MailProvider create() throws StartupException;
+    }
+
+    /**
+     * Test seam: how a mail provider is built and what time it is, for
+     * {@link #setUpMail()} and the retry in {@link #getMailProvider()}.
+     * {@code null} restores the real one.
+     */
+    static void useMailProviderFactory(MailProviderFactory factory, LongSupplier testClock) {
+        mailFactory = factory != null ? factory : REAL_MAIL;
+        clock = testClock != null ? testClock : System::currentTimeMillis;
     }
 
 
@@ -104,6 +205,7 @@ public final class WebloggerStartup {
      */
     static void installMailProvider(MailProvider provider) {
         mailProvider = provider;
+        nextMailRetry.set(NEVER);
     }
 
 
@@ -197,14 +299,8 @@ public final class WebloggerStartup {
             throw ex;
         }
         
-        // setup mail provider, if configured
-        try {
-            mailProvider = new MailProvider();
-        } catch(StartupException ex) {
-            log.warn("Failed to setup mail provider, continuing anyways.\n"
-                    + "Reason: {}", ex.getMessage());
-            log.info("The cause of setting up mail provider error was: ", ex);
-        }
+        // setup mail provider, if configured; a failure is logged and retried later
+        setUpMail();
         
         // now we need to deal with database install/upgrade logic
         if ("manual".equals(WebloggerConfig.getProperty("installation.type"))) {
