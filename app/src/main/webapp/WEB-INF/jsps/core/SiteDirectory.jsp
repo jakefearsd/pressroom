@@ -19,6 +19,12 @@
      (SiteDirectoryController). The description, weblog names and taglines
      are all stored as typed, so each is escaped here. --%>
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
+<%@ page session="false" %>
+<%-- session="false" here and on every tile the simple page includes: a JSP
+     with the default session="true" calls request.getSession() just to
+     render, so the public site root handed every anonymous reader (and
+     crawler) a JSESSIONID it never needed. Nothing these pages render reads
+     the session; a signed-in user's existing session is untouched. --%>
 
 <div id="siteDirectory">
 

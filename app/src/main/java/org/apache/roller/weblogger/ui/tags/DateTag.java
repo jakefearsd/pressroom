@@ -106,8 +106,7 @@ public class DateTag extends SimpleTagSupport {
         if (weblogZone == null) {
             // Nobody's clock in particular (UTC in the container image): a
             // bare "14:05" would read as the reader's own local time.
-            display = display + " " + DateTimeFormatter.ofPattern("zzz", Locale.ROOT)
-                    .withZone(zone).format(instant);
+            display = display + " " + zoneLabel(zone, instant);
         }
 
         getJspContext().getOut().write("<time datetime=\""
@@ -119,6 +118,15 @@ public class DateTag extends SimpleTagSupport {
                 // is an assumption a future pattern is free to break silently.
                 + StringEscapeUtils.escapeHtml4(display)
                 + "</time>");
+    }
+
+    /**
+     * The zone's short name at that instant, in English ("UTC", "PDT"):
+     * Locale.ROOT has no names and prints "GMT-07:00", too long for a table
+     * cell.
+     */
+    static String zoneLabel(ZoneId zone, Instant instant) {
+        return DateTimeFormatter.ofPattern("zzz", Locale.ENGLISH).withZone(zone).format(instant);
     }
 
     /**

@@ -127,7 +127,7 @@ class DateTagTest {
     void aTimeInTheServersZoneSaysWhichZoneItIs() throws Exception {
         String rendered = render(null, WHEN, null);
         String label = jvmZoneLabel();
-        assertTrue(!label.isBlank() && rendered.endsWith(" " + label + "</time>"),
+        assertTrue(rendered.endsWith(" " + label + "</time>"),
                 "expected the zone named after the time: " + rendered);
         assertTrue(render(weblogIn("Asia/Tokyo"), WHEN, null).endsWith("23:30</time>"),
                 "a weblog's own zone is not appended");
@@ -137,8 +137,14 @@ class DateTagTest {
     }
 
     private static String jvmZoneLabel() {
-        return java.time.format.DateTimeFormatter.ofPattern("zzz", Locale.ROOT)
-                .withZone(TimeZone.getDefault().toZoneId()).format(WHEN.toInstant());
+        return DateTag.zoneLabel(TimeZone.getDefault().toZoneId(), WHEN.toInstant());
+    }
+
+    /** A short name, not "GMT-07:00": Locale.ROOT has no zone names. */
+    @Test
+    void theZoneIsNamedShortly() {
+        assertEquals("UTC", DateTag.zoneLabel(java.time.ZoneId.of("UTC"), WHEN.toInstant()));
+        assertEquals("PDT", DateTag.zoneLabel(java.time.ZoneId.of("America/Los_Angeles"), WHEN.toInstant()));
     }
 
     /**

@@ -16,6 +16,7 @@
   directory of this distribution.
 --%>
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
+<%@ page session="false" %>
 
 <%-- The tabbed-menu items themselves now render in the context rail
      (tiles-tabbedpage.jsp / tiles-mainmenupage.jsp), not here -- this bar

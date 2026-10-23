@@ -320,4 +320,40 @@ class AdminChromeJspTest {
                     screen + "'s section index box is not marked");
         }
     }
+
+    /**
+     * At phone width the whole left column (the rail, then the page's
+     * sidebar forms) rendered above the content: on the entry editor the
+     * title field started at y=1327. Below md the column folds behind a
+     * Menu button; from md up it is always shown, so desktop is unchanged.
+     */
+    @Test
+    void theLeftColumnFoldsBehindAMenuButtonAtPhoneWidth() {
+        for (String layout : java.util.List.of("tiles/tiles-tabbedpage.jsp", "tiles/tiles-mainmenupage.jsp")) {
+            String src = jsp(layout);
+            assertTrue(src.contains("<div class=\"collapse d-md-block\" id=\"adminRailColumn\">"),
+                    layout + ": the rail and sidebar are not in the narrow-width collapse");
+            assertTrue(src.contains("data-bs-target=\"#adminRailColumn\"")
+                            && src.contains("class=\"btn btn-secondary btn-sm d-md-none rail-toggle\""),
+                    layout + ": no Menu button for the folded column");
+            int fold = src.indexOf("id=\"adminRailColumn\"");
+            assertTrue(fold >= 0 && src.indexOf("id=\"adminRail\"") > fold && src.indexOf("<main") > fold,
+                    layout + ": the rail must sit inside the fold");
+        }
+    }
+
+    /**
+     * A JSP with the default {@code session="true"} calls
+     * {@code request.getSession()} just to render, so the public site root
+     * set a JSESSIONID on every anonymous reader and crawler. Every JSP the
+     * site directory renders opts out.
+     */
+    @Test
+    void theSiteDirectoryRendersWithoutASession() {
+        for (String page : java.util.List.of("core/SiteDirectory.jsp", "tiles/tiles-simplepage.jsp",
+                "tiles/head.jsp", "tiles/bannerStatus.jsp", "tiles/messages.jsp", "tiles/footer.jsp",
+                "tiles/empty.jsp")) {
+            assertTrue(jsp(page).contains("<%@ page session=\"false\" %>"), page + " creates a session");
+        }
+    }
 }

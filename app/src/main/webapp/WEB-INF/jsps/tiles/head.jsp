@@ -8,6 +8,7 @@ mismatch 404s the asset on every page that includes this file.
 --%>
 
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
+<%@ page session="false" %>
 
 <script src="<c:url value='/webjars/jquery/4.0.0/jquery.min.js'/>"></script>
 

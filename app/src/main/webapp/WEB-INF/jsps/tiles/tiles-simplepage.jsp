@@ -16,6 +16,7 @@
   directory of this distribution.
 --%>
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
+<%@ page session="false" %>
 <!doctype html>
 <html lang="${pageContext.response.locale.toLanguageTag()}">
 <head>
