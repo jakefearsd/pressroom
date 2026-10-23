@@ -35,9 +35,9 @@
 <c:if test="${empty pager}">
     <%-- Only show Create New Directory control when NOT showing search results.
          Its own tiny form -- the sidebar is included into MediaFileView.jsp, but
-         that view's own mediaFileViewForm doesn't render at all in an empty
-         library (see the childFiles/pager guard in MediaFileView.jsp), so this
-         control cannot depend on it. --%>
+         that view's own mediaFileViewForm doesn't render over a zero-result
+         search (see the pager guard in MediaFileView.jsp), and this control
+         posts to its own action anyway. --%>
 
     <div class="sidebar-group">
     <p class="sidebar-label">
@@ -87,10 +87,10 @@
          filter type is fixed server-side to "greater than"
          (MediaFileViewController.getSizeFilterTypes()'s "mediaFileView.gt"
          key) rather than offered as a control. --%>
-    <label for="beanSize"><spring:message code="mediaFileView.largerThan"/></label>
+    <label id="beanSizeLabel" for="beanSize"><spring:message code="mediaFileView.largerThan"/></label>
     <div class="input-group">
         <input type="number" min="0" name="bean.size" value="${bean.size}" id="beanSize" class="form-control"/>
-        <select name="bean.sizeUnit" class="form-select">
+        <select name="bean.sizeUnit" aria-labelledby="beanSizeLabel" class="form-select">
 <c:forEach items="${sizeUnits}" var="opt">
 <option value="${opt.key}" ${opt.key == bean.sizeUnit ? 'selected' : ''}>${opt.value}</option>
 </c:forEach>

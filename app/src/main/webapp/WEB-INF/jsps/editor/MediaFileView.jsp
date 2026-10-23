@@ -93,7 +93,14 @@
     </p>
 
 </c:otherwise>
-</c:choose><c:if test="${not empty childFiles || (not empty pager && fn:length(pager.items) > 0)}">
+</c:choose>
+
+<%-- The form renders for every folder view, empty or not, and for a search
+     that found something. A zero-result search has its own invitation below.
+     It used to render only when the folder had files, so an empty folder --
+     the one most worth deleting -- lost both the folder switcher and
+     "Delete folder", and the rail link was the only way out. --%>
+<c:if test="${empty pager || fn:length(pager.items) > 0}">
 
     <form id="mediaFileViewForm" name="mediaFileViewForm" action="${pageContext.request.contextPath}/roller-ui/authoring/mediaFileView.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
@@ -101,32 +108,58 @@
         <input type="hidden" name="newDirectoryName" value="${fn:escapeXml(newDirectoryName)}"/>
         <input type="hidden" name="mediaFileId" value=""/>
 
-        <div class="image-controls">
+        <%-- Labels above their fields, as on every other admin form. Not
+             .image-controls: roller.css makes everything inside that inline. --%>
+        <div class="media-view-controls d-flex flex-wrap gap-3 mb-3">
 
             <c:if test="${not empty allDirectories}">
-                <%-- Folder to View combo-box --%>
-                <span><spring:message code="mediaFileView.viewFolder"/>:</span>
-                <select name="viewDirectoryId" id="viewDirectoryMenu" class="form-select" onchange="onView()">
+                <div>
+                    <label for="viewDirectoryMenu" class="form-label"><spring:message code="mediaFileView.viewFolder"/></label>
+                    <select name="viewDirectoryId" id="viewDirectoryMenu" class="form-select" onchange="onView()">
 <c:forEach items="${allDirectories}" var="opt">
 <option value="${opt.id}" ${opt.id == viewDirectoryId ? 'selected' : ''}>${fn:escapeXml(opt.name)}</option>
 </c:forEach>
 </select>
+                </div>
             </c:if>
 
             <%-- Not offered over a search result: submitting this form
                  re-runs the plain directory view and drops the search
-                 silently, so the control appeared to do nothing but reset. --%>
-            <c:if test="${empty pager}">
-            <label for="sortByMenu"><spring:message code="mediaFileView.sortBy"/>:</label>
-            <select name="sortBy" id="sortByMenu" class="form-select" onchange="document.mediaFileViewForm.submit();">
+                 silently, so the control appeared to do nothing but reset.
+                 Nor in an empty folder, where there is nothing to sort. --%>
+            <c:if test="${empty pager && not empty childFiles}">
+                <div>
+                    <label for="sortByMenu" class="form-label"><spring:message code="mediaFileView.sortBy"/></label>
+                    <select name="sortBy" id="sortByMenu" class="form-select" onchange="document.mediaFileViewForm.submit();">
 <c:forEach items="${sortOptions}" var="opt">
 <option value="${opt.key}" ${opt.key == sortBy ? 'selected' : ''}>${opt.value}</option>
 </c:forEach>
 </select>
+                </div>
             </c:if>
 
         </div>
 
+        <c:choose>
+        <c:when test="${empty pager && empty childFiles}">
+
+            <%-- Empty state: no search in progress and this folder has no
+                 files. Under the folder switcher, so the author can still
+                 move to another folder or delete this one. --%>
+            <div class="empty-state">
+                <p class="empty-state-title"><spring:message code="empty.media.title"/></p>
+                <p class="empty-state-body"><spring:message code="empty.media.body"/></p>
+                <c:url var="emptyMediaAddUrl" value="/roller-ui/authoring/mediaFileAdd.rol">
+                    <c:param name="weblog" value="${actionWeblog.handle}"/>
+                    <c:param name="directoryName" value="${directoryName}"/>
+                </c:url>
+                <a href="${emptyMediaAddUrl}" class="btn btn-primary">
+                    <spring:message code="empty.media.action"/>
+                </a>
+            </div>
+
+        </c:when>
+        <c:otherwise>
 
         <%-- ***************************************************************** --%>
 
@@ -147,138 +180,135 @@
 
                 <ul>
 
-                    <c:choose>
+                        <c:choose>
 <c:when test="${empty pager}">
 
-                        <%-- ----------------------------------------------------- --%>
+                            <%-- ----------------------------------------------------- --%>
 
-                        <%-- NOT SEARCH RESULTS --%>
+                            <%-- NOT SEARCH RESULTS --%>
 
-                        <%-- List media files --%>
+                            <%-- List media files --%>
 
-                        <c:forEach items="${childFiles}" var="mediaFile">
+                            <c:forEach items="${childFiles}" var="mediaFile">
 
-                            <li class="align-images"
-                                onmouseover="highlight(this, true)" onmouseout="highlight(this, false)">
+                                <li class="align-images"
+                                    onmouseover="highlight(this, true)" onmouseout="highlight(this, false)">
 
-                                <%-- id/name ride in data-* attributes, not an inline onclick built by
-                                     string concatenation. fn:escapeXml here escapes for the
-                                     ATTRIBUTE (the same call this file already makes for the alt/
-                                     title attributes below), and the browser hands the exact
-                                     original string back through dataset -- no JS string literal is
-                                     ever built from author-controlled text, which is what broke
-                                     before: the old onclick="onClickEdit('id','name')" fed
-                                     fn:escapeXml's output into a JS string literal, and
-                                     fn:escapeXml renders an apostrophe as &#039;, which the HTML
-                                     parser decodes back to ' BEFORE that onclick attribute is
-                                     compiled as JavaScript -- so a filename containing one (e.g.
-                                     "Maiia's portrait.jpg") produced a syntax error and made the
-                                     tile permanently unclickable, the only route to the alt-text
-                                     field. See the click binding below (same data-attribute
-                                     convention as EntryEditor.jsp/PageEdit.jsp's data-snippet). --%>
-                                <div class="mediaObject" data-media-file-id="${mediaFile.id}"
-                                     data-media-file-name="${fn:escapeXml(mediaFile.name)}">
+                                    <%-- id/name ride in data-* attributes, not an inline onclick built by
+                                         string concatenation. fn:escapeXml here escapes for the
+                                         ATTRIBUTE (the same call this file already makes for the alt/
+                                         title attributes below), and the browser hands the exact
+                                         original string back through dataset -- no JS string literal is
+                                         ever built from author-controlled text, which is what broke
+                                         before: the old onclick="onClickEdit('id','name')" fed
+                                         fn:escapeXml's output into a JS string literal, and
+                                         fn:escapeXml renders an apostrophe as &#039;, which the HTML
+                                         parser decodes back to ' BEFORE that onclick attribute is
+                                         compiled as JavaScript -- so a filename containing one (e.g.
+                                         "Maiia's portrait.jpg") produced a syntax error and made the
+                                         tile permanently unclickable, the only route to the alt-text
+                                         field. See the click binding below (same data-attribute
+                                         convention as EntryEditor.jsp/PageEdit.jsp's data-snippet). --%>
+                                    <div class="mediaObject" role="button" tabindex="0"
+                                         aria-label="${fn:escapeXml(mediaFile.name)}"
+                                         data-media-file-id="${mediaFile.id}"
+                                         data-media-file-name="${fn:escapeXml(mediaFile.name)}">
 
-                                    <c:choose>
+                                        <c:choose>
 <c:when test="${mediaFile.imageFile}">
-                                        <img src='${urls.mediaThumbnail(mediaFile)}'
-                                             width='${mediaFile.thumbnailWidth}'
-                                             height='${mediaFile.thumbnailHeight}'
-                                             title='${fn:escapeXml(mediaFile.name)}'
-                                             alt='${fn:escapeXml(mediaFile.name)}' />
-                                    </c:when>
+                                            <img src='${urls.mediaThumbnail(mediaFile)}'
+                                                 width='${mediaFile.thumbnailWidth}'
+                                                 height='${mediaFile.thumbnailHeight}'
+                                                 title='${fn:escapeXml(mediaFile.name)}'
+                                                 alt='${fn:escapeXml(mediaFile.name)}' />
+                                        </c:when>
 <c:otherwise>
-                                        <c:url var="mediaFileURL" value="/images/page.png"/>
-                                        <img src='${mediaFileURL}'
-                                             style="padding:40px 50px;"
-                                             alt='${fn:escapeXml(mediaFile.name)}' />
-                                    </c:otherwise>
-                                    </c:choose>
-                                </div>
+                                            <span class="bi bi-file-earmark fs-1" aria-hidden="true"></span>
+                                        </c:otherwise>
+                                        </c:choose>
+                                    </div>
 
-                                <div class="mediaObjectInfo">
+                                    <div class="mediaObjectInfo">
 
-                                    <input type="checkbox"
-                                           name="selectedMediaFiles"
-                                           value="${mediaFile.id}"
-                                           aria-label="${fn:escapeXml(mediaFile.name)}"/>
+                                        <input type="checkbox" class="form-check-input"
+                                               name="selectedMediaFiles"
+                                               value="${mediaFile.id}"
+                                               aria-label="${fn:escapeXml(mediaFile.name)}"/>
 
-                                    ${fn:escapeXml(mediaFile.name)}
+                                        ${fn:escapeXml(mediaFile.name)}
 
-                                    <c:if test="${mediaFile.imageFile and empty fn:trim(mediaFile.altText)}">
-                                        <button type="button" class="media-alt-missing" data-alt-fix
-                                                data-media-file-id="${mediaFile.id}"
-                                                data-media-file-name="${fn:escapeXml(mediaFile.name)}"
-                                                title="<spring:message code='mediaFileView.altMissing.tip'/>"><spring:message code="mediaFileView.altMissing"/></button>
-                                    </c:if>
+                                        <c:if test="${mediaFile.imageFile and empty fn:trim(mediaFile.altText)}">
+                                            <button type="button" class="media-alt-missing" data-alt-fix
+                                                    data-media-file-id="${mediaFile.id}"
+                                                    data-media-file-name="${fn:escapeXml(mediaFile.name)}"
+                                                    title="<spring:message code='mediaFileView.altMissing.tip'/>"><spring:message code="mediaFileView.altMissing"/></button>
+                                        </c:if>
 
-                                </div>
+                                    </div>
 
-                            </li>
+                                </li>
 
-                        </c:forEach>
+                            </c:forEach>
 
-                    </c:when>
+                        </c:when>
 <c:otherwise>
 
-                        <%-- ----------------------------------------------------- --%>
+                            <%-- ----------------------------------------------------- --%>
 
-                        <%-- SEARCH RESULTS --%>
+                            <%-- SEARCH RESULTS --%>
 
-                        <c:forEach items="${pager.items}" var="mediaFile">
+                            <c:forEach items="${pager.items}" var="mediaFile">
 
-                            <li class="align-images"
-                                onmouseover="highlight(this, true)" onmouseout="highlight(this, false)">
+                                <li class="align-images"
+                                    onmouseover="highlight(this, true)" onmouseout="highlight(this, false)">
 
-                                <div class="mediaObject" data-media-file-id="${mediaFile.id}"
-                                     data-media-file-name="${fn:escapeXml(mediaFile.name)}">
+                                    <div class="mediaObject" role="button" tabindex="0"
+                                         aria-label="${fn:escapeXml(mediaFile.name)}"
+                                         data-media-file-id="${mediaFile.id}"
+                                         data-media-file-name="${fn:escapeXml(mediaFile.name)}">
 
-                                    <c:choose>
+                                        <c:choose>
 <c:when test="${mediaFile.imageFile}">
-                                        <img src='${urls.mediaThumbnail(mediaFile)}'
-                                             width='${mediaFile.thumbnailWidth}'
-                                             height='${mediaFile.thumbnailHeight}'
-                                             title='${fn:escapeXml(mediaFile.name)}'
-                                             alt='${fn:escapeXml(mediaFile.name)}'/>
-                                    </c:when>
+                                            <img src='${urls.mediaThumbnail(mediaFile)}'
+                                                 width='${mediaFile.thumbnailWidth}'
+                                                 height='${mediaFile.thumbnailHeight}'
+                                                 title='${fn:escapeXml(mediaFile.name)}'
+                                                 alt='${fn:escapeXml(mediaFile.name)}'/>
+                                        </c:when>
 <c:otherwise>
-                                        <c:url var="mediaFileURL" value="/images/page.png"/>
-                                        <img src='${mediaFileURL}'
-                                             style="padding:40px 50px;" alt='${fn:escapeXml(mediaFile.name)}'/>
-                                    </c:otherwise>
+                                            <span class="bi bi-file-earmark fs-1" aria-hidden="true"></span>
+                                        </c:otherwise>
 </c:choose></div>
 
-                                <div class="mediaObjectInfo">
+                                    <div class="mediaObjectInfo">
 
-                                    <input type="checkbox"
-                                           name="selectedMediaFiles"
-                                           value="${mediaFile.id}"
-                                           aria-label="${fn:escapeXml(mediaFile.name)}"/>
+                                        <input type="checkbox" class="form-check-input"
+                                               name="selectedMediaFiles"
+                                               value="${mediaFile.id}"
+                                               aria-label="${fn:escapeXml(mediaFile.name)}"/>
 
-                                    ${fn:escapeXml(mediaFile.name)}
+                                        ${fn:escapeXml(mediaFile.name)}
 
-                                    <c:if test="${mediaFile.imageFile and empty fn:trim(mediaFile.altText)}">
-                                        <button type="button" class="media-alt-missing" data-alt-fix
-                                                data-media-file-id="${mediaFile.id}"
-                                                data-media-file-name="${fn:escapeXml(mediaFile.name)}"
-                                                title="<spring:message code='mediaFileView.altMissing.tip'/>"><spring:message code="mediaFileView.altMissing"/></button>
-                                    </c:if>
+                                        <c:if test="${mediaFile.imageFile and empty fn:trim(mediaFile.altText)}">
+                                            <button type="button" class="media-alt-missing" data-alt-fix
+                                                    data-media-file-id="${mediaFile.id}"
+                                                    data-media-file-name="${fn:escapeXml(mediaFile.name)}"
+                                                    title="<spring:message code='mediaFileView.altMissing.tip'/>"><spring:message code="mediaFileView.altMissing"/></button>
+                                        </c:if>
 
-                                </div>
+                                    </div>
 
-                            </li>
+                                </li>
 
-                        </c:forEach>
+                            </c:forEach>
 
-                    </c:otherwise>
+                        </c:otherwise>
 </c:choose></ul>
 
             </div>
         </div>
 
         <div style="clear:left;"></div>
-
-        <c:if test="${(empty pager && fn:length(childFiles) > 0) || (not empty pager && fn:length(pager.items) > 0) || (currentDirectory.name != 'default' && empty pager)}">
 
             <%-- The selection bar: hidden until roller.js's delegated checkbox
                  handler finds a checked box in #mediaFileViewForm. Toggle,
@@ -288,7 +318,6 @@
                  Toggle is a button that flips every row via toggleFunction(),
                  not a header checkbox, so onToggle() below fires the recount
                  by hand once it is done. --%>
-            <c:if test="${(empty pager && fn:length(childFiles) > 0) || (not empty pager && fn:length(pager.items) > 0)}">
                 <div class="selection-bar" data-selection-bar="mediaFileViewForm" hidden>
                     <span class="selection-count" data-template="<spring:message code='selection.count'/>"></span>
 
@@ -298,7 +327,8 @@
                     <button id="moveButton" type="button" class="btn btn-secondary"
                             onclick="onMoveSelected()"><spring:message code="mediaFileView.moveSelected"/></button>
 
-                    <select name="selectedDirectory" id="moveTargetMenu" class="form-select" style="display: inline; width: 15em">
+                    <label for="moveTargetMenu" class="visually-hidden"><spring:message code="mediaFileView.moveSelected"/></label>
+                    <select name="selectedDirectory" id="moveTargetMenu" class="form-select d-inline-block">
 <c:forEach items="${allDirectories}" var="opt">
 <option value="${opt.id}" ${opt.id == selectedDirectory ? 'selected' : ''}>${fn:escapeXml(opt.name)}</option>
 </c:forEach>
@@ -315,18 +345,19 @@
                             onclick="onDeleteSelected()"
                             data-confirm="<spring:message code='mediaFile.delete.confirm'/>"><spring:message code="mediaFileView.deleteSelected"/></button>
                 </div>
-            </c:if>
 
-            <%-- Folder deletion needs no selection, so it sits outside the
-                 selection bar entirely. --%>
-            <c:if test="${currentDirectory.name != 'default' && empty pager}">
-                <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-                    <button id="deleteFolderButton" type="button" class="btn btn-secondary"
-                            onclick="onDeleteFolder()"
-                            data-confirm="<spring:message code='mediaFile.deleteFolder.confirm'/>"><spring:message code="mediaFileView.deleteFolder"/></button>
-                </div>
-            </c:if>
+        </c:otherwise>
+        </c:choose>
 
+        <%-- Folder deletion needs no selection, so it sits outside the
+             selection bar entirely, and outside the has-files branch: an
+             empty folder is deletable too. --%>
+        <c:if test="${not empty currentDirectory && currentDirectory.name != 'default' && empty pager}">
+            <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                <button id="deleteFolderButton" type="button" class="btn btn-secondary"
+                        onclick="onDeleteFolder()"
+                        data-confirm="<spring:message code='mediaFile.deleteFolder.confirm'/>"><spring:message code="mediaFileView.deleteFolder"/></button>
+            </div>
         </c:if>
 
     <sec:csrfInput/>
@@ -335,10 +366,9 @@
 </c:if>
 
 <%-- Empty state, search branch: a search ran and matched nothing. Same shape
-     as the folder-empty invitation below -- the two used to disagree, one an
-     .empty-state card and the other a half-sentence buried in the pagetip
-     paragraph. The action clears the search by reloading the page without
-     the query, which is the only way back to the whole library from here. --%>
+     as the folder-empty invitation inside the form above. The action clears
+     the search by reloading the page without the query, which is the only
+     way back to the whole library from here. --%>
 <c:if test="${not empty pager && fn:length(pager.items) == 0}">
     <div class="empty-state">
         <p class="empty-state-title"><spring:message code="empty.mediaSearch.title"/></p>
@@ -348,24 +378,6 @@
         </c:url>
         <a href="${emptySearchResetUrl}" class="btn btn-primary">
             <spring:message code="empty.mediaSearch.action"/>
-        </a>
-    </div>
-</c:if>
-
-<%-- Empty state: no search in progress (a zero-result search has its own
-     invitation just above) and this directory has no files. Kept as its own
-     block rather than nested inside the guard above, which only enters for a
-     directory/search that already has something to show. --%>
-<c:if test="${empty pager && empty childFiles}">
-    <div class="empty-state">
-        <p class="empty-state-title"><spring:message code="empty.media.title"/></p>
-        <p class="empty-state-body"><spring:message code="empty.media.body"/></p>
-        <c:url var="emptyMediaAddUrl" value="/roller-ui/authoring/mediaFileAdd.rol">
-            <c:param name="weblog" value="${actionWeblog.handle}"/>
-            <c:param name="directoryName" value="${directoryName}"/>
-        </c:url>
-        <a href="${emptyMediaAddUrl}" class="btn btn-primary">
-            <spring:message code="empty.media.action"/>
         </a>
     </div>
 </c:if>
@@ -521,6 +533,20 @@
          were concatenated into onclick="onClickEdit('...','...')". --%>
     $(document).on('click', '.mediaObject', function () {
         onClickEdit(this.dataset.mediaFileId, this.dataset.mediaFileName);
+    });
+
+    <%-- A tile is role="button" with tabindex="0", so a keyboard user can
+         reach it; Enter and Space activate it the way they activate a real
+         button, and focus shows the same highlight as hover. --%>
+    $(document).on('keydown', '.mediaObject', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            this.click();
+        }
+    });
+
+    $(document).on('focusin focusout', '.mediaObject', function (event) {
+        highlight(this.parentNode, event.type === 'focusin');
     });
 
     <%-- The alt-text marker opens the same editor. stopPropagation keeps the

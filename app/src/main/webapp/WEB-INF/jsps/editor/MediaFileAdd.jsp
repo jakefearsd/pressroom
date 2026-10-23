@@ -57,6 +57,7 @@
             <div id="mediaDropZone" class="media-dropzone"
                  data-summary-one="<spring:message code='mediaFileAdd.chosenSummary.one'/>"
                  data-summary-many="<spring:message code='mediaFileAdd.chosenSummary.many'/>">
+                <label for="uploadedFiles" class="visually-hidden"><spring:message code="mediaFileAdd.fileLocation"/></label>
                 <input type="file" name="uploadedFiles" id="uploadedFiles" multiple/>
                 <p class="media-dropzone-hint"><spring:message code="mediaFileAdd.dropHint"/></p>
                 <ul id="mediaChosenFiles" class="media-chosen"></ul>
@@ -95,7 +96,7 @@
 
     </details>
 
-    <button type="submit" id="uploadButton" class="btn btn-secondary"
+    <button type="submit" id="uploadButton" class="btn btn-primary"
             data-busy-label="<spring:message code='mediaFileAdd.uploading'/>" formaction="${pageContext.request.contextPath}/roller-ui/authoring/mediaFileAdd!save.rol"><spring:message code="mediaFileAdd.upload"/></button>
     <c:url var="mediaFileCancelURL" value="/roller-ui/authoring/mediaFileView.rol">
         <c:param name="weblog" value="${actionWeblog.handle}"/>

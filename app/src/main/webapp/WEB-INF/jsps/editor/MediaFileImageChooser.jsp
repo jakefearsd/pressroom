@@ -87,8 +87,9 @@
                                      e.g. "Maiia's portrait.jpg" made the tile
                                      permanently unclickable. See the delegated
                                      click binding below (same convention as
-                                     MediaFileView.jsp:493). --%>
-                                <div class="mediaObject"
+                                     MediaFileView.jsp's tiles). --%>
+                                <div class="mediaObject" role="button" tabindex="0"
+                                     aria-label="${fn:escapeXml(mediaFile.name)}"
                                      data-media-file-name="${fn:escapeXml(mediaFile.name)}"
                                      data-media-file-url="${fn:escapeXml(mediaFileURL)}"
                                      data-media-file-is-image="${mediaFile.isImageFile()}"
@@ -102,7 +103,7 @@
                                              alt='${fn:escapeXml(mediaFile.name)}'/>
                                     </c:when>
 <c:otherwise>
-                                        <span class="bi bi-file-earmark" aria-hidden="true"></span>
+                                        <span class="bi bi-file-earmark fs-1" aria-hidden="true"></span>
                                     </c:otherwise>
                                     </c:choose>
                                 </div>
@@ -143,6 +144,20 @@
     $(document).on('click', '.mediaObject', function () {
         onSelectMediaFile(this.dataset.mediaFileName, this.dataset.mediaFileUrl,
                 this.dataset.mediaFileIsImage, this.dataset.mediaFileId);
+    });
+
+    <%-- A tile is role="button" with tabindex="0", so a keyboard user can
+         reach it; Enter and Space activate it the way they activate a real
+         button, and focus shows the same highlight as hover. --%>
+    $(document).on('keydown', '.mediaObject', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            this.click();
+        }
+    });
+
+    $(document).on('focusin focusout', '.mediaObject', function (event) {
+        highlight(this.parentNode, event.type === 'focusin');
     });
 
     function highlight(el, flag) {
