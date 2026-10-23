@@ -32,14 +32,12 @@
     <h2 class="roller-page-title"><spring:message code="installer.tablesCreated" /></h2>
 
     <p><spring:message code="installer.tablesCreatedExplanation" /></p>
-    <c:url value="/roller-ui/install/install!bootstrap.rol" var="bootstrapUrl"/>
-    <p>
-        <spring:message code="installer.tryBootstrapping" arguments="${bootstrapUrl}" />
-    </p>
 
 <pre>
 <c:forEach items="${messages}" var="msg">${fn:escapeXml(msg)}<br /></c:forEach>
 </pre>
+
+    <jsp:include page="/WEB-INF/jsps/core/InstallStart.jsp"/>
 
 </c:when>
 <c:otherwise>

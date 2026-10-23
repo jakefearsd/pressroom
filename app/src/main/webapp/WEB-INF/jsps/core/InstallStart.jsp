@@ -16,13 +16,11 @@
   directory of this distribution.
 --%>
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
-
-<%-- Anonymous, and with installation.type=auto every public request lands
-     here while Roller cannot start: so the page names the problem and where
-     to read about it, nothing more. The startup log (the JDBC URL and user),
-     the exception and its trace are in the server log only. --%>
-<h2 class="roller-page-title"><spring:message code="installer.unknownError" /></h2>
-
-<p><spring:message code="installer.detailsInServerLog" /></p>
-
-<div class="mb-4"></div>
+<%-- The installer's last step, shared by CreateDatabase.jsp, UpgradeDatabase.jsp
+     and Bootstrap.jsp: one sentence and one button that starts Roller. A POST,
+     never a "Click here" GET link beside it (two controls for one action). --%>
+<p><spring:message code="installer.readyToStart"/></p>
+<form action="${pageContext.request.contextPath}/roller-ui/install/install!bootstrap.rol" method="post">
+    <sec:csrfInput/>
+    <button type="submit" class="btn btn-primary"><spring:message code="installer.finishUpgrade"/></button>
+</form>
