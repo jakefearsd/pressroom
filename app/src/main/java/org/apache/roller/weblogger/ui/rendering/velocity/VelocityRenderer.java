@@ -69,7 +69,9 @@ public class VelocityRenderer implements Renderer {
 
         } catch (VelocityException ex) {
             // in the case of a velocity error we want to render an
-            // error page instead so the user knows what was wrong
+            // error page instead so the user knows what was wrong; the
+            // detail goes to the log, never to the reader
+            log.error("Template {} could not be loaded; rendering the error page", template.getId(), ex);
             velocityException = ex;
 
             // need to lookup error page template
@@ -125,7 +127,10 @@ public class VelocityRenderer implements Renderer {
         } catch (VelocityException ex) {
 
             // in the case of a velocity error including a page we want to
-            // render an error page instead so the user knows what was wrong
+            // render an error page instead so the user knows what was wrong;
+            // the detail goes to the log, never to the reader
+            log.error("Error rendering template {}; splicing in the error block",
+                    renderTemplate.getId(), ex);
             velocityException = ex;
 
             // need to lookup parse error template
@@ -135,6 +140,19 @@ public class VelocityRenderer implements Renderer {
             // wrap and rethrow so caller can deal with it
             throw new RenderingException("Error during rendering", ex);
         }
+    }
+
+    /**
+     * Whether what this renderer wrote is an error: the whole-page error
+     * template in place of a template that would not parse, or the error
+     * block spliced in where a render failed partway. The reader still gets
+     * that body, but the response must not be a 200 and must not be cached:
+     * a rendered page expires only when {@code weblog.lastModified} moves, so
+     * a cached error (one database blip inside a model getter) would stay in
+     * front of every reader until an author next saved something.
+     */
+    public boolean renderedError() {
+        return velocityException != null;
     }
 
     /**
