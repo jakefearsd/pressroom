@@ -240,6 +240,31 @@ class LuceneIndexManagerSearchTest {
         fixed.shutdown();
     }
 
+    /**
+     * The total a reader is told ("N entries match", "Showing 1-10 of N", and
+     * whether there is a next page) counts only what the results page can
+     * show. A future-dated entry is in the index but never on the page, so
+     * it is left out by the query itself; a document whose entry has gone
+     * (a stale document) is left out of the count once the page has seen it.
+     */
+    @Test
+    void theTotalCountsOnlyWhatTheResultsCanShow() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("countblog");
+        index(entry("count-1", blog, "General", "Live"));
+        WeblogEntry future = entry("count-2", blog, "General", "Future");
+        future.setPubTime(new Timestamp(System.currentTimeMillis() + 3_600_000));
+        index(future);
+        WeblogEntry gone = entry("count-3", blog, "General", "Gone");
+        index(gone);
+        when(entries.getWeblogEntry("count-3")).thenReturn(null);
+
+        SearchResultList results = manager.search(WORD, "countblog", null, null, 0, 10, mock(URLStrategy.class));
+
+        assertEquals(List.of("count-1"), idsOf(results));
+        assertEquals(1, results.getTotalHits(), "the total must not count what the page dropped");
+    }
+
     private void index(WeblogEntry entry) throws Exception {
         when(entries.getWeblogEntry(entry.getId())).thenReturn(entry);
         manager.addEntryIndexOperation(entry);
