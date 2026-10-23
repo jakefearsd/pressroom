@@ -317,6 +317,11 @@ label,
     color: var(--warn) !important;
 }
 
+/* Plain text whose line breaks are the writer's (a comment body). */
+.pre-wrap {
+    white-space: pre-wrap;
+}
+
 /* Bootstrap's muted grey is not a token; the quiet register is --ink-soft. */
 .text-muted {
     color: var(--ink-soft) !important;

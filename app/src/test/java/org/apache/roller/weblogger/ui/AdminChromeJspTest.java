@@ -250,4 +250,22 @@ class AdminChromeJspTest {
         int title = src.indexOf("<h1 class=\"roller-page-title\">");
         assertTrue(card >= 0 && title > card, "the h1 is rendered outside the card");
     }
+
+    /**
+     * The reader's account page: section headings were {@code h2.h5}
+     * (Bootstrap's 20px, page-title size) rather than the caps-label role,
+     * its form was the only one with labels beside fields, the comment body
+     * carried an inline style, and Delete was an outline button where every
+     * other list uses the row-action icon.
+     */
+    @Test
+    void theAccountPageRidesTheSharedRoles() {
+        String src = jsp("core/Account.jsp");
+        assertFalse(src.contains("class=\"h5\""), "a section heading still renders at 20px");
+        assertEquals(3, src.split("<h2 class=\"section-head\">", -1).length - 1, "three caps-label section heads");
+        assertTrue(src.contains("id=\"accountNameForm\" class=\"form-stacked\""), "the name form stacks its label");
+        assertFalse(src.contains("style=\""), "inline style left on the account page");
+        assertTrue(src.contains("class=\"pre-wrap\""));
+        assertTrue(src.contains("<td class=\"row-actions\">"), "the comment's delete is a row action");
+    }
 }
