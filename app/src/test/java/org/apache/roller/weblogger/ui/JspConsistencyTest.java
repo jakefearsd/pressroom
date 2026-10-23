@@ -17,6 +17,7 @@
 */
 package org.apache.roller.weblogger.ui;
 
+import org.apache.roller.weblogger.ui.controllers.RollerViewResolver;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -24,6 +25,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -677,7 +679,8 @@ class JspConsistencyTest {
      * the handle and entry count wear the mono data face, and the actions are
      * one primary "New entry" beside plain {@code .quiet-link}s.
      *
-     * <p>{@code h3.mm_weblog_name} survives the restyle deliberately:
+     * <p>{@code h2.mm_weblog_name} (an h3 until the heading sweep put it one
+     * level under the page's h1) survives the restyle deliberately:
      * {@code Routes.java} identifies {@code menu.rol} by that selector, so
      * renaming it here without moving the marker in the same commit fails
      * {@code RouteSweepIT}.
@@ -693,8 +696,8 @@ class JspConsistencyTest {
 
         assertTrue(markup.contains("class=\"weblog-row\""),
                 "each weblog must be a .weblog-row");
-        assertTrue(markup.contains("<h3 class=\"mm_weblog_name section-head\">"),
-                "h3.mm_weblog_name is Routes.java's marker for menu.rol -- keep it");
+        assertTrue(markup.contains("<h2 class=\"mm_weblog_name section-head\">"),
+                "h2.mm_weblog_name is Routes.java's marker for menu.rol -- keep it");
         assertTrue(markup.contains("class=\"weblog-actions\""),
                 "the row's actions belong in a .weblog-actions strip");
         assertTrue(markup.contains("class=\"quiet-link\""),
@@ -903,6 +906,151 @@ class JspConsistencyTest {
                 "no JSP may skip a heading level to h4/h5: " + violations);
     }
 
+    /** The whole webapp, so the {@code roller-ui/errors} pages are scanned too. */
+    static final Path WEBAPP = Path.of("src/main/webapp");
+
+    private static final Pattern HEADING_TAG = Pattern.compile("<h([1-6])\\b");
+
+    /**
+     * Layouts whose document only ever opens in an iframe inside a modal on
+     * an admin page that the tabbed layout already titled {@code h1} (the
+     * media editor and the image chooser).
+     * Their content continues that page's outline, so it starts at h2 like
+     * any other admin fragment rather than printing a second h1.
+     */
+    private static final Set<String> IFRAMED_LAYOUTS = Set.of("/WEB-INF/jsps/tiles/tiles-popuppage.jsp");
+
+    /**
+     * No heading skips a level, counting from the title the page's layout
+     * already printed.
+     *
+     * <p>The h4/h5 ban above was written when the layouts titled every page
+     * {@code h2.roller-page-title} and the cards used {@code h3}. The layouts
+     * moved to {@code h1}, and the cards stayed {@code h3.section-head}, so
+     * fourteen screens went h1 to h3 with nothing in between -- a gap a
+     * screen reader's heading list shows as a missing section -- and the scan
+     * could not see it, because it judged each file alone. Two pages had the
+     * opposite fault: {@code denied.jsp} and the install pages sit in layouts
+     * that print no title, and opened at {@code h2} with no {@code h1} at all.
+     *
+     * <p>So each content JSP is judged from its layout, which this reads from
+     * {@code RollerViewResolver} itself: under a layout that prints an
+     * {@code h1}, the fragment starts at h2 and may not print a second h1.
+     * Under one that prints none, the fragment must open with the h1. A JSP
+     * no view names is a whole document when it has an {@code <html>} (it
+     * starts at h1) and otherwise an include into the admin chrome (h2).
+     * Within a file, a heading may go at most one level below the one before.
+     * The one layout read differently is the popup ({@link #IFRAMED_LAYOUTS}).
+     *
+     * <p>The emphasis rule is untouched by any of this: the level is for the
+     * outline, the class carries the look ({@code .section-head} is the 12px
+     * caps label whether it is an h2 or an h3).
+     */
+    @Test
+    void noHeadingSkipsALevelBelowItsPageTitle() throws IOException {
+        Map<Path, Integer> titledBy = layoutTitleLevels();
+        assertEquals(0, titledBy.get(WEBAPP.resolve("roller-ui/errors/denied.jsp")),
+                "the error layout prints no title -- did the view map stop being read?");
+        assertEquals(1, titledBy.get(JSPS.resolve("core/Login.jsp")),
+                "the login layout prints the h1 -- did the view map stop being read?");
+
+        List<String> violations = new ArrayList<>();
+        for (Path jsp : everyServedJsp()) {
+            String src = blankJspComments(Files.readString(jsp, StandardCharsets.UTF_8));
+            int base = titledBy.getOrDefault(jsp, src.contains("<html") ? 0 : 1);
+            violations.addAll(headingSkips(WEBAPP.relativize(jsp).toString(), src, base));
+        }
+
+        assertEquals(List.of(), violations,
+                "a heading skips a level (h2.section-head is the card/section level under the "
+                        + "layout's h1; a page in the error or install layout titles itself h1)");
+    }
+
+    /** The scan itself, on planted markup. */
+    @Test
+    void theHeadingScanCountsFromTheLayoutsTitle() {
+        assertEquals(List.of(),
+                headingSkips("A.jsp", "<h2 class=\"section-head\">a</h2><h3>b</h3><h2>c</h2>", 1));
+        assertEquals(List.of("B.jsp:2  h3 follows h1"),
+                headingSkips("B.jsp", "<div>\n<h3 class=\"section-head\">a</h3>", 1));
+        assertEquals(List.of("C.jsp:1  h1 under a layout that already printed the h1"),
+                headingSkips("C.jsp", "<h1>a</h1>", 1));
+        assertEquals(List.of("D.jsp:1  h2 follows h0"),
+                headingSkips("D.jsp", "<h2 class=\"roller-page-title\">Access denied</h2>", 0));
+        assertEquals(List.of(),
+                headingSkips("E.jsp", "<h1>one branch</h1><h1>another branch</h1><header>", 0));
+    }
+
+    private static List<String> headingSkips(String name, String src, int base) {
+        List<String> skips = new ArrayList<>();
+        int previous = base;
+        Matcher heading = HEADING_TAG.matcher(src);
+        while (heading.find()) {
+            int level = Integer.parseInt(heading.group(1));
+            if (level <= base) {
+                skips.add(name + ":" + lineOf(src, heading.start()) + "  h" + level
+                        + " under a layout that already printed the h" + base);
+            } else if (level > previous + 1) {
+                skips.add(name + ":" + lineOf(src, heading.start()) + "  h" + level
+                        + " follows h" + previous);
+            }
+            previous = level;
+        }
+        return skips;
+    }
+
+    private static List<Path> everyServedJsp() throws IOException {
+        try (Stream<Path> walk = Files.walk(WEBAPP)) {
+            List<Path> all = walk.filter(p -> p.toString().endsWith(".jsp")).sorted().toList();
+            assertTrue(all.size() > 60, "found only " + all.size() + " JSPs under " + WEBAPP);
+            return all;
+        }
+    }
+
+    /**
+     * For each content JSP a view names: the heading level its layout has
+     * already used -- 1 when the layout prints an {@code h1}, else 0. A JSP
+     * two views share takes the stricter (lower) one. Read by recording what
+     * {@code RollerViewResolver.init()} registers, so a new view or a layout
+     * swap is seen without this test being told.
+     */
+    private static Map<Path, Integer> layoutTitleLevels() throws IOException {
+        Map<String, String> layoutOf = new HashMap<>();
+        Map<String, String> contentOf = new HashMap<>();
+        RollerViewResolver recorder = new RollerViewResolver() {
+            @Override
+            public void addDefinition(String name, String layout, Map<String, String> attributes) {
+                super.addDefinition(name, layout, attributes);
+                layoutOf.put(name, layout);
+                contentOf.put(name, attributes.get("content"));
+            }
+
+            @Override
+            public void addExtendedDefinition(String name, String extendsName,
+                                              Map<String, String> overrides) {
+                super.addExtendedDefinition(name, extendsName, overrides);
+                layoutOf.put(name, layoutOf.get(extendsName));
+                contentOf.put(name, overrides.getOrDefault("content", contentOf.get(extendsName)));
+            }
+        };
+        recorder.init();
+
+        Map<Path, Integer> levels = new HashMap<>();
+        for (Map.Entry<String, String> view : contentOf.entrySet()) {
+            String content = view.getValue();
+            if (content == null || !content.endsWith(".jsp")) {
+                continue;   // a base definition: its content is "${content}"
+            }
+            String layoutPath = layoutOf.get(view.getKey());
+            Path layout = WEBAPP.resolve(layoutPath.substring(1));
+            int level = IFRAMED_LAYOUTS.contains(layoutPath)
+                    || withoutJspComments(Files.readString(layout, StandardCharsets.UTF_8))
+                            .contains("<h1") ? 1 : 0;
+            levels.merge(WEBAPP.resolve(content.substring(1)), level, Math::min);
+        }
+        return levels;
+    }
+
     /**
      * Task B11: no {@code <str:...>} markup, because there is no {@code str}
      * taglib to interpret it.
@@ -1091,6 +1239,16 @@ class JspConsistencyTest {
      */
     private static String withoutJspComments(String src) {
         return src.replaceAll("(?s)<%--.*?--%>", "");
+    }
+
+    /** {@link #withoutJspComments}, keeping each comment's newlines so line numbers stay true. */
+    private static String blankJspComments(String src) {
+        Matcher comment = Pattern.compile("(?s)<%--.*?--%>").matcher(src);
+        StringBuilder out = new StringBuilder();
+        while (comment.find()) {
+            comment.appendReplacement(out, comment.group().replaceAll("[^\\n]", ""));
+        }
+        return comment.appendTail(out).toString();
     }
 
     private static int countOccurrences(String haystack, String needle) {

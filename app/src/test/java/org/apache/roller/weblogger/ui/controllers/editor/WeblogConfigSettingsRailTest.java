@@ -41,7 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * section that forgets the rail link fails this too.
  *
  * <p>M9/M10: the custom-domain section reused {@code websiteSettings.customDomain}
- * for BOTH its {@code <h3>} heading and its field {@code <label>}, so "Custom
+ * for BOTH its section heading and its field {@code <label>}, so "Custom
  * domain" rendered twice, stacked -- every sibling section already used a
  * distinct {@code *Settings} key for its heading, separate from any field
  * label beneath it.
@@ -59,7 +59,7 @@ class WeblogConfigSettingsRailTest {
     void everySectionHeadingHasAMatchingRailLink() throws IOException {
         String jsp = read();
         Matcher headings = Pattern.compile(
-                "<h3 class=\"section-head\" id=\"(settings-[a-z]+)\"").matcher(jsp);
+                "<h2 class=\"section-head\" id=\"(settings-[a-z]+)\"").matcher(jsp);
         List<String> ids = new ArrayList<>();
         while (headings.find()) {
             ids.add(headings.group(1));
@@ -83,7 +83,7 @@ class WeblogConfigSettingsRailTest {
         String jsp = read();
 
         assertTrue(jsp.contains("id=\"settings-customdomain\">"
-                        + "<spring:message code=\"websiteSettings.customDomainSettings\"/></h3>"),
+                        + "<spring:message code=\"websiteSettings.customDomainSettings\"/></h2>"),
                 "the custom-domain section heading must use its own *Settings message code, "
                         + "the same way every sibling section heading does, rather than the "
                         + "field label's code -- otherwise \"Custom domain\" renders twice, stacked");

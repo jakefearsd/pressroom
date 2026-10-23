@@ -26,11 +26,11 @@
      same, starting Roller. --%>
 <c:choose>
 <c:when test="${startFailed}">
-    <h2 class="roller-page-title"><spring:message code="installer.startFailed"/></h2>
+    <h1 class="roller-page-title"><spring:message code="installer.startFailed"/></h1>
     <p><spring:message code="installer.startFailedExplanation"/></p>
 </c:when>
 <c:otherwise>
-    <h2 class="roller-page-title"><spring:message code="installer.notStarted"/></h2>
+    <h1 class="roller-page-title"><spring:message code="installer.notStarted"/></h1>
 </c:otherwise>
 </c:choose>
 

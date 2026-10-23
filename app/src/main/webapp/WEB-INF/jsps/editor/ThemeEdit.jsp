@@ -47,14 +47,14 @@
         <div class="col-12 col-md-6">
             <div class="card">
                 <div class="card-body" id="sharedChooser">
-                    <%-- .section-head, not a bare h3: this labels the chooser
-                         card, and a bare h3 renders at Bootstrap's 28px
+                    <%-- .section-head, not a bare h2: this labels the chooser
+                         card, and a bare h2 renders at Bootstrap's 32px
                          against a 20px page title. --%>
-                    <h3 class="section-head">
+                    <h2 class="section-head">
                         <input id="sharedRadio" type="radio" name="themeType" value="shared"
                             <c:if test="${!customTheme}">checked</c:if>/>&nbsp;
                         <label for="sharedRadio"><spring:message code="themeEditor.sharedTheme"/></label>
-                    </h3>
+                    </h2>
                     <spring:message code="themeEditor.sharedThemeDescription"/>
                 </div>
             </div>
@@ -63,11 +63,11 @@
         <div class="col-12 col-md-6">
             <div class="card">
                 <div class="card-body" id="customChooser">
-                    <h3 class="section-head">
+                    <h2 class="section-head">
                         <input id="customRadio" type="radio" name="themeType" value="custom"
                             <c:if test="${customTheme}">checked</c:if>/>&nbsp;
                         <label for="customRadio"><spring:message code="themeEditor.customTheme"/></label>
-                    </h3>
+                    </h2>
                     <spring:message code="themeEditor.customThemeDescription"/>
                 </div>
             </div>

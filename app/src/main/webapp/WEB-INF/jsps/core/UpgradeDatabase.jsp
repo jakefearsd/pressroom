@@ -21,7 +21,7 @@
 <c:choose>
 <c:when test="${error}">
 
-    <h2 class="roller-page-title"><spring:message code="installer.errorUpgradingTables"/></h2>
+    <h1 class="roller-page-title"><spring:message code="installer.errorUpgradingTables"/></h1>
     <p><spring:message code="installer.errorUpgradingTablesExplanation"/></p>
 <pre>
 <c:forEach items="${messages}" var="msg">${fn:escapeXml(msg)}<br/></c:forEach>
@@ -30,7 +30,7 @@
 </c:when>
 <c:when test="${upgradeRequired}">
 
-    <h2 class="roller-page-title"><spring:message code="installer.databaseUpgradeNeeded"/></h2>
+    <h1 class="roller-page-title"><spring:message code="installer.databaseUpgradeNeeded"/></h1>
 
     <p>
         <spring:message code="installer.databaseUpgradeNeededExplanation" arguments="${databaseProductName}"/>
@@ -46,7 +46,7 @@
 </c:when>
 <c:otherwise>
 
-    <h2 class="roller-page-title"><spring:message code="installer.tablesUpgraded"/></h2>
+    <h1 class="roller-page-title"><spring:message code="installer.tablesUpgraded"/></h1>
 
     <p><spring:message code="installer.tablesUpgradedExplanation"/></p>
 

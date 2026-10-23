@@ -73,7 +73,7 @@ p {
 }
 
 /* Quiet Instrument: page title row -- 20px/600 with a bottom rule; a
-   primary action nested inside the same <h2>/<h1>.roller-page-title (a
+   primary action nested inside the same h1.roller-page-title (a
    future content wave's job, none exist yet) lands on the right for free
    because the title itself is the flex container -- no JSP change needed
    when one shows up. */
@@ -597,7 +597,7 @@ p.pagetip {
 
 /* The icon/label gap used to be a hardcoded &nbsp; in MainMenu.jsp -- a
    non-breaking space is content, and it does not scale with the type. */
-/* Doubled class: beats .section-head (which the h3 also carries, for the
+/* Doubled class: beats .section-head (which the h2 also carries, for the
    Routes marker) wherever the two rules sit in this file. The name is a
    name to pick, at weight 600 in ink -- not a 12px caps label. */
 .mm_weblog_name.section-head {
@@ -658,11 +658,12 @@ table.mm_table_actions td {
    of Bootstrap's/the browser's oversized h3/h4 defaults. This targets the
    header text itself regardless of what markup rides inside a
    .card-header: plain text, or a heading carrying .section-head
-   (MediaFileAdd, TemplateEdit -- both were h4.card-title until task B11's
-   heading-level sweep; EntryEdit/EntryEditor's own panels are all
-   .editor-box/.editor-drawer now, the newsletter and revisions boxes and
+   (MediaFileAdd, TemplateEdit -- h4.card-title until task B11's
+   heading-level sweep, h3 until the fit-and-finish one put every card and
+   section heading one level under the layout's h1; EntryEdit/EntryEditor's
+   own panels are all .editor-box/.editor-drawer now, the newsletter and revisions boxes and
    the Summary drawer included, and the Plugins card was deleted with the
-   plugin it held), or h3.setup-section-title (Setup.jsp) -- so any heading
+   plugin it held), or h2.setup-section-title (Setup.jsp) -- so any heading
    dropped into a card header inherits the quiet treatment instead of
    reintroducing its element's own default size. .section-head is the same role applied to
    WeblogConfig.jsp's and GlobalConfig.jsp's un-carded "display group"
@@ -681,6 +682,7 @@ table.mm_table_actions td {
     padding: 8px 16px;
 }
 
+.card-header h2,
 .card-header h3,
 .card-header h4,
 .card-header .card-title {

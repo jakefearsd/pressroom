@@ -33,7 +33,7 @@
                  invalid anyway, and the browser's default sizing for it put a
                  heading well above the 20px page title on the one page a
                  first-time visitor sees. --%>
-            <h3 class="section-head"><spring:message code="loginPage.prompt"/></h3>
+            <h2 class="section-head"><spring:message code="loginPage.prompt"/></h2>
 
             <div class="mb-3">
                 <label for="j_username" class="form-label"> <spring:message code="loginPage.userName"/> </label>

@@ -22,9 +22,9 @@
 <div id="profileTokensPage">
     <p class="subtitle"><spring:message code="apiTokens.profile.subtitle"/></p>
 
-    <h3 class="section-head"><spring:message code="apiTokens.live"/></h3>
+    <h2 class="section-head"><spring:message code="apiTokens.live"/></h2>
     <jsp:include page="/WEB-INF/jsps/core/TokenList.jsp"/>
 
-    <h3 class="section-head"><spring:message code="apiTokens.new"/></h3>
+    <h2 class="section-head"><spring:message code="apiTokens.new"/></h2>
     <jsp:include page="/WEB-INF/jsps/core/TokenForm.jsp"/>
 </div>

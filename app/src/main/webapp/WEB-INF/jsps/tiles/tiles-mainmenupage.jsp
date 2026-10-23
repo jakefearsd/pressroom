@@ -31,7 +31,7 @@
     <%-- tabTitle, when a controller sets one, names the browser TAB more
          specifically than the visible heading does (the entry editor sets it to
          "<entry title> - Edit entry", so a dozen open tabs are told apart).
-         pageTitle is what the <h2 class="roller-page-title"> below renders, so
+         pageTitle is what the <h1 class="roller-page-title"> below renders, so
          it must NOT carry that append -- the two attributes exist to let the
          tab and the heading differ. Rendered through spring:message exactly as
          pageTitle is, so escaping is unchanged either way. --%>
