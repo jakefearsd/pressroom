@@ -86,9 +86,31 @@ body.tg :focus-visible { outline: 2px solid var(--tg-accent); outline-offset: 2p
 }
 .tg-name a { color: var(--tg-ink); text-decoration: none; }
 .tg-tagline { margin: .35rem 0 0; color: var(--tg-muted); }
-.tg-nav { margin-top: .85rem; font-size: .90625rem; }
-.tg-nav ul { list-style: none; display: flex; flex-wrap: wrap; gap: 1rem; margin: 0; padding: 0; }
+/* The nav holds two lists -- categories, then the static pages -- and as two
+ * block-level <ul>s the pages wrapped onto a row of their own, so the header
+ * read as two unrelated navs. One flex row for both, with a wider gap and a
+ * hairline marking where the categories end. */
+.tg-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: .5rem 1.75rem;
+    margin-top: .85rem;
+    font-size: .90625rem;
+}
+.tg-nav ul { list-style: none; display: flex; flex-wrap: wrap; gap: .5rem 1rem; margin: 0; padding: 0; }
+.tg-nav ul.rCategory + ul:has(li) { padding-left: 1.75rem; border-left: 1px solid var(--tg-line); }
+/* At phone width the pages wrap under the categories anyway; there the
+ * hairline would mark nothing but an indent. */
+@media (max-width: 560px) {
+    .tg-nav ul.rCategory + ul:has(li) { padding-left: 0; border-left: 0; }
+}
 .tg-nav a { text-decoration: none; font-weight: 600; }
+/* The current category: ink rather than accent, with the accent underline
+ * journal's nav uses. .selected is what the showWeblogCategoryLinksList macro
+ * emits; [aria-current] is the same state for assistive technology. */
+.tg-nav li.selected a,
+.tg-nav a[aria-current="page"] { color: var(--tg-ink); box-shadow: inset 0 -2px var(--tg-accent); }
 
 .tg-main { max-width: 68rem; margin: 0 auto; padding: 1.75rem 1.25rem 3rem; }
 .tg-main-entry { max-width: 58rem; }
@@ -134,10 +156,45 @@ body.tg :focus-visible { outline: 2px solid var(--tg-accent); outline-offset: 2p
 .tg-card-title a { text-decoration: none; color: var(--tg-ink); }
 .tg-card-title a:hover { color: var(--tg-accent); }
 .tg-card-meta { margin: 0 0 .5rem; color: var(--tg-muted); font-size: .90625rem; }
-.tg-card-excerpt { margin: 0; color: var(--tg-muted); }
+.tg-card-excerpt { margin: 0; color: var(--tg-muted); overflow-wrap: anywhere; }
 
-.tg-pager { margin-top: 2rem; }
-.tg-pager a { font-weight: 600; text-decoration: none; }
+/* ---- pager: journal's Newer/Older steps, in travel's tokens ----
+ * Older on the left, newer on the right, each a caps label over a line of
+ * ink; the older step is first in the markup, so the grid places it. */
+.tg-pager { margin-top: 2rem; padding-top: 1.25rem; border-top: 1px solid var(--tg-line); }
+.tg-search-head .tg-pager { margin-top: .75rem; padding-top: 0; border-top: 0; }
+.tg-main-entry .tg-pager { max-width: var(--tg-measure); }
+.tg-steps { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+.tg-step { display: block; min-width: 0; text-decoration: none; }
+.tg-step-back { grid-column: 1; }
+.tg-step-fwd { grid-column: 2; text-align: right; }
+.tg-step-label {
+    display: block;
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--tg-muted);
+}
+.tg-step-title { display: block; margin-top: .25rem; color: var(--tg-ink); font-weight: 600; line-height: 1.4; }
+.tg-step:hover .tg-step-title { color: var(--tg-accent); }
+@media (max-width: 560px) {
+    .tg-steps { grid-template-columns: 1fr; gap: 1.25rem; }
+    .tg-step-fwd { grid-column: 1; text-align: left; }
+    .tg-step-empty { display: none; }
+}
+
+/* ---- view heading (category and tag views) ---- */
+.tg-view { margin: 0 0 1.5rem; }
+.tg-view-label {
+    margin: 0;
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--tg-muted);
+}
+.tg-view-name { margin: .2rem 0 0; font-size: 1.25rem; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
 .tg-search-head { margin-bottom: 1.5rem; }
 .tg-search-empty,
 .tg-search-error { margin: 0 0 1.5rem; color: var(--tg-muted); }
@@ -149,7 +206,9 @@ body.tg :focus-visible { outline: 2px solid var(--tg-accent); outline-offset: 2p
 .tg-hero-img { width: 100%; border-radius: var(--tg-radius); }
 .tg-entry-title { margin: 0 0 .4rem; font-size: 1.625rem; font-weight: 600; line-height: 1.2; letter-spacing: -0.015em; }
 .tg-entry-meta { margin: 0 0 1.75rem; color: var(--tg-muted); font-size: .90625rem; }
-.tg-entry-content { max-width: var(--tg-measure); }
+/* overflow-wrap: a long bare URL is one unbreakable word, and without this
+ * the page scrolled sideways at phone width. */
+.tg-entry-content { max-width: var(--tg-measure); overflow-wrap: anywhere; }
 /* entry tags -- the guide-card vocabulary: a soft outlined chip on the same
    measure as the content it closes, muted until hovered. */
 .tg-entry-tags {
@@ -258,6 +317,7 @@ body.tg .newsletter-subscribe label:first-child {
 }
 body.tg .contact-form input,
 body.tg .contact-form textarea,
+body.tg .comments .comment-form textarea,
 body.tg .newsletter-subscribe input[type=email] {
     display: block;
     width: 100%;
@@ -274,6 +334,7 @@ body.tg .newsletter-subscribe input[type=email] {
 }
 body.tg .contact-form input:focus,
 body.tg .contact-form textarea:focus,
+body.tg .comments .comment-form textarea:focus,
 body.tg .newsletter-subscribe input[type=email]:focus {
     outline: 2px solid var(--tg-accent);
     outline-offset: 1px;
@@ -283,6 +344,7 @@ body.tg .contact-form textarea { min-height: 8em; resize: vertical; }
 body.tg .contact-form .audience-hp,
 body.tg .newsletter-subscribe .audience-hp { position: absolute; left: -9999px; top: -9999px; }
 body.tg .contact-form button,
+body.tg .comments .comment-form button,
 body.tg .newsletter-subscribe button {
     margin-top: 1rem;
     padding: .55rem 1.35rem;
@@ -296,6 +358,7 @@ body.tg .newsletter-subscribe button {
     cursor: pointer;
 }
 body.tg .contact-form button:hover,
+body.tg .comments .comment-form button:hover,
 body.tg .newsletter-subscribe button:hover {
     background: var(--tg-accent-dark);
 }

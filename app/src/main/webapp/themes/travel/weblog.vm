@@ -14,11 +14,11 @@
     ## list is joined by hand because List#toString would put its brackets into
     ## the title (the same bug #showAutodiscoveryLinks fixed for its own).
     #if($model.weblogCategory)
-    <title>$utils.escapeHTML($model.weblogCategory.name) : $model.weblog.name</title>
+    <title>$utils.escapeHTML($model.weblogCategory.name) — $model.weblog.name</title>
     #elseif($model.tags && !$model.tags.isEmpty())
     #set($tagTitle = "")
     #foreach($titleTag in $model.tags)#if($tagTitle != "")#set($tagTitle = "${tagTitle}, ")#end#set($tagTitle = "${tagTitle}${titleTag}")#end
-    <title>Tagged $utils.escapeHTML($tagTitle) : $model.weblog.name</title>
+    <title>Tagged $utils.escapeHTML($tagTitle) — $model.weblog.name</title>
     #else
     <title>$model.weblog.name</title>
     #end
@@ -58,6 +58,22 @@
     ## from a stale link. The wording differs per view because "nothing here
     ## yet" means three different things to the reader in those three places.
     #set($pagerDays = $pager.getEntries())
+    ## The view says what it is on the page as well as in the tab: a reader
+    ## who followed a tag chip from a post otherwise lands on a list that
+    ## looks exactly like the home page. Tag views reach this template
+    ## through the default-template fallback for /tags/<tag>. $tagTitle is
+    ## the joined list the <title> branch above built.
+    #if($model.weblogCategory)
+    <div class="tg-view">
+        <p class="tg-view-label">$text.get("mainPage.category")</p>
+        <h2 class="tg-view-name">$utils.escapeHTML($model.weblogCategory.name)</h2>
+    </div>
+    #elseif($model.tags && !$model.tags.isEmpty())
+    <div class="tg-view">
+        <p class="tg-view-label">Tagged</p>
+        <h2 class="tg-view-name">$utils.escapeHTML($tagTitle)</h2>
+    </div>
+    #end
     <div class="tg-cards">
         #if($pagerDays.isEmpty())
         #if($model.weblogCategory)
@@ -71,14 +87,35 @@
         #showWeblogEntriesPager($pager)
         #end
     </div>
-    <nav class="tg-pager" aria-label="More entries">
-        #showNextPrevEntriesControl($pager)
+    ## Journal's Newer/Older steps, in place of the showNextPrevEntriesControl
+    ## macro's "&laquo; Previous page | Main | Next page &raquo;" strip, where
+    ## "Previous" meant newer. getNextLink() moves back through the archive,
+    ## getPrevLink() toward the present (AbstractWeblogEntriesPager); the
+    ## older step is emitted first so it takes the left column. The nav is
+    ## only emitted when it has a link: an empty one is still a landmark.
+    #if($pager.prevLink || $pager.nextLink)
+    <nav class="tg-pager tg-steps" aria-label="More entries">
+        #if($pager.nextLink)
+        <a class="tg-step tg-step-back" href="$pager.nextLink" rel="next">
+            <span class="tg-step-label">$text.get("pager.older")</span>
+            <span class="tg-step-title">Earlier entries</span>
+        </a>
+        #else
+        <span class="tg-step tg-step-empty"></span>
+        #end
+        #if($pager.prevLink)
+        <a class="tg-step tg-step-fwd" href="$pager.prevLink" rel="prev">
+            <span class="tg-step-label">$text.get("pager.newer")</span>
+            <span class="tg-step-title">More recent entries</span>
+        </a>
+        #end
     </nav>
+    #end
 </main>
 
 <footer class="tg-footer">
     <form class="tg-search" role="search" method="get" action="$url.search">
-        <input type="search" name="q" placeholder="Search guides" aria-label="Search">
+        <input type="search" name="q" placeholder="Search guides" aria-label="$text.get("macro.weblog.searchbutton")">
     </form>
     #showSubscribeForm($model.weblog "Get new guides by email")
     #showBusinessCard($model.weblog "Book a stay")

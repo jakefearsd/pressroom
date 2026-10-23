@@ -23,12 +23,14 @@
             #showResponsiveImage($entry.featuredImage $heroAlt "100vw" "tg-hero-img")
         </figure>
         #end
-        <h2 class="tg-entry-title">$entry.title</h2>
+        ## The reading view's own title is the page's h1; the weblog name in
+        ## the header is a paragraph on this page.
+        <h1 class="tg-entry-title">$entry.title</h1>
         <p class="tg-entry-meta">
             <time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time>
             &middot; <a href="$url.category($entry.category.name)">$utils.escapeHTML($entry.category.name)</a>
             #if($utils.isUserAuthorizedToAuthor($entry.website))
-            &middot; <a href="$url.editEntry($entry.anchor)">Edit</a>
+            &middot; <a href="$url.editEntry($entry.anchor)">$text.get("generic.edit")</a>
             #end
         </p>
         <div class="tg-entry-content">$entry.displayContent</div>
@@ -54,8 +56,16 @@
                 <a href="$url.entry($entry.anchor)">$entry.title</a>
             </h2>
             <p class="tg-card-meta"><time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time></p>
+            ## Every card gets a line of prose, as journal's rows do: most
+            ## entries have no search description, and cards without one were
+            ## shorter than their neighbours in the same row. The fallback is
+            ## emitted bare -- removeHTML over rendered, sanitized content
+            ## returns text whose entities are already escaped, and escaping it
+            ## again shows the reader "&amp;#39;" (journal/_day.vm, same rule).
             #if($utils.isNotEmpty($entry.searchDescription))
             <p class="tg-card-excerpt">$utils.escapeHTML($entry.searchDescription)</p>
+            #else
+            <p class="tg-card-excerpt">$utils.truncateNicely($utils.removeHTML($entry.displayContent), 120, 165, "…")</p>
             #end
         </div>
     </article>

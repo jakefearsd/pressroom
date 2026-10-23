@@ -282,8 +282,9 @@ class JournalThemeRenderingTest {
                         + "shell, not weblog.vm's:\n" + body);
         assertTrue(body.contains("class=\"qj-crumb\""),
                 "the weblog/category crumb must be present:\n" + body);
-        assertTrue(body.contains("<h2 class=\"qj-h1\">"),
-                "the entry title must render as the serif qj-h1:\n" + body);
+        assertTrue(body.contains("<h1 class=\"qj-h1\">"),
+                "the entry title must render as the serif qj-h1 -- the reading view's "
+                        + "own h1, the weblog name stepping down to a paragraph:\n" + body);
         assertTrue(body.contains("class=\"qj-byline\""),
                 "the byline (author + mono date) must be present:\n" + body);
         assertTrue(body.contains("class=\"qj-prose\""),
@@ -389,7 +390,7 @@ class JournalThemeRenderingTest {
         assertJournalHead(body);
         assertTrue(body.contains("class=\"qj-head\""),
                 "the page must wear the journal header chrome:\n" + body);
-        assertTrue(body.contains("<h2 class=\"qj-h1\">About This Journal</h2>"),
+        assertTrue(body.contains("<h1 class=\"qj-h1\">About This Journal</h1>"),
                 "the page title must render as the serif qj-h1:\n" + body);
         assertTrue(body.contains("class=\"qj-prose\""),
                 "the page content must render inside the qj-prose reading column:\n" + body);
@@ -561,7 +562,7 @@ class JournalThemeRenderingTest {
 
         String body = render("/" + HANDLE + "/category/Field Notes");
 
-        assertTrue(body.contains("<title>Field Notes : Test Weblog</title>"),
+        assertTrue(body.contains("<title>Field Notes \u2014 Test Weblog</title>"),
                 "the category view must name itself in the title:\n" + body);
         assertTrue(body.contains("Nothing has been filed under this category yet."),
                 "the empty wording must be the category one:\n" + body);
@@ -579,7 +580,7 @@ class JournalThemeRenderingTest {
         assertEquals(200, response.getStatus());
         String body = response.getContentAsString();
 
-        assertTrue(body.contains("<title>Search: lighthouse : Test Weblog</title>"),
+        assertTrue(body.contains("<title>Search: lighthouse \u2014 Test Weblog</title>"),
                 "the query must reach the title, escaped exactly once "
                         + "(SearchResultsModel#getTerm has already escaped it):\n" + body);
         // The hit-count status line itself is NOT assertable from here:

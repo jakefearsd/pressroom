@@ -232,6 +232,7 @@ body.qj :focus-visible { outline: 2px solid var(--qj-focus); outline-offset: 2px
     color: var(--qj-ink-soft);
     margin: .4rem 0 0;
     max-width: 58ch;
+    overflow-wrap: anywhere;
 }
 
 /* The category, set as a quiet caps label rather than an accent-coloured link.
@@ -275,6 +276,7 @@ body.qj :focus-visible { outline: 2px solid var(--qj-focus); outline-offset: 2px
     gap: 1.5rem;
 }
 .qj-step { text-decoration: none; display: block; min-width: 0; }
+.qj-step-back { grid-column: 1; }
 .qj-step-fwd { text-align: right; grid-column: 2; }
 .qj-step-label {
     display: block;
@@ -354,10 +356,12 @@ body.qj :focus-visible { outline: 2px solid var(--qj-focus); outline-offset: 2px
     font-weight: 600;
     line-height: 1.25;
     text-wrap: balance;
-    /* 24ch forced a two-line break on titles of six or seven words ("The Cabin
-     * at the End / of the Forestry Track"). Wide enough now that balance gets
-     * to choose the break rather than the cap forcing one. */
-    max-width: 30ch;
+    /* The prose's own measure, so the title block is as wide as the column it
+     * heads: 30ch of this 26px face was about 400px over a 560px body, and a
+     * long title wrapped to three lines beside empty space. ch scales with
+     * font-size and both are Plex Serif, so 58ch / 1.625 here is exactly
+     * .qj-prose's 58ch at 1rem. */
+    max-width: calc(58ch / 1.625);
 }
 
 .qj-byline {
@@ -370,6 +374,9 @@ body.qj :focus-visible { outline: 2px solid var(--qj-focus); outline-offset: 2px
     font-size: .75rem;
     color: var(--qj-ink-soft);
 }
+/* The author's way into the editor -- the page cache is per user, so only an
+ * author ever sees it. Quiet like the crumb link: accent and weight. */
+.qj-byline .qj-edit { color: var(--qj-accent); text-decoration: none; font-weight: 600; }
 .qj-byline .d {
     font-family: "IBM Plex Mono", ui-monospace, monospace;
     font-variant-numeric: tabular-nums;
@@ -380,6 +387,10 @@ body.qj :focus-visible { outline: 2px solid var(--qj-focus); outline-offset: 2px
     font-size: 1rem;
     line-height: 1.68;
     max-width: 58ch;
+    /* A long bare URL is one unbreakable word: without this the page scrolled
+     * sideways at phone width. "anywhere" also lowers the min-content width,
+     * which is what lets the .qj-sum grid cell shrink instead of overflowing. */
+    overflow-wrap: anywhere;
 }
 .qj-prose p + p { margin-top: .875rem; }
 /* body.qj prefix: without it this (0,1,1) lost to body.qj a (0,1,2) and every
@@ -464,6 +475,7 @@ body.qj .newsletter-subscribe label:first-child {
 }
 body.qj .contact-form input,
 body.qj .contact-form textarea,
+body.qj .comments .comment-form textarea,
 body.qj .newsletter-subscribe input[type=email] {
     display: block;
     width: 100%;
@@ -482,6 +494,7 @@ body.qj .newsletter-subscribe input[type=email] {
 }
 body.qj .contact-form input:focus,
 body.qj .contact-form textarea:focus,
+body.qj .comments .comment-form textarea:focus,
 body.qj .newsletter-subscribe input[type=email]:focus {
     outline: 2px solid var(--qj-focus);
     outline-offset: 1px;
@@ -491,6 +504,7 @@ body.qj .contact-form textarea { min-height: 5.25rem; resize: vertical; }
 body.qj .contact-form .audience-hp,
 body.qj .newsletter-subscribe .audience-hp { position: absolute; left: -9999px; top: -9999px; }
 body.qj .contact-form button,
+body.qj .comments .comment-form button,
 body.qj .newsletter-subscribe button {
     margin-top: 1rem;
     padding: .5rem 1.375rem;
@@ -504,6 +518,7 @@ body.qj .newsletter-subscribe button {
     cursor: pointer;
 }
 body.qj .contact-form button:hover,
+body.qj .comments .comment-form button:hover,
 body.qj .newsletter-subscribe button:hover {
     opacity: .9;
 }
@@ -516,6 +531,7 @@ body.qj .audience-message { margin-top: .75rem; font-size: .90625rem; color: var
  * of staying a literal (portfolio does the same with --pf-bg). */
 @media (prefers-color-scheme: dark) {
     body.qj .contact-form button,
+    body.qj .comments .comment-form button,
     body.qj .newsletter-subscribe button {
         color: var(--qj-paper);
     }
@@ -652,3 +668,25 @@ body.qj .business-card-book {
     text-decoration: none;
 }
 body.qj .business-card-book:hover { background: var(--qj-accent); color: var(--qj-paper); }
+
+/* ---- view heading (category and tag views) ----
+ * The caps-label role over the name in the title face: the view says what it
+ * is on the page, not only in the tab. Emphasis by weight, on the type scale. */
+.qj-view { margin: .5rem 0 .25rem; }
+.qj-view-label {
+    margin: 0;
+    font-size: .6875rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--qj-ink-soft);
+}
+.qj-view-name {
+    margin: .2rem 0 0;
+    font-family: "IBM Plex Serif", Georgia, serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--qj-ink);
+    overflow-wrap: anywhere;
+}

@@ -200,6 +200,24 @@ class TravelThemeRenderingTest {
                 "and no responsive-image markup at all:\n" + body);
     }
 
+    /**
+     * A card showed an excerpt only when the author had written a search
+     * description, which most entries never get, so cards in one row had
+     * uneven heights. Journal's list falls back to the entry's opening words;
+     * travel now does the same, emitted bare because removeHTML over rendered
+     * content returns text whose entities are already escaped.
+     */
+    @Test
+    void aCardWithoutASearchDescriptionShowsTheEntrysOpeningWords() throws Exception {
+        TestUtils.setupWeblogEntry("no-summary-written", weblog, user);
+        TestUtils.endSession(true);
+
+        String body = render("/" + HANDLE + "/");
+
+        assertTrue(body.contains("<p class=\"tg-card-excerpt\">blah blah entry</p>"),
+                "the card must fall back to the entry's own opening words:\n" + body);
+    }
+
     // ------------------------------------------------------------- permalink
 
     @Test
@@ -216,9 +234,9 @@ class TravelThemeRenderingTest {
                 "and lead with the hero figure:\n" + body);
         assertTrue(body.contains("class=\"tg-hero-img\""),
                 "whose image is the featured image:\n" + body);
-        assertTrue(body.contains("<h2 class=\"tg-entry-title\">"),
-                "the entry title must be the permalink's entry heading -- an h2, since "
-                        + "the shell's only h1 is the site name:\n" + body);
+        assertTrue(body.contains("<h1 class=\"tg-entry-title\">"),
+                "the entry title must be the permalink's h1 -- on a reading page the "
+                        + "site name steps down to a paragraph:\n" + body);
         assertTrue(body.contains("<div class=\"tg-entry-content\">"),
                 "and the content must open the measured column:\n" + body);
         assertFalse(body.contains("tg-comments"),
@@ -235,7 +253,7 @@ class TravelThemeRenderingTest {
         String body = render("/" + HANDLE + "/entry/packing-list");
 
         assertTravelHead(body);
-        assertTrue(body.contains("<h2 class=\"tg-entry-title\">"), body);
+        assertTrue(body.contains("<h1 class=\"tg-entry-title\">"), body);
         assertFalse(body.contains("<figure class=\"tg-hero\">"),
                 "no featured image means no empty hero figure:\n" + body);
     }
@@ -397,7 +415,7 @@ class TravelThemeRenderingTest {
         assertTravelHead(body);
         assertTrue(body.contains("class=\"tg-header\""),
                 "the page must wear the travel header chrome:\n" + body);
-        assertTrue(body.contains("<h2 class=\"tg-entry-title\">About This Guide</h2>"),
+        assertTrue(body.contains("<h1 class=\"tg-entry-title\">About This Guide</h1>"),
                 "the page title must render as the entry title:\n" + body);
         assertTrue(body.contains("<div class=\"tg-entry-content\">"),
                 "the page content must open the measured column:\n" + body);

@@ -374,10 +374,11 @@ class SeoHeadRenderingTest {
 
         String body = render("/" + HANDLE + "/meta-page");
 
-        assertTrue(body.contains("<title>SEO Title Override : Test Weblog</title>"),
-                "the meta title must replace the page title in <title>:\n" + body);
+        assertTrue(body.contains("<title>SEO Title Override</title>"),
+                "the meta title must replace the whole <title>, as the editor's search "
+                        + "preview shows it -- no weblog name appended:\n" + body);
         assertTrue(body.contains("<meta property=\"og:title\" content=\"SEO Title Override\">"));
-        assertTrue(body.contains(">Real Page Title</h2>"),
+        assertTrue(body.contains(">Real Page Title</h1>"),
                 "the meta title must not leak into the page's own heading:\n" + body);
     }
 
@@ -516,8 +517,8 @@ class SeoHeadRenderingTest {
                 "<meta property=\"og:title\" content=\"Sneaky &quot;quoted&quot; title\">"),
                 "og:title must carry the attribute-escaped meta title:\n" + body);
         assertTrue(body.contains(
-                "<title>Sneaky &quot;quoted&quot; title : Test Weblog</title>"),
-                "the meta title must replace the entry title in <title>:\n" + body);
+                "<title>Sneaky &quot;quoted&quot; title</title>"),
+                "the meta title must replace the whole <title>:\n" + body);
         assertFalse(body.contains("Sneaky \"quoted\" title"),
                 "the raw quotes must never reach the page:\n" + body);
         assertEquals("Sneaky \"quoted\" title",

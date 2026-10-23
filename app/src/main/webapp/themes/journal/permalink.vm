@@ -7,7 +7,13 @@
     ## $model.weblog.name is pre-escaped by WeblogWrapper#getName
     ## (StringEscapeUtils.escapeHtml4) -- emit it bare, or it double-encodes
     ## ("&amp;" -> "&amp;amp;"), same as frontpage/weblog.vm's $blog.name.
-    <title>#showEntryTitle($model.weblogEntry) : $model.weblog.name</title>
+    ## A meta title is the whole title: the editor's search preview shows it
+    ## alone, so that is what an author who fills it in is writing.
+    #if($utils.isNotEmpty($model.weblogEntry.pojo.metaTitle))
+    <title>#showEntryTitle($model.weblogEntry)</title>
+    #else
+    <title>#showEntryTitle($model.weblogEntry) — $model.weblog.name</title>
+    #end
     <link href="$url.absoluteSite/favicon.svg" rel="icon" type="image/svg+xml" />
     #showAutodiscoveryLinks($model.weblog)
     #showAnalyticsTrackingCode($model.weblog)
@@ -25,7 +31,7 @@
 <a class="qj-skip" href="#main">Skip to content</a>
 
 <header class="qj-head">
-    <h1 class="qj-site"><a href="$url.home">$model.weblog.name</a></h1>
+    <p class="qj-site"><a href="$url.home">$model.weblog.name</a></p>
     <nav class="qj-nav">
         #showWeblogCategoryLinksList()
         <ul>
@@ -56,7 +62,7 @@
     <nav class="qj-pager qj-steps" aria-label="More entries">
         #if($older)
         <a class="qj-step qj-step-back" href="$url.entry($older.anchor)" rel="prev">
-            <span class="qj-step-label">Older</span>
+            <span class="qj-step-label">$text.get("pager.older")</span>
             <span class="qj-step-title">$older.title</span>
         </a>
         #else
@@ -64,7 +70,7 @@
         #end
         #if($newer)
         <a class="qj-step qj-step-fwd" href="$url.entry($newer.anchor)" rel="next">
-            <span class="qj-step-label">Newer</span>
+            <span class="qj-step-label">$text.get("pager.newer")</span>
             <span class="qj-step-title">$newer.title</span>
         </a>
         #end
@@ -74,7 +80,7 @@
 
 <footer class="qj-footer">
     <form class="qj-search" role="search" method="get" action="$url.search">
-        <input type="search" name="q" placeholder="Search the journal" aria-label="Search">
+        <input type="search" name="q" placeholder="Search the journal" aria-label="$text.get("macro.weblog.searchbutton")">
     </form>
     #showSubscribeForm($model.weblog "Get new entries by email")
     #showBusinessCard($model.weblog "Book a stay")

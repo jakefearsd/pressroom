@@ -235,7 +235,7 @@ class PageNavRenderingTest {
                 "clicking the rendered nav link must resolve the real page, not "
                         + "404 -- rendered href was " + href + ", decoded pathInfo was "
                         + pathInfo);
-        assertTrue(response.getContentAsString().contains(">Roundtrip Page</h2>"),
+        assertTrue(response.getContentAsString().contains(">Roundtrip Page</h1>"),
                 "the resolved page must be the one the slug names:\n"
                         + response.getContentAsString());
     }

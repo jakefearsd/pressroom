@@ -7,7 +7,13 @@
     ## $model.weblog.name is pre-escaped by WeblogWrapper#getName
     ## (StringEscapeUtils.escapeHtml4) -- emit it bare, or it double-encodes
     ## ("&amp;" -> "&amp;amp;"), same as frontpage/weblog.vm's $blog.name.
-    <title>#showPageTitle($model.page) : $model.weblog.name</title>
+    ## A meta title is the whole title: the editor's search preview shows it
+    ## alone, so that is what an author who fills it in is writing.
+    #if($utils.isNotEmpty($model.page.metaTitle))
+    <title>#showPageTitle($model.page)</title>
+    #else
+    <title>#showPageTitle($model.page) — $model.weblog.name</title>
+    #end
     <link href="$url.absoluteSite/favicon.svg" rel="icon" type="image/svg+xml" />
     #showAutodiscoveryLinks($model.weblog)
     #showAnalyticsTrackingCode($model.weblog)
@@ -25,10 +31,7 @@
 <a class="qj-skip" href="#main">Skip to content</a>
 
 <header class="qj-head">
-    <h1 class="qj-site"><a href="$url.home">$model.weblog.name</a></h1>
-    #if($utils.isNotEmpty($model.weblog.tagline))
-    <p class="qj-tagline">$utils.escapeHTML($model.weblog.tagline)</p>
-    #end
+    <p class="qj-site"><a href="$url.home">$model.weblog.name</a></p>
     <nav class="qj-nav">
         #showWeblogCategoryLinksList()
         <ul>
@@ -39,14 +42,14 @@
 
 <main class="qj-main qj-main-entry" id="main">
     <article class="qj-reading">
-        <h2 class="qj-h1">$utils.escapeHTML($model.page.title)</h2>
+        <h1 class="qj-h1">$utils.escapeHTML($model.page.title)</h1>
         <div class="qj-prose">$model.page.renderedContent</div>
     </article>
 </main>
 
 <footer class="qj-footer">
     <form class="qj-search" role="search" method="get" action="$url.search">
-        <input type="search" name="q" placeholder="Search the journal" aria-label="Search">
+        <input type="search" name="q" placeholder="Search the journal" aria-label="$text.get("macro.weblog.searchbutton")">
     </form>
     #showSubscribeForm($model.weblog "Get new entries by email")
     #showBusinessCard($model.weblog "Book a stay")
