@@ -143,7 +143,9 @@ resolves through the index at the end of `CLAUDE.md`.
 - **Entry HTML cache.** `EntryRenderer`'s `cached*` methods -- what
   `WeblogEntryWrapper` calls on every live render -- keep each published
   entry's text, summary and display content in `EntryHtmlCache`
-  (`cache.entryhtml.*`: 16 MB total, one slot at most 1/16 of it, one hour),
+  (`cache.entryhtml.*`: 16 MB total, one slot at most 1/16 of it, one hour;
+  reads take no lock -- a cache-wide monitor convoyed every render under
+  load -- and eviction is approximate LRU by one `tryLock` holder),
   so a page-cache miss no longer re-runs shortcodes + Markdown + sanitizer
   for every entry on a list page. A slot is keyed by entry id, sanitizer
   on/off, the weblog's absolute url (site url, captured address, custom
