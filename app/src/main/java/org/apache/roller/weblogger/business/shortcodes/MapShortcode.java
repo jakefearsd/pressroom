@@ -165,6 +165,11 @@ public class MapShortcode implements ShortcodeHandler {
      * The map bootstrap may hide it visually once the map is drawn. Same line
      * as the div: a newline would end the commonmark HTML block around it.
      */
+    @SuppressFBWarnings(
+            value = "POTENTIAL_XML_INJECTION",
+            justification = "Each label goes through escape() (&, quotes and angle brackets encoded) before it "
+                    + "is appended as list-item text, and the expanded entry then passes through "
+                    + "HTMLSanitizer, the one content boundary.")
     private static void appendPinList(StringBuilder html, List<MapPins.Pin> pins) {
         List<String> labels = pins.stream().map(MapPins.Pin::label).filter(StringUtils::isNotBlank).toList();
         if (labels.isEmpty()) {
