@@ -113,6 +113,27 @@ class PageRoutingTest {
         RenderingTestSupport.clearRenderCaches();
     }
 
+    /**
+     * The fallback's nav held bare {@code <li>}s with no list around them
+     * (invalid), it had no favicon, and its policy named no font-src, which
+     * the shared preview shell's has: default-src 'none' refuses a theme
+     * stylesheet's same-origin web font.
+     */
+    @Test
+    void theFallbackPageTemplateHasAValidNavAFaviconAndAllowsItsFonts() throws Exception {
+        useAThemeWithNoPageTemplate();
+
+        String body = get("/about").getContentAsString();
+
+        assertTrue(body.contains("<h1>About Us</h1>"), "the fallback template must render:\n" + body);
+        assertTrue(body.contains("font-src 'self'"), "the fallback's CSP allows same-origin fonts:\n" + body);
+        assertTrue(body.contains("rel=\"icon\""), "the fallback carries the site favicon:\n" + body);
+        int nav = body.indexOf("<nav");
+        assertTrue(nav > 0, body);
+        String navBlock = body.substring(nav, body.indexOf("</nav>", nav));
+        assertTrue(navBlock.contains("<ul"), "the nav's list items sit in a list:\n" + navBlock);
+    }
+
     @Test
     void theFallbackPageTemplateAdvertisesTheFeedAndShipsItsAssetsInTheHead()
             throws Exception {
