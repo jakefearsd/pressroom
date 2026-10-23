@@ -21,6 +21,10 @@ package org.apache.roller.weblogger.business.jpa;
 import java.util.*;
 import java.text.SimpleDateFormat;
 import java.sql.Timestamp;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.EntityTransaction;
+import jakarta.persistence.FlushModeType;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.PersistenceUnitUtil;
 import jakarta.persistence.Query;
@@ -231,11 +235,8 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
 
         this.strategy.store(entry);
 
-        // AFTER storing the entry, never before: the revision carries a
-        // foreign key to it, and an entry that is not yet in the persistence
-        // context resolves to a null entryid rather than to a row. What the
-        // revision RECORDS is still the pre-save content -- that was captured
-        // when the entry was loaded, not now.
+        // What the revision RECORDS is the pre-save content, captured when
+        // the entry was loaded; it is written once this save has committed.
         recordRevision(entry);
 
         // First arrival at PUBLISHED is a first-party outcome the analytics
@@ -272,54 +273,80 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     
     /**
      * Records what this save is about to displace, and prunes to the
-     * configured retention.
+     * configured retention, once the save has committed.
      *
      * <p>Retention lives in {@code entry.revisions.retention}: -1 (the
      * default) keeps everything, 0 records nothing, and a positive n keeps the
-     * n newest. Pruning happens in the same transaction as the save, so the
-     * table cannot drift above the cap between calls.
+     * n newest.
      *
      * <p>A failure here must not cost the author their save -- revisions are a
-     * convenience, the entry is the work -- so problems are logged rather than
-     * thrown.
+     * convenience, the entry is the work. Written in the save's own
+     * transaction, a revision row the database refused (a constraint, a lost
+     * connection) failed the commit and took the save with it, whatever was
+     * caught here. So the revision is written after that commit, in a
+     * transaction of its own ({@link #storeRevision}), where a failure is
+     * logged and costs only the revision. A save that never commits records
+     * nothing.
      */
+    // The factory is the tier's own, shared and closed at shutdown by the
+    // strategy; closing it here would take the whole persistence unit down.
+    @SuppressWarnings("PMD.CloseResource")
     private void recordRevision(WeblogEntry entry) {
-        try {
-            int retention = WebloggerRuntimeConfig.getIntProperty("entry.revisions.retention");
-            if (retention == 0) {
-                return;
-            }
+        int retention = WebloggerRuntimeConfig.getIntProperty("entry.revisions.retention");
+        if (retention == 0) {
+            return;
+        }
+        WeblogEntryRevision revision = entry.contentBeingReplaced(entry.getCreatorUserName());
+        if (revision == null) {
+            return;
+        }
+        String entryId = entry.getId();
+        EntityManagerFactory emf = strategy.getEntityManager(false).getEntityManagerFactory();
+        strategy.runAfterCommit(() -> storeRevision(emf, entryId, revision, retention));
+    }
 
-            WeblogEntryRevision revision = entry.contentBeingReplaced(entry.getCreatorUserName());
-            if (revision == null) {
-                return;
-            }
-            // Point at the instance that was just stored. The snapshot was
-            // built at load time and may hold a reference that has since been
-            // detached, which writes as a null foreign key.
-            revision.setWeblogEntry(entry);
+    /**
+     * Stores {@code revision} for the entry and prunes its oldest beyond
+     * {@code retention}, in a transaction of its own on its own
+     * EntityManager: the thread's unit of work has just committed, and a
+     * failure here must leave it exactly as the save left it.
+     */
+    private static void storeRevision(EntityManagerFactory emf, String entryId,
+            WeblogEntryRevision revision, int retention) {
+        try (EntityManager em = emf.createEntityManager()) {
+            EntityTransaction tx = em.getTransaction();
+            tx.begin();
+            try {
+                WeblogEntry entry = em.find(WeblogEntry.class, entryId);
+                if (entry == null) {
+                    // deleted by the transaction that saved it: nothing to hang off
+                    return;
+                }
+                revision.setWeblogEntry(entry);
 
-            // Read the existing rows BEFORE storing the new one: the store is
-            // still pending at this point, so a query would not count it and
-            // the table would settle one row above the cap. Keeping
-            // retention-1 of the old rows plus the new one is what makes the
-            // total come out at exactly retention.
-            List<WeblogEntryRevision> existing =
-                    retention > 0 ? getRevisions(entry) : List.<WeblogEntryRevision>of();
-
-            this.strategy.store(revision);
-
-            // Only a positive retention prunes. A negative one keeps
-            // everything, and starting this loop at retention-1 would index
-            // the empty list at -2.
-            if (retention > 0) {
-                for (int i = retention - 1; i < existing.size(); i++) {
-                    this.strategy.remove(existing.get(i));
+                // The query does not count the new row, which is stored at the
+                // commit, so keeping retention-1 of the old rows makes the
+                // total exactly retention. Only a positive retention prunes:
+                // a negative one keeps everything.
+                if (retention > 0) {
+                    TypedQuery<WeblogEntryRevision> query = em.createNamedQuery(
+                            "WeblogEntryRevision.getByEntry", WeblogEntryRevision.class);
+                    query.setFlushMode(FlushModeType.COMMIT);
+                    query.setParameter(1, entry);
+                    List<WeblogEntryRevision> existing = query.getResultList();
+                    for (int i = retention - 1; i < existing.size(); i++) {
+                        em.remove(existing.get(i));
+                    }
+                }
+                em.persist(revision);
+                tx.commit();
+            } finally {
+                if (tx.isActive()) {
+                    tx.rollback();
                 }
             }
-        } catch (Exception e) {
-            log.warn("Could not record a revision for entry {}; the save itself is unaffected",
-                    entry.getId(), e);
+        } catch (RuntimeException e) {
+            log.warn("Could not record a revision for entry {}; the save itself is unaffected", entryId, e);
         }
     }
 

@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -557,5 +558,24 @@ class WeblogEntryLogicTest {
             assertFalse("original-id".equals(copy.getId()), "the copy has its own identity");
             generator.verify(UUIDGenerator::generateUUID, times(1));
         }
+    }
+
+    /**
+     * A revision is stamped when the save that displaces the content runs,
+     * not when the entry was loaded: the pruner and the rail order by it, and
+     * load order is not save order.
+     */
+    @Test
+    void theDisplacedContentIsStampedAtSaveTimeNotLoadTime() throws Exception {
+        entry.setTitle("Loaded");
+        entry.snapshotLoadedContent();
+        Thread.sleep(5);
+        Timestamp beforeTheSave = Timestamp.from(Instant.now());
+
+        entry.setTitle("Edited");
+        WeblogEntryRevision displaced = entry.contentBeingReplaced("alice");
+
+        assertFalse(displaced.getCreated().before(beforeTheSave),
+                "stamped " + displaced.getCreated() + ", before the save began at " + beforeTheSave);
     }
 }

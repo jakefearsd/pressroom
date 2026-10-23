@@ -18,17 +18,26 @@
 
 package org.apache.roller.weblogger.business;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.Appender;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.appender.AbstractAppender;
-import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.logging.log4j.core.config.Property;
 
+import org.apache.roller.testing.RollerPostgresContainer;
 import org.apache.roller.weblogger.TestUtils;
 import org.apache.roller.weblogger.business.jpa.JPAWeblogEntryManagerImpl;
 import org.apache.roller.weblogger.pojos.RuntimeConfigProperty;
@@ -166,30 +175,15 @@ public class WeblogEntryRevisionTest {
         TestUtils.endSession(true);
 
         List<LogEvent> warnings = new ArrayList<>();
-        Appender appender = new AbstractAppender("WeblogEntryRevisionTest-capture", null, null,
-                false, Property.EMPTY_ARRAY) {
-            @Override
-            public void append(LogEvent event) {
-                if (event.getLevel().isMoreSpecificThan(Level.WARN)
-                        && JPAWeblogEntryManagerImpl.class.getName().equals(event.getLoggerName())) {
-                    warnings.add(event.toImmutable());
-                }
-            }
-        };
-        appender.start();
-        LoggerConfig loggerConfig = LoggerContext.getContext(false).getConfiguration()
-                .getLoggerConfig(JPAWeblogEntryManagerImpl.class.getName());
-        loggerConfig.addAppender(appender, null, null);
+        Appender appender = captureWarnings(warnings);
         try {
             editText(id, "Body 1");
         } finally {
-            loggerConfig.removeAppender("WeblogEntryRevisionTest-capture");
-            appender.stop();
+            stopCapturing(appender);
         }
 
         assertEquals(1, entryManager().getRevisions(entryManager().getWeblogEntry(id)).size());
-        assertTrue(warnings.isEmpty(), "a save under the default retention logged: "
-                + warnings.stream().map(e -> e.getMessage().getFormattedMessage()).toList());
+        assertTrue(warnings.isEmpty(), "a save under the default retention logged: " + messages(warnings));
     }
 
     @Test
@@ -220,6 +214,135 @@ public class WeblogEntryRevisionTest {
         editText(id, "Body 2");
 
         assertTrue(entryManager().getRevisions(entryManager().getWeblogEntry(id)).isEmpty());
+    }
+
+    /**
+     * The promise in {@code recordRevision}'s javadoc, held against a real
+     * database refusal: a revision row PostgreSQL rejects (here a CHECK
+     * constraint, SQLSTATE 23514) must cost the author nothing. The save
+     * commits, the refused revision is simply not there, and the WARN says
+     * so. Before the fix the revision INSERT ran inside the save's commit,
+     * so the refusal rolled back the save with it.
+     */
+    @Test
+    public void aRevisionTheDatabaseRefusesDoesNotCostTheSave() throws Exception {
+        String refused = "Refused revision " + System.nanoTime();
+        String id = saveEntry(refused, "Body 0").getId();
+        TestUtils.endSession(true);
+
+        List<LogEvent> warnings = new ArrayList<>();
+        Appender appender = captureWarnings(warnings);
+        sql("ALTER TABLE weblogentry_revision ADD CONSTRAINT " + REFUSING_CHECK
+                + " CHECK (title IS DISTINCT FROM '" + refused + "') NOT VALID");
+        try {
+            WeblogEntry entry = entryManager().getWeblogEntry(id);
+            entry.setTitle("Accepted title");
+            entryManager().saveWeblogEntry(entry);
+            TestUtils.endSession(true);
+        } finally {
+            sql("ALTER TABLE weblogentry_revision DROP CONSTRAINT IF EXISTS " + REFUSING_CHECK);
+            stopCapturing(appender);
+            TestUtils.weblogger().release();
+        }
+
+        WeblogEntry saved = entryManager().getWeblogEntry(id);
+        assertEquals("Accepted title", saved.getTitle(), "the save itself must have committed");
+        assertTrue(entryManager().getRevisions(saved).isEmpty(), "the refused revision is not stored");
+        assertEquals(1, warnings.size(), "one WARN for the lost revision: " + messages(warnings));
+
+        // and revisions work again once the database accepts them
+        editText(id, "Body 1");
+        assertEquals(1, entryManager().getRevisions(entryManager().getWeblogEntry(id)).size());
+    }
+
+    /** A save that never commits leaves no revision of what it would have replaced. */
+    @Test
+    public void aSaveThatRollsBackRecordsNoRevision() throws Exception {
+        String id = saveEntry("Rolled back", "Body 0").getId();
+        TestUtils.endSession(true);
+
+        WeblogEntry entry = entryManager().getWeblogEntry(id);
+        entry.setText("Body never committed");
+        entryManager().saveWeblogEntry(entry);
+        TestUtils.endSession(false);
+
+        WeblogEntry reloaded = entryManager().getWeblogEntry(id);
+        assertEquals("Body 0", reloaded.getText());
+        assertTrue(entryManager().getRevisions(reloaded).isEmpty());
+    }
+
+    /**
+     * An entry edited and then deleted in one transaction: the revision has
+     * nothing left to hang off, so none is written, and that is not worth a
+     * WARN either.
+     */
+    @Test
+    public void anEntryEditedThenDeletedInOneTransactionLeavesNoRevisionAndNoWarning() throws Exception {
+        String id = saveEntry("Edited then deleted", "Body 0").getId();
+        TestUtils.endSession(true);
+
+        List<LogEvent> warnings = new ArrayList<>();
+        Appender appender = captureWarnings(warnings);
+        try {
+            WeblogEntry entry = entryManager().getWeblogEntry(id);
+            entry.setText("Body 1");
+            entryManager().saveWeblogEntry(entry);
+            entryManager().removeWeblogEntry(entry);
+            TestUtils.endSession(true);
+        } finally {
+            stopCapturing(appender);
+        }
+
+        assertTrue(entryManager().getWeblogEntry(id) == null);
+        assertEquals(0, revisionRows(id));
+        assertTrue(warnings.isEmpty(), "logged: " + messages(warnings));
+    }
+
+    /**
+     * A revision's time is when the save that displaced the content
+     * happened, not when the entry was loaded: the pruner keeps the newest
+     * by this column, and the rail shows it. A session that loads first and
+     * saves last must leave the newest revision, even though its snapshot is
+     * the oldest.
+     */
+    @Test
+    public void revisionsAreOrderedBySaveTimeNotLoadTime() throws Exception {
+        String id = saveEntry("Raced", "Body 0").getId();
+        TestUtils.endSession(true);
+
+        // session A loads "Body 0" on its own thread and keeps it open
+        ExecutorService sessionA = Executors.newSingleThreadExecutor();
+        try {
+            WeblogEntry loadedByA = sessionA.submit(() -> entryManager().getWeblogEntry(id))
+                    .get(30, TimeUnit.SECONDS);
+            Thread.sleep(5);
+
+            // meanwhile two saves on this thread: revisions "Body 0", then "Body 1"
+            editText(id, "Body 1");
+            Thread.sleep(5);
+            editText(id, "Body 2");
+            Thread.sleep(5);
+
+            // A saves last, displacing the "Body 0" it loaded
+            sessionA.submit(() -> {
+                try {
+                    loadedByA.setText("Body 3");
+                    entryManager().saveWeblogEntry(loadedByA);
+                    TestUtils.weblogger().flush();
+                } finally {
+                    TestUtils.weblogger().release();
+                }
+                return null;
+            }).get(30, TimeUnit.SECONDS);
+        } finally {
+            sessionA.shutdownNow();
+        }
+
+        List<WeblogEntryRevision> revisions = entryManager()
+                .getRevisions(entryManager().getWeblogEntry(id));
+        assertEquals(List.of("Body 0", "Body 1", "Body 0"),
+                revisions.stream().map(WeblogEntryRevision::getText).toList(),
+                "newest first: A's save came last, so its revision is the newest");
     }
 
     /**
@@ -258,6 +381,59 @@ public class WeblogEntryRevisionTest {
     }
 
     // ------------------------------------------------------------- fixtures
+
+    private static final String REFUSING_CHECK = "wer_test_refuses_title";
+
+    private static Appender captureWarnings(List<LogEvent> into) {
+        Appender appender = new AbstractAppender("WeblogEntryRevisionTest-warnings", null, null,
+                false, Property.EMPTY_ARRAY) {
+            @Override
+            public void append(LogEvent event) {
+                if (event.getLevel().isMoreSpecificThan(Level.WARN)
+                        && JPAWeblogEntryManagerImpl.class.getName().equals(event.getLoggerName())) {
+                    into.add(event.toImmutable());
+                }
+            }
+        };
+        appender.start();
+        LoggerContext.getContext(false).getConfiguration()
+                .getLoggerConfig(JPAWeblogEntryManagerImpl.class.getName()).addAppender(appender, null, null);
+        return appender;
+    }
+
+    private static void stopCapturing(Appender appender) {
+        LoggerContext.getContext(false).getConfiguration()
+                .getLoggerConfig(JPAWeblogEntryManagerImpl.class.getName())
+                .removeAppender(appender.getName());
+        appender.stop();
+    }
+
+    private static List<String> messages(List<LogEvent> events) {
+        return events.stream().map(e -> e.getMessage().getFormattedMessage()).toList();
+    }
+
+    private static Connection connection() throws SQLException {
+        return DriverManager.getConnection(RollerPostgresContainer.getJdbcUrl(),
+                RollerPostgresContainer.getUsername(), RollerPostgresContainer.getPassword());
+    }
+
+    private static void sql(String statement) throws SQLException {
+        try (Connection con = connection(); Statement st = con.createStatement()) {
+            st.execute(statement);
+        }
+    }
+
+    private static int revisionRows(String entryId) throws SQLException {
+        try (Connection con = connection();
+                PreparedStatement ps = con.prepareStatement(
+                        "SELECT count(*) FROM weblogentry_revision WHERE entryid = ?")) {
+            ps.setString(1, entryId);
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getInt(1);
+            }
+        }
+    }
 
     private WeblogEntryManager entryManager() {
         return TestUtils.weblogger().getWeblogEntryManager();

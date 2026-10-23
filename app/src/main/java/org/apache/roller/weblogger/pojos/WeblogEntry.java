@@ -24,6 +24,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -239,6 +240,10 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
         if (loadedContent.getId() == null) {
             loadedContent.setId(EntityIds.newId());
         }
+        // Now, not when the snapshot was built at load: the pruner keeps the
+        // newest by this time, and two sessions can load in one order and
+        // save in the other.
+        loadedContent.setCreated(Timestamp.from(Instant.now()));
         loadedContent.setCreator(creator);
         return loadedContent;
     }
