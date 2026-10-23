@@ -26,74 +26,88 @@
      Spring context never finished bootstrapping. Hardcoded English, no
      external stylesheet, no stack trace -- see the design sprint for a
      themed replacement; this is deliberately plain. --%>
+<%-- session="false": an anonymous visitor's error page makes no session,
+     so no Set-Cookie; and the home link is the context path, not a
+     <c:url>, which rewrote it to /;jsessionid=... for crawlers to index. --%>
+<%@ page session="false" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.functions" prefix="fn" %>
 <!doctype html>
 <html lang="en">
     <head>
         <meta charset="utf-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noindex">
         <title>Page not found</title>
         <style>
-            :root { color-scheme: light dark; }
+            /* The quiet-instrument palette (roller-tokens.css), as literals:
+               this page must render with no stylesheet and no Spring. */
+            :root {
+                color-scheme: light dark;
+                --paper: #F7F9F9; --surface: #FFFFFF; --ink: #17262A;
+                --ink-soft: #5A6E72; --line: #DCE4E4; --accent: #0F6E68;
+            }
+            @media (prefers-color-scheme: dark) {
+                :root {
+                    --paper: #131C1C; --surface: #1A2626; --ink: #DCE7E5;
+                    --ink-soft: #8FA5A2; --line: #2A3838; --accent: #4FB3AA;
+                }
+            }
             body {
                 margin: 0;
-                padding: 4rem 1.5rem;
-                background: #f5f5f5;
-                color: #222;
-                font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                text-align: center;
+                padding: 4rem 1rem;
+                background: var(--paper);
+                color: var(--ink);
+                font-family: "IBM Plex Sans", system-ui, sans-serif;
+                line-height: 1.5;
             }
             .box {
                 max-width: 32rem;
                 margin: 0 auto;
+                padding: 1.5rem;
+                background: var(--surface);
+                border: 1px solid var(--line);
+                border-radius: 6px;
             }
             .code {
-                font-size: 0.9rem;
-                letter-spacing: 0.08em;
+                margin: 0 0 .5rem;
+                font-size: 12px;
+                font-weight: 600;
+                letter-spacing: .08em;
                 text-transform: uppercase;
-                color: #888;
-                margin: 0 0 0.5rem;
+                color: var(--ink-soft);
             }
             h1 {
-                font-size: 1.6rem;
-                margin: 0 0 0.75rem;
+                margin: 0 0 .5rem;
+                font-size: 1.25rem;
+                font-weight: 600;
             }
             p {
-                color: #555;
-                line-height: 1.5;
+                margin: 0 0 .75rem;
+                color: var(--ink-soft);
             }
             a {
-                color: #06c;
-            }
-            /* The :root above already declares color-scheme: light dark, which
-               tells the browser the page supports both -- but every rule here
-               was a light-only literal, so on a dark-preferring machine the
-               declaration produced a dark UA canvas behind a #f5f5f5 card and
-               nothing else. These are the same four values inverted. */
-            @media (prefers-color-scheme: dark) {
-                body {
-                    background: #16181a;
-                    color: #e6e6e6;
-                }
-                .code {
-                    color: #8a8a8a;
-                }
-                p {
-                    color: #b4b4b4;
-                }
-                a {
-                    color: #6ab0ff;
-                }
+                color: var(--accent);
+                font-weight: 600;
             }
         </style>
     </head>
     <body>
-        <div class="box">
+        <main class="box">
             <p class="code">404</p>
             <h1>Page not found</h1>
             <p>The page you requested could not be found on this server.</p>
-            <p><a href="<c:url value="/"/>">Return to the home page</a></p>
-        </div>
+            <%-- A 404 decided inside a weblog (PageServlet) leaves that
+                 weblog's name and address on the request; the name is author
+                 input, so both are escaped. --%>
+            <c:choose>
+            <c:when test="${not empty requestScope['roller.notFound.weblogUrl']}">
+            <p><a href="${fn:escapeXml(requestScope['roller.notFound.weblogUrl'])}">Back to ${fn:escapeXml(requestScope['roller.notFound.weblogName'])}</a></p>
+            </c:when>
+            <c:otherwise>
+            <p><a href="${fn:escapeXml(pageContext.request.contextPath)}/">Return to the home page</a></p>
+            </c:otherwise>
+            </c:choose>
+        </main>
     </body>
 </html>

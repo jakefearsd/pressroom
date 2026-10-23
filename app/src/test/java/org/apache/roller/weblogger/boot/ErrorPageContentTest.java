@@ -113,4 +113,39 @@ class ErrorPageContentTest {
         assertTrue(content.contains("<html lang=\"en\">"),
                 jsp + " should declare English explicitly rather than negotiating a locale");
     }
+
+    /**
+     * The three pages wore a grey-and-blue system card from before the
+     * design system; they now carry the quiet-instrument neutrals and teal
+     * accent, as literals (no stylesheet may be needed), light and dark.
+     * Their home link was a {@code <c:url>}, which rewrote it to
+     * {@code /;jsessionid=...} for an anonymous visitor -- an address
+     * crawlers then indexed -- and the page made a session for every one.
+     */
+    @Test
+    void theErrorPagesWearTheQuietPaletteAndCarryNoSessionId() throws IOException {
+        for (String name : List.of("404.jsp", "403.jsp", "error.jsp")) {
+            Path jsp = ERRORS_DIR.resolve(name);
+            String content = JSP_COMMENT.matcher(Files.readString(jsp, StandardCharsets.UTF_8)).replaceAll("");
+            assertTrue(content.contains("#0F6E68") && content.contains("#4FB3AA"),
+                    jsp + " uses the teal accent, light and dark");
+            assertTrue(content.contains("@media (prefers-color-scheme: dark)"), jsp + " has a dark palette");
+            assertFalse(content.contains("#06c"), jsp + " still uses the old link blue");
+            assertFalse(content.contains("<c:url"), jsp + " must not rewrite a link with a session id");
+            assertTrue(content.contains("session=\"false\""), jsp + " must not create a session");
+        }
+    }
+
+    /** A 404 inside a weblog offers the way back to it, escaped (the name is author input). */
+    @Test
+    void theNotFoundPageOffersTheWayBackToTheWeblog() throws IOException {
+        String content = JSP_COMMENT.matcher(Files.readString(ERRORS_DIR.resolve("404.jsp"),
+                StandardCharsets.UTF_8)).replaceAll("");
+        assertTrue(content.contains("roller.notFound.weblogName")
+                        && content.contains("roller.notFound.weblogUrl"),
+                "404.jsp reads the weblog PageServlet left on the request");
+        assertTrue(content.contains("fn:escapeXml(requestScope['roller.notFound.weblogName'])")
+                        && content.contains("fn:escapeXml(requestScope['roller.notFound.weblogUrl'])"),
+                "both are escaped");
+    }
 }

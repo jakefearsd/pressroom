@@ -63,6 +63,16 @@ public class PageServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
 
     private static final Logger log = LoggerFactory.getLogger(PageServlet.class);
+
+    /**
+     * Request attributes a 404 decided inside a weblog leaves for the
+     * container's error page (roller-ui/errors/404.jsp), which offers the
+     * reader the way back to that weblog rather than only the site root.
+     * The error dispatch is a forward within the same request, so they
+     * survive it. The name is raw author input: the JSP escapes it.
+     */
+    static final String NOT_FOUND_WEBLOG_NAME = "roller.notFound.weblogName";
+    static final String NOT_FOUND_WEBLOG_URL = "roller.notFound.weblogUrl";
     // for caching
     private boolean excludeOwnerPages = false;
     private transient RenderCache<WeblogPageRequest> siteWideRenderCache = null;
@@ -207,7 +217,7 @@ public class PageServlet extends HttpServlet {
             if (answeredByRedirect(pageRequest, weblog, request, response)) {
                 return;
             }
-            RenderingServletUtils.sendNotFound(response);
+            sendNotFoundInWeblog(request, response, weblog);
             return;
         }
 
@@ -221,7 +231,7 @@ public class PageServlet extends HttpServlet {
             if (answeredByRedirect(pageRequest, weblog, request, response)) {
                 return;
             }
-            RenderingServletUtils.sendNotFound(response);
+            sendNotFoundInWeblog(request, response, weblog);
             return;
         }
 
@@ -259,6 +269,19 @@ public class PageServlet extends HttpServlet {
         log.debug("Exiting");
     }
 
+
+    /**
+     * A 404 for a request inside a weblog: leaves the weblog's name and
+     * address for the container's error page (see NOT_FOUND_WEBLOG_NAME),
+     * then sends the 404.
+     */
+    private void sendNotFoundInWeblog(HttpServletRequest request, HttpServletResponse response,
+                                      Weblog weblog) throws IOException {
+        request.setAttribute(NOT_FOUND_WEBLOG_NAME, weblog.getName());
+        request.setAttribute(NOT_FOUND_WEBLOG_URL,
+                weblogger.getUrlStrategy().getWeblogURL(weblog, null, false));
+        RenderingServletUtils.sendNotFound(response);
+    }
 
     /**
      * The model the template renders against, or null when building it failed
