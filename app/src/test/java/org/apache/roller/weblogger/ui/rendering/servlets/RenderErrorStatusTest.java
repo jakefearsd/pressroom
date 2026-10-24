@@ -195,5 +195,17 @@ class RenderErrorStatusTest {
         TestUtils.weblogger().flush();
         TestUtils.endSession(true);
         RenderingTestSupport.clearRenderCaches();
+        // Each save bumps the weblog's lastModified, up to a millisecond past
+        // the clock (touchLastModified only moves forward), and the page cache
+        // treats an entry cached in the same millisecond as a change as stale.
+        // Render only once the clock has passed it, or the control test's good
+        // render reads back as uncached (docs/dev/build-and-ci.md, as
+        // PageServletCachingTest does).
+        long stamped = TestUtils.weblogger().getWeblogManager()
+                .getWeblogByHandle(HANDLE).getLastModified().getTime();
+        TestUtils.endSession(true);
+        while (System.currentTimeMillis() <= stamped) {
+            Thread.onSpinWait();
+        }
     }
 }
