@@ -15,6 +15,7 @@ This repository is part of the **Simple Agility** small-business ecosystem:
 - **Architecture Hub:** Refer to `SimpleAgilityStackHub` on Wikantik (`https://wiki.wikantik.com/SimpleAgilityStackHub`).
 - **Architectural Decisions:** Consult `SimpleAgilityDecisionLog` before changing cross-repo APIs, logging, or telemetry. Roller is adopting ECS JSON logging (SA-6) and `/metrics` (Phase 1).
 - **Active Initiatives & Coordination:** Check `SimpleAgilityAgentCoordination` (`https://wiki.wikantik.com/SimpleAgilityAgentCoordination`) for active tasks (`SA-INIT-01`, `SA-INIT-02`, `SA-INIT-03`).
+- **Session start:** call `get_briefing(clusters=["roller"], prompt="<your first task>")` on the Wikantik knowledge MCP; the briefing carries this project's pages and the contracts it cites ([SA-13](https://wiki.wikantik.com/SimpleAgilityDecisionLog)).
 - **Role Boundary:** Implement and optimize Roller's core Java/Spring Boot capabilities, themes, and automation API; never break cross-product contracts or telemetry conventions.
 <!-- SIMPLE-AGILITY-AGENT-HEADER-END -->
 
