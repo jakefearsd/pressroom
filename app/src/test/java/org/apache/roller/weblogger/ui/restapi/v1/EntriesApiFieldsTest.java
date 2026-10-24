@@ -113,7 +113,7 @@ class EntriesApiFieldsTest {
         assertEquals("e1", view.get("id").asString());
         assertEquals("harbour-walk", view.get("anchor").asString());
         assertEquals("A dawn walk along the harbour.", view.get("searchDescription").asString());
-        verify(fx.entries).saveWeblogEntry(eq(stored), any(User.class));
+        verify(fx.entries).saveWeblogEntry(eq(stored), any(User.class), any());
     }
 
     @Test
@@ -171,6 +171,7 @@ class EntriesApiFieldsTest {
 
         assertEquals("Harbour walk", stored.getTitle());
         verify(fx.entries, never()).saveWeblogEntry(any(WeblogEntry.class), any(User.class));
+        verify(fx.entries, never()).saveWeblogEntry(any(), any(), any());
     }
 
     /** One 400 for the whole write: the bad name is reported with the body's own field problems. */

@@ -403,6 +403,9 @@ POST   /api/v1/weblogs/{handle}/entries/{id}/restore      restore (always to DRA
 POST   /api/v1/weblogs/{handle}/entries/{id}/delete-forever   permanent delete
 POST   /api/v1/weblogs/{handle}/entries/{id}/preview       preview unsaved text
 POST   /api/v1/weblogs/{handle}/entries/preview            preview text for a new entry
+GET    /api/v1/weblogs/{handle}/entries/{id}/revisions     list revisions, newest first
+GET    /api/v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}   one revision, with a diff
+POST   /api/v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/restore   put a revision back
 ```
 
 Reads need `READ`; writes need `POST` or `ADMIN`.
@@ -555,7 +558,8 @@ with no entry to apply them to, `edits` is a 400.
 
 **`fields`** (a repeatable query parameter; an array in MCP) names the
 `EntryView` properties a response carries, on every route that returns
-entries: get (by id or by anchor), list, create, update and restore. `id`
+entries: get (by id or by anchor), list, create, update, restore and a
+revision restore. `id`
 always comes back, and a property with no value is left out, as it is from
 the full view. A list keeps its envelope (`items`, `offset`, `limit`,
 `hasMore`) and projects each item. Without `fields`, or with it empty, a
@@ -687,6 +691,63 @@ alt) fills the imported file's alt text when that is null. An external
 outside any private directory, or the write is a 400 on that field. A value
 sent back exactly as it was read is not re-checked, so a file deleted since
 does not break a round-trip.
+
+### Revisions
+
+Every save that changes an entry's title, text or summary keeps what it
+replaced as a **revision**: the web editor's saves and restores, bulk
+actions, and API and MCP updates alike. A revision's `creator` is the user
+who made that save (the signed-in editor, or the token's user), and `created`
+is when. A save that changes none of the three leaves no revision.
+
+**`revisionNote`** on an update says why the change is made, at most 255
+characters (longer is a 400 on `revisionNote`). It labels the revision that
+update leaves, the one holding the content it replaced, and the editor's
+revision list shows it. An update that leaves no revision drops its note. A
+blank note is no note, and on a create `revisionNote` is a 400: a create
+replaces nothing.
+
+```json
+{"edits": [{"find": "The pier at dawn.", "replace": "The pier at dusk."}],
+ "revisionNote": "The photos were taken at dusk"}
+```
+
+**`GET .../entries/{id}/revisions`** lists the entry's revisions, newest
+first, as a bare array: `id`, `created`, `creator`, `note` (absent when there
+is none) and `title` (stored escaped, like an entry's). No text, so a long
+history stays a short answer. The first is what undoing the latest save
+would bring back.
+
+**`GET .../entries/{id}/revisions/{revisionId}`** returns one revision's
+`title`, `summary` and `text` with `created`, `creator` and `note`, plus
+`diff`: a unified diff from this revision's text to the entry's current
+text, three lines of context, `+` lines being only in the current text.
+`?against={otherRevisionId}` diffs against that revision of the same entry
+instead. `diff` is empty when the two texts are the same.
+
+```
+--- revision 6b1f...
++++ current
+@@ -1,3 +1,3 @@
+ The harbour at
+-dawn.
++dusk.
+ Take the 101.
+```
+
+**`POST .../entries/{id}/revisions/{revisionId}/restore`** puts the
+revision's title, summary and text back, through the same save as the web
+editor's Restore: what it replaces becomes a revision itself, credited to the
+token's user, so a restore is undone by restoring that one. It returns the
+entry and takes `fields`. Its optional body `{"expectedContentHash": "..."}`
+guards it as on an update: a hash that is not the stored text's is the 409
+`entry-changed`, and nothing is saved. A trashed entry's revision is a 409,
+as an update is (restore the entry from the trash first).
+
+A revision is reachable only through its own entry: a revision id of another
+entry (in this weblog or another), an unknown id, and an `against` naming
+either are the same 404 an unknown entry gets. Reading revisions needs
+`READ`, as reading the entry does; restoring needs `POST`.
 
 ## Categories and tags
 
@@ -1134,7 +1195,7 @@ claude mcp add --transport http roller https://blog.example.com/api/mcp \
 |---|---|
 | `whoami` | |
 | `weblogs` | `list`, `get`, `create`, `update` |
-| `entries` | `list`, `get`, `create`, `update`, `trash`, `restore`, `delete_forever`, `preview` |
+| `entries` | `list`, `get`, `create`, `update`, `trash`, `restore`, `delete_forever`, `preview`, `revisions`, `revision`, `restore_revision` |
 | `categories` | `list`, `create`, `update`, `delete`, `list_tags` |
 | `media` | `list`, `get`, `import`, `update`, `delete`, `list_directories`, `create_directory` |
 | `pages` | `list`, `get`, `create`, `update`, `delete` |
@@ -1147,7 +1208,7 @@ claude mcp add --transport http roller https://blog.example.com/api/mcp \
 
 A tool takes `action` (except `whoami`) and that action's arguments, named as in this document:
 `weblog` is a handle, and body fields keep their names. An argument the action does not take is
-refused, never ignored. An argument that fills part of the route's path (`weblog`, `id`, `userName`)
+refused, never ignored. An argument that fills part of the route's path (`weblog`, `id`, `revisionId`, `userName`)
 must be one path segment: an empty value, `.`, `..`, or a value containing `/`, `\` or `;` is
 refused. A refusal from the API is a tool error whose text is the API's problem body. A refusal
 the MCP endpoint makes itself (an unknown action, a missing or inapplicable argument) is a tool

@@ -52,6 +52,7 @@ import org.apache.roller.weblogger.pojos.WeblogEntry.PubStatus;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.controllers.BaseController;
 import org.apache.roller.weblogger.ui.controllers.EntryFieldRules;
+import org.apache.roller.weblogger.ui.controllers.WeblogOwnership;
 import org.apache.roller.weblogger.util.HTMLSanitizer;
 import org.apache.roller.weblogger.util.TextDiff;
 import org.apache.roller.weblogger.util.cache.CacheManager;
@@ -378,21 +379,8 @@ public class EntryEditController extends BaseController {
      * caller, exactly like {@code lookupEntry}.
      */
     private WeblogEntryRevision lookupRevision(String revisionId, WeblogEntry entry) {
-        if (entry == null || revisionId == null) {
-            return null;
-        }
-        try {
-            WeblogEntryRevision revision =
-                    weblogger.getWeblogEntryManager().getRevision(revisionId);
-            if (revision == null || revision.getWeblogEntry() == null
-                    || !entry.getId().equals(revision.getWeblogEntry().getId())) {
-                return null;
-            }
-            return revision;
-        } catch (WebloggerException e) {
-            log.error("Error looking up revision {}", revisionId, e);
-            return null;
-        }
+        // The one ownership check, shared with the API's revision routes.
+        return WeblogOwnership.revision(weblogger, revisionId, entry);
     }
 
     @GetMapping("/entryEdit!firstSave.rol")

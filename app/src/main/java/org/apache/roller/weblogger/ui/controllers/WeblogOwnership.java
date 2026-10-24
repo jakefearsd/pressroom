@@ -28,13 +28,15 @@ import org.apache.roller.weblogger.pojos.ReaderComment;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogCategory;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
+import org.apache.roller.weblogger.pojos.WeblogEntryRevision;
 import org.apache.roller.weblogger.pojos.WeblogPage;
 import org.apache.roller.weblogger.pojos.WeblogRedirect;
 import org.apache.roller.weblogger.pojos.WeblogTemplate;
 
 /**
  * By-id ownership lookups for {@code WeblogEntry}, {@code WeblogCategory},
- * {@code WeblogTemplate}, {@code WeblogPage} and {@code MediaFile}, extracted from
+ * {@code WeblogTemplate}, {@code WeblogPage}, {@code MediaFile} and an
+ * entry's {@code WeblogEntryRevision}, extracted from
  * {@link BaseController}'s four {@code lookupX} methods (Task 7).
  *
  * <p>{@code getWeblogEntry}/{@code getWeblogCategory}/{@code getTemplate}/
@@ -189,6 +191,30 @@ public final class WeblogOwnership {
             return comment;
         } catch (WebloggerException ex) {
             log.error("Error looking up a comment for weblog {}", handleOf(weblog), ex);
+        }
+        return null;
+    }
+
+    /**
+     * The revision with this id, but only when it is a revision of {@code
+     * entry} -- an entry the caller has already looked up through {@link
+     * #entry}, so the revision is as reachable as its entry and no more. A
+     * revision belongs to an entry, not a weblog, so another entry's revision
+     * reads as absent even within one weblog.
+     */
+    public static WeblogEntryRevision revision(Weblogger weblogger, String id, WeblogEntry entry) {
+        if (entry == null || entry.getId() == null || StringUtils.isBlank(id)) {
+            return null;
+        }
+        try {
+            WeblogEntryRevision revision = weblogger.getWeblogEntryManager().getRevision(id);
+            if (revision == null || revision.getWeblogEntry() == null
+                    || !entry.getId().equals(revision.getWeblogEntry().getId())) {
+                return null;
+            }
+            return revision;
+        } catch (WebloggerException ex) {
+            log.error("Error looking up a revision for weblog {}", handleOf(entry.getWebsite()), ex);
         }
         return null;
     }

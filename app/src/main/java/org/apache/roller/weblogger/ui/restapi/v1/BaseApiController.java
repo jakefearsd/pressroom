@@ -6,6 +6,7 @@ import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
+import org.apache.roller.weblogger.pojos.WeblogEntryRevision;
 import org.apache.roller.weblogger.ui.controllers.WeblogOwnership;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -106,5 +107,19 @@ public abstract class BaseApiController {
             throw ApiException.conflict("Entry is trashed. Restore it before editing.");
         }
         return entry;
+    }
+
+    /**
+     * The revision with this id of {@code entry}, an entry already looked up
+     * through {@link #requireEntry} or {@link #requireLiveEntry}. Delegates to
+     * {@link WeblogOwnership#revision}: an unknown id and another entry's
+     * revision are the same 404.
+     */
+    protected WeblogEntryRevision requireRevision(WeblogEntry entry, String revisionId) {
+        WeblogEntryRevision revision = WeblogOwnership.revision(weblogger, revisionId, entry);
+        if (revision == null) {
+            throw ApiException.notFound("No such revision.");
+        }
+        return revision;
     }
 }

@@ -44,6 +44,9 @@ public final class TextDiff {
      */
     static final int MAX_LINES = 4000;
 
+    /** Unchanged lines {@link #unified} shows either side of a change, as {@code diff -u} does. */
+    static final int CONTEXT_LINES = 3;
+
     /** What happened to one line. */
     public enum Kind {
         SAME, ADDED, REMOVED
@@ -106,6 +109,83 @@ public final class TextDiff {
             result.add(new Line(Kind.ADDED, newLines.get(j++)));
         }
         return result;
+    }
+
+    /**
+     * The same diff as {@link #diff}, written as a unified diff: a {@code ---
+     * fromLabel} and a {@code +++ toLabel} line, then {@code @@ -a,b +c,d @@}
+     * hunks with {@link #CONTEXT_LINES} unchanged lines either side of each
+     * change, the way {@code diff -u} writes them (a one-line range drops its
+     * count, an empty one is {@code n,0}, and changes no more than twice the
+     * context apart share a hunk). Lines end in {@code \n} whatever the texts
+     * used. Empty when the texts have the same lines.
+     *
+     * <p>Beyond {@link #MAX_LINES} it is one hunk replacing everything, as
+     * {@link #diff} degrades.
+     */
+    public static String unified(String before, String after, String fromLabel, String toLabel) {
+        List<Line> lines = diff(before, after);
+        if (lines.isEmpty()) {
+            return "";
+        }
+        // oldBefore[k] / newBefore[k]: how many lines of each text come before lines[k]
+        int n = lines.size();
+        int[] oldBefore = new int[n + 1];
+        int[] newBefore = new int[n + 1];
+        for (int k = 0; k < n; k++) {
+            Kind kind = lines.get(k).kind();
+            oldBefore[k + 1] = oldBefore[k] + (kind == Kind.ADDED ? 0 : 1);
+            newBefore[k + 1] = newBefore[k] + (kind == Kind.REMOVED ? 0 : 1);
+        }
+        StringBuilder out = new StringBuilder();
+        out.append("--- ").append(fromLabel).append('\n').append("+++ ").append(toLabel).append('\n');
+        int k = 0;
+        while (k < n) {
+            if (lines.get(k).kind() == Kind.SAME) {
+                k++;
+                continue;
+            }
+            int start = Math.max(0, k - CONTEXT_LINES);
+            int lastChange = lastChangeOfHunk(lines, k);
+            int end = Math.min(n, lastChange + CONTEXT_LINES + 1);
+            out.append("@@ -").append(range(oldBefore[start], oldBefore[end] - oldBefore[start]))
+                    .append(" +").append(range(newBefore[start], newBefore[end] - newBefore[start]))
+                    .append(" @@\n");
+            for (Line line : lines.subList(start, end)) {
+                char marker = switch (line.kind()) {
+                    case ADDED -> '+';
+                    case REMOVED -> '-';
+                    case SAME -> ' ';
+                };
+                out.append(marker).append(line.text()).append('\n');
+            }
+            k = end;
+        }
+        return out.toString();
+    }
+
+    /**
+     * The last change of the hunk whose first change is {@code first}: later
+     * changes join it while no more than twice the context separates them.
+     */
+    private static int lastChangeOfHunk(List<Line> lines, int first) {
+        int lastChange = first;
+        for (int scan = first + 1; scan < lines.size(); scan++) {
+            if (lines.get(scan).kind() != Kind.SAME) {
+                lastChange = scan;
+            } else if (scan - lastChange > 2 * CONTEXT_LINES) {
+                break;
+            }
+        }
+        return lastChange;
+    }
+
+    /** A hunk range: the first line (1-based) and the count, as diff writes it. */
+    private static String range(int linesBefore, int count) {
+        if (count == 0) {
+            return linesBefore + ",0";
+        }
+        return count == 1 ? String.valueOf(linesBefore + 1) : (linesBefore + 1) + "," + count;
     }
 
     /**

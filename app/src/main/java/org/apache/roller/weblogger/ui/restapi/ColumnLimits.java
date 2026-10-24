@@ -44,6 +44,9 @@ public final class ColumnLimits {
     // V008 travel structured data: event_location varchar(255)
     public static final int EVENT_LOCATION = 255;
 
+    // weblogentry_revision (V037__entry_revision_note.sql)
+    public static final int REVISION_NOTE = 255;
+
     // roller_weblogentrytag (V002__baseline_schema.sql)
     public static final int TAG_NAME = 255;
 

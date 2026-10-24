@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.AnchorTakenException;
 import org.apache.roller.weblogger.business.fetch.RemoteImageFetcher;
@@ -23,6 +24,7 @@ import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogCategory;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
+import org.apache.roller.weblogger.pojos.WeblogEntryRevision;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.controllers.EntryDeletion;
 import org.apache.roller.weblogger.ui.controllers.EntryFieldRules;
@@ -33,6 +35,7 @@ import org.apache.roller.weblogger.ui.restapi.FieldErrors;
 import org.apache.roller.weblogger.ui.restapi.dto.ClearFields;
 import org.apache.roller.weblogger.ui.restapi.ColumnLimits;
 import org.apache.roller.weblogger.ui.restapi.dto.EntryDtos;
+import org.apache.roller.weblogger.ui.restapi.dto.RevisionDtos;
 import org.apache.roller.weblogger.util.Utilities;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -160,6 +163,10 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
 
         FieldErrors errors = new FieldErrors();
         EntryFields shown = EntryFields.of(fields, errors);
+        // A blank note says nothing, so it is no note.
+        String revisionNote = StringUtils.trimToNull(sent.revisionNote());
+        errors.check("revisionNote", () -> ColumnLimits.requireMaxLength(
+                "revisionNote", revisionNote, ColumnLimits.REVISION_NOTE));
         // From here on edits are text: what they make of the stored text is
         // checked, imported and saved exactly as though it had been sent.
         EntryDtos.EntryWrite body = EntryEdits.sent(sent.edits())
@@ -179,18 +186,58 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         // The import step commits each image it stores; nothing has been
         // applied to the managed entry yet, so nothing of the write goes with it.
         apply(entry, weblog, imports.run(importPlan, weblog, body), cleared);
-        // The token's user made this save, so a revision it leaves names them.
+        // The token's user made this save, so a revision it leaves names them,
+        // and carries the note when one was sent.
+        weblogger.getWeblogEntryManager().saveWeblogEntry(entry, requireAuthenticatedUser(request), revisionNote);
+        weblogger.flush();
+        reindex(entry);
+
+        return shown.project(EntryDtos.toView(entry, permalink(entry)));
+    }
+
+    /**
+     * Puts a revision's title, summary and text back, as the editor's Restore
+     * does (spec 2026-10-24, section 5): through the ordinary save, so the
+     * state it replaces becomes a revision of its own, credited to the
+     * token's user. A restore is therefore undone by restoring that revision.
+     * Refused as an update is: a trashed entry is a 409 (restore it from the
+     * trash first), and an {@code expectedContentHash} that is not the stored
+     * text's is the 409 {@code entry-changed}, with nothing saved. Another
+     * entry's revision is the 404 an unknown id gets.
+     */
+    @PostMapping("/{id}/revisions/{revisionId}/restore")
+    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = EntryDtos.EntryView.class)))
+    public Object restoreRevision(
+            HttpServletRequest request, @PathVariable("id") String id,
+            @PathVariable("revisionId") String revisionId,
+            @RequestBody(required = false) RevisionDtos.RevisionRestore body,
+            @Parameter(description = EntryFields.DESCRIPTION)
+            @RequestParam(value = "fields", required = false) List<String> fields) throws WebloggerException {
+        WeblogEntry entry = requireLiveEntry(request, id);
+        WeblogEntryRevision revision = requireRevision(entry, revisionId);
+        requireUnchanged(entry, body == null ? null : body.expectedContentHash());
+        EntryFields shown = EntryFields.of(fields);
+
+        entry.setTitle(revision.getTitle());
+        entry.setText(revision.getText());
+        entry.setSummary(revision.getSummary());
         weblogger.getWeblogEntryManager().saveWeblogEntry(entry, requireAuthenticatedUser(request));
         weblogger.flush();
-        // As EntryEditController's save: an entry that is no longer published
-        // leaves search, or search keeps offering a permalink that 404s.
+        reindex(entry);
+
+        return shown.project(EntryDtos.toView(entry, permalink(entry)));
+    }
+
+    /**
+     * As EntryEditController's save: an entry that is no longer published
+     * leaves search, or search keeps offering a permalink that 404s.
+     */
+    private void reindex(WeblogEntry entry) throws WebloggerException {
         if (entry.isPublished()) {
             weblogger.getIndexManager().addEntryReIndexOperation(entry);
         } else {
             weblogger.getIndexManager().removeEntryIndexOperation(entry);
         }
-
-        return shown.project(EntryDtos.toView(entry, permalink(entry)));
     }
 
     /**
@@ -297,8 +344,15 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         }
     }
 
-    /** {@code edits} and {@code expectedContentHash} act on stored text, which a create has none of. */
+    /**
+     * {@code edits} and {@code expectedContentHash} act on stored text, which a
+     * create has none of; {@code revisionNote} labels the revision an update
+     * leaves, and a create replaces nothing, so it leaves none.
+     */
     private static void refuseUpdateOnlyFields(FieldErrors errors, EntryDtos.EntryWrite body) {
+        if (body.revisionNote() != null) {
+            errors.add("revisionNote", "revisionNote applies only to updates; a create leaves no revision.");
+        }
         if (EntryEdits.sent(body.edits())) {
             errors.add("edits", "edits apply only to updates; a create sends text.");
         }

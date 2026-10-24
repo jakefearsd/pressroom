@@ -177,5 +177,6 @@ class EntriesWriteApiAnchorTest {
         assertEquals("torrey-pines", stored.getAnchor());
         assertNull(stored.getSummary());
         verify(fx.entries, never()).saveWeblogEntry(any(), any());
+        verify(fx.entries, never()).saveWeblogEntry(any(), any(), any());
     }
 }

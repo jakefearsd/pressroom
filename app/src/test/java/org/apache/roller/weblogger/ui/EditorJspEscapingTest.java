@@ -113,7 +113,9 @@ class EditorJspEscapingTest {
             // The reader's account page: a display name a reader typed (any
             // account's screenName, however reached) and the form's echo of it.
             "screenName",
-            "nameValue");
+            "nameValue",
+            // A revision's note: free text an API update sent (revisionNote).
+            "revision.note");
 
     @Test
     void authorControlledTextNeverRendersRawInAJsp() throws IOException {

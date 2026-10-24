@@ -151,6 +151,10 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   A failing edit is a `FieldErrors` entry on `edits[i]` and is skipped, so it is reported with the
   write's other field problems and the import step never runs. Exact strings by design, never
   patterns (spec, Decisions).
+- **`expectedContentHash` serves update and the revision restore**, so its `@Schema` text is
+  `EntryDtos.EXPECTED_CONTENT_HASH_DESCRIPTION`, one text that holds for both (the restore takes
+  it in an optional body record, `RevisionDtos.RevisionRestore`, so a bare POST still restores).
+  `revisionNote` is update-only and its own field; see `entries.md`, "Revision notes".
 - **`fields` is `EntryFields`, one projection for every entry route** (spec section 2). It keeps
   the asked record components of `EntryView` and their non-null values, so the converter writes them
   exactly as in the full view; `EntriesApiFieldsTest` pins that asking for every name writes the full

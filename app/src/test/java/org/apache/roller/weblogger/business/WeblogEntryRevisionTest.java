@@ -52,6 +52,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -109,6 +110,50 @@ public class WeblogEntryRevisionTest {
             TestUtils.teardownUser(other.getUserName());
             TestUtils.endSession(true);
         }
+    }
+
+    /** A revisionNote labels the revision its save leaves: the row holding what that save replaced. */
+    @Test
+    public void aNoteLabelsTheRevisionItsSaveLeaves() throws Exception {
+        String id = saveEntry("Title", "Body 1").getId();
+        TestUtils.endSession(true);
+
+        WeblogEntry entry = entryManager().getWeblogEntry(id);
+        entry.setText("Body 2");
+        entryManager().saveWeblogEntry(entry, TestUtils.getManagedUser(testUser), "Tighten the intro");
+        TestUtils.endSession(true);
+
+        List<WeblogEntryRevision> revisions = entryManager().getRevisions(entryManager().getWeblogEntry(id));
+        assertEquals(1, revisions.size());
+        assertEquals("Body 1", revisions.get(0).getText());
+        assertEquals("Tighten the intro", revisions.get(0).getNote());
+        assertEquals(testUser.getUserName(), revisions.get(0).getCreator());
+    }
+
+    /**
+     * A save that leaves title, text and summary as they were leaves no
+     * revision, so its note has nothing to label and is dropped, and it does
+     * not wait for the next save's revision either.
+     */
+    @Test
+    public void aSaveThatLeavesNoRevisionDropsItsNote() throws Exception {
+        String id = saveEntry("Title", "Body 1").getId();
+        TestUtils.endSession(true);
+
+        WeblogEntry entry = entryManager().getWeblogEntry(id);
+        entry.setSearchDescription("Only the metadata changes.");
+        entryManager().saveWeblogEntry(entry, TestUtils.getManagedUser(testUser), "A note with nothing to label");
+        TestUtils.endSession(true);
+        assertEquals(0, entryManager().getRevisions(entryManager().getWeblogEntry(id)).size());
+
+        entry = entryManager().getWeblogEntry(id);
+        entry.setText("Body 2");
+        entryManager().saveWeblogEntry(entry, TestUtils.getManagedUser(testUser));
+        TestUtils.endSession(true);
+
+        List<WeblogEntryRevision> revisions = entryManager().getRevisions(entryManager().getWeblogEntry(id));
+        assertEquals(1, revisions.size());
+        assertNull(revisions.get(0).getNote());
     }
 
     @Test

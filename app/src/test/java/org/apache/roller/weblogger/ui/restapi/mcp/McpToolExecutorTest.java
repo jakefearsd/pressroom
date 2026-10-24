@@ -122,6 +122,27 @@ class McpToolExecutorTest {
         assertTrue(dispatched.isEmpty());
     }
 
+    /**
+     * The revision actions (spec 2026-10-24, section 5) reach their routes:
+     * revisionId fills the path beside id, against is a query parameter, and
+     * a restore's expectedContentHash travels in its body, fields beside it.
+     */
+    @Test
+    void theRevisionActionsDispatchToTheirRoutes() {
+        call("entries", Map.of("action", "revisions", "weblog", "b", "id", "e1"));
+        call("entries", Map.of("action", "revision", "weblog", "b", "id", "e1", "revisionId", "r1",
+                "against", "r2"));
+        call("entries", Map.of("action", "restore_revision", "weblog", "b", "id", "e1", "revisionId", "r1",
+                "expectedContentHash", "ab", "fields", List.of("text")));
+
+        assertEquals(List.of("GET /v1/weblogs/b/entries/e1/revisions", "GET /v1/weblogs/b/entries/e1/revisions/r1",
+                "POST /v1/weblogs/b/entries/e1/revisions/r1/restore"),
+                dispatched.stream().map(c -> c.method() + " " + c.path()).toList());
+        assertEquals(List.of("r2"), dispatched.get(1).query().get("against"));
+        assertEquals("{\"expectedContentHash\":\"ab\"}", dispatched.get(2).jsonBody());
+        assertEquals(List.of("text"), dispatched.get(2).query().get("fields"));
+    }
+
     @Test
     void aBooleanQueryValueStringifiesPlainly() {
         call("users", Map.of("action", "list", "enabled", false));

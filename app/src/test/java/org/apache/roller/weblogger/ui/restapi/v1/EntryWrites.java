@@ -37,6 +37,7 @@ final class EntryWrites {
     private List<String> clear;
     private List<EntryDtos.TextEdit> edits;
     private String expectedContentHash;
+    private String revisionNote;
 
     private EntryWrites() {
     }
@@ -72,12 +73,13 @@ final class EntryWrites {
     EntryWrites clear(List<String> value) { clear = value; return this; }
     EntryWrites edits(List<EntryDtos.TextEdit> value) { edits = value; return this; }
     EntryWrites expectedContentHash(String value) { expectedContentHash = value; return this; }
+    EntryWrites revisionNote(String value) { revisionNote = value; return this; }
 
     EntryDtos.EntryWrite build() {
         return new EntryDtos.EntryWrite(title, summary, text, status, category, pubTime, tags,
                 metaTitle, searchDescription, canonicalUrl, noindex, featuredImageId, ogImageId,
                 jsonLdType, geoLatitude, geoLongitude, eventStart, eventEnd, eventLocation,
                 commentsClosed, anchor, featuredImageUrl, featuredImageAlt, importExternalImages, clear, edits,
-                expectedContentHash);
+                expectedContentHash, revisionNote);
     }
 }

@@ -23,7 +23,7 @@ class McpToolCatalogTest {
                 Map.entry("whoami", List.of("")),
                 Map.entry("weblogs", List.of("list", "get", "create", "update")),
                 Map.entry("entries", List.of("list", "get", "create", "update", "trash", "restore",
-                        "delete_forever", "preview")),
+                        "delete_forever", "preview", "revisions", "revision", "restore_revision")),
                 Map.entry("categories", List.of("list", "create", "update", "delete", "list_tags")),
                 Map.entry("media", List.of("list", "get", "import", "update", "delete", "list_directories",
                         "create_directory")),

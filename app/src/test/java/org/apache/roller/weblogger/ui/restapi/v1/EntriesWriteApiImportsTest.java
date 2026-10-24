@@ -253,6 +253,7 @@ class EntriesWriteApiImportsTest {
         assertNull(entry.getSummary());
         verify(media, times(2)).createMediaFile(any(), any(), any());
         verify(fx.entries, never()).saveWeblogEntry(any(), any());
+        verify(fx.entries, never()).saveWeblogEntry(any(), any(), any());
     }
 
     @Test
@@ -281,7 +282,7 @@ class EntriesWriteApiImportsTest {
 
         assertTrue(entry.getText().startsWith("Intro ![a](https://blog.example.com/myblog/mediaresource/"),
                 entry.getText());
-        verify(fx.entries).saveWeblogEntry(org.mockito.ArgumentMatchers.eq(entry), any());
+        verify(fx.entries).saveWeblogEntry(org.mockito.ArgumentMatchers.eq(entry), any(), any());
     }
 
     // ---- edits and expectedContentHash (spec 2026-10-24, sections 3 and 4; criterion 4)
@@ -300,7 +301,7 @@ class EntriesWriteApiImportsTest {
 
         assertTrue(entry.getText().startsWith("Intro. ![a](https://blog.example.com/myblog/mediaresource/"),
                 entry.getText());
-        verify(fx.entries, times(1)).saveWeblogEntry(eq(entry), any());
+        verify(fx.entries, times(1)).saveWeblogEntry(eq(entry), any(), any());
     }
 
     @Test
@@ -316,6 +317,7 @@ class EntriesWriteApiImportsTest {
         verify(fetcher, never()).fetch(any(), anyLong(), any());
         verify(media, never()).createMediaFile(any(), any(), any());
         verify(fx.entries, never()).saveWeblogEntry(any(), any());
+        verify(fx.entries, never()).saveWeblogEntry(any(), any(), any());
     }
 
     @Test

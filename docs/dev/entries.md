@@ -172,9 +172,29 @@ incidental re-save) — minor PII residue worth clearing.
   is stamped when the save runs (`contentBeingReplaced`), not at load: the
   pruner orders by it. A revision names the user whose save replaced it:
   callers pass the acting user to `saveWeblogEntry(entry, editor)` (the
-  editor save/restore, `/api/v1` PATCH and so MCP); the one-argument form is
+  editor save/restore, the API's revision restore); the one-argument form is
   for system callers and falls back to the entry's creator. Rendered as a rail box below the publish rail, own
   form/CSRF per restore button.
+- **Revision notes** (V037, spec `docs/superpowers/specs/2026-10-24-agent-editing-and-seo-design.md`
+  section 5): `weblogentry_revision.note` (nullable, 255) says why the save that left the
+  revision was made. Only an API update sends one (`EntryWrite.revisionNote`, trimmed, blank is
+  none, over 255 a 400, on create a 400), carried explicitly by
+  `saveWeblogEntry(entry, editor, revisionNote)`, which `/api/v1` PATCH (and so MCP update) always
+  calls; `recordRevision` sets it on the snapshot, null included, so a note never outlives its
+  save. A save that changes no title/text/summary leaves no revision and its note is dropped. The
+  rail shows a note on its own row under its revision (`fn:escapeXml`; `revision.note` is in
+  `EditorJspEscapingTest`'s list). The JSP editor has no note input. **Mockito trap:** an API
+  update saves through the three-argument form, a revision restore through the two-argument one;
+  a test's "nothing saved" must `never()` all three forms, or it passes vacuously.
+- **Revisions in the API** (`EntriesApi.revisions`/`revision`, `EntriesWriteApi.restoreRevision`;
+  MCP `entries` `revisions`, `revision`, `restore_revision`): the list is newest first with no
+  text, a bare array like the other unpaged lists; one revision carries its content and `diff`,
+  `TextDiff.unified` (3 lines of context) from its text to the current text or to `against`. The
+  restore is the editor's (title/text/summary back through the two-argument save), refuses a
+  trashed entry (409) and a stale `expectedContentHash` (409 `entry-changed`, the update's own
+  `requireUnchanged`), and honours `fields`. Every revision id, `against` included, goes through
+  `WeblogOwnership.revision` (the editor's `lookupRevision` delegates there too): another
+  entry's revision is the unknown id's 404.
 
 **Controllers: always name `@RequestParam`/`@PathVariable` explicitly.** The
 build does not pass `-parameters`, so a bare `@RequestParam String id` throws

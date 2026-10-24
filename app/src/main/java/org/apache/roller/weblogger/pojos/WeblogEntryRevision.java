@@ -59,6 +59,7 @@ public class WeblogEntryRevision implements Serializable {
     private String title;
     private String text;
     private String summary;
+    private String note;
 
     public WeblogEntryRevision() {
     }
@@ -159,6 +160,19 @@ public class WeblogEntryRevision implements Serializable {
 
     public void setSummary(String summary) {
         this.summary = summary;
+    }
+
+    /**
+     * Why the save that left this revision was made, as its caller said (an
+     * API update's {@code revisionNote}); null when it said nothing, which the
+     * web editor never does.
+     */
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
     }
 
     @Override
