@@ -145,10 +145,10 @@ message}` plus `value`/`limit` where a length is involved.
 
 | Code | Rule | Severity |
 |---|---|---|
-| `search_description_missing` | blank (exists today as `missing_search_description`) | warning |
-| `search_description_long` | > 160 characters | warning |
-| `search_description_short` | < 50 characters | info |
-| `title_long` | the `<title>` the themes print (metaTitle, else "title — weblog name") > 60 | warning |
+| `missing_search_description`, `missing_meta_title`, `missing_featured_image`, `noindex` | today's `audits seo` gaps, same names on every surface | warning |
+| `search_description_long` | > `SeoLimits.DESCRIPTION_MAX` (160) characters | warning |
+| `search_description_short` | < `SeoLimits.DESCRIPTION_MIN` (50) characters | info |
+| `title_long` | the `<title>` the themes print (metaTitle, else "title — weblog name", unescaped) > `SeoLimits.TITLE_MAX` (60) | warning |
 | `body_h1` | an `<h1>` in the body (the theme already prints the title as the h1) | warning |
 | `heading_skip` | a heading more than one level below the previous one (h2 → h4) | info |
 | `image_alt_missing` | an `<img>` with no `alt` attribute, or an `alt` that is the file name | warning |
