@@ -210,30 +210,96 @@ class PortfolioThemeRenderingTest {
                 "the whole card links to the entry:\n" + body);
     }
 
+    /**
+     * A post with no featured image is writing, not a picture, and gets a
+     * list row -- title, date, category and a line of its prose -- rather
+     * than an empty tile. Before this the wikantik weblog's front page was a
+     * wall of teal boxes carrying nothing but a title each.
+     */
     @Test
-    void anEntryWithoutAFeaturedImageBecomesAQuietTextCard() throws Exception {
+    void anEntryWithoutAFeaturedImageIsAListRowWithItsOpening() throws Exception {
         TestUtils.setupWeblogEntry("bare-entry", weblog, user);
         TestUtils.endSession(true);
 
         String body = render("/" + HANDLE);
 
         assertPortfolioHead(body);
-        assertTrue(body.contains("<figure class=\"pf-card pf-card-text\">"),
-                "imageless entries must still get a card:\n" + body);
-        assertTrue(body.contains("<h2 class=\"pf-card-title\">bare-entry</h2>"), body);
+        assertTrue(body.contains("<div class=\"pf-list\">"), "imageless entries form a list:\n" + body);
+        assertTrue(body.contains("<article class=\"pf-row\">"), body);
+        assertTrue(body.contains("<h2 class=\"pf-row-title\"><a href=\"" + BASE
+                + "/entry/bare-entry\">bare-entry</a></h2>"), "the title links to the entry:\n" + body);
+        assertTrue(ROW_DATE.matcher(body).find(), "the row carries a machine-readable date:\n" + body);
+        assertTrue(body.contains("<p class=\"pf-row-sum\">blah blah entry</p>"),
+                "with no summary written, the row shows the post's opening:\n" + body);
+        assertFalse(body.contains("pf-card"), "no tile is emitted for an imageless entry:\n" + body);
         assertFalse(body.contains("<picture>"),
                 "no responsive image may be emitted without a featured image:\n" + body);
-        // The no-image card trades its former bare title for title + mono
-        // date, the same $utils.formatDate idiom the permalink's
-        // .pf-entry-meta already uses ("MMMM d, yyyy") -- now inside a
-        // <time datetime> so the day survives as a machine value too.
-        assertTrue(DATE_SPAN.matcher(body).find(),
-                "the no-image card must carry a machine-readable pf-card-date:\n" + body);
     }
 
-    private static final Pattern DATE_SPAN = Pattern.compile(
-            "<time class=\"pf-card-date\" datetime=\"\\d{4}-\\d{2}-\\d{2}\">"
+    private static final Pattern ROW_DATE = Pattern.compile(
+            "<p class=\"pf-row-meta\"><time datetime=\"\\d{4}-\\d{2}-\\d{2}\">"
                     + "[A-Za-z]+ \\d{1,2}, \\d{4}</time>");
+
+    @Test
+    void anAuthorsSummaryIsTheRowsLineEscapedOnce() throws Exception {
+        WeblogEntry entry = TestUtils.setupWeblogEntry("summarised-entry", weblog, user);
+        WeblogEntryManager mgr = TestUtils.weblogger().getWeblogEntryManager();
+        WeblogEntry managed = mgr.getWeblogEntry(entry.getId());
+        managed.setSummary("Fish & chips, and *why* the coast still serves them.");
+        managed.setSearchDescription("Written for search engines.");
+        mgr.saveWeblogEntry(managed);
+        TestUtils.endSession(true);
+
+        String body = render("/" + HANDLE);
+
+        assertTrue(body.contains("<p class=\"pf-row-sum\">Fish &amp; chips, and why the coast still serves them.</p>"),
+                "the summary is shown as plain text, escaped exactly once:\n" + body);
+        assertFalse(body.contains("Written for search engines."),
+                "the author's summary outranks the search description:\n" + body);
+    }
+
+    /**
+     * Pictures and writing interleave in publication order: each run of
+     * image entries is its own justified grid, each run of imageless ones its
+     * own list, and every container the day fragment opens is closed.
+     */
+    @Test
+    void picturesAndWritingAlternateInRunsInPublicationOrder() throws Exception {
+        MediaFile image = TestUtils.setupImageMediaFile(weblog, "run-image");
+        String imageId = image.getId();
+        TestUtils.endSession(true);
+        publishAt(entryWithFeaturedImage("newest-picture", imageId), "2026-03-03 10:00:00");
+        publishAt(TestUtils.setupWeblogEntry("older-essay", weblog, user), "2026-03-02 10:00:00");
+        publishAt(TestUtils.setupWeblogEntry("oldest-essay", weblog, user), "2026-03-01 10:00:00");
+
+        String body = render("/" + HANDLE);
+        String main = body.substring(body.indexOf("<main"), body.indexOf("</main>"));
+
+        int grid = main.indexOf("<div class=\"pf-grid\">");
+        int list = main.indexOf("<div class=\"pf-list\">");
+        assertTrue(grid >= 0 && list > grid, "the picture's grid run comes first, then the list:\n" + main);
+        assertTrue(main.indexOf("newest-picture") < main.indexOf("older-essay")
+                && main.indexOf("older-essay") < main.indexOf("oldest-essay"), main);
+        assertEquals(1, count(main, "<div class=\"pf-list\">"),
+                "consecutive imageless entries share one list:\n" + main);
+        assertEquals(count(main, "<div"), count(main, "</div>"), "every run is closed:\n" + main);
+    }
+
+    private static void publishAt(WeblogEntry entry, String when) throws Exception {
+        WeblogEntryManager mgr = TestUtils.weblogger().getWeblogEntryManager();
+        WeblogEntry managed = mgr.getWeblogEntry(entry.getId());
+        managed.setPubTime(java.sql.Timestamp.valueOf(when));
+        mgr.saveWeblogEntry(managed);
+        TestUtils.endSession(true);
+    }
+
+    private static int count(String haystack, String needle) {
+        int n = 0;
+        for (int at = haystack.indexOf(needle); at >= 0; at = haystack.indexOf(needle, at + 1)) {
+            n++;
+        }
+        return n;
+    }
 
     // ------------------------------------------------------------- permalink
 
@@ -487,23 +553,20 @@ class PortfolioThemeRenderingTest {
     }
 
     /**
-     * The no-image entry card ({@code .pf-card-text}, see
-     * {@code anEntryWithoutAFeaturedImageBecomesAQuietTextCard} above) trades
-     * its former flat empty box for a teal wash off the theme's new accent
-     * token -- CSS only, the pinned {@code figure.pf-card.pf-card-text} /
-     * {@code h2.pf-card-title} markup does not change.
+     * The list rows sit in the theme's reading measure, not the grid's full
+     * bleed, and set the title in the theme's foreground with the accent kept
+     * for the hover -- the one thing in the row a reader can act on.
      */
     @Test
-    void theNoImageCardGetsATealWashFromTheNewAccentToken() throws Exception {
+    void theListRowsAreStyledAsAReadingList() throws Exception {
         String body = render("/" + HANDLE + "/page/portfolio-custom.css");
 
-        assertTrue(body.contains("--pf-accent: #4FB3AA;"),
-                "the theme must declare its new accent token:\n" + body);
-        int cardTextRule = body.indexOf(".pf-card-text {");
-        assertTrue(cardTextRule >= 0, "expected a .pf-card-text rule:\n" + body);
-        String rule = body.substring(cardTextRule, body.indexOf('}', cardTextRule));
-        assertTrue(rule.contains("linear-gradient") && rule.contains("var(--pf-accent)"),
-                "the no-image card must wash with the accent token, not sit flat:\n" + rule);
+        assertTrue(body.contains("--pf-accent: #4FB3AA;"), "the theme declares its accent token:\n" + body);
+        assertTrue(rule(body, ".pf-list {").contains("max-width"),
+                "the list keeps a reading measure:\n" + body);
+        assertTrue(rule(body, ".pf-row-title a:hover {").contains("var(--pf-accent)"),
+                "the title's hover takes the accent:\n" + body);
+        assertFalse(body.contains(".pf-card-text"), "the old text-tile rules are gone:\n" + body);
     }
 
     // ---------------------------------------------------------------- search
@@ -524,8 +587,8 @@ class PortfolioThemeRenderingTest {
                 "the search head must allow the video providers' frames:\n" + body);
         assertTrue(body.contains(".jgrid { display: flex;"), body);
         assertTrue(body.contains("/webjars/photoswipe/"), body);
-        assertTrue(body.contains("<div class=\"pf-grid\">"),
-                "search results reuse the justified grid:\n" + body);
+        assertTrue(body.contains("<div class=\"pf-entries\">"),
+                "search results reuse the front page's runs of grid and list:\n" + body);
         assertTrue(body.contains("id=\"searchAgain\""),
                 "the search-again form must be present:\n" + body);
     }

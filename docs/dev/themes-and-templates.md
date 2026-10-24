@@ -123,6 +123,27 @@ resolves through the index at the end of `CLAUDE.md`.
   archive) says what it is in an `xx-view` block and has its own empty
   sentence. The themes' fixed reader copy ("Tagged", "Archive", the empty
   sentences) is English by decision, not bundle keys.
+- **The line under a title in an entry list is `$entry.excerpt`, every
+  theme** (`WeblogEntryWrapper#getExcerpt`): the author's Summary (editor
+  drawer, API `summary`) rendered and shown as plain text, else the search
+  description, else the post's opening (`Excerpts.opening`) — the first two
+  sentences of the writer's own paragraphs, a third when two come to under
+  100 characters, at most 300 (a sentence that would run past that is left
+  out, or, while the opening is still under 100, cut at a word with an
+  ellipsis), never a heading, code block, caption,
+  quotation, list item or shortcode/callout output (any `div` with a class).
+  It is plain text, so a template emits it as `$utils.escapeHTML($excerpt)`,
+  once — the old fallback, `removeHTML` over `displayContent`, returned
+  already-escaped text that had to be emitted bare. journal's `qj-sum`,
+  travel's `tg-card-excerpt` and portfolio's `pf-row-sum` all read it.
+- **Portfolio lists in runs.** An entry with a featured image is a card in
+  a justified `.pf-grid`; one without is a row (`article.pf-row`: an `h2`
+  link, a mono date and category line, the excerpt) in a `.pf-list` in the
+  reading measure. `_day.vm` opens a new run whenever the kind changes,
+  carrying the open one across days in `$pfRun`; `weblog.vm` and
+  `searchresults.vm` empty it before the pager and close the last run after,
+  inside one `div.pf-entries`. A text-heavy weblog on portfolio is a list;
+  the old no-image tile showed a title and nothing else.
 - The search pager macro emits its own labelled `<nav class="search-pager">`
   and the hit line `p.search-hits`; a theme wraps it in a `div`, never a
   second `nav`, and styles both (`ThemePolishTest`).

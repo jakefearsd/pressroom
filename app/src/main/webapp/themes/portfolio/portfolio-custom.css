@@ -212,51 +212,71 @@ body.pf a:hover {
     opacity: 1;
 }
 
-/* entries without a featured image become quiet text cards */
+/* Entries without a featured image are writing, not pictures: they list
+   as rows in the permalink's reading measure, between the grid runs, rather
+   than as tiles that could only hold a title. _day.vm groups each stretch of
+   them into one .pf-list. */
 
-.pf-card-text {
-    aspect-ratio: var(--ar);
-    border: 1px solid var(--pf-line);
-    background:
-        linear-gradient(135deg, color-mix(in srgb, var(--pf-accent) 35%, transparent), transparent 70%),
-        var(--pf-bg);
-}
-
-.pf-card-text .pf-card-link {
+.pf-entries {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-end;
-    height: 100%;
-    padding: 1.25rem;
-    gap: 0.4rem;
+    gap: 2.5rem;
 }
 
-.pf-card-text .pf-card-title {
-    position: static;
-    background: none;
-    opacity: 1;
-    padding: 0;
-    text-align: left;
-    text-transform: none;
-    letter-spacing: 0.01em;
+.pf-list {
+    width: 100%;
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: 0 1.25rem;
+}
+
+.pf-row {
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--pf-line);
+}
+
+.pf-row:first-child {
+    padding-top: 0.5rem;
+    border-top: 0;
+}
+
+.pf-row-title {
+    margin: 0;
     font-size: 1.25rem;
     font-weight: 600;
-    color: var(--pf-fg);
+    line-height: 1.3;
+    letter-spacing: 0.01em;
+    overflow-wrap: anywhere;
 }
 
-.pf-card-text:hover .pf-card-title {
+.pf-row-title a {
     color: var(--pf-fg);
+    text-decoration: none;
 }
 
-/* Mono face for the no-image card's date, quiet over the teal wash --
+/* The accent belongs to the title's hover: the one thing in the row a reader
+   can act on. */
+.pf-row-title a:focus-visible,
+.pf-row-title a:hover {
+    color: var(--pf-accent);
+}
+
+/* Mono face for the row's date and category, quiet under the title --
    system monospace only: the theme CSP has no font-src, so no webfont can
    load here (see the file header). */
-.pf-card-date {
+.pf-row-meta {
+    margin: 0.35rem 0 0;
     font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
     font-size: .75rem;
     letter-spacing: 0.04em;
     color: var(--pf-muted);
+}
+
+.pf-row-sum {
+    margin: 0.6rem 0 0;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--pf-fg) 82%, var(--pf-bg));
 }
 
 /* permalink: hero image first, then a narrow reading column */

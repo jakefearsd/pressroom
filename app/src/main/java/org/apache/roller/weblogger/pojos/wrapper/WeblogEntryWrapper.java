@@ -34,6 +34,7 @@ import org.apache.roller.weblogger.pojos.MediaFile;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
 import org.apache.roller.weblogger.pojos.WeblogEntry.PubStatus;
 import org.apache.roller.weblogger.pojos.WeblogEntryTagComparator;
+import org.apache.roller.weblogger.util.Excerpts;
 import org.apache.roller.weblogger.util.HTMLSanitizer;
 
 
@@ -282,6 +283,31 @@ public final class WeblogEntryWrapper {
 	public String getSearchDescription() {
         return HTMLSanitizer.conditionallySanitizeText(this.pojo.getSearchDescription());
 	}
+
+    /**
+     * The line of prose an entry list shows under this entry's title: the
+     * author's own summary when there is one, else the search description,
+     * else the opening sentences of the post (see {@link Excerpts#opening}).
+     * Plain text, NOT escaped -- emit it through {@code $utils.escapeHTML},
+     * the same as {@link #getSearchDescription()}.
+     *
+     * @return the excerpt, or null when the entry has nothing to show
+     */
+    public String getExcerpt() {
+        String summary = this.pojo.getSummary();
+        if (summary != null && !summary.isBlank()) {
+            // A summary with no words in it -- an image, say -- falls through.
+            String text = Excerpts.plainText(getTransformedSummary());
+            if (text != null) {
+                return text;
+            }
+        }
+        String description = getSearchDescription();
+        if (description != null && !description.isBlank()) {
+            return description;
+        }
+        return Excerpts.opening(getTransformedText(), this.pojo.getWebsite().getLocaleInstance());
+    }
 
     public String getFeaturedImageId() {
         return this.pojo.getFeaturedImageId();

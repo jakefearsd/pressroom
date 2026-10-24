@@ -192,6 +192,36 @@ class JournalThemeRenderingTest {
                 "the title must link to the entry's permalink:\n" + body);
     }
 
+    /**
+     * The row's line of prose is the author's own summary when there is one
+     * -- the editor's Summary field -- ahead of the search description, and
+     * otherwise the post's first couple of sentences rather than a cut at a
+     * fixed character count. Plain text, escaped exactly once.
+     */
+    @Test
+    void theRowShowsTheSummaryElseTheOpeningSentences() throws Exception {
+        WeblogEntry summarised = entryWithSummary("summarised", "Written for search engines.");
+        WeblogEntry opened = TestUtils.setupWeblogEntry("opened", weblog, user);
+        WeblogEntryManager mgr = TestUtils.weblogger().getWeblogEntryManager();
+        WeblogEntry managed = mgr.getWeblogEntry(summarised.getId());
+        managed.setSummary("Written for the list.");
+        mgr.saveWeblogEntry(managed);
+        managed = mgr.getWeblogEntry(opened.getId());
+        managed.setText("## Why\n\nFish & chips were the first thing anybody ordered on that coast, every single time. "
+                + "Nobody could say why. The rest of the post is not in the list.");
+        mgr.saveWeblogEntry(managed);
+        TestUtils.endSession(true);
+
+        String body = render("/" + HANDLE + "/");
+
+        assertTrue(body.contains("<p class=\"qj-sum\">Written for the list.</p>"), body);
+        assertFalse(body.contains("Written for search engines."),
+                "the summary outranks the search description:\n" + body);
+        assertTrue(body.contains("<p class=\"qj-sum\">Fish &amp; chips were the first thing anybody ordered on "
+                + "that coast, every single time. Nobody could say why.</p>"),
+                "two whole sentences, no heading, escaped once:\n" + body);
+    }
+
     @Test
     void theNavPageLinksRenderInsideAnOpenList() throws Exception {
         String body = render("/" + HANDLE + "/");

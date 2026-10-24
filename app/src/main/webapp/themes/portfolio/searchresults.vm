@@ -65,8 +65,13 @@
     #elseif($model.hits == 0)
     <p class="pf-search-empty">No entries matched that search. Try a different word, or a shorter phrase.</p>
     #end
-    <div class="pf-grid">
+    ## Runs of pictures and of writing, as on the front page (weblog.vm).
+    <div class="pf-entries">
+        #set($pfRun = "")
         #showWeblogEntriesPager($pager)
+        #if($pfRun != "")
+        </div>
+        #end
     </div>
 </main>
 

@@ -56,16 +56,14 @@
                 <a href="$url.entry($entry.anchor)">$entry.title</a>
             </h2>
             <p class="tg-card-meta"><time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time></p>
-            ## Every card gets a line of prose, as journal's rows do: most
-            ## entries have no search description, and cards without one were
-            ## shorter than their neighbours in the same row. The fallback is
-            ## emitted bare -- removeHTML over rendered, sanitized content
-            ## returns text whose entities are already escaped, and escaping it
-            ## again shows the reader "&amp;#39;" (journal/_day.vm, same rule).
-            #if($utils.isNotEmpty($entry.searchDescription))
-            <p class="tg-card-excerpt">$utils.escapeHTML($entry.searchDescription)</p>
-            #else
-            <p class="tg-card-excerpt">$utils.truncateNicely($utils.removeHTML($entry.displayContent), 120, 165, "…")</p>
+            ## Every card gets a line of prose, as journal's rows do, or cards
+            ## without one are shorter than their neighbours in the same row:
+            ## the author's summary, else the search description, else the
+            ## post's opening sentences (WeblogEntryWrapper#getExcerpt). Plain
+            ## text, escaped here once (journal/_day.vm, same rule).
+            #set($excerpt = $entry.excerpt)
+            #if($utils.isNotEmpty($excerpt))
+            <p class="tg-card-excerpt">$utils.escapeHTML($excerpt)</p>
             #end
         </div>
     </article>

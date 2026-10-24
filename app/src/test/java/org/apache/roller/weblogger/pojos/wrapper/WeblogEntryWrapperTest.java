@@ -284,6 +284,44 @@ class WeblogEntryWrapperTest {
                 "and with one, the teaser form");
     }
 
+    /**
+     * What an entry list shows under the title: the author's own summary,
+     * else the search description, else the post's opening sentences -- plain
+     * text in every case, for the template to escape once.
+     */
+    @Test
+    void theExcerptIsTheSummaryElseTheSearchDescriptionElseTheOpening() {
+        org.apache.roller.weblogger.business.plugins.PluginManager plugins =
+                mock(org.apache.roller.weblogger.business.plugins.PluginManager.class);
+        when(plugins.getWeblogEntryPlugins(weblog)).thenReturn(java.util.Map.of());
+        when(weblogger.getEntryRenderer()).thenReturn(new org.apache.roller.weblogger.business.EntryRenderer(
+                org.apache.roller.weblogger.business.shortcodes.ShortcodeExpander.builtIn(
+                        weblogger, mock(org.apache.roller.weblogger.business.MediaFileManager.class)),
+                plugins));
+        entry.setText("## Background\n\nThe opening sentence of the post, written to be long enough to stand alone. "
+                + "Its second sentence follows on. Its third.");
+        entry.setSearchDescription("For search engines & readers.");
+        entry.setSummary("Just a *taste* of it.");
+
+        assertEquals("Just a taste of it.", wrapper.getExcerpt(),
+                "the summary is rendered like the post, then shown as plain text");
+
+        entry.setSummary("   ");
+        assertEquals("For search engines & readers.", wrapper.getExcerpt(),
+                "a blank summary is no summary");
+
+        entry.setSummary("![](https://example.com/a.jpg)");
+        assertEquals("For search engines & readers.", wrapper.getExcerpt(),
+                "nor is one with no words in it");
+
+        entry.setSearchDescription(null);
+        assertEquals("The opening sentence of the post, written to be long enough to stand alone. "
+                + "Its second sentence follows on.", wrapper.getExcerpt(), "never the heading, and two sentences");
+
+        entry.setText("");
+        assertNull(wrapper.getExcerpt(), "nothing to show is null, not an empty line");
+    }
+
     @Test
     void theCreatorIsReadThroughTheEntry() throws Exception {
         // The author is resolved by name through the facade the wrapper was

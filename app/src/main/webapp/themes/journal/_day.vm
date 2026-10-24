@@ -53,21 +53,15 @@
     <p class="qj-date"><time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMM d")<br><span class="y">$utils.formatDate($entry.pubTime, "yyyy")</span></time></p>
     <div>
         <h2 class="qj-title"><a href="$url.entry($entry.anchor)">$entry.title</a></h2>
-        ## Every row gets a line of prose. The search description is the author's
-        ## own summary and wins when set, but most entries never get one, and a
-        ## row that collapses to a bare title breaks the list's rhythm -- two of
-        ## eight rows were half the height of their neighbours before this
-        ## fallback existed. removeHTML first: displayContent is rendered markup,
-        ## and truncating that directly can cut inside a tag.
-        #if($utils.isNotEmpty($entry.searchDescription))
-        <p class="qj-sum">$utils.escapeHTML($entry.searchDescription)</p>
-        #else
-        ## Emitted bare, unlike the searchDescription branch above. displayContent
-        ## is already-rendered, already-sanitized HTML, so removeHTML returns text
-        ## whose entities are already escaped ("I don&#39;t know"). Running
-        ## escapeHTML over that escapes the ampersands a second time and the
-        ## reader sees the entity source instead of the apostrophe.
-        <p class="qj-sum">$utils.truncateNicely($utils.removeHTML($entry.displayContent), 120, 165, "…")</p>
+        ## Every row gets a line of prose -- a row that collapses to a bare
+        ## title breaks the list's rhythm. $entry.excerpt is the author's own
+        ## summary (the editor's Summary field) when there is one, else the
+        ## search description, else the post's first couple of sentences
+        ## (WeblogEntryWrapper#getExcerpt). Plain text, NOT markup: escaped
+        ## here, exactly once.
+        #set($excerpt = $entry.excerpt)
+        #if($utils.isNotEmpty($excerpt))
+        <p class="qj-sum">$utils.escapeHTML($excerpt)</p>
         #end
         ## No "In" prefix and no <b>: the category is the least important thing
         ## in the row, and emphasising it made the only colour on the page point

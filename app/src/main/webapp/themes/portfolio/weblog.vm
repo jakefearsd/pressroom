@@ -82,7 +82,10 @@
         <h2 class="pf-view-name">$utils.escapeHTML($model.weblogDateLabel)</h2>
     </div>
     #end
-    <div class="pf-grid">
+    ## The entries come in runs, a .pf-grid of pictures or a .pf-list of
+    ## writing, which _day.vm opens and switches between as it goes; $pfRun
+    ## is the run left open, closed here once the last day is out.
+    <div class="pf-entries">
         #if($pagerDays.isEmpty())
         #if($model.weblogCategory)
         <p class="pf-list-empty">Nothing has been filed under this category yet.</p>
@@ -97,7 +100,11 @@
         <p class="pf-list-empty">No work has been published here yet. The first piece will appear on this page.</p>
         #end
         #else
+        #set($pfRun = "")
         #showWeblogEntriesPager($pager)
+        #if($pfRun != "")
+        </div>
+        #end
         #end
     </div>
     ## Journal's Newer/Older steps, in place of the showNextPrevEntriesControl

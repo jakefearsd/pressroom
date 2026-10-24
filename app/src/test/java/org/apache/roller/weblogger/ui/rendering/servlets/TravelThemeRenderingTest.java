@@ -218,6 +218,23 @@ class TravelThemeRenderingTest {
                 "the card must fall back to the entry's own opening words:\n" + body);
     }
 
+    @Test
+    void aCardShowsTheAuthorsSummaryAheadOfTheSearchDescription() throws Exception {
+        WeblogEntry entry = TestUtils.setupWeblogEntry("summarised-guide", weblog, user);
+        WeblogEntryManager mgr = TestUtils.weblogger().getWeblogEntryManager();
+        WeblogEntry managed = mgr.getWeblogEntry(entry.getId());
+        managed.setSummary("Two days on the coast road, with the *good* bakery.");
+        managed.setSearchDescription("Written for search engines.");
+        mgr.saveWeblogEntry(managed);
+        TestUtils.endSession(true);
+
+        String body = render("/" + HANDLE + "/");
+
+        assertTrue(body.contains("<p class=\"tg-card-excerpt\">Two days on the coast road, with the good bakery.</p>"),
+                body);
+        assertFalse(body.contains("Written for search engines."), body);
+    }
+
     // ------------------------------------------------------------- permalink
 
     @Test

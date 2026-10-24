@@ -1,11 +1,15 @@
 ## $model here is a PageModel
 ## $entry here is a WeblogEntryWrapper
 ##
-## Portfolio theme day fragment. On entry-list pages it emits bare grid
-## cards -- the enclosing template supplies the single .pf-grid flex
-## container, so multiple days flow together into one justified grid
-## (the #showWeblogEntriesPager macro parses this fragment once per day
-## with no wrapper of its own). On the permalink page it emits the
+## Portfolio theme day fragment. On entry-list pages it emits runs: each
+## stretch of entries with a featured image is one justified .pf-grid of
+## cards, each stretch without one is one .pf-list of rows (title, date,
+## category and a line of the post's prose) -- writing is not a picture,
+## and a tile holding nothing but a title said nothing about it. The pager
+## macro parses this fragment once per day with no wrapper of its own, so
+## the run that is open is carried across days in $pfRun ("grid", "list"
+## or ""); the enclosing template empties it before the pager and closes
+## whatever run is still open after. On the permalink page it emits the
 ## image-first entry layout: hero featured image, content, minimal meta.
 <!-- _day -->
 #if($model.permalink)
@@ -47,6 +51,13 @@
 #else
     #foreach($entry in $entries)
         #if($entry.featuredImage)
+            #if($pfRun != "grid")
+                #if($pfRun == "list")
+    </div>
+                #end
+    <div class="pf-grid">
+                #set($pfRun = "grid")
+            #end
             ## --ar (width / height) drives the justified packing: flex-grow
             ## and flex-basis in the stylesheet, same convention as .jgrid.
             #set($cardAspect = false)
@@ -62,12 +73,24 @@
         </a>
     </figure>
         #else
-    <figure class="pf-card pf-card-text">
-        <a class="pf-card-link" href="$url.entry($entry.anchor)">
-            <h2 class="pf-card-title">$entry.title</h2>
-            <time class="pf-card-date" datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time>
-        </a>
-    </figure>
+            #if($pfRun != "list")
+                #if($pfRun == "grid")
+    </div>
+                #end
+    <div class="pf-list">
+                #set($pfRun = "list")
+            #end
+    <article class="pf-row">
+        <h2 class="pf-row-title"><a href="$url.entry($entry.anchor)">$entry.title</a></h2>
+        <p class="pf-row-meta"><time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time> &middot; $utils.escapeHTML($entry.category.name)</p>
+        ## The author's summary, else the search description, else the
+        ## post's first couple of sentences (WeblogEntryWrapper#getExcerpt).
+        ## Plain text, escaped here once.
+        #set($excerpt = $entry.excerpt)
+        #if($utils.isNotEmpty($excerpt))
+        <p class="pf-row-sum">$utils.escapeHTML($excerpt)</p>
+        #end
+    </article>
         #end
     #end
 #end
