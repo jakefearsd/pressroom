@@ -157,7 +157,7 @@ class McpToolExecutorTest {
         CallToolResult result = call("entries", Map.of("action", "get", "weblog", "b"));
 
         assertTrue(result.isError());
-        assertTrue(text(result).contains("`id`"), text(result));
+        assertTrue(text(result).contains("`id` or `anchor`"), text(result));
         assertTrue(dispatched.isEmpty());
     }
 
