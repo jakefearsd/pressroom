@@ -32,6 +32,7 @@ import org.apache.roller.weblogger.pojos.WeblogEntry;
 import org.apache.roller.weblogger.pojos.WeblogEntrySearchCriteria;
 import org.apache.roller.weblogger.pojos.WeblogTemplate;
 import org.apache.roller.weblogger.pojos.WeblogTheme;
+import org.apache.roller.weblogger.util.ServingSince;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -343,8 +344,38 @@ class WeblogWrapperDelegationTest {
         when(urls.getWeblogPageURL(weblog, null, "custom.css", null, null, null, null, 0, false))
                 .thenReturn("/roller/testblog/page/custom.css");
 
-        assertEquals("/roller/testblog/page/custom.css", wrapper.getStylesheet(), "The stylesheet link has to be resolved through the URL strategy; emitting "
+        assertEquals("/roller/testblog/page/custom.css?v=" + ServingSince.started() / 1000,
+                wrapper.getStylesheet(), "The stylesheet link has to be resolved through the URL strategy; emitting "
                 + "the template's own link would produce a URL relative to the page");
+    }
+
+    /**
+     * Cloudflare keeps a .css for four hours without asking the origin, so a
+     * stylesheet at a fixed address outlived the 0.3.1 deploy: new list
+     * markup, old rules. The address moves whenever the stylesheet's content
+     * may have -- the weblog changed, or this server started.
+     */
+    @Test
+    void theStylesheetAddressMovesWithTheWeblog() throws Exception {
+        WeblogTemplate stylesheet = template("Stylesheet", "custom.css");
+        when(theme.getStylesheet()).thenReturn(stylesheet);
+        when(urls.getWeblogPageURL(weblog, null, "custom.css", null, null, null, null, 0, false))
+                .thenReturn("/roller/testblog/page/custom.css");
+        long changed = ServingSince.started() + 5_000L;
+        weblog.setLastModified(new Date(changed));
+
+        assertEquals("/roller/testblog/page/custom.css?v=" + changed / 1000, wrapper.getStylesheet());
+    }
+
+    @Test
+    void aStylesheetAddressWithAQueryAlreadyGainsTheVersionAsAnotherParameter() throws Exception {
+        WeblogTemplate stylesheet = template("Stylesheet", "custom.css");
+        when(theme.getStylesheet()).thenReturn(stylesheet);
+        when(urls.getWeblogPageURL(weblog, null, "custom.css", null, null, null, null, 0, false))
+                .thenReturn("/roller-ui/authoring/preview/testblog/page/custom.css?theme=journal");
+
+        assertEquals("/roller-ui/authoring/preview/testblog/page/custom.css?theme=journal&v="
+                + ServingSince.started() / 1000, wrapper.getStylesheet());
     }
 
     @Test

@@ -23,6 +23,7 @@ import org.apache.roller.weblogger.config.WebloggerConfig;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.ui.rendering.util.WeblogFeedRequest;
 import org.apache.roller.weblogger.ui.rendering.util.WeblogPageRequest;
+import org.apache.roller.weblogger.util.ServingSince;
 import org.apache.roller.weblogger.util.cache.CachedContent;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -139,11 +140,24 @@ public class RenderCacheTest {
     public void weblogLastModifiedComesFromTheWeblog() {
         RenderCache<WeblogPageRequest> cache = RenderCaches.forPage(false);
 
+        long changed = ServingSince.started() + 1_000L;
         Weblog weblog = new Weblog();
-        weblog.setLastModified(new Date(1_234_567_000L));
+        weblog.setLastModified(new Date(changed));
 
-        assertEquals(1_234_567_000L, cache.lastModified(weblog),
+        assertEquals(changed, cache.lastModified(weblog),
                 "A weblog's own lastModified is what dates its rendered pages");
+    }
+
+    @Test
+    public void aWeblogUnchangedSinceThisServerStartedIsDatedFromTheStart() {
+        RenderCache<WeblogPageRequest> cache = RenderCaches.forPage(false);
+
+        Weblog unchanged = new Weblog();
+        unchanged.setLastModified(new Date(1_234_567_000L));
+
+        assertEquals(ServingSince.started(), cache.lastModified(unchanged),
+                "A deploy can change every page without touching the weblog; a reader's "
+                        + "copy from before it must not be answered 304");
     }
 
     @Test

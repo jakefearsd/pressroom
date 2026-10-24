@@ -177,6 +177,17 @@ resolves through the index at the end of `CLAUDE.md`.
   `get`/`put`/`remove`/`clear`); each subclass keeps its `CACHE_ID`, singleton
   and `generateKey`. `SiteWideCache` is deliberately outside that hierarchy —
   its `get` takes no timestamp, having no per-weblog expiry.
+- **A deploy is a change too.** `Last-Modified` (and the 304 check) for a
+  weblog's pages, feeds and stylesheet is `weblog.lastModified` or this
+  server's start, whichever is later (`ServingSince`,
+  `RenderCaches.lastModifiedOf`). Dated by the weblog alone, a reader who had
+  the page before a deploy got 304 and kept the old markup; 0.3.1's list rows
+  reached nobody who had seen 0.3.0's tiles. `$model.weblog.stylesheet`
+  carries `?v=<that time in seconds>`: Cloudflare adds `max-age=14400` to a
+  `.css` the origin sends without `Cache-Control`, so a fixed address kept the
+  old rules for four hours, on browsers and at the edge alike. The `v`
+  parameter is a custom param, so it is part of the page-cache key; old
+  values expire with the stamp they carried.
 - **Remembered lookups ride the same stamp.** Every render asks
   `getTemplateByAction` for the stylesheet override (a custom theme for its
   templates too) and `getPublishedPages` for the nav; both answers change only

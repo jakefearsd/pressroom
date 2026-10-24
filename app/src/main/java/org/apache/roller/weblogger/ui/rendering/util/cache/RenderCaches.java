@@ -21,6 +21,7 @@ package org.apache.roller.weblogger.ui.rendering.util.cache;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.ui.rendering.util.WeblogFeedRequest;
 import org.apache.roller.weblogger.ui.rendering.util.WeblogPageRequest;
+import org.apache.roller.weblogger.util.ServingSince;
 
 /**
  * Chooses the {@link RenderCache} for a request.
@@ -50,13 +51,15 @@ public final class RenderCaches {
     }
 
     /**
-     * When a weblog itself last changed, falling back to now when that has
-     * never been recorded -- the per-weblog caches' notion of currency, and
-     * the value the servlets put in {@code Last-Modified}.
+     * When a weblog itself last changed, or this server started if that is
+     * later ({@link ServingSince}: a deploy changes what every page renders
+     * as), falling back to now when it has never been recorded -- the
+     * per-weblog caches' notion of currency, and the value the servlets put
+     * in {@code Last-Modified}.
      */
     static long lastModifiedOf(Weblog weblog) {
         if (weblog != null && weblog.getLastModified() != null) {
-            return weblog.getLastModified().getTime();
+            return ServingSince.atLeast(weblog.getLastModified().getTime());
         }
         return System.currentTimeMillis();
     }

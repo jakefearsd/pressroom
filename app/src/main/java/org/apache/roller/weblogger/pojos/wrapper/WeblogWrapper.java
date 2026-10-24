@@ -34,6 +34,7 @@ import org.apache.roller.weblogger.pojos.WeblogCategory;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
 import org.apache.roller.weblogger.pojos.WeblogEntrySearchCriteria;
 import org.apache.roller.weblogger.util.HTMLSanitizer;
+import org.apache.roller.weblogger.util.ServingSince;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -265,7 +266,14 @@ public final class WeblogWrapper {
     public String getStylesheet() throws WebloggerException {
         // custom stylesheet comes from the weblog theme
         if(theme().getStylesheet() != null) {
-            return urlStrategy.getWeblogPageURL(this.pojo, null, theme().getStylesheet().getLink(), null, null, null, null, 0, false);
+            String url = urlStrategy.getWeblogPageURL(this.pojo, null, theme().getStylesheet().getLink(), null, null, null, null, 0, false);
+            // Versioned by what dates the stylesheet's Last-Modified (the
+            // weblog's change or this server's start): Cloudflare keeps a .css
+            // for four hours without asking, so a fixed address outlived a
+            // deploy, new markup on old rules.
+            Date changed = this.pojo.getLastModified();
+            long version = ServingSince.atLeast(changed == null ? 0L : changed.getTime()) / 1000;
+            return url + (url.contains("?") ? "&" : "?") + "v=" + version;
         }
         return null;
     }

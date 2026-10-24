@@ -514,6 +514,29 @@ class PortfolioThemeRenderingTest {
     }
 
     /**
+     * The head links the stylesheet at a versioned address -- Cloudflare
+     * holds an unversioned .css for four hours, which kept 0.3.1's list rows
+     * on 0.3.0's rules -- and the versioned address is served like the plain
+     * one.
+     */
+    @Test
+    void theStylesheetIsLinkedAtAVersionedAddressThatIsServed() throws Exception {
+        String body = render("/" + HANDLE + "/");
+        assertTrue(Pattern.compile("href=\"[^\"]*/page/portfolio-custom\\.css\\?v=\\d+\"").matcher(body).find(),
+                "the head must link a versioned stylesheet:\n" + body);
+
+        MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
+                "/roller-ui/rendering/page", "/" + HANDLE + "/page/portfolio-custom.css");
+        request.setQueryString("v=1234567890");
+        request.setParameter("v", "1234567890");
+        MockHttpServletResponse response = RenderingTestSupport
+                .execute(RenderingTestSupport.pageServlet(), request);
+
+        assertEquals(200, response.getStatus());
+        assertTrue(response.getContentAsString().contains(".pf-grid {"), response.getContentAsString());
+    }
+
+    /**
      * {@code body.pf a} makes every link inherit the text colour with no
      * underline -- right for the chrome (the name, the nav, the cards), and
      * the reason a link inside a post read as plain text. Content links get
