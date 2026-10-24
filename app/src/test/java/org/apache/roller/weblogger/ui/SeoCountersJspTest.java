@@ -82,4 +82,40 @@ class SeoCountersJspTest {
         }
         assertFalse(jsp.contains("onclick=\"return confirm"), "no inline handlers");
     }
+
+    /**
+     * EntrySeoChecks counts characters as a reader does, one per code point,
+     * so an emoji is one; String.length in JavaScript counts UTF-16 units and
+     * makes it two. The editor and the audit must give an author one number.
+     */
+    @Test
+    void theCountsMeasureCodePointsAsTheChecksDo() throws IOException {
+        String jsp = jsp();
+        int from = jsp.indexOf("function updateSeoCounts");
+        String js = jsp.substring(from, jsp.indexOf("$(document).ready", from));
+
+        String rest = withoutCodePointCounts(js);
+        assertTrue(rest.length() < js.length(), "the counts use Array.from(...).length: " + js);
+        assertFalse(rest.contains(".length"), "every count is Array.from(...).length, never a UTF-16 "
+                + ".length: " + rest);
+    }
+
+    /** {@code js} with every {@code Array.from(...).length} taken out, parentheses balanced. */
+    private static String withoutCodePointCounts(String js) {
+        StringBuilder rest = new StringBuilder(js);
+        for (int at = rest.indexOf("Array.from("); at >= 0; at = rest.indexOf("Array.from(", at)) {
+            int depth = 0;
+            int close = at + "Array.from".length();
+            do {
+                char c = rest.charAt(close++);
+                depth += c == '(' ? 1 : c == ')' ? -1 : 0;
+            } while (depth > 0);
+            if (rest.indexOf(".length", close) == close) {
+                rest.delete(at, close + ".length".length());
+            } else {
+                at = close;
+            }
+        }
+        return rest.toString();
+    }
 }

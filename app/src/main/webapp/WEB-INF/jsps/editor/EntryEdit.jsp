@@ -825,12 +825,13 @@
         var $t = $('#seo_metaTitle_count');
         var meta = String($('#seo_metaTitle').val() || '').trim();
         var entryTitle = String($("[name='bean.title']").val() || '').trim();
-        var titleLen = meta ? meta.length
-                : (entryTitle ? (entryTitle + ' \u2014 ' + $t.data('weblogName')).length : 0);
+        // Characters as a reader counts them (an emoji is one), as EntrySeoChecks does.
+        var titleLen = meta ? Array.from(meta).length
+                : (entryTitle ? Array.from(entryTitle + ' \u2014 ' + $t.data('weblogName')).length : 0);
         $t.find('.seo-count-n').text(titleLen);
         $t.find('.seo-count-over').prop('hidden', titleLen <= $t.data('max'));
         var $d = $('#seo_metaDescription_count');
-        var descLen = String($('#seo_metaDescription').val() || '').trim().length;
+        var descLen = Array.from(String($('#seo_metaDescription').val() || '').trim()).length;
         $d.find('.seo-count-n').text(descLen);
         $d.find('.seo-count-over').prop('hidden', descLen <= $d.data('max'));
         $d.find('.seo-count-short').prop('hidden', descLen === 0 || descLen >= $d.data('min'));
