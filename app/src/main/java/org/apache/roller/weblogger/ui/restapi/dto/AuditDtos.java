@@ -63,20 +63,13 @@ public final class AuditDtos {
      * whitespace is not a description, and this is deliberately the
      * STRICTER of the two possible rules.
      *
-     * <p><b>This is NOT proven to match {@code weblog.vm}'s current
-     * renderer, and the divergence is real, not hypothetical.</b>
-     * {@code #showSeoHead} gates on {@code $utils.isNotEmpty(...)}, and
-     * {@code UtilitiesModel.isNotEmpty} is backed by
-     * {@code StringUtils.isNotEmpty} -- not {@code isNotBlank} --  and
-     * exposes no blank-aware method to Velocity at all. So today, a
-     * whitespace-only {@code searchDescription} is treated as PRESENT by
-     * the renderer (it emits {@code <meta name="description" content="   ">})
-     * while this audit reports {@code missing_search_description}. Do not
-     * "fix" this by loosening the check to {@code isNotEmpty} to match the
-     * renderer -- {@code isBlank} is the correct rule for an audit; the
-     * renderer is the one with the gap. Fixing the renderer to also use
-     * {@code isNotBlank} would close the divergence without weakening this
-     * audit, but that is out of this task's scope.
+     * <p>Entries written through {@link EntryDtos#applyWrite} or the web
+     * editor have these fields trimmed and a blank one stored as null, so the
+     * renderer (whose {@code $utils.isNotEmpty} is {@code StringUtils.isNotEmpty},
+     * not {@code isNotBlank}) and this audit agree for them. A value stored
+     * before that, whitespace only, still differs: the renderer treats it as
+     * present while this audit reports the gap. {@code isBlank} stays the
+     * rule here.
      *
      * <p>{@code noindex} is the one gap that is not a blank-string check: it
      * fires only when the entry is explicitly opted out of search,

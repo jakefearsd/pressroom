@@ -127,6 +127,39 @@ class EntriesApiWriteTest {
                 () -> EntryDtos.applyWrite(new WeblogEntry(), write, weblogInZone("UTC"), Set.of()));
     }
 
+    @Test
+    void aWhitespaceOnlySearchDescriptionIsStoredAsNull() {
+        WeblogEntry entry = new WeblogEntry();
+        entry.setSearchDescription("old");
+        EntryDtos.applyWrite(entry, EntryWrites.write().searchDescription("  \t ").build(),
+                weblogInZone("UTC"), Set.of());
+        assertNull(entry.getSearchDescription());
+    }
+
+    @Test
+    void paddedSeoFieldsAreStoredTrimmedAndBlankOnesAsNull() {
+        WeblogEntry entry = new WeblogEntry();
+        EntryDtos.applyWrite(entry, EntryWrites.write().metaTitle("  Title ")
+                .searchDescription(" A description.  ").canonicalUrl(" https://example.com/x ").build(),
+                weblogInZone("UTC"), Set.of());
+        assertEquals("Title", entry.getMetaTitle());
+        assertEquals("A description.", entry.getSearchDescription());
+        assertEquals("https://example.com/x", entry.getCanonicalUrl());
+
+        EntryDtos.applyWrite(entry, EntryWrites.write().metaTitle(" ").canonicalUrl("").build(),
+                weblogInZone("UTC"), Set.of());
+        assertNull(entry.getMetaTitle());
+        assertNull(entry.getCanonicalUrl());
+    }
+
+    @Test
+    void techArticleIsAnAcceptedJsonLdType() {
+        WeblogEntry entry = new WeblogEntry();
+        EntryDtos.applyWrite(entry, EntryWrites.write().jsonLdType("tech_article").build(),
+                weblogInZone("UTC"), Set.of());
+        assertEquals(org.apache.roller.weblogger.pojos.JsonLdType.TECH_ARTICLE, entry.getJsonLdType());
+    }
+
     /** featuredImageId/ogImageId store a roller_mediafile id -- varchar(48), the shortest column here. */
     @Test
     void aFeaturedImageIdLongerThanTheColumnIsRejected() {

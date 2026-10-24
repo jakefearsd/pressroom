@@ -175,6 +175,22 @@ class EntryBeanTest extends EditorControllerTestSupport {
     }
 
     @Test
+    void copyToTrimsSeoFieldsAndStoresBlankOnesAsNull() throws Exception {
+        WeblogEntry entry = entryInCategory("cat-1");
+        bean.setStatus(PubStatus.DRAFT.name());
+        bean.setCategoryId("cat-1");
+        bean.setMetaTitle("  Padded ");
+        bean.setSearchDescription("   ");
+        bean.setCanonicalUrl(" https://example.com/x ");
+
+        bean.copyTo(entry, entry.getCategory());
+
+        assertEquals("Padded", entry.getMetaTitle());
+        org.junit.jupiter.api.Assertions.assertNull(entry.getSearchDescription());
+        assertEquals("https://example.com/x", entry.getCanonicalUrl());
+    }
+
+    @Test
     void copyToRejectsACategoryBelongingToAnotherWeblog() throws Exception {
         // This is the authorization check on the category dropdown. The form
         // posts a bare category id, so without it any blog could file entries

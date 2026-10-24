@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.commons.text.StringEscapeUtils;
 import org.apache.roller.weblogger.WebloggerException;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.roller.weblogger.pojos.JsonLdType;
 import org.apache.roller.weblogger.pojos.WeblogCategory;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
@@ -363,11 +364,12 @@ public class EntryBean {
         entry.setText(getText());
         entry.setTagsAsString(getTagsAsString() != null
                 ? Utilities.replaceNonAlphanumeric(getTagsAsString(), ' ') : "");
-        entry.setSearchDescription(getSearchDescription());
+        // Trimmed, blank as null: no <meta ... content="   "> is ever rendered.
+        entry.setSearchDescription(StringUtils.trimToNull(getSearchDescription()));
         entry.setFeaturedImageId(getFeaturedImageId());
-        entry.setMetaTitle(getMetaTitle());
+        entry.setMetaTitle(StringUtils.trimToNull(getMetaTitle()));
         entry.setOgImageId(getOgImageId());
-        entry.setCanonicalUrl(getCanonicalUrl());
+        entry.setCanonicalUrl(StringUtils.trimToNull(getCanonicalUrl()));
         entry.setNoindex(getNoindex());
         entry.setCommentsClosed(getCommentsClosed());
         // fromString is lenient by design: null/blank (no dropdown yet) and

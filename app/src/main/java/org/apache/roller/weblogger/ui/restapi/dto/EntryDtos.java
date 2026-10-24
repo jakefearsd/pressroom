@@ -12,6 +12,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.roller.weblogger.business.ContentHashes;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.roller.weblogger.pojos.JsonLdType;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
@@ -212,7 +213,7 @@ public final class EntryDtos {
             String featuredImageId,
             String ogImageId,
             @Schema(description = "Structured data the permalink emits beside BlogPosting: BLOG_POSTING "
-                    + "(the default), TOURIST_ATTRACTION, TOURIST_TRIP, EVENT or FAQ_PAGE.")
+                    + "(the default), TOURIST_ATTRACTION, TOURIST_TRIP, EVENT, FAQ_PAGE or TECH_ARTICLE (which makes the article block a TechArticle instead of a BlogPosting).")
             String jsonLdType,
             @Schema(description = "Latitude in decimal degrees, -90 to 90. With TOURIST_ATTRACTION it is "
                     + "the place's geo; it also centres the entry's [map].")
@@ -330,21 +331,23 @@ public final class EntryDtos {
         }
         if (write.metaTitle() != null) {
             errors.check("metaTitle", () -> {
-                ColumnLimits.requireMaxLength("metaTitle", write.metaTitle(), ColumnLimits.META_TITLE);
-                entry.setMetaTitle(write.metaTitle());
+                String value = StringUtils.trimToNull(write.metaTitle());
+                ColumnLimits.requireMaxLength("metaTitle", value, ColumnLimits.META_TITLE);
+                entry.setMetaTitle(value);
             });
         }
         if (write.searchDescription() != null) {
             errors.check("searchDescription", () -> {
-                ColumnLimits.requireMaxLength(
-                        "searchDescription", write.searchDescription(), ColumnLimits.SEARCH_DESCRIPTION);
-                entry.setSearchDescription(write.searchDescription());
+                String value = StringUtils.trimToNull(write.searchDescription());
+                ColumnLimits.requireMaxLength("searchDescription", value, ColumnLimits.SEARCH_DESCRIPTION);
+                entry.setSearchDescription(value);
             });
         }
         if (write.canonicalUrl() != null) {
             errors.check("canonicalUrl", () -> {
-                ColumnLimits.requireMaxLength("canonicalUrl", write.canonicalUrl(), ColumnLimits.CANONICAL_URL);
-                entry.setCanonicalUrl(write.canonicalUrl());
+                String value = StringUtils.trimToNull(write.canonicalUrl());
+                ColumnLimits.requireMaxLength("canonicalUrl", value, ColumnLimits.CANONICAL_URL);
+                entry.setCanonicalUrl(value);
             });
         }
         if (write.commentsClosed() != null) {
