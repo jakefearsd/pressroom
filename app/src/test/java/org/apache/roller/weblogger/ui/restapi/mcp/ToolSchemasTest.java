@@ -108,6 +108,19 @@ class ToolSchemasTest {
         assertEquals(20, described);
     }
 
+    /**
+     * One anchor property serves create, where it sets the slug, and get,
+     * where it finds the entry (the by-anchor variant's path value carries no
+     * text of its own, so EntryWrite's is the one the agent reads).
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void theAnchorDescriptionHoldsForCreateAndForGet() {
+        String text = (String) ((Map<String, Object>) properties("entries").get("anchor")).get("description");
+        assertTrue(text != null && text.contains("entries get") && text.contains("create"), String.valueOf(text));
+        assertFalse(text.contains("Set only when"), text);
+    }
+
     /** The agent learns from the tool what a summary is for, and what readers see without one. */
     @Test
     @SuppressWarnings("unchecked")
