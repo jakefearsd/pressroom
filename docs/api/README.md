@@ -237,7 +237,7 @@ The clearable fields, per resource:
   `featuredImageId`, `ogImageId`, `jsonLdType`, `geoLatitude`, `geoLongitude`,
   `eventStart`, `eventEnd` and `eventLocation`. `geoLatitude` and `geoLongitude`
   clear together, as a pair.
-- **Weblog:** `tagline`, `copyright` (plain text, at most 255 characters; the site footer's notice), `customDomain`, `icon`, `about`, `analyticsSiteId`,
+- **Weblog:** `tagline`, `copyright`, `customDomain`, `icon`, `about`, `analyticsSiteId`,
   `analyticsShareUrl`, `newsletterListUuid`, `businessId`, `placeType`,
   `placeLocality`, `placeRegion`, `placeCountry`, `placeLat`, `placeLng` and
   `bookingUrl`. `placeLat` and `placeLng` clear together.
@@ -1048,7 +1048,7 @@ may do it with a token whose role is `POST` or `ADMIN` and that is not limited
 to one weblog (a token pinned to a weblog answers 404, a `READ` token 403).
 When the site turns creation off, or allows one weblog per user and the caller
 has one, the answer is 403. `handle`, `name` and `theme` are required;
-`tagline`, `emailAddress`, `locale` and `timeZone` are optional, and an omitted
+`tagline`, `copyright` (plain text, at most 255 characters), `emailAddress`, `locale` and `timeZone` are optional, and an omitted
 `emailAddress`, `locale` or `timeZone` is the caller's own. A handle that is
 reserved for the site's own pages (`api`, `page`, `search` and the like) is a
 400, a handle already taken is a 409, and `frontpage` (the site-wide

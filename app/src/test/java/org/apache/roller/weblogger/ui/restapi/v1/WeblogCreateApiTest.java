@@ -22,6 +22,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import static org.apache.roller.weblogger.ui.restapi.ErrorFieldMatchers.errorFieldIs;
 import static org.apache.roller.weblogger.ui.restapi.ErrorFieldMatchers.errorFieldsAre;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -112,6 +113,36 @@ class WeblogCreateApiTest {
         assertEquals("Europe/Berlin", weblog.getTimeZone());
         assertEquals("en_US", weblog.getLocale());
         assertEquals("jake@example.com", weblog.getEmailAddress());
+    }
+
+    @Test
+    void createWithCopyrightStoresItAndTheViewShowsIt() throws Exception {
+        send("{\"handle\":\"travels\",\"name\":\"Travels\",\"theme\":\"journal\","
+                + "\"copyright\":\"  \u00a9 2024\u20132026 Maiia \"}", true)
+                .andExpect(status().isCreated())
+                .andExpect(r -> assertEquals("\u00a9 2024\u20132026 Maiia", new tools.jackson.databind.ObjectMapper()
+                        .readTree(r.getResponse().getContentAsString()).path("copyright").asString()));
+        ArgumentCaptor<Weblog> added = ArgumentCaptor.forClass(Weblog.class);
+        verify(weblogManager).addWeblog(added.capture());
+        assertEquals("\u00a9 2024\u20132026 Maiia", added.getValue().getCopyright());
+    }
+
+    @Test
+    void createWithBlankCopyrightStoresNull() throws Exception {
+        send("{\"handle\":\"travels\",\"name\":\"Travels\",\"theme\":\"journal\",\"copyright\":\"   \"}", true)
+                .andExpect(status().isCreated());
+        ArgumentCaptor<Weblog> added = ArgumentCaptor.forClass(Weblog.class);
+        verify(weblogManager).addWeblog(added.capture());
+        assertNull(added.getValue().getCopyright());
+    }
+
+    @Test
+    void createWithCopyrightOver255IsAFieldError() throws Exception {
+        send("{\"handle\":\"travels\",\"name\":\"Travels\",\"theme\":\"journal\",\"copyright\":\""
+                + "c".repeat(256) + "\"}", true)
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("copyright"));
+        verify(weblogManager, never()).addWeblog(any());
     }
 
     private static User agent() {

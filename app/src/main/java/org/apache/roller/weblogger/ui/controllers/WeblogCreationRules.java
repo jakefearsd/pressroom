@@ -97,6 +97,11 @@ public final class WeblogCreationRules {
             found.add(new Violation("description", "createWeblog.error.tooLong",
                     "'tagline' must be " + MAX_TEXT + " characters or fewer.", 400));
         }
+        if (StringUtils.trimToNull(bean.getCopyright()) != null
+                && bean.getCopyright().trim().length() > MAX_TEXT) {
+            found.add(new Violation("copyright", "createWeblog.error.tooLong",
+                    "'copyright' must be " + MAX_TEXT + " characters or fewer.", 400));
+        }
         if (bean.getTheme() == null || !context.themeIds().contains(bean.getTheme())) {
             found.add(new Violation("theme", "createWeblog.error.invalidTheme",
                     "theme must be one of: " + String.join(", ", context.themeIds()) + ".", 400));
@@ -145,6 +150,7 @@ public final class WeblogCreationRules {
         Weblog weblog = new Weblog(bean.getHandle(), user.getUserName(), bean.getName().trim(),
                 bean.getDescription(), bean.getEmailAddress(), bean.getTheme(),
                 bean.getLocale(), bean.getTimeZone());
+        weblog.setCopyright(StringUtils.trimToNull(bean.getCopyright()));
         weblogs.addWeblog(weblog);
         return weblog;
     }

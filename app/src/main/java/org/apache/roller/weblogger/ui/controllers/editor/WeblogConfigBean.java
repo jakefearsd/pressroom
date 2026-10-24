@@ -297,7 +297,7 @@ public class WeblogConfigBean {
     public void copyTo(Weblog dataHolder) {
         dataHolder.setName(this.name);
         dataHolder.setTagline(this.tagline);
-        dataHolder.setCopyright(org.apache.commons.lang3.StringUtils.trimToNull(this.copyright));
+        dataHolder.setCopyright(StringUtils.trimToNull(this.copyright));
         dataHolder.setEmailAddress(this.emailAddress);
         dataHolder.setLocale(this.locale);
         dataHolder.setTimeZone(this.timeZone);

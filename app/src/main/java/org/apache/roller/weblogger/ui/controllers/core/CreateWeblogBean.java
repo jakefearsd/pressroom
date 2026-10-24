@@ -27,6 +27,7 @@ public class CreateWeblogBean {
     private String handle;
     private String name;
     private String description;
+    private String copyright;
     private String emailAddress;
     private String locale;
     private String timeZone;
@@ -39,6 +40,14 @@ public class CreateWeblogBean {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getCopyright() {
+        return copyright;
+    }
+
+    public void setCopyright(String copyright) {
+        this.copyright = copyright;
     }
 
     public String getEmailAddress() {

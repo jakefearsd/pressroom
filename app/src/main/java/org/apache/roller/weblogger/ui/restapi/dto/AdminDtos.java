@@ -68,7 +68,9 @@ public final class AdminDtos {
             @Schema(description = "The weblog's name.") String name,
             @Schema(description = "An enabled theme id, for example journal; a wrong one answers with the list.")
             String theme,
-            String tagline, String emailAddress,
+            String tagline,
+            @Schema(description = "The footer's copyright notice, plain text, at most 255 characters.")
+            String copyright, String emailAddress,
             @Schema(description = "A locale such as en_US. On create, defaults to the user's own.") String locale,
             @Schema(description = "A time zone id such as Europe/Berlin. On create, defaults to the user's own.")
             String timeZone) {
@@ -81,6 +83,7 @@ public final class AdminDtos {
         bean.setName(body.name());
         bean.setTheme(body.theme());
         bean.setDescription(body.tagline());
+        bean.setCopyright(body.copyright());
         bean.setEmailAddress(body.emailAddress() != null ? body.emailAddress() : user.getEmailAddress());
         bean.setLocale(body.locale() != null ? body.locale() : user.getLocale());
         bean.setTimeZone(body.timeZone() != null ? body.timeZone() : user.getTimeZone());
