@@ -19,6 +19,8 @@ package org.apache.roller.it;
 
 import org.apache.roller.it.support.RollerIT;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import static com.codeborne.selenide.Condition.text;
 import static com.codeborne.selenide.Condition.visible;
@@ -44,8 +46,10 @@ class PublicSurfaceIT extends RollerIT {
     }
 
     @Test
+    @ResourceLock(value = RollerIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
     void theSiteRootIsThePublicDirectoryWhileNoWeblogIsTheFrontPage() {
-        // No IT sets a front-page weblog. index.jsp used to forward / to the
+        // ColophonIT sets a front-page weblog under the GLOBAL_CONFIG write
+        // lock and restores it; holding the read lock means no IT has one set. index.jsp used to forward / to the
         // admin-only setup page, so every reader got the sign-in form.
         openPath("/");
         $("#siteDirectory").shouldHave(text("IT Weblog"));

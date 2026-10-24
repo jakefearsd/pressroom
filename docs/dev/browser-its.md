@@ -168,7 +168,9 @@ a race:
   other's flag. **A seventh `setGlobalFlag` class must take this lock** —
   nothing enforces it,
   and the symptom is a wrong-looking assertion, not a concurrency error.
-  Held **read** by `RouteSweepIT`, which visits every admin route and so is
+  Held **read** by `PublicSurfaceIT`'s site-root test (`/` is the site
+  directory only while no front-page weblog is set, and `ColophonIT` sets
+  one), and by `RouteSweepIT`, which visits every admin route and so is
   exposed to every site-wide flag (on a `/roller`-prefix run with
   `groupblogging.enabled` off, `createWeblog.rol` returned a healthy 200
   with no form — the `categoryEdit.rol` failure mode the sweep exists to
