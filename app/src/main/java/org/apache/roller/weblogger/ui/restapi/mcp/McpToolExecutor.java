@@ -3,9 +3,12 @@ package org.apache.roller.weblogger.ui.restapi.mcp;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -268,12 +271,12 @@ public final class McpToolExecutor {
                 || action.variants().size() < 2) {
             return "`" + spec.name() + "`";
         }
-        java.util.Set<String> names = new java.util.LinkedHashSet<>();
+        Set<String> names = new LinkedHashSet<>();
         for (ResolvedAction.Variant v : action.variants()) {
             v.arguments().stream().filter(a -> a.location() == ArgumentSpec.Location.PATH
                     && !"weblog".equals(a.name())).findFirst().ifPresent(a -> names.add(a.name()));
         }
         names.add(spec.name());
-        return names.stream().map(n -> "`" + n + "`").collect(java.util.stream.Collectors.joining(" or "));
+        return names.stream().map(n -> "`" + n + "`").collect(Collectors.joining(" or "));
     }
 }
