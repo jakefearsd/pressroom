@@ -220,6 +220,7 @@ resolves through the index at the end of `CLAUDE.md`.
   choose a business and place details in Settings, section `#settings-business`.
   Saving a business touches `lastModified` of every weblog using it (see
   Business profiles in content-features.md).
+- **Copyright**: Settings carries a per-blog `copyright` (V038, plain text, 255 max, blank stored as null so the footer falls back to "(c) year blog name"); the bean trims it, `WeblogSettingsRules` bounds it, `/api/v1` mirrors `tagline`.
 
 ## Categories
 - **Ownership-check every id.** `BaseController.lookupEntry`/

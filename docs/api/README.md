@@ -237,7 +237,7 @@ The clearable fields, per resource:
   `featuredImageId`, `ogImageId`, `jsonLdType`, `geoLatitude`, `geoLongitude`,
   `eventStart`, `eventEnd` and `eventLocation`. `geoLatitude` and `geoLongitude`
   clear together, as a pair.
-- **Weblog:** `tagline`, `customDomain`, `icon`, `about`, `analyticsSiteId`,
+- **Weblog:** `tagline`, `copyright` (plain text, at most 255 characters; the site footer's notice), `customDomain`, `icon`, `about`, `analyticsSiteId`,
   `analyticsShareUrl`, `newsletterListUuid`, `businessId`, `placeType`,
   `placeLocality`, `placeRegion`, `placeCountry`, `placeLat`, `placeLng` and
   `bookingUrl`. `placeLat` and `placeLng` clear together.
@@ -1059,7 +1059,7 @@ with the new weblog and a `Location` header.
 **`PATCH /api/v1/weblogs/{handle}` settings.** A field left out, or sent as JSON
 `null`, is unchanged. To remove a value, name its field in `clear`
 (`"clear": ["about", "bookingUrl"]`); `clear` applies only to updates. The
-clearable weblog fields are `tagline`, `customDomain`, `icon`, `about`,
+clearable weblog fields are `tagline`, `copyright`, `customDomain`, `icon`, `about`,
 `analyticsSiteId`, `analyticsShareUrl`, `newsletterListUuid`, `businessId`,
 `placeType`, `placeLocality`, `placeRegion`, `placeCountry`, `placeLat`,
 `placeLng` and `bookingUrl`; `placeLat` and `placeLng` clear together, as a

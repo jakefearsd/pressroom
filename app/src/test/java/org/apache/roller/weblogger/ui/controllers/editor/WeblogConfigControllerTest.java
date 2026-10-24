@@ -851,6 +851,17 @@ class WeblogConfigControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
+    void overlongCopyrightIsAFieldError() throws Exception {
+        bean.setCopyright("c".repeat(256));
+
+        controller.save(request, model, bean);
+
+        assertEquals(List.of("weblog_bean_copyright"), invalidFields(model));
+        assertEquals(List.of("businesses.error.tooLong"), errors(model));
+        verify(weblogger.getWeblogManager(), never()).saveWeblog(any());
+    }
+
+    @Test
     void placeTextExactlyAtItsColumnLengthIsAccepted() throws Exception {
         bean.setPlaceLocality("a".repeat(128));
         bean.setPlaceRegion("r".repeat(128));

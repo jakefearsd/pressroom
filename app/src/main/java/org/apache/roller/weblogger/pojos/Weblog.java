@@ -47,6 +47,7 @@ public class Weblog implements Serializable {
     private String  handle           = null;
     private String  name             = null;
     private String  tagline          = null;
+    private String  copyright        = null;
     private String  emailAddress     = null;
     private String  editorTheme      = null;
     private String  locale           = null;
@@ -176,6 +177,15 @@ public class Weblog implements Serializable {
     public void setTagline(String tagline) {
         this.tagline = Utilities.removeHTML(tagline);
     }
+
+    /** The copyright notice of the site footer: plain text, null when the blog has none. */
+    public String getCopyright() {
+        return this.copyright;
+    }
+
+    public void setCopyright(String copyright) {
+        this.copyright = copyright;
+    }
     
     /**
      * Username of original creator of website.
@@ -254,6 +264,7 @@ public class Weblog implements Serializable {
         this.setName(other.getName());
         this.setHandle(other.getHandle());
         this.setTagline(other.getTagline());
+        this.setCopyright(other.getCopyright());
         this.setCreatorUserName(other.getCreatorUserName());
         this.setEmailAddress(other.getEmailAddress());
         this.setEditorTheme(other.getEditorTheme());

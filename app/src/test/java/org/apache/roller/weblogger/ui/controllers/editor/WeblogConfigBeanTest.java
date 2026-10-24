@@ -120,4 +120,28 @@ class WeblogConfigBeanTest {
         org.junit.jupiter.api.Assertions.assertTrue(present.getCommentsEnabled());
         org.junit.jupiter.api.Assertions.assertTrue(present.getCommentNotify());
     }
+
+    @Test
+    void copyrightRoundTrips() {
+        Weblog w = weblog();
+        w.setCopyright("\u00a9 2024\u20132026 Maiia");
+        WeblogConfigBean b = new WeblogConfigBean();
+        b.copyFrom(w);
+        assertEquals("\u00a9 2024\u20132026 Maiia", b.getCopyright());
+
+        Weblog other = weblog();
+        b.copyTo(other);
+        assertEquals("\u00a9 2024\u20132026 Maiia", other.getCopyright());
+    }
+
+    @Test
+    void blankCopyrightStoresNull() {
+        Weblog w = weblog();
+        w.setCopyright("old");
+        WeblogConfigBean b = new WeblogConfigBean();
+        b.copyFrom(w);
+        b.setCopyright("   ");
+        b.copyTo(w);
+        assertNull(w.getCopyright());
+    }
 }

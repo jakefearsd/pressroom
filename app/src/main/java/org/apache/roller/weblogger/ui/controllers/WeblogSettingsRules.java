@@ -112,6 +112,7 @@ public final class WeblogSettingsRules {
             found.add(simple("timeZone", "websiteSettings.timeZone.invalid",
                     "timeZone must be a time zone id, for example Europe/Berlin."));
         }
+        tooLong("copyright", "websiteSettings.copyright", bean.getCopyright(), MAX_TEXT, found);
         tooLong("icon", "websiteSettings.icon", bean.getIcon(), MAX_TEXT, found);
         tooLong("about", "websiteSettings.about", bean.getAbout(), MAX_TEXT, found);
         mustBeUuid("newsletterListUuid", "websiteSettings.newsletterListUuid.invalid", bean.getNewsletterListUuid(), found);

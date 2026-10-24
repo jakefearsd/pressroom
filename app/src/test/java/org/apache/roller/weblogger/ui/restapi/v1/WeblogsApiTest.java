@@ -287,7 +287,7 @@ class WeblogsApiTest {
 
     @Test
     void aNonFiniteCoordinateIsRefused() {
-        AdminDtos.WeblogPatch patch = new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null,
+        AdminDtos.WeblogPatch patch = new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null);
 
         ApiException e = assertThrows(ApiException.class,
@@ -362,6 +362,56 @@ class WeblogsApiTest {
         }
     }
 
+    @Test
+    void patchSetsCopyrightAndTheViewShowsIt() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        var result = doPatch(weblogger, weblog, "{\"copyright\":\"\u00a9 2024\u20132026 Maiia\"}")
+                .andExpect(status().isOk());
+
+        assertEquals("\u00a9 2024\u20132026 Maiia", weblog.getCopyright());
+        assertEquals("\u00a9 2024\u20132026 Maiia", json(result).get("copyright").asString());
+        verify(weblogger.getWeblogManager()).saveWeblog(weblog);
+    }
+
+    @Test
+    void viewIncludesCopyright() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        weblog.setCopyright("Mine");
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(get("/v1/weblogs/{handle}", "myblog").requestAttr("actionWeblog", weblog))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertEquals("Mine", new tools.jackson.databind.ObjectMapper().readTree(body).get("copyright").asString());
+    }
+
+    @Test
+    void patchCopyrightOver255IsFieldError() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        doPatch(weblogger, weblog, "{\"copyright\":\"" + "c".repeat(256) + "\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("copyright"));
+
+        verify(weblogger.getWeblogManager(), never()).saveWeblog(any());
+    }
+
+    @Test
+    void clearRemovesCopyright() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        weblog.setCopyright("Mine");
+
+        doPatch(weblogger, weblog, "{\"clear\":[\"copyright\"]}").andExpect(status().isOk());
+
+        assertNull(weblog.getCopyright());
+    }
+
     static java.util.stream.Stream<String> clearableNames() {
         return AdminDtos.WEBLOG_CLEARABLE.stream();
     }
@@ -369,6 +419,7 @@ class WeblogsApiTest {
     private static void store(Weblog w, String name) {
         switch (name) {
             case "tagline" -> w.setTagline("T");
+            case "copyright" -> w.setCopyright("(c) Me");
             case "customDomain" -> w.setCustomDomain("mine.example.com");
             case "icon" -> w.setIconPath("https://x/i.png");
             case "about" -> w.setAbout("About");
@@ -399,6 +450,7 @@ class WeblogsApiTest {
     private static Object stored(Weblog w, String name) {
         return switch (name) {
             case "tagline" -> w.getTagline();
+            case "copyright" -> w.getCopyright();
             case "customDomain" -> w.getCustomDomain();
             case "icon" -> w.getIconPath();
             case "about" -> w.getAbout();
@@ -660,7 +712,7 @@ class WeblogsApiTest {
 
     @Test
     void aNonFiniteCoordinateNamesTheCoordinateField() {
-        AdminDtos.WeblogPatch patch = new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null,
+        AdminDtos.WeblogPatch patch = new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null);
 
         ApiException e = assertThrows(ApiException.class,
@@ -697,7 +749,7 @@ class WeblogsApiTest {
      */
     @Test
     void everyWeblogSettingsRuleFieldIsAWeblogPatchComponent() {
-        List<String> ruleFields = List.of("entryDisplayCount", "locale", "timeZone", "icon", "about",
+        List<String> ruleFields = List.of("entryDisplayCount", "locale", "timeZone", "icon", "about", "copyright",
                 "analyticsShareUrl", "newsletterListUuid", "analyticsSiteId", "businessId", "placeType",
                 "placeLocality", "placeRegion", "placeCountry", "placeLat", "placeLng", "bookingUrl",
                 "customDomain");

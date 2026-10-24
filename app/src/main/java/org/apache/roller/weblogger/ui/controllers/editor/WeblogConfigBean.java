@@ -36,6 +36,7 @@ public class WeblogConfigBean {
     private String handle = null;
     private String name = null;
     private String tagline = null;
+    private String copyright = null;
     private String emailAddress = null;
     private String locale = null;
     private String timeZone = null;
@@ -85,6 +86,14 @@ public class WeblogConfigBean {
     
     public void setTagline( String tagline ) {
         this.tagline = tagline;
+    }
+
+    public String getCopyright() {
+        return this.copyright;
+    }
+
+    public void setCopyright( String copyright ) {
+        this.copyright = copyright;
     }
     
     public String getEmailAddress() {
@@ -260,6 +269,7 @@ public class WeblogConfigBean {
         this.handle = dataHolder.getHandle();
         this.name = dataHolder.getName();
         this.tagline = dataHolder.getTagline();
+        this.copyright = dataHolder.getCopyright();
         this.emailAddress = dataHolder.getEmailAddress();
         this.locale = dataHolder.getLocale();
         this.timeZone = dataHolder.getTimeZone();
@@ -287,6 +297,7 @@ public class WeblogConfigBean {
     public void copyTo(Weblog dataHolder) {
         dataHolder.setName(this.name);
         dataHolder.setTagline(this.tagline);
+        dataHolder.setCopyright(org.apache.commons.lang3.StringUtils.trimToNull(this.copyright));
         dataHolder.setEmailAddress(this.emailAddress);
         dataHolder.setLocale(this.locale);
         dataHolder.setTimeZone(this.timeZone);

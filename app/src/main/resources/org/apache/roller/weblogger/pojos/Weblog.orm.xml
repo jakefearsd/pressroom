@@ -49,6 +49,9 @@
 			<basic name="tagline">
 				<column name="tagline" insertable="true" updatable="true" unique="false"/>
 			</basic>
+			<basic name="copyright">
+				<column name="copyright" insertable="true" updatable="true" unique="false"/>
+			</basic>
             <basic name="analyticsSiteId">
                 <column name="analytics_site_id" insertable="true" updatable="true" unique="false"/>
             </basic>

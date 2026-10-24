@@ -30,6 +30,8 @@ public final class ColumnLimits {
     // weblog (V002__baseline_schema.sql)
     public static final int WEBLOG_NAME = 255;
     public static final int TAGLINE = 255;
+    // weblog.copyright (V038__weblog_copyright.sql)
+    public static final int COPYRIGHT = 255;
     public static final int WEBLOG_EMAIL_ADDRESS = 255;
     public static final int LOCALE = 20;
     public static final int TIME_ZONE = 50;

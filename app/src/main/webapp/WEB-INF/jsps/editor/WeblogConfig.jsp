@@ -76,6 +76,14 @@
     </div>
 
     <div class="row mb-3">
+        <label class="col-sm-3 col-form-label" for="weblog_bean_copyright"><spring:message code="websiteSettings.copyright"/></label>
+        <div class="col-sm-9">
+            <input id="weblog_bean_copyright" type="text" name="bean.copyright" value="${fn:escapeXml(bean.copyright)}" size="30" maxlength="255" class="form-control"/>
+            <div class="form-text"><spring:message code="websiteSettings.copyright.tip"/></div>
+        </div>
+    </div>
+
+    <div class="row mb-3">
         <label class="col-sm-3 col-form-label" for="weblog_bean_icon"><spring:message code="websiteSettings.icon"/></label>
         <div class="col-sm-9">
             <input id="weblog_bean_icon" type="text" name="bean.icon" value="${fn:escapeXml(bean.icon)}" size="30" maxlength="255" class="form-control"/>

@@ -108,7 +108,7 @@ class WeblogsApiCustomDomainTest {
     @Test
     void aPatchSetsTheCustomDomain() throws Exception {
         patch("vhostblog",
-                new AdminDtos.WeblogPatch(null, null, null, null, null, null, null,
+                new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null,
                         "moved.example.com",
                         null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null));
         assertEquals("moved.example.com",
@@ -120,7 +120,7 @@ class WeblogsApiCustomDomainTest {
     void aMalformedCustomDomainIsA400() {
         ApiException thrown = assertThrows(ApiException.class, () ->
                 patch("vhostblog",
-                        new AdminDtos.WeblogPatch(null, null, null, null, null, null, null,
+                        new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null,
                         "not a hostname",
                         null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
         assertEquals(400, thrown.getStatus());
@@ -130,7 +130,7 @@ class WeblogsApiCustomDomainTest {
     void aDuplicateCustomDomainIsA409() {
         ApiException thrown = assertThrows(ApiException.class, () ->
                 patch("plainblog",
-                        new AdminDtos.WeblogPatch(null, null, null, null, null, null, null,
+                        new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null,
                         "vhost.example.com",
                         null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
         assertEquals(409, thrown.getStatus());
@@ -144,7 +144,7 @@ class WeblogsApiCustomDomainTest {
     @Test
     void reSavingAWeblogsOwnUnchangedCustomDomainIsNotAConflict() throws Exception {
         AdminDtos.WeblogView view = patch("vhostblog",
-                new AdminDtos.WeblogPatch(null, null, null, null, null, null, null,
+                new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null,
                         "vhost.example.com",
                         null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null));
         assertEquals("vhost.example.com", view.customDomain());
@@ -161,7 +161,7 @@ class WeblogsApiCustomDomainTest {
 
         ApiException thrown = assertThrows(ApiException.class, () ->
                 patch("plainblog",
-                        new AdminDtos.WeblogPatch(null, null, null, null, null, null, null,
+                        new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null,
                         "blog.example.com",
                         null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
         assertEquals(400, thrown.getStatus());
@@ -171,7 +171,7 @@ class WeblogsApiCustomDomainTest {
     @Test
     void aPatchIsNotRejectedAsTheSiteHostWhenSiteAbsoluteUrlIsUnconfigured() throws Exception {
         AdminDtos.WeblogView view = patch("plainblog",
-                new AdminDtos.WeblogPatch(null, null, null, null, null, null, null,
+                new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null,
                         "blog.example.com",
                         null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null));
         assertEquals("blog.example.com", view.customDomain());
@@ -181,7 +181,7 @@ class WeblogsApiCustomDomainTest {
     void aDuplicateCustomDomainNamesTheCustomDomainField() {
         ApiException thrown = assertThrows(ApiException.class, () ->
                 patch("plainblog",
-                        new AdminDtos.WeblogPatch(null, null, null, null, null, null, null,
+                        new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null,
                         "vhost.example.com",
                         null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
         assertEquals(409, thrown.getStatus());

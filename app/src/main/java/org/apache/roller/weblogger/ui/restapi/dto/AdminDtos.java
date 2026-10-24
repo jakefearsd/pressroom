@@ -52,7 +52,7 @@ public final class AdminDtos {
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record WeblogView(String id, String handle, String name, String tagline,
+    public record WeblogView(String id, String handle, String name, String tagline, String copyright,
                               String emailAddress, String locale, String timeZone,
                               int entryDisplayCount, boolean active, boolean commentsEnabled, boolean commentNotify,
                               String editorTheme,
@@ -93,7 +93,7 @@ public final class AdminDtos {
      * explicit blank {@code customDomain} still clears the domain (the
      * JSP editor's convention), but {@code clear} is the way to say it.
      */
-    public record WeblogPatch(String name, String tagline, String emailAddress, String locale,
+    public record WeblogPatch(String name, String tagline, String copyright, String emailAddress, String locale,
                                String timeZone, Integer entryDisplayCount, Boolean active,
                                String customDomain, String icon, String about,
                                String analyticsSiteId, String analyticsShareUrl, String newsletterListUuid,
@@ -110,14 +110,14 @@ public final class AdminDtos {
                                Boolean commentsEnabled,
                                @Schema(description = "Email the owners when a comment needs approval. Not clearable.")
                                Boolean commentNotify,
-                               @Schema(description = "Fields to remove: tagline, customDomain, icon, about, "
+                               @Schema(description = "Fields to remove: tagline, copyright, customDomain, icon, about, "
                                        + "analyticsSiteId, analyticsShareUrl, newsletterListUuid, businessId, "
                                        + "placeType, placeLocality, placeRegion, placeCountry, placeLat with "
                                        + "placeLng, bookingUrl. Null never removes anything.")
                                List<String> clear) {
     }
 
-    public static final List<String> WEBLOG_CLEARABLE = List.of("tagline", "customDomain", "icon", "about",
+    public static final List<String> WEBLOG_CLEARABLE = List.of("tagline", "copyright", "customDomain", "icon", "about",
             "analyticsSiteId", "analyticsShareUrl", "newsletterListUuid", "businessId", "placeType",
             "placeLocality", "placeRegion", "placeCountry", "placeLat", "placeLng", "bookingUrl");
     public static final List<List<String>> WEBLOG_PAIRS = List.of(List.of("placeLat", "placeLng"));
@@ -129,7 +129,7 @@ public final class AdminDtos {
 
     public static WeblogView toView(Weblog weblog) {
         return new WeblogView(weblog.getId(), weblog.getHandle(), weblog.getName(),
-                weblog.getTagline(), weblog.getEmailAddress(), weblog.getLocale(),
+                weblog.getTagline(), weblog.getCopyright(), weblog.getEmailAddress(), weblog.getLocale(),
                 weblog.getTimeZone(), weblog.getEntryDisplayCount(),
                 Boolean.TRUE.equals(weblog.getActive()),
                 Boolean.TRUE.equals(weblog.getCommentsEnabled()),
@@ -166,6 +166,10 @@ public final class AdminDtos {
         if (patch.tagline() != null) {
             ColumnLimits.requireMaxLength("tagline", patch.tagline(), ColumnLimits.TAGLINE);
             bean.setTagline(patch.tagline());
+        }
+        if (patch.copyright() != null) {
+            ColumnLimits.requireMaxLength("copyright", patch.copyright(), ColumnLimits.COPYRIGHT);
+            bean.setCopyright(patch.copyright());
         }
         if (patch.emailAddress() != null) {
             ColumnLimits.requireMaxLength("emailAddress", patch.emailAddress(), ColumnLimits.WEBLOG_EMAIL_ADDRESS);
@@ -234,6 +238,7 @@ public final class AdminDtos {
     private static void clearOnBean(WeblogConfigBean bean, String name) {
         switch (name) {
             case "tagline" -> bean.setTagline(null);
+            case "copyright" -> bean.setCopyright(null);
             case "customDomain" -> bean.setCustomDomain(null);
             case "icon" -> bean.setIcon(null);
             case "about" -> bean.setAbout(null);
