@@ -33,7 +33,10 @@ import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogPage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.apache.roller.weblogger.util.cache.CacheManager;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import static org.mockito.Mockito.mockStatic;
 import org.springframework.ui.ExtendedModelMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -563,6 +566,122 @@ class GlobalConfigControllerTest {
         controller.save(privacyRequest("privacy", "front"), model);
 
         assertEquals(List.of("generic.error.check.logs"), ControllerTestFixture.errors(model));
+    }
+
+    // --- cache expiry and validation scope (final review, AC6) ---
+
+    private static final String ABSURL = "site.absoluteurl";
+
+    /** Stored privacy, front-page handle and absolute URL, plus one unrelated property. */
+    private Map<String, RuntimeConfigProperty> linkProps(String privacy, String front, String absUrl) throws Exception {
+        Map<String, RuntimeConfigProperty> stored = privacyProps(privacy, front);
+        stored.put(ABSURL, new RuntimeConfigProperty(ABSURL, absUrl));
+        stored.put("site.name", new RuntimeConfigProperty("site.name", "Old"));
+        return stored;
+    }
+
+    private HttpServletRequest linkRequest(String privacy, String front, String absUrl, String name) {
+        HttpServletRequest request = privacyRequest(privacy, front);
+        when(request.getParameter(ABSURL)).thenReturn(absUrl);
+        when(request.getParameter("site.name")).thenReturn(name);
+        return request;
+    }
+
+    /** Saves and reports whether the weblog was touched and the site-wide cache invalidated. */
+    private boolean[] saveAndWatch(HttpServletRequest request, Weblog a) throws Exception {
+        when(weblogger.weblogManager().getWeblogs(any(), any(), any(), any(), anyInt(), anyInt()))
+                .thenReturn(List.of(a));
+        java.util.Date past = new java.util.Date(1_000L);
+        a.setLastModified(past);
+        boolean invalidated;
+        try (MockedStatic<CacheManager> cache = mockStatic(CacheManager.class)) {
+            controller.save(request, model);
+            try {
+                cache.verify(() -> CacheManager.invalidate(a));
+                invalidated = true;
+            } catch (AssertionError e) {
+                invalidated = false;
+            }
+        }
+        return new boolean[] {a.getLastModified().after(past), invalidated};
+    }
+
+    @Test
+    void changingThePrivacySlugTouchesAndClearsTheSiteWideCache() throws Exception {
+        linkProps("", "front", "https://x.test");
+        page(frontBlog("front"), "privacy", WeblogPage.PubStatus.PUBLISHED);
+
+        boolean[] r = saveAndWatch(linkRequest("privacy", "front", "https://x.test", "Old"), new Weblog());
+
+        assertTrue(r[0], "touched");
+        assertTrue(r[1], "site-wide cache invalidated");
+    }
+
+    @Test
+    void changingTheFrontpageHandleTouchesAndClearsTheSiteWideCache() throws Exception {
+        linkProps("privacy", "front", "https://x.test");
+        page(frontBlog("other"), "privacy", WeblogPage.PubStatus.PUBLISHED);
+
+        boolean[] r = saveAndWatch(linkRequest("privacy", "other", "https://x.test", "Old"), new Weblog());
+
+        assertEquals(List.of("generic.changes.saved"), ControllerTestFixture.messages(model));
+        assertTrue(r[0], "touched");
+        assertTrue(r[1], "site-wide cache invalidated");
+    }
+
+    @Test
+    void changingTheAbsoluteUrlTouchesAndClearsTheSiteWideCache() throws Exception {
+        linkProps("privacy", "front", "https://x.test");
+        page(frontBlog("front"), "privacy", WeblogPage.PubStatus.PUBLISHED);
+
+        boolean[] r = saveAndWatch(linkRequest("privacy", "front", "https://y.test", "Old"), new Weblog());
+
+        assertTrue(r[0], "touched");
+        assertTrue(r[1], "site-wide cache invalidated");
+    }
+
+    @Test
+    void changingAnUnrelatedPropertyNeitherTouchesNorClears() throws Exception {
+        linkProps("privacy", "front", "https://x.test");
+        page(frontBlog("front"), "privacy", WeblogPage.PubStatus.PUBLISHED);
+
+        boolean[] r = saveAndWatch(linkRequest("privacy", "front", "https://x.test", "New"), new Weblog());
+
+        assertFalse(r[0], "touched");
+        assertFalse(r[1], "site-wide cache invalidated");
+    }
+
+    @Test
+    void anUnchangedButNowInvalidPrivacySlugDoesNotBlockAnUnrelatedSave() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = linkProps("gone", "front", "https://x.test");
+        frontBlog("front"); // the page "gone" no longer exists
+
+        controller.save(linkRequest("gone", "front", "https://x.test", "New"), model);
+
+        assertEquals(List.of(), ControllerTestFixture.errors(model));
+        assertEquals("New", stored.get("site.name").getValue());
+        verify(weblogger.propertiesManager()).saveProperties(any());
+    }
+
+    @Test
+    void aChangedInvalidPrivacySlugIsStillRefused() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = linkProps("gone", "front", "https://x.test");
+        frontBlog("front");
+
+        controller.save(linkRequest("nope", "front", "https://x.test", "Old"), model);
+
+        assertRefused(stored, "gone", "configForm.error.privacyPage.notFound");
+    }
+
+    @Test
+    void changingTheFrontpageHandleRevalidatesAnUnchangedSlug() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = linkProps("privacy", "front", "https://x.test");
+        page(frontBlog("front"), "privacy", WeblogPage.PubStatus.PUBLISHED);
+        frontBlog("other"); // has no "privacy" page
+
+        controller.save(linkRequest("privacy", "other", "https://x.test", "Old"), model);
+
+        assertRefused(stored, "privacy", "configForm.error.privacyPage.notFound");
     }
 
     // --- helpers ---

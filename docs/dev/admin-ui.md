@@ -150,9 +150,13 @@ resolves through the index at the end of `CLAUDE.md`.
   in the same form, else the stored one), checked in
   `GlobalConfigController.validatePrivacyPage`. Fail closed: no front-page
   blog, an unknown or draft slug, or a lookup that throws all add a field
-  error, nothing is saved and the form re-renders the previous value. No
-  per-request check, so unpublishing the page later leaves a dead link (the
-  field label says so). A changed value touches every weblog (see
+  error, nothing is saved and the form re-renders what was typed (the stored
+  value is unchanged). The check runs only when the slug or the front-page
+  handle differs from the stored value, so a page unpublished later (or a
+  deleted front-page blog) never blocks an unrelated save: Global Config never
+  blocks. No per-request check, so that leaves a dead link (the field label
+  says so). A change to the slug, the front-page handle or `site.absoluteurl`
+  touches every weblog and clears the site-wide cache (see
   `themes-and-templates.md`, render-cache expiry).
 - **The top bar's weblog switcher appears only for a user on ≥ 2 weblogs.**
   `BaseController.populateCommonModel` resolves the caller's weblog

@@ -178,10 +178,17 @@ resolves through the index at the end of `CLAUDE.md`.
   and `generateKey`. `SiteWideCache` is deliberately outside that hierarchy —
   its `get` takes no timestamp, having no per-weblog expiry.
 - **A Global Config save expires nothing by itself**, so a setting that
-  reaches rendered pages must touch weblogs. `site.privacy.page` (the footer's
-  privacy link) does: when its value changes, `GlobalConfigController`
-  touches and saves every weblog via `touchLastModified()`, so every blog's
-  cached pages and feeds pick the link up on the next request.
+  reaches rendered pages must touch weblogs. The footer's privacy link is
+  built from `site.privacy.page`, `site.frontpage.weblog.handle` and
+  `site.absoluteurl`: when any of the three changes, `GlobalConfigController`
+  touches and saves every weblog via `touchLastModified()` and then calls
+  `CacheManager.invalidate(weblog)` for each, so every blog's cached pages and
+  feeds pick the link up on the next request. The invalidate is what clears
+  `SiteWideCache`, which serves the aggregated front page and ignores
+  `lastModified`. Side effects, accepted: every blog's `Last-Modified` and
+  sitemap `lastmod` move forward and each misses one conditional GET. The
+  copyright year is baked into cached pages, so for up to an hour after New
+  Year they show the old year.
 - **A deploy is a change too.** `Last-Modified` (and the 304 check) for a
   weblog's pages, feeds and stylesheet is `weblog.lastModified` or this
   server's start, whichever is later (`ServingSince`,

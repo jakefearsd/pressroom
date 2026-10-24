@@ -94,9 +94,8 @@ public record Colophon(String version, String shortRevision, String releaseDate,
                 holder = nullToEmpty(WebloggerRuntimeConfig.getProperty("site.name"));
             }
         } catch (RuntimeException e) { // display path: holder stays what we have
-            if (weblog != null && holder.isEmpty()) {
-                holder = nullToEmpty(weblog.getName());
-            }
+            // Deliberately no retry: the getter that threw would throw again.
+            custom = null;
         }
 
         int year = clock.instant().atZone(RELEASE_ZONE).getYear();

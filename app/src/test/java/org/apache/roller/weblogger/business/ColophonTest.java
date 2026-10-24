@@ -234,4 +234,14 @@ class ColophonTest {
         assertEquals("", c.copyrightHolder());
         assertEquals(2026, c.copyrightYear());
     }
+
+    @Test
+    void ofNeverThrowsWhenTheWeblogsNameThrows() {
+        Weblog weblog = mock(Weblog.class);
+        when(weblog.getName()).thenThrow(new IllegalStateException("detached"));
+
+        Colophon c = Colophon.of(weblogger, weblog, NOW);
+
+        assertEquals("", c.copyrightHolder());
+    }
 }

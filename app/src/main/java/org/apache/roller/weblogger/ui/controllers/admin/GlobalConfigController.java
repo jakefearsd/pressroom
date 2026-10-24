@@ -37,6 +37,7 @@ import org.apache.roller.weblogger.pojos.RuntimeConfigProperty;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogPage;
 import org.apache.roller.weblogger.ui.controllers.BaseController;
+import org.apache.roller.weblogger.util.cache.CacheManager;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -55,6 +56,10 @@ public class GlobalConfigController extends BaseController {
 
     private static final String FRONTPAGE_WEBLOG_HANDLE = "site.frontpage.weblog.handle";
     private static final String PRIVACY_PAGE = "site.privacy.page";
+    private static final String ABSOLUTE_URL = "site.absoluteurl";
+    /** The three settings the colophon's privacy link is built from. */
+    private static final List<String> PRIVACY_LINK_INPUTS =
+            List.of(PRIVACY_PAGE, FRONTPAGE_WEBLOG_HANDLE, ABSOLUTE_URL);
 
     private final ResourceBundle bundle = ResourceBundle.getBundle("ApplicationResources");
 
@@ -165,7 +170,12 @@ public class GlobalConfigController extends BaseController {
             }
         }
 
-        validatePrivacyPage(accepted, properties, model, request);
+        // Only a change to the slug or the front-page handle is validated, so
+        // a privacy page that was later unpublished (or a deleted front-page
+        // blog) never blocks an unrelated save: Global Config never blocks.
+        if (changed(PRIVACY_PAGE, accepted, properties) || changed(FRONTPAGE_WEBLOG_HANDLE, accepted, properties)) {
+            validatePrivacyPage(accepted, properties, model, request);
+        }
 
         if (hasErrors(model)) {
             // Re-render what the admin typed, on detached copies: the managed
@@ -180,8 +190,8 @@ public class GlobalConfigController extends BaseController {
             return ".GlobalConfig";
         }
 
-        String previousPrivacy = properties.containsKey(PRIVACY_PAGE)
-                ? Objects.toString(properties.get(PRIVACY_PAGE).getValue(), "") : null;
+        boolean privacyLinkChanged = PRIVACY_LINK_INPUTS.stream()
+                .anyMatch(name -> changed(name, accepted, properties));
         for (Map.Entry<String, String> change : accepted.entrySet()) {
             properties.get(change.getKey()).setValue(change.getValue());
             log.debug("Set {} = {}", change.getKey(), change.getValue());
@@ -195,9 +205,9 @@ public class GlobalConfigController extends BaseController {
 
             // Rendered pages expire only through weblog.lastModified, and a
             // Global Config save does not move it, so a changed privacy link
-            // would stay out of every cached page. Touch every weblog.
-            if (previousPrivacy != null && accepted.containsKey(PRIVACY_PAGE)
-                    && !previousPrivacy.equals(accepted.get(PRIVACY_PAGE))) {
+            // would stay out of every cached page. Touch every weblog, and
+            // clear the site-wide cache, which ignores lastModified.
+            if (privacyLinkChanged) {
                 touchEveryWeblog();
             }
 
@@ -248,13 +258,28 @@ public class GlobalConfigController extends BaseController {
         }
     }
 
+    /** True when the form submitted this property and it differs from the stored value. */
+    private static boolean changed(String name, Map<String, String> accepted,
+            Map<String, RuntimeConfigProperty> properties) {
+        RuntimeConfigProperty stored = properties.get(name);
+        return stored != null && accepted.containsKey(name)
+                && !Objects.toString(stored.getValue(), "").equals(accepted.get(name));
+    }
+
     private void touchEveryWeblog() throws WebloggerException {
         WeblogManager mgr = weblogger.getWeblogManager();
+        List<Weblog> touched = new ArrayList<>();
         for (Weblog weblog : mgr.getWeblogs(null, null, null, null, 0, -1)) {
             weblog.touchLastModified();
             mgr.saveWeblog(weblog);
+            touched.add(weblog);
         }
         weblogger.flush();
+        // SiteWideCache ignores lastModified and is dropped only here; one
+        // call clears it wholesale.
+        for (Weblog weblog : touched) {
+            CacheManager.invalidate(weblog);
+        }
     }
 
     private Map<String, RuntimeConfigProperty> loadProperties() {
