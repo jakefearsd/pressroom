@@ -2,6 +2,7 @@ package org.apache.roller.weblogger.ui.restapi.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.roller.weblogger.business.ContentHashes;
 import org.apache.roller.weblogger.pojos.JsonLdType;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
@@ -36,12 +38,21 @@ public final class EntryDtos {
     /** Fields that are cleared together or not at all. */
     public static final List<List<String>> ENTRY_PAIRS = List.of(List.of("geoLatitude", "geoLongitude"));
 
+    /** {@code edits}' text, one for update and preview, since one MCP property serves both. */
+    static final String EDITS_DESCRIPTION = "Find/replace pairs applied to the entry's stored text, in order, "
+            + "each to the text as the previous ones left it: on update, and on preview with id. Each find must "
+            + "occur exactly once, or the request is refused naming every failing edit, and nothing is saved. At "
+            + "most 50; not with text. The result is saved as though sent as text (importExternalImages included).";
+
     private EntryDtos() {
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record EntryView(
             String id, String anchor, String title, String summary, String text,
+            @Schema(description = "SHA-256 of the stored text (UTF-8), lower-case hex. Send it back as "
+                    + "expectedContentHash on update so the update is refused if the entry changed meanwhile.")
+            String contentHash,
             String status, String category, List<String> tags,
             Instant pubTime, Instant updateTime, String permalink,
             String metaTitle, String searchDescription, String canonicalUrl,
@@ -58,9 +69,13 @@ public final class EntryDtos {
      * body being absent -- {@code ApiExceptionHandler} turns that into a 400
      * before a controller method ever runs) is treated as an empty draft
      * rather than rejected: an author previewing a blank editor is a normal
-     * moment, not an error.
+     * moment, not an error. {@code edits}, previewing an existing entry,
+     * apply to its stored text in place of {@code text}.
      */
-    public record PreviewRequest(String text) {
+    public record PreviewRequest(
+            String text,
+            @Schema(description = EDITS_DESCRIPTION)
+            List<TextEdit> edits) {
     }
 
     /**
@@ -86,6 +101,7 @@ public final class EntryDtos {
                 entry.getTitle(),
                 entry.getSummary(),
                 entry.getText(),
+                contentHash(entry.getText()),
                 entry.getStatus() == null ? null : entry.getStatus().name(),
                 entry.getCategory() == null ? null : entry.getCategory().getName(),
                 entry.getTags().stream().map(WeblogEntryTag::getName).sorted().toList(),
@@ -105,6 +121,15 @@ public final class EntryDtos {
                 instant(entry.getEventEnd()),
                 entry.getEventLocation(),
                 entry.getCommentsClosed());
+    }
+
+    /**
+     * SHA-256 of {@code text} as UTF-8, bare lower-case hex: the scheme of
+     * Wikantik's read_page/update_page, so an agent working across the stack
+     * learns one. Null for null text.
+     */
+    public static String contentHash(String text) {
+        return text == null ? null : ContentHashes.sha256Hex(text.getBytes(StandardCharsets.UTF_8));
     }
 
     private static Instant instant(Timestamp ts) {
@@ -223,19 +248,48 @@ public final class EntryDtos {
                     + "canonicalUrl, featuredImageId, ogImageId, jsonLdType (back to BLOG_POSTING), "
                     + "geoLatitude with geoLongitude, eventStart, eventEnd, eventLocation. "
                     + "Null never removes anything.")
-            List<String> clear) {
+            List<String> clear,
+            @Schema(description = EDITS_DESCRIPTION)
+            List<TextEdit> edits,
+            @Schema(description = "On update, the contentHash the entry was read with. When the stored text's "
+                    + "hash differs, someone changed the entry since: the update is a 409 entry-changed whose "
+                    + "currentContentHash is the stored text's hash, and nothing is saved. Get the entry again and "
+                    + "redo the change. Without it, the update overwrites whatever is stored.")
+            String expectedContentHash) {
 
         /**
          * This write with what the import step produced: the featured image it
          * set and the text it rewrote. A null argument keeps the write's own value.
          */
         public EntryWrite withImports(String importedFeaturedImageId, String rewrittenText) {
-            return new EntryWrite(title, summary, rewrittenText != null ? rewrittenText : text, status, category,
-                    pubTime, tags, metaTitle, searchDescription, canonicalUrl, noindex,
-                    importedFeaturedImageId != null ? importedFeaturedImageId : featuredImageId, ogImageId,
-                    jsonLdType, geoLatitude, geoLongitude, eventStart, eventEnd, eventLocation, commentsClosed,
-                    anchor, featuredImageUrl, featuredImageAlt, importExternalImages, clear);
+            return with(importedFeaturedImageId != null ? importedFeaturedImageId : featuredImageId,
+                    rewrittenText != null ? rewrittenText : text);
         }
+
+        /**
+         * This write with {@code resolvedText} as its text: what its {@code
+         * edits} made of the stored text. From here on the write is handled
+         * exactly as though the caller had sent that text.
+         */
+        public EntryWrite withText(String resolvedText) {
+            return with(featuredImageId, resolvedText);
+        }
+
+        private EntryWrite with(String newFeaturedImageId, String newText) {
+            return new EntryWrite(title, summary, newText, status, category, pubTime, tags, metaTitle,
+                    searchDescription, canonicalUrl, noindex, newFeaturedImageId, ogImageId, jsonLdType,
+                    geoLatitude, geoLongitude, eventStart, eventEnd, eventLocation, commentsClosed, anchor,
+                    featuredImageUrl, featuredImageAlt, importExternalImages, clear, edits, expectedContentHash);
+        }
+    }
+
+    /** One exact-text replacement of an update's {@code edits}. */
+    public record TextEdit(
+            @Schema(description = "Text of the entry, exactly as stored (get returns it), that must occur exactly "
+                    + "once; include surrounding text until it does.")
+            String find,
+            @Schema(description = "What replaces it; an empty string deletes it.")
+            String replace) {
     }
 
     /**

@@ -284,6 +284,52 @@ class EntriesWriteApiImportsTest {
         verify(fx.entries).saveWeblogEntry(org.mockito.ArgumentMatchers.eq(entry), any());
     }
 
+    // ---- edits and expectedContentHash (spec 2026-10-24, sections 3 and 4; criterion 4)
+
+    private static final String EDIT_ADDING_AN_IMAGE = "\"edits\":[{\"find\":\"Intro.\","
+            + "\"replace\":\"Intro. ![a](https://img.example.com/a.jpg)\"}],\"importExternalImages\":true";
+
+    /** What edits make of the stored text is imported exactly as sent text would be. */
+    @Test
+    void anImageAnEditIntroducesIsImported() throws Exception {
+        WeblogEntry entry = stored("Intro.");
+        serves("https://img.example.com/a.jpg");
+
+        fx.send(patch("/v1/weblogs/myblog/entries/e1").content("{" + EDIT_ADDING_AN_IMAGE + "}"))
+                .andExpect(status().isOk());
+
+        assertTrue(entry.getText().startsWith("Intro. ![a](https://blog.example.com/myblog/mediaresource/"),
+                entry.getText());
+        verify(fx.entries, times(1)).saveWeblogEntry(eq(entry), any());
+    }
+
+    @Test
+    void aStaleExpectedContentHashIsA409BeforeAnythingIsFetched() throws Exception {
+        WeblogEntry entry = stored("Intro.");
+        serves("https://img.example.com/a.jpg");
+
+        JsonNode problem = json(fx.send(patch("/v1/weblogs/myblog/entries/e1").content("{" + EDIT_ADDING_AN_IMAGE
+                + ",\"expectedContentHash\":\"" + "0".repeat(64) + "\"}")).andExpect(status().isConflict()));
+
+        assertTrue(problem.get("type").asString().endsWith("/entry-changed"), problem.toString());
+        assertEquals("Intro.", entry.getText());
+        verify(fetcher, never()).fetch(any(), anyLong(), any());
+        verify(media, never()).createMediaFile(any(), any(), any());
+        verify(fx.entries, never()).saveWeblogEntry(any(), any());
+    }
+
+    @Test
+    void aFailingEditRefusesTheWriteBeforeAnythingIsFetched() throws Exception {
+        stored("Intro.");
+        serves("https://img.example.com/a.jpg");
+
+        JsonNode problem = fx.refused(patch("/v1/weblogs/myblog/entries/e1").content("{" + EDIT_ADDING_AN_IMAGE
+                .replace("Intro.\",", "Nowhere.\",") + "}"));
+
+        assertEquals(List.of("edits[0]"), fields(problem));
+        verify(fetcher, never()).fetch(any(), anyLong(), any());
+    }
+
     @Test
     void aPrivateDefaultDirectoryRefusesTheImport() throws Exception {
         directory.setPrivate(true);

@@ -117,15 +117,20 @@ public final class ArgumentDeriver {
         }
         List<ArgumentSpec> specs = new ArrayList<>();
         for (RecordComponent component : type.getRecordComponents()) {
-            Map<String, Object> schema = new LinkedHashMap<>(jsonType(route, component.getGenericType()));
-            Schema doc = component.getAccessor().getAnnotation(Schema.class);
-            if (doc != null && !doc.description().isBlank()) {
-                schema.put("description", doc.description());
-            }
             specs.add(new ArgumentSpec(component.getName(), ArgumentSpec.Location.BODY,
-                    component.getName(), schema, false));
+                    component.getName(), describedType(route, component), false));
         }
         return specs;
+    }
+
+    /** A record component's JSON type with its springdoc description, when it has one. */
+    private static Map<String, Object> describedType(ApiRoute route, RecordComponent component) {
+        Map<String, Object> schema = new LinkedHashMap<>(jsonType(route, component.getGenericType()));
+        Schema doc = component.getAccessor().getAnnotation(Schema.class);
+        if (doc != null && !doc.description().isBlank()) {
+            schema.put("description", doc.description());
+        }
+        return schema;
     }
 
     private static Map<String, Object> jsonType(ApiRoute route, Type type) {
@@ -150,9 +155,11 @@ public final class ArgumentDeriver {
                 return Map.of("type", "array", "items", Map.of("type", "string"));
             }
             if (cls.isRecord()) {
+                // A nested record (an entry update's edits) describes its own
+                // components, as it does in openapi.json.
                 Map<String, Object> properties = new LinkedHashMap<>();
                 for (RecordComponent component : cls.getRecordComponents()) {
-                    properties.put(component.getName(), jsonType(route, component.getGenericType()));
+                    properties.put(component.getName(), describedType(route, component));
                 }
                 return Map.of("type", "object", "properties", properties);
             }

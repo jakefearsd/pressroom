@@ -97,8 +97,12 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   `weblog`), `@RequestParam`s and the `@RequestBody` record's components become arguments. A path
   value must be one segment (empty, `.`, `..`, or containing `/`, `\` or `;` is refused).
   springdoc `@Schema`/`@Parameter` descriptions are the shared text for `openapi.json` and the tool
-  (`McpIT` compares `EntryWrite.pubTime`). A body record gaining a field gains a tool argument with
-  no MCP change. An unknown parameter type stops startup.
+  (`McpIT` compares `EntryWrite.pubTime`); a nested record's components (`EntryDtos.TextEdit`) carry
+  theirs too. A body record gaining a field gains a tool argument with no MCP change. An unknown
+  parameter type stops startup.
+- **One property serves every action that takes an argument**, and `ToolSchemas` keeps the first
+  description it meets. So an argument two body records share needs one text that holds for both:
+  `EntryWrite.edits` and `PreviewRequest.edits` both use `EntryDtos.EDITS_DESCRIPTION`.
 - **`AdminAccountGuard` is mandatory for any API route that changes a user**: deletion, profile
   self-edit, role grants or revocations. Admin accounts and the admin role are read-only through the
   API (403 `Admin accounts are managed in the admin UI.`).
@@ -135,6 +139,18 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   before the import step has succeeded.
 - **`FieldErrors` collects only 400s.** A 404, a 409 or an unexpected failure is not a field problem
   and propagates at once, so a clash found during a write is never merged into the 400 list.
+- **`expectedContentHash` is checked first** (spec `docs/superpowers/specs/2026-10-24-agent-editing-and-seo-design.md`, section 4):
+  right after the live-entry lookup, before `checkWrite` and so before the import step can fetch.
+  A mismatch is `ApiException.entryChanged`, a 409 whose `currentContentHash` is the one RFC 9457
+  extension member `ApiProblem` has (null, so omitted, on every other problem). `contentHash` is
+  `EntryDtos.contentHash`: SHA-256 of the UTF-8 text, lower-case hex, Wikantik's scheme; keep the two
+  stacks on one.
+- **`edits` become text before any check.** `EntryEdits.resolve` applies them to the stored text and
+  `EntryWrite.withText` puts the result where a sent `text` would be, so validation, the import plan
+  (which scans `body.text()`) and the one save treat it as sent text with no edits-specific branch.
+  A failing edit is a `FieldErrors` entry on `edits[i]` and is skipped, so it is reported with the
+  write's other field problems and the import step never runs. Exact strings by design, never
+  patterns (spec, Decisions).
 - **`MediaImports` is the one import path**, shared by `media/imports` and the entry writes. It
   commits each file as it is stored (a file on disk must have its row), and logs the host only.
 - **Preview `warnings` come from `PreviewLint`, over the sanitizer's output.** Its attributes are

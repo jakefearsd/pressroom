@@ -16,6 +16,8 @@ public class ApiException extends RuntimeException {
     private final String type;
     private final String title;
     private final transient List<ApiProblem.FieldError> errors;
+    /** The problem's currentContentHash extension member; null on every problem but entry-changed. */
+    private final String currentContentHash;
 
     public ApiException(int status, String type, String title, String detail) {
         this(status, type, title, detail, null);
@@ -23,11 +25,17 @@ public class ApiException extends RuntimeException {
 
     public ApiException(int status, String type, String title, String detail,
                         List<ApiProblem.FieldError> errors) {
+        this(status, type, title, detail, errors, (String) null);
+    }
+
+    private ApiException(int status, String type, String title, String detail,
+                         List<ApiProblem.FieldError> errors, String currentContentHash) {
         super(detail);
         this.status = status;
         this.type = type;
         this.title = title;
         this.errors = errors;
+        this.currentContentHash = currentContentHash;
     }
 
     /**
@@ -43,6 +51,7 @@ public class ApiException extends RuntimeException {
         this.type = type;
         this.title = title;
         this.errors = errors;
+        this.currentContentHash = null;
     }
 
     public static ApiException notFound(String detail) {
@@ -97,6 +106,19 @@ public class ApiException extends RuntimeException {
     }
 
     /**
+     * A 409 for an update whose {@code expectedContentHash} is not the hash of
+     * the text now stored: the entry changed after the caller read it. The
+     * problem's {@code currentContentHash} carries the stored text's hash, as
+     * Wikantik's update_page does: a caller whose earlier, timed-out attempt
+     * did land finds its own text's hash there.
+     */
+    public static ApiException entryChanged(String currentContentHash) {
+        return new ApiException(409, TYPE_BASE + "entry-changed", "Entry changed",
+                "The entry's text changed after it was read; get the entry again and redo the change.",
+                null, currentContentHash);
+    }
+
+    /**
      * The opaque 500: fixed text, because an unexpected exception's message
      * routinely carries schema names, file paths and connection strings. The
      * cause belongs in the log, never in the body.
@@ -145,6 +167,6 @@ public class ApiException extends RuntimeException {
     }
 
     public ApiProblem toProblem(String instance) {
-        return new ApiProblem(type, title, status, getMessage(), instance, errors);
+        return new ApiProblem(type, title, status, getMessage(), instance, errors, currentContentHash);
     }
 }

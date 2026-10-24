@@ -37,7 +37,8 @@ public final class McpToolCatalog {
                             "GET " + W + "/entries/by-anchor/{anchor}"),
                     action("create", "Create an entry (a DRAFT unless status says otherwise).",
                             "POST " + W + "/entries"),
-                    action("update", "Change the fields given; others are left alone.",
+                    action("update", "Change the fields given; others are left alone. edits change part of the "
+                            + "text; expectedContentHash refuses the update if the entry changed since it was read.",
                             "PATCH " + W + "/entries/{id}"),
                     action("trash", "Move an entry to the trash.", "DELETE " + W + "/entries/{id}"),
                     action("restore", "Bring an entry back from the trash, as a DRAFT.",
@@ -45,7 +46,8 @@ public final class McpToolCatalog {
                     action("delete_forever", "Permanently delete an entry that is already in the trash.",
                             "POST " + W + "/entries/{id}/delete-forever"),
                     action("preview", "Render text exactly as it would publish, without saving, with warnings "
-                            + "about what will render badly; with id, in that entry's context.", "POST " + W + "/entries/{id}/preview",
+                            + "about what will render badly; with id, in that entry's context, and edits in place of "
+                            + "text show what an update with them would store.", "POST " + W + "/entries/{id}/preview",
                             "POST " + W + "/entries/preview")),
             tool("categories", "A weblog's categories and tags.", false,
                     action("list", "List categories.", "GET " + W + "/categories"),
