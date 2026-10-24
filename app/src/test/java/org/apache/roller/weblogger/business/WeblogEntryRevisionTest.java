@@ -88,6 +88,41 @@ public class WeblogEntryRevisionTest {
     }
 
     @Test
+    public void aRevisionNamesTheUserWhoseSaveReplacedIt() throws Exception {
+        String id = saveEntry("Title", "Body 1").getId();
+        TestUtils.endSession(true);
+        User other = TestUtils.setupUser("revisionOtherUser");
+        try {
+            TestUtils.endSession(true);
+            WeblogEntry entry = entryManager().getWeblogEntry(id);
+            entry.setText("Body 2");
+            entryManager().saveWeblogEntry(entry, TestUtils.getManagedUser(other));
+            TestUtils.endSession(true);
+
+            List<WeblogEntryRevision> revisions = entryManager()
+                    .getRevisions(entryManager().getWeblogEntry(id));
+            assertEquals(1, revisions.size());
+            assertEquals(other.getUserName(), revisions.get(0).getCreator());
+        } finally {
+            TestUtils.teardownWeblog(testWeblog.getId());
+            testWeblog = null;
+            TestUtils.teardownUser(other.getUserName());
+            TestUtils.endSession(true);
+        }
+    }
+
+    @Test
+    public void aSaveWithNoNamedEditorRecordsTheEntrysCreator() throws Exception {
+        String id = saveEntry("Title", "Body 1").getId();
+        TestUtils.endSession(true);
+
+        editText(id, "Body 2");
+
+        assertEquals(testUser.getUserName(), entryManager()
+                .getRevisions(entryManager().getWeblogEntry(id)).get(0).getCreator());
+    }
+
+    @Test
     public void aSaveRecordsTheContentItReplaced() throws Exception {
         String id = saveEntry("First title", "First body").getId();
         TestUtils.endSession(true);

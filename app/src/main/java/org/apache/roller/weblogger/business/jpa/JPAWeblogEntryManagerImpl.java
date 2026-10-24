@@ -184,6 +184,14 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     // TODO: perhaps the createAnchor() and queuePings() items should go outside this method?
     @Override
     public void saveWeblogEntry(WeblogEntry entry) throws WebloggerException {
+        saveWeblogEntry(entry, null);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    @Override
+    public void saveWeblogEntry(WeblogEntry entry, User editor) throws WebloggerException {
 
         // Read before the save re-snapshots the loaded status below.
         boolean wasPublished = entry.getLoadedStatus() == PubStatus.PUBLISHED;
@@ -238,7 +246,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
 
         // What the revision RECORDS is the pre-save content, captured when
         // the entry was loaded; it is written once this save has committed.
-        recordRevision(entry);
+        recordRevision(entry, editor);
 
         // First arrival at PUBLISHED is a first-party outcome the analytics
         // tier joins against traffic. Best-effort: an event insert must never
@@ -292,12 +300,13 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     // The factory is the tier's own, shared and closed at shutdown by the
     // strategy; closing it here would take the whole persistence unit down.
     @SuppressWarnings("PMD.CloseResource")
-    private void recordRevision(WeblogEntry entry) {
+    private void recordRevision(WeblogEntry entry, User editor) {
         int retention = WebloggerRuntimeConfig.getIntProperty("entry.revisions.retention");
         if (retention == 0) {
             return;
         }
-        WeblogEntryRevision revision = entry.contentBeingReplaced(entry.getCreatorUserName());
+        WeblogEntryRevision revision = entry.contentBeingReplaced(
+                editor != null ? editor.getUserName() : entry.getCreatorUserName());
         if (revision == null) {
             return;
         }

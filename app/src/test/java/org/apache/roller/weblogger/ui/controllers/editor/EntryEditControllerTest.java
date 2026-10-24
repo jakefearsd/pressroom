@@ -47,6 +47,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -475,7 +477,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
 
         assertEquals("redirect:/roller-ui/menu.rol",
                 controller.entryEditSaveDraft(request, model, bean));
-        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
     }
 
     @Test
@@ -620,6 +622,18 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         assertEquals(PubStatus.SCHEDULED, saved.getStatus());
     }
 
+    /** The revision a save leaves names the user who saved, not the entry's author. */
+    @Test
+    void aSaveHandsTheSignedInUserToTheManagerAsTheEditor() throws Exception {
+        WeblogEntry entry = existingEntry(PubStatus.PUBLISHED);
+        entry.setCreatorUserName("someone-else");
+
+        controller.entryEditSaveDraft(request, model, bean);
+
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry),
+                argThat(editor -> USER_NAME.equals(editor.getUserName())));
+    }
+
     @Test
     void aSuccessfulSaveIsCommitted() throws Exception {
         // Everything above verifies the manager was called; without a flush
@@ -632,7 +646,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
     @Test
     void aFailedSaveIsNotCommitted() throws Exception {
         doThrow(new WebloggerException("constraint violation"))
-                .when(weblogger.getWeblogEntryManager()).saveWeblogEntry(any());
+                .when(weblogger.getWeblogEntryManager()).saveWeblogEntry(any(), any());
 
         controller.entryAddSaveDraft(request, model, bean);
 
@@ -683,7 +697,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         assertEquals(".EntryEdit", view, "a rejected pubTimeLocal must redisplay the form");
         assertTrue(errors(model).contains("entryEdit.pubTimeInvalid"),
                 "Expected a pubTimeInvalid error, got: " + errors(model));
-        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
     }
 
     /**
@@ -728,7 +742,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
 
         assertEquals(java.util.List.of("seo_eventEnd"), invalidFields(model));
         assertTrue(errors(model).contains("entryEdit.eventEndBeforeStart"), errors(model).toString());
-        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
     }
 
     @Test
@@ -739,7 +753,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
 
         assertEquals(java.util.List.of("seo_eventStart"), invalidFields(model));
         assertTrue(errors(model).contains("entryEdit.eventTimeInvalid"), errors(model).toString());
-        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
     }
 
     @Test
@@ -847,7 +861,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
     @Test
     void aFailedSaveReportsAnErrorAndStaysOnTheForm() throws Exception {
         doThrow(new WebloggerException("constraint violation"))
-                .when(weblogger.getWeblogEntryManager()).saveWeblogEntry(any());
+                .when(weblogger.getWeblogEntryManager()).saveWeblogEntry(any(), any());
 
         String view = controller.entryAddSaveDraft(request, model, bean);
 
@@ -860,7 +874,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
     @Test
     void aFailedAddClearsTheStatusSoTheFormDoesNotClaimTheEntryWasSaved() throws Exception {
         doThrow(new WebloggerException("constraint violation"))
-                .when(weblogger.getWeblogEntryManager()).saveWeblogEntry(any());
+                .when(weblogger.getWeblogEntryManager()).saveWeblogEntry(any(), any());
 
         controller.entryAddSaveDraft(request, model, bean);
 
@@ -886,7 +900,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
 
         assertTrue(errors(model).contains("generic.error.check.logs"),
                 "A cross-weblog category must be refused: " + errors(model));
-        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
     }
 
     /**
@@ -906,7 +920,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
 
         assertTrue(errors(model).contains("generic.error.check.logs"),
                 "A failed category lookup must be reported: " + errors(model));
-        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
     }
 
     // --- SEO panel ---
@@ -947,7 +961,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         assertEquals(".EntryEdit", view, "a rejected canonical URL must redisplay the form");
         assertTrue(errors(model).contains("entryEdit.canonicalUrlInvalid"),
                 "Expected a canonicalUrlInvalid error, got: " + errors(model));
-        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
     }
 
     @Test
@@ -967,7 +981,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         controller.entryAddSaveDraft(request, model, bean);
 
         assertTrue(errors(model).isEmpty(), "Expected no error, got: " + errors(model));
-        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(any(), any());
     }
 
     @Test
@@ -1062,7 +1076,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
 
     private WeblogEntry captureSavedEntry() throws WebloggerException {
         ArgumentCaptor<WeblogEntry> captor = ArgumentCaptor.forClass(WeblogEntry.class);
-        verify(weblogger.getWeblogEntryManager(), atLeastOnce()).saveWeblogEntry(captor.capture());
+        verify(weblogger.getWeblogEntryManager(), atLeastOnce()).saveWeblogEntry(captor.capture(), any());
         return captor.getValue();
     }
 
@@ -1204,7 +1218,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         controller.entryEditRestoreRevision(request, "entry-1", "revision-1", redirect);
 
         assertEquals("Current text", entry.getText(), "another entry's revision was restored");
-        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
         assertEquals(java.util.List.of("weblogEntry.notFound"), flashErrors(redirect));
     }
 
@@ -1230,7 +1244,8 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         assertEquals("Older summary", entry.getSummary());
         // Through saveWeblogEntry, which is what makes the replaced version a
         // revision of its own and the restore itself undoable.
-        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(entry);
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry),
+                argThat(editor -> USER_NAME.equals(editor.getUserName())));
         assertEquals("redirect:/roller-ui/authoring/entryEdit.rol?weblog=" + WEBLOG_HANDLE
                 + "&bean.id=entry-1", view);
     }
@@ -1382,7 +1397,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         WeblogEntry entry = existingEntry(PubStatus.PUBLISHED);
         revisionOf(entry, "r1").setText("Older text");
         org.mockito.Mockito.doThrow(new WebloggerException("store down"))
-                .when(weblogger.getWeblogEntryManager()).saveWeblogEntry(entry);
+                .when(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any());
 
         RedirectAttributes redirect = newRedirectAttributes();
         String view = controller.entryEditRestoreRevision(request, "entry-1", "r1", redirect);
@@ -1398,7 +1413,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
 
         assertEquals(200, response.getStatusCode().value());
         assertTrue(response.getBody().contains("<strong>text</strong>"), response.getBody());
-        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
     }
 
     @Test

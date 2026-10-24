@@ -252,7 +252,7 @@ class EntriesWriteApiImportsTest {
         assertEquals(text, entry.getText());
         assertNull(entry.getSummary());
         verify(media, times(2)).createMediaFile(any(), any(), any());
-        verify(fx.entries, never()).saveWeblogEntry(any());
+        verify(fx.entries, never()).saveWeblogEntry(any(), any());
     }
 
     @Test
@@ -281,7 +281,7 @@ class EntriesWriteApiImportsTest {
 
         assertTrue(entry.getText().startsWith("Intro ![a](https://blog.example.com/myblog/mediaresource/"),
                 entry.getText());
-        verify(fx.entries).saveWeblogEntry(entry);
+        verify(fx.entries).saveWeblogEntry(org.mockito.ArgumentMatchers.eq(entry), any());
     }
 
     @Test

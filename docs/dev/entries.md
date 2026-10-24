@@ -170,7 +170,10 @@ incidental re-save) — minor PII residue worth clearing.
   refused revision row failed the commit and lost the save. A failure costs
   only the revision (WARN); a save that rolls back records none. `created`
   is stamped when the save runs (`contentBeingReplaced`), not at load: the
-  pruner orders by it. Rendered as a rail box below the publish rail, own
+  pruner orders by it. A revision names the user whose save replaced it:
+  callers pass the acting user to `saveWeblogEntry(entry, editor)` (the
+  editor save/restore, `/api/v1` PATCH and so MCP); the one-argument form is
+  for system callers and falls back to the entry's creator. Rendered as a rail box below the publish rail, own
   form/CSRF per restore button.
 
 **Controllers: always name `@RequestParam`/`@PathVariable` explicitly.** The

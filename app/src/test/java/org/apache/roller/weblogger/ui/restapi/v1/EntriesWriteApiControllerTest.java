@@ -20,6 +20,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import static org.apache.roller.weblogger.ui.restapi.ErrorFieldMatchers.errorFieldIs;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -185,6 +187,7 @@ class EntriesWriteApiControllerTest {
                 .andExpect(status().isBadRequest());
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
     }
 
     /** No manager fallback needed: an absent category leaves entry.category null, and
@@ -226,6 +229,7 @@ class EntriesWriteApiControllerTest {
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
         verify(weblogger, never()).flush();
     }
 
@@ -245,6 +249,7 @@ class EntriesWriteApiControllerTest {
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
     }
 
     /** No authenticatedUser attribute -- the interceptor never having run -- is 401, not an NPE. */
@@ -262,6 +267,7 @@ class EntriesWriteApiControllerTest {
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
     }
 
     /** Malformed JSON is 400, matching CategoriesApi/EntriesApi's existing coverage of the same gap. */
@@ -280,6 +286,7 @@ class EntriesWriteApiControllerTest {
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
     }
 
     /**
@@ -300,6 +307,7 @@ class EntriesWriteApiControllerTest {
         String body = mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
                         .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"text\":\"new body\"}"))
                 .andExpect(status().isOk())
@@ -307,7 +315,9 @@ class EntriesWriteApiControllerTest {
 
         assertEquals("kept", entry.getTitle());
         assertEquals("new body", entry.getText());
-        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(entry);
+        // The acting user rides along, so the revision names who saved.
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry),
+                argThat(editor -> "maiia".equals(editor.getUserName())));
         verify(weblogger).flush();
         tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
         assertEquals("kept", json.get("title").asString());
@@ -328,6 +338,7 @@ class EntriesWriteApiControllerTest {
         String body = mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
                         .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"commentsClosed\":true}"))
                 .andExpect(status().isOk())
@@ -338,6 +349,7 @@ class EntriesWriteApiControllerTest {
         mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
                         .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"text\":\"again\"}"))
                 .andExpect(status().isOk());
@@ -374,13 +386,14 @@ class EntriesWriteApiControllerTest {
         String body = mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
                         .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"featuredImageId\":\"" + mediaId + "\"}"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
         assertEquals(mediaId, entry.getFeaturedImageId());
-        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(entry);
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any());
         verify(weblogger).flush();
         assertEquals(mediaId,
                 new tools.jackson.databind.ObjectMapper().readTree(body).get("featuredImageId").asString());
@@ -404,12 +417,14 @@ class EntriesWriteApiControllerTest {
         mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
                         .requestAttr("actionWeblog", thisWeblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"text\":\"new body\"}"))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
     }
 
     /**
@@ -435,12 +450,14 @@ class EntriesWriteApiControllerTest {
         mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
                         .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"tags\":[\"travel\",\"" + tooLong + "\"]}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
         verify(weblogger, never()).flush();
     }
 
@@ -470,11 +487,12 @@ class EntriesWriteApiControllerTest {
         mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
                         .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"tags\":[\"" + manyShortTags + "\"]}"))
                 .andExpect(status().isOk());
 
-        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(entry);
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any());
     }
 
     /** Tags go through WeblogEntry's own tag-setting path, space-joined. */
@@ -490,6 +508,7 @@ class EntriesWriteApiControllerTest {
         mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
                         .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"tags\":[\"travel\",\"food\"]}"))
                 .andExpect(status().isOk());
@@ -544,13 +563,14 @@ class EntriesWriteApiControllerTest {
         String body = mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
                         .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"PUBLISHED\"}"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
         assertNotNull(entry.getPubTime());
-        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(entry);
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any());
         tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
         assertNotNull(json.get("pubTime"));
     }
@@ -611,6 +631,7 @@ class EntriesWriteApiControllerTest {
         mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
                         .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"PUBLISHED\"}"))
                 .andExpect(status().isOk());
@@ -638,6 +659,7 @@ class EntriesWriteApiControllerTest {
         mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
                         .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"DRAFT\"}"))
                 .andExpect(status().isOk());
@@ -671,6 +693,7 @@ class EntriesWriteApiControllerTest {
                 .andExpect(errorFieldIs("pubTime"));
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
     }
 
     /** Same guard, PATCH side. */
@@ -688,6 +711,7 @@ class EntriesWriteApiControllerTest {
         mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
                         .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"SCHEDULED\"}"))
                 .andExpect(status().isBadRequest())
@@ -695,6 +719,7 @@ class EntriesWriteApiControllerTest {
                 .andExpect(errorFieldIs("pubTime"));
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
     }
 
     /** SCHEDULED with an explicit pubTime must succeed -- the guard rejects only the NULL case. */
@@ -736,11 +761,12 @@ class EntriesWriteApiControllerTest {
         mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
                         .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"summary\":\"just a summary update\"}"))
                 .andExpect(status().isOk());
 
-        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(entry);
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any());
     }
 
     /**
@@ -766,6 +792,7 @@ class EntriesWriteApiControllerTest {
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
     }
 
     /** Same guard, the other NOT NULL column. */
@@ -784,6 +811,7 @@ class EntriesWriteApiControllerTest {
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
     }
 
     /**
@@ -806,13 +834,14 @@ class EntriesWriteApiControllerTest {
         mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
                         .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"summary\":\"just a summary update\"}"))
                 .andExpect(status().isOk());
 
         assertEquals("kept title", entry.getTitle());
         assertEquals("kept body", entry.getText());
-        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(entry);
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any());
     }
 
     @Test
@@ -1048,6 +1077,7 @@ class EntriesWriteApiControllerTest {
         assertTrue(json.get("html").asString().contains("<strong>bold draft</strong>"),
                 "was: " + json.get("html").asString());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
         // renderPreview's own javadoc names flush() as the hazard: nothing on
         // this path may ever call it, or a preview would silently persist
         // over the stored entry (whole-branch review, Must Fix 7).
@@ -1184,12 +1214,14 @@ class EntriesWriteApiControllerTest {
         mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
                         .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"PUBLISHED\"}"))
                 .andExpect(status().isConflict())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
         assertEquals(WeblogEntry.PubStatus.TRASHED, entry.getStatus());
     }
 
@@ -1353,6 +1385,7 @@ class EntriesWriteApiControllerTest {
 
         assertTrue(body.contains(EVENT_FORMAT_DETAIL), body);
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
     }
 
     @Test
@@ -1381,6 +1414,7 @@ class EntriesWriteApiControllerTest {
         String body = mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
                         .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"eventEnd\":\"2026-08-02T18:00\"}"))
                 .andExpect(status().isBadRequest())
@@ -1388,6 +1422,7 @@ class EntriesWriteApiControllerTest {
 
         assertTrue(body.contains("eventEnd must not be before eventStart."), body);
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
     }
 
     @Test
@@ -1420,6 +1455,7 @@ class EntriesWriteApiControllerTest {
                 .andExpect(status().isBadRequest());
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
     }
 
     private static WeblogEntry aFullyDecoratedEntry(Weblog weblog) {
@@ -1448,6 +1484,7 @@ class EntriesWriteApiControllerTest {
         return mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
                         .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json));
     }
@@ -1477,7 +1514,7 @@ class EntriesWriteApiControllerTest {
         assertNull(entry.getEventEnd());
         assertNull(entry.getEventLocation());
         assertEquals("kept", entry.getTitle());
-        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(entry);
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any());
         tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
         for (String name : org.apache.roller.weblogger.ui.restapi.dto.EntryDtos.ENTRY_CLEARABLE) {
             if ("jsonLdType".equals(name)) {
@@ -1505,6 +1542,7 @@ class EntriesWriteApiControllerTest {
         assertTrue(body.contains("clear applies only to updates."), body);
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
     }
 
     @Test
@@ -1522,6 +1560,7 @@ class EntriesWriteApiControllerTest {
                 .andExpect(status().isBadRequest());
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
         assertEquals("s", entry.getSummary());
         assertEquals(32.9, entry.getGeoLatitude());
     }
@@ -1538,6 +1577,6 @@ class EntriesWriteApiControllerTest {
 
         assertNull(entry.getEventStart());
         assertEquals(end, entry.getEventEnd());
-        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(entry);
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any());
     }
 }

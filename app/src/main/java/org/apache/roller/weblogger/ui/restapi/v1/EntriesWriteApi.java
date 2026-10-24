@@ -146,7 +146,8 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         // The import step commits each image it stores; nothing has been
         // applied to the managed entry yet, so nothing of the write goes with it.
         apply(entry, weblog, imports.run(importPlan, weblog, body), cleared);
-        weblogger.getWeblogEntryManager().saveWeblogEntry(entry);
+        // The token's user made this save, so a revision it leaves names them.
+        weblogger.getWeblogEntryManager().saveWeblogEntry(entry, requireAuthenticatedUser(request));
         weblogger.flush();
         // As EntryEditController's save: an entry that is no longer published
         // leaves search, or search keeps offering a permalink that 404s.

@@ -37,9 +37,20 @@ import org.apache.roller.weblogger.pojos.WeblogEntrySearchCriteria;
 public interface WeblogEntryManager {
 
     /**
-     * Save weblog entry.
+     * Save weblog entry on behalf of the system (a scheduled task, a
+     * housekeeping call): a revision this save leaves is credited to the
+     * entry's creator. A save made by a person or an API token goes through
+     * {@link #saveWeblogEntry(WeblogEntry, User)}.
      */
     void saveWeblogEntry(WeblogEntry entry) throws WebloggerException;
+
+    /**
+     * Save weblog entry as {@code editor}, the user whose save this is. A
+     * revision records the content this save replaced, and names {@code
+     * editor} as the user who replaced it; a null editor falls back to the
+     * entry's creator, as the one-argument form does.
+     */
+    void saveWeblogEntry(WeblogEntry entry, User editor) throws WebloggerException;
        
     /**
      * Remove weblog entry permanently -- there is exactly one path to a hard

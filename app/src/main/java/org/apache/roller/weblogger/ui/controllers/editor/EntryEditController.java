@@ -354,7 +354,7 @@ public class EntryEditController extends BaseController {
             entry.setTitle(revision.getTitle());
             entry.setText(revision.getText());
             entry.setSummary(revision.getSummary());
-            weblogger.getWeblogEntryManager().saveWeblogEntry(entry);
+            weblogger.getWeblogEntryManager().saveWeblogEntry(entry, getAuthenticatedUser(request));
             weblogger.flush();
 
             if (entry.isPublished()) {
@@ -717,7 +717,7 @@ public class EntryEditController extends BaseController {
                     entry.setPinnedToMain(bean.getPinnedToMain());
                 }
 
-                weblogEntryManager.saveWeblogEntry(entry);
+                weblogEntryManager.saveWeblogEntry(entry, getAuthenticatedUser(request));
                 weblogger.flush();
 
                 if (entry.isPublished()) {

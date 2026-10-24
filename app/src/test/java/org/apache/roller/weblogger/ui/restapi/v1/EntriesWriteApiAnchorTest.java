@@ -176,6 +176,6 @@ class EntriesWriteApiAnchorTest {
         assertEquals(List.of("anchor"), EntriesWriteApiFixture.fields(problem));
         assertEquals("torrey-pines", stored.getAnchor());
         assertNull(stored.getSummary());
-        verify(fx.entries, never()).saveWeblogEntry(any());
+        verify(fx.entries, never()).saveWeblogEntry(any(), any());
     }
 }
