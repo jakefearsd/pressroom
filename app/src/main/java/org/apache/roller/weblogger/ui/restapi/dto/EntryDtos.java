@@ -229,8 +229,9 @@ public final class EntryDtos {
             @Schema(description = "True to stop new comments on this entry; existing ones stay. Not clearable.")
             Boolean commentsClosed,
             @Schema(description = "The entry's URL slug: lower-case letters and digits in words joined by - or _, "
-                    + "for example torrey-pines. Set only when the entry is created; omitted, it is made from the "
-                    + "title. Another entry of the weblog holding it, a trashed one included, answers 409.")
+                    + "for example torrey-pines. On create it sets the slug, made from the title when omitted, and "
+                    + "one another entry of the weblog holds, a trashed one included, answers 409; it cannot change "
+                    + "after. entries get (GET .../entries/by-anchor/{anchor}) finds the entry by it.")
             String anchor,
             @Schema(description = "A public http(s) URL of a JPEG, PNG, GIF or WebP image to import as the "
                     + "featured image, in one call. An image already in the weblog's default directory with the "

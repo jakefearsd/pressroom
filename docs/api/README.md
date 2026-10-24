@@ -547,6 +547,31 @@ also takes `edits` in place of `text` (below): it renders what an update
 with those edits would store, and saves nothing. On `.../entries/preview`,
 with no entry to apply them to, `edits` is a 400.
 
+### Smaller responses
+
+**`fields`** (a repeatable query parameter; an array in MCP) names the
+`EntryView` properties a response carries, on every route that returns
+entries: get (by id or by anchor), list, create, update and restore. `id`
+always comes back, and a property with no value is left out, as it is from
+the full view. A list keeps its envelope (`items`, `offset`, `limit`,
+`hasMore`) and projects each item. Without `fields`, or with it empty, a
+response is the whole entry, `text` included.
+
+```bash
+# every entry's slug and search description, for an SEO pass
+curl -sS -H "Authorization: Bearer $ROLLER_API_TOKEN" \
+  'http://localhost:8083/api/v1/weblogs/myblog/entries?fields=anchor&fields=searchDescription&limit=200'
+```
+
+```json
+{"items": [{"id": "a1b2c3", "anchor": "harbour-walk", "searchDescription": "A walk along the harbour."}],
+ "offset": 0, "limit": 200, "hasMore": false}
+```
+
+A name `EntryView` does not have is a 400 on `fields` whose message lists the
+valid names. On create and update it is reported with the write's other field
+problems, and nothing is written.
+
 ### Changing part of the text
 
 Every `EntryView` carries **`contentHash`**: the SHA-256 of the stored

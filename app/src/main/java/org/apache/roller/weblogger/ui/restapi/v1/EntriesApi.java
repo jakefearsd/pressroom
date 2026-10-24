@@ -1,5 +1,9 @@
 package org.apache.roller.weblogger.ui.restapi.v1;
 
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.apache.roller.weblogger.WebloggerException;
@@ -29,6 +33,10 @@ import org.springframework.web.bind.annotation.RestController;
  * Constraint: {@code UISecurityEnforced} declares its required permission
  * per controller, not per method, so splitting EDIT_DRAFT reads from a
  * stricter write permission is what keeps that declaration honest.
+ *
+ * <p>Each route takes {@code fields} ({@link EntryFields}), so its Java return
+ * type is {@code Object}; the {@code @ApiResponse} keeps openapi.json naming
+ * the view (or page) a caller gets without it.
  */
 @RestController
 @RequestMapping("/v1/weblogs/{handle}/entries")
@@ -46,7 +54,8 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
     private static final int MAX_LIMIT = 200;
 
     @GetMapping("")
-    public EntryDtos.EntryPage list(
+    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = EntryDtos.EntryPage.class)))
+    public Object list(
             HttpServletRequest request,
             @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "category", required = false) String category,
@@ -54,7 +63,9 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
             @RequestParam(value = "text", required = false) String text,
             @RequestParam(value = "locale", required = false) String locale,
             @RequestParam(value = "offset", defaultValue = "0") int offset,
-            @RequestParam(value = "limit", defaultValue = "50") int limit) throws WebloggerException {
+            @RequestParam(value = "limit", defaultValue = "50") int limit,
+            @Parameter(description = EntryFields.DESCRIPTION)
+            @RequestParam(value = "fields", required = false) List<String> fields) throws WebloggerException {
 
         // Reject rather than silently clamp: a negative offset reaches JPA's
         // setFirstResult and throws; limit=-1 reaches subList(0, -1) and
@@ -66,6 +77,7 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
         // contributor, and the contract says client-supplied garbage is a
         // 400, not a stack trace.
         Paging.requireRange(limit, offset);
+        EntryFields shown = EntryFields.of(fields);
 
         Weblog weblog = requireActionWeblog(request);
         int boundedLimit = Math.min(limit, MAX_LIMIT);
@@ -95,13 +107,17 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
         List<EntryDtos.EntryView> items = page.stream()
                 .map(entry -> EntryDtos.toView(entry, permalink(entry)))
                 .toList();
-        return new EntryDtos.EntryPage(items, offset, boundedLimit, hasMore);
+        return shown.project(new EntryDtos.EntryPage(items, offset, boundedLimit, hasMore));
     }
 
     @GetMapping("/{id}")
-    public EntryDtos.EntryView get(HttpServletRequest request, @PathVariable("id") String id) {
+    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = EntryDtos.EntryView.class)))
+    public Object get(HttpServletRequest request, @PathVariable("id") String id,
+                      @Parameter(description = EntryFields.DESCRIPTION)
+                      @RequestParam(value = "fields", required = false) List<String> fields) {
+        EntryFields shown = EntryFields.of(fields);
         WeblogEntry entry = requireEntry(request, id);
-        return EntryDtos.toView(entry, permalink(entry));
+        return shown.project(EntryDtos.toView(entry, permalink(entry)));
     }
 
     /**
@@ -111,8 +127,12 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
      * all the one 404 an unknown id gets.
      */
     @GetMapping("/by-anchor/{anchor}")
-    public EntryDtos.EntryView getByAnchor(HttpServletRequest request,
-                                           @PathVariable("anchor") String anchor) {
+    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = EntryDtos.EntryView.class)))
+    public Object getByAnchor(HttpServletRequest request,
+                              @PathVariable("anchor") String anchor,
+                              @Parameter(description = EntryFields.DESCRIPTION)
+                              @RequestParam(value = "fields", required = false) List<String> fields) {
+        EntryFields shown = EntryFields.of(fields);
         WeblogEntry entry = null;
         if (!anchor.isBlank()) {
             try {
@@ -125,7 +145,7 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
         if (entry == null || !requireActionWeblog(request).equals(entry.getWebsite())) {
             throw ApiException.notFound("No such entry.");
         }
-        return EntryDtos.toView(entry, permalink(entry));
+        return shown.project(EntryDtos.toView(entry, permalink(entry)));
     }
 
     private String permalink(WeblogEntry entry) {

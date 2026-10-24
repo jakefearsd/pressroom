@@ -74,6 +74,32 @@ class McpToolExecutorTest {
         assertEquals(List.of("PUBLISHED"), sent.query().get("status"));
     }
 
+    /**
+     * fields (spec 2026-10-24, section 2) is a query array on every entries
+     * action that returns entries, whichever variant of get the call selects,
+     * and on update it travels beside the JSON body, never inside it.
+     */
+    @Test
+    void entriesFieldsIsAnArrayThatReachesEachRouteAsARepeatedQueryParameter() {
+        List<String> asked = List.of("anchor", "searchDescription");
+        call("entries", Map.of("action", "get", "weblog", "b", "id", "e1", "fields", asked));
+        call("entries", Map.of("action", "get", "weblog", "b", "anchor", "harbour-walk", "fields", asked));
+        call("entries", Map.of("action", "list", "weblog", "b", "fields", asked));
+        call("entries", Map.of("action", "update", "weblog", "b", "id", "e1", "searchDescription", "New.",
+                "fields", asked));
+        call("entries", Map.of("action", "create", "weblog", "b", "title", "t", "text", "x", "fields", asked));
+        call("entries", Map.of("action", "restore", "weblog", "b", "id", "e1", "fields", asked));
+
+        assertEquals(List.of("/v1/weblogs/b/entries/e1", "/v1/weblogs/b/entries/by-anchor/harbour-walk",
+                "/v1/weblogs/b/entries", "/v1/weblogs/b/entries/e1", "/v1/weblogs/b/entries",
+                "/v1/weblogs/b/entries/e1/restore"), dispatched.stream().map(ApiCall::path).toList());
+        for (ApiCall sent : dispatched) {
+            assertEquals(asked, sent.query().get("fields"), sent.path());
+        }
+        String update = dispatched.get(3).jsonBody();
+        assertTrue(update.contains("\"searchDescription\":\"New.\"") && !update.contains("fields"), update);
+    }
+
     @Test
     void aBooleanQueryValueStringifiesPlainly() {
         call("users", Map.of("action", "list", "enabled", false));

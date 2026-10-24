@@ -16,7 +16,7 @@ class McpInstructionsTest {
                 "anchor", "errors", "featuredImageUrl", "importExternalImages", "[image id", "[gallery",
                 "[map]", "first copy", "Agent accounts", "ask your person",
                 "> [!NOTE]", "```java", "colors inline", "`warnings`",
-                "contentHash", "`edits`", "expectedContentHash", "entry-changed"}) {
+                "contentHash", "`edits`", "expectedContentHash", "entry-changed", "`fields`"}) {
             assertTrue(text.contains(point), "instructions must mention: " + point);
         }
         assertFalse(text.contains("never forbidden"), "a role ceiling answers 403");
