@@ -102,7 +102,17 @@ class ToolSchemasTest {
             assertEquals(schema.description(),
                     ((Map<String, Object>) props.get(component.getName())).get("description"), component.getName());
         }
-        // 14 through anchor (Task 3); featuredImageUrl, featuredImageAlt and importExternalImages (Task 8) make 17.
-        assertEquals(17, described);
+        // 14 through anchor (Task 3); featuredImageUrl, featuredImageAlt and importExternalImages (Task 8) make 17;
+        // summary, once it became the line under the title in entry lists, 18.
+        assertEquals(18, described);
+    }
+
+    /** The agent learns from the tool what a summary is for, and what readers see without one. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void theSummarySaysItIsTheListLineAndWhatShowsWithoutOne() {
+        String text = (String) ((Map<String, Object>) properties("entries").get("summary")).get("description");
+        assertTrue(text != null && text.contains("lists of entries") && text.contains("first couple of sentences"),
+                String.valueOf(text));
     }
 }

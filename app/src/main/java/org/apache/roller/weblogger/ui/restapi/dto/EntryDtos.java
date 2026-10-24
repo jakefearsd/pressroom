@@ -163,7 +163,12 @@ public final class EntryDtos {
      * lookup this pure mapper has no business making.
      */
     public record EntryWrite(
-            String title, String summary, String text,
+            String title,
+            @Schema(description = "A sentence or two shown under the title in lists of entries, and as the "
+                    + "feed's summary. Markdown is accepted; lists show it as plain text. Without one, lists show "
+                    + "the first couple of sentences of the text.")
+            String summary,
+            String text,
             @Schema(description = "DRAFT, PUBLISHED, PENDING or SCHEDULED; a new entry without one is a "
                     + "DRAFT. TRASHED is not writable: trash, restore and delete-forever are their own calls.")
             String status,

@@ -46,6 +46,13 @@ incidental re-save) — minor PII residue worth clearing.
   The `#entry` form is `display:contents`
   so the newsletter/revisions boxes' own `<form>`s (own CSRF token and POST
   target) sit in the rail's grid column without nesting.
+- **The Summary drawer** (under the writing surface, `bean.summary`) is the
+  line under the title in entry lists and the Atom `<summary>`: its tip
+  (`weblogEdit.summary.tip`) says so and that, left empty, lists show the
+  post's first couple of sentences (`$entry.excerpt`, see
+  `themes-and-templates.md`). Three rows, not ten, and the drawer opens on
+  an entry that already has one. The API documents the field the same way
+  (`EntryWrite.summary`), which reaches the MCP entries tool.
 - **`bean.pubTimeLocal` is the only pubtime field and means the WEBLOG's
   clock.** One `<input type="datetime-local">` replaced the old
   three-`<select>` row. `EntryBean.getPubTime(TimeZone)` parses the

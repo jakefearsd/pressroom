@@ -52,15 +52,22 @@
      rail. --%>
 
 <%-- A button, not an href="#" anchor: it toggles, it goes nowhere. The
-     textarea is named for itself, since the toggle above is no label. --%>
-<button type="button" class="editor-drawer collapsed" data-bs-toggle="collapse" data-bs-target="#collapseSummaryEditor"
-        aria-expanded="false" aria-controls="collapseSummaryEditor">
+     textarea is named for itself, since the toggle above is no label.
+     The summary is the line under the title in a list of entries (the
+     themes read it through WeblogEntryWrapper#getExcerpt) and the feed's
+     summary, so the tip says that and what a list shows without one. An
+     entry that has a summary opens with the drawer open: a written summary
+     should not be out of sight. --%>
+<button type="button" class="editor-drawer${empty bean.summary ? ' collapsed' : ''}" data-bs-toggle="collapse" data-bs-target="#collapseSummaryEditor"
+        aria-expanded="${empty bean.summary ? 'false' : 'true'}" aria-controls="collapseSummaryEditor">
     <spring:message code="weblogEdit.summary"/>
 </button>
-<div id="collapseSummaryEditor" class="collapse">
+<div id="collapseSummaryEditor" class="collapse${empty bean.summary ? '' : ' show'}">
     <div class="editor-drawer-body">
-        <textarea name="bean.summary" id="edit_summary" rows="10" class="col-sm-12"
+        <textarea name="bean.summary" id="edit_summary" rows="3" class="col-sm-12"
+                  aria-describedby="edit_summary_tip"
                   aria-label="<spring:message code='weblogEdit.summary'/>">${fn:escapeXml(bean.summary)}</textarea>
+        <div id="edit_summary_tip" class="form-text"><spring:message code="weblogEdit.summary.tip"/></div>
     </div>
 </div>
 

@@ -203,8 +203,30 @@ class EditorSurfaceJspTest {
         assertTrue(entryEditor.contains("id=\"edit_summary\"")
                         && entryEditor.contains("aria-label=\"<spring:message code='weblogEdit.summary'/>\""),
                 "the summary textarea has no visible label of its own");
-        assertTrue(entryEditor.contains("<button type=\"button\" class=\"editor-drawer collapsed\""),
+        assertTrue(entryEditor.contains("<button type=\"button\" class=\"editor-drawer${empty bean.summary ? ' collapsed' : ''}\""),
                 "the summary drawer's toggle is a button, not an href=\"#\" anchor");
+    }
+
+    /**
+     * The summary is the line a list of entries shows under the title, and
+     * the drawer says so: a tip tied to the field with aria-describedby,
+     * naming the fallback. And an entry that has a summary opens with the
+     * drawer open, so a written summary is never out of sight.
+     */
+    @Test
+    void theSummaryDrawerSaysWhatItIsForAndOpensWhenThereIsOne() throws IOException {
+        String entryEditor = read(ENTRY_EDITOR);
+        int textarea = entryEditor.indexOf("id=\"edit_summary\"");
+        String tag = entryEditor.substring(entryEditor.lastIndexOf("<textarea", textarea),
+                entryEditor.indexOf(">", textarea));
+        assertTrue(tag.contains("aria-describedby=\"edit_summary_tip\""), "the tip names the field: " + tag);
+        assertTrue(tag.contains("rows=\"3\""), "a sentence or two, not a second editor: " + tag);
+        assertTrue(entryEditor.contains("<div id=\"edit_summary_tip\" class=\"form-text\">"
+                + "<spring:message code=\"weblogEdit.summary.tip\"/></div>"), entryEditor);
+        assertTrue(entryEditor.contains("<div id=\"collapseSummaryEditor\" class=\"collapse${empty bean.summary ? '' : ' show'}\">"),
+                "the drawer opens on an entry that has a summary");
+        assertTrue(entryEditor.contains("aria-expanded=\"${empty bean.summary ? 'false' : 'true'}\""),
+                "and its toggle says so");
     }
 
     /**
