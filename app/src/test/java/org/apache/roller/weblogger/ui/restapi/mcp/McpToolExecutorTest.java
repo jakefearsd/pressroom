@@ -100,6 +100,28 @@ class McpToolExecutorTest {
         assertTrue(update.contains("\"searchDescription\":\"New.\"") && !update.contains("fields"), update);
     }
 
+    /** audits seo_entry (spec 2026-10-24, section 6) is one entry's audit, by its id. */
+    @Test
+    void auditsSeoEntryIsTheOneEntryAuditById() {
+        CallToolResult result = call("audits", Map.of("action", "seo_entry", "weblog", "b", "id", "e1"));
+
+        assertFalse(result.isError());
+        ApiCall sent = dispatched.get(0);
+        assertEquals("GET", sent.method());
+        assertEquals("/v1/weblogs/b/audit/seo/entries/e1", sent.path());
+        assertNull(sent.jsonBody());
+        assertTrue(sent.query().isEmpty(), sent.query().toString());
+    }
+
+    @Test
+    void auditsSeoEntryWithoutAnIdIsAToolErrorAndNothingIsDispatched() {
+        CallToolResult result = call("audits", Map.of("action", "seo_entry", "weblog", "b"));
+
+        assertTrue(result.isError());
+        assertTrue(text(result).contains("id"), text(result));
+        assertTrue(dispatched.isEmpty());
+    }
+
     @Test
     void aBooleanQueryValueStringifiesPlainly() {
         call("users", Map.of("action", "list", "enabled", false));

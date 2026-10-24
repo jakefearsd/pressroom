@@ -277,7 +277,8 @@ shape before assuming a field exists.**
   until it is `false`, not until a short page arrives. `GET .../comments`
   returns the same envelope.
 - `GET .../audit/seo` returns a `SeoAudit`: `{total, counts, entries}`. There
-  is no `hasMore`; `total` (and `counts`, the same per-gap-type tally) cover
+  is no `hasMore`; `total` (and `counts`, the same per-gap-type tally, with
+  every code the audit can report, zero or not) cover
   **every** gappy entry the search found, not just the current page, so an
   agent can read the shape of the problem without paging through it —
   `entries` alone is the `offset`/`limit`-sliced page.
@@ -541,7 +542,10 @@ with what gets published. Nothing is persisted; this is the only way to see
 `[gallery]`/`[map]`/etc. expand before committing to a save. The response
 is `{"html": "...", "warnings": [...]}`. `warnings` lists what will render
 badly, and is empty when nothing will: an element that sets a text color
-or background inline, or a code block that names no language. Warnings are
+or background inline, a code block that names no language, and the body
+checks of the [SEO audit](#audits) (an `h1` in the body, a skipped heading
+level, an image with no alt text, a link to a missing part of the entry or
+to an unpublished entry), each as a sentence. Warnings are
 advice: the same text saves without complaint. `POST .../entries/{id}/preview`
 also takes `edits` in place of `text` (below): it renders what an update
 with those edits would store, and saves nothing. On `.../entries/preview`,
@@ -887,6 +891,7 @@ All three are booleans and cannot be cleared.
 
 ```
 GET /api/v1/weblogs/{handle}/audit/seo[?status=&offset=&limit=]
+GET /api/v1/weblogs/{handle}/audit/seo/entries/{id}
 GET /api/v1/weblogs/{handle}/audit/media
 ```
 
@@ -894,12 +899,37 @@ These turn "improve SEO" / "describe your images" into a work list an agent
 can loop over: find a gap, fix it, re-run, confirm the count dropped.
 `READ`-role is enough — both are reads.
 
-**`audit/seo`** reports entries missing a search description, a meta title,
-or a featured image, plus entries explicitly marked `noindex` — over
-`PUBLISHED` entries by default. `total`/`counts` describe every gappy entry
+**`audit/seo`** reports, for each entry with anything to fix, its `entryId`,
+`anchor`, `title` and `gaps`: a list of the codes below that are not body
+checks — over `PUBLISHED` entries by default. An entry with no gaps is left
+out. `total`/`counts` describe every gappy entry
 found, not just the current page, so an agent can see the shape of the
 problem without paging through everything; only the `entries` array itself
-is paged.
+is paged. No entry body is rendered here; for those checks, audit one entry.
+
+**`audit/seo/entries/{id}`** runs every check on one entry, its body rendered
+exactly as it publishes: `{id, anchor, title, findings}`, each finding
+`{code, severity, message}` plus `value` and `limit` (characters) when a
+length is involved. `message` is a sentence saying what to change. An entry of
+another weblog, or none, is a 404; a trashed entry is a 409, as on every other
+entry route. The checks report findings, never a score:
+
+| Code | Finding | Severity |
+|---|---|---|
+| `missing_search_description`, `missing_meta_title`, `missing_featured_image` | The field is blank (whitespace counts as blank). | warning |
+| `noindex` | The entry asks search engines not to list it. | warning |
+| `search_description_long` | Over 160 characters: a search result cuts it off. | warning |
+| `search_description_short` | Under 50 characters: search engines tend to replace it. | info |
+| `title_long` | The page title is over 60 characters. The page title is the meta title, or without one the entry title, " — " and the weblog's name. | warning |
+| `title_duplicate`, `search_description_duplicate` | Another published entry of the weblog has the same page title or search description (case and spacing aside); the message names it by anchor. A draft is compared with the published entries. | warning |
+| `body_h1` | An `h1` in the body; the theme already prints the entry title as the page's `h1`. | warning |
+| `heading_skip` | A heading more than one level below the one before it (`h2` then `h4`); the entry title counts as the `h1` before the first. | info |
+| `image_alt_missing` | An image with no `alt`, or with only its file name as `alt` (what `[image]` falls back to for a media file with no alt text and no caption). `alt=""` marks a decorative image and is not reported. | warning |
+| `fragment_link_broken` | A link to `#x` with no `id="x"` in the body. `#` and `#top` always work. | warning |
+| `entry_link_broken` | A link to one of this weblog's entry urls, relative or absolute, whose anchor is not a published entry. | warning |
+
+Body checks (the last five) are `audit/seo/entries/{id}`'s and preview's;
+`audit/seo` lists the others.
 
 **`?status=TRASHED` is refused here with a 400 — unlike `GET .../entries`,
 which accepts it.** This is deliberate, not an oversight: the entries list
@@ -1110,7 +1140,7 @@ claude mcp add --transport http roller https://blog.example.com/api/mcp \
 | `pages` | `list`, `get`, `create`, `update`, `delete` |
 | `redirects` | `list`, `create`, `delete` |
 | `comments` | `list`, `get`, `update`, `delete`, `reply` |
-| `audits` | `seo`, `media` |
+| `audits` | `seo`, `seo_entry`, `media` |
 | `users` | `list`, `create`, `update` |
 | `site_settings` | `get`, `update` |
 | `maintenance` | `flush_cache`, `rebuild_index`, `regenerate_renditions` |
@@ -1153,7 +1183,7 @@ regenerate-renditions,users,config,weblogs}` (`admin reindex` is the old
 name of `rebuild-index` and still works). `bin/roller-api <group> --help`
 prints that group's full usage. It does not wrap categories and tags, pages,
 redirects, comments, weblog creation (`POST /api/v1/weblogs`), media imports
-by URL, or listing and revoking tokens: call those with `curl`, using the
+by URL, the one-entry SEO audit, or listing and revoking tokens: call those with `curl`, using the
 paths documented above, or through MCP.
 
 The CLI, REST and MCP name some operations differently:

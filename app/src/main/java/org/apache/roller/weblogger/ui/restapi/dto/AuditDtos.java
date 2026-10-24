@@ -1,10 +1,9 @@
 package org.apache.roller.weblogger.ui.restapi.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.roller.weblogger.business.seo.EntrySeoChecks;
 import org.apache.roller.weblogger.pojos.MediaFile;
 import org.apache.roller.weblogger.pojos.MediaFileDirectory;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
@@ -37,6 +36,18 @@ public final class AuditDtos {
      * get them.
      */
     public record SeoAudit(int total, Map<String, Integer> counts, List<SeoGap> entries) {
+    }
+
+    /**
+     * One {@link EntrySeoChecks.Finding} as the API writes it: {@code value}
+     * and {@code limit} only where a length is involved, absent otherwise.
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record SeoFinding(String code, String severity, String message, Integer value, Integer limit) {
+    }
+
+    /** Every SEO finding for one entry, its body included ({@code audits seo_entry}). */
+    public record SeoEntryAudit(String id, String anchor, String title, List<SeoFinding> findings) {
     }
 
     /**
@@ -78,6 +89,10 @@ public final class AuditDtos {
      * {@code isNotBlank} would close the divergence without weakening this
      * audit, but that is out of this task's scope.
      *
+     * <p>The rules themselves live in {@link EntrySeoChecks#gaps}, the one
+     * SEO rule set; this keeps the codes {@code audits seo} has always
+     * reported, and the audit adds the length and duplicate checks beside them.
+     *
      * <p>{@code noindex} is the one gap that is not a blank-string check: it
      * fires only when the entry is explicitly opted out of search,
      * {@code Boolean.TRUE.equals(...)} rather than a null check, since
@@ -85,24 +100,22 @@ public final class AuditDtos {
      * mistaken for "opted out".
      */
     public static List<String> gapsFor(WeblogEntry entry) {
-        List<String> gaps = new ArrayList<>();
-        if (StringUtils.isBlank(entry.getSearchDescription())) {
-            gaps.add("missing_search_description");
-        }
-        if (StringUtils.isBlank(entry.getMetaTitle())) {
-            gaps.add("missing_meta_title");
-        }
-        if (StringUtils.isBlank(entry.getFeaturedImageId())) {
-            gaps.add("missing_featured_image");
-        }
-        if (Boolean.TRUE.equals(entry.getNoindex())) {
-            gaps.add("noindex");
-        }
-        return gaps;
+        return codes(EntrySeoChecks.gaps(entry));
     }
 
     public static SeoGap toSeoGap(WeblogEntry entry) {
         return new SeoGap(entry.getId(), entry.getAnchor(), entry.getTitle(), gapsFor(entry));
+    }
+
+    /** The findings' codes, in order: what {@code audits seo} lists as an entry's {@code gaps}. */
+    public static List<String> codes(List<EntrySeoChecks.Finding> findings) {
+        return findings.stream().map(EntrySeoChecks.Finding::code).toList();
+    }
+
+    public static SeoEntryAudit toSeoEntryAudit(WeblogEntry entry, List<EntrySeoChecks.Finding> findings) {
+        return new SeoEntryAudit(entry.getId(), entry.getAnchor(), entry.getTitle(), findings.stream()
+                .map(f -> new SeoFinding(f.code(), f.severity(), f.message(), f.value(), f.limit()))
+                .toList());
     }
 
     public static MediaGap toMediaGap(MediaFile file) {

@@ -46,9 +46,9 @@ public final class McpToolCatalog {
                     action("delete_forever", "Permanently delete an entry that is already in the trash.",
                             "POST " + W + "/entries/{id}/delete-forever"),
                     action("preview", "Render text exactly as it would publish, without saving, with warnings "
-                            + "about what will render badly; with id, in that entry's context, and edits in place of "
-                            + "text show what an update with them would store.", "POST " + W + "/entries/{id}/preview",
-                            "POST " + W + "/entries/preview")),
+                            + "about what will render badly or hurt search; with id, in that entry's context, and "
+                            + "edits in place of text show what an update with them would store.",
+                            "POST " + W + "/entries/{id}/preview", "POST " + W + "/entries/preview")),
             tool("categories", "A weblog's categories and tags.", false,
                     action("list", "List categories.", "GET " + W + "/categories"),
                     action("create", "Create a category.", "POST " + W + "/categories"),
@@ -88,9 +88,14 @@ public final class McpToolCatalog {
                     action("delete", "Delete a comment and its reply.", "DELETE " + W + "/comments/{id}"),
                     action("reply", "Reply to a comment as the token's user; the reply is published.",
                             "POST " + W + "/comments/{id}/replies")),
-            tool("audits", "Work lists: entries missing SEO fields, media missing alt text.", true,
-                    action("seo", "Entries missing a search description, meta title or featured image, or "
-                            + "marked noindex.", "GET " + W + "/audit/seo"),
+            tool("audits", "Work lists: entries with SEO gaps, every SEO finding for one entry, media missing alt "
+                    + "text.", true,
+                    action("seo", "Entries missing a search description, meta title or featured image, marked "
+                            + "noindex, or with a page title or search description too long, too short or the same "
+                            + "as another entry's.", "GET " + W + "/audit/seo"),
+                    action("seo_entry", "Every SEO check for one entry, its rendered body included: headings, image "
+                            + "alt text, links to missing parts of the entry or to unpublished entries.",
+                            "GET " + W + "/audit/seo/entries/{id}"),
                     action("media", "Media files with no alt text.", "GET " + W + "/audit/media")),
             tool("users", "Site user accounts. Needs an ADMIN token. Admin accounts are read-only here: "
                     + "they are managed in the admin UI.", false,
