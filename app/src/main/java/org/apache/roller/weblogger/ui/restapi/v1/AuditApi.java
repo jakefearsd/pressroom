@@ -6,6 +6,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.roller.weblogger.WebloggerException;
+import org.apache.roller.weblogger.business.seo.EntrySeoChecks;
+import org.apache.roller.weblogger.business.seo.SeoBody;
 import org.apache.roller.weblogger.pojos.MediaFile;
 import org.apache.roller.weblogger.pojos.MediaFileFilter;
 import org.apache.roller.weblogger.pojos.Weblog;
@@ -19,6 +21,7 @@ import org.apache.roller.weblogger.ui.restapi.dto.AuditDtos;
 import org.apache.roller.weblogger.ui.restapi.dto.EntryDtos;
 import org.apache.roller.weblogger.ui.restapi.dto.MediaDtos;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -42,7 +45,9 @@ public class AuditApi extends BaseApiController implements UISecurityEnforced {
     private static final int MAX_LIMIT = 200;
 
     /**
-     * Entries whose {@link AuditDtos#gapsFor} is non-empty, over
+     * Entries with a finding among {@link EntrySeoChecks#AUDIT_CODES} --
+     * today's {@link AuditDtos#gapsFor} gaps, then the length checks and the
+     * duplicates among published entries -- over
      * {@code PUBLISHED} entries by default -- an SEO audit is about what a
      * reader can find, so widening it needs an explicit {@code ?status=}.
      *
@@ -59,6 +64,9 @@ public class AuditApi extends BaseApiController implements UISecurityEnforced {
      * {@code includeTrashed=false} override, because silently ignoring a
      * parameter the client asked for is its own trap. A caller who asks for
      * nothing at all gets the safe {@code PUBLISHED} default regardless.
+     *
+     * <p>No body is rendered here: that would render every entry of the
+     * weblog. The body checks are {@link #seoEntry}'s, one entry at a time.
      *
      * <p>{@code total}/{@code counts} are computed over every gappy entry
      * the search returns, not just the requested page -- an agent asking
@@ -103,16 +111,21 @@ public class AuditApi extends BaseApiController implements UISecurityEnforced {
         criteria.setIncludeTrashed(false);
 
         List<WeblogEntry> found = weblogger.getWeblogEntryManager().getWeblogEntries(criteria);
+        // Duplicates are among the PUBLISHED entries whatever status is
+        // audited: a draft's title collides with a live one's once it is
+        // published, and another draft's does not.
+        EntrySeoChecks.Duplicates duplicates = EntrySeoChecks.duplicates(
+                filterStatus == WeblogEntry.PubStatus.PUBLISHED ? found : publishedEntries(weblog), weblog);
 
+        // Every code the audit can report, zero or not, so the shape of the
+        // answer never depends on what this weblog happens to get wrong.
         Map<String, Integer> counts = new LinkedHashMap<>();
-        counts.put("missing_search_description", 0);
-        counts.put("missing_meta_title", 0);
-        counts.put("missing_featured_image", 0);
-        counts.put("noindex", 0);
+        EntrySeoChecks.AUDIT_CODES.forEach(code -> counts.put(code, 0));
 
         List<AuditDtos.SeoGap> gappy = new ArrayList<>();
         for (WeblogEntry entry : found) {
-            List<String> gaps = AuditDtos.gapsFor(entry);
+            List<String> gaps = new ArrayList<>(AuditDtos.codes(EntrySeoChecks.fields(entry, weblog)));
+            gaps.addAll(AuditDtos.codes(duplicates.of(entry)));
             if (gaps.isEmpty()) {
                 continue;
             }
@@ -128,6 +141,37 @@ public class AuditApi extends BaseApiController implements UISecurityEnforced {
                 : gappy.subList(offset, Math.min(offset + boundedLimit, total));
 
         return new AuditDtos.SeoAudit(total, counts, page);
+    }
+
+    /**
+     * Every SEO check for one entry, its rendered body included: the field
+     * checks of {@link #seo}, the duplicates among the weblog's published
+     * entries, and {@link SeoBody}'s checks of the body as it publishes
+     * ({@code EntryRenderer.transformedText}). Any entry of the weblog but a
+     * trashed one, which is refused as {@code seo} refuses
+     * {@code status=TRASHED}, and with the same 409 every other entry route
+     * gives it. Another weblog's entry is a 404, as a missing one is.
+     */
+    @GetMapping("/seo/entries/{id}")
+    public AuditDtos.SeoEntryAudit seoEntry(HttpServletRequest request, @PathVariable("id") String id)
+            throws WebloggerException {
+        WeblogEntry entry = requireLiveEntry(request, id);
+        Weblog weblog = requireActionWeblog(request);
+
+        List<EntrySeoChecks.Finding> findings = new ArrayList<>(EntrySeoChecks.fields(entry, weblog));
+        findings.addAll(EntrySeoChecks.duplicates(publishedEntries(weblog), weblog).of(entry));
+        String html = weblogger.getEntryRenderer().transformedText(entry);
+        findings.addAll(SeoBodies.findings(weblogger, weblog, entry, html));
+        return AuditDtos.toSeoEntryAudit(entry, findings);
+    }
+
+    /** Every published entry of the weblog: what a title or description must differ from. */
+    private List<WeblogEntry> publishedEntries(Weblog weblog) throws WebloggerException {
+        WeblogEntrySearchCriteria criteria = new WeblogEntrySearchCriteria();
+        criteria.setWeblog(weblog);
+        criteria.setStatus(WeblogEntry.PubStatus.PUBLISHED);
+        criteria.setIncludeTrashed(false);
+        return weblogger.getWeblogEntryManager().getWeblogEntries(criteria);
     }
 
     /**

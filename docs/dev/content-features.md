@@ -52,6 +52,24 @@ resolves through the index at the end of `CLAUDE.md`.
   `extension`, `x`) becomes the RFC 3966 `;ext=` parameter of the `tel:` link.
 - `[cta]` without `href` falls back to the weblog's booking URL, then the
   business's.
+- **SEO checks are one rule set, `business/seo/EntrySeoChecks` (fields,
+  duplicates) and `SeoBody` (rendered body)**, behind three surfaces: `audits
+  seo` (field codes only, never renders a body: it covers the whole weblog),
+  `audits seo_entry` (`GET .../audit/seo/entries/{id}`, everything) and the
+  body sentences in `entries preview`'s `warnings` (spec
+  `docs/superpowers/specs/2026-10-24-agent-editing-and-seo-design.md`, section
+  6). A new rule goes there, not into a surface. Lengths read `SeoLimits`
+  (the editor's counters do too), count code points, and `title_long`
+  measures what the themes' `permalink.vm` prints: the meta title when
+  non-empty, else the *unescaped* entry title, " — " and the weblog name; a
+  theme that changes its `<title>` changes `EntrySeoChecks.pageTitle` with it.
+  `SeoBody` reads HTML through the OWASP lexer like `Excerpts`, never a
+  regex, and is pure: it says which entry anchors and image sources it needs
+  resolved, and `ui.restapi.v1.SeoBodies` looks them up (published? which
+  media file?) and lets a failed lookup propagate, since a check that could
+  not run must not read as passed. `image_alt_missing` recognises the
+  `[image]` fallback by `GalleryMarkup.fileNameAsAlt`, so the two cannot
+  drift; `alt=""` is decorative and never reported.
 - **Cache expiry.** Weblog pages and feeds expire only through
   `weblog.lastModified`, so saving a shared business touches `lastModified` of
   every weblog using it (`BusinessManager.saveBusiness`); otherwise their cards

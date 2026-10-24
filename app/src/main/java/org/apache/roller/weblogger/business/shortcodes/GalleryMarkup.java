@@ -357,9 +357,11 @@ public final class GalleryMarkup {
      * extension dropped and runs of {@code _}/{@code -} turned into spaces,
      * so a screen reader says "IMG 2034 sunset", not "IMG_2034-sunset.jpg".
      * A name with nothing left after that is kept as it was. Shared with
-     * {@link ImageShortcode}.
+     * {@link ImageShortcode}, and with the SEO checks
+     * ({@code EntrySeoChecks}), which read an alt equal to it as no
+     * description at all.
      */
-    static String fileNameAsAlt(String name) {
+    public static String fileNameAsAlt(String name) {
         String trimmed = StringUtils.strip(StringUtils.defaultString(name));
         int dot = trimmed.lastIndexOf('.');
         String stem = dot > 0 ? trimmed.substring(0, dot) : trimmed;

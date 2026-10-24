@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.time.Clock;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -363,8 +364,14 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * rather than failing: previewing a blank editor is a normal moment, not
      * an error. (A missing body never gets here: {@code ApiExceptionHandler}
      * answers it with a 400.)
+     *
+     * <p>The warnings are {@link PreviewLint}'s, then the SEO body checks'
+     * ({@link SeoBodies}, the same ones {@code audit/seo/entries/{id}}
+     * reports), each a sentence. Their lookups are reads whose queries never
+     * flush ({@code FlushModeType.COMMIT}), so they cannot persist the text
+     * set below either.
      */
-    private EntryDtos.PreviewView renderPreview(WeblogEntry entry, String text) {
+    private EntryDtos.PreviewView renderPreview(WeblogEntry entry, String text) throws WebloggerException {
         // Mutates a JPA-managed entity (when entry came from requireLiveEntry
         // rather than the previewNew scratch path) without saving. Safe only
         // because nothing on this request path calls weblogger.flush() or
@@ -372,7 +379,9 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         // silently persist preview text over the stored entry.
         entry.setText(text == null ? "" : text);
         String html = weblogger.getEntryRenderer().transformedText(entry);
-        return new EntryDtos.PreviewView(html, PreviewLint.warnings(html));
+        List<String> warnings = new ArrayList<>(PreviewLint.warnings(html));
+        warnings.addAll(SeoBodies.warnings(weblogger, entry.getWebsite(), entry, html));
+        return new EntryDtos.PreviewView(html, warnings);
     }
 
     /**
