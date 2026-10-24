@@ -38,6 +38,7 @@ import org.apache.roller.util.DateUtil;
 import org.apache.roller.util.RollerConstants;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.ListmonkClient;
+import org.apache.roller.weblogger.business.seo.SeoLimits;
 import org.apache.roller.weblogger.business.WeblogEntryManager;
 import org.apache.roller.weblogger.business.search.IndexManager;
 import org.apache.roller.weblogger.pojos.GlobalPermission;
@@ -816,6 +817,10 @@ public class EntryEditController extends BaseController {
         }
 
         model.addAttribute("categories", getCategories(request));
+        // The SEO drawer's character counts read the same limits the audits use.
+        model.addAttribute("seoTitleMax", SeoLimits.TITLE_MAX);
+        model.addAttribute("seoDescriptionMax", SeoLimits.DESCRIPTION_MAX);
+        model.addAttribute("seoDescriptionMin", SeoLimits.DESCRIPTION_MIN);
         boolean mayPost = hasWeblogAction(getActionWeblog(request),
                 getAuthenticatedUser(request), WeblogPermission.POST);
         model.addAttribute("userAnAuthor", mayPost);

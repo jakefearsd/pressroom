@@ -332,11 +332,24 @@
 
                     <%-- meta title (falls back to the entry title on the public page) --%>
                     <label class="editor-field-label" for="seo_metaTitle"><spring:message code="weblogEdit.metaTitle"/></label>
-                    <input type="text" id="seo_metaTitle" name="bean.metaTitle" value="${fn:escapeXml(bean.metaTitle)}" maxlength="255" class="form-control"/>
+                    <input type="text" id="seo_metaTitle" name="bean.metaTitle" value="${fn:escapeXml(bean.metaTitle)}" maxlength="255" class="form-control" aria-describedby="seo_metaTitle_count"/>
+                    <%-- Live count against SeoLimits (the model supplies the numbers). Over the
+                         limit is a warning in words, not an error: nothing blocks a save. --%>
+                    <div id="seo_metaTitle_count" class="form-text seo-count" aria-live="polite"
+                         data-max="${seoTitleMax}" data-weblog-name="${fn:escapeXml(actionWeblog.name)}">
+                        <span class="seo-count-n">0</span> / ${seoTitleMax} <spring:message code="weblogEdit.seoCount.title"/>
+                        <span class="seo-count-over text-warning" hidden><spring:message code="weblogEdit.seoCount.over"/></span>
+                    </div>
 
                     <%-- meta description (the entry's searchDescription column) --%>
                     <label class="editor-field-label" for="seo_metaDescription"><spring:message code="weblogEdit.metaDescription"/></label>
-                    <input type="text" id="seo_metaDescription" name="bean.searchDescription" value="${fn:escapeXml(bean.searchDescription)}" maxlength="255" class="form-control"/>
+                    <input type="text" id="seo_metaDescription" name="bean.searchDescription" value="${fn:escapeXml(bean.searchDescription)}" maxlength="255" class="form-control" aria-describedby="seo_metaDescription_count"/>
+                    <div id="seo_metaDescription_count" class="form-text seo-count" aria-live="polite"
+                         data-max="${seoDescriptionMax}" data-min="${seoDescriptionMin}">
+                        <span class="seo-count-n">0</span> / ${seoDescriptionMax} <spring:message code="weblogEdit.seoCount.description"/>
+                        <span class="seo-count-over text-warning" hidden><spring:message code="weblogEdit.seoCount.over"/></span>
+                        <span class="seo-count-short text-warning" hidden><spring:message code="weblogEdit.seoCount.short"/></span>
+                    </div>
 
                     <%-- Lightweight search-snippet preview, fed by JS from the
                          title/description fields.
@@ -431,6 +444,7 @@
                         <option value="TOURIST_TRIP" ${bean.jsonLdType == 'TOURIST_TRIP' ? 'selected' : ''}><spring:message code="weblogEdit.jsonLdType.touristTrip"/></option>
                         <option value="EVENT" ${bean.jsonLdType == 'EVENT' ? 'selected' : ''}><spring:message code="weblogEdit.jsonLdType.event"/></option>
                         <option value="FAQ_PAGE" ${bean.jsonLdType == 'FAQ_PAGE' ? 'selected' : ''}><spring:message code="weblogEdit.jsonLdType.faqPage"/></option>
+                        <option value="TECH_ARTICLE" ${bean.jsonLdType == 'TECH_ARTICLE' ? 'selected' : ''}><spring:message code="weblogEdit.jsonLdType.techArticle"/></option>
                     </select>
                     <div class="form-text"><spring:message code="weblogEdit.jsonLdType.tip"/></div>
 
@@ -802,6 +816,26 @@
         $('#seo_snippet_description').text(description);
     }
 
+    <%-- SEO panel: character counts. The title is measured the way themes print
+         it: the meta title when set, else the entry title, a dash and the weblog
+         name. An empty description shows no "short" warning (the audit reports
+         that gap). Limits come from the data-max / data-min attributes. --%>
+
+    function updateSeoCounts() {
+        var $t = $('#seo_metaTitle_count');
+        var meta = $.trim($('#seo_metaTitle').val());
+        var entryTitle = $.trim($("[name='bean.title']").val());
+        var titleLen = meta ? meta.length
+                : (entryTitle ? (entryTitle + ' \u2014 ' + $t.data('weblogName')).length : 0);
+        $t.find('.seo-count-n').text(titleLen);
+        $t.find('.seo-count-over').prop('hidden', titleLen <= $t.data('max'));
+        var $d = $('#seo_metaDescription_count');
+        var descLen = $.trim($('#seo_metaDescription').val()).length;
+        $d.find('.seo-count-n').text(descLen);
+        $d.find('.seo-count-over').prop('hidden', descLen <= $d.data('max'));
+        $d.find('.seo-count-short').prop('hidden', descLen === 0 || descLen >= $d.data('min'));
+    }
+
     <%-- SEO panel: the event rows appear only for the Event type. They keep
          their inputs (and their values) in the form while hidden, so a type
          switch is reversible and never wipes what the author typed. The
@@ -815,6 +849,8 @@
     $(document).ready(function () {
         updateSeoSnippet();
         $("#seo_metaTitle, #seo_metaDescription, [name='bean.title']").on('input', updateSeoSnippet);
+        updateSeoCounts();
+        $("#seo_metaTitle, #seo_metaDescription, [name='bean.title']").on('input', updateSeoCounts);
         updateSeoJsonLdRows();
         $('#seo_jsonldType').on('change', updateSeoJsonLdRows);
     });

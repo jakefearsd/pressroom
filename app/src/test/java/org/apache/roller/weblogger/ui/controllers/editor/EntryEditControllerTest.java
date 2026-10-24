@@ -757,6 +757,18 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
+    void theEditorHandsTheSeoCountersTheSharedLimits() throws Exception {
+        controller.entryAddExecute(request, model, bean);
+
+        assertEquals(org.apache.roller.weblogger.business.seo.SeoLimits.TITLE_MAX,
+                model.getAttribute("seoTitleMax"));
+        assertEquals(org.apache.roller.weblogger.business.seo.SeoLimits.DESCRIPTION_MAX,
+                model.getAttribute("seoDescriptionMax"));
+        assertEquals(org.apache.roller.weblogger.business.seo.SeoLimits.DESCRIPTION_MIN,
+                model.getAttribute("seoDescriptionMin"));
+    }
+
+    @Test
     void theEditorOffersTheWeblogsCategories() throws Exception {
         controller.entryAddExecute(request, model, bean);
 
