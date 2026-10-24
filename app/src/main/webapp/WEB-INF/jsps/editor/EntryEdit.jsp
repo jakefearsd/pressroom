@@ -823,14 +823,14 @@
 
     function updateSeoCounts() {
         var $t = $('#seo_metaTitle_count');
-        var meta = $.trim($('#seo_metaTitle').val());
-        var entryTitle = $.trim($("[name='bean.title']").val());
+        var meta = String($('#seo_metaTitle').val() || '').trim();
+        var entryTitle = String($("[name='bean.title']").val() || '').trim();
         var titleLen = meta ? meta.length
                 : (entryTitle ? (entryTitle + ' \u2014 ' + $t.data('weblogName')).length : 0);
         $t.find('.seo-count-n').text(titleLen);
         $t.find('.seo-count-over').prop('hidden', titleLen <= $t.data('max'));
         var $d = $('#seo_metaDescription_count');
-        var descLen = $.trim($('#seo_metaDescription').val()).length;
+        var descLen = String($('#seo_metaDescription').val() || '').trim().length;
         $d.find('.seo-count-n').text(descLen);
         $d.find('.seo-count-over').prop('hidden', descLen <= $d.data('max'));
         $d.find('.seo-count-short').prop('hidden', descLen === 0 || descLen >= $d.data('min'));
