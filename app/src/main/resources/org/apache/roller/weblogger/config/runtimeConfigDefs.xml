@@ -66,6 +66,10 @@
          <type>string</type>
          <default-value></default-value>
       </property-def>      
+      <property-def  name="site.privacy.page"  key="configForm.privacyPage">
+         <type>string</type>
+         <default-value></default-value>
+      </property-def>
       <property-def  name="site.frontpage.weblog.aggregated"  key="configForm.frontpageWeblogAggregated">
          <type>boolean</type>
          <default-value>false</default-value>

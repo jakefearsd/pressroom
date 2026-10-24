@@ -177,6 +177,11 @@ resolves through the index at the end of `CLAUDE.md`.
   `get`/`put`/`remove`/`clear`); each subclass keeps its `CACHE_ID`, singleton
   and `generateKey`. `SiteWideCache` is deliberately outside that hierarchy —
   its `get` takes no timestamp, having no per-weblog expiry.
+- **A Global Config save expires nothing by itself**, so a setting that
+  reaches rendered pages must touch weblogs. `site.privacy.page` (the footer's
+  privacy link) does: when its value changes, `GlobalConfigController`
+  touches and saves every weblog via `touchLastModified()`, so every blog's
+  cached pages and feeds pick the link up on the next request.
 - **A deploy is a change too.** `Last-Modified` (and the 304 check) for a
   weblog's pages, feeds and stylesheet is `weblog.lastModified` or this
   server's start, whichever is later (`ServingSince`,

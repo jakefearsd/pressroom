@@ -30,6 +30,7 @@ import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.RuntimeConfigProperty;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
+import org.apache.roller.weblogger.pojos.WeblogPage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -362,6 +363,206 @@ class GlobalConfigControllerTest {
         assertEquals(".GlobalConfig", view);
         assertEquals(List.of("generic.error.check.logs"), ControllerTestFixture.errors(model));
         assertEquals(List.of(), ControllerTestFixture.messages(model));
+    }
+
+    // --- site.privacy.page ---
+
+    private static final String PRIVACY = "site.privacy.page";
+    private static final String FRONT = "site.frontpage.weblog.handle";
+
+    private Map<String, RuntimeConfigProperty> privacyProps(String privacy, String front) throws Exception {
+        Map<String, RuntimeConfigProperty> stored = properties(PRIVACY, privacy);
+        stored.put(FRONT, new RuntimeConfigProperty(FRONT, front));
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+        return stored;
+    }
+
+    private HttpServletRequest privacyRequest(String privacy, String front) {
+        HttpServletRequest request = request();
+        when(request.getParameter(PRIVACY)).thenReturn(privacy);
+        when(request.getParameter(FRONT)).thenReturn(front);
+        return request;
+    }
+
+    private Weblog frontBlog(String handle) throws Exception {
+        Weblog blog = new Weblog();
+        blog.setHandle(handle);
+        when(weblogger.weblogManager().getWeblogByHandle(handle)).thenReturn(blog);
+        return blog;
+    }
+
+    private void page(Weblog blog, String slug, WeblogPage.PubStatus status) throws Exception {
+        WeblogPage page = new WeblogPage();
+        page.setStatus(status);
+        when(weblogger.weblogPageManager().getPageBySlug(blog, slug)).thenReturn(page);
+    }
+
+    private void assertRefused(Map<String, RuntimeConfigProperty> stored, String previous, String errorKey)
+            throws Exception {
+        assertEquals(1, ControllerTestFixture.errors(model).size(), ControllerTestFixture.errors(model).toString());
+        assertTrue(ControllerTestFixture.errors(model).get(0).startsWith(errorKey), ControllerTestFixture.errors(model).toString());
+        assertEquals(previous, stored.get(PRIVACY).getValue(), "the stored value must be left alone");
+        verify(weblogger.propertiesManager(), never()).saveProperties(any());
+    }
+
+    @Test
+    void privacyPageBlankIsAccepted() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = privacyProps("privacy", "");
+
+        controller.save(privacyRequest("  ", ""), model);
+
+        assertEquals(List.of(), ControllerTestFixture.errors(model));
+        assertEquals("", stored.get(PRIVACY).getValue());
+        verify(weblogger.propertiesManager()).saveProperties(stored);
+    }
+
+    @Test
+    void privacyPagePublishedSlugIsAccepted() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = privacyProps("", "front");
+        page(frontBlog("front"), "privacy", WeblogPage.PubStatus.PUBLISHED);
+
+        controller.save(privacyRequest(" privacy ", "front"), model);
+
+        assertEquals(List.of(), ControllerTestFixture.errors(model));
+        assertEquals("privacy", stored.get(PRIVACY).getValue());
+        verify(weblogger.propertiesManager()).saveProperties(stored);
+    }
+
+    @Test
+    void privacyPageIsCheckedAgainstTheStoredFrontpageWhenTheFormOmitsIt() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = privacyProps("", "front");
+        page(frontBlog("front"), "privacy", WeblogPage.PubStatus.PUBLISHED);
+
+        controller.save(privacyRequest("privacy", null), model);
+
+        assertEquals(List.of(), ControllerTestFixture.errors(model));
+        assertEquals("privacy", stored.get(PRIVACY).getValue());
+    }
+
+    @Test
+    void privacyPageUnknownSlugIsRefused() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = privacyProps("old", "front");
+        frontBlog("front");
+
+        controller.save(privacyRequest("nope", "front"), model);
+
+        assertRefused(stored, "old", "configForm.error.privacyPage.notFound");
+    }
+
+    @Test
+    void privacyPageDraftSlugIsRefused() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = privacyProps("old", "front");
+        page(frontBlog("front"), "privacy", WeblogPage.PubStatus.DRAFT);
+
+        controller.save(privacyRequest("privacy", "front"), model);
+
+        assertRefused(stored, "old", "configForm.error.privacyPage.notFound");
+    }
+
+    @Test
+    void privacyPageWithoutFrontpageBlogIsRefused() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = privacyProps("old", "");
+
+        controller.save(privacyRequest("privacy", ""), model);
+
+        assertRefused(stored, "old", "configForm.error.privacyPage.noFrontpage");
+    }
+
+    @Test
+    void privacyPageWithUnknownFrontpageBlogIsRefused() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = privacyProps("old", "ghost");
+
+        controller.save(privacyRequest("privacy", "ghost"), model);
+
+        assertRefused(stored, "old", "configForm.error.privacyPage.noFrontpage");
+    }
+
+    @Test
+    void privacyPageLookupFailureIsRefused() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = privacyProps("old", "front");
+        Weblog blog = frontBlog("front");
+        when(weblogger.weblogPageManager().getPageBySlug(blog, "privacy"))
+                .thenThrow(new WebloggerException("database down"));
+
+        controller.save(privacyRequest("privacy", "front"), model);
+
+        assertRefused(stored, "old", "configForm.error.privacyPage.notFound");
+    }
+
+    @Test
+    void privacyPageFrontpageLookupFailureIsRefused() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = privacyProps("old", "front");
+        when(weblogger.weblogManager().getWeblogByHandle("front"))
+                .thenThrow(new WebloggerException("database down"));
+
+        controller.save(privacyRequest("privacy", "front"), model);
+
+        assertRefused(stored, "old", "configForm.error.privacyPage.notFound");
+    }
+
+    @Test
+    void changingPrivacyPageTouchesEveryWeblog() throws Exception {
+        privacyProps("", "front");
+        page(frontBlog("front"), "privacy", WeblogPage.PubStatus.PUBLISHED);
+        Weblog a = new Weblog();
+        a.setHandle("a");
+        Weblog b = new Weblog();
+        b.setHandle("b");
+        java.util.Date past = new java.util.Date(1_000L);
+        a.setLastModified(past);
+        b.setLastModified(past);
+        when(weblogger.weblogManager().getWeblogs(any(), any(), any(), any(), anyInt(), anyInt()))
+                .thenReturn(List.of(a, b));
+
+        controller.save(privacyRequest("privacy", "front"), model);
+
+        assertEquals(List.of("generic.changes.saved"), ControllerTestFixture.messages(model));
+        assertTrue(a.getLastModified().after(past));
+        assertTrue(b.getLastModified().after(past));
+        verify(weblogger.weblogManager()).saveWeblog(a);
+        verify(weblogger.weblogManager()).saveWeblog(b);
+    }
+
+    @Test
+    void unchangedPrivacyPageTouchesNothing() throws Exception {
+        privacyProps("privacy", "front");
+        page(frontBlog("front"), "privacy", WeblogPage.PubStatus.PUBLISHED);
+        Weblog a = new Weblog();
+        java.util.Date past = new java.util.Date(1_000L);
+        a.setLastModified(past);
+        when(weblogger.weblogManager().getWeblogs(any(), any(), any(), any(), anyInt(), anyInt()))
+                .thenReturn(List.of(a));
+
+        controller.save(privacyRequest("privacy", "front"), model);
+
+        assertEquals(past, a.getLastModified());
+        verify(weblogger.weblogManager(), never()).saveWeblog(any());
+    }
+
+    @Test
+    void aFailedSaveDoesNotTouchTheWeblogs() throws Exception {
+        privacyProps("", "front");
+        page(frontBlog("front"), "privacy", WeblogPage.PubStatus.PUBLISHED);
+        doThrow(new WebloggerException("database down"))
+                .when(weblogger.propertiesManager()).saveProperties(any());
+
+        controller.save(privacyRequest("privacy", "front"), model);
+
+        verify(weblogger.weblogManager(), never()).saveWeblog(any());
+    }
+
+    @Test
+    void aFailureTouchingWeblogsIsReported() throws Exception {
+        privacyProps("", "front");
+        page(frontBlog("front"), "privacy", WeblogPage.PubStatus.PUBLISHED);
+        Weblog a = new Weblog();
+        when(weblogger.weblogManager().getWeblogs(any(), any(), any(), any(), anyInt(), anyInt()))
+                .thenReturn(List.of(a));
+        doThrow(new WebloggerException("database down")).when(weblogger.weblogManager()).saveWeblog(a);
+
+        controller.save(privacyRequest("privacy", "front"), model);
+
+        assertEquals(List.of("generic.error.check.logs"), ControllerTestFixture.errors(model));
     }
 
     // --- helpers ---

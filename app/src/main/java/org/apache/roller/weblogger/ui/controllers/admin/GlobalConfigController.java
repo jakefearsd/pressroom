@@ -35,6 +35,7 @@ import org.apache.roller.weblogger.config.runtime.RuntimeConfigDefs;
 import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.RuntimeConfigProperty;
 import org.apache.roller.weblogger.pojos.Weblog;
+import org.apache.roller.weblogger.pojos.WeblogPage;
 import org.apache.roller.weblogger.ui.controllers.BaseController;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -53,6 +54,7 @@ public class GlobalConfigController extends BaseController {
     private static final Logger log = LoggerFactory.getLogger(GlobalConfigController.class);
 
     private static final String FRONTPAGE_WEBLOG_HANDLE = "site.frontpage.weblog.handle";
+    private static final String PRIVACY_PAGE = "site.privacy.page";
 
     private final ResourceBundle bundle = ResourceBundle.getBundle("ApplicationResources");
 
@@ -163,6 +165,8 @@ public class GlobalConfigController extends BaseController {
             }
         }
 
+        validatePrivacyPage(accepted, properties, model, request);
+
         if (hasErrors(model)) {
             // Re-render what the admin typed, on detached copies: the managed
             // entities stay exactly as stored.
@@ -176,6 +180,8 @@ public class GlobalConfigController extends BaseController {
             return ".GlobalConfig";
         }
 
+        String previousPrivacy = properties.containsKey(PRIVACY_PAGE)
+                ? Objects.toString(properties.get(PRIVACY_PAGE).getValue(), "") : null;
         for (Map.Entry<String, String> change : accepted.entrySet()) {
             properties.get(change.getKey()).setValue(change.getValue());
             log.debug("Set {} = {}", change.getKey(), change.getValue());
@@ -187,6 +193,14 @@ public class GlobalConfigController extends BaseController {
             mgr.saveProperties(properties);
             weblogger.flush();
 
+            // Rendered pages expire only through weblog.lastModified, and a
+            // Global Config save does not move it, so a changed privacy link
+            // would stay out of every cached page. Touch every weblog.
+            if (previousPrivacy != null && accepted.containsKey(PRIVACY_PAGE)
+                    && !previousPrivacy.equals(accepted.get(PRIVACY_PAGE))) {
+                touchEveryWeblog();
+            }
+
             // notify user of our success
             addMessage(model, "generic.changes.saved", request);
 
@@ -196,6 +210,51 @@ public class GlobalConfigController extends BaseController {
         }
 
         return ".GlobalConfig";
+    }
+
+    /**
+     * The privacy page must be a published page on the front-page blog. This
+     * is a decision path: a lookup that could not run is an error, not a
+     * pass. The front-page handle is the one submitted in the same form when
+     * present, else the stored one.
+     */
+    private void validatePrivacyPage(Map<String, String> accepted,
+            Map<String, RuntimeConfigProperty> properties, Model model, HttpServletRequest request) {
+        String slug = accepted.get(PRIVACY_PAGE);
+        if (slug == null || slug.isEmpty()) {
+            return;
+        }
+        String handle = accepted.get(FRONTPAGE_WEBLOG_HANDLE);
+        if (handle == null && properties.get(FRONTPAGE_WEBLOG_HANDLE) != null) {
+            handle = properties.get(FRONTPAGE_WEBLOG_HANDLE).getValue();
+        }
+        if (handle == null || handle.isBlank()) {
+            addError(model, "configForm.error.privacyPage.noFrontpage", request);
+            return;
+        }
+        try {
+            Weblog frontpage = weblogger.getWeblogManager().getWeblogByHandle(handle);
+            if (frontpage == null) {
+                addError(model, "configForm.error.privacyPage.noFrontpage", request);
+                return;
+            }
+            WeblogPage page = weblogger.getWeblogPageManager().getPageBySlug(frontpage, slug);
+            if (page == null || page.getStatus() != WeblogPage.PubStatus.PUBLISHED) {
+                addError(model, "configForm.error.privacyPage.notFound", request);
+            }
+        } catch (WebloggerException ex) {
+            log.error("Error checking the privacy page", ex);
+            addError(model, "configForm.error.privacyPage.notFound", request);
+        }
+    }
+
+    private void touchEveryWeblog() throws WebloggerException {
+        WeblogManager mgr = weblogger.getWeblogManager();
+        for (Weblog weblog : mgr.getWeblogs(null, null, null, null, 0, -1)) {
+            weblog.touchLastModified();
+            mgr.saveWeblog(weblog);
+        }
+        weblogger.flush();
     }
 
     private Map<String, RuntimeConfigProperty> loadProperties() {

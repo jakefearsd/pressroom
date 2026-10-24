@@ -145,6 +145,15 @@ resolves through the index at the end of `CLAUDE.md`.
   `.sidebar-group` (`border-top`, padding) with a `.sidebar-label` heading in
   the rail's caps-label role (12px/600/.08em/uppercase). Every sidebar form
   gets `class="form-stacked"`.
+- **Global Config validates `site.privacy.page` at save**: non-blank must be
+  the slug of a *published* Page on the front-page blog (the handle submitted
+  in the same form, else the stored one), checked in
+  `GlobalConfigController.validatePrivacyPage`. Fail closed: no front-page
+  blog, an unknown or draft slug, or a lookup that throws all add a field
+  error, nothing is saved and the form re-renders the previous value. No
+  per-request check, so unpublishing the page later leaves a dead link (the
+  field label says so). A changed value touches every weblog (see
+  `themes-and-templates.md`, render-cache expiry).
 - **The top bar's weblog switcher appears only for a user on ≥ 2 weblogs.**
   `BaseController.populateCommonModel` resolves the caller's weblog
   permissions to `List<Weblog>` and adds `userWeblogs` only then.
