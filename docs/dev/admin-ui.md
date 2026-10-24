@@ -230,6 +230,7 @@ resolves through the index at the end of `CLAUDE.md`.
   Saving a business touches `lastModified` of every weblog using it (see
   Business profiles in content-features.md).
 - **Copyright**: Settings carries a per-blog `copyright` (V038, plain text, 255 max, blank stored as null so the footer falls back to "(c) year blog name"); the bean trims it, `WeblogSettingsRules` bounds it, `/api/v1` mirrors `tagline`.
+- **Footer (colophon)**: `tiles/footer.jsp` renders one `Colophon.of(weblogger, null, clock)` record (holder = `site.name` on admin screens): `div.colophon` > `p.colophon-copyright`, `p.colophon-meta` (privacy link, `Roller 0.4.0 (abc1234)`, `released yyyy-MM-dd`, each a span, dots from CSS, each omitted when null). Keys are `footer.copyright.default|privacy|version|version.revision|released`; the Velocity footer reuses them and the three class names. Colophon strings are raw: the JSP `fn:escapeXml`s each, and passes message arguments as nested `<spring:argument>` tags, because a string `arguments=` attribute is split on commas and a holder can contain one (the year goes through `escapeXml` too, so MessageFormat prints `2026`, not `2,026`). Every full-page layout includes the footer tile; `tiles-popuppage` (modal/iframe) and `tiles-barepage` (transient script iframe) deliberately do not, and the pre-bootstrap install layouts map it to `empty.jsp` (`AdminChromeJspTest`).
 
 ## Categories
 - **Ownership-check every id.** `BaseController.lookupEntry`/

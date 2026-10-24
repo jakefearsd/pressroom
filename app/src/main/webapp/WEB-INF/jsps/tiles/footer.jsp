@@ -18,40 +18,40 @@
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
 <%@ page session="false" %>
 
-
-<%-- The business tier is reached through the WebloggerProvider bean, never a
-     static: same behaviour as before (throws before bootstrap, which no page
-     carrying this footer can reach). --%>
-<% org.apache.roller.weblogger.business.Weblogger rollerTier =
+<%-- Every word and fact comes from one Colophon record, the same one the
+     reader-page footer renders (docs/dev/admin-ui.md, "Footer"). Colophon.of
+     never throws: a display path degrades to omitting a clause. The business
+     tier is reached through the WebloggerProvider bean, never a static: this
+     throws before bootstrap, which no page carrying this footer can reach
+     (the install layouts map the footer tile to empty.jsp). weblog is null on
+     admin screens, so the copyright holder is the site name. --%>
+<% request.setAttribute("colophon", org.apache.roller.weblogger.business.Colophon.of(
       org.springframework.web.context.support.WebApplicationContextUtils
           .getRequiredWebApplicationContext(application)
           .getBean(org.apache.roller.weblogger.business.WebloggerProvider.class)
-          .getWeblogger();
-   request.setAttribute("rollerVersion", rollerTier.getVersion());
-   request.setAttribute("rollerRevision", rollerTier.getRevision()); %>
+          .getWeblogger(),
+      null, java.time.Clock.systemDefaultZone())); %>
 
-<span class="roller-footer">
-<%-- "${request.rollerVersion}" would be wrong here: inside JSP EL, the bare
-     identifier "request" is the *implicit* HttpServletRequest object, not a
-     shorthand for requestScope -- ".rollerVersion" would try (and fail) to
-     call a getRollerVersion() bean-property getter on the servlet request
-     itself, not read the attribute set above. That mistake ("${request.version}"
-     /"${request.revision}") is exactly what rendered every footer as
-     "Version  ()": both resolved to null, and spring:message dutifully
-     formatted the two blanks into the pattern. Bare "${rollerVersion}" lets
-     EL's normal scope search (page/request/session/application) find the
-     request attribute directly. When it is somehow still empty (a version
-     resource that failed to load), skip the "Version" clause instead of
-     rendering empty parens. --%>
+<%-- All Colophon strings are raw, so each is escaped here. Arguments are nested
+     spring:argument tags, not an "arguments" string: spring:message splits that
+     on commas, and a copyright holder can contain one. spring:message does not
+     escape arguments itself. A bare "${colophon.copyrightYear}" would format as
+     "2,026" through MessageFormat; fn:escapeXml makes it the string "2026". --%>
+<div class="colophon">
+<c:if test="${not empty colophon.copyrightText or not empty colophon.copyrightHolder}">
+<p class="colophon-copyright">
 <c:choose>
-<c:when test="${not empty rollerVersion}">
-<%-- The short revision: the full 40-character hash scrolled the footer
-     sideways at phone width, and seven characters identify a commit. --%>
-<spring:message code="footer.productName" arguments="${rollerVersion},${fn:substring(rollerRevision, 0, 7)}"/>
-</c:when>
-<c:otherwise>
-<spring:message code="footer.productNameNoVersion"/>
-</c:otherwise>
+<c:when test="${not empty colophon.copyrightText}">${fn:escapeXml(colophon.copyrightText)}</c:when>
+<c:otherwise><spring:message code="footer.copyright.default"><spring:argument value="${fn:escapeXml(colophon.copyrightYear)}"/><spring:argument value="${fn:escapeXml(colophon.copyrightHolder)}"/></spring:message></c:otherwise>
 </c:choose>
-</span>
-
+</p>
+</c:if>
+<p class="colophon-meta">
+<c:if test="${not empty colophon.privacyUrl}"><span class="colophon-privacy"><a href="${fn:escapeXml(colophon.privacyUrl)}"><spring:message code="footer.privacy"/></a></span></c:if>
+<c:if test="${not empty colophon.version}"><span class="colophon-version"><c:choose>
+<c:when test="${not empty colophon.shortRevision}"><spring:message code="footer.version.revision"><spring:argument value="${fn:escapeXml(colophon.version)}"/><spring:argument value="${fn:escapeXml(colophon.shortRevision)}"/></spring:message></c:when>
+<c:otherwise><spring:message code="footer.version"><spring:argument value="${fn:escapeXml(colophon.version)}"/></spring:message></c:otherwise>
+</c:choose></span></c:if>
+<c:if test="${not empty colophon.releaseDate}"><span class="colophon-released"><spring:message code="footer.released"><spring:argument value="${fn:escapeXml(colophon.releaseDate)}"/></spring:message></span></c:if>
+</p>
+</div>

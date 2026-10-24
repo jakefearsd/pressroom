@@ -560,14 +560,27 @@ label,
     font-weight: 600;
 }
 
-/* ---- Footer: one quiet attribution line ---- */
+/* ---- Footer: the colophon, two quiet lines ---- */
 
-.roller-footer {
-    display: inline-flex;
-    align-items: center;
+.colophon {
     font-family: var(--font-ui);
     font-size: 12px;
     color: var(--ink-soft);
+}
+
+.colophon p {
+    margin: 0;
+}
+
+.colophon a {
+    color: inherit;
+}
+
+/* The clauses are spans so the separator is CSS, not template logic: any
+   clause may be absent and the dots still land only between neighbours. */
+.colophon-meta span + span::before {
+    content: "\00b7";
+    margin: 0 0.5em;
 }
 
 .date-form {

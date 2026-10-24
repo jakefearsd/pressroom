@@ -173,7 +173,7 @@ final class MessageUsageScanner {
                 if (ARGUMENT_SEPARATOR_ATTRIBUTE.matcher(attributes).find()) {
                     argCount = UNRESOLVED;
                 } else if (!arguments.find()) {
-                    argCount = 0;
+                    argCount = nestedArgumentCount(source, tag);
                 } else {
                     String value = arguments.group(1) != null ? arguments.group(1) : arguments.group(2);
                     argCount = countTagArguments(value);
@@ -182,6 +182,27 @@ final class MessageUsageScanner {
             }
         }
         return usages;
+    }
+
+    /**
+     * Arguments passed as nested {@code <spring:argument>} tags (the form that
+     * survives a comma in a value, which an {@code arguments} string does not);
+     * zero for a self-closing tag.
+     */
+    private static int nestedArgumentCount(String source, Matcher tag) {
+        if (tag.group().endsWith("/>")) {
+            return 0;
+        }
+        int close = source.indexOf("</spring:message>", tag.end());
+        if (close < 0) {
+            return 0;
+        }
+        Matcher nested = Pattern.compile("<spring:argument\\b").matcher(source.substring(tag.end(), close));
+        int count = 0;
+        while (nested.find()) {
+            count++;
+        }
+        return count;
     }
 
     private static void addLiteralMatches(List<Usage> usages, Pattern pattern, String source, String rel) {

@@ -64,12 +64,83 @@ class AdminChromeJspTest {
                 "the pending count rides .status-pill.status-pending: " + before);
     }
 
-    /** A 40-character commit hash scrolled the footer sideways at phone width. */
+    /**
+     * A 40-character commit hash scrolled the footer sideways at phone width.
+     * The seven-character cut now lives in {@code Colophon.shortRevision}
+     * (one place for the JSP and Velocity footers), so the footer prints that.
+     */
     @Test
     void theFooterShowsAShortRevision() {
         String src = jsp("tiles/footer.jsp");
-        assertTrue(src.contains("fn:substring(rollerRevision, 0, 7)"),
-                "the footer prints the short (7-character) revision");
+        assertTrue(src.contains("colophon.shortRevision"),
+                "the footer prints the short (7-character) revision from the Colophon");
+        assertFalse(src.contains("rollerRevision"), "no second, raw revision path");
+    }
+
+    /** AC4: every full-page admin layout carries the footer tile. */
+    @Test
+    void everyFullPageLayoutIncludesTheFooterTile() throws IOException {
+        // popuppage renders inside a modal/iframe, barepage is a transient
+        // script-only iframe document: neither is a page a reader lands on.
+        java.util.Set<String> chromeless = java.util.Set.of("tiles-popuppage.jsp", "tiles-barepage.jsp");
+        String resolver = Files.readString(
+                Path.of("src/main/java/org/apache/roller/weblogger/ui/controllers/RollerViewResolver.java"),
+                StandardCharsets.UTF_8);
+        int checked = 0;
+        try (var layouts = Files.list(JSPS.resolve("tiles"))) {
+            for (Path layout : layouts.filter(f -> f.getFileName().toString().matches("tiles-.*\\.jsp")).toList()) {
+                String file = layout.getFileName().toString();
+                if (chromeless.contains(file)) {
+                    continue;
+                }
+                checked++;
+                assertTrue(Files.readString(layout, StandardCharsets.UTF_8).contains("${tile_footer}"),
+                        file + " must include ${tile_footer}");
+                String name = file.substring(0, file.length() - ".jsp".length());
+                int at = resolver.indexOf("addDefinition(\"." + name + "\"");
+                assertTrue(at >= 0, "no base definition for ." + name);
+                String definition = resolver.substring(at, resolver.indexOf("));", at));
+                assertTrue(definition.contains("\"footer\"") && definition.contains("tiles/footer.jsp"),
+                        "." + name + " must map footer to tiles/footer.jsp");
+            }
+        }
+        assertEquals(6, checked, "the full-page layouts: mainmenu, tabbed, simple, login, install, error");
+    }
+
+    /** The footer renders the Colophon through the shared footer.* keys, escaped. */
+    @Test
+    void footerRendersColophon() {
+        String src = jsp("tiles/footer.jsp");
+        for (String key : new String[] {"footer.version.revision", "footer.version", "footer.released",
+                "footer.privacy", "footer.copyright.default"}) {
+            assertTrue(src.contains("\"" + key + "\""), "footer.jsp uses " + key);
+        }
+        assertTrue(src.contains("class=\"colophon\""));
+        assertTrue(src.contains("colophon-copyright"));
+        assertTrue(src.contains("colophon-meta"));
+        assertTrue(src.contains("fn:escapeXml(colophon.copyrightText)"));
+        assertTrue(src.contains("fn:escapeXml(colophon.copyrightHolder)"));
+        assertTrue(src.contains("fn:escapeXml(colophon.privacyUrl)"));
+        assertFalse(src.contains("footer.productName"), "the old 'Powered by' keys are gone");
+        // A holder may contain commas: spring:message splits a string
+        // "arguments" attribute on them, so arguments are nested tags.
+        assertFalse(src.contains("arguments="), "arguments go in spring:argument, never a comma-split string");
+    }
+
+    /**
+     * AC9: the footer is a display path. Colophon.of never throws, so it must
+     * be the only business-tier call the JSP makes besides locating Weblogger.
+     */
+    @Test
+    void footerRendersWhenRuntimeConfigThrows() {
+        String src = jsp("tiles/footer.jsp");
+        assertTrue(src.contains("Colophon.of("));
+        String scriptlets = src.replaceAll("(?s)<%--.*?--%>", "");
+        assertFalse(scriptlets.contains("WebloggerRuntimeConfig"), "config is read inside Colophon.of only");
+        assertFalse(scriptlets.contains("getWeblogManager"));
+        assertFalse(scriptlets.contains("getVersion()"));
+        assertFalse(scriptlets.contains("getRevision()"));
+        assertFalse(scriptlets.contains("getBuildTime()"));
     }
 
     /**
