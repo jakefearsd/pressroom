@@ -67,13 +67,21 @@ public record Colophon(String version, String shortRevision, String releaseDate,
         }
     }
 
-    /** weblog may be null (admin screens: holder = site.name). Never throws. */
+    /**
+     * weblog may be null (admin screens: holder = site.name). weblogger may be
+     * null too (install and pre-bootstrap pages): the version facts then come
+     * straight from the packaged {@code /roller-version.properties}, with no
+     * runtime-config or database access, so there is no copyright holder and
+     * no privacy link. Never throws.
+     */
     public static Colophon of(Weblogger weblogger, Weblog weblog, Clock clock) {
+        if (weblogger == null) {
+            return packaged(clock);
+        }
         String version = nullToEmpty(guard(weblogger::getVersion));
         String revision = nullToEmpty(guard(weblogger::getRevision));
         String date = releaseDate(guard(weblogger::getBuildTime));
-        String shortRevision = revision.length() > SHORT_REVISION_LENGTH
-                ? revision.substring(0, SHORT_REVISION_LENGTH) : revision;
+        String shortRevision = shorten(revision);
 
         String custom = null;
         String holder = "";
@@ -94,6 +102,27 @@ public record Colophon(String version, String shortRevision, String releaseDate,
         int year = clock.instant().atZone(RELEASE_ZONE).getYear();
         return new Colophon(version, shortRevision, date, custom, holder, year,
                 privacyUrl(weblogger));
+    }
+
+    private static String shorten(String revision) {
+        return revision.length() > SHORT_REVISION_LENGTH
+                ? revision.substring(0, SHORT_REVISION_LENGTH) : revision;
+    }
+
+    /** The no-Weblogger colophon: version facts only, same keys WebloggerImpl reads. */
+    private static Colophon packaged(Clock clock) {
+        java.util.Properties props = new java.util.Properties();
+        try (java.io.InputStream in = Colophon.class.getResourceAsStream("/roller-version.properties")) {
+            if (in != null) {
+                props.load(in);
+            }
+        } catch (java.io.IOException | RuntimeException e) { // display path: omit the clauses
+            props.clear();
+        }
+        int year = clock.instant().atZone(RELEASE_ZONE).getYear();
+        return new Colophon(nullToEmpty(props.getProperty("ro.version")),
+                shorten(nullToEmpty(props.getProperty("ro.revision"))),
+                releaseDate(props.getProperty("ro.buildTime")), null, "", year, null);
     }
 
     /** True when the blog supplied its own copyright notice. */

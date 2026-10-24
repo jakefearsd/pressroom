@@ -135,6 +135,9 @@ class AdminChromeJspTest {
     void footerRendersWhenRuntimeConfigThrows() {
         String src = jsp("tiles/footer.jsp");
         assertTrue(src.contains("Colophon.of("));
+        // Before bootstrap the provider bean throws: the lookup must be guarded
+        // so the footer still renders (version from the packaged properties).
+        assertTrue(src.contains("catch (RuntimeException"), "the Weblogger lookup is guarded");
         String scriptlets = src.replaceAll("(?s)<%--.*?--%>", "");
         assertFalse(scriptlets.contains("WebloggerRuntimeConfig"), "config is read inside Colophon.of only");
         assertFalse(scriptlets.contains("getWeblogManager"));

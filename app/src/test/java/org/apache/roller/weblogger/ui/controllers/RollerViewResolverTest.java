@@ -229,6 +229,7 @@ class RollerViewResolverTest {
         return switch (viewName) {
             case ".Comments", ".Submissions", ".Agent", ".AgentCreate", ".ApiTokens" -> "/WEB-INF/jsps/tiles/tiles-tabbedpage.jsp";
             case ".Profile", ".ProfileTokens", ".TokenReveal" -> "/WEB-INF/jsps/tiles/tiles-mainmenupage.jsp";
+            case ".CreateDatabase", ".UpgradeDatabase", ".DatabaseError", ".Bootstrap" -> "/WEB-INF/jsps/tiles/tiles-installpage.jsp";
             case ".Account" -> "/WEB-INF/jsps/tiles/tiles-simplepage.jsp";
             default -> throw new IllegalArgumentException("no expected layout for " + viewName);
         };
@@ -247,5 +248,20 @@ class RollerViewResolverTest {
         resolver.init();
 
         assertEquals("/WEB-INF/jsps/admin/ApiTokens.jsp", renderAndCapture(".ApiTokens").getAttribute("tile_content"));
+    }
+
+    /**
+     * The install and bootstrap screens used to hide the footer (it needed a
+     * bootstrapped Weblogger). Colophon.of(null, ...) reads the packaged
+     * version instead, so they carry the same footer as every other page.
+     */
+    @Test
+    void installAndBootstrapPagesCarryTheFooterTile() throws Exception {
+        resolver.init();
+
+        for (String name : new String[] {".CreateDatabase", ".UpgradeDatabase", ".DatabaseError", ".Bootstrap"}) {
+            assertEquals("/WEB-INF/jsps/tiles/footer.jsp", renderAndCapture(name).getAttribute("tile_footer"),
+                    name + " must show the footer");
+        }
     }
 }

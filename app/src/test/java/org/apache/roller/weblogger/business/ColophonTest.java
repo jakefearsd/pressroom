@@ -211,4 +211,27 @@ class ColophonTest {
         when(weblogger.getRevision()).thenReturn(null);
         assertEquals("", Colophon.of(weblogger, null, NOW).shortRevision());
     }
+
+    /**
+     * Pre-bootstrap pages (install, upgrade, database error) have no
+     * Weblogger. The version comes from the packaged resource and nothing
+     * touches runtime config or the database.
+     */
+    @Test
+    void nullWebloggerReadsTheVersionFromThePackagedProperties() throws Exception {
+        java.util.Properties packaged = new java.util.Properties();
+        try (var in = Colophon.class.getResourceAsStream("/roller-version.properties")) {
+            packaged.load(in);
+        }
+        Colophon c = Colophon.of(null, null, NOW);
+        assertEquals(packaged.getProperty("ro.version"), c.version());
+        assertFalse(c.version().isEmpty());
+        String revision = packaged.getProperty("ro.revision", "");
+        assertEquals(revision.length() > 7 ? revision.substring(0, 7) : revision, c.shortRevision());
+        assertEquals(Colophon.releaseDate(packaged.getProperty("ro.buildTime")), c.releaseDate());
+        assertNull(c.privacyUrl());
+        assertNull(c.copyrightText());
+        assertEquals("", c.copyrightHolder());
+        assertEquals(2026, c.copyrightYear());
+    }
 }

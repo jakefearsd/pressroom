@@ -197,7 +197,7 @@ final class MessageUsageScanner {
         if (close < 0) {
             return 0;
         }
-        Matcher nested = Pattern.compile("<spring:argument\\b").matcher(source.substring(tag.end(), close));
+        Matcher nested = SPRING_ARGUMENT.matcher(source.substring(tag.end(), close));
         int count = 0;
         while (nested.find()) {
             count++;
@@ -278,6 +278,8 @@ final class MessageUsageScanner {
         }
         return names;
     }
+
+    private static final Pattern SPRING_ARGUMENT = Pattern.compile("<spring:argument\\b");
 
     private static final Pattern EL_LIST_ARGUMENTS = Pattern.compile("\\$\\{\\s*\\[(.*)]\\s*}", Pattern.DOTALL);
 

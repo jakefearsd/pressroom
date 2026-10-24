@@ -250,28 +250,24 @@ public class RollerViewResolver implements ViewResolver, Ordered {
         addExtendedDefinition(".CreateDatabase", ".tiles-installpage",
                 Map.of(
                         "content", "/WEB-INF/jsps/core/CreateDatabase.jsp",
-                        "footer",  "/WEB-INF/jsps/tiles/empty.jsp",
                         "banner",  "/WEB-INF/jsps/tiles/bannerInstallation.jsp"
                 ));
 
         addExtendedDefinition(".UpgradeDatabase", ".tiles-installpage",
                 Map.of(
                         "content", "/WEB-INF/jsps/core/UpgradeDatabase.jsp",
-                        "footer",  "/WEB-INF/jsps/tiles/empty.jsp",
                         "banner",  "/WEB-INF/jsps/tiles/bannerInstallation.jsp"
                 ));
 
         addExtendedDefinition(".DatabaseError", ".tiles-installpage",
                 Map.of(
                         "content", "/WEB-INF/jsps/core/DatabaseError.jsp",
-                        "footer",  "/WEB-INF/jsps/tiles/empty.jsp",
                         "banner",  "/WEB-INF/jsps/tiles/bannerInstallation.jsp"
                 ));
 
         addExtendedDefinition(".Bootstrap", ".tiles-installpage",
                 Map.of(
                         "content", "/WEB-INF/jsps/core/Bootstrap.jsp",
-                        "footer",  "/WEB-INF/jsps/tiles/empty.jsp",
                         "banner",  "/WEB-INF/jsps/tiles/bannerInstallation.jsp"
                 ));
 

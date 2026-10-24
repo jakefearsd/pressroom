@@ -20,17 +20,23 @@
 
 <%-- Every word and fact comes from one Colophon record, the same one the
      reader-page footer renders (docs/dev/admin-ui.md, "Footer"). Colophon.of
-     never throws: a display path degrades to omitting a clause. The business
-     tier is reached through the WebloggerProvider bean, never a static: this
-     throws before bootstrap, which no page carrying this footer can reach
-     (the install layouts map the footer tile to empty.jsp). weblog is null on
-     admin screens, so the copyright holder is the site name. --%>
-<% request.setAttribute("colophon", org.apache.roller.weblogger.business.Colophon.of(
-      org.springframework.web.context.support.WebApplicationContextUtils
-          .getRequiredWebApplicationContext(application)
-          .getBean(org.apache.roller.weblogger.business.WebloggerProvider.class)
-          .getWeblogger(),
-      null, java.time.Clock.systemDefaultZone())); %>
+     never throws: a display path degrades to omitting a clause. The
+     Weblogger is looked up here, defensively: before bootstrap (install,
+     upgrade and database-error pages carry this footer too) the provider bean
+     throws, and the footer then gets null, which Colophon.of answers from the
+     packaged version file. weblog is null on admin screens, so the copyright
+     holder is the site name. --%>
+<% org.apache.roller.weblogger.business.Weblogger rollerTier = null;
+   try {
+       rollerTier = org.springframework.web.context.support.WebApplicationContextUtils
+           .getRequiredWebApplicationContext(application)
+           .getBean(org.apache.roller.weblogger.business.WebloggerProvider.class)
+           .getWeblogger();
+   } catch (RuntimeException notBootstrapped) {
+       rollerTier = null; // pre-bootstrap: version facts only
+   }
+   request.setAttribute("colophon", org.apache.roller.weblogger.business.Colophon.of(
+       rollerTier, null, java.time.Clock.systemDefaultZone())); %>
 
 <%-- All Colophon strings are raw, so each is escaped here. Arguments are nested
      spring:argument tags, not an "arguments" string: spring:message splits that
