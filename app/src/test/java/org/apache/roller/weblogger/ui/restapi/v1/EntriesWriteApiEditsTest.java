@@ -101,7 +101,7 @@ class EntriesWriteApiEditsTest {
         String expected = "The jetty, then the beach, then the beach.";
         assertEquals(expected, stored.getText());
         assertEquals(expected, view.get("text").asString());
-        verify(fx.entries, times(1)).saveWeblogEntry(eq(stored), argThat(u -> "maiia".equals(u.getUserName())));
+        verify(fx.entries, times(1)).saveWeblogEntry(eq(stored), argThat(u -> "maiia".equals(u.getUserName())), any());
     }
 
     @Test
@@ -206,7 +206,7 @@ class EntriesWriteApiEditsTest {
 
         assertEquals("The jetty. The beach. The beach.", stored.getText());
         assertEquals(sha256Hex("The jetty. The beach. The beach."), view.get("contentHash").asString());
-        verify(fx.entries, times(1)).saveWeblogEntry(eq(stored), argThat(u -> "maiia".equals(u.getUserName())));
+        verify(fx.entries, times(1)).saveWeblogEntry(eq(stored), argThat(u -> "maiia".equals(u.getUserName())), any());
     }
 
     @Test
@@ -278,5 +278,6 @@ class EntriesWriteApiEditsTest {
     private void nothingSaved() throws Exception {
         verify(fx.entries, never()).saveWeblogEntry(any());
         verify(fx.entries, never()).saveWeblogEntry(any(), any());
+        verify(fx.entries, never()).saveWeblogEntry(any(), any(), any());
     }
 }

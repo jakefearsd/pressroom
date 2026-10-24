@@ -125,6 +125,9 @@ class WeblogOwnershipTest {
         org.mockito.Mockito.when(mock.weblogRedirectManager().getRedirect(forged)).thenThrow(down);
         org.mockito.Mockito.when(mock.weblogPageManager().getPage(forged)).thenThrow(down);
         org.mockito.Mockito.when(mock.commentManager().getComment(forged)).thenThrow(down);
+        org.mockito.Mockito.when(mock.weblogEntryManager().getRevision(forged)).thenThrow(down);
+        WeblogEntry inMine = new WeblogEntry();
+        inMine.setWebsite(mine);
 
         java.util.List<String> lines;
         try (org.apache.roller.weblogger.ui.core.security.sso.SsoLogCapture capture =
@@ -135,13 +138,41 @@ class WeblogOwnershipTest {
             assertNull(WeblogOwnership.redirect(mock.weblogger(), forged, mine));
             assertNull(WeblogOwnership.page(mock.weblogger(), forged, mine));
             assertNull(WeblogOwnership.comment(mock.weblogger(), forged, mine));
+            assertNull(WeblogOwnership.revision(mock.weblogger(), forged, inMine));
             lines = capture.everything();
         }
-        assertTrue(lines.stream().filter(l -> l.contains(mine.getHandle())).count() >= 6,
+        assertTrue(lines.stream().filter(l -> l.contains(mine.getHandle())).count() >= 7,
                 "each failure is logged, with the weblog: " + lines);
         for (String line : lines) {
             org.junit.jupiter.api.Assertions.assertFalse(line.contains("FORGED"), "a raw id was logged: " + line);
         }
+    }
+
+    /**
+     * A revision id is client input like an entry id, and the revision
+     * belongs to an entry, not to a weblog: found only through that entry, so
+     * another entry's revision, even in the same weblog, reads as absent.
+     */
+    @Test
+    void aRevisionIsFoundOnlyThroughItsOwnEntry() throws Exception {
+        WeblogEntry sibling = TestUtils.setupWeblogEntry("ownership-sibling", mine, user);
+        TestUtils.endSession(true);
+        WeblogEntry managed = weblogger.getWeblogEntryManager().getWeblogEntry(entry.getId());
+        managed.setText("changed, so the old text becomes a revision");
+        weblogger.getWeblogEntryManager().saveWeblogEntry(managed);
+        TestUtils.endSession(true);
+
+        WeblogEntry owner = weblogger.getWeblogEntryManager().getWeblogEntry(entry.getId());
+        String revisionId = weblogger.getWeblogEntryManager().getRevisions(owner).get(0).getId();
+        WeblogEntry stranger = weblogger.getWeblogEntryManager().getWeblogEntry(sibling.getId());
+
+        assertNotNull(WeblogOwnership.revision(weblogger, revisionId, owner));
+        assertNull(WeblogOwnership.revision(weblogger, revisionId, stranger),
+                "another entry's revision must read as absent");
+        assertNull(WeblogOwnership.revision(weblogger, revisionId, null));
+        assertNull(WeblogOwnership.revision(weblogger, null, owner));
+        assertNull(WeblogOwnership.revision(weblogger, "  ", owner));
+        assertNull(WeblogOwnership.revision(weblogger, "no-such-id", owner));
     }
 
     @Test

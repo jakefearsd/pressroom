@@ -9,12 +9,15 @@ import java.util.List;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
+import org.apache.roller.weblogger.pojos.WeblogEntryRevision;
 import org.apache.roller.weblogger.pojos.WeblogEntrySearchCriteria;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.controllers.UISecurityEnforced;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
 import org.apache.roller.weblogger.ui.restapi.Paging;
 import org.apache.roller.weblogger.ui.restapi.dto.EntryDtos;
+import org.apache.roller.weblogger.ui.restapi.dto.RevisionDtos;
+import org.apache.roller.weblogger.util.TextDiff;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -146,6 +149,48 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
             throw ApiException.notFound("No such entry.");
         }
         return shown.project(EntryDtos.toView(entry, permalink(entry)));
+    }
+
+    /**
+     * The entry's revisions, newest first (spec 2026-10-24, section 5): each
+     * holds the content one save replaced, so the first is what undoing the
+     * latest save would bring back. No text, so a long history stays a short
+     * answer; {@link #revision} has it. As readable as the entry itself, a
+     * trashed one included, as {@link #get} is.
+     */
+    @GetMapping("/{id}/revisions")
+    public List<RevisionDtos.RevisionSummary> revisions(HttpServletRequest request, @PathVariable("id") String id)
+            throws WebloggerException {
+        WeblogEntry entry = requireEntry(request, id);
+        return weblogger.getWeblogEntryManager().getRevisions(entry).stream()
+                .map(RevisionDtos::toSummary)
+                .toList();
+    }
+
+    /**
+     * One revision with its content and a unified diff from its text to the
+     * entry's current text, or to another revision of the same entry named
+     * by {@code against}. Both ids are checked against the entry: another
+     * entry's revision is the 404 an unknown id gets.
+     */
+    @GetMapping("/{id}/revisions/{revisionId}")
+    public RevisionDtos.RevisionView revision(
+            HttpServletRequest request, @PathVariable("id") String id,
+            @PathVariable("revisionId") String revisionId,
+            @Parameter(description = "Another revision of the same entry to diff against, in place of the "
+                    + "entry's current text.")
+            @RequestParam(value = "against", required = false) String against) {
+        WeblogEntry entry = requireEntry(request, id);
+        WeblogEntryRevision revision = requireRevision(entry, revisionId);
+        String from = "revision " + revision.getId();
+        String diff;
+        if (against == null || against.isBlank()) {
+            diff = TextDiff.unified(revision.getText(), entry.getText(), from, "current");
+        } else {
+            WeblogEntryRevision other = requireRevision(entry, against);
+            diff = TextDiff.unified(revision.getText(), other.getText(), from, "revision " + other.getId());
+        }
+        return RevisionDtos.toView(revision, diff);
     }
 
     private String permalink(WeblogEntry entry) {

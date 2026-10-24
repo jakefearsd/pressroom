@@ -188,6 +188,7 @@ class EntriesWriteApiControllerTest {
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any(), any());
     }
 
     /** No manager fallback needed: an absent category leaves entry.category null, and
@@ -230,6 +231,7 @@ class EntriesWriteApiControllerTest {
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any(), any());
         verify(weblogger, never()).flush();
     }
 
@@ -250,6 +252,7 @@ class EntriesWriteApiControllerTest {
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any(), any());
     }
 
     /** No authenticatedUser attribute -- the interceptor never having run -- is 401, not an NPE. */
@@ -268,6 +271,7 @@ class EntriesWriteApiControllerTest {
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any(), any());
     }
 
     /** Malformed JSON is 400, matching CategoriesApi/EntriesApi's existing coverage of the same gap. */
@@ -287,6 +291,7 @@ class EntriesWriteApiControllerTest {
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any(), any());
     }
 
     /**
@@ -317,7 +322,7 @@ class EntriesWriteApiControllerTest {
         assertEquals("new body", entry.getText());
         // The acting user rides along, so the revision names who saved.
         verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry),
-                argThat(editor -> "maiia".equals(editor.getUserName())));
+                argThat(editor -> "maiia".equals(editor.getUserName())), any());
         verify(weblogger).flush();
         tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
         assertEquals("kept", json.get("title").asString());
@@ -393,7 +398,7 @@ class EntriesWriteApiControllerTest {
                 .andReturn().getResponse().getContentAsString();
 
         assertEquals(mediaId, entry.getFeaturedImageId());
-        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any());
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any(), any());
         verify(weblogger).flush();
         assertEquals(mediaId,
                 new tools.jackson.databind.ObjectMapper().readTree(body).get("featuredImageId").asString());
@@ -425,6 +430,7 @@ class EntriesWriteApiControllerTest {
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any(), any());
     }
 
     /**
@@ -458,6 +464,7 @@ class EntriesWriteApiControllerTest {
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any(), any());
         verify(weblogger, never()).flush();
     }
 
@@ -492,7 +499,7 @@ class EntriesWriteApiControllerTest {
                         .content("{\"tags\":[\"" + manyShortTags + "\"]}"))
                 .andExpect(status().isOk());
 
-        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any());
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any(), any());
     }
 
     /** Tags go through WeblogEntry's own tag-setting path, space-joined. */
@@ -570,7 +577,7 @@ class EntriesWriteApiControllerTest {
                 .andReturn().getResponse().getContentAsString();
 
         assertNotNull(entry.getPubTime());
-        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any());
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any(), any());
         tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
         assertNotNull(json.get("pubTime"));
     }
@@ -694,6 +701,7 @@ class EntriesWriteApiControllerTest {
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any(), any());
     }
 
     /** Same guard, PATCH side. */
@@ -720,6 +728,7 @@ class EntriesWriteApiControllerTest {
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any(), any());
     }
 
     /** SCHEDULED with an explicit pubTime must succeed -- the guard rejects only the NULL case. */
@@ -766,7 +775,7 @@ class EntriesWriteApiControllerTest {
                         .content("{\"summary\":\"just a summary update\"}"))
                 .andExpect(status().isOk());
 
-        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any());
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any(), any());
     }
 
     /**
@@ -793,6 +802,7 @@ class EntriesWriteApiControllerTest {
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any(), any());
     }
 
     /** Same guard, the other NOT NULL column. */
@@ -812,6 +822,7 @@ class EntriesWriteApiControllerTest {
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any(), any());
     }
 
     /**
@@ -841,7 +852,7 @@ class EntriesWriteApiControllerTest {
 
         assertEquals("kept title", entry.getTitle());
         assertEquals("kept body", entry.getText());
-        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any());
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any(), any());
     }
 
     @Test
@@ -1078,6 +1089,7 @@ class EntriesWriteApiControllerTest {
                 "was: " + json.get("html").asString());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any(), any());
         // renderPreview's own javadoc names flush() as the hazard: nothing on
         // this path may ever call it, or a preview would silently persist
         // over the stored entry (whole-branch review, Must Fix 7).
@@ -1222,6 +1234,7 @@ class EntriesWriteApiControllerTest {
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any(), any());
         assertEquals(WeblogEntry.PubStatus.TRASHED, entry.getStatus());
     }
 
@@ -1386,6 +1399,7 @@ class EntriesWriteApiControllerTest {
         assertTrue(body.contains(EVENT_FORMAT_DETAIL), body);
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any(), any());
     }
 
     @Test
@@ -1423,6 +1437,7 @@ class EntriesWriteApiControllerTest {
         assertTrue(body.contains("eventEnd must not be before eventStart."), body);
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any(), any());
     }
 
     @Test
@@ -1456,6 +1471,7 @@ class EntriesWriteApiControllerTest {
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any(), any());
     }
 
     private static WeblogEntry aFullyDecoratedEntry(Weblog weblog) {
@@ -1514,7 +1530,7 @@ class EntriesWriteApiControllerTest {
         assertNull(entry.getEventEnd());
         assertNull(entry.getEventLocation());
         assertEquals("kept", entry.getTitle());
-        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any());
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any(), any());
         tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper().readTree(body);
         for (String name : org.apache.roller.weblogger.ui.restapi.dto.EntryDtos.ENTRY_CLEARABLE) {
             if ("jsonLdType".equals(name)) {
@@ -1543,6 +1559,7 @@ class EntriesWriteApiControllerTest {
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any(), any());
     }
 
     @Test
@@ -1561,6 +1578,7 @@ class EntriesWriteApiControllerTest {
 
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any(), any());
         assertEquals("s", entry.getSummary());
         assertEquals(32.9, entry.getGeoLatitude());
     }
@@ -1577,6 +1595,6 @@ class EntriesWriteApiControllerTest {
 
         assertNull(entry.getEventStart());
         assertEquals(end, entry.getEventEnd());
-        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any());
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry), any(), any());
     }
 }

@@ -23,6 +23,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -96,6 +97,7 @@ class EntriesOpenApiTest {
             {"post", entries, "201", "EntryView"},
             {"patch", entries + "/{id}", "200", "EntryView"},
             {"post", entries + "/{id}/restore", "200", "EntryView"},
+            {"post", entries + "/{id}/revisions/{revisionId}/restore", "200", "EntryView"},
         };
         for (String[] route : routes) {
             String name = route[0].toUpperCase(java.util.Locale.ROOT) + " " + route[1];
@@ -117,5 +119,23 @@ class EntriesOpenApiTest {
             assertEquals("string", fields.get("schema").get("items").get("type").asString(), name);
             assertEquals(EntryFields.DESCRIPTION, fields.get("description").asString(), name);
         }
+    }
+
+    /**
+     * The revision routes (spec 2026-10-24, section 5) name their views, and
+     * a restore's body is optional: a bare POST restores without a hash check.
+     */
+    @Test
+    void theRevisionRoutesNameTheirViewsAndTheRestoreBodyIsOptional() {
+        String revisions = "/v1/weblogs/{handle}/entries/{id}/revisions";
+        JsonNode list = paths.get(revisions).get("get").get("responses").get("200").path("content").path("*/*")
+                .path("schema");
+        assertEquals("array", list.path("type").asString(), list.toString());
+        assertEquals("#/components/schemas/RevisionSummary", list.path("items").path("$ref").asString());
+        JsonNode one = paths.get(revisions + "/{revisionId}").get("get").get("responses").get("200")
+                .path("content").path("*/*").path("schema");
+        assertEquals("#/components/schemas/RevisionView", one.path("$ref").asString(), one.toString());
+        JsonNode body = paths.get(revisions + "/{revisionId}/restore").get("post").get("requestBody");
+        assertFalse(body.path("required").asBoolean(false), body.toString());
     }
 }

@@ -34,8 +34,8 @@ class ToolSchemasTest {
         assertEquals(List.of("action"), schema.get("required"));
         assertEquals(Boolean.FALSE, schema.get("additionalProperties"));
         Map<String, Object> action = (Map<String, Object>) properties("entries").get("action");
-        assertEquals(List.of("list", "get", "create", "update", "trash", "restore", "delete_forever", "preview"),
-                action.get("enum"));
+        assertEquals(List.of("list", "get", "create", "update", "trash", "restore", "delete_forever", "preview",
+                "revisions", "revision", "restore_revision"), action.get("enum"));
     }
 
     @Test
@@ -104,8 +104,8 @@ class ToolSchemasTest {
         }
         // 14 through anchor (Task 3); featuredImageUrl, featuredImageAlt and importExternalImages (Task 8) make 17;
         // summary, once it became the line under the title in entry lists, 18; edits and expectedContentHash
-        // (spec 2026-10-24), 20.
-        assertEquals(20, described);
+        // (spec 2026-10-24), 20; revisionNote (Wave B), 21.
+        assertEquals(21, described);
     }
 
     /**
@@ -131,7 +131,8 @@ class ToolSchemasTest {
                 })));
         assertEquals(java.util.Set.of("create//v1/weblogs/{handle}/entries", "get//v1/weblogs/{handle}/entries/{id}",
                 "get//v1/weblogs/{handle}/entries/by-anchor/{anchor}", "list//v1/weblogs/{handle}/entries",
-                "restore//v1/weblogs/{handle}/entries/{id}/restore", "update//v1/weblogs/{handle}/entries/{id}"),
+                "restore//v1/weblogs/{handle}/entries/{id}/restore", "update//v1/weblogs/{handle}/entries/{id}",
+                "restore_revision//v1/weblogs/{handle}/entries/{id}/revisions/{revisionId}/restore"),
                 taking);
     }
 

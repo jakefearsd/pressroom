@@ -31,7 +31,8 @@ public final class McpToolCatalog {
                     action("get", "One weblog's settings.", "GET " + W),
                     action("create", "Create a weblog; you become its owner.", "POST /v1/weblogs"),
                     action("update", "Change a weblog's settings; name fields in clear to remove them.", "PATCH " + W)),
-            tool("entries", "Blog entries: write, revise, publish, trash and preview.", false,
+            tool("entries", "Blog entries: write, revise, publish, trash and preview, and read or restore "
+                    + "their earlier revisions.", false,
                     action("list", "List entries; without status the trash is excluded.", "GET " + W + "/entries"),
                     action("get", "One entry, by id or by anchor (its URL slug).", "GET " + W + "/entries/{id}",
                             "GET " + W + "/entries/by-anchor/{anchor}"),
@@ -48,7 +49,16 @@ public final class McpToolCatalog {
                     action("preview", "Render text exactly as it would publish, without saving, with warnings "
                             + "about what will render badly; with id, in that entry's context, and edits in place of "
                             + "text show what an update with them would store.", "POST " + W + "/entries/{id}/preview",
-                            "POST " + W + "/entries/preview")),
+                            "POST " + W + "/entries/preview"),
+                    action("revisions", "An entry's revisions, newest first: each is the content one save "
+                            + "replaced, with who saved, when, its note and its title; no text.",
+                            "GET " + W + "/entries/{id}/revisions"),
+                    action("revision", "One revision's title, summary and text, and diff: a unified diff from it "
+                            + "to the entry's current text, or to the revision against names.",
+                            "GET " + W + "/entries/{id}/revisions/{revisionId}"),
+                    action("restore_revision", "Put a revision's title, summary and text back; what it replaces "
+                            + "becomes a revision. expectedContentHash refuses it if the entry changed since it was "
+                            + "read.", "POST " + W + "/entries/{id}/revisions/{revisionId}/restore")),
             tool("categories", "A weblog's categories and tags.", false,
                     action("list", "List categories.", "GET " + W + "/categories"),
                     action("create", "Create a category.", "POST " + W + "/categories"),

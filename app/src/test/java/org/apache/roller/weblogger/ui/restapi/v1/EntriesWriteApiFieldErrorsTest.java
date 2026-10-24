@@ -83,6 +83,7 @@ class EntriesWriteApiFieldErrorsTest {
         assertEquals("kept", stored.getTitle());
         assertEquals("kept too", stored.getSummary());
         verify(fx.entries, never()).saveWeblogEntry(any(), any());
+        verify(fx.entries, never()).saveWeblogEntry(any(), any(), any());
     }
 
     /** The event-order check still sees a start stored on the entry, through the scratch copy. */

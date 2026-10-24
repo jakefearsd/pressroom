@@ -44,6 +44,15 @@ public final class EntryDtos {
             + "occur exactly once, or the request is refused naming every failing edit, and nothing is saved. At "
             + "most 50; not with text. The result is saved as though sent as text (importExternalImages included).";
 
+    /**
+     * {@code expectedContentHash}'s text, one for update and a revision
+     * restore, since one MCP property serves both.
+     */
+    static final String EXPECTED_CONTENT_HASH_DESCRIPTION = "On update and on a revision restore, the contentHash "
+            + "the entry was read with. When the stored text's hash differs, someone changed the entry since: the "
+            + "request is a 409 entry-changed whose currentContentHash is the stored text's hash, and nothing is "
+            + "saved. Get the entry again and redo the change. Without it, the write overwrites whatever is stored.";
+
     private EntryDtos() {
     }
 
@@ -252,11 +261,13 @@ public final class EntryDtos {
             List<String> clear,
             @Schema(description = EDITS_DESCRIPTION)
             List<TextEdit> edits,
-            @Schema(description = "On update, the contentHash the entry was read with. When the stored text's "
-                    + "hash differs, someone changed the entry since: the update is a 409 entry-changed whose "
-                    + "currentContentHash is the stored text's hash, and nothing is saved. Get the entry again and "
-                    + "redo the change. Without it, the update overwrites whatever is stored.")
-            String expectedContentHash) {
+            @Schema(description = EXPECTED_CONTENT_HASH_DESCRIPTION)
+            String expectedContentHash,
+            @Schema(description = "On update, why this change is made, at most 255 characters, for example "
+                    + "\"Shorten the intro\". It labels, in the entry's revision list, the revision the update "
+                    + "leaves: the content it replaced. An update that changes no title, text or summary leaves no "
+                    + "revision, and its note is dropped. Not on create.")
+            String revisionNote) {
 
         /**
          * This write with what the import step produced: the featured image it
@@ -280,7 +291,8 @@ public final class EntryDtos {
             return new EntryWrite(title, summary, newText, status, category, pubTime, tags, metaTitle,
                     searchDescription, canonicalUrl, noindex, newFeaturedImageId, ogImageId, jsonLdType,
                     geoLatitude, geoLongitude, eventStart, eventEnd, eventLocation, commentsClosed, anchor,
-                    featuredImageUrl, featuredImageAlt, importExternalImages, clear, edits, expectedContentHash);
+                    featuredImageUrl, featuredImageAlt, importExternalImages, clear, edits, expectedContentHash,
+                    revisionNote);
         }
     }
 
