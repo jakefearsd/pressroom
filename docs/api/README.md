@@ -355,7 +355,7 @@ is every taken name: a category or directory `name`, a page `slug`, a user's
 | 413 | A multipart request body larger than `spring.servlet.multipart.max-request-size` (1GB). Plain `application/json` from Boot's own `/error`, not a problem body — see the note above. Distinct from the per-file media-quota refusal below, which is never a whole-request 413. |
 | 415 | `POST .../media` without a `multipart/form-data` body. Plain `application/json`, not a problem body — see the note above. |
 | 429 | Throttled — see below. |
-| 503 | Busy: the request collided with other work in progress and should be retried. Today only an entry save that claims an anchor: a create, or an update (PATCH) that changes or clears the entry's `anchor` (REST or MCP), that waited longer than `weblogentry.anchor.lockTimeoutSeconds` (default 10) for another save of the same weblog to finish claiming its anchor. Clients should retry both. The problem's `type` ends in `/busy`, its `detail` is `Another save of this weblog is in progress; retry shortly.`, and the REST response carries `Retry-After` set to that timeout in seconds. Nothing was saved, so retrying the same request is safe. No other failure is a 503. |
+| 503 | Busy: the request collided with other work in progress and should be retried. Today only an entry save that claims an anchor: a create (REST or MCP) that waited longer than `weblogentry.anchor.lockTimeoutSeconds` (default 10) for another save of the same weblog to finish claiming its anchor. Clients should retry. The problem's `type` ends in `/busy`, its `detail` is `Another save of this weblog is in progress; retry shortly.`, and the REST response carries `Retry-After` set to that timeout in seconds. Nothing was saved, so retrying the same request is safe. No other failure is a 503. |
 | 500 | Unexpected server error. The response body never carries exception detail (message, stack trace, class name) — those are logged server-side only. |
 | 502 | An upstream dependency this endpoint depends on failed after the request itself already succeeded — today only `POST /api/v1/admin/users` when the account was created but its set-password email could not be sent; the account survives and is resendable, so this is not retried as a fresh create. |
 
@@ -394,6 +394,7 @@ clears it.
 ```
 GET    /api/v1/weblogs/{handle}/entries                 list (filterable, paged)
 GET    /api/v1/weblogs/{handle}/entries/{id}             get one
+GET    /api/v1/weblogs/{handle}/entries/by-anchor/{anchor}   get one, by its URL slug
 POST   /api/v1/weblogs/{handle}/entries                  create
 PATCH  /api/v1/weblogs/{handle}/entries/{id}              partial update
 DELETE /api/v1/weblogs/{handle}/entries/{id}              trash (not delete)
@@ -544,6 +545,12 @@ or background inline, or a code block that names no language. Warnings are
 advice: the same text saves without complaint.
 
 ### Slugs and images
+
+`GET .../entries/by-anchor/{anchor}` returns the same body as `GET .../entries/{id}`
+for the entry of this weblog holding that anchor (a trashed one included, as
+by id). An unknown anchor, another weblog's anchor and an anchor you may not
+see are the same 404 an unknown id gets. In MCP, `entries` `get` takes `id` or
+`anchor` (`id` wins if both are given).
 
 **`anchor`** sets the entry's URL slug. It is accepted on create only: a
 PATCH may send the stored value back unchanged, and any other value is a 400

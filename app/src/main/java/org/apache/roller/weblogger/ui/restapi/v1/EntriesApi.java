@@ -8,8 +8,11 @@ import org.apache.roller.weblogger.pojos.WeblogEntry;
 import org.apache.roller.weblogger.pojos.WeblogEntrySearchCriteria;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.controllers.UISecurityEnforced;
+import org.apache.roller.weblogger.ui.restapi.ApiException;
 import org.apache.roller.weblogger.ui.restapi.Paging;
 import org.apache.roller.weblogger.ui.restapi.dto.EntryDtos;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,6 +33,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/v1/weblogs/{handle}/entries")
 public class EntriesApi extends BaseApiController implements UISecurityEnforced {
+
+    private static final Logger log = LoggerFactory.getLogger(EntriesApi.class);
 
     /**
      * Requested limits above this are silently capped, not rejected --
@@ -96,6 +101,30 @@ public class EntriesApi extends BaseApiController implements UISecurityEnforced 
     @GetMapping("/{id}")
     public EntryDtos.EntryView get(HttpServletRequest request, @PathVariable("id") String id) {
         WeblogEntry entry = requireEntry(request, id);
+        return EntryDtos.toView(entry, permalink(entry));
+    }
+
+    /**
+     * The same entry, body and refusals as {@link #get}, found by its anchor.
+     * An anchor names one entry per weblog, so the lookup is scoped to the
+     * action weblog; a miss, another weblog's entry and a failed lookup are
+     * all the one 404 an unknown id gets.
+     */
+    @GetMapping("/by-anchor/{anchor}")
+    public EntryDtos.EntryView getByAnchor(HttpServletRequest request,
+                                           @PathVariable("anchor") String anchor) {
+        WeblogEntry entry = null;
+        if (!anchor.isBlank()) {
+            try {
+                entry = weblogger.getWeblogEntryManager()
+                        .getWeblogEntryByAnchor(requireActionWeblog(request), anchor);
+            } catch (WebloggerException ex) {
+                log.error("Error looking up an entry by anchor", ex);
+            }
+        }
+        if (entry == null || !requireActionWeblog(request).equals(entry.getWebsite())) {
+            throw ApiException.notFound("No such entry.");
+        }
         return EntryDtos.toView(entry, permalink(entry));
     }
 

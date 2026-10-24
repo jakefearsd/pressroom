@@ -28,9 +28,9 @@ public final class McpInstructions {
             - In entry text, `[image id=<media id> caption="..."]` places an imported image responsively; \
             `[gallery dir="<directory>"]`, `[map]` with `[pin lat=.. lng=.. label=".."]`, `[video url="..."]` \
             and `[faq]` with `[q]`/`[a]` are also available.
-            - Give `anchor` on create to choose the URL slug (lower-case words joined by - or _); it cannot \
+            - Give `anchor` on create to choose the URL slug; it cannot \
             change later. Give it on create so a retried create answers 409 instead of making a second \
-            entry. A refused write lists every bad field in `errors`.
+            entry. A refused write lists every bad field in `errors`. `entries get` takes `anchor` for `id`.
             - For an event, set jsonLdType EVENT with eventStart and eventEnd as wall-clock times in the \
             weblog's zone, for example 2026-08-02T19:30, and eventLocation.
             - Entries are DRAFT, PUBLISHED, PENDING or SCHEDULED. Trash, restore and delete_forever are \

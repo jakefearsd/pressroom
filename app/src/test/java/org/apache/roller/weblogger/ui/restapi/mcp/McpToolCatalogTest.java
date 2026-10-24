@@ -44,6 +44,17 @@ class McpToolCatalogTest {
     }
 
     @Test
+    void getPicksTheByAnchorVariantWhenGivenOnlyAnAnchor() {
+        ResolvedAction get = tool("entries").actions().get("get");
+        assertEquals("GET /v1/weblogs/{handle}/entries/{id}",
+                get.select(Map.of("weblog", "b", "id", "e1")).route().key());
+        assertEquals("GET /v1/weblogs/{handle}/entries/by-anchor/{anchor}",
+                get.select(Map.of("weblog", "b", "anchor", "hello")).route().key());
+        assertEquals("GET /v1/weblogs/{handle}/entries/{id}",
+                get.select(Map.of("weblog", "b", "id", "e1", "anchor", "hello")).route().key());
+    }
+
+    @Test
     void previewPicksTheSavedEntryVariantWhenGivenAnId() {
         ResolvedAction preview = tool("entries").actions().get("preview");
         assertEquals("POST /v1/weblogs/{handle}/entries/{id}/preview",

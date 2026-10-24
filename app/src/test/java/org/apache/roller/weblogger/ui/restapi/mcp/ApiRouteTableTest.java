@@ -10,8 +10,8 @@ class ApiRouteTableTest {
     void holdsEveryApiRouteByMethodAndTemplate() {
         ApiRouteTable table = ApiRouteTables.real();
 
-        // 54 = 49 + the five comment routes (list, get, update, delete, reply) of CommentsApi.
-        assertEquals(54, table.all().size(), "the /api/v1 surface as of this plan: " + table.all());
+        // 55 = 49 + the five comment routes (list, get, update, delete, reply) of CommentsApi + entries/by-anchor/{anchor}.
+        assertEquals(55, table.all().size(), "the /api/v1 surface as of this plan: " + table.all());
         assertTrue(table.find("GET /v1/weblogs/{handle}/entries").isPresent());
         assertTrue(table.find("PATCH /v1/admin/users/{userName}").isPresent());
         assertTrue(table.find("GET /v1/weblogs").isPresent());

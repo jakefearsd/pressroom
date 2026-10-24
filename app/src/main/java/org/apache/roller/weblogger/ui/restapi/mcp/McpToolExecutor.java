@@ -104,7 +104,8 @@ public final class McpToolExecutor {
         ResolvedAction.Variant variant = action.select(args);
         for (ArgumentSpec spec : variant.arguments()) {
             if (spec.required() && !args.containsKey(spec.name())) {
-                return refusal(instance, action.name(), weblog, label + " needs `" + spec.name() + "`.");
+                return refusal(instance, action.name(), weblog,
+                        label + " needs " + missingHint(action, spec) + ".");
             }
         }
         ApiCall call;
@@ -255,5 +256,24 @@ public final class McpToolExecutor {
         } catch (JacksonException e) {
             return "{\"status\":" + problem.status() + "}";
         }
+    }
+
+    /**
+     * What to tell a caller who supplied none of an action's alternative
+     * path arguments (entries get: id or anchor): every variant's first
+     * missing path argument, not only the fallback variant's.
+     */
+    private static String missingHint(ResolvedAction action, ArgumentSpec spec) {
+        if (spec.location() != ArgumentSpec.Location.PATH || "weblog".equals(spec.name())
+                || action.variants().size() < 2) {
+            return "`" + spec.name() + "`";
+        }
+        java.util.Set<String> names = new java.util.LinkedHashSet<>();
+        for (ResolvedAction.Variant v : action.variants()) {
+            v.arguments().stream().filter(a -> a.location() == ArgumentSpec.Location.PATH
+                    && !"weblog".equals(a.name())).findFirst().ifPresent(a -> names.add(a.name()));
+        }
+        names.add(spec.name());
+        return names.stream().map(n -> "`" + n + "`").collect(java.util.stream.Collectors.joining(" or "));
     }
 }
