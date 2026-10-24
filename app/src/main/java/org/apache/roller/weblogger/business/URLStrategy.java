@@ -145,6 +145,14 @@ public interface URLStrategy {
     
     
     /**
+     * Get url for a published static Page, which is served at
+     * {@code /<handle>/<slug>} (not the {@code /page/<slug>} route of
+     * {@link #getWeblogPageURL}, which serves CUSTOM templates).
+     */
+    String getWeblogStaticPageURL(Weblog weblog, String slug, boolean absolute);
+
+
+    /**
      * Get url for a feed on a given weblog.
      */
     String getWeblogFeedURL(Weblog weblog,

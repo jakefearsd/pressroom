@@ -22,7 +22,10 @@ import org.apache.roller.weblogger.config.RuntimeConfigAttachment;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.PropertiesManager;
 import org.apache.roller.weblogger.business.Weblogger;
+import org.apache.roller.weblogger.business.Colophon;
 import org.apache.roller.weblogger.pojos.RuntimeConfigProperty;
+import org.apache.roller.weblogger.pojos.Weblog;
+import org.apache.roller.weblogger.pojos.wrapper.WeblogWrapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -266,5 +269,18 @@ class ConfigModelTest {
 
         assertEquals("0.1.0", model.getRollerVersion(),
                 "$config.rollerVersion is rendered in the footer of every bundled theme.");
+    }
+
+    @Test
+    void colophonForWrappedWeblog() {
+        Weblog weblog = new Weblog();
+        weblog.setName("Wandering Pacific");
+        weblog.setCopyright("(c) mine");
+        Colophon wrapped = model.getColophon(WeblogWrapper.wrap(weblog, null, weblogger));
+        assertEquals("Wandering Pacific", wrapped.copyrightHolder());
+        assertEquals("(c) mine", wrapped.copyrightText());
+        assertEquals("Wandering Pacific", model.getColophon(weblog).copyrightHolder());
+        assertNull(model.getColophon(null).copyrightText());
+        assertNull(model.getColophon("not a weblog").copyrightText());
     }
 }

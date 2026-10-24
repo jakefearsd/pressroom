@@ -18,11 +18,15 @@
 
 package org.apache.roller.weblogger.ui.rendering.model;
 
+import java.time.Clock;
 import java.util.Map;
 import org.apache.roller.weblogger.WebloggerException;
+import org.apache.roller.weblogger.business.Colophon;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.config.WebloggerConfig;
 import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
+import org.apache.roller.weblogger.pojos.Weblog;
+import org.apache.roller.weblogger.pojos.wrapper.WeblogWrapper;
 
 /**
  * Model which provides access to application config data like site
@@ -130,6 +134,21 @@ public class ConfigModel implements Model {
      */
     public String getAnalyticsScriptName() {
         return WebloggerConfig.getProperty("analytics.umami.scriptName");
+    }
+
+    /**
+     * The footer's facts for a blog page: pass {@code $model.weblog} (the
+     * template wrapper) or a raw {@link Weblog}; null gives the site-level
+     * colophon. Never throws.
+     */
+    public Colophon getColophon(Object weblog) {
+        Weblog pojo = null;
+        if (weblog instanceof WeblogWrapper wrapper) {
+            pojo = wrapper.getPojo();
+        } else if (weblog instanceof Weblog w) {
+            pojo = w;
+        }
+        return Colophon.of(weblogger, pojo, Clock.systemUTC());
     }
 
     private String getProperty(String name) {

@@ -285,6 +285,16 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
     }
     
     
+    /** {@inheritDoc} */
+    @Override
+    public String getWeblogStaticPageURL(Weblog weblog, String slug, boolean absolute) {
+        if (weblog == null || slug == null) {
+            return null;
+        }
+        return weblogRoot(weblog, null, absolute) + URLUtilities.encode(slug);
+    }
+
+
     /**
      * Get url for a feed on a given weblog.
      */

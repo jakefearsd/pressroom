@@ -246,4 +246,23 @@ class MultiWeblogURLStrategyTest {
                 "the placeholders are what make this a template rather than a url: " + url);
         assertTrue(url.contains("{startPage}"), url);
     }
+
+    /** A published Page is served at /handle/slug, NOT /handle/page/slug (the CUSTOM-template route). */
+    @Test
+    void aStaticPageUrlIsHandleThenSlug() {
+        assertEquals("/plainblog/privacy",
+                strategy.getWeblogStaticPageURL(weblog("plainblog", null), "privacy", false));
+    }
+
+    @Test
+    void aStaticPageUrlIsAbsoluteOnTheCustomDomainAndEncodesTheSlug() {
+        assertEquals("https://vhost.example.com/a%26b",
+                strategy.getWeblogStaticPageURL(weblog("vhostblog", "vhost.example.com"), "a&b", true));
+    }
+
+    @Test
+    void aStaticPageUrlNeedsAWeblogAndASlug() {
+        assertNull(strategy.getWeblogStaticPageURL(null, "privacy", false));
+        assertNull(strategy.getWeblogStaticPageURL(weblog("b", null), null, false));
+    }
 }
