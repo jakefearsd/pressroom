@@ -1295,6 +1295,8 @@ class JspConsistencyTest {
             // The database product name the JDBC driver reports.
             "databaseProductName",
             // Numbers.
+            // SeoLimits' int constants, which EntryEditController puts in the model.
+            "seoTitleMax", "seoDescriptionMax", "seoDescriptionMin",
             "mediaFile.thumbnailWidth", "mediaFile.thumbnailHeight",
             "newImage.width", "newImage.height", "newImage.length", "newFile.length",
             "p.navOrder", "row.weblogCount", "perms.entryCount", "perms.pendingCommentCount",
