@@ -109,6 +109,33 @@ class ToolSchemasTest {
     }
 
     /**
+     * fields is one property of the entries tool: an array of strings, with
+     * one description, on every action that returns entries (list, both get
+     * variants, create, update, restore) and on no other.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void fieldsIsOneArrayOfStringsOnEveryEntriesActionThatReturnsEntries() {
+        Map<String, Object> fields = (Map<String, Object>) properties("entries").get("fields");
+        assertEquals("array", fields.get("type"));
+        assertEquals(Map.of("type", "string"), fields.get("items"));
+        String text = (String) fields.get("description");
+        assertTrue(text != null && text.contains("id always comes back"), String.valueOf(text));
+
+        java.util.Set<String> taking = new java.util.TreeSet<>();
+        tool("entries").actions().values().forEach(action -> action.variants().forEach(variant ->
+                variant.arguments().stream().filter(a -> "fields".equals(a.name())).forEach(a -> {
+                    assertEquals(ArgumentSpec.Location.QUERY, a.location(), action.name());
+                    assertEquals(fields, a.schema(), action.name());
+                    taking.add(action.name() + "/" + variant.route().pathTemplate());
+                })));
+        assertEquals(java.util.Set.of("create//v1/weblogs/{handle}/entries", "get//v1/weblogs/{handle}/entries/{id}",
+                "get//v1/weblogs/{handle}/entries/by-anchor/{anchor}", "list//v1/weblogs/{handle}/entries",
+                "restore//v1/weblogs/{handle}/entries/{id}/restore", "update//v1/weblogs/{handle}/entries/{id}"),
+                taking);
+    }
+
+    /**
      * One anchor property serves create, where it sets the slug, and get,
      * where it finds the entry (the by-anchor variant's path value carries no
      * text of its own, so EntryWrite's is the one the agent reads).

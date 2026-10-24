@@ -17,32 +17,32 @@ public final class McpInstructions {
             - `weblog` is a weblog's handle. `whoami` shows your token's role, its weblog limit and the weblogs \
             it can act on.
             - `weblogs create` makes a weblog you own; a wrong `theme` answers with the valid ones.
-            - Updates never read null as a value. To remove a field, name it in `clear`, for example \
+            - Updates never read null as a value; to remove a field, name it in `clear`: \
             clear: ["featuredImageId"].
             - To revise text: `update` with `edits` ([{find, replace}], each find matching once) and \
             expectedContentHash, the contentHash `get` returned; on 409 entry-changed, get again and redo.
+            - `fields` trims entry responses: fields: ["anchor", "searchDescription"] on `entries list` for an \
+            SEO scan.
             - A featured image is a media file: set featuredImageUrl to a public http(s) image URL to import and \
             set it in one call (featuredImageAlt describes it), or `media import` it and set featuredImageId. \
             Importing it again returns the first copy.
-            - `importExternalImages: true` on create or update imports every image the text loads from another \
-            site and points the text at the copies; if any image fails, the entry is not written, but images \
-            already imported stay and a retry reuses them.
+            - `importExternalImages: true` imports every image the text loads from another site and points the \
+            text at the copies; if one fails, nothing is written, but imported images stay and a retry reuses them.
             - In entry text, `[image id=<media id> caption="..."]` places an imported image responsively; \
             `[gallery dir="<directory>"]`, `[map]` with `[pin lat=.. lng=.. label=".."]`, `[video url="..."]` \
-            and `[faq]` with `[q]`/`[a]` are also available.
-            - Give `anchor` on create to choose the URL slug; it cannot change later, and a retried \
-            create then answers 409 instead of making a second entry. `entries get` takes `anchor` for \
+            and `[faq]` with `[q]`/`[a]` are the others.
+            - Give `anchor` on create to choose the URL slug; it cannot change, and a retried \
+            create then answers 409 rather than make a second entry. `entries get` takes `anchor` for \
             `id`. A refused write lists every bad field in `errors`.
-            - For an event, set jsonLdType EVENT with eventStart and eventEnd as wall-clock times in the \
-            weblog's zone, for example 2026-08-02T19:30, and eventLocation.
+            - For an event: jsonLdType EVENT, eventStart and eventEnd as wall-clock times in the weblog's zone \
+            (2026-08-02T19:30), and eventLocation.
             - Entries are DRAFT, PUBLISHED, PENDING or SCHEDULED. Trash, restore and delete_forever are \
-            their own actions; restore returns a DRAFT, and delete_forever needs an entry already in the trash.
+            their own actions; restore returns a DRAFT, and delete_forever needs a trashed entry.
             - Write entry text as Markdown. A callout is a GitHub alert (> [!NOTE], [!TIP], [!WARNING]); \
             fence code with its language (```java) for highlighting and a copy button. Never set colors \
             inline: a theme may be dark. HTML still works; an HTML block ends at a blank line. \
             `entries preview` shows what will publish, with `warnings`.
-            - For a post about one place, set jsonLdType to TOURIST_ATTRACTION with geoLatitude and \
-            geoLongitude.
+            - For a post about one place: jsonLdType TOURIST_ATTRACTION with geoLatitude and geoLongitude.
             - Comments by signed-in readers: `comments list` with status PENDING shows held ones; `update` \
             approves (PUBLISHED) or hides (HIDDEN); `reply` answers as the token's user.
             - A weblog or item your token may not see answers not found; an action beyond your token's role \

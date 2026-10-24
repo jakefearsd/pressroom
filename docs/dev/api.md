@@ -151,6 +151,13 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   A failing edit is a `FieldErrors` entry on `edits[i]` and is skipped, so it is reported with the
   write's other field problems and the import step never runs. Exact strings by design, never
   patterns (spec, Decisions).
+- **`fields` is `EntryFields`, one projection for every entry route** (spec section 2). It keeps
+  the asked record components of `EntryView` and their non-null values, so the converter writes them
+  exactly as in the full view; `EntriesApiFieldsTest` pins that asking for every name writes the full
+  view, so a `@JsonProperty` rename or a new null rule on the view fails there. A handler taking
+  `fields` returns `Object`, and its `@ApiResponse(content = @Content(schema = @Schema(implementation
+  = ...)))` is what keeps openapi.json naming `EntryView`/`EntryPage`: `EntriesOpenApiTest` generates
+  the document with springdoc and pins it. A write records an unknown name in its `FieldErrors`.
 - **`MediaImports` is the one import path**, shared by `media/imports` and the entry writes. It
   commits each file as it is stored (a file on disk must have its row), and logs the host only.
 - **Preview `warnings` come from `PreviewLint`, over the sanitizer's output.** Its attributes are

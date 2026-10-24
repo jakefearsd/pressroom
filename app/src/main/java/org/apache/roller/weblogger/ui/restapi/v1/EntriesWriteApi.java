@@ -1,6 +1,10 @@
 package org.apache.roller.weblogger.ui.restapi.v1;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.time.Clock;
@@ -37,6 +41,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -50,6 +55,11 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
  * ambiguity; {@code RollerHandlerInterceptor} is what actually enforces the
  * declared permission, so this controller adds no permission checking of
  * its own.
+ *
+ * <p>The routes that return an entry take {@code fields} ({@link
+ * EntryFields}), so their Java return type is {@code Object}; each one's
+ * {@code @ApiResponse} keeps openapi.json naming the view a caller gets
+ * without it.
  */
 @RestController
 @RequestMapping("/v1/weblogs/{handle}/entries")
@@ -65,8 +75,11 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
     Clock clock = Clock.systemUTC();
 
     @PostMapping("")
-    public ResponseEntity<EntryDtos.EntryView> create(
-            HttpServletRequest request, @RequestBody EntryDtos.EntryWrite body) throws WebloggerException {
+    @ApiResponse(responseCode = "201", content = @Content(schema = @Schema(implementation = EntryDtos.EntryView.class)))
+    public ResponseEntity<Object> create(
+            HttpServletRequest request, @RequestBody EntryDtos.EntryWrite body,
+            @Parameter(description = EntryFields.DESCRIPTION)
+            @RequestParam(value = "fields", required = false) List<String> fields) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
         User user = requireAuthenticatedUser(request);
 
@@ -78,6 +91,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         entry.setCreatorUserName(user.getUserName());
 
         FieldErrors errors = new FieldErrors();
+        EntryFields shown = EntryFields.of(fields, errors);
         errors.check("title", () -> requireNotBlank("title", body.title()));
         errors.check("text", () -> requireNotBlank("text", body.text()));
         refuseUpdateOnlyFields(errors, body);
@@ -123,13 +137,16 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
                 .path("/{id}")
                 .buildAndExpand(entry.getId())
                 .toUri();
-        return ResponseEntity.created(location).body(EntryDtos.toView(entry, permalink(entry)));
+        return ResponseEntity.created(location).body(shown.project(EntryDtos.toView(entry, permalink(entry))));
     }
 
     @PatchMapping("/{id}")
-    public EntryDtos.EntryView update(
+    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = EntryDtos.EntryView.class)))
+    public Object update(
             HttpServletRequest request, @PathVariable("id") String id,
-            @RequestBody EntryDtos.EntryWrite sent) throws WebloggerException {
+            @RequestBody EntryDtos.EntryWrite sent,
+            @Parameter(description = EntryFields.DESCRIPTION)
+            @RequestParam(value = "fields", required = false) List<String> fields) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
         // requireLiveEntry, not requireEntry: a trashed entry's id here
         // would otherwise reach saveWeblogEntry directly, resurrecting it
@@ -141,6 +158,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         requireUnchanged(entry, sent.expectedContentHash());
 
         FieldErrors errors = new FieldErrors();
+        EntryFields shown = EntryFields.of(fields, errors);
         // From here on edits are text: what they make of the stored text is
         // checked, imported and saved exactly as though it had been sent.
         EntryDtos.EntryWrite body = EntryEdits.sent(sent.edits())
@@ -171,7 +189,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
             weblogger.getIndexManager().removeEntryIndexOperation(entry);
         }
 
-        return EntryDtos.toView(entry, permalink(entry));
+        return shown.project(EntryDtos.toView(entry, permalink(entry)));
     }
 
     /**
@@ -217,15 +235,20 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * TrashController.trashedEntry} exists to close off on the JSP side.
      */
     @PostMapping("/{id}/restore")
-    public EntryDtos.EntryView restore(HttpServletRequest request,
-                                       @PathVariable("id") String id) throws WebloggerException {
+    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = EntryDtos.EntryView.class)))
+    public Object restore(HttpServletRequest request,
+                          @PathVariable("id") String id,
+                          @Parameter(description = EntryFields.DESCRIPTION)
+                          @RequestParam(value = "fields", required = false) List<String> fields)
+            throws WebloggerException {
+        EntryFields shown = EntryFields.of(fields);
         WeblogEntry entry = requireEntry(request, id);
         if (entry.getStatus() != WeblogEntry.PubStatus.TRASHED) {
             throw ApiException.conflict("Entry is not trashed.");
         }
         weblogger.getWeblogEntryManager().restoreWeblogEntry(entry);
         weblogger.flush();
-        return EntryDtos.toView(entry, permalink(entry));
+        return shown.project(EntryDtos.toView(entry, permalink(entry)));
     }
 
     /**
