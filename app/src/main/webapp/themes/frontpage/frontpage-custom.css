@@ -393,3 +393,9 @@ body.fd .fd-prose a:where(:not(.cta-card)) {
     color: var(--fd-ink-soft);
 }
 
+
+/* ---- colophon: the showColophon macro's last line of the footer ---- */
+body.fd .colophon { margin-top: 1.5rem; font-size: .75rem; line-height: 1.5; color: var(--fd-ink-soft); }
+body.fd .colophon p { margin: 0 0 .25rem; }
+body.fd .colophon a { color: inherit; text-decoration: underline; }
+body.fd .colophon-meta span + span::before { content: "\00b7"; margin: 0 .5em; }

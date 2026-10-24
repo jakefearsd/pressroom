@@ -439,3 +439,9 @@ body.tg .business-card-book {
     text-decoration: none;
 }
 body.tg .business-card-book:hover { background: var(--tg-accent); color: var(--tg-paper); }
+
+/* ---- colophon: the showColophon macro's last line of the footer ---- */
+body.tg .colophon { margin-top: 1.5rem; font-size: .75rem; line-height: 1.5; color: var(--tg-muted); }
+body.tg .colophon p { margin: 0 0 .25rem; }
+body.tg .colophon a { color: inherit; text-decoration: underline; }
+body.tg .colophon-meta span + span::before { content: "\00b7"; margin: 0 .5em; }

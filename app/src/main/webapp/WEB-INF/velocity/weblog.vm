@@ -56,6 +56,7 @@ These are the documented macros in order defined in this file:
     #showSubscribeForm($weblog $prompt)
     #showComments($weblog $entry)
     #showBusinessCard($weblog $bookLabel)
+    #showColophon($weblog)
 
 [custom-theme API] marks a macro no bundled theme calls. They are kept
 deliberately: a weblog switched to WeblogTheme.CUSTOM owns its templates from
@@ -2348,4 +2349,37 @@ Every value is escaped here; the model hands back raw strings.
     #if($card.bookingHref)<a class="business-card-book" href="$utils.escapeHTML($card.bookingHref)" rel="noopener" target="_blank" data-umami-event="business-card-click"#if($card.dest) data-umami-event-dest="$utils.escapeHTML($card.dest)"#end#if($cardSlug && $cardSlug != "") data-umami-event-entry="$utils.escapeHTML($cardSlug)"#end>$utils.escapeHTML($bookLabel)</a>#end
 </aside>
 #end
+#end
+
+#**
+The site colophon, the last thing inside each bundled theme's footer:
+    #showColophon($model.weblog)
+
+Shows the blog's copyright line (its own notice, else the current year and
+the blog's name), the privacy-policy link when the site names one, and
+"Roller <version>" with the release date. Every fact comes from one
+Colophon record ($config.getColophon), the same record the admin footer
+renders, so the two cannot disagree. Each clause is omitted when its fact is
+missing, and the revision is deliberately not shown to readers.
+
+The record hands back raw strings, so every one is escaped here exactly once
+($utils.escapeHTML); the year goes in as a string so MessageFormat does not
+print it as "2,026". All words come from the footer.* message keys.
+*#
+#macro(showColophon $weblog)
+#set($colophonFacts = $config.getColophon($weblog))
+#set($colophonHasCopyright = $utils.isNotEmpty($colophonFacts.copyrightText) || $utils.isNotEmpty($colophonFacts.copyrightHolder))
+#set($colophonHasMeta = $utils.isNotEmpty($colophonFacts.privacyUrl) || $utils.isNotEmpty($colophonFacts.version) || $utils.isNotEmpty($colophonFacts.releaseDate))
+<div class="colophon">
+#if($colophonHasCopyright)
+    <p class="colophon-copyright">#if($utils.isNotEmpty($colophonFacts.copyrightText))$utils.escapeHTML($colophonFacts.copyrightText)#else$text.get("footer.copyright.default", ["$colophonFacts.copyrightYear", $utils.escapeHTML($colophonFacts.copyrightHolder)])#end</p>
+#end
+#if($colophonHasMeta)
+    <p class="colophon-meta">
+        #if($utils.isNotEmpty($colophonFacts.privacyUrl))<span class="colophon-privacy"><a href="$utils.escapeHTML($colophonFacts.privacyUrl)">$text.get("footer.privacy")</a></span>#end
+        #if($utils.isNotEmpty($colophonFacts.version))<span class="colophon-version">$text.get("footer.version", [$utils.escapeHTML($colophonFacts.version)])</span>#end
+        #if($utils.isNotEmpty($colophonFacts.releaseDate))<span class="colophon-released">$text.get("footer.released", [$utils.escapeHTML($colophonFacts.releaseDate)])</span>#end
+    </p>
+#end
+</div>
 #end

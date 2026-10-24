@@ -697,3 +697,9 @@ body.qj .business-card-book:hover { background: var(--qj-accent); color: var(--q
     color: var(--qj-ink);
     overflow-wrap: anywhere;
 }
+
+/* ---- colophon: the showColophon macro's last line of the footer ---- */
+body.qj .colophon { margin-top: 1.5rem; font-size: .75rem; line-height: 1.5; color: var(--qj-ink-soft); }
+body.qj .colophon p { margin: 0 0 .25rem; }
+body.qj .colophon a { color: inherit; text-decoration: underline; }
+body.qj .colophon-meta span + span::before { content: "\00b7"; margin: 0 .5em; }

@@ -800,3 +800,9 @@ body.pf .business-card-book {
     text-decoration: none;
 }
 body.pf .business-card-book:hover { background: var(--pf-accent); color: var(--pf-bg); }
+
+/* ---- colophon: the showColophon macro's last line of the footer ---- */
+body.pf .colophon { margin-top: 1.5rem; font-size: .75rem; line-height: 1.5; color: var(--pf-muted); }
+body.pf .colophon p { margin: 0 0 .25rem; }
+body.pf .colophon a { color: inherit; text-decoration: underline; }
+body.pf .colophon-meta span + span::before { content: "\00b7"; margin: 0 .5em; }

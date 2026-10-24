@@ -78,6 +78,7 @@
     </form>
     #showSubscribeForm($model.weblog "Get new guides by email")
     #showBusinessCard($model.weblog "Book a stay")
+    #showColophon($model.weblog)
 </footer>
 
 </body>

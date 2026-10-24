@@ -273,6 +273,32 @@ resolves through the index at the end of `CLAUDE.md`.
   macro" in a comment, never `#showX` — `ThemeStylesheetTest` scans every
   theme stylesheet for the bare form and fails the build.
 
+## The colophon (footer)
+
+- Every blog page ends with the showColophon macro (`weblog.vm`), called as
+  the LAST thing inside each theme's `<footer>` (after search, subscribe and
+  the business card): `#showColophon($model.weblog)`. It renders the
+  `Colophon` record from `$config.getColophon($model.weblog)` -- the same
+  record `tiles/footer.jsp` renders -- with classes `colophon`,
+  `colophon-copyright`, `colophon-meta`, `colophon-privacy`,
+  `colophon-version`, `colophon-released`. Frontpage has no per-template
+  footer: its `_footer.vm` carries the call and `weblog/page/directory`
+  `#includeTemplate` it ("Powered by Roller" is gone).
+- **Escaping**: every `Colophon` string is raw (the blog name is stored with
+  markup stripped but `&` intact), so the macro escapes each once with
+  `$utils.escapeHTML`. `$text.get` does not escape and `MessageFormat` does
+  not re-parse arguments, so escape before passing; the year goes in as the
+  string `"$colophonFacts.copyrightYear"` or it prints as `2,026`. Readers
+  see `Roller <version>` only -- never the revision.
+- **A new page template needs the call.** `ThemeColophonTest` reads each
+  `themes/*/theme.xml`, and every `text/html` template not named in its
+  `NOT_A_PAGE` set (day partial, preview shell, frontpage partials) must call
+  the macro directly or `#includeTemplate` a partial that does. It evaluates
+  the real macro with a stub `$config` for the omission rules, and
+  `ThemeColophonRenderingTest` renders the three blog themes end to end.
+- Styling is per theme (`body.qj/tg/pf/fd .colophon`), small and muted from
+  that theme's own tokens.
+
 ## Content assets (callouts, code blocks, heading anchors)
 
 The `showContentAssets` macro in `WEB-INF/velocity/weblog.vm` styles and
