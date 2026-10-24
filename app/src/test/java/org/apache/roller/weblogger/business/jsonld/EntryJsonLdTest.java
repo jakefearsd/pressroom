@@ -92,6 +92,12 @@ class EntryJsonLdTest {
     }
 
     @Test
+    void aTechArticleGetsNoSecondBlockBecauseTheArticleBlockItselfChangesType() {
+        assertNull(EntryJsonLd.build(entry(JsonLdType.TECH_ARTICLE),
+                NAME, DESCRIPTION, IMAGE, URL, MEDIA));
+    }
+
+    @Test
     void aNullEntryIsNotAnError() {
         assertNull(EntryJsonLd.build(null, NAME, DESCRIPTION, IMAGE, URL, MEDIA));
     }

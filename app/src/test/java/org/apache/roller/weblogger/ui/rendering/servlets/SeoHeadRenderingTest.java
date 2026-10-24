@@ -714,6 +714,23 @@ class SeoHeadRenderingTest {
     }
 
     @Test
+    void aTechArticleEntryRendersOneTechArticleBlockAndNoBlogPosting() throws Exception {
+        WeblogEntry entry = TestUtils.setupWeblogEntry("tech-entry", weblog, user);
+        updateEntry(entry, e -> {
+            e.setJsonLdType(JsonLdType.TECH_ARTICLE);
+            e.setSearchDescription("How the cache expires.");
+        });
+
+        String body = render("/" + HANDLE + "/entry/tech-entry");
+
+        JsonNode node = singleLdJson(body, "TechArticle");
+        assertEquals("tech-entry", node.path("headline").asString());
+        assertEquals("How the cache expires.", node.path("description").asString());
+        assertEquals(BASE + "/entry/tech-entry", node.path("mainEntityOfPage").asString());
+        assertTrue(!body.contains("\"BlogPosting\""), "no BlogPosting anywhere:\n" + body);
+    }
+
+    @Test
     void aTouristTripEntryTurnsItsMapPinsIntoAnOrderedItinerary() throws Exception {
         // The head renders BEFORE entry content, so the itinerary can only come
         // from re-parsing the raw text -- through the very resolver the [map]

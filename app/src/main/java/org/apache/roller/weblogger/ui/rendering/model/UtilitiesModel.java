@@ -39,6 +39,7 @@ import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.business.jsonld.BusinessJsonLd;
 import org.apache.roller.weblogger.business.jsonld.EntryJsonLd;
 import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
+import org.apache.roller.weblogger.pojos.JsonLdType;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
 import org.apache.roller.weblogger.pojos.wrapper.WeblogWrapper;
 import org.apache.roller.weblogger.ui.rendering.util.WeblogRequest;
@@ -330,6 +331,16 @@ public class UtilitiesModel implements Model {
      */
     public String escapeJson(String str) {
         return StringEscapeUtils.escapeJson(str);
+    }
+
+    /**
+     * The schema.org type of the permalink's article block: {@code TechArticle}
+     * for an entry typed TECH_ARTICLE, {@code BlogPosting} for everything else
+     * (including null). The block's properties are the same either way.
+     */
+    public String articleSchemaType(WeblogEntry entry) {
+        return entry != null && entry.getJsonLdType() == JsonLdType.TECH_ARTICLE
+                ? JsonLdType.TECH_ARTICLE.getSchemaType() : JsonLdType.BLOG_POSTING.getSchemaType();
     }
 
     /**

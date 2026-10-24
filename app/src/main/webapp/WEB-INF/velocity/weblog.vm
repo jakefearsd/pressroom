@@ -355,7 +355,7 @@ containing "</script>" cannot terminate the inline JSON-LD block).
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
-        "@type": "BlogPosting",
+        "@type": "$utils.articleSchemaType($seoEntry.pojo)",
         #if ($seoImage)"image": "$utils.escapeJson($seoImageUrl)",#end
         #if ($seoEntry.pubTime)"datePublished": "$utils.formatIso8601Date($seoEntry.pubTime)",#end
         #if ($seoEntry.updateTime)"dateModified": "$utils.formatIso8601Date($seoEntry.updateTime)",#end

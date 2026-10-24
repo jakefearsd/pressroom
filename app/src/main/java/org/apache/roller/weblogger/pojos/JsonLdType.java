@@ -42,7 +42,8 @@ public enum JsonLdType {
     TOURIST_ATTRACTION("TouristAttraction"),
     TOURIST_TRIP("TouristTrip"),
     EVENT("Event"),
-    FAQ_PAGE("FAQPage");
+    FAQ_PAGE("FAQPage"),
+    TECH_ARTICLE("TechArticle");
 
     private static final Logger log = LoggerFactory.getLogger(JsonLdType.class);
 

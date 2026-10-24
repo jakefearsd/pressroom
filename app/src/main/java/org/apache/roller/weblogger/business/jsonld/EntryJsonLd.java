@@ -136,7 +136,9 @@ public final class EntryJsonLd {
             String imageUrl, String url, MediaFileManager mediaFiles) {
 
         JsonLdType type = entry == null ? null : entry.getJsonLdType();
-        if (type == null || type == JsonLdType.BLOG_POSTING) {
+        // TECH_ARTICLE is not a second object: it changes the type of the
+        // permalink's one article block (UtilitiesModel.articleSchemaType).
+        if (type == null || type == JsonLdType.BLOG_POSTING || type == JsonLdType.TECH_ARTICLE) {
             return null;
         }
 
@@ -170,7 +172,7 @@ public final class EntryJsonLd {
                 }
                 node.put("mainEntity", questions);
             }
-            default -> { /* BLOG_POSTING already returned above */ }
+            default -> { /* BLOG_POSTING and TECH_ARTICLE already returned above */ }
         }
         return JsonLdWriter.write(node);
     }
