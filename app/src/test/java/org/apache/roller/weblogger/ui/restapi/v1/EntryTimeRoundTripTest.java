@@ -6,6 +6,7 @@ import org.apache.roller.weblogger.business.URLStrategy;
 import org.apache.roller.weblogger.business.WeblogEntryManager;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.business.search.IndexManager;
+import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
 import org.apache.roller.weblogger.ui.restapi.ApiExceptionHandler;
@@ -71,8 +72,12 @@ class EntryTimeRoundTripTest {
         String patchBody = "{\"pubTime\":\"" + got.get("pubTime").asString()
                 + "\",\"eventStart\":\"" + got.get("eventStart").asString()
                 + "\",\"eventEnd\":\"" + got.get("eventEnd").asString() + "\"}";
+        // The interceptor stores the token's user; the PATCH credits its revision to them.
+        User user = new User();
+        user.setUserName("agent");
         mvc.perform(patch("/v1/weblogs/myblog/entries/{id}", "entry-1")
                         .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", user)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(patchBody))
                 .andExpect(status().isOk());
