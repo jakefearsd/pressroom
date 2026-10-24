@@ -103,8 +103,9 @@ class ToolSchemasTest {
                     ((Map<String, Object>) props.get(component.getName())).get("description"), component.getName());
         }
         // 14 through anchor (Task 3); featuredImageUrl, featuredImageAlt and importExternalImages (Task 8) make 17;
-        // summary, once it became the line under the title in entry lists, 18.
-        assertEquals(18, described);
+        // summary, once it became the line under the title in entry lists, 18; edits and expectedContentHash
+        // (spec 2026-10-24), 20.
+        assertEquals(20, described);
     }
 
     /** The agent learns from the tool what a summary is for, and what readers see without one. */
@@ -114,5 +115,32 @@ class ToolSchemasTest {
         String text = (String) ((Map<String, Object>) properties("entries").get("summary")).get("description");
         assertTrue(text != null && text.contains("lists of entries") && text.contains("first couple of sentences"),
                 String.valueOf(text));
+    }
+
+    /**
+     * update and preview both take edits, as one array of find/replace
+     * objects: ToolSchemas refuses an argument whose type differs across
+     * actions, and the nested descriptions are TextEdit's own.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void editsIsOneArrayOfFindReplaceObjectsOnUpdateAndPreview() throws Exception {
+        Map<String, Object> edits = (Map<String, Object>) properties("entries").get("edits");
+        assertEquals("array", edits.get("type"));
+        Map<String, Object> item = (Map<String, Object>) edits.get("items");
+        assertEquals("object", item.get("type"));
+        Map<String, Object> fields = (Map<String, Object>) item.get("properties");
+        assertEquals(java.util.Set.of("find", "replace"), fields.keySet());
+        assertEquals(org.apache.roller.weblogger.ui.restapi.dto.EntryDtos.TextEdit.class.getMethod("find")
+                .getAnnotation(io.swagger.v3.oas.annotations.media.Schema.class).description(),
+                ((Map<String, Object>) fields.get("find")).get("description"));
+
+        String description = ToolSchemas.description(tool("entries"));
+        for (String action : List.of("- update:", "- preview:")) {
+            String line = description.substring(description.indexOf(action)).lines().findFirst().orElseThrow();
+            assertTrue(line.contains("edits"), line);
+        }
+        String update = description.substring(description.indexOf("- update:")).lines().findFirst().orElseThrow();
+        assertTrue(update.contains("expectedContentHash"), update);
     }
 }

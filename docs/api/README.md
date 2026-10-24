@@ -351,7 +351,7 @@ is every taken name: a category or directory `name`, a page `slug`, a user's
 | 403 | Authenticated, but the token's own scope refuses this call (wrong role, or an admin-only route with a non-`ADMIN` token), or the caller is a member of the weblog below the role the call needs. |
 | 404 | The resource does not exist, **or the caller may not see it.** A weblog outside a token's pin, a weblog the caller holds no role on, a foreign entry/category/page/media id, and a genuinely-missing id are all 404 — never 403, because a 403 there would confirm the resource exists under someone else's weblog. Also what an unmapped path under `/api/...` answers — see the note above on why that one is plain `application/json`, not a problem body. |
 | 405 | The path exists but not for this HTTP verb (e.g. `DELETE` on a collection endpoint that only supports `GET`/`POST`). Plain `application/json` from Boot's own `/error`, not a problem body — see the note above. |
-| 409 | The request conflicts with the resource's current state: trashing an already-trashed entry, restoring one that isn't trashed, PATCHing a trashed entry (restore it first), a duplicate category/directory/page-slug name, deleting a weblog's last category, publishing a comment its author deleted, an `anchor` another entry of the weblog holds (a trashed one included). |
+| 409 | The request conflicts with the resource's current state: trashing an already-trashed entry, restoring one that isn't trashed, PATCHing a trashed entry (restore it first), a duplicate category/directory/page-slug name, deleting a weblog's last category, publishing a comment its author deleted, an `anchor` another entry of the weblog holds (a trashed one included), an entry update whose `expectedContentHash` is not the stored text's (`entry-changed`, see [Changing part of the text](#changing-part-of-the-text)). |
 | 413 | A multipart request body larger than `spring.servlet.multipart.max-request-size` (1GB). Plain `application/json` from Boot's own `/error`, not a problem body — see the note above. Distinct from the per-file media-quota refusal below, which is never a whole-request 413. |
 | 415 | `POST .../media` without a `multipart/form-data` body. Plain `application/json`, not a problem body — see the note above. |
 | 429 | Throttled — see below. |
@@ -541,7 +541,68 @@ with what gets published. Nothing is persisted; this is the only way to see
 is `{"html": "...", "warnings": [...]}`. `warnings` lists what will render
 badly, and is empty when nothing will: an element that sets a text color
 or background inline, or a code block that names no language. Warnings are
-advice: the same text saves without complaint.
+advice: the same text saves without complaint. `POST .../entries/{id}/preview`
+also takes `edits` in place of `text` (below): it renders what an update
+with those edits would store, and saves nothing. On `.../entries/preview`,
+with no entry to apply them to, `edits` is a 400.
+
+### Changing part of the text
+
+Every `EntryView` carries **`contentHash`**: the SHA-256 of the stored
+`text` as UTF-8, in bare lower-case hex, the scheme Wikantik's
+`read_page`/`update_page` use. It is absent only when the entry has no text.
+
+**`edits`** on an update (`PATCH .../entries/{id}`) changes part of the
+text without sending all of it: a list of `{"find", "replace"}` pairs,
+applied to the stored text in order, each to the text as the previous ones
+left it.
+
+```json
+{"edits": [{"find": "The pier at dawn.", "replace": "The pier at dusk."},
+           {"find": "## Getting there\n\nTake the 101", "replace": "## Getting there\n\nTake the 5"}],
+ "expectedContentHash": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"}
+```
+
+- `find` must be exact text of the entry (as `get` returns it, so Markdown,
+  not rendered HTML), non-empty, and occur **exactly once**. An edit that
+  does not is a 400 on `edits[i]`: `edits[1] not found in the entry's text.`
+  or `edits[1] found 2 times; include more surrounding text so it matches
+  once.` Every failing edit is reported, with the write's other field
+  problems, and nothing is saved.
+- `replace` may be `""`, which deletes what `find` matched; a missing
+  `replace` is a 400.
+- At most 50 edits per request. `edits` with `text` in the same request is a
+  400, and so is `edits` on a create.
+- The result is then treated exactly as though it had been sent as `text`:
+  the same checks, the `importExternalImages` step (an image an edit adds is
+  imported), and one revision.
+
+**`expectedContentHash`** on an update is the `contentHash` the caller read.
+When it is not the hash of the text now stored, someone changed the entry
+since, and the update is a **409** whose `type` ends in `/entry-changed` and
+whose `currentContentHash` (an RFC 9457 extension member) is the stored
+text's hash. Nothing is saved, and nothing is fetched: the hash is checked
+before any other validation and before the import step. Get the entry again
+and redo the change. Either case of hex matches; a value that is not 64 hex
+digits is a 400 on `expectedContentHash`, and on a create the field is a 400.
+Without it an update overwrites whatever is stored, as before. It guards the
+text only: an update that sends no `text` or `edits` still changes only the
+fields it sends.
+
+```json
+{
+  "type": "https://roller.invalid/problems/entry-changed",
+  "title": "Entry changed",
+  "status": 409,
+  "detail": "The entry's text changed after it was read; get the entry again and redo the change.",
+  "instance": "/api/v1/weblogs/myblog/entries/a1b2c3",
+  "currentContentHash": "60303ae22b998861bce3b28f33eec1be758a213c86c93c076dbe9f558c11c752"
+}
+```
+
+`edits` with `expectedContentHash` is the safe pair: the hash proves the
+text is the one the caller read, and each exact-once match proves an edit
+lands where it was meant.
 
 ### Slugs and images
 

@@ -1,5 +1,6 @@
 package org.apache.roller.weblogger.ui.restapi.v1;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.time.Clock;
@@ -7,6 +8,7 @@ import java.sql.Timestamp;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.AnchorTakenException;
@@ -56,6 +58,9 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
     @Autowired
     RemoteImageFetcher imageFetcher;
 
+    /** An entry's contentHash: SHA-256 as hex digits, either case accepted. */
+    private static final Pattern CONTENT_HASH = Pattern.compile("[0-9a-fA-F]{64}");
+
     /** The import step's budget is measured on this; a test replaces it. */
     Clock clock = Clock.systemUTC();
 
@@ -75,6 +80,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         FieldErrors errors = new FieldErrors();
         errors.check("title", () -> requireNotBlank("title", body.title()));
         errors.check("text", () -> requireNotBlank("text", body.text()));
+        refuseUpdateOnlyFields(errors, body);
         if (body.anchor() != null) {
             errors.check("anchor", () -> requireAnchorForm(body.anchor()));
         }
@@ -123,15 +129,23 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
     @PatchMapping("/{id}")
     public EntryDtos.EntryView update(
             HttpServletRequest request, @PathVariable("id") String id,
-            @RequestBody EntryDtos.EntryWrite body) throws WebloggerException {
+            @RequestBody EntryDtos.EntryWrite sent) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
         // requireLiveEntry, not requireEntry: a trashed entry's id here
         // would otherwise reach saveWeblogEntry directly, resurrecting it
         // (to DRAFT or straight to PUBLISHED) by a side door that bypasses
         // restore's DRAFT-only rule entirely. See requireLiveEntry's javadoc.
         WeblogEntry entry = requireLiveEntry(request, id);
+        // Before every other check, and so before the import step can fetch:
+        // a caller whose view of the text is stale learns that first.
+        requireUnchanged(entry, sent.expectedContentHash());
 
         FieldErrors errors = new FieldErrors();
+        // From here on edits are text: what they make of the stored text is
+        // checked, imported and saved exactly as though it had been sent.
+        EntryDtos.EntryWrite body = EntryEdits.sent(sent.edits())
+                ? sent.withText(EntryEdits.resolve(errors, sent.text(), sent.edits(), entry.getText()))
+                : sent;
         Set<String> cleared = new HashSet<>();
         errors.check("clear", () -> cleared.addAll(ClearFields.validate(body.clear(), body,
                 EntryDtos.ENTRY_CLEARABLE, EntryDtos.ENTRY_PAIRS)));
@@ -233,6 +247,42 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
     }
 
     /**
+     * An update's {@code expectedContentHash}, when sent, must be the hash of
+     * the text now stored (spec 2026-10-24, section 4): otherwise someone
+     * changed the entry after the caller read it, and saving would overwrite
+     * that change unseen. Either case of hex matches. A value that is not a
+     * hash at all is the caller's mistake, not a sign the entry changed, so it
+     * is a 400 rather than the 409.
+     */
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Compares case-insensitively only after CONTENT_HASH has confined the value to "
+                    + "ASCII hex digits, which no case mapping can turn into anything else.")
+    private static void requireUnchanged(WeblogEntry entry, String expected) {
+        if (expected == null) {
+            return;
+        }
+        if (!CONTENT_HASH.matcher(expected).matches()) {
+            throw ApiException.invalidField("expectedContentHash",
+                    "expectedContentHash must be the contentHash an entry is read with: 64 hex digits.");
+        }
+        String current = EntryDtos.contentHash(entry.getText());
+        if (!expected.equalsIgnoreCase(current)) {
+            throw ApiException.entryChanged(current);
+        }
+    }
+
+    /** {@code edits} and {@code expectedContentHash} act on stored text, which a create has none of. */
+    private static void refuseUpdateOnlyFields(FieldErrors errors, EntryDtos.EntryWrite body) {
+        if (EntryEdits.sent(body.edits())) {
+            errors.add("edits", "edits apply only to updates; a create sends text.");
+        }
+        if (body.expectedContentHash() != null) {
+            errors.add("expectedContentHash", "expectedContentHash applies only to updates.");
+        }
+    }
+
+    /**
      * Previews an existing entry's unsaved text. Reuses {@code
      * EntryEditController.entryEditPreview}'s scratch-entry approach: the
      * entry itself comes from the usual ownership-checked lookup (refusing a
@@ -242,14 +292,18 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * request carries and never saved. Only the server can expand
      * shortcodes -- {@code [gallery]}, {@code [map]} -- so this is the only
      * way an agent can see what it is about to publish before actually
-     * publishing it.
+     * publishing it. With {@code edits} in place of {@code text}, it renders
+     * what an update with those edits would store.
      */
     @PostMapping("/{id}/preview")
     public EntryDtos.PreviewView previewExisting(
             HttpServletRequest request, @PathVariable("id") String id,
             @RequestBody EntryDtos.PreviewRequest body) throws WebloggerException {
         WeblogEntry entry = requireLiveEntry(request, id);
-        return renderPreview(entry, body);
+        FieldErrors errors = new FieldErrors();
+        String text = EntryEdits.resolve(errors, body.text(), body.edits(), entry.getText());
+        errors.throwIfAny();
+        return renderPreview(entry, text);
     }
 
     /**
@@ -257,18 +311,23 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * unsaved {@code WeblogEntry} owned by the action weblog, so its
      * shortcodes resolve that weblog's own media and nothing is persisted.
      * Same scratch-entry approach {@code EntryEditController} uses when its
-     * preview call carries no {@code id}.
+     * preview call carries no {@code id}. {@code edits} need a stored text to
+     * apply to, so here they are a 400.
      */
     @PostMapping("/preview")
     public EntryDtos.PreviewView previewNew(
             HttpServletRequest request,
             @RequestBody EntryDtos.PreviewRequest body) throws WebloggerException {
+        if (EntryEdits.sent(body.edits())) {
+            throw ApiException.invalidField("edits", "edits change an existing entry's text; preview with its id, "
+                    + "or send text.");
+        }
         Weblog weblog = requireActionWeblog(request);
         User user = requireAuthenticatedUser(request);
         WeblogEntry entry = new WeblogEntry();
         entry.setWebsite(weblog);
         entry.setCreatorUserName(user.getUserName());
-        return renderPreview(entry, body);
+        return renderPreview(entry, body.text());
     }
 
     /**
@@ -278,15 +337,16 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * published entry, so a preview cannot disagree with what gets
      * published. A missing or blank {@code text} renders an empty draft
      * rather than failing: previewing a blank editor is a normal moment, not
-     * an error.
+     * an error. (A missing body never gets here: {@code ApiExceptionHandler}
+     * answers it with a 400.)
      */
-    private EntryDtos.PreviewView renderPreview(WeblogEntry entry, EntryDtos.PreviewRequest body) {
+    private EntryDtos.PreviewView renderPreview(WeblogEntry entry, String text) {
         // Mutates a JPA-managed entity (when entry came from requireLiveEntry
         // rather than the previewNew scratch path) without saving. Safe only
         // because nothing on this request path calls weblogger.flush() or
         // saveWeblogEntry -- a future change adding either here would
         // silently persist preview text over the stored entry.
-        entry.setText(body == null || body.text() == null ? "" : body.text());
+        entry.setText(text == null ? "" : text);
         String html = weblogger.getEntryRenderer().transformedText(entry);
         return new EntryDtos.PreviewView(html, PreviewLint.warnings(html));
     }

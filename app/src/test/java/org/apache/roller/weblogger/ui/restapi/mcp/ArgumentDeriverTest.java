@@ -127,6 +127,10 @@ class ArgumentDeriverTest {
     record Wide(String name, Boolean flag, long size, float ratio, String[] names, List<Inner> inners,
             Inner inner) { }
 
+    record Described(@Schema(description = "The label") String label, Integer count) { }
+
+    record Holder(List<Described> items) { }
+
     static final class Plain { }
 
     static final class Branches {
@@ -141,6 +145,8 @@ class ArgumentDeriverTest {
         public void mapBody(@RequestBody Map<String, String> body) { }
 
         public void wide(@RequestBody Wide body) { }
+
+        public void described(@RequestBody Holder body) { }
 
         public void queries(
                 @RequestParam("q") @io.swagger.v3.oas.annotations.Parameter(description = "Search text") String q,
@@ -213,6 +219,17 @@ class ArgumentDeriverTest {
         assertEquals("object", ((Map<?, ?>) a.get("inners").schema().get("items")).get("type"));
         Map<?, ?> properties = (Map<?, ?>) a.get("inner").schema().get("properties");
         assertEquals(java.util.Set.of("label", "count"), properties.keySet());
+    }
+
+    /** A nested record's own descriptions reach the tool, as they reach openapi.json. */
+    @Test
+    void aNestedRecordsComponentsCarryTheirOwnDescriptions() throws Exception {
+        Map<String, ArgumentSpec> a = byName(branch("/v1/x", "described", Holder.class));
+
+        Map<?, ?> items = (Map<?, ?>) a.get("items").schema().get("items");
+        Map<?, ?> properties = (Map<?, ?>) items.get("properties");
+        assertEquals(Map.of("type", "string", "description", "The label"), properties.get("label"));
+        assertEquals(Map.of("type", "integer"), properties.get("count"));
     }
 
     @Test

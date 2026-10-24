@@ -35,6 +35,8 @@ final class EntryWrites {
     private String featuredImageAlt;
     private Boolean importExternalImages;
     private List<String> clear;
+    private List<EntryDtos.TextEdit> edits;
+    private String expectedContentHash;
 
     private EntryWrites() {
     }
@@ -68,11 +70,14 @@ final class EntryWrites {
     EntryWrites featuredImageAlt(String value) { featuredImageAlt = value; return this; }
     EntryWrites importExternalImages(Boolean value) { importExternalImages = value; return this; }
     EntryWrites clear(List<String> value) { clear = value; return this; }
+    EntryWrites edits(List<EntryDtos.TextEdit> value) { edits = value; return this; }
+    EntryWrites expectedContentHash(String value) { expectedContentHash = value; return this; }
 
     EntryDtos.EntryWrite build() {
         return new EntryDtos.EntryWrite(title, summary, text, status, category, pubTime, tags,
                 metaTitle, searchDescription, canonicalUrl, noindex, featuredImageId, ogImageId,
                 jsonLdType, geoLatitude, geoLongitude, eventStart, eventEnd, eventLocation,
-                commentsClosed, anchor, featuredImageUrl, featuredImageAlt, importExternalImages, clear);
+                commentsClosed, anchor, featuredImageUrl, featuredImageAlt, importExternalImages, clear, edits,
+                expectedContentHash);
     }
 }
