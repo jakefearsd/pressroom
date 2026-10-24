@@ -80,8 +80,7 @@
                             <c:set var="mediaFileURL" value="${urls.media(mediaFile)}"/>
                             <c:url var="mediaFileThumbnailURL" value="${urls.mediaThumbnail(mediaFile)}"/>
 
-                            <li class="align-images"
-                                onmouseover="highlight(this, true)" onmouseout="highlight(this, false)">
+                            <li class="align-images">
 
                                 <%-- name/url/id ride in data-* attributes, not
                                      an onclick built by string concatenation --
@@ -163,6 +162,13 @@
 
     $(document).on('focusin focusout', '.mediaObject', function (event) {
         highlight(this.parentNode, event.type === 'focusin');
+    });
+
+    <%-- Hover is delegated from here, never an inline onmouseover: an inline
+         handler can fire before this script has defined highlight (a pointer
+         already resting on the overlay as it loads threw a ReferenceError). --%>
+    $(document).on('mouseenter mouseleave', '.align-images', function (event) {
+        highlight(this, event.type === 'mouseenter');
     });
 
     function highlight(el, flag) {

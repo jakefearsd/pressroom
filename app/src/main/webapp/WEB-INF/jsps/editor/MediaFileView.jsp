@@ -190,8 +190,7 @@
 
                             <c:forEach items="${childFiles}" var="mediaFile">
 
-                                <li class="align-images"
-                                    onmouseover="highlight(this, true)" onmouseout="highlight(this, false)">
+                                <li class="align-images">
 
                                     <%-- id/name ride in data-* attributes, not an inline onclick built by
                                          string concatenation. fn:escapeXml here escapes for the
@@ -258,8 +257,7 @@
 
                             <c:forEach items="${pager.items}" var="mediaFile">
 
-                                <li class="align-images"
-                                    onmouseover="highlight(this, true)" onmouseout="highlight(this, false)">
+                                <li class="align-images">
 
                                     <div class="mediaObject" role="button" tabindex="0"
                                          aria-label="${fn:escapeXml(mediaFile.name)}"
@@ -546,6 +544,13 @@
 
     $(document).on('focusin focusout', '.mediaObject', function (event) {
         highlight(this.parentNode, event.type === 'focusin');
+    });
+
+    <%-- Hover is delegated from here, never an inline onmouseover: an inline
+         handler can fire before this script has defined highlight (a pointer
+         already resting on the overlay as it loads threw a ReferenceError). --%>
+    $(document).on('mouseenter mouseleave', '.align-images', function (event) {
+        highlight(this, event.type === 'mouseenter');
     });
 
     <%-- The alt-text marker opens the same editor. stopPropagation keeps the

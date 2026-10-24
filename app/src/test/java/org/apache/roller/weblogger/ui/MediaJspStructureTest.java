@@ -152,6 +152,25 @@ class MediaJspStructureTest {
     }
 
     /**
+     * An inline {@code onmouseover="highlight(...)"} on a tile ran as soon as
+     * the pointer rested on it, which can be before the script at the bottom
+     * of the page has defined {@code highlight}: a pointer already over the
+     * overlay as it loads threw "ReferenceError: highlight is not defined"
+     * (EditorSeoIT, BrowserHealth). The hover binding is delegated from that
+     * script instead, so it exists only once the function does.
+     */
+    @Test
+    void tileHoverIsBoundByTheScriptNotInline() throws IOException {
+        for (String name : List.of("MediaFileView.jsp", "MediaFileImageChooser.jsp")) {
+            String source = jsp(name);
+            assertFalse(source.contains("onmouseover="), name + " binds hover inline");
+            assertFalse(source.contains("onmouseout="), name + " binds hover inline");
+            assertTrue(source.contains("$(document).on('mouseenter mouseleave', '.align-images'"),
+                    name + " delegates tile hover from its script");
+        }
+    }
+
+    /**
      * The chooser's folder switcher posted to /roller-ui/authoring/
      * mediaFileImageChooser.rol, a path nothing serves (the controller is a
      * GET under /overlay), so changing folder in the picker failed. It also
