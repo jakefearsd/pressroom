@@ -32,9 +32,21 @@ This is the privacy policy for **blog.wikantik.com** and every blog it hosts, in
 
 | Name | Set when | What it does | Lifetime |
 |---|---|---|---|
-| `JSESSIONID` | You sign in (including Google sign-in), or use another feature that needs a session | Keeps your session, including being signed in | Until you close the browser; the server drops an idle session after 30 minutes. HttpOnly, SameSite=Lax. TODO(Jake): confirm the Secure attribute reaches the browser through Caddy and Cloudflare; the repository config does not set it. |
+| `JSESSIONID` | You sign in (including Google sign-in), or use another feature that needs a session (a signed-in reader loading the comment box) | Keeps your session, including being signed in | Until you close the browser; the server drops an idle session after 30 minutes. HttpOnly, SameSite=Lax. TODO(Jake): confirm the Secure attribute reaches the browser through Caddy and Cloudflare; the repository config does not set it. |
 
-Reading a blog or the site directory as a visitor does not set `JSESSIONID`; the public pages are built not to start a session. There is no "stay signed in" cookie: that feature is off in the shipped configuration and Google sign-in never uses it (TODO(Jake): confirm no `ROLLER_REMEMBERME_ENABLED` setting is present in the production `.env`; if it is on, a 14-day "remember-me" cookie would need adding here). There are no analytics, advertising or cross-site tracking cookies today. TODO(Jake): the themes' scripts were not found to write cookies or browser storage (a search of the theme and template files found none); confirm no other cookies are set by the Cloudflare tunnel for the blog hostnames.
+Reading a blog or the site directory as a visitor does not set `JSESSIONID`; the public pages are built not to start a session.
+
+Blog authors, who sign in with a password on the login page, get a few more first-party cookies. Readers who sign in with Google do not.
+
+| Name | Set when | What it does | Lifetime |
+|---|---|---|---|
+| `username` | An author submits the password login form | Remembers the login name typed, so the form can be filled in next time | About 30 days. Set by a script in your browser; Secure, SameSite=Strict |
+| `favorite_authentication_method` | Same | Remembers that you used the username form | Until you close the browser. Set by a script in your browser; Secure, SameSite=Strict |
+| `rfolder-<id>` and `control_<id>` | An author expands or collapses a folder or panel in the author screens | Remembers that preference | About 365 days. Set by a script in your browser; Secure, SameSite=Strict, path `/` |
+
+There is no "stay signed in" cookie. The login page shows a "remember me" checkbox only when that feature is enabled (the page reads the `rememberme.enabled` setting); it is off in the shipped configuration and Google sign-in never uses it. TODO(Jake): confirm no `ROLLER_REMEMBERME_ENABLED` setting is present in the production `.env`; if it is on, a "remember-me" cookie lasting up to two weeks would need adding here.
+
+There are no analytics, advertising or cross-site tracking cookies today. Besides cookies, the author screens keep unsaved drafts and the chosen editor mode in your browser's own storage (localStorage), which is not sent to the server; readers' pages write nothing to browser storage. TODO(Jake): confirm the Cloudflare tunnel adds no cookies of its own for the blog hostnames.
 
 ## Who else gets your data
 
