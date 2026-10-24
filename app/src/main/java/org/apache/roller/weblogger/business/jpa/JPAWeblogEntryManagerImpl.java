@@ -192,6 +192,14 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
      */
     @Override
     public void saveWeblogEntry(WeblogEntry entry, User editor) throws WebloggerException {
+        saveWeblogEntry(entry, editor, null);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    @Override
+    public void saveWeblogEntry(WeblogEntry entry, User editor, String revisionNote) throws WebloggerException {
 
         // Read before the save re-snapshots the loaded status below.
         boolean wasPublished = entry.getLoadedStatus() == PubStatus.PUBLISHED;
@@ -246,7 +254,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
 
         // What the revision RECORDS is the pre-save content, captured when
         // the entry was loaded; it is written once this save has committed.
-        recordRevision(entry, editor);
+        recordRevision(entry, editor, revisionNote);
 
         // First arrival at PUBLISHED is a first-party outcome the analytics
         // tier joins against traffic. Best-effort: an event insert must never
@@ -300,7 +308,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     // The factory is the tier's own, shared and closed at shutdown by the
     // strategy; closing it here would take the whole persistence unit down.
     @SuppressWarnings("PMD.CloseResource")
-    private void recordRevision(WeblogEntry entry, User editor) {
+    private void recordRevision(WeblogEntry entry, User editor, String revisionNote) {
         int retention = WebloggerRuntimeConfig.getIntProperty("entry.revisions.retention");
         if (retention == 0) {
             return;
@@ -308,8 +316,12 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         WeblogEntryRevision revision = entry.contentBeingReplaced(
                 editor != null ? editor.getUserName() : entry.getCreatorUserName());
         if (revision == null) {
+            // nothing replaced, so nothing for the note to label
             return;
         }
+        // Set every time, null included: the snapshot object is the entry's
+        // own, and a note must label only the revision its save left.
+        revision.setNote(revisionNote);
         String entryId = entry.getId();
         EntityManagerFactory emf = strategy.getEntityManager(false).getEntityManagerFactory();
         strategy.runAfterCommit(() -> storeRevision(emf, entryId, revision, retention));

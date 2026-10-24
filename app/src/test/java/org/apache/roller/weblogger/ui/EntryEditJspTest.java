@@ -157,6 +157,26 @@ class EntryEditJspTest {
     }
 
     /**
+     * A revision's note (an API update's revisionNote, spec 2026-10-24
+     * section 5) is shown in the revisions table, escaped, on a row of its own
+     * under its revision, and only when there is one: the rail is narrow, and
+     * a 255-character note in a cell beside the date would stand the row on end.
+     */
+    @Test
+    void aRevisionsNoteIsShownEscapedUnderItsRevision() throws IOException {
+        String jsp = read();
+        int table = jsp.indexOf("id=\"entryRevisionsTable\"");
+        assertTrue(table >= 0, "the revisions table is missing");
+        String rows = jsp.substring(table, jsp.indexOf("</table>", table));
+
+        assertTrue(rows.contains("<c:if test=\"${not empty revision.note}\">"), rows);
+        assertTrue(rows.contains("<td colspan=\"4\" class=\"revision-note\">${fn:escapeXml(revision.note)}</td>"),
+                rows);
+        assertTrue(rows.indexOf("revision-restore-button") < rows.indexOf("revision-note"),
+                "the note follows its revision's row");
+    }
+
+    /**
      * Task M1 (task B5's date vocabulary, applied to the editor): every
      * timestamp this screen renders goes through {@code <rc:date>}.
      *

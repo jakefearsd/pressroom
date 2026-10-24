@@ -841,6 +841,17 @@ table.mm_table_actions td {
     margin: 0;
 }
 
+/* A revision's note sits under its revision's row, in the tip register,
+   with no rule between the two (Bootstrap rules each cell's bottom). */
+#entryRevisionsTable tr:has(+ .revision-note-row) > td {
+    border-bottom-width: 0;
+}
+
+#entryRevisionsTable td.revision-note {
+    color: var(--ink-soft);
+    padding-top: 0;
+}
+
 @media (max-width: 760px) {
     .editor-grid {
         grid-template-columns: 1fr;

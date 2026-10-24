@@ -549,6 +549,12 @@
                         </form>
                     </td>
                 </tr>
+                <%-- why that save was made, when it said (an API update's revisionNote) --%>
+                <c:if test="${not empty revision.note}">
+                    <tr class="revision-note-row">
+                        <td colspan="4" class="revision-note">${fn:escapeXml(revision.note)}</td>
+                    </tr>
+                </c:if>
             </c:forEach>
         </table>
     </div>

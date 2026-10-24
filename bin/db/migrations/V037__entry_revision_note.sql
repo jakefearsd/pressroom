@@ -1,0 +1,33 @@
+-- Licensed to the Apache Software Foundation (ASF) under one or more
+-- contributor license agreements.  The ASF licenses this file to You
+-- under the Apache License, Version 2.0 (the "License"); you may not
+-- use this file except in compliance with the License.
+-- You may obtain a copy of the License at
+--
+--     http://www.apache.org/licenses/LICENSE-2.0
+--
+-- Unless required by applicable law or agreed to in writing, software
+-- distributed under the License is distributed on an "AS IS" BASIS,
+-- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-- See the License for the specific language governing permissions and
+-- limitations under the License.
+--
+--
+-- Migration: a note on an entry revision, saying why the save that left it
+-- was made.
+--
+-- An API update (PATCH /api/v1/weblogs/{handle}/entries/{id}, the MCP
+-- entries update) may send revisionNote, at most 255 characters. It labels
+-- the revision that update leaves: the row holding the title, text and
+-- summary the update replaced. An update that changes none of the three
+-- leaves no revision, and its note goes with it. The editor's revision rail
+-- shows the note beside the revision. NULL for every revision from before
+-- this migration and for every save that sent no note (the web editor sends
+-- none). See docs/superpowers/specs/2026-10-24-agent-editing-and-seo-design.md,
+-- section 5.
+--
+-- Prerequisites: V010__entry_revisions.
+--
+-- Idempotent: safe to run on a database that already has it.
+
+ALTER TABLE weblogentry_revision ADD COLUMN IF NOT EXISTS note varchar(255);

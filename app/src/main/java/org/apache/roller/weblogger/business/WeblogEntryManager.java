@@ -51,6 +51,14 @@ public interface WeblogEntryManager {
      * entry's creator, as the one-argument form does.
      */
     void saveWeblogEntry(WeblogEntry entry, User editor) throws WebloggerException;
+
+    /**
+     * As {@link #saveWeblogEntry(WeblogEntry, User)}, labelling the revision
+     * this save leaves with {@code revisionNote}: why it was made, as the
+     * caller says. A save that changes no title, text or summary leaves no
+     * revision, and the note is dropped with it. Null is no note.
+     */
+    void saveWeblogEntry(WeblogEntry entry, User editor, String revisionNote) throws WebloggerException;
        
     /**
      * Remove weblog entry permanently -- there is exactly one path to a hard
