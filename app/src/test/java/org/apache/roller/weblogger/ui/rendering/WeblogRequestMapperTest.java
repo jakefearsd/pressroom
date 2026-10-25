@@ -2,9 +2,12 @@ package org.apache.roller.weblogger.ui.rendering;
 
 import org.apache.roller.weblogger.TestUtils;
 import org.apache.roller.weblogger.business.Weblogger;
+import org.apache.roller.weblogger.business.PropertiesManager;
 import org.apache.roller.weblogger.business.WebloggerProvider;
+import org.apache.roller.weblogger.pojos.RuntimeConfigProperty;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
+import org.apache.roller.weblogger.pojos.WeblogPage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,6 +15,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -27,6 +33,7 @@ class WeblogRequestMapperTest {
     private User user;
     private Weblog weblog;
     private WeblogRequestMapper mapper;
+    private final Map<String, String> originalProperties = new LinkedHashMap<>();
 
     /**
      * A provider over the suite's real, bootstrapped tier: the mapper is
@@ -53,6 +60,19 @@ class WeblogRequestMapperTest {
 
     @AfterEach
     void tearDown() throws Exception {
+        if (!originalProperties.isEmpty()) {
+            PropertiesManager pmgr = TestUtils.weblogger().getPropertiesManager();
+            Map<String, RuntimeConfigProperty> config = pmgr.getProperties();
+            originalProperties.forEach((name, value) -> config.get(name).setValue(value));
+            pmgr.saveProperties(config);
+            TestUtils.weblogger().flush();
+            TestUtils.endSession(true);
+        }
+        Weblog site = TestUtils.weblogger().getWeblogManager().getSiteSpace();
+        if (site != null) {
+            TestUtils.weblogger().getWeblogManager().removeWeblog(site);
+            TestUtils.endSession(true);
+        }
         TestUtils.teardownWeblog(weblog.getId());
         TestUtils.teardownUser(user.getUserName());
         TestUtils.endSession(true);
@@ -728,6 +748,211 @@ class WeblogRequestMapperTest {
         assertTrue(mapper.handleRequest(vhostUrl("GET", "/de/"), response));
         assertNull(response.getRedirectedUrl());
         assertEquals("/roller-ui/rendering/page/mapperblog/de", response.getForwardedUrl());
+    }
+
+    // ------------------------------------------------- site pages at /<slug>
+
+    private void setProperty(String name, String value) throws Exception {
+        PropertiesManager pmgr = TestUtils.weblogger().getPropertiesManager();
+        Map<String, RuntimeConfigProperty> config = pmgr.getProperties();
+        originalProperties.computeIfAbsent(name, key -> config.get(key).getValue());
+        config.get(name).setValue(value);
+        pmgr.saveProperties(config);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+    }
+
+    private void givenSitePage(String slug, WeblogPage.PubStatus status) throws Exception {
+        Weblog site = TestUtils.weblogger().getWeblogManager().getOrCreateSiteSpace(
+                TestUtils.weblogger().getUserManager().getUserByUserName(user.getUserName()));
+        TestUtils.weblogger().flush();
+        WeblogPage page = new WeblogPage();
+        page.setWeblog(site);
+        page.setSlug(slug);
+        page.setTitle(slug);
+        page.setContent("Body of " + slug);
+        page.setStatus(status);
+        TestUtils.weblogger().getWeblogPageManager().savePage(page);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+    }
+
+    /** A draft holds its slug: the page servlet, not the mapper, decides it is a 404. */
+    @ParameterizedTest
+    @ValueSource(strings = {"PUBLISHED", "DRAFT"})
+    void aSitePageSlugForwardsToTheSiteSpaceWhateverItsStatus(String status) throws Exception {
+        givenSitePage("mapperabout", WeblogPage.PubStatus.valueOf(status));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertTrue(mapper.handleRequest(publicUrl("GET", "/mapperabout"), response));
+        assertEquals("/roller-ui/rendering/page/site-space/mapperabout", response.getForwardedUrl());
+    }
+
+    @Test
+    void aSitePageForwardsAtTheRootContextToo() throws Exception {
+        givenSitePage("mapperabout", WeblogPage.PubStatus.PUBLISHED);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertTrue(mapper.handleRequest(publicUrlAt("", "GET", "/mapperabout"), response));
+        assertEquals("/roller-ui/rendering/page/site-space/mapperabout", response.getForwardedUrl());
+    }
+
+    @Test
+    void aSingleSegmentNamingNoSitePageIsNotHandled() throws Exception {
+        givenSitePage("mapperabout", WeblogPage.PubStatus.PUBLISHED);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertFalse(mapper.handleRequest(publicUrl("GET", "/mappernosuchpage"), response));
+        assertNull(response.getForwardedUrl());
+    }
+
+    @Test
+    void aSingleSegmentWithNoSiteSpaceIsNotHandled() throws Exception {
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertFalse(mapper.handleRequest(publicUrl("GET", "/mapperabout"), response));
+        assertNull(response.getForwardedUrl());
+    }
+
+    /** A site page is one segment: /about/ and /about/x are nothing this mapper serves. */
+    @ParameterizedTest
+    @ValueSource(strings = {"/mapperabout/", "/mapperabout/more"})
+    void aSitePageSlugWithMoreAfterItIsNotHandled(String path) throws Exception {
+        givenSitePage("mapperabout", WeblogPage.PubStatus.PUBLISHED);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertFalse(mapper.handleRequest(publicUrl("GET", path), response), path);
+        assertNull(response.getForwardedUrl(), path);
+    }
+
+    @Test
+    void anEncodedSlugIsLookedUpDecodedAndForwardedAsItCame() throws Exception {
+        givenSitePage("mapper story", WeblogPage.PubStatus.PUBLISHED);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertTrue(mapper.handleRequest(publicUrl("GET", "/mapper+story"), response));
+        assertEquals("/roller-ui/rendering/page/site-space/mapper+story", response.getForwardedUrl());
+    }
+
+    @Test
+    void aMalformedEncodingIsNotHandled() throws Exception {
+        givenSitePage("mapperabout", WeblogPage.PubStatus.PUBLISHED);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertFalse(mapper.handleRequest(publicUrl("GET", "/mapper%zz"), response));
+        assertNull(response.getForwardedUrl());
+    }
+
+    /** The front door has one public address, and it is the root (spec AC12). */
+    @Test
+    void theFrontDoorPagesOwnSlugIsAPermanentRedirectToTheRoot() throws Exception {
+        givenSitePage("mapperhome", WeblogPage.PubStatus.PUBLISHED);
+        setProperty("site.frontpage.page", "mapperhome");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertTrue(mapper.handleRequest(publicUrl("GET", "/mapperhome"), response));
+        assertEquals(301, response.getStatus());
+        assertEquals("/roller/", response.getHeader("Location"));
+        assertNull(response.getForwardedUrl());
+    }
+
+    @Test
+    void theFrontDoorRedirectKeepsTheQueryAndIsBareAtTheRootContext() throws Exception {
+        givenSitePage("mapperhome", WeblogPage.PubStatus.PUBLISHED);
+        setProperty("site.frontpage.page", "mapperhome");
+        MockHttpServletRequest request = publicUrlAt("", "GET", "/mapperhome");
+        request.setQueryString("utm_source=x");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertTrue(mapper.handleRequest(request, response));
+        assertEquals(301, response.getStatus());
+        assertEquals("/?utm_source=x", response.getHeader("Location"));
+    }
+
+    /** Another page is not the front door just because one is set. */
+    @Test
+    void aSitePageThatIsNotTheFrontDoorStillForwards() throws Exception {
+        givenSitePage("mapperhome", WeblogPage.PubStatus.PUBLISHED);
+        givenSitePage("mapperabout", WeblogPage.PubStatus.PUBLISHED);
+        setProperty("site.frontpage.page", "mapperhome");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertTrue(mapper.handleRequest(publicUrl("GET", "/mapperabout"), response));
+        assertEquals("/roller-ui/rendering/page/site-space/mapperabout", response.getForwardedUrl());
+    }
+
+    /**
+     * The editor refuses a site slug that is a blog's handle, so the clash
+     * can only be forced (here: the blog created after the page, around the
+     * creation rules). The blog wins and the site page is not served there.
+     */
+    @Test
+    void aBlogHandleWinsOverASitePageOfTheSameName() throws Exception {
+        givenSitePage("mapperclash", WeblogPage.PubStatus.PUBLISHED);
+        Weblog clash = TestUtils.setupWeblog("mapperclash", user);
+        TestUtils.endSession(true);
+        try {
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            assertTrue(mapper.handleRequest(publicUrl("GET", "/mapperclash"), response));
+            assertNull(response.getForwardedUrl());
+            assertEquals("/roller/mapperclash/", response.getRedirectedUrl(),
+                    "the blog's own trailing-slash redirect, not the site page");
+        } finally {
+            TestUtils.teardownWeblog(clash.getId());
+            TestUtils.endSession(true);
+        }
+    }
+
+    /** Custom domains are unaffected: /about there is that blog's Page (review focus 1). */
+    @Test
+    void onACustomDomainASitePageSlugIsTheBlogsOwnPage() throws Exception {
+        givenSitePage("mapperabout", WeblogPage.PubStatus.PUBLISHED);
+        setProperty("site.frontpage.page", "mapperabout");
+        givenCustomDomain("vhost.example.com");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertTrue(mapper.handleRequest(vhostUrl("GET", "/mapperabout"), response));
+        assertEquals("/roller-ui/rendering/page/mapperblog/mapperabout", response.getForwardedUrl());
+        assertEquals(200, response.getStatus(), "never the front door's 301");
+    }
+
+    @Test
+    void aPostToASitePageIsNeverForwarded() throws Exception {
+        givenSitePage("mapperabout", WeblogPage.PubStatus.PUBLISHED);
+        givenSitePage("mapperhome", WeblogPage.PubStatus.PUBLISHED);
+        setProperty("site.frontpage.page", "mapperhome");
+        for (String path : new String[] {"/mapperabout", "/mapperhome"}) {
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            assertFalse(mapper.handleRequest(publicUrl("POST", path), response), path);
+            assertNull(response.getForwardedUrl(), path);
+            assertNull(response.getHeader("Location"), path);
+        }
+    }
+
+    @Test
+    void beforeBootstrapASingleSegmentIsNotASitePage() throws Exception {
+        givenSitePage("mapperabout", WeblogPage.PubStatus.PUBLISHED);
+        WebloggerProvider cold = mock(WebloggerProvider.class);
+        when(cold.isBootstrapped()).thenReturn(false);
+        WeblogRequestMapper coldMapper = new WeblogRequestMapper(cold, TestUtils.weblogger());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertFalse(coldMapper.handleRequest(publicUrl("GET", "/mapperabout"), response));
+        assertNull(response.getForwardedUrl());
+    }
+
+    /** A lookup that throws is a decline (the 404 it would have been), never a 500. */
+    @Test
+    void aSitePageLookupThatThrowsIsNotHandled() throws Exception {
+        Weblogger broken = mock(Weblogger.class);
+        when(broken.getWeblogManager()).thenThrow(new IllegalStateException("tier gone"));
+        WeblogRequestMapper brokenMapper = new WeblogRequestMapper(bootstrappedProvider(), broken);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertFalse(brokenMapper.handleRequest(publicUrl("GET", "/mapperabout"), response));
+        assertNull(response.getForwardedUrl());
     }
 
     private void givenCustomDomain(String host) throws Exception {

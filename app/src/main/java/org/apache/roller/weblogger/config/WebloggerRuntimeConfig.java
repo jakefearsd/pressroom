@@ -345,4 +345,24 @@ public final class WebloggerRuntimeConfig {
         return isFrontPageWeblog(weblogHandle) && siteWide;
     }
     
+    /**
+     * The slug of the site page chosen as the front door
+     * ({@code site.frontpage.page}), trimmed, or null when it is unset or blank.
+     */
+    public static String getFrontDoorPageSlug() {
+        String slug = getProperty("site.frontpage.page");
+        return slug == null || slug.isBlank() ? null : slug.trim();
+    }
+
+
+    /**
+     * Whether {@code slug} names the front door's site page. The one
+     * comparison the URL rule ({@code <ctx>/} for that page), the mapper's
+     * 301 from its slug to {@code /} and {@code FrontDoor} all use: the
+     * property trimmed, the slug as given, exact case. Were they to disagree,
+     * the 301 would send a reader to a root that does not show the page.
+     */
+    public static boolean isFrontDoorPage(String slug) {
+        return slug != null && slug.equals(getFrontDoorPageSlug());
+    }
 }

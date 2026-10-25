@@ -188,6 +188,25 @@ class WeblogRequestTest {
                         + "accepted here either");
     }
 
+    /**
+     * The site space's handle has a hyphen on purpose (no blog can take it), so
+     * only a page request admits it: the page servlet is where site pages
+     * render, and refuses a direct request for them. Every other rendering
+     * servlet (feed, search, resources) still reads it as no handle at all.
+     */
+    @Test
+    void onlyAPageRequestAdmitsTheSiteSpaceHandle() throws InvalidRequestException {
+        assertThrows(InvalidRequestException.class, () -> parse("/site-space"),
+                "a plain weblog request (feed, search, resources) never reaches the site space");
+        WeblogPageRequest page = new WeblogPageRequest(mock(Weblogger.class),
+                MockRequest.with(PAGE_SERVLET, "/site-space/about"));
+        assertEquals(Weblog.SITE_SPACE_HANDLE, page.getWeblogHandle());
+        assertEquals("about", page.getPageSlug());
+        assertThrows(InvalidRequestException.class, () -> new WeblogPageRequest(mock(Weblogger.class),
+                        MockRequest.with(PAGE_SERVLET, "/other-space/about")),
+                "the site space's handle, not hyphens in general");
+    }
+
     @Test
     void nonAsciiLettersAreAcceptedInAHandle() {
         // isAlphanumeric() is Unicode-aware, not ASCII-only. Recording this so

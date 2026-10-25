@@ -298,17 +298,10 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
         }
         // The front door's page IS the root, so its link is "<ctx>/", never
         // "<ctx>/<slug>" (which would be a second address for the same page).
-        if (weblog.isSiteSpace() && slug.equals(frontDoorPageSlug())) {
+        if (weblog.isSiteSpace() && WebloggerRuntimeConfig.isFrontDoorPage(slug)) {
             return weblogRoot(weblog, null, absolute);
         }
         return weblogRoot(weblog, null, absolute) + URLUtilities.encode(slug);
-    }
-
-
-    /** The runtime property naming the front door's site page, or null when unset. */
-    private static String frontDoorPageSlug() {
-        String slug = WebloggerRuntimeConfig.getProperty("site.frontpage.page");
-        return slug == null || slug.isBlank() ? null : slug.trim();
     }
 
 

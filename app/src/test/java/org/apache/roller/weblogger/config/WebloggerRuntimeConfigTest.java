@@ -242,4 +242,32 @@ class WebloggerRuntimeConfigTest {
         WebloggerRuntimeConfig.detach();
         assertNull(WebloggerRuntimeConfig.getProperty("k"));
     }
+
+    /**
+     * One comparison decides "is this the front door's page" for the URL rule,
+     * the mapper's 301 and {@code FrontDoor}: the property trimmed, the slug
+     * as given, exact case. Three copies of it could disagree, and a 301 to a
+     * root that does not render the page is a redirect to the directory.
+     */
+    @Test
+    void theFrontDoorPageIsTheTrimmedPropertyComparedExactly() {
+        try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering("site.frontpage.page", " home ")) {
+            assertEquals("home", WebloggerRuntimeConfig.getFrontDoorPageSlug());
+            assertTrue(WebloggerRuntimeConfig.isFrontDoorPage("home"));
+            assertFalse(WebloggerRuntimeConfig.isFrontDoorPage("Home"), "exact case");
+            assertFalse(WebloggerRuntimeConfig.isFrontDoorPage(" home"), "the slug is not trimmed");
+            assertFalse(WebloggerRuntimeConfig.isFrontDoorPage(null));
+        }
+    }
+
+    @Test
+    void aBlankOrMissingFrontDoorPageNamesNoPage() {
+        try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering("site.frontpage.page", "  ")) {
+            assertNull(WebloggerRuntimeConfig.getFrontDoorPageSlug());
+            assertFalse(WebloggerRuntimeConfig.isFrontDoorPage("  "));
+            assertFalse(WebloggerRuntimeConfig.isFrontDoorPage(""));
+        }
+        assertNull(WebloggerRuntimeConfig.getFrontDoorPageSlug(), "nothing attached: unset");
+        assertFalse(WebloggerRuntimeConfig.isFrontDoorPage("home"));
+    }
 }

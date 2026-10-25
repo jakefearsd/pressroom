@@ -8,12 +8,31 @@ resolves through the index at the end of `CLAUDE.md`.
 ## The site root
 
 `/` reaches `index.jsp` (the welcome file; the dispatcher serves `*.rol`
-only). With `site.frontpage.weblog.handle` set, it forwards to that weblog's
-rendering. Empty, it forwards to `/roller-ui/siteDirectory.rol`
-(`SiteDirectoryController`), a public page with the site description and
-the enabled, active weblogs by name, plus a "choose a front page" link for
-an admin. It used to forward to the setup page, which is admin-only, so on a
-site with no front page every reader got the sign-in form.
+only), which forwards wherever `FrontDoor.forwardPath` says. With
+`site.frontpage.page` set, that is the site page of that slug
+(`/roller-ui/rendering/page/site-space/<slug>`) when it is published, and
+the site directory when it is not (deleted, a draft, a failed lookup): `/`
+is never a 404 or a 500. Unset, with `site.frontpage.weblog.handle` set, it
+forwards to that weblog's rendering. Both empty, it forwards to
+`/roller-ui/siteDirectory.rol` (`SiteDirectoryController`), a public page
+with the site description and the enabled, active weblogs by name, plus a
+"choose a front page" link for an admin. It used to forward to the setup
+page, which is admin-only, so on a site with no front page every reader got
+the sign-in form.
+
+Site pages answer at `/<slug>` on the site host: `WeblogRequestMapper`,
+after the reserved-path and blog-handle checks fail (a blog handle wins), on
+a lone segment with no trailing slash, forwards to the page servlet for the
+site space when it has a page of that slug in any status (the servlet 404s a
+draft). Never on a custom domain, where `/<slug>` is that blog's Page. The
+front door's own slug answers 301 to `<ctx>/`. "Is this the front door's
+page" is one comparison, `WebloggerRuntimeConfig.isFrontDoorPage` (the
+property trimmed, the slug exact), shared by the mapper, `FrontDoor` and
+the URL strategy, so the 301 and the links never disagree. `PageServlet`
+serves the site space only to a FORWARD dispatch, and only a
+`WeblogPageRequest` parses its hyphenated handle, so
+`/roller-ui/rendering/{page,feed,search,...}/site-space/...` requested
+directly is a 404.
 
 Empty is a real choice, not a gap: Global Config's front-page menu starts
 with "None", and a save never fails over that field. With no weblogs the

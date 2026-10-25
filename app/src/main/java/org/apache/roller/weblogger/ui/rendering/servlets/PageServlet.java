@@ -43,6 +43,7 @@ import org.apache.roller.weblogger.ui.rendering.util.cache.RenderCache;
 import org.apache.roller.weblogger.ui.rendering.util.cache.RenderCaches;
 import org.apache.roller.weblogger.util.cache.CachedContent;
 
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -154,6 +155,12 @@ public class PageServlet extends HttpServlet {
             if (weblog == null) {
                 throw new WebloggerException("unable to lookup weblog: "
                         + pageRequest.getWeblogHandle());
+            }
+            // The site space is reached only through a container forward --
+            // WeblogRequestMapper's /<slug>, index.jsp's / -- never by its
+            // internal handle at this servlet's own path.
+            if (weblog.isSiteSpace() && request.getDispatcherType() != DispatcherType.FORWARD) {
+                throw new WebloggerException("the site space is not served by its handle");
             }
 
             // is this the site-wide weblog?

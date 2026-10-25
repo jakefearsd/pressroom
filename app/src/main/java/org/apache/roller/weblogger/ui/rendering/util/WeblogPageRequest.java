@@ -95,8 +95,9 @@ public class WeblogPageRequest extends WeblogRequest {
             throws InvalidRequestException {
 
         // let our parent take care of their business first
-        // parent determines weblog handle and locale if specified
-        super(weblogger, request);
+        // parent determines weblog handle and locale if specified; a page
+        // request is the one kind that may name the site space
+        super(weblogger, request, true);
 
         String servlet = request.getServletPath();
 

@@ -74,6 +74,19 @@ public class WeblogRequest extends ParsedRequest {
 
     public WeblogRequest(Weblogger weblogger, HttpServletRequest request)
             throws InvalidRequestException {
+        this(weblogger, request, false);
+    }
+
+
+    /**
+     * @param admitSiteSpace whether {@link Weblog#SITE_SPACE_HANDLE}, which no
+     *        blog handle can be, is read as a handle. Only a page request
+     *        says yes: site pages render through the page servlet and nowhere
+     *        else, so a crafted feed, search or resource url for the site
+     *        space parses as no weblog at all.
+     */
+    protected WeblogRequest(Weblogger weblogger, HttpServletRequest request,
+            boolean admitSiteSpace) throws InvalidRequestException {
 
         // let our parent take care of their business first
         super(weblogger, request);
@@ -94,7 +107,8 @@ public class WeblogRequest extends ParsedRequest {
             }
             
             String[] pathElements = path.split("/", 2);
-            if(isValidWeblogHandle(pathElements[0])) {
+            if(isValidWeblogHandle(pathElements[0])
+                    || admitSiteSpace && Weblog.SITE_SPACE_HANDLE.equals(pathElements[0])) {
                 this.weblogHandle = pathElements[0];
             } else {
                 // no or invalid weblogHandle in path info

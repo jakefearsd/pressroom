@@ -15,21 +15,11 @@
   copyright in this work, please see the NOTICE file in the top level
   directory of this distribution.
 --%><%@ page session="false" %><%
-
-// lets see if we have a frontpage blog
-String frontpageBlog =
-        org.apache.roller.weblogger.config.WebloggerRuntimeConfig.getProperty("site.frontpage.weblog.handle");
-
-if (frontpageBlog != null && !"".equals(frontpageBlog.trim())) {
-    // dispatch to frontpage blog
-    RequestDispatcher homepage =
-            request.getRequestDispatcher("/roller-ui/rendering/page/"+frontpageBlog);
-    homepage.forward(request, response);
-} else {
-    // no frontpage blog: the public site directory. (This was the setup
-    // page, which is admin-only, so every reader got the sign-in form.)
-    RequestDispatcher directory = request.getRequestDispatcher("/roller-ui/siteDirectory.rol");
-    directory.forward(request, response);
-}
-
+// What / shows -- a site page, a front-page blog or the site directory -- is
+// FrontDoor's decision (docs/dev/routing.md, "The site root").
+request.getRequestDispatcher(org.apache.roller.weblogger.ui.rendering.FrontDoor.forwardPath(
+        org.springframework.web.context.support.WebApplicationContextUtils
+                .getRequiredWebApplicationContext(application)
+                .getBean(org.apache.roller.weblogger.business.WebloggerProvider.class)))
+        .forward(request, response);
 %>

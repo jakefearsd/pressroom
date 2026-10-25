@@ -19,6 +19,8 @@
 package org.apache.roller.weblogger.ui.rendering;
 
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
@@ -32,6 +34,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.config.WebloggerConfig;
+import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.business.VirtualHostRegistry;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.business.WebloggerProvider;
@@ -252,6 +255,13 @@ public class WeblogRequestMapper {
             return false;
         }
         if (vhostHandle == null && !this.isWeblog(weblogHandle)) {
+            // Not a blog: on the site host a lone segment may be a site page,
+            // /<slug>. Asked only now, after the cheaper checks have failed and
+            // a blog has had its claim (a blog handle wins over a site slug),
+            // and never on a custom domain, where /<slug> is that blog's Page.
+            if (firstSlash < 0 && !servlet.isEmpty() && !trailingSlash) {
+                return answeredAsSitePage(firstSegment, request, response);
+            }
             log.debug("SKIPPED {}", weblogHandle);
             return false;
         }
@@ -500,6 +510,64 @@ public class WeblogRequestMapper {
                     weblogHandle, ex);
             return false;
         }
+    }
+
+    /**
+     * Serve {@code /<segment>} as a site page when the site space has a page
+     * with that slug, whatever its status: a draft holds its slug, and the page
+     * servlet answers 404 for it as it does for a blog's draft Page. The front
+     * door's own page has one address, {@code /}, so its slug answers 301
+     * there. POST is never forwarded (see {@link #calculateForwardUrl}).
+     *
+     * <p>A lookup that fails is a decline -- the 404 this url was before site
+     * pages -- never a 500.
+     *
+     * @return true when the request was forwarded or redirected
+     */
+    @SuppressFBWarnings(
+            value = "UNVALIDATED_REDIRECT",
+            justification = "The Location is the request's own context path plus '/', and the "
+                    + "original query string after a '?': it never leaves this host or this "
+                    + "application's root.")
+    private boolean answeredAsSitePage(String segment, HttpServletRequest request,
+            HttpServletResponse response) throws ServletException, IOException {
+
+        if (!provider.isBootstrapped() || "POST".equals(request.getMethod())) {
+            return false;
+        }
+        String slug;
+        try {
+            slug = URLDecoder.decode(segment, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException malformed) {
+            return false;
+        }
+        try {
+            Weblog site = weblogger.getWeblogManager().getWeblogByHandle(Weblog.SITE_SPACE_HANDLE);
+            if (site == null || !site.isSiteSpace()
+                    || weblogger.getWeblogPageManager().getPageBySlug(site, slug) == null) {
+                return false;
+            }
+        } catch (Exception ex) {
+            log.warn("Could not look up site page {}; declining it", segment, ex);
+            return false;
+        }
+
+        if (WebloggerRuntimeConfig.isFrontDoorPage(slug)) {
+            StringBuilder root = new StringBuilder(request.getContextPath()).append('/');
+            if (request.getQueryString() != null) {
+                root.append('?').append(request.getQueryString());
+            }
+            response.setStatus(HttpServletResponse.SC_MOVED_PERMANENTLY);
+            response.setHeader("Location", root.toString());
+            return true;
+        }
+
+        // The segment as it came: WeblogPageRequest decodes it, as it does a
+        // blog Page's slug.
+        String forwardUrl = PAGE_SERVLET + '/' + Weblog.SITE_SPACE_HANDLE + '/' + segment;
+        log.debug("forwarding site page to {}", forwardUrl);
+        request.getRequestDispatcher(forwardUrl).forward(request, response);
+        return true;
     }
 
     /**
