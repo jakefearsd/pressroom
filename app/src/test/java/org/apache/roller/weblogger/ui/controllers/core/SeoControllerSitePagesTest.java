@@ -131,8 +131,7 @@ class SeoControllerSitePagesTest {
             String body = response.getBody();
             assertNotNull(body);
             assertTrue(body.contains("<loc>" + ABSOLUTE_CONTEXT + "/about</loc>"), body);
-            assertTrue(body.contains("<loc>" + ABSOLUTE_CONTEXT + "/my+page</loc>")
-                    || body.contains("<loc>" + ABSOLUTE_CONTEXT + "/my%20page</loc>"), body);
+            assertTrue(body.contains("<loc>" + ABSOLUTE_CONTEXT + "/my+page</loc>"), body);
             assertTrue(body.contains("<loc>" + ABSOLUTE_CONTEXT + "/</loc>"), body);
             assertEquals(1, body.split("<loc>" + ABSOLUTE_CONTEXT + "/</loc>", -1).length - 1,
                     "the front door is listed once");
@@ -171,6 +170,36 @@ class SeoControllerSitePagesTest {
         String body = controller.weblogSitemap(ordinary.getHandle(), new MockHttpServletRequest()).getBody();
         assertNotNull(body);
         assertTrue(body.contains("<loc>" + ABSOLUTE_CONTEXT + "/" + ordinary.getHandle() + "/about</loc>"), body);
+    }
+
+    /**
+     * CHARACTERISATION (AC11): written after the implementation and expected to
+     * pass at once, because the custom-domain branch of the index returns the
+     * blog's own sitemap before any site-page code runs. It pins that a blog's
+     * own domain never advertises or lists the site's pages.
+     */
+    @Test
+    void onACustomDomainTheIndexIsTheBlogsOwnSitemapWithNoSitePages() throws Exception {
+        savePage("about", WeblogPage.PubStatus.PUBLISHED, false);
+        WeblogManager mgr = TestUtils.weblogger().getWeblogManager();
+        Weblog managed = TestUtils.getManagedWebsite(ordinary);
+        managed.setCustomDomain("siteblog.example.com");
+        mgr.saveWeblog(managed);
+        TestUtils.endSession(true);
+        TestUtils.weblogger().getVirtualHostRegistry().invalidate();
+        try {
+            MockHttpServletRequest request = new MockHttpServletRequest("GET", "/sitemap.xml");
+            request.addHeader("Host", "siteblog.example.com");
+            String body = controller.sitemapIndex(request).getBody();
+            assertNotNull(body);
+            assertTrue(body.contains("<urlset"), "the blog's own sitemap, not an index:\n" + body);
+            assertFalse(body.contains("sitemap-site-pages.xml"), body);
+            assertFalse(body.contains("<sitemapindex"), body);
+            assertFalse(body.contains("site-space"), body);
+            assertFalse(body.contains("/about</loc>"), "no site page urls:\n" + body);
+        } finally {
+            TestUtils.weblogger().getVirtualHostRegistry().invalidate();
+        }
     }
 
     private static void inject(Object target, String name, Object value) throws Exception {
