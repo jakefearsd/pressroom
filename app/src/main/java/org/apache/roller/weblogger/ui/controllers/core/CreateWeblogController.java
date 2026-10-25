@@ -156,7 +156,8 @@ public class CreateWeblogController extends BaseController {
             for (WeblogCreationRules.Violation v : WeblogCreationRules.check(bean,
                     WeblogCreationRules.Context.current(weblogger))) {
                 addFieldError(model, v.field(), v.messageKey(), request);
-                if ("createWeblog.error.handleExists".equals(v.messageKey())) {
+                if ("createWeblog.error.handleExists".equals(v.messageKey())
+                        || "createWeblog.error.handleIsSitePage".equals(v.messageKey())) {
                     bean.setHandle(null);
                 }
             }

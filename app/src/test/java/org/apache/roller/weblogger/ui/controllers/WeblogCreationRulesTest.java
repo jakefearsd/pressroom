@@ -4,12 +4,14 @@ import java.util.List;
 import java.util.Set;
 import org.apache.roller.weblogger.business.UserManager;
 import org.apache.roller.weblogger.business.WeblogManager;
+import org.apache.roller.weblogger.business.WeblogPageManager;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.business.themes.ThemeManager;
 import org.apache.roller.weblogger.config.WebloggerConfig;
 import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
+import org.apache.roller.weblogger.pojos.WeblogPage;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.controllers.core.CreateWeblogBean;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,16 +27,18 @@ class WeblogCreationRulesTest {
 
     private UserManager users;
     private WeblogManager weblogs;
+    private WeblogPageManager pages;
 
     @BeforeEach
     void setUp() {
         users = mock(UserManager.class);
         weblogs = mock(WeblogManager.class);
+        pages = mock(WeblogPageManager.class);
     }
 
     private WeblogCreationRules.Context context(boolean allowed, boolean groupBlogging) {
         return new WeblogCreationRules.Context(allowed, groupBlogging, "A-Za-z0-9",
-                Set.of("api", "page", "search", "roller-ui", "mine"), List.of("journal", "travel"), users, weblogs);
+                Set.of("api", "page", "search", "roller-ui", "mine"), List.of("journal", "travel"), users, weblogs, pages);
     }
 
     private static CreateWeblogBean bean(String handle) {
@@ -207,5 +211,33 @@ class WeblogCreationRulesTest {
         when(users.getWeblogPermissions(org.mockito.ArgumentMatchers.any(User.class))).thenReturn(List.of());
 
         assertNull(WeblogCreationRules.mayCreate(user(), context(true, false)));
+    }
+
+    private void sitePage(String slug, WeblogPage.PubStatus status) throws Exception {
+        Weblog site = new Weblog();
+        site.setHandle(Weblog.SITE_SPACE_HANDLE);
+        site.setSiteSpace(true);
+        WeblogPage page = new WeblogPage();
+        page.setSlug(slug);
+        page.setStatus(status);
+        when(weblogs.getSiteSpace()).thenReturn(site);
+        when(pages.getPages(site)).thenReturn(List.of(page));
+    }
+
+    @Test
+    void aHandleHeldByADraftSitePageIsRefusedAs409InAnyCase() throws Exception {
+        sitePage("about", WeblogPage.PubStatus.DRAFT);
+        for (String handle : new String[] {"about", "ABOUT"}) {
+            List<WeblogCreationRules.Violation> found =
+                    WeblogCreationRules.check(bean(handle), context(true, true));
+            assertTrue(found.stream().anyMatch(v -> "createWeblog.error.handleIsSitePage".equals(v.messageKey())
+                    && v.status() == 409 && "handle".equals(v.field())), handle + " -> " + found);
+        }
+    }
+
+    @Test
+    void aHandleNoSitePageHoldsIsNotRefused() throws Exception {
+        sitePage("about", WeblogPage.PubStatus.PUBLISHED);
+        assertFalse(keys(bean("contact")).contains("createWeblog.error.handleIsSitePage"));
     }
 }

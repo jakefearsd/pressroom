@@ -522,7 +522,9 @@ public class WeblogRequestMapper {
             Weblog weblog = weblogger.getWeblogManager()
                     .getWeblogByHandle(potentialHandle);
             
-            if(weblog != null) {
+            // The site space is the home of the site's own pages, never a blog
+            // to render at /site-space: it falls through to a 404.
+            if(weblog != null && !weblog.isSiteSpace()) {
                 isWeblog = true;
             }
         } catch(Exception ignored) {

@@ -1,24 +1,24 @@
 package org.apache.roller.weblogger.ui.controllers;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import java.util.stream.Stream;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.CharSetUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.UserManager;
 import org.apache.roller.weblogger.business.WeblogManager;
+import org.apache.roller.weblogger.business.WeblogPageManager;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.business.themes.SharedTheme;
+import org.apache.roller.weblogger.config.ProtectedPaths;
 import org.apache.roller.weblogger.config.WebloggerConfig;
 import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
+import org.apache.roller.weblogger.pojos.WeblogPage;
 import org.apache.roller.weblogger.ui.controllers.core.CreateWeblogBean;
 import org.apache.roller.weblogger.ui.controllers.util.UIUtils;
 
@@ -41,7 +41,8 @@ public final class WeblogCreationRules {
     /** The site's settings and managers the rules consult. */
     public record Context(boolean creationAllowed, boolean groupBlogging, String allowedChars,
                           Set<String> reservedPaths, List<String> themeIds,
-                          UserManager users, WeblogManager weblogs) {
+                          UserManager users, WeblogManager weblogs,
+                          WeblogPageManager pages) {
         public Context {
             reservedPaths = Set.copyOf(reservedPaths);
             themeIds = List.copyOf(themeIds);
@@ -49,14 +50,7 @@ public final class WeblogCreationRules {
 
         public static Context current(Weblogger weblogger) {
             String allowed = WebloggerConfig.getProperty("username.allowedChars");
-            Set<String> reserved = new LinkedHashSet<>();
-            Stream.of("rendering.weblogMapper.rollerProtectedUrls", "rendering.weblogMapper.userProtectedUrls")
-                    .map(WebloggerConfig::getProperty)
-                    .filter(StringUtils::isNotBlank)
-                    .flatMap(list -> Arrays.stream(list.split(",")))
-                    .map(s -> s.trim().toLowerCase(Locale.ROOT))
-                    .filter(s -> !s.isEmpty())
-                    .forEach(reserved::add);
+            Set<String> reserved = ProtectedPaths.site();
             List<String> themes = weblogger.getThemeManager().getEnabledThemesList().stream()
                     .map(SharedTheme::getId)
                     .filter(id -> !SITEWIDE_ONLY_THEME_ID.equals(id))
@@ -65,7 +59,8 @@ public final class WeblogCreationRules {
                     WebloggerRuntimeConfig.getBooleanProperty("site.allowUserWeblogCreation"),
                     WebloggerRuntimeConfig.getBooleanProperty("groupblogging.enabled"),
                     StringUtils.isBlank(allowed) ? UIUtils.DEFAULT_ALLOWED_CHARS : allowed,
-                    reserved, themes, weblogger.getUserManager(), weblogger.getWeblogManager());
+                    reserved, themes, weblogger.getUserManager(), weblogger.getWeblogManager(),
+                    weblogger.getWeblogPageManager());
         }
     }
 
@@ -141,7 +136,25 @@ public final class WeblogCreationRules {
             // weblogs, and a disabled one still holds its handle (ws_handle_uq).
             found.add(new Violation("handle", "createWeblog.error.handleExists",
                     "A weblog with that handle already exists.", 409));
+        } else if (holdsSitePage(handle, context)) {
+            // A site page is served at /<slug>; a draft holds its slug too,
+            // or publishing it later would collide with a blog made meanwhile.
+            found.add(new Violation("handle", "createWeblog.error.handleIsSitePage",
+                    "A page of the site already uses that address.", 409));
         }
+    }
+
+    private static boolean holdsSitePage(String handle, Context context) throws WebloggerException {
+        Weblog site = context.weblogs().getSiteSpace();
+        if (site == null) {
+            return false;
+        }
+        for (WeblogPage page : context.pages().getPages(site)) {
+            if (page.getSlug() != null && page.getSlug().equalsIgnoreCase(handle)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Creates the weblog exactly as the page always has: addWeblog with the user as creator. */

@@ -26,8 +26,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.validator.routines.UrlValidator;
 import org.apache.roller.weblogger.WebloggerException;
+import org.apache.roller.weblogger.business.SiteSlugClashException;
 import org.apache.roller.weblogger.pojos.MediaFile;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogPage;
@@ -174,6 +176,14 @@ public class PageEditController extends BaseController {
                 bean.copyFrom(page);
                 model.addAttribute("page", page);
                 addMessage(model, "pageEdit.saved", request);
+            } catch (SiteSlugClashException ex) {
+                // The name is another author's blog handle, and
+                // <spring:message arguments> does not escape.
+                addFieldError(model, "page_bean_slug", ex.getMessageKey(),
+                        new Object[] {StringEscapeUtils.escapeHtml4(ex.getArgument())}, request);
+                if (!isNew) {
+                    model.addAttribute("page", page);
+                }
             } catch (WebloggerException ex) {
                 // A reserved or malformed slug is the one expected failure mode
                 // here (see WeblogPageManager#savePage), and it must surface as a

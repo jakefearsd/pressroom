@@ -20,6 +20,8 @@ package org.apache.roller.weblogger.business.jpa;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.regex.Pattern;
 
 import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
@@ -27,8 +29,10 @@ import jakarta.persistence.TypedQuery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.WebloggerException;
+import org.apache.roller.weblogger.business.SiteSlugClashException;
 import org.apache.roller.weblogger.business.WeblogPageManager;
 import org.apache.roller.weblogger.business.Weblogger;
+import org.apache.roller.weblogger.config.ProtectedPaths;
 import org.apache.roller.weblogger.pojos.ReservedSlugs;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogPage;
@@ -39,6 +43,9 @@ import org.apache.roller.weblogger.pojos.WeblogPage;
 public class JPAWeblogPageManagerImpl implements WeblogPageManager {
 
     private static final Logger log = LoggerFactory.getLogger(JPAWeblogPageManagerImpl.class);
+
+    /** What {@code getWeblogByHandle} accepts; anything else is not a handle. */
+    private static final Pattern HANDLE_SHAPE = Pattern.compile("[\\p{L}\\p{Nd}_]+");
 
     private final Weblogger roller;
     private final JPAPersistenceStrategy strategy;
@@ -73,6 +80,9 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
         if (ReservedSlugs.isReserved(slug)) {
             throw new WebloggerException("page slug is reserved: " + slug);
         }
+        if (page.getWeblog() != null && page.getWeblog().isSiteSpace()) {
+            checkSiteSlug(slug);
+        }
         page.setSlug(slug);
 
         Timestamp now = new Timestamp(System.currentTimeMillis());
@@ -102,6 +112,28 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
         // saveTemplate/saveComment for the same pattern) -- so without this
         // a published page never reaches a reader holding a cached copy.
         roller.getWeblogManager().saveWeblog(page.getWeblog());
+    }
+
+    /**
+     * A site page lives at {@code /<slug>}, in the namespace of blog handles
+     * and the application's protected paths. Compared case-insensitively, as
+     * the reserved-path check is; a handle is looked up as typed and
+     * lower-cased because the handle query itself is exact. A slug that is not
+     * a legal handle cannot be one, and the lookup rejects it, so it is skipped.
+     */
+    private void checkSiteSlug(String slug) throws WebloggerException {
+        String lower = slug.toLowerCase(Locale.ROOT);
+        if (ProtectedPaths.site().contains(lower)) {
+            throw new SiteSlugClashException("pageEdit.error.slugIsReservedPath", slug);
+        }
+        if (HANDLE_SHAPE.matcher(slug).matches()) {
+            for (String candidate : new String[] {slug, lower}) {
+                Weblog blog = roller.getWeblogManager().getWeblogByHandle(candidate, null);
+                if (blog != null && !blog.isSiteSpace()) {
+                    throw new SiteSlugClashException("pageEdit.error.slugIsWeblog", blog.getHandle());
+                }
+            }
+        }
     }
 
     @Override

@@ -82,6 +82,25 @@ class WeblogRequestMapperTest {
     }
 
     @Test
+    void theSiteSpaceIsNotAWeblogToTheMapper() throws Exception {
+        Weblog site = TestUtils.weblogger().getWeblogManager().getOrCreateSiteSpace(
+                TestUtils.weblogger().getUserManager().getUserByUserName(user.getUserName()));
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+        try {
+            for (String path : new String[] {"/site-space/", "/site-space/about", "/site-space"}) {
+                MockHttpServletResponse response = new MockHttpServletResponse();
+                assertFalse(mapper.handleRequest(publicUrl("GET", path), response), path);
+                assertNull(response.getForwardedUrl(), path);
+            }
+        } finally {
+            TestUtils.weblogger().getWeblogManager()
+                    .removeWeblog(TestUtils.weblogger().getWeblogManager().getSiteSpace());
+            TestUtils.endSession(true);
+        }
+    }
+
+    @Test
     void weblogHomeForwardsToPageServlet() throws Exception {
         MockHttpServletRequest request = publicUrl("GET", "/mapperblog/");
         MockHttpServletResponse response = new MockHttpServletResponse();

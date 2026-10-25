@@ -291,6 +291,25 @@ class PageEditControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
+    void aSlugThatClashesNamesTheClashInTheField() throws Exception {
+        registerMessage("pageEdit.error.slugIsWeblog", "Taken by {0}.");
+        doThrow(new org.apache.roller.weblogger.business.SiteSlugClashException(
+                "pageEdit.error.slugIsWeblog", "<b>travel</b>"))
+                .when(weblogger.getWeblogPageManager()).savePage(any());
+
+        PageBean bean = new PageBean();
+        bean.setSlug("travel");
+        bean.setTitle("Travel");
+
+        String view = controller.save(requestFor(weblogA), model, bean);
+
+        assertEquals(".PageEdit", view);
+        assertTrue(errors(model).stream().anyMatch(e -> e.equals("Taken by &lt;b&gt;travel&lt;/b&gt;.")),
+                "the clashing name is shown, escaped: " + errors(model));
+        assertFalse(errors(model).contains("pageEdit.error.slugReserved"));
+    }
+
+    @Test
     void savingWithABlankSlugIsAFieldErrorNotA500() throws Exception {
         doThrow(new WebloggerException("page slug is required"))
                 .when(weblogger.getWeblogPageManager()).savePage(any());
