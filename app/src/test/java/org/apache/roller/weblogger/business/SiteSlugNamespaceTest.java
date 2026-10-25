@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * A site page is served at {@code /<slug>}, so its slug shares one namespace
@@ -94,5 +95,50 @@ class SiteSlugNamespaceTest {
         TestUtils.weblogger().getWeblogPageManager().savePage(page);
         TestUtils.weblogger().flush();
         assertNotNull(page.getId());
+    }
+
+    @Test
+    void theSiteSpacesOwnHandleIsRefusedAsASlug() throws Exception {
+        SiteSlugClashException e = clash("site-space");
+        assertEquals("pageEdit.error.slugIsWeblog", e.getMessageKey());
+        assertEquals("site-space", e.getArgument());
+        assertEquals("pageEdit.error.slugIsWeblog", clash("Site-Space").getMessageKey());
+    }
+
+    @Test
+    void aLegacyMixedCaseHandleClashesWithAnyCaseOfTheSlug() throws Exception {
+        Weblog legacy = TestUtils.setupWeblog("MixedBlog", admin);
+        TestUtils.endSession(true);
+        try {
+            SiteSlugClashException e = clash("MIXEDBLOG");
+            assertEquals("pageEdit.error.slugIsWeblog", e.getMessageKey());
+            assertEquals("MixedBlog", e.getArgument());
+            assertEquals("pageEdit.error.slugIsWeblog", clash("mixedblog").getMessageKey());
+        } finally {
+            TestUtils.teardownWeblog(legacy.getId());
+            TestUtils.endSession(true);
+        }
+    }
+
+    @Test
+    void aDraftSitePageHoldsItsSlugAgainstANewBlogHandle() throws Exception {
+        WeblogPage draft = pageOn(site, "about");
+        draft.setStatus(WeblogPage.PubStatus.DRAFT);
+        TestUtils.weblogger().getWeblogPageManager().savePage(draft);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+
+        for (String handle : new String[] {"about", "ABOUT"}) {
+            org.apache.roller.weblogger.ui.controllers.core.CreateWeblogBean bean =
+                    new org.apache.roller.weblogger.ui.controllers.core.CreateWeblogBean();
+            bean.setHandle(handle);
+            bean.setName("A weblog");
+            bean.setTheme("journal");
+            var found = org.apache.roller.weblogger.ui.controllers.WeblogCreationRules.check(bean,
+                    org.apache.roller.weblogger.ui.controllers.WeblogCreationRules.Context
+                            .current(TestUtils.weblogger()));
+            assertTrue(found.stream().anyMatch(v -> "createWeblog.error.handleIsSitePage".equals(v.messageKey())
+                    && v.status() == 409), handle + " -> " + found);
+        }
     }
 }

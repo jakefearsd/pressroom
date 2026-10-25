@@ -21,11 +21,11 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.regex.Pattern;
 
 import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.WebloggerException;
@@ -43,9 +43,6 @@ import org.apache.roller.weblogger.pojos.WeblogPage;
 public class JPAWeblogPageManagerImpl implements WeblogPageManager {
 
     private static final Logger log = LoggerFactory.getLogger(JPAWeblogPageManagerImpl.class);
-
-    /** What {@code getWeblogByHandle} accepts; anything else is not a handle. */
-    private static final Pattern HANDLE_SHAPE = Pattern.compile("[\\p{L}\\p{Nd}_]+");
 
     private final Weblogger roller;
     private final JPAPersistenceStrategy strategy;
@@ -117,21 +114,29 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
     /**
      * A site page lives at {@code /<slug>}, in the namespace of blog handles
      * and the application's protected paths. Compared case-insensitively, as
-     * the reserved-path check is; a handle is looked up as typed and
-     * lower-cased because the handle query itself is exact. A slug that is not
-     * a legal handle cannot be one, and the lookup rejects it, so it is skipped.
+     * the reserved-path check is, and against the site space's own handle.
      */
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Lower-cases a slug only to compare it with handles and protected paths, "
+                    + "which are ASCII; a mismatch can only miss a clash, never let one name stand for "
+                    + "another, and the database unique index on the handle remains the backstop.")
     private void checkSiteSlug(String slug) throws WebloggerException {
         String lower = slug.toLowerCase(Locale.ROOT);
         if (ProtectedPaths.site().contains(lower)) {
             throw new SiteSlugClashException("pageEdit.error.slugIsReservedPath", slug);
         }
-        if (HANDLE_SHAPE.matcher(slug).matches()) {
-            for (String candidate : new String[] {slug, lower}) {
-                Weblog blog = roller.getWeblogManager().getWeblogByHandle(candidate, null);
-                if (blog != null && !blog.isSiteSpace()) {
-                    throw new SiteSlugClashException("pageEdit.error.slugIsWeblog", blog.getHandle());
-                }
+        if (Weblog.SITE_SPACE_HANDLE.equals(lower)) {
+            throw new SiteSlugClashException("pageEdit.error.slugIsWeblog", Weblog.SITE_SPACE_HANDLE);
+        }
+        // Lower-cased both sides: a legacy mixed-case handle (TrAvel) still
+        // clashes with TRAVEL. The site space is excluded by its flag.
+        List<Weblog> blogs = strategy.getDynamicQuery(
+                "SELECT w FROM Weblog w WHERE LOWER(w.handle) = ?1", Weblog.class)
+                .setParameter(1, lower).getResultList();
+        for (Weblog blog : blogs) {
+            if (!blog.isSiteSpace()) {
+                throw new SiteSlugClashException("pageEdit.error.slugIsWeblog", blog.getHandle());
             }
         }
     }

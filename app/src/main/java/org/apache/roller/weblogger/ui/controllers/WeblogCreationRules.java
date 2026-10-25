@@ -144,13 +144,19 @@ public final class WeblogCreationRules {
         }
     }
 
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Lower-cases a slug or handle only to compare it with handles and protected paths, "
+                    + "which are ASCII; a mismatch can only miss a clash, never let one name stand for "
+                    + "another, and the database unique index on the handle remains the backstop.")
     private static boolean holdsSitePage(String handle, Context context) throws WebloggerException {
         Weblog site = context.weblogs().getSiteSpace();
         if (site == null) {
             return false;
         }
         for (WeblogPage page : context.pages().getPages(site)) {
-            if (page.getSlug() != null && page.getSlug().equalsIgnoreCase(handle)) {
+            if (page.getSlug() != null
+                    && page.getSlug().toLowerCase(Locale.ROOT).equals(handle.toLowerCase(Locale.ROOT))) {
                 return true;
             }
         }
