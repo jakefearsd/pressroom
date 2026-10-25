@@ -368,6 +368,10 @@ public final class Routes {
                     "Path template, not an openable URL; the concrete "
                             + "/sitemap-it_weblog.xml is fetched and content-asserted by "
                             + "PublicSurfaceIT."),
+            new SkippedRoute("/sitemap-site-pages.xml", Role.ANONYMOUS,
+                    "A 404 until the site space has a published page, and the sweep "
+                            + "publishes none; fetched and asserted while the front-door "
+                            + "page is published by SitePagesIT."),
             new SkippedRoute("/roller-ui/resetPassword.rol", Role.ANONYMOUS,
                     "Needs a token= query parameter naming a live UserToken row; "
                             + "tokens are minted per forgot-password request, so there is "

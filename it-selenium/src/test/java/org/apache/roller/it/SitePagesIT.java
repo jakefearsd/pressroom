@@ -118,6 +118,12 @@ class SitePagesIT extends RollerIT {
             assertEquals(root, slugged.finalUri, "/" + SLUG + " must redirect to /");
             assertTrue(slugged.body.contains(HEADING), "the page behind the redirect is the front door");
 
+            // --- the site sitemap lists the published page --------------------
+            Fetched sitemap = fetch(baseUrl() + "/sitemap-site-pages.xml");
+            assertEquals(200, sitemap.status, "a published site page puts /sitemap-site-pages.xml in service");
+            assertTrue(sitemap.body.contains("<urlset") && sitemap.body.contains("<loc>"),
+                    "the site sitemap must be a urlset with the page, got: " + truncate(sitemap.body));
+
             // --- unpublish: / shows the directory, the slug is a 404 ---------
             openPath("/roller-ui/authoring/pages.rol?weblog=site-space");
             $("#pageRemoveForm").should(exist);
