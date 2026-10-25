@@ -89,6 +89,18 @@ resolves through the index at the end of `CLAUDE.md`.
   `PortfolioThemeRenderingTest` pin this: a page carrying `[contact]` must
   render through the theme's header/prose classes and ship the audience
   assets in the head, with an `assertFalse` on the fallback `<h1>`.
+- **Site pages render through the same `_page`** (the site space runs one of
+  `journal`, `portfolio`, `travel`, `frontpage`). The site has no posts, so
+  each `page.vm` wraps the blog-only chrome in `#if(!$model.weblog.siteSpace)`:
+  the feed autodiscovery, the category nav and the search form; frontpage's
+  `_header.vm` guards its autodiscovery and swaps the "Recent posts" /
+  Directory tabs for the site nav (its show-in-nav pages, via
+  `$url.staticPage`) plus `$url.site/roller-ui/siteDirectory.rol`. The header
+  name is `$model.weblog.name`, which the wrapper answers with `site.name`.
+  `ThemeChromeConsistencyTest` sets the guard aside before comparing a
+  page.vm's header and footer with weblog.vm's; `SiteSpaceThemeRenderingTest`
+  renders a site page in all four themes through the mapper and proves its
+  stylesheet and `[image]` urls are served (routing.md, The site root).
 - **The `<title>` rule, every theme.** The separator is " — " (an em dash,
   the one the admin layouts use): "Entry — Weblog", "Page — Weblog",
   "Search: q — Site". On a permalink or a page, a meta title set in the

@@ -79,6 +79,51 @@ class SiteSpaceUrlTest {
         assertEquals("/roller/blog/about", strategy.getWeblogStaticPageURL(ordinary, "about", false));
     }
 
+    /**
+     * Asset urls reuse the per-weblog asset routes, so for the site space they
+     * keep the handle: {@code <ctx>/page/x.css} would be the site page "page"
+     * followed by junk, which nothing serves, and every site page rendered
+     * unstyled with broken images. Pages and the home stay at the root.
+     */
+    @Test
+    void assetUrlsOfTheSiteSpaceKeepTheHandle() {
+        assertEquals("/roller/site-space/page/frontpage-custom.css", strategy.getWeblogPageURL(
+                site, null, "frontpage-custom.css", null, null, null, null, 0, false));
+        assertEquals("/roller/site-space/resource/img/logo.png",
+                strategy.getWeblogResourceURL(site, "/img/logo.png", false));
+        assertEquals("http://localhost:8080/roller/site-space/mediaresource/abc123",
+                strategy.getMediaFileURL(site, "abc123", true));
+        assertEquals("/roller/site-space/mediaresource/abc123?t=true",
+                strategy.getMediaFileThumbnailURL(site, "abc123", false));
+    }
+
+    @Test
+    void theSiteSpaceHomeAndCollectionStayAtTheRoot() {
+        assertEquals("/roller/", strategy.getWeblogCollectionURL(site, null, null, null, null, -1, false));
+        assertEquals("/roller/", strategy.getWeblogPageURL(
+                site, null, null, null, null, null, null, 0, false));
+    }
+
+    @Test
+    void anOrdinaryBlogsAssetUrlsAreUnchanged() {
+        assertEquals("/roller/blog/page/journal-custom.css", strategy.getWeblogPageURL(
+                ordinary, null, "journal-custom.css", null, null, null, null, 0, false));
+        assertEquals("/roller/blog/resource/img/logo.png",
+                strategy.getWeblogResourceURL(ordinary, "img/logo.png", false));
+        assertEquals("/roller/blog/mediaresource/abc123",
+                strategy.getMediaFileURL(ordinary, "abc123", false));
+    }
+
+    /** The preview root already carries the handle; it must not gain a second one. */
+    @Test
+    void aPreviewOfTheSiteSpaceCarriesTheHandleOnce() {
+        PreviewURLStrategy preview = new PreviewURLStrategy(null);
+        assertEquals("/roller/roller-ui/authoring/preview/site-space/page/frontpage-custom.css",
+                preview.getWeblogPageURL(site, null, "frontpage-custom.css", null, null, null, null, 0, false));
+        assertEquals("/roller/roller-ui/authoring/preview/site-space/mediaresource/abc123",
+                preview.getMediaFileURL(site, "abc123", false));
+    }
+
     @Test
     void urlModelStaticPageDelegatesToTheStrategy() throws Exception {
         assertEquals("/roller/about", urlModel(site).staticPage("about"));

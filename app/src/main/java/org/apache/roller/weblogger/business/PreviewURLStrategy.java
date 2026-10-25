@@ -67,6 +67,15 @@ public class PreviewURLStrategy extends MultiWeblogURLStrategy {
     }
 
     /**
+     * The preview root already names the weblog by handle, the site space
+     * included, so an asset url needs no second handle segment.
+     */
+    @Override
+    protected String assetRoot(Weblog weblog, String locale, boolean absolute) {
+        return weblogRoot(weblog, locale, absolute);
+    }
+
+    /**
      * Every url built while previewing carries the theme being previewed, or a
      * link out of the preview would land on the live weblog.
      */

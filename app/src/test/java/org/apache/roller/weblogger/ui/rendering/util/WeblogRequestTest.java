@@ -190,14 +190,22 @@ class WeblogRequestTest {
 
     /**
      * The site space's handle has a hyphen on purpose (no blog can take it), so
-     * only a page request admits it: the page servlet is where site pages
-     * render, and refuses a direct request for them. Every other rendering
-     * servlet (feed, search, resources) still reads it as no handle at all.
+     * only a page request and the two asset requests admit it: the page
+     * servlet is where site pages (and the theme stylesheet) render, the
+     * resource and media servlets serve the site's files, and all three refuse
+     * a direct request for the site space. Every other rendering servlet
+     * (feed, search) still reads it as no handle at all.
      */
     @Test
-    void onlyAPageRequestAdmitsTheSiteSpaceHandle() throws InvalidRequestException {
+    void onlyPageAndAssetRequestsAdmitTheSiteSpaceHandle() throws InvalidRequestException {
         assertThrows(InvalidRequestException.class, () -> parse("/site-space"),
-                "a plain weblog request (feed, search, resources) never reaches the site space");
+                "a plain weblog request (feed, search) never reaches the site space");
+        assertEquals(Weblog.SITE_SPACE_HANDLE, new WeblogResourceRequest(mock(Weblogger.class),
+                MockRequest.with("/roller-ui/rendering/resources", "/site-space/img/logo.png"))
+                .getWeblogHandle());
+        assertEquals(Weblog.SITE_SPACE_HANDLE, new WeblogMediaResourceRequest(mock(Weblogger.class),
+                MockRequest.with("/roller-ui/rendering/media-resources", "/site-space/abc123"))
+                .getWeblogHandle());
         WeblogPageRequest page = new WeblogPageRequest(mock(Weblogger.class),
                 MockRequest.with(PAGE_SERVLET, "/site-space/about"));
         assertEquals(Weblog.SITE_SPACE_HANDLE, page.getWeblogHandle());

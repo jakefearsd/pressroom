@@ -15,7 +15,11 @@
     <title>#showPageTitle($model.page) — $model.weblog.name</title>
     #end
     <link href="$url.absoluteSite/favicon.svg" rel="icon" type="image/svg+xml" />
+    ## The site space (the site's own pages) has no posts, so no feed, no
+    ## categories and nothing to search: that chrome is the blog's alone.
+    #if(!$model.weblog.siteSpace)
     #showAutodiscoveryLinks($model.weblog)
+    #end
     #showAnalyticsTrackingCode($model.weblog)
     <link rel="stylesheet" href="$model.weblog.stylesheet">
     #showSeoHead()
@@ -33,7 +37,9 @@
 <header class="qj-head">
     <p class="qj-site"><a href="$url.home">$model.weblog.name</a></p>
     <nav class="qj-nav">
+        #if(!$model.weblog.siteSpace)
         #showWeblogCategoryLinksList()
+        #end
         <ul>
         #showPageLinks($model.weblog)
         </ul>
@@ -48,9 +54,11 @@
 </main>
 
 <footer class="qj-footer">
+    #if(!$model.weblog.siteSpace)
     <form class="qj-search" role="search" method="get" action="$url.search">
         <input type="search" name="q" placeholder="Search the journal" aria-label="$text.get("macro.weblog.searchbutton")">
     </form>
+    #end
     #showSubscribeForm($model.weblog "Get new entries by email")
     #showBusinessCard($model.weblog "Book a stay")
     #showColophon($model.weblog)

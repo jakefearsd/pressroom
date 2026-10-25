@@ -47,8 +47,11 @@ public class WeblogResourceRequest extends WeblogRequest {
             throws InvalidRequestException {
         
         // let our parent take care of their business first
-        // parent determines weblog handle and locale if specified
-        super(weblogger, request);
+        // parent determines weblog handle and locale if specified. The site
+        // space's handle is admitted: its theme resources and media files are
+        // served here, and the servlet refuses them unless WeblogRequestMapper
+        // forwarded the request.
+        super(weblogger, request, true);
         
         // we only want the path info left over from after our parents parsing
         String pathInfo = this.getPathInfo();

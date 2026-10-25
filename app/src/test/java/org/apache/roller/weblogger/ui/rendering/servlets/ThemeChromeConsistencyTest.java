@@ -62,6 +62,17 @@ class ThemeChromeConsistencyTest {
 
     private static final Pattern TITLE = Pattern.compile("<title>(.*?)</title>", Pattern.DOTALL);
 
+    /**
+     * A static page may be the site's own (the site space), which has no
+     * posts, so each theme's page.vm wraps the blog-only chrome -- the
+     * category nav, the search form -- in a site-space guard. A blog renders
+     * that chrome exactly as before; the guard is set aside before the
+     * chrome is compared.
+     */
+    private static final Pattern SITE_SPACE_GUARD = Pattern.compile(
+            "\\n[ \\t]*#if\\(!\\$model\\.weblog\\.siteSpace\\)((?:(?!#end).)*?)\\n[ \\t]*#end",
+            Pattern.DOTALL);
+
     private static List<Path> themeTemplates() throws IOException {
         assertTrue(Files.isDirectory(THEMES), "Expected " + THEMES.toAbsolutePath());
         List<Path> found = new ArrayList<>();
@@ -78,6 +89,10 @@ class ThemeChromeConsistencyTest {
 
     private static String read(Path p) throws IOException {
         return Files.readString(p, StandardCharsets.UTF_8);
+    }
+
+    private static String unguarded(String src) {
+        return SITE_SPACE_GUARD.matcher(src).replaceAll("$1");
     }
 
     private static String name(Path p) {
@@ -236,7 +251,7 @@ class ThemeChromeConsistencyTest {
             String footer = between(read(template(theme, "weblog.vm")), "<footer", "</footer>");
             assertFalse(footer.isEmpty(), theme + "/weblog.vm has no footer to compare against");
             for (String file : CHROME_PAGES) {
-                if (!read(template(theme, file)).contains(footer)) {
+                if (!unguarded(read(template(theme, file))).contains(footer)) {
                     offenders.add(theme + "/" + file + ": footer differs from weblog.vm's");
                 }
             }
@@ -272,7 +287,7 @@ class ThemeChromeConsistencyTest {
                 // The reading pages' own title is their h1, so there the site
                 // name steps down to a paragraph; the lists keep it as the h1.
                 String expected = "searchresults.vm".equals(file) ? list : reading;
-                String header = between(read(template(theme, file)), "<header", "</header>");
+                String header = between(unguarded(read(template(theme, file))), "<header", "</header>");
                 if (!header.equals(expected)) {
                     offenders.add(theme + "/" + file + ": header differs from weblog.vm's "
                             + "(minus the tagline):\n" + header);

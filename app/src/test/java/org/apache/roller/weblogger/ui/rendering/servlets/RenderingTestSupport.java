@@ -177,11 +177,11 @@ public final class RenderingTestSupport {
         return init(new SearchServlet(TestUtils.weblogger()));
     }
 
-    static MediaResourceServlet mediaResourceServlet() throws ServletException {
+    public static MediaResourceServlet mediaResourceServlet() throws ServletException {
         return init(new MediaResourceServlet(TestUtils.weblogger()));
     }
 
-    static ResourceServlet resourceServlet() throws ServletException {
+    public static ResourceServlet resourceServlet() throws ServletException {
         return init(new ResourceServlet(TestUtils.weblogger()));
     }
 

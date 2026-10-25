@@ -124,6 +124,25 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
     
     
     /**
+     * The root an ASSET url hangs off: the theme stylesheet and custom
+     * templates ({@code page/}), theme resources ({@code resource/}) and media
+     * files ({@code mediaresource/}). The same as {@link #weblogRoot} for
+     * every blog, but the site space keeps its handle here,
+     * {@code <ctx>/site-space/}: its pages live at the root, where
+     * {@code <ctx>/page/x.css} would be a site page named "page" with more
+     * after it, which nothing serves. WeblogRequestMapper routes exactly these
+     * contexts under the handle back to the site space.
+     */
+    protected String assetRoot(Weblog weblog, String locale, boolean absolute) {
+        String root = weblogRoot(weblog, locale, absolute);
+        if (weblog != null && weblog.isSiteSpace()) {
+            return root + Weblog.SITE_SPACE_HANDLE + '/';
+        }
+        return root;
+    }
+
+
+    /**
      * Parameters carried by every url this strategy builds. Empty here; the
      * preview strategy adds the theme being previewed.
      */
@@ -168,7 +187,7 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
         }
         
         StringBuilder url = new StringBuilder();
-        url.append(weblogRoot(weblog, null, absolute));
+        url.append(assetRoot(weblog, null, absolute));
         url.append("mediaresource");
         url.append('/');
         url.append(URLUtilities.encode(fileAnchor));
@@ -263,9 +282,8 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
         StringBuilder pathinfo = new StringBuilder(URL_BUFFER_SIZE);
         Map<String, String> params = new HashMap<>(commonParams());
         
-        pathinfo.append(weblogRoot(weblog, locale, absolute));
-        
         if(pageLink != null) {
+            pathinfo.append(assetRoot(weblog, locale, absolute));
             pathinfo.append("page/").append(URLUtilities.encode(pageLink));
             
             // for custom pages we only allow query params
@@ -395,7 +413,7 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
         
         StringBuilder url = new StringBuilder(URL_BUFFER_SIZE);
         
-        url.append(weblogRoot(weblog, null, absolute));
+        url.append(assetRoot(weblog, null, absolute));
         url.append("resource/");
         
         if(filePath.startsWith("/")) {

@@ -108,6 +108,17 @@ public class WeblogRequestMapper {
             "mediaresource", new ForwardTarget(MEDIA_SERVLET, false, false, true),
             "search",        new ForwardTarget(SEARCH_SERVLET, true, false, false));
 
+    /**
+     * The contexts the site space answers under its handle: its assets. Its
+     * pages live at {@code /<slug>}, but the url strategy builds the theme
+     * stylesheet ({@code page/}), theme resources ({@code resource/}) and
+     * media files ({@code mediaresource/}) as {@code /site-space/<context>/...}
+     * because they reuse the per-weblog asset routes. Every other context
+     * (entry, feed, search, category, tags, date) has nothing behind it for
+     * the site, so it stays a 404.
+     */
+    private static final Set<String> SITE_ASSET_CONTEXTS = Set.of("page", "resource", "mediaresource");
+
 
     // url patterns that are not allowed to be considered weblog handles
     Set<String> restricted;
@@ -253,6 +264,9 @@ public class WeblogRequestMapper {
         if (reserved.contains(firstSegment)) {
             log.debug("SKIPPED {}", firstSegment);
             return false;
+        }
+        if (vhostHandle == null && Weblog.SITE_SPACE_HANDLE.equals(weblogHandle)) {
+            return forwardedAsSiteAsset(pathInfo, trailingSlash, request, response);
         }
         if (vhostHandle == null && !this.isWeblog(weblogHandle)) {
             // Not a blog: on the site host a lone segment may be a site page,
@@ -566,6 +580,38 @@ public class WeblogRequestMapper {
         // blog Page's slug.
         String forwardUrl = PAGE_SERVLET + '/' + Weblog.SITE_SPACE_HANDLE + '/' + segment;
         log.debug("forwarding site page to {}", forwardUrl);
+        request.getRequestDispatcher(forwardUrl).forward(request, response);
+        return true;
+    }
+
+    /**
+     * Serve {@code /site-space/<context>/<data>} when the context is one of
+     * the site space's asset contexts, forwarding exactly as a blog's asset
+     * url is forwarded. Anything else under the handle -- the bare handle, a
+     * slug, a locale, a trailing slash, any other context -- declines and
+     * 404s: the handle is never a public address for the site's pages. The
+     * servlets serve the site space only to this FORWARD dispatch.
+     *
+     * @return true when the request was forwarded
+     */
+    private boolean forwardedAsSiteAsset(String pathInfo, boolean trailingSlash,
+            HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        if (!provider.isBootstrapped() || pathInfo == null || trailingSlash) {
+            return false;
+        }
+        WeblogPathInfo parsed = parsePathInfo(pathInfo);
+        if (parsed.locale() != null || parsed.data() == null
+                || !SITE_ASSET_CONTEXTS.contains(parsed.context())) {
+            return false;
+        }
+        String forwardUrl = calculateForwardUrl(request, Weblog.SITE_SPACE_HANDLE, null,
+                parsed.context(), parsed.data());
+        if (forwardUrl == null) {
+            return false;
+        }
+        log.debug("forwarding site asset to {}", forwardUrl);
         request.getRequestDispatcher(forwardUrl).forward(request, response);
         return true;
     }

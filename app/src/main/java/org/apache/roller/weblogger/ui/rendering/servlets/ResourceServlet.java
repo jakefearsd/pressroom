@@ -21,6 +21,7 @@ package org.apache.roller.weblogger.ui.rendering.servlets;
 import java.io.IOException;
 import java.io.InputStream;
 
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
@@ -101,6 +102,12 @@ public class ResourceServlet extends HttpServlet {
             if (weblog == null) {
                 throw new WebloggerException("unable to lookup weblog: "
                         + resourceRequest.getWeblogHandle());
+            }
+            // The site space's files are reached only through the mapper's
+            // forward of /site-space/<context>/..., never at this servlet's
+            // own path.
+            if (weblog.isSiteSpace() && request.getDispatcherType() != DispatcherType.FORWARD) {
+                throw new WebloggerException("the site space is not served by its handle");
             }
 
         } catch (Exception e) {

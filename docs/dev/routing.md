@@ -40,6 +40,21 @@ serves the site space only to a FORWARD dispatch, and only a
 `/roller-ui/rendering/{page,feed,search,...}/site-space/...` requested
 directly is a 404.
 
+The site space's ASSETS keep the handle. Its pages live at the root, but the
+url strategy (`MultiWeblogURLStrategy.assetRoot`) builds the theme
+stylesheet and custom templates, theme resources and media files as
+`<ctx>/site-space/{page,resource,mediaresource}/...`, because they reuse the
+per-weblog asset routes; at the root, `<ctx>/page/x.css` would be the site
+page "page" with more after it, and every site page rendered unstyled with
+broken `[image]`s. The mapper forwards exactly those three contexts under the
+handle (with data, no locale, no trailing slash, GET) to the page, resource
+and media servlets; every other `/site-space/...` url (the bare handle, a
+slug, entry, feed, search, category, tags, date) declines and 404s.
+`WeblogResourceRequest` and `WeblogMediaResourceRequest` admit the handle
+like `WeblogPageRequest`, and `ResourceServlet`/`MediaResourceServlet` carry
+the same FORWARD gate as `PageServlet`. The preview strategy's root already
+names the handle, so its `assetRoot` adds nothing.
+
 Empty is a real choice, not a gap: Global Config's front-page menu starts
 with "None", and a save never fails over that field. With no weblogs the
 menu used to render with no options, which a browser does not submit, and

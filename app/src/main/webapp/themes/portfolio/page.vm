@@ -15,7 +15,11 @@
     <title>#showPageTitle($model.page) — $model.weblog.name</title>
     #end
     <link href="$url.absoluteSite/favicon.svg" rel="icon" type="image/svg+xml" />
+    ## The site space (the site's own pages) has no posts, so no feed, no
+    ## categories and nothing to search: that chrome is the blog's alone.
+    #if(!$model.weblog.siteSpace)
     #showAutodiscoveryLinks($model.weblog)
+    #end
     #showAnalyticsTrackingCode($model.weblog)
     <link rel="stylesheet" href="$model.weblog.stylesheet">
     #showSeoHead()
@@ -33,7 +37,9 @@
 <header class="pf-header">
     <p class="pf-name"><a href="$url.home">$model.weblog.name</a></p>
     <nav class="pf-nav">
+        #if(!$model.weblog.siteSpace)
         #showWeblogCategoryLinksList()
+        #end
         <ul class="rCategory">
         #showPageLinks($model.weblog)
         </ul>
@@ -50,9 +56,11 @@
 </main>
 
 <footer class="pf-footer">
+    #if(!$model.weblog.siteSpace)
     <form class="pf-search" role="search" method="get" action="$url.search">
         <input type="search" name="q" placeholder="Search" aria-label="$text.get("macro.weblog.searchbutton")">
     </form>
+    #end
     #showSubscribeForm($model.weblog "New work, by email")
     #showBusinessCard($model.weblog "Book a session")
     #showColophon($model.weblog)

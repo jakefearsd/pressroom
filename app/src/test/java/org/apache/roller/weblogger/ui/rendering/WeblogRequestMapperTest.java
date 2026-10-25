@@ -1027,4 +1027,69 @@ class WeblogRequestMapperTest {
         TestUtils.endSession(true);
         TestUtils.weblogger().getVirtualHostRegistry().invalidate();
     }
+
+    // ------------------------------------- site-space assets at /site-space/<context>/...
+
+    /**
+     * The site space's stylesheet, theme resources and media files reuse the
+     * per-weblog asset routes, so their urls keep the handle (the url strategy
+     * builds {@code <ctx>/site-space/<context>/...}). The mapper forwards
+     * exactly those contexts to the site space's servlets; the PageServlet's
+     * and the resource servlets' FORWARD gate then serves them.
+     */
+    @Test
+    void theSiteSpacesAssetUrlsForwardToTheirServlets() throws Exception {
+        Map<String, String> expected = Map.of(
+                "/site-space/page/frontpage-custom.css",
+                "/roller-ui/rendering/page/site-space/page/frontpage-custom.css",
+                "/site-space/resource/img/logo.png",
+                "/roller-ui/rendering/resources/site-space/img/logo.png",
+                "/site-space/mediaresource/abc123",
+                "/roller-ui/rendering/media-resources/site-space/abc123");
+        for (String contextPath : new String[] {"/roller", ""}) {
+            for (Map.Entry<String, String> route : expected.entrySet()) {
+                MockHttpServletResponse response = new MockHttpServletResponse();
+                assertTrue(mapper.handleRequest(
+                        publicUrlAt(contextPath, "GET", route.getKey()), response), route.getKey());
+                assertEquals(route.getValue(), response.getForwardedUrl(), contextPath + route.getKey());
+            }
+        }
+    }
+
+    /**
+     * Everything else under the handle stays a 404: the site space has no
+     * home, entries, feed, search, archive or tags, and its pages live at
+     * {@code /<slug>}, never at {@code /site-space/<slug>} (spec AC7).
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"/site-space/entry/x", "/site-space/feed/entries/atom",
+            "/site-space/search", "/site-space/category/General", "/site-space/tags/x",
+            "/site-space/date/20261025", "/site-space/page", "/site-space/page/x.css/",
+            "/site-space/en/page/x.css", "/site-space/mediaresource", "/site-space/about/more"})
+    void everyOtherSiteSpaceUrlIsNotHandled(String path) throws Exception {
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertFalse(mapper.handleRequest(publicUrl("GET", path), response), path);
+        assertNull(response.getForwardedUrl(), path);
+        assertNull(response.getHeader("Location"), path);
+    }
+
+    @Test
+    void aPostToASiteSpaceAssetIsNeverForwarded() throws Exception {
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertFalse(mapper.handleRequest(publicUrl("POST", "/site-space/page/x.css"), response));
+        assertNull(response.getForwardedUrl());
+    }
+
+    @Test
+    void beforeBootstrapASiteSpaceAssetIsNotHandled() throws Exception {
+        WebloggerProvider cold = mock(WebloggerProvider.class);
+        when(cold.isBootstrapped()).thenReturn(false);
+        WeblogRequestMapper coldMapper = new WeblogRequestMapper(cold, TestUtils.weblogger());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertFalse(coldMapper.handleRequest(publicUrl("GET", "/site-space/page/x.css"), response));
+        assertNull(response.getForwardedUrl());
+    }
 }
