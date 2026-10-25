@@ -2369,17 +2369,19 @@ print it as "2,026". All words come from the footer.* message keys.
 #macro(showColophon $weblog)
 #set($colophonFacts = $config.getColophon($weblog))
 #set($colophonHasCopyright = $utils.isNotEmpty($colophonFacts.copyrightText) || $utils.isNotEmpty($colophonFacts.copyrightHolder))
-#set($colophonHasMeta = $utils.isNotEmpty($colophonFacts.privacyUrl) || $utils.isNotEmpty($colophonFacts.version) || $utils.isNotEmpty($colophonFacts.releaseDate))
 <div class="colophon">
 #if($colophonHasCopyright)
     <p class="colophon-copyright">#if($utils.isNotEmpty($colophonFacts.copyrightText))$utils.escapeHTML($colophonFacts.copyrightText)#else$text.get("footer.copyright.default", ["$colophonFacts.copyrightYear", $utils.escapeHTML($colophonFacts.copyrightHolder)])#end</p>
 #end
-#if($colophonHasMeta)
     <p class="colophon-meta">
         #if($utils.isNotEmpty($colophonFacts.privacyUrl))<span class="colophon-privacy"><a href="$utils.escapeHTML($colophonFacts.privacyUrl)">$text.get("footer.privacy")</a></span>#end
+        ## The way into the admin screens from any blog, even when a blog is
+        ## the site's front page and the site directory is gone. Same words
+        ## and rules as the frontpage theme's top bar. Pages are cached per
+        ## signed-in user, so this never leaks between visitors.
+        #if(!$utils.isUserAuthenticated())<span class="colophon-account"><a href="$url.login">$text.get("navigationBar.login")</a></span>#{else}#if($utils.isUserAuthor())<span class="colophon-account"><a href="$url.absoluteSite/roller-ui/menu.rol">$text.get("mainPage.mainMenu")</a></span>#end<span class="colophon-account"><a href="$url.logout">$text.get("navigationBar.logout")</a></span>#end
         #if($utils.isNotEmpty($colophonFacts.version))<span class="colophon-version">$text.get("footer.version", [$utils.escapeHTML($colophonFacts.version)])</span>#end
         #if($utils.isNotEmpty($colophonFacts.releaseDate))<span class="colophon-released">$text.get("footer.released", [$utils.escapeHTML($colophonFacts.releaseDate)])</span>#end
     </p>
-#end
 </div>
 #end

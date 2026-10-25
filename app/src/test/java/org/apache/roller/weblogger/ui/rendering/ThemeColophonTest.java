@@ -157,6 +157,13 @@ class ThemeColophonTest {
         }
     }
 
+    /** Stand-in for $url; public, so Velocity can introspect it. */
+    public static final class StubUrl {
+        public String getLogin() {
+            return "/roller-ui/login-redirect.rol";
+        }
+    }
+
     /** Stand-in for $text: the real bundle through MessageFormat, as MessageModel does. */
     public static final class StubText {
         private final ResourceBundle bundle = ResourceBundle.getBundle("ApplicationResources");
@@ -176,7 +183,15 @@ class ThemeColophonTest {
         VelocityContext context = new VelocityContext();
         context.put("config", new StubConfig(colophon));
         context.put("text", new StubText());
-        context.put("utils", new UtilitiesModel());
+        // A real render always inits utils with the parsed request; here the
+        // visitor is simply anonymous.
+        context.put("utils", new UtilitiesModel() {
+            @Override
+            public boolean isUserAuthenticated() {
+                return false;
+            }
+        });
+        context.put("url", new StubUrl());
         context.put("model", new Object() {
             public Object getWeblog() {
                 return null;
@@ -239,11 +254,13 @@ class ThemeColophonTest {
     }
 
     @Test
-    void colophonOmitsVersionWhenUnknownAndNothingToSayDropsTheMetaLine() throws Exception {
+    void colophonOmitsVersionWhenUnknownButKeepsTheWayIn() throws Exception {
         Colophon bare = new Colophon("", "", null, null, "B", 2026, null);
         String html = render(bare);
         assertFalse(html.contains("colophon-version"), html);
-        assertFalse(html.contains("colophon-meta"), html);
+        assertTrue(html.contains("<p class=\"colophon-meta\"> <span class=\"colophon-account\">"
+                + "<a href=\"/roller-ui/login-redirect.rol\">Sign in</a></span> </p>"),
+                "with nothing else to say the meta line still offers Sign in: " + html);
         assertEquals(1, html.split("colophon-copyright", -1).length - 1);
     }
 }

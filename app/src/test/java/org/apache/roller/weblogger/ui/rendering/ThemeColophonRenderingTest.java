@@ -29,6 +29,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.AuthorityUtils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -45,6 +47,7 @@ class ThemeColophonRenderingTest {
     private static final String HANDLE = "colophonrenderblog";
 
     private User user;
+    private User reader;
     private Weblog weblog;
 
     @BeforeEach
@@ -52,6 +55,10 @@ class ThemeColophonRenderingTest {
         RenderingTestSupport.ensureRenderingRuntime();
         RenderingTestSupport.clearRenderCaches();
         user = TestUtils.setupUser("colophonrenderuser");
+        reader = TestUtils.setupUser("colophonrenderreader");
+        TestUtils.weblogger().getUserManager().revokeRole("editor", reader);
+        TestUtils.weblogger().getUserManager().grantRole("reader", reader);
+        TestUtils.weblogger().flush();
         weblog = TestUtils.setupWeblog(HANDLE, user);
         TestUtils.endSession(true);
     }
@@ -60,6 +67,7 @@ class ThemeColophonRenderingTest {
     void tearDown() throws Exception {
         TestUtils.teardownWeblog(weblog.getId());
         TestUtils.teardownUser(user.getUserName());
+        TestUtils.teardownUser(reader.getUserName());
         TestUtils.endSession(true);
     }
 
@@ -91,5 +99,59 @@ class ThemeColophonRenderingTest {
             assertFalse(body.contains("Maiia & <b>"), theme);
         }
         assertTrue(failures.isEmpty(), "themes whose footer lacks a correct colophon: " + failures);
+    }
+
+    /**
+     * With a blog as the site's front page, the site directory and its Sign
+     * in / Main menu links are no longer one click away, and no blog theme
+     * had a way into the admin screens of its own. The colophon carries one
+     * on every reader page, with the same words and rules as the frontpage
+     * theme's top bar: Sign in for a visitor, Main menu and Sign out for an
+     * author, Sign out only for a reader (the menu would refuse them).
+     */
+    @Test
+    void everyBlogThemeColophonOffersTheWayIn() throws Exception {
+        List<String> failures = new ArrayList<>();
+        for (String theme : List.of("journal", "portfolio", "travel", "frontpage")) {
+            Weblog managed = TestUtils.getManagedWebsite(weblog);
+            managed.setEditorTheme(theme);
+            TestUtils.weblogger().getWeblogManager().saveWeblog(managed);
+            TestUtils.endSession(true);
+
+            String anonymous = colophon(null);
+            if (!anonymous.contains("/roller-ui/login") || anonymous.contains("menu.rol")
+                    || anonymous.contains("logout")) {
+                failures.add(theme + " (visitor): " + anonymous);
+            }
+            String author = colophon(user.getUserName());
+            if (author.contains("/roller-ui/login") || !author.contains("/roller-ui/menu.rol")
+                    || !author.contains("logout")) {
+                failures.add(theme + " (author): " + author);
+            }
+            String signedInReader = colophon(reader.getUserName());
+            if (signedInReader.contains("/roller-ui/login") || signedInReader.contains("menu.rol")
+                    || !signedInReader.contains("logout")) {
+                failures.add(theme + " (reader): " + signedInReader);
+            }
+        }
+        assertTrue(failures.isEmpty(), "colophons without the right way in: " + failures);
+    }
+
+    /** The colophon's markup on the blog's home page, as {@code userName} (null: a visitor). */
+    private static String colophon(String userName) throws Exception {
+        RenderingTestSupport.clearRenderCaches();
+        MockHttpServletRequest request = RenderingTestSupport
+                .anonymousGet("/roller-ui/rendering/page", "/" + HANDLE);
+        if (userName != null) {
+            request.setUserPrincipal(new UsernamePasswordAuthenticationToken(userName, "n/a",
+                    AuthorityUtils.createAuthorityList("ROLE_USER")));
+        }
+        MockHttpServletResponse response = RenderingTestSupport
+                .execute(RenderingTestSupport.pageServlet(), request);
+        assertEquals(200, response.getStatus());
+        String body = response.getContentAsString();
+        int start = body.indexOf("<div class=\"colophon\">");
+        assertTrue(start >= 0, "no colophon:\n" + body);
+        return body.substring(start, body.indexOf("</div>", start));
     }
 }
