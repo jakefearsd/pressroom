@@ -274,6 +274,44 @@ class SiteSpaceThemeRenderingTest {
         }
     }
 
+    /**
+     * Under the handle the page context serves the theme's stylesheet and
+     * nothing else: frontpage's directory template is not a site address.
+     */
+    @Test
+    void theSiteSpaceServesOnlyItsStylesheetUnderPage() throws Exception {
+        useSiteTheme("frontpage");
+
+        assertEquals(200, served("/roller/site-space/page/frontpage-custom.css").getStatus());
+        assertEquals(404, served("/roller/site-space/page/directory").getStatus());
+    }
+
+    /**
+     * The contact endpoint refuses the site space, so a site page's
+     * {@code [contact]} shows a notice rather than a form that loses every
+     * message; a blog's Page keeps its form slot.
+     */
+    @Test
+    void aContactShortcodeOnASitePageShowsANoticeNotAForm() throws Exception {
+        savePage(site, "sitethemewrite", "Write", "Say hello.\n\n[contact]", false);
+        savePage(blog, "sitethemeblogwrite", "Write", "Say hello.\n\n[contact]", false);
+        useSiteTheme("journal");
+
+        MockHttpServletResponse onSite = served("/roller/sitethemewrite");
+        String siteBody = onSite.getContentAsString();
+        assertEquals(200, onSite.getStatus(), siteBody);
+        assertFalse(siteBody.contains("contact-form-slot\""), siteBody);
+        assertTrue(siteBody.contains("Contact forms are not available on site pages yet."), siteBody);
+
+        RenderingTestSupport.clearRenderCaches();
+        MockHttpServletResponse onBlog = RenderingTestSupport.execute(RenderingTestSupport.pageServlet(),
+                RenderingTestSupport.anonymousGet(PAGE_SERVLET, "/" + BLOG + "/sitethemeblogwrite"));
+        String blogBody = onBlog.getContentAsString();
+        assertEquals(200, onBlog.getStatus(), blogBody);
+        assertTrue(blogBody.contains("<div class=\"contact-form-slot\" data-weblog=\"" + BLOG + "\""), blogBody);
+        assertFalse(blogBody.contains("Contact forms are not available"), blogBody);
+    }
+
     /** Everything under the handle that is not an asset stays a 404: the mapper declines it. */
     @Test
     void theSiteSpacesOtherContextsAreNotServed() throws Exception {

@@ -135,6 +135,10 @@ immediately before sanitization.
   `<div>`, never a `<form>`; `#showAudienceAssets` injects the real form — see
   Audience). `[contact]` carries a server-built `data-endpoint`; `[subscribe]`
   carries `data-list-uuid` and renders nothing without a uuid-shaped list uuid.
+  On the site space `[contact]` renders no slot but a visible notice
+  (`div.contact-form-unavailable`, key `shortcode.contact.siteSpace`):
+  `ContactController` refuses the site space, so a form there would lose
+  every message. A site inbox is a later follow-up.
 - `[[name ...]]` / `[[/name]]` escape a registered shortcode to literal text;
   unknown names and malformed input pass through byte-for-byte.
 - New handlers implement `ShortcodeHandler` and register in

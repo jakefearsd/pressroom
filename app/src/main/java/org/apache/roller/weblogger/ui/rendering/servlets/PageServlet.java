@@ -403,6 +403,23 @@ public class PageServlet extends HttpServlet {
 
 
     /**
+     * Whether {@code link} names the weblog's theme stylesheet. Under its
+     * handle the site space serves that and no other template: its pages live
+     * at /&lt;slug&gt;, and a theme's other linked templates (frontpage's
+     * directory) are no site address. A lookup that fails is a no, so the
+     * request 404s.
+     */
+    private static boolean isStylesheetLink(String link, Weblog weblog, ThemeManager themes) {
+        try {
+            ThemeTemplate stylesheet = themes.getTheme(weblog).getStylesheet();
+            return stylesheet != null && link != null && link.equals(stylesheet.getLink());
+        } catch (Exception e) {
+            log.warn("Could not look up the stylesheet of weblog {}", weblog.getHandle(), e);
+            return false;
+        }
+    }
+
+    /**
      * The template that renders this request, or {@code null} when nothing
      * does and the answer is a 404.
      *
@@ -453,6 +470,9 @@ public class PageServlet extends HttpServlet {
         // If request specified the page, then go with that. No fallback: this
         // one 404s rather than quietly serving the default template.
         if ("page".equals(pageRequest.getContext())) {
+            if (weblog.isSiteSpace() && !isStylesheetLink(pageRequest.getWeblogPageName(), weblog, themes)) {
+                return null;
+            }
             return pageRequest.getWeblogPage();
         }
 

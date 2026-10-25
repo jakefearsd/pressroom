@@ -171,6 +171,32 @@ class PageServletDecisionTest {
     }
 
     /**
+     * Under its handle the site space serves its theme's stylesheet and no
+     * other named template; a theme that cannot be looked up serves nothing.
+     */
+    @Test
+    void theSiteSpaceServesOnlyItsStylesheetByName() throws Exception {
+        weblog.setSiteSpace(true);
+        ThemeTemplate stylesheet = mock(ThemeTemplate.class);
+        when(stylesheet.getLink()).thenReturn("journal-custom.css");
+        when(theme.getStylesheet()).thenReturn(stylesheet);
+        ThemeTemplate named = mock(ThemeTemplate.class);
+        when(pageRequest.getContext()).thenReturn("page");
+        when(pageRequest.getWeblogPage()).thenReturn(named);
+
+        when(pageRequest.getWeblogPageName()).thenReturn("journal-custom.css");
+        assertEquals(named, PageServlet.selectTemplate(pageRequest, weblog, weblogger.getThemeManager()));
+
+        when(pageRequest.getWeblogPageName()).thenReturn("directory");
+        assertNull(PageServlet.selectTemplate(pageRequest, weblog, weblogger.getThemeManager()));
+
+        when(pageRequest.getWeblogPageName()).thenReturn("journal-custom.css");
+        when(weblogger.themeManager().getTheme(weblog)).thenThrow(new WebloggerException("no theme"));
+        assertNull(PageServlet.selectTemplate(pageRequest, weblog, weblogger.getThemeManager()),
+                "a stylesheet that cannot be looked up is not served");
+    }
+
+    /**
      * No bundled theme ships a tagsIndex template, yet every theme's
      * permalink links its tags at {@code /<handle>/tags/<tag>}. Those links
      * used to 404; a tags index now falls back to the theme's default

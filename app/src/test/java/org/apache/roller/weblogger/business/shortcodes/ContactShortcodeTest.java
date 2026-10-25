@@ -78,6 +78,31 @@ class ContactShortcodeTest {
         assertTrue(html.contains("data-endpoint=\"/roller/roller-ui/rendering/contact.rol\""), html);
     }
 
+    /**
+     * The contact endpoint refuses the site space (there is no site inbox
+     * yet), so a form slot on a site page would build a form whose every
+     * message is lost. The author and the reader see a notice instead.
+     */
+    @Test
+    void onTheSiteSpaceItShowsANoticeAndNoForm() {
+        Weblog site = new Weblog();
+        site.setHandle(Weblog.SITE_SPACE_HANDLE);
+        site.setSiteSpace(true);
+        site.setLocale("en_US");
+        ShortcodeContext onSite = new ShortcodeContext() {
+            @Override public Weblog getWeblog() { return site; }
+            @Override public String getSlug() { return "about"; }
+            @Override public String getRawText() { return "[contact]"; }
+        };
+
+        String html = shortcode.render(Map.of(), null, onSite);
+
+        assertFalse(html.contains("contact-form-slot"), html);
+        assertFalse(html.contains("data-endpoint"), html);
+        assertTrue(html.contains("class=\"contact-form-unavailable\""), html);
+        assertTrue(html.contains("Contact forms are not available on site pages yet."), html);
+    }
+
     @Test
     void withoutAWeblogItLeavesTheAuthorsTextVisible() {
         assertNull(shortcode.render(Map.of(), null, context(null)));

@@ -52,7 +52,9 @@ and media servlets; every other `/site-space/...` url (the bare handle, a
 slug, entry, feed, search, category, tags, date) declines and 404s.
 `WeblogResourceRequest` and `WeblogMediaResourceRequest` admit the handle
 like `WeblogPageRequest`, and `ResourceServlet`/`MediaResourceServlet` carry
-the same FORWARD gate as `PageServlet`. The preview strategy's root already
+the same FORWARD gate as `PageServlet`. Under the handle the `page/`
+context serves the theme stylesheet's link only (`PageServlet.selectTemplate`),
+so frontpage's `directory` template is not a site address. The preview strategy's root already
 names the handle, so its `assetRoot` adds nothing.
 
 Empty is a real choice, not a gap: Global Config's front-page menu starts

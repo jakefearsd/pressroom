@@ -22,6 +22,7 @@ import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
+import org.apache.roller.weblogger.util.I18nMessages;
 
 /**
  * The built-in {@code [contact]} shortcode: a placeholder for a contact form.
@@ -42,6 +43,13 @@ import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
  * and failing the form with no visible cause. {@link WebloggerRuntimeConfig}
  * already carries the context path the {@code InitFilter} published for this
  * exact reason -- it is what {@code $url.site} resolves to in every theme.
+ *
+ * <p><b>Not on the site space.</b> The contact endpoint refuses the site
+ * space (there is no site inbox), so a slot there would build a form whose
+ * every message is lost behind a generic failure. A site page gets a short,
+ * visible notice instead: the author sees it in preview and no reader is
+ * offered a form that cannot work. It depends on the content's own weblog
+ * only, so the entry HTML cache rules hold.
  */
 public class ContactShortcode implements ShortcodeHandler {
 
@@ -61,6 +69,12 @@ public class ContactShortcode implements ShortcodeHandler {
         if (content == null || content.getWeblog() == null
                 || content.getWeblog().getHandle() == null) {
             return null;
+        }
+        if (content.getWeblog().isSiteSpace()) {
+            return "<div class=\"contact-form-unavailable\">"
+                    + StringEscapeUtils.escapeHtml4(I18nMessages.getMessages(content.getWeblog().getLocale())
+                            .getString("shortcode.contact.siteSpace"))
+                    + "</div>";
         }
         String endpoint = StringUtils.defaultString(WebloggerRuntimeConfig.getRelativeContextURL())
                 + "/roller-ui/rendering/contact.rol";
