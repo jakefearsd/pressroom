@@ -13,6 +13,11 @@ resolves through the index at the end of `CLAUDE.md`.
   theme head) emits meta description, canonical, robots noindex, Open
   Graph/Twitter card and JSON-LD; `#showResponsiveImage` is the theme-side
   `<picture>`/srcset emitter.
+- Site pages have their own sitemap, `/sitemap-site-pages.xml` (404 with no
+  site space or no published page; not cached), listed in the `/sitemap.xml`
+  index only when it has a published page, with the front door at the root.
+  `/sitemap-site-space.xml` is a 404, and a custom domain's index never
+  carries site pages.
 - `SeoController` serves `/robots.txt`, `/sitemap.xml` (index) and
   `/sitemap-<handle>.xml` (via `*.xml`; a middle-wildcard servlet pattern is
   illegal).

@@ -293,6 +293,21 @@ purpose: merging would touch all 25 of `WeblogEntryManager`'s query paths.
   list of reserved slugs (`entry`/`category`/`tags`/`feed`/…).
   `WeblogRequestMapper` forwards any unknown single-segment path to the page
   servlet.
+- **Site pages**: the hidden `site-space` weblog (`Weblog.SITE_SPACE_HANDLE`,
+  V039 `site_space`, one row at most; the hyphen is outside
+  `username.allowedChars` so `WeblogCreationRules` can never create the handle)
+  holds the site's own pages. They use this same entity, editor and
+  Markdown/shortcode pipeline; the page URL strategy puts them at `/<slug>` on
+  the site host (the chosen front door at `/`), not `/site-space/<slug>`.
+  `getOrCreateSiteSpace` creates it lazily with no permission row; it is left
+  out of every weblog listing, the directory and the API. Slugs and blog
+  handles share one namespace, compared lower-cased both ways: `savePage`
+  refuses a slug equal to a blog handle (`pageEdit.error.slugIsWeblog`) or a
+  protected path (`slugIsReservedPath`), and creating a blog refuses a handle
+  held by a site page of any status (`createWeblog.error.handleIsSitePage`).
+  Only PUBLISHED pages are served; a draft slug is a 404. Routing:
+  `routing.md`, "The site root". Rendering: `themes-and-templates.md`.
+  Access: `admin-ui.md`, "The Site section".
 - **Lazy resolution**: parsing sets only `pageSlug` (no DB access; the
   cache key); `getWeblogPageContent()` resolves it memoized, so a cache hit
   never resolves the page. An unknown or draft slug is a 404, never a

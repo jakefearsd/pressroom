@@ -145,19 +145,42 @@ resolves through the index at the end of `CLAUDE.md`.
   `.sidebar-group` (`border-top`, padding) with a `.sidebar-label` heading in
   the rail's caps-label role (12px/600/.08em/uppercase). Every sidebar form
   gets `class="form-stacked"`.
-- **Global Config validates `site.privacy.page` at save**: non-blank must be
-  the slug of a *published* Page on the front-page blog (the handle submitted
-  in the same form, else the stored one), checked in
-  `GlobalConfigController.validatePrivacyPage`. Fail closed: no front-page
-  blog, an unknown or draft slug, or a lookup that throws all add a field
-  error, nothing is saved and the form re-renders what was typed (the stored
-  value is unchanged). The check runs only when the slug or the front-page
-  handle differs from the stored value, so a page unpublished later (or a
-  deleted front-page blog) never blocks an unrelated save: Global Config never
-  blocks. No per-request check, so that leaves a dead link (the field label
-  says so). A change to the slug, the front-page handle or `site.absoluteurl`
-  touches every weblog and clears the site-wide cache (see
-  `themes-and-templates.md`, render-cache expiry).
+- **Global Config validates `site.privacy.page` at save** as a page
+  reference (`PageReference`): `slug` is a *published* site page, `handle/slug`
+  a published Page on that blog (`site-space/x` as a blog form resolves to
+  nothing). Checked in `GlobalConfigController` only when the value changed.
+  Fail closed: an unknown or draft page, or a lookup that throws, adds a field
+  error, nothing is saved and the form re-renders what was typed. Because it
+  runs only on a change, a page unpublished later (or a deleted blog) never
+  blocks an unrelated save (Global Config never blocks), and a front-page
+  handle change no longer revalidates it. No per-request check, so that leaves
+  a dead link (the field label says so). V040 qualified an existing bare slug
+  with the front-page blog's handle so it kept pointing at the same page.
+- **The front-page select** (`site.frontpage.weblog.handle`'s field) offers
+  "Site directory" (empty), an optgroup of published site pages (value
+  `page:<slug>`, which `GlobalConfigController` stores as `site.frontpage.page`
+  and blanks the handle) and the blogs (the site space is never offered; a
+  posted `site-space` is refused). A blog or the directory blanks the page. A
+  draft or missing page is refused (`configForm.error.frontpagePage.notFound`),
+  validated only when changed. With no published site page the select shows a
+  hint linking the site Pages screen. A change to the slug, the front door, the
+  privacy page or `site.absoluteurl` touches every weblog and the site space and
+  clears the site-wide cache (see `themes-and-templates.md`, render-cache
+  expiry).
+- **The Site section (global admins only).** The main menu (`MainMenuController`
+  adds `siteSpace`, creating the hidden `site-space` weblog on first use; null
+  for everyone else) shows a Site row with Pages, Media and Theme, the only
+  three screens that accept the site space. `UISecurityEnforced.allowsSiteSpace()`
+  is false by default and true on the Pages, PageEdit, ThemeEdit and media
+  controllers; `RollerHandlerInterceptor.siteSpaceOffered` clears the action
+  weblog for any other request (and for a non-admin, an anonymous caller or any
+  API/MCP request), so a refusal looks exactly like an unknown handle (redirect
+  to access-denied; API 404). `MenuHelper` shows only those three tabs on the
+  site space, and `userWeblogs` grants refuse it, so it is never in a weblog
+  list. `ThemeEditController.offered` gives the site space `journal`,
+  `portfolio`, `travel` and `frontpage` and never a custom theme; other weblogs
+  get everything but `frontpage` (unless already on it). Covered by
+  `SiteSpaceAccessTest` and `SitePagesIT`.
 - **The top bar's weblog switcher appears only for a user on ≥ 2 weblogs.**
   `BaseController.populateCommonModel` resolves the caller's weblog
   permissions to `List<Weblog>` and adds `userWeblogs` only then.

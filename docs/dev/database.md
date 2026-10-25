@@ -123,6 +123,14 @@ enforces discoverability, shape and idempotency. Three appliers read the same
 files: `bin/db/migrate.sh` (deploy), `DatabaseInstaller` (install wizard),
 and the test harness.
 
+Recent examples: `V039__weblog_site_space.sql` adds `weblog.site_space boolean
+NOT NULL DEFAULT false` and a partial unique index `weblog_one_site_space ON
+weblog (site_space) WHERE site_space` (at most one site space).
+`V040__privacy_page_reference.sql` rewrites `site.privacy.page` from a bare slug
+to `handle/slug` using the front-page blog's handle (guarded `UPDATE`: once
+the value contains `/` it no longer matches, and a blank value or an install
+with no front-page blog is left alone, where a bare slug now means a site page).
+
 The install wizard is anonymous, and with `installation.type=auto` every
 public request reaches it while Roller cannot start. So its pages carry no
 diagnostics: the error pages say only that the database cannot be reached or

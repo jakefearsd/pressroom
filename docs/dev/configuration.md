@@ -77,6 +77,12 @@ resolves through the index at the end of `CLAUDE.md`.
   it. Call `getProperties` again, or save, to edit after a commit. A row written
   with SQL while the app runs is not seen until a restart (as with
   EclipseLink's shared cache before).
+- **Site front door and privacy page**: `site.frontpage.page` (string, default
+  empty) is the slug of the site page served at `/`; non-blank it wins over
+  `site.frontpage.weblog.handle`, and a draft or deleted page falls back to
+  the site directory. `site.privacy.page` is a page reference, `slug` (a site
+  page) or `handle/slug` (a blog's page). Both are set from Global Config
+  (`admin-ui.md`) and touch every weblog on change.
 - **Startup** (`roller.properties` / `roller-custom.properties`): read once
   via `WebloggerConfig`; needs a restart.
 - **Per-weblog** (`Weblog` columns, Weblog Settings) and **per-entry**.
