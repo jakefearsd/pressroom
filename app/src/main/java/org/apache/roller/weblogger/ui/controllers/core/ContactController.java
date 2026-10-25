@@ -162,7 +162,9 @@ public class ContactController extends BaseController {
             return null;
         }
         try {
-            return weblogger.getWeblogManager().getWeblogByHandle(handle);
+            Weblog weblog = weblogger.getWeblogManager().getWeblogByHandle(handle);
+            // The hidden site space has no inbox: refused exactly as an unknown weblog.
+            return weblog == null || weblog.isSiteSpace() ? null : weblog;
         } catch (WebloggerException ex) {
             // An outage reads as an unknown weblog (404) to the visitor: the endpoint is public, so it must not
             // reveal state or throw. The ERROR line is how an operator learns the lookups are failing.

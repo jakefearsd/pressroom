@@ -233,6 +233,21 @@ class ContactControllerTest {
     }
 
     @Test
+    void theSiteSpaceHandleIsRefusedLikeAnUnknownWeblog() throws Exception {
+        Weblog site = weblog(Weblog.SITE_SPACE_HANDLE);
+        site.setSiteSpace(true);
+        when(mocks.getWeblogManager().getWeblogByHandle(Weblog.SITE_SPACE_HANDLE)).thenReturn(site);
+
+        ResponseEntity<Void> response = controller.submit(
+                payload(Weblog.SITE_SPACE_HANDLE, "Dana", "dana@example.invalid", "Question",
+                        "Hello there", "", 5000L, null),
+                request());
+
+        assertEquals(404, response.getStatusCode().value());
+        verify(mocks.getFormSubmissionManager(), never()).save(any());
+    }
+
+    @Test
     void aBlankWeblogHandleReturns404WithoutConsultingTheManager() throws Exception {
         ResponseEntity<Void> response = controller.submit(
                 payload("", "Dana", "dana@example.invalid", "Question",

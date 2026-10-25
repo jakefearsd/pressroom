@@ -42,7 +42,6 @@ import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogPage;
 import org.apache.roller.weblogger.ui.controllers.BaseController;
 import org.apache.roller.weblogger.ui.rendering.util.ModDateHeaderUtil;
-import org.apache.roller.weblogger.util.URLUtilities;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -188,6 +187,18 @@ public class SeoController extends BaseController {
             appendLastmod(xml, "    ", instant(weblog.getLastModified()));
             xml.append("  </sitemap>\n");
         }
+        try {
+            Weblog site = weblogger.getWeblogManager().getSiteSpace();
+            if (site != null && !weblogger.getWeblogPageManager().getPublishedPages(site).isEmpty()) {
+                xml.append("  <sitemap>\n");
+                xml.append("    <loc>").append(escapeXml(absoluteContextURL()
+                        + "/sitemap-site-pages.xml")).append("</loc>\n");
+                xml.append("  </sitemap>\n");
+            }
+        } catch (WebloggerException e) {
+            // A display-path catch: the index is still valid without the site's entry.
+            log.error("Error checking the site pages for the sitemap index", e);
+        }
         xml.append("</sitemapindex>\n");
         return xmlResponse(xml);
     }
@@ -228,7 +239,8 @@ public class SeoController extends BaseController {
             log.debug("Rejected sitemap request for handle {}", handle, e);
             return ResponseEntity.notFound().build();
         }
-        if (weblog == null || !Boolean.TRUE.equals(weblog.getActive())) {
+        // The hidden site space is never a blog: its pages are /sitemap-site-pages.xml.
+        if (weblog == null || weblog.isSiteSpace() || !Boolean.TRUE.equals(weblog.getActive())) {
             return ResponseEntity.notFound().build();
         }
 
@@ -261,6 +273,41 @@ public class SeoController extends BaseController {
             ok.lastModified(lastModified.getTime());
         }
         return ok.body(xml);
+    }
+
+    /**
+     * Sitemap of the site's own pages (the hidden site space's PUBLISHED,
+     * indexable pages), at the addresses the one URL rule gives them: the
+     * front door's page once, at the root. The {@code -} keeps this literal
+     * from ever being a blog handle; it wins over {@code /sitemap-{handle}.xml}.
+     * 404 when there is no site space or nothing published to list. Not
+     * cached: one small query, and the file is tiny.
+     */
+    @GetMapping("/sitemap-site-pages.xml")
+    @SuppressFBWarnings(
+            value = "POTENTIAL_XML_INJECTION",
+            justification = "Every value written into the XML goes through escapeXml(); the URLs are built "
+                    + "by the URL strategy from the stored site pages.")
+    public ResponseEntity<String> siteSitemap(HttpServletRequest request) {
+        try {
+            Weblog site = weblogger.getWeblogManager().getSiteSpace();
+            if (site == null) {
+                return ResponseEntity.notFound().build();
+            }
+            List<WeblogPage> pages = weblogger.getWeblogPageManager().getPublishedPages(site);
+            if (pages.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            StringBuilder xml = new StringBuilder();
+            xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+            xml.append("<urlset xmlns=\"").append(SITEMAP_NS).append("\">\n");
+            appendPages(xml, pages, site, weblogger.getUrlStrategy());
+            xml.append("</urlset>\n");
+            return xmlResponse(xml);
+        } catch (WebloggerException e) {
+            log.error("Error building the site pages sitemap", e);
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     @SuppressFBWarnings(
@@ -305,12 +352,20 @@ public class SeoController extends BaseController {
         // business site most wants indexed. noindex is honoured here for the
         // same reason it is for entries -- a page excluded from search must be
         // excluded from what we hand the crawler.
+        appendPages(xml, pages, weblog, urlStrategy);
+        xml.append("</urlset>\n");
+        return xml.toString();
+    }
+
+    /**
+     * One {@code url} per page that is indexable and not canonical elsewhere.
+     * The {@code loc} comes from the URL strategy, the one rule the theme's
+     * own navigation uses (encoding, and the site's front door at the root).
+     */
+    private void appendPages(StringBuilder xml, List<WeblogPage> pages, Weblog weblog,
+            URLStrategy urlStrategy) {
         for (WeblogPage page : pages) {
-            // Match URLModel#staticPage's encoding exactly: that is the same
-            // /<handle>/<slug> URL the theme's own nav emits, and a slug is
-            // free-form enough (spaces, punctuation) that the raw value is
-            // not always a valid URL.
-            String loc = weblogURL + URLUtilities.encode(page.getSlug());
+            String loc = urlStrategy.getWeblogStaticPageURL(weblog, page.getSlug(), true);
             if (Boolean.TRUE.equals(page.getNoindex())
                     || canonicalElsewhere(page.getCanonicalUrl(), loc)) {
                 continue;
@@ -320,8 +375,6 @@ public class SeoController extends BaseController {
             appendLastmod(xml, "    ", instant(page.getUpdated()));
             xml.append("  </url>\n");
         }
-        xml.append("</urlset>\n");
-        return xml.toString();
     }
 
     /**
