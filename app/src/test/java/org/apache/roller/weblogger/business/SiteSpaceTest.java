@@ -64,6 +64,11 @@ class SiteSpaceTest {
     void tearDown() throws Exception {
         WeblogManager mgr = TestUtils.weblogger().getWeblogManager();
         Weblog site = mgr.getSiteSpace();
+        if (site == null) {
+            // by handle too: a test that fails mid-way may leave one the
+            // remembered absence hides
+            site = mgr.getWeblogByHandle(Weblog.SITE_SPACE_HANDLE, null);
+        }
         if (site != null) {
             mgr.removeWeblog(site);
         }
@@ -118,6 +123,46 @@ class SiteSpaceTest {
         Weblog again = createSite();
         TestUtils.endSession(true);
         assertEquals(again.getId(), weblogs().getSiteSpace().getId());
+    }
+
+    /**
+     * A remembered absence must not outlive a site space that exists: one that
+     * came to exist behind the memory's back (here: a weblog flagged directly)
+     * is seen again once getOrCreateSiteSpace -- the admin opening the main
+     * menu -- finds it.
+     */
+    @Test
+    void aStaleAbsenceHealsWhenGetOrCreateFindsTheSiteSpace() throws Exception {
+        assertNull(weblogs().getSiteSpace(), "absence now remembered");
+        Weblog behindItsBack = TestUtils.setupWeblog(Weblog.SITE_SPACE_HANDLE, admin);
+        behindItsBack.setSiteSpace(true);
+        weblogs().saveWeblog(behindItsBack);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+
+        Weblog found = createSite();
+        TestUtils.endSession(true);
+
+        assertEquals(behindItsBack.getId(), found.getId(), "getOrCreate found it, not a second one");
+        assertNotNull(weblogs().getSiteSpace(), "and the absence is forgotten");
+        assertEquals(found.getId(), weblogs().getSiteSpace().getId());
+    }
+
+    /** A weblog merely holding the handle is not the site space. */
+    @Test
+    void aWeblogHoldingTheHandleWithoutTheFlagIsNotTheSiteSpace() throws Exception {
+        Weblog impostor = TestUtils.setupWeblog(Weblog.SITE_SPACE_HANDLE, admin);
+        TestUtils.endSession(true);
+        try {
+            assertNull(weblogs().getSiteSpace());
+            assertNull(weblogs().getSiteSpace(), "nor once the handle is cached");
+            assertThrows(WebloggerException.class, this::createSite,
+                    "and none can be created over it");
+        } finally {
+            TestUtils.endSession(false);
+            TestUtils.teardownWeblog(impostor.getId());
+            TestUtils.endSession(true);
+        }
     }
 
     @Test

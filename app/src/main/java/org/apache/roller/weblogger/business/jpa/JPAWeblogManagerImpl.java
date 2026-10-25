@@ -356,9 +356,12 @@ public class JPAWeblogManagerImpl implements WeblogManager {
      * single-segment url no blog claims, the footer's page reference -- so
      * neither answer costs a query once known. Found, it comes through
      * {@link #getWeblogByHandle}'s handle-to-id cache. Absent, that is
-     * remembered here until {@link #getOrCreateSiteSpace}, the one way a site
-     * space comes to exist, creates it. A removed site space needs no word:
-     * the next lookup finds nothing and remembers that.
+     * remembered here until {@link #getOrCreateSiteSpace} -- the one way a site
+     * space comes to exist -- creates it or finds it (so a stale absence heals
+     * when the admin's main menu next asks). The absence is recorded only by a
+     * lookup no creation ran during, and a creation forgets it only after its
+     * commit, so it cannot outlive a site space created here. A removed site
+     * space needs no word: the next lookup finds nothing and remembers that.
      */
     @Override
     public Weblog getSiteSpace() throws WebloggerException {
@@ -385,6 +388,20 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         return found;
     }
 
+    /**
+     * Forget a remembered absence, and stop any lookup already under way from
+     * recording one. Called once the site space is committed: when it is
+     * created, and whenever getOrCreateSiteSpace finds it, so an absence that
+     * went stale anyway (a site space that arrived some other way) heals the
+     * next time the admin's main menu asks.
+     */
+    private void siteSpaceExists() {
+        synchronized (siteSpaceLock) {
+            siteSpaceCreations++;
+            noSiteSpace = false;
+        }
+    }
+
     private Weblog querySiteSpace() throws WebloggerException {
         TypedQuery<Weblog> query = strategy.getDynamicQuery(
                 "SELECT w FROM Weblog w WHERE w.siteSpace = true", Weblog.class);
@@ -398,6 +415,8 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         // that must not create a second site space
         Weblog existing = querySiteSpace();
         if (existing != null) {
+            // it exists, whatever getSiteSpace remembers: a stale absence heals here
+            siteSpaceExists();
             return existing;
         }
         Weblog holder = getWeblogByHandle(Weblog.SITE_SPACE_HANDLE, null);
@@ -410,11 +429,10 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         site.setSiteSpace(true);
         site.setDateCreated(new Date());
         this.strategy.store(site);
+        // flush() commits, so the row is visible to every lookup that starts
+        // after the absence is forgotten below
         this.strategy.flush();
-        synchronized (siteSpaceLock) {
-            siteSpaceCreations++;
-            noSiteSpace = false;
-        }
+        siteSpaceExists();
         // system-owned: no permission row for the creator
         this.addWeblogContents(site, false);
         return site;
