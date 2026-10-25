@@ -21,14 +21,14 @@
 			<query>SELECT w FROM Weblog w WHERE w.customDomain = ?1</query>
 		</named-query>
 		<named-query name="Weblog.getByLetterOrderByHandle">
-			<query>SELECT w FROM Weblog w WHERE UPPER(w.handle) like ?1 ORDER BY w.handle</query>
+			<query>SELECT w FROM Weblog w WHERE UPPER(w.handle) like ?1 AND w.siteSpace = false ORDER BY w.handle</query>
 		</named-query>
 		<named-query name="Weblog.getCountAllDistinct">
 			<!-- DISTINCT is not required here -->
-            <query>SELECT COUNT(w) FROM Weblog w</query>
+            <query>SELECT COUNT(w) FROM Weblog w WHERE w.siteSpace = false</query>
 		</named-query>
 		<named-query name="Weblog.getCountByHandleLike">
-			<query>SELECT COUNT(w) FROM Weblog w WHERE UPPER(w.handle) like ?1</query>
+			<query>SELECT COUNT(w) FROM Weblog w WHERE UPPER(w.handle) like ?1 AND w.siteSpace = false</query>
 		</named-query>
 		<attributes>
 			<id name="id">
@@ -85,6 +85,9 @@
 			</basic>
 			<basic name="visible">
 				<column name="visible" insertable="true" updatable="true" unique="false"/>
+			</basic>
+			<basic name="siteSpace">
+				<column name="site_space" insertable="true" updatable="true" unique="false"/>
 			</basic>
 			<basic name="active">
 				<column name="isactive" insertable="true" updatable="true" unique="false"/>

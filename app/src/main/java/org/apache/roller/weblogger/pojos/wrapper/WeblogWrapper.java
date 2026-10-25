@@ -27,6 +27,7 @@ import java.util.TimeZone;
 import org.apache.commons.text.StringEscapeUtils;
 import org.apache.roller.weblogger.WebloggerException;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.business.URLStrategy;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.pojos.TagStat;
@@ -124,11 +125,24 @@ public final class WeblogWrapper {
     
     
     public String getName() {
+        if (this.pojo.isSiteSpace()) {
+            return StringEscapeUtils.escapeHtml4(
+                    WebloggerRuntimeConfig.getProperty("site.name"));
+        }
         return StringEscapeUtils.escapeHtml4(this.pojo.getName());
     }
     
     public String getTagline() {
+        if (this.pojo.isSiteSpace()) {
+            return HTMLSanitizer.conditionallySanitizeText(
+                    WebloggerRuntimeConfig.getProperty("site.description"));
+        }
         return HTMLSanitizer.conditionallySanitizeText(this.pojo.getTagline());
+    }
+
+    /** True for the hidden site space weblog that owns the site's own pages. */
+    public boolean isSiteSpace() {
+        return this.pojo.isSiteSpace();
     }
 
     /**

@@ -59,6 +59,17 @@ public interface WeblogManager {
     
     
     /**
+     * The hidden site space weblog, or null when it has not been created yet.
+     */
+    Weblog getSiteSpace() throws WebloggerException;
+
+    /**
+     * The site space, created (owned by no one, with no permission rows) when
+     * absent. Throws when another weblog already holds its handle.
+     */
+    Weblog getOrCreateSiteSpace(User creator) throws WebloggerException;
+
+    /**
      * Get website specified by handle (or null if enabled website not found).
      * @param handle  Handle of website
      */

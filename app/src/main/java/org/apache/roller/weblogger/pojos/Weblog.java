@@ -39,6 +39,9 @@ import org.apache.roller.weblogger.util.Utilities;
 public class Weblog implements Serializable {
     
     public static final long serialVersionUID = 206437645033737127L;
+
+    /** The handle of the site space; the hyphen keeps a user from ever creating it. */
+    public static final String SITE_SPACE_HANDLE = "site-space";
     
 
     
@@ -48,6 +51,7 @@ public class Weblog implements Serializable {
     private String  name             = null;
     private String  tagline          = null;
     private String  copyright        = null;
+    private boolean siteSpace        = false;
     private String  emailAddress     = null;
     private String  editorTheme      = null;
     private String  locale           = null;
@@ -176,6 +180,18 @@ public class Weblog implements Serializable {
     
     public void setTagline(String tagline) {
         this.tagline = Utilities.removeHTML(tagline);
+    }
+
+    /**
+     * True only for the one hidden, system-owned weblog that owns the site's
+     * own pages. It is left out of every weblog listing by default.
+     */
+    public boolean isSiteSpace() {
+        return this.siteSpace;
+    }
+
+    public void setSiteSpace(boolean siteSpace) {
+        this.siteSpace = siteSpace;
     }
 
     /** The copyright notice of the site footer: plain text, null when the blog has none. */

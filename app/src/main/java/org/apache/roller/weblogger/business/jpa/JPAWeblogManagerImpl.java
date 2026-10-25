@@ -342,17 +342,49 @@ public class JPAWeblogManagerImpl implements WeblogManager {
     public void addWeblog(Weblog newWeblog) throws WebloggerException {
         this.strategy.store(newWeblog);
         this.strategy.flush();
-        this.addWeblogContents(newWeblog);
+        this.addWeblogContents(newWeblog, true);
     }
-    
-    private void addWeblogContents(Weblog newWeblog)
+
+    @Override
+    public Weblog getSiteSpace() throws WebloggerException {
+        TypedQuery<Weblog> query = strategy.getDynamicQuery(
+                "SELECT w FROM Weblog w WHERE w.siteSpace = true", Weblog.class);
+        List<Weblog> found = query.getResultList();
+        return found.isEmpty() ? null : found.get(0);
+    }
+
+    @Override
+    public Weblog getOrCreateSiteSpace(User creator) throws WebloggerException {
+        Weblog existing = getSiteSpace();
+        if (existing != null) {
+            return existing;
+        }
+        Weblog holder = getWeblogByHandle(Weblog.SITE_SPACE_HANDLE, null);
+        if (holder != null) {
+            throw new WebloggerException("Cannot create the site space: weblog '"
+                    + Weblog.SITE_SPACE_HANDLE + "' already exists and is not the site space");
+        }
+        Weblog site = new Weblog(Weblog.SITE_SPACE_HANDLE, creator.getUserName(), "Site", "",
+                creator.getEmailAddress(), "frontpage", creator.getLocale(), creator.getTimeZone());
+        site.setSiteSpace(true);
+        site.setDateCreated(new Date());
+        this.strategy.store(site);
+        this.strategy.flush();
+        // system-owned: no permission row for the creator
+        this.addWeblogContents(site, false);
+        return site;
+    }
+
+    private void addWeblogContents(Weblog newWeblog, boolean grantCreator)
     throws WebloggerException {
         
-        // grant weblog creator ADMIN permission
-        List<String> actions = new ArrayList<>();
-        actions.add(WeblogPermission.ADMIN);
-        roller.getUserManager().grantWeblogPermission(
-                newWeblog, roller.getUserManager().getUserByUserName(newWeblog.getCreatorUserName()), actions);
+        if (grantCreator) {
+            // grant weblog creator ADMIN permission
+            List<String> actions = new ArrayList<>();
+            actions.add(WeblogPermission.ADMIN);
+            roller.getUserManager().grantWeblogPermission(
+                    newWeblog, roller.getUserManager().getUserByUserName(newWeblog.getCreatorUserName()), actions);
+        }
         
         String cats = WebloggerConfig.getProperty("newuser.categories");
         if (cats != null) {
@@ -397,7 +429,7 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         
         if (handle == null) {
             throw new WebloggerException("Handle cannot be null");
-        } else if (!isAlphanumeric(handle)) {
+        } else if (!Weblog.SITE_SPACE_HANDLE.equals(handle) && !isAlphanumeric(handle)) {
             throw new WebloggerException("Invalid handle: '"+handle+"'");
         }
         
@@ -497,6 +529,8 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         StringBuilder whereClause = new StringBuilder();
 
         queryString = "SELECT w FROM Weblog w";
+        // the site space is hidden from every listing
+        whereClause.append(" w.siteSpace = false");
 
         if (startDate != null) {
             Timestamp start = new Timestamp(startDate.getTime());
