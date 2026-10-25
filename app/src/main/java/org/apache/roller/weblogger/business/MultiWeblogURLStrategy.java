@@ -107,7 +107,12 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
             } else {
                 url.append(WebloggerRuntimeConfig.getRelativeContextURL());
             }
-            url.append('/').append(weblog.getHandle()).append('/');
+            // The site space has no handle segment: its pages live at the
+            // context root, "<ctx>/<slug>".
+            url.append('/');
+            if (!weblog.isSiteSpace()) {
+                url.append(weblog.getHandle()).append('/');
+            }
         }
 
         if (locale != null) {
@@ -291,7 +296,19 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
         if (weblog == null || slug == null) {
             return null;
         }
+        // The front door's page IS the root, so its link is "<ctx>/", never
+        // "<ctx>/<slug>" (which would be a second address for the same page).
+        if (weblog.isSiteSpace() && slug.equals(frontDoorPageSlug())) {
+            return weblogRoot(weblog, null, absolute);
+        }
         return weblogRoot(weblog, null, absolute) + URLUtilities.encode(slug);
+    }
+
+
+    /** The runtime property naming the front door's site page, or null when unset. */
+    private static String frontDoorPageSlug() {
+        String slug = WebloggerRuntimeConfig.getProperty("site.frontpage.page");
+        return slug == null || slug.isBlank() ? null : slug.trim();
     }
 
 

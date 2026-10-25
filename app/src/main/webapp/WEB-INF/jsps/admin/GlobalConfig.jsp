@@ -71,7 +71,7 @@
             </c:if>
 
             <%-- "string" type means use a simple textbox --%>
-            <c:if test="${pd.name != 'site.frontpage.weblog.handle' && pd.type == 'string'}">
+            <c:if test="${pd.name != 'site.frontpage.weblog.handle' && pd.name != 'site.frontpage.page' && pd.type == 'string'}">
                 <div class="row mb-3">
                     <label class="col-sm-3 col-form-label"
                            for='globalConfig_${pd.nameWithUnderbars}'><spring:message code="${pd.key}"/></label>

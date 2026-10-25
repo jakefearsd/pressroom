@@ -77,7 +77,7 @@
                                  restricted only against '/' and reserved names,
                                  never against quote or angle-bracket
                                  characters. --%>
-                            <a href="${urls.weblogAbsolute(actionWeblog)}${fn:escapeXml(p.slug)}"
+                            <a href="${fn:escapeXml(urls.staticPage(actionWeblog, p.slug))}"
                                target="_blank" rel="noopener">/<c:out value="${p.slug}"/></a>
                         </c:when>
                         <c:otherwise>/<c:out value="${p.slug}"/></c:otherwise>

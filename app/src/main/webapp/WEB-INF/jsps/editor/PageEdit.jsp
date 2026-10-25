@@ -146,7 +146,7 @@
             <c:if test="${not empty bean.id and bean.status == 'PUBLISHED'}">
             &#183;
             <button class="clipbutton editor-permalink-copy" type="button"
-                    data-clipboard-text="${urls.weblogAbsolute(actionWeblog)}${fn:escapeXml(bean.slug)}"
+                    data-clipboard-text="${fn:escapeXml(urls.staticPage(actionWeblog, bean.slug))}"
                     aria-label="<spring:message code='generic.copyToClipboard'/>"><spring:message code="weblogEdit.copyPermalink"/></button>
             </c:if>
         </p>
@@ -193,7 +193,7 @@
                  is no second parser. --%>
             <c:if test="${not empty bean.id and bean.status == 'PUBLISHED'}">
                 <a class="editor-preview-link" target="_blank" rel="noopener"
-                   href="${urls.weblogAbsolute(actionWeblog)}${fn:escapeXml(bean.slug)}"><spring:message code="weblogEdit.fullPreviewMode"/></a>
+                   href="${fn:escapeXml(urls.staticPage(actionWeblog, bean.slug))}"><spring:message code="weblogEdit.fullPreviewMode"/></a>
             </c:if>
         </div>
 

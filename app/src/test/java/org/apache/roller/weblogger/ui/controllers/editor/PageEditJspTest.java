@@ -146,10 +146,13 @@ class PageEditJspTest {
                         + "CUSTOM-template route and hands an author a 404 from their own "
                         + "admin screen");
         assertTrue(pages.contains(
-                        "href=\"${urls.weblogAbsolute(actionWeblog)}${fn:escapeXml(p.slug)}\""),
-                "the list's permalink must be the weblog root plus the escaped slug -- the "
-                        + "same construction PageEdit.jsp's own address line uses");
-        assertTrue(read(PAGE_EDIT).contains("${urls.weblogAbsolute(actionWeblog)}${fn:escapeXml(bean.slug)}"),
+                        "href=\"${fn:escapeXml(urls.staticPage(actionWeblog, p.slug))}\""),
+                "the list's permalink must come from the one strategy rule, escaped -- the "
+                        + "same construction PageEdit.jsp's own links use");
+        assertFalse(pages.contains("weblogAbsolute(actionWeblog)}${"),
+                "a page link is never the weblog root glued to a slug: the site space "
+                        + "and its front-door page have a different shape");
+        assertTrue(read(PAGE_EDIT).contains("${fn:escapeXml(urls.staticPage(actionWeblog, bean.slug))}"),
                 "sanity: the editor's own address line must still be built the same way, "
                         + "or this test is comparing one screen against nothing");
     }

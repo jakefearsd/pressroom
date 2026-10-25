@@ -31,7 +31,6 @@ import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.pojos.WeblogEntry;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.ui.rendering.util.WeblogRequest;
-import org.apache.roller.weblogger.util.URLUtilities;
 
 
 /**
@@ -263,7 +262,7 @@ public class URLModel implements Model {
      * characters can otherwise reach this href raw.
      */
     public String staticPage(String slug) {
-        return urlStrategy.getWeblogURL(weblog, null, false) + URLUtilities.encode(slug);
+        return urlStrategy.getWeblogStaticPageURL(weblog, slug, false);
     }
 
     

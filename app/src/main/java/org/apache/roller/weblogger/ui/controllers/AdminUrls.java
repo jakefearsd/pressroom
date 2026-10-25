@@ -66,6 +66,16 @@ public final class AdminUrls {
         return strategy().getWeblogURL(weblog, null, true);
     }
 
+    /**
+     * The absolute url of a page with this slug, from the one rule the renderer
+     * uses -- the site space's pages hang off the context root, and its
+     * front-door page is the root itself. The slug is encoded by the strategy.
+     */
+    public String staticPage(Weblog weblog, String slug) {
+        Objects.requireNonNull(weblog, "weblog");
+        return strategy().getWeblogStaticPageURL(weblog, slug == null ? "" : slug, true);
+    }
+
     /** The entry's absolute permalink -- what {@code WeblogEntry.getPermalink()} returned. */
     public String entry(WeblogEntry entry) {
         Objects.requireNonNull(entry, "entry");

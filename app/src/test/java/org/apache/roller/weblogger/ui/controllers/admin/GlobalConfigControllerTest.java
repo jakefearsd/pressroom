@@ -325,6 +325,22 @@ class GlobalConfigControllerTest {
     }
 
     @Test
+    void theFrontPagePageHasNoFieldHereSoItsAbsenceNeverBlocksTheForm() throws Exception {
+        // site.frontpage.page is set from the pages screen, not this form; a
+        // save that does not carry it must neither error nor blank it.
+        Map<String, RuntimeConfigProperty> stored = properties("site.frontpage.page", "home");
+        stored.put("site.name", new RuntimeConfigProperty("site.name", "Old Name"));
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+        HttpServletRequest request = request();
+        when(request.getParameter("site.name")).thenReturn("New Name");
+
+        controller.save(request, model);
+
+        assertEquals(List.of(), ControllerTestFixture.errors(model));
+        assertEquals("home", stored.get("site.frontpage.page").getValue());
+    }
+
+    @Test
     void aBlankFrontPageWeblogClearsItSoTheSiteDirectoryShows() throws Exception {
         // Characterisation: a blank submission is already stored as blank.
         // The form's "None" option depends on exactly that, so it is pinned.

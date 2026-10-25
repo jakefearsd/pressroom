@@ -78,6 +78,16 @@ class AdminUrlsTest {
     }
 
     @Test
+    void staticPageAsksTheStrategyForTheAbsolutePageUrl() {
+        when(strategy.getWeblogStaticPageURL(weblog, "about", true))
+                .thenReturn("http://example.com/roller/about");
+
+        assertEquals("http://example.com/roller/about", urls.staticPage(weblog, "about"),
+                "an admin link to a page must come from the one rule the renderer uses");
+        verify(strategy).getWeblogStaticPageURL(weblog, "about", true);
+    }
+
+    @Test
     void entryAsksForTheAbsolutePermalinkOfTheEntrysOwnWeblog() {
         WeblogEntry entry = new WeblogEntry();
         entry.setWebsite(weblog);

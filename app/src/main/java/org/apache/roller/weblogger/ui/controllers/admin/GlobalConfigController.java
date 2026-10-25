@@ -55,6 +55,8 @@ public class GlobalConfigController extends BaseController {
     private static final Logger log = LoggerFactory.getLogger(GlobalConfigController.class);
 
     private static final String FRONTPAGE_WEBLOG_HANDLE = "site.frontpage.weblog.handle";
+    /** The front door's site page; its control is not on this form (the pages screen owns it). */
+    private static final String FRONTPAGE_PAGE = "site.frontpage.page";
     private static final String PRIVACY_PAGE = "site.privacy.page";
     private static final String ABSOLUTE_URL = "site.absoluteurl";
     /** The three settings the colophon's privacy link is built from. */
@@ -162,10 +164,11 @@ public class GlobalConfigController extends BaseController {
             } else if (incomingProp != null) {
                 accepted.put(propName, incomingProp.trim());
 
-            } else if (!FRONTPAGE_WEBLOG_HANDLE.equals(propName)) {
+            } else if (!FRONTPAGE_WEBLOG_HANDLE.equals(propName) && !FRONTPAGE_PAGE.equals(propName)) {
                 // Missing from the form. The front-page weblog is exempt: it is
                 // a content choice, so absent it is left as it is rather than
-                // blocking every other setting.
+                // blocking every other setting. So is the front-page page,
+                // which has no field here at all.
                 addError(model, "ConfigForm.invalidProperty", propName, request);
             }
         }

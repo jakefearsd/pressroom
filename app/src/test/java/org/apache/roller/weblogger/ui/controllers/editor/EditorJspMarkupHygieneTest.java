@@ -187,7 +187,7 @@ class EditorJspMarkupHygieneTest {
                 // needle pinned the wrong shape until task M1; see
                 // PageEditJspTest.thePagesListLinksAPageWhereTheEditorSaysItLives
                 // for why the two screens are compared against each other.
-                new Expected("Pages.jsp", "${urls.weblogAbsolute(actionWeblog)}${fn:escapeXml(p.slug)}",
+                new Expected("Pages.jsp", "${fn:escapeXml(urls.staticPage(actionWeblog, p.slug))}",
                         "a published page's slug must link to the live page, with the "
                                 + "author-controlled slug escaped in the href (a page slug is "
                                 + "restricted only against '/' and reserved names, not against "

@@ -53,7 +53,6 @@ import org.apache.roller.weblogger.ui.rendering.pagers.WeblogEntriesPager;
 import org.apache.roller.weblogger.ui.rendering.pagers.WeblogEntriesPermalinkPager;
 import org.apache.roller.weblogger.ui.rendering.util.WeblogPageRequest;
 import org.apache.roller.weblogger.ui.rendering.util.WeblogRequest;
-import org.apache.roller.weblogger.util.URLUtilities;
 
 
 /**
@@ -207,11 +206,9 @@ public class PageModel implements Model {
                 if (isHttpOrHttps(page.getCanonicalUrl())) {
                     return page.getCanonicalUrl();
                 }
-                // Mirrors URLModel#staticPage's URL shape (no locale segment,
-                // same URLUtilities.encode of the slug) but absolute, like
-                // every other branch of this method.
-                return urlStrategy.getWeblogURL(weblog, null, true)
-                        + URLUtilities.encode(page.getSlug());
+                // The one page-URL rule, absolute like every other branch
+                // here (URLModel#staticPage asks for the relative form).
+                return urlStrategy.getWeblogStaticPageURL(weblog, page.getSlug(), true);
             }
         }
         if (pageRequest.getWeblogPageName() != null) {

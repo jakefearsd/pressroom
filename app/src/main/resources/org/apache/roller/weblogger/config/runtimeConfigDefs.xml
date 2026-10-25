@@ -66,6 +66,10 @@
          <type>string</type>
          <default-value></default-value>
       </property-def>      
+      <property-def  name="site.frontpage.page"  key="configForm.frontpagePage">
+         <type>string</type>
+         <default-value></default-value>
+      </property-def>
       <property-def  name="site.privacy.page"  key="configForm.privacyPage">
          <type>string</type>
          <default-value></default-value>
