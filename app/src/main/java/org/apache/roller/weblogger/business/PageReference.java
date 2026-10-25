@@ -17,6 +17,8 @@
  */
 package org.apache.roller.weblogger.business;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import java.util.Optional;
 
 import org.apache.roller.weblogger.WebloggerException;
@@ -74,6 +76,11 @@ public record PageReference(String handle, String slug) {
      * The weblog holding the page. The site space is reached only by the bare
      * form: naming it as a blog ({@code site-space/x}) resolves to nothing.
      */
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Refuses the site space's handle in any case. Handles are ASCII "
+                    + "alphanumerics, so a miss could only fail to refuse here; the lookups "
+                    + "behind it refuse the site space anyway.")
     private Weblog weblog(Weblogger weblogger) throws WebloggerException {
         if (handle == null) {
             return weblogger.getWeblogManager().getSiteSpace();

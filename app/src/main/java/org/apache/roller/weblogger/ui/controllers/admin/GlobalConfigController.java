@@ -20,6 +20,8 @@ package org.apache.roller.weblogger.ui.controllers.admin;
 
 import java.util.*;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.commons.text.StringEscapeUtils;
@@ -240,6 +242,11 @@ public class GlobalConfigController extends BaseController {
      * space itself are refused here, not merely left out of the select: the
      * form can be posted by hand. A refused choice leaves both as stored.
      */
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Refuses the site space's handle in any case. Handles are ASCII "
+                    + "alphanumerics, so a miss could only fail to refuse here; the lookups "
+                    + "behind it refuse the site space anyway.")
     private void applyFrontDoorChoice(Map<String, String> accepted,
             Map<String, RuntimeConfigProperty> properties, Model model, HttpServletRequest request) {
         String choice = accepted.get(FRONTPAGE_WEBLOG_HANDLE);
