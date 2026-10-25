@@ -190,6 +190,19 @@ class SiteSpaceThemeRenderingTest {
         }
     }
 
+    /** Search engines see the site, by its own name, not a blog called "Site". */
+    @Test
+    void aSitePagesStructuredDataIsTheWebSiteByTheSitesNameAndDescription() throws Exception {
+        setProperty("site.description", "Boats & \"quiet\" water");
+        for (String theme : THEMES) {
+            String body = sitePage(theme);
+            assertTrue(body.contains("\"@type\": \"WebSite\""), theme + ":\n" + body);
+            assertFalse(body.contains("\"@type\": \"Blog\""), theme + ":\n" + body);
+            assertTrue(body.contains("\"name\": \"" + SITE_NAME + "\""), theme + ":\n" + body);
+            assertTrue(body.contains("\"description\": \"Boats & \\\"quiet\\\" water\""), theme + ":\n" + body);
+        }
+    }
+
     @Test
     void theFrontpageThemeSwapsItsTabsForTheSiteNavAndTheDirectory() throws Exception {
         String body = sitePage("frontpage");

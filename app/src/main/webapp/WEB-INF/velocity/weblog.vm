@@ -376,10 +376,18 @@ containing "</script>" cannot terminate the inline JSON-LD block).
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
+        ## A site page belongs to the site, not to a blog: the site space's
+        ## stored name is the placeholder "Site", so the block describes the
+        ## site by its own name and description instead.
+        #if ($model.weblog.siteSpace)
+        "@type": "WebSite",
+        #if ($utils.isNotEmpty($config.siteDescription))"description": "$utils.escapeJson($config.siteDescription)",#end
+        #else
         "@type": "Blog",
         #if ($seoDescription)"description": "$utils.escapeJson($seoDescription)",#end
+        #end
         #if ($seoCanonical)"url": "$utils.escapeJson($seoCanonical)",#end
-        "name": "$utils.escapeJson($model.weblog.pojo.name)"
+        "name": "#if($model.weblog.siteSpace)$utils.escapeJson($config.siteName)#else$utils.escapeJson($model.weblog.pojo.name)#end"
     }
     </script>
         ## The blog's business or place, as a second block. Reset first: a
