@@ -26,6 +26,7 @@ import org.apache.commons.text.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.roller.weblogger.WebloggerException;
+import org.apache.roller.weblogger.business.PageReference;
 import org.apache.roller.weblogger.business.PropertiesManager;
 import org.apache.roller.weblogger.business.WeblogManager;
 import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
@@ -55,13 +56,15 @@ public class GlobalConfigController extends BaseController {
     private static final Logger log = LoggerFactory.getLogger(GlobalConfigController.class);
 
     private static final String FRONTPAGE_WEBLOG_HANDLE = "site.frontpage.weblog.handle";
-    /** The front door's site page; its control is not on this form (the pages screen owns it). */
+    /** The front door's site page; the front-door select writes it (see {@link #applyFrontDoorChoice}). */
     private static final String FRONTPAGE_PAGE = "site.frontpage.page";
     private static final String PRIVACY_PAGE = "site.privacy.page";
     private static final String ABSOLUTE_URL = "site.absoluteurl";
-    /** The three settings the colophon's privacy link is built from. */
+    /** The front-door select's value prefix for a site page; a blog's option is its bare handle. */
+    private static final String PAGE_CHOICE = "page:";
+    /** The settings a rendered page's footer link or the front door depend on. */
     private static final List<String> PRIVACY_LINK_INPUTS =
-            List.of(PRIVACY_PAGE, FRONTPAGE_WEBLOG_HANDLE, ABSOLUTE_URL);
+            List.of(PRIVACY_PAGE, FRONTPAGE_WEBLOG_HANDLE, FRONTPAGE_PAGE, ABSOLUTE_URL);
 
     private final ResourceBundle bundle = ResourceBundle.getBundle("ApplicationResources");
 
@@ -104,6 +107,7 @@ public class GlobalConfigController extends BaseController {
         model.addAttribute("properties", properties);
         model.addAttribute("globalConfigDef", globalConfigDef);
         model.addAttribute("weblogs", weblogs);
+        model.addAttribute("sitePages", loadSitePages());
 
         return ".GlobalConfig";
     }
@@ -122,6 +126,7 @@ public class GlobalConfigController extends BaseController {
         model.addAttribute("properties", properties);
         model.addAttribute("globalConfigDef", globalConfigDef);
         model.addAttribute("weblogs", weblogs);
+        model.addAttribute("sitePages", loadSitePages());
 
         // Validate everything first and mutate nothing until it all passes.
         // The properties are managed entities, and an in-place edit is written
@@ -168,16 +173,18 @@ public class GlobalConfigController extends BaseController {
                 // Missing from the form. The front-page weblog is exempt: it is
                 // a content choice, so absent it is left as it is rather than
                 // blocking every other setting. So is the front-page page,
-                // which has no field here at all.
+                // which is derived from that select, never submitted itself.
                 addError(model, "ConfigForm.invalidProperty", propName, request);
             }
         }
 
-        // Only a change to the slug or the front-page handle is validated, so
-        // a privacy page that was later unpublished (or a deleted front-page
-        // blog) never blocks an unrelated save: Global Config never blocks.
-        if (changed(PRIVACY_PAGE, accepted, properties) || changed(FRONTPAGE_WEBLOG_HANDLE, accepted, properties)) {
-            validatePrivacyPage(accepted, properties, model, request);
+        applyFrontDoorChoice(accepted, properties, model, request);
+
+        // Only a change to the reference is validated, so a privacy page that
+        // was later unpublished never blocks an unrelated save: Global Config
+        // never blocks.
+        if (changed(PRIVACY_PAGE, accepted, properties)) {
+            validatePrivacyPage(accepted, model, request);
         }
 
         if (hasErrors(model)) {
@@ -226,38 +233,80 @@ public class GlobalConfigController extends BaseController {
     }
 
     /**
-     * The privacy page must be a published page on the front-page blog. This
-     * is a decision path: a lookup that could not run is an error, not a
-     * pass. The front-page handle is the one submitted in the same form when
-     * present, else the stored one.
+     * The front-door select carries one of three things under the blog
+     * setting's name: "" (the site directory), a blog handle, or
+     * {@code page:<slug>} (a site page). The page setting is derived from it,
+     * so exactly one of the two is ever set. Both a draft page and the site
+     * space itself are refused here, not merely left out of the select: the
+     * form can be posted by hand. A refused choice leaves both as stored.
      */
-    private void validatePrivacyPage(Map<String, String> accepted,
+    private void applyFrontDoorChoice(Map<String, String> accepted,
             Map<String, RuntimeConfigProperty> properties, Model model, HttpServletRequest request) {
-        String slug = accepted.get(PRIVACY_PAGE);
-        if (slug == null || slug.isEmpty()) {
+        String choice = accepted.get(FRONTPAGE_WEBLOG_HANDLE);
+        if (choice == null) {
             return;
         }
-        String handle = accepted.get(FRONTPAGE_WEBLOG_HANDLE);
-        if (handle == null && properties.get(FRONTPAGE_WEBLOG_HANDLE) != null) {
-            handle = properties.get(FRONTPAGE_WEBLOG_HANDLE).getValue();
+        String handle = choice;
+        String slug = "";
+        boolean refused = false;
+        if (choice.startsWith(PAGE_CHOICE)) {
+            handle = "";
+            slug = choice.substring(PAGE_CHOICE.length()).trim();
+            RuntimeConfigProperty stored = properties.get(FRONTPAGE_PAGE);
+            boolean unchanged = stored != null && !slug.isEmpty()
+                    && slug.equals(Objects.toString(stored.getValue(), ""));
+            if (!unchanged && !isPublishedSitePage(slug)) {
+                addError(model, "configForm.error.frontpagePage.notFound", request);
+                refused = true;
+            }
+        } else if (Weblog.SITE_SPACE_HANDLE.equalsIgnoreCase(choice)) {
+            addError(model, "ConfigForm.invalidProperty", FRONTPAGE_WEBLOG_HANDLE, request);
+            refused = true;
         }
-        if (handle == null || handle.isBlank()) {
-            addError(model, "configForm.error.privacyPage.noFrontpage", request);
+        if (refused) {
+            accepted.remove(FRONTPAGE_WEBLOG_HANDLE);
             return;
+        }
+        accepted.put(FRONTPAGE_WEBLOG_HANDLE, handle);
+        if (properties.containsKey(FRONTPAGE_PAGE)) {
+            accepted.put(FRONTPAGE_PAGE, slug);
+        }
+    }
+
+    /** A decision path: a lookup that could not run is not a page that exists. */
+    private boolean isPublishedSitePage(String slug) {
+        if (slug.isEmpty()) {
+            return false;
         }
         try {
-            Weblog frontpage = weblogger.getWeblogManager().getWeblogByHandle(handle);
-            if (frontpage == null) {
-                addError(model, "configForm.error.privacyPage.noFrontpage", request);
-                return;
-            }
-            WeblogPage page = weblogger.getWeblogPageManager().getPageBySlug(frontpage, slug);
-            if (page == null || page.getStatus() != WeblogPage.PubStatus.PUBLISHED) {
-                addError(model, "configForm.error.privacyPage.notFound", request);
-            }
+            return new PageReference(null, slug).resolvePublished(weblogger).isPresent();
+        } catch (WebloggerException ex) {
+            log.error("Error checking the front door's site page", ex);
+            return false;
+        }
+    }
+
+    /**
+     * The privacy setting must be a {@link PageReference} to a published page:
+     * {@code slug} on the site, or {@code handle/slug} on a blog. A decision
+     * path: a lookup that could not run is an error, not a pass.
+     */
+    private void validatePrivacyPage(Map<String, String> accepted, Model model, HttpServletRequest request) {
+        String value = accepted.get(PRIVACY_PAGE);
+        if (value == null || value.isEmpty()) {
+            return;
+        }
+        if (PageReference.parse(value).filter(this::publishedOrFalse).isEmpty()) {
+            addError(model, "configForm.error.privacyPage.notFound", request);
+        }
+    }
+
+    private boolean publishedOrFalse(PageReference ref) {
+        try {
+            return ref.resolvePublished(weblogger).isPresent();
         } catch (WebloggerException ex) {
             log.error("Error checking the privacy page", ex);
-            addError(model, "configForm.error.privacyPage.notFound", request);
+            return false;
         }
     }
 
@@ -272,7 +321,14 @@ public class GlobalConfigController extends BaseController {
     private void touchEveryWeblog() throws WebloggerException {
         WeblogManager mgr = weblogger.getWeblogManager();
         List<Weblog> touched = new ArrayList<>();
-        for (Weblog weblog : mgr.getWeblogs(null, null, null, null, 0, -1)) {
+        // The site space is no weblog to the listing, yet its pages carry the
+        // same footer and are the front door, so it is touched explicitly.
+        List<Weblog> everything = new ArrayList<>(mgr.getWeblogs(null, null, null, null, 0, -1));
+        Weblog site = mgr.getSiteSpace();
+        if (site != null) {
+            everything.add(site);
+        }
+        for (Weblog weblog : everything) {
             weblog.touchLastModified();
             mgr.saveWeblog(weblog);
             touched.add(weblog);
@@ -310,9 +366,24 @@ public class GlobalConfigController extends BaseController {
     private Collection<Weblog> loadWeblogs() {
         try {
             WeblogManager mgr = weblogger.getWeblogManager();
-            return mgr.getWeblogs(true, null, null, null, 0, -1);
+            // The listing already leaves the site space out; the picker must
+            // never offer it, so say so here too.
+            return mgr.getWeblogs(true, null, null, null, 0, -1).stream()
+                    .filter(weblog -> !weblog.isSiteSpace()).toList();
         } catch (WebloggerException ex) {
             log.error("Error getting weblogs", ex);
+            return Collections.emptyList();
+        }
+    }
+
+    /** The site space's published pages, for the front-door select; none when there is no site space. */
+    private List<WeblogPage> loadSitePages() {
+        try {
+            Weblog site = weblogger.getWeblogManager().getSiteSpace();
+            return site == null ? Collections.emptyList()
+                    : weblogger.getWeblogPageManager().getPublishedPages(site);
+        } catch (WebloggerException ex) {
+            log.error("Error getting the site pages", ex);
             return Collections.emptyList();
         }
     }

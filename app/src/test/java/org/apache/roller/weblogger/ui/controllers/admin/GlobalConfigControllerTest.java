@@ -440,17 +440,18 @@ class GlobalConfigControllerTest {
         Map<String, RuntimeConfigProperty> stored = privacyProps("", "front");
         page(frontBlog("front"), "privacy", WeblogPage.PubStatus.PUBLISHED);
 
-        controller.save(privacyRequest(" privacy ", "front"), model);
+        controller.save(privacyRequest(" front/privacy ", "front"), model);
 
         assertEquals(List.of(), ControllerTestFixture.errors(model));
-        assertEquals("privacy", stored.get(PRIVACY).getValue());
+        assertEquals("front/privacy", stored.get(PRIVACY).getValue());
         verify(weblogger.propertiesManager()).saveProperties(stored);
     }
 
     @Test
-    void privacyPageIsCheckedAgainstTheStoredFrontpageWhenTheFormOmitsIt() throws Exception {
-        Map<String, RuntimeConfigProperty> stored = privacyProps("", "front");
-        page(frontBlog("front"), "privacy", WeblogPage.PubStatus.PUBLISHED);
+    void aBareSlugIsAPublishedPageOfTheSiteSpace() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = privacyProps("", "");
+        Weblog site = siteSpace();
+        page(site, "privacy", WeblogPage.PubStatus.PUBLISHED);
 
         controller.save(privacyRequest("privacy", null), model);
 
@@ -459,11 +460,43 @@ class GlobalConfigControllerTest {
     }
 
     @Test
+    void aBareSlugWithNoSiteSpaceOrNoSuchPageIsRefused() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = privacyProps("old", "");
+
+        controller.save(privacyRequest("privacy", null), model);
+        assertRefused(stored, "old", "configForm.error.privacyPage.notFound");
+
+        model = new ExtendedModelMap();
+        siteSpace();
+        controller.save(privacyRequest("privacy", null), model);
+        assertRefused(stored, "old", "configForm.error.privacyPage.notFound");
+    }
+
+    @Test
+    void aDraftSitePageIsRefused() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = privacyProps("old", "");
+        page(siteSpace(), "privacy", WeblogPage.PubStatus.DRAFT);
+
+        controller.save(privacyRequest("privacy", null), model);
+
+        assertRefused(stored, "old", "configForm.error.privacyPage.notFound");
+    }
+
+    @Test
+    void aMalformedReferenceIsRefused() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = privacyProps("old", "");
+
+        controller.save(privacyRequest("a/b/c", null), model);
+
+        assertRefused(stored, "old", "configForm.error.privacyPage.notFound");
+    }
+
+    @Test
     void privacyPageUnknownSlugIsRefused() throws Exception {
         Map<String, RuntimeConfigProperty> stored = privacyProps("old", "front");
         frontBlog("front");
 
-        controller.save(privacyRequest("nope", "front"), model);
+        controller.save(privacyRequest("front/nope", "front"), model);
 
         assertRefused(stored, "old", "configForm.error.privacyPage.notFound");
     }
@@ -473,27 +506,18 @@ class GlobalConfigControllerTest {
         Map<String, RuntimeConfigProperty> stored = privacyProps("old", "front");
         page(frontBlog("front"), "privacy", WeblogPage.PubStatus.DRAFT);
 
-        controller.save(privacyRequest("privacy", "front"), model);
+        controller.save(privacyRequest("front/privacy", "front"), model);
 
         assertRefused(stored, "old", "configForm.error.privacyPage.notFound");
     }
 
     @Test
-    void privacyPageWithoutFrontpageBlogIsRefused() throws Exception {
+    void privacyPageWithUnknownBlogIsRefused() throws Exception {
         Map<String, RuntimeConfigProperty> stored = privacyProps("old", "");
 
-        controller.save(privacyRequest("privacy", ""), model);
+        controller.save(privacyRequest("ghost/privacy", ""), model);
 
-        assertRefused(stored, "old", "configForm.error.privacyPage.noFrontpage");
-    }
-
-    @Test
-    void privacyPageWithUnknownFrontpageBlogIsRefused() throws Exception {
-        Map<String, RuntimeConfigProperty> stored = privacyProps("old", "ghost");
-
-        controller.save(privacyRequest("privacy", "ghost"), model);
-
-        assertRefused(stored, "old", "configForm.error.privacyPage.noFrontpage");
+        assertRefused(stored, "old", "configForm.error.privacyPage.notFound");
     }
 
     @Test
@@ -503,7 +527,7 @@ class GlobalConfigControllerTest {
         when(weblogger.weblogPageManager().getPageBySlug(blog, "privacy"))
                 .thenThrow(new WebloggerException("database down"));
 
-        controller.save(privacyRequest("privacy", "front"), model);
+        controller.save(privacyRequest("front/privacy", "front"), model);
 
         assertRefused(stored, "old", "configForm.error.privacyPage.notFound");
     }
@@ -514,7 +538,7 @@ class GlobalConfigControllerTest {
         when(weblogger.weblogManager().getWeblogByHandle("front"))
                 .thenThrow(new WebloggerException("database down"));
 
-        controller.save(privacyRequest("privacy", "front"), model);
+        controller.save(privacyRequest("front/privacy", "front"), model);
 
         assertRefused(stored, "old", "configForm.error.privacyPage.notFound");
     }
@@ -533,7 +557,7 @@ class GlobalConfigControllerTest {
         when(weblogger.weblogManager().getWeblogs(any(), any(), any(), any(), anyInt(), anyInt()))
                 .thenReturn(List.of(a, b));
 
-        controller.save(privacyRequest("privacy", "front"), model);
+        controller.save(privacyRequest("front/privacy", "front"), model);
 
         assertEquals(List.of("generic.changes.saved"), ControllerTestFixture.messages(model));
         assertTrue(a.getLastModified().after(past));
@@ -544,7 +568,7 @@ class GlobalConfigControllerTest {
 
     @Test
     void unchangedPrivacyPageTouchesNothing() throws Exception {
-        privacyProps("privacy", "front");
+        privacyProps("front/privacy", "front");
         page(frontBlog("front"), "privacy", WeblogPage.PubStatus.PUBLISHED);
         Weblog a = new Weblog();
         java.util.Date past = new java.util.Date(1_000L);
@@ -552,7 +576,7 @@ class GlobalConfigControllerTest {
         when(weblogger.weblogManager().getWeblogs(any(), any(), any(), any(), anyInt(), anyInt()))
                 .thenReturn(List.of(a));
 
-        controller.save(privacyRequest("privacy", "front"), model);
+        controller.save(privacyRequest("front/privacy", "front"), model);
 
         assertEquals(past, a.getLastModified());
         verify(weblogger.weblogManager(), never()).saveWeblog(any());
@@ -565,7 +589,7 @@ class GlobalConfigControllerTest {
         doThrow(new WebloggerException("database down"))
                 .when(weblogger.propertiesManager()).saveProperties(any());
 
-        controller.save(privacyRequest("privacy", "front"), model);
+        controller.save(privacyRequest("front/privacy", "front"), model);
 
         verify(weblogger.weblogManager(), never()).saveWeblog(any());
     }
@@ -579,7 +603,7 @@ class GlobalConfigControllerTest {
                 .thenReturn(List.of(a));
         doThrow(new WebloggerException("database down")).when(weblogger.weblogManager()).saveWeblog(a);
 
-        controller.save(privacyRequest("privacy", "front"), model);
+        controller.save(privacyRequest("front/privacy", "front"), model);
 
         assertEquals(List.of("generic.error.check.logs"), ControllerTestFixture.errors(model));
     }
@@ -627,7 +651,7 @@ class GlobalConfigControllerTest {
         linkProps("", "front", "https://x.test");
         page(frontBlog("front"), "privacy", WeblogPage.PubStatus.PUBLISHED);
 
-        boolean[] r = saveAndWatch(linkRequest("privacy", "front", "https://x.test", "Old"), new Weblog());
+        boolean[] r = saveAndWatch(linkRequest("front/privacy", "front", "https://x.test", "Old"), new Weblog());
 
         assertTrue(r[0], "touched");
         assertTrue(r[1], "site-wide cache invalidated");
@@ -635,10 +659,10 @@ class GlobalConfigControllerTest {
 
     @Test
     void changingTheFrontpageHandleTouchesAndClearsTheSiteWideCache() throws Exception {
-        linkProps("privacy", "front", "https://x.test");
+        linkProps("front/privacy", "front", "https://x.test");
         page(frontBlog("other"), "privacy", WeblogPage.PubStatus.PUBLISHED);
 
-        boolean[] r = saveAndWatch(linkRequest("privacy", "other", "https://x.test", "Old"), new Weblog());
+        boolean[] r = saveAndWatch(linkRequest("front/privacy", "other", "https://x.test", "Old"), new Weblog());
 
         assertEquals(List.of("generic.changes.saved"), ControllerTestFixture.messages(model));
         assertTrue(r[0], "touched");
@@ -647,10 +671,10 @@ class GlobalConfigControllerTest {
 
     @Test
     void changingTheAbsoluteUrlTouchesAndClearsTheSiteWideCache() throws Exception {
-        linkProps("privacy", "front", "https://x.test");
+        linkProps("front/privacy", "front", "https://x.test");
         page(frontBlog("front"), "privacy", WeblogPage.PubStatus.PUBLISHED);
 
-        boolean[] r = saveAndWatch(linkRequest("privacy", "front", "https://y.test", "Old"), new Weblog());
+        boolean[] r = saveAndWatch(linkRequest("front/privacy", "front", "https://y.test", "Old"), new Weblog());
 
         assertTrue(r[0], "touched");
         assertTrue(r[1], "site-wide cache invalidated");
@@ -658,10 +682,10 @@ class GlobalConfigControllerTest {
 
     @Test
     void changingAnUnrelatedPropertyNeitherTouchesNorClears() throws Exception {
-        linkProps("privacy", "front", "https://x.test");
+        linkProps("front/privacy", "front", "https://x.test");
         page(frontBlog("front"), "privacy", WeblogPage.PubStatus.PUBLISHED);
 
-        boolean[] r = saveAndWatch(linkRequest("privacy", "front", "https://x.test", "New"), new Weblog());
+        boolean[] r = saveAndWatch(linkRequest("front/privacy", "front", "https://x.test", "New"), new Weblog());
 
         assertFalse(r[0], "touched");
         assertFalse(r[1], "site-wide cache invalidated");
@@ -669,10 +693,10 @@ class GlobalConfigControllerTest {
 
     @Test
     void anUnchangedButNowInvalidPrivacySlugDoesNotBlockAnUnrelatedSave() throws Exception {
-        Map<String, RuntimeConfigProperty> stored = linkProps("gone", "front", "https://x.test");
+        Map<String, RuntimeConfigProperty> stored = linkProps("front/gone", "front", "https://x.test");
         frontBlog("front"); // the page "gone" no longer exists
 
-        controller.save(linkRequest("gone", "front", "https://x.test", "New"), model);
+        controller.save(linkRequest("front/gone", "front", "https://x.test", "New"), model);
 
         assertEquals(List.of(), ControllerTestFixture.errors(model));
         assertEquals("New", stored.get("site.name").getValue());
@@ -681,23 +705,179 @@ class GlobalConfigControllerTest {
 
     @Test
     void aChangedInvalidPrivacySlugIsStillRefused() throws Exception {
-        Map<String, RuntimeConfigProperty> stored = linkProps("gone", "front", "https://x.test");
+        Map<String, RuntimeConfigProperty> stored = linkProps("front/gone", "front", "https://x.test");
         frontBlog("front");
 
-        controller.save(linkRequest("nope", "front", "https://x.test", "Old"), model);
+        controller.save(linkRequest("front/nope", "front", "https://x.test", "Old"), model);
 
-        assertRefused(stored, "gone", "configForm.error.privacyPage.notFound");
+        assertRefused(stored, "front/gone", "configForm.error.privacyPage.notFound");
     }
 
     @Test
-    void changingTheFrontpageHandleRevalidatesAnUnchangedSlug() throws Exception {
-        Map<String, RuntimeConfigProperty> stored = linkProps("privacy", "front", "https://x.test");
-        page(frontBlog("front"), "privacy", WeblogPage.PubStatus.PUBLISHED);
-        frontBlog("other"); // has no "privacy" page
+    void changingTheFrontpageHandleNeverRevalidatesTheUnrelatedPrivacyReference() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = linkProps("front/gone", "front", "https://x.test");
+        frontBlog("other");
 
-        controller.save(linkRequest("privacy", "other", "https://x.test", "Old"), model);
+        controller.save(linkRequest("front/gone", "other", "https://x.test", "Old"), model);
 
-        assertRefused(stored, "privacy", "configForm.error.privacyPage.notFound");
+        assertEquals(List.of(), ControllerTestFixture.errors(model));
+        assertEquals("other", stored.get(FRONT).getValue());
+    }
+
+    // --- the front door: a site directory, a site page, or a blog ---
+
+    private static final String FRONT_PAGE = "site.frontpage.page";
+
+    private Weblog siteSpace() throws Exception {
+        Weblog site = new Weblog();
+        site.setHandle(Weblog.SITE_SPACE_HANDLE);
+        site.setSiteSpace(true);
+        when(weblogger.weblogManager().getSiteSpace()).thenReturn(site);
+        return site;
+    }
+
+    private WeblogPage sitePage(String slug) {
+        WeblogPage page = new WeblogPage();
+        page.setSlug(slug);
+        page.setTitle(slug);
+        page.setStatus(WeblogPage.PubStatus.PUBLISHED);
+        return page;
+    }
+
+    private Map<String, RuntimeConfigProperty> doorProps(String handle, String page) throws Exception {
+        Map<String, RuntimeConfigProperty> stored = properties(FRONT, handle);
+        stored.put(FRONT_PAGE, new RuntimeConfigProperty(FRONT_PAGE, page));
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+        return stored;
+    }
+
+    private HttpServletRequest doorRequest(String choice) {
+        HttpServletRequest request = request();
+        when(request.getParameter(FRONT)).thenReturn(choice);
+        return request;
+    }
+
+    @Test
+    void thePickerOffersTheDirectoryPublishedSitePagesAndBlogsButNeverTheSiteSpace() throws Exception {
+        doorProps("", "");
+        Weblog site = siteSpace();
+        Weblog blog = new Weblog();
+        blog.setHandle("travel");
+        when(weblogger.weblogManager().getWeblogs(anyBoolean(), any(), any(), any(), anyInt(), anyInt()))
+                .thenReturn(List.of(blog, site));
+        WeblogPage home = sitePage("home");
+        when(weblogger.weblogPageManager().getPublishedPages(site)).thenReturn(List.of(home));
+
+        controller.execute(request(), model);
+
+        assertEquals(List.of(blog), model.getAttribute("weblogs"), "AC6: never the site space");
+        assertEquals(List.of(home), model.getAttribute("sitePages"));
+    }
+
+    @Test
+    void thePickerHasNoSitePagesWhenThereIsNoSiteSpaceOrItsPagesCannotBeRead() throws Exception {
+        doorProps("", "");
+        controller.execute(request(), model);
+        assertEquals(List.of(), model.getAttribute("sitePages"));
+
+        Weblog site = siteSpace();
+        when(weblogger.weblogPageManager().getPublishedPages(site)).thenThrow(new WebloggerException("down"));
+        controller.execute(request(), model);
+        assertEquals(List.of(), model.getAttribute("sitePages"));
+    }
+
+    @Test
+    void choosingASitePageStoresItsSlugAndBlanksTheBlog() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = doorProps("travel", "");
+        Weblog site = siteSpace();
+        when(weblogger.weblogPageManager().getPublishedPages(site)).thenReturn(List.of(sitePage("home")));
+        page(site, "home", WeblogPage.PubStatus.PUBLISHED);
+
+        controller.save(doorRequest("page:home"), model);
+
+        assertEquals(List.of(), ControllerTestFixture.errors(model));
+        assertEquals("home", stored.get(FRONT_PAGE).getValue());
+        assertEquals("", stored.get(FRONT).getValue());
+        verify(weblogger.propertiesManager()).saveProperties(stored);
+    }
+
+    @Test
+    void choosingABlogBlanksTheSitePage() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = doorProps("", "home");
+
+        controller.save(doorRequest("travel"), model);
+
+        assertEquals(List.of(), ControllerTestFixture.errors(model));
+        assertEquals("travel", stored.get(FRONT).getValue());
+        assertEquals("", stored.get(FRONT_PAGE).getValue());
+    }
+
+    @Test
+    void choosingTheDirectoryBlanksBoth() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = doorProps("travel", "home");
+
+        controller.save(doorRequest(""), model);
+
+        assertEquals("", stored.get(FRONT).getValue());
+        assertEquals("", stored.get(FRONT_PAGE).getValue());
+    }
+
+    @Test
+    void aDraftOrMissingFrontDoorPageIsRefused() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = doorProps("travel", "");
+        Weblog site = siteSpace();
+        page(site, "draft", WeblogPage.PubStatus.DRAFT);
+
+        controller.save(doorRequest("page:draft"), model);
+        assertEquals(List.of("configForm.error.frontpagePage.notFound"), ControllerTestFixture.errors(model));
+        assertEquals("travel", stored.get(FRONT).getValue());
+        assertEquals("", stored.get(FRONT_PAGE).getValue());
+
+        model = new ExtendedModelMap();
+        controller.save(doorRequest("page:"), model);
+        assertEquals(List.of("configForm.error.frontpagePage.notFound"), ControllerTestFixture.errors(model));
+        verify(weblogger.propertiesManager(), never()).saveProperties(any());
+    }
+
+    @Test
+    void theSiteSpaceIsRefusedAsAFrontDoorBlogEvenWhenPostedDirectly() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = doorProps("travel", "");
+
+        controller.save(doorRequest(Weblog.SITE_SPACE_HANDLE.toUpperCase(java.util.Locale.ROOT)), model);
+
+        assertEquals(List.of("ConfigForm.invalidProperty[" + FRONT + "]"), ControllerTestFixture.errors(model));
+        assertEquals("travel", stored.get(FRONT).getValue());
+        verify(weblogger.propertiesManager(), never()).saveProperties(any());
+    }
+
+    @Test
+    void aFrontDoorPageLookupFailureIsRefused() throws Exception {
+        doorProps("", "");
+        Weblog site = siteSpace();
+        when(weblogger.weblogPageManager().getPageBySlug(site, "home")).thenThrow(new WebloggerException("down"));
+
+        controller.save(doorRequest("page:home"), model);
+
+        assertEquals(List.of("configForm.error.frontpagePage.notFound"), ControllerTestFixture.errors(model));
+    }
+
+    @Test
+    void changingTheFrontDoorTouchesEveryWeblogAndTheSiteSpace() throws Exception {
+        doorProps("travel", "");
+        Weblog site = siteSpace();
+        page(site, "home", WeblogPage.PubStatus.PUBLISHED);
+        Weblog blog = new Weblog();
+        java.util.Date past = new java.util.Date(1_000L);
+        blog.setLastModified(past);
+        site.setLastModified(past);
+        when(weblogger.weblogManager().getWeblogs(any(), any(), any(), any(), anyInt(), anyInt()))
+                .thenReturn(List.of(blog));
+
+        controller.save(doorRequest("page:home"), model);
+
+        assertTrue(blog.getLastModified().after(past));
+        assertTrue(site.getLastModified().after(past), "the site space is not in the weblog listing");
+        verify(weblogger.weblogManager()).saveWeblog(site);
     }
 
     // --- helpers ---

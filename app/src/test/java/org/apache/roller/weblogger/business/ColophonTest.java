@@ -140,20 +140,39 @@ class ColophonTest {
     }
 
     @Test
-    void privacyUrlBuiltFromFrontpageBlog() throws WebloggerException {
+    void privacyUrlBuiltFromABlogReference() throws WebloggerException {
         Weblog front = weblog("front", "Front", null);
-        given("site.privacy.page", "privacy");
-        given("site.frontpage.weblog.handle", "front");
+        given("site.privacy.page", "front/privacy");
         when(weblogManager.getWeblogByHandle("front")).thenReturn(front);
         when(urls.getWeblogStaticPageURL(front, "privacy", true)).thenReturn("https://x.test/front/privacy");
         assertEquals("https://x.test/front/privacy", Colophon.of(weblogger, null, NOW).privacyUrl());
     }
 
     @Test
+    void aBareSlugIsASitePageAtTheSiteRoot() throws WebloggerException {
+        Weblog site = weblog(Weblog.SITE_SPACE_HANDLE, "Site", null);
+        site.setSiteSpace(true);
+        given("site.privacy.page", "privacy");
+        given("site.absoluteurl", "https://x.test");
+        when(weblogManager.getSiteSpace()).thenReturn(site);
+        when(weblogger.getUrlStrategy()).thenReturn(new MultiWeblogURLStrategy());
+        assertEquals("https://x.test/privacy", Colophon.of(weblogger, null, NOW).privacyUrl());
+    }
+
+    @Test
+    void aBlogReferenceKeepsItsBlogPath() throws WebloggerException {
+        Weblog front = weblog("wikantik", "Wikantik", null);
+        given("site.privacy.page", "wikantik/privacy");
+        given("site.absoluteurl", "https://x.test");
+        when(weblogManager.getWeblogByHandle("wikantik")).thenReturn(front);
+        when(weblogger.getUrlStrategy()).thenReturn(new MultiWeblogURLStrategy());
+        assertEquals("https://x.test/wikantik/privacy", Colophon.of(weblogger, null, NOW).privacyUrl());
+    }
+
+    @Test
     void privacyUrlIsAbsoluteForAVirtualHostBlog() throws WebloggerException {
         Weblog front = weblog("front", "Front", "vhost.example.com");
-        given("site.privacy.page", "privacy");
-        given("site.frontpage.weblog.handle", "front");
+        given("site.privacy.page", "front/privacy");
         when(weblogManager.getWeblogByHandle("front")).thenReturn(front);
         when(weblogger.getUrlStrategy()).thenReturn(new MultiWeblogURLStrategy());
         assertEquals("https://vhost.example.com/privacy",
@@ -161,25 +180,38 @@ class ColophonTest {
     }
 
     @Test
-    void privacyUrlNullWhenFrontpageHandleNoLongerResolves() throws WebloggerException {
-        given("site.privacy.page", "privacy");
-        given("site.frontpage.weblog.handle", "gone");
+    void privacyUrlNullWhenTheBlogNoLongerResolves() throws WebloggerException {
+        given("site.privacy.page", "gone/privacy");
         when(weblogManager.getWeblogByHandle("gone")).thenReturn(null);
         assertNull(Colophon.of(weblogger, null, NOW).privacyUrl());
     }
 
     @Test
-    void privacyUrlNullWhenNoFrontpageHandle() throws WebloggerException {
+    void privacyUrlNullWhenThereIsNoSiteSpaceForABareSlug() throws WebloggerException {
         given("site.privacy.page", "privacy");
         assertNull(Colophon.of(weblogger, null, NOW).privacyUrl());
     }
 
     @Test
+    void privacyUrlNullForAMalformedReference() throws WebloggerException {
+        given("site.privacy.page", "a/b/c");
+        assertNull(Colophon.of(weblogger, null, NOW).privacyUrl());
+    }
+
+    @Test
     void privacyUrlNullWhenLookupThrows() throws WebloggerException {
-        given("site.privacy.page", "privacy");
-        given("site.frontpage.weblog.handle", "front");
+        given("site.privacy.page", "front/privacy");
         when(weblogManager.getWeblogByHandle(anyString())).thenThrow(new WebloggerException("down"));
         assertNull(Colophon.of(weblogger, null, NOW).privacyUrl());
+    }
+
+    /** AC9: the site space's footer names the site, not the hidden weblog. */
+    @Test
+    void theSiteSpacesCopyrightHolderIsTheSiteName() {
+        Weblog site = weblog(Weblog.SITE_SPACE_HANDLE, "Site Space Internal", null);
+        site.setSiteSpace(true);
+        site.setCopyright("   ");
+        assertEquals("Site Name", Colophon.of(weblogger, site, NOW).copyrightHolder());
     }
 
     @Test

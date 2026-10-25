@@ -104,7 +104,7 @@ class ColophonIT extends RollerIT {
             // --- the setting, through the real Global Config page ----------
             openPath(GLOBAL_CONFIG_PATH);
             $("select[name='" + FRONTPAGE_FIELD + "']").selectOptionByValue(handle);
-            $("input[name='" + PRIVACY_FIELD + "']").setValue(slug);
+            $("input[name='" + PRIVACY_FIELD + "']").setValue(handle + "/" + slug);
             globalsChanged = true;
             clickAndAwaitNewPage($("#saveButton"));
             $("#messages").should(exist);

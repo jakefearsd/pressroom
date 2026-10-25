@@ -60,12 +60,32 @@
                                  rather than the first weblog, and the field is
                                  still submitted when no weblog exists yet. --%>
                             <option value=""><spring:message code="configForm.frontpageWeblogHandle.none"/></option>
+                            <%-- Published site pages: the value is page:<slug>, which
+                                 the controller turns into site.frontpage.page. A
+                                 weblog option is only selected while no site page is. --%>
+                            <c:if test="${not empty sitePages}">
+                                <spring:message code="configForm.frontpageSitePages" var="sitePagesLabel"/>
+                                <optgroup label="${fn:escapeXml(sitePagesLabel)}">
+                                    <c:forEach var="sitePage" items="${sitePages}">
+                                        <option value="page:${fn:escapeXml(sitePage.slug)}"
+                                            <c:if test="${properties['site.frontpage.page'].value == sitePage.slug}">selected="selected"</c:if>
+                                        >${fn:escapeXml(sitePage.title)} (/${fn:escapeXml(sitePage.slug)})</option>
+                                    </c:forEach>
+                                </optgroup>
+                            </c:if>
                             <c:forEach var="weblog" items="${weblogs}">
                                 <option value="${fn:escapeXml(weblog.handle)}"
-                                    <c:if test="${properties[pd.name].value == weblog.handle}">selected="selected"</c:if>
+                                    <c:if test="${empty properties['site.frontpage.page'].value && properties[pd.name].value == weblog.handle}">selected="selected"</c:if>
                                 >${fn:escapeXml(weblog.handle)}</option>
                             </c:forEach>
                         </select>
+                        <c:if test="${empty sitePages}">
+                            <c:url value="/roller-ui/authoring/pages.rol" var="sitePagesUrl">
+                                <c:param name="weblog" value="site-space"/>
+                            </c:url>
+                            <div class="form-text"><spring:message code="configForm.frontpageNoSitePages"/>
+                                <a href="${sitePagesUrl}"><spring:message code="configForm.frontpageSitePagesLink"/></a></div>
+                        </c:if>
                     </div>
                 </div>
             </c:if>

@@ -22,7 +22,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Optional;
 import java.util.function.Supplier;
+import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.pojos.Weblog;
 
@@ -86,7 +88,7 @@ public record Colophon(String version, String shortRevision, String releaseDate,
         String custom = null;
         String holder = "";
         try {
-            if (weblog != null) {
+            if (weblog != null && !weblog.isSiteSpace()) {
                 holder = nullToEmpty(weblog.getName());
                 String copyright = weblog.getCopyright();
                 custom = copyright == null || copyright.isBlank() ? null : copyright;
@@ -131,22 +133,22 @@ public record Colophon(String version, String shortRevision, String releaseDate,
 
     /**
      * The privacy page's absolute URL, or null when none is configured or it
-     * cannot be built. Validated when the setting is saved, so there is no
-     * per-request existence check here.
+     * cannot be built. The setting is a {@link PageReference}: a bare slug is
+     * a site page, {@code handle/slug} a blog's. Validated when the setting is
+     * saved, so there is no per-request existence check here.
      */
     private static String privacyUrl(Weblogger weblogger) {
         try {
-            String slug = WebloggerRuntimeConfig.getProperty("site.privacy.page");
-            String handle = WebloggerRuntimeConfig.getProperty("site.frontpage.weblog.handle");
-            if (slug == null || slug.isBlank() || handle == null || handle.isBlank()) {
-                return null;
-            }
-            Weblog front = weblogger.getWeblogManager().getWeblogByHandle(handle.trim());
-            if (front == null) {
-                return null;
-            }
-            return weblogger.getUrlStrategy().getWeblogStaticPageURL(front, slug.trim(), true);
-        } catch (Exception e) { // display path: no link rather than no footer
+            return PageReference.parse(WebloggerRuntimeConfig.getProperty("site.privacy.page"))
+                    .flatMap(ref -> {
+                        try {
+                            return ref.absoluteUrl(weblogger);
+                        } catch (WebloggerException e) { // display path: no link
+                            return Optional.empty();
+                        }
+                    })
+                    .orElse(null);
+        } catch (RuntimeException e) { // display path: no link rather than no footer
             return null;
         }
     }

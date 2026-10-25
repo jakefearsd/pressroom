@@ -179,9 +179,11 @@ resolves through the index at the end of `CLAUDE.md`.
   its `get` takes no timestamp, having no per-weblog expiry.
 - **A Global Config save expires nothing by itself**, so a setting that
   reaches rendered pages must touch weblogs. The footer's privacy link is
-  built from `site.privacy.page`, `site.frontpage.weblog.handle` and
-  `site.absoluteurl`: when any of the three changes, `GlobalConfigController`
-  touches and saves every weblog via `touchLastModified()` and then calls
+  built from `site.privacy.page` (a `PageReference`: `slug` is a site page,
+  `handle/slug` a blog's) and `site.absoluteurl`, and the front door is
+  `site.frontpage.weblog.handle` / `site.frontpage.page`: when any of the four
+  changes, `GlobalConfigController`
+  touches and saves every weblog, and the site space, via `touchLastModified()` and then calls
   `CacheManager.invalidate(weblog)` for each, so every blog's cached pages and
   feeds pick the link up on the next request. The invalidate is what clears
   `SiteWideCache`, which serves the aggregated front page and ignores
