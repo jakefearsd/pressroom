@@ -64,9 +64,13 @@ public class GlobalConfigController extends BaseController {
     private static final String ABSOLUTE_URL = "site.absoluteurl";
     /** The front-door select's value prefix for a site page; a blog's option is its bare handle. */
     private static final String PAGE_CHOICE = "page:";
-    /** The settings a rendered page's footer link or the front door depend on. */
-    private static final List<String> PRIVACY_LINK_INPUTS =
-            List.of(PRIVACY_PAGE, FRONTPAGE_WEBLOG_HANDLE, FRONTPAGE_PAGE, ABSOLUTE_URL);
+    /**
+     * The settings a rendered page's footer link, header or the front door
+     * depend on: a change to any of them must expire every cached page.
+     */
+    private static final List<String> RENDERED_PAGE_INPUTS =
+            List.of(PRIVACY_PAGE, FRONTPAGE_WEBLOG_HANDLE, FRONTPAGE_PAGE, ABSOLUTE_URL,
+                    "site.name", "site.shortName", "site.description");
 
     private final ResourceBundle bundle = ResourceBundle.getBundle("ApplicationResources");
 
@@ -109,7 +113,9 @@ public class GlobalConfigController extends BaseController {
         model.addAttribute("properties", properties);
         model.addAttribute("globalConfigDef", globalConfigDef);
         model.addAttribute("weblogs", weblogs);
-        model.addAttribute("sitePages", loadSitePages());
+        List<WeblogPage> sitePages = loadSitePages();
+        model.addAttribute("sitePages", sitePages);
+        model.addAttribute("staleFrontDoorPage", staleFrontDoorPage(properties, sitePages));
 
         return ".GlobalConfig";
     }
@@ -128,7 +134,9 @@ public class GlobalConfigController extends BaseController {
         model.addAttribute("properties", properties);
         model.addAttribute("globalConfigDef", globalConfigDef);
         model.addAttribute("weblogs", weblogs);
-        model.addAttribute("sitePages", loadSitePages());
+        List<WeblogPage> sitePages = loadSitePages();
+        model.addAttribute("sitePages", sitePages);
+        model.addAttribute("staleFrontDoorPage", staleFrontDoorPage(properties, sitePages));
 
         // Validate everything first and mutate nothing until it all passes.
         // The properties are managed entities, and an in-place edit is written
@@ -202,7 +210,7 @@ public class GlobalConfigController extends BaseController {
             return ".GlobalConfig";
         }
 
-        boolean privacyLinkChanged = PRIVACY_LINK_INPUTS.stream()
+        boolean renderedPageInputChanged = RENDERED_PAGE_INPUTS.stream()
                 .anyMatch(name -> changed(name, accepted, properties));
         for (Map.Entry<String, String> change : accepted.entrySet()) {
             properties.get(change.getKey()).setValue(change.getValue());
@@ -219,7 +227,7 @@ public class GlobalConfigController extends BaseController {
             // Global Config save does not move it, so a changed privacy link
             // would stay out of every cached page. Touch every weblog, and
             // clear the site-wide cache, which ignores lastModified.
-            if (privacyLinkChanged) {
+            if (renderedPageInputChanged) {
                 touchEveryWeblog();
             }
 
@@ -278,6 +286,20 @@ public class GlobalConfigController extends BaseController {
         if (properties.containsKey(FRONTPAGE_PAGE)) {
             accepted.put(FRONTPAGE_PAGE, slug);
         }
+    }
+
+    /**
+     * The stored front-door slug when it is not among the published pages (the
+     * page was unpublished or renamed), else "". The select offers it as its
+     * own selected option: with none selected the browser submits "" and an
+     * unrelated save would silently clear the front door.
+     */
+    private static String staleFrontDoorPage(Map<String, RuntimeConfigProperty> properties,
+            List<WeblogPage> sitePages) {
+        RuntimeConfigProperty stored = properties.get(FRONTPAGE_PAGE);
+        String slug = stored == null ? "" : Objects.toString(stored.getValue(), "").trim();
+        return slug.isEmpty() || sitePages.stream().anyMatch(page -> slug.equals(page.getSlug()))
+                ? "" : slug;
     }
 
     /** A decision path: a lookup that could not run is not a page that exists. */

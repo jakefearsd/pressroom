@@ -27,7 +27,10 @@
 </script>
 
 <p class="subtitle">
-    <spring:message code="weblogPagesForm.subtitle" arguments="${actionWeblog.handle}"/>
+    <c:choose>
+        <c:when test="${actionWeblog.siteSpace}"><spring:message code="weblogPagesForm.subtitle.site"/></c:when>
+        <c:otherwise><spring:message code="weblogPagesForm.subtitle" arguments="${actionWeblog.handle}"/></c:otherwise>
+    </c:choose>
 </p>
 
 <%-- Local draft recovery -- see EntryEdit.jsp. --%>
@@ -150,6 +153,10 @@
                     aria-label="<spring:message code='generic.copyToClipboard'/>"><spring:message code="weblogEdit.copyPermalink"/></button>
             </c:if>
         </p>
+        <c:if test="${frontDoorPage}">
+        <p class="form-text editor-permalink-note"><spring:message code="pageEdit.frontDoorNote"
+            arguments="${fn:escapeXml(urls.staticPage(actionWeblog, bean.slug))}"/></p>
+        </c:if>
 
         <%-- The writing surface and its script are shared with the entry
              editor. editorFieldValue is escaped HERE rather than inside the

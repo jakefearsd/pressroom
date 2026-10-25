@@ -30,6 +30,7 @@ import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.validator.routines.UrlValidator;
 import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.SiteSlugClashException;
+import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.pojos.MediaFile;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogPage;
@@ -282,6 +283,11 @@ public class PageEditController extends BaseController {
         // or omit one that does. Pages go through the same shortcode-expanding
         // render pipeline as entries (WeblogPage implements ShortcodeContext).
         model.addAttribute("shortcodeCards", weblogger.getEntryRenderer().shortcodeCards());
+
+        // The front-door page is served at the site root, not at its slug; the
+        // editor says so rather than leaving the slug line to suggest otherwise.
+        model.addAttribute("frontDoorPage", getActionWeblog(request).isSiteSpace()
+                && WebloggerRuntimeConfig.isFrontDoorPage(bean.getSlug()));
 
         // The document the editor's split/preview panes frame -- the same
         // shell the entry editor uses, through the same BaseController helper,

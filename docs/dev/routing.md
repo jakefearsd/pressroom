@@ -12,7 +12,12 @@ only), which forwards wherever `FrontDoor.forwardPath` says. With
 `site.frontpage.page` set, that is the site page of that slug
 (`/roller-ui/rendering/page/site-space/<slug>`) when it is published, and
 the site directory when it is not (deleted, a draft, a failed lookup): `/`
-is never a 404 or a 500. Unset, with `site.frontpage.weblog.handle` set, it
+is never a 404 or a 500 (a locale-shaped slug, saved before such slugs were
+refused, is the directory too: the page servlet would read it as a locale).
+Global Config keeps a stale stored slug as a selected "unpublished" option so
+an unrelated save does not clear it; a change to the site name, short name or
+description (like the front door, privacy link and absolute URL) touches every
+weblog and the site space so cached pages expire. Unset, with `site.frontpage.weblog.handle` set, it
 forwards to that weblog's rendering. Both empty, it forwards to
 `/roller-ui/siteDirectory.rol` (`SiteDirectoryController`), a public page
 with the site description and the enabled, active weblogs by name, plus a

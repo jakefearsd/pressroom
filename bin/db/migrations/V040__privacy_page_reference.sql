@@ -22,7 +22,10 @@
 --
 -- Prerequisites: V002__baseline_schema (the roller_properties table).
 --
--- Idempotent: once qualified, the value contains "/" and no longer matches.
+-- Applied once, tracked by schema_migrations; a re-run is not intended. Once
+-- qualified the value contains "/" and no longer matches, but a deliberate
+-- bare reference to a site page, set after this ran while a front-page blog is
+-- also set, would be qualified by that blog's handle if the file were run again.
 
 UPDATE roller_properties p
    SET value = trim(f.value) || '/' || trim(p.value)

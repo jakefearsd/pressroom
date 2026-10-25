@@ -143,7 +143,8 @@ class GlobalConfigControllerTest {
         assertEquals("New Name", stored.get("site.name").getValue(),
                 "leading and trailing whitespace in a site name is never intentional");
         verify(weblogger.propertiesManager()).saveProperties(stored);
-        verify(weblogger.weblogger()).flush();
+        // a site name change also touches the weblogs (a second flush)
+        verify(weblogger.weblogger(), org.mockito.Mockito.atLeastOnce()).flush();
         assertEquals(List.of("generic.changes.saved"), ControllerTestFixture.messages(model));
         assertEquals("admin", model.getAttribute("desiredMenu"),
                 "the settings page is re-rendered after saving and still needs its menu");
@@ -682,13 +683,38 @@ class GlobalConfigControllerTest {
 
     @Test
     void changingAnUnrelatedPropertyNeitherTouchesNorClears() throws Exception {
-        linkProps("front/privacy", "front", "https://x.test");
+        Map<String, RuntimeConfigProperty> stored =
+                linkProps("front/privacy", "front", "https://x.test");
+        stored.put("site.adminemail", new RuntimeConfigProperty("site.adminemail", "a@x.test"));
         page(frontBlog("front"), "privacy", WeblogPage.PubStatus.PUBLISHED);
+        HttpServletRequest request = linkRequest("front/privacy", "front", "https://x.test", "Old");
+        when(request.getParameter("site.adminemail")).thenReturn("b@x.test");
 
-        boolean[] r = saveAndWatch(linkRequest("front/privacy", "front", "https://x.test", "New"), new Weblog());
+        boolean[] r = saveAndWatch(request, new Weblog());
 
         assertFalse(r[0], "touched");
         assertFalse(r[1], "site-wide cache invalidated");
+    }
+
+    /**
+     * A site page's header shows the site name and description, and rendered
+     * pages expire only through weblog.lastModified.
+     */
+    @Test
+    void changingTheSiteNameShortNameOrDescriptionTouchesAndClears() throws Exception {
+        for (String name : new String[] {"site.name", "site.shortName", "site.description"}) {
+            Map<String, RuntimeConfigProperty> stored =
+                    linkProps("front/privacy", "front", "https://x.test");
+            stored.put(name, new RuntimeConfigProperty(name, "Old"));
+            page(frontBlog("front"), "privacy", WeblogPage.PubStatus.PUBLISHED);
+            HttpServletRequest request = linkRequest("front/privacy", "front", "https://x.test", "Old");
+            when(request.getParameter(name)).thenReturn("New");
+
+            boolean[] r = saveAndWatch(request, new Weblog());
+
+            assertTrue(r[0], name + " touched");
+            assertTrue(r[1], name + " site-wide cache invalidated");
+        }
     }
 
     @Test
@@ -799,6 +825,40 @@ class GlobalConfigControllerTest {
         assertEquals("home", stored.get(FRONT_PAGE).getValue());
         assertEquals("", stored.get(FRONT).getValue());
         verify(weblogger.propertiesManager()).saveProperties(stored);
+    }
+
+    @Test
+    void aStaleFrontDoorSlugIsOfferedAsASelectedOptionAndSurvivesAnUnchangedSave() throws Exception {
+        // The page was unpublished or renamed after it was chosen. The select
+        // lists published pages only, so without its own option the browser
+        // would submit "" and an unrelated save would silently clear the door.
+        Map<String, RuntimeConfigProperty> stored = doorProps("", "gone");
+        Weblog site = siteSpace();
+        when(weblogger.weblogPageManager().getPublishedPages(site)).thenReturn(List.of(sitePage("home")));
+
+        controller.execute(request(), model);
+        assertEquals("gone", model.getAttribute("staleFrontDoorPage"));
+
+        model = new ExtendedModelMap();
+        controller.save(doorRequest("page:gone"), model);
+
+        assertEquals(List.of(), ControllerTestFixture.errors(model));
+        assertEquals("gone", stored.get(FRONT_PAGE).getValue());
+        assertEquals("gone", model.getAttribute("staleFrontDoorPage"));
+    }
+
+    @Test
+    void noStaleFrontDoorSlugWhenTheStoredPageIsPublishedOrNoneIsSet() throws Exception {
+        doorProps("", "home");
+        Weblog site = siteSpace();
+        when(weblogger.weblogPageManager().getPublishedPages(site)).thenReturn(List.of(sitePage("home")));
+        controller.execute(request(), model);
+        assertEquals("", model.getAttribute("staleFrontDoorPage"));
+
+        doorProps("travel", "");
+        model = new ExtendedModelMap();
+        controller.execute(request(), model);
+        assertEquals("", model.getAttribute("staleFrontDoorPage"));
     }
 
     @Test

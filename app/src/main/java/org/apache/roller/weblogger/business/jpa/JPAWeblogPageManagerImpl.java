@@ -34,6 +34,7 @@ import org.apache.roller.weblogger.business.WeblogPageManager;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.config.ProtectedPaths;
 import org.apache.roller.weblogger.pojos.ReservedSlugs;
+import org.apache.roller.weblogger.ui.rendering.util.LocaleSegment;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogPage;
 
@@ -76,6 +77,11 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
         }
         if (ReservedSlugs.isReserved(slug)) {
             throw new WebloggerException("page slug is reserved: " + slug);
+        }
+        if (LocaleSegment.isLocale(slug)) {
+            // The request parser reads a leading "xx" or "xx_YY" segment as a
+            // locale before it can be a slug, so such a page is never served.
+            throw new WebloggerException("page slug is reserved (it reads as a locale): " + slug);
         }
         if (page.getWeblog() != null && page.getWeblog().isSiteSpace()) {
             checkSiteSlug(slug);
@@ -123,7 +129,9 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
                     + "another, and the database unique index on the handle remains the backstop.")
     private void checkSiteSlug(String slug) throws WebloggerException {
         String lower = slug.toLowerCase(Locale.ROOT);
-        if (ProtectedPaths.site().contains(lower)) {
+        // sitemap-<handle>.xml and sitemap-site-pages.xml are root routes that
+        // are not in the protected set; a dot in a slug could shadow them.
+        if (ProtectedPaths.site().contains(lower) || lower.startsWith("sitemap-")) {
             throw new SiteSlugClashException("pageEdit.error.slugIsReservedPath", slug);
         }
         if (Weblog.SITE_SPACE_HANDLE.equals(lower)) {

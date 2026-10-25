@@ -63,6 +63,14 @@
                             <%-- Published site pages: the value is page:<slug>, which
                                  the controller turns into site.frontpage.page. A
                                  weblog option is only selected while no site page is. --%>
+                            <c:if test="${not empty staleFrontDoorPage}">
+                                <%-- The stored page is no longer published (unpublished or
+                                     renamed). Offered as the selected option so an unrelated
+                                     save keeps it instead of clearing the front door; / shows
+                                     the directory meanwhile. --%>
+                                <option value="page:${fn:escapeXml(staleFrontDoorPage)}" selected="selected"><spring:message
+                                    code="configForm.frontpageStalePage" arguments="${fn:escapeXml(staleFrontDoorPage)}"/></option>
+                            </c:if>
                             <c:if test="${not empty sitePages}">
                                 <spring:message code="configForm.frontpageSitePages" var="sitePagesLabel"/>
                                 <optgroup label="${fn:escapeXml(sitePagesLabel)}">

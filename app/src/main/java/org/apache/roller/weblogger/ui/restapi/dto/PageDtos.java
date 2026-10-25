@@ -5,6 +5,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Locale;
 import org.apache.roller.weblogger.pojos.ReservedSlugs;
+import org.apache.roller.weblogger.ui.rendering.util.LocaleSegment;
 import org.apache.roller.weblogger.pojos.WeblogPage;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
 import org.apache.roller.weblogger.ui.restapi.ColumnLimits;
@@ -121,7 +122,7 @@ public final class PageDtos {
      */
     public static String requireUsableSlug(String slug) {
         String trimmed = slug == null ? null : slug.trim();
-        if (ReservedSlugs.isReserved(trimmed)) {
+        if (ReservedSlugs.isReserved(trimmed) || LocaleSegment.isLocale(trimmed)) {
             throw ApiException.invalidField("slug",
                     "slug is blank or reserved: '" + slug + "'.");
         }

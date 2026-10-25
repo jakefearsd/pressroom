@@ -214,6 +214,18 @@ class WeblogPageManagerTest {
                 () -> save(weblog, "Entry", WeblogPage.PubStatus.PUBLISHED));
     }
 
+    /**
+     * A two-letter (or xx_YY) segment is read as a locale before it is read as
+     * a page slug, so such a page could never be served.
+     */
+    @Test
+    void aLocaleShapedSlugIsRefused() {
+        assertThrows(WebloggerException.class,
+                () -> save(weblog, "ai", WeblogPage.PubStatus.PUBLISHED));
+        assertThrows(WebloggerException.class,
+                () -> save(weblog, "en_US", WeblogPage.PubStatus.PUBLISHED));
+    }
+
     @Test
     void aBlankSlugIsRefused() {
         assertThrows(WebloggerException.class,

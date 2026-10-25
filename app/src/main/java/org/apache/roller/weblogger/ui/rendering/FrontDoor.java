@@ -22,6 +22,7 @@ import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.business.WebloggerProvider;
 import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.pojos.Weblog;
+import org.apache.roller.weblogger.ui.rendering.util.LocaleSegment;
 import org.apache.roller.weblogger.pojos.WeblogPage;
 import org.apache.roller.weblogger.util.URLUtilities;
 import org.slf4j.Logger;
@@ -69,7 +70,9 @@ public final class FrontDoor {
     public static String forwardPath(Weblogger tier) {
         String slug = WebloggerRuntimeConfig.getFrontDoorPageSlug();
         if (slug != null) {
-            return canShowSitePage(tier, slug)
+            // A locale-shaped slug (saved before such slugs were refused) would
+            // be read as a locale by the page servlet and 404: show the directory.
+            return !LocaleSegment.isLocale(slug) && canShowSitePage(tier, slug)
                     ? PAGE_SERVLET + Weblog.SITE_SPACE_HANDLE + "/" + URLUtilities.encode(slug)
                     : DIRECTORY;
         }

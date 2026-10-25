@@ -1,6 +1,7 @@
 package org.apache.roller.weblogger.business;
 
 import org.apache.roller.weblogger.TestUtils;
+import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogPage;
@@ -77,6 +78,22 @@ class SiteSlugNamespaceTest {
             SiteSlugClashException e = clash(path);
             assertEquals("pageEdit.error.slugIsReservedPath", e.getMessageKey(), path);
             assertEquals(path, e.getArgument());
+        }
+    }
+
+    @Test
+    void aSlugStartingWithSitemapDashIsRefusedAsAReservedPath() throws Exception {
+        for (String slug : new String[] {"sitemap-travel.xml", "Sitemap-Site-Pages.xml", "sitemap-x"}) {
+            assertEquals("pageEdit.error.slugIsReservedPath", clash(slug).getMessageKey(), slug);
+        }
+    }
+
+    @Test
+    void aLocaleShapedSlugIsRefusedOnTheSiteSpace() {
+        for (String slug : new String[] {"ai", "en_US", "HI"}) {
+            WebloggerException e = assertThrows(WebloggerException.class,
+                    () -> TestUtils.weblogger().getWeblogPageManager().savePage(pageOn(site, slug)));
+            assertTrue(e.getMessage().contains("reserved"), slug);
         }
     }
 

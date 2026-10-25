@@ -110,6 +110,26 @@ class PageEditJspTest {
     }
 
     @Test
+    void theFrontDoorPageSaysItIsServedAtTheRootNotAtItsSlug() throws IOException {
+        String jsp = read(PAGE_EDIT);
+        assertTrue(jsp.contains("<c:if test=\"${frontDoorPage}\">"),
+                "the front-door page gets a note, keyed on the controller's flag");
+        assertTrue(jsp.contains("pageEdit.frontDoorNote")
+                        && jsp.contains("fn:escapeXml(urls.staticPage(actionWeblog, bean.slug))"),
+                "the note names the page's real URL (the root), escaped");
+    }
+
+    @Test
+    void theSiteSpaceIsNamedBySiteNotByItsInternalHandle() throws IOException {
+        for (Path jsp : new Path[] {PAGE_EDIT,
+                Paths.get("src/main/webapp/WEB-INF/jsps/editor/Pages.jsp")}) {
+            String markup = read(jsp);
+            assertTrue(markup.contains("actionWeblog.siteSpace") && markup.contains("weblogPagesForm.subtitle.site"),
+                    jsp + ": the subtitle must not show the internal handle site-space");
+        }
+    }
+
+    @Test
     void theRailCarriesPublishNavigationAndTheQuietDeleteLink() throws IOException {
         String jsp = read(PAGE_EDIT);
         assertTrue(jsp.contains("id=\"pageSaveButton\""),

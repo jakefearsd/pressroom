@@ -47,7 +47,7 @@ class PagesApiTest {
      */
     @Test
     void aReservedSlugIsRefused() {
-        for (String slug : new String[] {"entry", "category", "tags", "feed"}) {
+        for (String slug : new String[] {"entry", "category", "tags", "feed", "ai", "en_US"}) {
             assertThrows(org.apache.roller.weblogger.ui.restapi.ApiException.class,
                     () -> PageDtos.requireUsableSlug(slug),
                     slug + " must be refused");

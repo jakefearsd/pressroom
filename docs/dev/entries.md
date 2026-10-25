@@ -290,7 +290,12 @@ purpose: merging would touch all 25 of `WeblogEntryManager`'s query paths.
   admin screens (editor, `Pages.jsp`) once emitted it, so `PageEditJspTest`
   asserts them against each other. `ReservedSlugs` (shared by
   `WeblogPageManager` at save and `WeblogPageRequest` at parse) is the one
-  list of reserved slugs (`entry`/`category`/`tags`/`feed`/…).
+  list of reserved slugs (`entry`/`category`/`tags`/`feed`/…). `savePage`
+  (and the API's `PageDtos.requireUsableSlug`) also refuses a locale-shaped
+  slug (`LocaleSegment.isLocale`: `xx` or `xx_YY`): the request parser reads a
+  leading such segment as a locale before it can be a slug, so the page could
+  never be served. Pages saved before this rule are not migrated; `FrontDoor`
+  shows the directory if the front door's slug is locale-shaped.
   `WeblogRequestMapper` forwards any unknown single-segment path to the page
   servlet.
 - **Site pages**: the hidden `site-space` weblog (`Weblog.SITE_SPACE_HANDLE`,
@@ -303,7 +308,9 @@ purpose: merging would touch all 25 of `WeblogEntryManager`'s query paths.
   out of every weblog listing, the directory and the API. Slugs and blog
   handles share one namespace, compared lower-cased both ways: `savePage`
   refuses a slug equal to a blog handle (`pageEdit.error.slugIsWeblog`) or a
-  protected path (`slugIsReservedPath`), and creating a blog refuses a handle
+  protected path (`slugIsReservedPath`; a site slug starting `sitemap-` counts, as
+  `sitemap-<handle>.xml` and `sitemap-site-pages.xml` are root routes outside
+  the protected set), and creating a blog refuses a handle
   held by a site page of any status (`createWeblog.error.handleIsSitePage`).
   Only PUBLISHED pages are served; a draft slug is a 404. Routing:
   `routing.md`, "The site root". Rendering: `themes-and-templates.md`.

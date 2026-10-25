@@ -149,6 +149,35 @@ class PageEditControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
+    void theFrontDoorPageOfTheSiteSpaceIsFlaggedSoTheEditorCanSayWhereItIsServed() throws Exception {
+        weblogA.setHandle(Weblog.SITE_SPACE_HANDLE);
+        weblogA.setSiteSpace(true);
+        WeblogPage home = pageOn(weblogA, "home");
+        WeblogPage other = pageOn(weblogA, "about");
+        try (org.apache.roller.weblogger.config.RuntimeConfigAttachment _ =
+                org.apache.roller.weblogger.config.RuntimeConfigAttachment.answering(
+                        "site.frontpage.page", "home")) {
+            controller.edit(home.getId(), requestFor(weblogA), model);
+            assertEquals(Boolean.TRUE, model.getAttribute("frontDoorPage"));
+
+            model = newModel();
+            controller.edit(other.getId(), requestFor(weblogA), model);
+            assertEquals(Boolean.FALSE, model.getAttribute("frontDoorPage"));
+        }
+    }
+
+    @Test
+    void aBlogPageWithTheFrontDoorsSlugIsNotTheFrontDoor() throws Exception {
+        WeblogPage home = pageOn(weblogA, "home");
+        try (org.apache.roller.weblogger.config.RuntimeConfigAttachment _ =
+                org.apache.roller.weblogger.config.RuntimeConfigAttachment.answering(
+                        "site.frontpage.page", "home")) {
+            controller.edit(home.getId(), requestFor(weblogA), model);
+            assertEquals(Boolean.FALSE, model.getAttribute("frontDoorPage"));
+        }
+    }
+
+    @Test
     void openingWithNoIdShowsAnEmptyFormDefaultingToDraft() throws Exception {
         String view = controller.edit(null, requestFor(weblogA), model);
 

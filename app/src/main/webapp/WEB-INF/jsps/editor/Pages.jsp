@@ -18,7 +18,10 @@
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
 
 <p class="subtitle">
-    <spring:message code="weblogPagesForm.subtitle" arguments="${actionWeblog.handle}"/>
+    <c:choose>
+        <c:when test="${actionWeblog.siteSpace}"><spring:message code="weblogPagesForm.subtitle.site"/></c:when>
+        <c:otherwise><spring:message code="weblogPagesForm.subtitle" arguments="${actionWeblog.handle}"/></c:otherwise>
+    </c:choose>
 </p>
 
 <c:url var="addUrl" value="/roller-ui/authoring/pageEdit.rol">

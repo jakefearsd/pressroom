@@ -108,6 +108,20 @@ class FrontDoorTest {
     }
 
     @Test
+    void aLocaleShapedFrontDoorSlugIsTheDirectory() throws Exception {
+        // Saved before locale-shaped slugs were refused: the page servlet would
+        // read "hi" as a locale and 404, and / is never a 404.
+        published(page("hi", WeblogPage.PubStatus.PUBLISHED));
+        try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering("site.frontpage.page", "hi")) {
+            assertEquals(DIRECTORY, FrontDoor.forwardPath(tier));
+        }
+        published(page("en_US", WeblogPage.PubStatus.PUBLISHED));
+        try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering("site.frontpage.page", "en_US")) {
+            assertEquals(DIRECTORY, FrontDoor.forwardPath(tier));
+        }
+    }
+
+    @Test
     void aFrontDoorPageWithNoSiteSpaceIsTheDirectory() throws Exception {
         when(weblogs.getSiteSpace()).thenReturn(null);
         try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering("site.frontpage.page", "home")) {
