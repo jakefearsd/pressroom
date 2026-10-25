@@ -284,10 +284,6 @@ public class SeoController extends BaseController {
      * cached: one small query, and the file is tiny.
      */
     @GetMapping("/sitemap-site-pages.xml")
-    @SuppressFBWarnings(
-            value = "POTENTIAL_XML_INJECTION",
-            justification = "Every value written into the XML goes through escapeXml(); the URLs are built "
-                    + "by the URL strategy from the stored site pages.")
     public ResponseEntity<String> siteSitemap(HttpServletRequest request) {
         try {
             Weblog site = weblogger.getWeblogManager().getSiteSpace();
@@ -362,6 +358,10 @@ public class SeoController extends BaseController {
      * The {@code loc} comes from the URL strategy, the one rule the theme's
      * own navigation uses (encoding, and the site's front door at the root).
      */
+    @SuppressFBWarnings(
+            value = "POTENTIAL_XML_INJECTION",
+            justification = "Every value written into the XML goes through escapeXml(); the URLs are built "
+                    + "by the URL strategy from the stored weblog and pages.")
     private void appendPages(StringBuilder xml, List<WeblogPage> pages, Weblog weblog,
             URLStrategy urlStrategy) {
         for (WeblogPage page : pages) {
