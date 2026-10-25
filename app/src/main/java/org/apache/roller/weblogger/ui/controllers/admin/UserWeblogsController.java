@@ -211,8 +211,17 @@ public class UserWeblogsController extends BaseController {
         return "account=" + account.getUserName() + " weblog=" + weblog.getHandle();
     }
 
+    /**
+     * The weblog a membership form names, or null for none. The site space
+     * (the hidden weblog owning the site's pages) answers null too: it holds
+     * no permission rows and must never gain one, which would list it among
+     * that person's blogs. The handle arrives in the form, outside the
+     * interceptor's withholding, so it is refused here.
+     */
     private Weblog weblogFor(String handle) throws WebloggerException {
-        return StringUtils.isBlank(handle) ? null : weblogger.getWeblogManager().getWeblogByHandle(handle, null);
+        Weblog weblog = StringUtils.isBlank(handle)
+                ? null : weblogger.getWeblogManager().getWeblogByHandle(handle, null);
+        return weblog == null || weblog.isSiteSpace() ? null : weblog;
     }
 
     /** A failed lookup reads as no account, and nothing proceeds. */

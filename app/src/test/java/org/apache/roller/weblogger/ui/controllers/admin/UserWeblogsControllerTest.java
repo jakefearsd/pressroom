@@ -156,6 +156,33 @@ class UserWeblogsControllerTest {
         verify(weblogger.userManager(), never()).grantWeblogPermission(any(), any(), any());
     }
 
+    /**
+     * The site space resolves by handle but holds no permission rows, and must
+     * never gain one: a row would list it among that person's blogs (main
+     * menu, weblog switcher, /api/v1/me). Granting, changing and removing all
+     * treat its handle as one that names no weblog.
+     */
+    @Test
+    void theSiteSpaceIsAnUnknownWeblogHere() throws Exception {
+        Weblog site = new Weblog();
+        site.setHandle(Weblog.SITE_SPACE_HANDLE);
+        site.setSiteSpace(true);
+        when(weblogger.weblogManager().getWeblogByHandle(Weblog.SITE_SPACE_HANDLE, null)).thenReturn(site);
+
+        controller.grant(asAdmin(), redirect, "jake", Weblog.SITE_SPACE_HANDLE, "admin");
+        RedirectAttributesModelMap changed = new RedirectAttributesModelMap();
+        controller.change(asAdmin(), changed, "jake", Weblog.SITE_SPACE_HANDLE, "post");
+        RedirectAttributesModelMap removed = new RedirectAttributesModelMap();
+        controller.remove(asAdmin(), removed, "jake", Weblog.SITE_SPACE_HANDLE);
+
+        for (RedirectAttributesModelMap answer : List.of(redirect, changed, removed)) {
+            assertEquals(List.of("userWeblogs.error.noSuchWeblog"), ControllerTestFixture.flashErrors(answer));
+        }
+        verify(weblogger.userManager(), never()).grantWeblogPermission(any(), any(), any());
+        verify(weblogger.userManager(), never()).revokeWeblogPermission(any(), any(), any());
+        verify(weblogger.userManager(), never()).getWeblogPermission(any(Weblog.class), any());
+    }
+
     @Test
     void anUnknownAccountGoesBackToTheList() throws Exception {
         String view = controller.grant(asAdmin(), redirect, "nobody", "travel", "post");
