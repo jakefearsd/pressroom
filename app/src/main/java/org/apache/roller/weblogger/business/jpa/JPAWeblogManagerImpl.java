@@ -76,6 +76,12 @@ public class JPAWeblogManagerImpl implements WeblogManager {
     // cached mapping of weblogHandles -> weblogIds
     private final Map<String, String> weblogHandleToIdMap = Collections.synchronizedMap(new HashMap<>());
 
+    /** A lookup found no site space; see {@link #getSiteSpace}. */
+    private volatile boolean noSiteSpace;
+    /** Counts site-space creations, so a lookup racing one cannot record "absent" after it. */
+    private int siteSpaceCreations;
+    private final Object siteSpaceLock = new Object();
+
     /**
      * Remembered for {@link #getTemplateByAction}: what was found for an
      * action is a template id. Real ids are UUIDs, never empty.
@@ -345,8 +351,41 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         this.addWeblogContents(newWeblog, true);
     }
 
+    /**
+     * The site space is asked for on hot paths -- the public mapper on every
+     * single-segment url no blog claims, the footer's page reference -- so
+     * neither answer costs a query once known. Found, it comes through
+     * {@link #getWeblogByHandle}'s handle-to-id cache. Absent, that is
+     * remembered here until {@link #getOrCreateSiteSpace}, the one way a site
+     * space comes to exist, creates it. A removed site space needs no word:
+     * the next lookup finds nothing and remembers that.
+     */
     @Override
     public Weblog getSiteSpace() throws WebloggerException {
+        if (noSiteSpace) {
+            return null;
+        }
+        Weblog byHandle = getWeblogByHandle(Weblog.SITE_SPACE_HANDLE, null);
+        if (byHandle != null && byHandle.isSiteSpace()) {
+            return byHandle;
+        }
+        int seen;
+        synchronized (siteSpaceLock) {
+            seen = siteSpaceCreations;
+        }
+        Weblog found = querySiteSpace();
+        if (found == null) {
+            synchronized (siteSpaceLock) {
+                // a creation that ran while this looked must not be forgotten
+                if (seen == siteSpaceCreations) {
+                    noSiteSpace = true;
+                }
+            }
+        }
+        return found;
+    }
+
+    private Weblog querySiteSpace() throws WebloggerException {
         TypedQuery<Weblog> query = strategy.getDynamicQuery(
                 "SELECT w FROM Weblog w WHERE w.siteSpace = true", Weblog.class);
         List<Weblog> found = query.getResultList();
@@ -355,7 +394,9 @@ public class JPAWeblogManagerImpl implements WeblogManager {
 
     @Override
     public Weblog getOrCreateSiteSpace(User creator) throws WebloggerException {
-        Weblog existing = getSiteSpace();
+        // asks the database, never the remembered absence: this is the path
+        // that must not create a second site space
+        Weblog existing = querySiteSpace();
         if (existing != null) {
             return existing;
         }
@@ -370,6 +411,10 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         site.setDateCreated(new Date());
         this.strategy.store(site);
         this.strategy.flush();
+        synchronized (siteSpaceLock) {
+            siteSpaceCreations++;
+            noSiteSpace = false;
+        }
         // system-owned: no permission row for the creator
         this.addWeblogContents(site, false);
         return site;

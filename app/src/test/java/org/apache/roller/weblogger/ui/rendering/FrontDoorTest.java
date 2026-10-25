@@ -62,7 +62,7 @@ class FrontDoorTest {
         site = new Weblog(Weblog.SITE_SPACE_HANDLE, "admin", "Site", "",
                 "a@example.com", "frontpage", "en_US", "UTC");
         site.setSiteSpace(true);
-        when(weblogs.getWeblogByHandle(Weblog.SITE_SPACE_HANDLE)).thenReturn(site);
+        when(weblogs.getSiteSpace()).thenReturn(site);
     }
 
     private static WeblogPage page(String slug, WeblogPage.PubStatus status) {
@@ -109,18 +109,7 @@ class FrontDoorTest {
 
     @Test
     void aFrontDoorPageWithNoSiteSpaceIsTheDirectory() throws Exception {
-        when(weblogs.getWeblogByHandle(Weblog.SITE_SPACE_HANDLE)).thenReturn(null);
-        try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering("site.frontpage.page", "home")) {
-            assertEquals(DIRECTORY, FrontDoor.forwardPath(tier));
-        }
-    }
-
-    @Test
-    void aWeblogThatMerelyHoldsTheHandleIsNotTheSiteSpace() throws Exception {
-        Weblog impostor = new Weblog(Weblog.SITE_SPACE_HANDLE, "admin", "Not the site", "",
-                "a@example.com", "journal", "en_US", "UTC");
-        when(weblogs.getWeblogByHandle(Weblog.SITE_SPACE_HANDLE)).thenReturn(impostor);
-        when(pages.getPublishedPages(impostor)).thenReturn(List.of(page("home", WeblogPage.PubStatus.PUBLISHED)));
+        when(weblogs.getSiteSpace()).thenReturn(null);
         try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering("site.frontpage.page", "home")) {
             assertEquals(DIRECTORY, FrontDoor.forwardPath(tier));
         }

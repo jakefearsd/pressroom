@@ -17,6 +17,7 @@
  */
 package org.apache.roller.weblogger.ui.rendering;
 
+import org.apache.roller.weblogger.WebloggerException;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.business.WebloggerProvider;
 import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
@@ -68,7 +69,7 @@ public final class FrontDoor {
     public static String forwardPath(Weblogger tier) {
         String slug = WebloggerRuntimeConfig.getFrontDoorPageSlug();
         if (slug != null) {
-            return isPublishedSitePage(tier, slug)
+            return canShowSitePage(tier, slug)
                     ? PAGE_SERVLET + Weblog.SITE_SPACE_HANDLE + "/" + URLUtilities.encode(slug)
                     : DIRECTORY;
         }
@@ -79,26 +80,12 @@ public final class FrontDoor {
         return DIRECTORY;
     }
 
-    /**
-     * Whether the site space has a published page with this slug. Read from
-     * the published-pages list, which the page manager keeps by id, so the
-     * front page does not pay a query per request.
-     */
-    private static boolean isPublishedSitePage(Weblogger tier, String slug) {
+    private static boolean canShowSitePage(Weblogger tier, String slug) {
         if (tier == null) {
             return false;
         }
         try {
-            Weblog site = tier.getWeblogManager().getWeblogByHandle(Weblog.SITE_SPACE_HANDLE);
-            if (site == null || !site.isSiteSpace()) {
-                return false;
-            }
-            for (WeblogPage page : tier.getWeblogPageManager().getPublishedPages(site)) {
-                if (slug.equals(page.getSlug())) {
-                    return true;
-                }
-            }
-            return false;
+            return isPublishedSitePage(tier, slug);
         } catch (Exception ex) {
             // A display decision: the directory is always a safe thing to show
             // at /, and a page that could not be looked up is not one to forward to.
@@ -106,5 +93,26 @@ public final class FrontDoor {
                     slug, ex);
             return false;
         }
+    }
+
+    /**
+     * Whether the site space has a published page with this slug: the one rule
+     * for what {@code /} and {@code /<slug>} may serve (a draft holds its slug
+     * but is never served). Both lookups are remembered by the business tier
+     * -- the site space or its absence, the published pages by id -- so a warm
+     * answer costs no query, which matters to the mapper: it asks on every
+     * single-segment url no blog claims.
+     */
+    static boolean isPublishedSitePage(Weblogger tier, String slug) throws WebloggerException {
+        Weblog site = tier.getWeblogManager().getSiteSpace();
+        if (site == null) {
+            return false;
+        }
+        for (WeblogPage page : tier.getWeblogPageManager().getPublishedPages(site)) {
+            if (slug.equals(page.getSlug())) {
+                return true;
+            }
+        }
+        return false;
     }
 }

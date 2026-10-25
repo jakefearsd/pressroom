@@ -4,6 +4,7 @@ import org.apache.roller.weblogger.TestUtils;
 import org.apache.roller.weblogger.business.Weblogger;
 import org.apache.roller.weblogger.business.PropertiesManager;
 import org.apache.roller.weblogger.business.WebloggerProvider;
+import org.apache.roller.weblogger.business.jpa.QueryRecorder;
 import org.apache.roller.weblogger.pojos.RuntimeConfigProperty;
 import org.apache.roller.weblogger.pojos.User;
 import org.apache.roller.weblogger.pojos.Weblog;
@@ -17,6 +18,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -777,15 +779,77 @@ class WeblogRequestMapperTest {
         TestUtils.endSession(true);
     }
 
-    /** A draft holds its slug: the page servlet, not the mapper, decides it is a 404. */
-    @ParameterizedTest
-    @ValueSource(strings = {"PUBLISHED", "DRAFT"})
-    void aSitePageSlugForwardsToTheSiteSpaceWhateverItsStatus(String status) throws Exception {
-        givenSitePage("mapperabout", WeblogPage.PubStatus.valueOf(status));
+    @Test
+    void aPublishedSitePageSlugForwardsToTheSiteSpace() throws Exception {
+        givenSitePage("mapperabout", WeblogPage.PubStatus.PUBLISHED);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(mapper.handleRequest(publicUrl("GET", "/mapperabout"), response));
         assertEquals("/roller-ui/rendering/page/site-space/mapperabout", response.getForwardedUrl());
+    }
+
+    /**
+     * A draft holds its slug against blogs (Task 4), but it is not served: the
+     * mapper decides from the published pages, so a draft declines and 404s
+     * like any unknown path (spec AC2).
+     */
+    @Test
+    void aDraftSitePageSlugIsNotHandled() throws Exception {
+        givenSitePage("mapperdraft", WeblogPage.PubStatus.DRAFT);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertFalse(mapper.handleRequest(publicUrl("GET", "/mapperdraft"), response));
+        assertNull(response.getForwardedUrl());
+        assertNull(response.getHeader("Location"));
+    }
+
+    /**
+     * The front door's page as a draft: / shows the directory, and its slug
+     * must not answer a permanent, cacheable 301 to that directory (AC2, AC12).
+     */
+    @Test
+    void aDraftFrontDoorPageIsNotRedirectedNorForwarded() throws Exception {
+        givenSitePage("mapperhome", WeblogPage.PubStatus.DRAFT);
+        setProperty("site.frontpage.page", "mapperhome");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertFalse(mapper.handleRequest(publicUrl("GET", "/mapperhome"), response));
+        assertEquals(200, response.getStatus(), "no 301");
+        assertNull(response.getHeader("Location"));
+        assertNull(response.getForwardedUrl());
+    }
+
+    /**
+     * An unclaimed single segment is every bot probe and stray favicon, so
+     * once warm it costs no page query (the published list is remembered by
+     * id) ...
+     */
+    @Test
+    void aWarmUnclaimedSegmentSelectsNoSitePages() throws Exception {
+        givenSitePage("mapperabout", WeblogPage.PubStatus.PUBLISHED);
+        mapper.handleRequest(publicUrl("GET", "/mapperprobe"), new MockHttpServletResponse());
+        TestUtils.endSession(false);
+
+        List<String> queries = QueryRecorder.during(() -> assertFalse(
+                mapper.handleRequest(publicUrl("GET", "/mapperprobe"), new MockHttpServletResponse())));
+
+        assertEquals(List.of(), QueryRecorder.sqlOn(queries, "roller_weblogpage"), queries.toString());
+    }
+
+    /**
+     * ... and on a site with no site space, no site-space lookup either: the
+     * only weblog query left is the blog-handle check the mapper always made.
+     */
+    @Test
+    void aWarmUnclaimedSegmentWithNoSiteSpaceLooksForItOnce() throws Exception {
+        mapper.handleRequest(publicUrl("GET", "/mapperprobe"), new MockHttpServletResponse());
+        TestUtils.endSession(false);
+
+        List<String> queries = QueryRecorder.during(() -> assertFalse(
+                mapper.handleRequest(publicUrl("GET", "/mapperprobe"), new MockHttpServletResponse())));
+
+        assertEquals(1, QueryRecorder.on(queries, Weblog.class).size(),
+                "only the handle check for the segment itself: " + queries);
     }
 
     @Test

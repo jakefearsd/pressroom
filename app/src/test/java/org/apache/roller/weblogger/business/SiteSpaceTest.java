@@ -23,6 +23,7 @@ import java.util.Map;
 
 import org.apache.roller.weblogger.TestUtils;
 import org.apache.roller.weblogger.WebloggerException;
+import org.apache.roller.weblogger.business.jpa.QueryRecorder;
 import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
 import org.apache.roller.weblogger.pojos.RuntimeConfigProperty;
 import org.apache.roller.weblogger.pojos.User;
@@ -95,6 +96,37 @@ class SiteSpaceTest {
         assertEquals(Weblog.SITE_SPACE_HANDLE, second.getHandle());
         assertEquals("frontpage", second.getEditorTheme());
         assertEquals(second.getId(), weblogs().getSiteSpace().getId());
+    }
+
+    /**
+     * "No site space" is remembered (the public mapper asks on every unclaimed
+     * single-segment url), so it must be forgotten the moment one is created,
+     * and learned again once it is removed.
+     */
+    @Test
+    void anAbsentSiteSpaceIsRememberedOnlyUntilOneIsCreated() throws Exception {
+        assertNull(weblogs().getSiteSpace());
+        assertNull(weblogs().getSiteSpace());
+        Weblog site = createSite();
+        TestUtils.endSession(true);
+        assertEquals(site.getId(), weblogs().getSiteSpace().getId());
+
+        weblogs().removeWeblog(weblogs().getSiteSpace());
+        TestUtils.endSession(true);
+        assertNull(weblogs().getSiteSpace());
+
+        Weblog again = createSite();
+        TestUtils.endSession(true);
+        assertEquals(again.getId(), weblogs().getSiteSpace().getId());
+    }
+
+    @Test
+    void anAbsentSiteSpaceIsLookedForOnce() throws Exception {
+        assertNull(weblogs().getSiteSpace());
+
+        List<String> queries = QueryRecorder.during(() -> assertNull(weblogs().getSiteSpace()));
+
+        assertEquals(List.of(), queries);
     }
 
     @Test

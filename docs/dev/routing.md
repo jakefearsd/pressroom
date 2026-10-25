@@ -23,9 +23,15 @@ the sign-in form.
 Site pages answer at `/<slug>` on the site host: `WeblogRequestMapper`,
 after the reserved-path and blog-handle checks fail (a blog handle wins), on
 a lone segment with no trailing slash, forwards to the page servlet for the
-site space when it has a page of that slug in any status (the servlet 404s a
-draft). Never on a custom domain, where `/<slug>` is that blog's Page. The
-front door's own slug answers 301 to `<ctx>/`. "Is this the front door's
+site space when it has a PUBLISHED page of that slug
+(`FrontDoor.isPublishedSitePage`, the rule `/` uses too). A draft holds its
+slug against blogs but declines here and 404s like any unknown path; as the
+front door's page it must not answer a permanent 301 to a root showing the
+directory. Never on a custom domain, where `/<slug>` is that blog's Page. The
+front door's own (published) slug answers 301 to `<ctx>/`. The lookup costs
+no query once warm: the published pages are remembered by id, the site space
+through the handle cache, and its absence by `JPAWeblogManagerImpl` until
+`getOrCreateSiteSpace` creates one. "Is this the front door's
 page" is one comparison, `WebloggerRuntimeConfig.isFrontDoorPage` (the
 property trimmed, the slug exact), shared by the mapper, `FrontDoor` and
 the URL strategy, so the 301 and the links never disagree. `PageServlet`

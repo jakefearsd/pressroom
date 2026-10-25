@@ -513,11 +513,13 @@ public class WeblogRequestMapper {
     }
 
     /**
-     * Serve {@code /<segment>} as a site page when the site space has a page
-     * with that slug, whatever its status: a draft holds its slug, and the page
-     * servlet answers 404 for it as it does for a blog's draft Page. The front
-     * door's own page has one address, {@code /}, so its slug answers 301
-     * there. POST is never forwarded (see {@link #calculateForwardUrl}).
+     * Serve {@code /<segment>} as a site page when the site space has a
+     * PUBLISHED page with that slug. A draft holds its slug against blogs but
+     * is not served: it declines here and 404s like any unknown path, rather
+     * than reaching the servlet -- or, as the front door's page, answering a
+     * permanent 301 to a root that shows the directory. The front door's own
+     * page has one address, {@code /}, so its slug answers 301 there. POST is
+     * never forwarded (see {@link #calculateForwardUrl}).
      *
      * <p>A lookup that fails is a decline -- the 404 this url was before site
      * pages -- never a 500.
@@ -542,9 +544,7 @@ public class WeblogRequestMapper {
             return false;
         }
         try {
-            Weblog site = weblogger.getWeblogManager().getWeblogByHandle(Weblog.SITE_SPACE_HANDLE);
-            if (site == null || !site.isSiteSpace()
-                    || weblogger.getWeblogPageManager().getPageBySlug(site, slug) == null) {
+            if (!FrontDoor.isPublishedSitePage(weblogger, slug)) {
                 return false;
             }
         } catch (Exception ex) {
