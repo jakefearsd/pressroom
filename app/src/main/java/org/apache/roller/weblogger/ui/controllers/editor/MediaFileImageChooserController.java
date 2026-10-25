@@ -49,6 +49,12 @@ public class MediaFileImageChooserController extends MediaFileBase {
 
     private static final Logger log = LoggerFactory.getLogger(MediaFileImageChooserController.class);
 
+    /** The page editor's image chooser, on the site space as on a blog. */
+    @Override
+    public boolean allowsSiteSpace() {
+        return true;
+    }
+
     @Override
     public List<String> requiredWeblogPermissionActions() {
         return Collections.singletonList(WeblogPermission.EDIT_DRAFT);

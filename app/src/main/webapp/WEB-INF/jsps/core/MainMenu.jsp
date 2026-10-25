@@ -171,3 +171,43 @@
     </c:forEach>
 
 </c:if>
+
+<%-- The Site section: a global admin's way into the site's own pages (the
+     front door, the privacy policy, /about), which live in the site space, a
+     hidden weblog no one holds a role on. MainMenuController hands it over as
+     siteSpace for a global admin only; it is never one of the rows above.
+     It offers exactly the three screens the interceptor lets reach the site
+     space -- Pages, Media and Theme -- so no link here leads to a refusal.
+     Same row grammar as a weblog, so it reads as one more place to work;
+     quiet links only, the primary staying each weblog's New entry. --%>
+<c:if test="${not empty siteSpace}">
+    <div class="weblog-row site-row">
+        <h2 class="mm_weblog_name section-head">
+            <span class="bi bi-globe2" aria-hidden="true"></span>
+            <spring:message code="mainMenu.site.title"/>
+        </h2>
+        <p><spring:message code="mainMenu.site.desc"/></p>
+        <spring:message code="mainMenu.site.title" var="siteLabel"/>
+        <div class="weblog-actions" role="group" aria-label="${fn:escapeXml(siteLabel)}">
+            <c:url value="/roller-ui/authoring/pages.rol" var="sitePages">
+                <c:param name="weblog" value="${siteSpace.handle}"/>
+            </c:url>
+            <a href="${sitePages}" class="quiet-link">
+                <spring:message code="mainMenu.site.pages"/>
+            </a>
+            <c:url value="/roller-ui/authoring/mediaFileView.rol" var="siteMedia">
+                <c:param name="weblog" value="${siteSpace.handle}"/>
+            </c:url>
+            <a href="${siteMedia}" class="quiet-link">
+                <spring:message code="mainMenu.site.media"/>
+            </a>
+            <c:url value="/roller-ui/authoring/themeEdit.rol" var="siteTheme">
+                <c:param name="weblog" value="${siteSpace.handle}"/>
+            </c:url>
+            <a href="${siteTheme}" class="quiet-link">
+                <spring:message code="mainMenu.site.theme"/>
+            </a>
+        </div>
+    </div>
+</c:if>
+<%-- end site section --%>

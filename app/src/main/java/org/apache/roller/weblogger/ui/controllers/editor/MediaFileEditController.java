@@ -46,6 +46,12 @@ public class MediaFileEditController extends MediaFileBase {
 
     private static final Logger log = LoggerFactory.getLogger(MediaFileEditController.class);
 
+    /** The site's pages carry images, so the site space has a media library. */
+    @Override
+    public boolean allowsSiteSpace() {
+        return true;
+    }
+
     @Override
     public String getDesiredMenu() {
         return "editor";

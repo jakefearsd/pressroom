@@ -311,6 +311,125 @@ class ThemeEditControllerTest extends EditorControllerTestSupport {
         assertEquals(Boolean.FALSE, model.getAttribute("customThemeAllowed"));
     }
 
+    // --- the site space (site pages, spec "Calls I made") ---
+    //
+    // The site space renders with one of the four site themes and never a
+    // custom one; an ordinary weblog is never offered frontpage. The picker
+    // offers only what is allowed, and the save path checks the same rule,
+    // since a hidden choice stops nobody who posts the form directly.
+
+    /** The enabled themes, in the order the manager lists them, each resolvable by id. */
+    private void givenEnabledThemes(String... ids) {
+        List<SharedTheme> themes = new java.util.ArrayList<>();
+        for (String id : ids) {
+            SharedTheme theme = mock(SharedTheme.class);
+            when(theme.getId()).thenReturn(id);
+            when(theme.getName()).thenReturn(id);
+            themes.add(theme);
+            try {
+                when(weblogger.getThemeManager().getTheme(id)).thenReturn(theme);
+            } catch (WebloggerException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+        when(weblogger.getThemeManager().getEnabledThemesList()).thenReturn(themes);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> offeredThemeIds() {
+        return ((List<SharedTheme>) model.getAttribute("themes")).stream().map(SharedTheme::getId).toList();
+    }
+
+    @Test
+    void theSiteSpaceIsOfferedExactlyTheFourSiteThemes() throws Exception {
+        weblog.setSiteSpace(true);
+        weblog.setEditorTheme("journal");
+        givenEnabledThemes("frontpage", "journal", "legacy", "portfolio", "travel");
+
+        controller.execute(request, model);
+
+        assertEquals(List.of("frontpage", "journal", "portfolio", "travel"), offeredThemeIds());
+        assertEquals(Boolean.FALSE, model.getAttribute("customThemeAllowed"),
+                "the site space is never offered a custom theme");
+    }
+
+    @Test
+    void anOrdinaryWeblogIsNotOfferedFrontpage() throws Exception {
+        weblog.setEditorTheme("journal");
+        givenEnabledThemes("frontpage", "journal", "portfolio", "travel");
+
+        controller.execute(request, model);
+
+        assertEquals(List.of("journal", "portfolio", "travel"), offeredThemeIds());
+    }
+
+    @Test
+    void postingFrontpageForAnOrdinaryWeblogNotAlreadyOnItIsRefused() throws Exception {
+        weblog.setEditorTheme("journal");
+        givenEnabledThemes("frontpage", "journal");
+
+        controller.save(request, model, "shared", "frontpage", false);
+
+        assertEquals(List.of("themeEditor.error.notOffered"), errors(model));
+        assertEquals("journal", weblog.getEditorTheme());
+        verify(weblogger.getWeblogManager(), never()).saveWeblog(any());
+    }
+
+    @Test
+    void anOrdinaryWeblogAlreadyOnFrontpageMayStillSaveIt() throws Exception {
+        weblog.setEditorTheme("frontpage");
+        WeblogTheme current = mock(WeblogTheme.class);
+        when(current.getId()).thenReturn("frontpage");
+        when(weblogger.getThemeManager().getTheme(weblog)).thenReturn(current);
+        givenEnabledThemes("frontpage", "journal");
+
+        controller.save(request, model, "shared", "frontpage", false);
+
+        assertEquals(List.of(), errors(model));
+        verify(weblogger.getWeblogManager()).saveWeblog(weblog);
+    }
+
+    @Test
+    void postingACustomThemeForTheSiteSpaceIsRefusedEvenWhenTheOptionIsOn() throws Exception {
+        weblog.setSiteSpace(true);
+        weblog.setEditorTheme("frontpage");
+        givenEnabledThemes("frontpage", "journal");
+
+        controller.save(request, model, WeblogTheme.CUSTOM, "journal", true);
+
+        assertEquals(List.of("themeEditor.error.notOffered"), errors(model));
+        assertEquals("frontpage", weblog.getEditorTheme());
+        verify(weblogger.getThemeManager(), never())
+                .importTheme(any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
+        verify(weblogger.getWeblogManager(), never()).saveWeblog(any());
+    }
+
+    @Test
+    void postingANonSiteThemeForTheSiteSpaceIsRefused() throws Exception {
+        weblog.setSiteSpace(true);
+        weblog.setEditorTheme("frontpage");
+        givenEnabledThemes("frontpage", "legacy");
+
+        controller.save(request, model, "shared", "legacy", false);
+
+        assertEquals(List.of("themeEditor.error.notOffered"), errors(model));
+        assertEquals("frontpage", weblog.getEditorTheme());
+        verify(weblogger.getWeblogManager(), never()).saveWeblog(any());
+    }
+
+    @Test
+    void theSiteSpaceMovesBetweenSiteThemes() throws Exception {
+        weblog.setSiteSpace(true);
+        weblog.setEditorTheme("frontpage");
+        givenEnabledThemes("frontpage", "journal");
+
+        controller.save(request, model, "shared", "journal", false);
+
+        assertEquals(List.of(), errors(model));
+        assertEquals("journal", weblog.getEditorTheme());
+        verify(weblogger.getWeblogManager()).saveWeblog(weblog);
+    }
+
     // --- save: themeType=custom ---
 
     @Test

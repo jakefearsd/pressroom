@@ -62,4 +62,18 @@ public interface UISecurityEnforced {
      * List of weblog permissions required to access action if applicable.
      */
     List<String> requiredGlobalPermissionActions();
+
+
+    /**
+     * Does this action work on the site space, the hidden weblog that owns
+     * the site's pages ({@link org.apache.roller.weblogger.pojos.Weblog#isSiteSpace()})?
+     *
+     * <p>Only the Pages, Media and Theme screens say yes. For every other
+     * action {@code RollerHandlerInterceptor} withholds the site space as if
+     * its handle named no weblog, and it does so for every API handler and
+     * every caller who is not a global admin whatever this answers.
+     */
+    default boolean allowsSiteSpace() {
+        return false;
+    }
 }

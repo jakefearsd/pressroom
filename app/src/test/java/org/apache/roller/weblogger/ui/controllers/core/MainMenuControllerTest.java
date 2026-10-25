@@ -31,6 +31,7 @@ import org.springframework.ui.ExtendedModelMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -105,6 +106,21 @@ class MainMenuControllerTest {
         assertEquals(".MainMenu", view);
         assertTrue(((List<?>) model.getAttribute("existingPermissions")).isEmpty());
         assertEquals(false, model.getAttribute("userIsAdmin"));
+    }
+
+    @Test
+    void aSiteSpaceThatCannotBeLoadedLeavesOutTheSiteSectionNotTheMenu() throws Exception {
+        // Display only: who reaches the site space is the interceptor's call, not this one's.
+        User user = user("jake");
+        when(weblogger.userManager().checkPermission(any(GlobalPermission.class), eq(user))).thenReturn(true);
+        when(weblogger.weblogManager().getOrCreateSiteSpace(user)).thenThrow(new WebloggerException("database down"));
+
+        String view = controller.execute(ControllerTestFixture.requestFor(user), model);
+
+        assertEquals(".MainMenu", view);
+        assertEquals(true, model.getAttribute("userIsAdmin"));
+        assertTrue(model.containsAttribute("siteSpace"));
+        assertNull(model.getAttribute("siteSpace"));
     }
 
     @Test

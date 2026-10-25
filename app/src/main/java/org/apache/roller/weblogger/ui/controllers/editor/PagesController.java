@@ -51,6 +51,12 @@ public class PagesController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(PagesController.class);
 
+    /** The site's pages are listed and removed here, on the site space as on a blog. */
+    @Override
+    public boolean allowsSiteSpace() {
+        return true;
+    }
+
     @Override
     public List<String> requiredWeblogPermissionActions() {
         return Collections.singletonList(WeblogPermission.POST);

@@ -354,6 +354,98 @@ class RollerHandlerInterceptorTest {
         verify(weblogger.userManager(), never()).checkPermission(any(WeblogPermission.class), any());
     }
 
+    // ------------------------------------------------------ the site space
+    //
+    // The site space is a weblog only a global admin reaches, and only through
+    // a controller that offers it. To anyone else it is withheld as if the
+    // handle named nothing: the action weblog stays unset, so a controller
+    // needing one is refused exactly as for an unknown handle, and one that
+    // needs none never sees it. SiteSpaceAccessTest runs the real screens.
+
+    private Weblog siteSpaceNamed() throws Exception {
+        Weblog site = new Weblog();
+        site.setHandle(Weblog.SITE_SPACE_HANDLE);
+        site.setId("weblog-site");
+        site.setSiteSpace(true);
+        when(weblogger.weblogManager().getWeblogByHandle(Weblog.SITE_SPACE_HANDLE)).thenReturn(site);
+        request.setParameter("weblog", Weblog.SITE_SPACE_HANDLE);
+        return site;
+    }
+
+    private void globalAdmin(boolean isAdmin) throws Exception {
+        when(weblogger.userManager().checkPermission(any(GlobalPermission.class), any())).thenReturn(isAdmin);
+        when(weblogger.userManager().checkPermission(any(WeblogPermission.class), any())).thenReturn(isAdmin);
+    }
+
+    @Test
+    void aGlobalAdminReachesTheSiteSpaceThroughAControllerThatOffersIt() throws Exception {
+        Weblog site = siteSpaceNamed();
+        signedInAs("alice");
+        globalAdmin(true);
+
+        assertTrue(interceptor.preHandle(request, response, handlerFor(new SiteSpaceController())));
+        assertSame(site, request.getAttribute("actionWeblog"));
+    }
+
+    @Test
+    void aGlobalAdminIsRefusedTheSiteSpaceByAControllerThatDoesNotOfferIt() throws Exception {
+        siteSpaceNamed();
+        signedInAs("alice");
+        globalAdmin(true);
+
+        boolean proceed = interceptor.preHandle(request, response,
+                handlerFor(new SecuredController(true, List.of(), true, List.of("admin"))));
+
+        assertFalse(proceed);
+        assertEquals(CONTEXT + ACCESS_DENIED, response.getRedirectedUrl());
+        assertNull(request.getAttribute("actionWeblog"));
+    }
+
+    @Test
+    void aControllerNeedingNoWeblogNeverSeesTheSiteSpace() throws Exception {
+        siteSpaceNamed();
+        signedInAs("alice");
+        globalAdmin(true);
+
+        assertTrue(interceptor.preHandle(request, response,
+                handlerFor(new SecuredController(true, List.of(), false, List.of()))));
+        assertNull(request.getAttribute("actionWeblog"),
+                "a controller that reads the action weblog when it has one must not get this one");
+    }
+
+    @Test
+    void aSignedInUserWhoIsNoGlobalAdminIsRefusedTheSiteSpace() throws Exception {
+        siteSpaceNamed();
+        signedInAs("alice");
+        when(weblogger.userManager().checkPermission(any(GlobalPermission.class), any())).thenReturn(false);
+        when(weblogger.userManager().checkPermission(any(WeblogPermission.class), any())).thenReturn(true);
+
+        assertFalse(interceptor.preHandle(request, response, handlerFor(new SiteSpaceController())));
+        assertEquals(CONTEXT + ACCESS_DENIED, response.getRedirectedUrl());
+        assertNull(request.getAttribute("actionWeblog"));
+    }
+
+    @Test
+    void anAnonymousCallerNeverSeesTheSiteSpace() throws Exception {
+        siteSpaceNamed();
+
+        interceptor.preHandle(request, response, handlerFor(new PlainController()));
+
+        assertNull(request.getAttribute("actionWeblog"));
+    }
+
+    @Test
+    void anAdminCheckThatCannotRunWithholdsTheSiteSpace() throws Exception {
+        siteSpaceNamed();
+        signedInAs("alice");
+        when(weblogger.userManager().checkPermission(any(GlobalPermission.class), any()))
+                .thenThrow(new IllegalStateException("store down"));
+
+        assertFalse(interceptor.preHandle(request, response, handlerFor(new SiteSpaceController())));
+        assertNull(request.getAttribute("actionWeblog"),
+                "a check that could not run is not a check that passed");
+    }
+
     // ------------------------------------------------------ user resolution
 
     @Test
@@ -568,6 +660,18 @@ class RollerHandlerInterceptorTest {
         @Override
         public List<String> requiredWeblogPermissionActions() {
             return weblogActions;
+        }
+    }
+
+    /** Needs a user and a weblog, and offers the site space (as the Pages screen does). */
+    public static class SiteSpaceController extends SecuredController {
+        SiteSpaceController() {
+            super(true, List.of(), true, List.of("admin"));
+        }
+
+        @Override
+        public boolean allowsSiteSpace() {
+            return true;
         }
     }
 

@@ -334,9 +334,12 @@
                     <%-- The one route from "these photos" to "a post about
                          these photos". #createPostForm has sat below,
                          reachable by nothing, since the control that used to
-                         drive it was removed. --%>
+                         drive it was removed. The site space has no posts
+                         (its media serve the site's pages), so not there. --%>
+                    <c:if test="${not actionWeblog.siteSpace}">
                     <button id="newEntryButton" type="button" class="btn btn-secondary"
                             onclick="onNewEntryWithSelected()"><spring:message code="mediaFileView.newEntryWithSelected"/></button>
+                    </c:if>
 
                     <button id="deleteButton" type="button" class="btn btn-danger"
                             onclick="onDeleteSelected()"

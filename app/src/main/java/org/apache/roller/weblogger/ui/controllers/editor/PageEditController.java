@@ -58,6 +58,12 @@ public class PageEditController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(PageEditController.class);
 
+    /** The site's pages are written here, on the site space as on a blog. */
+    @Override
+    public boolean allowsSiteSpace() {
+        return true;
+    }
+
     /**
      * Same allowlist as {@code CtaShortcode}'s href check and
      * {@code EntryEditController}'s: the SEO card's canonical-URL override is

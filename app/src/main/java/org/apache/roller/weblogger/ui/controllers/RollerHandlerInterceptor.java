@@ -58,7 +58,8 @@ import java.util.Map;
  *   <li>Resolves the target {@link Weblog} -- for a REST handler from the
  *       {@code {handle}} path variable only, for a JSP handler from the
  *       "weblog" request parameter (see {@link #resolveWeblogHandle}) -- and
- *       stores it as request attribute "actionWeblog".</li>
+ *       stores it as request attribute "actionWeblog", unless it is the site
+ *       space and this request may not act on it ({@link #siteSpaceOffered}).</li>
  *   <li>Enforces security rules declared by {@link UISecurityEnforced}.</li>
  *   <li>Calls {@link UIActionPreparable#myPrepare()} if applicable.</li>
  * </ol>
@@ -223,6 +224,11 @@ public class RollerHandlerInterceptor implements HandlerInterceptor {
                 log.warn("Error looking up weblog with handle: {}", weblogHandle, e);
             }
         }
+        if (actionWeblog != null && actionWeblog.isSiteSpace()
+                && !siteSpaceOffered(controller, apiHandler, authenticatedUser)) {
+            log.debug("DENIED: the site space is not offered to this handler or caller");
+            actionWeblog = null;
+        }
         if (actionWeblog != null) {
             request.setAttribute("actionWeblog", actionWeblog);
         }
@@ -240,6 +246,40 @@ public class RollerHandlerInterceptor implements HandlerInterceptor {
         }
 
         return true;
+    }
+
+    /**
+     * Whether this request may act on the site space, the hidden weblog that
+     * owns the site's pages: only a global admin, only through a JSP handler
+     * that {@linkplain UISecurityEnforced#allowsSiteSpace offers it} (Pages,
+     * Media, Theme), never through the API.
+     *
+     * <p>When the answer is no, preHandle withholds the site space as though
+     * its handle named no weblog: the action weblog stays unset, so a handler
+     * that needs one is refused exactly as for an unknown handle (a redirect,
+     * or the API's 404), and one that needs none never sees it. Withholding
+     * here rather than refusing inside {@link #enforceSecurity} is what covers
+     * the second kind: {@code WeblogsApi} requires no action weblog yet reads
+     * it, so a refusal that only ran for weblog-requiring handlers would have
+     * let an admin token read and rewrite the site space's settings.
+     *
+     * <p>A global admin holds every weblog permission implicitly, so without
+     * this the site space would open every blog screen to one. A check that
+     * cannot run withholds it.
+     */
+    private boolean siteSpaceOffered(Object controller, boolean apiHandler, User user) {
+        if (apiHandler || user == null
+                || !(controller instanceof UISecurityEnforced secured) || !secured.allowsSiteSpace()) {
+            return false;
+        }
+        try {
+            return weblogger.getUserManager().checkPermission(
+                    new GlobalPermission(List.of(GlobalPermission.ADMIN)), user);
+        } catch (Exception e) {
+            // Fail closed: an admin check that could not run is not one that passed.
+            log.error("Could not check whether {} may open the site space", user.getUserName(), e);
+            return false;
+        }
     }
 
     /**

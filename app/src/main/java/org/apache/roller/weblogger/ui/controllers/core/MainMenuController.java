@@ -26,6 +26,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.apache.roller.weblogger.business.UserManager;
 import org.apache.roller.weblogger.pojos.GlobalPermission;
 import org.apache.roller.weblogger.pojos.User;
+import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.ui.controllers.BaseController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,8 +65,27 @@ public class MainMenuController extends BaseController {
 
     private void populateMenuData(HttpServletRequest request, Model model) {
         User user = getAuthenticatedUser(request);
+        boolean admin = isUserIsAdmin(user);
         model.addAttribute("existingPermissions", getExistingPermissions(user));
-        model.addAttribute("userIsAdmin", isUserIsAdmin(user));
+        model.addAttribute("userIsAdmin", admin);
+        model.addAttribute("siteSpace", admin ? siteSpace(user) : null);
+    }
+
+    /**
+     * The site space, for a global admin's Site section (Pages, Media, Theme
+     * acting on the site's own pages). Created on a global admin's first
+     * visit, so the section is there from the start; nobody else ever sees
+     * it here, and it is never one of the blogs above, which come from
+     * permission rows the site space does not have.
+     */
+    private Weblog siteSpace(User user) {
+        try {
+            return weblogger.getWeblogManager().getOrCreateSiteSpace(user);
+        } catch (Exception e) {
+            // Display only: the Site section is left out; the interceptor decides who reaches it.
+            log.warn("Could not load the site space for the Main Menu", e);
+            return null;
+        }
     }
 
     private List<WeblogPermissionView> getExistingPermissions(User user) {

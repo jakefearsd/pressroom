@@ -245,7 +245,8 @@ public final class MenuHelper {
 
                 for (ParsedTabItem configTabItem : configTab.getTabItems()) {
 
-                    if (isVisible(configTabItem, user, weblog, umgr, propertyEnabled)) {
+                    if (offeredHere(weblog, configTabItem)
+                            && isVisible(configTabItem, user, weblog, umgr, propertyEnabled)) {
 
                         // log.debug("tab item allowed - "
                         // + configTabItem.getName());
@@ -279,12 +280,31 @@ public final class MenuHelper {
                     }
                 }
 
-                // add the tab
-                tabMenu.addTab(tab);
+                // add the tab, unless the site space left it with nothing to offer
+                if (!tab.getItems().isEmpty() || !isSiteSpace(weblog)) {
+                    tabMenu.addTab(tab);
+                }
             }
         }
 
         return tabMenu;
+    }
+
+    /**
+     * The screens the site space offers -- the only ones
+     * {@code RollerHandlerInterceptor} lets act on it (each controller's
+     * {@code allowsSiteSpace()}). The rail on the site space links these and
+     * nothing else, since every other screen would refuse.
+     */
+    private static final Set<String> SITE_SPACE_ACTIONS = Set.of("pages", "mediaFileView", "themeEdit");
+
+    private static boolean isSiteSpace(Weblog weblog) {
+        return weblog != null && weblog.isSiteSpace();
+    }
+
+    /** Whether this item belongs on this weblog's rail: on the site space, only its three screens. */
+    private static boolean offeredHere(Weblog weblog, ParsedTabItem item) {
+        return !isSiteSpace(weblog) || SITE_SPACE_ACTIONS.contains(item.getAction());
     }
 
     /**

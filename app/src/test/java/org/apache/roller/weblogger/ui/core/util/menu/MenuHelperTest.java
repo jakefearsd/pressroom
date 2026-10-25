@@ -171,6 +171,27 @@ class MenuHelperTest {
     }
 
     /**
+     * The site space offers only Pages, Media and Theme; the interceptor
+     * refuses every other screen on it, even to a global admin (who holds
+     * every weblog permission implicitly). The rail must not link to those
+     * refusals, so on the site space it shows the three screens and nothing
+     * else -- and a tab left with none of them goes too.
+     */
+    @Test
+    void onTheSiteSpaceTheRailOffersOnlyPagesMediaAndTheme() throws Exception {
+        beAWeblogAdministrator();
+        weblog.setSiteSpace(true);
+
+        Menu menu = build("editor", MenuHelper.getParsedMenu("editor"), "pages");
+
+        assertEquals(List.of("tabbedmenu.weblog", "tabbedmenu.design"), tabKeys(menu));
+        assertEquals(List.of("pages", "mediaFileView"), itemActions(menu.getTabs().get(0)));
+        assertEquals("pages", menu.getTabs().get(0).getAction(), "the tab links its first offered screen");
+        assertEquals(List.of("themeEdit"), itemActions(menu.getTabs().get(1)));
+        assertEquals(List.of("pages"), selectedItemActions(menu));
+    }
+
+    /**
      * The narrowest real role: someone who may write drafts but not publish.
      * Everything that needs the "post" permission has to disappear, including
      * comment moderation and the media library.

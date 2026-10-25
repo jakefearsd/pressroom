@@ -19,6 +19,7 @@
 package org.apache.roller.weblogger.ui.controllers.editor;
 
 import java.util.List;
+import java.util.Set;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -53,6 +54,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class ThemeEditController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(ThemeEditController.class);
+
+    /** The site's theme is chosen here, among the four site themes ({@link #offered}). */
+    @Override
+    public boolean allowsSiteSpace() {
+        return true;
+    }
 
     @Override
     public String getDesiredMenu() {
@@ -99,7 +106,9 @@ public class ThemeEditController extends BaseController {
         Weblog weblog = getActionWeblog(request);
 
         if (WeblogTheme.CUSTOM.equals(themeType)) {
-            if (!customThemeAllowed(request)) {
+            if (weblog.isSiteSpace()) {
+                addError(model, "themeEditor.error.notOffered", request);
+            } else if (!customThemeAllowed(request)) {
                 addError(model, "themeEditor.error.customThemeNotAllowed", request);
             } else if (importTheme) {
                 try {
@@ -140,12 +149,17 @@ public class ThemeEditController extends BaseController {
 
         } else if ("shared".equals(themeType)) {
             Theme newTheme = null;
-            try {
-                ThemeManager themeMgr = weblogger.getThemeManager();
-                newTheme = themeMgr.getTheme(selectedThemeId);
-            } catch (Exception ex) {
-                log.warn("Theme not found", ex);
-                addError(model, "themeEditor.error.notFound", request);
+            if (offered(weblog, selectedThemeId, currentThemeId(request))) {
+                try {
+                    ThemeManager themeMgr = weblogger.getThemeManager();
+                    newTheme = themeMgr.getTheme(selectedThemeId);
+                } catch (Exception ex) {
+                    log.warn("Theme not found", ex);
+                    addError(model, "themeEditor.error.notFound", request);
+                }
+            } else {
+                // The picker leaves it out; this stops a form posted without the picker.
+                addError(model, "themeEditor.error.notOffered", request);
             }
 
             if (!hasErrors(model)) {
@@ -209,10 +223,15 @@ public class ThemeEditController extends BaseController {
      * setting says. Turning the option off is meant to stop new
      * customisations; since there is no way back from custom, refusing here
      * would strand any weblog customised while it was on.
+     *
+     * <p>The site space never takes a custom theme: its pages render with one
+     * of the four site themes, whatever the setting says.
      */
     private boolean customThemeAllowed(HttpServletRequest request) {
-        return WebloggerRuntimeConfig.getBooleanProperty("themes.customtheme.allowed")
-                || WeblogTheme.CUSTOM.equals(getActionWeblog(request).getEditorTheme());
+        Weblog weblog = getActionWeblog(request);
+        return !weblog.isSiteSpace()
+                && (WebloggerRuntimeConfig.getBooleanProperty("themes.customtheme.allowed")
+                        || WeblogTheme.CUSTOM.equals(weblog.getEditorTheme()));
     }
 
     /**
@@ -227,6 +246,27 @@ public class ThemeEditController extends BaseController {
      * revisit if that descriptor ever grows one.
      */
     private static final String SITEWIDE_ONLY_THEME_ID = "frontpage";
+
+    /**
+     * The themes the site space (the hidden weblog owning the site's pages)
+     * renders with: the three blog themes and {@code frontpage}, which on the
+     * site space is the theme a new one starts on rather than a misfit.
+     */
+    private static final Set<String> SITE_THEME_IDS = Set.of("journal", "portfolio", "travel", "frontpage");
+
+    /**
+     * Whether the picker offers this shared theme to this weblog -- the one
+     * rule both the list the form shows and the save behind it apply. The
+     * site space is offered the site themes; any other weblog every theme
+     * but {@code frontpage}, unless it is already on it and must not be
+     * stranded.
+     */
+    private static boolean offered(Weblog weblog, String themeId, String currentThemeId) {
+        if (weblog.isSiteSpace()) {
+            return SITE_THEME_IDS.contains(themeId);
+        }
+        return !SITEWIDE_ONLY_THEME_ID.equals(themeId) || SITEWIDE_ONLY_THEME_ID.equals(currentThemeId);
+    }
 
     /**
      * The theme the action weblog renders with, or null when it cannot be
@@ -257,10 +297,11 @@ public class ThemeEditController extends BaseController {
 
     private void loadThemeData(HttpServletRequest request, Model model) {
         ThemeManager themeMgr = weblogger.getThemeManager();
-        String currentThemeId = WeblogTheme.CUSTOM.equals(getActionWeblog(request).getEditorTheme())
+        Weblog weblog = getActionWeblog(request);
+        String currentThemeId = WeblogTheme.CUSTOM.equals(weblog.getEditorTheme())
                 ? null : currentThemeId(request);
         List<SharedTheme> selectable = themeMgr.getEnabledThemesList().stream()
-                .filter(t -> !SITEWIDE_ONLY_THEME_ID.equals(t.getId()) || SITEWIDE_ONLY_THEME_ID.equals(currentThemeId))
+                .filter(t -> offered(weblog, t.getId(), currentThemeId))
                 .toList();
         model.addAttribute("themes", selectable);
         model.addAttribute("customTheme", WeblogTheme.CUSTOM.equals(getActionWeblog(request).getEditorTheme()));
