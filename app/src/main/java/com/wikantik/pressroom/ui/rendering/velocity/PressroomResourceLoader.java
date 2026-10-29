@@ -143,7 +143,7 @@ public class PressroomResourceLoader extends ResourceLoader {
 	 * a custom template is a database row reached by name and nothing here
 	 * records when it last changed.
 	 *
-	 * <p><b>This answer is what forces {@code resource.loader.roller.cache}
+	 * <p><b>This answer is what forces {@code resource.loader.pressroom.cache}
 	 * to stay false in velocity.properties, and the two may only ever change
 	 * together.</b> A constant false means "never stale", so with caching on
 	 * Velocity would reuse the first parse tree it built for the life of the

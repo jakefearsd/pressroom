@@ -74,7 +74,7 @@ class AdminChromeJspTest {
         String src = jsp("tiles/footer.jsp");
         assertTrue(src.contains("colophon.shortRevision"),
                 "the footer prints the short (7-character) revision from the Colophon");
-        assertFalse(src.contains("rollerRevision"), "no second, raw revision path");
+        assertFalse(src.contains("pressroomRevision"), "no second, raw revision path");
     }
 
     /** AC4: every full-page admin layout carries the footer tile. */

@@ -114,7 +114,7 @@ resolves through the index at the end of `CLAUDE.md`.
   `restoreSelected`/`deleteSelected` pair, only per-row and whole-trash
   endpoints.
 - **`<rc:date>`** (`app/.../ui/tags/DateTag.java`, declared in
-  `WEB-INF/rollerConfig.tld`) is the admin UI's one timestamp renderer,
+  `WEB-INF/pressroomConfig.tld`) is the admin UI's one timestamp renderer,
   replacing `fmt:formatDate` (server zone) and the translated
   `weblogEntryQuery.date.toStringFormat` key (request-locale zone). **That key
   is deleted from every bundle** (a FORMAT in eight translations could

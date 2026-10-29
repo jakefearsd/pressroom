@@ -42,7 +42,7 @@
         #showFeedHistory($pager)
     #end
     <updated>$utils.formatIso8601Date($model.weblog.lastModified)</updated>
-    <generator version="$config.rollerVersion">Roller</generator>
+    <generator version="$config.pressroomVersion">Roller</generator>
     #showEntriesAtom10($pager.items)
 </feed>
 

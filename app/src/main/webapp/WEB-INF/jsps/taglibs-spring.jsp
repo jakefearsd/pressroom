@@ -4,4 +4,4 @@
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form" %>
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags" %>
 <%@ taglib prefix="sec" uri="http://www.springframework.org/security/tags" %>
-<%@ taglib prefix="rc" uri="http://roller.apache.org/tags/config" %>
+<%@ taglib prefix="rc" uri="http://pressroom.wikantik.com/tags/config" %>

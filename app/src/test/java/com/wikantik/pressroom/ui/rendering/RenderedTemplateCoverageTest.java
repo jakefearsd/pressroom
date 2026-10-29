@@ -65,7 +65,7 @@ class RenderedTemplateCoverageTest {
         Class<?> leak = ThemeReferenceLeakTest.class;
         RENDERED_BY.put("weblog.vm", leak);
         // Library with no macro of its own to call (a comment); loaded on every engine init, so any theme render reaches it.
-        RENDERED_BY.put("roller-custom.vm", leak);
+        RENDERED_BY.put("pressroom-custom.vm", leak);
         RENDERED_BY.put("feeds.vm", named("servlets.FeedServletRenderingTest"));
         // error-page.vm and error-parse.vm: the 500 bodies are asserted by marker comment.
         Class<?> errors = named("servlets.RenderErrorStatusTest");

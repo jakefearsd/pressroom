@@ -995,7 +995,7 @@ scheme in the same rule. ContentAssetsRenderingTest pins both rules. The
 WCAG ratios behind the colours are in docs/dev/themes-and-templates.md.
 
 Everything except the callouts and highlight.js token classes is scoped to
-the content containers named in $rollerContentScope -- one per bundled theme,
+the content containers named in $pressroomContentScope -- one per bundled theme,
 pressroom-preview-prose for the shared preview shell and pressroom-content for the
 shared page fallback (and for a custom theme that wants these rules) -- so a
 theme's chrome is never touched. The scope sits inside :where(), adding no
@@ -1017,7 +1017,7 @@ CSP: the bundle is same-origin script; the callout icons are data: SVG masks,
 covered by the img-src * data: every bundled head declares. Nothing else.
 *#
 #macro(showContentAssets)
-#set($rollerContentScope = ".qj-prose, .tg-entry-content, .pf-entry-content, .pressroom-preview-prose, .pressroom-content")
+#set($pressroomContentScope = ".qj-prose, .tg-entry-content, .pf-entry-content, .pressroom-preview-prose, .pressroom-content")
 <style>
 .markdown-alert {
   margin: 1.25em 0;
@@ -1089,7 +1089,7 @@ covered by the img-src * data: every bundled head declares. Nothing else.
 }
 .markdown-alert-caution .markdown-alert-title { color: inherit; color: light-dark(#a40e26, #f85149); }
 
-:where($rollerContentScope) pre {
+:where($pressroomContentScope) pre {
   margin: 1.25em 0;
   padding: .85em 1em;
   overflow-x: auto;
@@ -1101,14 +1101,14 @@ covered by the img-src * data: every bundled head declares. Nothing else.
   line-height: 1.55;
   tab-size: 4;
 }
-:where($rollerContentScope) pre code {
+:where($pressroomContentScope) pre code {
   padding: 0;
   border-radius: 0;
   background: none;
   font: inherit;
   white-space: pre;
 }
-:where($rollerContentScope) :not(pre) > code {
+:where($pressroomContentScope) :not(pre) > code {
   padding: .125em .375em;
   border-radius: 4px;
   background-color: color-mix(in srgb, currentColor 10%, transparent);
@@ -1200,7 +1200,7 @@ covered by the img-src * data: every bundled head declares. Nothing else.
   background-color: light-dark(#ffebe9, #67060c);
 }
 
-:where($rollerContentScope) table {
+:where($pressroomContentScope) table {
   display: block;
   width: max-content;
   max-width: 100%;
@@ -1209,21 +1209,21 @@ covered by the img-src * data: every bundled head declares. Nothing else.
   border-collapse: collapse;
   font-size: .9375em;
 }
-:where($rollerContentScope) th,
-:where($rollerContentScope) td {
+:where($pressroomContentScope) th,
+:where($pressroomContentScope) td {
   padding: .4em .75em;
   border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
   vertical-align: top;
 }
-:where($rollerContentScope) th {
+:where($pressroomContentScope) th {
   font-weight: 600;
   background-color: color-mix(in srgb, currentColor 6%, transparent);
 }
-:where($rollerContentScope) th:not([align]) { text-align: start; }
-:where($rollerContentScope) tbody tr:nth-child(2n) { background-color: color-mix(in srgb, currentColor 3%, transparent); }
+:where($pressroomContentScope) th:not([align]) { text-align: start; }
+:where($pressroomContentScope) tbody tr:nth-child(2n) { background-color: color-mix(in srgb, currentColor 3%, transparent); }
 
-:where($rollerContentScope) :is(h2, h3, h4)[id] { scroll-margin-top: 1rem; }
-body :is($rollerContentScope) :is(h2, h3, h4) > a.pressroom-heading-anchor {
+:where($pressroomContentScope) :is(h2, h3, h4)[id] { scroll-margin-top: 1rem; }
+body :is($pressroomContentScope) :is(h2, h3, h4) > a.pressroom-heading-anchor {
   margin-left: .35em;
   padding: 0 .1em;
   color: inherit;
@@ -1231,11 +1231,11 @@ body :is($rollerContentScope) :is(h2, h3, h4) > a.pressroom-heading-anchor {
   text-decoration: none;
   opacity: 0;
 }
-body :is($rollerContentScope) :is(h2, h3, h4):hover > a.pressroom-heading-anchor,
-body :is($rollerContentScope) :is(h2, h3, h4) > a.pressroom-heading-anchor:focus-visible { opacity: .7; }
-body :is($rollerContentScope) :is(h2, h3, h4) > a.pressroom-heading-anchor:hover { opacity: 1; text-decoration: underline; }
+body :is($pressroomContentScope) :is(h2, h3, h4):hover > a.pressroom-heading-anchor,
+body :is($pressroomContentScope) :is(h2, h3, h4) > a.pressroom-heading-anchor:focus-visible { opacity: .7; }
+body :is($pressroomContentScope) :is(h2, h3, h4) > a.pressroom-heading-anchor:hover { opacity: 1; text-decoration: underline; }
 @media (hover: none) {
-  body :is($rollerContentScope) :is(h2, h3, h4) > a.pressroom-heading-anchor { opacity: .7; }
+  body :is($pressroomContentScope) :is(h2, h3, h4) > a.pressroom-heading-anchor { opacity: .7; }
 }
 </style>
 <script data-copy="$utils.escapeHTML($text.get('content.code.copy'))" data-copied="$utils.escapeHTML($text.get('content.code.copied'))" data-copy-failed="$utils.escapeHTML($text.get('content.code.copyFailed'))" data-anchor="$utils.escapeHTML($text.get('content.heading.anchor'))">
@@ -1245,8 +1245,8 @@ body :is($rollerContentScope) :is(h2, h3, h4) > a.pressroom-heading-anchor:hover
 // over a document that overlaps the first one safe, and what keep a page
 // with nothing left to do from loading the bundle at all.
 var pressroomContent = {
-  code: ':is($rollerContentScope) pre:not([data-pressroom-code]) > code',
-  headings: ':is($rollerContentScope) :is(h2, h3, h4)[id]:not([data-pressroom-anchor])',
+  code: ':is($pressroomContentScope) pre:not([data-pressroom-code]) > code',
+  headings: ':is($pressroomContentScope) :is(h2, h3, h4)[id]:not([data-pressroom-anchor])',
   labels: (function (script) {
     if (!script) { return {}; }
     return {

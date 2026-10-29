@@ -1284,7 +1284,7 @@ class JspConsistencyTest {
             // Entity ids the controller put in the model after a lookup.
             "directoryId", "categoryId",
             // Build constants.
-            "rollerVersion", "fn:substring(rollerRevision, 0, 7)",
+            "pressroomVersion", "fn:substring(pressroomRevision, 0, 7)",
             // Property names from runtimeConfigDefs.xml, and their numeric sizes.
             "pd.nameWithUnderbars", "pd.rows", "pd.cols",
             // Theme ids from theme.xml, a weblog's theme id, a validated time zone id.

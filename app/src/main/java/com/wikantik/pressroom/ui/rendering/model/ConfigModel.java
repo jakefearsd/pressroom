@@ -91,7 +91,7 @@ public class ConfigModel implements Model {
     
     
     /** Get Roller version string */
-    public String getRollerVersion() {
+    public String getPressroomVersion() {
         return weblogger.getVersion();
     }
 

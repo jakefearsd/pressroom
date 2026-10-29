@@ -5,8 +5,8 @@
         version="3.1">
 
     <tlib-version>1.0</tlib-version>
-    <short-name>rollerConfig</short-name>
-    <uri>http://roller.apache.org/tags/config</uri>
+    <short-name>pressroomConfig</short-name>
+    <uri>http://pressroom.wikantik.com/tags/config</uri>
 
     <!--
       The admin UI's one timestamp renderer. Declared in THIS taglib rather

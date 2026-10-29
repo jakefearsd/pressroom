@@ -153,7 +153,7 @@ class LoaderCachingContractTest {
 
     /**
      * The companion half, stated as its own case so the reason
-     * {@code resource.loader.roller.cache} is false does not have to be
+     * {@code resource.loader.pressroom.cache} is false does not have to be
      * inferred from the absence of a failure above.
      */
     @Test
@@ -166,8 +166,8 @@ class LoaderCachingContractTest {
                         + "in velocity.properties -- its cache may then be enabled.");
         assertEquals(0L, loader.getLastModified(maximallyStaleResource()),
                 "and a constant 0 for the timestamp, for the same reason");
-        assertFalse(cacheEnabled("roller"),
-                "so resource.loader.roller.cache MUST stay false: caching a loader that never "
+        assertFalse(cacheEnabled("pressroom"),
+                "so resource.loader.pressroom.cache MUST stay false: caching a loader that never "
                         + "reports modification breaks custom-template editing until a restart, "
                         + "silently.");
     }

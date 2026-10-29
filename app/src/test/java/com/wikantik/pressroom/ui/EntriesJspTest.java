@@ -152,11 +152,11 @@ class EntriesJspTest {
     /** The tag has to be declared somewhere for {@code rc:} to resolve to it. */
     @Test
     void theDateTagIsDeclaredInTheConfigTld() throws IOException {
-        String tld = read(Path.of("src/main/webapp/WEB-INF/rollerConfig.tld"));
+        String tld = read(Path.of("src/main/webapp/WEB-INF/pressroomConfig.tld"));
 
-        assertTrue(tld.contains("<name>date</name>"), "rollerConfig.tld declares no <tag> named date");
+        assertTrue(tld.contains("<name>date</name>"), "pressroomConfig.tld declares no <tag> named date");
         assertTrue(tld.contains("com.wikantik.pressroom.ui.tags.DateTag"),
-                "rollerConfig.tld does not point the date tag at DateTag");
+                "pressroomConfig.tld does not point the date tag at DateTag");
         assertTrue(tld.indexOf("<tag>") < tld.indexOf("<function>"),
                 "the TLD schema requires every <tag> before every <function>");
     }

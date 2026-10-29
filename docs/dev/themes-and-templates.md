@@ -336,7 +336,7 @@ map assets without this macro fails the build.
   A fenced block becomes `pre > code.language-x`, or a bare `pre > code`.
   Every heading gets an `id`.
 - **Scope.** Everything except the callouts and the `hljs-*` token classes
-  applies inside `$rollerContentScope` only: `.qj-prose`,
+  applies inside `$pressroomContentScope` only: `.qj-prose`,
   `.tg-entry-content`, `.pf-entry-content`, `.pressroom-preview-prose` (shared
   preview) and `.pressroom-content` (the shared page fallback's `<article>`).
   A custom theme opts in by putting `pressroom-content` on its content

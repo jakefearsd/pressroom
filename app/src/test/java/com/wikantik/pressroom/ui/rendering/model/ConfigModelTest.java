@@ -267,8 +267,8 @@ class ConfigModelTest {
     void theVersionComesFromTheRunningWebloggerInstance() {
         when(weblogger.getVersion()).thenReturn("0.1.0");
 
-        assertEquals("0.1.0", model.getRollerVersion(),
-                "$config.rollerVersion is rendered in the footer of every bundled theme.");
+        assertEquals("0.1.0", model.getPressroomVersion(),
+                "$config.pressroomVersion is rendered in the footer of every bundled theme.");
     }
 
     @Test
