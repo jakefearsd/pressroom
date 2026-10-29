@@ -16,9 +16,11 @@
 # provision container, which compose populates from .env correctly.
 #
 # Usage:
-#   ./deploy.sh [--prune]
+#   ./deploy.sh [--prune] [--no-pull]
 #
-#   --prune   run `docker image prune -f` after a successful deploy
+#   --prune    run `docker image prune -f` after a successful deploy
+#   --no-pull  start the images already on this host; for images built
+#              here (the cutover rehearsal), which no registry holds
 #
 # Run from the directory holding docker-compose.prod.yml and .env.
 set -euo pipefail
@@ -27,9 +29,11 @@ COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
 COMPOSE=(docker compose -f "${COMPOSE_FILE}")
 
 PRUNE=0
+PULL=1
 for arg in "$@"; do
     case "$arg" in
         --prune) PRUNE=1 ;;
+        --no-pull) PULL=0 ;;
         -h|--help)
             awk '/^#!/{next} !/^#/{exit} {sub(/^# ?/,""); print}' "$0"
             exit 0 ;;
@@ -46,8 +50,10 @@ for required in "${COMPOSE_FILE}" .env; do
     fi
 done
 
-echo "==> Pulling images..."
-"${COMPOSE[@]}" pull
+if [[ "${PULL}" -eq 1 ]]; then
+    echo "==> Pulling images..."
+    "${COMPOSE[@]}" pull
+fi
 
 echo "==> Starting the stack (compose orders provisioning before the app)..."
 "${COMPOSE[@]}" up -d

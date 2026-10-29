@@ -97,12 +97,11 @@ class OldNameInventoryTest {
     /** Keyed "KIND/area". Later phases lower these; the end state is empty. */
     static final Map<String, Integer> BASELINE = Map.ofEntries(
             Map.entry("CLASS/docs", 12),
-            Map.entry("MACHINE/build", 4),
-            Map.entry("MACHINE/deploy", 45),
-            Map.entry("MACHINE/docs", 193),
+            Map.entry("MACHINE/deploy", 4),
+            Map.entry("MACHINE/docs", 147),
             Map.entry("MACHINE/main-java", 2),
             Map.entry("MACHINE/main-resources", 21),
-            Map.entry("MACHINE/test", 75),
+            Map.entry("MACHINE/test", 73),
             Map.entry("PACKAGE/docs", 115),
             Map.entry("PATH-CLASS/docs", 1),
             Map.entry("PATH-MACHINE/docs", 15),

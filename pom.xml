@@ -30,13 +30,13 @@ limitations under the License.
         Roller is an open source multi-user blog server built with Spring MVC,
         Velocity, JPA/EclipseLink, and PostgreSQL.
     </description>
-    <url>https://github.com/jakefearsd/roller</url>
+    <url>https://github.com/jakefearsd/pressroom</url>
     <inceptionYear>2002</inceptionYear>
 
     <scm>
-        <url>https://github.com/jakefearsd/roller</url>
-        <connection>scm:git:git://github.com/jakefearsd/roller.git</connection>
-        <developerConnection>scm:git:git@github.com:jakefearsd/roller.git</developerConnection>
+        <url>https://github.com/jakefearsd/pressroom</url>
+        <connection>scm:git:git://github.com/jakefearsd/pressroom.git</connection>
+        <developerConnection>scm:git:git@github.com:jakefearsd/pressroom.git</developerConnection>
     </scm>
 
     <properties>

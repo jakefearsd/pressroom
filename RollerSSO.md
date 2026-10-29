@@ -70,7 +70,7 @@ host. If it is not set, sign-in answers "unavailable".
 On docker2:
 
 ```bash
-cd ~/roller
+cd ~/pressroom
 cp -p .env .env.bak-$(date -u +%Y%m%d%H%M%S)
 nano .env        # add the two lines below; the client secret stays in this file only
 ./deploy.sh
@@ -183,5 +183,5 @@ logs app`):
 | Scopes requested | `openid profile email` |
 | Account binding | Google's issuer plus subject (`sub`), stored in `pressroom_user.sso_issuer`/`sso_subject` (migration V030) |
 | Reader username | `reader-` plus 10 random characters |
-| Log | `docker compose -f docker-compose.prod.yml logs app`; also `/app/logs/roller.log` in the app container (logger `roller.sso`) |
+| Log | `docker compose -f docker-compose.prod.yml logs app`; also `/app/logs/pressroom.log` in the app container (logger `roller.sso`) |
 | Released in | Roller 0.1.16 |

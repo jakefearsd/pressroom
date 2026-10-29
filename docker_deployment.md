@@ -63,19 +63,19 @@ public IP.
 ## Get the deploy files onto the host
 
 There is no git checkout on the deploy host at all. Everything the stack
-needs lives in two published images (`ghcr.io/jakefearsd/roller` and
-`ghcr.io/jakefearsd/roller-caddy`) — nothing is bind-mounted from a working
+needs lives in two published images (`ghcr.io/jakefearsd/pressroom` and
+`ghcr.io/jakefearsd/pressroom-caddy`) — nothing is bind-mounted from a working
 tree. The host needs exactly three files, all attached to the GitHub Release
 for the version you're deploying: `docker-compose.prod.yml`, `env.example`,
-and `deploy.sh`. Download them into one directory, e.g. `/opt/roller`. The
+and `deploy.sh`. Download them into one directory, e.g. `/opt/pressroom`. The
 `latest` links below name the newest release; for a particular one, use
 `releases/download/v<version>/` instead, as [Upgrades](#upgrades) does:
 
 ```bash
-mkdir -p /opt/roller && cd /opt/roller
-curl -LO https://github.com/jakefearsd/roller/releases/latest/download/docker-compose.prod.yml
-curl -LO https://github.com/jakefearsd/roller/releases/latest/download/env.example
-curl -LO https://github.com/jakefearsd/roller/releases/latest/download/deploy.sh
+mkdir -p /opt/pressroom && cd /opt/pressroom
+curl -LO https://github.com/jakefearsd/pressroom/releases/latest/download/docker-compose.prod.yml
+curl -LO https://github.com/jakefearsd/pressroom/releases/latest/download/env.example
+curl -LO https://github.com/jakefearsd/pressroom/releases/latest/download/deploy.sh
 chmod +x deploy.sh
 mv env.example .env
 ```
@@ -85,7 +85,7 @@ renames any release asset whose filename starts with a dot, so a link built
 from the dotted name would 404.)
 
 (If you maintain a different fork, the `IMAGE_VERSION` tag in your `.env`
-still resolves against `ghcr.io/jakefearsd/roller` unless you also edit the
+still resolves against `ghcr.io/jakefearsd/pressroom` unless you also edit the
 image names in `docker-compose.prod.yml` to point at your fork's GHCR path.)
 
 ## Configure `.env`
@@ -110,7 +110,7 @@ environment-variable-configured container.
 `.env` has four parts:
 
 - **Images.** `IMAGE_VERSION` is the tag shared by both
-  `ghcr.io/jakefearsd/roller` and `ghcr.io/jakefearsd/roller-caddy` — they are
+  `ghcr.io/jakefearsd/pressroom` and `ghcr.io/jakefearsd/pressroom-caddy` — they are
   published together from one release job and must move together. Published
   only when a `v*.*.*` tag is pushed (`.github/workflows/release.yml`), so
   this is always a specific release, never "whatever was on master." Pin it
@@ -258,7 +258,7 @@ isn't private, which is the reader's. Name that one machine, never a private
 range: where Docker's userland proxy carries a connection, an internet client
 arrives from a private address and could then write its own
 `X-Forwarded-For`. A malformed value stops Caddy, and the site with it.
-The setting needs the `roller-caddy` image from 0.1.12 on;
+The setting needs the caddy image from 0.1.12 on;
 older images ignore it. Umami is unaffected either way behind `cloudflared`:
 it reads `CF-Connecting-IP` first, which Caddy passes through.
 
@@ -490,7 +490,7 @@ curl -vI https://blog.example.org/ 2>&1 | grep -i "SSL certificate\|subject"
 ## TLS
 
 Handled entirely by Caddy (`deploy/caddy/Caddyfile`, baked into the
-`ghcr.io/jakefearsd/roller-caddy` image) — there is nothing to configure
+`ghcr.io/jakefearsd/pressroom-caddy` image) — there is nothing to configure
 beyond setting `SITE_DOMAIN` to a real domain in `.env`. Caddy
 obtains a Let's Encrypt certificate for that domain on first use, renews it
 automatically well before expiry, and redirects HTTP to HTTPS. Certificate
@@ -566,7 +566,7 @@ docker compose -f docker-compose.prod.yml logs -f backup
 
 Every Roller logger writes to the app container's standard output, which is
 what `logs app` shows (sign-in, comment and admin-audit lines included). The
-same lines also go to `/app/logs/roller.log` inside the container. Every
+same lines also go to `/app/logs/pressroom.log` inside the container. Every
 service's container log is rotated by Docker: `docker-compose.prod.yml` caps
 each at five 10 MB files (the `x-logging` block), so the oldest lines drop
 off a busy log. Both logs belong to the container, so a deploy, which
@@ -782,7 +782,7 @@ stay on `LISTMONK_DOMAIN` — those are followed from an email client, where no
 theme CSP applies, so routing them through the app buys nothing.
 
 > **Deployments running an older Caddyfile:** the Caddyfile is baked into the
-> `ghcr.io/jakefearsd/roller-caddy` image now, not read from a checkout, so
+> `ghcr.io/jakefearsd/pressroom-caddy` image now, not read from a checkout, so
 > picking up the current one means pulling a newer `IMAGE_VERSION` (see
 > [Upgrades](#upgrades)) — bump it in `.env` and run `./deploy.sh`. Until you
 > do, an old rewrite from before this design keeps forwarding subscribe
@@ -912,8 +912,8 @@ The `backup` service (the app image, which bakes in `postgresql-client` for
 scheduler that wakes hourly and, once a day at `BACKUP_HOUR` (UTC), runs
 `/app/backup/backup.sh` (`deploy/backup/backup.sh`). It runs as root (`user:
 "0:0"` in `docker-compose.prod.yml`), unlike every other use of the image —
-the `roller-backups` volume is root-owned, and the image's unprivileged
-`roller` user cannot write into it. Each cycle:
+the `pressroom-backups` volume is root-owned, and the image's unprivileged
+`pressroom` user cannot write into it. Each cycle:
 
 1. `pg_dump -Fc` the database to `/backups/pressroom-<timestamp>.dump`.
 2. `tar czf` the `mediafiles`/`search-index`/`uploads` volumes to
@@ -925,7 +925,7 @@ and only `mv`'d to its final name once the write completes, so a backup
 killed mid-write (OOM, container restart, disk full) never leaves a
 truncated file sitting under a name a restore would trust — it leaves an
 orphaned `.tmp` file instead, which rotation also cleans up once it ages
-past the retention window. Backups land in the `roller-backups` named
+past the retention window. Backups land in the `pressroom-backups` named
 volume.
 
 These dumps contain the full database, including user password hashes —
@@ -1003,19 +1003,19 @@ archive extracts to `/data/...` paths matching the volume mount points):
 
 The volume names below are Compose's default PROJECT-PREFIXED names, not
 the bare names declared in `docker-compose.prod.yml` — the project name is
-derived from the directory the compose file lives in (`roller` if you put
-the deploy files in `/opt/roller` per [Get the deploy files onto the
+derived from the directory the compose file lives in (`pressroom` if you put
+the deploy files in `/opt/pressroom` per [Get the deploy files onto the
 host](#get-the-deploy-files-onto-the-host)), giving e.g.
-`roller_roller-mediafiles`. Run `docker volume ls` FIRST to confirm the
+`pressroom_pressroom-mediafiles`. Run `docker volume ls` FIRST to confirm the
 exact names on your host and substitute them below if they differ:
 
 ```bash
 docker compose -f docker-compose.prod.yml down
 docker run --rm \
-    -v roller_roller-mediafiles:/data/mediafiles \
-    -v roller_roller-search-index:/data/search-index \
-    -v roller_roller-uploads:/data/uploads \
-    -v roller_roller-backups:/backups \
+    -v pressroom_pressroom-mediafiles:/data/mediafiles \
+    -v pressroom_pressroom-search-index:/data/search-index \
+    -v pressroom_pressroom-uploads:/data/uploads \
+    -v pressroom_pressroom-backups:/backups \
     postgres:18@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280 \
     tar xzf /backups/volumes-<timestamp>.tar.gz -C /
 docker compose -f docker-compose.prod.yml up -d
@@ -1048,7 +1048,7 @@ console at `http://localhost:8081`, the newsletter admin at
 
 This pulls the exact images the server will pull, so it is the only form of
 local testing that is byte-identical to production. Building locally
-(`docker build -t ghcr.io/jakefearsd/roller:test .`) is faster and catches
+(`docker build -t ghcr.io/jakefearsd/pressroom:test .`) is faster and catches
 nearly everything, but CI runs its own build, so those bytes are merely
 equivalent rather than identical.
 
@@ -1065,6 +1065,14 @@ that cost on every local `mvn` run.)
 
 ## Upgrades
 
+> **A 0.4.x host moving to 0.5.0 or later does not upgrade: it cuts over.**
+> 0.5.0 renames the database, the role, the tables, the images, the volumes
+> and the deploy directory, so `upgrade.sh` refuses that move (and the move
+> back) and names the one path: `bin/deploy-host.sh HOST VERSION --cutover`,
+> which copies the old stack into a new `pressroom` project and leaves the old
+> one untouched for a rollback. The checklist, the rollback and the cleanup
+> are in [docs/dev/pressroom-cutover.md](docs/dev/pressroom-cutover.md).
+
 Re-download `docker-compose.prod.yml` and `deploy.sh` from the new release
 alongside bumping `IMAGE_VERSION` in `.env`. The compose file and the script
 are **not** guaranteed to be unchanged between releases, so always re-download
@@ -1073,8 +1081,8 @@ service definition against a newer app image, for instance, would point its
 entrypoint at a path the new image does not carry:
 
 ```bash
-curl -LO https://github.com/jakefearsd/roller/releases/download/v<new-version>/docker-compose.prod.yml
-curl -LO https://github.com/jakefearsd/roller/releases/download/v<new-version>/deploy.sh
+curl -LO https://github.com/jakefearsd/pressroom/releases/download/v<new-version>/docker-compose.prod.yml
+curl -LO https://github.com/jakefearsd/pressroom/releases/download/v<new-version>/deploy.sh
 chmod +x deploy.sh
 ```
 
@@ -1120,8 +1128,8 @@ change (see [Backup and restore](#backup-and-restore)).
 
 `deploy/upgrade.sh` does every step above, in an order that changes nothing until it can
 finish. From a checkout, `bin/deploy-host.sh HOST VERSION` copies it to the host and runs
-it there. It is not a release asset, so on a host with no checkout, copy it over and run it
-from the deploy directory:
+it there. It is a release asset from 0.5.0 on; on a host with no checkout, download it
+beside the others and run it from the deploy directory:
 
 ```bash
 ./upgrade.sh 0.2.3          # or: --no-backup, --prune
@@ -1140,6 +1148,9 @@ The steps, in order:
    overrides `.env` and would leave the old image up, healthy.
 
 It prints the one-line rollback, which restores the `.bak` files and reruns `./deploy.sh`.
+On a host the cutover made, it also says that the `.bak` files reach only the version they
+replaced: going back to the 0.4.x stack is the old directory's `rollback-pressroom.sh`.
+`deploy.sh --no-pull` starts the images already on the host, for images built there.
 
 ### Upgrading PostgreSQL across a major version
 
@@ -1374,7 +1385,7 @@ plaintext whatever it looks like.
 
 **Disk filling up**
 
-Backups accumulate in the `roller-backups` volume until
+Backups accumulate in the `pressroom-backups` volume until
 `BACKUP_RETENTION_DAYS` rotates them out; lower the retention window in
 `.env` (and restart the `backup` service) if backups are consuming more
 disk than expected, or check for orphaned `*.tmp` files from a backup that
@@ -1384,7 +1395,7 @@ rotation cleans these up too, just on the same delay).
 **Starting over on this host**
 
 `docker compose -f docker-compose.prod.yml down -v` removes every named
-volume (`roller-pgdata`, `roller-mediafiles`, `roller-search-index`,
-`roller-uploads`, `roller-backups`, `caddy-data`, `caddy-config`) —
+volume (`pressroom-pgdata`, `pressroom-mediafiles`, `pressroom-search-index`,
+`pressroom-uploads`, `pressroom-backups`, `caddy-data`, `caddy-config`) —
 irreversible without a backup. Only use it when you actually intend to
 destroy all data on this host.

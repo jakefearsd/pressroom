@@ -50,6 +50,8 @@ class DeployHostScriptTest {
         Files.createDirectories(checkout.resolve("deploy"));
         Files.copy(Paths.get("../bin/deploy-host.sh"), checkout.resolve("bin/deploy-host.sh"));
         Files.writeString(checkout.resolve("deploy/upgrade.sh"), "# upgrade\n");
+        Files.writeString(checkout.resolve("deploy/cutover-pressroom.sh"), "# cutover\n");
+        Files.writeString(checkout.resolve("deploy/rollback-pressroom.sh"), "# rollback\n");
         Files.writeString(checkout.resolve("pom.xml"), """
                 <project>
                     <groupId>com.wikantik.pressroom</groupId>
@@ -78,9 +80,9 @@ class DeployHostScriptTest {
         ScriptRun.Result r = deploy("docker1");
 
         assertEquals(0, r.exit(), r.out());
-        assertTrue(calls().contains("scp -q " + checkout.resolve("deploy/upgrade.sh") + " docker1:roller/upgrade.sh"),
+        assertTrue(calls().contains("scp -q " + checkout.resolve("deploy/upgrade.sh") + " docker1:pressroom/upgrade.sh"),
                 calls());
-        assertTrue(calls().contains("ssh docker1 cd roller && bash upgrade.sh 9.8.7\n"), calls());
+        assertTrue(calls().contains("ssh docker1 cd pressroom && bash upgrade.sh 9.8.7\n"), calls());
         assertTrue(calls().indexOf("scp") < calls().indexOf("ssh"), calls());
     }
 
@@ -92,6 +94,34 @@ class DeployHostScriptTest {
         assertTrue(calls().contains("docker1:/srv/pressroom/upgrade.sh"), calls());
         assertTrue(calls().contains("ssh docker1 cd /srv/pressroom && bash upgrade.sh 0.3.0 --no-backup --prune\n"),
                 calls());
+    }
+
+    /** The one-time move from the old deploy directory, which stays as it was for a rollback. */
+    @Test
+    void cutoverCopiesBothScriptsToTheOldDirectoryAndRunsTheCutoverThere() throws Exception {
+        ScriptRun.Result r = deploy("docker1", "0.5.0", "--cutover", "--url", "https://blog.example.com");
+
+        assertEquals(0, r.exit(), r.out());
+        String calls = calls();
+        assertTrue(calls.contains("scp -q " + checkout.resolve("deploy/cutover-pressroom.sh") + " "
+                + checkout.resolve("deploy/rollback-pressroom.sh") + " docker1:roller/\n"), calls); // rebrand:keep
+        assertTrue(calls.contains("ssh docker1 cd roller && bash cutover-pressroom.sh 0.5.0\n"), calls); // rebrand:keep
+        assertFalse(calls.contains("upgrade.sh"), calls);
+        assertTrue(calls.indexOf("scp") < calls.indexOf("ssh") && calls.indexOf("ssh") < calls.indexOf("curl"), calls);
+    }
+
+    /** The cutover always backs up and always moves to the default directory. */
+    @Test
+    void cutoverRefusesTheUpgradeOnlyFlags() throws Exception {
+        for (String flag : new String[] {"--no-backup", "--prune"}) {
+            ScriptRun.Result r = deploy("docker1", "0.5.0", "--cutover", flag);
+            assertEquals(2, r.exit(), flag + ": " + r.out());
+            assertTrue(r.out().contains("--cutover takes no " + flag), r.out());
+        }
+        ScriptRun.Result r = deploy("docker1", "0.5.0", "--cutover", "--dir", "elsewhere");
+        assertEquals(2, r.exit(), r.out());
+        assertTrue(r.out().contains("--cutover takes no --dir"), r.out());
+        assertEquals("", calls());
     }
 
     @Test

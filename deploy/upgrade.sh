@@ -21,11 +21,18 @@
 #   6. names any key the new env.example sets that .env does not
 #   7. runs ./deploy.sh, then checks the app runs the new image
 #
+# It refuses to cross 0.5.0 in either direction. 0.5.0's migration V041
+# renames the schema in place, so neither swapping in a 0.5 image nor
+# swapping a 0.4 one back is an upgrade or a rollback; the one way across is
+# the cutover (bin/deploy-host.sh HOST VERSION --cutover, see
+# docs/dev/pressroom-cutover.md), and the one way back is the old
+# directory's rollback-pressroom.sh.
+#
 # From a checkout, bin/deploy-host.sh copies this script to a host and runs
 # it there. RELEASE_URL overrides where releases download from (a fork).
 set -euo pipefail
 
-RELEASE_URL="${RELEASE_URL:-https://github.com/jakefearsd/roller/releases/download}"
+RELEASE_URL="${RELEASE_URL:-https://github.com/jakefearsd/pressroom/releases/download}"
 RELEASE_URL="${RELEASE_URL%/}"
 COMPOSE_FILE=docker-compose.prod.yml
 COMPOSE=(docker compose -f "${COMPOSE_FILE}")
@@ -62,6 +69,28 @@ if ! grep -q '^IMAGE_VERSION=' .env; then
     exit 1
 fi
 current=$(sed -n 's/^IMAGE_VERSION=//p' .env | tail -n 1)
+
+# True when version $1 predates the 0.5.0 rename (V041).
+before_rename() {
+    local major minor
+    IFS=. read -r major minor _ <<<"$1"
+    [[ "${major}" =~ ^[0-9]+$ && "${minor}" =~ ^[0-9]+$ ]] || return 1
+    (( major == 0 && minor < 5 ))
+}
+if before_rename "${current}" && ! before_rename "${VERSION}"; then
+    echo "Refusing: this host runs ${current}, and ${VERSION} renames the database, role and" \
+         "tables (migration V041). That is not an image swap, and a swap back would not undo it." >&2
+    echo "The only path is the cutover, from a checkout: bin/deploy-host.sh HOST ${VERSION} --cutover" \
+         "(docs/dev/pressroom-cutover.md). Nothing has changed." >&2
+    exit 1
+fi
+if ! before_rename "${current}" && before_rename "${VERSION}"; then
+    echo "Refusing: ${VERSION} predates the 0.5.0 rename this host's database has had (V041)," \
+         "so its image cannot run on it. To return a cutover host to its old stack, run" \
+         "rollback-pressroom.sh in the old deploy directory (docs/dev/pressroom-cutover.md)." \
+         "Nothing has changed." >&2
+    exit 1
+fi
 echo "==> Upgrading from ${current} to ${VERSION}."
 
 # Beside the files it replaces, so the move in step 5 is a rename.
@@ -110,6 +139,13 @@ sed -i.tmp "s/^IMAGE_VERSION=.*/IMAGE_VERSION=${VERSION}/" .env
 rm -f .env.tmp
 echo "==> The replaced files are kept as <name>.bak-${ts}. To roll back:"
 echo "      for f in .env ${FILES[*]}; do cp -p \"\$f.bak-${ts}\" \"\$f\"; done; ./deploy.sh"
+# The cutover leaves its row counts in the directory it made.
+if [[ -f cutover-counts-before.txt ]]; then
+    echo "    That reaches ${current}, no further back. To return to the stack this host ran before"
+    echo "    the cutover, while its old deploy directory is kept, run rollback-pressroom.sh there;"
+    echo "    never an image swap:"
+    echo "      cd ../roller && bash rollback-pressroom.sh"  # rebrand:keep
+fi
 
 missing=""
 while IFS= read -r key; do

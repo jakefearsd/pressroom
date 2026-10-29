@@ -30,7 +30,8 @@ side, which is what makes a later in-place `pg_upgrade --link` possible. A
 pre-18 cluster mounted at the new path is refused by the entrypoint rather
 than silently re-initialised — loud, but it does not say "your compose file
 is a major behind", which is why the test pins the path against the image.
-Production keeps the plain `roller-pgdata` name, never having been deployed
+Production's volume is `pressroom-pgdata` (the 0.5.0 cutover copies it from
+the 0.4.x one, docs/dev/pressroom-cutover.md), never having been deployed
 on 16; **dev** renamed its volume to `pressroom-pgdata18` (compose project
 `pressroom`, so `pressroom_pressroom-pgdata18`) because the 16 cluster
 occupied the pre-rebrand volume `roller_roller-pgdata` (rebrand:keep).

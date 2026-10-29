@@ -18,9 +18,9 @@
 # proxy) + umami (analytics) + listmonk (newsletter) + backup.
 #
 # This file and .env are the ONLY things a production host needs. Nothing is
-# bind-mounted from a checkout: the Caddyfile lives in the roller-caddy image,
+# bind-mounted from a checkout: the Caddyfile lives in the pressroom-caddy image,
 # and provision.sh, migrate.sh, the migrations, umami-views.sql and the backup
-# scripts all live in the roller image. ProductionComposeTest fails the build
+# scripts all live in the pressroom image. ProductionComposeTest fails the build
 # if a bind mount comes back.
 #
 # Requires Compose v2.17+ for depends_on: service_completed_successfully.
@@ -65,7 +65,7 @@ services:
       # --link` possible later. A pre-18 cluster must never be mounted here:
       # the entrypoint refuses to start on it rather than re-initialising.
       # PostgresMajorPinTest pins this path against the image's major.
-      - roller-pgdata:/var/lib/postgresql
+      - pressroom-pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pressroom} -d ${POSTGRES_DB:-pressroom}"]
       interval: 5s
@@ -83,7 +83,7 @@ services:
   # (see `analytics-views` below) that runs after umami has started, because
   # the view they install depends on a table only umami itself creates.
   provision:
-    image: ghcr.io/jakefearsd/roller:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
+    image: ghcr.io/jakefearsd/pressroom:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
     logging: *logging
     entrypoint: ["/app/provision.sh"]
     restart: "no"
@@ -107,7 +107,7 @@ services:
   # trust it relies on. It gets the database credentials and nothing else
   # from .env. See docker_deployment.md, "First run".
   admin:
-    image: ghcr.io/jakefearsd/roller:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
+    image: ghcr.io/jakefearsd/pressroom:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
     logging: *logging
     entrypoint: ["/app/admin-account.sh"]
     profiles: ["tools"]
@@ -123,7 +123,7 @@ services:
       - internal
 
   app:
-    image: ghcr.io/jakefearsd/roller:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
+    image: ghcr.io/jakefearsd/pressroom:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
     logging: *logging
     depends_on:
       provision:
@@ -140,9 +140,9 @@ services:
     environment:
       JAVA_OPTS: ${JAVA_OPTS:-}
     volumes:
-      - roller-mediafiles:/data/mediafiles
-      - roller-search-index:/data/search-index
-      - roller-uploads:/data/uploads
+      - pressroom-mediafiles:/data/mediafiles
+      - pressroom-search-index:/data/search-index
+      - pressroom-uploads:/data/uploads
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8090/actuator/health"]
       interval: 10s
@@ -154,7 +154,7 @@ services:
       - internal
 
   caddy:
-    image: ghcr.io/jakefearsd/roller-caddy:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
+    image: ghcr.io/jakefearsd/pressroom-caddy:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
     logging: *logging
     depends_on:
       - app
@@ -236,7 +236,7 @@ services:
   # or times out, the blog is still up and only the Grafana traffic view is
   # missing. ProductionComposeTest pins that nothing gates on it.
   analytics-views:
-    image: ghcr.io/jakefearsd/roller:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
+    image: ghcr.io/jakefearsd/pressroom:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
     logging: *logging
     entrypoint: ["/app/analytics-views.sh"]
     restart: "no"
@@ -288,11 +288,11 @@ services:
   backup:
     # The app image, for pg_dump/psql plus the baked-in backup scripts. See
     # /app/backup/backup.sh for the RESTORE procedure.
-    image: ghcr.io/jakefearsd/roller:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
+    image: ghcr.io/jakefearsd/pressroom:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
     logging: *logging
     entrypoint: ["/app/backup/loop.sh"]
-    # Runs as root, unlike every other use of this image: the roller-backups
-    # volume is created root-owned, and the unprivileged `roller` user the image
+    # Runs as root, unlike every other use of this image: the pressroom-backups
+    # volume is created root-owned, and the unprivileged `pressroom` user the image
     # otherwise runs as cannot write into it. A backup that cannot write fails
     # at 03:00, not at deploy time, so this is not a detail to leave implicit.
     user: "0:0"
@@ -309,10 +309,10 @@ services:
       BACKUP_HOUR: ${BACKUP_HOUR:-3}
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
     volumes:
-      - roller-backups:/backups
-      - roller-mediafiles:/data/mediafiles:ro
-      - roller-search-index:/data/search-index:ro
-      - roller-uploads:/data/uploads:ro
+      - pressroom-backups:/backups
+      - pressroom-mediafiles:/data/mediafiles:ro
+      - pressroom-search-index:/data/search-index:ro
+      - pressroom-uploads:/data/uploads:ro
     restart: unless-stopped
     networks:
       - internal
@@ -321,10 +321,10 @@ networks:
   internal:
 
 volumes:
-  roller-pgdata:
-  roller-mediafiles:
-  roller-search-index:
-  roller-uploads:
-  roller-backups:
+  pressroom-pgdata:
+  pressroom-mediafiles:
+  pressroom-search-index:
+  pressroom-uploads:
+  pressroom-backups:
   caddy-data:
   caddy-config:

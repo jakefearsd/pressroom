@@ -190,6 +190,8 @@ jobs:
           # to a dot-free name instead of shipping a runbook step that 404s.
           cp deploy/.env.example release-assets/env.example
           cp deploy/deploy.sh release-assets/deploy.sh
+          # The cutover fetches it into the new deploy directory.
+          cp deploy/upgrade.sh release-assets/upgrade.sh
           cp bin/pressroom-api release-assets/pressroom-api
           ls -l release-assets
 
@@ -224,6 +226,7 @@ jobs:
             release-assets/docker-compose.prod.yml
             release-assets/env.example
             release-assets/deploy.sh
+            release-assets/upgrade.sh
             release-assets/pressroom-api
           )
           for asset in "${assets[@]}"; do

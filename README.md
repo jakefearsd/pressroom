@@ -4,7 +4,7 @@ Roller is a Java-based, multi-user blog server, substantially simplified: Postgr
 
 It is an independent fork of [Apache Roller](https://roller.apache.org), which was created in 2002 and is maintained by the Apache Software Foundation. This project is not affiliated with or endorsed by the ASF.
 
-**Releases:** [GitHub Releases](https://github.com/jakefearsd/roller/releases) | **License:** Apache 2.0 | **Java:** 25
+**Releases:** [GitHub Releases](https://github.com/jakefearsd/pressroom/releases) | **License:** Apache 2.0 | **Java:** 25
 
 ---
 
@@ -82,8 +82,8 @@ removed in favour of a single, tested schema.
 ### Option 1: Dev server (Spring Boot, embedded Tomcat)
 
 ```bash
-git clone https://github.com/jakefearsd/roller.git
-cd roller
+git clone https://github.com/jakefearsd/pressroom.git
+cd pressroom
 mvn -DskipTests=true install
 ./pressroom dev     # starts PostgreSQL, applies migrations, seeds an admin,
                  # runs spring-boot:run

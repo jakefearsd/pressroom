@@ -201,7 +201,14 @@ bin/deploy-host.sh docker1 --url https://blog.wikantik.com/wikantik/
   `.env` and the replaced files as `*.bak-<UTC stamp>`, sets `IMAGE_VERSION`, runs
   `deploy.sh` and checks that the app runs the new image. An exported
   `IMAGE_VERSION` beats `.env` and would leave the old image up, healthy.
-- Tests: `ReleaseScriptTest`, `DeployHostScriptTest`, `UpgradeScriptTest`. They run
+  The host's deploy directory is `pressroom` (`--dir` moves it).
+- `upgrade.sh` refuses to cross 0.5.0 either way (V041 renames the schema in place).
+  `bin/deploy-host.sh HOST VERSION --cutover` is the one-time move of a 0.4.x host
+  from `~/roller` to `~/pressroom` (rebrand:keep): it copies `deploy/cutover-pressroom.sh`
+  and `deploy/rollback-pressroom.sh` into the old directory and runs the cutover there.
+  Checklist and rollback: `docs/dev/pressroom-cutover.md`.
+- Tests: `ReleaseScriptTest`, `DeployHostScriptTest`, `UpgradeScriptTest`,
+  `CutoverScriptTest`, `RollbackScriptTest`. They run
   the real scripts against stub `mvn`/`gh`/`ssh`/`docker`, a scratch git repo and a
   `file://` release.
 

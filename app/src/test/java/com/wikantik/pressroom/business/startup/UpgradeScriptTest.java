@@ -74,7 +74,7 @@ class UpgradeScriptTest {
                 echo "docker $*" >> "$STUB_LOG"
                 case "$*" in
                   *"exec -T backup /app/backup/backup.sh"*) exit "${STUB_BACKUP_RC:-0}" ;;
-                  *" ps "*) echo "ghcr.io/jakefearsd/roller:${STUB_APP_VERSION}" ;;
+                  *" ps "*) echo "ghcr.io/jakefearsd/pressroom:${STUB_APP_VERSION}" ;;
                 esac
                 exit 0
                 """);
@@ -219,7 +219,70 @@ class UpgradeScriptTest {
         ScriptRun.Result r = upgrade("0.2.2");
 
         assertNotEquals(0, r.exit(), r.out());
-        assertTrue(r.out().contains("roller:0.2.1"), r.out());
+        assertTrue(r.out().contains("pressroom:0.2.1"), r.out());
         assertTrue(r.out().contains("To roll back"), r.out());
+    }
+
+    /**
+     * V041 renames the schema in place, so a 0.4.x host cannot reach 0.5 by
+     * swapping images, and the swap back would not undo it. The cutover is
+     * the only path (ruling a).
+     */
+    @Test
+    void refusesToCrossTheRenameAndNamesTheCutover() throws Exception {
+        Files.writeString(host.resolve(".env"), ENV.replace("IMAGE_VERSION=0.2.1", "IMAGE_VERSION=0.4.2"));
+        String before = Files.readString(host.resolve(".env"));
+
+        ScriptRun.Result r = upgrade("0.5.0");
+
+        assertNotEquals(0, r.exit(), r.out());
+        assertTrue(r.out().contains("bin/deploy-host.sh HOST 0.5.0 --cutover"), r.out());
+        assertEquals(before, Files.readString(host.resolve(".env")));
+        assertEquals("", ScriptRun.log(log()), "no backup, no deploy");
+    }
+
+    @Test
+    void refusesToGoBackAcrossTheRename() throws Exception {
+        Files.writeString(host.resolve(".env"), ENV.replace("IMAGE_VERSION=0.2.1", "IMAGE_VERSION=0.5.0"));
+
+        ScriptRun.Result r = upgrade("0.4.2");
+
+        assertNotEquals(0, r.exit(), r.out());
+        assertTrue(r.out().contains("rollback-pressroom.sh"), r.out());
+        assertEquals("", ScriptRun.log(log()));
+    }
+
+    /** On a host the cutover made, going back to 0.4.x is the rollback script, never the .bak swap. */
+    @Test
+    void aCutoverHostIsToldWhereTheRollbackToTheOldStackIs() throws Exception {
+        Files.writeString(host.resolve(".env"), ENV.replace("IMAGE_VERSION=0.2.1", "IMAGE_VERSION=0.5.0"));
+        Files.writeString(host.resolve("cutover-counts-before.txt"), "app weblog 1\n");
+        Path next = Files.createDirectories(dir.resolve("release/v0.5.1"));
+        try (Stream<Path> files = Files.list(release)) {
+            for (Path f : files.toList()) {
+                Files.copy(f, next.resolve(f.getFileName()));
+            }
+        }
+        env.put("STUB_APP_VERSION", "0.5.1");
+
+        ScriptRun.Result r = upgrade("0.5.1");
+
+        assertEquals(0, r.exit(), r.out());
+        assertTrue(r.out().contains("To roll back"), r.out());
+        assertTrue(r.out().contains("rollback-pressroom.sh"), r.out());
+    }
+
+    @Test
+    void anOrdinaryHostIsNotToldAboutTheCutover() throws Exception {
+        ScriptRun.Result r = upgrade("0.2.2");
+
+        assertEquals(0, r.exit(), r.out());
+        assertFalse(r.out().contains("rollback-pressroom.sh"), r.out());
+    }
+
+    @Test
+    void downloadsFromThePressroomRepositoryByDefault() throws Exception {
+        assertTrue(Files.readString(UPGRADE).contains(
+                "RELEASE_URL:-https://github.com/jakefearsd/pressroom/releases/download}"));
     }
 }

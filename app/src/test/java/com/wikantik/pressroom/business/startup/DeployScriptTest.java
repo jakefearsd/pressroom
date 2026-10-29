@@ -24,6 +24,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -44,7 +46,7 @@ class DeployScriptTest {
 
     private record Result(int exit, String out, String calls) {}
 
-    private Result deploy(int statusRc) throws Exception {
+    private Result deploy(int statusRc, String... args) throws Exception {
         Path bin = Files.createDirectories(dir.resolve("bin"));
         Path stub = bin.resolve("docker");
         Files.writeString(stub, """
@@ -58,7 +60,7 @@ class DeployScriptTest {
         stub.toFile().setExecutable(true);
         Files.writeString(dir.resolve("docker-compose.prod.yml"), "");
         Files.writeString(dir.resolve(".env"), "");
-        ProcessBuilder pb = new ProcessBuilder("bash", DEPLOY.toString()).directory(dir.toFile())
+        ProcessBuilder pb = new ProcessBuilder(command(args)).directory(dir.toFile())
                 .redirectErrorStream(true);
         pb.environment().put("PATH", bin + ":" + System.getenv("PATH"));
         pb.environment().put("STUB_LOG", dir.resolve("calls.log").toString());
@@ -67,6 +69,29 @@ class DeployScriptTest {
         String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         assertTrue(p.waitFor(60, TimeUnit.SECONDS), "deploy.sh hung");
         return new Result(p.exitValue(), out, Files.readString(dir.resolve("calls.log")));
+    }
+
+    private static List<String> command(String... args) {
+        List<String> command = new ArrayList<>(List.of("bash", DEPLOY.toString()));
+        command.addAll(List.of(args));
+        return command;
+    }
+
+    @Test
+    void pullsBeforeStarting() throws Exception {
+        Result r = deploy(0);
+        assertEquals(0, r.exit(), r.out());
+        assertTrue(r.calls().contains("compose -f docker-compose.prod.yml pull\n"), r.calls());
+        assertTrue(r.calls().indexOf(" pull") < r.calls().indexOf(" up -d"), r.calls());
+    }
+
+    /** For images built on this host (the cutover rehearsal), which no registry holds. */
+    @Test
+    void noPullStartsWhatIsAlreadyHere() throws Exception {
+        Result r = deploy(0, "--no-pull");
+        assertEquals(0, r.exit(), r.out());
+        assertFalse(r.calls().contains(" pull"), r.calls());
+        assertTrue(r.calls().contains(" up -d"), r.calls());
     }
 
     @Test

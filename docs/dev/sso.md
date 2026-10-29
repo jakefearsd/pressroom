@@ -82,7 +82,7 @@ reachable" on success. It never fails startup.
 Logger `pressroom.sso` goes to `asyncPressroom` (`additivity="false"` in
 `log4j2.xml`), which writes both `pressroom.log` and the console, so `docker
 compose logs app` shows it (`LogRoutingTest`). In the container the file is
-`/app/logs/roller.log` (the working directory's `logs/`, not the `/data`
+`/app/logs/pressroom.log` (the working directory's `logs/`, not the `/data`
 volume, so a recreated container starts a fresh one). One INFO per sign-in (username,
 new or existing), one WARN per refusal or failure (code and reason). No
 email, token or secret is ever logged; `WebloggerConfig` masks `secret` keys.

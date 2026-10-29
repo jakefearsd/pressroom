@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -303,6 +304,47 @@ class ProductionComposeTest {
             assertTrue(String.valueOf(options.get("max-file")).matches("\\d+"),
                     name + " keeps a bounded number of rotated files: " + options);
         });
+    }
+
+    @Test
+    void everyImageOfOursIsAPressroomImage() {
+        List<String> ours = new ArrayList<>();
+        services().forEach((name, svc) -> {
+            String image = String.valueOf(((Map<?, ?>) svc).get("image"));
+            if (image.startsWith("ghcr.io/jakefearsd/")) {
+                ours.add(name);
+                String expected = "caddy".equals(name) ? "ghcr.io/jakefearsd/pressroom-caddy:"
+                        : "ghcr.io/jakefearsd/pressroom:";
+                assertTrue(image.startsWith(expected + "${IMAGE_VERSION"), name + ": " + image);
+            }
+        });
+        assertEquals(Set.of("provision", "admin", "app", "caddy", "analytics-views", "backup"), Set.copyOf(ours));
+    }
+
+    /** The volume names the cutover copies into; caddy's keep their names, under the new project. */
+    @Test
+    void theVolumesArePressroomVolumes() {
+        assertEquals(Set.of("pressroom-pgdata", "pressroom-mediafiles", "pressroom-search-index",
+                        "pressroom-uploads", "pressroom-backups", "caddy-data", "caddy-config"),
+                ((Map<?, ?>) compose.get("volumes")).keySet());
+        Map<String, Object> pg = service("postgres");
+        assertEquals("${POSTGRES_DB:-pressroom}", String.valueOf(((Map<?, ?>) pg.get("environment")).get("POSTGRES_DB")));
+        assertEquals("${POSTGRES_USER:-pressroom}",
+                String.valueOf(((Map<?, ?>) pg.get("environment")).get("POSTGRES_USER")));
+    }
+
+    /** Machine names only: the prose word is Phase 3. */
+    @Test
+    void theFileNamesNoOldMachineName() throws IOException {
+        String text = Files.readString(COMPOSE, StandardCharsets.UTF_8);
+        Matcher m = Pattern.compile("(?<![A-Za-z])roller|ROLLER").matcher(text); // rebrand:keep
+        List<String> found = new ArrayList<>();
+        while (m.find()) {
+            int start = text.lastIndexOf('\n', m.start()) + 1;
+            int end = text.indexOf('\n', m.start());
+            found.add(text.substring(start, end < 0 ? text.length() : end).strip());
+        }
+        assertEquals(List.of(), found);
     }
 
     @Test
