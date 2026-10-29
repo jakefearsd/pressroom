@@ -95,7 +95,7 @@ resolves through the index at the end of `CLAUDE.md`.
   the feed autodiscovery, the category nav and the search form; frontpage's
   `_header.vm` guards its autodiscovery and swaps the "Recent posts" /
   Directory tabs for the site nav (its show-in-nav pages, via
-  `$url.staticPage`) plus `$url.site/roller-ui/siteDirectory.rol`. The header
+  `$url.staticPage`) plus `$url.site/pressroom-ui/siteDirectory.rol`. The header
   name is `$model.weblog.name`, which the wrapper answers with `site.name`.
   `ThemeChromeConsistencyTest` sets the guard aside before comparing a
   page.vm's header and footer with weblog.vm's; `SiteSpaceThemeRenderingTest`
@@ -363,7 +363,7 @@ map assets without this macro fails the build.
   link 7.7, hover 10.3, captions and quotes (`--pf-muted`) 6.0. Journal
   links: 5.8 light, 6.9 dark.
 - **Script.** A classic bootstrap, shaped like the map assets. It injects
-  `$url.site/roller-ui/scripts/roller-content.js` only after finding an
+  `$url.site/pressroom-ui/scripts/roller-content.js` only after finding an
   unprocessed `pre > code` or content `h2`-`h4` with an id. Each call hands
   the bundle the selectors and the weblog's labels (`content.code.*`,
   `content.heading.anchor`, escaped into data attributes). Blocks and
@@ -373,10 +373,10 @@ map assets without this macro fails the build.
   auto-detects: an unknown or absent language keeps its copy button and line
   numbers, with no colours. The gutter sits outside the `pre`, and the copy
   button copies `code.textContent` minus the trailing newline.
-- **Custom domains.** `ControlPlaneHostFilter` 301s `/roller-ui/**` to the
+- **Custom domains.** `ControlPlaneHostFilter` 301s `/pressroom-ui/**` to the
   site host. A redirected script is cross-origin and every theme's CSP is
   `script-src 'self'`, so the filter exempts exactly
-  `/roller-ui/scripts/roller-content.js`. The editor bundle beside it is
+  `/pressroom-ui/scripts/roller-content.js`. The editor bundle beside it is
   still control plane.
 - **Theme fixes that came with it.** Portfolio's `body.pf a` (inherit, no
   underline) stays for the chrome. Content links (`body.pf .pf-entry-content

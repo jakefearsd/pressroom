@@ -36,7 +36,7 @@ import org.springframework.web.bind.annotation.RequestParam;
  * It replaced a type-ahead search box that listed nothing until searched.
  */
 @Controller
-@RequestMapping("/roller-ui/admin")
+@RequestMapping("/pressroom-ui/admin")
 public class UserAdminController extends BaseController {
 
     @Override

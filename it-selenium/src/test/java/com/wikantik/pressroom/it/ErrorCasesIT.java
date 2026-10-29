@@ -59,8 +59,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 })
 class ErrorCasesIT extends PressroomIT {
 
-    private static final String CREATE_USER = "/roller-ui/admin/createUser.rol";
-    private static final String CREATE_WEBLOG = "/roller-ui/createWeblog.rol";
+    private static final String CREATE_USER = "/pressroom-ui/admin/createUser.rol";
+    private static final String CREATE_WEBLOG = "/pressroom-ui/createWeblog.rol";
 
     // ------------------------------------------------------------ not found
 
@@ -85,7 +85,7 @@ class ErrorCasesIT extends PressroomIT {
 
     @Test
     void aWrongPasswordDoesNotSignAnyoneIn() {
-        openPath("/roller-ui/login.rol");
+        openPath("/pressroom-ui/login.rol");
         $("#j_username").setValue(ADMIN_USERNAME);
         $("#j_password").setValue("definitely-not-the-password");
         // The refusal is a new page (login.rol?error=true). Waiting for it is what makes
@@ -94,7 +94,7 @@ class ErrorCasesIT extends PressroomIT {
 
         // Back at a login form, and the editor is still closed to us.
         $("#j_username").should(exist);
-        openPath("/roller-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE);
+        openPath("/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE);
         assertTrue($$("table.rollertable").isEmpty(),
                 "a failed login left the entry list reachable");
     }
@@ -173,9 +173,9 @@ class ErrorCasesIT extends PressroomIT {
     @Test
     void adminScreensAreClosedToAnonymousCallers() {
         for (String path : new String[] {
-                "/roller-ui/admin/globalConfig.rol",
-                "/roller-ui/admin/createUser.rol",
-                "/roller-ui/admin/userAdmin.rol"}) {
+                "/pressroom-ui/admin/globalConfig.rol",
+                "/pressroom-ui/admin/createUser.rol",
+                "/pressroom-ui/admin/userAdmin.rol"}) {
             int status = statusOf(baseUrl() + path);
             assertTrue(status == 401 || status == 403 || status == 302 || status == 200,
                     path + " answered " + status + " to an anonymous caller");
@@ -195,9 +195,9 @@ class ErrorCasesIT extends PressroomIT {
     @Test
     void authoringScreensAreClosedToAnonymousCallers() {
         for (String path : new String[] {
-                "/roller-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE,
-                "/roller-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE,
-                "/roller-ui/authoring/mediaFileView.rol?weblog=" + WEBLOG_HANDLE}) {
+                "/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE,
+                "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE,
+                "/pressroom-ui/authoring/mediaFileView.rol?weblog=" + WEBLOG_HANDLE}) {
             // A redirect to the login page is the expected answer and carries
             // no body, so judge on the status first and only inspect content
             // when something was actually served.

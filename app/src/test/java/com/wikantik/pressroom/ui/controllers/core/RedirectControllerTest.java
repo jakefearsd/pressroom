@@ -45,12 +45,12 @@ class RedirectControllerTest {
 
     @Test
     void loginRedirectForwardsToItsJsp() {
-        assertForwardsToExistingJsp("/roller-ui/login-redirect.jsp", controller.loginRedirect());
+        assertForwardsToExistingJsp("/pressroom-ui/login-redirect.jsp", controller.loginRedirect());
     }
 
     @Test
     void logoutForwardsToItsJsp() {
-        assertForwardsToExistingJsp("/roller-ui/logout-redirect.jsp", controller.logout());
+        assertForwardsToExistingJsp("/pressroom-ui/logout-redirect.jsp", controller.logout());
     }
 
     @Test
@@ -65,7 +65,7 @@ class RedirectControllerTest {
         // still exists on disk as the content that view forwards to.
         Model model = new ExtendedModelMap();
         assertEquals(".denied", controller.accessDenied(model));
-        assertTrue(Files.exists(WEBAPP.resolve("roller-ui/errors/denied.jsp")),
+        assertTrue(Files.exists(WEBAPP.resolve("pressroom-ui/errors/denied.jsp")),
                 ".denied's tiles content target is missing");
         // Without a pageTitle the errorpage layout falls back to the generic
         // `error` key, which put "Error" in the tab for a permission answer.

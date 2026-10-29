@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * Unit tests for {@link WeblogSearchRequest}.
  *
  * <p>Search is addressed entirely through the query string:
- * {@code /roller-ui/rendering/search/<handle>?q=...}. Anything after the handle
+ * {@code /pressroom-ui/rendering/search/<handle>?q=...}. Anything after the handle
  * in the path is a sign the URL was built wrong, so the parser refuses it
  * outright rather than searching something unintended.
  */
@@ -46,7 +46,7 @@ class WeblogSearchRequestTest {
     void requestAimedAtAnotherServletIsRejected() {
         assertThrows(InvalidRequestException.class,
                 () -> new WeblogSearchRequest(mock(Weblogger.class), 
-                        MockRequest.with("/roller-ui/rendering/page", "/myblog")),
+                        MockRequest.with("/pressroom-ui/rendering/page", "/myblog")),
                 "A page URL must not parse as a search request");
     }
 

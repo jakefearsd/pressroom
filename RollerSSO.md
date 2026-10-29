@@ -30,7 +30,7 @@ per public app.
 4. Under **Authorized redirect URIs** add exactly one entry:
 
    ```
-   https://blog.wikantik.com/roller-ui/sso/callback
+   https://blog.wikantik.com/pressroom-ui/sso/callback
    ```
 
    It must match character for character: `https`, this host, this path, no
@@ -94,11 +94,11 @@ app. Two settings are optional and rarely needed:
 1. **The start redirects onward, not to itself.**
 
    ```bash
-   curl -sI https://blog.wikantik.com/roller-ui/sso/start | grep -i '^location'
+   curl -sI https://blog.wikantik.com/pressroom-ui/sso/start | grep -i '^location'
    ```
 
-   Expect `location: /roller-ui/sso/authorize/oidc`. If it points back at
-   `https://blog.wikantik.com/roller-ui/sso/start`, the proxy is not
+   Expect `location: /pressroom-ui/sso/authorize/oidc`. If it points back at
+   `https://blog.wikantik.com/pressroom-ui/sso/start`, the proxy is not
    reporting `https` and the public host. Check `TRUSTED_PROXIES` in `.env`;
    it must be the `cloudflare` host, 192.168.5.50.
 2. **Google was reachable at startup.** Roller probes Google's discovery
@@ -111,7 +111,7 @@ app. Two settings are optional and rarely needed:
    Expect `OIDC discovery reachable`. The log belongs to the container, so a
    deploy (which recreates it) starts it afresh.
 3. **The login page shows the button.** Open
-   `https://blog.wikantik.com/roller-ui/login.rol`; it shows "Sign in with
+   `https://blog.wikantik.com/pressroom-ui/login.rol`; it shows "Sign in with
    Google".
 4. **A real sign-in works.** Use a Google account that is not one of the
    admins, starting from the public URL. A sign-in started on
@@ -130,7 +130,7 @@ app. Two settings are optional and rarely needed:
     waits again. Limits: 5 comments per 10 minutes and 30 per day. A reader can
     delete their own comments. Commenting is not offered on custom-domain
     weblogs.
-  - **The account page** (`/roller-ui/account.rol`, linked from the comment
+  - **The account page** (`/pressroom-ui/account.rol`, linked from the comment
     form): set a display name (not one that matches an author's screen name),
     list and delete their comments, or delete the account, which removes its
     comments. An account that holds a weblog role or admin, or that created any
@@ -166,19 +166,19 @@ logs app`):
 
 | What you see | Meaning | Fix |
 |---|---|---|
-| Google shows `redirect_uri_mismatch` | The redirect URI in the Google client is not exactly `https://blog.wikantik.com/roller-ui/sso/callback`. | Correct it in the Google console (step 1). |
+| Google shows `redirect_uri_mismatch` | The redirect URI in the Google client is not exactly `https://blog.wikantik.com/pressroom-ui/sso/callback`. | Correct it in the Google console (step 1). |
 | "Sign-in with your account provider is not available right now" (`sso=unavailable`) | No Absolute URL is set, or Google's discovery document could not be fetched. The log then shows `OIDC discovery for … failed`. | Set the Absolute URL (step 3); check the deploy host's outbound network. The next sign-in retries; no restart needed. |
 | "This account cannot sign in here…" (`sso=refused`) | The account is disabled, or Google did not confirm the email address. The log line names the reason. | Re-enable it in User Admin, or ask the reader to verify their email with Google. |
 | "Sign-in did not complete" (`sso=failed`) | The return from Google was invalid: an expired or forged request, a cancelled consent, or a token exchange failure. | Try again from the public URL. If it repeats, check the log line's reason and that the client secret in `.env` is current. |
-| The browser keeps redirecting to `/roller-ui/sso/start` | The proxy reports the wrong scheme or host (see step 5.1). | Fix `TRUSTED_PROXIES`. |
+| The browser keeps redirecting to `/pressroom-ui/sso/start` | The proxy reports the wrong scheme or host (see step 5.1). | Fix `TRUSTED_PROXIES`. |
 | Signed out after returning from Google | The session cookie did not survive the return. Roller sets it `SameSite=Lax` for exactly this reason. | Check that nothing in front of Roller rewrites the cookie to `SameSite=Strict`. |
 
 ## Reference
 
 | Item | Value |
 |---|---|
-| Redirect URI to register | `https://blog.wikantik.com/roller-ui/sso/callback` |
-| Start (the button's link) | `/roller-ui/sso/start?return=<path on this site>` |
+| Redirect URI to register | `https://blog.wikantik.com/pressroom-ui/sso/callback` |
+| Start (the button's link) | `/pressroom-ui/sso/start?return=<path on this site>` |
 | Required `.env` lines | `PRESSROOM_SSO_OIDC_CLIENT_ID`, `PRESSROOM_SSO_OIDC_CLIENT_SECRET` |
 | Scopes requested | `openid profile email` |
 | Account binding | Google's issuer plus subject (`sub`), stored in `pressroom_user.sso_issuer`/`sso_subject` (migration V030) |

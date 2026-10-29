@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class PreviewResourceServletTest {
 
-    private static final String PREVIEW_RESOURCE = "/roller-ui/authoring/previewresource";
+    private static final String PREVIEW_RESOURCE = "/pressroom-ui/authoring/previewresource";
 
     private final String handle = "previewresourceblog";
     private User user;

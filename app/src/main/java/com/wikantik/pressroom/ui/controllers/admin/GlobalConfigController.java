@@ -52,7 +52,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
  * Action which handles editing of global configuration.
  */
 @Controller
-@RequestMapping("/roller-ui/admin")
+@RequestMapping("/pressroom-ui/admin")
 public class GlobalConfigController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalConfigController.class);

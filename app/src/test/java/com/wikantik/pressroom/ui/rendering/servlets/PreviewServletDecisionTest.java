@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class PreviewServletDecisionTest {
 
-    private static final String PREVIEW_SERVLET = "/roller-ui/authoring/preview";
+    private static final String PREVIEW_SERVLET = "/pressroom-ui/authoring/preview";
 
     private final String handle = "previewdecisionblog";
     private User user;

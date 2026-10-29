@@ -551,7 +551,7 @@ limitations under the License.
                         </configuration>
                     </execution>
                     <!-- Launches the executable WAR (java -jar, embedded Tomcat) as a
-                         background process and blocks until roller-ui/login.rol answers
+                         background process and blocks until pressroom-ui/login.rol answers
                          or 180s elapse; the same readiness contract cargo's pingURL
                          enforced, now against a subprocess instead of a container-managed
                          Tomcat. Must run after pg-seed-it-data: Roller caches the seed

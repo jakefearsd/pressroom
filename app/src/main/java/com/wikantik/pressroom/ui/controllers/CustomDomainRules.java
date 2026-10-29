@@ -101,7 +101,7 @@ public final class CustomDomainRules {
      * {@code site.absoluteurl} (I4b). Nothing else rejects a weblog claiming
      * the site's own hostname as its custom domain, and once claimed,
      * {@code VirtualHostRegistry.handleFor} resolves that host to the
-     * claiming weblog for every request -- including {@code /roller-ui/**},
+     * claiming weblog for every request -- including {@code /pressroom-ui/**},
      * which {@code ControlPlaneHostFilter} then redirects back to the site
      * host it just arrived on once {@code site.absoluteurl} is set,
      * producing an infinite redirect loop on the admin UI with no route back

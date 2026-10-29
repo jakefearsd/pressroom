@@ -43,8 +43,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class DuplicateEntryIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/roller-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
-    private static final String ENTRIES = "/roller-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String ENTRIES = "/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE;
 
     /** Rendered on the edit page only once the entry is actually published. */
     private static final String PERMALINK = "#entry_bean_permalink";

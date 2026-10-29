@@ -25,7 +25,7 @@
 <p><spring:message code="forgotPassword.prompt"/></p>
 
 <form method="post" id="forgotPasswordForm" class="form-signin"
-      action="<c:url value='/roller-ui/forgotPassword!send.rol'/>">
+      action="<c:url value='/pressroom-ui/forgotPassword!send.rol'/>">
 
     <div class="mb-3">
         <label for="identifier" class="form-label"><spring:message code="forgotPassword.identifier"/></label>

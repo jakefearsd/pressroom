@@ -19,7 +19,7 @@
 
 <p class="subtitle"><spring:message code="createWebsite.prompt"/></p>
 
-<form:form modelAttribute="bean" action="${pageContext.request.contextPath}/roller-ui/createWeblog!save.rol"
+<form:form modelAttribute="bean" action="${pageContext.request.contextPath}/pressroom-ui/createWeblog!save.rol"
            method="post" cssClass="validate-form form-stacked">
 
     <sec:csrfInput/>
@@ -96,7 +96,7 @@
 
     <button type="submit" class="btn btn-primary"><spring:message code="createWebsite.button.save"/></button>
 
-    <a class="btn btn-secondary" href="<c:url value='/roller-ui/menu.rol'/>"><spring:message code="generic.cancel"/></a>
+    <a class="btn btn-secondary" href="<c:url value='/pressroom-ui/menu.rol'/>"><spring:message code="generic.cancel"/></a>
 
 </form:form>
 
@@ -128,7 +128,7 @@
     }
 
     function previewImage(themeId) {
-        $.ajax({ url: "${siteURL}/roller-ui/authoring/themedata",
+        $.ajax({ url: "${siteURL}/pressroom-ui/authoring/themedata",
             data: {theme:themeId}, success: function(data) {
                 $('#themedescription').html(data.description);
                 $('#themeThumbnail').attr('src','${siteURL}' + data.previewPath);

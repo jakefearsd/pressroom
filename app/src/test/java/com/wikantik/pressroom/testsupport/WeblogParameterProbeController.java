@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @Controller
 public class WeblogParameterProbeController implements UISecurityEnforced {
 
-    @GetMapping("/roller-ui/weblogParameterProbe")
+    @GetMapping("/pressroom-ui/weblogParameterProbe")
     @ResponseBody
     public String probe(HttpServletRequest request) {
         return request.getAttribute("actionWeblog") instanceof Weblog weblog

@@ -37,9 +37,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class EntriesPagerTest {
 
-    private static final String PLAIN_BASE = "/roller-ui/authoring/entries.rol";
+    private static final String PLAIN_BASE = "/pressroom-ui/authoring/entries.rol";
     private static final String FILTERED_BASE =
-            "/roller-ui/authoring/entries.rol?weblog=myblog&bean.status=DRAFT";
+            "/pressroom-ui/authoring/entries.rol?weblog=myblog&bean.status=DRAFT";
 
     @Test
     void theFirstPageWithMoreItemsLinksForwardButNotBack() {

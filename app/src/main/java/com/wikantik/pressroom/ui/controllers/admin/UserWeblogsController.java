@@ -51,7 +51,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * {@code PressroomHandlerInterceptor} would read that as the action weblog.
  */
 @Controller
-@RequestMapping("/roller-ui/admin")
+@RequestMapping("/pressroom-ui/admin")
 public class UserWeblogsController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(UserWeblogsController.class);
@@ -239,16 +239,16 @@ public class UserWeblogsController extends BaseController {
 
     private String accountNotFound(HttpServletRequest request, RedirectAttributes redirectAttributes) {
         addFlashError(redirectAttributes, "userAdmin.error.userNotFound", request);
-        return "redirect:/roller-ui/admin/userAdmin.rol";
+        return "redirect:/pressroom-ui/admin/userAdmin.rol";
     }
 
     /** Back to the account's own page: an agent's page, or the person editor. */
     private static String backTo(User account, RedirectAttributes redirectAttributes) {
         if (account.isAgent()) {
             redirectAttributes.addAttribute("userName", account.getUserName());
-            return "redirect:/roller-ui/admin/agent.rol";
+            return "redirect:/pressroom-ui/admin/agent.rol";
         }
         redirectAttributes.addAttribute("bean.userName", account.getUserName());
-        return "redirect:/roller-ui/admin/modifyUser.rol";
+        return "redirect:/pressroom-ui/admin/modifyUser.rol";
     }
 }

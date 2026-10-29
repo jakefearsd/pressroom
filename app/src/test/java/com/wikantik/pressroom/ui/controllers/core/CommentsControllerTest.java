@@ -114,8 +114,8 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppC
  */
 class CommentsControllerTest {
 
-    private static final String SESSION = "/roller-ui/rendering/comments/session.rol";
-    private static final String POST = "/roller-ui/rendering/comments.rol";
+    private static final String SESSION = "/pressroom-ui/rendering/comments/session.rol";
+    private static final String POST = "/pressroom-ui/rendering/comments.rol";
     private static final String ISSUER = "https://issuer.test/comments-endpoints";
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final SsoSettings SSO = mock(SsoSettings.class);
@@ -258,7 +258,7 @@ class CommentsControllerTest {
         assertEquals(200, on.getResponse().getStatus());
         assertEquals("no-store", on.getResponse().getHeader("Cache-Control"));
         assertEquals(Map.of("signedIn", false,
-                        "signInUrl", "/roller/roller-ui/sso/start?return="
+                        "signInUrl", "/roller/pressroom-ui/sso/start?return="
                                 + URLEncoder.encode(entryPath, StandardCharsets.UTF_8)),
                 json(on));
         assertEquals(entryPath, ReturnPaths.sanitize(entryPath, "/roller"),
@@ -291,7 +291,7 @@ class CommentsControllerTest {
         assertEquals("Ann Reader", session.get("displayName"));
         assertFalse(body(result).contains(reader.getUserName()), "no username: the script matches by id (R7)");
         assertEquals(false, session.get("isOwner"));
-        assertEquals("/roller-ui/account.rol", session.get("accountUrl"));
+        assertEquals("/pressroom-ui/account.rol", session.get("accountUrl"));
         Map<?, ?> token = (Map<?, ?>) session.get("csrf");
         assertEquals("X-CSRF-TOKEN", token.get("header"));
         assertFalse(((String) token.get("token")).isBlank());
@@ -692,7 +692,7 @@ class CommentsControllerTest {
     }
 
     private static String deletePath(String commentId) {
-        return "/roller-ui/rendering/comments/" + commentId + ".rol";
+        return "/pressroom-ui/rendering/comments/" + commentId + ".rol";
     }
 
     private static String payload(String entryId, String body) {

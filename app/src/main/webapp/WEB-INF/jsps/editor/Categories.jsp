@@ -140,7 +140,7 @@
             </div>
 
             <div class="modal-body">
-                <form id="categoryEditForm" class="form-stacked" action="${pageContext.request.contextPath}/roller-ui/authoring/categoryEdit.rol" method="post">
+                <form id="categoryEditForm" class="form-stacked" action="${pageContext.request.contextPath}/pressroom-ui/authoring/categoryEdit.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
                     <input type="hidden" name="bean.id" value="${fn:escapeXml(bean.id)}"/>
 
@@ -275,8 +275,8 @@
         // category through the UI had never worked.
         var hasId = categoryField('bean.id').val();
         var saveUrl = hasId && hasId.trim() !== ''
-                ? "${pageContext.request.contextPath}/roller-ui/authoring/categoryEdit!save.rol"
-                : "${pageContext.request.contextPath}/roller-ui/authoring/categoryAdd!save.rol";
+                ? "${pageContext.request.contextPath}/pressroom-ui/authoring/categoryEdit!save.rol"
+                : "${pageContext.request.contextPath}/pressroom-ui/authoring/categoryAdd!save.rol";
 
         // post category via AJAX
         $.ajax({
@@ -329,7 +329,7 @@
                 </p>
             </div>
 
-            <form id="categoryRemoveForm" action="${pageContext.request.contextPath}/roller-ui/authoring/categoryRemove!remove.rol" method="post">
+            <form id="categoryRemoveForm" action="${pageContext.request.contextPath}/pressroom-ui/authoring/categoryRemove!remove.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
                 <input type="hidden" name="removeId" value="${fn:escapeXml(removeId)}"/>
 

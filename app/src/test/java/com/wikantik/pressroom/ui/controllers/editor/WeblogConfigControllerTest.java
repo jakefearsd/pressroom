@@ -285,7 +285,7 @@ class WeblogConfigControllerTest extends EditorControllerTestSupport {
     /**
      * I4b: nothing rejected setting customDomain to the site's own hostname.
      * Once claimed, VirtualHostRegistry resolves that host to the claiming
-     * weblog for every request -- including /roller-ui/**, which
+     * weblog for every request -- including /pressroom-ui/**, which
      * ControlPlaneHostFilter then redirects back to the very host it just
      * arrived on once site.absoluteurl is set, an infinite loop on the admin
      * UI with no route back except a manual database edit.

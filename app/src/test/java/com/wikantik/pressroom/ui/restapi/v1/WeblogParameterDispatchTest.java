@@ -268,7 +268,7 @@ class WeblogParameterDispatchTest {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(principal, null, List.of()));
 
-        mockMvc.perform(get("/roller-ui/weblogParameterProbe?weblog=A"))
+        mockMvc.perform(get("/pressroom-ui/weblogParameterProbe?weblog=A"))
                 .andExpect(status().isOk())
                 .andExpect(r -> assertEquals("weblog:A", r.getResponse().getContentAsString()));
     }

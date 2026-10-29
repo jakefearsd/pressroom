@@ -130,7 +130,7 @@ class AnalyticsInjectionIT extends PressroomIT {
      * longer has.
      *
      * <p>Maintenance moved off the blog-author tabs and into Global Admin
-     * (W2 Task 7): the page is reached at {@code /roller-ui/admin/
+     * (W2 Task 7): the page is reached at {@code /pressroom-ui/admin/
      * maintenance.rol} with no {@code weblog=} parameter, and the weblog to
      * operate on is chosen from a {@code <select>} on the page instead. This
      * still needs a weblog to exist so the picker has an option to select
@@ -142,7 +142,7 @@ class AnalyticsInjectionIT extends PressroomIT {
         loginAsAdmin();
         createWeblog();
 
-        openPath("/roller-ui/admin/maintenance.rol");
+        openPath("/pressroom-ui/admin/maintenance.rol");
         $("button[formaction$='maintenance!flushCache.rol']").should(exist);
         $$("button").findBy(text("Reset")).shouldNot(exist);
         assertFalse($("body").getText().toLowerCase().contains("reset hit"),
@@ -170,7 +170,7 @@ class AnalyticsInjectionIT extends PressroomIT {
     }
 
     private void openSettings(String handle) {
-        openPath("/roller-ui/authoring/weblogConfig.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + handle);
         $("input[name='bean.name']").should(visible);
     }
 
@@ -178,7 +178,7 @@ class AnalyticsInjectionIT extends PressroomIT {
     private String createWeblog() {
         String handle = "analytics" + nonce();
 
-        openPath("/roller-ui/createWeblog.rol");
+        openPath("/pressroom-ui/createWeblog.rol");
         $("#name").should(visible).setValue("Analytics " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");

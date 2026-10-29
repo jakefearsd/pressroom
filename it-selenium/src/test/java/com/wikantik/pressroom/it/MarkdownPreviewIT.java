@@ -53,7 +53,7 @@ import static com.codeborne.selenide.Selenide.switchTo;
  */
 class MarkdownPreviewIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/roller-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
 
     /** The mode control's Preview radio, and the frame it reveals. */
     private static final String PREVIEW_BUTTON = Editor.MODE_PREVIEW;

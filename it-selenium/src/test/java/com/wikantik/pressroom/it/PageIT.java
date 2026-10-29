@@ -64,7 +64,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
 class PageIT extends PressroomIT {
 
-    private static final String CREATE_WEBLOG = "/roller-ui/createWeblog.rol";
+    private static final String CREATE_WEBLOG = "/pressroom-ui/createWeblog.rol";
 
     /**
      * The seeded weblog, on {@code journal} -- used by the two editor tests
@@ -73,7 +73,7 @@ class PageIT extends PressroomIT {
      * {@code portfolio} weblog, for the reason the class comment gives.
      */
     private static final String PAGE_EDIT_ON_SHARED =
-            "/roller-ui/authoring/pageEdit.rol?weblog=" + WEBLOG_HANDLE;
+            "/pressroom-ui/authoring/pageEdit.rol?weblog=" + WEBLOG_HANDLE;
 
     /** The shell renders through the theme; journal's prose class is qj-prose. */
     private static final String PREVIEW_ARTICLE = "#previewArticle.qj-prose";
@@ -98,7 +98,7 @@ class PageIT extends PressroomIT {
         String pageUrl = baseUrl() + "/" + handle + "/about";
 
         // --- create as a draft, with Markdown and a [cta] in the body ------
-        openPath("/roller-ui/authoring/pageEdit.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
         $("#pageEditForm").should(exist);
         $("#page_bean_slug").setValue("about");
         $("#page_bean_title").setValue("About Us");
@@ -130,7 +130,7 @@ class PageIT extends PressroomIT {
         // route, so an author clicking the URL on their own admin screen got
         // a 404. Asserted by fetching it rather than by matching a string:
         // what makes this a bug is that the link does not resolve.
-        openPath("/roller-ui/authoring/pages.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
         String listedHref = $("tr[data-page-slug='about'] td.data a").getAttribute("href");
         assertTrue(listedHref != null && listedHref.endsWith("/" + handle + "/about"),
                 "the Pages list must link a published page at /<handle>/<slug>, got: " + listedHref);
@@ -262,7 +262,7 @@ class PageIT extends PressroomIT {
 
     /** Opens a page for editing from the list, found by its title link text. */
     private void openPageByTitle(String handle, String title) {
-        openPath("/roller-ui/authoring/pages.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
         $("#pageRemoveForm").should(exist);
         $$("a").findBy(text(title)).should(exist).click();
         $("#pageEditForm").should(exist);

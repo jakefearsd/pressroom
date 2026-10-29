@@ -34,7 +34,7 @@
      of the form it submits. The index is generated from the SAME
      globalConfigDef.displayGroups the fields are -- a hand-written list would
      stop matching the moment runtimeConfigDefs.xml grew a group, silently. --%>
-<form method="post" action="<c:url value='/roller-ui/admin/globalConfig!save.rol'/>"
+<form method="post" action="<c:url value='/pressroom-ui/admin/globalConfig!save.rol'/>"
       class="settings-grid form-stacked">
     <sec:csrfInput/>
 
@@ -88,7 +88,7 @@
                             </c:forEach>
                         </select>
                         <c:if test="${empty sitePages}">
-                            <c:url value="/roller-ui/authoring/pages.rol" var="sitePagesUrl">
+                            <c:url value="/pressroom-ui/authoring/pages.rol" var="sitePagesUrl">
                                 <c:param name="weblog" value="site-space"/>
                             </c:url>
                             <div class="form-text"><spring:message code="configForm.frontpageNoSitePages"/>

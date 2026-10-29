@@ -286,7 +286,7 @@ class EntryEditJspTest {
         assertTrue(jsp.contains("name=\"bean.commentsClosed\""), "Comments closed checkbox");
         assertTrue(jsp.contains("code=\"weblogEdit.commentsClosed\""));
         assertTrue(jsp.contains("code=\"weblogEdit.commentCounts\""), "counts line");
-        assertTrue(jsp.contains("/roller-ui/authoring/comments.rol"), "links to the moderation page");
+        assertTrue(jsp.contains("/pressroom-ui/authoring/comments.rol"), "links to the moderation page");
         assertTrue(jsp.contains("actionWeblog.commentsEnabled"), "shown only when comments are on");
     }
 

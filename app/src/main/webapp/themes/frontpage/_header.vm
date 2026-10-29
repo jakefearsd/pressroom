@@ -52,7 +52,7 @@
         <a href="$url.login">$text.get("navigationBar.login")</a>
         #else
         #if($utils.isUserAuthor())
-        <a href="$url.absoluteSite/roller-ui/menu.rol">$text.get("mainPage.mainMenu")</a>
+        <a href="$url.absoluteSite/pressroom-ui/menu.rol">$text.get("mainPage.mainMenu")</a>
         #end
         <a href="$url.logout">$text.get("navigationBar.logout")</a>
         #end
@@ -78,7 +78,7 @@
       #foreach($navPage in $model.getNavPages($model.weblog))
       <a href="$url.staticPage($navPage.slug)"#if($model.page && $model.page.slug == $navPage.slug) aria-current="page"#end>$utils.escapeHTML($navPage.title)</a>
       #end
-      <a href="$url.site/roller-ui/siteDirectory.rol">Directory</a>
+      <a href="$url.site/pressroom-ui/siteDirectory.rol">Directory</a>
       #else
       <a href="$url.home"#if($fdTab == "home") aria-current="page"#end>Recent posts</a>
       <a href="$url.page("directory")"#if($fdTab == "directory") aria-current="page"#end>Directory</a>

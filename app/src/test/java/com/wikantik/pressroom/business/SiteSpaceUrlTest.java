@@ -118,9 +118,9 @@ class SiteSpaceUrlTest {
     @Test
     void aPreviewOfTheSiteSpaceCarriesTheHandleOnce() {
         PreviewURLStrategy preview = new PreviewURLStrategy(null);
-        assertEquals("/roller/roller-ui/authoring/preview/site-space/page/frontpage-custom.css",
+        assertEquals("/roller/pressroom-ui/authoring/preview/site-space/page/frontpage-custom.css",
                 preview.getWeblogPageURL(site, null, "frontpage-custom.css", null, null, null, null, 0, false));
-        assertEquals("/roller/roller-ui/authoring/preview/site-space/mediaresource/abc123",
+        assertEquals("/roller/pressroom-ui/authoring/preview/site-space/mediaresource/abc123",
                 preview.getMediaFileURL(site, "abc123", false));
     }
 

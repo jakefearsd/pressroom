@@ -61,7 +61,7 @@ import static org.mockito.Mockito.withSettings;
 class TrashControllerTest extends EditorControllerTestSupport {
 
     private static final String REDIRECT =
-            "redirect:/roller-ui/authoring/trash.rol?weblog=" + WEBLOG_HANDLE;
+            "redirect:/pressroom-ui/authoring/trash.rol?weblog=" + WEBLOG_HANDLE;
 
     private TrashController controller;
     private Model model;

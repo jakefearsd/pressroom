@@ -199,7 +199,7 @@ public class SecurityConfig {
      * application context), so this is not an edge case -- it breaks the
      * entire authorization configuration on every real startup. The
      * patterns declared throughout this class are already the full request
-     * path (e.g. {@code /roller-ui/menu*}), matching what
+     * path (e.g. {@code /pressroom-ui/menu*}), matching what
      * {@code *.rol}-mapped {@code DispatcherServlet} itself sees (a suffix
      * servlet mapping consumes no path prefix, unlike a {@code /prefix/*}
      * mapping), so the fix is simply to keep the builder's own default
@@ -225,14 +225,14 @@ public class SecurityConfig {
      * was checked against the controllers that actually declare the routes
      * it must cover (see the Task 4 report's semantics table):
      * <ul>
-     *   <li>{@code /roller-ui/login-redirect**}, {@code profile**},
+     *   <li>{@code /pressroom-ui/login-redirect**}, {@code profile**},
      *       {@code createWeblog**}, {@code menu**}, {@code setup**} matched
      *       {@code X.rol} and {@code X!action.rol} in the XML -- both are a
      *       single path segment, so the PathPattern equivalent is a bare
-     *       {@code *} suffix ({@code /roller-ui/profile*}, etc.), not
+     *       {@code *} suffix ({@code /pressroom-ui/profile*}, etc.), not
      *       {@code **} (which would also match extra path segments the old
      *       Ant pattern's single-segment glue never did).</li>
-     *   <li>{@code /roller-ui/authoring/**} and {@code /roller-ui/admin/**}
+     *   <li>{@code /pressroom-ui/authoring/**} and {@code /pressroom-ui/admin/**}
      *       keep their {@code **} verbatim -- both are true multi-segment
      *       subtrees (authoring covers e.g. {@code authoring/overlay/*} and
      *       {@code authoring/preview/*} too), which {@code **} still means
@@ -251,15 +251,15 @@ public class SecurityConfig {
             .authenticationManager(authenticationManager)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
-                        "/roller-ui/login-redirect*",
-                        "/roller-ui/profile*",
-                        "/roller-ui/createWeblog*",
-                        "/roller-ui/menu*",
-                        "/roller-ui/authoring/**")
+                        "/pressroom-ui/login-redirect*",
+                        "/pressroom-ui/profile*",
+                        "/pressroom-ui/createWeblog*",
+                        "/pressroom-ui/menu*",
+                        "/pressroom-ui/authoring/**")
                     .hasAnyAuthority("admin", "editor")
                 .requestMatchers(
-                        "/roller-ui/admin/**",
-                        "/roller-ui/setup*",
+                        "/pressroom-ui/admin/**",
+                        "/pressroom-ui/setup*",
                         "/rewrite-status*")
                     .hasAuthority("admin")
                 // Catch-all, must be last (first-match-wins): the public
@@ -278,8 +278,8 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.ignoringRequestMatchers(
                     SecurityConfig::isPublicAudiencePost))
             .formLogin(form -> form
-                .loginPage("/roller-ui/login.rol")
-                .loginProcessingUrl("/roller_j_security_check")
+                .loginPage("/pressroom-ui/login.rol")
+                .loginProcessingUrl("/pressroom_j_security_check")
                 .usernameParameter("j_username")
                 .passwordParameter("j_password")
                 // Where a successful login lands when there is no saved
@@ -290,8 +290,8 @@ public class SecurityConfig {
                 // successfully. login-redirect.jsp already exists for exactly
                 // this job: straight to the editor when the user has one
                 // weblog, otherwise the menu.
-                .defaultSuccessUrl("/roller-ui/login-redirect.rol")
-                .failureUrl("/roller-ui/login.rol?error=true"))
+                .defaultSuccessUrl("/pressroom-ui/login-redirect.rol")
+                .failureUrl("/pressroom-ui/login.rol?error=true"))
             // security.xml registered no <logout> element at all -- logout is
             // handled entirely at the application level (/logout.rol forwards
             // to logout-redirect.jsp, which calls session.invalidate()).
@@ -461,7 +461,7 @@ public class SecurityConfig {
             return false;
         }
         String path = request.getRequestURI().substring(request.getContextPath().length());
-        return "/roller-ui/rendering/contact.rol".equals(path)
+        return "/pressroom-ui/rendering/contact.rol".equals(path)
                 || "/newsletter/subscribe".equals(path);
     }
 }

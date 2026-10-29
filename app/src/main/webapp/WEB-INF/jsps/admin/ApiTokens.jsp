@@ -26,11 +26,11 @@
 
 <c:choose>
     <c:when test="${showAll}">
-        <c:url var="toggleUrl" value="/roller-ui/admin/apiTokens.rol"/>
+        <c:url var="toggleUrl" value="/pressroom-ui/admin/apiTokens.rol"/>
         <p><a href="${toggleUrl}" id="apiTokensToggle"><spring:message code="apiTokens.admin.showLive"/></a></p>
     </c:when>
     <c:otherwise>
-        <c:url var="toggleUrl" value="/roller-ui/admin/apiTokens.rol">
+        <c:url var="toggleUrl" value="/pressroom-ui/admin/apiTokens.rol">
             <c:param name="all" value="true"/>
         </c:url>
         <p><a href="${toggleUrl}" id="apiTokensToggle"><spring:message code="apiTokens.admin.showAll"/></a></p>
@@ -105,7 +105,7 @@
                                 <spring:message code="apiTokens.state.expired"/>
                             </c:when>
                             <c:otherwise>
-                                <form method="post" action="<c:url value='/roller-ui/admin/apiTokens!revoke.rol'/>">
+                                <form method="post" action="<c:url value='/pressroom-ui/admin/apiTokens!revoke.rol'/>">
                                     <sec:csrfInput/>
                                     <input type="hidden" name="id" value="${fn:escapeXml(row.token.id)}"/>
                                     <c:if test="${showAll}"><input type="hidden" name="all" value="true"/></c:if>

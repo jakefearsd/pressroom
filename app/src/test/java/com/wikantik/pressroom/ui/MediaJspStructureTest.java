@@ -171,7 +171,7 @@ class MediaJspStructureTest {
     }
 
     /**
-     * The chooser's folder switcher posted to /roller-ui/authoring/
+     * The chooser's folder switcher posted to /pressroom-ui/authoring/
      * mediaFileImageChooser.rol, a path nothing serves (the controller is a
      * GET under /overlay), so changing folder in the picker failed. It also
      * has to carry imagesOnly, or a featured-image picker would start
@@ -180,7 +180,7 @@ class MediaJspStructureTest {
     @Test
     void theChooserFolderSwitcherReloadsTheChooserInTheSameMode() throws IOException {
         String chooser = jsp("MediaFileImageChooser.jsp");
-        assertTrue(chooser.contains("action=\"${pageContext.request.contextPath}/roller-ui/authoring/overlay/"
+        assertTrue(chooser.contains("action=\"${pageContext.request.contextPath}/pressroom-ui/authoring/overlay/"
                 + "mediaFileImageChooser.rol\" method=\"get\""), "a GET to the mapped overlay path");
         assertTrue(chooser.contains("<input type=\"hidden\" name=\"imagesOnly\" value=\"true\"/>"), chooser);
         assertFalse(chooser.contains("<sec:csrfInput/>"), "a GET form must not put the CSRF token in the URL");

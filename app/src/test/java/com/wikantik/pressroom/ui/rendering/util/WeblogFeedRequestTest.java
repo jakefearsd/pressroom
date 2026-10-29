@@ -41,7 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class WeblogFeedRequestTest {
 
-    private static final String FEED_SERVLET = "/roller-ui/rendering/feed";
+    private static final String FEED_SERVLET = "/pressroom-ui/rendering/feed";
 
     private static final int MAX_TAGS =
             WebloggerConfig.getIntProperty("tags.queries.maxIntersectionSize", 3);
@@ -57,7 +57,7 @@ class WeblogFeedRequestTest {
     void requestAimedAtAnotherServletIsRejected() {
         assertThrows(InvalidRequestException.class,
                 () -> new WeblogFeedRequest(mock(Weblogger.class), 
-                        MockRequest.with("/roller-ui/rendering/page", "/myblog/entries/rss")),
+                        MockRequest.with("/pressroom-ui/rendering/page", "/myblog/entries/rss")),
                 "A page URL must not parse as a feed request");
     }
 

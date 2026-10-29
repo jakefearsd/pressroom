@@ -24,7 +24,7 @@
     </c:choose>
 </p>
 
-<form method="post" action="<c:url value='/roller-ui/admin/businesses!save.rol'/>" class="form-stacked">
+<form method="post" action="<c:url value='/pressroom-ui/admin/businesses!save.rol'/>" class="form-stacked">
     <sec:csrfInput/>
     <input type="hidden" name="bean.id" value="${fn:escapeXml(bean.id)}"/>
 
@@ -117,7 +117,7 @@
 
     <div class="mb-3">
         <button type="submit" class="btn btn-primary" id="business-save"><spring:message code="generic.save"/></button>
-        <c:url var="businessesListUrl" value="/roller-ui/admin/businesses.rol"/>
+        <c:url var="businessesListUrl" value="/pressroom-ui/admin/businesses.rol"/>
         <a href="${businessesListUrl}" class="btn btn-secondary"><spring:message code="generic.cancel"/></a>
     </div>
 </form>

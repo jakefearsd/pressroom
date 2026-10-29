@@ -24,14 +24,14 @@ mismatch 404s the asset on every page that includes this file.
 <%-- "Quiet Instrument" design tokens (docs/design/design-system.md). Loads
      after Bootstrap so its custom properties are available, and before
      roller.css so roller.css can override on top of it. --%>
-<link rel="stylesheet" media="all" href='<c:url value="/roller-ui/styles/roller-tokens.css"/>' />
+<link rel="stylesheet" media="all" href='<c:url value="/pressroom-ui/styles/roller-tokens.css"/>' />
 
-<link rel="stylesheet" media="all" href='<c:url value="/roller-ui/styles/roller.css"/>' />
+<link rel="stylesheet" media="all" href='<c:url value="/pressroom-ui/styles/roller.css"/>' />
 
 <script src="<c:url value="/theme/scripts/roller.js"/>"></script>
 
 <%-- The Markdown editor. Built from app/frontend by Maven (esbuild) into
-     roller-ui/scripts/roller-editor.js under the webapp root -- see
+     pressroom-ui/scripts/roller-editor.js under the webapp root -- see
      app/frontend/build.mjs for why that path and no classpath one. Loaded
      only on the two screens that mount an editor: the bundle is a few
      hundred KB and every other admin page would pay for it.
@@ -51,7 +51,7 @@ mismatch 404s the asset on every page that includes this file.
      Colophon's, the one the footer shows; c:param encodes it. --%>
 <% request.setAttribute("editorBundleVersion", com.wikantik.pressroom.business.Colophon.of(
        null, null, java.time.Clock.systemDefaultZone()).version()); %>
-<script src="<c:url value='/roller-ui/scripts/roller-editor.js'><c:param name='v' value='${editorBundleVersion}'/></c:url>"></script>
-<link rel="stylesheet" media="all" href="<c:url value='/roller-ui/styles/roller-editor.css'/>" />
+<script src="<c:url value='/pressroom-ui/scripts/roller-editor.js'><c:param name='v' value='${editorBundleVersion}'/></c:url>"></script>
+<link rel="stylesheet" media="all" href="<c:url value='/pressroom-ui/styles/roller-editor.css'/>" />
 </c:if>
 

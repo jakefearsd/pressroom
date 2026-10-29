@@ -105,7 +105,7 @@ class UserWeblogsControllerTest {
         try (AdminLogCapture log = AdminLogCapture.start()) {
             String view = controller.grant(asAdmin(), redirect, "jake", "travel", "post");
 
-            assertEquals("redirect:/roller-ui/admin/modifyUser.rol", view);
+            assertEquals("redirect:/pressroom-ui/admin/modifyUser.rol", view);
             assertEquals("jake", redirect.asMap().get("bean.userName"));
             verify(weblogger.userManager()).grantWeblogPermission(travel, person, List.of("post"));
             assertEquals(1, weblogger.flushCount());
@@ -118,7 +118,7 @@ class UserWeblogsControllerTest {
     void anAgentReturnsToItsOwnPage() throws Exception {
         String view = controller.grant(asAdmin(), redirect, "bot", "travel", "post");
 
-        assertEquals("redirect:/roller-ui/admin/agent.rol", view);
+        assertEquals("redirect:/pressroom-ui/admin/agent.rol", view);
         assertEquals("bot", redirect.asMap().get("userName"));
     }
 
@@ -187,7 +187,7 @@ class UserWeblogsControllerTest {
     void anUnknownAccountGoesBackToTheList() throws Exception {
         String view = controller.grant(asAdmin(), redirect, "nobody", "travel", "post");
 
-        assertEquals("redirect:/roller-ui/admin/userAdmin.rol", view);
+        assertEquals("redirect:/pressroom-ui/admin/userAdmin.rol", view);
         assertEquals(List.of("userAdmin.error.userNotFound"), ControllerTestFixture.flashErrors(redirect));
     }
 

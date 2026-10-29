@@ -56,7 +56,7 @@ import org.springframework.web.bind.annotation.RequestParam;
  * reflects only what was actually deleted.
  */
 @Controller
-@RequestMapping("/roller-ui/authoring")
+@RequestMapping("/pressroom-ui/authoring")
 public class FormSubmissionsController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(FormSubmissionsController.class);

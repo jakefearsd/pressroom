@@ -21,7 +21,7 @@
 
 
 
-<form:form modelAttribute="bean" action="${pageContext.request.contextPath}/roller-ui/profile!save.rol" method="post" cssClass="form-stacked">
+<form:form modelAttribute="bean" action="${pageContext.request.contextPath}/pressroom-ui/profile!save.rol" method="post" cssClass="form-stacked">
     <sec:csrfInput/>
 
     <div class="row mb-3">
@@ -102,12 +102,12 @@
 
     <button type="submit" id="saveButton" class="btn btn-primary"><spring:message code="generic.save"/></button>
 
-    <a class="btn btn-secondary" href="<c:url value='/roller-ui/menu.rol'/>"><spring:message code="generic.cancel"/></a>
+    <a class="btn btn-secondary" href="<c:url value='/pressroom-ui/menu.rol'/>"><spring:message code="generic.cancel"/></a>
 
 </form:form>
 
 <p class="mt-4">
-    <a href="<c:url value='/roller-ui/profileTokens.rol'/>" id="profileTokensLink"><spring:message code="apiTokens.profile.link"/></a>
+    <a href="<c:url value='/pressroom-ui/profileTokens.rol'/>" id="profileTokensLink"><spring:message code="apiTokens.profile.link"/></a>
 </p>
 
 <%-- -------------------------------------------------------- --%>

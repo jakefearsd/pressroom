@@ -51,7 +51,7 @@
 <spring:message code="trash.emptyConfirm" arguments="${fn:length(trashedEntries)}" var="trashEmptyConfirm"/>
 <div id="trash-list-marker">
 <form id="trashForm" method="post"
-      action="${pageContext.request.contextPath}/roller-ui/authoring/trash!restore.rol">
+      action="${pageContext.request.contextPath}/pressroom-ui/authoring/trash!restore.rol">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
 <sec:csrfInput/>
 
@@ -78,14 +78,14 @@
                  per row -- same reasoning as Entries.jsp's duplicateId. --%>
             <button type="submit" name="restoreId" value="${entry.id}"
                     class="btn btn-outline-secondary btn-sm"
-                    formaction="${pageContext.request.contextPath}/roller-ui/authoring/trash!restore.rol">
+                    formaction="${pageContext.request.contextPath}/pressroom-ui/authoring/trash!restore.rol">
                 <spring:message code="trash.restore"/>
             </button>
         </td>
         <td>
             <button type="submit" name="deleteId" value="${entry.id}"
                     class="btn btn-link p-0 align-baseline border-0 text-danger"
-                    formaction="${pageContext.request.contextPath}/roller-ui/authoring/trash!delete.rol"
+                    formaction="${pageContext.request.contextPath}/pressroom-ui/authoring/trash!delete.rol"
                     data-confirm="${trashDeleteForeverConfirm}">
                 <spring:message code="trash.deleteForever"/>
             </button>
@@ -100,7 +100,7 @@
 <c:if test="${not empty trashedEntries}">
     <div class="d-flex justify-content-end mb-3">
         <button type="submit" class="btn btn-danger"
-                formaction="${pageContext.request.contextPath}/roller-ui/authoring/trash!empty.rol"
+                formaction="${pageContext.request.contextPath}/pressroom-ui/authoring/trash!empty.rol"
                 data-confirm="${trashEmptyConfirm}">
             <spring:message code="trash.empty"/>
         </button>

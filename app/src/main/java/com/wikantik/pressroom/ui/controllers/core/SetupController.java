@@ -43,7 +43,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * Page used to display Roller install instructions.
  */
 @Controller
-@RequestMapping("/roller-ui")
+@RequestMapping("/pressroom-ui")
 public class SetupController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(SetupController.class);
@@ -133,6 +133,6 @@ public class SetupController extends BaseController {
             addFlashError(redirectAttributes, "frontpageConfig.values.error", request);
         }
 
-        return "redirect:/roller-ui/setup.rol";
+        return "redirect:/pressroom-ui/setup.rol";
     }
 }

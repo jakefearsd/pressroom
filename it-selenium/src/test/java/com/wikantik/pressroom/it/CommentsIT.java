@@ -128,15 +128,15 @@ class CommentsIT extends PressroomIT {
     private static final String UNAVAILABLE_TEXT = "Commenting is not available on this address yet.";
     private static final String AUTHOR_BADGE = "Author";
 
-    private static final String LOGIN = "/roller-ui/login.rol";
-    private static final String MENU = "/roller-ui/menu.rol";
-    private static final String ACCOUNT = "/roller-ui/account.rol";
-    private static final String MODERATION = "/roller-ui/authoring/comments.rol";
-    private static final String ACCESS_DENIED = "/roller-ui/access-denied.rol";
-    private static final String SSO_START = "/roller-ui/sso/start";
-    private static final String SESSION_ENDPOINT = "/roller-ui/rendering/comments/session.rol";
-    private static final String POST_ENDPOINT = "/roller-ui/rendering/comments.rol";
-    private static final String DELETE_ENDPOINT = "/roller-ui/rendering/comments/";
+    private static final String LOGIN = "/pressroom-ui/login.rol";
+    private static final String MENU = "/pressroom-ui/menu.rol";
+    private static final String ACCOUNT = "/pressroom-ui/account.rol";
+    private static final String MODERATION = "/pressroom-ui/authoring/comments.rol";
+    private static final String ACCESS_DENIED = "/pressroom-ui/access-denied.rol";
+    private static final String SSO_START = "/pressroom-ui/sso/start";
+    private static final String SESSION_ENDPOINT = "/pressroom-ui/rendering/comments/session.rol";
+    private static final String POST_ENDPOINT = "/pressroom-ui/rendering/comments.rol";
+    private static final String DELETE_ENDPOINT = "/pressroom-ui/rendering/comments/";
 
     private static final String SECTION = "section.comments";
     private static final String SLOT = ".comments-slot";
@@ -357,7 +357,7 @@ class CommentsIT extends PressroomIT {
         loginAsAdmin();
         openPath(MENU);
         // The link itself is the pill (it was a link wrapping a .badge).
-        $("a.status-pill[href*='/roller-ui/authoring/comments.rol?weblog=" + otherHandle + "']")
+        $("a.status-pill[href*='/pressroom-ui/authoring/comments.rol?weblog=" + otherHandle + "']")
                 .shouldHave(text("awaiting approval"));
         openPath(moderation(otherHandle, null));
         $$(MODERATION_ROWS).findBy(text(body)).should(exist);
@@ -929,7 +929,7 @@ class CommentsIT extends PressroomIT {
     /** Creates a weblog owned by the seeded admin, on the journal theme, with comments on. */
     private String createWeblogWithComments(String prefix) {
         String handle = prefix + nonce();
-        openPath("/roller-ui/createWeblog.rol");
+        openPath("/pressroom-ui/createWeblog.rol");
         $("#name").should(visible).setValue("Comments IT " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");
@@ -963,7 +963,7 @@ class CommentsIT extends PressroomIT {
     }
 
     private void openWeblogSettings(String handle) {
-        openPath("/roller-ui/authoring/weblogConfig.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + handle);
         $("input[name='bean.name']").should(visible);
     }
 
@@ -976,7 +976,7 @@ class CommentsIT extends PressroomIT {
 
     /** Publishes one entry and returns it, its id read from the editor the publish lands on. */
     private Entry publishEntry(String handle, String title) {
-        openPath("/roller-ui/authoring/entryAdd.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
         $("#entry").should(exist);
         $("[name='bean.title']").setValue(title);
         Editor.setText("Body of " + title);
@@ -989,7 +989,7 @@ class CommentsIT extends PressroomIT {
 
     /** Ticks "Comments closed" in the entry editor's SEO drawer and saves the published entry. */
     private void closeComments(Entry entry) {
-        openPath("/roller-ui/authoring/entryEdit.rol?weblog=" + entry.handle() + "&bean.id=" + entry.id());
+        openPath("/pressroom-ui/authoring/entryEdit.rol?weblog=" + entry.handle() + "&bean.id=" + entry.id());
         $("#entry").should(exist);
         $("a[data-bs-target='#collapseSeo']").click();
         $("#comments_closed").should(visible).click();
@@ -999,8 +999,8 @@ class CommentsIT extends PressroomIT {
 
     /** Permanently deletes a weblog through the real confirm-and-remove flow. */
     private void removeWeblog(String handle) {
-        openPath("/roller-ui/authoring/weblogRemove.rol?weblog=" + handle);
-        clickAndAwaitNewPage($("form[action$='/roller-ui/authoring/weblogRemove!remove.rol'] button[type='submit']")
+        openPath("/pressroom-ui/authoring/weblogRemove.rol?weblog=" + handle);
+        clickAndAwaitNewPage($("form[action$='/pressroom-ui/authoring/weblogRemove!remove.rol'] button[type='submit']")
                 .should(visible));
         $("#messages").should(exist);
     }

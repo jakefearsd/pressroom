@@ -96,7 +96,7 @@ class FallbackPageTitleTest {
 
     private String render(String slug) throws Exception {
         MockHttpServletResponse response = RenderingTestSupport.execute(RenderingTestSupport.pageServlet(),
-                RenderingTestSupport.anonymousGet("/roller-ui/rendering/page", "/fallbacktitleblog/" + slug));
+                RenderingTestSupport.anonymousGet("/pressroom-ui/rendering/page", "/fallbacktitleblog/" + slug));
         assertEquals(200, response.getStatus());
         return response.getContentAsString();
     }

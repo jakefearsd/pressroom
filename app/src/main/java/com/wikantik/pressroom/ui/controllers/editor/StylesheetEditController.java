@@ -44,7 +44,7 @@ import org.springframework.web.bind.annotation.RequestParam;
  * Action which handles editing for a weblog stylesheet override template.
  */
 @Controller
-@RequestMapping("/roller-ui/authoring")
+@RequestMapping("/pressroom-ui/authoring")
 public class StylesheetEditController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(StylesheetEditController.class);

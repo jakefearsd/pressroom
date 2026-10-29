@@ -17,11 +17,11 @@ already allows the fetch.
   `#showAudienceAssets` (`weblog.vm`) builds the real forms client-side.
   Endpoints are **server-built** into `data-endpoint`:
   `ContactShortcode.render()` emits
-  `WebloggerRuntimeConfig.getRelativeContextURL() + "/roller-ui/rendering/contact.rol"`;
+  `WebloggerRuntimeConfig.getRelativeContextURL() + "/pressroom-ui/rendering/contact.rol"`;
   `SubscribeShortcode.render()` and `#showSubscribeForm` emit
   `WebloggerRuntimeConfig.getRelativeContextURL()` / `$url.site`, not a
   client-guessed `/newsletter/subscribe` — a client heuristic (a `<link>`
-  containing `/roller-ui/`) posted to the site root under a context path.
+  containing `/pressroom-ui/`) posted to the site root under a context path.
 - **Persist-first, then notify.** `ContactController` writes the
   `pressroom_form_submission` row before any notification email, so the lead
   survives an SMTP outage. Defences in order: per-IP throttle (429); unknown

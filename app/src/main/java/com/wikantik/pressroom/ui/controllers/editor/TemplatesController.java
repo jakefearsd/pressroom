@@ -51,7 +51,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * Templates listing page.
  */
 @Controller
-@RequestMapping("/roller-ui/authoring")
+@RequestMapping("/pressroom-ui/authoring")
 public class TemplatesController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(TemplatesController.class);
@@ -121,7 +121,7 @@ public class TemplatesController extends BaseController {
                 // exists" for the template it had just created).
                 addFlashMessage(redirectAttributes, "pagesForm.added",
                         StringEscapeUtils.escapeHtml4(newTemplate.getName()), request);
-                return "redirect:/roller-ui/authoring/templates.rol?weblog="
+                return "redirect:/pressroom-ui/authoring/templates.rol?weblog="
                         + getActionWeblog(request).getHandle();
 
             } catch (WebloggerException ex) {

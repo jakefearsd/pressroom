@@ -22,7 +22,7 @@
      RouteSweepIT finds this page by its form's action. --%>
 <p class="subtitle"><spring:message code="agent.create.subtitle"/></p>
 
-<form method="post" action="<c:url value='/roller-ui/admin/createAgent!save.rol'/>" class="form-stacked" id="agentCreateForm">
+<form method="post" action="<c:url value='/pressroom-ui/admin/createAgent!save.rol'/>" class="form-stacked" id="agentCreateForm">
     <sec:csrfInput/>
 
     <div class="mb-3">
@@ -59,5 +59,5 @@
     </div>
 
     <button type="submit" class="btn btn-primary" id="agentCreateButton"><spring:message code="agent.create.button"/></button>
-    <a href="<c:url value='/roller-ui/admin/userAdmin.rol'/>" class="btn btn-secondary"><spring:message code="generic.cancel"/></a>
+    <a href="<c:url value='/pressroom-ui/admin/userAdmin.rol'/>" class="btn btn-secondary"><spring:message code="generic.cancel"/></a>
 </form>

@@ -66,7 +66,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class PreviewUrlRenderingTest {
 
-    private static final String PREVIEW_SERVLET = "/roller-ui/authoring/preview";
+    private static final String PREVIEW_SERVLET = "/pressroom-ui/authoring/preview";
     private static final String FRONTPAGE_HANDLE_PROP = "site.frontpage.weblog.handle";
     private static final String FRONTPAGE_AGGREGATED_PROP = "site.frontpage.weblog.aggregated";
 

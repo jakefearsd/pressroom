@@ -112,19 +112,19 @@ class ServletRegistrationConfigTest {
     @Test
     void renderingServletsCarryTheirWebXmlPatternAndLoadOrder() throws Exception {
         assertServlet(config.pageServletRegistration(config.pageServlet(weblogger)), PageServlet.class,
-                "/roller-ui/rendering/page/*", 5);
+                "/pressroom-ui/rendering/page/*", 5);
         assertServlet(config.feedServletRegistration(config.feedServlet(weblogger)), FeedServlet.class,
-                "/roller-ui/rendering/feed/*", 5);
+                "/pressroom-ui/rendering/feed/*", 5);
         assertServlet(config.resourceServletRegistration(config.resourceServlet(weblogger)), ResourceServlet.class,
-                "/roller-ui/rendering/resources/*", 5);
+                "/pressroom-ui/rendering/resources/*", 5);
         assertServlet(config.mediaResourceServletRegistration(config.mediaResourceServlet(weblogger)), MediaResourceServlet.class,
-                "/roller-ui/rendering/media-resources/*", 5);
+                "/pressroom-ui/rendering/media-resources/*", 5);
         assertServlet(config.searchServletRegistration(config.searchServlet(weblogger)), SearchServlet.class,
-                "/roller-ui/rendering/search/*", 5);
+                "/pressroom-ui/rendering/search/*", 5);
         assertServlet(config.previewServletRegistration(config.previewServlet(weblogger)), PreviewServlet.class,
-                "/roller-ui/authoring/preview/*", 9);
+                "/pressroom-ui/authoring/preview/*", 9);
         assertServlet(config.previewResourceServletRegistration(config.previewResourceServlet(weblogger)), PreviewResourceServlet.class,
-                "/roller-ui/authoring/previewresource/*", 9);
+                "/pressroom-ui/authoring/previewresource/*", 9);
     }
 
     @Test
@@ -134,9 +134,9 @@ class ServletRegistrationConfigTest {
         // javap against spring-boot-4.1.0.jar: the no-arg and (T, String...)
         // constructors both set loadOnStartup = -1).
         assertServlet(config.userDataServletRegistration(config.userDataServlet(weblogger)), UserDataServlet.class,
-                "/roller-ui/authoring/userdata/*", -1);
+                "/pressroom-ui/authoring/userdata/*", -1);
         assertServlet(config.themeDataServletRegistration(config.themeDataServlet(weblogger)), ThemeDataServlet.class,
-                "/roller-ui/authoring/themedata/*", -1);
+                "/pressroom-ui/authoring/themedata/*", -1);
     }
 
     /**

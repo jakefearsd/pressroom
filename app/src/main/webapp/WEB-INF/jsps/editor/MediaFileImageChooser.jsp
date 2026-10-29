@@ -29,7 +29,7 @@
          chooser on another folder. It used to POST to a path nothing serves.
          imagesOnly rides along, or the featured-image picker would start
          offering PDFs after one folder change. --%>
-    <form id="mediaFileChooserForm" name="mediaFileChooserForm" action="${pageContext.request.contextPath}/roller-ui/authoring/overlay/mediaFileImageChooser.rol" method="get" class="form-vertical">
+    <form id="mediaFileChooserForm" name="mediaFileChooserForm" action="${pageContext.request.contextPath}/pressroom-ui/authoring/overlay/mediaFileImageChooser.rol" method="get" class="form-vertical">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
         <c:if test="${imagesOnly}">
             <input type="hidden" name="imagesOnly" value="true"/>

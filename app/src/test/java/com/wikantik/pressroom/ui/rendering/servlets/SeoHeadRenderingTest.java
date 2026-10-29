@@ -92,7 +92,7 @@ class SeoHeadRenderingTest {
 
     private String render(String pathInfo) throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", pathInfo);
+                .anonymousGet("/pressroom-ui/rendering/page", pathInfo);
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
         assertEquals(200, response.getStatus(),
@@ -914,7 +914,7 @@ class SeoHeadRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/search", "/" + HANDLE);
+                .anonymousGet("/pressroom-ui/rendering/search", "/" + HANDLE);
         request.setParameter("q", "searchable");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.searchServlet(), request);

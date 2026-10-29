@@ -10,7 +10,7 @@
  * via the org.webjars.npm:ibm__plex-sans / ibm__plex-mono dependencies in
  * app/pom.xml -- see the comment there for why that coordinate and not the
  * unscoped org.webjars.npm:ibm-plex (which does not exist). The url()s below
- * are relative to this file's own location (roller-ui/styles/) rather than
+ * are relative to this file's own location (pressroom-ui/styles/) rather than
  * absolute, so they resolve under whatever context path the app is deployed
  * at -- the same webjars resource tree that head.jsp's <c:url> tags reach,
  * just addressed relatively instead of through that JSP helper. Only the

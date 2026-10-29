@@ -20,7 +20,7 @@ there, so blame reaches the real authors instead of the move commit.
 - Both bundle URLs carry `?v=<application version>` (head.jsp via `Colophon`;
   weblog.vm via the config model's colophon): the names are unversioned and no
   Cache-Control is sent, so a release must change the URL.
-- Output `app/src/main/webapp/roller-ui/scripts/roller-editor.js`
+- Output `app/src/main/webapp/pressroom-ui/scripts/roller-editor.js`
   (git-ignored, regenerated) lives under `src/main/webapp`, not
   `target/classes/static`: with `DispatcherServlet` on `*.rol` only, neither
   classpath static resources nor `WEB-INF/classes` nesting can serve it; only
@@ -49,7 +49,7 @@ there, so blame reaches the real authors instead of the move commit.
   page with a code block or content heading to enhance. Its pure halves
   (`content-core.js`, `highlighter.js`) are covered by
   `test/content.test.mjs`. Being public, it is the one file under
-  `/roller-ui` that `ControlPlaneHostFilter` leaves on a custom domain. See
+  `/pressroom-ui` that `ControlPlaneHostFilter` leaves on a custom domain. See
   `themes-and-templates.md`, "Content assets".
 - Adding a dependency means regenerating `package-lock.json` with the
   plugin's own Node, not a system one:
@@ -205,7 +205,7 @@ bin/deploy-host.sh docker1 --url https://blog.wikantik.com/wikantik/
   the real scripts against stub `mvn`/`gh`/`ssh`/`docker`, a scratch git repo and a
   `file://` release.
 
-**The 403 on `POST /roller-ui/admin/createUser!save.rol` (mechanism
+**The 403 on `POST /pressroom-ui/admin/createUser!save.rol` (mechanism
 established 2026-10-04; fixed).** Seen 2026-08-19 and 2026-09-14 in
 `ErrorCasesIT.aDuplicateUserNameIsRefused` (via `BrowserHealth`); the same
 POST reappeared in disguise in nightlies 35203024997 (09-17) and 36231322274

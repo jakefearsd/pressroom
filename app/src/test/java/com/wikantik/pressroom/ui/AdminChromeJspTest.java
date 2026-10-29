@@ -307,7 +307,7 @@ class AdminChromeJspTest {
         for (String screen : java.util.List.of("core/CreateWeblog.jsp", "core/Profile.jsp")) {
             String src = jsp(screen);
             assertFalse(src.contains("onclick=\"window.location="), screen + " still navigates from an onclick");
-            assertTrue(src.contains("class=\"btn btn-secondary\" href=\"<c:url value='/roller-ui/menu.rol'/>\""),
+            assertTrue(src.contains("class=\"btn btn-secondary\" href=\"<c:url value='/pressroom-ui/menu.rol'/>\""),
                     screen + "'s Cancel is not a link");
         }
     }

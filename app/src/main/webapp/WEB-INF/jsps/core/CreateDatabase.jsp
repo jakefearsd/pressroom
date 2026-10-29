@@ -49,7 +49,7 @@
     </p>
     <p><spring:message code="installer.createTables" /></p>
 
-    <form action="${pageContext.request.contextPath}/roller-ui/install/install!create.rol" method="post">
+    <form action="${pageContext.request.contextPath}/pressroom-ui/install/install!create.rol" method="post">
         <sec:csrfInput/>
         <spring:message code="installer.yesCreateTables" var="createTablesLabel"/>
         <button type="submit" class="btn btn-primary">${createTablesLabel}</button>

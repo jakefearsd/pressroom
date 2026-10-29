@@ -45,7 +45,7 @@ import com.wikantik.pressroom.pojos.Weblog;
  * Edit a new or existing weblog category.
  */
 @Controller
-@RequestMapping("/roller-ui/authoring")
+@RequestMapping("/pressroom-ui/authoring")
 public class CategoryEditController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(CategoryEditController.class);
@@ -89,7 +89,7 @@ public class CategoryEditController extends BaseController {
                 CacheManager.invalidate(getActionWeblog(request));
                 addFlashMessage(redirectAttributes, "categoryForm.created", category.getName(), request);
 
-                return "redirect:/roller-ui/authoring/categories.rol?weblog="
+                return "redirect:/pressroom-ui/authoring/categories.rol?weblog="
                         + getActionWeblog(request).getHandle();
             } catch (Exception ex) {
                 log.error("Error saving category", ex);
@@ -104,7 +104,7 @@ public class CategoryEditController extends BaseController {
         // page shows a bland "check the logs" banner no matter what was wrong
         // and never marks the field that caused it.
         carryModelErrorsToFlash(model, redirectAttributes);
-        return "redirect:/roller-ui/authoring/categories.rol?weblog="
+        return "redirect:/pressroom-ui/authoring/categories.rol?weblog="
                 + getActionWeblog(request).getHandle();
     }
 
@@ -132,7 +132,7 @@ public class CategoryEditController extends BaseController {
                 WeblogCategory category = lookupCategory(bean.getId(), request);
                 if (category == null) {
                     addFlashError(redirectAttributes, "categoryForm.error.notFound", request);
-                    return "redirect:/roller-ui/authoring/categories.rol?weblog="
+                    return "redirect:/pressroom-ui/authoring/categories.rol?weblog="
                             + getActionWeblog(request).getHandle();
                 }
                 bean.copyTo(category);
@@ -143,7 +143,7 @@ public class CategoryEditController extends BaseController {
                 CacheManager.invalidate(getActionWeblog(request));
                 addFlashMessage(redirectAttributes, "categoryForm.changesSaved", category.getName(), request);
 
-                return "redirect:/roller-ui/authoring/categories.rol?weblog="
+                return "redirect:/pressroom-ui/authoring/categories.rol?weblog="
                         + getActionWeblog(request).getHandle();
             } catch (Exception ex) {
                 log.error("Error saving category", ex);
@@ -153,7 +153,7 @@ public class CategoryEditController extends BaseController {
 
         // Same reason as categoryAddSave's fallback above.
         carryModelErrorsToFlash(model, redirectAttributes);
-        return "redirect:/roller-ui/authoring/categories.rol?weblog="
+        return "redirect:/pressroom-ui/authoring/categories.rol?weblog="
                 + getActionWeblog(request).getHandle();
     }
 

@@ -176,7 +176,7 @@ class RenderErrorStatusTest {
     /** A request the servlet may cache: RenderingTestSupport opts every request out by default. */
     private static MockHttpServletRequest get(String link) {
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/page", "/" + HANDLE + "/page/" + link);
+                "/pressroom-ui/rendering/page", "/" + HANDLE + "/page/" + link);
         request.removeAttribute("skipCache");
         return request;
     }

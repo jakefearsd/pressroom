@@ -46,7 +46,7 @@ import static org.mockito.Mockito.when;
 class CategoryRemoveControllerTest extends EditorControllerTestSupport {
 
     private static final String LIST_REDIRECT =
-            "redirect:/roller-ui/authoring/categories.rol?weblog=" + WEBLOG_HANDLE;
+            "redirect:/pressroom-ui/authoring/categories.rol?weblog=" + WEBLOG_HANDLE;
 
     private CategoryRemoveController controller;
     private Model model;

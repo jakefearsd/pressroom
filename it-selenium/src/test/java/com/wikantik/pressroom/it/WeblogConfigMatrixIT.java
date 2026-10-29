@@ -257,7 +257,7 @@ class WeblogConfigMatrixIT extends PressroomIT {
     }
 
     private void openSettings(String handle) {
-        openPath("/roller-ui/authoring/weblogConfig.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + handle);
         $("input[name='bean.name']").should(visible);
     }
 
@@ -276,7 +276,7 @@ class WeblogConfigMatrixIT extends PressroomIT {
     private String createWeblog() {
         String handle = "wcfg" + nonce();
 
-        openPath("/roller-ui/createWeblog.rol");
+        openPath("/pressroom-ui/createWeblog.rol");
         $("#name").should(visible).setValue("Weblog Config " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");
@@ -289,7 +289,7 @@ class WeblogConfigMatrixIT extends PressroomIT {
 
     /** Publishes one entry and returns its permalink. */
     private String publishEntry(String handle, String title) {
-        openPath("/roller-ui/authoring/entryAdd.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
         $("#entry").should(exist);
         $("[name='bean.title']").setValue(title);
         Editor.setText("Body of " + title);

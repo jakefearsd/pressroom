@@ -35,7 +35,7 @@
      not merely left off the menu. --%>
 <c:if test="${rc:getBooleanProp('groupblogging.enabled')}">
 <form class="d-flex flex-wrap align-items-end gap-2 mb-4"
-      action="${pageContext.request.contextPath}/roller-ui/authoring/members!grant.rol" method="post">
+      action="${pageContext.request.contextPath}/pressroom-ui/authoring/members!grant.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
     <div>
         <label for="grantUserName" class="form-label">
@@ -75,12 +75,12 @@
 <spring:message code="memberPermissions.confirmRemove" var="memberRemovalConfirm"/>
 <form id="memberPermissionsForm"
       data-confirm="${memberRemovalConfirm}" data-confirm-when="input[value='-1']:checked"
-      action="${pageContext.request.contextPath}/roller-ui/authoring/members!save.rol" method="post">
+      action="${pageContext.request.contextPath}/pressroom-ui/authoring/members!save.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
 
     <%-- Table is gated on there being members to show; the <form>
          itself stays unconditional because RouteSweepIT identifies this route
-         by "form[action$='/roller-ui/authoring/members!save.rol']"
+         by "form[action$='/pressroom-ui/authoring/members!save.rol']"
          (Routes.java). --%>
     <c:if test="${not empty weblogPermissions}">
 

@@ -67,7 +67,7 @@
      emptiness left an empty weblog's Entries page with neither match. --%>
 <div id="entries-list-marker">
 <form id="entriesBulkForm" method="post"
-      action="${pageContext.request.contextPath}/roller-ui/authoring/entries!bulkPublish.rol">
+      action="${pageContext.request.contextPath}/pressroom-ui/authoring/entries!bulkPublish.rol">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
 <sec:csrfInput/>
 
@@ -142,7 +142,7 @@
         <span class="selection-count" data-template="<spring:message code='selection.count'/>"></span>
 
         <button type="submit" class="btn btn-secondary"
-                formaction="${pageContext.request.contextPath}/roller-ui/authoring/entries!bulkPublish.rol">
+                formaction="${pageContext.request.contextPath}/pressroom-ui/authoring/entries!bulkPublish.rol">
             <c:choose>
                 <c:when test="${userAnAuthor}">
                     <spring:message code="weblogEntryQuery.bulkPublish"/>
@@ -157,7 +157,7 @@
             <input type="text" name="bulkTag" id="bulkTag" class="form-control"
                    placeholder="<spring:message code="weblogEntryQuery.bulkTagPlaceholder"/>"/>
             <button type="submit" class="btn btn-outline-secondary"
-                    formaction="${pageContext.request.contextPath}/roller-ui/authoring/entries!bulkTag.rol">
+                    formaction="${pageContext.request.contextPath}/pressroom-ui/authoring/entries!bulkTag.rol">
                 <spring:message code="weblogEntryQuery.bulkTagAdd"/>
             </button>
         </div>
@@ -233,7 +233,7 @@
          property is an invariant of one method somewhere else, not of this
          page. --%>
     <td class="entry-cell">
-        <c:url var="editUrl" value="/roller-ui/authoring/entryEdit.rol">
+        <c:url var="editUrl" value="/pressroom-ui/authoring/entryEdit.rol">
             <c:param name="weblog" value="${actionWeblog.handle}"/>
             <c:param name="bean.id" value="${post.id}"/>
         </c:url>
@@ -276,7 +276,7 @@
         <button type="submit" name="duplicateId" value="${post.id}"
                 class="btn btn-link p-0 align-baseline border-0"
                 aria-label="<spring:message code='generic.duplicate'/>: ${fn:escapeXml(entryTitles[post.id])}"
-                formaction="${pageContext.request.contextPath}/roller-ui/authoring/entries!duplicate.rol">
+                formaction="${pageContext.request.contextPath}/pressroom-ui/authoring/entries!duplicate.rol">
             <span class="bi bi-files" aria-hidden="true"
                   title="<spring:message code="generic.duplicate"/>">
             </span>
@@ -337,7 +337,7 @@
         <c:when test="${filtered}">
             <p class="empty-state-title"><spring:message code="empty.entries.filtered.title"/></p>
             <p class="empty-state-body"><spring:message code="empty.entries.filtered.body"/></p>
-            <c:url var="clearFiltersUrl" value="/roller-ui/authoring/entries.rol">
+            <c:url var="clearFiltersUrl" value="/pressroom-ui/authoring/entries.rol">
                 <c:param name="weblog" value="${actionWeblog.handle}"/>
             </c:url>
             <a href="${clearFiltersUrl}" class="btn btn-secondary">
@@ -347,7 +347,7 @@
         <c:otherwise>
             <p class="empty-state-title"><spring:message code="empty.entries.title"/></p>
             <p class="empty-state-body"><spring:message code="empty.entries.body"/></p>
-            <c:url var="emptyEntriesAddUrl" value="/roller-ui/authoring/entryAdd.rol">
+            <c:url var="emptyEntriesAddUrl" value="/pressroom-ui/authoring/entryAdd.rol">
                 <c:param name="weblog" value="${actionWeblog.handle}"/>
             </c:url>
             <a href="${emptyEntriesAddUrl}" class="btn btn-primary">
@@ -368,7 +368,7 @@
 
             <c:set var="deleteAction">entryRemoveViaList!remove</c:set>
             
-            <form class="form-stacked" action="${pageContext.request.contextPath}/roller-ui/authoring/${deleteAction}.rol" method="post">
+            <form class="form-stacked" action="${pageContext.request.contextPath}/pressroom-ui/authoring/${deleteAction}.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
                 <input type="hidden" name="removeId" value="${fn:escapeXml(removeId)}" id="removeId"/>
 
@@ -425,7 +425,7 @@
                      lives; this button is outside it, hence the form= --%>
                 <button type="submit" class="btn btn-danger" id="bulkDeleteConfirm"
                         form="entriesBulkForm"
-                        formaction="${pageContext.request.contextPath}/roller-ui/authoring/entries!bulkDelete.rol">
+                        formaction="${pageContext.request.contextPath}/pressroom-ui/authoring/entries!bulkDelete.rol">
                     <spring:message code="weblogEntryRemove.moveToTrash"/>
                 </button>
             </div>

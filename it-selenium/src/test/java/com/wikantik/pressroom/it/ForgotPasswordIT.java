@@ -44,7 +44,7 @@ import static com.codeborne.selenide.Selenide.$;
  */
 class ForgotPasswordIT extends PressroomIT {
 
-    private static final String LOGIN_PATH = "/roller-ui/login.rol";
+    private static final String LOGIN_PATH = "/pressroom-ui/login.rol";
     private static final String MAIL_NOT_CONFIGURED = "This server has no outgoing mail configured "
             + "(or no site email address set), so it cannot send reset links. Contact the administrator.";
     private static final String RESET_INVALID = "That link is invalid or has expired. Request a new one.";
@@ -53,7 +53,7 @@ class ForgotPasswordIT extends PressroomIT {
     void forgotAndResetDegradeHonestlyWithoutMailConfigured() {
         // --- the link from the login page -------------------------------------
         openPath(LOGIN_PATH);
-        $("a[href$='/roller-ui/forgotPassword.rol']").should(exist).click();
+        $("a[href$='/pressroom-ui/forgotPassword.rol']").should(exist).click();
         $("#forgotPasswordForm").should(exist);
         BrowserHealth.current().settle();
         BrowserHealth.current().assertNoBrokenResources();
@@ -68,7 +68,7 @@ class ForgotPasswordIT extends PressroomIT {
         BrowserHealth.current().assertNoFailedRequests();
 
         // --- an invalid/garbage reset token renders the invalid-link page, not a 500
-        openPath("/roller-ui/resetPassword.rol?token=garbage");
+        openPath("/pressroom-ui/resetPassword.rol?token=garbage");
         $("#resetPasswordInvalid").should(exist).shouldHave(text(RESET_INVALID));
         BrowserHealth.current().assertNoBrokenResources();
         BrowserHealth.current().assertNoFailedRequests();

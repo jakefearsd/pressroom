@@ -1009,7 +1009,7 @@ app/frontend/src/content.js) only after finding an unprocessed code block or
 content heading with an id, and hands it the selectors and the weblog's own
 words for the controls on every call. Re-runnable for the editor's preview,
 chained onto window.rollerPreviewInit like the others. The bundle lives
-under /roller-ui/scripts, the one static location this deployment serves,
+under /pressroom-ui/scripts, the one static location this deployment serves,
 and ControlPlaneHostFilter leaves that one file on a weblog's custom domain:
 a redirect to the site host would be cross-origin under script-src 'self'.
 
@@ -1277,7 +1277,7 @@ function rollerInitContent(root) {
   if (rollerContent.state === 'loading') { return; }
   rollerContent.state = 'loading';
   var script = document.createElement('script');
-  script.src = '$url.site/roller-ui/scripts/roller-content.js?v=$utils.escapeJavaScript($config.getColophon($model.weblog).version)';
+  script.src = '$url.site/pressroom-ui/scripts/roller-content.js?v=$utils.escapeJavaScript($config.getColophon($model.weblog).version)';
   script.onload = function () {
     rollerContent.state = 'ready';
     var queued = rollerContent.queue;
@@ -1397,7 +1397,7 @@ document.addEventListener('DOMContentLoaded', function () {
   Array.prototype.forEach.call(document.querySelectorAll('.contact-form-slot'), function (slot) {
     var handle = slot.getAttribute('data-weblog');
     var endpoint = slot.getAttribute('data-endpoint');
-    if (!handle || !endpointOk(endpoint, '/roller-ui/rendering/contact.rol')) { return; }
+    if (!handle || !endpointOk(endpoint, '/pressroom-ui/rendering/contact.rol')) { return; }
     var form = document.createElement('form');
     form.className = 'contact-form';
     form.innerHTML =
@@ -1527,9 +1527,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // URLs, so each must also be a path on this site: an absolute URL on
     // another origin can end in the same suffix.
     if (!section || !entryId
-        || !endpointOk(sessionUrl, '/roller-ui/rendering/comments/session.rol') || !sameOrigin(sessionUrl)
-        || !endpointOk(postUrl, '/roller-ui/rendering/comments.rol') || !sameOrigin(postUrl)
-        || !endpointOk(deleteUrl, '/roller-ui/rendering/comments/') || !sameOrigin(deleteUrl)) {
+        || !endpointOk(sessionUrl, '/pressroom-ui/rendering/comments/session.rol') || !sameOrigin(sessionUrl)
+        || !endpointOk(postUrl, '/pressroom-ui/rendering/comments.rol') || !sameOrigin(postUrl)
+        || !endpointOk(deleteUrl, '/pressroom-ui/rendering/comments/') || !sameOrigin(deleteUrl)) {
       return;
     }
     var text = {
@@ -2037,7 +2037,7 @@ Show weblog author menu with vertical or horizontal orientation.
           #foreach( $menu in $authorMenu.tabs )
             <ul class="rMenu">
             #foreach( $item in $menu.items )
-                <li class="rMenuItem"><a href="$url.action($item.action, '/roller-ui/authoring')">$text.get( $menu.key ):$text.get( $item.key )</a></li>
+                <li class="rMenuItem"><a href="$url.action($item.action, '/pressroom-ui/authoring')">$text.get( $menu.key ):$text.get( $item.key )</a></li>
             #end
             </ul>
           #end
@@ -2046,7 +2046,7 @@ Show weblog author menu with vertical or horizontal orientation.
           #foreach( $menu in $authorMenu.tabs )
             #foreach( $item in $menu.items )
                 #if ($menuCnt > 0)&nbsp;|&nbsp;#end
-                <a href="$url.action($item.action, '/roller-ui/authoring')">$text.get( $menu.key ):$text.get( $item.key )</a>
+                <a href="$url.action($item.action, '/pressroom-ui/authoring')">$text.get( $menu.key ):$text.get( $item.key )</a>
                 #set($menuCnt = $menuCnt + 1)
             #end
           #end
@@ -2067,7 +2067,7 @@ Show weblog author menu with vertical or horizontal orientation.
           #foreach( $menu in $adminMenu.tabs )
             <ul class="rMenu">
             #foreach( $item in $menu.items )
-                <li class="rMenuItem"><a href="$url.action($item.action, '/roller-ui/admin')">$text.get( $menu.key ):$text.get( $item.key )</a></li>
+                <li class="rMenuItem"><a href="$url.action($item.action, '/pressroom-ui/admin')">$text.get( $menu.key ):$text.get( $item.key )</a></li>
             #end
             </ul>
           #end
@@ -2076,7 +2076,7 @@ Show weblog author menu with vertical or horizontal orientation.
           #foreach( $menu in $adminMenu.tabs )
             #foreach( $item in $menu.items )
                 #if ($menuCnt > 0)&nbsp;|&nbsp;#end
-                <a href="$url.action($item.action, '/roller-ui/admin')">$text.get( $menu.key ):$text.get( $item.key )</a>
+                <a href="$url.action($item.action, '/pressroom-ui/admin')">$text.get( $menu.key ):$text.get( $item.key )</a>
                 #set($menuCnt = $menuCnt + 1)
             #end
           #end
@@ -2387,7 +2387,7 @@ print it as "2,026". All words come from the footer.* message keys.
         ## the site's front page and the site directory is gone. Same words
         ## and rules as the frontpage theme's top bar. Pages are cached per
         ## signed-in user, so this never leaks between visitors.
-        #if(!$utils.isUserAuthenticated())<span class="colophon-account"><a href="$url.login">$text.get("navigationBar.login")</a></span>#{else}#if($utils.isUserAuthor())<span class="colophon-account"><a href="$url.absoluteSite/roller-ui/menu.rol">$text.get("mainPage.mainMenu")</a></span>#end<span class="colophon-account"><a href="$url.logout">$text.get("navigationBar.logout")</a></span>#end
+        #if(!$utils.isUserAuthenticated())<span class="colophon-account"><a href="$url.login">$text.get("navigationBar.login")</a></span>#{else}#if($utils.isUserAuthor())<span class="colophon-account"><a href="$url.absoluteSite/pressroom-ui/menu.rol">$text.get("mainPage.mainMenu")</a></span>#end<span class="colophon-account"><a href="$url.logout">$text.get("navigationBar.logout")</a></span>#end
         #if($utils.isNotEmpty($colophonFacts.version))<span class="colophon-version">$text.get("footer.version", [$utils.escapeHTML($colophonFacts.version)])</span>#end
         #if($utils.isNotEmpty($colophonFacts.releaseDate))<span class="colophon-released">$text.get("footer.released", [$utils.escapeHTML($colophonFacts.releaseDate)])</span>#end
     </p>

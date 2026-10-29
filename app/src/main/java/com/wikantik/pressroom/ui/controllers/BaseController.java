@@ -510,7 +510,7 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
      */
     protected String previewShellURL(Weblog weblog) {
         return StringUtils.defaultString(WebloggerRuntimeConfig.getRelativeContextURL())
-                + "/roller-ui/authoring/preview/" + weblog.getHandle() + "/?shell=true";
+                + "/pressroom-ui/authoring/preview/" + weblog.getHandle() + "/?shell=true";
     }
 
     // --- Configuration property helpers ---

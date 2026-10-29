@@ -50,7 +50,7 @@ public abstract class AbstractURLStrategy implements URLStrategy {
             url.append(WebloggerRuntimeConfig.getRelativeContextURL());
         }
         
-        url.append("/roller-ui/login-redirect.rol");
+        url.append("/pressroom-ui/login-redirect.rol");
         
         return url.toString();
     }
@@ -70,7 +70,7 @@ public abstract class AbstractURLStrategy implements URLStrategy {
             url.append(WebloggerRuntimeConfig.getRelativeContextURL());
         }
         
-        url.append("/roller-ui/logout.rol");
+        url.append("/pressroom-ui/logout.rol");
         
         return url.toString();
     }
@@ -130,7 +130,7 @@ public abstract class AbstractURLStrategy implements URLStrategy {
             url.append(WebloggerRuntimeConfig.getRelativeContextURL());
         }
         
-        url.append("/roller-ui/authoring/entryAdd.rol");
+        url.append("/pressroom-ui/authoring/entryAdd.rol");
         
         Map<String, String> params = Map.of("weblog", weblogHandle);
         
@@ -152,7 +152,7 @@ public abstract class AbstractURLStrategy implements URLStrategy {
             url.append(WebloggerRuntimeConfig.getRelativeContextURL());
         }
         
-        url.append("/roller-ui/authoring/entryEdit.rol");
+        url.append("/pressroom-ui/authoring/entryEdit.rol");
         
         Map<String, String> params = Map.of("weblog", weblogHandle, "bean.id", entryId);
         
@@ -174,7 +174,7 @@ public abstract class AbstractURLStrategy implements URLStrategy {
             url.append(WebloggerRuntimeConfig.getRelativeContextURL());
         }
         
-        url.append("/roller-ui/authoring/weblogConfig.rol");
+        url.append("/pressroom-ui/authoring/weblogConfig.rol");
         
         Map<String, String> params = Map.of("weblog", weblogHandle);
         

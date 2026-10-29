@@ -28,7 +28,7 @@
 <c:otherwise>
     <p class="pagetip"><spring:message code="pageForm.tip"/></p>
 </c:otherwise>
-</c:choose><form id="template" class="form-stacked" action="${pageContext.request.contextPath}/roller-ui/authoring/templateEdit!save.rol" method="post">
+</c:choose><form id="template" class="form-stacked" action="${pageContext.request.contextPath}/pressroom-ui/authoring/templateEdit!save.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
     <input type="hidden" name="bean.id" value="${fn:escapeXml(bean.id)}"/>
     <input type="hidden" name="bean.type" value="${fn:escapeXml(bean.type)}"/>
@@ -126,7 +126,7 @@
 
     <button type="submit" class="btn btn-primary"><spring:message code="generic.save"/></button>
     <input type="button" value='<spring:message code="generic.done"/>' class="btn btn-secondary"
-           onclick="window.location='<c:url value="/roller-ui/authoring/templates.rol"><c:param name="weblog" value="${actionWeblog.handle}"/></c:url>'"/>
+           onclick="window.location='<c:url value="/pressroom-ui/authoring/templates.rol"><c:param name="weblog" value="${actionWeblog.handle}"/></c:url>'"/>
 
     <%-- ================================================================== --%>
     <%-- Advanced settings inside a control toggle --%>

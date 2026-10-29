@@ -59,7 +59,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ_WRITE)
 class SitePagesIT extends PressroomIT {
 
-    private static final String GLOBAL_CONFIG_PATH = "/roller-ui/admin/globalConfig.rol";
+    private static final String GLOBAL_CONFIG_PATH = "/pressroom-ui/admin/globalConfig.rol";
     private static final String FRONTPAGE_FIELD = "site.frontpage.weblog.handle";
     private static final String SLUG = "it-front";
     private static final String HEADING = "Front door heading";
@@ -83,7 +83,7 @@ class SitePagesIT extends PressroomIT {
         Throwable primary = null;
         try {
             // --- Site -> Pages from the main menu, then create and publish --
-            openPath("/roller-ui/menu.rol");
+            openPath("/pressroom-ui/menu.rol");
             $(".site-row").should(exist);
             clickAndAwaitNewPage($$(".site-row a.quiet-link").first());
             $("#pageRemoveForm").should(exist);
@@ -125,7 +125,7 @@ class SitePagesIT extends PressroomIT {
                     "the site sitemap must be a urlset with the page, got: " + truncate(sitemap.body));
 
             // --- unpublish: / shows the directory, the slug is a 404 ---------
-            openPath("/roller-ui/authoring/pages.rol?weblog=site-space");
+            openPath("/pressroom-ui/authoring/pages.rol?weblog=site-space");
             $("#pageRemoveForm").should(exist);
             $$("a").findBy(text("It Front")).should(exist).click();
             $("#pageEditForm").should(exist);
@@ -160,7 +160,7 @@ class SitePagesIT extends PressroomIT {
     // ---------------------------------------------------------------- helpers
 
     private static String sitePageEditPath() {
-        return "/roller-ui/authoring/pageEdit.rol?weblog=site-space";
+        return "/pressroom-ui/authoring/pageEdit.rol?weblog=site-space";
     }
 
     /** Restores the front-door choice, then deletes the page: identity cleanup. */
@@ -181,7 +181,7 @@ class SitePagesIT extends PressroomIT {
             assertEquals(restore, $("select[name='" + FRONTPAGE_FIELD + "']").getSelectedOptionValue(),
                     "the front door was not restored");
         }
-        openPath("/roller-ui/authoring/pages.rol?weblog=site-space");
+        openPath("/pressroom-ui/authoring/pages.rol?weblog=site-space");
         $("#pageRemoveForm").should(exist);
         removeSitePage();
     }

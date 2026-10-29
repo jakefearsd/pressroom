@@ -76,7 +76,7 @@ public final class PasswordLinkMailer {
     public static void sendLink(User user, String rawToken, String subject) throws MessagingException {
         String from = WebloggerRuntimeConfig.getProperty("site.adminemail");
         String url = WebloggerRuntimeConfig.getAbsoluteContextURL()
-                + "/roller-ui/resetPassword.rol?token=" + rawToken;
+                + "/pressroom-ui/resetPassword.rol?token=" + rawToken;
         String body = "Use the link below to set your password. It is valid for one hour "
                 + "and can only be used once.\n\n"
                 + url + "\n\n"

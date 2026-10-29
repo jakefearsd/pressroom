@@ -45,7 +45,7 @@ import static org.mockito.Mockito.when;
  */
 class WeblogResourceRequestTest {
 
-    private static final String RESOURCE_SERVLET = "/roller-ui/rendering/resources";
+    private static final String RESOURCE_SERVLET = "/pressroom-ui/rendering/resources";
 
     private static WeblogResourceRequest parse(String pathInfo) throws InvalidRequestException {
         return new WeblogResourceRequest(mock(Weblogger.class), MockRequest.with(RESOURCE_SERVLET, pathInfo));

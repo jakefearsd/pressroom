@@ -27,7 +27,7 @@
 <c:choose>
     <c:when test="${resetTokenValid}">
         <form method="post" id="resetPasswordForm" class="form-signin"
-              action="<c:url value='/roller-ui/resetPassword!save.rol'/>">
+              action="<c:url value='/pressroom-ui/resetPassword!save.rol'/>">
 
             <input type="hidden" name="token" value="${fn:escapeXml(resetToken)}"/>
 
@@ -54,7 +54,7 @@
     </c:when>
     <c:otherwise>
         <p id="resetPasswordInvalid"><spring:message code="resetPassword.invalid"/></p>
-        <p><a href="<c:url value='/roller-ui/forgotPassword.rol'/>">
+        <p><a href="<c:url value='/pressroom-ui/forgotPassword.rol'/>">
             <spring:message code="forgotPassword.title"/></a></p>
     </c:otherwise>
 </c:choose>

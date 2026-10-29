@@ -49,7 +49,7 @@ class MediaResourceServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediablog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/mediablog/" + image.getId());
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.mediaResourceServlet(), request);
 
@@ -65,9 +65,9 @@ class MediaResourceServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest full = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediablog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/mediablog/" + image.getId());
         MockHttpServletRequest thumb = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediablog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/mediablog/" + image.getId());
         thumb.setParameter("t", "true");
 
         int fullSize = RenderingTestSupport.execute(
@@ -83,7 +83,7 @@ class MediaResourceServletRenderingTest {
     @Test
     void unknownMediaFileIsNotFound() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediablog/no-such-id");
+                "/pressroom-ui/rendering/media-resources", "/mediablog/no-such-id");
         assertEquals(404, RenderingTestSupport.execute(
                 RenderingTestSupport.mediaResourceServlet(), request).getStatus());
     }
@@ -91,7 +91,7 @@ class MediaResourceServletRenderingTest {
     @Test
     void unknownWeblogIsNotFound() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/nosuchblog/whatever");
+                "/pressroom-ui/rendering/media-resources", "/nosuchblog/whatever");
         assertEquals(404, RenderingTestSupport.execute(
                 RenderingTestSupport.mediaResourceServlet(), request).getStatus());
     }
@@ -110,7 +110,7 @@ class MediaResourceServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest crossWeblog = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediaotherblog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/mediaotherblog/" + image.getId());
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.mediaResourceServlet(), crossWeblog);
 
@@ -127,7 +127,7 @@ class MediaResourceServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest crossWeblog = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediaotherblog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/mediaotherblog/" + image.getId());
         crossWeblog.setParameter("t", "true");
 
         assertEquals(404, RenderingTestSupport.execute(
@@ -143,7 +143,7 @@ class MediaResourceServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest crossWeblog = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediaotherblog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/mediaotherblog/" + image.getId());
         crossWeblog.setParameter("w", "480");
 
         assertEquals(404, RenderingTestSupport.execute(
@@ -164,7 +164,7 @@ class MediaResourceServletRenderingTest {
         markDirectoryPrivate(image);
 
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediablog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/mediablog/" + image.getId());
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.mediaResourceServlet(), request);
 
@@ -180,7 +180,7 @@ class MediaResourceServletRenderingTest {
         markDirectoryPrivate(image);
 
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediablog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/mediablog/" + image.getId());
         request.setParameter("t", "true");
 
         assertEquals(404, RenderingTestSupport.execute(
@@ -195,7 +195,7 @@ class MediaResourceServletRenderingTest {
         markDirectoryPrivate(image);
 
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediablog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/mediablog/" + image.getId());
         request.setParameter("w", "480");
 
         assertEquals(404, RenderingTestSupport.execute(
@@ -211,7 +211,7 @@ class MediaResourceServletRenderingTest {
         markDirectoryPrivate(image);
 
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediablog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/mediablog/" + image.getId());
         try {
             authenticateAs(user.getUserName());
             MockHttpServletResponse response = RenderingTestSupport
@@ -235,7 +235,7 @@ class MediaResourceServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediablog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/mediablog/" + image.getId());
         try {
             authenticateAs(stranger.getUserName());
             assertEquals(404, RenderingTestSupport.execute(
@@ -268,7 +268,7 @@ class MediaResourceServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediablog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/mediablog/" + image.getId());
         try {
             authenticateAs(demoted.getUserName());
             assertEquals(404, RenderingTestSupport.execute(
@@ -305,9 +305,9 @@ class MediaResourceServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest full = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediablog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/mediablog/" + image.getId());
         MockHttpServletRequest w480 = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediablog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/mediablog/" + image.getId());
         w480.setParameter("w", "480");
 
         int fullSize = RenderingTestSupport.execute(
@@ -332,9 +332,9 @@ class MediaResourceServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest full = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediablog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/mediablog/" + image.getId());
         MockHttpServletRequest w960 = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediablog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/mediablog/" + image.getId());
         w960.setParameter("w", "960");
 
         MockHttpServletResponse fullResponse = RenderingTestSupport.execute(
@@ -355,9 +355,9 @@ class MediaResourceServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest full = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediablog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/mediablog/" + image.getId());
         MockHttpServletRequest badWidth = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediablog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/mediablog/" + image.getId());
         // 999 is not one of the four ladder widths -- it must be validated
         // against the ladder set only, not treated as an arbitrary resize request.
         badWidth.setParameter("w", "999");
@@ -380,7 +380,7 @@ class MediaResourceServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediablog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/mediablog/" + image.getId());
         request.setParameter("w", "480");
         request.addHeader("Accept", "image/webp,image/*,*/*");
 
@@ -406,12 +406,12 @@ class MediaResourceServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest webpRequest = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediablog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/mediablog/" + image.getId());
         webpRequest.setParameter("w", "480");
         webpRequest.addHeader("Accept", "image/webp,image/*,*/*");
 
         MockHttpServletRequest plainRequest = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediablog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/mediablog/" + image.getId());
         plainRequest.setParameter("w", "480");
         plainRequest.addHeader("Accept", "image/jpeg,image/*,*/*");
 

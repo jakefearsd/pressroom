@@ -34,7 +34,7 @@ public class WeblogSearchRequest extends WeblogRequest {
     
     private static final Logger log = LoggerFactory.getLogger(WeblogSearchRequest.class);
     
-    public static final String SEARCH_SERVLET = "/roller-ui/rendering/search";
+    public static final String SEARCH_SERVLET = "/pressroom-ui/rendering/search";
     
     // lightweight attributes
     private String query = null;

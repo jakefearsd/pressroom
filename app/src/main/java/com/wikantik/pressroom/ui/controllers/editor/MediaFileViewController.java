@@ -49,7 +49,7 @@ import org.springframework.web.bind.annotation.RequestParam;
  * View media files.
  */
 @Controller
-@RequestMapping("/roller-ui/authoring")
+@RequestMapping("/pressroom-ui/authoring")
 public class MediaFileViewController extends MediaFileBase {
 
     private static final Logger log = LoggerFactory.getLogger(MediaFileViewController.class);

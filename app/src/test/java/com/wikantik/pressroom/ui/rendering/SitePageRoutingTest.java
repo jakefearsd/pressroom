@@ -125,7 +125,7 @@ class SitePageRoutingTest {
     /** What the mapper's forward of {@code /<slug>} reaches. */
     private static MockHttpServletRequest forwarded(String pathInfo) {
         MockHttpServletRequest request =
-                RenderingTestSupport.anonymousGet("/roller-ui/rendering/page", pathInfo);
+                RenderingTestSupport.anonymousGet("/pressroom-ui/rendering/page", pathInfo);
         request.setDispatcherType(DispatcherType.FORWARD);
         return request;
     }
@@ -161,7 +161,7 @@ class SitePageRoutingTest {
     @Test
     void aDirectRequestToTheSiteSpaceIs404() throws Exception {
         MockHttpServletRequest direct = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/page", "/site-space/sitepageabout");
+                "/pressroom-ui/rendering/page", "/site-space/sitepageabout");
         assertEquals(DispatcherType.REQUEST, direct.getDispatcherType());
 
         MockHttpServletResponse response = render(direct);
@@ -177,7 +177,7 @@ class SitePageRoutingTest {
         TestUtils.endSession(true);
         try {
             MockHttpServletRequest direct = RenderingTestSupport.anonymousGet(
-                    "/roller-ui/rendering/page", "/sitepagesibling");
+                    "/pressroom-ui/rendering/page", "/sitepagesibling");
             assertEquals(200, render(direct).getStatus());
         } finally {
             TestUtils.teardownWeblog(blog.getId());
@@ -217,13 +217,13 @@ class SitePageRoutingTest {
         setProperty("site.frontpage.page", "sitepageabout");
 
         String path = FrontDoor.forwardPath(TestUtils.weblogger());
-        assertEquals("/roller-ui/rendering/page/site-space/sitepageabout", path);
-        MockHttpServletResponse response = render(forwarded(path.substring("/roller-ui/rendering/page".length())));
+        assertEquals("/pressroom-ui/rendering/page/site-space/sitepageabout", path);
+        MockHttpServletResponse response = render(forwarded(path.substring("/pressroom-ui/rendering/page".length())));
         assertEquals(200, response.getStatus());
         assertTrue(response.getContentAsString().contains("About the Site"));
 
         savePage("sitepageabout", "About the Site", "Body of **about**", WeblogPage.PubStatus.DRAFT);
-        assertEquals("/roller-ui/siteDirectory.rol", FrontDoor.forwardPath(TestUtils.weblogger()));
+        assertEquals("/pressroom-ui/siteDirectory.rol", FrontDoor.forwardPath(TestUtils.weblogger()));
     }
 
     private static void waitPastLastModified() throws Exception {

@@ -62,7 +62,7 @@ class MediaResourceServletAccessTest {
 
     private MockHttpServletRequest requestFor(MediaFile image) {
         return RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/mediaaccessblog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/mediaaccessblog/" + image.getId());
     }
 
     @Test

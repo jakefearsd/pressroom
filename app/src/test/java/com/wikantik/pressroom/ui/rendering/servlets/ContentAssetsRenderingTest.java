@@ -65,14 +65,14 @@ class ContentAssetsRenderingTest {
     private static final String HANDLE = "contentassetblog";
 
     /** The bundle the bootstrap injects; context-relative, from $url.site. */
-    private static final String BUNDLE = "/roller-ui/scripts/roller-content.js";
+    private static final String BUNDLE = "/pressroom-ui/scripts/roller-content.js";
 
     private static final String INITIALISER = "function rollerInitContent(";
 
     /** One rule from the style block, standing for the whole of it. */
     private static final String CALLOUT_RULE = ".markdown-alert-note {";
 
-    private static final String PREVIEW_SERVLET = "/roller-ui/authoring/preview";
+    private static final String PREVIEW_SERVLET = "/pressroom-ui/authoring/preview";
 
     private User user;
     private Weblog weblog;
@@ -375,7 +375,7 @@ class ContentAssetsRenderingTest {
 
     private String render(String pathInfo) throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", pathInfo);
+                .anonymousGet("/pressroom-ui/rendering/page", pathInfo);
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
         assertEquals(200, response.getStatus(), "page must render for " + pathInfo);
@@ -384,7 +384,7 @@ class ContentAssetsRenderingTest {
 
     private String search() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/search", "/" + HANDLE);
+                .anonymousGet("/pressroom-ui/rendering/search", "/" + HANDLE);
         request.setParameter("q", "anything");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.searchServlet(), request);

@@ -10,13 +10,13 @@ import org.apache.commons.lang3.StringUtils;
 public final class SsoPaths {
 
     /** Starts a sign-in; takes {@code ?return=}. */
-    public static final String START = "/roller-ui/sso/start";
+    public static final String START = "/pressroom-ui/sso/start";
     /** Spring's authorization endpoint, moved; the registration id follows. */
-    public static final String AUTHORIZE_BASE = "/roller-ui/sso/authorize";
+    public static final String AUTHORIZE_BASE = "/pressroom-ui/sso/authorize";
     /** Where the provider sends the reader back. */
-    public static final String CALLBACK = "/roller-ui/sso/callback";
+    public static final String CALLBACK = "/pressroom-ui/sso/callback";
     /** The login page, which shows the {@code ?sso=} message. */
-    public static final String LOGIN_PAGE = "/roller-ui/login.rol";
+    public static final String LOGIN_PAGE = "/pressroom-ui/login.rol";
 
     /** Sign-in is off, the Absolute URL is unset, or discovery is unreachable. */
     public static final String ERROR_UNAVAILABLE = "unavailable";

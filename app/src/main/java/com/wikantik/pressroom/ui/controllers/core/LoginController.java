@@ -36,7 +36,7 @@ import org.springframework.web.util.HtmlUtils;
  * Handle user logins.
  */
 @Controller
-@RequestMapping("/roller-ui")
+@RequestMapping("/pressroom-ui")
 public class LoginController extends BaseController {
 
     /** The {@code sso} codes the SSO failure handler sends; anything else is ignored. */

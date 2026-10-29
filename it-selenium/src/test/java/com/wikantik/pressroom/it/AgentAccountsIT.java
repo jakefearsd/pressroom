@@ -219,7 +219,7 @@ class AgentAccountsIT extends PressroomIT {
         String person = "itlast" + nonce();
         String password = "it-last-password";
         loginAsAdmin();
-        openPath("/roller-ui/admin/createUser.rol");
+        openPath("/pressroom-ui/admin/createUser.rol");
         $("input[name='bean.userName']").should(visible).setValue(person);
         $("input[name='bean.screenName']").setValue("Screen " + person);
         $("input[name='bean.fullName']").setValue("Full " + person);
@@ -230,7 +230,7 @@ class AgentAccountsIT extends PressroomIT {
         $("input[name='bean.emailAddress']").setValue(person + "@example.com");
         clickAndAwaitNewPage($("#save_button"));
 
-        openPath("/roller-ui/admin/userAdmin.rol?q=" + person);
+        openPath("/pressroom-ui/admin/userAdmin.rol?q=" + person);
         $("a[data-username='" + person + "']").closest("tr").find("time").shouldNot(exist);
         logout();
 
@@ -238,7 +238,7 @@ class AgentAccountsIT extends PressroomIT {
         logout();
 
         loginAsAdmin();
-        openPath("/roller-ui/admin/userAdmin.rol?q=" + person);
+        openPath("/pressroom-ui/admin/userAdmin.rol?q=" + person);
         $("a[data-username='" + person + "']").closest("tr").find("time").should(exist);
         logout();
     }
@@ -246,7 +246,7 @@ class AgentAccountsIT extends PressroomIT {
     // ---------------------------------------------------------------- helpers
 
     private void createAgent(String userName, boolean siteAdmin) {
-        openPath("/roller-ui/admin/createAgent.rol");
+        openPath("/pressroom-ui/admin/createAgent.rol");
         $("#bean_userName").should(visible).setValue(userName);
         $("#bean_name").setValue("IT Agent " + userName);
         if (siteAdmin) {
@@ -257,7 +257,7 @@ class AgentAccountsIT extends PressroomIT {
     }
 
     private void openAgentPage(String userName) {
-        openPath("/roller-ui/admin/agent.rol?userName=" + userName);
+        openPath("/pressroom-ui/admin/agent.rol?userName=" + userName);
         $("#agentPage").should(exist);
     }
 

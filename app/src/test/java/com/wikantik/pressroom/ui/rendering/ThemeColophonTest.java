@@ -160,7 +160,7 @@ class ThemeColophonTest {
     /** Stand-in for $url; public, so Velocity can introspect it. */
     public static final class StubUrl {
         public String getLogin() {
-            return "/roller-ui/login-redirect.rol";
+            return "/pressroom-ui/login-redirect.rol";
         }
     }
 
@@ -259,7 +259,7 @@ class ThemeColophonTest {
         String html = render(bare);
         assertFalse(html.contains("colophon-version"), html);
         assertTrue(html.contains("<p class=\"colophon-meta\"> <span class=\"colophon-account\">"
-                + "<a href=\"/roller-ui/login-redirect.rol\">Sign in</a></span> </p>"),
+                + "<a href=\"/pressroom-ui/login-redirect.rol\">Sign in</a></span> </p>"),
                 "with nothing else to say the meta line still offers Sign in: " + html);
         assertEquals(1, html.split("colophon-copyright", -1).length - 1);
     }

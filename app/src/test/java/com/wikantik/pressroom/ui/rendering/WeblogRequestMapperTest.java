@@ -130,7 +130,7 @@ class WeblogRequestMapperTest {
         boolean handled = mapper.handleRequest(request, response);
 
         assertTrue(handled);
-        assertEquals("/roller-ui/rendering/page/mapperblog", response.getForwardedUrl());
+        assertEquals("/pressroom-ui/rendering/page/mapperblog", response.getForwardedUrl());
     }
 
     @Test
@@ -139,7 +139,7 @@ class WeblogRequestMapperTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(mapper.handleRequest(request, response));
-        assertEquals("/roller-ui/rendering/page/mapperblog/entry/my-post",
+        assertEquals("/pressroom-ui/rendering/page/mapperblog/entry/my-post",
                 response.getForwardedUrl());
     }
 
@@ -149,7 +149,7 @@ class WeblogRequestMapperTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(mapper.handleRequest(request, response));
-        assertEquals("/roller-ui/rendering/feed/mapperblog/entries/rss",
+        assertEquals("/pressroom-ui/rendering/feed/mapperblog/entries/rss",
                 response.getForwardedUrl());
     }
 
@@ -160,7 +160,7 @@ class WeblogRequestMapperTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(mapper.handleRequest(request, response));
-        assertEquals("/roller-ui/rendering/search/mapperblog", response.getForwardedUrl());
+        assertEquals("/pressroom-ui/rendering/search/mapperblog", response.getForwardedUrl());
     }
 
     /**
@@ -203,7 +203,7 @@ class WeblogRequestMapperTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(mapper.handleRequest(request, response));
-        assertEquals("/roller-ui/rendering/page/mapperblog/entry/my-post",
+        assertEquals("/pressroom-ui/rendering/page/mapperblog/entry/my-post",
                 response.getForwardedUrl());
     }
 
@@ -227,7 +227,7 @@ class WeblogRequestMapperTest {
      * shadow it.
      */
     @ParameterizedTest
-    @ValueSource(strings = {"roller-ui", "images", "theme", "themes", "index.jsp",
+    @ValueSource(strings = {"pressroom-ui", "images", "theme", "themes", "index.jsp",
             "favicon.svg", "robots.txt", "sitemap.xml", "share", "webjars",
             "page", "flavor", "rss", "atom", "language", "search", "comments", "resource"})
     void protectedPathsAreDeclinedSoTheirOwnServletsRun(String reserved) throws Exception {
@@ -260,7 +260,7 @@ class WeblogRequestMapperTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(mapper.handleRequest(request, response));
-        assertEquals("/roller-ui/rendering/page/mapperblog/en/entry/my-post",
+        assertEquals("/pressroom-ui/rendering/page/mapperblog/en/entry/my-post",
                 response.getForwardedUrl());
     }
 
@@ -287,7 +287,7 @@ class WeblogRequestMapperTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(mapper.handleRequest(request, response));
-        assertEquals("/roller-ui/rendering/page/mapperblog/category/travel",
+        assertEquals("/pressroom-ui/rendering/page/mapperblog/category/travel",
                 response.getForwardedUrl());
     }
 
@@ -301,7 +301,7 @@ class WeblogRequestMapperTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(mapper.handleRequest(request, response));
-        assertEquals("/roller-ui/rendering/page/mapperblog/category/travel/spain",
+        assertEquals("/pressroom-ui/rendering/page/mapperblog/category/travel/spain",
                 response.getForwardedUrl());
     }
 
@@ -343,7 +343,7 @@ class WeblogRequestMapperTest {
     void theTagsIndexRequiresItsTrailingSlash() throws Exception {
         MockHttpServletResponse withSlash = new MockHttpServletResponse();
         assertTrue(mapper.handleRequest(publicUrl("GET", "/mapperblog/tags/"), withSlash));
-        assertEquals("/roller-ui/rendering/page/mapperblog/tags", withSlash.getForwardedUrl());
+        assertEquals("/pressroom-ui/rendering/page/mapperblog/tags", withSlash.getForwardedUrl());
 
         MockHttpServletResponse without = new MockHttpServletResponse();
         assertTrue(mapper.handleRequest(publicUrl("GET", "/mapperblog/tags"), without));
@@ -377,7 +377,7 @@ class WeblogRequestMapperTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(mapper.handleRequest(request, response));
-        assertEquals("/roller-ui/rendering/page/mapperblog/about", response.getForwardedUrl());
+        assertEquals("/pressroom-ui/rendering/page/mapperblog/about", response.getForwardedUrl());
     }
 
     /**
@@ -393,7 +393,7 @@ class WeblogRequestMapperTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(mapper.handleRequest(request, response));
-        assertEquals("/roller-ui/rendering/page/mapperblog/en/about",
+        assertEquals("/pressroom-ui/rendering/page/mapperblog/en/about",
                 response.getForwardedUrl());
     }
 
@@ -423,7 +423,7 @@ class WeblogRequestMapperTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(mapper.handleRequest(request, response));
-        assertEquals("/roller-ui/rendering/page/mapperblog/date/20260101",
+        assertEquals("/pressroom-ui/rendering/page/mapperblog/date/20260101",
                 response.getForwardedUrl());
     }
 
@@ -486,7 +486,7 @@ class WeblogRequestMapperTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(mapper.handleRequest(vhostUrl("GET", "/entry/my-post"), response));
-        assertEquals("/roller-ui/rendering/page/mapperblog/entry/my-post",
+        assertEquals("/pressroom-ui/rendering/page/mapperblog/entry/my-post",
                 response.getForwardedUrl());
     }
 
@@ -496,7 +496,7 @@ class WeblogRequestMapperTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(mapper.handleRequest(vhostUrl("GET", "/"), response));
-        assertEquals("/roller-ui/rendering/page/mapperblog", response.getForwardedUrl());
+        assertEquals("/pressroom-ui/rendering/page/mapperblog", response.getForwardedUrl());
     }
 
     /**
@@ -518,7 +518,7 @@ class WeblogRequestMapperTest {
         // no-trailing-slash rule identically once there is a content segment,
         // vhost or not (see the "Host-first resolution" comment above).
         assertTrue(mapper.handleRequest(vhostUrl("GET", "/someotherblog"), response));
-        assertEquals("/roller-ui/rendering/page/mapperblog/someotherblog",
+        assertEquals("/pressroom-ui/rendering/page/mapperblog/someotherblog",
                 response.getForwardedUrl());
     }
 
@@ -530,7 +530,7 @@ class WeblogRequestMapperTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(mapper.handleRequest(request, response));
-        assertEquals("/roller-ui/rendering/page/mapperblog/entry/my-post",
+        assertEquals("/pressroom-ui/rendering/page/mapperblog/entry/my-post",
                 response.getForwardedUrl());
     }
 
@@ -556,7 +556,7 @@ class WeblogRequestMapperTest {
      * contact endpoint and robots.txt into the page servlet.
      */
     @ParameterizedTest
-    @ValueSource(strings = {"themes", "webjars", "roller-ui", "newsletter",
+    @ValueSource(strings = {"themes", "webjars", "pressroom-ui", "newsletter",
                             "robots.txt", "sitemap.xml"})
     void protectedPathsAreStillDeclinedOnACustomDomain(String reserved) throws Exception {
         givenCustomDomain("vhost.example.com");
@@ -749,7 +749,7 @@ class WeblogRequestMapperTest {
 
         assertTrue(mapper.handleRequest(vhostUrl("GET", "/de/"), response));
         assertNull(response.getRedirectedUrl());
-        assertEquals("/roller-ui/rendering/page/mapperblog/de", response.getForwardedUrl());
+        assertEquals("/pressroom-ui/rendering/page/mapperblog/de", response.getForwardedUrl());
     }
 
     // ------------------------------------------------- site pages at /<slug>
@@ -785,7 +785,7 @@ class WeblogRequestMapperTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(mapper.handleRequest(publicUrl("GET", "/mapperabout"), response));
-        assertEquals("/roller-ui/rendering/page/site-space/mapperabout", response.getForwardedUrl());
+        assertEquals("/pressroom-ui/rendering/page/site-space/mapperabout", response.getForwardedUrl());
     }
 
     /**
@@ -858,7 +858,7 @@ class WeblogRequestMapperTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(mapper.handleRequest(publicUrlAt("", "GET", "/mapperabout"), response));
-        assertEquals("/roller-ui/rendering/page/site-space/mapperabout", response.getForwardedUrl());
+        assertEquals("/pressroom-ui/rendering/page/site-space/mapperabout", response.getForwardedUrl());
     }
 
     @Test
@@ -895,7 +895,7 @@ class WeblogRequestMapperTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(mapper.handleRequest(publicUrl("GET", "/mapper+story"), response));
-        assertEquals("/roller-ui/rendering/page/site-space/mapper+story", response.getForwardedUrl());
+        assertEquals("/pressroom-ui/rendering/page/site-space/mapper+story", response.getForwardedUrl());
     }
 
     @Test
@@ -942,7 +942,7 @@ class WeblogRequestMapperTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(mapper.handleRequest(publicUrl("GET", "/mapperabout"), response));
-        assertEquals("/roller-ui/rendering/page/site-space/mapperabout", response.getForwardedUrl());
+        assertEquals("/pressroom-ui/rendering/page/site-space/mapperabout", response.getForwardedUrl());
     }
 
     /**
@@ -977,7 +977,7 @@ class WeblogRequestMapperTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(mapper.handleRequest(vhostUrl("GET", "/mapperabout"), response));
-        assertEquals("/roller-ui/rendering/page/mapperblog/mapperabout", response.getForwardedUrl());
+        assertEquals("/pressroom-ui/rendering/page/mapperblog/mapperabout", response.getForwardedUrl());
         assertEquals(200, response.getStatus(), "never the front door's 301");
     }
 
@@ -1041,11 +1041,11 @@ class WeblogRequestMapperTest {
     void theSiteSpacesAssetUrlsForwardToTheirServlets() throws Exception {
         Map<String, String> expected = Map.of(
                 "/site-space/page/frontpage-custom.css",
-                "/roller-ui/rendering/page/site-space/page/frontpage-custom.css",
+                "/pressroom-ui/rendering/page/site-space/page/frontpage-custom.css",
                 "/site-space/resource/img/logo.png",
-                "/roller-ui/rendering/resources/site-space/img/logo.png",
+                "/pressroom-ui/rendering/resources/site-space/img/logo.png",
                 "/site-space/mediaresource/abc123",
-                "/roller-ui/rendering/media-resources/site-space/abc123");
+                "/pressroom-ui/rendering/media-resources/site-space/abc123");
         for (String contextPath : new String[] {"/roller", ""}) {
             for (Map.Entry<String, String> route : expected.entrySet()) {
                 MockHttpServletResponse response = new MockHttpServletResponse();

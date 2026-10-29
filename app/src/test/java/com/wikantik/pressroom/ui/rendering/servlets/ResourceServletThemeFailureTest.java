@@ -56,7 +56,7 @@ class ResourceServletThemeFailureTest {
         servlet.init(new MockServletConfig(PressroomContext.getServletContext()));
 
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/resources", "/resfailblog/style.css");
+                "/pressroom-ui/rendering/resources", "/resfailblog/style.css");
         MockHttpServletResponse response = RenderingTestSupport.execute(servlet, request);
 
         assertEquals(500, response.getStatus());

@@ -83,7 +83,7 @@ class WeblogRequestMapperProtectedUrlsTest {
             MockHttpServletResponse response = new MockHttpServletResponse();
 
             assertTrue(mapper.handleRequest(get("/protectedblog/"), response), String.valueOf(blank));
-            assertEquals("/roller-ui/rendering/page/protectedblog", response.getForwardedUrl());
+            assertEquals("/pressroom-ui/rendering/page/protectedblog", response.getForwardedUrl());
         }
     }
 
@@ -107,6 +107,6 @@ class WeblogRequestMapperProtectedUrlsTest {
         ordinary.setServerName("protected.example.com");
         MockHttpServletResponse served = new MockHttpServletResponse();
         assertTrue(mapper.handleRequest(ordinary, served));
-        assertEquals("/roller-ui/rendering/page/protectedblog/entry/a-post", served.getForwardedUrl());
+        assertEquals("/pressroom-ui/rendering/page/protectedblog/entry/a-post", served.getForwardedUrl());
     }
 }

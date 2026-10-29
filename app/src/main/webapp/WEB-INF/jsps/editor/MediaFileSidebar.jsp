@@ -21,7 +21,7 @@
 <div class="sidebar-group">
 <p class="sidebar-label"><spring:message code="mediaFileSidebar.actions"/></p>
 
-<c:url var="mediaFileAddURL" value="/roller-ui/authoring/mediaFileAdd.rol">
+<c:url var="mediaFileAddURL" value="/pressroom-ui/authoring/mediaFileAdd.rol">
     <c:param name="weblog" value="${actionWeblog.handle}"/>
     <c:param name="directoryName" value="${directoryName}"/>
 </c:url>
@@ -46,7 +46,7 @@
     </p>
 
     <form id="createDirectoryForm" method="post"
-          action="<c:url value='/roller-ui/authoring/mediaFileView!createNewDirectory.rol'/>">
+          action="<c:url value='/pressroom-ui/authoring/mediaFileView!createNewDirectory.rol'/>">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
 
         <label for="newDirectoryName">
@@ -67,7 +67,7 @@
 <div class="sidebar-group">
 <p class="sidebar-label"><spring:message code="mediaFileView.search"/></p>
 
-<form id="mediaFileSearchForm" name="mediaFileSearchForm" action="${pageContext.request.contextPath}/roller-ui/authoring/mediaFileView!search.rol" method="post" class="form-stacked">
+<form id="mediaFileSearchForm" name="mediaFileSearchForm" action="${pageContext.request.contextPath}/pressroom-ui/authoring/mediaFileView!search.rol" method="post" class="form-stacked">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
     <input type="hidden" name="mediaFileId" value=""/>
 
@@ -136,7 +136,7 @@
         $("select").on("change", maintainSearchButtonState);
 
         $("#resetButton").on("click", function () {
-            <c:url var="mediaFileViewURL" value="/roller-ui/authoring/mediaFileView.rol">
+            <c:url var="mediaFileViewURL" value="/pressroom-ui/authoring/mediaFileView.rol">
             <c:param name="weblog" value="${actionWeblog.handle}"/>
             </c:url>
             window.location = '${mediaFileViewURL}';

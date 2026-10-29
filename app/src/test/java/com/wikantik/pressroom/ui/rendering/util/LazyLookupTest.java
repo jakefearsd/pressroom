@@ -58,9 +58,9 @@ import static org.mockito.Mockito.when;
  */
 class LazyLookupTest {
 
-    private static final String PAGE_SERVLET = "/roller-ui/rendering/page";
-    private static final String FEED_SERVLET = "/roller-ui/rendering/feed";
-    private static final String PREVIEW_SERVLET = "/roller-ui/authoring/preview";
+    private static final String PAGE_SERVLET = "/pressroom-ui/rendering/page";
+    private static final String FEED_SERVLET = "/pressroom-ui/rendering/feed";
+    private static final String PREVIEW_SERVLET = "/pressroom-ui/authoring/preview";
 
     private static Weblog weblog() {
         Weblog weblog = new Weblog();
@@ -555,7 +555,7 @@ class LazyLookupTest {
         when(weblogger.getThemeManager()).thenReturn(themeManager);
         when(themeManager.getTheme("journal")).thenReturn(theme);
 
-        WeblogPreviewResourceRequest request = new WeblogPreviewResourceRequest(weblogger, MockRequest.with("/roller-ui/rendering/resources", "/myblog/logo.png",
+        WeblogPreviewResourceRequest request = new WeblogPreviewResourceRequest(weblogger, MockRequest.with("/pressroom-ui/rendering/resources", "/myblog/logo.png",
                         "theme", "journal"));
 
         assertSame(theme, request.getTheme());
@@ -572,7 +572,7 @@ class LazyLookupTest {
         when(themeManager.getTheme(anyString()))
                 .thenThrow(new ThemeNotFoundException("no such theme"));
 
-        WeblogPreviewResourceRequest request = new WeblogPreviewResourceRequest(weblogger, MockRequest.with("/roller-ui/rendering/resources", "/myblog/logo.png",
+        WeblogPreviewResourceRequest request = new WeblogPreviewResourceRequest(weblogger, MockRequest.with("/pressroom-ui/rendering/resources", "/myblog/logo.png",
                         "theme", "deleted"));
 
         assertNull(request.getTheme());
@@ -586,7 +586,7 @@ class LazyLookupTest {
         when(themeManager.getTheme(anyString()))
                 .thenThrow(new WebloggerException("theme store unreadable"));
 
-        WeblogPreviewResourceRequest request = new WeblogPreviewResourceRequest(weblogger, MockRequest.with("/roller-ui/rendering/resources", "/myblog/logo.png",
+        WeblogPreviewResourceRequest request = new WeblogPreviewResourceRequest(weblogger, MockRequest.with("/pressroom-ui/rendering/resources", "/myblog/logo.png",
                         "theme", "journal"));
 
         assertNull(request.getTheme());

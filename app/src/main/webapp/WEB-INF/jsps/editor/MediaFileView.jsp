@@ -102,7 +102,7 @@
      "Delete folder", and the rail link was the only way out. --%>
 <c:if test="${empty pager || fn:length(pager.items) > 0}">
 
-    <form id="mediaFileViewForm" name="mediaFileViewForm" action="${pageContext.request.contextPath}/roller-ui/authoring/mediaFileView.rol" method="post">
+    <form id="mediaFileViewForm" name="mediaFileViewForm" action="${pageContext.request.contextPath}/pressroom-ui/authoring/mediaFileView.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
         <input type="hidden" name="directoryId" value="${directoryId}"/>
         <input type="hidden" name="newDirectoryName" value="${fn:escapeXml(newDirectoryName)}"/>
@@ -148,7 +148,7 @@
             <div class="empty-state">
                 <p class="empty-state-title"><spring:message code="empty.media.title"/></p>
                 <p class="empty-state-body"><spring:message code="empty.media.body"/></p>
-                <c:url var="emptyMediaAddUrl" value="/roller-ui/authoring/mediaFileAdd.rol">
+                <c:url var="emptyMediaAddUrl" value="/pressroom-ui/authoring/mediaFileAdd.rol">
                     <c:param name="weblog" value="${actionWeblog.handle}"/>
                     <c:param name="directoryName" value="${directoryName}"/>
                 </c:url>
@@ -373,7 +373,7 @@
     <div class="empty-state">
         <p class="empty-state-title"><spring:message code="empty.mediaSearch.title"/></p>
         <p class="empty-state-body"><spring:message code="mediaFileView.noResults"/></p>
-        <c:url var="emptySearchResetUrl" value="/roller-ui/authoring/mediaFileView.rol">
+        <c:url var="emptySearchResetUrl" value="/pressroom-ui/authoring/mediaFileView.rol">
             <c:param name="weblog" value="${actionWeblog.handle}"/>
         </c:url>
         <a href="${emptySearchResetUrl}" class="btn btn-primary">
@@ -396,7 +396,7 @@
         <div class="card-body">
 
             <form method="post"
-                  action="${pageContext.request.contextPath}/roller-ui/authoring/mediaFileView!togglePrivate.rol">
+                  action="${pageContext.request.contextPath}/pressroom-ui/authoring/mediaFileView!togglePrivate.rol">
                 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
                 <input type="hidden" name="directoryId" value="${directoryId}"/>
                 <div class="form-check">
@@ -451,7 +451,7 @@
     toggleState = 'Off';
 
     function onClickEdit(mediaFileId, mediaFileName) {
-        <c:url var="mediaFileEditURL" value="/roller-ui/authoring/mediaFileEdit.rol">
+        <c:url var="mediaFileEditURL" value="/pressroom-ui/authoring/mediaFileEdit.rol">
         <c:param name="weblog" value="${actionWeblog.handle}"/>
         </c:url>
         $('#edit-subtitle').text(mediaFileName);
@@ -501,12 +501,12 @@
     // triggering button (see roller.js): a click that fails to confirm never
     // reaches here.
     function onDeleteSelected() {
-        document.mediaFileViewForm.action = '<c:url value="/roller-ui/authoring/mediaFileView!deleteSelected.rol"/>';
+        document.mediaFileViewForm.action = '<c:url value="/pressroom-ui/authoring/mediaFileView!deleteSelected.rol"/>';
         document.mediaFileViewForm.submit();
     }
 
     function onDeleteFolder() {
-        document.mediaFileViewForm.action = '<c:url value="/roller-ui/authoring/mediaFileView!deleteFolder.rol"/>';
+        document.mediaFileViewForm.action = '<c:url value="/pressroom-ui/authoring/mediaFileView!deleteFolder.rol"/>';
         document.mediaFileViewForm.submit();
     }
 
@@ -517,12 +517,12 @@
              used was deleted from all eight bundles along with this call --
              deliberately not named here, since the orphan ratchet counts a bare
              mention in a comment as a live reference. --%>
-        document.mediaFileViewForm.action = '<c:url value="/roller-ui/authoring/mediaFileView!moveSelected.rol"/>';
+        document.mediaFileViewForm.action = '<c:url value="/pressroom-ui/authoring/mediaFileView!moveSelected.rol"/>';
         document.mediaFileViewForm.submit();
     }
 
     function onView() {
-        document.mediaFileViewForm.action = "<c:url value='/roller-ui/authoring/mediaFileView!view.rol'/>";
+        document.mediaFileViewForm.action = "<c:url value='/pressroom-ui/authoring/mediaFileView!view.rol'/>";
         document.mediaFileViewForm.submit();
     }
 
@@ -587,7 +587,7 @@
             hidden.value = checkbox.value;
             form.appendChild(hidden);
         });
-        form.action = '<c:url value="/roller-ui/authoring/entryAddWithMediaFile.rol"/>';
+        form.action = '<c:url value="/pressroom-ui/authoring/entryAddWithMediaFile.rol"/>';
         form.submit();
     }
 

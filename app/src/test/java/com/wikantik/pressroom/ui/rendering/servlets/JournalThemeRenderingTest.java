@@ -93,7 +93,7 @@ class JournalThemeRenderingTest {
 
     private String render(String pathInfo) throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", pathInfo);
+                .anonymousGet("/pressroom-ui/rendering/page", pathInfo);
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
         assertEquals(200, response.getStatus(), "page must render for " + pathInfo);
@@ -264,7 +264,7 @@ class JournalThemeRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/" + HANDLE + "/");
+                .anonymousGet("/pressroom-ui/rendering/page", "/" + HANDLE + "/");
         request.setParameter("page", "1");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
@@ -369,7 +369,7 @@ class JournalThemeRenderingTest {
     @Test
     void theSearchPageRendersThroughTheJournalTheme() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/search", "/" + HANDLE);
+                .anonymousGet("/pressroom-ui/rendering/search", "/" + HANDLE);
         request.setParameter("q", "zzznope");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.searchServlet(), request);
@@ -506,7 +506,7 @@ class JournalThemeRenderingTest {
         savePage("still-drafting", "Not Yet", "Nothing to see.", WeblogPage.PubStatus.DRAFT);
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/" + HANDLE + "/still-drafting");
+                .anonymousGet("/pressroom-ui/rendering/page", "/" + HANDLE + "/still-drafting");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
 
@@ -622,7 +622,7 @@ class JournalThemeRenderingTest {
     @Test
     void theSearchResultsTitleNamesTheQuery() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/search", "/" + HANDLE);
+                .anonymousGet("/pressroom-ui/rendering/search", "/" + HANDLE);
         request.setParameter("q", "lighthouse");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.searchServlet(), request);

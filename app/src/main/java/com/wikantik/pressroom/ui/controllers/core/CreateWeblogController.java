@@ -46,7 +46,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * Allows user to create a new website.
  */
 @Controller
-@RequestMapping("/roller-ui")
+@RequestMapping("/pressroom-ui")
 public class CreateWeblogController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(CreateWeblogController.class);
@@ -124,11 +124,11 @@ public class CreateWeblogController extends BaseController {
             // A check that could not run is not one that passed.
             log.error("error checking whether this user may create a weblog", ex);
             addFlashError(redirectAttributes, "generic.error.check.logs", request);
-            return "redirect:/roller-ui/menu.rol";
+            return "redirect:/pressroom-ui/menu.rol";
         }
         if (refusal != null) {
             addFlashError(redirectAttributes, refusal.messageKey(), request);
-            return "redirect:/roller-ui/menu.rol";
+            return "redirect:/pressroom-ui/menu.rol";
         }
 
         myValidate(request, model, bean);
@@ -140,7 +140,7 @@ public class CreateWeblogController extends BaseController {
                 weblogger.flush();
 
                 addFlashMessage(redirectAttributes, "createWebsite.created", bean.getHandle(), request);
-                return "redirect:/roller-ui/menu.rol";
+                return "redirect:/pressroom-ui/menu.rol";
 
             } catch (WebloggerException e) {
                 log.error("ERROR adding weblog", e);

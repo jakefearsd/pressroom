@@ -97,7 +97,7 @@ class PortfolioThemeRenderingTest {
 
     private String render(String pathInfo) throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", pathInfo);
+                .anonymousGet("/pressroom-ui/rendering/page", pathInfo);
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
         assertEquals(200, response.getStatus(),
@@ -526,7 +526,7 @@ class PortfolioThemeRenderingTest {
                 "the head must link a versioned stylesheet:\n" + body);
 
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/page", "/" + HANDLE + "/page/portfolio-custom.css");
+                "/pressroom-ui/rendering/page", "/" + HANDLE + "/page/portfolio-custom.css");
         request.setQueryString("v=1234567890");
         request.setParameter("v", "1234567890");
         MockHttpServletResponse response = RenderingTestSupport
@@ -597,7 +597,7 @@ class PortfolioThemeRenderingTest {
     @Test
     void theSearchPageRendersThePortfolioTemplate() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/search", "/" + HANDLE);
+                .anonymousGet("/pressroom-ui/rendering/search", "/" + HANDLE);
         request.setParameter("q", "zzznope");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.searchServlet(), request);

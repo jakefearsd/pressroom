@@ -15,7 +15,7 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
  * Spring's authorization request, with two changes: PKCE although the client is
  * confidential, and a callback built from the configured Absolute URL.
  *
- * <p>The callback is {@code <Absolute URL without trailing slashes>/roller-ui/sso/callback},
+ * <p>The callback is {@code <Absolute URL without trailing slashes>/pressroom-ui/sso/callback},
  * never derived from the request (spec criterion 7): a visitor on
  * {@code http://docker2.lan:8080} would otherwise send the provider a callback it
  * refuses. With no Absolute URL this resolves nothing, so no reader is ever sent

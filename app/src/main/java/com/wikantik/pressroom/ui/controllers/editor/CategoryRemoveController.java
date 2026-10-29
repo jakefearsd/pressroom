@@ -41,7 +41,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * Remove a category.
  */
 @Controller
-@RequestMapping("/roller-ui/authoring")
+@RequestMapping("/pressroom-ui/authoring")
 public class CategoryRemoveController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(CategoryRemoveController.class);
@@ -91,7 +91,7 @@ public class CategoryRemoveController extends BaseController {
                 // not a server fault, so say it plainly here.
                 if (getActionWeblog(request).getWeblogCategories().size() <= 1) {
                     addFlashError(redirectAttributes, "categoryForm.error.lastCategory", request);
-                    return "redirect:/roller-ui/authoring/categories.rol?weblog="
+                    return "redirect:/pressroom-ui/authoring/categories.rol?weblog="
                             + getActionWeblog(request).getHandle();
                 }
 
@@ -99,7 +99,7 @@ public class CategoryRemoveController extends BaseController {
                     WeblogCategory target = lookupCategory(targetCategoryId, request);
                     if (target == null) {
                         addFlashError(redirectAttributes, "categoryForm.error.notFound", request);
-                        return "redirect:/roller-ui/authoring/categories.rol?weblog="
+                        return "redirect:/pressroom-ui/authoring/categories.rol?weblog="
                                 + getActionWeblog(request).getHandle();
                     }
                     wmgr.moveWeblogCategoryContents(category, target);
@@ -112,7 +112,7 @@ public class CategoryRemoveController extends BaseController {
 
                 addFlashMessage(redirectAttributes, "categoryForm.removed", category.getName(), request);
 
-                return "redirect:/roller-ui/authoring/categories.rol?weblog="
+                return "redirect:/pressroom-ui/authoring/categories.rol?weblog="
                         + getActionWeblog(request).getHandle();
             } catch (Exception ex) {
                 log.error("Error removing category - {}", removeId, ex);
@@ -124,7 +124,7 @@ public class CategoryRemoveController extends BaseController {
 
         // Removal is driven by a modal on the category list, so there is no
         // confirmation page to redisplay; return to the list with the error.
-        return "redirect:/roller-ui/authoring/categories.rol?weblog="
+        return "redirect:/pressroom-ui/authoring/categories.rol?weblog="
                 + getActionWeblog(request).getHandle();
     }
 

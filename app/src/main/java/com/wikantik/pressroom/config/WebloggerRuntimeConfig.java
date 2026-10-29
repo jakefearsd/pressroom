@@ -326,7 +326,7 @@ public final class WebloggerRuntimeConfig {
 
         // Null when no front page has been chosen yet, which is the state of
         // every installation between first boot and someone visiting
-        // /roller-ui/setup. Comparing handle-first turned that into an NPE on
+        // /pressroom-ui/setup. Comparing handle-first turned that into an NPE on
         // the cache-invalidation path, so editing a template on a fresh install
         // failed with a 500 rather than simply finding no front-page weblog.
         return java.util.Objects.equals(frontPageHandle, weblogHandle);

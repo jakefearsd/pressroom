@@ -113,7 +113,7 @@ class MailCommentNotifierTest {
         assertTrue(body.contains("Rae commented on \"Soup & Bread\":"), body);
         assertTrue(body.contains("Lovely soup."), body);
         assertTrue(body.contains(
-                "https://blog.example.invalid/roller-ui/authoring/comments.rol?weblog=food"), body);
+                "https://blog.example.invalid/pressroom-ui/authoring/comments.rol?weblog=food"), body);
         verify(mocks.weblogger()).release();
     }
 
@@ -125,7 +125,7 @@ class MailCommentNotifierTest {
         notifier.notifyHeld(comment);
 
         String body = mail.onlyMessage().getContent().toString();
-        assertTrue(body.contains("Review it: /roller-ui/authoring/comments.rol?weblog=food"), body);
+        assertTrue(body.contains("Review it: /pressroom-ui/authoring/comments.rol?weblog=food"), body);
     }
 
     @Test

@@ -23,7 +23,7 @@
 
 <script src="<c:url value='/theme/scripts/roller-guard-submit.js'/>"></script>
 
-<form action="${pageContext.request.contextPath}/roller-ui/authoring/themeEdit!save.rol" method="post" class="guard-submit">
+<form action="${pageContext.request.contextPath}/pressroom-ui/authoring/themeEdit!save.rol" method="post" class="guard-submit">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
 
     <%-- Two choices side-by-side: choose Shared or Custom Theme.
@@ -349,7 +349,7 @@
         if (!themeId) {
             return;
         }
-        window.open('<c:url value="/roller-ui/authoring/preview/${actionWeblog.handle}"/>?theme='
+        window.open('<c:url value="/pressroom-ui/authoring/preview/${actionWeblog.handle}"/>?theme='
             + encodeURIComponent(themeId));
     }
 

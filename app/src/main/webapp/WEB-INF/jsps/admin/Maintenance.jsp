@@ -24,7 +24,7 @@
      re-run-the-whole-thing-again operations this guard exists for. One form
      with three formaction-routed buttons, same shape as Entries.jsp's bulk
      actions, so the opt-in is form-level. --%>
-<form action="${pageContext.request.contextPath}/roller-ui/admin/maintenance.rol" method="post" class="form-stacked guard-submit">
+<form action="${pageContext.request.contextPath}/pressroom-ui/admin/maintenance.rol" method="post" class="form-stacked guard-submit">
 <sec:csrfInput/>
 
     <div class="mb-3">
@@ -83,7 +83,7 @@
     <div class="maintenance-op">
         <p><spring:message code="maintenance.prompt.flush"/></p>
         <button type="submit" class="btn btn-secondary"
-                formaction="${pageContext.request.contextPath}/roller-ui/admin/maintenance!flushCache.rol"><spring:message code="maintenance.button.flush"/></button>
+                formaction="${pageContext.request.contextPath}/pressroom-ui/admin/maintenance!flushCache.rol"><spring:message code="maintenance.button.flush"/></button>
     </div>
 
     <%-- data-confirm, NOT onclick="return confirm('...')": an HTML escape in a
@@ -104,7 +104,7 @@
                     data-confirm-template="${fn:escapeXml(confirmIndex)}"
                     <c:if test="${selectedWeblog != null}">data-confirm="${fn:escapeXml(fn:replace(confirmIndex, weblogToken, selectedWeblog.handle))}"</c:if>
                     data-busy-label="<spring:message code='maintenance.index.building'/>"
-                    formaction="${pageContext.request.contextPath}/roller-ui/admin/maintenance!index.rol"><spring:message code="maintenance.button.index"/></button>
+                    formaction="${pageContext.request.contextPath}/pressroom-ui/admin/maintenance!index.rol"><spring:message code="maintenance.button.index"/></button>
         </div>
     </c:if>
 
@@ -115,7 +115,7 @@
                 data-confirm-template="${fn:escapeXml(confirmRenditions)}"
                 <c:if test="${selectedWeblog != null}">data-confirm="${fn:escapeXml(fn:replace(confirmRenditions, weblogToken, selectedWeblog.handle))}"</c:if>
                 data-busy-label="<spring:message code='maintenance.regenerateRenditions.building'/>"
-                formaction="${pageContext.request.contextPath}/roller-ui/admin/maintenance!regenerateRenditions.rol"><spring:message code="maintenance.button.regenerateRenditions"/></button>
+                formaction="${pageContext.request.contextPath}/pressroom-ui/admin/maintenance!regenerateRenditions.rol"><spring:message code="maintenance.button.regenerateRenditions"/></button>
     </div>
 
 </form>

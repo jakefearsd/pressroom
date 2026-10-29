@@ -114,7 +114,7 @@ class FrontDoorSwitchTest {
     private String renderRoot() throws Exception {
         String path = FrontDoor.forwardPath(TestUtils.weblogger());
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/page", path.substring("/roller-ui/rendering/page".length()));
+                "/pressroom-ui/rendering/page", path.substring("/pressroom-ui/rendering/page".length()));
         request.setDispatcherType(DispatcherType.FORWARD);
         request.removeAttribute("skipCache");
         return RenderingTestSupport.execute(RenderingTestSupport.pageServlet(), request).getContentAsString();
@@ -133,7 +133,7 @@ class FrontDoorSwitchTest {
 
         setFrontDoor("doorhome");
         assertTrue(renderRoot().contains("Home body"), "and back again");
-        assertEquals("/roller-ui/rendering/page/site-space/doorhome",
+        assertEquals("/pressroom-ui/rendering/page/site-space/doorhome",
                 FrontDoor.forwardPath(TestUtils.weblogger()));
     }
 }

@@ -63,7 +63,7 @@ public class LazyOidcClientRegistrationRepository implements ClientRegistrationR
                     .scope("openid", "profile", "email")
                     // Replaced per request by PressroomAuthorizationRequestResolver with the
                     // configured Absolute URL; the template only satisfies the builder.
-                    .redirectUri("{baseUrl}/roller-ui/sso/callback")
+                    .redirectUri("{baseUrl}/pressroom-ui/sso/callback")
                     .userNameAttributeName("sub")
                     .clientName(settings.providerLabel())
                     .build();

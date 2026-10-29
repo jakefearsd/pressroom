@@ -42,14 +42,14 @@ import org.springframework.web.bind.annotation.RequestParam;
  * such as flushing the page cache, rebuilding the search index, or
  * regenerating media renditions.
  *
- * <p>This used to live under {@code /roller-ui/authoring} and get its target
+ * <p>This used to live under {@code /pressroom-ui/authoring} and get its target
  * weblog from the action context ({@code getActionWeblog(request)}) the way
  * every other editor screen does. It moved to Global Admin because the three
  * actions are operator work, not authoring work -- a blog author should never
  * face a button whose failure mode ("the search index is corrupt", "the page
  * cache is stale") they cannot reason about.
  *
- * <p>There is no action-context weblog under {@code /roller-ui/admin/**}
+ * <p>There is no action-context weblog under {@code /pressroom-ui/admin/**}
  * ({@link #isWeblogRequired()} is false, matching {@code
  * GlobalConfigController}/{@code UserAdminController}), so the weblog to
  * operate on is chosen explicitly from a {@code <select>} on the page and
@@ -72,7 +72,7 @@ import org.springframework.web.bind.annotation.RequestParam;
  * maintenance.error.noSuchWeblog} page error as an explicit empty one.
  */
 @Controller
-@RequestMapping("/roller-ui/admin")
+@RequestMapping("/pressroom-ui/admin")
 public class MaintenanceController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(MaintenanceController.class);

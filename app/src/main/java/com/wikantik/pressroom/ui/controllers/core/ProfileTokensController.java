@@ -36,15 +36,15 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * Profile → API tokens (spec 2026-10-13, section 3; criterion 15): every
  * signed-in author mints, lists and revokes their own tokens, and every
  * mint -- here or on an agent's page -- lands on this controller's reveal.
- * Under {@code /roller-ui/profile*}, so SecurityConfig admits editors and
+ * Under {@code /pressroom-ui/profile*}, so SecurityConfig admits editors and
  * admins only; a reader holds no login action and is refused.
  */
 @Controller
-@RequestMapping("/roller-ui")
+@RequestMapping("/pressroom-ui")
 public class ProfileTokensController extends TokenFormController {
 
-    private static final String CREATE_ACTION = "/roller-ui/profileTokens!create.rol";
-    private static final String REVOKE_ACTION = "/roller-ui/profileTokens!revoke.rol";
+    private static final String CREATE_ACTION = "/pressroom-ui/profileTokens!create.rol";
+    private static final String REVOKE_ACTION = "/pressroom-ui/profileTokens!revoke.rol";
 
     @Override
     public boolean isWeblogRequired() {
@@ -88,7 +88,7 @@ public class ProfileTokensController extends TokenFormController {
             case NOT_FOUND -> addFlashError(redirectAttributes, "apiTokens.error.noSuchToken", request);
             case FAILED -> addFlashError(redirectAttributes, "generic.error.check.logs", request);
         }
-        return "redirect:/roller-ui/profileTokens.rol";
+        return "redirect:/pressroom-ui/profileTokens.rol";
     }
 
     @GetMapping("/profileTokens!reveal.rol")

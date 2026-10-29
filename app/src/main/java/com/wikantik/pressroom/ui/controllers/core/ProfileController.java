@@ -50,7 +50,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * Allows user to edit his/her profile.
  */
 @Controller
-@RequestMapping("/roller-ui")
+@RequestMapping("/pressroom-ui")
 public class ProfileController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(ProfileController.class);
@@ -136,7 +136,7 @@ public class ProfileController extends BaseController {
                     comments.expireWhereShown(existingUser);
                 }
                 addFlashMessage(redirectAttributes, "generic.changes.saved", request);
-                return "redirect:/roller-ui/menu.rol";
+                return "redirect:/pressroom-ui/menu.rol";
             } catch (WebloggerException ex) {
                 log.error("ERROR in action", ex);
                 addError(model, "generic.error.check.logs", request);

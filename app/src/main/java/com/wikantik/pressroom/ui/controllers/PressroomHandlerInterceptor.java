@@ -70,8 +70,8 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
 
     private static final Logger log = LoggerFactory.getLogger(PressroomHandlerInterceptor.class);
 
-    private static final String LOGIN_URL = "/roller-ui/login.rol";
-    private static final String ACCESS_DENIED_URL = "/roller-ui/access-denied.rol";
+    private static final String LOGIN_URL = "/pressroom-ui/login.rol";
+    private static final String ACCESS_DENIED_URL = "/pressroom-ui/access-denied.rol";
 
     private final WebloggerProvider provider;
     private final Weblogger weblogger;

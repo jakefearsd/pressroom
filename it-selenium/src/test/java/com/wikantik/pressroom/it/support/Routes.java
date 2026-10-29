@@ -30,7 +30,7 @@ import java.util.List;
  * from an integration-test module, so text is the only link -- see the comment
  * at the top of RouteCoverageTest for why that is deliberate rather than lazy.
  * The practical consequence: keep every route path in this file written as a
- * single string literal ({@code "/roller-ui/..."}, or the root-level SEO
+ * single string literal ({@code "/pressroom-ui/..."}, or the root-level SEO
  * routes {@code /sitemap-....xml} / {@code /robots.txt}), never assembled
  * from fragments, or the coverage guard will not see it.
  *
@@ -148,81 +148,81 @@ public final class Routes {
     private static final List<Route> NO_PARAMETERS = List.of(
 
             // LoginController.isUserRequired() is false and no SecurityConfig
-            // authorization rule matches /roller-ui/login**, so this renders
+            // authorization rule matches /pressroom-ui/login**, so this renders
             // logged out or logged in. Login.jsp's form is unconditional.
-            new Route("/roller-ui/login.rol", Role.ANONYMOUS, "", "#loginForm"),
+            new Route("/pressroom-ui/login.rol", Role.ANONYMOUS, "", "#loginForm"),
 
             // PasswordResetController.isUserRequired() is false, matching
             // LoginController; the form is unconditional.
-            new Route("/roller-ui/forgotPassword.rol", Role.ANONYMOUS, "",
-                    "form[action$='/roller-ui/forgotPassword!send.rol']"),
+            new Route("/pressroom-ui/forgotPassword.rol", Role.ANONYMOUS, "",
+                    "form[action$='/pressroom-ui/forgotPassword!send.rol']"),
 
             // Landing page for authorization failures. PressroomHandlerInterceptor
             // redirects here; it previously had no handler at all, so every denial
             // produced a bare 404. denied.jsp's only distinctive element is its h1#accessDenied.
-            new Route("/roller-ui/access-denied.rol", Role.ANONYMOUS, "", "h1#accessDenied"),
+            new Route("/pressroom-ui/access-denied.rol", Role.ANONYMOUS, "", "h1#accessDenied"),
             // What / shows while no weblog is the front page; public.
-            new Route("/roller-ui/siteDirectory.rol", Role.ANONYMOUS, "", "#siteDirectory"),
+            new Route("/pressroom-ui/siteDirectory.rol", Role.ANONYMOUS, "", "#siteDirectory"),
 
             // SetupController.isUserRequired() is false, but SecurityConfig's
-            // authorization rule for /roller-ui/setup* still requires the
+            // authorization rule for /pressroom-ui/setup* still requires the
             // "admin" authority, so this route is reachable only because the
             // sweep is logged in as the seeded admin, not because it is public.
             // Every link on Setup.jsp is conditional on user/blog counts; the
             // three card headings are not. The marker is an app-owned class
             // (not card-title) because Setup.jsp's headings sit in .card-header,
             // not .card-body, where Bootstrap 5's card-title is normally used.
-            new Route("/roller-ui/setup.rol", Role.ADMIN, "", "h2.setup-section-title"),
+            new Route("/pressroom-ui/setup.rol", Role.ADMIN, "", "h2.setup-section-title"),
 
             // The weblog list only renders under
             // <c:if test="${not empty existingPermissions}">, which holds because
             // seed-it-data.sql grants it_admin a permission on it_weblog. If the
             // seed ever stops granting it, this marker is the thing that fails.
-            new Route("/roller-ui/menu.rol", Role.EDITOR, "", "h2.mm_weblog_name"),
+            new Route("/pressroom-ui/menu.rol", Role.EDITOR, "", "h2.mm_weblog_name"),
 
-            new Route("/roller-ui/profile.rol", Role.EDITOR, "",
-                    "form[action$='/roller-ui/profile!save.rol']"),
+            new Route("/pressroom-ui/profile.rol", Role.EDITOR, "",
+                    "form[action$='/pressroom-ui/profile!save.rol']"),
 
             // Profile -> API tokens (spec 2026-10-13): the live tokens and the form.
-            new Route("/roller-ui/profileTokens.rol", Role.EDITOR, "", "#profileTokensPage"),
+            new Route("/pressroom-ui/profileTokens.rol", Role.EDITOR, "", "#profileTokensPage"),
 
             // The one-time reveal. Opened directly it has no flash secret, so it
             // renders its "already shown" state -- still its own content tile.
-            new Route("/roller-ui/profileTokens!reveal.rol", Role.EDITOR, "", "#tokenRevealPage"),
+            new Route("/pressroom-ui/profileTokens!reveal.rol", Role.EDITOR, "", "#tokenRevealPage"),
 
             // The reader's account page. AccountController needs only the global
             // "comment" action, which readers hold -- but Role has no READER and
             // the sweep signs in as the seeded admin, who holds "comment" too, so
             // EDITOR (whose role grants "comment") is the lowest role listed here.
-            new Route("/roller-ui/account.rol", Role.EDITOR, "", "#accountPage"),
+            new Route("/pressroom-ui/account.rol", Role.EDITOR, "", "#accountPage"),
 
             // Renders .CreateWeblog rather than .GenericError because
             // site.allowUserWeblogCreation defaults to true (runtimeConfigDefs.xml)
             // and groupblogging.enabled defaults to true (pressroom.properties), which
             // skips the "you already have a blog" bail-out.
-            new Route("/roller-ui/createWeblog.rol", Role.EDITOR, "",
-                    "form[action$='/roller-ui/createWeblog!save.rol']"),
+            new Route("/pressroom-ui/createWeblog.rol", Role.EDITOR, "",
+                    "form[action$='/pressroom-ui/createWeblog!save.rol']"),
 
             // The settings rail (task B9a): the <form> IS the .settings-grid,
             // so the rail is the marker that proves the page rendered its own
             // content rather than the form action, which the old
             // no-rail layout also had.
-            new Route("/roller-ui/admin/globalConfig.rol", Role.ADMIN, "",
+            new Route("/pressroom-ui/admin/globalConfig.rol", Role.ADMIN, "",
                     ".settings-rail"),
 
-            new Route("/roller-ui/admin/userAdmin.rol", Role.ADMIN, "",
+            new Route("/pressroom-ui/admin/userAdmin.rol", Role.ADMIN, "",
                     "#userListPage"),
 
             // Businesses: the list's own wrapper, and the edit form, which a
             // blank id opens empty (the new-business case), so neither needs seeding.
-            new Route("/roller-ui/admin/businesses.rol", Role.ADMIN, "",
+            new Route("/pressroom-ui/admin/businesses.rol", Role.ADMIN, "",
                     "#businesses-list-marker"),
 
             // Admin -> API tokens (spec 2026-10-13): every live token on the site.
-            new Route("/roller-ui/admin/apiTokens.rol", Role.ADMIN, "", "#apiTokensPage"),
+            new Route("/pressroom-ui/admin/apiTokens.rol", Role.ADMIN, "", "#apiTokensPage"),
 
-            new Route("/roller-ui/admin/businesses!edit.rol", Role.ADMIN, "",
-                    "form[action$='/roller-ui/admin/businesses!save.rol']"),
+            new Route("/pressroom-ui/admin/businesses!edit.rol", Role.ADMIN, "",
+                    "form[action$='/pressroom-ui/admin/businesses!save.rol']"),
 
             // Maintenance moved off the blog-author tabs and into Global
             // Admin: the three actions (flush cache, rebuild search index,
@@ -234,24 +234,24 @@ public final class Routes {
             // userAdmin.rol above. Maintenance.jsp's outer form posts back to
             // maintenance.rol itself; the individual buttons override it with
             // formaction.
-            new Route("/roller-ui/admin/maintenance.rol", Role.ADMIN, "",
-                    "form[action$='/roller-ui/admin/maintenance.rol']"),
+            new Route("/pressroom-ui/admin/maintenance.rol", Role.ADMIN, "",
+                    "form[action$='/pressroom-ui/admin/maintenance.rol']"),
 
             // UserEdit.jsp posts to a runtime-chosen ${saveAction}, so the form
             // action is not a stable selector; the username input is.
             // Anchored on the username input by NAME. It used to anchor on
             // id="bean_userName", which sat on the SCREEN NAME field -- so the
             // marker was proving the wrong control existed.
-            new Route("/roller-ui/admin/createUser.rol", Role.ADMIN, "",
+            new Route("/pressroom-ui/admin/createUser.rol", Role.ADMIN, "",
                     "input[name='bean.userName']"),
 
             // New agent (spec 2026-10-13): the create form.
-            new Route("/roller-ui/admin/createAgent.rol", Role.ADMIN, "",
-                    "form[action$='/roller-ui/admin/createAgent!save.rol']"),
+            new Route("/pressroom-ui/admin/createAgent.rol", Role.ADMIN, "",
+                    "form[action$='/pressroom-ui/admin/createAgent!save.rol']"),
 
             // An agent's page, for the agent seed-it-data.sql creates -- the one
             // route in this list that needs a query: a page needs its agent.
-            new Route("/roller-ui/admin/agent.rol", Role.ADMIN, "userName=it_agent", "#agentPage"),
+            new Route("/pressroom-ui/admin/agent.rol", Role.ADMIN, "userName=it_agent", "#agentPage"),
 
             // SeoController's sitemap index. Not HTML: Chrome's built-in XML
             // viewer keeps the source document's elements in the DOM (inside
@@ -269,7 +269,7 @@ public final class Routes {
     /**
      * Routes that need only {@code weblog=it_weblog}.
      *
-     * <p>All of these sit under {@code /roller-ui/authoring/} and inherit
+     * <p>All of these sit under {@code /pressroom-ui/authoring/} and inherit
      * {@code BaseController.isWeblogRequired() == true}, so
      * {@code PressroomHandlerInterceptor} bounces them to access-denied without the
      * parameter.
@@ -279,67 +279,67 @@ public final class Routes {
             // Anchored on the category table itself. It used to be anchored on a
             // wrapper form posting to categories!move.rol -- a control nothing
             // could submit, which is a poor thing to prove a page rendered by.
-            new Route("/roller-ui/authoring/categories.rol", Role.EDITOR, WEBLOG,
+            new Route("/pressroom-ui/authoring/categories.rol", Role.EDITOR, WEBLOG,
                     "table#category-table"),
 
             // The entry table is empty with no entries seeded; the delete-confirm
             // modal is emitted unconditionally.
-            new Route("/roller-ui/authoring/entries.rol", Role.EDITOR, WEBLOG, "#delete-entry-modal"),
+            new Route("/pressroom-ui/authoring/entries.rol", Role.EDITOR, WEBLOG, "#delete-entry-modal"),
 
-            new Route("/roller-ui/authoring/entryAdd.rol", Role.EDITOR, WEBLOG, "#entry"),
+            new Route("/pressroom-ui/authoring/entryAdd.rol", Role.EDITOR, WEBLOG, "#entry"),
 
             // Trash is empty with nothing seeded to trash, but the wrapper div
             // around the list region (table or empty-state invitation) is
             // emitted unconditionally, same reasoning as entries.rol above.
-            new Route("/roller-ui/authoring/trash.rol", Role.EDITOR, WEBLOG, "#trash-list-marker"),
+            new Route("/pressroom-ui/authoring/trash.rol", Role.EDITOR, WEBLOG, "#trash-list-marker"),
 
-            new Route("/roller-ui/authoring/mediaFileAdd.rol", Role.EDITOR, WEBLOG,
-                    "form[action$='/roller-ui/authoring/mediaFileAdd!save.rol']"),
+            new Route("/pressroom-ui/authoring/mediaFileAdd.rol", Role.EDITOR, WEBLOG,
+                    "form[action$='/pressroom-ui/authoring/mediaFileAdd!save.rol']"),
 
             // #mediaFileViewForm only renders when the directory has files;
             // #createPostForm is at the top of the JSP and always renders.
-            new Route("/roller-ui/authoring/mediaFileView.rol", Role.EDITOR, WEBLOG, "#createPostForm"),
+            new Route("/pressroom-ui/authoring/mediaFileView.rol", Role.EDITOR, WEBLOG, "#createPostForm"),
 
-            new Route("/roller-ui/authoring/members.rol", Role.EDITOR, WEBLOG,
-                    "form[action$='/roller-ui/authoring/members!save.rol']"),
+            new Route("/pressroom-ui/authoring/members.rol", Role.EDITOR, WEBLOG,
+                    "form[action$='/pressroom-ui/authoring/members!save.rol']"),
 
             // Table is empty with no pages seeded, but the remove form around
             // it is emitted unconditionally, same reasoning as entries.rol.
-            new Route("/roller-ui/authoring/pages.rol", Role.EDITOR, WEBLOG, "#pageRemoveForm"),
+            new Route("/pressroom-ui/authoring/pages.rol", Role.EDITOR, WEBLOG, "#pageRemoveForm"),
 
             // "New page" mode (no id parameter): the edit form always renders.
-            new Route("/roller-ui/authoring/pageEdit.rol", Role.EDITOR, WEBLOG, "#pageEditForm"),
+            new Route("/pressroom-ui/authoring/pageEdit.rol", Role.EDITOR, WEBLOG, "#pageEditForm"),
 
             // Both of StylesheetEdit.jsp's forms sit inside a <c:choose> on the
             // weblog's theme state, so neither is a reliable marker. The subtitle
             // is outside the choose.
-            new Route("/roller-ui/authoring/stylesheetEdit.rol", Role.EDITOR, WEBLOG, "p.subtitle"),
+            new Route("/pressroom-ui/authoring/stylesheetEdit.rol", Role.EDITOR, WEBLOG, "p.subtitle"),
 
             // Table is empty with no submissions seeded, but the delete form
             // around it is emitted unconditionally, same reasoning as
             // pages.rol/entries.rol.
-            new Route("/roller-ui/authoring/submissions.rol", Role.EDITOR, WEBLOG,
+            new Route("/pressroom-ui/authoring/submissions.rol", Role.EDITOR, WEBLOG,
                     "#submissionsDeleteForm"),
 
             // The moderation form is emitted unconditionally, empty list or not.
-            new Route("/roller-ui/authoring/comments.rol", Role.EDITOR, WEBLOG,
+            new Route("/pressroom-ui/authoring/comments.rol", Role.EDITOR, WEBLOG,
                     "#commentsModerationForm"),
 
-            new Route("/roller-ui/authoring/templates.rol", Role.EDITOR, WEBLOG,
-                    "form[action$='/roller-ui/authoring/templates!remove.rol']"),
+            new Route("/pressroom-ui/authoring/templates.rol", Role.EDITOR, WEBLOG,
+                    "form[action$='/pressroom-ui/authoring/templates!remove.rol']"),
 
             // The theme card grid (task B9b). It sits inside #themeChooser,
             // which the page's JS reveals -- but this asserts the elements
             // EXIST, not that they are visible, so the marker holds whichever
             // state block the state machine lands on.
-            new Route("/roller-ui/authoring/themeEdit.rol", Role.EDITOR, WEBLOG,
+            new Route("/pressroom-ui/authoring/themeEdit.rol", Role.EDITOR, WEBLOG,
                     ".theme-cards"),
 
-            new Route("/roller-ui/authoring/weblogConfig.rol", Role.EDITOR, WEBLOG,
-                    "form[action$='/roller-ui/authoring/weblogConfig!save.rol']"),
+            new Route("/pressroom-ui/authoring/weblogConfig.rol", Role.EDITOR, WEBLOG,
+                    "form[action$='/pressroom-ui/authoring/weblogConfig!save.rol']"),
 
-            new Route("/roller-ui/authoring/weblogRemove.rol", Role.EDITOR, WEBLOG,
-                    "form[action$='/roller-ui/authoring/weblogRemove!remove.rol']")
+            new Route("/pressroom-ui/authoring/weblogRemove.rol", Role.EDITOR, WEBLOG,
+                    "form[action$='/pressroom-ui/authoring/weblogRemove!remove.rol']")
     );
 
     // ---------------------------------------------------------------- bucket c
@@ -372,7 +372,7 @@ public final class Routes {
                     "A 404 until the site space has a published page, and the sweep "
                             + "publishes none; fetched and asserted while the front-door "
                             + "page is published by SitePagesIT."),
-            new SkippedRoute("/roller-ui/resetPassword.rol", Role.ANONYMOUS,
+            new SkippedRoute("/pressroom-ui/resetPassword.rol", Role.ANONYMOUS,
                     "Needs a token= query parameter naming a live UserToken row; "
                             + "tokens are minted per forgot-password request, so there is "
                             + "no literal URL to sweep. Without one the required "
@@ -381,51 +381,51 @@ public final class Routes {
 
             // --- need a seeded entity id ---
 
-            new SkippedRoute("/roller-ui/authoring/entryEdit.rol", Role.EDITOR,
+            new SkippedRoute("/pressroom-ui/authoring/entryEdit.rol", Role.EDITOR,
                     "Needs bean.id of a WeblogEntry; without one the controller "
                             + "redirects to menu.rol. No entries are seeded."),
-            new SkippedRoute("/roller-ui/authoring/entryEdit!firstSave.rol", Role.EDITOR,
+            new SkippedRoute("/pressroom-ui/authoring/entryEdit!firstSave.rol", Role.EDITOR,
                     "Post-save landing page for entryEdit; same missing entry id."),
-            new SkippedRoute("/roller-ui/authoring/entryAddWithMediaFile.rol", Role.EDITOR,
+            new SkippedRoute("/pressroom-ui/authoring/entryAddWithMediaFile.rol", Role.EDITOR,
                     "Needs selectedImage(s) holding MediaFile ids; no media files are seeded."),
-            new SkippedRoute("/roller-ui/authoring/mediaFileEdit.rol", Role.EDITOR,
+            new SkippedRoute("/pressroom-ui/authoring/mediaFileEdit.rol", Role.EDITOR,
                     "Needs mediaFileId; no media files are seeded."),
-            new SkippedRoute("/roller-ui/authoring/overlay/mediaFileImageChooser.rol", Role.EDITOR,
+            new SkippedRoute("/pressroom-ui/authoring/overlay/mediaFileImageChooser.rol", Role.EDITOR,
                     "Takes no required parameter, but the whole of "
                             + "MediaFileImageChooser.jsp sits inside "
                             + "<c:if test=\"${not empty childFiles or not empty "
                             + "allDirectories}\">, so with no media files seeded there is "
                             + "nothing to assert on. Exercised with a real fixture by "
                             + "EditorSeoIT's featured-image picker journey."),
-            new SkippedRoute("/roller-ui/authoring/templateEdit.rol", Role.EDITOR,
+            new SkippedRoute("/pressroom-ui/authoring/templateEdit.rol", Role.EDITOR,
                     "Needs bean.id of a WeblogTemplate; without one it falls back to "
                             + "the .Templates view with an error. No custom templates are "
                             + "seeded. TemplateIT drives it with a template it creates, and "
                             + "checks the result reaches the public page URL."),
-            new SkippedRoute("/roller-ui/admin/modifyUser.rol", Role.ADMIN,
+            new SkippedRoute("/pressroom-ui/admin/modifyUser.rol", Role.ADMIN,
                     "Needs bean.id or bean.userName; without one it renders .UserAdmin "
                             + "with a not-found error rather than the edit form. "
                             + "UserAdminIT drives it with a fixture it creates, through "
                             + "the admin search form."),
-            new SkippedRoute("/roller-ui/admin/modifyUser!firstSave.rol", Role.ADMIN,
+            new SkippedRoute("/pressroom-ui/admin/modifyUser!firstSave.rol", Role.ADMIN,
                     "Delegates to modifyUser; same missing user id."),
 
             // --- no page of their own ---
 
-            new SkippedRoute("/roller-ui/home.rol", Role.ANONYMOUS,
+            new SkippedRoute("/pressroom-ui/home.rol", Role.ANONYMOUS,
                     "Returns redirect:/ -- the site front page, which is Velocity-rendered "
                             + "weblog content rather than a controller view. Belongs to a "
                             + "front-page test, not a controller sweep."),
-            new SkippedRoute("/roller-ui/rendering/comments/session.rol", Role.ANONYMOUS,
+            new SkippedRoute("/pressroom-ui/rendering/comments/session.rol", Role.ANONYMOUS,
                     "JSON for the comment form's page script, not a page: it needs "
                             + "entry= naming a published entry, and none is seeded, so "
                             + "without one it answers 404. CommentsControllerTest pins "
                             + "its contract."),
-            new SkippedRoute("/roller-ui/admin/createUser!cancel.rol", Role.ADMIN,
+            new SkippedRoute("/pressroom-ui/admin/createUser!cancel.rol", Role.ADMIN,
                     "Pure redirect to userAdmin.rol, which the sweep already asserts on."),
-            new SkippedRoute("/roller-ui/admin/modifyUser!cancel.rol", Role.ADMIN,
+            new SkippedRoute("/pressroom-ui/admin/modifyUser!cancel.rol", Role.ADMIN,
                     "Pure redirect to userAdmin.rol, which the sweep already asserts on."),
-            new SkippedRoute("/roller-ui/login-redirect.rol", Role.EDITOR,
+            new SkippedRoute("/pressroom-ui/login-redirect.rol", Role.EDITOR,
                     "login-redirect.jsp branches on how many weblogs the user owns: exactly "
                             + "one sends you to the entry editor, otherwise to the main menu. "
                             + "Other ITs create weblogs on the shared baseline, so the landing "
@@ -434,18 +434,18 @@ public final class Routes {
 
             // --- would break the sweep itself ---
 
-            new SkippedRoute("/roller-ui/logout.rol", Role.ANONYMOUS,
+            new SkippedRoute("/pressroom-ui/logout.rol", Role.ANONYMOUS,
                     "logout-redirect.jsp calls session.invalidate() and cancels the "
                             + "remember-me cookie. Visiting it mid-sweep logs the sweep out and "
                             + "cascade-fails every later route. Needs its own test."),
 
             // --- only meaningful before bootstrap ---
 
-            new SkippedRoute("/roller-ui/install/install.rol", Role.ANONYMOUS,
+            new SkippedRoute("/pressroom-ui/install/install.rol", Role.ANONYMOUS,
                     "Returns redirect:/ once the WebloggerProvider is bootstrapped; the install "
                             + "wizard views are unreachable on a running instance. Covering it "
                             + "means a deliberately un-migrated database."),
-            new SkippedRoute("/roller-ui/install/install!bootstrap.rol", Role.ANONYMOUS,
+            new SkippedRoute("/pressroom-ui/install/install!bootstrap.rol", Role.ANONYMOUS,
                     "Same: returns redirect:/ when already bootstrapped, and triggering a "
                             + "real bootstrap mid-suite would reinitialise the app under the "
                             + "other tests.")

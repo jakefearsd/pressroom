@@ -59,17 +59,17 @@ class WebContainerConfigTest {
 
         assertEquals(5, registered.size());
         assertTrue(registered.stream().anyMatch(p ->
-                Exception.class.equals(p.getException()) && "/roller-ui/errors/error.jsp".equals(p.getPath())));
+                Exception.class.equals(p.getException()) && "/pressroom-ui/errors/error.jsp".equals(p.getPath())));
         assertTrue(registered.stream().anyMatch(p ->
                 HttpStatus.INTERNAL_SERVER_ERROR.equals(p.getStatus())
-                        && "/roller-ui/errors/error.jsp".equals(p.getPath())));
+                        && "/pressroom-ui/errors/error.jsp".equals(p.getPath())));
         assertTrue(registered.stream().anyMatch(p ->
-                HttpStatus.FORBIDDEN.equals(p.getStatus()) && "/roller-ui/errors/403.jsp".equals(p.getPath())));
+                HttpStatus.FORBIDDEN.equals(p.getStatus()) && "/pressroom-ui/errors/403.jsp".equals(p.getPath())));
         assertTrue(registered.stream().anyMatch(p ->
-                HttpStatus.BAD_REQUEST.equals(p.getStatus()) && "/roller-ui/errors/404.jsp".equals(p.getPath())),
+                HttpStatus.BAD_REQUEST.equals(p.getStatus()) && "/pressroom-ui/errors/404.jsp".equals(p.getPath())),
                 "400 must reuse the 404 template, same as web.xml");
         assertTrue(registered.stream().anyMatch(p ->
-                HttpStatus.NOT_FOUND.equals(p.getStatus()) && "/roller-ui/errors/404.jsp".equals(p.getPath())));
+                HttpStatus.NOT_FOUND.equals(p.getStatus()) && "/pressroom-ui/errors/404.jsp".equals(p.getPath())));
     }
 
     @Test

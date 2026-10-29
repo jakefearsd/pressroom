@@ -27,7 +27,7 @@
      edge. --%>
 <div class="form-signin">
         <form method="post" id="loginForm"
-              action="<c:url value='/roller_j_security_check'/>">
+              action="<c:url value='/pressroom_j_security_check'/>">
 
             <%-- .section-head, not <legend>: a legend outside a fieldset is
                  invalid anyway, and the browser's default sizing for it put a
@@ -66,13 +66,13 @@
 
 <c:if test="${ssoEnabled}">
     <p class="mt-3">
-        <a class="btn btn-secondary" id="ssoSignIn" href="<c:url value='/roller-ui/sso/start'/>">
+        <a class="btn btn-secondary" id="ssoSignIn" href="<c:url value='/pressroom-ui/sso/start'/>">
             <spring:message code="loginPage.ssoSignIn" arguments="${ssoLabelArgs}"/>
         </a>
     </p>
 </c:if>
 
-<p class="mt-3"><a href="<c:url value='/roller-ui/forgotPassword.rol'/>">
+<p class="mt-3"><a href="<c:url value='/pressroom-ui/forgotPassword.rol'/>">
     <spring:message code="loginPage.forgotPassword"/></a></p>
 </div><%-- .form-signin --%>
 

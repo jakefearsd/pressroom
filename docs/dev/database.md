@@ -133,7 +133,7 @@ with no front-page blog is left alone, where a bare slug now means a site page).
 
 `V041__pressroom_rename.sql` renames every `roller_*` relation and constraint <!-- rebrand:keep -->
 in `public` to `pressroom_*` (catalog only: rows, grants, foreign keys and the
-`analytics_*` views follow by oid) and rewrites stored `/roller-ui/` links in <!-- rebrand:keep -->
+`analytics_*` views follow by oid) and rewrites stored `/pressroom-ui/` links in <!-- rebrand:keep -->
 pages and entry text/summary (revisions keep what was written). It refuses,
 before renaming anything, when an old name and its new name both exist or a
 new name would pass 63 bytes. **After it, re-running an earlier migration is

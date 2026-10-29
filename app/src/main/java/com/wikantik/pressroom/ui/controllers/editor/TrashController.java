@@ -66,7 +66,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * trashed."
  */
 @Controller
-@RequestMapping("/roller-ui/authoring")
+@RequestMapping("/pressroom-ui/authoring")
 public class TrashController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(TrashController.class);
@@ -201,7 +201,7 @@ public class TrashController extends BaseController {
     }
 
     private String backToList(HttpServletRequest request) {
-        return "redirect:/roller-ui/authoring/trash.rol?weblog="
+        return "redirect:/pressroom-ui/authoring/trash.rol?weblog="
                 + getActionWeblog(request).getHandle();
     }
 }

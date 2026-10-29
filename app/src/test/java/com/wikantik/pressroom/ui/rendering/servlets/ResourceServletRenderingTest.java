@@ -53,7 +53,7 @@ class ResourceServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/resources", "/resourceblog/photo.jpg");
+                "/pressroom-ui/rendering/resources", "/resourceblog/photo.jpg");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.resourceServlet(), request);
 
@@ -65,7 +65,7 @@ class ResourceServletRenderingTest {
     @Test
     void unknownWeblogIsNotFound() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/resources", "/nosuchblog/whatever.jpg");
+                "/pressroom-ui/rendering/resources", "/nosuchblog/whatever.jpg");
         assertEquals(404, RenderingTestSupport.execute(
                 RenderingTestSupport.resourceServlet(), request).getStatus());
     }
@@ -73,7 +73,7 @@ class ResourceServletRenderingTest {
     @Test
     void unknownPathIsNotFound() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/resources", "/resourceblog/no-such-file.jpg");
+                "/pressroom-ui/rendering/resources", "/resourceblog/no-such-file.jpg");
         assertEquals(404, RenderingTestSupport.execute(
                 RenderingTestSupport.resourceServlet(), request).getStatus());
     }
@@ -87,13 +87,13 @@ class ResourceServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest first = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/resources", "/resourceblog/cond.jpg");
+                "/pressroom-ui/rendering/resources", "/resourceblog/cond.jpg");
         MockHttpServletResponse firstResponse = RenderingTestSupport
                 .execute(RenderingTestSupport.resourceServlet(), first);
         assertEquals(200, firstResponse.getStatus());
 
         MockHttpServletRequest conditional = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/resources", "/resourceblog/cond.jpg");
+                "/pressroom-ui/rendering/resources", "/resourceblog/cond.jpg");
         conditional.addHeader("If-Modified-Since", firstResponse.getDateHeader("Last-Modified"));
 
         assertEquals(304, RenderingTestSupport.execute(
@@ -106,7 +106,7 @@ class ResourceServletRenderingTest {
 
     private MockHttpServletResponse getByOriginalPath(String path) throws Exception {
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/resources", "/resourceblog" + path);
+                "/pressroom-ui/rendering/resources", "/resourceblog" + path);
         return RenderingTestSupport.execute(RenderingTestSupport.resourceServlet(), request);
     }
 

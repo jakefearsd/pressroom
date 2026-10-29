@@ -228,7 +228,7 @@ class EntriesApiDispatchTest {
      */
     @Test
     void aNonApiHandlerStillRedirectsOnAuthenticationFailure() throws Exception {
-        mockMvc.perform(get("/roller-ui/dispatchProbe"))
+        mockMvc.perform(get("/pressroom-ui/dispatchProbe"))
                 .andExpect(status().is3xxRedirection());
     }
 

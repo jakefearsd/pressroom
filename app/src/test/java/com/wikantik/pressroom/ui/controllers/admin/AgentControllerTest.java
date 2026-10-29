@@ -146,7 +146,7 @@ class AgentControllerTest {
         try (AdminLogCapture log = AdminLogCapture.start()) {
             String view = controller.create(asAdmin(), model, redirect, newAgent("bot1", "  Publisher "));
 
-            assertEquals("redirect:/roller-ui/admin/agent.rol", view);
+            assertEquals("redirect:/pressroom-ui/admin/agent.rol", view);
             assertEquals("bot1", redirect.asMap().get("userName"));
             ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
             verify(weblogger.userManager()).addAgent(saved.capture(), eq(false));
@@ -275,8 +275,8 @@ class AgentControllerTest {
         assertFalse(bean.isSiteAdmin());
         assertEquals(Boolean.TRUE, model.getAttribute("agentEnabled"));
         assertEquals(List.of(live), model.getAttribute("tokens"));
-        assertEquals("/roller-ui/admin/agent!mintToken.rol", model.getAttribute("tokenFormAction"));
-        assertEquals("/roller-ui/admin/agent!revokeToken.rol", model.getAttribute("tokenRevokeAction"));
+        assertEquals("/pressroom-ui/admin/agent!mintToken.rol", model.getAttribute("tokenFormAction"));
+        assertEquals("/pressroom-ui/admin/agent!revokeToken.rol", model.getAttribute("tokenRevokeAction"));
         assertEquals("bot1", model.getAttribute("tokenFormOwner"));
         assertEquals("bot1", model.getAttribute("weblogsAccount"));
         assertNotNull(model.getAttribute("permissions"));
@@ -337,7 +337,7 @@ class AgentControllerTest {
         try (AdminLogCapture log = AdminLogCapture.start()) {
             String view = controller.setEnabled(asAdmin(), redirect, "bot1", "false");
 
-            assertEquals("redirect:/roller-ui/admin/agent.rol", view);
+            assertEquals("redirect:/pressroom-ui/admin/agent.rol", view);
             assertEquals("bot1", redirect.asMap().get("userName"));
             assertEquals(Boolean.FALSE, agent.getEnabled());
             verify(weblogger.userManager()).saveUser(agent);
@@ -384,7 +384,7 @@ class AgentControllerTest {
         bean.setSiteAdmin(true);
 
         try (AdminLogCapture log = AdminLogCapture.start()) {
-            assertEquals("redirect:/roller-ui/admin/agent.rol", controller.save(asAdmin(), model, redirect, bean));
+            assertEquals("redirect:/pressroom-ui/admin/agent.rol", controller.save(asAdmin(), model, redirect, bean));
 
             assertEquals("Publisher Two", agent.getScreenName());
             assertEquals("Publisher Two", agent.getFullName());
@@ -413,7 +413,7 @@ class AgentControllerTest {
 
         String view = controller.mint(asAdmin(), model, redirect, "bot1", "publisher", "POST", "travel", null);
 
-        assertEquals("redirect:/roller-ui/profileTokens!reveal.rol", view);
+        assertEquals("redirect:/pressroom-ui/profileTokens!reveal.rol", view);
         ArgumentCaptor<Timestamp> expires = ArgumentCaptor.forClass(Timestamp.class);
         verify(weblogger.apiTokenManager()).issueToken(eq(agent), eq("publisher"), eq("travel"),
                 eq(ApiToken.Role.POST), expires.capture(), eq(admin));
@@ -448,7 +448,7 @@ class AgentControllerTest {
         when(weblogger.apiTokenManager().issueToken(any(), anyString(), any(), any(), any(), any()))
                 .thenReturn(new ApiTokenManager.Issued("rlr_ops", tokenOf(agent, "t2")));
 
-        assertEquals("redirect:/roller-ui/profileTokens!reveal.rol",
+        assertEquals("redirect:/pressroom-ui/profileTokens!reveal.rol",
                 controller.mint(asAdmin(), model, redirect, "bot1", "ops", "ADMIN", "travel", "never"));
     }
 
@@ -458,7 +458,7 @@ class AgentControllerTest {
         ApiToken token = tokenOf(agent, "t1");
         when(weblogger.apiTokenManager().getToken("t1")).thenReturn(token);
 
-        assertEquals("redirect:/roller-ui/admin/agent.rol", controller.revoke(asAdmin(), redirect, "bot1", "t1"));
+        assertEquals("redirect:/pressroom-ui/admin/agent.rol", controller.revoke(asAdmin(), redirect, "bot1", "t1"));
 
         verify(weblogger.apiTokenManager()).revoke(token);
         assertEquals(List.of("apiTokens.revoked"), ControllerTestFixture.flashMessages(redirect));

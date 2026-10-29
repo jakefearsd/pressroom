@@ -83,8 +83,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
  */
 class PressroomHandlerInterceptorTest {
 
-    private static final String LOGIN = "/roller-ui/login.rol";
-    private static final String ACCESS_DENIED = "/roller-ui/access-denied.rol";
+    private static final String LOGIN = "/pressroom-ui/login.rol";
+    private static final String ACCESS_DENIED = "/pressroom-ui/access-denied.rol";
     private static final String CONTEXT = "/roller";
 
     private PressroomHandlerInterceptor interceptor;

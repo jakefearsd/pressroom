@@ -41,7 +41,7 @@ class SearchServletRenderingTest {
     @Test
     void searchPageRendersWithNoResults() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/search", "/searchblog");
+                .anonymousGet("/pressroom-ui/rendering/search", "/searchblog");
         request.setParameter("q", "zzznope");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.searchServlet(), request);
@@ -69,7 +69,7 @@ class SearchServletRenderingTest {
     @Test
     void aSearchThatMatchesNothingSaysSo() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/search", "/searchblog");
+                .anonymousGet("/pressroom-ui/rendering/search", "/searchblog");
         request.setParameter("q", "zzznope");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.searchServlet(), request);
@@ -131,7 +131,7 @@ class SearchServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/search", "/searchblog");
+                .anonymousGet("/pressroom-ui/rendering/search", "/searchblog");
         request.setParameter("q", "zzznope");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.searchServlet(), request);
@@ -152,7 +152,7 @@ class SearchServletRenderingTest {
     @Test
     void theSearchPageIsNoindex() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/search", "/searchblog");
+                .anonymousGet("/pressroom-ui/rendering/search", "/searchblog");
         request.setParameter("q", "zzznope");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.searchServlet(), request);
@@ -202,7 +202,7 @@ class SearchServletRenderingTest {
     @Test
     void unknownWeblogSearchIsNotFound() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/search", "/nosuchblog");
+                .anonymousGet("/pressroom-ui/rendering/search", "/nosuchblog");
         request.setParameter("q", "anything");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.searchServlet(), request);

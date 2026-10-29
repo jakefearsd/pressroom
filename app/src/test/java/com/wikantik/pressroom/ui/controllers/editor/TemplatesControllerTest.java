@@ -371,7 +371,7 @@ class TemplatesControllerTest extends EditorControllerTestSupport {
 
         String view = controller.add(request, model, redirectAttributes, "MyTemplate", ComponentType.CUSTOM);
 
-        assertEquals("redirect:/roller-ui/authoring/templates.rol?weblog=" + WEBLOG_HANDLE, view);
+        assertEquals("redirect:/pressroom-ui/authoring/templates.rol?weblog=" + WEBLOG_HANDLE, view);
         assertFalse(model.containsAttribute("newTmplName"),
                 "after a success the field starts empty for the next template");
     }

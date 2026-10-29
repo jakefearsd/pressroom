@@ -32,7 +32,7 @@
 <c:set var="editorFieldName" scope="request" value="bean.text"/>
 <c:set var="editorFieldValue" scope="request" value="${fn:escapeXml(bean.text)}"/>
 <c:set var="editorIdField" scope="request" value="bean.id"/>
-<c:url var="editorPreviewUrl" scope="request" value="/roller-ui/authoring/entryEdit!preview.rol"/>
+<c:url var="editorPreviewUrl" scope="request" value="/pressroom-ui/authoring/entryEdit!preview.rol"/>
 <%-- The shared guide's Ctrl+Enter row reads this key -- Post here, Save on
      the page editor, which has no separate publish action. --%>
 <c:set var="editorPrimaryActionKey" scope="request" value="weblogEdit.post"/>

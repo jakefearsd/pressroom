@@ -51,7 +51,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  */
 class VideoEmbedIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/roller-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
 
     /** Rendered on the edit page only once the entry has been saved. */
     private static final String PERMALINK = "#entry_bean_permalink";

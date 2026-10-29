@@ -29,7 +29,7 @@
 <spring:message var="tabHidden" code="comments.tab.hidden"/>
 <nav class="nav nav-tabs" aria-label="<spring:message code='comments.title'/>">
     <c:forEach items="${['PENDING','PUBLISHED','HIDDEN']}" var="tab">
-        <c:url var="tabUrl" value="/roller-ui/authoring/comments.rol">
+        <c:url var="tabUrl" value="/pressroom-ui/authoring/comments.rol">
             <c:param name="weblog" value="${actionWeblog.handle}"/>
             <c:param name="status" value="${tab}"/>
         </c:url>
@@ -54,7 +54,7 @@
 <nav aria-label="<spring:message code='pager.label'/>">
     <div class="d-flex justify-content-between">
         <c:if test="${page > 0}">
-            <c:url var="prevUrl" value="/roller-ui/authoring/comments.rol">
+            <c:url var="prevUrl" value="/pressroom-ui/authoring/comments.rol">
                 <c:param name="weblog" value="${actionWeblog.handle}"/>
                 <c:param name="status" value="${status}"/>
                 <c:param name="page" value="${page - 1}"/>
@@ -64,7 +64,7 @@
                 <span aria-hidden="true">&larr;</span> <spring:message code="pager.newer"/></a>
         </c:if>
         <c:if test="${(page + 1) * pageSize < commentCount}">
-            <c:url var="nextUrl" value="/roller-ui/authoring/comments.rol">
+            <c:url var="nextUrl" value="/pressroom-ui/authoring/comments.rol">
                 <c:param name="weblog" value="${actionWeblog.handle}"/>
                 <c:param name="status" value="${status}"/>
                 <c:param name="page" value="${page + 1}"/>
@@ -77,7 +77,7 @@
 </nav>
 </c:if>
 
-<c:set var="base" value="${pageContext.request.contextPath}/roller-ui/authoring"/>
+<c:set var="base" value="${pageContext.request.contextPath}/pressroom-ui/authoring"/>
 <%-- One row's delete is a data-confirm about that comment; deleting the
      selection opens the modal below, which says how many. --%>
 <spring:message var="deleteOneConfirm" code="comments.deleteOne.confirm"/>
@@ -150,7 +150,7 @@
                     </c:if>
                 </td>
                 <td>
-                    <c:url var="editUrl" value="/roller-ui/authoring/entryEdit.rol">
+                    <c:url var="editUrl" value="/pressroom-ui/authoring/entryEdit.rol">
                         <c:param name="weblog" value="${actionWeblog.handle}"/>
                         <c:param name="bean.id" value="${c.entry.id}"/>
                     </c:url>

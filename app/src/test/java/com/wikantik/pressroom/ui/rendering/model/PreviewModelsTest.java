@@ -95,7 +95,7 @@ class PreviewModelsTest {
      */
     private WeblogPreviewRequest previewRequest() throws Exception {
         HttpServletRequest servletRequest = mock(HttpServletRequest.class);
-        when(servletRequest.getServletPath()).thenReturn("/roller-ui/authoring/preview");
+        when(servletRequest.getServletPath()).thenReturn("/pressroom-ui/authoring/preview");
         when(servletRequest.getPathInfo()).thenReturn("/testblog");
         when(servletRequest.getParameterMap()).thenReturn(Map.of());
 
@@ -144,7 +144,7 @@ class PreviewModelsTest {
         PreviewURLModel model = new PreviewURLModel();
         model.init(initData(previewRequest(), new PreviewURLStrategy("someTheme")));
 
-        assertEquals(ABSOLUTE_SITE + "/roller-ui/authoring/previewresource/testblog/"
+        assertEquals(ABSOLUTE_SITE + "/pressroom-ui/authoring/previewresource/testblog/"
                         + "style.css?theme=someTheme",
                 model.resource("style.css"),
                 "Preview resource URLs must carry the theme being previewed.");

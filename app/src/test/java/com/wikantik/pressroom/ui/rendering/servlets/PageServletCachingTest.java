@@ -387,7 +387,7 @@ class PageServletCachingTest {
 
     private MockHttpServletRequest pageRequest(String ifModifiedSince, String signedInAs) {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/pagecacheblog");
+                .anonymousGet("/pressroom-ui/rendering/page", "/pagecacheblog");
         // anonymousGet marks every request skipCache so the render tests never
         // see a stale page; this class is about the cache, so it must not.
         // Without this the "served from cache" tests below passed without the

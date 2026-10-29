@@ -29,7 +29,7 @@ public final class SsoTestRegistrations {
                 .clientSecret(CLIENT_SECRET)
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .redirectUri("{baseUrl}/roller-ui/sso/callback")
+                .redirectUri("{baseUrl}/pressroom-ui/sso/callback")
                 .scope("openid", "profile", "email")
                 .authorizationUri(PROVIDER + "/authorize")
                 .tokenUri(PROVIDER + "/token")

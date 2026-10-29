@@ -72,7 +72,7 @@ import org.springframework.web.bind.annotation.RequestParam;
  * account is an account disabled (or removed) since it signed in: it is
  * refused as {@code disabled}, never treated as anonymous.
  *
- * <p><b>CSRF.</b> There is no exemption: {@code /roller-ui/rendering/**} is
+ * <p><b>CSRF.</b> There is no exemption: {@code /pressroom-ui/rendering/**} is
  * {@code permitAll}, and the UI chain's CSRF filter refuses a POST or DELETE
  * without the token (403) before it gets here. The session answer hands the
  * signed-in reader that token.
@@ -83,7 +83,7 @@ import org.springframework.web.bind.annotation.RequestParam;
  * reads them, so a renamed constant is a changed contract.
  */
 @Controller
-@RequestMapping("/roller-ui/rendering")
+@RequestMapping("/pressroom-ui/rendering")
 public class CommentsController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger("roller.comments");
@@ -236,7 +236,7 @@ public class CommentsController extends BaseController {
         body.put("displayName", user.getScreenName());
         body.put("isOwner", comments.isOwner(user, entry.getWebsite()));
         body.put("csrf", Map.of("header", csrf.getHeaderName(), "token", csrf.getToken()));
-        body.put("accountUrl", request.getContextPath() + "/roller-ui/account.rol");
+        body.put("accountUrl", request.getContextPath() + "/pressroom-ui/account.rol");
         body.put("pending", pending);
         // Ruling R7: the cached page names no commenter, so the script finds the
         // caller's own comments (to offer Delete) by these ids, not by username.

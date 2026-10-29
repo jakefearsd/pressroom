@@ -36,7 +36,7 @@ import org.springframework.web.bind.annotation.RequestParam;
  * Prepares creation of a new weblog entry with an embedded pointer to a media file.
  */
 @Controller
-@RequestMapping("/roller-ui/authoring")
+@RequestMapping("/pressroom-ui/authoring")
 public class EntryAddWithMediaFileController extends MediaFileBase {
 
     private static final Logger log = LoggerFactory.getLogger(EntryAddWithMediaFileController.class);
@@ -122,7 +122,7 @@ public class EntryAddWithMediaFileController extends MediaFileBase {
         }
 
         // Forward to entryAdd
-        return "forward:/roller-ui/authoring/entryAdd.rol";
+        return "forward:/pressroom-ui/authoring/entryAdd.rol";
     }
 
     @ModelAttribute("bean")

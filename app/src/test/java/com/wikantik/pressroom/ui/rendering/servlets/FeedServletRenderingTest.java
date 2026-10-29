@@ -70,7 +70,7 @@ class FeedServletRenderingTest {
 
     private MockHttpServletResponse feed(String typeAndFormat) throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/feed", "/" + handle + "/" + typeAndFormat);
+                .anonymousGet("/pressroom-ui/rendering/feed", "/" + handle + "/" + typeAndFormat);
         return RenderingTestSupport.execute(RenderingTestSupport.feedServlet(), request);
     }
 
@@ -123,7 +123,7 @@ class FeedServletRenderingTest {
 
         String main = feed("entries/atom").getContentAsString();
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/feed", "/" + handle + "/entries/atom");
+                .anonymousGet("/pressroom-ui/rendering/feed", "/" + handle + "/entries/atom");
         request.setParameter("cat", "General");
         String category = RenderingTestSupport.execute(RenderingTestSupport.feedServlet(), request)
                 .getContentAsString();
@@ -145,7 +145,7 @@ class FeedServletRenderingTest {
         TestUtils.setupWeblogEntry("two-param-entry", weblog, user);
         TestUtils.endSession(true);
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/feed", "/" + handle + "/entries/atom");
+                .anonymousGet("/pressroom-ui/rendering/feed", "/" + handle + "/entries/atom");
         request.setParameter("cat", "General");
         request.setParameter("excerpts", "true");
         String body = RenderingTestSupport.execute(RenderingTestSupport.feedServlet(), request)
@@ -229,7 +229,7 @@ class FeedServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/feed", "/" + handle + "/entries/atom");
+                .anonymousGet("/pressroom-ui/rendering/feed", "/" + handle + "/entries/atom");
         request.setParameter("q", "atom");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.feedServlet(), request);
@@ -252,7 +252,7 @@ class FeedServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/feed", "/" + handle + "/en_US/entries/atom");
+                .anonymousGet("/pressroom-ui/rendering/feed", "/" + handle + "/en_US/entries/atom");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.feedServlet(), request);
 
@@ -262,7 +262,7 @@ class FeedServletRenderingTest {
     @Test
     void unknownCategoryFeedIsNotFound() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/feed", "/" + handle + "/entries/rss");
+                .anonymousGet("/pressroom-ui/rendering/feed", "/" + handle + "/entries/rss");
         request.setParameter("cat", "Nope");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.feedServlet(), request);
@@ -273,7 +273,7 @@ class FeedServletRenderingTest {
     @Test
     void unknownWeblogFeedIsNotFound() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/feed", "/nosuchblog/entries/rss");
+                .anonymousGet("/pressroom-ui/rendering/feed", "/nosuchblog/entries/rss");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.feedServlet(), request);
 

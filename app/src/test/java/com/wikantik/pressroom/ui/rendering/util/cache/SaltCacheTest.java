@@ -53,9 +53,9 @@ public class SaltCacheTest {
 
     @Test
     public void aStoredSaltIsFoundAgain() {
-        cache.put("salt-value", "/roller-ui/authoring/entryAdd.rol");
+        cache.put("salt-value", "/pressroom-ui/authoring/entryAdd.rol");
 
-        assertEquals("/roller-ui/authoring/entryAdd.rol", cache.get("salt-value"),
+        assertEquals("/pressroom-ui/authoring/entryAdd.rol", cache.get("salt-value"),
                 "A salt handed out with a form must be recognised when the form comes "
                         + "back, or every post is rejected as a forgery");
     }
@@ -69,7 +69,7 @@ public class SaltCacheTest {
 
     @Test
     public void aUsedSaltCanBeTakenBackOut() {
-        cache.put("salt-value", "/roller-ui/authoring/entryAdd.rol");
+        cache.put("salt-value", "/pressroom-ui/authoring/entryAdd.rol");
 
         cache.remove("salt-value");
 

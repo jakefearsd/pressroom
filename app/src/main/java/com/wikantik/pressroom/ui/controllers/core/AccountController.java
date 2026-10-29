@@ -67,13 +67,13 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * committed change is not: it is logged and the change stands.
  */
 @Controller
-@RequestMapping("/roller-ui")
+@RequestMapping("/pressroom-ui")
 public class AccountController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger("roller.comments");
 
     private static final String VIEW = ".Account";
-    private static final String BACK = "redirect:/roller-ui/account.rol";
+    private static final String BACK = "redirect:/pressroom-ui/account.rol";
     private static final String STORE_ERROR = "generic.error.check.logs";
 
     private final CommentService comments;

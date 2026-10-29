@@ -308,7 +308,7 @@ class EntryEditNewsletterTest extends EditorControllerTestSupport {
 
         String view = controller.entryEditSendNewsletter("entry-1", request, model);
 
-        assertEquals("redirect:/roller-ui/access-denied.rol", view);
+        assertEquals("redirect:/pressroom-ui/access-denied.rol", view);
         verify(listmonk, never()).sendCampaign(any(), any(), any());
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
     }
@@ -325,7 +325,7 @@ class EntryEditNewsletterTest extends EditorControllerTestSupport {
 
         String view = controller.entryEditSendNewsletter("entry-1", request, model);
 
-        assertEquals("redirect:/roller-ui/menu.rol", view,
+        assertEquals("redirect:/pressroom-ui/menu.rol", view,
                 "an entryId from another weblog must bounce, exactly like an unknown one");
         verify(listmonk, never()).sendCampaign(any(), any(), any());
     }

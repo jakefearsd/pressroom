@@ -43,7 +43,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
  * Walk user through install process.
  */
 @Controller
-@RequestMapping("/roller-ui/install")
+@RequestMapping("/pressroom-ui/install")
 public class InstallController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(InstallController.class);
@@ -153,7 +153,7 @@ public class InstallController extends BaseController {
     @RequestMapping(value = "/install!bootstrap.rol", method = {RequestMethod.GET, RequestMethod.POST})
     @SuppressFBWarnings(
             value = "SPRING_CSRF_UNRESTRICTED_REQUEST_MAPPING",
-            justification = "The installer is anonymous by design (/roller-ui/install/** falls through to "
+            justification = "The installer is anonymous by design (/pressroom-ui/install/** falls through to "
                     + "permitAll in SecurityConfig) and bootstraps only while no tier exists, when there "
                     + "is no signed-in user whose authority a forged request could borrow; afterwards it "
                     + "only redirects. CreateDatabase.jsp links here with a GET.")

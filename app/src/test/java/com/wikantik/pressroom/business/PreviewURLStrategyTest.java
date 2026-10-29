@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Url generation for the theme-preview rendering pass.
  *
  * <p>This strategy overrides most of {@link MultiWeblogURLStrategy} in order to
- * point urls at {@code /roller-ui/authoring/preview/...} and to carry the
+ * point urls at {@code /pressroom-ui/authoring/preview/...} and to carry the
  * previewed theme along as a query parameter. Overriding that much is the
  * hazard the tests below exist for: an override that quietly drops a guard or
  * an escape its parent applies produces urls that are wrong only in preview,
@@ -34,8 +34,8 @@ class PreviewURLStrategyTest {
     private final PreviewURLStrategy preview = new PreviewURLStrategy("journal");
     private final PreviewURLStrategy noTheme = new PreviewURLStrategy(null);
 
-    private static final String ROOT = "/roller-ui/authoring/preview/myblog/";
-    private static final String RESOURCE_ROOT = "/roller-ui/authoring/previewresource/myblog/";
+    private static final String ROOT = "/pressroom-ui/authoring/preview/myblog/";
+    private static final String RESOURCE_ROOT = "/pressroom-ui/authoring/previewresource/myblog/";
 
     private String previousRelativeContextURL;
     private String previousAbsoluteContextURL;
@@ -302,7 +302,7 @@ class PreviewURLStrategyTest {
      * builders spliced a path segment onto the end of the theme parameter's
      * value:
      *
-     * <pre>/roller-ui/authoring/preview/myblog/?theme=journalfeed/entries/atom</pre>
+     * <pre>/pressroom-ui/authoring/preview/myblog/?theme=journalfeed/entries/atom</pre>
      *
      * Every feed, search and media url in a theme preview was malformed that
      * way -- the media one meaning images did not load while previewing a

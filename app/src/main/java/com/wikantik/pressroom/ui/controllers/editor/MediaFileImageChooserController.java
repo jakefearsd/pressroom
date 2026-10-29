@@ -44,7 +44,7 @@ import org.springframework.web.bind.annotation.RequestParam;
  * Browse media files action (overlay mode).
  */
 @Controller
-@RequestMapping("/roller-ui/authoring/overlay")
+@RequestMapping("/pressroom-ui/authoring/overlay")
 public class MediaFileImageChooserController extends MediaFileBase {
 
     private static final Logger log = LoggerFactory.getLogger(MediaFileImageChooserController.class);

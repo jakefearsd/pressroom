@@ -115,7 +115,7 @@ class RedirectServingTest {
 
     private MockHttpServletResponse pageServletGet(String pathAfterHandle) throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/redirserveblog" + pathAfterHandle);
+                .anonymousGet("/pressroom-ui/rendering/page", "/redirserveblog" + pathAfterHandle);
         return RenderingTestSupport.execute(RenderingTestSupport.pageServlet(), request);
     }
 

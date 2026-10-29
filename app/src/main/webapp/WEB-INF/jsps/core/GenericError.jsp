@@ -29,7 +29,7 @@ See CreateWeblogController.java for an example of this JSP.
 <div class="empty-state">
     <p class="empty-state-title"><spring:message code="genericError.title"/></p>
     <p class="empty-state-body"><spring:message code="genericError.body"/></p>
-    <a class="btn btn-primary" href="<c:url value='/roller-ui/menu.rol'/>">
+    <a class="btn btn-primary" href="<c:url value='/pressroom-ui/menu.rol'/>">
         <spring:message code="genericError.back"/>
     </a>
 </div>

@@ -41,7 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class EntryRevisionIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/roller-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
 
     @BeforeEach
     void logIn() {
@@ -102,7 +102,7 @@ class EntryRevisionIT extends PressroomIT {
 
     /** Opens the editor on a saved entry, with no modal in the way. */
     private void openEditorFor(String entryId) {
-        openPath("/roller-ui/authoring/entryEdit.rol?weblog=" + WEBLOG_HANDLE
+        openPath("/pressroom-ui/authoring/entryEdit.rol?weblog=" + WEBLOG_HANDLE
                 + "&bean.id=" + entryId);
         $("#entry").should(exist);
     }

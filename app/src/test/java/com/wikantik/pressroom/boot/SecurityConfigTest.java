@@ -73,7 +73,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code SecurityConfig} existed (Stage 1B Task 4, TDD step 1): with no
  * {@code SecurityFilterChain} bean in the context, Spring Security's default
  * secures every request and serves its own generated-password login form at
- * {@code /login} rather than {@code /roller-ui/login.rol}, so every case
+ * {@code /login} rather than {@code /pressroom-ui/login.rol}, so every case
  * below failed until {@code SecurityConfig} was implemented.
  *
  * <p><b>Why this does not use {@code @SpringBootTest}/{@code @AutoConfigureMockMvc}
@@ -144,19 +144,19 @@ class SecurityConfigTest {
     static class StubController {
 
         @GetMapping({
-                "/roller-ui/login.rol",
-                "/roller-ui/login-redirect.rol",
-                "/roller-ui/profile.rol",
-                "/roller-ui/profileTokens.rol",
-                "/roller-ui/profileTokens!reveal.rol",
-                "/roller-ui/createWeblog.rol",
-                "/roller-ui/menu.rol",
-                "/roller-ui/menu!accept.rol",
-                "/roller-ui/authoring/entries.rol",
-                "/roller-ui/authoring/overlay/mediaFileImageChooser.rol",
-                "/roller-ui/admin/userAdmin.rol",
-                "/roller-ui/admin/globalConfig.rol",
-                "/roller-ui/setup.rol",
+                "/pressroom-ui/login.rol",
+                "/pressroom-ui/login-redirect.rol",
+                "/pressroom-ui/profile.rol",
+                "/pressroom-ui/profileTokens.rol",
+                "/pressroom-ui/profileTokens!reveal.rol",
+                "/pressroom-ui/createWeblog.rol",
+                "/pressroom-ui/menu.rol",
+                "/pressroom-ui/menu!accept.rol",
+                "/pressroom-ui/authoring/entries.rol",
+                "/pressroom-ui/authoring/overlay/mediaFileImageChooser.rol",
+                "/pressroom-ui/admin/userAdmin.rol",
+                "/pressroom-ui/admin/globalConfig.rol",
+                "/pressroom-ui/setup.rol",
                 "/rewrite-status",
         })
         @ResponseBody
@@ -237,48 +237,48 @@ class SecurityConfigTest {
     }
 
     // Route -> SecurityConfig#securityFilterChain pattern it pins:
-    //   /roller-ui/login-redirect.rol            -> "/roller-ui/login-redirect*"          (admin, editor)
-    //   /roller-ui/profile.rol                   -> "/roller-ui/profile*"                 (admin, editor)
-    //   /roller-ui/createWeblog.rol               -> "/roller-ui/createWeblog*"            (admin, editor)
-    //   /roller-ui/menu.rol, /menu!accept.rol     -> "/roller-ui/menu*"                    (admin, editor)
-    //   /roller-ui/authoring/entries.rol          -> "/roller-ui/authoring/**"              (admin, editor)
-    //   /roller-ui/authoring/overlay/...          -> "/roller-ui/authoring/**"              (admin, editor)
-    //   /roller-ui/admin/userAdmin.rol, .../globalConfig.rol -> "/roller-ui/admin/**"       (admin only)
-    //   /roller-ui/setup.rol                      -> "/roller-ui/setup*"                    (admin only)
+    //   /pressroom-ui/login-redirect.rol            -> "/pressroom-ui/login-redirect*"          (admin, editor)
+    //   /pressroom-ui/profile.rol                   -> "/pressroom-ui/profile*"                 (admin, editor)
+    //   /pressroom-ui/createWeblog.rol               -> "/pressroom-ui/createWeblog*"            (admin, editor)
+    //   /pressroom-ui/menu.rol, /menu!accept.rol     -> "/pressroom-ui/menu*"                    (admin, editor)
+    //   /pressroom-ui/authoring/entries.rol          -> "/pressroom-ui/authoring/**"              (admin, editor)
+    //   /pressroom-ui/authoring/overlay/...          -> "/pressroom-ui/authoring/**"              (admin, editor)
+    //   /pressroom-ui/admin/userAdmin.rol, .../globalConfig.rol -> "/pressroom-ui/admin/**"       (admin only)
+    //   /pressroom-ui/setup.rol                      -> "/pressroom-ui/setup*"                    (admin only)
     //   /rewrite-status                           -> "/rewrite-status*"                     (admin only,
     //                                                  no controller behind it in production -- security.xml
     //                                                  protected it too even though nothing serves it)
-    //   /roller-ui/login.rol                      -> permitAll() (must stay reachable to log in at all)
-    //   /roller-ui/rendering/page/*               -> permitAll() (the public blog)
+    //   /pressroom-ui/login.rol                      -> permitAll() (must stay reachable to log in at all)
+    //   /pressroom-ui/rendering/page/*               -> permitAll() (the public blog)
 
     // ----------------------------------------------------- anonymous access
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "/roller-ui/login-redirect.rol",
-            "/roller-ui/profile.rol",
-            "/roller-ui/profileTokens.rol",
-            "/roller-ui/profileTokens!reveal.rol",
-            "/roller-ui/createWeblog.rol",
-            "/roller-ui/menu.rol",
-            "/roller-ui/menu!accept.rol",
-            "/roller-ui/authoring/entries.rol",
-            "/roller-ui/authoring/overlay/mediaFileImageChooser.rol",
-            "/roller-ui/admin/userAdmin.rol",
-            "/roller-ui/admin/globalConfig.rol",
-            "/roller-ui/setup.rol",
+            "/pressroom-ui/login-redirect.rol",
+            "/pressroom-ui/profile.rol",
+            "/pressroom-ui/profileTokens.rol",
+            "/pressroom-ui/profileTokens!reveal.rol",
+            "/pressroom-ui/createWeblog.rol",
+            "/pressroom-ui/menu.rol",
+            "/pressroom-ui/menu!accept.rol",
+            "/pressroom-ui/authoring/entries.rol",
+            "/pressroom-ui/authoring/overlay/mediaFileImageChooser.rol",
+            "/pressroom-ui/admin/userAdmin.rol",
+            "/pressroom-ui/admin/globalConfig.rol",
+            "/pressroom-ui/setup.rol",
             "/rewrite-status",
     })
     void anonymousIsRedirectedToLoginOnEveryProtectedPattern(String path) throws Exception {
         mockMvc.perform(get(path))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/roller-ui/login.rol"));
+                .andExpect(redirectedUrl("/pressroom-ui/login.rol"));
     }
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "/roller-ui/login.rol",
-            "/roller-ui/rendering/page/nonexistent-weblog",
+            "/pressroom-ui/login.rol",
+            "/pressroom-ui/rendering/page/nonexistent-weblog",
     })
     void anonymousIsNotRedirectedOnPublicSurfaces(String path) throws Exception {
         mockMvc.perform(get(path))
@@ -312,15 +312,15 @@ class SecurityConfigTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "/roller-ui/login-redirect.rol",
-            "/roller-ui/profile.rol",
-            "/roller-ui/profileTokens.rol",
-            "/roller-ui/profileTokens!reveal.rol",
-            "/roller-ui/createWeblog.rol",
-            "/roller-ui/menu.rol",
-            "/roller-ui/menu!accept.rol",
-            "/roller-ui/authoring/entries.rol",
-            "/roller-ui/authoring/overlay/mediaFileImageChooser.rol",
+            "/pressroom-ui/login-redirect.rol",
+            "/pressroom-ui/profile.rol",
+            "/pressroom-ui/profileTokens.rol",
+            "/pressroom-ui/profileTokens!reveal.rol",
+            "/pressroom-ui/createWeblog.rol",
+            "/pressroom-ui/menu.rol",
+            "/pressroom-ui/menu!accept.rol",
+            "/pressroom-ui/authoring/entries.rol",
+            "/pressroom-ui/authoring/overlay/mediaFileImageChooser.rol",
     })
     void editorAuthorityIsAllowedOnEditorSurfaces(String path) throws Exception {
         mockMvc.perform(get(path).with(user("editorUser").authorities(new SimpleGrantedAuthority("editor"))))
@@ -330,7 +330,7 @@ class SecurityConfigTest {
     /** A reader (SSO) holds neither editor nor admin, so the token pages -- the reveal included -- refuse them. */
     @Test
     void aReaderCannotReachTheTokenPages() throws Exception {
-        for (String path : new String[] {"/roller-ui/profileTokens.rol", "/roller-ui/profileTokens!reveal.rol"}) {
+        for (String path : new String[] {"/pressroom-ui/profileTokens.rol", "/pressroom-ui/profileTokens!reveal.rol"}) {
             mockMvc.perform(get(path).with(user("readerUser").authorities(new SimpleGrantedAuthority("reader"))))
                     .andExpect(status().isForbidden());
         }
@@ -338,9 +338,9 @@ class SecurityConfigTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "/roller-ui/admin/userAdmin.rol",
-            "/roller-ui/admin/globalConfig.rol",
-            "/roller-ui/setup.rol",
+            "/pressroom-ui/admin/userAdmin.rol",
+            "/pressroom-ui/admin/globalConfig.rol",
+            "/pressroom-ui/setup.rol",
             "/rewrite-status",
     })
     void editorAuthorityIsForbiddenOnAdminOnlySurfaces(String path) throws Exception {
@@ -352,9 +352,9 @@ class SecurityConfigTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "/roller-ui/admin/userAdmin.rol",
-            "/roller-ui/admin/globalConfig.rol",
-            "/roller-ui/setup.rol",
+            "/pressroom-ui/admin/userAdmin.rol",
+            "/pressroom-ui/admin/globalConfig.rol",
+            "/pressroom-ui/setup.rol",
             "/rewrite-status",
     })
     void adminAuthorityIsAllowedOnAdminOnlySurfaces(String path) throws Exception {
@@ -440,10 +440,10 @@ class SecurityConfigTest {
      */
     @Test
     void audiencePostsAreRecognisedOnlyOnTheirExactPaths() throws Exception {
-        assertTrue(isPublicAudiencePost(postRequest("/roller-ui/rendering/contact.rol")));
+        assertTrue(isPublicAudiencePost(postRequest("/pressroom-ui/rendering/contact.rol")));
         assertTrue(isPublicAudiencePost(postRequest("/newsletter/subscribe")));
 
-        assertFalse(isPublicAudiencePost(postRequest("/roller-ui/rendering/comment.rol")),
+        assertFalse(isPublicAudiencePost(postRequest("/pressroom-ui/rendering/comment.rol")),
                 "only the two named audience endpoints are exempt");
         assertFalse(isPublicAudiencePost(postRequest("/newsletter/subscribe/extra")),
                 "the match must be exact, not a prefix");
@@ -451,9 +451,9 @@ class SecurityConfigTest {
 
     @Test
     void nonPostRequestsAreNeverAudiencePostsEvenOnTheExactPath() throws Exception {
-        assertFalse(isPublicAudiencePost(getRequest("/roller-ui/rendering/contact.rol")),
+        assertFalse(isPublicAudiencePost(getRequest("/pressroom-ui/rendering/contact.rol")),
                 "the predicate only ever exempts POST");
-        assertFalse(isPublicAudiencePost(request("PUT", "/roller-ui/rendering/contact.rol")));
+        assertFalse(isPublicAudiencePost(request("PUT", "/pressroom-ui/rendering/contact.rol")));
     }
 
     /**
@@ -463,7 +463,7 @@ class SecurityConfigTest {
      */
     @Test
     void theExemptionIsForExactlyPostNotAnotherSpellingOfIt() throws Exception {
-        assertFalse(isPublicAudiencePost(request("post", "/roller-ui/rendering/contact.rol")));
+        assertFalse(isPublicAudiencePost(request("post", "/pressroom-ui/rendering/contact.rol")));
         assertFalse(isPublicAudiencePost(request("Post", "/newsletter/subscribe")));
     }
 
@@ -508,11 +508,11 @@ class SecurityConfigTest {
         when(provider.isBootstrapped()).thenReturn(true);
         when(provider.getWeblogger()).thenReturn(tier.weblogger());
         try {
-            mockMvc.perform(formLogin("/roller_j_security_check")
+            mockMvc.perform(formLogin("/pressroom_j_security_check")
                             .user("j_username", "alice")
                             .password("j_password", TestUtils.TEST_PASSWORD))
                     .andExpect(status().is3xxRedirection())
-                    .andExpect(redirectedUrl("/roller-ui/login-redirect.rol"));
+                    .andExpect(redirectedUrl("/pressroom-ui/login-redirect.rol"));
 
             verify(tier.userManager()).recordLogin("alice");
             assertEquals(1, tier.flushCount());

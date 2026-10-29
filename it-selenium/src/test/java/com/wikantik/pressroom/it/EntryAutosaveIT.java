@@ -47,8 +47,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class EntryAutosaveIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/roller-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
-    private static final String PAGE_ADD = "/roller-ui/authoring/pageEdit.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String PAGE_ADD = "/pressroom-ui/authoring/pageEdit.rol?weblog=" + WEBLOG_HANDLE;
 
     private static final String DRAFT_BAR = "#draftRecoveryBar";
     private static final String DRAFT_RESTORE = ".draft-bar-restore";
@@ -78,7 +78,7 @@ class EntryAutosaveIT extends PressroomIT {
         // call below it throws WebDriverException. This class is the only one in
         // the suite that reads or writes storage directly, so it is the only one
         // that has to say so.
-        openPath("/roller-ui/menu.rol");
+        openPath("/pressroom-ui/menu.rol");
 
         // localStorage survives across tests that share a browser session
         // (and, more importantly, this suite runs its whole class in one
@@ -165,7 +165,7 @@ class EntryAutosaveIT extends PressroomIT {
 
         String entryId = saveDraftFromAddForm("IT Autosave Publish " + suffix, body);
 
-        openPath("/roller-ui/authoring/entryEdit.rol?weblog=" + WEBLOG_HANDLE
+        openPath("/pressroom-ui/authoring/entryEdit.rol?weblog=" + WEBLOG_HANDLE
                 + "&bean.id=" + entryId);
         $("#entry").should(exist);
         Editor.setText(body + " (revised)");

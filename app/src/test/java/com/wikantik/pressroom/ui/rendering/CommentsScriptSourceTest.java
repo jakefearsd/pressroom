@@ -101,8 +101,8 @@ class CommentsScriptSourceTest {
     @Test
     void eachEndpointIsSuffixChecked() throws IOException {
         String script = script();
-        for (String suffix : List.of("/roller-ui/rendering/comments/session.rol",
-                "/roller-ui/rendering/comments.rol", "/roller-ui/rendering/comments/")) {
+        for (String suffix : List.of("/pressroom-ui/rendering/comments/session.rol",
+                "/pressroom-ui/rendering/comments.rol", "/pressroom-ui/rendering/comments/")) {
             assertTrue(Pattern.compile("endpointOk\\([^,()]+,\\s*'" + Pattern.quote(suffix) + "'\\)")
                     .matcher(script).find(), "endpointOk(..., '" + suffix + "')");
         }

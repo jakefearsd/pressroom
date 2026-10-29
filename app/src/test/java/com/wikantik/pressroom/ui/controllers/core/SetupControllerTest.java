@@ -139,7 +139,7 @@ class SetupControllerTest {
         String view = controller.save(
                 ControllerTestFixture.requestFor(admin()), model, "travelguide", Boolean.TRUE, redirectAttributes);
 
-        assertEquals("redirect:/roller-ui/setup.rol", view);
+        assertEquals("redirect:/pressroom-ui/setup.rol", view);
         assertEquals("travelguide", handle.getValue());
         assertEquals("true", aggregated.getValue());
         verify(weblogger.propertiesManager()).saveProperty(handle);
@@ -170,7 +170,7 @@ class SetupControllerTest {
         String view = controller.save(
                 ControllerTestFixture.requestFor(admin()), model, "travelguide", Boolean.TRUE, redirectAttributes);
 
-        assertEquals("redirect:/roller-ui/setup.rol", view);
+        assertEquals("redirect:/pressroom-ui/setup.rol", view);
         assertEquals(List.of("frontpageConfig.values.error"), ControllerTestFixture.flashErrors(redirectAttributes));
         assertEquals(List.of(), ControllerTestFixture.flashMessages(redirectAttributes));
         verify(weblogger.propertiesManager(), never()).saveProperty(any());

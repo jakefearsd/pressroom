@@ -56,13 +56,13 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * Every change writes a {@code roller.admin} line.
  */
 @Controller
-@RequestMapping("/roller-ui/admin")
+@RequestMapping("/pressroom-ui/admin")
 public class AgentController extends TokenFormController {
 
     private static final Logger log = LoggerFactory.getLogger(AgentController.class);
 
-    private static final String MINT_ACTION = "/roller-ui/admin/agent!mintToken.rol";
-    private static final String REVOKE_ACTION = "/roller-ui/admin/agent!revokeToken.rol";
+    private static final String MINT_ACTION = "/pressroom-ui/admin/agent!mintToken.rol";
+    private static final String REVOKE_ACTION = "/pressroom-ui/admin/agent!revokeToken.rol";
 
     /** pressroom_user.screenname and fullname are varchar(255). */
     private static final int MAX_NAME_LENGTH = 255;
@@ -151,7 +151,7 @@ public class AgentController extends TokenFormController {
         addFlashMessage(redirectAttributes, "agent.created",
                 StringEscapeUtils.escapeHtml4(agent.getUserName()), request);
         redirectAttributes.addAttribute("userName", agent.getUserName());
-        return "redirect:/roller-ui/admin/agent.rol";
+        return "redirect:/pressroom-ui/admin/agent.rol";
     }
 
     @GetMapping("/agent.rol")
@@ -204,7 +204,7 @@ public class AgentController extends TokenFormController {
         }
         addFlashMessage(redirectAttributes, "agent.saved", request);
         redirectAttributes.addAttribute("userName", agent.getUserName());
-        return "redirect:/roller-ui/admin/agent.rol";
+        return "redirect:/pressroom-ui/admin/agent.rol";
     }
 
     /** One button behind data-confirm; disabling ends every token on its next request. */
@@ -215,7 +215,7 @@ public class AgentController extends TokenFormController {
         User agent = lookupAgent(userName);
         if (agent == null) {
             addFlashError(redirectAttributes, "userAdmin.error.userNotFound", request);
-            return "redirect:/roller-ui/admin/userAdmin.rol";
+            return "redirect:/pressroom-ui/admin/userAdmin.rol";
         }
         boolean enable = Boolean.parseBoolean(enabled);
         boolean wasEnabled = !Boolean.FALSE.equals(agent.getEnabled());
@@ -233,7 +233,7 @@ public class AgentController extends TokenFormController {
             addFlashError(redirectAttributes, "generic.error.check.logs", request);
         }
         redirectAttributes.addAttribute("userName", agent.getUserName());
-        return "redirect:/roller-ui/admin/agent.rol";
+        return "redirect:/pressroom-ui/admin/agent.rol";
     }
 
     @PostMapping("/agent!mintToken.rol")
@@ -265,7 +265,7 @@ public class AgentController extends TokenFormController {
         User agent = lookupAgent(userName);
         if (agent == null) {
             addFlashError(redirectAttributes, "userAdmin.error.userNotFound", request);
-            return "redirect:/roller-ui/admin/userAdmin.rol";
+            return "redirect:/pressroom-ui/admin/userAdmin.rol";
         }
         switch (revokeToken(getAuthenticatedUser(request), id, agent)) {
             case REVOKED -> addFlashMessage(redirectAttributes, "apiTokens.revoked", request);
@@ -273,7 +273,7 @@ public class AgentController extends TokenFormController {
             case FAILED -> addFlashError(redirectAttributes, "generic.error.check.logs", request);
         }
         redirectAttributes.addAttribute("userName", agent.getUserName());
-        return "redirect:/roller-ui/admin/agent.rol";
+        return "redirect:/pressroom-ui/admin/agent.rol";
     }
 
     /**

@@ -45,7 +45,7 @@ import org.apache.commons.text.StringEscapeUtils;
  * Action which handles editing for a single WeblogTemplate.
  */
 @Controller
-@RequestMapping("/roller-ui/authoring")
+@RequestMapping("/pressroom-ui/authoring")
 public class TemplateEditController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(TemplateEditController.class);

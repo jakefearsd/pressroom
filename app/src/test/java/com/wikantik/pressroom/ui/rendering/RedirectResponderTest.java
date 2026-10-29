@@ -155,7 +155,7 @@ class RedirectResponderTest {
     void aForwardedRequestUsesTheOriginalUriAndQuery() throws Exception {
         when(redirects.resolve(weblog, "/old-page")).thenReturn(rule("/old-page", "/new-page"));
         MockHttpServletRequest request = new MockHttpServletRequest(
-                "GET", "/roller/roller-ui/rendering/page/testblog/old-page");
+                "GET", "/roller/pressroom-ui/rendering/page/testblog/old-page");
         request.setAttribute(RequestDispatcher.FORWARD_REQUEST_URI,
                 "/roller/testblog/old-page");
         request.setAttribute(RequestDispatcher.FORWARD_QUERY_STRING, "utm=1");

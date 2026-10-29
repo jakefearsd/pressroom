@@ -202,7 +202,7 @@ class ReaderRefusalSweepTest {
             weblogger.detach();
             weblogger = null;
         }
-        assertEquals("/roller/roller-ui/login.rol", response.getRedirectedUrl());
+        assertEquals("/roller/pressroom-ui/login.rol", response.getRedirectedUrl());
     }
 
     /**

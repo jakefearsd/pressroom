@@ -39,7 +39,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * Remove a weblog entry.
  */
 @Controller
-@RequestMapping("/roller-ui/authoring")
+@RequestMapping("/pressroom-ui/authoring")
 public class EntryRemoveController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(EntryRemoveController.class);
@@ -100,7 +100,7 @@ public class EntryRemoveController extends BaseController {
         WeblogEntry entry = lookupEntry(removeId, request);
         if (entry == null) {
             addFlashError(redirectAttributes, "weblogEntry.notFound", request);
-            return "redirect:/roller-ui/menu.rol";
+            return "redirect:/pressroom-ui/menu.rol";
         }
 
         try {
@@ -122,7 +122,7 @@ public class EntryRemoveController extends BaseController {
     }
 
     private String entryListRedirect(HttpServletRequest request) {
-        return "redirect:/roller-ui/authoring/entries.rol?weblog="
+        return "redirect:/pressroom-ui/authoring/entries.rol?weblog="
                 + getActionWeblog(request).getHandle();
     }
 

@@ -50,8 +50,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class CategoryIT extends PressroomIT {
 
-    private static final String CATEGORIES = "/roller-ui/authoring/categories.rol?weblog=" + WEBLOG_HANDLE;
-    private static final String ENTRY_ADD = "/roller-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String CATEGORIES = "/pressroom-ui/authoring/categories.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
 
     private static final String EDIT_MODAL = "#category-edit-modal";
     private static final String DELETE_MODAL = "#delete-category-modal";
@@ -98,7 +98,7 @@ class CategoryIT extends PressroomIT {
 
         assertFalse(categoryNames().contains(doomed),
                 "the category must be gone once its entries have been moved");
-        openPath("/roller-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE);
+        openPath("/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE);
         BrowserHealth.current().settle();
         assertTrue($$("table.rollertable").first().getText().contains(title),
                 "the entry must survive its category being deleted");
@@ -162,7 +162,7 @@ class CategoryIT extends PressroomIT {
         addCategory(extra, "Second category");
         deleteCategory(extra, null);
 
-        openPath("/roller-ui/authoring/weblogConfig.rol?weblog=" + WEBLOG_HANDLE);
+        openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + WEBLOG_HANDLE);
         $("button[type='submit'].btn-primary").should(visible).click();
 
         // A Selenide condition, not a snapshot assertion: it waits for the save

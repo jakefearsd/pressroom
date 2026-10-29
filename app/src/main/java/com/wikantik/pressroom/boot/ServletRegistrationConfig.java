@@ -30,6 +30,7 @@ import com.wikantik.pressroom.ui.controllers.ajax.UserDataServlet;
 import com.wikantik.pressroom.ui.core.PressroomSession;
 import com.wikantik.pressroom.ui.core.filters.BootstrapFilter;
 import com.wikantik.pressroom.ui.core.filters.CharEncodingFilter;
+import com.wikantik.pressroom.ui.core.filters.LegacyUiRedirectFilter;
 import com.wikantik.pressroom.ui.core.filters.ControlPlaneHostFilter;
 import com.wikantik.pressroom.ui.core.filters.InitFilter;
 import com.wikantik.pressroom.ui.core.filters.PersistenceSessionFilter;
@@ -134,7 +135,7 @@ public class ServletRegistrationConfig {
     @Bean
     public ServletRegistrationBean<PageServlet> pageServletRegistration(PageServlet pageServlet) {
         ServletRegistrationBean<PageServlet> registration =
-                new ServletRegistrationBean<>(pageServlet, "/roller-ui/rendering/page/*");
+                new ServletRegistrationBean<>(pageServlet, "/pressroom-ui/rendering/page/*");
         registration.setLoadOnStartup(5);
         return registration;
     }
@@ -142,7 +143,7 @@ public class ServletRegistrationConfig {
     @Bean
     public ServletRegistrationBean<FeedServlet> feedServletRegistration(FeedServlet feedServlet) {
         ServletRegistrationBean<FeedServlet> registration =
-                new ServletRegistrationBean<>(feedServlet, "/roller-ui/rendering/feed/*");
+                new ServletRegistrationBean<>(feedServlet, "/pressroom-ui/rendering/feed/*");
         registration.setLoadOnStartup(5);
         return registration;
     }
@@ -150,7 +151,7 @@ public class ServletRegistrationConfig {
     @Bean
     public ServletRegistrationBean<ResourceServlet> resourceServletRegistration(ResourceServlet resourceServlet) {
         ServletRegistrationBean<ResourceServlet> registration =
-                new ServletRegistrationBean<>(resourceServlet, "/roller-ui/rendering/resources/*");
+                new ServletRegistrationBean<>(resourceServlet, "/pressroom-ui/rendering/resources/*");
         registration.setLoadOnStartup(5);
         return registration;
     }
@@ -158,7 +159,7 @@ public class ServletRegistrationConfig {
     @Bean
     public ServletRegistrationBean<MediaResourceServlet> mediaResourceServletRegistration(MediaResourceServlet mediaResourceServlet) {
         ServletRegistrationBean<MediaResourceServlet> registration =
-                new ServletRegistrationBean<>(mediaResourceServlet, "/roller-ui/rendering/media-resources/*");
+                new ServletRegistrationBean<>(mediaResourceServlet, "/pressroom-ui/rendering/media-resources/*");
         registration.setLoadOnStartup(5);
         return registration;
     }
@@ -166,7 +167,7 @@ public class ServletRegistrationConfig {
     @Bean
     public ServletRegistrationBean<SearchServlet> searchServletRegistration(SearchServlet searchServlet) {
         ServletRegistrationBean<SearchServlet> registration =
-                new ServletRegistrationBean<>(searchServlet, "/roller-ui/rendering/search/*");
+                new ServletRegistrationBean<>(searchServlet, "/pressroom-ui/rendering/search/*");
         registration.setLoadOnStartup(5);
         return registration;
     }
@@ -174,7 +175,7 @@ public class ServletRegistrationConfig {
     @Bean
     public ServletRegistrationBean<PreviewServlet> previewServletRegistration(PreviewServlet previewServlet) {
         ServletRegistrationBean<PreviewServlet> registration =
-                new ServletRegistrationBean<>(previewServlet, "/roller-ui/authoring/preview/*");
+                new ServletRegistrationBean<>(previewServlet, "/pressroom-ui/authoring/preview/*");
         registration.setLoadOnStartup(9);
         return registration;
     }
@@ -182,19 +183,19 @@ public class ServletRegistrationConfig {
     @Bean
     public ServletRegistrationBean<PreviewResourceServlet> previewResourceServletRegistration(PreviewResourceServlet previewResourceServlet) {
         ServletRegistrationBean<PreviewResourceServlet> registration =
-                new ServletRegistrationBean<>(previewResourceServlet, "/roller-ui/authoring/previewresource/*");
+                new ServletRegistrationBean<>(previewResourceServlet, "/pressroom-ui/authoring/previewresource/*");
         registration.setLoadOnStartup(9);
         return registration;
     }
 
     @Bean
     public ServletRegistrationBean<UserDataServlet> userDataServletRegistration(UserDataServlet userDataServlet) {
-        return new ServletRegistrationBean<>(userDataServlet, "/roller-ui/authoring/userdata/*");
+        return new ServletRegistrationBean<>(userDataServlet, "/pressroom-ui/authoring/userdata/*");
     }
 
     @Bean
     public ServletRegistrationBean<ThemeDataServlet> themeDataServletRegistration(ThemeDataServlet themeDataServlet) {
-        return new ServletRegistrationBean<>(themeDataServlet, "/roller-ui/authoring/themedata/*");
+        return new ServletRegistrationBean<>(themeDataServlet, "/pressroom-ui/authoring/themedata/*");
     }
 
     // ------------------------------------------------------------------
@@ -317,6 +318,21 @@ public class ServletRegistrationConfig {
         registration.setOrder(10);
         registration.setUrlPatterns(List.of("/*"));
         registration.setDispatcherTypes(EnumSet.of(DispatcherType.REQUEST, DispatcherType.FORWARD));
+        return registration;
+    }
+
+    /**
+     * Order 20: right after the encoding filter and ahead of the firewall and
+     * Spring Security, so the permanent redirect from the old admin path needs
+     * no session and no authentication.
+     */
+    @Bean
+    public FilterRegistrationBean<LegacyUiRedirectFilter> legacyUiRedirectFilterRegistration() {
+        FilterRegistrationBean<LegacyUiRedirectFilter> registration =
+                new FilterRegistrationBean<>(new LegacyUiRedirectFilter());
+        registration.setOrder(20);
+        registration.setUrlPatterns(List.of("/*"));
+        registration.setDispatcherTypes(EnumSet.of(DispatcherType.REQUEST));
         return registration;
     }
 

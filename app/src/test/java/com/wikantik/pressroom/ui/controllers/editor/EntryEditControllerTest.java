@@ -151,7 +151,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
 
         WeblogEntry saved = captureSavedEntry();
         assertEquals(PubStatus.DRAFT, saved.getStatus());
-        assertEquals("redirect:/roller-ui/authoring/entryEdit!firstSave.rol?weblog="
+        assertEquals("redirect:/pressroom-ui/authoring/entryEdit!firstSave.rol?weblog="
                 + WEBLOG_HANDLE + "&bean.id=" + saved.getId(), view,
                 "After the first save the user must land on the edit form for the entry that "
                         + "was actually persisted, addressed by its own id");
@@ -253,7 +253,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         bean.setId("gone");
         when(weblogger.getWeblogEntryManager().getWeblogEntry("gone")).thenReturn(null);
 
-        assertEquals("redirect:/roller-ui/menu.rol",
+        assertEquals("redirect:/pressroom-ui/menu.rol",
                 controller.entryEditExecute(request, model, bean, newRedirectAttributes()),
                 "A missing entry must not render the editor against a null entry");
     }
@@ -384,7 +384,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
     void openingAnEntryWithNoIdBouncesToTheMenu() {
         bean.setId(null);
 
-        assertEquals("redirect:/roller-ui/menu.rol",
+        assertEquals("redirect:/pressroom-ui/menu.rol",
                 controller.entryEditExecute(request, model, bean, newRedirectAttributes()));
     }
 
@@ -394,7 +394,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1"))
                 .thenThrow(new WebloggerException("database down"));
 
-        assertEquals("redirect:/roller-ui/menu.rol",
+        assertEquals("redirect:/pressroom-ui/menu.rol",
                 controller.entryEditExecute(request, model, bean, newRedirectAttributes()),
                 "A lookup failure must be handled, not propagated as a 500");
     }
@@ -412,7 +412,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
 
         String view = controller.entryEditExecute(request, model, bean, newRedirectAttributes());
 
-        assertEquals("redirect:/roller-ui/menu.rol", view,
+        assertEquals("redirect:/pressroom-ui/menu.rol", view,
                 "an entryId from another weblog must bounce, exactly like an unknown one");
         assertNull(model.getAttribute("entry"));
         assertFalse("Stored title".equals(bean.getTitle()),
@@ -431,7 +431,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
 
         String view = controller.entryEditExecute(request, model, bean, redirect);
 
-        assertEquals("redirect:/roller-ui/authoring/trash.rol?weblog=" + WEBLOG_HANDLE, view);
+        assertEquals("redirect:/pressroom-ui/authoring/trash.rol?weblog=" + WEBLOG_HANDLE, view);
         assertEquals(List.of("entryEdit.entryIsTrashed"), flashErrors(redirect));
     }
 
@@ -444,7 +444,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         other.setHandle("otherblog");
         foreign.setWebsite(other);
 
-        assertEquals("redirect:/roller-ui/menu.rol",
+        assertEquals("redirect:/pressroom-ui/menu.rol",
                 controller.entryEditFirstSave(request, model, bean, newRedirectAttributes()));
     }
 
@@ -462,7 +462,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
 
         String view = controller.entryEditFirstSave(request, model, bean, redirect);
 
-        assertEquals("redirect:/roller-ui/authoring/trash.rol?weblog=" + WEBLOG_HANDLE, view);
+        assertEquals("redirect:/pressroom-ui/authoring/trash.rol?weblog=" + WEBLOG_HANDLE, view);
         assertEquals(List.of("entryEdit.entryIsTrashed"), flashErrors(redirect));
     }
 
@@ -475,7 +475,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         other.setHandle("otherblog");
         foreign.setWebsite(other);
 
-        assertEquals("redirect:/roller-ui/menu.rol",
+        assertEquals("redirect:/pressroom-ui/menu.rol",
                 controller.entryEditSaveDraft(request, model, bean));
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
     }
@@ -1177,7 +1177,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         try {
             controller.entryAddExecute(request, model, bean);
 
-            assertEquals("/roller-ui/authoring/preview/" + WEBLOG_HANDLE + "/?shell=true",
+            assertEquals("/pressroom-ui/authoring/preview/" + WEBLOG_HANDLE + "/?shell=true",
                     model.getAttribute("previewShellURL"));
         } finally {
             WebloggerRuntimeConfig.setRelativeContextURL(previous);
@@ -1198,7 +1198,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         try {
             controller.entryAddExecute(request, model, bean);
 
-            assertEquals("/roller/roller-ui/authoring/preview/" + WEBLOG_HANDLE + "/?shell=true",
+            assertEquals("/roller/pressroom-ui/authoring/preview/" + WEBLOG_HANDLE + "/?shell=true",
                     model.getAttribute("previewShellURL"));
         } finally {
             WebloggerRuntimeConfig.setRelativeContextURL(previous);
@@ -1258,7 +1258,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         // revision of its own and the restore itself undoable.
         verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(eq(entry),
                 argThat(editor -> USER_NAME.equals(editor.getUserName())));
-        assertEquals("redirect:/roller-ui/authoring/entryEdit.rol?weblog=" + WEBLOG_HANDLE
+        assertEquals("redirect:/pressroom-ui/authoring/entryEdit.rol?weblog=" + WEBLOG_HANDLE
                 + "&bean.id=entry-1", view);
     }
 
@@ -1416,7 +1416,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
 
         assertEquals(java.util.List.of("generic.error.check.logs"), flashErrors(redirect));
         assertTrue(flashMessages(redirect).isEmpty(), "a failed restore must not claim success");
-        assertTrue(view.startsWith("redirect:/roller-ui/authoring/entryEdit.rol"), view);
+        assertTrue(view.startsWith("redirect:/pressroom-ui/authoring/entryEdit.rol"), view);
     }
 
     @Test

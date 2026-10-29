@@ -174,7 +174,7 @@ class ThemeMatrixIT extends PressroomIT {
     private String createWeblog(String themeId) {
         String handle = "thememx" + nonce();
 
-        openPath("/roller-ui/createWeblog.rol");
+        openPath("/pressroom-ui/createWeblog.rol");
         $("#name").should(visible).setValue("Theme Matrix " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");
@@ -192,7 +192,7 @@ class ThemeMatrixIT extends PressroomIT {
      * default directory cannot already hold a {@code hawk.jpg} to collide with.
      */
     private String uploadImage(String handle) {
-        openPath("/roller-ui/authoring/mediaFileAdd.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/mediaFileAdd.rol?weblog=" + handle);
         $("#uploadedFiles").should(exist).uploadFile(testImage());
         $("#uploadButton").click();
 
@@ -207,7 +207,7 @@ class ThemeMatrixIT extends PressroomIT {
      * permalink.
      */
     private String publishRichEntry(String handle, String title, String mediaFileId) {
-        openPath("/roller-ui/authoring/entryAdd.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
         $("#entry").should(exist);
         $("[name='bean.title']").setValue(title);
         Editor.setText("<p>Fixture body for the theme matrix.</p>"
@@ -234,7 +234,7 @@ class ThemeMatrixIT extends PressroomIT {
      * site — so the button always appears.
      */
     private void switchToSharedTheme(String themeId, String handle) {
-        openPath("/roller-ui/authoring/themeEdit.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/themeEdit.rol?weblog=" + handle);
         // Clicking the theme's own card reveals the Save button. The
         // shared/custom radio row is not rendered on a default install (custom
         // themes are off site-wide), so there is nothing else to click first.

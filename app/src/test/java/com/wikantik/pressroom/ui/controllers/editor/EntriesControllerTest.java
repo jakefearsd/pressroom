@@ -368,7 +368,7 @@ class EntriesControllerTest extends EditorControllerTestSupport {
                 .thenAnswer(invocation -> {
                     @SuppressWarnings("unchecked")
                     Map<String, String> params = (Map<String, String>) invocation.getArgument(3);
-                    return "/roller-ui/authoring/entries.rol?" + new LinkedHashMap<>(params).entrySet().stream()
+                    return "/pressroom-ui/authoring/entries.rol?" + new LinkedHashMap<>(params).entrySet().stream()
                             .map(e -> e.getKey() + "=" + e.getValue())
                             .collect(Collectors.joining("&"));
                 });
@@ -411,7 +411,7 @@ class EntriesControllerTest extends EditorControllerTestSupport {
      * Spring's {@code InternalResourceViewResolver} runs with {@code
      * redirectContextRelative=true} and prepends the context path again, so
      * reusing the pager's base url produced {@code
-     * /roller/roller/roller-ui/...} and a 404 under a servlet prefix.
+     * /roller/roller/pressroom-ui/...} and a 404 under a servlet prefix.
      *
      * <p>The expectation is DERIVED from the stubbed context path rather than
      * hardcoded -- the {@code SeoController.robots()} lesson, where a fixture
@@ -429,10 +429,10 @@ class EntriesControllerTest extends EditorControllerTestSupport {
         // The pager's base url, which legitimately carries the prefix, is what
         // the redirect must NOT be -- derived, so a different prefix still fails.
         String pagerUrl = controller.buildBaseUrl(request, bean);
-        assertTrue(pagerUrl.startsWith(contextPath + "/roller-ui/authoring/entries.rol"),
+        assertTrue(pagerUrl.startsWith(contextPath + "/pressroom-ui/authoring/entries.rol"),
                 "precondition: the pager url carries the context path, was " + pagerUrl);
 
-        assertTrue(target.startsWith("/roller-ui/authoring/entries.rol"),
+        assertTrue(target.startsWith("/pressroom-ui/authoring/entries.rol"),
                 "the redirect must be context-relative; Spring prepends the context path "
                         + "itself, so a prefixed target becomes " + contextPath + contextPath
                         + "/... and 404s. Was: " + target);
@@ -489,7 +489,7 @@ class EntriesControllerTest extends EditorControllerTestSupport {
                     Map<String, String> params = new LinkedHashMap<>(
                             (Map<String, String>) invocation.getArgument(3));
                     params.put("weblog", invocation.getArgument(2));
-                    return contextPath + "/roller-ui/authoring/entries.rol"
+                    return contextPath + "/pressroom-ui/authoring/entries.rol"
                             + URLUtilities.getQueryString(params);
                 });
     }
@@ -547,7 +547,7 @@ class EntriesControllerTest extends EditorControllerTestSupport {
         RedirectAttributes redirect = newRedirectAttributes();
         String view = controller.duplicate(request, "entry-1", redirect);
 
-        assertEquals("redirect:/roller-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE, view);
+        assertEquals("redirect:/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE, view);
         assertEquals(List.of("weblogEntry.notFound"), flashErrors(redirect));
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
     }
@@ -559,7 +559,7 @@ class EntriesControllerTest extends EditorControllerTestSupport {
         RedirectAttributes redirect = newRedirectAttributes();
         String view = controller.duplicate(request, "no-such-entry", redirect);
 
-        assertEquals("redirect:/roller-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE, view);
+        assertEquals("redirect:/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE, view);
         assertEquals(List.of("weblogEntry.notFound"), flashErrors(redirect));
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
     }
@@ -577,7 +577,7 @@ class EntriesControllerTest extends EditorControllerTestSupport {
         RedirectAttributes redirect = newRedirectAttributes();
         String view = controller.duplicate(request, "entry-1", redirect);
 
-        assertEquals("redirect:/roller-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE, view);
+        assertEquals("redirect:/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE, view);
         assertEquals(List.of("weblogEntry.notFound"), flashErrors(redirect));
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any());
     }
@@ -597,7 +597,7 @@ class EntriesControllerTest extends EditorControllerTestSupport {
         assertEquals("Copy of Walking the Cinque Terre", copy.getTitle());
         assertEquals(WeblogEntry.PubStatus.DRAFT, copy.getStatus());
         assertNotEquals(original.getId(), copy.getId());
-        assertEquals("redirect:/roller-ui/authoring/entryEdit.rol?weblog=" + WEBLOG_HANDLE
+        assertEquals("redirect:/pressroom-ui/authoring/entryEdit.rol?weblog=" + WEBLOG_HANDLE
                 + "&bean.id=" + copy.getId(), view);
     }
 
@@ -615,7 +615,7 @@ class EntriesControllerTest extends EditorControllerTestSupport {
         RedirectAttributes redirect = newRedirectAttributes();
         String view = controller.duplicate(request, "entry-1", redirect);
 
-        assertEquals("redirect:/roller-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE, view);
+        assertEquals("redirect:/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE, view);
         assertEquals(List.of("generic.error.check.logs"), flashErrors(redirect));
     }
 
@@ -778,7 +778,7 @@ class EntriesControllerTest extends EditorControllerTestSupport {
         RedirectAttributes redirect = newRedirectAttributes();
         String view = controller.bulkDelete(request, null, bean, redirect);
 
-        assertEquals("redirect:/roller-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE, view);
+        assertEquals("redirect:/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE, view);
         assertEquals(List.of("weblogEntryQuery.bulkNothingSelected"), flashErrors(redirect));
         assertTrue(flashMessages(redirect).isEmpty());
         verify(weblogger.getWeblogEntryManager(), never()).trashWeblogEntry(any());

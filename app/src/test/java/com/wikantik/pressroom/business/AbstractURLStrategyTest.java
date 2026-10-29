@@ -60,10 +60,10 @@ class AbstractURLStrategyTest {
 
     @Test
     void loginAndLogoutUrlsAreRelativeOrAbsoluteAsAsked() {
-        assertEquals("/ctx/roller-ui/login-redirect.rol", strategy.getLoginURL(false));
-        assertEquals("https://blog.example.com/ctx/roller-ui/login-redirect.rol", strategy.getLoginURL(true));
-        assertEquals("/ctx/roller-ui/logout.rol", strategy.getLogoutURL(false));
-        assertEquals("https://blog.example.com/ctx/roller-ui/logout.rol", strategy.getLogoutURL(true));
+        assertEquals("/ctx/pressroom-ui/login-redirect.rol", strategy.getLoginURL(false));
+        assertEquals("https://blog.example.com/ctx/pressroom-ui/login-redirect.rol", strategy.getLoginURL(true));
+        assertEquals("/ctx/pressroom-ui/logout.rol", strategy.getLogoutURL(false));
+        assertEquals("https://blog.example.com/ctx/pressroom-ui/logout.rol", strategy.getLogoutURL(true));
     }
 
     @Test
@@ -71,35 +71,35 @@ class AbstractURLStrategyTest {
         Map<String, String> extra = new LinkedHashMap<>();
         extra.put("page", "2");
 
-        assertEquals("/ctx/roller-ui/authoring/entries.rol",
-                strategy.getActionURL("entries", "/roller-ui/authoring", null, null, false),
+        assertEquals("/ctx/pressroom-ui/authoring/entries.rol",
+                strategy.getActionURL("entries", "/pressroom-ui/authoring", null, null, false),
                 "no handle and no parameters means no query string");
-        assertEquals("/ctx/roller-ui/authoring/entries.rol?weblog=blog",
-                strategy.getActionURL("entries", "/roller-ui/authoring", "blog", null, false));
-        String both = strategy.getActionURL("entries", "/roller-ui/authoring", "blog", extra, true);
-        assertEquals("https://blog.example.com/ctx/roller-ui/authoring/entries.rol", both.substring(0, both.indexOf('?')));
+        assertEquals("/ctx/pressroom-ui/authoring/entries.rol?weblog=blog",
+                strategy.getActionURL("entries", "/pressroom-ui/authoring", "blog", null, false));
+        String both = strategy.getActionURL("entries", "/pressroom-ui/authoring", "blog", extra, true);
+        assertEquals("https://blog.example.com/ctx/pressroom-ui/authoring/entries.rol", both.substring(0, both.indexOf('?')));
         assertTrue(both.contains("weblog=blog") && both.contains("page=2"), both);
-        assertTrue(strategy.getActionURL("entries", "/roller-ui/authoring", "blog",
+        assertTrue(strategy.getActionURL("entries", "/pressroom-ui/authoring", "blog",
                 Map.of("weblog", "override"), false).endsWith("?weblog=override"),
                 "an explicit weblog parameter replaces the handle argument");
     }
 
     @Test
     void authoringLinksAreRelativeOrAbsoluteAsAsked() {
-        assertEquals("/ctx/roller-ui/authoring/entryAdd.rol?weblog=blog", strategy.getEntryAddURL("blog", false));
-        assertEquals("https://blog.example.com/ctx/roller-ui/authoring/entryAdd.rol?weblog=blog",
+        assertEquals("/ctx/pressroom-ui/authoring/entryAdd.rol?weblog=blog", strategy.getEntryAddURL("blog", false));
+        assertEquals("https://blog.example.com/ctx/pressroom-ui/authoring/entryAdd.rol?weblog=blog",
                 strategy.getEntryAddURL("blog", true));
 
         String relative = strategy.getEntryEditURL("blog", "id-1", false);
         String absoluteUrl = strategy.getEntryEditURL("blog", "id-1", true);
-        assertEquals("/ctx/roller-ui/authoring/entryEdit.rol", relative.substring(0, relative.indexOf('?')));
-        assertEquals("https://blog.example.com/ctx/roller-ui/authoring/entryEdit.rol",
+        assertEquals("/ctx/pressroom-ui/authoring/entryEdit.rol", relative.substring(0, relative.indexOf('?')));
+        assertEquals("https://blog.example.com/ctx/pressroom-ui/authoring/entryEdit.rol",
                 absoluteUrl.substring(0, absoluteUrl.indexOf('?')));
         assertTrue(absoluteUrl.contains("weblog=blog") && absoluteUrl.contains("bean.id=id-1"), absoluteUrl);
 
-        assertEquals("/ctx/roller-ui/authoring/weblogConfig.rol?weblog=blog",
+        assertEquals("/ctx/pressroom-ui/authoring/weblogConfig.rol?weblog=blog",
                 strategy.getWeblogConfigURL("blog", false));
-        assertEquals("https://blog.example.com/ctx/roller-ui/authoring/weblogConfig.rol?weblog=blog",
+        assertEquals("https://blog.example.com/ctx/pressroom-ui/authoring/weblogConfig.rol?weblog=blog",
                 strategy.getWeblogConfigURL("blog", true));
     }
 }

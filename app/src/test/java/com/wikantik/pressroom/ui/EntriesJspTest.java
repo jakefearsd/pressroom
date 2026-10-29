@@ -47,7 +47,7 @@ class EntriesJspTest {
     private static final Path ENTRIES = JSPS.resolve("editor/Entries.jsp");
     private static final Path SIDEBAR = JSPS.resolve("editor/EntriesSidebar.jsp");
     private static final Path PRESSROOM_JS = Path.of("src/main/webapp/theme/scripts/roller.js");
-    private static final Path PRESSROOM_CSS = Path.of("src/main/webapp/roller-ui/styles/roller.css");
+    private static final Path PRESSROOM_CSS = Path.of("src/main/webapp/pressroom-ui/styles/roller.css");
 
     private static String read(Path path) throws IOException {
         return Files.readString(path, StandardCharsets.UTF_8);
@@ -74,7 +74,7 @@ class EntriesJspTest {
                 "the first link in the title cell is not the title itself: " + first);
         assertTrue(first.contains("${editUrl}"),
                 "the title link does not href the editUrl: " + first);
-        assertTrue(jsp.contains("<c:url var=\"editUrl\" value=\"/roller-ui/authoring/entryEdit.rol\">"),
+        assertTrue(jsp.contains("<c:url var=\"editUrl\" value=\"/pressroom-ui/authoring/entryEdit.rol\">"),
                 "editUrl is not built from entryEdit.rol");
     }
 

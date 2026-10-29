@@ -33,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Unit tests for {@link WeblogPageRequest}, which turns
- * {@code /roller-ui/rendering/page/<handle>/<context>/<value>} into the entry,
+ * {@code /pressroom-ui/rendering/page/<handle>/<context>/<value>} into the entry,
  * date, category, custom page or tag set that PageServlet will render.
  *
  * <p>This is the busiest parser in the application -- every human page view
@@ -44,7 +44,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class WeblogPageRequestTest {
 
-    private static final String PAGE_SERVLET = "/roller-ui/rendering/page";
+    private static final String PAGE_SERVLET = "/pressroom-ui/rendering/page";
 
     /** The configured ceiling on intersecting tag queries, read the same way the parser reads it. */
     private static final int MAX_TAGS =
@@ -64,7 +64,7 @@ class WeblogPageRequestTest {
         // as a live page (and vice versa).
         assertThrows(InvalidRequestException.class,
                 () -> new WeblogPageRequest(mock(Weblogger.class), 
-                        MockRequest.with("/roller-ui/rendering/feed", "/myblog")),
+                        MockRequest.with("/pressroom-ui/rendering/feed", "/myblog")),
                 "A feed URL must not parse as a page request");
     }
 

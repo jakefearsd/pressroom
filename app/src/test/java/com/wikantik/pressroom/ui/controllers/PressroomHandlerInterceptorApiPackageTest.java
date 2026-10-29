@@ -35,7 +35,7 @@ import org.springframework.web.method.HandlerMethod;
  */
 class PressroomHandlerInterceptorApiPackageTest {
 
-    private static final String LOGIN = "/roller-ui/login.rol";
+    private static final String LOGIN = "/pressroom-ui/login.rol";
 
     private PressroomHandlerInterceptor interceptor;
     private MockHttpServletRequest request;

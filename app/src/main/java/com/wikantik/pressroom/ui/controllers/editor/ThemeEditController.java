@@ -50,7 +50,7 @@ import org.springframework.web.bind.annotation.RequestParam;
  * Action for controlling theme selection.
  */
 @Controller
-@RequestMapping("/roller-ui/authoring")
+@RequestMapping("/pressroom-ui/authoring")
 public class ThemeEditController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(ThemeEditController.class);

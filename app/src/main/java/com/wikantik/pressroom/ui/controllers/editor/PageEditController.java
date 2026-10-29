@@ -56,7 +56,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
  * than the entry editor's separate add/edit action pair.
  */
 @Controller
-@RequestMapping("/roller-ui/authoring")
+@RequestMapping("/pressroom-ui/authoring")
 public class PageEditController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(PageEditController.class);

@@ -67,7 +67,7 @@ public class PageServlet extends HttpServlet {
 
     /**
      * Request attributes a 404 decided inside a weblog leaves for the
-     * container's error page (roller-ui/errors/404.jsp), which offers the
+     * container's error page (pressroom-ui/errors/404.jsp), which offers the
      * reader the way back to that weblog rather than only the site root.
      * The error dispatch is a forward within the same request, so they
      * survive it. The name is raw author input: the JSP escapes it.

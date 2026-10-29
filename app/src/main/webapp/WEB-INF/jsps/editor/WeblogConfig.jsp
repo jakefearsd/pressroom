@@ -21,7 +21,7 @@
     <spring:message code="websiteSettings.subtitle" arguments="${actionWeblog.handle}"/>
 </p>
 
-<c:url var="weblogRemoveUrl" value="/roller-ui/authoring/weblogRemove.rol">
+<c:url var="weblogRemoveUrl" value="/pressroom-ui/authoring/weblogRemove.rol">
     <c:param name="weblog" value="${actionWeblog.handle}"/>
 </c:url>
 
@@ -35,7 +35,7 @@
      without a display:contents indirection and the Save button stays a plain
      descendant of the form it submits. Hidden inputs are display:none and so
      never become grid items. --%>
-<form action="${pageContext.request.contextPath}/roller-ui/authoring/weblogConfig!save.rol" method="post" class="settings-grid form-stacked">
+<form action="${pageContext.request.contextPath}/pressroom-ui/authoring/weblogConfig!save.rol" method="post" class="settings-grid form-stacked">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
 
 <div>
@@ -55,7 +55,7 @@
             <button class="clipbutton" type="button"
                     data-clipboard-text="${urls.weblogAbsolute(actionWeblog)}"
                     aria-label="<spring:message code='generic.copyToClipboard'/>">
-                <img src='<c:url value="/roller-ui/images/clippy.svg"/>' alt=""
+                <img src='<c:url value="/pressroom-ui/images/clippy.svg"/>' alt=""
                      style="width:0.9em; height:0.9em">
             </button>
         </div>

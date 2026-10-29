@@ -173,7 +173,7 @@ by every controller in `ReaderRefusalSweepTest`.
 
 ## The page script and the session endpoint
 
-`CommentsController` (`/roller-ui/rendering`):
+`CommentsController` (`/pressroom-ui/rendering`):
 
 - `GET /comments/session.rol?entry=<id>`: JSON, `Cache-Control: no-store`; 404
   for an unknown or unpublished entry. Anonymous: `{signedIn:false, signInUrl?}` (absent with SSO off; the return
@@ -192,7 +192,7 @@ by every controller in `ReaderRefusalSweepTest`.
 **Why CSRF is fetched, not cached.** The entry page is shared and cached, so a
 token cannot be in it. The session endpoint, answering the signed-in reader
 with `no-store`, hands them their token. There is **no CSRF exemption**:
-`/roller-ui/rendering/**` is `permitAll`, but the UI chain's CSRF filter still
+`/pressroom-ui/rendering/**` is `permitAll`, but the UI chain's CSRF filter still
 refuses a POST or DELETE without the token. The same reason keeps names, held
 comments and ownership out of the page.
 
@@ -220,7 +220,7 @@ would be its own spec.
 
 ## Moderation page
 
-`CommentsModerationController` (`/roller-ui/authoring/comments.rol`,
+`CommentsModerationController` (`/pressroom-ui/authoring/comments.rol`,
 `comments!approve|hide|delete|reply.rol`, `Comments.jsp`, a `Routes` entry and
 CSS marker): needs the weblog `POST` permission. Tabs Awaiting approval
 (default), Published, Hidden; filter `entry=`; single and bulk Approve, Hide,
@@ -277,7 +277,7 @@ readers are never mailed. Needs mail configured (`MailUtil.isMailConfigured`).
 
 ## The reader's account page
 
-`AccountController`: `/roller-ui/account.rol`, `account!saveName.rol`,
+`AccountController`: `/pressroom-ui/account.rol`, `account!saveName.rol`,
 `account!deleteComment.rol`, `account!deleteAccount.rol` (`Account.jsp`). It
 requires the global `comment` action (`requiredGlobalPermissionActions`).
 Display name (the screen name), one rule in `business/comments/DisplayNames`

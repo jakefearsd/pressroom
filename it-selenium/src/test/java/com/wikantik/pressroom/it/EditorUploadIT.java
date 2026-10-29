@@ -55,8 +55,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 })
 class EditorUploadIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/roller-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
-    private static final String GLOBAL_CONFIG = "/roller-ui/admin/globalConfig.rol";
+    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String GLOBAL_CONFIG = "/pressroom-ui/admin/globalConfig.rol";
 
     /** A 1x1 PNG -- the smallest real image the upload pipeline accepts. */
     private static final String TINY_PNG_BASE64 =

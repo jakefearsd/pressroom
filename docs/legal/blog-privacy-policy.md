@@ -93,7 +93,7 @@ The blogs show ads served by Google AdSense. Third-party vendors, including Goog
 
 ## Your choices
 
-- **Change your name.** Sign in and open your account page (`/roller-ui/account.rol` on the site) to change your display name.
+- **Change your name.** Sign in and open your account page (`/pressroom-ui/account.rol` on the site) to change your display name.
 - **Delete a comment.** The account page lists your comments with a Delete button for each.
 - **Delete your account.** The account page has a "Delete my account" button, confirmed in a dialog. It removes your comments and replies, your roles, tokens and the account itself, and signs you out. If you sign in with Google again, a new account is created. It is not available for accounts that write for a blog.
 - **Unsubscribe.** Every newsletter has an unsubscribe link handled by listmonk.

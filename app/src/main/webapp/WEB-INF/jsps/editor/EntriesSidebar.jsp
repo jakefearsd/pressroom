@@ -22,7 +22,7 @@
 
 <p><spring:message code="weblogEntryQuery.sidebarDescription"/></p>
 
-<form action="${pageContext.request.contextPath}/roller-ui/authoring/entries.rol" method="get" class="form-stacked">
+<form action="${pageContext.request.contextPath}/pressroom-ui/authoring/entries.rol" method="get" class="form-stacked">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
 
     <%-- ========================================================= --%>

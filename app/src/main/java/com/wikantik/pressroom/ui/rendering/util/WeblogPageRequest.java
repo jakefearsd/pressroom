@@ -43,7 +43,7 @@ import java.util.Map;
 /**
  * Represents a request for a Roller weblog page.
  * 
- * any url from ... /roller-ui/rendering/page/*
+ * any url from ... /pressroom-ui/rendering/page/*
  * 
  * We use this class as a helper to parse an incoming url and sort out the
  * information embedded in the url for later use.
@@ -52,7 +52,7 @@ public class WeblogPageRequest extends WeblogRequest {
 
     private static final Logger log = LoggerFactory.getLogger(WeblogPageRequest.class);
 
-    private static final String PAGE_SERVLET = "/roller-ui/rendering/page";
+    private static final String PAGE_SERVLET = "/pressroom-ui/rendering/page";
 
     // lightweight attributes
     private String context = null;

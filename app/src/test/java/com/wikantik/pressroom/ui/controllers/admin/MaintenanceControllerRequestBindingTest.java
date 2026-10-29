@@ -100,7 +100,7 @@ class MaintenanceControllerRequestBindingTest {
 
     @Test
     void flushCacheWithNoWeblogIdParameterAtAllReachesTheErrorPageNotA400() throws Exception {
-        MvcResult result = mockMvc.perform(post("/roller-ui/admin/maintenance!flushCache.rol")
+        MvcResult result = mockMvc.perform(post("/pressroom-ui/admin/maintenance!flushCache.rol")
                         .requestAttr("authenticatedUser", new User()))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -111,7 +111,7 @@ class MaintenanceControllerRequestBindingTest {
 
     @Test
     void indexWithNoWeblogIdParameterAtAllReachesTheErrorPageNotA400() throws Exception {
-        MvcResult result = mockMvc.perform(post("/roller-ui/admin/maintenance!index.rol")
+        MvcResult result = mockMvc.perform(post("/pressroom-ui/admin/maintenance!index.rol")
                         .requestAttr("authenticatedUser", new User()))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -122,7 +122,7 @@ class MaintenanceControllerRequestBindingTest {
 
     @Test
     void regenerateRenditionsWithNoWeblogIdParameterAtAllReachesTheErrorPageNotA400() throws Exception {
-        MvcResult result = mockMvc.perform(post("/roller-ui/admin/maintenance!regenerateRenditions.rol")
+        MvcResult result = mockMvc.perform(post("/pressroom-ui/admin/maintenance!regenerateRenditions.rol")
                         .requestAttr("authenticatedUser", new User()))
                 .andExpect(status().isOk())
                 .andReturn();

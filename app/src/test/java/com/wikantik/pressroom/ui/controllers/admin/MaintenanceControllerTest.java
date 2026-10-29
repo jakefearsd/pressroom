@@ -93,7 +93,7 @@ class MaintenanceControllerTest {
         // what keeps operator-only actions (flush cache, rebuild the search
         // index) away from ordinary bloggers now that the screen has moved to
         // Global Admin. isWeblogRequired() is false because there is no
-        // /roller-ui/admin/** action-context weblog -- the target is chosen
+        // /pressroom-ui/admin/** action-context weblog -- the target is chosen
         // explicitly on the page instead.
         assertEquals(List.of(GlobalPermission.ADMIN), controller.requiredGlobalPermissionActions());
         assertFalse(controller.isWeblogRequired());

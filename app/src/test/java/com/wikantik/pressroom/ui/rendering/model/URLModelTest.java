@@ -232,27 +232,27 @@ class URLModelTest {
 
     @Test
     void loginAndLogoutPointAtTheSpringSecurityEndpoints() {
-        assertEquals(SITE + "/roller-ui/login-redirect.rol", model.getLogin(),
+        assertEquals(SITE + "/pressroom-ui/login-redirect.rol", model.getLogin(),
                 "The login link must match the URL SecurityConfig protects.");
-        assertEquals(SITE + "/roller-ui/logout.rol", model.getLogout(),
+        assertEquals(SITE + "/pressroom-ui/logout.rol", model.getLogout(),
                 "The logout link must match the URL Spring Security listens on.");
     }
 
     @Test
     void actionUrlsAreBuiltPerNamespaceAndUnknownNamespacesYieldNothing() {
-        assertEquals(ABSOLUTE_SITE + "/roller-ui/login.rol",
-                model.action("login", "/roller-ui"),
+        assertEquals(ABSOLUTE_SITE + "/pressroom-ui/login.rol",
+                model.action("login", "/pressroom-ui"),
                 "Site-level actions take no weblog parameter.");
 
-        String authoring = model.action("entryAdd", "/roller-ui/authoring");
-        assertEquals(ABSOLUTE_SITE + "/roller-ui/authoring/entryAdd.rol", path(authoring),
+        String authoring = model.action("entryAdd", "/pressroom-ui/authoring");
+        assertEquals(ABSOLUTE_SITE + "/pressroom-ui/authoring/entryAdd.rol", path(authoring),
                 "Authoring actions live under the authoring namespace.");
         assertEquals(Map.of("weblog", "testblog"), queryParams(authoring),
                 "Authoring actions must carry the weblog handle or the action cannot "
                         + "tell which blog it is editing.");
 
-        assertEquals(ABSOLUTE_SITE + "/roller-ui/admin/globalConfig.rol",
-                model.action("globalConfig", "/roller-ui/admin"),
+        assertEquals(ABSOLUTE_SITE + "/pressroom-ui/admin/globalConfig.rol",
+                model.action("globalConfig", "/pressroom-ui/admin"),
                 "Admin actions live under the admin namespace.");
 
         assertNull(model.action("whatever", "/made/up"),
@@ -479,13 +479,13 @@ class URLModelTest {
     @Test
     void editorLinksAreRelativeAndIdentifyTheWeblog() {
         String add = model.getCreateEntry();
-        assertEquals(SITE + "/roller-ui/authoring/entryAdd.rol", path(add),
+        assertEquals(SITE + "/pressroom-ui/authoring/entryAdd.rol", path(add),
                 "The 'new entry' link points at the authoring UI.");
         assertEquals(Map.of("weblog", "testblog"), queryParams(add),
                 "The editor needs to know which blog it is posting to.");
 
         String settings = model.getEditSettings();
-        assertEquals(SITE + "/roller-ui/authoring/weblogConfig.rol", path(settings),
+        assertEquals(SITE + "/pressroom-ui/authoring/weblogConfig.rol", path(settings),
                 "The settings link points at the weblog config screen.");
         assertEquals(Map.of("weblog", "testblog"), queryParams(settings),
                 "The settings screen needs the weblog handle.");
@@ -503,7 +503,7 @@ class URLModelTest {
 
         String url = model.editEntry("hello");
 
-        assertEquals(SITE + "/roller-ui/authoring/entryEdit.rol", path(url),
+        assertEquals(SITE + "/pressroom-ui/authoring/entryEdit.rol", path(url),
                 "The edit link points at the entry editor.");
         assertEquals(Map.of("weblog", "testblog", "bean.id", "entry-42"),
                 queryParams(url),

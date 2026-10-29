@@ -142,7 +142,7 @@ class RouteSweepIT extends PressroomIT {
      */
     @Test
     void adminRailIsPresentWithAnActiveSpineOnATabbedPage() {
-        openPath("/roller-ui/authoring/entries.rol?weblog=" + Routes.WEBLOG_HANDLE);
+        openPath("/pressroom-ui/authoring/entries.rol?weblog=" + Routes.WEBLOG_HANDLE);
 
         assertTrue($$("#adminRail").size() > 0,
                 "Expected the tabbed admin layout to render the #adminRail nav");

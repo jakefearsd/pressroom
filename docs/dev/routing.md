@@ -10,7 +10,7 @@ resolves through the index at the end of `CLAUDE.md`.
 `/` reaches `index.jsp` (the welcome file; the dispatcher serves `*.rol`
 only), which forwards wherever `FrontDoor.forwardPath` says. With
 `site.frontpage.page` set, that is the site page of that slug
-(`/roller-ui/rendering/page/site-space/<slug>`) when it is published, and
+(`/pressroom-ui/rendering/page/site-space/<slug>`) when it is published, and
 the site directory when it is not (deleted, a draft, a failed lookup): `/`
 is never a 404 or a 500 (a locale-shaped slug, saved before such slugs were
 refused, is the directory too: the page servlet would read it as a locale).
@@ -19,7 +19,7 @@ an unrelated save does not clear it; a change to the site name, short name or
 description (like the front door, privacy link and absolute URL) touches every
 weblog and the site space so cached pages expire. Unset, with `site.frontpage.weblog.handle` set, it
 forwards to that weblog's rendering. Both empty, it forwards to
-`/roller-ui/siteDirectory.rol` (`SiteDirectoryController`), a public page
+`/pressroom-ui/siteDirectory.rol` (`SiteDirectoryController`), a public page
 with the site description and the enabled, active weblogs by name, plus a
 "choose a front page" link for an admin. It used to forward to the setup
 page, which is admin-only, so on a site with no front page every reader got
@@ -42,7 +42,7 @@ property trimmed, the slug exact), shared by the mapper, `FrontDoor` and
 the URL strategy, so the 301 and the links never disagree. `PageServlet`
 serves the site space only to a FORWARD dispatch, and only a
 `WeblogPageRequest` parses its hyphenated handle, so
-`/roller-ui/rendering/{page,feed,search,...}/site-space/...` requested
+`/pressroom-ui/rendering/{page,feed,search,...}/site-space/...` requested
 directly is a 404.
 
 The site space's ASSETS keep the handle. Its pages live at the root, but the
@@ -141,10 +141,10 @@ A weblog with `weblog.custom_domain` set is served at that hostname's root:
   canonical/`og:url` values into those bytes, so a request-derived url would
   stamp one host's canonical onto the other. All ten weblog-content url
   methods root through `MultiWeblogURLStrategy.getWeblogURL`;
-  `AbstractURLStrategy`'s six `/roller-ui/` methods are control plane and
+  `AbstractURLStrategy`'s six `/pressroom-ui/` methods are control plane and
   must **not** become domain-aware.
 - **`appProtectedUrls` is a strict subset of `pressroomProtectedUrls`**, which
-  mixes application paths (`roller-ui`, `api`, `themes`, `webjars`,
+  mixes application paths (`pressroom-ui`, `api`, `themes`, `webjars`,
   `robots.txt`, `sitemap.xml`, `newsletter`) with weblog request contexts
   (`page`, `search`, `resource`, legacy `flavor`/`rss`/`atom`/`language`). On
   the site host a context is the SECOND segment (`/<handle>/page/x`); on a
@@ -157,9 +157,9 @@ A weblog with `weblog.custom_domain` set is served at that hostname's root:
   `getWeblogURL`, the mapper's path-form 301 and `SeoController.robots()`
   got this wrong; `ControlPlaneHostFilter` is right because
   `site.absoluteurl` carries the context path by convention.
-- **`/roller-ui/rendering/**` and `/newsletter/**` are exempt from the
+- **`/pressroom-ui/rendering/**` and `/newsletter/**` are exempt from the
   control-plane redirect.** `ContactController`
-  (`/roller-ui/rendering/contact.rol`) and `NewsletterController`
+  (`/pressroom-ui/rendering/contact.rol`) and `NewsletterController`
   (`/newsletter/subscribe`) are `fetch`-posted under `connect-src 'self'`; a
   redirect to the site host is cross-origin (CSP-blocked; a POST 301 has no
   body), breaking every `[contact]`/`[subscribe]` on vhost weblogs.

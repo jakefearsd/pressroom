@@ -62,7 +62,7 @@ class WeblogRemoveControllerTest extends EditorControllerTestSupport {
     void removingTheWeblogCommitsAndRedirectsToTheMenu() throws Exception {
         String view = controller.remove(request, model, redirectAttributes);
 
-        assertEquals("redirect:/roller-ui/menu.rol", view);
+        assertEquals("redirect:/pressroom-ui/menu.rol", view);
         verify(weblogger.getWeblogManager()).removeWeblog(weblog);
         assertTrue(weblogger.flushCount() > 0, "A weblog removal must be committed");
         assertEquals(java.util.List.of("websiteRemove.success"), flashMessages(redirectAttributes));

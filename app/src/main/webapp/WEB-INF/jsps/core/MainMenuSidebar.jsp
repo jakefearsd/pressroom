@@ -24,7 +24,7 @@
 
 <div class="sidebar-group">
 <p class="sidebar-label"><span class="bi bi-person" aria-hidden="true"></span>
-<a href="<c:url value='/roller-ui/profile.rol'/>"><spring:message code="yourWebsites.editProfile" /></a></p>
+<a href="<c:url value='/pressroom-ui/profile.rol'/>"><spring:message code="yourWebsites.editProfile" /></a></p>
 <p><spring:message code="yourWebsites.editProfile.desc" /></p>
 </div>
 
@@ -33,7 +33,7 @@
 <c:if test="${rc:getBooleanProp('site.allowUserWeblogCreation') && (rc:getBooleanProp('groupblogging.enabled') || empty existingPermissions)}">
     <div class="sidebar-group">
     <p class="sidebar-label"><span class="bi bi-plus-lg" aria-hidden="true"></span>
-    <a href="<c:url value='/roller-ui/createWeblog.rol'/>"><spring:message code="yourWebsites.createWeblog" /></a></p>
+    <a href="<c:url value='/pressroom-ui/createWeblog.rol'/>"><spring:message code="yourWebsites.createWeblog" /></a></p>
     <p><spring:message code="yourWebsites.createWeblog.desc" /></p>
     </div>
 </c:if>
@@ -44,7 +44,7 @@
 
     <div class="sidebar-group">
     <p class="sidebar-label"><span class="bi bi-wrench" aria-hidden="true"></span>
-    <a href="<c:url value='/roller-ui/admin/globalConfig.rol'/>"><spring:message code="yourWebsites.globalAdmin" /></a></p>
+    <a href="<c:url value='/pressroom-ui/admin/globalConfig.rol'/>"><spring:message code="yourWebsites.globalAdmin" /></a></p>
     <p><spring:message code="yourWebsites.globalAdmin.desc" /></p>
     </div>
 

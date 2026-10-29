@@ -161,7 +161,7 @@ class BusinessesControllerTest {
     void validSaveStoresAndRedirectsToTheList() throws Exception {
         String view = save(validBean());
 
-        assertEquals("redirect:/roller-ui/admin/businesses.rol", view);
+        assertEquals("redirect:/pressroom-ui/admin/businesses.rol", view);
         org.mockito.ArgumentCaptor<Business> saved = org.mockito.ArgumentCaptor.forClass(Business.class);
         verify(manager).saveBusiness(saved.capture());
         Business b = saved.getValue();
@@ -180,7 +180,7 @@ class BusinessesControllerTest {
         bean.setWebsiteUrl("  ");
         bean.setSameAs(" \n ");
 
-        assertEquals("redirect:/roller-ui/admin/businesses.rol", save(bean));
+        assertEquals("redirect:/pressroom-ui/admin/businesses.rol", save(bean));
 
         org.mockito.ArgumentCaptor<Business> saved = org.mockito.ArgumentCaptor.forClass(Business.class);
         verify(manager).saveBusiness(saved.capture());
@@ -223,7 +223,7 @@ class BusinessesControllerTest {
         bean.setId(existing.getId());
 
         try (MockedStatic<CacheManager> cache = mockStatic(CacheManager.class)) {
-            assertEquals("redirect:/roller-ui/admin/businesses.rol", save(bean));
+            assertEquals("redirect:/pressroom-ui/admin/businesses.rol", save(bean));
             cache.verify(() -> CacheManager.invalidate(one));
             cache.verify(() -> CacheManager.invalidate(two));
         }
@@ -244,7 +244,7 @@ class BusinessesControllerTest {
         when(manager.getWeblogsUsing(any())).thenThrow(new WebloggerException("down"));
 
         try (MockedStatic<CacheManager> cache = mockStatic(CacheManager.class)) {
-            assertEquals("redirect:/roller-ui/admin/businesses.rol", save(validBean()));
+            assertEquals("redirect:/pressroom-ui/admin/businesses.rol", save(validBean()));
             cache.verifyNoInteractions();
         }
         assertTrue(ControllerTestFixture.errors(model).isEmpty(),
@@ -365,7 +365,7 @@ class BusinessesControllerTest {
 
         String view = controller.delete(ControllerTestFixture.requestFor(user()), model, redirect, b.getId());
 
-        assertEquals("redirect:/roller-ui/admin/businesses.rol", view);
+        assertEquals("redirect:/pressroom-ui/admin/businesses.rol", view);
         verify(manager).removeBusiness(b);
         verify(weblogger.weblogger()).flush();
     }
@@ -452,7 +452,7 @@ class BusinessesControllerTest {
     void aTelephoneWithAnExtensionIsSavedAndTheCardLinksItAsAnRfc3966Ext() throws Exception {
         BusinessBean bean = validBean();
         bean.setTelephone("+1 555 123 4567 ext. 89");
-        assertEquals("redirect:/roller-ui/admin/businesses.rol", save(bean));
+        assertEquals("redirect:/pressroom-ui/admin/businesses.rol", save(bean));
 
         org.mockito.ArgumentCaptor<Business> saved = org.mockito.ArgumentCaptor.forClass(Business.class);
         verify(manager).saveBusiness(saved.capture());
@@ -472,7 +472,7 @@ class BusinessesControllerTest {
         when(manager.getWeblogsUsing(any())).thenThrow(new IllegalStateException("cache boom"));
 
         try (MockedStatic<CacheManager> _ = mockStatic(CacheManager.class)) {
-            assertEquals("redirect:/roller-ui/admin/businesses.rol", save(validBean()));
+            assertEquals("redirect:/pressroom-ui/admin/businesses.rol", save(validBean()));
         }
         assertTrue(ControllerTestFixture.errors(model).isEmpty());
     }
@@ -485,7 +485,7 @@ class BusinessesControllerTest {
         try (MockedStatic<CacheManager> cache = mockStatic(CacheManager.class)) {
             cache.when(() -> CacheManager.invalidate(any(Weblog.class)))
                     .thenThrow(new IllegalStateException("cache boom"));
-            assertEquals("redirect:/roller-ui/admin/businesses.rol", save(validBean()));
+            assertEquals("redirect:/pressroom-ui/admin/businesses.rol", save(validBean()));
         }
     }
 

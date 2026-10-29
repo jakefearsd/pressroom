@@ -52,7 +52,7 @@ import static org.mockito.Mockito.when;
 class CategoryEditControllerTest extends EditorControllerTestSupport {
 
     private static final String LIST_REDIRECT =
-            "redirect:/roller-ui/authoring/categories.rol?weblog=" + WEBLOG_HANDLE;
+            "redirect:/pressroom-ui/authoring/categories.rol?weblog=" + WEBLOG_HANDLE;
 
     private CategoryEditController controller;
     private CategoryBean bean;

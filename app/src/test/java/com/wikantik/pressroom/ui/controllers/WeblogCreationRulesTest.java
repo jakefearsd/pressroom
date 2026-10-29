@@ -38,7 +38,7 @@ class WeblogCreationRulesTest {
 
     private WeblogCreationRules.Context context(boolean allowed, boolean groupBlogging) {
         return new WeblogCreationRules.Context(allowed, groupBlogging, "A-Za-z0-9",
-                Set.of("api", "page", "search", "roller-ui", "mine"), List.of("journal", "travel"), users, weblogs, pages);
+                Set.of("api", "page", "search", "pressroom-ui", "mine"), List.of("journal", "travel"), users, weblogs, pages);
     }
 
     private static CreateWeblogBean bean(String handle) {

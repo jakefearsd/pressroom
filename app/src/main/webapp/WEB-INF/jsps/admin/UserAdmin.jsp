@@ -27,19 +27,19 @@
 
 <div class="d-flex flex-wrap gap-2 mb-3">
     <a class="btn btn-primary btn-sm" id="newPersonLink"
-       href="<c:url value='/roller-ui/admin/createUser.rol'/>"><spring:message code="userList.newPerson"/></a>
+       href="<c:url value='/pressroom-ui/admin/createUser.rol'/>"><spring:message code="userList.newPerson"/></a>
     <a class="btn btn-secondary btn-sm" id="newAgentLink"
-       href="<c:url value='/roller-ui/admin/createAgent.rol'/>"><spring:message code="userList.newAgent"/></a>
+       href="<c:url value='/pressroom-ui/admin/createAgent.rol'/>"><spring:message code="userList.newAgent"/></a>
 </div>
 
-<c:url var="allTabUrl" value="/roller-ui/admin/userAdmin.rol">
+<c:url var="allTabUrl" value="/pressroom-ui/admin/userAdmin.rol">
     <c:param name="q" value="${textFilter}"/>
 </c:url>
-<c:url var="peopleTabUrl" value="/roller-ui/admin/userAdmin.rol">
+<c:url var="peopleTabUrl" value="/pressroom-ui/admin/userAdmin.rol">
     <c:param name="kind" value="people"/>
     <c:param name="q" value="${textFilter}"/>
 </c:url>
-<c:url var="agentsTabUrl" value="/roller-ui/admin/userAdmin.rol">
+<c:url var="agentsTabUrl" value="/pressroom-ui/admin/userAdmin.rol">
     <c:param name="kind" value="agents"/>
     <c:param name="q" value="${textFilter}"/>
 </c:url>
@@ -54,7 +54,7 @@
 </nav>
 
 <spring:message code="userList.filter" var="filterLabel"/>
-<form method="get" action="<c:url value='/roller-ui/admin/userAdmin.rol'/>"
+<form method="get" action="<c:url value='/pressroom-ui/admin/userAdmin.rol'/>"
       class="d-flex flex-wrap gap-2 mb-3" id="userListFilterForm">
     <input type="hidden" name="kind" value="${fn:escapeXml(kindFilter)}"/>
     <label for="userListFilter" class="visually-hidden">${fn:escapeXml(filterLabel)}</label>
@@ -80,12 +80,12 @@
             <c:forEach var="row" items="${accounts}">
                 <c:choose>
                     <c:when test="${row.agent}">
-                        <c:url var="accountUrl" value="/roller-ui/admin/agent.rol">
+                        <c:url var="accountUrl" value="/pressroom-ui/admin/agent.rol">
                             <c:param name="userName" value="${row.userName}"/>
                         </c:url>
                     </c:when>
                     <c:otherwise>
-                        <c:url var="accountUrl" value="/roller-ui/admin/modifyUser.rol">
+                        <c:url var="accountUrl" value="/pressroom-ui/admin/modifyUser.rol">
                             <c:param name="bean.userName" value="${row.userName}"/>
                         </c:url>
                     </c:otherwise>

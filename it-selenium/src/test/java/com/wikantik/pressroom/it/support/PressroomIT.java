@@ -111,11 +111,11 @@ public abstract class PressroomIT {
     /** Seed weblog owned by {@link #ADMIN_USERNAME}. */
     protected static final String WEBLOG_HANDLE = "it_weblog";
 
-    private static final String LOGIN_PATH = "/roller-ui/login.rol";
-    private static final String MENU_PATH = "/roller-ui/menu.rol";
+    private static final String LOGIN_PATH = "/pressroom-ui/login.rol";
+    private static final String MENU_PATH = "/pressroom-ui/menu.rol";
 
     /** Present on every page of an authenticated session and nowhere else - see bannerStatus.jsp. */
-    private static final String LOGOUT_LINK = "a[href$='/roller-ui/logout.rol']";
+    private static final String LOGOUT_LINK = "a[href$='/pressroom-ui/logout.rol']";
 
     private static boolean selenideConfigured;
 
@@ -243,7 +243,7 @@ public abstract class PressroomIT {
      * Opens a path on the Roller under test and waits for the browser to finish, so the
      * health recorder has seen every request the page made before the test asserts anything.
      *
-     * @param path server-relative path below the Roller context, e.g. {@code /roller-ui/menu.rol}
+     * @param path server-relative path below the Roller context, e.g. {@code /pressroom-ui/menu.rol}
      */
     protected void openPath(String path) {
         Selenide.open(baseUrl() + (path.startsWith("/") ? path : "/" + path));
@@ -335,7 +335,7 @@ public abstract class PressroomIT {
     }
 
     /** Spring Security's login-processing endpoint; see {@code SecurityConfig.formLogin}. */
-    private static final String LOGIN_PROCESSING_PATH = "/roller_j_security_check";
+    private static final String LOGIN_PROCESSING_PATH = "/pressroom_j_security_check";
 
     /** Matches the token {@code <sec:csrfInput/>} renders into the login form. */
     private static final Pattern CSRF_INPUT = Pattern.compile(
@@ -451,7 +451,7 @@ public abstract class PressroomIT {
     }
 
     /** Where a reader's sign-in with the provider starts (SsoPaths.START in app). */
-    private static final String SSO_START_PATH = "/roller-ui/sso/start";
+    private static final String SSO_START_PATH = "/pressroom-ui/sso/start";
 
     /**
      * Signs a reader in through the run's Keycloak (realm {@code roller-it}): starts a
@@ -556,7 +556,7 @@ public abstract class PressroomIT {
             HttpClient.newBuilder()
                     .followRedirects(HttpClient.Redirect.NEVER)
                     .connectTimeout(Duration.ofSeconds(20)).build()
-                    .send(HttpRequest.newBuilder(URI.create(baseUrl() + "/roller-ui/logout.rol"))
+                    .send(HttpRequest.newBuilder(URI.create(baseUrl() + "/pressroom-ui/logout.rol"))
                             .header("Cookie", header).GET().build(),
                             HttpResponse.BodyHandlers.discarding());
         } catch (java.io.IOException e) {
@@ -602,7 +602,7 @@ public abstract class PressroomIT {
     }
 
     /** The site-wide settings page, where global runtime properties are edited. */
-    private static final String GLOBAL_CONFIG_PATH = "/roller-ui/admin/globalConfig.rol";
+    private static final String GLOBAL_CONFIG_PATH = "/pressroom-ui/admin/globalConfig.rol";
 
     /**
      * Sets a global runtime property from the admin settings page and returns

@@ -574,7 +574,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
 
     @Test
     void uncheckingShowInNavBindsToFalseThroughTheRealBinder() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/roller-ui/authoring/pageEdit!save.rol");
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/pressroom-ui/authoring/pageEdit!save.rol");
         request.setParameter("bean.slug", "about");
         request.setParameter("bean.title", "About Us");
         // The box was unchecked: the browser omits "bean.showInNav" entirely,
@@ -596,7 +596,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
 
     @Test
     void checkingShowInNavBindsToTrueThroughTheRealBinder() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/roller-ui/authoring/pageEdit!save.rol");
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/pressroom-ui/authoring/pageEdit!save.rol");
         request.setParameter("bean.slug", "about");
         request.setParameter("bean.title", "About Us");
         request.setParameter("bean.showInNav", "true");
@@ -815,7 +815,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         try {
             controller.edit(null, requestFor(weblogA), model);
 
-            assertEquals("/roller-ui/authoring/preview/" + WEBLOG_HANDLE + "/?shell=true",
+            assertEquals("/pressroom-ui/authoring/preview/" + WEBLOG_HANDLE + "/?shell=true",
                     model.getAttribute("previewShellURL"));
         } finally {
             WebloggerRuntimeConfig.setRelativeContextURL(previous);
@@ -831,7 +831,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         try {
             controller.edit(null, requestFor(weblogA), model);
 
-            assertEquals("/roller/roller-ui/authoring/preview/" + WEBLOG_HANDLE + "/?shell=true",
+            assertEquals("/roller/pressroom-ui/authoring/preview/" + WEBLOG_HANDLE + "/?shell=true",
                     model.getAttribute("previewShellURL"));
         } finally {
             WebloggerRuntimeConfig.setRelativeContextURL(previous);

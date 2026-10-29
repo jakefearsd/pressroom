@@ -59,7 +59,7 @@ import org.apache.commons.text.StringEscapeUtils;
  * Adds a new media file.
  */
 @Controller
-@RequestMapping("/roller-ui/authoring")
+@RequestMapping("/pressroom-ui/authoring")
 public class MediaFileAddController extends MediaFileBase {
 
     private static final Logger log = LoggerFactory.getLogger(MediaFileAddController.class);
@@ -295,7 +295,7 @@ public class MediaFileAddController extends MediaFileBase {
     public String cancel(HttpServletRequest request,
                          @RequestParam(name = "bean.directoryId", required = false) String directoryId) {
         Weblog weblog = getActionWeblog(request);
-        String url = "redirect:/roller-ui/authoring/mediaFileView.rol?weblog="
+        String url = "redirect:/pressroom-ui/authoring/mediaFileView.rol?weblog="
                 + (weblog != null ? weblog.getHandle() : "");
         if (StringUtils.isNotBlank(directoryId)) {
             url += "&directoryId=" + URLEncoder.encode(directoryId, StandardCharsets.UTF_8);

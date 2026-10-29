@@ -59,11 +59,11 @@ public class WeblogRequestMapper {
     
     private static final Logger log = LoggerFactory.getLogger(WeblogRequestMapper.class);
     
-    private static final String PAGE_SERVLET = "/roller-ui/rendering/page";
-    private static final String FEED_SERVLET = "/roller-ui/rendering/feed";
-    private static final String RESOURCE_SERVLET = "/roller-ui/rendering/resources";
-    private static final String MEDIA_SERVLET = "/roller-ui/rendering/media-resources";
-    private static final String SEARCH_SERVLET = "/roller-ui/rendering/search";
+    private static final String PAGE_SERVLET = "/pressroom-ui/rendering/page";
+    private static final String FEED_SERVLET = "/pressroom-ui/rendering/feed";
+    private static final String RESOURCE_SERVLET = "/pressroom-ui/rendering/resources";
+    private static final String MEDIA_SERVLET = "/pressroom-ui/rendering/media-resources";
+    private static final String SEARCH_SERVLET = "/pressroom-ui/rendering/search";
 
     /**
      * Where one public weblog url shape is forwarded, and which of its parts
@@ -254,7 +254,7 @@ public class WeblogRequestMapper {
         // path is weblog-relative and the first segment is content -- a
         // context there is the FIRST segment (/page/x) -- so only
         // APPLICATION paths are reserved: /themes/**, /webjars/**,
-        // /roller-ui/rendering/**, /newsletter/**, /robots.txt and
+        // /pressroom-ui/rendering/**, /newsletter/**, /robots.txt and
         // /sitemap.xml still must not be swallowed, but reserving the weblog
         // request contexts here would kill /page/<theme>.css (the theme
         // stylesheet on every single page), /search and /resource/<file> on

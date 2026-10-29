@@ -60,7 +60,7 @@ class PageRoutingTest {
 
     private MockHttpServletResponse get(String path) throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/routeblog" + path);
+                .anonymousGet("/pressroom-ui/rendering/page", "/routeblog" + path);
         return RenderingTestSupport.execute(RenderingTestSupport.pageServlet(), request);
     }
 

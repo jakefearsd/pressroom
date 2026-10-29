@@ -51,12 +51,12 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * that uses it, so a value that fails validation is refused, never cleaned.
  */
 @Controller
-@RequestMapping("/roller-ui/admin")
+@RequestMapping("/pressroom-ui/admin")
 public class BusinessesController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(BusinessesController.class);
 
-    private static final String LIST_REDIRECT = "redirect:/roller-ui/admin/businesses.rol";
+    private static final String LIST_REDIRECT = "redirect:/pressroom-ui/admin/businesses.rol";
     private static final String LIST_VIEW = ".Businesses";
     private static final String EDIT_VIEW = ".BusinessEdit";
     private static final int MAX_LENGTH = 255;

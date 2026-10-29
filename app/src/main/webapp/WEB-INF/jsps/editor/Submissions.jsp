@@ -30,7 +30,7 @@
 <nav aria-label="<spring:message code='pager.label'/>">
     <div class="d-flex justify-content-between">
         <c:if test="${page > 0}">
-            <c:url var="prevUrl" value="/roller-ui/authoring/submissions.rol">
+            <c:url var="prevUrl" value="/pressroom-ui/authoring/submissions.rol">
                 <c:param name="weblog" value="${actionWeblog.handle}"/>
                 <c:param name="page" value="${page - 1}"/>
             </c:url>
@@ -38,7 +38,7 @@
                 <span aria-hidden="true">&larr;</span> <spring:message code="pager.newer"/></a>
         </c:if>
         <c:if test="${(page + 1) * pageSize < submissionCount}">
-            <c:url var="nextUrl" value="/roller-ui/authoring/submissions.rol">
+            <c:url var="nextUrl" value="/pressroom-ui/authoring/submissions.rol">
                 <c:param name="weblog" value="${actionWeblog.handle}"/>
                 <c:param name="page" value="${page + 1}"/>
             </c:url>
@@ -58,7 +58,7 @@
      via ContactController, so each one is wrapped in <c:out>/fn:escapeXml,
      including inside the mailto href. --%>
 <form id="submissionsDeleteForm" method="post"
-      action="${pageContext.request.contextPath}/roller-ui/authoring/submissions!delete.rol">
+      action="${pageContext.request.contextPath}/pressroom-ui/authoring/submissions!delete.rol">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
     <sec:csrfInput/>
 

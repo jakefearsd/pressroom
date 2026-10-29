@@ -268,7 +268,7 @@ class VirtualHostIT extends PressroomIT {
         openVhostPath("/entry/" + anchor);
         $("body").shouldHave(text(title));
         // The code block's toolbar and colours come from roller-content.js,
-        // which lives under /roller-ui -- the control plane this filter sends
+        // which lives under /pressroom-ui -- the control plane this filter sends
         // to the site host. Redirected, the script would be cross-origin and
         // refused by the theme's script-src 'self'; ControlPlaneHostFilter
         // leaves that one file here, and this is what proves it.
@@ -299,7 +299,7 @@ class VirtualHostIT extends PressroomIT {
     // ---------------------------------------------------------- criterion 3
 
     /**
-     * {@code GET https://b.example.com/roller-ui/menu.rol} -> 301 to the
+     * {@code GET https://b.example.com/pressroom-ui/menu.rol} -> 301 to the
      * same path on the site host. {@code GET https://b.example.com/api/v1/ping}
      * likewise.
      *
@@ -313,9 +313,9 @@ class VirtualHostIT extends PressroomIT {
      */
     @Test
     void adminAndApiLeaveTheCustomDomain() throws Exception {
-        HttpResponse<String> admin = get("/roller-ui/menu.rol", VHOST);
+        HttpResponse<String> admin = get("/pressroom-ui/menu.rol", VHOST);
         assertEquals(301, admin.statusCode());
-        assertEquals(baseUrl() + "/roller-ui/menu.rol",
+        assertEquals(baseUrl() + "/pressroom-ui/menu.rol",
                 admin.headers().firstValue("Location").orElseThrow());
 
         HttpResponse<String> api = get("/api/v1/ping", VHOST);
@@ -327,7 +327,7 @@ class VirtualHostIT extends PressroomIT {
     // ---------------------------------------------------------- criterion 4
 
     /**
-     * {@code POST https://b.example.com/roller-ui/rendering/contact.rol} is
+     * {@code POST https://b.example.com/pressroom-ui/rendering/contact.rol} is
      * NOT redirected. {@code POST https://b.example.com/newsletter/subscribe}
      * likewise.
      *
@@ -345,13 +345,13 @@ class VirtualHostIT extends PressroomIT {
      * and does not care about the HTTP method.
      *
      * <p>Expected to pass on arrival: {@code ControlPlaneHostFilter}
-     * explicitly excludes {@code /roller-ui/rendering/} before it ever
-     * checks the {@code /roller-ui/} prefix, and {@code /newsletter/} never
+     * explicitly excludes {@code /pressroom-ui/rendering/} before it ever
+     * checks the {@code /pressroom-ui/} prefix, and {@code /newsletter/} never
      * matches {@code belongsToSiteHost} at all.
      */
     @Test
     void theContactAndSubscribeEndpointsStayOnTheCustomDomain() throws Exception {
-        assertNotEquals(301, get("/roller-ui/rendering/contact.rol", VHOST).statusCode());
+        assertNotEquals(301, get("/pressroom-ui/rendering/contact.rol", VHOST).statusCode());
         assertNotEquals(301, get("/newsletter/subscribe", VHOST).statusCode());
     }
 
@@ -486,7 +486,7 @@ class VirtualHostIT extends PressroomIT {
 
     /**
      * With {@code site.absoluteurl} unset and at least one weblog holding a
-     * custom domain, {@code GET https://b.example.com/roller-ui/menu.rol} is
+     * custom domain, {@code GET https://b.example.com/pressroom-ui/menu.rol} is
      * served, not redirected -- the degraded path is pre-vhost behaviour,
      * never a loop.
      *
@@ -511,7 +511,7 @@ class VirtualHostIT extends PressroomIT {
      * {@code chain.doFilter(...)}, the request falls through to ordinary,
      * pre-vhost Spring Security behaviour, which for an unauthenticated
      * request IS a redirect: a same-host 302 to
-     * {@code http://vhost.example.com/roller-ui/login.rol}. That is correct
+     * {@code http://vhost.example.com/pressroom-ui/login.rol}. That is correct
      * and expected, not a regression -- the behaviour this criterion actually
      * protects is that the degraded path can never build a CROSS-host
      * redirect (toward a site host {@code site.absoluteurl} never named),
@@ -526,7 +526,7 @@ class VirtualHostIT extends PressroomIT {
         String duringTest = setSiteAbsoluteUrl("");
         logout();
         try {
-            HttpResponse<String> response = get("/roller-ui/menu.rol", VHOST);
+            HttpResponse<String> response = get("/pressroom-ui/menu.rol", VHOST);
             Optional<String> location = response.headers().firstValue("Location");
             if (location.isPresent()) {
                 assertEquals(VHOST, URI.create(location.get()).getHost(),
@@ -611,7 +611,7 @@ class VirtualHostIT extends PressroomIT {
     private String createWeblog() {
         String handle = "vhostit" + nonce();
 
-        openPath("/roller-ui/createWeblog.rol");
+        openPath("/pressroom-ui/createWeblog.rol");
         $("#name").should(visible).setValue("VHost IT " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");
@@ -624,8 +624,8 @@ class VirtualHostIT extends PressroomIT {
 
     /** Permanently deletes the fixture weblog through the real confirm-and-remove flow. */
     private void removeWeblog(String handle) {
-        openPath("/roller-ui/authoring/weblogRemove.rol?weblog=" + handle);
-        $("form[action$='/roller-ui/authoring/weblogRemove!remove.rol'] button[type='submit']")
+        openPath("/pressroom-ui/authoring/weblogRemove.rol?weblog=" + handle);
+        $("form[action$='/pressroom-ui/authoring/weblogRemove!remove.rol'] button[type='submit']")
                 .should(visible).click();
         $("#messages").should(exist);
         BrowserHealth.current().settle();
@@ -639,7 +639,7 @@ class VirtualHostIT extends PressroomIT {
     }
 
     private void openWeblogSettings(String handle) {
-        openPath("/roller-ui/authoring/weblogConfig.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + handle);
         $("input[name='bean.name']").should(visible);
     }
 
@@ -658,7 +658,7 @@ class VirtualHostIT extends PressroomIT {
     }
 
     private String publishEntry(String handle, String title, String body) {
-        openPath("/roller-ui/authoring/entryAdd.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
         $("#entry").should(exist);
         $("[name='bean.title']").setValue(title);
         Editor.setText(body);
@@ -682,14 +682,14 @@ class VirtualHostIT extends PressroomIT {
      * already exists.
      */
     private void createAndPublishPage(String handle, String slug, String title, String body) {
-        openPath("/roller-ui/authoring/pageEdit.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
         $("#pageEditForm").should(exist);
         $("#page_bean_slug").setValue(slug);
         $("#page_bean_title").setValue(title);
         Editor.setText(body);
         saveOpenPage();
 
-        openPath("/roller-ui/authoring/pages.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
         $("#pageRemoveForm").should(exist);
         $$("#pageRemoveForm a").findBy(text(title)).should(exist).click();
         $("#pageEditForm").should(exist);

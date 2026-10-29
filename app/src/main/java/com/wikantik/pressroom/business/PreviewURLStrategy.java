@@ -34,7 +34,7 @@ import com.wikantik.pressroom.util.URLUtilities;
 public class PreviewURLStrategy extends MultiWeblogURLStrategy {
     
     private final String previewTheme;
-    private static final String PREVIEW_URL_SEGMENT = "/roller-ui/authoring/preview/";
+    private static final String PREVIEW_URL_SEGMENT = "/pressroom-ui/authoring/preview/";
     
     public PreviewURLStrategy(String theme) {
         previewTheme = theme;
@@ -136,7 +136,7 @@ public class PreviewURLStrategy extends MultiWeblogURLStrategy {
             url.append(WebloggerRuntimeConfig.getRelativeContextURL());
         }
         
-        url.append("/roller-ui/authoring/previewresource/").append(weblog.getHandle()).append('/');
+        url.append("/pressroom-ui/authoring/previewresource/").append(weblog.getHandle()).append('/');
         
         // encodePath rather than a raw append, again matching the parent: it
         // escapes each segment and leaves '/' alone, so a file name with a

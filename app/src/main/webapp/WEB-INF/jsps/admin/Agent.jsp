@@ -26,7 +26,7 @@
 <p class="subtitle"><spring:message code="agent.subtitle" arguments="${fn:escapeXml(bean.userName)}"/></p>
 
 <h2 class="section-head"><spring:message code="agent.details"/></h2>
-<form method="post" action="<c:url value='/roller-ui/admin/agent!save.rol'/>" class="form-stacked" id="agentDetailsForm">
+<form method="post" action="<c:url value='/pressroom-ui/admin/agent!save.rol'/>" class="form-stacked" id="agentDetailsForm">
     <sec:csrfInput/>
     <input type="hidden" name="bean.userName" value="${fn:escapeXml(bean.userName)}"/>
 
@@ -59,7 +59,7 @@
 </form>
 
 <h2 class="section-head"><spring:message code="agent.status"/></h2>
-<form method="post" action="<c:url value='/roller-ui/admin/agent!setEnabled.rol'/>"
+<form method="post" action="<c:url value='/pressroom-ui/admin/agent!setEnabled.rol'/>"
       class="d-flex flex-wrap align-items-center gap-3" id="agentEnabledForm">
     <sec:csrfInput/>
     <input type="hidden" name="userName" value="${fn:escapeXml(bean.userName)}"/>

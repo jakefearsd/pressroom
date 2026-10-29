@@ -55,7 +55,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ_WRITE)
 class ColophonIT extends PressroomIT {
 
-    private static final String GLOBAL_CONFIG_PATH = "/roller-ui/admin/globalConfig.rol";
+    private static final String GLOBAL_CONFIG_PATH = "/pressroom-ui/admin/globalConfig.rol";
     private static final String FRONTPAGE_FIELD = "site.frontpage.weblog.handle";
     private static final String PRIVACY_FIELD = "site.privacy.page";
 
@@ -91,7 +91,7 @@ class ColophonIT extends PressroomIT {
         Throwable primary = null;
         try {
             // --- a published page on the blog that will be the front-page blog
-            openPath("/roller-ui/authoring/pageEdit.rol?weblog=" + handle);
+            openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
             $("#pageEditForm").should(exist);
             $("#page_bean_slug").setValue(slug);
             $("#page_bean_title").setValue(title);
@@ -188,7 +188,7 @@ class ColophonIT extends PressroomIT {
             assertEquals(wasFront, $("select[name='" + FRONTPAGE_FIELD + "']").getSelectedOptionValue(),
                     "site.frontpage.weblog.handle was not restored");
         }
-        openPath("/roller-ui/authoring/pages.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
         $("#pageRemoveForm").should(exist);
         if ($$("tr[data-page-slug='privacy']").isEmpty()) {
             return; // never created
@@ -203,7 +203,7 @@ class ColophonIT extends PressroomIT {
 
     private String createWeblog(String nonce) {
         String handle = "colo" + nonce;
-        openPath("/roller-ui/createWeblog.rol");
+        openPath("/pressroom-ui/createWeblog.rol");
         $("#name").should(visible).setValue("Colophon " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");

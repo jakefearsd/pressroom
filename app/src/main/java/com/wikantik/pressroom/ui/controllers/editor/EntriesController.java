@@ -57,7 +57,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * A list view of entries in a weblog.
  */
 @Controller
-@RequestMapping("/roller-ui/authoring")
+@RequestMapping("/pressroom-ui/authoring")
 public class EntriesController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(EntriesController.class);
@@ -69,7 +69,7 @@ public class EntriesController extends BaseController {
      * {@code redirectContextRelative=true} and so prefixes the context path
      * itself. See {@link #backToList}.
      */
-    private static final String ENTRIES_PATH = "/roller-ui/authoring/entries.rol";
+    private static final String ENTRIES_PATH = "/pressroom-ui/authoring/entries.rol";
 
     @Override
     public List<String> requiredWeblogPermissionActions() {
@@ -163,7 +163,7 @@ public class EntriesController extends BaseController {
                             @RequestParam(value = "duplicateId", required = false) String duplicateId,
                             RedirectAttributes redirectAttributes) {
         String handle = getActionWeblog(request).getHandle();
-        String backToList = "redirect:/roller-ui/authoring/entries.rol?weblog=" + handle;
+        String backToList = "redirect:/pressroom-ui/authoring/entries.rol?weblog=" + handle;
 
         // lookupNonTrashedEntry, not lookupEntry: a forged duplicateId
         // naming a trashed entry must not be usable to duplicate it back
@@ -182,7 +182,7 @@ public class EntriesController extends BaseController {
 
             addFlashMessage(redirectAttributes, "weblogEdit.entryDuplicated",
                     copy.getTitle(), request);
-            return "redirect:/roller-ui/authoring/entryEdit.rol?weblog=" + handle
+            return "redirect:/pressroom-ui/authoring/entryEdit.rol?weblog=" + handle
                     + "&bean.id=" + copy.getId();
         } catch (Exception e) {
             log.error("Error duplicating entry {}", duplicateId, e);
@@ -347,7 +347,7 @@ public class EntriesController extends BaseController {
      * view name, because Spring's {@code InternalResourceViewResolver} has
      * {@code redirectContextRelative=true} and prepends the context path
      * AGAIN. Under a servlet prefix that produced {@code
-     * /roller/roller/roller-ui/authoring/entries.rol} and a 404 -- invisible
+     * /roller/roller/pressroom-ui/authoring/entries.rol} and a 404 -- invisible
      * at the root context, where both prefixes are empty. The query string
      * still comes from the shared {@link #filterParams}, so the redirect and
      * the pager's base url cannot drift apart on which filters they carry.
@@ -422,7 +422,7 @@ public class EntriesController extends BaseController {
     // directly, per this repo's existing precedent for testing a pager's base
     // url without going through the full servlet stack.
     String buildBaseUrl(HttpServletRequest request, EntriesBean bean) {
-        return weblogger.getUrlStrategy().getActionURL("entries", "/roller-ui/authoring",
+        return weblogger.getUrlStrategy().getActionURL("entries", "/pressroom-ui/authoring",
                 getActionWeblog(request).getHandle(), filterParams(bean), false);
     }
 
@@ -496,7 +496,7 @@ public class EntriesController extends BaseController {
                 params.put("bean.status", key);
             }
             urls.put(key, weblogger.getUrlStrategy().getActionURL(
-                    "entries", "/roller-ui/authoring", handle, params, false));
+                    "entries", "/pressroom-ui/authoring", handle, params, false));
         }
         return urls;
     }

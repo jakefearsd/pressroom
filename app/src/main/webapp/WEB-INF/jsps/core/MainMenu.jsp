@@ -29,7 +29,7 @@
         <p class="empty-state-title"><spring:message code="empty.weblogs.title" /></p>
         <p class="empty-state-body"><spring:message code="empty.weblogs.body" /></p>
         <a id="createWeblogLink" class="btn btn-primary"
-           href="<c:url value='/roller-ui/createWeblog.rol'/>">
+           href="<c:url value='/pressroom-ui/createWeblog.rol'/>">
             <spring:message code="empty.weblogs.action" />
         </a>
     </div>
@@ -96,7 +96,7 @@
             <div class="weblog-actions" role="group"
                  aria-label="${fn:escapeXml(perms.weblog.name)}">
 
-                <c:url value="/roller-ui/authoring/entryAdd.rol" var="newEntry">
+                <c:url value="/pressroom-ui/authoring/entryAdd.rol" var="newEntry">
                     <c:param name="weblog" value="${perms.weblog.handle}"/>
                 </c:url>
                 <a href="${newEntry}" class="btn btn-primary btn-sm">
@@ -106,7 +106,7 @@
                 <c:if test='${!perms.hasAction("edit_draft")}'>
 
                     <%-- Entries, with its count, for users above LIMITED permission --%>
-                    <c:url value="/roller-ui/authoring/entries.rol" var="editEntries">
+                    <c:url value="/pressroom-ui/authoring/entries.rol" var="editEntries">
                         <c:param name="weblog" value="${perms.weblog.handle}"/>
                     </c:url>
                     <a href="${editEntries}" class="quiet-link">
@@ -119,7 +119,7 @@
                 <%-- Comments awaiting approval, for a member who may moderate: one whose
                      row implies the post permission (a creator's row holds admin alone). --%>
                 <c:if test='${perms.canModerate and perms.pendingCommentCount > 0}'>
-                    <c:url value="/roller-ui/authoring/comments.rol" var="pendingComments">
+                    <c:url value="/pressroom-ui/authoring/comments.rol" var="pendingComments">
                         <c:param name="weblog" value="${perms.weblog.handle}"/>
                     </c:url>
                     <a href="${pendingComments}" class="status-pill status-pending">
@@ -137,7 +137,7 @@
                     <c:choose>
                         <c:when test="${perms.weblog.editorTheme == 'custom'}">
                             <c:if test="${rc:getProp('themes.customtheme.allowed')}">
-                                <c:url value="/roller-ui/authoring/templates.rol" var="weblogTheme">
+                                <c:url value="/pressroom-ui/authoring/templates.rol" var="weblogTheme">
                                     <c:param name="weblog" value="${perms.weblog.handle}" />
                                 </c:url>
                                 <a href='${weblogTheme}' class="quiet-link">
@@ -146,7 +146,7 @@
                             </c:if>
                         </c:when>
                         <c:otherwise>
-                            <c:url value="/roller-ui/authoring/themeEdit.rol" var="weblogTheme">
+                            <c:url value="/pressroom-ui/authoring/themeEdit.rol" var="weblogTheme">
                                 <c:param name="weblog" value="${perms.weblog.handle}" />
                             </c:url>
                             <a href='${weblogTheme}' class="quiet-link">
@@ -155,7 +155,7 @@
                         </c:otherwise>
                     </c:choose>
 
-                    <c:url value="/roller-ui/authoring/weblogConfig.rol" var="manageWeblog">
+                    <c:url value="/pressroom-ui/authoring/weblogConfig.rol" var="manageWeblog">
                         <c:param name="weblog" value="${perms.weblog.handle}"/>
                     </c:url>
                     <a href='${manageWeblog}' class="quiet-link">
@@ -189,19 +189,19 @@
         <p><spring:message code="mainMenu.site.desc"/></p>
         <spring:message code="mainMenu.site.title" var="siteLabel"/>
         <div class="weblog-actions" role="group" aria-label="${fn:escapeXml(siteLabel)}">
-            <c:url value="/roller-ui/authoring/pages.rol" var="sitePages">
+            <c:url value="/pressroom-ui/authoring/pages.rol" var="sitePages">
                 <c:param name="weblog" value="${siteSpace.handle}"/>
             </c:url>
             <a href="${sitePages}" class="quiet-link">
                 <spring:message code="mainMenu.site.pages"/>
             </a>
-            <c:url value="/roller-ui/authoring/mediaFileView.rol" var="siteMedia">
+            <c:url value="/pressroom-ui/authoring/mediaFileView.rol" var="siteMedia">
                 <c:param name="weblog" value="${siteSpace.handle}"/>
             </c:url>
             <a href="${siteMedia}" class="quiet-link">
                 <spring:message code="mainMenu.site.media"/>
             </a>
-            <c:url value="/roller-ui/authoring/themeEdit.rol" var="siteTheme">
+            <c:url value="/pressroom-ui/authoring/themeEdit.rol" var="siteTheme">
                 <c:param name="weblog" value="${siteSpace.handle}"/>
             </c:url>
             <a href="${siteTheme}" class="quiet-link">

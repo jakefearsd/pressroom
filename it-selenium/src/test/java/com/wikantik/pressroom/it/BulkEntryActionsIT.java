@@ -39,8 +39,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  */
 class BulkEntryActionsIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/roller-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
-    private static final String ENTRIES = "/roller-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String ENTRIES = "/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE;
 
     private static final String PERMALINK = "#entry_bean_permalink";
 
@@ -107,7 +107,7 @@ class BulkEntryActionsIT extends PressroomIT {
     }
 
     private void openEditorFor(String entryId) {
-        openPath("/roller-ui/authoring/entryEdit.rol?weblog=" + WEBLOG_HANDLE + "&bean.id=" + entryId);
+        openPath("/pressroom-ui/authoring/entryEdit.rol?weblog=" + WEBLOG_HANDLE + "&bean.id=" + entryId);
         $("#entry").should(exist);
     }
 }

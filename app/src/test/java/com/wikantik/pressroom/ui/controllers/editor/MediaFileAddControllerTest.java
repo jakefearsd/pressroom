@@ -495,7 +495,7 @@ class MediaFileAddControllerTest extends EditorControllerTestSupport {
 
     @Test
     void cancellingReturnsToTheMediaFileList() {
-        assertEquals("redirect:/roller-ui/authoring/mediaFileView.rol?weblog=" + WEBLOG_HANDLE,
+        assertEquals("redirect:/pressroom-ui/authoring/mediaFileView.rol?weblog=" + WEBLOG_HANDLE,
                 controller.cancel(request, null));
     }
 
@@ -503,7 +503,7 @@ class MediaFileAddControllerTest extends EditorControllerTestSupport {
     void cancellingReturnsToTheDirectoryTheUploadWasHeadedFor() {
         // Without the directory id, cancelling an upload into a nested folder
         // dropped the author back at the media root, to navigate down again.
-        assertEquals("redirect:/roller-ui/authoring/mediaFileView.rol?weblog=" + WEBLOG_HANDLE
+        assertEquals("redirect:/pressroom-ui/authoring/mediaFileView.rol?weblog=" + WEBLOG_HANDLE
                         + "&directoryId=dir-42",
                 controller.cancel(request, "dir-42"));
     }
@@ -513,7 +513,7 @@ class MediaFileAddControllerTest extends EditorControllerTestSupport {
         // directoryId used to be concatenated unencoded into the redirect
         // query string; a value containing '&' injected an extra query
         // parameter into the URL instead of round-tripping as one value.
-        assertEquals("redirect:/roller-ui/authoring/mediaFileView.rol?weblog=" + WEBLOG_HANDLE
+        assertEquals("redirect:/pressroom-ui/authoring/mediaFileView.rol?weblog=" + WEBLOG_HANDLE
                         + "&directoryId=dir%2642",
                 controller.cancel(request, "dir&42"));
     }
@@ -524,7 +524,7 @@ class MediaFileAddControllerTest extends EditorControllerTestSupport {
         // the one path that tolerates its absence rather than throwing.
         when(request.getAttribute("actionWeblog")).thenReturn(null);
 
-        assertEquals("redirect:/roller-ui/authoring/mediaFileView.rol?weblog=",
+        assertEquals("redirect:/pressroom-ui/authoring/mediaFileView.rol?weblog=",
                 controller.cancel(request, null));
     }
 

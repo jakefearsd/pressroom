@@ -59,7 +59,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
 class ContactFormIT extends PressroomIT {
 
-    private static final String CONTACT_ENDPOINT = "/roller-ui/rendering/contact.rol";
+    private static final String CONTACT_ENDPOINT = "/pressroom-ui/rendering/contact.rol";
 
     private HttpClient http;
 
@@ -110,7 +110,7 @@ class ContactFormIT extends PressroomIT {
 
         // --- the Inquiries admin screen ---------------------------------------
         loginAsAdmin();
-        openPath("/roller-ui/authoring/submissions.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/submissions.rol?weblog=" + handle);
         $("table.rollertable").shouldHave(text(name));
         $("table.rollertable").shouldHave(text(message));
 
@@ -144,7 +144,7 @@ class ContactFormIT extends PressroomIT {
         assertEquals(204, postJson(CONTACT_ENDPOINT, honeypotJson),
                 "a honeypot-filled submission must answer exactly like success");
 
-        openPath("/roller-ui/authoring/submissions.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/submissions.rol?weblog=" + handle);
         $$(".submission-select").shouldHave(CollectionCondition.size(0));
         $(".empty-state").shouldHave(text("No inquiries yet."));
         BrowserHealth.current().assertNoBrokenResources();
@@ -157,7 +157,7 @@ class ContactFormIT extends PressroomIT {
     private String createWeblog() {
         String handle = "contactit" + nonce();
 
-        openPath("/roller-ui/createWeblog.rol");
+        openPath("/pressroom-ui/createWeblog.rol");
         $("#name").should(visible).setValue("CFIT Weblog " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");
@@ -174,14 +174,14 @@ class ContactFormIT extends PressroomIT {
      * draft-then-publish flow {@code PageIT} exercises.
      */
     private void createAndPublishContactPage(String handle) {
-        openPath("/roller-ui/authoring/pageEdit.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
         $("#pageEditForm").should(exist);
         $("#page_bean_slug").setValue("contact");
         $("#page_bean_title").setValue("Contact");
         Editor.setText("[contact]");
         saveOpenPage();
 
-        openPath("/roller-ui/authoring/pages.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
         $("#pageRemoveForm").should(exist);
         // Scoped to the pages table itself: the admin header carries its own
         // "visit site" link naming the weblog, and a $$("a") search of the

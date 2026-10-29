@@ -40,11 +40,11 @@ class WeblogForwardUrlCharacterisationTest {
     private final WeblogRequestMapper mapper =
             new WeblogRequestMapper(mock(WebloggerProvider.class), mock(Weblogger.class));
 
-    private static final String PAGE = "/roller-ui/rendering/page";
-    private static final String FEED = "/roller-ui/rendering/feed";
-    private static final String RESOURCES = "/roller-ui/rendering/resources";
-    private static final String MEDIA = "/roller-ui/rendering/media-resources";
-    private static final String SEARCH = "/roller-ui/rendering/search";
+    private static final String PAGE = "/pressroom-ui/rendering/page";
+    private static final String FEED = "/pressroom-ui/rendering/feed";
+    private static final String RESOURCES = "/pressroom-ui/rendering/resources";
+    private static final String MEDIA = "/pressroom-ui/rendering/media-resources";
+    private static final String SEARCH = "/pressroom-ui/rendering/search";
 
     private String forward(String handle, String locale, String context, String data) {
         MockHttpServletRequest request = new MockHttpServletRequest();

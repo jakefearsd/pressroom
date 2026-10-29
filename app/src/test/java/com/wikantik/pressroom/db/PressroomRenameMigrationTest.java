@@ -40,7 +40,7 @@ import static org.mockito.Mockito.when;
 /**
  * V041 renames the live production schema: every {@code roller_*} table,
  * sequence, index and constraint becomes {@code pressroom_*}, and stored
- * {@code /roller-ui/} links in pages and entries follow the UI's new path.
+ * {@code /pressroom-ui/} links in pages and entries follow the UI's new path.
  * The data is what matters, so each test seeds rows at V040 and reads them
  * back through the new names.
  */
@@ -51,7 +51,7 @@ class PressroomRenameMigrationTest {
     /** The old prefix and UI path, which V041 exists to retire. */
     private static final String OLD = "roller_"; // rebrand:keep
     private static final String OLD_LIKE = "roller\\_%"; // rebrand:keep
-    private static final String OLD_UI = "/roller-ui/"; // rebrand:keep
+    private static final String OLD_UI = "/pressroom-ui/"; // rebrand:keep
 
     /** The 18 tables the Phase 0 production scan found, without their prefix. */
     private static final List<String> TABLES = List.of(

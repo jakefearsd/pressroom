@@ -45,7 +45,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
  * Action for modifying weblog configuration.
  */
 @Controller
-@RequestMapping("/roller-ui/authoring")
+@RequestMapping("/pressroom-ui/authoring")
 public class WeblogConfigController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(WeblogConfigController.class);

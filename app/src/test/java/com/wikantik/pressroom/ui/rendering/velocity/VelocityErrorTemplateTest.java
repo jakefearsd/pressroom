@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * see RenderErrorStatusTest). They used to
  * print the exception's message, its {@code getClass().getName()} and the
  * template source that threw, which is precisely the detail
- * {@code roller-ui/errors/error.jsp} refuses to show for the same class of
+ * {@code pressroom-ui/errors/error.jsp} refuses to show for the same class of
  * failure ("No exception detail is rendered here on purpose ... the real
  * detail goes to the server log"). Nothing about the server-side logging
  * changes; only the response body does.

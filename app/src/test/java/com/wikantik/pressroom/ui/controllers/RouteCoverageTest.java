@@ -66,7 +66,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * reads JSPs to check the webjar URLs written into them. The alternative --
  * keeping a second copy of the list here -- would drift, and a coverage guard
  * that drifts is worse than none. The cost is a formatting rule: route paths in
- * Routes.java have to be plain {@code "/roller-ui/..."} string literals rather
+ * Routes.java have to be plain {@code "/pressroom-ui/..."} string literals rather
  * than assembled from constants. That rule is stated at the top of Routes.java.
  */
 public class RouteCoverageTest {
@@ -86,10 +86,10 @@ public class RouteCoverageTest {
      * which mentions things like {@code /WEB-INF/jsps/editor/MediaFileViewLight}
      * -- cannot be mistaken for coverage. The extra alternatives are the
      * crawler-facing SEO routes (SeoController), which live outside
-     * {@code /roller-ui/*.rol}.
+     * {@code /pressroom-ui/*.rol}.
      */
     private static final Pattern CATALOGUED_ROUTE = Pattern.compile(
-            "\"(/roller-ui/[^\"\\s]*\\.rol|/sitemap[^\"\\s]*\\.xml|/robots\\.txt)\"");
+            "\"(/pressroom-ui/[^\"\\s]*\\.rol|/sitemap[^\"\\s]*\\.xml|/robots\\.txt)\"");
 
     @Test
     public void everyGetRouteAppearsInTheSweepCatalogue() throws IOException {
@@ -168,7 +168,7 @@ public class RouteCoverageTest {
         assertFalse(cataloguedRoutes().isEmpty(),
                 "Read " + ROUTES_CATALOGUE.normalize() + " but matched no route literals. The "
                         + "file is present, so the paths are most likely no longer written as "
-                        + "plain \"/roller-ui/...\" string literals -- see the formatting rule "
+                        + "plain \"/pressroom-ui/...\" string literals -- see the formatting rule "
                         + "documented at the top of Routes.java.");
     }
 

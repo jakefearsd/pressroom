@@ -45,7 +45,7 @@ import static org.mockito.Mockito.when;
  * <p>It hands back a list of accounts, and what is in that list depends on who
  * is asking: an administrator gets every user's <em>email address</em>, anyone
  * else gets screen names. Spring Security puts the endpoint behind
- * {@code /roller-ui/authoring/**}, so the caller is at least an editor -- but
+ * {@code /pressroom-ui/authoring/**}, so the caller is at least an editor -- but
  * an editor is not an administrator, and inverting this one branch would hand
  * every address in the installation to any of them. It had no test.
  *
@@ -82,7 +82,7 @@ class UserDataServletTest {
         when(weblogger.userManager().getUsersStartingWith(any(), any(), anyOffset(), anyLength()))
                 .thenReturn(List.of(found));
 
-        request = new MockHttpServletRequest("GET", "/roller-ui/authoring/userdata");
+        request = new MockHttpServletRequest("GET", "/pressroom-ui/authoring/userdata");
         request.setSession(new MockHttpSession());
         request.setUserPrincipal(() -> "caller");
     }

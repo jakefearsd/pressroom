@@ -67,7 +67,7 @@ class ContactShortcodeTest {
      * the {@code InitFilter} published -- not guessed by the client script.
      * A client-side guess (an earlier version scanned the page for a
      * stylesheet link) breaks the moment the page's first stylesheet is
-     * something other than {@code /roller-ui/...} (a weblog's own theme CSS,
+     * something other than {@code /pressroom-ui/...} (a weblog's own theme CSS,
      * a webjar), which is every real page: it posts to the wrong origin with
      * no visible cause.
      */
@@ -75,7 +75,7 @@ class ContactShortcodeTest {
     void theEndpointCarriesTheContextPathServerSide() {
         String html = shortcode.render(Map.of(), null, context("travelblog"));
 
-        assertTrue(html.contains("data-endpoint=\"/roller/roller-ui/rendering/contact.rol\""), html);
+        assertTrue(html.contains("data-endpoint=\"/roller/pressroom-ui/rendering/contact.rol\""), html);
     }
 
     /**

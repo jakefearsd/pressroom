@@ -154,7 +154,7 @@ class AdminTokensControllerTest {
         try (AdminLogCapture log = AdminLogCapture.start()) {
             String view = controller.revoke(asAdmin(), redirect, "t1", null);
 
-            assertEquals("redirect:/roller-ui/admin/apiTokens.rol", view);
+            assertEquals("redirect:/pressroom-ui/admin/apiTokens.rol", view);
             verify(weblogger.apiTokenManager()).revoke(jakes);
             assertEquals(List.of("apiTokens.revoked"), ControllerTestFixture.flashMessages(redirect));
             assertEquals(1, log.lines().size());

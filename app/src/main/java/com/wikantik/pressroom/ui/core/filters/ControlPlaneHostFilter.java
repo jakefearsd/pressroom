@@ -37,18 +37,18 @@ public class ControlPlaneHostFilter implements Filter {
     private static final Logger log = LoggerFactory.getLogger(ControlPlaneHostFilter.class);
 
     /** The public rendering namespace, which must stay on the custom domain. */
-    private static final String PUBLIC_RENDERING = "/roller-ui/rendering/";
+    private static final String PUBLIC_RENDERING = "/pressroom-ui/rendering/";
 
     /**
      * The readers' content bundle (code highlighting, copy buttons, heading
      * anchors), loaded by every theme's content-asset macro. A public asset
-     * that lives under /roller-ui only because the webapp root is the one
+     * that lives under /pressroom-ui only because the webapp root is the one
      * static location this deployment serves (see app/frontend/build.mjs).
      * Redirected, it would be cross-origin, and every theme's CSP is
      * {@code script-src 'self'}. One file, not the directory: the editor's
-     * bundle beside it is control plane like the rest of /roller-ui.
+     * bundle beside it is control plane like the rest of /pressroom-ui.
      */
-    private static final String READER_CONTENT_BUNDLE = "/roller-ui/scripts/roller-content.js";
+    private static final String READER_CONTENT_BUNDLE = "/pressroom-ui/scripts/roller-content.js";
 
     private final WebloggerProvider provider;
     private final Weblogger weblogger;
@@ -69,7 +69,7 @@ public class ControlPlaneHostFilter implements Filter {
 
     /**
      * True when this path is control plane and belongs on the site host.
-     * Package-private-plus for the test; the ordering of the two /roller-ui
+     * Package-private-plus for the test; the ordering of the two /pressroom-ui
      * checks is the whole rule.
      */
     public static boolean belongsToSiteHost(String path) {
@@ -79,7 +79,7 @@ public class ControlPlaneHostFilter implements Filter {
         if (path.startsWith(PUBLIC_RENDERING) || READER_CONTENT_BUNDLE.equals(path)) {
             return false;
         }
-        return path.startsWith("/roller-ui/") || "/roller-ui".equals(path)
+        return path.startsWith("/pressroom-ui/") || "/pressroom-ui".equals(path)
                 || path.startsWith("/api/") || "/api".equals(path);
     }
 
@@ -94,7 +94,7 @@ public class ControlPlaneHostFilter implements Filter {
                     + "under the general, protocol-independent Filter contract, not in this deployment. "
                     + "The redirect's Location is site.absoluteurl (operator configuration) plus the "
                     + "request's own path, which belongsToSiteHost has just required to start with "
-                    + "/roller-ui/ or /api/, so it cannot leave the site host.")
+                    + "/pressroom-ui/ or /api/, so it cannot leave the site host.")
     public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
             throws IOException, ServletException {
 

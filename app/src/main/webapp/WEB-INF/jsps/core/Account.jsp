@@ -24,9 +24,9 @@
      escaped once as Comments.jsp does: the stored title is already escaped,
      and an untitled entry's displayTitle is raw body text. --%>
 
-<c:url var="saveNameUrl" value="/roller-ui/account!saveName.rol"/>
-<c:url var="deleteCommentUrl" value="/roller-ui/account!deleteComment.rol"/>
-<c:url var="deleteAccountUrl" value="/roller-ui/account!deleteAccount.rol"/>
+<c:url var="saveNameUrl" value="/pressroom-ui/account!saveName.rol"/>
+<c:url var="deleteCommentUrl" value="/pressroom-ui/account!deleteComment.rol"/>
+<c:url var="deleteAccountUrl" value="/pressroom-ui/account!deleteAccount.rol"/>
 
 <div id="accountPage">
 

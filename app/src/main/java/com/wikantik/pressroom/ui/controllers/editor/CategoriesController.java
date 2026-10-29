@@ -41,7 +41,7 @@ import com.wikantik.pressroom.pojos.WeblogCategory;
  * Manage weblog categories.
  */
 @Controller
-@RequestMapping("/roller-ui/authoring")
+@RequestMapping("/pressroom-ui/authoring")
 public class CategoriesController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(CategoriesController.class);

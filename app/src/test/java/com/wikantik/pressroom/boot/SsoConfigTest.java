@@ -138,10 +138,10 @@ class SsoConfigTest {
             ctx.refresh();
             try {
                 MockMvc mvc = webAppContextSetup(ctx).apply(springSecurity()).build();
-                mvc.perform(get("/roller-ui/sso/start").param("return", "/blog/"))
-                        .andExpect(redirectedUrl("/roller-ui/login.rol?sso=unavailable"));
-                mvc.perform(get("/roller-ui/sso/callback"))
-                        .andExpect(redirectedUrl("/roller-ui/login.rol?sso=failed"));
+                mvc.perform(get("/pressroom-ui/sso/start").param("return", "/blog/"))
+                        .andExpect(redirectedUrl("/pressroom-ui/login.rol?sso=unavailable"));
+                mvc.perform(get("/pressroom-ui/sso/callback"))
+                        .andExpect(redirectedUrl("/pressroom-ui/login.rol?sso=failed"));
             } finally {
                 ctx.close();
             }

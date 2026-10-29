@@ -41,8 +41,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class FrontpageHeaderRenderingTest {
 
-    private static final String PAGE_SERVLET = "/roller-ui/rendering/page";
-    private static final String MENU = "/roller-ui/menu.rol";
+    private static final String PAGE_SERVLET = "/pressroom-ui/rendering/page";
+    private static final String MENU = "/pressroom-ui/menu.rol";
 
     private User author;
     private User reader;

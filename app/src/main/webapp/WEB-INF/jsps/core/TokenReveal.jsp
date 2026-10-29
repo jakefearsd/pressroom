@@ -57,12 +57,12 @@
 
 <c:choose>
     <c:when test="${not empty revealedForAgent}">
-        <c:url var="revealDoneUrl" value="/roller-ui/admin/agent.rol">
+        <c:url var="revealDoneUrl" value="/pressroom-ui/admin/agent.rol">
             <c:param name="userName" value="${revealedForAgent}"/>
         </c:url>
     </c:when>
     <c:otherwise>
-        <c:url var="revealDoneUrl" value="/roller-ui/profileTokens.rol"/>
+        <c:url var="revealDoneUrl" value="/pressroom-ui/profileTokens.rol"/>
     </c:otherwise>
 </c:choose>
 <p class="mt-3">

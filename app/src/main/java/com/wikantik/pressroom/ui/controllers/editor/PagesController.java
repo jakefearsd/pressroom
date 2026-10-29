@@ -46,7 +46,7 @@ import org.apache.commons.text.StringEscapeUtils;
  * {@code TemplatesController.remove}.
  */
 @Controller
-@RequestMapping("/roller-ui/authoring")
+@RequestMapping("/pressroom-ui/authoring")
 public class PagesController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(PagesController.class);

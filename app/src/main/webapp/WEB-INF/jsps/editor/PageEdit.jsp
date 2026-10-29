@@ -95,7 +95,7 @@
 <div class="editor-grid">
 
 <form id="pageEditForm" method="post" class="form-stacked editor-form"
-      action="${pageContext.request.contextPath}/roller-ui/authoring/pageEdit!save.rol">
+      action="${pageContext.request.contextPath}/pressroom-ui/authoring/pageEdit!save.rol">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
     <input type="hidden" name="bean.id" value="${fn:escapeXml(bean.id)}"/>
 
@@ -164,7 +164,7 @@
         <c:set var="editorFieldName" scope="request" value="bean.content"/>
         <c:set var="editorFieldValue" scope="request" value="${fn:escapeXml(bean.content)}"/>
         <c:set var="editorIdField" scope="request" value="bean.id"/>
-        <c:url var="editorPreviewUrl" scope="request" value="/roller-ui/authoring/pageEdit!preview.rol"/>
+        <c:url var="editorPreviewUrl" scope="request" value="/pressroom-ui/authoring/pageEdit!preview.rol"/>
         <%-- The shared guide's Ctrl+Enter row reads this key. The page editor
              has no separate publish action -- Ctrl+Enter does the same thing
              #pageSaveButton does -- so it names generic.save, not the entry
@@ -334,7 +334,7 @@
 <div id="delete-page-modal" class="modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="delete-page-modal-title">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form action="${pageContext.request.contextPath}/roller-ui/authoring/pageRemove.rol" method="post">
+            <form action="${pageContext.request.contextPath}/pressroom-ui/authoring/pageRemove.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
                 <input type="hidden" name="removeId" value="" id="page-delete-id"/>
                 <div class="modal-header">

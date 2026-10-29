@@ -23,7 +23,7 @@
 
 <script src="<c:url value='/theme/scripts/roller-guard-submit.js'/>"></script>
 
-<form id="entry" class="form-stacked guard-submit" action="${pageContext.request.contextPath}/roller-ui/authoring/mediaFileAdd!save.rol" method="POST" enctype="multipart/form-data">
+<form id="entry" class="form-stacked guard-submit" action="${pageContext.request.contextPath}/pressroom-ui/authoring/mediaFileAdd!save.rol" method="POST" enctype="multipart/form-data">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
     <input type="hidden" name="directoryName" value="${fn:escapeXml(directoryName)}"/>
 
@@ -97,8 +97,8 @@
     </details>
 
     <button type="submit" id="uploadButton" class="btn btn-primary"
-            data-busy-label="<spring:message code='mediaFileAdd.uploading'/>" formaction="${pageContext.request.contextPath}/roller-ui/authoring/mediaFileAdd!save.rol"><spring:message code="mediaFileAdd.upload"/></button>
-    <c:url var="mediaFileCancelURL" value="/roller-ui/authoring/mediaFileView.rol">
+            data-busy-label="<spring:message code='mediaFileAdd.uploading'/>" formaction="${pageContext.request.contextPath}/pressroom-ui/authoring/mediaFileAdd!save.rol"><spring:message code="mediaFileAdd.upload"/></button>
+    <c:url var="mediaFileCancelURL" value="/pressroom-ui/authoring/mediaFileView.rol">
         <c:param name="weblog" value="${actionWeblog.handle}"/>
         <c:param name="directoryId" value="${bean.directoryId}"/>
     </c:url>

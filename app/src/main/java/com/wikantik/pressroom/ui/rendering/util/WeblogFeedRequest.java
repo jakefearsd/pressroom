@@ -36,7 +36,7 @@ import com.wikantik.pressroom.util.Utilities;
 /**
  * Represents a request for a Roller weblog feed.
  * 
- * /roller-ui/rendering/feeds/*
+ * /pressroom-ui/rendering/feeds/*
  *
  * We use this class as a helper to parse an incoming url and sort out the
  * information embedded in the url for later use.
@@ -45,7 +45,7 @@ public class WeblogFeedRequest extends WeblogRequest {
     
     private static final Logger log = LoggerFactory.getLogger(WeblogFeedRequest.class);
     
-    private static final String FEED_SERVLET = "/roller-ui/rendering/feed";
+    private static final String FEED_SERVLET = "/pressroom-ui/rendering/feed";
     
     // lightweight attributes
     private String type = null;

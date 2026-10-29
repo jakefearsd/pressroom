@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Content checks for the three container-level error pages {@link
  * WebContainerConfigTest} proves {@code ErrorPageRegistrar} routes 403/404/
- * 500 to ({@code roller-ui/errors/403.jsp}/{@code 404.jsp}/{@code error.jsp}).
+ * 500 to ({@code pressroom-ui/errors/403.jsp}/{@code 404.jsp}/{@code error.jsp}).
  * Together the two tests cover both halves of "a 404 on an unknown URL
  * renders our page, not the container default": {@code WebContainerConfigTest}
  * pins that Spring registers OUR path for each status with Tomcat, and this
@@ -60,7 +60,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class ErrorPageContentTest {
 
-    private static final Path ERRORS_DIR = Paths.get("src/main/webapp/roller-ui/errors");
+    private static final Path ERRORS_DIR = Paths.get("src/main/webapp/pressroom-ui/errors");
 
     @Test
     void the404PageIsPlainEnglishSelfContainedAndHasNoStackTrace() throws IOException {

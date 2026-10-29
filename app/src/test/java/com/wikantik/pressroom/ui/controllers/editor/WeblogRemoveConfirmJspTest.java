@@ -45,11 +45,11 @@ class WeblogRemoveConfirmJspTest {
         String source = Files.readString(JSP, StandardCharsets.UTF_8);
 
         assertFalse(source.contains("<form action=\"${pageContext.request.contextPath}"
-                        + "/roller-ui/authoring/weblogConfig.rol\""),
+                        + "/pressroom-ui/authoring/weblogConfig.rol\""),
                 "Cancel must not POST to weblogConfig.rol, which is GET-only -- "
                         + "that would 405 the escape hatch of the delete-weblog screen");
 
-        assertTrue(source.contains("<c:url value=\"/roller-ui/authoring/weblogConfig.rol\" var=\"cancelUrl\">"),
+        assertTrue(source.contains("<c:url value=\"/pressroom-ui/authoring/weblogConfig.rol\" var=\"cancelUrl\">"),
                 "Expected Cancel to build its target with <c:url>, the same pattern every "
                         + "other weblogConfig.rol link in this codebase uses");
         assertTrue(source.contains("<a href=\"${cancelUrl}\" class=\"btn btn-secondary\">"),

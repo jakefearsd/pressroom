@@ -59,7 +59,7 @@ class JspConsistencyTest {
 
     static final Path JSPS = Path.of("src/main/webapp/WEB-INF/jsps");
 
-    static final Path PRESSROOM_CSS = Path.of("src/main/webapp/roller-ui/styles/roller.css");
+    static final Path PRESSROOM_CSS = Path.of("src/main/webapp/pressroom-ui/styles/roller.css");
 
     /**
      * Every JSP in the tree, once. A {@code List} rather than the
@@ -763,9 +763,9 @@ class JspConsistencyTest {
         String markup = withoutJspComments(
                 Files.readString(JSPS.resolve("tiles/bannerStatus.jsp"), StandardCharsets.UTF_8));
 
-        int link = markup.indexOf("/roller-ui/menu.rol");
+        int link = markup.indexOf("/pressroom-ui/menu.rol");
         assertTrue(link > 0, "bannerStatus.jsp no longer links the menu");
-        assertEquals(1, countOccurrences(markup, "/roller-ui/menu.rol"), "one Main Menu link");
+        assertEquals(1, countOccurrences(markup, "/pressroom-ui/menu.rol"), "one Main Menu link");
         String guard = "<c:if test=\"${empty authenticatedUser or userIsAuthor}\">";
         int open = markup.lastIndexOf(guard, link);
         assertTrue(open >= 0, "the Main Menu link is not guarded by " + guard);
@@ -907,7 +907,7 @@ class JspConsistencyTest {
                 "no JSP may skip a heading level to h4/h5: " + violations);
     }
 
-    /** The whole webapp, so the {@code roller-ui/errors} pages are scanned too. */
+    /** The whole webapp, so the {@code pressroom-ui/errors} pages are scanned too. */
     static final Path WEBAPP = Path.of("src/main/webapp");
 
     private static final Pattern HEADING_TAG = Pattern.compile("<h([1-6])\\b");
@@ -950,7 +950,7 @@ class JspConsistencyTest {
     @Test
     void noHeadingSkipsALevelBelowItsPageTitle() throws IOException {
         Map<Path, Integer> titledBy = layoutTitleLevels();
-        assertEquals(0, titledBy.get(WEBAPP.resolve("roller-ui/errors/denied.jsp")),
+        assertEquals(0, titledBy.get(WEBAPP.resolve("pressroom-ui/errors/denied.jsp")),
                 "the error layout prints no title -- did the view map stop being read?");
         assertEquals(1, titledBy.get(JSPS.resolve("core/Login.jsp")),
                 "the login layout prints the h1 -- did the view map stop being read?");
@@ -1410,7 +1410,7 @@ class JspConsistencyTest {
     void theEscapingScanTellsAPrintedExpressionFromASafeOne() {
         String jsp = """
                 <c:if test="${not empty dir.name}">
-                <c:set var="base" value="${pageContext.request.contextPath}/roller-ui"/>
+                <c:set var="base" value="${pageContext.request.contextPath}/pressroom-ui"/>
                 <c:set var="tainted" value="${dir.name}"/>
                 <c:url var="backUrl" value="/x.rol"><c:param name="d" value="${dir.name}"/></c:url>
                 <spring:message code="k" arguments="${dir.name}" var="prompt"/>

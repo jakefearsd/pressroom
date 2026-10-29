@@ -50,7 +50,7 @@
                     <c:forEach items="${userWeblogs}" var="w">
                         <li>
                             <a class="dropdown-item${actionWeblog != null && w.handle == actionWeblog.handle ? ' active' : ''}"
-                               href="<c:url value="/roller-ui/authoring/${switcherAction}.rol">
+                               href="<c:url value="/pressroom-ui/authoring/${switcherAction}.rol">
                                    <c:param name="weblog" value="${w.handle}"/></c:url>">
                                 ${fn:escapeXml(w.name)} <span class="data">${fn:escapeXml(w.handle)}</span>
                             </a>
@@ -78,7 +78,7 @@
                      them to log in. --%>
                 <c:if test="${empty authenticatedUser or userIsAuthor}">
                     <li class="nav-item">
-                        <a class="nav-link" href="<c:url value="/roller-ui/menu.rol"/>">
+                        <a class="nav-link" href="<c:url value="/pressroom-ui/menu.rol"/>">
                             <spring:message code="mainPage.mainMenu"/></a>
                     </li>
                 </c:if>
@@ -86,13 +86,13 @@
                 <c:choose>
                     <c:when test="${authenticatedUser != null}">
                         <li class="nav-item">
-                            <a class="nav-link" href="<c:url value="/roller-ui/logout.rol"/>">
+                            <a class="nav-link" href="<c:url value="/pressroom-ui/logout.rol"/>">
                                 <spring:message code="navigationBar.logout"/></a>
                         </li>
                     </c:when>
                     <c:otherwise>
                         <li class="nav-item">
-                            <a class="nav-link" href="<c:url value="/roller-ui/login-redirect.rol"/>">
+                            <a class="nav-link" href="<c:url value="/pressroom-ui/login-redirect.rol"/>">
                                 <spring:message code="navigationBar.login"/></a>
                         </li>
 

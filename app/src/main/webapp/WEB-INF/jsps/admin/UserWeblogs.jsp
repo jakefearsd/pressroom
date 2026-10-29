@@ -47,7 +47,7 @@
                         <span class="data">${fn:escapeXml(perms.weblog.handle)}</span>
                     </td>
                     <td>
-                        <form method="post" action="<c:url value='/roller-ui/admin/userWeblogs!change.rol'/>"
+                        <form method="post" action="<c:url value='/pressroom-ui/admin/userWeblogs!change.rol'/>"
                               class="d-flex flex-wrap gap-2 align-items-center">
                             <sec:csrfInput/>
                             <input type="hidden" name="userName" value="${fn:escapeXml(weblogsAccount)}"/>
@@ -62,7 +62,7 @@
                         </form>
                     </td>
                     <td>
-                        <form method="post" action="<c:url value='/roller-ui/admin/userWeblogs!remove.rol'/>">
+                        <form method="post" action="<c:url value='/pressroom-ui/admin/userWeblogs!remove.rol'/>">
                             <sec:csrfInput/>
                             <input type="hidden" name="userName" value="${fn:escapeXml(weblogsAccount)}"/>
                             <input type="hidden" name="handle" value="${fn:escapeXml(perms.weblog.handle)}"/>
@@ -98,7 +98,7 @@
         <p class="form-text"><spring:message code="userWeblogs.noOtherWeblogs"/></p>
     </c:when>
     <c:otherwise>
-        <form method="post" action="<c:url value='/roller-ui/admin/userWeblogs!grant.rol'/>"
+        <form method="post" action="<c:url value='/pressroom-ui/admin/userWeblogs!grant.rol'/>"
               class="d-flex flex-wrap align-items-end gap-2 mt-3" id="userWeblogsAddForm">
             <sec:csrfInput/>
             <input type="hidden" name="userName" value="${fn:escapeXml(weblogsAccount)}"/>

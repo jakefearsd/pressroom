@@ -57,8 +57,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
 class MultiUserJourneyIT extends PressroomIT {
 
-    private static final String CREATE_USER = "/roller-ui/admin/createUser.rol";
-    private static final String CREATE_WEBLOG = "/roller-ui/createWeblog.rol";
+    private static final String CREATE_USER = "/pressroom-ui/admin/createUser.rol";
+    private static final String CREATE_WEBLOG = "/pressroom-ui/createWeblog.rol";
 
     /** Rendered on the edit page only once the entry is actually published. */
     private static final String PERMALINK = "#entry_bean_permalink";
@@ -112,7 +112,7 @@ class MultiUserJourneyIT extends PressroomIT {
         // --- Bob cannot reach Alice's entry --------------------------------
         // Through his own weblog's editor, with her id: the controller resolves
         // ids globally, so only an ownership check stands between these two.
-        openPath("/roller-ui/authoring/entryEdit.rol?weblog=" + bobBlog
+        openPath("/pressroom-ui/authoring/entryEdit.rol?weblog=" + bobBlog
                 + "&bean.id=" + aliceEntryId);
         BrowserHealth.current().settle();
         String leaked = $$("#entry").isEmpty() ? "" : Editor.getText();
@@ -131,7 +131,7 @@ class MultiUserJourneyIT extends PressroomIT {
 
         // --- Alice deletes her own post, which must work -------------------
         deleteEntry(aliceBlog, aliceEntryId);
-        openPath("/roller-ui/authoring/entries.rol?weblog=" + aliceBlog);
+        openPath("/pressroom-ui/authoring/entries.rol?weblog=" + aliceBlog);
         // The row's own checkbox, not the page text: the delete's flash
         // message quotes the entry title, so scanning the source for the
         // title finds the confirmation that it is gone.
@@ -170,14 +170,14 @@ class MultiUserJourneyIT extends PressroomIT {
         createWeblog(blogA, "Carol's Blog A " + suffix);
 
         // --- one weblog: no switcher at all ---------------------------------
-        openPath("/roller-ui/authoring/entries.rol?weblog=" + blogA);
+        openPath("/pressroom-ui/authoring/entries.rol?weblog=" + blogA);
         BrowserHealth.current().settle();
         $("#weblogSwitcher").shouldNot(exist);
 
         // --- a second weblog makes the switcher appear ----------------------
         createWeblog(blogB, "Carol's Blog B " + suffix);
 
-        openPath("/roller-ui/authoring/entries.rol?weblog=" + blogA);
+        openPath("/pressroom-ui/authoring/entries.rol?weblog=" + blogA);
         BrowserHealth.current().settle();
         $("#weblogSwitcher").should(exist).click();
         clickAndAwaitNewPage($(".weblog-switcher .dropdown-item[href*='weblog=" + blogB + "']").should(visible));
@@ -242,14 +242,14 @@ class MultiUserJourneyIT extends PressroomIT {
 
         // Reaching the new weblog's own entry list is the first evidence the
         // weblog exists AND that its creator has permission on it.
-        openPath("/roller-ui/authoring/entries.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/entries.rol?weblog=" + handle);
         $("#entries-list-marker, table.rollertable").should(exist);
         BrowserHealth.current().settle();
     }
 
     /** Publishes an entry on the given weblog and returns its id. */
     private String publishEntry(String weblogHandle, String title, String body) {
-        openPath("/roller-ui/authoring/entryAdd.rol?weblog=" + weblogHandle);
+        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + weblogHandle);
         $("#entry").should(exist);
         $("[name='bean.title']").setValue(title);
         Editor.setText(body);
@@ -279,7 +279,7 @@ class MultiUserJourneyIT extends PressroomIT {
     }
 
     private void openEditor(String weblogHandle, String entryId) {
-        openPath("/roller-ui/authoring/entryEdit.rol?weblog=" + weblogHandle
+        openPath("/pressroom-ui/authoring/entryEdit.rol?weblog=" + weblogHandle
                 + "&bean.id=" + entryId);
         $("#entry").should(exist);
         Editor.root();
@@ -290,7 +290,7 @@ class MultiUserJourneyIT extends PressroomIT {
      * user actually does it.
      */
     private void deleteEntry(String weblogHandle, String entryId) {
-        openPath("/roller-ui/authoring/entries.rol?weblog=" + weblogHandle);
+        openPath("/pressroom-ui/authoring/entries.rol?weblog=" + weblogHandle);
         BrowserHealth.current().settle();
         executeJavaScript("showDeleteModal(arguments[0], 'x');", entryId);
         $("#delete-entry-modal").shouldBe(visible);

@@ -208,7 +208,7 @@ class MarkdownContentIT extends PressroomIT {
 
     /** Creates a weblog owned by the seeded admin on the named theme. */
     private String createWeblog(String handle, String themeId) {
-        openPath("/roller-ui/createWeblog.rol");
+        openPath("/pressroom-ui/createWeblog.rol");
         $("#name").should(visible).setValue("Markdown Content " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");
@@ -235,7 +235,7 @@ class MarkdownContentIT extends PressroomIT {
      * editor is hidden, where {@code Editor.setText} would wait forever.
      */
     private void openEditorInWriteMode(String handle) {
-        openPath("/roller-ui/authoring/entryAdd.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
         $("#entry").should(exist);
         $(Editor.ROOT).should(exist);
         $(Editor.MODE_WRITE).click();

@@ -79,7 +79,7 @@ public class SsoLogin {
      * @param userService    binds the provider identity to a Roller reader
      * @param successHandler where a signed-in reader lands
      * @param failureHandler where a failed sign-in lands
-     * @param startFilter    {@code /roller-ui/sso/start}
+     * @param startFilter    {@code /pressroom-ui/sso/start}
      */
     public SsoLogin(ClientRegistrationRepository registrations, OAuth2AuthorizationRequestResolver resolver,
             OAuth2UserService<OidcUserRequest, OidcUser> userService, AuthenticationSuccessHandler successHandler,

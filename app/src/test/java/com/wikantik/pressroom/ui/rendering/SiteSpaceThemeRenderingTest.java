@@ -74,9 +74,9 @@ class SiteSpaceThemeRenderingTest {
     private static final String SITE_NAME = "Sitetheme Harbour";
     private static final String BLOG = "sitethemeblog";
 
-    private static final String PAGE_SERVLET = "/roller-ui/rendering/page";
-    private static final String RESOURCE_SERVLET = "/roller-ui/rendering/resources";
-    private static final String MEDIA_SERVLET = "/roller-ui/rendering/media-resources";
+    private static final String PAGE_SERVLET = "/pressroom-ui/rendering/page";
+    private static final String RESOURCE_SERVLET = "/pressroom-ui/rendering/resources";
+    private static final String MEDIA_SERVLET = "/pressroom-ui/rendering/media-resources";
 
     private static final Pattern LINK_TAG = Pattern.compile("<(?:a|link)\\b[^>]*>");
     private static final Pattern HREF = Pattern.compile("href=\"([^\"]*)\"");
@@ -185,7 +185,7 @@ class SiteSpaceThemeRenderingTest {
                     theme + ": the canonical is the page's own /<slug>:\n" + body);
             int colophon = body.indexOf("<div class=\"colophon\">");
             assertTrue(colophon >= 0, theme + ": no colophon:\n" + body);
-            assertTrue(body.indexOf("/roller-ui/login", colophon) > colophon,
+            assertTrue(body.indexOf("/pressroom-ui/login", colophon) > colophon,
                     theme + ": the colophon's Sign in link (AC10):\n" + body);
         }
     }
@@ -208,7 +208,7 @@ class SiteSpaceThemeRenderingTest {
         String body = sitePage("frontpage");
 
         assertFalse(body.contains("Recent posts"), body);
-        assertTrue(body.contains("href=\"/roller/roller-ui/siteDirectory.rol\""), body);
+        assertTrue(body.contains("href=\"/roller/pressroom-ui/siteDirectory.rol\""), body);
     }
 
     @Test

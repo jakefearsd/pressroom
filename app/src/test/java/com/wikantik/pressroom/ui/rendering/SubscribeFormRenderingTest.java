@@ -85,7 +85,7 @@ class SubscribeFormRenderingTest {
 
     private String renderHomePage() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/" + HANDLE);
+                .anonymousGet("/pressroom-ui/rendering/page", "/" + HANDLE);
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
         assertEquals(200, response.getStatus(), "home page must render");

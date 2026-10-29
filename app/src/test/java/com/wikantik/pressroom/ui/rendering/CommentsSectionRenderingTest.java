@@ -77,7 +77,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class CommentsSectionRenderingTest {
 
-    private static final String PAGE_SERVLET = "/roller-ui/rendering/page";
+    private static final String PAGE_SERVLET = "/pressroom-ui/rendering/page";
     private static final String ANCHOR = "cs-entry";
     private static final List<String> THEMES = List.of("journal", "travel", "portfolio");
 
@@ -454,9 +454,9 @@ class CommentsSectionRenderingTest {
                 s.indexOf("<div class=\"comments-slot\"")));
         assertTrue(slot.contains(" data-entry=\"" + entry.getId() + "\""), slot);
         assertTrue(slot.contains(" data-permalink=\"/roller/" + handle + "/entry/" + ANCHOR + "\""), slot);
-        assertTrue(slot.contains(" data-session=\"/roller/roller-ui/rendering/comments/session.rol\""), slot);
-        assertTrue(slot.contains(" data-post=\"/roller/roller-ui/rendering/comments.rol\""), slot);
-        assertTrue(slot.contains(" data-delete=\"/roller/roller-ui/rendering/comments/\""), slot);
+        assertTrue(slot.contains(" data-session=\"/roller/pressroom-ui/rendering/comments/session.rol\""), slot);
+        assertTrue(slot.contains(" data-post=\"/roller/pressroom-ui/rendering/comments.rol\""), slot);
+        assertTrue(slot.contains(" data-delete=\"/roller/pressroom-ui/rendering/comments/\""), slot);
         assertTrue(slot.contains(" data-msg-sign-in=\"Sign in with Google to comment\""), slot);
         assertFalse(slot.contains("data-unavailable"), slot);
         assertFalse(s.contains("comments-closed"), s);

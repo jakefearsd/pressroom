@@ -47,7 +47,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class TemplateIT extends PressroomIT {
 
-    private static final String TEMPLATES = "/roller-ui/authoring/templates.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String TEMPLATES = "/pressroom-ui/authoring/templates.rol?weblog=" + WEBLOG_HANDLE;
 
     @Test
     void aTemplateCanBeAddedEditedAndRemoved() {

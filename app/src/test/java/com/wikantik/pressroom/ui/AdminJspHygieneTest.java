@@ -47,7 +47,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AdminJspHygieneTest {
 
     private static final Path JSPS = Path.of("src/main/webapp/WEB-INF/jsps");
-    private static final Path STYLES = Path.of("src/main/webapp/roller-ui/styles/roller.css");
+    private static final Path STYLES = Path.of("src/main/webapp/pressroom-ui/styles/roller.css");
 
     private static String read(Path p) {
         try {

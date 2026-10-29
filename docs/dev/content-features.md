@@ -37,7 +37,7 @@ resolves through the index at the end of `CLAUDE.md`.
   context path) changes the cache key instead. Pinned byte for byte by
   `SeoControllerSitemapTest`.
 - **Business profiles.** A site admin owns shared `Business` rows
-  (`/roller-ui/admin/businesses.rol`); a blog picks one in Settings and may
+  (`/pressroom-ui/admin/businesses.rol`); a blog picks one in Settings and may
   add a place (`placeType` LodgingBusiness, locality, region, country,
   lat/lng, its own booking URL). `BusinessJsonLd` (via
   `UtilitiesModel.businessJsonLd`/`businessPublisherJson`) emits, from

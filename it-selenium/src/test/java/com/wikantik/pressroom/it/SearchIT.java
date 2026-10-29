@@ -53,7 +53,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class SearchIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/roller-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
 
     private static final String PERMALINK = "#entry_bean_permalink";
 
@@ -200,7 +200,7 @@ class SearchIT extends PressroomIT {
     }
 
     private void deleteEntry(String entryId) {
-        openPath("/roller-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE);
+        openPath("/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE);
         executeJavaScript("showDeleteModal(arguments[0], 'x');", entryId);
         $("#delete-entry-modal").shouldBe(visible);
         $("#delete-entry-modal button[type='submit']").click();

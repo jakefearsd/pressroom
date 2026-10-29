@@ -48,7 +48,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class ShortcodeCardIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/roller-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
 
     @BeforeEach
     void logIn() {

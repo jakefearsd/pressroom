@@ -36,7 +36,7 @@ import org.apache.commons.text.StringEscapeUtils;
  * Action for removing a weblog.
  */
 @Controller
-@RequestMapping("/roller-ui/authoring")
+@RequestMapping("/pressroom-ui/authoring")
 public class WeblogRemoveController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(WeblogRemoveController.class);
@@ -74,7 +74,7 @@ public class WeblogRemoveController extends BaseController {
             addFlashMessage(redirectAttributes, "websiteRemove.success",
                     StringEscapeUtils.escapeHtml4(getActionWeblog(request).getName()), request);
 
-            return "redirect:/roller-ui/menu.rol";
+            return "redirect:/pressroom-ui/menu.rol";
         } catch (Exception ex) {
             log.error("Error removing weblog - {}", getActionWeblog(request).getHandle(), ex);
             addError(model, "websiteRemove.error",

@@ -23,7 +23,7 @@
 
 <script src="<c:url value='/theme/scripts/roller-guard-submit.js'/>"></script>
 
-<form id="entry" class="form-stacked" action="${pageContext.request.contextPath}/roller-ui/authoring/mediaFileEdit!save.rol" method="POST" enctype="multipart/form-data">
+<form id="entry" class="form-stacked" action="${pageContext.request.contextPath}/pressroom-ui/authoring/mediaFileEdit!save.rol" method="POST" enctype="multipart/form-data">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
     <input type="hidden" name="mediaFileId" value="${fn:escapeXml(mediaFileId)}" id="mediaFileId"/>
     <input type="hidden" name="bean.permalink" value="${fn:escapeXml(bean.permalink)}"/>
@@ -217,7 +217,7 @@
         </cropper-selection>
     </cropper-canvas>
 
-    <form id="cropForm" class="mt-2 guard-submit" action="${pageContext.request.contextPath}/roller-ui/authoring/mediaFileEdit!crop.rol" method="POST">
+    <form id="cropForm" class="mt-2 guard-submit" action="${pageContext.request.contextPath}/pressroom-ui/authoring/mediaFileEdit!crop.rol" method="POST">
         <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
         <input type="hidden" name="mediaFileId" value="${fn:escapeXml(mediaFileId)}"/>
         <input type="hidden" name="cropX" id="cropX" value="0"/>

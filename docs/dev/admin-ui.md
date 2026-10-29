@@ -8,12 +8,12 @@ resolves through the index at the end of `CLAUDE.md`.
 ## Admin UI
 - **Maintenance is a Global Admin screen, not a per-weblog one.**
   `MaintenanceController`/`Maintenance.jsp` live under
-  `ui/controllers/admin`/`jsps/admin` at `/roller-ui/admin/maintenance.rol`,
+  `ui/controllers/admin`/`jsps/admin` at `/pressroom-ui/admin/maintenance.rol`,
   listed in `admin-menu.xml` (`globalPerms="admin"`), not `editor-menu.xml`.
   Its three per-weblog actions (flush cache, rebuild index, regenerate
   renditions) pick a weblog in a `<select>`.
 - **Design system**: `docs/design/design-system.md` is the committed spec
-  ("Quiet Instrument"). Tokens live in `roller-ui/styles/roller-tokens.css`
+  ("Quiet Instrument"). Tokens live in `pressroom-ui/styles/roller-tokens.css`
   (light under `:root`, dark under `@media (prefers-color-scheme: dark)`,
   self-hosted IBM Plex `@font-face`), linked in `head.jsp` *after*
   `bootstrap.min.css` and *before* `roller.css` (each layer overriding the
@@ -248,7 +248,7 @@ resolves through the index at the end of `CLAUDE.md`.
   `getText` returns an unresolvable key verbatim to the raw sink — recorded,
   not fixed.
 
-- **Businesses (Global Admin, `/roller-ui/admin/businesses.rol`).** List,
+- **Businesses (Global Admin, `/pressroom-ui/admin/businesses.rol`).** List,
   `businesses!edit.rol` (create/edit; blank id opens an empty form),
   `businesses!save.rol`, `businesses!delete.rol` (`data-confirm`; refused
   with `businesses.error.inUse` while any weblog uses it). `Routes` pins
@@ -282,7 +282,7 @@ resolves through the index at the end of `CLAUDE.md`.
 Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`; cards
 `docs/design/tables/tables-users.html`, `forms/forms-agent-page.html`, `forms/forms-token-reveal.html`.
 
-- **The agent page** (`AgentController`, `/roller-ui/admin/agent.rol?userName=`): details, one
+- **The agent page** (`AgentController`, `/pressroom-ui/admin/agent.rol?userName=`): details, one
   `data-confirm` Disable/Enable, the Weblogs section and the token section. No password field and no
   set-password link; `modifyUser.rol` sends an agent there, and the person editor's save and
   send-link actions refuse one (`agent.error.notAPerson`).

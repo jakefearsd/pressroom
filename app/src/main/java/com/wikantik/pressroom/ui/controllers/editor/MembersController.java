@@ -52,7 +52,7 @@ import com.wikantik.pressroom.pojos.Weblog;
  * an existing member's role.
  */
 @Controller
-@RequestMapping("/roller-ui/authoring")
+@RequestMapping("/pressroom-ui/authoring")
 public class MembersController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(MembersController.class);

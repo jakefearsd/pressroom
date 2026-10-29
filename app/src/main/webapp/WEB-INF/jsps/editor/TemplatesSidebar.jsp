@@ -20,7 +20,7 @@
 <div class="sidebar-group">
 <p class="sidebar-label"><spring:message code="pagesForm.addNewPage"/></p>
 
-<form id="templateAdd" action="${pageContext.request.contextPath}/roller-ui/authoring/templates!add.rol" method="post" class="form-stacked">
+<form id="templateAdd" action="${pageContext.request.contextPath}/pressroom-ui/authoring/templates!add.rol" method="post" class="form-stacked">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
 
     <label for="newTmplName"><spring:message code="generic.name"/></label>

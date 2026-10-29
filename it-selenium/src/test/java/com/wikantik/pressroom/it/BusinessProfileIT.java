@@ -68,7 +68,7 @@ class BusinessProfileIT extends PressroomIT {
         Throwable primary = null;
         try {
             // --- the site admin creates the shared business ---------------
-            openPath("/roller-ui/admin/businesses.rol");
+            openPath("/pressroom-ui/admin/businesses.rol");
             $("#businesses-list-marker").should(exist);
             clickAndAwaitNewPage($("#business-new"));
             $("#bean_name").should(visible).setValue(businessName);
@@ -78,11 +78,11 @@ class BusinessProfileIT extends PressroomIT {
             clickAndAwaitNewPage($("#business-save"));
             $("#messages").should(exist);
             assertTrue($$("#errors").isEmpty(), "saving the business reported an error");
-            openPath("/roller-ui/admin/businesses.rol");
+            openPath("/pressroom-ui/admin/businesses.rol");
             $$("table.rollertable td").findBy(text(businessName)).should(exist);
 
             // --- the blog owner selects it and describes the place --------
-            openPath("/roller-ui/authoring/weblogConfig.rol?weblog=" + handle);
+            openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + handle);
             $("#settings-business").should(exist);
             $("#weblog_bean_businessId").selectOption(businessName);
             $("#weblog_bean_placeType").selectOptionByValue("LodgingBusiness");
@@ -143,13 +143,13 @@ class BusinessProfileIT extends PressroomIT {
 
     /** Unsets the blog's business, then deletes the business: identity cleanup. */
     private void cleanUp(String handle, boolean businessCreated) {
-        openPath("/roller-ui/authoring/weblogConfig.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + handle);
         $("#weblog_bean_businessId").selectOptionByValue("");
         saveSettings();
         if (!businessCreated) {
             return;
         }
-        openPath("/roller-ui/admin/businesses.rol");
+        openPath("/pressroom-ui/admin/businesses.rol");
         SelenideElement row = $$("table.rollertable tr").findBy(text(businessName));
         awaitNewPageAfter(() -> {
             row.find("button[data-confirm]").click();
@@ -171,7 +171,7 @@ class BusinessProfileIT extends PressroomIT {
     private String createWeblog() {
         String handle = "bizit" + Long.toString(System.nanoTime(), 36);
 
-        openPath("/roller-ui/createWeblog.rol");
+        openPath("/pressroom-ui/createWeblog.rol");
         $("#name").should(visible).setValue("Business " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");

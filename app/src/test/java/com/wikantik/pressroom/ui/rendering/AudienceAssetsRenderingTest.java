@@ -94,7 +94,7 @@ class AudienceAssetsRenderingTest {
 
     private String renderContactPage() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/" + HANDLE + "/contact");
+                .anonymousGet("/pressroom-ui/rendering/page", "/" + HANDLE + "/contact");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
         assertEquals(200, response.getStatus(), "contact page must render");

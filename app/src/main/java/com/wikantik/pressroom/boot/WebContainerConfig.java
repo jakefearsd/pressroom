@@ -46,12 +46,12 @@ public class WebContainerConfig {
     @Bean
     public ErrorPageRegistrar rollerErrorPageRegistrar() {
         return (ErrorPageRegistry registry) -> registry.addErrorPages(
-                new ErrorPage(Exception.class, "/roller-ui/errors/error.jsp"),
-                new ErrorPage(HttpStatus.INTERNAL_SERVER_ERROR, "/roller-ui/errors/error.jsp"),
-                new ErrorPage(HttpStatus.FORBIDDEN, "/roller-ui/errors/403.jsp"),
+                new ErrorPage(Exception.class, "/pressroom-ui/errors/error.jsp"),
+                new ErrorPage(HttpStatus.INTERNAL_SERVER_ERROR, "/pressroom-ui/errors/error.jsp"),
+                new ErrorPage(HttpStatus.FORBIDDEN, "/pressroom-ui/errors/403.jsp"),
                 // 400 reuses the 404 template, same as web.xml.
-                new ErrorPage(HttpStatus.BAD_REQUEST, "/roller-ui/errors/404.jsp"),
-                new ErrorPage(HttpStatus.NOT_FOUND, "/roller-ui/errors/404.jsp"));
+                new ErrorPage(HttpStatus.BAD_REQUEST, "/pressroom-ui/errors/404.jsp"),
+                new ErrorPage(HttpStatus.NOT_FOUND, "/pressroom-ui/errors/404.jsp"));
     }
 
     /**

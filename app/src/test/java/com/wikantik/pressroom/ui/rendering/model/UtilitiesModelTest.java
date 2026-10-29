@@ -877,16 +877,16 @@ class UtilitiesModelTest {
         try {
             WebloggerRuntimeConfig.setRelativeContextURL("/roller");
             assertEquals(Map.of(
-                    "session", "/roller/roller-ui/rendering/comments/session.rol",
-                    "post", "/roller/roller-ui/rendering/comments.rol",
-                    "delete", "/roller/roller-ui/rendering/comments/"),
+                    "session", "/roller/pressroom-ui/rendering/comments/session.rol",
+                    "post", "/roller/pressroom-ui/rendering/comments.rol",
+                    "delete", "/roller/pressroom-ui/rendering/comments/"),
                     model().getCommentEndpoints());
 
             WebloggerRuntimeConfig.setRelativeContextURL("");
             assertEquals(Map.of(
-                    "session", "/roller-ui/rendering/comments/session.rol",
-                    "post", "/roller-ui/rendering/comments.rol",
-                    "delete", "/roller-ui/rendering/comments/"),
+                    "session", "/pressroom-ui/rendering/comments/session.rol",
+                    "post", "/pressroom-ui/rendering/comments.rol",
+                    "delete", "/pressroom-ui/rendering/comments/"),
                     model().getCommentEndpoints());
         } finally {
             WebloggerRuntimeConfig.setRelativeContextURL(previous);

@@ -21,7 +21,7 @@
 
 <div id="businesses-list-marker">
 
-<c:url var="newBusinessUrl" value="/roller-ui/admin/businesses!edit.rol"/>
+<c:url var="newBusinessUrl" value="/pressroom-ui/admin/businesses!edit.rol"/>
 <c:choose>
 <c:when test="${empty businesses}">
     <%-- An invitation: the one action lives inside the empty state, and
@@ -53,7 +53,7 @@
         <td><spring:message code="businesses.type.${b.businessType}"/></td>
         <td>${fn:escapeXml(usage[b.id])}</td>
         <td class="row-actions">
-            <c:url var="editBusinessUrl" value="/roller-ui/admin/businesses!edit.rol">
+            <c:url var="editBusinessUrl" value="/pressroom-ui/admin/businesses!edit.rol">
                 <c:param name="id" value="${b.id}"/>
             </c:url>
             <a href="${editBusinessUrl}" class="row-action"
@@ -62,7 +62,7 @@
                  then escaped once for the attribute (see roller.js on why
                  data-confirm is safe with fn:escapeXml). --%>
             <spring:message code="businesses.delete.confirm" arguments="${[b.name]}" var="businessDeleteConfirm"/>
-            <form method="post" action="<c:url value='/roller-ui/admin/businesses!delete.rol'/>">
+            <form method="post" action="<c:url value='/pressroom-ui/admin/businesses!delete.rol'/>">
                 <sec:csrfInput/>
                 <input type="hidden" name="id" value="${fn:escapeXml(b.id)}"/>
                 <button type="submit" class="row-action row-action-danger"

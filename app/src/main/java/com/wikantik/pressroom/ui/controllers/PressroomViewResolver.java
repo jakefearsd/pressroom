@@ -179,7 +179,7 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
         // ---- error pages ----
 
         addExtendedDefinition(".denied", ".tiles-errorpage",
-                Map.of("content", "/roller-ui/errors/denied.jsp"));
+                Map.of("content", "/pressroom-ui/errors/denied.jsp"));
 
         // ---- core pages ----
 

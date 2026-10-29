@@ -43,12 +43,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 /**
  * Serves the public contact endpoint at
- * {@code POST /roller-ui/rendering/contact.rol}: the JSON counterpart of the
+ * {@code POST /pressroom-ui/rendering/contact.rol}: the JSON counterpart of the
  * inline {@code [contact]} shortcode, posted by the JS
  * {@code #showAudienceAssets} injects onto every rendered page.
  *
  * <p><b>Routing.</b> {@code *.rol} is already dispatcher-mapped as a suffix
- * pattern, so the full path is the lookup path. {@code /roller-ui/rendering/*}
+ * pattern, so the full path is the lookup path. {@code /pressroom-ui/rendering/*}
  * is where the public comment servlet already lives, and reaches this
  * endpoint {@code permitAll} via {@code SecurityConfig}'s catch-all.
  *
@@ -66,7 +66,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
  * there: neither failure changes the response the caller sees.
  */
 @Controller
-@RequestMapping("/roller-ui/rendering")
+@RequestMapping("/pressroom-ui/rendering")
 public class ContactController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(ContactController.class);

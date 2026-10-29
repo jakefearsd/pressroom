@@ -313,7 +313,7 @@ the first administrator is made from the host, in this order:
    characters. The `admin` service is in the `tools` profile, so `up -d`
    never starts it. Being able to run it at all means controlling this host
    and its `.env`, which is the trust it relies on.
-2. **Log in** at `/roller-ui/login.rol`, then in Admin -> Global Config set
+2. **Log in** at `/pressroom-ui/login.rol`, then in Admin -> Global Config set
    **Absolute URL to site (if required)** (`PRESSROOM_SITE_ABSOLUTEURL`) and
    **Site Administrator's email address** (`site.adminemail`). That address is the From address of every mail Roller sends, and
    password-reset mail cannot go out without it.
@@ -432,7 +432,7 @@ Five steps, in order:
    and if that is a custom domain, every weblog WITHOUT one inherits that
    domain's hostname in its own canonical url, `og:url`, feed id, sitemap,
    `robots.txt` and password-reset links. It is also what lets
-   `ControlPlaneHostFilter` send `/roller-ui/**` and `/api/**` requests that
+   `ControlPlaneHostFilter` send `/pressroom-ui/**` and `/api/**` requests that
    arrive on a custom domain back to the site host, rather than serving the
    admin UI/API on the weblog's own domain; startup logs a warning if it
    finds a weblog with a domain and this still unset.
@@ -552,7 +552,7 @@ docker inspect --format '{{json .State.Health}}' \
 
 `docker compose ps` reporting `app` as `healthy` is normally enough for
 day-to-day monitoring; wire up an external uptime check against the public
-`https://<domain>/roller-ui/login.rol` URL (200 OK) for outside-in
+`https://<domain>/pressroom-ui/login.rol` URL (200 OK) for outside-in
 monitoring, since that's the only thing actually exposed to the internet.
 
 Logs:
@@ -843,7 +843,7 @@ Developer notes: `docs/dev/sso.md`.
 1. **Create the OAuth client.** In the wiki's Google Cloud project, add an
    OAuth client of type "Web application" named for the blog. Give it one
    authorized redirect URI, matched exactly:
-   `https://blog.wikantik.com/roller-ui/sso/callback`. The URI must match
+   `https://blog.wikantik.com/pressroom-ui/sso/callback`. The URI must match
    character for character, scheme and host included, or Google refuses the
    sign-in.
 2. **Update the consent screen**, which is shared by the project. Give it a
@@ -866,7 +866,7 @@ Developer notes: `docs/dev/sso.md`.
    ```
 
    Then test the sign-in itself at the public URL,
-   `https://blog.wikantik.com/roller-ui/login.rol`. A sign-in started on a
+   `https://blog.wikantik.com/pressroom-ui/login.rol`. A sign-in started on a
    LAN address (`http://<host>.lan:8080`) redirects there first, because
    Google returns the browser to the Absolute URL's host.
 

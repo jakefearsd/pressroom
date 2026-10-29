@@ -35,7 +35,7 @@ public class WeblogPreviewRequest extends WeblogPageRequest {
     
     private static final Logger log = LoggerFactory.getLogger(WeblogPreviewRequest.class);
     
-    private static final String PREVIEW_SERVLET = "/roller-ui/authoring/preview";
+    private static final String PREVIEW_SERVLET = "/pressroom-ui/authoring/preview";
     
     // lightweight attributes
     private String themeName = null;

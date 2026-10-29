@@ -41,7 +41,7 @@ import org.apache.commons.text.StringEscapeUtils;
  * Edits metadata for a media file.
  */
 @Controller
-@RequestMapping("/roller-ui/authoring")
+@RequestMapping("/pressroom-ui/authoring")
 public class MediaFileEditController extends MediaFileBase {
 
     private static final Logger log = LoggerFactory.getLogger(MediaFileEditController.class);

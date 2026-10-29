@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class FeedServletDecisionTest {
 
-    private static final String FEED_SERVLET = "/roller-ui/rendering/feed";
+    private static final String FEED_SERVLET = "/pressroom-ui/rendering/feed";
 
     private final String handle = "feeddecisionblog";
     private User user;

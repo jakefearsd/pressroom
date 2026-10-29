@@ -38,5 +38,5 @@ response.addCookie(terminate);
 // through a 403 on its way to being told to log in again. Sending it straight
 // to the login page is both what the user expects and independent of how the
 // site's front page happens to be configured.
-response.sendRedirect(request.getContextPath()+"/roller-ui/login.rol"); 
+response.sendRedirect(request.getContextPath()+"/pressroom-ui/login.rol"); 
 %>

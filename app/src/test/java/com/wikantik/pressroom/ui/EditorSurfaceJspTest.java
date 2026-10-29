@@ -186,7 +186,7 @@ class EditorSurfaceJspTest {
         String js = read(SCRIPT);
         assertTrue(js.contains("e.key === 'Enter' && !e.isComposing"),
                 "Enter leaves the title (but not mid-IME composition)");
-        assertTrue(read(Paths.get("src/main/webapp/roller-ui/styles/roller-editor.css"))
+        assertTrue(read(Paths.get("src/main/webapp/pressroom-ui/styles/roller-editor.css"))
                         .contains("textarea.editor-title"),
                 "the editor stylesheet takes the textarea's resize handle and scrollbar away");
     }
@@ -247,8 +247,8 @@ class EditorSurfaceJspTest {
      */
     @Test
     void theEditorTitleIsInTheUiFaceAndNoUnusedFaceShips() throws IOException {
-        String editorCss = read(Paths.get("src/main/webapp/roller-ui/styles/roller-editor.css"));
-        String rollerCss = read(Paths.get("src/main/webapp/roller-ui/styles/roller.css"));
+        String editorCss = read(Paths.get("src/main/webapp/pressroom-ui/styles/roller-editor.css"));
+        String rollerCss = read(Paths.get("src/main/webapp/pressroom-ui/styles/roller.css"));
         int title = rollerCss.indexOf(".editor-title {");
         assertTrue(title >= 0 && rollerCss.substring(title, rollerCss.indexOf('}', title))
                 .contains("font-family: var(--font-ui);"), "the editor title is not in the UI face");

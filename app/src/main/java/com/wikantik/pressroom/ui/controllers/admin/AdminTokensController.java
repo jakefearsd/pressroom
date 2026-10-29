@@ -37,7 +37,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * a toggle adds revoked and expired ones; a site admin revokes any of them.
  */
 @Controller
-@RequestMapping("/roller-ui/admin")
+@RequestMapping("/pressroom-ui/admin")
 public class AdminTokensController extends TokenFormController {
 
     @Override
@@ -88,6 +88,6 @@ public class AdminTokensController extends TokenFormController {
         if ("true".equals(all)) {
             redirectAttributes.addAttribute("all", "true");
         }
-        return "redirect:/roller-ui/admin/apiTokens.rol";
+        return "redirect:/pressroom-ui/admin/apiTokens.rol";
     }
 }

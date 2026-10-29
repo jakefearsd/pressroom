@@ -43,8 +43,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class UserAdminIT extends PressroomIT {
 
-    private static final String CREATE_USER = "/roller-ui/admin/createUser.rol";
-    private static final String USER_ADMIN = "/roller-ui/admin/userAdmin.rol";
+    private static final String CREATE_USER = "/pressroom-ui/admin/createUser.rol";
+    private static final String USER_ADMIN = "/pressroom-ui/admin/userAdmin.rol";
 
     private static final String PASSWORD = "it-user-password";
 
@@ -180,7 +180,7 @@ class UserAdminIT extends PressroomIT {
      * error message cannot turn this green.
      */
     private boolean loginIsRefused(String userName) {
-        openPath("/roller-ui/login.rol");
+        openPath("/pressroom-ui/login.rol");
         $("#j_username").setValue(userName);
         $("#j_password").setValue(PASSWORD);
         // Wait for the sign-in's answer before asking for the menu: a menu
@@ -188,9 +188,9 @@ class UserAdminIT extends PressroomIT {
         // account -- disabled or not -- as refused.
         clickAndAwaitNewPage($("#login"));
 
-        openPath("/roller-ui/menu.rol");
+        openPath("/pressroom-ui/menu.rol");
         BrowserHealth.current().settle();
-        return $$("a[href$='/roller-ui/logout.rol']").isEmpty();
+        return $$("a[href$='/pressroom-ui/logout.rol']").isEmpty();
     }
 
     private static String nonce() {

@@ -256,7 +256,7 @@ class CreateWeblogControllerTest {
 
         String view = controller.save(ControllerTestFixture.requestFor(user), model, bean, redirectAttributes);
 
-        assertEquals("redirect:/roller-ui/menu.rol", view);
+        assertEquals("redirect:/pressroom-ui/menu.rol", view);
         ArgumentCaptor<Weblog> created = ArgumentCaptor.forClass(Weblog.class);
         verify(weblogger.weblogManager()).addWeblog(created.capture());
         Weblog weblog = created.getValue();
@@ -354,7 +354,7 @@ class CreateWeblogControllerTest {
         String view = controller.save(ControllerTestFixture.requestFor(user("jake")), model,
                 validBean("travelguide"), redirectAttributes);
 
-        assertEquals("redirect:/roller-ui/menu.rol", view);
+        assertEquals("redirect:/pressroom-ui/menu.rol", view);
         assertEquals(List.of("createWebsite.disabled"), ControllerTestFixture.flashErrors(redirectAttributes));
         assertEquals(List.of(), ControllerTestFixture.flashMessages(redirectAttributes));
         verify(weblogger.weblogManager(), never()).addWeblog(any());
@@ -371,7 +371,7 @@ class CreateWeblogControllerTest {
 
         String view = controller.save(ControllerTestFixture.requestFor(user), model, bean, redirectAttributes);
 
-        assertEquals("redirect:/roller-ui/menu.rol", view);
+        assertEquals("redirect:/pressroom-ui/menu.rol", view);
         assertEquals(List.of("createWebsite.oneBlogLimit"), ControllerTestFixture.flashErrors(redirectAttributes));
         verify(weblogger.weblogManager(), never()).addWeblog(any());
     }
@@ -420,7 +420,7 @@ class CreateWeblogControllerTest {
         String view = controller.save(ControllerTestFixture.requestFor(user), model,
                 validBean("travelguide"), redirectAttributes);
 
-        assertEquals("redirect:/roller-ui/menu.rol", view);
+        assertEquals("redirect:/pressroom-ui/menu.rol", view);
         assertEquals(List.of("generic.error.check.logs"), ControllerTestFixture.flashErrors(redirectAttributes));
         verify(weblogger.weblogManager(), never()).addWeblog(any());
     }

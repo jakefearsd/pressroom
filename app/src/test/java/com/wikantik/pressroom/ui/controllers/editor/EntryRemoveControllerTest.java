@@ -50,7 +50,7 @@ import static org.mockito.Mockito.when;
 class EntryRemoveControllerTest extends EditorControllerTestSupport {
 
     private static final String ENTRIES_REDIRECT =
-            "redirect:/roller-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE;
+            "redirect:/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE;
 
     private EntryRemoveController controller;
     private Model model;
@@ -100,10 +100,10 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
         other.setHandle("otherblog");
         entry.setWebsite(other);
 
-        assertEquals("redirect:/roller-ui/menu.rol",
+        assertEquals("redirect:/pressroom-ui/menu.rol",
                 controller.remove(request, model, "entry-1", redirectAttributes),
                 "a foreign entryId must bounce, exactly like an unknown one");
-        assertEquals("redirect:/roller-ui/menu.rol",
+        assertEquals("redirect:/pressroom-ui/menu.rol",
                 controller.entryRemoveViaListRemove(request, model, "entry-1", newRedirectAttributes()));
         verify(weblogger.getWeblogEntryManager(), never()).trashWeblogEntry(any());
     }
@@ -169,7 +169,7 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
 
         String view = controller.remove(request, model, "gone", redirectAttributes);
 
-        assertEquals("redirect:/roller-ui/menu.rol", view);
+        assertEquals("redirect:/pressroom-ui/menu.rol", view);
         assertTrue(flashErrors(redirectAttributes).contains("weblogEntry.notFound"),
                 "Expected a not-found error, got: " + flashErrors(redirectAttributes));
         verify(weblogger.getWeblogEntryManager(), never()).trashWeblogEntry(any());
@@ -179,7 +179,7 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
     void removingWithNoIdBouncesToTheMenu() throws Exception {
         String view = controller.remove(request, model, null, redirectAttributes);
 
-        assertEquals("redirect:/roller-ui/menu.rol", view);
+        assertEquals("redirect:/pressroom-ui/menu.rol", view);
         verify(weblogger.getWeblogEntryManager(), never()).trashWeblogEntry(any());
     }
 
@@ -187,7 +187,7 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
     void removingViaTheListWithNoIdBouncesToTheMenu() throws Exception {
         String view = controller.entryRemoveViaListRemove(request, model, null, redirectAttributes);
 
-        assertEquals("redirect:/roller-ui/menu.rol", view);
+        assertEquals("redirect:/pressroom-ui/menu.rol", view);
         verify(weblogger.getWeblogEntryManager(), never()).trashWeblogEntry(any());
     }
 

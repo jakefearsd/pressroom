@@ -20,7 +20,7 @@
    roller-content.js serves READERS: weblog.vm's content-asset macro injects it
    on a public page that has a code block or a content heading to enhance
    (highlighting, copy buttons, line numbers, heading anchors). Being public,
-   it is also the one file under /roller-ui that ControlPlaneHostFilter leaves
+   it is also the one file under /pressroom-ui that ControlPlaneHostFilter leaves
    on a weblog's custom domain -- a redirect to the site host would be
    cross-origin and refused by every theme's script-src 'self'. */
 import { readFileSync } from 'node:fs';
@@ -39,7 +39,7 @@ await build({
   ...common,
   entryPoints: ['src/editor.js'],
   globalName: 'PressroomEditor',
-  outfile: '../src/main/webapp/roller-ui/scripts/roller-editor.js'
+  outfile: '../src/main/webapp/pressroom-ui/scripts/roller-editor.js'
 });
 
 // highlight.js is BSD-3-Clause, whose notice a redistribution must carry,
@@ -52,5 +52,5 @@ await build({
   entryPoints: ['src/content.js'],
   globalName: 'PressroomContent',
   banner: { js: `/*! highlight.js ${hljsVersion} | BSD-3-Clause | Copyright (c) 2006, Ivan Sagalaev */` },
-  outfile: '../src/main/webapp/roller-ui/scripts/roller-content.js'
+  outfile: '../src/main/webapp/pressroom-ui/scripts/roller-content.js'
 });

@@ -53,7 +53,7 @@ class MediaResourceServletClientAbortTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
-                "/roller-ui/rendering/media-resources", "/abortblog/" + image.getId());
+                "/pressroom-ui/rendering/media-resources", "/abortblog/" + image.getId());
         AbandonedResponse response = new AbandonedResponse();
 
         try (SsoLogCapture capture = SsoLogCapture.everyLogger()) {

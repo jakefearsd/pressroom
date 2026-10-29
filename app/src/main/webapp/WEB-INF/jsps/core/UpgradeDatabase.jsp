@@ -37,7 +37,7 @@
     </p>
     <p><spring:message code="installer.upgradeTables"/></p>
 
-    <form action="${pageContext.request.contextPath}/roller-ui/install/install!upgrade.rol" method="post">
+    <form action="${pageContext.request.contextPath}/pressroom-ui/install/install!upgrade.rol" method="post">
         <sec:csrfInput/>
         <spring:message code="installer.yesUpgradeTables" var="upgradeTablesLabel"/>
         <button type="submit" class="btn btn-primary">${upgradeTablesLabel}</button>

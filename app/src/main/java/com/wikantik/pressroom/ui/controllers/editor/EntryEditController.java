@@ -73,7 +73,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * Edit a new or existing entry.
  */
 @Controller
-@RequestMapping("/roller-ui/authoring")
+@RequestMapping("/pressroom-ui/authoring")
 public class EntryEditController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(EntryEditController.class);
@@ -185,12 +185,12 @@ public class EntryEditController extends BaseController {
         WeblogEntry lookedUp = lookupEntry(bean.getId(), request);
         if (lookedUp != null && lookedUp.getStatus() == PubStatus.TRASHED) {
             addFlashError(redirectAttributes, "entryEdit.entryIsTrashed", request);
-            return "redirect:/roller-ui/authoring/trash.rol?weblog="
+            return "redirect:/pressroom-ui/authoring/trash.rol?weblog="
                     + getActionWeblog(request).getHandle();
         }
         WeblogEntry entry = lookupNonTrashedEntry(bean.getId(), request);
         if (entry == null) {
-            return "redirect:/roller-ui/menu.rol";
+            return "redirect:/pressroom-ui/menu.rol";
         }
 
         bean.copyFrom(entry, request.getLocale());
@@ -348,7 +348,7 @@ public class EntryEditController extends BaseController {
         WeblogEntryRevision revision = lookupRevision(revisionId, entry);
         if (revision == null) {
             addFlashError(redirectAttributes, "weblogEntry.notFound", request);
-            return "redirect:/roller-ui/authoring/entries.rol?weblog="
+            return "redirect:/pressroom-ui/authoring/entries.rol?weblog="
                     + getActionWeblog(request).getHandle();
         }
 
@@ -400,12 +400,12 @@ public class EntryEditController extends BaseController {
         WeblogEntry lookedUp = lookupEntry(bean.getId(), request);
         if (lookedUp != null && lookedUp.getStatus() == PubStatus.TRASHED) {
             addFlashError(redirectAttributes, "entryEdit.entryIsTrashed", request);
-            return "redirect:/roller-ui/authoring/trash.rol?weblog="
+            return "redirect:/pressroom-ui/authoring/trash.rol?weblog="
                     + getActionWeblog(request).getHandle();
         }
         WeblogEntry entry = lookedUp;
         if (entry == null) {
-            return "redirect:/roller-ui/menu.rol";
+            return "redirect:/pressroom-ui/menu.rol";
         }
 
         addStatusMessage(entry.getStatus(), model, entry, request);
@@ -457,7 +457,7 @@ public class EntryEditController extends BaseController {
             HttpServletRequest request, Model model) {
         if (!hasWeblogAction(getActionWeblog(request),
                 getAuthenticatedUser(request), WeblogPermission.POST)) {
-            return "redirect:/roller-ui/access-denied.rol";
+            return "redirect:/pressroom-ui/access-denied.rol";
         }
 
         populateCommonModel(request, model);
@@ -466,7 +466,7 @@ public class EntryEditController extends BaseController {
 
         WeblogEntry entry = lookupEntry(entryId, request);
         if (entry == null) {
-            return "redirect:/roller-ui/menu.rol";
+            return "redirect:/pressroom-ui/menu.rol";
         }
 
         if (!entry.isPublished()) {
@@ -564,7 +564,7 @@ public class EntryEditController extends BaseController {
     }
 
     private String redirectToEntryEdit(HttpServletRequest request, WeblogEntry entry) {
-        return "redirect:/roller-ui/authoring/entryEdit.rol?weblog="
+        return "redirect:/pressroom-ui/authoring/entryEdit.rol?weblog="
                 + getActionWeblog(request).getHandle() + "&bean.id=" + entry.getId();
     }
 
@@ -575,7 +575,7 @@ public class EntryEditController extends BaseController {
 
         WeblogEntry entry = lookupEntry(bean.getId(), request);
         if (entry == null) {
-            return "redirect:/roller-ui/menu.rol";
+            return "redirect:/pressroom-ui/menu.rol";
         }
 
         Timestamp pubTime = resolvePubTime(bean, request, model);
@@ -726,7 +726,7 @@ public class EntryEditController extends BaseController {
                     return ".EntryEdit";
                 } else {
                     bean.setId(entry.getId());
-                    return "redirect:/roller-ui/authoring/entryEdit!firstSave.rol?weblog="
+                    return "redirect:/pressroom-ui/authoring/entryEdit!firstSave.rol?weblog="
                             + getActionWeblog(request).getHandle() + "&bean.id=" + entry.getId();
                 }
 

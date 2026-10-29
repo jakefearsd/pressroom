@@ -278,7 +278,7 @@ class EntryTagsFetchRenderingTest {
     private static String render() throws Exception {
         RenderingTestSupport.clearRenderCaches();
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/feed", "/" + HANDLE + "/entries/atom");
+                .anonymousGet("/pressroom-ui/rendering/feed", "/" + HANDLE + "/entries/atom");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.feedServlet(), request);
         assertEquals(200, response.getStatus());

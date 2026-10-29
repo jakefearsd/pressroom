@@ -55,7 +55,7 @@ class PageServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/pagerenderblog");
+                .anonymousGet("/pressroom-ui/rendering/page", "/pagerenderblog");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
 
@@ -79,7 +79,7 @@ class PageServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/pagerenderblog/entry/perma-entry");
+                .anonymousGet("/pressroom-ui/rendering/page", "/pagerenderblog/entry/perma-entry");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
 
@@ -103,7 +103,7 @@ class PageServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/pagerenderblog/entry/shortcode-entry");
+                .anonymousGet("/pressroom-ui/rendering/page", "/pagerenderblog/entry/shortcode-entry");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
 
@@ -127,7 +127,7 @@ class PageServletRenderingTest {
     @Test
     void aNotFoundInsideAWeblogLeavesTheWeblogForTheErrorPage() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/pagerenderblog/entry/no-such-entry");
+                .anonymousGet("/pressroom-ui/rendering/page", "/pagerenderblog/entry/no-such-entry");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
 
@@ -146,7 +146,7 @@ class PageServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/pagerenderblog/entry/draft-entry");
+                .anonymousGet("/pressroom-ui/rendering/page", "/pagerenderblog/entry/draft-entry");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
 
@@ -170,7 +170,7 @@ class PageServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/pagerenderblog/entry/trashed-entry");
+                .anonymousGet("/pressroom-ui/rendering/page", "/pagerenderblog/entry/trashed-entry");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
 
@@ -191,7 +191,7 @@ class PageServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/pagerenderblog");
+                .anonymousGet("/pressroom-ui/rendering/page", "/pagerenderblog");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
 
@@ -206,7 +206,7 @@ class PageServletRenderingTest {
     @Test
     void unknownWeblogIsNotFound() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/nosuchblog");
+                .anonymousGet("/pressroom-ui/rendering/page", "/nosuchblog");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
 
@@ -219,7 +219,7 @@ class PageServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/pagerenderblog/category/General");
+                .anonymousGet("/pressroom-ui/rendering/page", "/pagerenderblog/category/General");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
 
@@ -245,7 +245,7 @@ class PageServletRenderingTest {
 
         MockHttpServletResponse response = RenderingTestSupport.execute(
                 RenderingTestSupport.pageServlet(), RenderingTestSupport.anonymousGet(
-                        "/roller-ui/rendering/page", "/pagerenderblog/tags/harbour"));
+                        "/pressroom-ui/rendering/page", "/pagerenderblog/tags/harbour"));
 
         assertEquals(200, response.getStatus());
         String body = response.getContentAsString();
@@ -255,7 +255,7 @@ class PageServletRenderingTest {
 
         MockHttpServletResponse unknown = RenderingTestSupport.execute(
                 RenderingTestSupport.pageServlet(), RenderingTestSupport.anonymousGet(
-                        "/roller-ui/rendering/page", "/pagerenderblog/tags/no-such-tag"));
+                        "/pressroom-ui/rendering/page", "/pagerenderblog/tags/no-such-tag"));
         assertEquals(404, unknown.getStatus(), "an unknown tag is still not found");
     }
 
@@ -279,7 +279,7 @@ class PageServletRenderingTest {
         saveCustomTemplate("tagfeed", "<head>#showAutodiscoveryLinks($model.weblog)</head>");
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/pagerenderblog/page/tagfeed");
+                .anonymousGet("/pressroom-ui/rendering/page", "/pagerenderblog/page/tagfeed");
         request.setParameter("tags", "travel");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
@@ -309,7 +309,7 @@ class PageServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page",
+                .anonymousGet("/pressroom-ui/rendering/page",
                         "/pagerenderblog/category/Tools & Toys");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
@@ -348,7 +348,7 @@ class PageServletRenderingTest {
     @Test
     void unknownCategoryIsNotFound() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/pagerenderblog/category/Nope");
+                .anonymousGet("/pressroom-ui/rendering/page", "/pagerenderblog/category/Nope");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
 
@@ -372,7 +372,7 @@ class PageServletRenderingTest {
         servlet.themeReload = true;
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/pagerenderblog");
+                .anonymousGet("/pressroom-ui/rendering/page", "/pagerenderblog");
         MockHttpServletResponse response = RenderingTestSupport.execute(servlet, request);
 
         assertEquals(200, response.getStatus());

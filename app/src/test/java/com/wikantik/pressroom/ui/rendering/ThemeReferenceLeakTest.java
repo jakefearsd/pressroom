@@ -218,9 +218,9 @@ class ThemeReferenceLeakTest {
         StrictReferences.assertRecordedExactly("ThemeReferenceLeakTest", EXPECTED_REFERENCES);
     }
 
-    private static final String PAGE_SERVLET = "/roller-ui/rendering/page";
-    private static final String SEARCH_SERVLET = "/roller-ui/rendering/search";
-    private static final String FEED_SERVLET = "/roller-ui/rendering/feed";
+    private static final String PAGE_SERVLET = "/pressroom-ui/rendering/page";
+    private static final String SEARCH_SERVLET = "/pressroom-ui/rendering/search";
+    private static final String FEED_SERVLET = "/pressroom-ui/rendering/feed";
 
     private static final String FRONTPAGE_HANDLE_PROP = "site.frontpage.weblog.handle";
     private static final String FRONTPAGE_AGGREGATED_PROP = "site.frontpage.weblog.aggregated";

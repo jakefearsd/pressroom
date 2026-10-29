@@ -64,9 +64,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  */
 class TrashIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/roller-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
-    private static final String ENTRIES_LIST = "/roller-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE;
-    private static final String TRASH = "/roller-ui/authoring/trash.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String ENTRIES_LIST = "/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String TRASH = "/pressroom-ui/authoring/trash.rol?weblog=" + WEBLOG_HANDLE;
 
     private static final String PERMALINK = "#entry_bean_permalink";
 
@@ -105,7 +105,7 @@ class TrashIT extends PressroomIT {
                 "a restored entry must come back as a draft -- its permalink must still 404, "
                         + "not be live again as if it had been republished");
 
-        openPath("/roller-ui/authoring/entryEdit.rol?weblog=" + WEBLOG_HANDLE + "&bean.id=" + entryId);
+        openPath("/pressroom-ui/authoring/entryEdit.rol?weblog=" + WEBLOG_HANDLE + "&bean.id=" + entryId);
         $("#entry").should(exist);
         $("input[name='bean.status']").shouldHave(value("DRAFT"));
 
@@ -143,7 +143,7 @@ class TrashIT extends PressroomIT {
 
     /** The live permalink for an entry, read from its editor page. */
     private String permalinkOf(String entryId) {
-        openPath("/roller-ui/authoring/entryEdit.rol?weblog=" + WEBLOG_HANDLE + "&bean.id=" + entryId);
+        openPath("/pressroom-ui/authoring/entryEdit.rol?weblog=" + WEBLOG_HANDLE + "&bean.id=" + entryId);
         $(PERMALINK).should(exist);
         String permalink = $(PERMALINK).getAttribute("href");
         assertNotNull(permalink, "a published entry's editor must expose its permalink");

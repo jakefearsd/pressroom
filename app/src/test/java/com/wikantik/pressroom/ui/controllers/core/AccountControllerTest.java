@@ -117,10 +117,10 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppC
  */
 class AccountControllerTest {
 
-    private static final String ACCOUNT = "/roller-ui/account.rol";
-    private static final String SAVE_NAME = "/roller-ui/account!saveName.rol";
-    private static final String DELETE_COMMENT = "/roller-ui/account!deleteComment.rol";
-    private static final String DELETE_ACCOUNT = "/roller-ui/account!deleteAccount.rol";
+    private static final String ACCOUNT = "/pressroom-ui/account.rol";
+    private static final String SAVE_NAME = "/pressroom-ui/account!saveName.rol";
+    private static final String DELETE_COMMENT = "/pressroom-ui/account!deleteComment.rol";
+    private static final String DELETE_ACCOUNT = "/pressroom-ui/account!deleteAccount.rol";
     private static final String ISSUER = "https://issuer.test/account-page";
 
     private static AnnotationConfigWebApplicationContext context;
@@ -270,7 +270,7 @@ class AccountControllerTest {
                 post(DELETE_ACCOUNT).with(csrf()))) {
             MvcResult result = perform(request);
             assertEquals(302, result.getResponse().getStatus());
-            assertEquals("/roller-ui/login.rol", result.getResponse().getRedirectedUrl());
+            assertEquals("/pressroom-ui/login.rol", result.getResponse().getRedirectedUrl());
         }
         assertNotNull(comments().getComment(mine.getId()), "nothing was deleted");
     }
@@ -284,7 +284,7 @@ class AccountControllerTest {
         MvcResult result = perform(get(ACCOUNT).with(as(roleless)));
 
         assertEquals(302, result.getResponse().getStatus());
-        assertEquals("/roller-ui/access-denied.rol", result.getResponse().getRedirectedUrl());
+        assertEquals("/pressroom-ui/access-denied.rol", result.getResponse().getRedirectedUrl());
     }
 
     @Test
@@ -330,7 +330,7 @@ class AccountControllerTest {
         MvcResult result = perform(post(SAVE_NAME).with(csrf()).with(user(owner.getUserName()))
                 .param("screenName", ownerName));
 
-        assertEquals("/roller-ui/account.rol", result.getResponse().getRedirectedUrl(),
+        assertEquals("/pressroom-ui/account.rol", result.getResponse().getRedirectedUrl(),
                 "a member's own name is not somebody else's: " + modelErrors(result));
         assertEquals(ownerName, stored(owner).getScreenName());
     }
@@ -346,7 +346,7 @@ class AccountControllerTest {
 
         String fifty = "\uD83D\uDE00".repeat(50);
         MvcResult result = perform(post(SAVE_NAME).with(csrf()).with(as(reader)).param("screenName", fifty));
-        assertEquals("/roller-ui/account.rol", result.getResponse().getRedirectedUrl(),
+        assertEquals("/pressroom-ui/account.rol", result.getResponse().getRedirectedUrl(),
                 "fifty code points is the limit, not fifty chars: " + modelErrors(result));
         assertEquals(fifty, stored(reader).getScreenName());
     }
@@ -406,7 +406,7 @@ class AccountControllerTest {
         MvcResult result = withMarkupStripped(() -> perform(post(SAVE_NAME).with(csrf()).with(as(reader))
                 .param("screenName", "<b>Ann</b>\u00A0Marked")));
 
-        assertEquals("/roller-ui/account.rol", result.getResponse().getRedirectedUrl(), modelErrors(result).toString());
+        assertEquals("/pressroom-ui/account.rol", result.getResponse().getRedirectedUrl(), modelErrors(result).toString());
         assertEquals("Ann Marked", stored(reader).getScreenName());
     }
 
@@ -421,7 +421,7 @@ class AccountControllerTest {
                 .param("screenName", " \tAnn\u00A0\u00A0 Newname\u200B "));
 
         assertEquals(302, result.getResponse().getStatus());
-        assertEquals("/roller-ui/account.rol", result.getResponse().getRedirectedUrl());
+        assertEquals("/pressroom-ui/account.rol", result.getResponse().getRedirectedUrl());
         assertEquals(List.of("account.name.saved"), flash(result, "messages"));
         User saved = stored(reader);
         assertEquals("Ann Newname", saved.getScreenName(), "controls and format characters gone, blanks collapsed");
@@ -457,14 +457,14 @@ class AccountControllerTest {
 
         MvcResult deleted = perform(post(DELETE_COMMENT).with(csrf()).with(as(reader)).param("id", mine.getId()));
 
-        assertEquals("/roller-ui/account.rol", deleted.getResponse().getRedirectedUrl());
+        assertEquals("/pressroom-ui/account.rol", deleted.getResponse().getRedirectedUrl());
         assertEquals(List.of("account.comment.deleted"), flash(deleted, "messages"));
         assertNull(comments().getComment(mine.getId()));
         assertNull(comments().getComment(reply.getId()), "its reply goes with it");
 
         MvcResult refused = perform(post(DELETE_COMMENT).with(csrf()).with(as(reader)).param("id", theirs.getId()));
 
-        assertEquals("/roller-ui/account.rol", refused.getResponse().getRedirectedUrl());
+        assertEquals("/pressroom-ui/account.rol", refused.getResponse().getRedirectedUrl());
         assertEquals(List.of("account.comment.notFound"), flash(refused, "errors"));
         assertNotNull(comments().getComment(theirs.getId()), "another reader's comment stays");
     }
@@ -522,7 +522,7 @@ class AccountControllerTest {
     void deletingIsRefusedForAMemberAndForAnAdmin() throws Exception {
         MvcResult member = perform(post(DELETE_ACCOUNT).with(csrf()).with(user(owner.getUserName())));
 
-        assertEquals("/roller-ui/account.rol", member.getResponse().getRedirectedUrl());
+        assertEquals("/pressroom-ui/account.rol", member.getResponse().getRedirectedUrl());
         assertEquals(List.of("account.delete.member"), flash(member, "errors"));
         assertNotNull(stored(owner), "a member's account stays");
 
@@ -533,7 +533,7 @@ class AccountControllerTest {
 
         MvcResult refused = perform(post(DELETE_ACCOUNT).with(csrf()).with(user(admin.getUserName())));
 
-        assertEquals("/roller-ui/account.rol", refused.getResponse().getRedirectedUrl());
+        assertEquals("/pressroom-ui/account.rol", refused.getResponse().getRedirectedUrl());
         assertEquals(List.of("account.delete.admin"), flash(refused, "errors"));
         assertNotNull(stored(admin), "an administrator's account stays");
 
@@ -557,7 +557,7 @@ class AccountControllerTest {
 
         MvcResult refused = perform(post(DELETE_ACCOUNT).with(csrf()).with(as(reader)));
 
-        assertEquals("/roller-ui/account.rol", refused.getResponse().getRedirectedUrl());
+        assertEquals("/pressroom-ui/account.rol", refused.getResponse().getRedirectedUrl());
         assertEquals(List.of("account.delete.author"), flash(refused, "errors"));
         assertNotNull(stored(reader), "the writer's account stays");
         assertEquals("account.delete.author", model(perform(get(ACCOUNT).with(as(reader))), "deleteRefusal"));
@@ -585,7 +585,7 @@ class AccountControllerTest {
         assertNull(carried.getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY),
                 "whatever session the browser holds now carries no sign-in");
         MvcResult after = perform(get("/roller" + ACCOUNT).contextPath("/roller").session(carried));
-        assertEquals("/roller/roller-ui/login.rol", after.getResponse().getRedirectedUrl(),
+        assertEquals("/roller/pressroom-ui/login.rol", after.getResponse().getRedirectedUrl(),
                 "the next request is anonymous");
     }
 
@@ -615,7 +615,7 @@ class AccountControllerTest {
 
         String view = controller.deleteAccount(requestFor(account), new MockHttpServletResponse(), flash);
 
-        assertEquals("redirect:/roller-ui/account.rol", view);
+        assertEquals("redirect:/pressroom-ui/account.rol", view);
         assertEquals(List.of("generic.error.check.logs"), flashErrors(flash));
         verify(mocked.userManager(), never()).removeUser(any());
     }
@@ -631,7 +631,7 @@ class AccountControllerTest {
 
         String view = controller.deleteAccount(requestFor(account), new MockHttpServletResponse(), flash);
 
-        assertEquals("redirect:/roller-ui/account.rol", view);
+        assertEquals("redirect:/pressroom-ui/account.rol", view);
         assertEquals(List.of("generic.error.check.logs"), flashErrors(flash));
         verify(mocked.userManager(), never()).removeUser(any());
     }
@@ -694,7 +694,7 @@ class AccountControllerTest {
         when(mocked.weblogEntryManager().hasEntriesCreatedBy(account)).thenThrow(new WebloggerException("down"));
         RedirectAttributesModelMap flash = new RedirectAttributesModelMap();
 
-        assertEquals("redirect:/roller-ui/account.rol",
+        assertEquals("redirect:/pressroom-ui/account.rol",
                 controller.deleteAccount(requestFor(account), new MockHttpServletResponse(), flash));
 
         assertEquals(List.of("generic.error.check.logs"), flashErrors(flash));
@@ -710,7 +710,7 @@ class AccountControllerTest {
 
         String view = controller.deleteComment("c1", requestFor(account), flash);
 
-        assertEquals("redirect:/roller-ui/account.rol", view);
+        assertEquals("redirect:/pressroom-ui/account.rol", view);
         assertEquals(List.of("generic.error.check.logs"), flashErrors(flash));
     }
 

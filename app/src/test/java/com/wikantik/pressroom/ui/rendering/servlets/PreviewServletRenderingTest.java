@@ -48,7 +48,7 @@ class PreviewServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/authoring/preview", "/previewblog");
+                .anonymousGet("/pressroom-ui/authoring/preview", "/previewblog");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.previewServlet(), request);
 
@@ -64,7 +64,7 @@ class PreviewServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/authoring/preview", "/previewblog");
+                .anonymousGet("/pressroom-ui/authoring/preview", "/previewblog");
         request.setParameter("theme", "portfolio");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.previewServlet(), request);
@@ -80,7 +80,7 @@ class PreviewServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/authoring/preview", "/previewblog/entry/preview-permalink");
+                .anonymousGet("/pressroom-ui/authoring/preview", "/previewblog/entry/preview-permalink");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.previewServlet(), request);
 
@@ -91,7 +91,7 @@ class PreviewServletRenderingTest {
     @Test
     void unknownWeblogPreviewIsNotFound() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/authoring/preview", "/nosuchblog");
+                .anonymousGet("/pressroom-ui/authoring/preview", "/nosuchblog");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.previewServlet(), request);
 
@@ -114,7 +114,7 @@ class PreviewServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/authoring/preview", "/previewblog/entry/shortcode-preview");
+                .anonymousGet("/pressroom-ui/authoring/preview", "/previewblog/entry/shortcode-preview");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.previewServlet(), request);
 
@@ -142,7 +142,7 @@ class PreviewServletRenderingTest {
         TestUtils.endSession(true);
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/authoring/preview", "/previewblog");
+                .anonymousGet("/pressroom-ui/authoring/preview", "/previewblog");
         request.setParameter("previewEntry", "draft-preview-entry");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.previewServlet(), request);

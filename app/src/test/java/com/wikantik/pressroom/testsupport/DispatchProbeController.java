@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @Controller
 public class DispatchProbeController implements UISecurityEnforced {
 
-    @GetMapping("/roller-ui/dispatchProbe")
+    @GetMapping("/pressroom-ui/dispatchProbe")
     @ResponseBody
     public String probe() {
         return "ok";

@@ -263,25 +263,25 @@
                 <c:choose>
 <c:when test="${entryLive}">
                     <%-- update a live entry --%>
-                    <button type="submit" class="btn btn-primary" data-save-shortcut formaction="${pageContext.request.contextPath}/roller-ui/authoring/${mainAction}!publish.rol"><spring:message code="weblogEdit.update"/></button>
+                    <button type="submit" class="btn btn-primary" data-save-shortcut formaction="${pageContext.request.contextPath}/pressroom-ui/authoring/${mainAction}!publish.rol"><spring:message code="weblogEdit.update"/></button>
                 </c:when>
 <c:when test="${userAnAuthor}">
                     <%-- publish --%>
-                    <button type="submit" class="btn btn-primary" formaction="${pageContext.request.contextPath}/roller-ui/authoring/${mainAction}!publish.rol"><spring:message code="weblogEdit.post"/></button>
+                    <button type="submit" class="btn btn-primary" formaction="${pageContext.request.contextPath}/pressroom-ui/authoring/${mainAction}!publish.rol"><spring:message code="weblogEdit.post"/></button>
                 </c:when>
 <c:otherwise>
                     <%-- submit for review --%>
-                    <button type="submit" class="btn btn-primary" formaction="${pageContext.request.contextPath}/roller-ui/authoring/${mainAction}!publish.rol"><spring:message code="weblogEdit.submitForReview"/></button>
+                    <button type="submit" class="btn btn-primary" formaction="${pageContext.request.contextPath}/pressroom-ui/authoring/${mainAction}!publish.rol"><spring:message code="weblogEdit.submitForReview"/></button>
                 </c:otherwise>
 </c:choose>
                 <c:choose>
 <c:when test="${entryLive}">
                     <%-- back to draft: unpublishes --%>
-                    <button type="submit" class="btn btn-secondary" formaction="${pageContext.request.contextPath}/roller-ui/authoring/${mainAction}!saveDraft.rol"><spring:message code="weblogEdit.unpublish"/></button>
+                    <button type="submit" class="btn btn-secondary" formaction="${pageContext.request.contextPath}/pressroom-ui/authoring/${mainAction}!saveDraft.rol"><spring:message code="weblogEdit.unpublish"/></button>
                 </c:when>
 <c:otherwise>
                     <%-- save draft --%>
-                    <button type="submit" class="btn btn-secondary" data-save-shortcut formaction="${pageContext.request.contextPath}/roller-ui/authoring/${mainAction}!saveDraft.rol"><spring:message code="weblogEdit.save"/></button>
+                    <button type="submit" class="btn btn-secondary" data-save-shortcut formaction="${pageContext.request.contextPath}/pressroom-ui/authoring/${mainAction}!saveDraft.rol"><spring:message code="weblogEdit.save"/></button>
                 </c:otherwise>
 </c:choose>
             </div>
@@ -424,7 +424,7 @@
                             <label class="form-check-label"><input type="checkbox" class="form-check-input" id="comments_closed" name="bean.commentsClosed" value="true" ${bean.commentsClosed ? 'checked' : ''}/> <spring:message code="weblogEdit.commentsClosed"/></label>
                         </div>
                         <c:if test="${actionWeblog.commentsEnabled and not empty bean.id and not empty commentsPublished}">
-                            <c:url value="/roller-ui/authoring/comments.rol" var="entryCommentsUrl">
+                            <c:url value="/pressroom-ui/authoring/comments.rol" var="entryCommentsUrl">
                                 <c:param name="weblog" value="${actionWeblog.handle}"/>
                                 <c:param name="entry" value="${bean.id}"/>
                             </c:url>
@@ -513,7 +513,7 @@
                     <%-- &#32;: the JSP config trims whitespace-only text, which
                          glued the sentence to its link. --%>
                     <spring:message code="newsletter.noList"/>&#32;
-                    <c:url value="/roller-ui/authoring/weblogConfig.rol" var="newsletterWeblogConfigUrl">
+                    <c:url value="/pressroom-ui/authoring/weblogConfig.rol" var="newsletterWeblogConfigUrl">
                         <c:param name="weblog" value="${actionWeblog.handle}"/>
                     </c:url>
                     <a href="${newsletterWeblogConfigUrl}"><spring:message code="newsletter.noList.link"/></a>
@@ -552,7 +552,7 @@
                     </td>
                     <td>
                         <form method="post" style="display:inline"
-                              action="${pageContext.request.contextPath}/roller-ui/authoring/entryEdit!restoreRevision.rol">
+                              action="${pageContext.request.contextPath}/pressroom-ui/authoring/entryEdit!restoreRevision.rol">
                             <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
                             <input type="hidden" name="bean.id" value="${entry.id}"/>
                             <input type="hidden" name="revisionId" value="${revision.id}"/>
@@ -599,7 +599,7 @@
     <div id="newsletter-confirm-modal" class="modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="newsletter-confirm-modal-title">
         <div class="modal-dialog">
             <div class="modal-content">
-                <form action="${pageContext.request.contextPath}/roller-ui/authoring/entryEdit!sendNewsletter.rol"
+                <form action="${pageContext.request.contextPath}/pressroom-ui/authoring/entryEdit!sendNewsletter.rol"
                       method="post" class="guard-submit">
                     <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
                     <input type="hidden" name="bean.id" value="${entry.id}"/>
@@ -676,7 +676,7 @@
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('revision-diff-modal')).show();
                 $.ajax({
                     type: 'POST',
-                    url: '<c:url value="/roller-ui/authoring/entryEdit!revisionDiff.rol"/>',
+                    url: '<c:url value="/pressroom-ui/authoring/entryEdit!revisionDiff.rol"/>',
                     data: {
                         id: '${entry.id}',
                         revisionId: revisionId,
@@ -710,7 +710,7 @@
 
             <c:set var="deleteAction">entryRemoveViaList!remove</c:set>
 
-            <form class="form-stacked" action="${pageContext.request.contextPath}/roller-ui/authoring/${deleteAction}.rol" method="post">
+            <form class="form-stacked" action="${pageContext.request.contextPath}/pressroom-ui/authoring/${deleteAction}.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
                 <input type="hidden" name="removeId" value="${fn:escapeXml(removeId)}" id="removeId"/>
 

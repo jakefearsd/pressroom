@@ -435,7 +435,7 @@ class PasswordResetControllerTest {
         String view = controller.resetSave(request(), new MockHttpServletResponse(), model,
                 redirectAttributes, "good-token", "newpassword1", "newpassword1");
 
-        assertEquals("redirect:/roller-ui/login.rol", view);
+        assertEquals("redirect:/pressroom-ui/login.rol", view);
         assertTrue(new BCryptPasswordEncoder().matches(
                         "newpassword1", user.getPassword().substring("{bcrypt}".length())),
                 "the reset password should verify against the stored hash");

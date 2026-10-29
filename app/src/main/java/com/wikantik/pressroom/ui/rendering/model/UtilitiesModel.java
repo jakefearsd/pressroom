@@ -191,9 +191,9 @@ public class UtilitiesModel implements Model {
     public Map<String, String> getCommentEndpoints() {
         String context = WebloggerRuntimeConfig.getRelativeContextURL();
         return Map.of(
-                "session", context + "/roller-ui/rendering/comments/session.rol",
-                "post", context + "/roller-ui/rendering/comments.rol",
-                "delete", context + "/roller-ui/rendering/comments/");
+                "session", context + "/pressroom-ui/rendering/comments/session.rol",
+                "post", context + "/pressroom-ui/rendering/comments.rol",
+                "delete", context + "/pressroom-ui/rendering/comments/");
     }
              
     //-------------------------------------------------------------- Date utils

@@ -84,7 +84,7 @@ class PreviewShellRenderingTest {
         StrictReferences.assertRecordedExactly("PreviewShellRenderingTest", EXPECTED_REFERENCES);
     }
 
-    private static final String PREVIEW_SERVLET = "/roller-ui/authoring/preview";
+    private static final String PREVIEW_SERVLET = "/pressroom-ui/authoring/preview";
 
     private static final String HANDLE = "previewshellblog";
 

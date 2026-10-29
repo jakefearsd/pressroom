@@ -83,7 +83,7 @@ class ThemeColophonRenderingTest {
             RenderingTestSupport.clearRenderCaches();
 
             MockHttpServletRequest request = RenderingTestSupport
-                    .anonymousGet("/roller-ui/rendering/page", "/" + HANDLE);
+                    .anonymousGet("/pressroom-ui/rendering/page", "/" + HANDLE);
             MockHttpServletResponse response = RenderingTestSupport
                     .execute(RenderingTestSupport.pageServlet(), request);
             assertEquals(200, response.getStatus());
@@ -119,17 +119,17 @@ class ThemeColophonRenderingTest {
             TestUtils.endSession(true);
 
             String anonymous = colophon(null);
-            if (!anonymous.contains("/roller-ui/login") || anonymous.contains("menu.rol")
+            if (!anonymous.contains("/pressroom-ui/login") || anonymous.contains("menu.rol")
                     || anonymous.contains("logout")) {
                 failures.add(theme + " (visitor): " + anonymous);
             }
             String author = colophon(user.getUserName());
-            if (author.contains("/roller-ui/login") || !author.contains("/roller-ui/menu.rol")
+            if (author.contains("/pressroom-ui/login") || !author.contains("/pressroom-ui/menu.rol")
                     || !author.contains("logout")) {
                 failures.add(theme + " (author): " + author);
             }
             String signedInReader = colophon(reader.getUserName());
-            if (signedInReader.contains("/roller-ui/login") || signedInReader.contains("menu.rol")
+            if (signedInReader.contains("/pressroom-ui/login") || signedInReader.contains("menu.rol")
                     || !signedInReader.contains("logout")) {
                 failures.add(theme + " (reader): " + signedInReader);
             }
@@ -141,7 +141,7 @@ class ThemeColophonRenderingTest {
     private static String colophon(String userName) throws Exception {
         RenderingTestSupport.clearRenderCaches();
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/" + HANDLE);
+                .anonymousGet("/pressroom-ui/rendering/page", "/" + HANDLE);
         if (userName != null) {
             request.setUserPrincipal(new UsernamePasswordAuthenticationToken(userName, "n/a",
                     AuthorityUtils.createAuthorityList("ROLE_USER")));

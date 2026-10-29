@@ -125,7 +125,7 @@ class AnalyticsInjectionRenderingTest {
 
     private String renderHomePage() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/" + HANDLE);
+                .anonymousGet("/pressroom-ui/rendering/page", "/" + HANDLE);
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
         assertEquals(200, response.getStatus(), "home page must render");
@@ -146,7 +146,7 @@ class AnalyticsInjectionRenderingTest {
 
     private String renderPage(String slug) throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/" + HANDLE + "/" + slug);
+                .anonymousGet("/pressroom-ui/rendering/page", "/" + HANDLE + "/" + slug);
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
         assertEquals(200, response.getStatus(), "page view must render");

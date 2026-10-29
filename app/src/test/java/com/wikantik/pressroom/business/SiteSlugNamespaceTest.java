@@ -74,7 +74,7 @@ class SiteSlugNamespaceTest {
 
     @Test
     void aProtectedPathIsRefusedInAnyCase() throws Exception {
-        for (String path : new String[] {"roller-ui", "api", "sitemap.xml", "API"}) {
+        for (String path : new String[] {"pressroom-ui", "api", "sitemap.xml", "API"}) {
             SiteSlugClashException e = clash(path);
             assertEquals("pageEdit.error.slugIsReservedPath", e.getMessageKey(), path);
             assertEquals(path, e.getArgument());

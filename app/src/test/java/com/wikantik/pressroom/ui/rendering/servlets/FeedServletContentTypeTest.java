@@ -46,7 +46,7 @@ class FeedServletContentTypeTest {
 
     private MockHttpServletResponse atom(String accept, String userAgent) throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/feed", "/" + handle + "/entries/atom");
+                .anonymousGet("/pressroom-ui/rendering/feed", "/" + handle + "/entries/atom");
         if (accept != null) {
             request.addHeader("Accept", accept);
         }

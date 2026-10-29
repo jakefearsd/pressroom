@@ -98,7 +98,7 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppC
 class SiteSpaceAccessTest {
 
     private static final String SITE = Weblog.SITE_SPACE_HANDLE;
-    private static final String AUTHORING = "/roller-ui/authoring/";
+    private static final String AUTHORING = "/pressroom-ui/authoring/";
 
     private static AnnotationConfigWebApplicationContext context;
     private static MockMvc mvc;
@@ -343,7 +343,7 @@ class SiteSpaceAccessTest {
         for (String screen : List.of("pages.rol", "pageEdit.rol", "themeEdit.rol", "mediaFileView.rol")) {
             MvcResult result = perform(get(AUTHORING + screen).param("weblog", SITE));
             assertEquals(302, result.getResponse().getStatus(), screen);
-            assertEquals("/roller-ui/access-denied.rol", result.getResponse().getRedirectedUrl(), screen);
+            assertEquals("/pressroom-ui/access-denied.rol", result.getResponse().getRedirectedUrl(), screen);
         }
     }
 
@@ -357,7 +357,7 @@ class SiteSpaceAccessTest {
     void noOneIsGrantedARoleOnTheSiteSpace() throws Exception {
         Weblog site = siteSpace();
         signIn(admin);
-        Function<String, MockHttpServletRequestBuilder> grant = h -> post("/roller-ui/admin/userWeblogs!grant.rol")
+        Function<String, MockHttpServletRequestBuilder> grant = h -> post("/pressroom-ui/admin/userWeblogs!grant.rol")
                 .param("userName", author.getUserName()).param("handle", h).param("level", "admin");
 
         MvcResult unknown = perform(grant.apply("ssanosuchblog"));
@@ -416,7 +416,7 @@ class SiteSpaceAccessTest {
         assertNull(TestUtils.weblogger().getWeblogManager().getSiteSpace());
         signIn(admin);
 
-        MvcResult result = perform(get("/roller-ui/menu.rol"));
+        MvcResult result = perform(get("/pressroom-ui/menu.rol"));
 
         assertEquals(200, result.getResponse().getStatus());
         Weblog site = (Weblog) model(result, "siteSpace");
@@ -430,7 +430,7 @@ class SiteSpaceAccessTest {
     void theMainMenuShowsABlogAuthorNoSiteSectionAndCreatesNothing() throws Exception {
         signIn(author);
 
-        MvcResult result = perform(get("/roller-ui/menu.rol"));
+        MvcResult result = perform(get("/pressroom-ui/menu.rol"));
 
         assertEquals(200, result.getResponse().getStatus());
         assertNull(model(result, "siteSpace"));
@@ -454,7 +454,7 @@ class SiteSpaceAccessTest {
         assertTrue(section.find(), "a Site section guarded by siteSpace");
         String body = section.group(1);
 
-        Matcher urls = Pattern.compile("<c:url value=\"/roller-ui/authoring/([^\"]+)\" var=\"[^\"]+\">\\s*"
+        Matcher urls = Pattern.compile("<c:url value=\"/pressroom-ui/authoring/([^\"]+)\" var=\"[^\"]+\">\\s*"
                 + "<c:param name=\"weblog\" value=\"\\$\\{siteSpace.handle}\"\\s*/>").matcher(body);
         List<String> linked = urls.results().map(m -> m.group(1)).toList();
         assertEquals(List.of("pages.rol", "mediaFileView.rol", "themeEdit.rol"), linked);

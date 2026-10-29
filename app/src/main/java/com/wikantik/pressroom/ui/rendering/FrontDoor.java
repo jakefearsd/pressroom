@@ -50,8 +50,8 @@ public final class FrontDoor {
 
     private static final Logger log = LoggerFactory.getLogger(FrontDoor.class);
 
-    static final String DIRECTORY = "/roller-ui/siteDirectory.rol";
-    private static final String PAGE_SERVLET = "/roller-ui/rendering/page/";
+    static final String DIRECTORY = "/pressroom-ui/siteDirectory.rol";
+    private static final String PAGE_SERVLET = "/pressroom-ui/rendering/page/";
 
     private FrontDoor() {
     }

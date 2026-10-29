@@ -118,7 +118,7 @@ class SsoLoginWiringTest {
     @Controller
     static class StubController {
 
-        @GetMapping({"/roller-ui/login.rol", "/blog/"})
+        @GetMapping({"/pressroom-ui/login.rol", "/blog/"})
         @ResponseBody
         String ok() {
             return "ok";
@@ -198,7 +198,7 @@ class SsoLoginWiringTest {
 
     @Test
     void ssoOffAnswers404OnAllThreePaths() throws Exception {
-        for (String p : List.of("/roller-ui/sso/start", "/roller-ui/sso/authorize/oidc", "/roller-ui/sso/callback")) {
+        for (String p : List.of("/pressroom-ui/sso/start", "/pressroom-ui/sso/authorize/oidc", "/pressroom-ui/sso/callback")) {
             offMvc.perform(get(p)).andExpect(status().isNotFound());
         }
     }
@@ -207,11 +207,11 @@ class SsoLoginWiringTest {
 
     @Test
     void authorizeRedirectsToTheProviderWithStateNoncePkceAndTheConfiguredCallback() throws Exception {
-        MvcResult r = onMvc.perform(get("/roller-ui/sso/authorize/oidc").header("Host", "docker2.lan:8080"))
+        MvcResult r = onMvc.perform(get("/pressroom-ui/sso/authorize/oidc").header("Host", "docker2.lan:8080"))
                 .andExpect(status().is3xxRedirection()).andReturn();
         UriComponents u = UriComponentsBuilder.fromUriString(r.getResponse().getRedirectedUrl()).build();
         assertEquals("provider.test", u.getHost());
-        assertEquals("https://blog.example/roller-ui/sso/callback",
+        assertEquals("https://blog.example/pressroom-ui/sso/callback",
                 URLDecoder.decode(u.getQueryParams().getFirst("redirect_uri"), UTF_8));
         assertNotNull(u.getQueryParams().getFirst("state"));
         assertNotNull(u.getQueryParams().getFirst("nonce"));
@@ -225,29 +225,29 @@ class SsoLoginWiringTest {
      */
     @Test
     void aStartOnAnotherHostMovesToTheAbsoluteUrlBeforeAnySessionExists() throws Exception {
-        MvcResult r = onMvc.perform(get("http://docker2.lan:8080/roller-ui/sso/start").param("return", "/blog/"))
-                .andExpect(redirectedUrl(ABSOLUTE_URL + "/roller-ui/sso/start?return=%2Fblog%2F"))
+        MvcResult r = onMvc.perform(get("http://docker2.lan:8080/pressroom-ui/sso/start").param("return", "/blog/"))
+                .andExpect(redirectedUrl(ABSOLUTE_URL + "/pressroom-ui/sso/start?return=%2Fblog%2F"))
                 .andReturn();
         assertNull(r.getRequest().getSession(false), "a session on a host the provider never returns to");
     }
 
     @Test
     void authorizeForAnUnknownRegistrationFailsClosedRatherThanErroring() throws Exception {
-        onMvc.perform(get("/roller-ui/sso/authorize/other"))
-                .andExpect(redirectedUrl("/roller-ui/login.rol?sso=failed"));
+        onMvc.perform(get("/pressroom-ui/sso/authorize/other"))
+                .andExpect(redirectedUrl("/pressroom-ui/login.rol?sso=failed"));
     }
 
     @Test
     void anonymousOnAProtectedPageStillGoesToThePasswordLoginPage() throws Exception {
-        onMvc.perform(get("/roller-ui/menu.rol")).andExpect(redirectedUrl("/roller-ui/login.rol"));
+        onMvc.perform(get("/pressroom-ui/menu.rol")).andExpect(redirectedUrl("/pressroom-ui/login.rol"));
     }
 
     // ------------------------------------------------- criteria 10 and 11
 
     @Test
     void callbackWithAForgedStateFailsClosed() throws Exception {
-        onMvc.perform(get("/roller-ui/sso/callback").param("code", "c").param("state", "forged"))
-                .andExpect(redirectedUrl("/roller-ui/login.rol?sso=failed"))
+        onMvc.perform(get("/pressroom-ui/sso/callback").param("code", "c").param("state", "forged"))
+                .andExpect(redirectedUrl("/pressroom-ui/login.rol?sso=failed"))
                 .andExpect(unauthenticated());
     }
 
@@ -255,15 +255,15 @@ class SsoLoginWiringTest {
     void callbackWithAForgedStateFailsClosedEvenWithASignInInProgress() throws Exception {
         MockHttpSession session = new MockHttpSession();
         authorize(session);
-        onMvc.perform(get("/roller-ui/sso/callback").session(session).param("code", "c").param("state", "forged"))
-                .andExpect(redirectedUrl("/roller-ui/login.rol?sso=failed"))
+        onMvc.perform(get("/pressroom-ui/sso/callback").session(session).param("code", "c").param("state", "forged"))
+                .andExpect(redirectedUrl("/pressroom-ui/login.rol?sso=failed"))
                 .andExpect(unauthenticated());
     }
 
     @Test
     void callbackWithNeitherCodeNorStateFailsClosed() throws Exception {
-        onMvc.perform(get("/roller-ui/sso/callback"))
-                .andExpect(redirectedUrl("/roller-ui/login.rol?sso=failed"))
+        onMvc.perform(get("/pressroom-ui/sso/callback"))
+                .andExpect(redirectedUrl("/pressroom-ui/login.rol?sso=failed"))
                 .andExpect(unauthenticated());
     }
 
@@ -291,7 +291,7 @@ class SsoLoginWiringTest {
         String state = authorize(session);
         String before = session.getId();
 
-        MvcResult r = onMvc.perform(get("/roller-ui/sso/callback").session(session)
+        MvcResult r = onMvc.perform(get("/pressroom-ui/sso/callback").session(session)
                         .with(request -> {
                             request.setRequestedSessionId(before);
                             return request;
@@ -320,7 +320,7 @@ class SsoLoginWiringTest {
     void aSignInKeepsNoAccessToken() throws Exception {
         MockHttpSession session = new MockHttpSession();
         String state = authorize(session);
-        MvcResult r = onMvc.perform(get("/roller-ui/sso/callback").session(session)
+        MvcResult r = onMvc.perform(get("/pressroom-ui/sso/callback").session(session)
                         .param("code", "c").param("state", state))
                 .andExpect(authenticated().withUsername(READER))
                 .andReturn();
@@ -353,9 +353,9 @@ class SsoLoginWiringTest {
             MockHttpSession failed = new MockHttpSession();
             results.add(startOnTheAbsoluteUrlsHost(failed));
             results.add(authorizeStep(failed));
-            results.add(onMvc.perform(get("/roller-ui/sso/callback").session(failed)
+            results.add(onMvc.perform(get("/pressroom-ui/sso/callback").session(failed)
                             .param("code", "c").param("state", "forged"))
-                    .andExpect(redirectedUrl("/roller-ui/login.rol?sso=failed"))
+                    .andExpect(redirectedUrl("/pressroom-ui/login.rol?sso=failed"))
                     .andExpect(unauthenticated())
                     .andReturn());
             List<String> afterFailure = log.everything();
@@ -366,7 +366,7 @@ class SsoLoginWiringTest {
             results.add(startOnTheAbsoluteUrlsHost(succeeded));
             MvcResult authorized = authorizeStep(succeeded);
             results.add(authorized);
-            results.add(onMvc.perform(get("/roller-ui/sso/callback").session(succeeded)
+            results.add(onMvc.perform(get("/pressroom-ui/sso/callback").session(succeeded)
                             .param("code", "c").param("state", stateOf(authorized)))
                     .andExpect(redirectedUrl("/blog/"))
                     .andExpect(authenticated().withUsername(READER))
@@ -395,8 +395,8 @@ class SsoLoginWiringTest {
         };
         MockHttpSession session = new MockHttpSession();
         String state = authorize(session);
-        onMvc.perform(get("/roller-ui/sso/callback").session(session).param("code", "c").param("state", state))
-                .andExpect(redirectedUrl("/roller-ui/login.rol?sso=failed"))
+        onMvc.perform(get("/pressroom-ui/sso/callback").session(session).param("code", "c").param("state", state))
+                .andExpect(redirectedUrl("/pressroom-ui/login.rol?sso=failed"))
                 .andExpect(unauthenticated());
     }
 
@@ -423,7 +423,7 @@ class SsoLoginWiringTest {
 
     /** The authorization step in {@code session}: the redirect to the provider. */
     private static MvcResult authorizeStep(MockHttpSession session) throws Exception {
-        return onMvc.perform(get("/roller-ui/sso/authorize/oidc").session(session))
+        return onMvc.perform(get("/pressroom-ui/sso/authorize/oidc").session(session))
                 .andExpect(status().is3xxRedirection()).andReturn();
     }
 
@@ -441,9 +441,9 @@ class SsoLoginWiringTest {
      * (and the forwarded-header filter) would report 443.
      */
     private static MvcResult startOnTheAbsoluteUrlsHost(MockHttpSession session) throws Exception {
-        return onMvc.perform(get("https://blog.example:443/roller-ui/sso/start").session(session)
+        return onMvc.perform(get("https://blog.example:443/pressroom-ui/sso/start").session(session)
                         .param("return", "/blog/"))
-                .andExpect(redirectedUrl("/roller-ui/sso/authorize/oidc"))
+                .andExpect(redirectedUrl("/pressroom-ui/sso/authorize/oidc"))
                 .andReturn();
     }
 

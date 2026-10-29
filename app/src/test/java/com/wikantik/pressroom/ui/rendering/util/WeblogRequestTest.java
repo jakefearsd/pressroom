@@ -47,7 +47,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class WeblogRequestTest {
 
-    private static final String PAGE_SERVLET = "/roller-ui/rendering/page";
+    private static final String PAGE_SERVLET = "/pressroom-ui/rendering/page";
 
     private static WeblogRequest parse(String pathInfo) throws InvalidRequestException {
         return new WeblogRequest(mock(Weblogger.class), MockRequest.with(PAGE_SERVLET, pathInfo));
@@ -59,7 +59,7 @@ class WeblogRequestTest {
     void nullPathInfoParsesToAnEmptyRequestRatherThanThrowing() throws Exception {
         // The bare servlet URL with no trailing path is a legitimate request --
         // the rendering servlets handle it themselves -- so parsing must not
-        // reject it. If this starts throwing, /roller-ui/rendering/page returns
+        // reject it. If this starts throwing, /pressroom-ui/rendering/page returns
         // a 404 instead of whatever the servlet decided.
         WeblogRequest request = parse(null);
 
@@ -134,7 +134,7 @@ class WeblogRequestTest {
     @Test
     void handleContainingASpaceIsRejected() {
         // getPathInfo() arrives percent-decoded, so a request for
-        // /roller-ui/rendering/page/my%20blog reaches this code as "/my blog".
+        // /pressroom-ui/rendering/page/my%20blog reaches this code as "/my blog".
         InvalidRequestException ex = assertThrows(InvalidRequestException.class,
                 () -> parse("/my blog"),
                 "A decoded space makes the handle non-alphanumeric and must be rejected");
@@ -201,10 +201,10 @@ class WeblogRequestTest {
         assertThrows(InvalidRequestException.class, () -> parse("/site-space"),
                 "a plain weblog request (feed, search) never reaches the site space");
         assertEquals(Weblog.SITE_SPACE_HANDLE, new WeblogResourceRequest(mock(Weblogger.class),
-                MockRequest.with("/roller-ui/rendering/resources", "/site-space/img/logo.png"))
+                MockRequest.with("/pressroom-ui/rendering/resources", "/site-space/img/logo.png"))
                 .getWeblogHandle());
         assertEquals(Weblog.SITE_SPACE_HANDLE, new WeblogMediaResourceRequest(mock(Weblogger.class),
-                MockRequest.with("/roller-ui/rendering/media-resources", "/site-space/abc123"))
+                MockRequest.with("/pressroom-ui/rendering/media-resources", "/site-space/abc123"))
                 .getWeblogHandle());
         WeblogPageRequest page = new WeblogPageRequest(mock(Weblogger.class),
                 MockRequest.with(PAGE_SERVLET, "/site-space/about"));

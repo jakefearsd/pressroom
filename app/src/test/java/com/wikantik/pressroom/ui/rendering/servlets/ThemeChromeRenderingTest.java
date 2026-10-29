@@ -102,7 +102,7 @@ class ThemeChromeRenderingTest {
 
     private String render(String pathInfo, String page, String userName) throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", pathInfo);
+                .anonymousGet("/pressroom-ui/rendering/page", pathInfo);
         if (page != null) {
             request.setParameter("page", page);
         }
@@ -239,7 +239,7 @@ class ThemeChromeRenderingTest {
         useTheme(theme, 10);
 
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/search", "/" + handle);
+                .anonymousGet("/pressroom-ui/rendering/search", "/" + handle);
         request.setParameter("q", "zzznope");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.searchServlet(), request);

@@ -18,7 +18,7 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * {@code GET /roller-ui/sso/start?return=<path>}: the first step of reader sign-in.
+ * {@code GET /pressroom-ui/sso/start?return=<path>}: the first step of reader sign-in.
  *
  * <p>A security-chain filter rather than a controller: {@code DispatcherServlet}
  * maps {@code *.rol} only, so it would never see this path. Spring's own
@@ -39,7 +39,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * {@code https://blog.wikantik.com}), the callback would find a session holding
  * neither, and the sign-in could never complete. So when the request's scheme,
  * host or port is not the Absolute URL's (a default port is the same as none),
- * this redirects to {@code <Absolute URL>/roller-ui/sso/start?return=<the
+ * this redirects to {@code <Absolute URL>/pressroom-ui/sso/start?return=<the
  * sanitised return>} before touching the session, and the start runs again
  * there. The request's scheme, host and port are what the trusted proxy
  * reported ({@code server.forward-headers-strategy=framework}); behind a proxy

@@ -29,7 +29,7 @@
 </c:if>
 
 <spring:message code="pageRemove.confirm" var="templateDeleteConfirmBase"/>
-<form id="templateRemoveForm" action="${pageContext.request.contextPath}/roller-ui/authoring/templates!remove.rol" method="post">
+<form id="templateRemoveForm" action="${pageContext.request.contextPath}/pressroom-ui/authoring/templates!remove.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
 
     <%-- rollertable, not just table: it is the class that carries the token
@@ -64,7 +64,7 @@
                             <span class="bi bi-eye-slash" role="img"
                                   aria-label="<spring:message code='pageForm.hidden'/>"></span>
                         </c:otherwise>
-</c:choose><c:url var="edit" value="/roller-ui/authoring/templateEdit.rol">
+</c:choose><c:url var="edit" value="/pressroom-ui/authoring/templateEdit.rol">
                             <c:param name="weblog" value="${actionWeblog.handle}"/>
                             <c:param name="bean.id" value="${p.id}"/>
                         </c:url>

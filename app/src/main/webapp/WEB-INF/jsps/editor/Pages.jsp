@@ -24,7 +24,7 @@
     </c:choose>
 </p>
 
-<c:url var="addUrl" value="/roller-ui/authoring/pageEdit.rol">
+<c:url var="addUrl" value="/pressroom-ui/authoring/pageEdit.rol">
     <c:param name="weblog" value="${actionWeblog.handle}"/>
 </c:url>
 <%-- The list's one "New ..." action, above the table; an empty list carries
@@ -42,7 +42,7 @@
      rather than a nested form per row (which is not valid HTML). --%>
 <spring:message code="weblogPagesForm.removeConfirm" var="pageDeleteConfirmBase"/>
 <form id="pageRemoveForm" method="post"
-      action="${pageContext.request.contextPath}/roller-ui/authoring/pageRemove.rol">
+      action="${pageContext.request.contextPath}/pressroom-ui/authoring/pageRemove.rol">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
     <sec:csrfInput/>
 
@@ -87,7 +87,7 @@
                         </c:choose>
                     </td>
                     <td>
-                        <c:url var="editUrl" value="/roller-ui/authoring/pageEdit.rol">
+                        <c:url var="editUrl" value="/pressroom-ui/authoring/pageEdit.rol">
                             <c:param name="weblog" value="${actionWeblog.handle}"/>
                             <c:param name="id" value="${p.id}"/>
                         </c:url>

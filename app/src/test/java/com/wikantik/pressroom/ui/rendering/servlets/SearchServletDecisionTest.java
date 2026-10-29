@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class SearchServletDecisionTest {
 
-    private static final String SEARCH_SERVLET = "/roller-ui/rendering/search";
+    private static final String SEARCH_SERVLET = "/pressroom-ui/rendering/search";
     private static final String TERM = "quokkaword";
 
     private final String handle = "searchdecisionblog";

@@ -56,7 +56,7 @@ import org.springframework.web.bind.annotation.RequestParam;
  * act; a foreign or unknown id is skipped and not counted.
  */
 @Controller
-@RequestMapping("/roller-ui/authoring")
+@RequestMapping("/pressroom-ui/authoring")
 public class CommentsModerationController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(CommentsModerationController.class);

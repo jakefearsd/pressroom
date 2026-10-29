@@ -4,7 +4,7 @@
 # started on every failure path.
 #
 # Replaces cargo's Tomcat deploy + pingURL wait: same readiness contract
-# (poll roller-ui/login.rol, 180s budget), against the actual Boot-executable
+# (poll pressroom-ui/login.rol, 180s budget), against the actual Boot-executable
 # WAR instead of an exploded WAR under an external Tomcat.
 #
 # THE TRAP IS THE POINT. This runs in pre-integration-test, so a non-zero exit
@@ -101,7 +101,7 @@ fi
 mkdir -p "$(dirname "$PIDFILE")" "$(dirname "$LOG")"
 
 # management.server.port=0 (random free port): the ITs never poll actuator
-# (readiness below is roller-ui/login.rol on the main port), and application
+# (readiness below is pressroom-ui/login.rol on the main port), and application
 # .properties' default of 8090 would otherwise collide across concurrent IT
 # runs the same way a fixed app port would -- 0 sidesteps that with no need
 # to reserve/thread a dedicated port property through this module.
@@ -147,7 +147,7 @@ while [ "$SECONDS" -lt "$DEADLINE" ]; do
         APP_PID=""
         exit 1
     fi
-    if curl -sf "http://127.0.0.1:${PORT}${URL_PREFIX}/roller-ui/login.rol" > /dev/null; then
+    if curl -sf "http://127.0.0.1:${PORT}${URL_PREFIX}/pressroom-ui/login.rol" > /dev/null; then
         exit 0
     fi
     sleep 2

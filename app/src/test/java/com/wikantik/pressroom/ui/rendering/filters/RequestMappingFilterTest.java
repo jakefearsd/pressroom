@@ -38,7 +38,7 @@ class RequestMappingFilterTest {
     void anApplicationPathContinuesDownTheChain() throws Exception {
         when(provider.isBootstrapped()).thenReturn(true);
         MockFilterChain chain = new MockFilterChain();
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/roller-ui/menu.rol");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/pressroom-ui/menu.rol");
         request.setContextPath("");
 
         filter().doFilter(request, new MockHttpServletResponse(), chain);

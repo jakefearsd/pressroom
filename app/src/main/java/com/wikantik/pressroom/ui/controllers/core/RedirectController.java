@@ -14,7 +14,7 @@ import java.util.List;
  * they were just result mappings to JSP pages.
  */
 @Controller
-@RequestMapping("/roller-ui")
+@RequestMapping("/pressroom-ui")
 public class RedirectController extends BaseController {
 
     @Override
@@ -30,7 +30,7 @@ public class RedirectController extends BaseController {
 
     @GetMapping("/login-redirect.rol")
     public String loginRedirect() {
-        return "forward:/roller-ui/login-redirect.jsp";
+        return "forward:/pressroom-ui/login-redirect.jsp";
     }
 
     @GetMapping("/home.rol")
@@ -40,7 +40,7 @@ public class RedirectController extends BaseController {
 
     @GetMapping("/logout.rol")
     public String logout() {
-        return "forward:/roller-ui/logout-redirect.jsp";
+        return "forward:/pressroom-ui/logout-redirect.jsp";
     }
 
     /**

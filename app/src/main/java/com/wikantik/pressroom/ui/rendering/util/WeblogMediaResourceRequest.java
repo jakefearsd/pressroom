@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Represents a request for a weblog resource file.
  *
- * /roller-ui/rendering/resources/*
+ * /pressroom-ui/rendering/resources/*
  */
 public class WeblogMediaResourceRequest extends WeblogRequest {
     

@@ -42,7 +42,7 @@
         <p><spring:message code="index.createUserHelp"/></p>
         <p><c:if test="${userCount == 0}">
             <spring:message code="index.createUserBy"/>
-            <a id="a_createUser" href='<c:url value="/roller-ui/admin/createUser.rol"/>'>
+            <a id="a_createUser" href='<c:url value="/pressroom-ui/admin/createUser.rol"/>'>
                 <spring:message code="index.createUserPage"/></a>.
         </c:if></p>
 
@@ -66,7 +66,7 @@
         <p><spring:message code="index.createWeblogHelp"/></p>
         <c:if test="${userCount > 0 && blogCount == 0}">
             <spring:message code="index.createWeblogBy"/>
-            <a id="a_createBlog" href='<c:url value="/roller-ui/createWeblog.rol"/>'>
+            <a id="a_createBlog" href='<c:url value="/pressroom-ui/createWeblog.rol"/>'>
                 <spring:message code="index.createWeblogPage"/></a>.
         </c:if>
 
@@ -89,7 +89,7 @@
 
         <c:if test="${blogCount > 0}">
 
-            <form action="${pageContext.request.contextPath}/roller-ui/setup!save.rol" method="post" class="form-stacked">
+            <form action="${pageContext.request.contextPath}/pressroom-ui/setup!save.rol" method="post" class="form-stacked">
                 <sec:csrfInput/>
 
                 <div class="row mb-3">

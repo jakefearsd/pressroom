@@ -126,7 +126,7 @@ class ScheduledEntryIT extends PressroomIT {
      * assertion below a race.
      */
     private void scheduleEntry(String handle, String title) {
-        openPath("/roller-ui/authoring/entryAdd.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
         $("#entry").should(exist);
         $("[name='bean.title']").setValue(title);
         Editor.setText("Body of " + title);
@@ -148,7 +148,7 @@ class ScheduledEntryIT extends PressroomIT {
     private String createWeblog() {
         String handle = "sched" + nonce();
 
-        openPath("/roller-ui/createWeblog.rol");
+        openPath("/pressroom-ui/createWeblog.rol");
         $("#name").should(visible).setValue("Scheduled " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");
@@ -161,7 +161,7 @@ class ScheduledEntryIT extends PressroomIT {
 
     /** Publishes one entry immediately and returns its permalink. */
     private String publishEntry(String handle, String title) {
-        openPath("/roller-ui/authoring/entryAdd.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
         $("#entry").should(exist);
         $("[name='bean.title']").setValue(title);
         Editor.setText("Body of " + title);

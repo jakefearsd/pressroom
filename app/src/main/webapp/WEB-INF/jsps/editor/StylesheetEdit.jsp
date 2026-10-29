@@ -28,7 +28,7 @@
          below has none and gets one here. --%>
     <spring:message code="stylesheetEdit.youCanCustomize"/>
 
-    <form id="stylesheetEditForm" action="${pageContext.request.contextPath}/roller-ui/authoring/stylesheetEdit!save.rol" method="post">
+    <form id="stylesheetEditForm" action="${pageContext.request.contextPath}/pressroom-ui/authoring/stylesheetEdit!save.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
 
         <jsp:include page="/WEB-INF/jsps/editor/SessionExpiryBar.jsp"/>
@@ -67,7 +67,7 @@
 
         <spring:message code="stylesheetEdit.sharedThemeWithStylesheet"/>
 
-        <form action="${pageContext.request.contextPath}/roller-ui/authoring/stylesheetEdit!copyStylesheet.rol" method="post">
+        <form action="${pageContext.request.contextPath}/pressroom-ui/authoring/stylesheetEdit!copyStylesheet.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
             <button type="submit" class="btn btn-primary"><spring:message code="stylesheetEdit.copyStylesheet"/></button>
         <sec:csrfInput/>
@@ -90,13 +90,13 @@
     // (see roller.js): a click that fails to confirm never reaches here.
     function revertStylesheet() {
         var form = document.getElementById('stylesheetEditForm');
-        form.action = "<c:url value='/roller-ui/authoring/stylesheetEdit!revert.rol'/>";
+        form.action = "<c:url value='/pressroom-ui/authoring/stylesheetEdit!revert.rol'/>";
         form.submit();
     };
     <c:if test="${sharedThemeStylesheet}">
         function deleteStylesheet() {
             var form = document.getElementById('stylesheetEditForm');
-            form.action = "<c:url value='/roller-ui/authoring/stylesheetEdit!delete.rol'/>";
+            form.action = "<c:url value='/pressroom-ui/authoring/stylesheetEdit!delete.rol'/>";
             form.submit();
         };
     </c:if>

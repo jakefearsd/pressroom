@@ -58,7 +58,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 @ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
 class RedirectIT extends PressroomIT {
 
-    private static final String CREATE_WEBLOG = "/roller-ui/createWeblog.rol";
+    private static final String CREATE_WEBLOG = "/pressroom-ui/createWeblog.rol";
 
     /** Follows redirects: the reader's experience of a stale link. */
     private HttpClient following;
@@ -85,7 +85,7 @@ class RedirectIT extends PressroomIT {
         String newUrl = baseUrl() + "/" + handle + "/new-name";
 
         // --- a published page at its original slug ------------------------
-        openPath("/roller-ui/authoring/pageEdit.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/pageEdit.rol?weblog=" + handle);
         $("#pageEditForm").should(exist);
         $("#page_bean_slug").setValue("old-name");
         $("#page_bean_title").setValue("Moving Target");
@@ -157,7 +157,7 @@ class RedirectIT extends PressroomIT {
     }
 
     private void openPageByTitle(String handle, String title) {
-        openPath("/roller-ui/authoring/pages.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/pages.rol?weblog=" + handle);
         $("#pageRemoveForm").should(exist);
         $$("a").findBy(text(title)).should(exist).click();
         $("#pageEditForm").should(exist);

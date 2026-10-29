@@ -102,11 +102,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ResourceLock(PressroomIT.GLOBAL_CONFIG)
 class SsoSignInIT extends PressroomIT {
 
-    private static final String START = "/roller-ui/sso/start";
-    private static final String CALLBACK = "/roller-ui/sso/callback";
-    private static final String LOGIN = "/roller-ui/login.rol";
-    private static final String MENU = "/roller-ui/menu.rol";
-    private static final String USER_ADMIN = "/roller-ui/admin/userAdmin.rol";
+    private static final String START = "/pressroom-ui/sso/start";
+    private static final String CALLBACK = "/pressroom-ui/sso/callback";
+    private static final String LOGIN = "/pressroom-ui/login.rol";
+    private static final String MENU = "/pressroom-ui/menu.rol";
+    private static final String USER_ADMIN = "/pressroom-ui/admin/userAdmin.rol";
 
     /** Keycloak users in src/test/resources/keycloak/roller-it-realm.json. */
     private static final String READER = "reader-it";
@@ -126,11 +126,11 @@ class SsoSignInIT extends PressroomIT {
 
     /** The pages criterion 23 names, by their {@link Routes} paths. */
     private static final List<String> AUTHOR_PATHS = List.of(
-            "/roller-ui/menu.rol",
-            "/roller-ui/profile.rol",
-            "/roller-ui/createWeblog.rol",
-            "/roller-ui/authoring/entries.rol",
-            "/roller-ui/admin/userAdmin.rol");
+            "/pressroom-ui/menu.rol",
+            "/pressroom-ui/profile.rol",
+            "/pressroom-ui/createWeblog.rol",
+            "/pressroom-ui/authoring/entries.rol",
+            "/pressroom-ui/admin/userAdmin.rol");
 
     private static final int PAGE_SIZE = 200;
 
@@ -239,7 +239,7 @@ class SsoSignInIT extends PressroomIT {
             HttpResponse<String> response = get(route.url(), session);
             String location = response.headers().firstValue("Location").orElse("");
             assertTrue(response.statusCode() == 403
-                            || (response.statusCode() == 302 && location.contains("/roller-ui/access-denied.rol")),
+                            || (response.statusCode() == 302 && location.contains("/pressroom-ui/access-denied.rol")),
                     route + " answered a signed-in reader " + response.statusCode() + " " + location);
 
             BrowserHealth.current().expectRefusal(route.path());

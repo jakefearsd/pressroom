@@ -62,7 +62,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class AuthoringJourneyIT extends PressroomIT {
 
-    private static final String ENTRY_ADD = "/roller-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
+    private static final String ENTRY_ADD = "/pressroom-ui/authoring/entryAdd.rol?weblog=" + WEBLOG_HANDLE;
 
     /** Rendered on the edit page only once the entry is actually published — see EntryEdit.jsp. */
     private static final String PERMALINK = "#entry_bean_permalink";
@@ -263,7 +263,7 @@ class AuthoringJourneyIT extends PressroomIT {
         if ($("#entry").exists()) {
             return;
         }
-        openPath("/roller-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE);
+        openPath("/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE);
         $$("a").findBy(com.codeborne.selenide.Condition.text(title)).click();
         $("#entry").should(exist);
     }
@@ -291,7 +291,7 @@ class AuthoringJourneyIT extends PressroomIT {
 
     /** Posts the delete form the way the entry list's modal does. */
     private void deleteEntry(String entryId) {
-        openPath("/roller-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE);
+        openPath("/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE);
         // form.submit() starts the navigation in a task of its own, so the script
         // returns before the POST exists; the caller's 404 check must not overtake it.
         awaitNewPageAfter(() -> executeJavaScript(
@@ -305,7 +305,7 @@ class AuthoringJourneyIT extends PressroomIT {
                         + "var t = document.querySelector(\"input[name='_csrf']\");"
                         + "if (t) { add('_csrf', t.value); }"
                         + "document.body.appendChild(f); f.submit();",
-                baseUrl() + "/roller-ui/authoring/entryRemoveViaList!remove.rol",
+                baseUrl() + "/pressroom-ui/authoring/entryRemoveViaList!remove.rol",
                 entryId,
                 WEBLOG_HANDLE));
     }

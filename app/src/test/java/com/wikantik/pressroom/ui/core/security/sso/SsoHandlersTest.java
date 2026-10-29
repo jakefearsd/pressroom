@@ -51,7 +51,7 @@ class SsoHandlersTest {
     }
 
     private static MockHttpServletRequest callback(String ctx, String storedReturn) {
-        MockHttpServletRequest req = new MockHttpServletRequest("GET", ctx + "/roller-ui/sso/callback");
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", ctx + "/pressroom-ui/sso/callback");
         req.setContextPath(ctx);
         MockHttpSession session = new MockHttpSession();
         if (storedReturn != null) {
@@ -119,7 +119,7 @@ class SsoHandlersTest {
 
     @Test
     void successWithoutASessionGoesToTheSiteRoot() throws Exception {
-        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/roller/roller-ui/sso/callback");
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/roller/pressroom-ui/sso/callback");
         req.setContextPath("/roller");
         MockHttpServletResponse res = new MockHttpServletResponse();
         new SsoSuccessHandler(provider).onAuthenticationSuccess(req, res, reader("reader-abcdefghij", false));
@@ -147,7 +147,7 @@ class SsoHandlersTest {
                     "message carrying a token abc.def.ghi");
             new SsoFailureHandler(provider).onAuthenticationFailure(callback("/roller", null), res, ex);
 
-            assertEquals("/roller/roller-ui/login.rol?sso=" + code, res.getRedirectedUrl());
+            assertEquals("/roller/pressroom-ui/login.rol?sso=" + code, res.getRedirectedUrl());
             List<String> warns = log.lines(Level.WARN);
             assertEquals(1, warns.size(), warns.toString());
             assertTrue(warns.get(0).contains(code), warns.get(0));
@@ -164,7 +164,7 @@ class SsoHandlersTest {
             MockHttpServletResponse res = new MockHttpServletResponse();
             new SsoFailureHandler(provider).onAuthenticationFailure(callback("", null), res,
                     new BadCredentialsException("secret detail"));
-            assertEquals("/roller-ui/login.rol?sso=failed", res.getRedirectedUrl());
+            assertEquals("/pressroom-ui/login.rol?sso=failed", res.getRedirectedUrl());
             assertFalse(log.lines(Level.WARN).get(0).contains("secret detail"));
         }
     }
@@ -183,7 +183,7 @@ class SsoHandlersTest {
                     "message jo@example.com", new ReaderSignInRefused("account disabled"));
             new SsoFailureHandler(provider).onAuthenticationFailure(callback("", null), res, ex);
 
-            assertEquals("/roller-ui/login.rol?sso=refused", res.getRedirectedUrl());
+            assertEquals("/pressroom-ui/login.rol?sso=refused", res.getRedirectedUrl());
             String warn = log.lines(Level.WARN).get(0);
             assertTrue(warn.contains("refused"), warn);
             assertTrue(warn.contains("account disabled"), warn);
@@ -206,7 +206,7 @@ class SsoHandlersTest {
                     new IllegalStateException("duplicate key (email)=(jo@example.com)"));
             new SsoFailureHandler(provider).onAuthenticationFailure(callback("", null), res, ex);
 
-            assertEquals("/roller-ui/login.rol?sso=failed", res.getRedirectedUrl());
+            assertEquals("/pressroom-ui/login.rol?sso=failed", res.getRedirectedUrl());
             String warn = log.lines(Level.WARN).get(0);
             assertTrue(warn.contains("AuthenticationServiceException<-IllegalStateException"), warn);
             assertFalse(warn.contains("jo@example.com"), warn);
@@ -242,7 +242,7 @@ class SsoHandlersTest {
             MockHttpServletResponse res = new MockHttpServletResponse();
             new SsoFailureHandler(provider).onAuthenticationFailure(callback("", null), res,
                     new AuthenticationServiceException("x", first));
-            assertEquals("/roller-ui/login.rol?sso=failed", res.getRedirectedUrl());
+            assertEquals("/pressroom-ui/login.rol?sso=failed", res.getRedirectedUrl());
             assertTrue(log.lines(Level.WARN).get(0).length() < 400, log.lines(Level.WARN).get(0));
         }
     }

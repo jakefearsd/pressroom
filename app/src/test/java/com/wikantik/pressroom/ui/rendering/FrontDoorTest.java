@@ -45,7 +45,7 @@ import static org.mockito.Mockito.when;
  */
 class FrontDoorTest {
 
-    private static final String DIRECTORY = "/roller-ui/siteDirectory.rol";
+    private static final String DIRECTORY = "/pressroom-ui/siteDirectory.rol";
 
     private Weblogger tier;
     private WeblogManager weblogs;
@@ -82,7 +82,7 @@ class FrontDoorTest {
                 page("home", WeblogPage.PubStatus.PUBLISHED));
         try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering(
                 "site.frontpage.page", "home", "site.frontpage.weblog.handle", "blog")) {
-            assertEquals("/roller-ui/rendering/page/site-space/home", FrontDoor.forwardPath(tier),
+            assertEquals("/pressroom-ui/rendering/page/site-space/home", FrontDoor.forwardPath(tier),
                     "a site page, when set, wins over the front-page blog");
         }
     }
@@ -92,7 +92,7 @@ class FrontDoorTest {
         published(page("our story", WeblogPage.PubStatus.PUBLISHED));
         try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering(
                 "site.frontpage.page", "our story")) {
-            assertEquals("/roller-ui/rendering/page/site-space/our+story", FrontDoor.forwardPath(tier),
+            assertEquals("/pressroom-ui/rendering/page/site-space/our+story", FrontDoor.forwardPath(tier),
                     "the page servlet decodes the slug, as it does $url.staticPage's");
         }
     }
@@ -152,7 +152,7 @@ class FrontDoorTest {
     void noFrontDoorPageAndAFrontPageBlogIsThatBlogUnchanged() throws Exception {
         try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering(
                 "site.frontpage.page", "  ", "site.frontpage.weblog.handle", "wikantik")) {
-            assertEquals("/roller-ui/rendering/page/wikantik", FrontDoor.forwardPath(tier));
+            assertEquals("/pressroom-ui/rendering/page/wikantik", FrontDoor.forwardPath(tier));
         }
         verify(tier, never()).getWeblogPageManager();
     }
@@ -185,7 +185,7 @@ class FrontDoorTest {
         when(provider.isBootstrapped()).thenReturn(true);
         when(provider.getWeblogger()).thenReturn(tier);
         try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering("site.frontpage.page", "home")) {
-            assertEquals("/roller-ui/rendering/page/site-space/home", FrontDoor.forwardPath(provider));
+            assertEquals("/pressroom-ui/rendering/page/site-space/home", FrontDoor.forwardPath(provider));
         }
     }
 }

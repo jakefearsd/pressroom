@@ -20,7 +20,7 @@
      and Bootstrap.jsp: one sentence and one button that starts Roller. A POST,
      never a "Click here" GET link beside it (two controls for one action). --%>
 <p><spring:message code="installer.readyToStart"/></p>
-<form action="${pageContext.request.contextPath}/roller-ui/install/install!bootstrap.rol" method="post">
+<form action="${pageContext.request.contextPath}/pressroom-ui/install/install!bootstrap.rol" method="post">
     <sec:csrfInput/>
     <button type="submit" class="btn btn-primary"><spring:message code="installer.finishUpgrade"/></button>
 </form>

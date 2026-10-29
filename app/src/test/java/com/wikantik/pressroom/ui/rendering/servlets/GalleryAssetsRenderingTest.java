@@ -90,7 +90,7 @@ class GalleryAssetsRenderingTest {
 
     private String render(String pathInfo) throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", pathInfo);
+                .anonymousGet("/pressroom-ui/rendering/page", pathInfo);
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
         assertEquals(200, response.getStatus(), "page must render for " + pathInfo);
@@ -138,7 +138,7 @@ class GalleryAssetsRenderingTest {
     @Test
     void journalSearchResultsShipTheLightboxAssetsOnce() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/search", "/" + HANDLE);
+                .anonymousGet("/pressroom-ui/rendering/search", "/" + HANDLE);
         request.setParameter("q", "anything");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.searchServlet(), request);

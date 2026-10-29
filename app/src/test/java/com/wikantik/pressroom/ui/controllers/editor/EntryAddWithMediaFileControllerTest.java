@@ -42,7 +42,7 @@ import static org.mockito.Mockito.when;
  */
 class EntryAddWithMediaFileControllerTest extends EditorControllerTestSupport {
 
-    private static final String FORWARD = "forward:/roller-ui/authoring/entryAdd.rol";
+    private static final String FORWARD = "forward:/pressroom-ui/authoring/entryAdd.rol";
 
     private EntryAddWithMediaFileController controller;
     private EntryBean bean;

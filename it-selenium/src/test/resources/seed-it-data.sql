@@ -59,7 +59,7 @@ INSERT INTO userrole (id, rolename, username)
 VALUES ('it-role-0000-0000-0000-000000000003', 'editor', 'it_agent')
 ON CONFLICT (id) DO NOTHING;
 
--- One weblog: the ~20 /roller-ui/authoring/ routes all require a resolvable
+-- One weblog: the ~20 /pressroom-ui/authoring/ routes all require a resolvable
 -- weblog= request parameter (see PressroomHandlerInterceptor), so without this the
 -- reachability sweep could only reach the handful of global pages.
 INSERT INTO weblog (id, name, handle, tagline, creator,

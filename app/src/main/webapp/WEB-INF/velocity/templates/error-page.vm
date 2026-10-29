@@ -22,7 +22,7 @@
  sent as HTTP 500 and never cached (VelocityRenderer.renderedError and
  RenderingServletUtils.renderAndFlush; RenderErrorStatusTest). It shows no
  exception detail -- that goes to the server log -- only the same calm card,
- palette and wording as roller-ui/errors/error.jsp, in light and dark.
+ palette and wording as pressroom-ui/errors/error.jsp, in light and dark.
  Pinned by VelocityErrorTemplateTest.
 *#
 <!DOCTYPE html>

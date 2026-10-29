@@ -61,7 +61,7 @@ public abstract class TokenFormController extends BaseController {
     public static final String REVEALED_FOR_AGENT = "revealedForAgent";
 
     /** The reveal page, which {@code ProfileTokensController} serves to any signed-in author. */
-    public static final String REVEAL_PATH = "/roller-ui/profileTokens!reveal.rol";
+    public static final String REVEAL_PATH = "/pressroom-ui/profileTokens!reveal.rol";
 
     /** pressroom_api_token.label is varchar(255): ColumnLimits.TOKEN_LABEL, which this package may not import. */
     public static final int MAX_LABEL_LENGTH = 255;

@@ -203,7 +203,7 @@ class ThemeIT extends PressroomIT {
         String handle = "theme" + nonce();
 
         loginAsAdmin();
-        openPath("/roller-ui/createWeblog.rol");
+        openPath("/pressroom-ui/createWeblog.rol");
         $("#name").should(visible).setValue("Theme Blog " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");
@@ -294,11 +294,11 @@ class ThemeIT extends PressroomIT {
     }
 
     private String templatesPath(String handle) {
-        return "/roller-ui/authoring/templates.rol?weblog=" + handle;
+        return "/pressroom-ui/authoring/templates.rol?weblog=" + handle;
     }
 
     private String themeEditPath(String handle) {
-        return "/roller-ui/authoring/themeEdit.rol?weblog=" + handle;
+        return "/pressroom-ui/authoring/themeEdit.rol?weblog=" + handle;
     }
 
     private String templateNames() {

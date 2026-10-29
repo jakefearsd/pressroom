@@ -56,7 +56,7 @@ import org.apache.commons.text.StringEscapeUtils;
  * Controller that allows an admin to create or modify a user profile.
  */
 @Controller
-@RequestMapping("/roller-ui/admin")
+@RequestMapping("/pressroom-ui/admin")
 public class UserEditController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(UserEditController.class);
@@ -173,7 +173,7 @@ public class UserEditController extends BaseController {
 
     @GetMapping("/createUser!cancel.rol")
     public String createUserCancel() {
-        return "redirect:/roller-ui/admin/userAdmin.rol";
+        return "redirect:/pressroom-ui/admin/userAdmin.rol";
     }
 
     // --- Modify User ---
@@ -198,7 +198,7 @@ public class UserEditController extends BaseController {
             // An agent has its own page, with no password and no set-password
             // link (spec 2026-10-13, criterion 6). The name is restricted to
             // username.allowedChars, so it needs no encoding in the query.
-            return "redirect:/roller-ui/admin/agent.rol?userName=" + user.getUserName();
+            return "redirect:/pressroom-ui/admin/agent.rol?userName=" + user.getUserName();
         }
 
         // populate form data from user profile data
@@ -344,7 +344,7 @@ public class UserEditController extends BaseController {
 
     @GetMapping("/modifyUser!cancel.rol")
     public String modifyUserCancel() {
-        return "redirect:/roller-ui/admin/userAdmin.rol";
+        return "redirect:/pressroom-ui/admin/userAdmin.rol";
     }
 
     // --- Send set-password link ---

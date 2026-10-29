@@ -33,11 +33,11 @@ User user = PressroomSession.getRollerSession(request, provider)
 List weblogs = weblogger.getWeblogManager().getUserWeblogs(user, true);
 
 if (user == null) {
-    response.sendRedirect(request.getContextPath()+"/roller-ui/login.rol");
+    response.sendRedirect(request.getContextPath()+"/pressroom-ui/login.rol");
 } else if (weblogs.size() == 1) {
     Weblog weblog = (Weblog) weblogs.get(0);
-    response.sendRedirect(request.getContextPath()+"/roller-ui/authoring/entryAdd.rol?weblog="+weblog.getHandle());
+    response.sendRedirect(request.getContextPath()+"/pressroom-ui/authoring/entryAdd.rol?weblog="+weblog.getHandle());
 } else {
-    response.sendRedirect(request.getContextPath()+"/roller-ui/menu.rol");
+    response.sendRedirect(request.getContextPath()+"/pressroom-ui/menu.rol");
 }
 %>

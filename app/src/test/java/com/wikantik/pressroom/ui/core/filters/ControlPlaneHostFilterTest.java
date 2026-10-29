@@ -31,7 +31,7 @@ import static org.mockito.Mockito.when;
  * Which paths leave a custom domain for the site host.
  *
  * <p>The exempt list is the security-relevant half. ContactController is mapped
- * at /roller-ui/rendering/contact.rol and NewsletterController at
+ * at /pressroom-ui/rendering/contact.rol and NewsletterController at
  * /newsletter/subscribe; both are posted by fetch from the rendered blog page,
  * and every bundled theme's CSP is connect-src 'self'. Redirecting either makes
  * it cross-origin -- blocked by CSP, and a 301 on a POST carries no body anyway
@@ -42,37 +42,37 @@ class ControlPlaneHostFilterTest {
 
     @Test
     void adminPathsBelongToTheSiteHost() {
-        assertTrue(ControlPlaneHostFilter.belongsToSiteHost("/roller-ui/menu.rol"));
-        assertTrue(ControlPlaneHostFilter.belongsToSiteHost("/roller-ui/authoring/entries.rol"));
-        assertTrue(ControlPlaneHostFilter.belongsToSiteHost("/roller-ui/admin/globalConfig.rol"));
+        assertTrue(ControlPlaneHostFilter.belongsToSiteHost("/pressroom-ui/menu.rol"));
+        assertTrue(ControlPlaneHostFilter.belongsToSiteHost("/pressroom-ui/authoring/entries.rol"));
+        assertTrue(ControlPlaneHostFilter.belongsToSiteHost("/pressroom-ui/admin/globalConfig.rol"));
         assertTrue(ControlPlaneHostFilter.belongsToSiteHost("/api/v1/ping"));
     }
 
     @Test
     void thePublicRenderingNamespaceStays() {
-        assertFalse(ControlPlaneHostFilter.belongsToSiteHost("/roller-ui/rendering/contact.rol"));
+        assertFalse(ControlPlaneHostFilter.belongsToSiteHost("/pressroom-ui/rendering/contact.rol"));
         assertFalse(ControlPlaneHostFilter.belongsToSiteHost(
-                "/roller-ui/rendering/media-resources/blog/photo.jpg"));
-        assertFalse(ControlPlaneHostFilter.belongsToSiteHost("/roller-ui/rendering/page/blog"));
+                "/pressroom-ui/rendering/media-resources/blog/photo.jpg"));
+        assertFalse(ControlPlaneHostFilter.belongsToSiteHost("/pressroom-ui/rendering/page/blog"));
     }
 
     /**
      * The reader's content bundle (code highlighting, copy buttons, heading
-     * anchors) is a public asset that happens to live under /roller-ui/scripts,
+     * anchors) is a public asset that happens to live under /pressroom-ui/scripts,
      * beside the editor's -- the webapp root is the one static location this
      * deployment serves. Every theme's CSP is script-src 'self', so a 301 to
      * the site host would make it cross-origin and the browser would refuse
      * it: every code block on every vhost weblog would lose its toolbar and
      * colours, with one console line to say so. Only that one file stays; the
-     * editor bundle, like the rest of /roller-ui, is control plane.
+     * editor bundle, like the rest of /pressroom-ui, is control plane.
      */
     @Test
     void theReadersContentBundleStaysButTheEditorsDoesNot() {
-        assertFalse(ControlPlaneHostFilter.belongsToSiteHost("/roller-ui/scripts/roller-content.js"));
-        assertTrue(ControlPlaneHostFilter.belongsToSiteHost("/roller-ui/scripts/roller-editor.js"));
-        assertTrue(ControlPlaneHostFilter.belongsToSiteHost("/roller-ui/scripts/roller-content.js.map"),
+        assertFalse(ControlPlaneHostFilter.belongsToSiteHost("/pressroom-ui/scripts/roller-content.js"));
+        assertTrue(ControlPlaneHostFilter.belongsToSiteHost("/pressroom-ui/scripts/roller-editor.js"));
+        assertTrue(ControlPlaneHostFilter.belongsToSiteHost("/pressroom-ui/scripts/roller-content.js.map"),
                 "the exemption is the one file, not a prefix");
-        assertTrue(ControlPlaneHostFilter.belongsToSiteHost("/roller-ui/scripts/"));
+        assertTrue(ControlPlaneHostFilter.belongsToSiteHost("/pressroom-ui/scripts/"));
     }
 
     @Test
@@ -158,14 +158,14 @@ class ControlPlaneHostFilterTest {
     @Test
     void anAdminPathOnTheCustomDomainRedirectsToTheSiteHost() throws Exception {
         givenSiteAbsoluteUrl(SITE_URL);
-        MockHttpServletRequest request = vhostRequest("GET", "/roller-ui/menu.rol");
+        MockHttpServletRequest request = vhostRequest("GET", "/pressroom-ui/menu.rol");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
 
         filter.doFilter(request, response, chain);
 
         assertEquals(301, response.getStatus());
-        assertEquals("https://control.example.com/roller-ui/menu.rol", response.getHeader("Location"));
+        assertEquals("https://control.example.com/pressroom-ui/menu.rol", response.getHeader("Location"));
         assertNull(chain.getRequest(), "a redirected request must not reach the rest of the chain");
     }
 
@@ -179,7 +179,7 @@ class ControlPlaneHostFilterTest {
     @Test
     void anEnvironmentSiteUrlWithABlankRowAlsoRedirectsToTheSiteHost() throws Exception {
         givenSiteAbsoluteUrl("");
-        MockHttpServletRequest request = vhostRequest("GET", "/roller-ui/menu.rol");
+        MockHttpServletRequest request = vhostRequest("GET", "/pressroom-ui/menu.rol");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
 
@@ -188,14 +188,14 @@ class ControlPlaneHostFilterTest {
         }
 
         assertEquals(301, response.getStatus());
-        assertEquals("https://control.example.com/roller-ui/menu.rol", response.getHeader("Location"));
+        assertEquals("https://control.example.com/pressroom-ui/menu.rol", response.getHeader("Location"));
         assertNull(chain.getRequest());
     }
 
     @Test
     void theContentBundleIsServedOnTheCustomDomain() throws Exception {
         givenSiteAbsoluteUrl(SITE_URL);
-        MockHttpServletRequest request = vhostRequest("GET", "/roller-ui/scripts/roller-content.js");
+        MockHttpServletRequest request = vhostRequest("GET", "/pressroom-ui/scripts/roller-content.js");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
 
@@ -223,27 +223,27 @@ class ControlPlaneHostFilterTest {
     @Test
     void theQueryStringSurvivesTheRedirect() throws Exception {
         givenSiteAbsoluteUrl(SITE_URL);
-        MockHttpServletRequest request = vhostRequest("GET", "/roller-ui/authoring/entries.rol");
+        MockHttpServletRequest request = vhostRequest("GET", "/pressroom-ui/authoring/entries.rol");
         request.setQueryString("weblog=vhostblog");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
 
         filter.doFilter(request, response, chain);
 
-        assertEquals("https://control.example.com/roller-ui/authoring/entries.rol?weblog=vhostblog",
+        assertEquals("https://control.example.com/pressroom-ui/authoring/entries.rol?weblog=vhostblog",
                 response.getHeader("Location"));
     }
 
     @Test
     void aTrailingSlashOnSiteAbsoluteUrlIsNotDoubled() throws Exception {
         givenSiteAbsoluteUrl(SITE_URL + "/");
-        MockHttpServletRequest request = vhostRequest("GET", "/roller-ui/menu.rol");
+        MockHttpServletRequest request = vhostRequest("GET", "/pressroom-ui/menu.rol");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
 
         filter.doFilter(request, response, chain);
 
-        assertEquals("https://control.example.com/roller-ui/menu.rol", response.getHeader("Location"));
+        assertEquals("https://control.example.com/pressroom-ui/menu.rol", response.getHeader("Location"));
     }
 
     /**
@@ -256,7 +256,7 @@ class ControlPlaneHostFilterTest {
     @Test
     void aContextPathIsStrippedFromThePathAndReappliedViaSiteAbsoluteUrl() throws Exception {
         givenSiteAbsoluteUrl(SITE_URL + "/roller");
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/roller/roller-ui/menu.rol");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/roller/pressroom-ui/menu.rol");
         request.setContextPath("/roller");
         request.addHeader("Host", VHOST);
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -264,7 +264,7 @@ class ControlPlaneHostFilterTest {
 
         filter.doFilter(request, response, chain);
 
-        assertEquals("https://control.example.com/roller/roller-ui/menu.rol",
+        assertEquals("https://control.example.com/roller/pressroom-ui/menu.rol",
                 response.getHeader("Location"));
     }
 
@@ -275,7 +275,7 @@ class ControlPlaneHostFilterTest {
         // fetch takes, and the whole point is that it must reach the servlet
         // rather than receive a 301 (which would carry no body and, being
         // cross-origin, would be blocked by connect-src 'self' regardless).
-        MockHttpServletRequest request = vhostRequest("POST", "/roller-ui/rendering/contact.rol");
+        MockHttpServletRequest request = vhostRequest("POST", "/pressroom-ui/rendering/contact.rol");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
 
@@ -289,7 +289,7 @@ class ControlPlaneHostFilterTest {
     @Test
     void aRequestOnAHostWithNoCustomDomainIsNotRedirected() throws Exception {
         givenSiteAbsoluteUrl(SITE_URL);
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/roller-ui/menu.rol");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/pressroom-ui/menu.rol");
         request.addHeader("Host", "unclaimed.example.com");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
@@ -312,7 +312,7 @@ class ControlPlaneHostFilterTest {
     @Test
     void anUnsetSiteAbsoluteUrlServesTheRequestInsteadOfRedirecting() throws Exception {
         givenSiteAbsoluteUrl(null);
-        MockHttpServletRequest request = vhostRequest("GET", "/roller-ui/menu.rol");
+        MockHttpServletRequest request = vhostRequest("GET", "/pressroom-ui/menu.rol");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
 
@@ -326,7 +326,7 @@ class ControlPlaneHostFilterTest {
     @Test
     void aBlankSiteAbsoluteUrlAlsoServesTheRequestInsteadOfRedirecting() throws Exception {
         givenSiteAbsoluteUrl("   ");
-        MockHttpServletRequest request = vhostRequest("GET", "/roller-ui/menu.rol");
+        MockHttpServletRequest request = vhostRequest("GET", "/pressroom-ui/menu.rol");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
 
@@ -347,7 +347,7 @@ class ControlPlaneHostFilterTest {
     void beforeBootstrapNothingIsRedirected() throws Exception {
         givenSiteAbsoluteUrl(SITE_URL);
         when(provider.isBootstrapped()).thenReturn(false);
-        MockHttpServletRequest request = vhostRequest("GET", "/roller-ui/menu.rol");
+        MockHttpServletRequest request = vhostRequest("GET", "/pressroom-ui/menu.rol");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
 

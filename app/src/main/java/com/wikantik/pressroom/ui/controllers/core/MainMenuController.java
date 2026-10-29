@@ -41,7 +41,7 @@ import com.wikantik.pressroom.ui.controllers.WeblogPermissionView;
  * Allows user to view and pick from list of his/her websites.
  */
 @Controller
-@RequestMapping("/roller-ui")
+@RequestMapping("/pressroom-ui")
 public class MainMenuController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(MainMenuController.class);

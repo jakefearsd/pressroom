@@ -64,7 +64,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class DesignTokenTest {
 
     private static final Path TOKENS_CSS =
-            Paths.get("src/main/webapp/roller-ui/styles/roller-tokens.css");
+            Paths.get("src/main/webapp/pressroom-ui/styles/roller-tokens.css");
 
     /**
      * The stylesheets that load alongside {@code roller-tokens.css} and may
@@ -73,8 +73,8 @@ public class DesignTokenTest {
      * need is already available as a {@code var(--token)}.
      */
     private static final List<Path> TOKENS_ONLY_STYLESHEETS = List.of(
-            Paths.get("src/main/webapp/roller-ui/styles/roller.css"),
-            Paths.get("src/main/webapp/roller-ui/styles/roller-editor.css"));
+            Paths.get("src/main/webapp/pressroom-ui/styles/roller.css"),
+            Paths.get("src/main/webapp/pressroom-ui/styles/roller-editor.css"));
 
     /**
      * The CodeMirror bundle's own source, under Maven (frontend-maven-plugin
@@ -342,7 +342,7 @@ public class DesignTokenTest {
 
         int bootstrapIndex = content.indexOf("bootstrap.min.css");
         int tokensIndex = content.indexOf("roller-tokens.css");
-        int rollerCssIndex = content.indexOf("roller-ui/styles/roller.css");
+        int rollerCssIndex = content.indexOf("pressroom-ui/styles/roller.css");
 
         assertTrue(bootstrapIndex >= 0, HEAD_JSP + " no longer links bootstrap.min.css");
         assertTrue(rollerCssIndex >= 0, HEAD_JSP + " no longer links roller.css");

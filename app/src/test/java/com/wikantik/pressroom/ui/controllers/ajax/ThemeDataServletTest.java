@@ -59,7 +59,7 @@ class ThemeDataServletTest {
     void setUp() {
         weblogger = MockWeblogger.attached();
         servlet = new ThemeDataServlet(weblogger.weblogger());
-        request = new MockHttpServletRequest("GET", "/roller-ui/authoring/themedata");
+        request = new MockHttpServletRequest("GET", "/pressroom-ui/authoring/themedata");
         response = new MockHttpServletResponse();
     }
 

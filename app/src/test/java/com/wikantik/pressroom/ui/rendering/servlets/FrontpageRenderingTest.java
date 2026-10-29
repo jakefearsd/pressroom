@@ -173,7 +173,7 @@ class FrontpageRenderingTest {
 
     private String render(String pathInfo) throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", pathInfo);
+                .anonymousGet("/pressroom-ui/rendering/page", pathInfo);
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), request);
         assertEquals(200, response.getStatus(), "page must render for " + pathInfo);
@@ -361,7 +361,7 @@ class FrontpageRenderingTest {
                         + "render on the first page via the pinned-entries block:\n" + firstPage);
 
         MockHttpServletRequest secondPageRequest = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/page", "/" + SITE_HANDLE + "/");
+                .anonymousGet("/pressroom-ui/rendering/page", "/" + SITE_HANDLE + "/");
         secondPageRequest.setParameter("page", "1");
         MockHttpServletResponse secondPageResponse = RenderingTestSupport
                 .execute(RenderingTestSupport.pageServlet(), secondPageRequest);
@@ -572,7 +572,7 @@ class FrontpageRenderingTest {
     @Test
     void aSearchThatFindsNothingSaysSoInsteadOfShowingTheFrontDoor() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport
-                .anonymousGet("/roller-ui/rendering/search", "/" + SITE_HANDLE);
+                .anonymousGet("/pressroom-ui/rendering/search", "/" + SITE_HANDLE);
         request.setParameter("q", "zzznope");
         MockHttpServletResponse response = RenderingTestSupport
                 .execute(RenderingTestSupport.searchServlet(), request);

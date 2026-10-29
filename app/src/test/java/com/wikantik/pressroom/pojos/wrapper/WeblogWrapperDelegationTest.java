@@ -372,9 +372,9 @@ class WeblogWrapperDelegationTest {
         WeblogTemplate stylesheet = template("Stylesheet", "custom.css");
         when(theme.getStylesheet()).thenReturn(stylesheet);
         when(urls.getWeblogPageURL(weblog, null, "custom.css", null, null, null, null, 0, false))
-                .thenReturn("/roller-ui/authoring/preview/testblog/page/custom.css?theme=journal");
+                .thenReturn("/pressroom-ui/authoring/preview/testblog/page/custom.css?theme=journal");
 
-        assertEquals("/roller-ui/authoring/preview/testblog/page/custom.css?theme=journal&v="
+        assertEquals("/pressroom-ui/authoring/preview/testblog/page/custom.css?theme=journal&v="
                 + ServingSince.started() / 1000, wrapper.getStylesheet());
     }
 

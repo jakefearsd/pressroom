@@ -500,7 +500,7 @@
             form.append('file', file, file.name);
             form.append('weblog', $("input[name='weblog']").val());
             form.append('${_csrf.parameterName}', '${_csrf.token}');
-            fetch('<c:url value="/roller-ui/authoring/mediaFileAdd!upload.rol"/>', { method: 'POST', body: form, credentials: 'same-origin' })
+            fetch('<c:url value="/pressroom-ui/authoring/mediaFileAdd!upload.rol"/>', { method: 'POST', body: form, credentials: 'same-origin' })
                 .then(function (r) { return r.json().then(function (body) { return { status: r.status, body: body }; }); })
                 .then(function (res) {
                     var result = res.body && res.body.results && res.body.results[0];
@@ -590,7 +590,7 @@
         window.mediaPickerTarget = pickerTarget || null;
         window.mediaLightboxCloseRequested = false;
         document.getElementById('mediaChooserRefusal').hidden = true;
-        <c:url var="mediaFileImageChooser" value="/roller-ui/authoring/overlay/mediaFileImageChooser.rol">
+        <c:url var="mediaFileImageChooser" value="/pressroom-ui/authoring/overlay/mediaFileImageChooser.rol">
         <c:param name="weblog" value="${actionWeblog.handle}"/>
         </c:url>
         var chooserUrl = '${mediaFileImageChooser}';

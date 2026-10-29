@@ -78,7 +78,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * in-request.
  */
 @Controller
-@RequestMapping("/roller-ui")
+@RequestMapping("/pressroom-ui")
 public class PasswordResetController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(PasswordResetController.class);
@@ -242,7 +242,7 @@ public class PasswordResetController extends BaseController {
         PressroomLoginSessionManager.getInstance().invalidate(user.getUserName());
 
         addFlashMessage(redirectAttributes, "resetPassword.done", request);
-        return "redirect:/roller-ui/login.rol";
+        return "redirect:/pressroom-ui/login.rol";
     }
 
     // -------------------------------------------------------------- helpers

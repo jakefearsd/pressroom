@@ -177,17 +177,17 @@
     <%-- buttons for create new weblog, cancel and upload more --%>
 
     <div>
-        <c:url var="mediaFileAddURL" value="/roller-ui/authoring/mediaFileAdd.rol">
+        <c:url var="mediaFileAddURL" value="/pressroom-ui/authoring/mediaFileAdd.rol">
             <c:param name="weblog" value="${actionWeblog.handle}"/>
             <c:param name="directoryName" value="${directoryName}"/>
         </c:url>
 
-        <c:url var="mediaFileViewURL" value="/roller-ui/authoring/mediaFileView.rol">
+        <c:url var="mediaFileViewURL" value="/pressroom-ui/authoring/mediaFileView.rol">
             <c:param name="weblog" value="${actionWeblog.handle}"/>
             <c:param name="directoryId" value="${bean.directoryId}"/>
         </c:url>
 
-        <button type="submit" id="createPostButton" class="btn btn-primary" formaction="${pageContext.request.contextPath}/roller-ui/authoring/entryAddWithMediaFile.rol"><spring:message code="mediaFileSuccess.createPost"/></button>
+        <button type="submit" id="createPostButton" class="btn btn-primary" formaction="${pageContext.request.contextPath}/pressroom-ui/authoring/entryAddWithMediaFile.rol"><spring:message code="mediaFileSuccess.createPost"/></button>
 
         <%-- "Done", not "Cancel": the upload has happened, and nothing here
              undoes it.

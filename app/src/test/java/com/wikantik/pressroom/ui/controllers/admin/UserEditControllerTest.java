@@ -312,7 +312,7 @@ class UserEditControllerTest {
 
     @Test
     void cancellingCreateReturnsToTheUserList() {
-        assertEquals("redirect:/roller-ui/admin/userAdmin.rol", controller.createUserCancel());
+        assertEquals("redirect:/pressroom-ui/admin/userAdmin.rol", controller.createUserCancel());
     }
 
     // --- modify: loading the form ---
@@ -700,7 +700,7 @@ class UserEditControllerTest {
 
     @Test
     void cancellingModifyReturnsToTheUserList() {
-        assertEquals("redirect:/roller-ui/admin/userAdmin.rol", controller.modifyUserCancel());
+        assertEquals("redirect:/pressroom-ui/admin/userAdmin.rol", controller.modifyUserCancel());
     }
 
     // --- create a person (spec 2026-10-13, section 4) ---
@@ -1075,7 +1075,7 @@ class UserEditControllerTest {
         CreateUserBean bean = new CreateUserBean();
         bean.setId("u1");
 
-        assertEquals("redirect:/roller-ui/admin/agent.rol?userName=bot1",
+        assertEquals("redirect:/pressroom-ui/admin/agent.rol?userName=bot1",
                 controller.modifyUserExecute(ControllerTestFixture.requestFor(null), model, bean));
     }
 

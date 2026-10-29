@@ -174,7 +174,7 @@ class SubscribeFormIT extends PressroomIT {
     private String createWeblog() {
         String handle = "subscribeit" + nonce();
 
-        openPath("/roller-ui/createWeblog.rol");
+        openPath("/pressroom-ui/createWeblog.rol");
         $("#name").should(visible).setValue("Subscribe " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");
@@ -187,7 +187,7 @@ class SubscribeFormIT extends PressroomIT {
 
     /** Sets (or, given a blank uuid, clears) the weblog's newsletter list uuid through Settings. */
     private void setNewsletterUuid(String handle, String uuid) {
-        openPath("/roller-ui/authoring/weblogConfig.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + handle);
         $("input[name='bean.newsletterListUuid']").should(visible).setValue(uuid);
         $("button[type='submit'].btn-primary").should(visible).click();
         $("#messages").should(exist);

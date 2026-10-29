@@ -45,8 +45,8 @@ import static org.mockito.Mockito.when;
  */
 class WeblogPreviewRequestTest {
 
-    private static final String PREVIEW_SERVLET = "/roller-ui/authoring/preview";
-    private static final String PAGE_SERVLET = "/roller-ui/rendering/page";
+    private static final String PREVIEW_SERVLET = "/pressroom-ui/authoring/preview";
+    private static final String PAGE_SERVLET = "/pressroom-ui/rendering/page";
 
     private static WeblogPreviewRequest parse(String pathInfo, String... params)
             throws InvalidRequestException {

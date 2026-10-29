@@ -146,8 +146,8 @@ class ProfileTokensControllerTest {
         assertEquals(".ProfileTokens", view);
         assertEquals(List.of(mine), model.getAttribute("tokens"));
         assertEquals(List.of(travel), model.getAttribute("pinChoices"));
-        assertEquals("/roller-ui/profileTokens!create.rol", model.getAttribute("tokenFormAction"));
-        assertEquals("/roller-ui/profileTokens!revoke.rol", model.getAttribute("tokenRevokeAction"));
+        assertEquals("/pressroom-ui/profileTokens!create.rol", model.getAttribute("tokenFormAction"));
+        assertEquals("/pressroom-ui/profileTokens!revoke.rol", model.getAttribute("tokenRevokeAction"));
         assertNull(model.getAttribute("tokenFormOwner"));
         TokenFormValues values = (TokenFormValues) model.getAttribute("tokenFormValues");
         assertEquals("POST", values.getRole());
@@ -162,7 +162,7 @@ class ProfileTokensControllerTest {
 
         String view = controller.create(request(), model, redirect, "  ci ", "POST", "travel", null);
 
-        assertEquals("redirect:/roller-ui/profileTokens!reveal.rol", view);
+        assertEquals("redirect:/pressroom-ui/profileTokens!reveal.rol", view);
         ArgumentCaptor<Timestamp> expires = ArgumentCaptor.forClass(Timestamp.class);
         verify(mocks.apiTokenManager()).issueToken(eq(me), eq("ci"), eq("travel"), eq(ApiToken.Role.POST),
                 expires.capture(), eq(me));
@@ -197,7 +197,7 @@ class ProfileTokensControllerTest {
         siteAdmin(true);
         mintsAs("rlr_ops", "ops");
 
-        assertEquals("redirect:/roller-ui/profileTokens!reveal.rol",
+        assertEquals("redirect:/pressroom-ui/profileTokens!reveal.rol",
                 controller.create(request(), model, redirect, "ops", "ADMIN", "food", "365"));
     }
 
@@ -292,7 +292,7 @@ class ProfileTokensControllerTest {
         when(mocks.apiTokenManager().getToken("t1")).thenReturn(mine);
 
         try (AdminLogCapture admin = AdminLogCapture.start()) {
-            assertEquals("redirect:/roller-ui/profileTokens.rol", controller.revoke(request(), redirect, "t1"));
+            assertEquals("redirect:/pressroom-ui/profileTokens.rol", controller.revoke(request(), redirect, "t1"));
             assertEquals(List.of("apiTokens.revoked"), ControllerTestFixture.flashMessages(redirect));
 
             mine.setRevokedAt(new Timestamp(System.currentTimeMillis()));

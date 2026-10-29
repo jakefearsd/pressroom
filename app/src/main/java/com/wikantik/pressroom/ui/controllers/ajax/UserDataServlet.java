@@ -50,8 +50,8 @@ import com.wikantik.pressroom.pojos.GlobalPermission;
  * usernameN, emailaddressN <br/>
  *
  * Registered via {@code ServletRegistrationConfig} at
- * {@code /roller-ui/authoring/userdata/*}; {@code SecurityConfig}'s
- * authorization rule for {@code /roller-ui/authoring/**} requires
+ * {@code /pressroom-ui/authoring/userdata/*}; {@code SecurityConfig}'s
+ * authorization rule for {@code /pressroom-ui/authoring/**} requires
  * {@code hasAnyAuthority("admin", "editor")}.
  */
 public class UserDataServlet extends HttpServlet {

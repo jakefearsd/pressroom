@@ -8,14 +8,14 @@ setup: `docker_deployment.md`, "Reader sign-in (Google)". Code:
 
 ## The flow
 
-1. A link to `/roller-ui/sso/start?return=<path>` (the login page carries it).
+1. A link to `/pressroom-ui/sso/start?return=<path>` (the login page carries it).
    `SsoStartFilter` (GET only, inside the UI security chain) checks that the
    Absolute URL is set and the registration resolves, stores
    `ReturnPaths.sanitize(return)` in the session attribute `roller.sso.return`,
-   and redirects to `/roller-ui/sso/authorize/oidc`. Otherwise it redirects to
-   `/roller-ui/login.rol?sso=unavailable`. **A start on any host but the
+   and redirects to `/pressroom-ui/sso/authorize/oidc`. Otherwise it redirects to
+   `/pressroom-ui/login.rol?sso=unavailable`. **A start on any host but the
    Absolute URL's** (scheme, host or port differ; a default port equals none)
-   first redirects to `<Absolute URL>/roller-ui/sso/start?return=<sanitised
+   first redirects to `<Absolute URL>/pressroom-ui/sso/start?return=<sanitised
    return>`, before touching the session, and starts again there: the
    provider returns the browser to the Absolute URL's host, and a session on
    `http://docker2.lan:8080` is not that host's session, so the callback would
@@ -24,7 +24,7 @@ setup: `docker_deployment.md`, "Reader sign-in (Google)". Code:
    scheme or host answers `unavailable`.
 2. Spring's `oauth2Login()` redirects to the provider with `state`, `nonce`
    and PKCE. `PressroomAuthorizationRequestResolver` sets the redirect URI.
-3. The provider returns to `/roller-ui/sso/callback`. Spring validates `state`,
+3. The provider returns to `/pressroom-ui/sso/callback`. Spring validates `state`,
    exchanges the code and checks the ID token.
 4. `ReaderOidcUserService` hands the claims to `ReaderAccounts.signIn`. The
    principal (`PressroomOidcUser`) has the **Roller username** as its name and the
@@ -123,7 +123,7 @@ pair).
 `role.action.reader=comment`: a reader holds the global `comment` action and
 nothing else, and `comment` implies no other action (`GlobalPermission.implies`
 fails closed; `docs/dev/comments.md`). It reaches the comment endpoints and the
-account page (`/roller-ui/account.rol`) only. The interceptor's default
+account page (`/pressroom-ui/account.rol`) only. The interceptor's default
 (`login`) refuses a reader on every other secured UI controller
 (`ReaderRefusalSweepTest` sweeps all of them reflectively). The
 API chain ignores session cookies; `TokensApi` refuses an account without the
@@ -149,7 +149,7 @@ hidden and refused server-side (`User.isSsoBound`). User Admin marks it
 granting `admin` is refused (`userAdmin.error.ssoAdmin`). A promoted reader
 keeps `reader`. **A promoted reader must sign out and in again**: the
 principal's authorities are the roles read at sign-in, `SecurityConfig`
-checks them on `menu.rol` and `/roller-ui/authoring/**`, and promotion
+checks them on `menu.rol` and `/pressroom-ui/authoring/**`, and promotion
 invalidates no session, so until then the menu answers 403. **It writes in
 the UI only**: it has no password, so Basic sign-in, and with it minting an
 API token (`POST /api/v1/tokens`), is refused, and the API chain ignores

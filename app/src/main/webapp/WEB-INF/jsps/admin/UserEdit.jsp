@@ -42,12 +42,12 @@
 
 <c:choose>
     <c:when test="${actionName == 'createUser'}">
-        <c:set var="saveAction" value="/roller-ui/admin/createUser!save.rol"/>
-        <c:set var="cancelAction" value="/roller-ui/admin/createUser!cancel.rol"/>
+        <c:set var="saveAction" value="/pressroom-ui/admin/createUser!save.rol"/>
+        <c:set var="cancelAction" value="/pressroom-ui/admin/createUser!cancel.rol"/>
     </c:when>
     <c:otherwise>
-        <c:set var="saveAction" value="/roller-ui/admin/modifyUser!save.rol"/>
-        <c:set var="cancelAction" value="/roller-ui/admin/modifyUser!cancel.rol"/>
+        <c:set var="saveAction" value="/pressroom-ui/admin/modifyUser!save.rol"/>
+        <c:set var="cancelAction" value="/pressroom-ui/admin/modifyUser!cancel.rol"/>
     </c:otherwise>
 </c:choose>
 
@@ -254,7 +254,7 @@
     <spring:message code="userAdmin.sendPasswordLink.confirm"
                     arguments="${fn:escapeXml(bean.userName)},${fn:escapeXml(bean.emailAddress)}"
                     var="sendLinkConfirm"/>
-    <form method="post" action="<c:url value='/roller-ui/admin/userEdit!sendPasswordLink.rol'/>"
+    <form method="post" action="<c:url value='/pressroom-ui/admin/userEdit!sendPasswordLink.rol'/>"
           class="mt-3">
         <sec:csrfInput/>
         <input type="hidden" name="bean.userName" value="${fn:escapeXml(bean.userName)}"/>

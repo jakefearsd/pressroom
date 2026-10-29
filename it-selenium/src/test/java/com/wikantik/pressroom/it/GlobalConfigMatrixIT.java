@@ -85,12 +85,12 @@ class GlobalConfigMatrixIT extends PressroomIT {
                 "uploads.enabled", false,
                 "site.allowUserWeblogCreation", false));
         try {
-            openPath("/roller-ui/authoring/mediaFileAdd.rol?weblog=" + WEBLOG_HANDLE);
+            openPath("/pressroom-ui/authoring/mediaFileAdd.rol?weblog=" + WEBLOG_HANDLE);
             $("#uploadedFiles").should(exist).uploadFile(testImage());
             $("#uploadButton").click();
             $("#errors").should(visible);
 
-            openPath("/roller-ui/createWeblog.rol");
+            openPath("/pressroom-ui/createWeblog.rol");
             $("#errors").should(visible);
             $$("#handle").shouldHave(CollectionCondition.size(0));
         } finally {
@@ -111,7 +111,7 @@ class GlobalConfigMatrixIT extends PressroomIT {
         loginAsAdmin();
         boolean before = setGlobalFlag("groupblogging.enabled", false);
         try {
-            openPath("/roller-ui/createWeblog.rol");
+            openPath("/pressroom-ui/createWeblog.rol");
             $("#errors").should(visible);
             $$("#handle").shouldHave(CollectionCondition.size(0));
         } finally {
@@ -165,7 +165,7 @@ class GlobalConfigMatrixIT extends PressroomIT {
     private String createWeblog() {
         String handle = "gcfg" + nonce();
 
-        openPath("/roller-ui/createWeblog.rol");
+        openPath("/pressroom-ui/createWeblog.rol");
         $("#name").should(visible).setValue("Global Config " + handle);
         $("#handle").setValue(handle);
         $("#emailAddress").setValue(handle + "@example.invalid");
@@ -178,7 +178,7 @@ class GlobalConfigMatrixIT extends PressroomIT {
 
     /** Publishes one entry and returns its permalink. */
     private String publishEntry(String handle, String title) {
-        openPath("/roller-ui/authoring/entryAdd.rol?weblog=" + handle);
+        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
         $("#entry").should(exist);
         $("[name='bean.title']").setValue(title);
         Editor.setText("Body of " + title);

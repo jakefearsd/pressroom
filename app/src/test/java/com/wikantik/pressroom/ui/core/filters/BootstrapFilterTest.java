@@ -86,7 +86,7 @@ class BootstrapFilterTest {
 
     @Test
     void anUninstalledRollerSendsEveryOrdinaryRequestToTheInstaller() throws Exception {
-        runWith("auto", false, "/roller-ui/menu.rol");
+        runWith("auto", false, "/pressroom-ui/menu.rol");
         assertForwardedToInstaller();
     }
 
@@ -102,31 +102,31 @@ class BootstrapFilterTest {
 
     @Test
     void theInstallerSOwnPagesAreNotForwardedBackToItself() throws Exception {
-        runWith("auto", false, "/roller-ui/install/bootstrap.rol");
+        runWith("auto", false, "/pressroom-ui/install/bootstrap.rol");
         assertPassedThrough();
     }
 
     @Test
     void theCreateStepIsReachable() throws Exception {
-        runWith("auto", false, "/roller-ui/install/create.rol");
+        runWith("auto", false, "/pressroom-ui/install/create.rol");
         assertPassedThrough();
     }
 
     @Test
     void theUpgradeStepIsReachable() throws Exception {
-        runWith("auto", false, "/roller-ui/install/upgrade.rol");
+        runWith("auto", false, "/pressroom-ui/install/upgrade.rol");
         assertPassedThrough();
     }
 
     @Test
     void theInstallPageKeepsItsScript() throws Exception {
-        runWith("auto", false, "/roller-ui/scripts/install.js");
+        runWith("auto", false, "/pressroom-ui/scripts/install.js");
         assertPassedThrough();
     }
 
     @Test
     void theInstallPageKeepsItsStylesheet() throws Exception {
-        runWith("auto", false, "/roller-ui/styles/roller.css");
+        runWith("auto", false, "/pressroom-ui/styles/roller.css");
         assertPassedThrough();
     }
 
@@ -134,7 +134,7 @@ class BootstrapFilterTest {
 
     @Test
     void anInstalledRollerForwardsNothing() throws Exception {
-        runWith("auto", true, "/roller-ui/menu.rol");
+        runWith("auto", true, "/pressroom-ui/menu.rol");
         assertPassedThrough();
     }
 
@@ -143,13 +143,13 @@ class BootstrapFilterTest {
         // installation.type is only "auto" for the self-installing deployment;
         // anything else means an operator is driving the install themselves and
         // must not be bounced to the wizard
-        runWith("manual", false, "/roller-ui/menu.rol");
+        runWith("manual", false, "/pressroom-ui/menu.rol");
         assertPassedThrough();
     }
 
     @Test
     void anUnsetInstallationTypeIsNotAuto() throws Exception {
-        runWith(null, false, "/roller-ui/menu.rol");
+        runWith(null, false, "/pressroom-ui/menu.rol");
         assertPassedThrough();
     }
 }

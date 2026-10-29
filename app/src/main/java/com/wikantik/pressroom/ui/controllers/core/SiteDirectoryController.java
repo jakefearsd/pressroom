@@ -40,7 +40,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
  * the admin-only setup page, so every reader landed on the sign-in form.
  */
 @Controller
-@RequestMapping("/roller-ui")
+@RequestMapping("/pressroom-ui")
 public class SiteDirectoryController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(SiteDirectoryController.class);
