@@ -43,14 +43,14 @@ import org.junit.jupiter.api.Test;
  * file name cannot survive the rename unseen.
  *
  * <p>Proven to bite: {@code // roller} appended to a main Java file produced
- * "old name added in MACHINE/main-java: 781 > baseline 780"; restored with
+ * "old name added in MACHINE/main-java: 603 > baseline 602"; restored with
  * git checkout.
  *
  * <p>Phase 1 (the Java package move) must bring these keys to zero:
  * {@code PACKAGE}, {@code CLASS}, {@code PATH-PACKAGE} and {@code PATH-CLASS}
  * in the areas {@code main-java}, {@code main-resources}, {@code test},
  * {@code it} and {@code build}. The {@code docs} area (docs/examples
- * included) and the {@code OTHER} and {@code TOKEN_PREFIX} kinds are later
+ * included) and the {@code MACHINE}, {@code PROSE} and {@code TOKEN_PREFIX} kinds are later
  * phases; the {@code deploy} and {@code other} areas are not on Phase 1's
  * list either.
  *
@@ -63,7 +63,7 @@ class OldNameInventoryTest {
     private static final Pattern PACKAGE = Pattern.compile("org\\.apache\\.roller|org/apache/roller"); // rebrand:keep
     private static final Pattern CLASS = Pattern.compile("\\bRoller[A-Z]\\w*"); // rebrand:keep
     private static final Pattern TOKEN_PREFIX = Pattern.compile("rlr_");
-    private static final Pattern MACHINE = Pattern.compile("ROLLER|(?<![A-Za-z])roller|(?<=[a-z])Roller"); // rebrand:keep
+    private static final Pattern MACHINE = Pattern.compile("ROLLER|(?<![A-Za-z])roller|(?<=[A-Za-z_])Roller|Roller(?=[_\\-/0-9$]|\\.\\w)"); // rebrand:keep
     private static final Pattern PROSE = Pattern.compile("Roller"); // rebrand:keep
     private static final String KEEP_MARKER = "rebrand:keep";
 
@@ -99,12 +99,12 @@ class OldNameInventoryTest {
             Map.entry("CLASS/docs", 12),
             Map.entry("MACHINE/build", 22),
             Map.entry("MACHINE/deploy", 268),
-            Map.entry("MACHINE/docs", 551),
+            Map.entry("MACHINE/docs", 556),
             Map.entry("MACHINE/it", 394),
-            Map.entry("MACHINE/main-java", 599),
-            Map.entry("MACHINE/main-resources", 840),
+            Map.entry("MACHINE/main-java", 602),
+            Map.entry("MACHINE/main-resources", 848),
             Map.entry("MACHINE/other", 48),
-            Map.entry("MACHINE/test", 1797),
+            Map.entry("MACHINE/test", 1799),
             Map.entry("PACKAGE/docs", 115),
             Map.entry("PATH-CLASS/docs", 1),
             Map.entry("PATH-MACHINE/deploy", 2),
@@ -115,11 +115,11 @@ class OldNameInventoryTest {
             Map.entry("PATH-PACKAGE/docs", 8),
             Map.entry("PROSE/build", 14),
             Map.entry("PROSE/deploy", 30),
-            Map.entry("PROSE/docs", 123),
+            Map.entry("PROSE/docs", 118),
             Map.entry("PROSE/it", 53),
-            Map.entry("PROSE/main-java", 181),
-            Map.entry("PROSE/main-resources", 236),
-            Map.entry("PROSE/test", 106),
+            Map.entry("PROSE/main-java", 178),
+            Map.entry("PROSE/main-resources", 228),
+            Map.entry("PROSE/test", 104),
             Map.entry("TOKEN_PREFIX/docs", 3),
             Map.entry("TOKEN_PREFIX/it", 2),
             Map.entry("TOKEN_PREFIX/main-java", 2),
@@ -253,6 +253,17 @@ class OldNameInventoryTest {
     }
 
     @Test
+    void machineFormsAtTheStartOfAWordAreLayerTwo() {
+        assertEquals(Map.of("MACHINE", 6), count("Roller_x /Roller-ui Roller2 Roller.foo MY_Roller URLRoller")); // rebrand:keep
+        assertEquals(Map.of("PROSE", 1), count("Pressroom is derived from Roller.")); // rebrand:keep
+    }
+
+    @Test
+    void keepMarkerWorksWithCrlfAndOnTheLastLine() {
+        assertEquals(Map.of("MACHINE", 1), count("a roller\r\nb roller // rebrand:keep")); // rebrand:keep
+    }
+
+    @Test
     void keepMarkedLinesAreNotCounted() {
         assertEquals(Map.of("MACHINE", 1), count("a roller // rebrand:keep\nb roller")); // rebrand:keep
     }
@@ -363,7 +374,7 @@ class OldNameInventoryTest {
     @Test
     void phaseOneLeftoversPicksOnlyLayerOneKeys() {
         assertEquals(Map.of("PACKAGE/main-java", 3), phaseOneLeftovers(Map.of(
-                "PACKAGE/main-java", 3, "OTHER/main-java", 9, "CLASS/docs", 2, "PATH-CLASS/test", 0)));
+                "PACKAGE/main-java", 3, "MACHINE/main-java", 9, "CLASS/docs", 2, "PATH-CLASS/test", 0)));
     }
 
     /**
