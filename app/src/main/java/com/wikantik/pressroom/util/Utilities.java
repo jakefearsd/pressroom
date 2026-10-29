@@ -33,8 +33,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.wikantik.pressroom.util.RegexUtil;
-import com.wikantik.pressroom.util.PressroomConstants;
 
 /**
  * General purpose utilities, not for use in templates.

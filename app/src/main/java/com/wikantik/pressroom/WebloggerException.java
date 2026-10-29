@@ -18,7 +18,6 @@
 
 package com.wikantik.pressroom;
 
-import com.wikantik.pressroom.PressroomException;
 
 
 /**
