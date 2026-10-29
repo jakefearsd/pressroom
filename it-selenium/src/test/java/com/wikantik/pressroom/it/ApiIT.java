@@ -145,6 +145,14 @@ class ApiIT extends PressroomIT {
     }
 
     @Test
+    void anOldPrefixBearerIsRefusedLikeAnUnknownToken() throws Exception {
+        HttpResponse<String> unknown = get("/api/v1/me", "prs_definitelynotreal");
+        HttpResponse<String> old = get("/api/v1/me", "rlr_definitelynotreal"); // rebrand:keep
+        assertEquals(401, old.statusCode());
+        assertEquals(unknown.body(), old.body());
+    }
+
+    @Test
     void anErrorRespondsAsProblemJson() throws Exception {
         HttpResponse<String> response = get("/api/v1/me", null);
         assertTrue(response.headers().firstValue("Content-Type").orElse("")

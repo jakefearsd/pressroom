@@ -111,6 +111,43 @@ class ApiTokenManagerTest {
         assertNull(mgr.authenticate(old));
     }
 
+    /**
+     * Through the real {@code ApiTokenAuthFilter} and the real manager: a
+     * stored old-prefix digest leaves the security context empty, exactly as
+     * an unknown {@code prs_} token does, so the chain answers both with the
+     * same 401 (the entry point is pinned by ApiAuthenticationEntryPointTest).
+     */
+    @Test
+    void oldPrefixBearerIsRefusedLikeAnUnknownToken() throws Exception {
+        String old = "rlr_" + "b".repeat(40); // rebrand:keep
+        ApiTokenManager.Issued issued = mgr.issueToken(user, "legacy", "testblog", ApiToken.Role.POST, null);
+        issued.token().setTokenSha256(com.wikantik.pressroom.util.TokenGenerator.sha256Hex(old));
+        TestUtils.endSession(true);
+
+        org.springframework.security.core.Authentication viaOld = bearer(old);
+        org.springframework.security.core.Authentication viaUnknown = bearer("prs_" + "c".repeat(40));
+        assertNull(viaUnknown);
+        assertNull(viaOld, "an old-prefix bearer must leave the context empty, like an unknown token");
+    }
+
+    private org.springframework.security.core.Authentication bearer(String raw) throws Exception {
+        WebloggerProvider provider = org.mockito.Mockito.mock(WebloggerProvider.class);
+        org.mockito.Mockito.when(provider.isBootstrapped()).thenReturn(false);
+        org.springframework.mock.web.MockHttpServletRequest request =
+                new org.springframework.mock.web.MockHttpServletRequest("GET", "/api/v1/me");
+        request.addHeader("Authorization", "Bearer " + raw);
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        new com.wikantik.pressroom.ui.restapi.auth.ApiTokenAuthFilter(() -> mgr, provider,
+                new com.wikantik.pressroom.ui.restapi.ApiProblemWriter(
+                        new tools.jackson.databind.ObjectMapper()))
+                .doFilter(request, new org.springframework.mock.web.MockHttpServletResponse(),
+                        org.mockito.Mockito.mock(jakarta.servlet.FilterChain.class));
+        org.springframework.security.core.Authentication a =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        return a;
+    }
+
     @Test
     void anUnknownTokenDoesNotAuthenticate() throws Exception {
         assertNull(mgr.authenticate("prs_notarealtoken"));
