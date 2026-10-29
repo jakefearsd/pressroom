@@ -41,7 +41,7 @@ import org.springframework.boot.web.servlet.support.SpringBootServletInitializer
  *
  * <p>Spring Security is configured entirely by
  * {@code org.apache.roller.weblogger.boot.SecurityConfig} (component-scanned,
- * per {@code scanBasePackages} below) -- there is no more
+ * per {@code scanBasePackageClasses} below) -- there is no more
  * {@code @ImportResource("classpath:security.xml")} here: that annotation was
  * temporary scaffolding for the Stage 1B Task 3 -> Task 4 window, loading the
  * still-XML security configuration Task 3 could not fully port (Spring

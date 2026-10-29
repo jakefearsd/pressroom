@@ -63,7 +63,10 @@ public final class MenuHelper {
     static {
         try {
 
-            // parse menus and cache so we can efficiently reuse them
+            // parse menus and cache so we can efficiently reuse them.
+            // Named relative to the root package (WebloggerException's): no class lives in
+            // ui.menu, and a name relative to MenuHelper would resolve under ui/core/util/menu
+            // and silently return null.
             menus.put("editor", unmarshall(
                 WebloggerException.class.getResourceAsStream("ui/menu/editor-menu.xml")));
 
