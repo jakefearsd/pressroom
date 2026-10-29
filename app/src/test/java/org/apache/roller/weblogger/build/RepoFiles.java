@@ -74,7 +74,20 @@ public final class RepoFiles {
     }
 
     /** The file parsed namespace-aware, with DTDs and external entities disabled. */
-    static Document xml(Path repoRelative) {
+    public static Document xml(Path repoRelative) {
+        try {
+            return parse(Files.readAllBytes(repoRoot().resolve(repoRelative)), repoRelative);
+        } catch (IOException e) {
+            throw new IllegalStateException("cannot read " + repoRelative, e);
+        }
+    }
+
+    /** XML text parsed as {@link #xml(Path)} parses a file (for self-tests that feed a synthetic file). */
+    static Document xmlText(String text) {
+        return parse(text.getBytes(StandardCharsets.UTF_8), "XML text");
+    }
+
+    private static Document parse(byte[] bytes, Object what) {
         try {
             DocumentBuilderFactory f = DocumentBuilderFactory.newInstance();
             f.setNamespaceAware(true);
@@ -85,10 +98,9 @@ public final class RepoFiles {
             f.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
             f.setXIncludeAware(false);
             f.setExpandEntityReferences(false);
-            byte[] bytes = Files.readAllBytes(repoRoot().resolve(repoRelative));
             return f.newDocumentBuilder().parse(new ByteArrayInputStream(bytes));
         } catch (ParserConfigurationException | SAXException | IOException e) {
-            throw new IllegalStateException("cannot parse " + repoRelative, e);
+            throw new IllegalStateException("cannot parse " + what, e);
         }
     }
 }

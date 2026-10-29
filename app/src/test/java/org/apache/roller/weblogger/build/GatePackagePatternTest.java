@@ -3,9 +3,6 @@ package org.apache.roller.weblogger.build;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,7 +11,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
+import org.apache.roller.weblogger.ui.rendering.RendererFactory;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -31,25 +28,27 @@ import org.w3c.dom.NodeList;
  * no-op with the build still green.
  *
  * <p>The first two tests are characterisation tests: written against the
- * current tree and expected to pass at once. The third is a self-test of the
- * checker.
+ * current tree and expected to pass at once. The rest are self-tests of the
+ * checkers; the SpotBugs and PMD ones feed synthetic files, because neither
+ * real file has a location entry today.
  *
  * <p>Proven to bite: changing the {@code ui.restapi.mcp} include in the
  * parent pom to {@code ui.restapi.mcpx} fails
  * {@link #everyJacocoPackageIncludeNamesAPackageWithClasses()} naming that
- * include; restored afterwards.
+ * include; restored afterwards. The SpotBugs and PMD self-tests failed first
+ * against stubs returning no problems, and again with the location match in
+ * {@code check} and the PMD pattern match forced to pass.
  */
 class GatePackagePatternTest {
 
     private static final Path MAIN_JAVA = Path.of("app/src/main/java");
 
+    /** Tracked main sources relative to {@link #MAIN_JAVA}: an untracked local file cannot make a stale include look valid. */
     private static List<Path> mainSources() {
-        Path root = RepoFiles.repoRoot().resolve(MAIN_JAVA);
-        try (Stream<Path> s = Files.walk(root)) {
-            return s.filter(p -> p.toString().endsWith(".java")).map(root::relativize).toList();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        return RepoFiles.trackedFiles().stream()
+                .filter(p -> p.startsWith(MAIN_JAVA) && p.toString().endsWith(".java"))
+                .map(MAIN_JAVA::relativize)
+                .toList();
     }
 
     /** Dotted packages that hold at least one .java file directly. */
@@ -128,28 +127,42 @@ class GatePackagePatternTest {
         List<String> packages = List.copyOf(packagesWithClasses());
         List<String> problems = new ArrayList<>();
 
-        Element sb = RepoFiles.xml(Path.of("config/spotbugs/exclude.xml")).getDocumentElement();
-        for (Element e : elements(sb, "Class")) {
+        problems.addAll(spotBugsProblems(
+                RepoFiles.xml(Path.of("config/spotbugs/exclude.xml")).getDocumentElement(),
+                classes, packages, fileNames));
+        // None exist today; a future exclude-pattern or include-pattern is checked, not ignored.
+        problems.addAll(pmdProblems(RepoFiles.read(Path.of("config/pmd/ruleset.xml")),
+                RepoFiles.trackedFiles().stream().map(Path::toString).toList()));
+        assertTrue(problems.isEmpty(), () -> String.join("\n", problems));
+    }
+
+    /** Each SpotBugs Class, Package or Source location in the filter that matches nothing. */
+    static List<String> spotBugsProblems(Element filter, List<String> classes, List<String> packages,
+            List<String> fileNames) {
+        List<String> problems = new ArrayList<>();
+        for (Element e : elements(filter, "Class")) {
             check(problems, "Class", e.getAttribute("name"), classes, true);
         }
-        for (Element e : elements(sb, "Package")) {
+        for (Element e : elements(filter, "Package")) {
             check(problems, "Package", e.getAttribute("name"), packages, false);
         }
-        for (Element e : elements(sb, "Source")) {
+        for (Element e : elements(filter, "Source")) {
             check(problems, "Source", e.getAttribute("name"), fileNames, false);
         }
+        return problems;
+    }
 
-        // None exist today; a future exclude-pattern or include-pattern is checked, not ignored.
-        String pmd = RepoFiles.read(Path.of("config/pmd/ruleset.xml"));
-        Matcher m = Pattern.compile("<(?:exclude|include)-pattern>([^<]*)<").matcher(pmd);
-        List<String> tracked = RepoFiles.trackedFiles().stream().map(Path::toString).toList();
+    /** Each PMD exclude-pattern or include-pattern in the ruleset that matches no tracked file. */
+    static List<String> pmdProblems(String ruleset, List<String> trackedFiles) {
+        List<String> problems = new ArrayList<>();
+        Matcher m = Pattern.compile("<(?:exclude|include)-pattern>([^<]*)<").matcher(ruleset);
         while (m.find()) {
             Pattern re = Pattern.compile(m.group(1).trim());
-            if (tracked.stream().noneMatch(f -> re.matcher(f).find())) {
+            if (trackedFiles.stream().noneMatch(f -> re.matcher(f).find())) {
                 problems.add("PMD pattern '" + m.group(1).trim() + "' matches no tracked file");
             }
         }
-        assertTrue(problems.isEmpty(), () -> String.join("\n", problems));
+        return problems;
     }
 
     private static void check(List<String> problems, String kind, String name,
@@ -169,10 +182,46 @@ class GatePackagePatternTest {
 
     @Test
     void aPackageWithOnlySubpackagesIsReported() {
-        String root = ProjectNames.currentRoot();
-        assertTrue(packageProblem(root + ".weblogger.ui").isPresent(),
-                "a package with only subpackages must be reported");
-        assertTrue(packageProblem(root + ".weblogger.ui.rendering").isEmpty());
-        assertTrue(packageProblem(root + ".weblogger.ui.nosuchpackage").isPresent());
+        String rendering = RendererFactory.class.getPackageName();
+        String ui = rendering.substring(0, rendering.lastIndexOf('.'));
+        assertTrue(packageProblem(ui).isPresent(), "a package with only subpackages must be reported");
+        assertTrue(packageProblem(rendering).isEmpty());
+        assertTrue(packageProblem(ui + ".nosuchpackage").isPresent());
+    }
+
+    /** Self-test: SpotBugs locations are checked once the filter has any. */
+    @Test
+    void spotBugsLocationsThatMatchNothingAreReported() {
+        Element filter = RepoFiles.xmlText("""
+                <FindBugsFilter>
+                  <Match><Class name="a.b.Real"/></Match>
+                  <Match><Class name="a.b.Real$Inner"/></Match>
+                  <Match><Class name="~a\\.b\\.Re.*"/></Match>
+                  <Match><Class name="a.b.Gone"/></Match>
+                  <Match><Package name="a.b"/></Match>
+                  <Match><Package name="a.gone"/></Match>
+                  <Match><Source name="Real.java"/></Match>
+                  <Match><Source name="Gone.java"/></Match>
+                </FindBugsFilter>
+                """).getDocumentElement();
+        List<String> problems = spotBugsProblems(filter, List.of("a.b.Real"), List.of("a.b"),
+                List.of("Real.java"));
+        assertEquals(List.of(
+                "SpotBugs Class 'a.b.Gone' matches nothing in main sources",
+                "SpotBugs Package 'a.gone' matches nothing in main sources",
+                "SpotBugs Source 'Gone.java' matches nothing in main sources"), problems);
+    }
+
+    /** Self-test: PMD file patterns are checked once the ruleset has any. */
+    @Test
+    void pmdPatternsThatMatchNoTrackedFileAreReported() {
+        String ruleset = """
+                <ruleset>
+                  <exclude-pattern>.*/Real\\.java</exclude-pattern>
+                  <include-pattern> .*/Gone\\.java </include-pattern>
+                </ruleset>
+                """;
+        assertEquals(List.of("PMD pattern '.*/Gone\\.java' matches no tracked file"),
+                pmdProblems(ruleset, List.of("app/src/main/java/a/b/Real.java")));
     }
 }
