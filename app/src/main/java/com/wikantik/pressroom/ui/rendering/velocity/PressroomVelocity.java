@@ -30,6 +30,7 @@ import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.config.WebloggerConfig;
 import org.apache.velocity.Template;
 import org.apache.velocity.app.VelocityEngine;
+import org.apache.velocity.runtime.RuntimeConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -140,6 +141,15 @@ public final class PressroomVelocity {
             velocityProps.setProperty("resource.loader.theme.modification_check_interval", "2");
             velocityProps.setProperty("velocimacro.library.autoreload", "true");
         }
+
+        // Observation only (the recorder returns null everywhere): lets the rendering
+        // tests see references Velocity would otherwise print as literal text or
+        // swallow silently (quiet $!x, tested #if($x), null-valued).
+        velocityProps.setProperty(RuntimeConstants.EVENTHANDLER_INVALIDREFERENCES,
+                InvalidReferenceRecorder.class.getName());
+        velocityProps.setProperty(RuntimeConstants.EVENTHANDLER_INVALIDREFERENCES_QUIET, "true");
+        velocityProps.setProperty(RuntimeConstants.EVENTHANDLER_INVALIDREFERENCES_NULL, "true");
+        velocityProps.setProperty(RuntimeConstants.EVENTHANDLER_INVALIDREFERENCES_TESTED, "true");
 
         log.debug("Velocity engine props = {}", velocityProps);
 

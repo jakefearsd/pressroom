@@ -27,9 +27,17 @@ import org.junit.jupiter.api.Test;
  * <p>What this does not catch: an unresolved reference inside
  * {@code #if}/{@code #elseif} or in a macro argument renders nothing, so no
  * output-based test sees it. For Phase 1 (the Java package move) spec item 6
- * is met by this test and {@link ThemeReferenceLeakTest}; Phase 2 adds a
- * strict invalid-reference render pass before it renames any Velocity
- * context name.
+ * is met by this test and {@link ThemeReferenceLeakTest}.
+ *
+ * <p>Phase 2 adds a strict invalid-reference render pass; it now exists. The
+ * engine records every reference it cannot resolve
+ * ({@code InvalidReferenceRecorder}) and each rendering test named in
+ * {@code RENDERED_BY} asserts the recorded set equals an expected set
+ * ({@code StrictReferences}). Proven to bite: with
+ * {@code $pressroomNoSuch #if($pressroomNoSuchTested)x#end} appended to
+ * {@code themes/journal/weblog.vm}, {@code ThemeReferenceLeakTest} failed with
+ * "unexpected (recorded, not allowed): journal:Weblog|standard: $pressroomNoSuch,
+ * journal:Weblog|standard: $pressroomNoSuchTested"; the line was then reverted.
  *
  * <p>Proven to bite: with an empty {@code themes/scratch/} directory holding
  * one file, {@code everyBundledThemeIsRendered} failed (expected [frontpage,
@@ -48,13 +56,9 @@ class RenderedTemplateCoverageTest {
 
     /**
      * Shipped templates no test renders. Empty is the goal; an entry is a
-     * known gap, not coverage. noop_decorator.vm has no reference anywhere
-     * in main code, themes or tests (the decorator mechanism was never wired
-     * up, see VelocityRenderer lines 141-143). Deleting it is a follow-up
-     * outside Phase 0.
+     * known gap, not coverage.
      */
-    private static final Set<String> KNOWN_UNRENDERED =
-            Set.of("templates/weblog/noop_decorator.vm");
+    private static final Set<String> KNOWN_UNRENDERED = Set.of();
 
     static {
         // Macro libraries (velocimacro.library.path); loaded and called by every themed page render.

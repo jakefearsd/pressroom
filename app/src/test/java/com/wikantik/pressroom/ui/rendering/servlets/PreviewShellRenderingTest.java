@@ -17,6 +17,10 @@
  */
 package com.wikantik.pressroom.ui.rendering.servlets;
 
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import com.wikantik.pressroom.ui.rendering.velocity.InvalidReferenceRecorder;
+import com.wikantik.pressroom.ui.rendering.StrictReferences;
 import com.wikantik.pressroom.TestUtils;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -46,6 +50,37 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * the parameter still renders the ordinary preview page.
  */
 class PreviewShellRenderingTest {
+
+    /** Legitimately unresolved references: optional model values tested in #if, quiet $! references. */
+    private static final java.util.Set<String> EXPECTED_REFERENCES = java.util.Set.of(
+            "journal:Weblog|standard: $model.tags", // optional model value, null on this page and tested or quiet
+            "journal:Weblog|standard: $model.weblogCategory", // optional model value, null on this page and tested or quiet
+            "journal:Weblog|standard: $model.weblogDateLabel", // optional model value, null on this page and tested or quiet
+            "journal:Weblog|standard: $pager.nextLink", // pager link absent on the first or last page, tested before use
+            "journal:Weblog|standard: $pager.prevLink", // pager link absent on the first or last page, tested before use
+            "weblog.vm: $colophonFacts.copyrightText", // optional setting, null when unconfigured and tested before use
+            "weblog.vm: $colophonFacts.privacyUrl", // optional setting, null when unconfigured and tested before use
+            "weblog.vm: $model.page", // optional model value, null on this page and tested or quiet
+            "weblog.vm: $model.tags", // optional model value, null on this page and tested or quiet
+            "weblog.vm: $model.weblogCategory", // optional model value, null on this page and tested or quiet
+            "weblog.vm: $model.weblogDate", // optional model value, null on this page and tested or quiet
+            "weblog.vm: $seoBusinessJson", // optional SEO value, tested before use
+            "weblog.vm: $utils.businessJsonLd()", // optional SEO value, tested before use
+            "weblog.vm: $weblog", // optional setting, null when unconfigured and tested before use
+            "weblog.vm: $weblog.analyticsSiteId", // optional setting, null when unconfigured and tested before use
+            "weblog.vm: $weblog.newsletterListUuid", // optional setting, null when unconfigured and tested before use
+            "weblog.vm: seoBusinessJson" // a #set whose right-hand side is null, so the variable stays unset
+    );
+
+    @BeforeAll
+    static void clearInvalidReferenceRecorder() {
+        InvalidReferenceRecorder.clear();
+    }
+
+    @AfterAll
+    static void onlyTheExpectedReferencesWereUnresolved() {
+        StrictReferences.assertRecordedExactly("PreviewShellRenderingTest", EXPECTED_REFERENCES);
+    }
 
     private static final String PREVIEW_SERVLET = "/roller-ui/authoring/preview";
 

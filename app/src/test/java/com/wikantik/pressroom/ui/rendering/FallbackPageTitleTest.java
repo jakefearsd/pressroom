@@ -1,5 +1,8 @@
 package com.wikantik.pressroom.ui.rendering;
 
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import com.wikantik.pressroom.ui.rendering.velocity.InvalidReferenceRecorder;
 import com.wikantik.pressroom.TestUtils;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -22,6 +25,34 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code _page} override can answer instead.
  */
 class FallbackPageTitleTest {
+
+    /** Legitimately unresolved references: optional model values tested in #if, quiet $! references. */
+    private static final java.util.Set<String> EXPECTED_REFERENCES = java.util.Set.of(
+            "templates/weblog/page.vm|standard: $model.page.metaTitle", // optional model value, null on this page and tested or quiet
+            "templates/weblog/page.vm|standard: $model.weblog.stylesheet", // optional model value, null on this page and tested or quiet
+            "weblog.vm: $model.pageOgImage", // optional model value, null on this page and tested or quiet
+            "weblog.vm: $model.tags", // optional model value, null on this page and tested or quiet
+            "weblog.vm: $model.weblogCategory", // optional model value, null on this page and tested or quiet
+            "weblog.vm: $seoBusinessJson", // optional SEO value, tested before use
+            "weblog.vm: $seoImage", // optional SEO value, tested before use
+            "weblog.vm: $seoPage.metaTitle", // optional SEO value, tested before use
+            "weblog.vm: $seoPage.searchDescription", // optional SEO value, tested before use
+            "weblog.vm: $utils.businessJsonLd()", // optional SEO value, tested before use
+            "weblog.vm: $weblog", // optional setting, null when unconfigured and tested before use
+            "weblog.vm: $weblog.analyticsSiteId", // optional setting, null when unconfigured and tested before use
+            "weblog.vm: seoBusinessJson", // a #set whose right-hand side is null, so the variable stays unset
+            "weblog.vm: seoImage" // a #set whose right-hand side is null, so the variable stays unset
+    );
+
+    @BeforeAll
+    static void clearInvalidReferenceRecorder() {
+        InvalidReferenceRecorder.clear();
+    }
+
+    @AfterAll
+    static void onlyTheExpectedReferencesWereUnresolved() {
+        StrictReferences.assertRecordedExactly("FallbackPageTitleTest", EXPECTED_REFERENCES);
+    }
 
     private User user;
     private Weblog weblog;

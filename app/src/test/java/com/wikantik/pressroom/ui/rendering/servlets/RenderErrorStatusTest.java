@@ -1,5 +1,9 @@
 package com.wikantik.pressroom.ui.rendering.servlets;
 
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import com.wikantik.pressroom.ui.rendering.velocity.InvalidReferenceRecorder;
+import com.wikantik.pressroom.ui.rendering.StrictReferences;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -48,6 +52,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * "not in the cache" could pass because the cache is simply off.
  */
 class RenderErrorStatusTest {
+
+    /** Legitimately unresolved references: optional model values tested in #if, quiet $! references. */
+    private static final java.util.Set<String> EXPECTED_REFERENCES = java.util.Set.of(
+    );
+
+    @BeforeAll
+    static void clearInvalidReferenceRecorder() {
+        InvalidReferenceRecorder.clear();
+    }
+
+    @AfterAll
+    static void onlyTheExpectedReferencesWereUnresolved() {
+        StrictReferences.assertRecordedExactly("RenderErrorStatusTest", EXPECTED_REFERENCES);
+    }
 
     private static final String HANDLE = "rendererrorblog";
 

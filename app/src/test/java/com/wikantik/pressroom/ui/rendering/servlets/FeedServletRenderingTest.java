@@ -1,5 +1,9 @@
 package com.wikantik.pressroom.ui.rendering.servlets;
 
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import com.wikantik.pressroom.ui.rendering.velocity.InvalidReferenceRecorder;
+import com.wikantik.pressroom.ui.rendering.StrictReferences;
 import com.wikantik.pressroom.TestUtils;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -16,6 +20,28 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FeedServletRenderingTest {
+
+    /** Legitimately unresolved references: optional model values tested in #if, quiet $! references. */
+    private static final java.util.Set<String> EXPECTED_REFERENCES = java.util.Set.of(
+            "feeds.vm: $entry.findEntryAttribute()", // optional model value, null on this page and tested or quiet
+            "feeds.vm: $entry.summary", // optional model value, null on this page and tested or quiet
+            "feeds.vm: $mc_url", // enclosure value absent on an entry without media, tested before use
+            "feeds.vm: mc_length", // a #set whose right-hand side is null, so the variable stays unset
+            "feeds.vm: mc_type", // a #set whose right-hand side is null, so the variable stays unset
+            "feeds.vm: mc_url", // a #set whose right-hand side is null, so the variable stays unset
+            "weblog-entries-atom.vm|standard: $model.categoryName", // optional model value, null on this page and tested or quiet
+            "weblog-entries-atom.vm|standard: $model.tags" // optional model value, null on this page and tested or quiet
+    );
+
+    @BeforeAll
+    static void clearInvalidReferenceRecorder() {
+        InvalidReferenceRecorder.clear();
+    }
+
+    @AfterAll
+    static void onlyTheExpectedReferencesWereUnresolved() {
+        StrictReferences.assertRecordedExactly("FeedServletRenderingTest", EXPECTED_REFERENCES);
+    }
 
     private User user;
     private Weblog weblog;

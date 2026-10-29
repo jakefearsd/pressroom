@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.ui.rendering;
 
+import com.wikantik.pressroom.ui.rendering.velocity.InvalidReferenceRecorder;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -105,6 +106,115 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ThemeReferenceLeakTest {
+
+    /** Legitimately unresolved references: optional model values tested in #if, quiet $! references. */
+    private static final java.util.Set<String> EXPECTED_REFERENCES = java.util.Set.of(
+            "feeds.vm: $entry.findEntryAttribute()", // optional model value, null on this page and tested or quiet
+            "feeds.vm: $entry.summary", // optional model value, null on this page and tested or quiet
+            "feeds.vm: $mc_url", // enclosure value absent on an entry without media, tested before use
+            "feeds.vm: mc_length", // a #set whose right-hand side is null, so the variable stays unset
+            "feeds.vm: mc_type", // a #set whose right-hand side is null, so the variable stays unset
+            "feeds.vm: mc_url", // a #set whose right-hand side is null, so the variable stays unset
+            "frontpage:Weblog|standard: $pager.nextLink", // pager link absent on the first or last page, tested before use
+            "frontpage:Weblog|standard: $pager.prevLink", // pager link absent on the first or last page, tested before use
+            "frontpage:_blogdirectory|standard: $chosenLetter", // pager link absent on the first or last page, tested before use
+            "frontpage:_blogdirectory|standard: $model.getRequestParameter()", // optional model value, null on this page and tested or quiet
+            "frontpage:_blogdirectory|standard: $weblogsPager.nextLink", // pager link absent on the first or last page, tested before use
+            "frontpage:_blogdirectory|standard: $weblogsPager.prevLink", // pager link absent on the first or last page, tested before use
+            "frontpage:_header|standard: $fdMetaTitle", // optional header value, tested before use
+            "frontpage:_header|standard: $fdPageTitle", // optional header value, tested before use
+            "frontpage:_header|standard: $fdReading", // optional header value, tested before use
+            "journal:Weblog|standard: $model.tags", // optional model value, null on this page and tested or quiet
+            "journal:Weblog|standard: $model.weblogCategory", // optional model value, null on this page and tested or quiet
+            "journal:Weblog|standard: $model.weblogDateLabel", // optional model value, null on this page and tested or quiet
+            "journal:Weblog|standard: $pager.nextLink", // pager link absent on the first or last page, tested before use
+            "journal:Weblog|standard: $pager.prevLink", // pager link absent on the first or last page, tested before use
+            "journal:_page|standard: $model.page.metaTitle", // optional model value, null on this page and tested or quiet
+            "journal:permalink|standard: $model.weblogEntry.pojo.metaTitle", // optional model value, null on this page and tested or quiet
+            "journal:permalink|standard: $newer", // pager link absent on the first or last page, tested before use
+            "journal:permalink|standard: $older", // pager link absent on the first or last page, tested before use
+            "journal:permalink|standard: $pager.nextEntry", // pager link absent on the first or last page, tested before use
+            "journal:permalink|standard: $pager.prevEntry", // pager link absent on the first or last page, tested before use
+            "journal:permalink|standard: newer", // a #set whose right-hand side is null, so the variable stays unset
+            "journal:permalink|standard: older", // a #set whose right-hand side is null, so the variable stays unset
+            "portfolio:Weblog|standard: $model.tags", // optional model value, null on this page and tested or quiet
+            "portfolio:Weblog|standard: $model.weblogCategory", // optional model value, null on this page and tested or quiet
+            "portfolio:Weblog|standard: $model.weblogDateLabel", // optional model value, null on this page and tested or quiet
+            "portfolio:Weblog|standard: $pager.nextLink", // pager link absent on the first or last page, tested before use
+            "portfolio:Weblog|standard: $pager.prevLink", // pager link absent on the first or last page, tested before use
+            "portfolio:_day|standard: $entry.featuredImage.altText", // optional model value, null on this page and tested or quiet
+            "portfolio:_page|standard: $model.page.metaTitle", // optional model value, null on this page and tested or quiet
+            "portfolio:permalink|standard: $model.weblogEntry.pojo.metaTitle", // optional model value, null on this page and tested or quiet
+            "portfolio:permalink|standard: $newer", // pager link absent on the first or last page, tested before use
+            "portfolio:permalink|standard: $older", // pager link absent on the first or last page, tested before use
+            "portfolio:permalink|standard: $pager.nextEntry", // pager link absent on the first or last page, tested before use
+            "portfolio:permalink|standard: $pager.prevEntry", // pager link absent on the first or last page, tested before use
+            "portfolio:permalink|standard: newer", // a #set whose right-hand side is null, so the variable stays unset
+            "portfolio:permalink|standard: older", // a #set whose right-hand side is null, so the variable stays unset
+            "site-entries-atom.vm|standard: $model.categoryName", // optional model value, null on this page and tested or quiet
+            "site-entries-atom.vm|standard: $model.tags", // optional model value, null on this page and tested or quiet
+            "travel:Weblog|standard: $model.tags", // optional model value, null on this page and tested or quiet
+            "travel:Weblog|standard: $model.weblogCategory", // optional model value, null on this page and tested or quiet
+            "travel:Weblog|standard: $model.weblogDateLabel", // optional model value, null on this page and tested or quiet
+            "travel:Weblog|standard: $pager.nextLink", // pager link absent on the first or last page, tested before use
+            "travel:Weblog|standard: $pager.prevLink", // pager link absent on the first or last page, tested before use
+            "travel:_day|standard: $entry.featuredImage.altText", // optional model value, null on this page and tested or quiet
+            "travel:_page|standard: $model.page.metaTitle", // optional model value, null on this page and tested or quiet
+            "travel:permalink|standard: $model.weblogEntry.pojo.metaTitle", // optional model value, null on this page and tested or quiet
+            "travel:permalink|standard: $newer", // pager link absent on the first or last page, tested before use
+            "travel:permalink|standard: $older", // pager link absent on the first or last page, tested before use
+            "travel:permalink|standard: $pager.nextEntry", // pager link absent on the first or last page, tested before use
+            "travel:permalink|standard: $pager.prevEntry", // pager link absent on the first or last page, tested before use
+            "travel:permalink|standard: newer", // a #set whose right-hand side is null, so the variable stays unset
+            "travel:permalink|standard: older", // a #set whose right-hand side is null, so the variable stays unset
+            "weblog-entries-atom.vm|standard: $model.categoryName", // optional model value, null on this page and tested or quiet
+            "weblog-entries-atom.vm|standard: $model.tags", // optional model value, null on this page and tested or quiet
+            "weblog.vm: $colophonFacts.copyrightText", // optional setting, null when unconfigured and tested before use
+            "weblog.vm: $colophonFacts.privacyUrl", // optional setting, null when unconfigured and tested before use
+            "weblog.vm: $entry.pojo.metaTitle", // optional model value, null on this page and tested or quiet
+            "weblog.vm: $image.objectPosition", // optional model value, null on this page and tested or quiet
+            "weblog.vm: $model.canonicalUrl", // optional model value, null on this page and tested or quiet
+            "weblog.vm: $model.page", // optional model value, null on this page and tested or quiet
+            "weblog.vm: $model.pageOgImage", // optional model value, null on this page and tested or quiet
+            "weblog.vm: $model.tags", // optional model value, null on this page and tested or quiet
+            "weblog.vm: $model.term", // optional model value, null on this page and tested or quiet
+            "weblog.vm: $model.weblogCategory", // optional model value, null on this page and tested or quiet
+            "weblog.vm: $model.weblogDate", // optional model value, null on this page and tested or quiet
+            "weblog.vm: $page.metaTitle", // optional model value, null on this page and tested or quiet
+            "weblog.vm: $responsiveObjectPosition", // optional SEO value, tested before use
+            "weblog.vm: $seoBusinessJson", // optional SEO value, tested before use
+            "weblog.vm: $seoCanonical", // optional SEO value, tested before use
+            "weblog.vm: $seoEntry.ogImage", // optional SEO value, tested before use
+            "weblog.vm: $seoEntry.pojo.metaTitle", // optional SEO value, tested before use
+            "weblog.vm: $seoImage", // optional SEO value, tested before use
+            "weblog.vm: $seoPage.metaTitle", // optional SEO value, tested before use
+            "weblog.vm: $seoPage.searchDescription", // optional SEO value, tested before use
+            "weblog.vm: $seoPublisher", // optional SEO value, tested before use
+            "weblog.vm: $seoTypedJson", // optional SEO value, tested before use
+            "weblog.vm: $site", // optional setting, null when unconfigured and tested before use
+            "weblog.vm: $utils.businessJsonLd()", // optional SEO value, tested before use
+            "weblog.vm: $utils.businessPublisherJson()", // optional SEO value, tested before use
+            "weblog.vm: $utils.travelJsonLd()", // optional SEO value, tested before use
+            "weblog.vm: $weblog", // optional setting, null when unconfigured and tested before use
+            "weblog.vm: $weblog.analyticsSiteId", // optional setting, null when unconfigured and tested before use
+            "weblog.vm: $weblog.newsletterListUuid", // optional setting, null when unconfigured and tested before use
+            "weblog.vm: responsiveObjectPosition", // a #set whose right-hand side is null, so the variable stays unset
+            "weblog.vm: seoBusinessJson", // a #set whose right-hand side is null, so the variable stays unset
+            "weblog.vm: seoCanonical", // a #set whose right-hand side is null, so the variable stays unset
+            "weblog.vm: seoImage", // a #set whose right-hand side is null, so the variable stays unset
+            "weblog.vm: seoPublisher", // a #set whose right-hand side is null, so the variable stays unset
+            "weblog.vm: seoTypedJson" // a #set whose right-hand side is null, so the variable stays unset
+    );
+
+    @BeforeAll
+    void clearInvalidReferenceRecorder() {
+        InvalidReferenceRecorder.clear();
+    }
+
+    @AfterAll
+    void onlyTheExpectedReferencesWereUnresolved() {
+        StrictReferences.assertRecordedExactly("ThemeReferenceLeakTest", EXPECTED_REFERENCES);
+    }
 
     private static final String PAGE_SERVLET = "/roller-ui/rendering/page";
     private static final String SEARCH_SERVLET = "/roller-ui/rendering/search";
