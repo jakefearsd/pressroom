@@ -71,7 +71,7 @@ public final class WebloggerConfig {
     static {
         config = new Properties();
 
-        runAtClassLoad(WebloggerConfig::loadLayers);
+        runAtClassLoad(() -> loadLayers(System.getenv(), System.getProperties()));
 
         // tell log4j2 to use the optionally specified config file instead of Roller's,
         // but only if it hasn't already been set with -D at JVM startup.
@@ -116,9 +116,13 @@ public final class WebloggerConfig {
      * what it finds goes into {@link #bootNotes}, which the static initializer
      * logs once the logger is up.
      */
-    private static void loadLayers() throws Exception {
+    @SuppressFBWarnings(
+            value = "PATH_TRAVERSAL_IN",
+            justification = "The path comes from the operator's -Dpressroom.custom.config JVM property, "
+                    + "read once at startup; no request input reaches it.")
+    static void loadLayers(Map<String, String> env, Properties systemProperties) throws Exception {
         // Refuse before any file is read: an old name left in the deploy would otherwise be ignored silently.
-        LegacyConfigNames.refuse(System.getenv(), System.getProperties());
+        LegacyConfigNames.refuse(env, systemProperties);
 
         // we'll need this to get at our properties files in the classpath
         Class<?> configClass = WebloggerConfig.class;
@@ -154,7 +158,7 @@ public final class WebloggerConfig {
         }
 
         // finally, check for an external config file
-        String envFile = System.getProperty(custom_jvm_param);
+        String envFile = systemProperties.getProperty(custom_jvm_param);
         if(envFile != null && envFile.length() > 0) {
             File customConfigFile = new File(envFile);
 
@@ -174,7 +178,7 @@ public final class WebloggerConfig {
         // Highest-precedence layer: PRESSROOM_* environment variables. Placed
         // before property expansion below so an env-supplied value can
         // still carry ${...} references.
-        applyEnvironmentOverrides(config, System.getenv());
+        applyEnvironmentOverrides(config, env);
 
         // Now expand system properties for properties in the config.expandedProperties list,
         // replacing them by their expanded values.

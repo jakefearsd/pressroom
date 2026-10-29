@@ -9,7 +9,7 @@ import java.util.Properties;
 /**
  * Startup guard: Pressroom reads {@code PRESSROOM_*} environment variables and
  * {@code pressroom.*} system properties, and refuses to start when an old
- * (Roller) name is still set, so a stale deploy fails loudly instead of
+ * (Roller) name is still set, so a stale deploy fails loudly instead of // rebrand:keep
  * silently running on defaults. Only names are ever reported, never values.
  */
 final class LegacyConfigNames {
@@ -21,8 +21,8 @@ final class LegacyConfigNames {
 
     /**
      * The old names present, sorted: environment variables with the exact
-     * prefix {@code ROLLER_} and system properties with the exact prefix
-     * {@code roller.}. Never values.
+     * prefix {@code ROLLER_} and system properties with the exact prefix // rebrand:keep
+     * {@code roller.}. Never values. // rebrand:keep
      */
     static List<String> found(Map<String, String> env, Properties systemProperties) {
         List<String> names = new ArrayList<>();

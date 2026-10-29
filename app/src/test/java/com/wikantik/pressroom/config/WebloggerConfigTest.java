@@ -64,4 +64,18 @@ class WebloggerConfigTest {
         assertDoesNotThrow(() -> WebloggerConfig.runAtClassLoad(() -> ran[0] = true));
         org.junit.jupiter.api.Assertions.assertTrue(ran[0]);
     }
+
+    /**
+     * Pins that loading the configuration layers calls the legacy-name guard
+     * first: deleting that call must fail this test. The guard runs before any
+     * file is read, so the test needs no properties files.
+     */
+    @Test
+    void loadingRefusesAnOldName() {
+        IllegalStateException e = assertThrows(IllegalStateException.class,
+                () -> WebloggerConfig.loadLayers(java.util.Map.of("ROLLER_X", "1"), // rebrand:keep
+                        new java.util.Properties()));
+
+        org.junit.jupiter.api.Assertions.assertTrue(e.getMessage().contains("ROLLER_X"), e.getMessage()); // rebrand:keep
+    }
 }

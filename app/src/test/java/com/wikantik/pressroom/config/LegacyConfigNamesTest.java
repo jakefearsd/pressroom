@@ -12,7 +12,7 @@ import java.util.Properties;
 import org.junit.jupiter.api.Test;
 
 /**
- * Pins the startup guard that refuses the old (Roller) configuration names.
+ * Pins the startup guard that refuses the old (Roller) configuration names. // rebrand:keep
  * The old names appear here only as inputs the guard must catch.
  */
 class LegacyConfigNamesTest {
