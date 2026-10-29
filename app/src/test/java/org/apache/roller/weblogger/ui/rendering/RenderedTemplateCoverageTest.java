@@ -24,6 +24,13 @@ import org.junit.jupiter.api.Test;
  * <p>This is a characterisation test: it passes on arrival against today's
  * tree and pins the current set of themes and templates.
  *
+ * <p>What this does not catch: an unresolved reference inside
+ * {@code #if}/{@code #elseif} or in a macro argument renders nothing, so no
+ * output-based test sees it. For Phase 1 (the Java package move) spec item 6
+ * is met by this test and {@link ThemeReferenceLeakTest}; Phase 2 adds a
+ * strict invalid-reference render pass before it renames any Velocity
+ * context name.
+ *
  * <p>Proven to bite: with an empty {@code themes/scratch/} directory holding
  * one file, {@code everyBundledThemeIsRendered} failed (expected [frontpage,
  * journal, portfolio, travel] but was [frontpage, journal, portfolio,
@@ -51,30 +58,28 @@ class RenderedTemplateCoverageTest {
 
     static {
         // Macro libraries (velocimacro.library.path); loaded and called by every themed page render.
-        Class<?> leak = named("org.apache.roller.weblogger.ui.rendering.ThemeReferenceLeakTest");
+        Class<?> leak = ThemeReferenceLeakTest.class;
         RENDERED_BY.put("weblog.vm", leak);
         // Library with no macro of its own to call (a comment); loaded on every engine init, so any theme render reaches it.
         RENDERED_BY.put("roller-custom.vm", leak);
-        RENDERED_BY.put("feeds.vm",
-                named("org.apache.roller.weblogger.ui.rendering.servlets.FeedServletRenderingTest"));
+        RENDERED_BY.put("feeds.vm", named("servlets.FeedServletRenderingTest"));
         // error-page.vm and error-parse.vm: the 500 bodies are asserted by marker comment.
-        Class<?> errors = named("org.apache.roller.weblogger.ui.rendering.servlets.RenderErrorStatusTest");
+        Class<?> errors = named("servlets.RenderErrorStatusTest");
         RENDERED_BY.put("templates/error-page.vm", errors);
         RENDERED_BY.put("templates/error-parse.vm", errors);
         // weblog-entries-atom.vm: GET .../entries/atom on an ordinary weblog.
-        RENDERED_BY.put("templates/feeds/weblog-entries-atom.vm",
-                named("org.apache.roller.weblogger.ui.rendering.servlets.FeedServletRenderingTest"));
+        RENDERED_BY.put("templates/feeds/weblog-entries-atom.vm", named("servlets.FeedServletRenderingTest"));
         // site-entries-atom.vm: the "site atom feed" scan on the aggregated front-page weblog.
         RENDERED_BY.put("templates/feeds/site-entries-atom.vm", leak);
         // page.vm: static-page fallback of a CUSTOM theme with no templates.
-        RENDERED_BY.put("templates/weblog/page.vm",
-                named("org.apache.roller.weblogger.ui.rendering.FallbackPageTitleTest"));
+        RENDERED_BY.put("templates/weblog/page.vm", FallbackPageTitleTest.class);
         // preview.vm: the PreviewServlet shell.
-        RENDERED_BY.put("templates/weblog/preview.vm",
-                named("org.apache.roller.weblogger.ui.rendering.servlets.PreviewShellRenderingTest"));
+        RENDERED_BY.put("templates/weblog/preview.vm", named("servlets.PreviewShellRenderingTest"));
     }
 
-    private static Class<?> named(String className) {
+    /** A package-private test class in a subpackage, named relative to this package so it survives the package move. */
+    private static Class<?> named(String relativeName) {
+        String className = RenderedTemplateCoverageTest.class.getPackageName() + "." + relativeName;
         try {
             return Class.forName(className);
         } catch (ClassNotFoundException e) {

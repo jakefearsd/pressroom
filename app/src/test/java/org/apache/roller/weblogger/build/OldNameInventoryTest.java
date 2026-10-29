@@ -43,6 +43,14 @@ import org.junit.jupiter.api.Test;
  * "old name added in OTHER/main-java: 781 > baseline 780"; restored with
  * git checkout.
  *
+ * <p>Phase 1 (the Java package move) must bring these keys to zero:
+ * {@code PACKAGE}, {@code CLASS}, {@code PATH-PACKAGE} and {@code PATH-CLASS}
+ * in the areas {@code main-java}, {@code main-resources}, {@code test},
+ * {@code it} and {@code build}. The {@code docs} area (docs/examples
+ * included) and the {@code OTHER} and {@code TOKEN_PREFIX} kinds are later
+ * phases; the {@code deploy} and {@code other} areas are not on Phase 1's
+ * list either.
+ *
  * <p>Excluded forever (they legitimately keep the old name): LICENSE.txt,
  * NOTICE.txt, migrations V001 to V040, docs/superpowers/**, this file and
  * {@link ProjectNames}. Binary files (a NUL in the first 8 KB) are skipped.
@@ -56,10 +64,8 @@ class OldNameInventoryTest {
 
     private static final Pattern MIGRATION = Pattern.compile("bin/db/migrations/V(\\d+)__.*");
 
-    private static final Path THIS_FILE =
-            Path.of("app/src/test/java/org/apache/roller/weblogger/build/OldNameInventoryTest.java");
-    private static final Path PROJECT_NAMES =
-            Path.of("app/src/test/java/org/apache/roller/weblogger/build/ProjectNames.java");
+    private static final Path THIS_FILE = sourceOf(OldNameInventoryTest.class);
+    private static final Path PROJECT_NAMES = sourceOf(ProjectNames.class);
 
     /** Keyed "KIND/area". Later phases lower these; the end state is empty. */
     static final Map<String, Integer> BASELINE = Map.ofEntries(
@@ -85,7 +91,7 @@ class OldNameInventoryTest {
             Map.entry("PACKAGE/it", 166),
             Map.entry("PACKAGE/main-java", 2777),
             Map.entry("PACKAGE/main-resources", 162),
-            Map.entry("PACKAGE/test", 3746),
+            Map.entry("PACKAGE/test", 3744),
             Map.entry("PATH-CLASS/docs", 1),
             Map.entry("PATH-CLASS/it", 1),
             Map.entry("PATH-CLASS/main-java", 22),
@@ -105,6 +111,10 @@ class OldNameInventoryTest {
             Map.entry("TOKEN_PREFIX/it", 2),
             Map.entry("TOKEN_PREFIX/main-java", 2),
             Map.entry("TOKEN_PREFIX/test", 42));
+
+    private static Path sourceOf(Class<?> c) {
+        return Path.of("app/src/test/java/" + c.getName().replace('.', '/') + ".java");
+    }
 
     /** Occurrences of each kind in the text; kinds with none are absent. */
     static Map<String, Integer> count(String text) {
@@ -279,6 +289,7 @@ class OldNameInventoryTest {
             }
         }
         List<String> problems = new ArrayList<>();
+        boolean added = false;
         Map<String, Integer> keys = new TreeMap<>(totals);
         BASELINE.keySet().forEach(k -> keys.putIfAbsent(k, 0));
         for (Map.Entry<String, Integer> e : keys.entrySet()) {
@@ -292,14 +303,18 @@ class OldNameInventoryTest {
                         .limit(5)
                         .forEach(f -> sb.append("\n    ").append(f.getKey()).append(" (").append(f.getValue()).append(')'));
                 problems.add(sb.toString());
+                added = true;
             } else if (actual < base) {
                 problems.add(e.getKey() + " fell to " + actual + "; lower BASELINE to " + actual);
             }
         }
         if (!problems.isEmpty()) {
             StringBuilder all = new StringBuilder(String.join("\n", problems));
-            all.append("\n\nCurrent counts:");
-            totals.forEach((k, v) -> all.append("\n        \"").append(k).append("\", ").append(v).append(','));
+            if (!added) {
+                // Paste-ready only when every change is a decrease: an added old name is fixed, not baselined.
+                all.append("\n\nCurrent counts:");
+                totals.forEach((k, v) -> all.append("\n        \"").append(k).append("\", ").append(v).append(','));
+            }
             throw new AssertionError(all.toString());
         }
     }
