@@ -48,7 +48,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
@@ -136,6 +136,18 @@ class ThemeReferenceLeakTest {
 
     private static final int CONTEXT_CHARS = 40;
 
+    /**
+     * The bundled content themes this class renders page by page. The
+     * frontpage theme is rendered separately. RenderedTemplateCoverageTest
+     * pins this list to the theme directories, so a new theme cannot ship
+     * unrendered.
+     */
+    static final List<String> CONTENT_THEMES = List.of("journal", "portfolio", "travel");
+
+    static List<String> contentThemes() {
+        return CONTENT_THEMES;
+    }
+
     /** Everything one themed weblog needs for the render matrix. */
     private record ThemeFixture(User user, Weblog weblog, String handle, String monthArchive,
             String dayArchive) {
@@ -154,7 +166,7 @@ class ThemeReferenceLeakTest {
         // unique handles per run: FeedServlet has no cache bypass, and a
         // stale cached feed for a reused handle would hide a leak
         String suffix = Long.toString(System.nanoTime(), 36);
-        for (String theme : new String[] {"journal", "portfolio", "travel"}) {
+        for (String theme : CONTENT_THEMES) {
             fixtures.put(theme, themedWeblog(theme, suffix));
         }
         frontpageHandle = "leakfront" + suffix;
@@ -192,7 +204,7 @@ class ThemeReferenceLeakTest {
     // ---------------------------------------------------------------- tests
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"journal", "portfolio", "travel"})
+    @MethodSource("contentThemes")
     void everyPageOfTheThemeRendersWithoutAnUnresolvedReference(String theme) throws Exception {
         ThemeFixture fixture = fixtures.get(theme);
         String base = "/" + fixture.handle();
