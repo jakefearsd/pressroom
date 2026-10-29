@@ -65,10 +65,10 @@ public final class MenuHelper {
 
             // parse menus and cache so we can efficiently reuse them
             menus.put("editor", unmarshall(
-                MenuHelper.class.getResourceAsStream("/org/apache/roller/weblogger/ui/menu/editor-menu.xml")));
+                WebloggerException.class.getResourceAsStream("ui/menu/editor-menu.xml")));
 
             menus.put("admin", unmarshall(
-                MenuHelper.class.getResourceAsStream("/org/apache/roller/weblogger/ui/menu/admin-menu.xml")));
+                WebloggerException.class.getResourceAsStream("ui/menu/admin-menu.xml")));
 
         } catch (Exception ex) {
             log.error("Error parsing menu configs", ex);

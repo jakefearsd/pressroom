@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
+import org.apache.roller.weblogger.ui.restapi.v1.EntriesApi;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
@@ -16,7 +17,7 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
  */
 public final class ApiRouteTable {
 
-    public static final String API_PACKAGE = "org.apache.roller.weblogger.ui.restapi.v1";
+    public static final String API_PACKAGE = EntriesApi.class.getPackageName();
 
     private final Map<String, ApiRoute> byKey;
 

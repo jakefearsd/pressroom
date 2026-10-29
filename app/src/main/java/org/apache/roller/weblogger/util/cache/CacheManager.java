@@ -51,7 +51,7 @@ public final class CacheManager {
     private static final Logger log = LoggerFactory.getLogger(CacheManager.class);
     
     private static final String DEFAULT_FACTORY = 
-            "org.apache.roller.weblogger.util.cache.ExpiringLRUCacheFactoryImpl";
+            ExpiringLRUCacheFactoryImpl.class.getName();
     
     // a reference to the cache factory in use
     private static final CacheFactory cacheFactory;

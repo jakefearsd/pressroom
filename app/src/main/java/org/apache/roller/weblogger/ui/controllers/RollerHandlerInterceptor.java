@@ -33,6 +33,7 @@ import org.apache.roller.weblogger.pojos.Weblog;
 import org.apache.roller.weblogger.pojos.WeblogPermission;
 import org.apache.roller.weblogger.ui.core.security.sso.RollerOidcUser;
 import org.apache.roller.weblogger.ui.restapi.ApiException;
+import org.apache.roller.weblogger.ui.restapi.ApiExceptionHandler;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -343,7 +344,7 @@ public class RollerHandlerInterceptor implements HandlerInterceptor {
     }
 
     /** The package every REST API controller lives under. */
-    private static final String API_PACKAGE_PREFIX = "org.apache.roller.weblogger.ui.restapi";
+    private static final String API_PACKAGE_PREFIX = ApiExceptionHandler.class.getPackageName();
 
     /**
      * True when a permission failure on this request must be answered as

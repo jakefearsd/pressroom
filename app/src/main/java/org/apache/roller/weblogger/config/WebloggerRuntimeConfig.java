@@ -43,7 +43,7 @@ public final class WebloggerRuntimeConfig {
     
     private static final Logger log = LoggerFactory.getLogger(WebloggerRuntimeConfig.class);
     
-    private static String RUNTIME_CONFIG = "/org/apache/roller/weblogger/config/runtimeConfigDefs.xml";
+    private static String RUNTIME_CONFIG = "runtimeConfigDefs.xml";
 
     // Lazily parsed once per JVM and read from many request threads
     // thereafter. `configDefs` is volatile so a completed parse is fully

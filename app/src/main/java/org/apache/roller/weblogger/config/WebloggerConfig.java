@@ -41,7 +41,7 @@ import org.apache.roller.util.PropertyExpander;
  */
 public final class WebloggerConfig {
     
-    private static final String default_config = "/org/apache/roller/weblogger/config/roller.properties";
+    private static final String default_config = "roller.properties";
     private static final String custom_config = "/roller-custom.properties";
     private static final String junit_config = "/roller-junit.properties";
     private static final String custom_jvm_param = "roller.custom.config";
@@ -118,7 +118,7 @@ public final class WebloggerConfig {
      */
     private static void loadLayers() throws Exception {
         // we'll need this to get at our properties files in the classpath
-        Class<?> configClass = Class.forName("org.apache.roller.weblogger.config.WebloggerConfig");
+        Class<?> configClass = WebloggerConfig.class;
 
         // first, lets load our default properties
         try (InputStream is = configClass.getResourceAsStream(default_config)) {

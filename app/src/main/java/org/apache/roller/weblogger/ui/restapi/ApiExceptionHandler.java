@@ -15,7 +15,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  * The only place an API error body is built. Scoped to the restapi package so
  * it cannot change how the JSP controllers report failures.
  */
-@RestControllerAdvice(basePackages = "org.apache.roller.weblogger.ui.restapi")
+@RestControllerAdvice(basePackageClasses = ApiExceptionHandler.class)
 public class ApiExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);

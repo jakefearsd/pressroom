@@ -16,6 +16,7 @@
  */
 package org.apache.roller.weblogger.boot;
 
+import org.apache.roller.weblogger.WebloggerException;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -49,7 +50,8 @@ import org.springframework.boot.web.servlet.support.SpringBootServletInitializer
  * form relied on). Task 4 deleted both the XML file and this annotation.
  */
 @SpringBootApplication(
-        scanBasePackages = "org.apache.roller.weblogger",
+        // WebloggerException stands for the root package, which holds every scanned subpackage.
+        scanBasePackageClasses = WebloggerException.class,
         excludeName = {
                 "org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration",
                 "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration"
