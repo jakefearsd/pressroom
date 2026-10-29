@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -120,17 +121,29 @@ class LogRoutingTest {
             "roller.media.import", "characterised 2026-10-29: reaches the console through Root",
             "roller.redirects", "characterised 2026-10-29: reaches the console through Root");
 
-    private static final Set<String> KNOWN_CONSTANTS =
-            Set.of("NAME", "LOG_NAME", "WeblogRedirectManager.LOG_NAME", "AdminLog.NAME");
-
     private static final Pattern GET_LOGGER = Pattern.compile("getLogger\\(\\s*([^()]*?)\\s*\\)");
 
+    private static final Pattern CONSTANT_ARGUMENT = Pattern.compile("(?:(\\w+)\\.)?(NAME|LOG_NAME)");
+
+    private static final Pattern SUPERTYPES = Pattern.compile("\\b(?:extends|implements)\\s+([\\w\\s,<>.]+?)\\s*\\{");
+
     private static final Pattern STRING_LITERAL = Pattern.compile("\"([^\"]*)\"");
+
+    /** What one scan of Java source found: the logger names, the calls it could not classify, the call count. */
+    private static final class Scan {
+        final Set<String> names = new TreeSet<>();
+        final List<String> problems = new ArrayList<>();
+        int calls;
+        int classified;
+    }
 
     /**
      * Characterisation: the root package's logger is what gives the whole
      * application its file log and level; a package move that misses it drops
      * everything to Root.
+     *
+     * <p>Proven to bite: renaming the {@code org.apache.roller} Logger to
+     * {@code org.apache.rollerx} in log4j2.xml fails this test.
      */
     @Test
     void theProjectRootPackageHasItsOwnLoggerToFileAndConsole() throws Exception {
@@ -142,57 +155,163 @@ class LogRoutingTest {
         assertTrue(reaches(refs(logger), wrapped, "console"), "the root package logger reaches the console");
     }
 
-    /** Characterisation: every logger name the code uses is routed or consciously left to Root. */
+    /**
+     * Characterisation: every logger name the code uses is routed or consciously left to Root.
+     *
+     * <p>Proven to bite: deleting the {@code roller.sso} Logger from log4j2.xml fails this test.
+     */
     @Test
     void everyNamedLoggerHasADecidedRoute() throws Exception {
-        Set<String> names = new TreeSet<>(List.of(AdminLog.NAME, McpToolExecutor.LOG_NAME,
-                WeblogRedirectManager.LOG_NAME));
-        for (String argument : getLoggerArguments()) {
-            Matcher literal = STRING_LITERAL.matcher(argument);
-            if (literal.matches()) {
-                names.add(literal.group(1));
-            }
-        }
-        assertTrue(names.size() >= 6, "found the named loggers: " + names);
+        Scan scan = scanTrackedMainJava();
+        // cross-check: the three constants by symbol, so a renamed constant breaks compilation here
+        assertTrue(scan.names.containsAll(List.of(AdminLog.NAME, McpToolExecutor.LOG_NAME,
+                WeblogRedirectManager.LOG_NAME)), "the scan resolves the known constants: " + scan.names);
+        assertTrue(scan.names.size() >= 6, "found the named loggers: " + scan.names);
         Document config = config();
-        for (String name : names) {
-            boolean routed = loggerNamed(config, name) != null;
-            assertTrue(routed || ROOT_ONLY_BY_DESIGN.containsKey(name),
-                    "logger " + name + " has no <Logger> in log4j2.xml and is not listed in ROOT_ONLY_BY_DESIGN");
-            assertFalse(routed && ROOT_ONLY_BY_DESIGN.containsKey(name),
+        List<String> missing = missingRoutes(scan.names, config);
+        assertTrue(missing.isEmpty(), "no decided route: " + missing);
+        for (String name : scan.names) {
+            assertFalse(loggerNamed(config, name) != null && ROOT_ONLY_BY_DESIGN.containsKey(name),
                     "logger " + name + " now has a route; drop it from ROOT_ONLY_BY_DESIGN");
         }
         for (String listed : ROOT_ONLY_BY_DESIGN.keySet()) {
-            assertTrue(names.contains(listed), "ROOT_ONLY_BY_DESIGN names " + listed + ", which no code uses");
+            assertTrue(scan.names.contains(listed), "ROOT_ONLY_BY_DESIGN names " + listed + ", which no code uses");
         }
     }
 
-    /** Characterisation: a constant-named logger cannot slip past the check above. */
+    /**
+     * Characterisation: no getLogger call escapes classification. Each is a
+     * class, a string literal, or a NAME/LOG_NAME constant whose value is
+     * resolved from source; anything else (a nested call, an unknown
+     * constant) fails with file:line.
+     */
     @Test
-    void everyNonLiteralGetLoggerArgumentIsAKnownConstant() {
-        for (String argument : getLoggerArguments()) {
-            if (argument.endsWith(".class") || STRING_LITERAL.matcher(argument).matches()) {
-                continue;
-            }
-            assertTrue(KNOWN_CONSTANTS.contains(argument),
-                    "getLogger(" + argument + ") is not a class, a literal or a known constant; "
-                            + "add it to everyNamedLoggerHasADecidedRoute's inputs");
-        }
+    void everyGetLoggerCallIsClassified() {
+        Scan scan = scanTrackedMainJava();
+        assertTrue(scan.problems.isEmpty(), "unclassified getLogger calls: " + scan.problems);
+        assertEquals(scan.calls, scan.classified, "every getLogger( occurrence is classified");
+        assertTrue(scan.calls > 100, "the scan saw the tracked sources");
     }
 
-    /** The argument text of every getLogger call in tracked main Java (calls may span lines). */
-    private static List<String> getLoggerArguments() {
-        List<String> arguments = new ArrayList<>();
+    /** The scanner itself: a new bare constant is resolved and routed-checked; a nested call is reported. */
+    @Test
+    void theScannerResolvesNewConstantsAndRejectsWhatItCannotRead() throws Exception {
+        Scan constant = new Scan();
+        scanSource("Foo.java", "class Foo { static final String LOG_NAME = \"roller.foo\";\n"
+                + " Logger l = LoggerFactory.getLogger(LOG_NAME); }", name -> null, constant);
+        assertTrue(constant.problems.isEmpty(), "a bare constant resolves: " + constant.problems);
+        assertEquals(Set.of("roller.foo"), constant.names);
+        assertEquals(List.of("roller.foo"), missingRoutes(constant.names, config()),
+                "an unrouted new logger name is reported");
+
+        Scan qualified = new Scan();
+        scanSource("Bar.java", "class Bar { Logger l = LoggerFactory.getLogger(Other.NAME); }",
+                cls -> "Other".equals(cls) ? "interface Other { String NAME = \"roller.other\"; }" : null, qualified);
+        assertEquals(Set.of("roller.other"), qualified.names);
+
+        Scan unresolved = new Scan();
+        scanSource("Baz.java", "class Baz { Logger l = LoggerFactory.getLogger(NAME); }", name -> null, unresolved);
+        assertEquals(1, unresolved.problems.size(), "a constant with no value in source is a problem");
+
+        Scan nested = new Scan();
+        scanSource("Qux.java", "class Qux {\n Logger l = LoggerFactory.getLogger(Foo.class.getName()); }",
+                name -> null, nested);
+        assertEquals(1, nested.calls);
+        assertEquals(0, nested.classified);
+        assertEquals(1, nested.problems.size());
+        assertTrue(nested.problems.get(0).contains("Qux.java:2"), nested.problems.get(0));
+    }
+
+    private static List<String> missingRoutes(Set<String> names, Document config) {
+        List<String> missing = new ArrayList<>();
+        for (String name : names) {
+            if (loggerNamed(config, name) == null && !ROOT_ONLY_BY_DESIGN.containsKey(name)) {
+                missing.add(name);
+            }
+        }
+        return missing;
+    }
+
+    private static Scan scanTrackedMainJava() {
+        Map<String, Path> byClass = new HashMap<>();
+        List<Path> sources = new ArrayList<>();
         for (Path file : RepoFiles.trackedFiles()) {
             String path = file.toString().replace('\\', '/');
             if (path.startsWith("app/src/main/java/") && path.endsWith(".java")) {
-                Matcher m = GET_LOGGER.matcher(RepoFiles.read(file));
-                while (m.find()) {
-                    arguments.add(m.group(1));
+                sources.add(file);
+                byClass.put(file.getFileName().toString().replace(".java", ""), file);
+            }
+        }
+        Scan scan = new Scan();
+        for (Path file : sources) {
+            scanSource(file.toString(), RepoFiles.read(file), cls -> {
+                Path other = byClass.get(cls);
+                return other == null ? null : RepoFiles.read(other);
+            }, scan);
+        }
+        return scan;
+    }
+
+    /** Classifies every {@code getLogger(} in the source; {@code sourceOf} maps a class's simple name to its source. */
+    private static void scanSource(String label, String source, Function<String, String> sourceOf, Scan scan) {
+        int from = 0;
+        while ((from = source.indexOf("getLogger(", from)) >= 0) {
+            int at = from;
+            from += "getLogger(".length();
+            scan.calls++;
+            String where = label + ":" + (1 + (int) source.substring(0, at).chars().filter(c -> c == '\n').count());
+            Matcher call = GET_LOGGER.matcher(source);
+            if (!call.find(at) || call.start() != at) {
+                scan.problems.add(where + " getLogger argument not readable (nested parentheses?)");
+                continue;
+            }
+            String argument = call.group(1);
+            Matcher literal = STRING_LITERAL.matcher(argument);
+            Matcher constant = CONSTANT_ARGUMENT.matcher(argument);
+            if (argument.endsWith(".class")) {
+                scan.classified++;
+            } else if (literal.matches()) {
+                scan.names.add(literal.group(1));
+                scan.classified++;
+            } else if (constant.matches()) {
+                String owner = constant.group(1);
+                String value = constantValue(owner == null ? source : sourceOf.apply(owner), constant.group(2));
+                if (value == null && owner == null) {
+                    value = inheritedConstant(source, constant.group(2), sourceOf);
+                }
+                if (value == null) {
+                    scan.problems.add(where + " constant " + argument + " has no string value in source");
+                } else {
+                    scan.names.add(value);
+                    scan.classified++;
+                }
+            } else {
+                scan.problems.add(where + " getLogger(" + argument + ") is not a class, literal or NAME/LOG_NAME");
+            }
+        }
+    }
+
+    /** A bare constant may be inherited from a supertype named in the class header. */
+    private static String inheritedConstant(String source, String constant, Function<String, String> sourceOf) {
+        Matcher header = SUPERTYPES.matcher(source);
+        while (header.find()) {
+            for (String type : header.group(1).split("[,\\s]+")) {
+                String simple = type.replaceAll("<.*", "");
+                String value = simple.isEmpty() ? null : constantValue(sourceOf.apply(simple), constant);
+                if (value != null) {
+                    return value;
                 }
             }
         }
-        return arguments;
+        return null;
+    }
+
+    private static String constantValue(String source, String constant) {
+        if (source == null) {
+            return null;
+        }
+        Matcher m = Pattern.compile("\\b" + constant + "\\s*=\\s*\"([^\"]+)\"").matcher(source);
+        return m.find() ? m.group(1) : null;
     }
 
     private static Element loggerNamed(Document config, String name) {
