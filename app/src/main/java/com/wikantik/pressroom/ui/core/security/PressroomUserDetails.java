@@ -21,7 +21,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 /**
  * An interface to extract additional properties from a UserDetails instance. These extra
- * properties are needed in order to complete User object in PressroomDB. 
+ * properties are needed in order to complete User object in the old Roller DB layer. 
  * 
  * @author Elias Torres (<a href="mailto:eliast@us.ibm.com">eliast@us.ibm.com</a>)
  *

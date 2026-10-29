@@ -17,6 +17,6 @@
  */
 
 /**
- * PressroomFactory and business layer interfaces.
+ * The old Roller factory and business layer interfaces.
  */
 package com.wikantik.pressroom.business;

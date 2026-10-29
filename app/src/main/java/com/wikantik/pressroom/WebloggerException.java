@@ -18,8 +18,6 @@
 
 package com.wikantik.pressroom;
 
-
-
 /**
  * A base exception class for Roller Weblogger.
  */
