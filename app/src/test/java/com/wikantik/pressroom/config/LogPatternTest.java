@@ -23,7 +23,7 @@ import org.w3c.dom.NodeList;
  *
  * <p>Reader-supplied values reach log messages: a sign-in failure's reason, a
  * display name, a request path. A CR or LF inside one would otherwise start a
- * new line in {@code roller.log} that reads as a separate event, a forged
+ * new line in {@code pressroom.log} that reads as a separate event, a forged
  * entry an operator cannot tell from a real one. find-sec-bugs reports this as
  * CRLF_INJECTION_LOGS at every call site; the fix is made once, here, in the
  * layout, and the family is excluded from the SpotBugs gate on the strength of
@@ -74,7 +74,7 @@ class LogPatternTest {
 
     private static LogEvent event(String message, Throwable thrown) {
         return Log4jLogEvent.newBuilder()
-                .setLoggerName("roller.sso")
+                .setLoggerName("pressroom.sso")
                 .setLevel(Level.INFO)
                 .setMessage(new SimpleMessage(message))
                 .setThrown(thrown)

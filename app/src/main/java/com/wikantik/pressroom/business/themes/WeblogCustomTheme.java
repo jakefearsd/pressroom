@@ -39,7 +39,7 @@ import com.wikantik.pressroom.pojos.WeblogTheme;
 // and is dead code in practice: ThemeManagerImpl.getWeblogTheme(weblog)
 // constructs exactly one WeblogCustomTheme per call (confirmed by
 // `grep -rn "WeblogCustomTheme" app/src/main/java`, whose only non-declaration
-// hit is that single `new WeblogCustomTheme(weblog, roller.getWeblogManager())`), and it is returned and
+// hit is that single `new WeblogCustomTheme(weblog, pressroom.getWeblogManager())`), and it is returned and
 // used standalone -- never placed in a List, Set or Map alongside a sibling
 // instance, so compareTo/equals/hashCode are never actually compared against
 // one another. getName() also always returns the constant CUSTOM, so a

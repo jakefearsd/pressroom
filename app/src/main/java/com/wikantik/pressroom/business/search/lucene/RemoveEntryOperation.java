@@ -46,15 +46,15 @@ public class RemoveEntryOperation extends WriteToIndexOperation {
     // ========================================================
 
     private WeblogEntry data;
-    private Weblogger roller;
+    private Weblogger pressroom;
 
     // ~ Constructors
     // ===========================================================
 
-    public RemoveEntryOperation(Weblogger roller, LuceneIndexManager mgr,
+    public RemoveEntryOperation(Weblogger pressroom, LuceneIndexManager mgr,
             WeblogEntry data) {
         super(mgr);
-        this.roller = roller;
+        this.pressroom = pressroom;
         this.data = data;
     }
 
@@ -73,7 +73,7 @@ public class RemoveEntryOperation extends WriteToIndexOperation {
         // the weblog object passed in as a detached object which is proned to
         // lazy initialization problems, so requery for the object now
         try {
-            WeblogEntryManager wMgr = roller.getWeblogEntryManager();
+            WeblogEntryManager wMgr = pressroom.getWeblogEntryManager();
             this.data = wMgr.getWeblogEntry(this.data.getId());
         } catch (WebloggerException ex) {
             log.error("Error getting weblogentry object", ex);

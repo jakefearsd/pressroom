@@ -105,7 +105,7 @@ class LoaderCachingContractTest {
 
     @Test
     void everyCachedLoaderCanActuallyReportModification() throws IOException {
-        Map<String, String> loaders = rollerLoaders();
+        Map<String, String> loaders = pressroomLoaders();
         Set<String> unprobeable = new LinkedHashSet<>();
         int probed = 0;
 
@@ -177,7 +177,7 @@ class LoaderCachingContractTest {
      * own loaders -- Velocity's stock classpath loader reads immutable jar
      * entries and is not ours to make claims about.
      */
-    private static Map<String, String> rollerLoaders() throws IOException {
+    private static Map<String, String> pressroomLoaders() throws IOException {
         Properties props = config();
         Map<String, String> loaders = new TreeMap<>();
         for (String key : props.stringPropertyNames()) {

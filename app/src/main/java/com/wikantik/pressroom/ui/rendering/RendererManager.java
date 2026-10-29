@@ -52,7 +52,7 @@ public final class RendererManager {
         try {
             rendererFactories.addAll(Reflection.newInstancesFromProperty("rendering.pressroomRendererFactories"));
         } catch (ReflectiveOperationException ex) {
-            log.error("Unable to create roller rendering factories", ex);
+            log.error("Unable to create pressroom rendering factories", ex);
         }
 
         if (rendererFactories.isEmpty()) {

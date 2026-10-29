@@ -102,12 +102,12 @@ class SearchDuringWriteTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        Weblogger roller = mock(Weblogger.class);
+        Weblogger pressroom = mock(Weblogger.class);
         entries = mock(WeblogEntryManager.class);
         weblogs = mock(WeblogManager.class);
-        when(roller.getWeblogEntryManager()).thenReturn(entries);
-        when(roller.getWeblogManager()).thenReturn(weblogs);
-        when(roller.getUserManager()).thenReturn(mock(UserManager.class));
+        when(pressroom.getWeblogEntryManager()).thenReturn(entries);
+        when(pressroom.getWeblogManager()).thenReturn(weblogs);
+        when(pressroom.getUserManager()).thenReturn(mock(UserManager.class));
         ThreadManager inline = mock(ThreadManager.class);
         doAnswer(inv -> {
             ((Runnable) inv.getArgument(0)).run();
@@ -117,14 +117,14 @@ class SearchDuringWriteTest {
             ((Runnable) inv.getArgument(0)).run();
             return null;
         }).when(inline).executeInForeground(any(Runnable.class));
-        when(roller.getThreadManager()).thenReturn(inline);
+        when(pressroom.getThreadManager()).thenReturn(inline);
 
         blog = new Weblog();
         blog.setHandle(HANDLE);
         blog.setName(HANDLE);
         when(weblogs.getWeblog(blog.getId())).thenReturn(blog);
 
-        manager = new LuceneIndexManager(roller);
+        manager = new LuceneIndexManager(pressroom);
         setField(manager, "indexDir", indexDir.toString());
         setField(manager, "indexConsistencyMarker", new File(indexDir.toFile(), ".index-inconsistent"));
         manager.initialize();

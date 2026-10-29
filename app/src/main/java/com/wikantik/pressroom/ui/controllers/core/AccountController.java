@@ -70,7 +70,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequestMapping("/pressroom-ui")
 public class AccountController extends BaseController {
 
-    private static final Logger log = LoggerFactory.getLogger("roller.comments");
+    private static final Logger log = LoggerFactory.getLogger("pressroom.comments");
 
     private static final String VIEW = ".Account";
     private static final String BACK = "redirect:/pressroom-ui/account.rol";

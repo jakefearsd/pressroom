@@ -52,7 +52,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  */
 public class SsoStartFilter extends OncePerRequestFilter {
 
-    private static final Logger log = LoggerFactory.getLogger("roller.sso");
+    private static final Logger log = LoggerFactory.getLogger("pressroom.sso");
 
     private final Supplier<String> absoluteUrl;
     private final ClientRegistrationRepository registrations;

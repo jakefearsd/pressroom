@@ -97,14 +97,14 @@ class OldNameInventoryTest {
     /** Keyed "KIND/area". Later phases lower these; the end state is empty. */
     static final Map<String, Integer> BASELINE = Map.ofEntries(
             Map.entry("CLASS/docs", 12),
-            Map.entry("MACHINE/build", 17),
+            Map.entry("MACHINE/build", 16),
             Map.entry("MACHINE/deploy", 88),
-            Map.entry("MACHINE/docs", 293),
+            Map.entry("MACHINE/docs", 270),
             Map.entry("MACHINE/it", 112),
-            Map.entry("MACHINE/main-java", 266),
-            Map.entry("MACHINE/main-resources", 590),
+            Map.entry("MACHINE/main-java", 19),
+            Map.entry("MACHINE/main-resources", 539),
             Map.entry("MACHINE/other", 41),
-            Map.entry("MACHINE/test", 897),
+            Map.entry("MACHINE/test", 622),
             Map.entry("PACKAGE/docs", 115),
             Map.entry("PATH-CLASS/docs", 1),
             Map.entry("PATH-MACHINE/deploy", 1),
@@ -118,8 +118,8 @@ class OldNameInventoryTest {
             Map.entry("PROSE/docs", 118),
             Map.entry("PROSE/it", 53),
             Map.entry("PROSE/main-java", 178),
-            Map.entry("PROSE/main-resources", 228),
-            Map.entry("PROSE/test", 104));
+            Map.entry("PROSE/main-resources", 227),
+            Map.entry("PROSE/test", 103));
 
     /** Kinds Phase 1 (the package move) must bring to zero. */
     static final Set<String> PHASE_ONE_KINDS = Set.of("PACKAGE", "CLASS", "PATH-PACKAGE", "PATH-CLASS");

@@ -55,7 +55,7 @@ public class PressroomSession
     
     private static final Logger log;
     
-    public static final String PRESSROOM_SESSION = "com.wikantik.pressroom.rollersession";
+    public static final String PRESSROOM_SESSION = "com.wikantik.pressroom.session";
 
     static{
         WebloggerConfig.init(); // must be called before calls to logging APIs
@@ -68,9 +68,9 @@ public class PressroomSession
      * @param provider answers whether the business tier is up; a principal is
      *                 only resolved to a user once it is
      */
-    public static PressroomSession getRollerSession(HttpServletRequest request,
+    public static PressroomSession getPressroomSession(HttpServletRequest request,
             WebloggerProvider provider) {
-        PressroomSession rollerSession = null;
+        PressroomSession pressroomSession = null;
         HttpSession session = request.getSession(false);
         if (session != null) {
             // Before bootstrap there is no user manager to resolve against, so
@@ -79,19 +79,19 @@ public class PressroomSession
             UserManager users = provider.isBootstrapped()
                     ? provider.getWeblogger().getUserManager() : null;
 
-            rollerSession = (PressroomSession)session.getAttribute(PRESSROOM_SESSION);
+            pressroomSession = (PressroomSession)session.getAttribute(PRESSROOM_SESSION);
 
-            if (rollerSession == null) {
+            if (pressroomSession == null) {
                 // Create new session if none exists
-                rollerSession = new PressroomSession();
-                session.setAttribute(PRESSROOM_SESSION, rollerSession);
-            } else if (rollerSession.getAuthenticatedUser(users) != null) {
+                pressroomSession = new PressroomSession();
+                session.setAttribute(PRESSROOM_SESSION, pressroomSession);
+            } else if (pressroomSession.getAuthenticatedUser(users) != null) {
                 // Check if session is still valid in cache
                 PressroomLoginSessionManager manager = PressroomLoginSessionManager.getInstance();
-                String username = rollerSession.getAuthenticatedUser(users).getUserName();
+                String username = pressroomSession.getAuthenticatedUser(users).getUserName();
                 if (manager.get(username) == null) {
-                    rollerSession = new PressroomSession();
-                    session.setAttribute(PRESSROOM_SESSION, rollerSession);
+                    pressroomSession = new PressroomSession();
+                    session.setAttribute(PRESSROOM_SESSION, pressroomSession);
                 }
             }
             Principal principal = request.getUserPrincipal();
@@ -100,13 +100,13 @@ public class PressroomSession
             // user object from user manager but *only* do this if we have been
             // bootstrapped because under an SSO scenario we may have a
             // principal even before we have been bootstrapped.
-            if (rollerSession.getAuthenticatedUser(users) == null && principal != null && users != null) {
+            if (pressroomSession.getAuthenticatedUser(users) == null && principal != null && users != null) {
                 try {
                     User user = users.getUserByUserName(principal.getName());
                     
                     // only set authenticated user if user is enabled
                     if (user != null && user.getEnabled()) {
-                        rollerSession.setAuthenticatedUser(user);
+                        pressroomSession.setAuthenticatedUser(user);
                     }
                     
                 } catch (WebloggerException e) {
@@ -115,14 +115,14 @@ public class PressroomSession
             }
         }
         
-        return rollerSession;
+        return pressroomSession;
     }
 
     /** Create session's Roller instance */
     @Override
     public void sessionCreated(HttpSessionEvent se) {
-        PressroomSession rollerSession = new PressroomSession();
-        se.getSession().setAttribute(PRESSROOM_SESSION, rollerSession);
+        PressroomSession pressroomSession = new PressroomSession();
+        se.getSession().setAttribute(PRESSROOM_SESSION, pressroomSession);
     }
 
 

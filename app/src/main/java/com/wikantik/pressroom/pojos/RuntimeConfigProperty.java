@@ -24,7 +24,7 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 
 /**
- * This POJO represents a single property of the roller system.
+ * This POJO represents a single property of the pressroom system.
  */
 public class RuntimeConfigProperty implements Serializable {
     

@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** Spec 2026-10-13, section 6: one INFO line on roller.admin per event, naming the target and by=. */
+/** Spec 2026-10-13, section 6: one INFO line on pressroom.admin per event, naming the target and by=. */
 class AdminLogTest {
 
     @Test
@@ -42,7 +42,7 @@ class AdminLogTest {
             assertEquals(List.of("account.disabled account=bot by=jake", "token.revoked id=t1 by=-"),
                     capture.lines());
         }
-        assertEquals("roller.admin", AdminLog.NAME);
+        assertEquals("pressroom.admin", AdminLog.NAME);
     }
 
     @Test

@@ -256,7 +256,7 @@ fixed:
 - a commenter could take a member's display name in fullwidth or bold
   letters;
 - the anonymous installer showed the JDBC URL, the username and a stack trace
-  while the database was down. Its pages now point at `roller.log`, and
+  while the database was down. Its pages now point at `pressroom.log`, and
   `SQLScriptRunner` reports by statement position;
 - `MediacastUtil`, a dead SSRF sink, was deleted;
 - two checks compared HTTP methods case-insensitively; they are exact now;

@@ -203,7 +203,7 @@ class McpToolExecutorTest {
      * The 500 MCP builds itself is REST's opaque internal-error problem
      * (README, Errors), not a bare {status,title} with an HTTP reason phrase.
      */
-    private static final String OPAQUE_500 = "{\"type\":\"https://roller.invalid/problems/internal-error\","
+    private static final String OPAQUE_500 = "{\"type\":\"https://pressroom.invalid/problems/internal-error\","
             + "\"title\":\"Internal error\",\"status\":500,\"detail\":\"The request could not be completed.\"}";
 
     /** A refusal MCP makes itself is the same problem shape a REST 400 is: a type, its title, the instance. */
@@ -214,7 +214,7 @@ class McpToolExecutorTest {
 
         assertTrue(result.isError());
         tools.jackson.databind.JsonNode problem = new tools.jackson.databind.ObjectMapper().readTree(text(result));
-        assertEquals("https://roller.invalid/problems/invalid-request", problem.get("type").asString());
+        assertEquals("https://pressroom.invalid/problems/invalid-request", problem.get("type").asString());
         assertEquals("Invalid request", problem.get("title").asString());
         assertEquals(400, problem.get("status").asInt());
         assertEquals("/api/mcp", problem.get("instance").asString());
@@ -313,7 +313,7 @@ class McpToolExecutorTest {
      */
     @Test
     void aBusyReplyIsAToolErrorCarryingTheRetryableProblem() {
-        String busy = "{\"type\":\"https://roller.invalid/problems/busy\",\"title\":\"Busy\",\"status\":503,"
+        String busy = "{\"type\":\"https://pressroom.invalid/problems/busy\",\"title\":\"Busy\",\"status\":503,"
                 + "\"detail\":\"Another save of this weblog is in progress; retry shortly.\"}";
         nextReply = new ApiReply(503, "application/problem+json", busy);
 
@@ -358,7 +358,7 @@ class McpToolExecutorTest {
         SecurityContextHolder.clearContext();
     }
 
-    /** Runs the action with a capture on the roller.mcp logger; returns the formatted lines. */
+    /** Runs the action with a capture on the pressroom.mcp logger; returns the formatted lines. */
     private static List<String> logged(Runnable action) {
         List<String> lines = new ArrayList<>();
         AbstractAppender appender = new AbstractAppender("mcp-capture", null, null, true, Property.EMPTY_ARRAY) {
@@ -398,7 +398,7 @@ class McpToolExecutorTest {
             assertTrue(line.contains(part), part + " in " + line);
         }
         assertFalse(line.contains("SECRET-TITLE"), line);
-        assertEquals("roller.mcp", McpToolExecutor.LOG_NAME);
+        assertEquals("pressroom.mcp", McpToolExecutor.LOG_NAME);
     }
 
     @Test

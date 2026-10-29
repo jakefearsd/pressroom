@@ -71,7 +71,7 @@ public class PressroomDatabaseExtension {
      */
     private static void publishDatabaseConfig() {
         try {
-            Path overrides = Files.createTempFile("roller-testdb", ".properties");
+            Path overrides = Files.createTempFile("pressroom-testdb", ".properties");
             overrides.toFile().deleteOnExit();
             String contents = """
                     database.configurationType=jdbc

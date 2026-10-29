@@ -91,7 +91,7 @@ public class ThemeManagerImpl implements ThemeManager {
 		}
 	}
 
-	private final Weblogger roller;
+	private final Weblogger pressroom;
 	// directory where themes are kept
 	private String themeDir;
 	// the Map contains ... (theme id, Theme)
@@ -100,9 +100,9 @@ public class ThemeManagerImpl implements ThemeManager {
 	@SuppressFBWarnings(
 			value = "PATH_TRAVERSAL_IN",
 			justification = "themeDir is themes.dir, operator configuration; no request reaches it.")
-	public ThemeManagerImpl(Weblogger roller) {
+	public ThemeManagerImpl(Weblogger pressroom) {
 
-		this.roller = roller;
+		this.pressroom = pressroom;
 
 		// get theme directory from config and verify it
 		this.themeDir = WebloggerConfig.getProperty("themes.dir");
@@ -171,13 +171,13 @@ public class ThemeManagerImpl implements ThemeManager {
 		// if theme is custom or null then return a WeblogCustomTheme
 		if (weblog.getEditorTheme() == null
 				|| WeblogTheme.CUSTOM.equals(weblog.getEditorTheme())) {
-			weblogTheme = new WeblogCustomTheme(weblog, roller.getWeblogManager());
+			weblogTheme = new WeblogCustomTheme(weblog, pressroom.getWeblogManager());
 
 			// otherwise we are returning a WeblogSharedTheme
 		} else {
 			SharedTheme staticTheme = this.themes.get(weblog.getEditorTheme());
 			if (staticTheme != null) {
-				weblogTheme = new WeblogSharedTheme(weblog, staticTheme, roller.getWeblogManager());
+				weblogTheme = new WeblogSharedTheme(weblog, staticTheme, pressroom.getWeblogManager());
 			} else {
 				log.warn("Unable to lookup theme {}", weblog.getEditorTheme());
 			}
@@ -220,7 +220,7 @@ public class ThemeManagerImpl implements ThemeManager {
 		// The weblog now owns copies of the templates, so it is on its own
 		// custom theme rather than the shared one it imported from.
 		weblog.setEditorTheme(WeblogTheme.CUSTOM);
-		roller.getWeblogManager().saveWeblog(weblog);
+		pressroom.getWeblogManager().saveWeblog(weblog);
 
 		importResources(weblog, theme);
 	}
@@ -239,8 +239,8 @@ public class ThemeManagerImpl implements ThemeManager {
 
 		log.debug("Importing theme [{}] to weblog [{}]", theme.getName(), weblog.getName());
 
-		WeblogManager wmgr = roller.getWeblogManager();
-		MediaFileManager fileMgr = roller.getMediaFileManager();
+		WeblogManager wmgr = pressroom.getWeblogManager();
+		MediaFileManager fileMgr = pressroom.getMediaFileManager();
 
 		MediaFileDirectory root = fileMgr.getDefaultMediaFileDirectory(weblog);
         if (root == null) {
@@ -303,7 +303,7 @@ public class ThemeManagerImpl implements ThemeManager {
                         weblogTemplateCode.setTemplate(templateCode.getTemplate());
                         weblogTemplateCode.setTemplateLanguage(templateCode
                                 .getTemplateLanguage());
-                        roller.getWeblogManager()
+                        pressroom.getWeblogManager()
                                 .saveTemplateRendition(weblogTemplateCode);
                     }
 
@@ -322,7 +322,7 @@ public class ThemeManagerImpl implements ThemeManager {
 	private void removeStaleActionTemplates(Weblog weblog,
 			Set<ComponentType> importedActionTemplates) throws WebloggerException {
 
-		WeblogManager wmgr = roller.getWeblogManager();
+		WeblogManager wmgr = pressroom.getWeblogManager();
 		// now, see if the weblog has left over non-custom action templates that
 		// need to be deleted because they aren't in their new theme
         for (ComponentType action : ComponentType.values()) {
@@ -348,7 +348,7 @@ public class ThemeManagerImpl implements ThemeManager {
 	 */
 	private void importResources(Weblog weblog, SharedTheme theme) throws WebloggerException {
 
-		MediaFileManager fileMgr = roller.getMediaFileManager();
+		MediaFileManager fileMgr = pressroom.getMediaFileManager();
 		// now lets import all the theme resources
         for (ThemeResource resource : theme.getResources()) {
 
@@ -360,7 +360,7 @@ public class ThemeManagerImpl implements ThemeManager {
 				if (mdir == null) {
 					log.debug("    Creating directory: {}", resource.getPath());
 					fileMgr.createMediaFileDirectory(weblog, resource.getPath());
-					roller.flush();
+					pressroom.flush();
 				} else {
 					log.debug("    No action: directory already exists");
 				}
@@ -387,7 +387,7 @@ public class ThemeManagerImpl implements ThemeManager {
 					if (mdir == null) {
 						log.debug("    Creating directory: {}", justPath);
 						mdir = fileMgr.createMediaFileDirectory(weblog, justPath);
-						roller.flush();
+						pressroom.flush();
 					}
 				}
 
@@ -422,14 +422,14 @@ public class ThemeManagerImpl implements ThemeManager {
 				if (errors.getErrorCount() > 0) {
 					throw new WebloggerException(errors.toString());
 				}
-				roller.flush();
+				pressroom.flush();
 			}
 		}
 	}
 
 	/**
 	 * This is a convenience method which loads all the theme data from themes
-	 * stored on the filesystem in the roller webapp /themes/ directory.
+	 * stored on the filesystem in the pressroom webapp /themes/ directory.
 	 */
 	@SuppressFBWarnings(
 			value = "PATH_TRAVERSAL_IN",
@@ -446,7 +446,7 @@ public class ThemeManagerImpl implements ThemeManager {
 
 		if (themenames == null) {
 			log.warn("No themes found!  Perhaps wrong directory for themes specified?  "
-					+ "(Check themes.dir setting in roller[-custom].properties file.)");
+					+ "(Check themes.dir setting in pressroom[-custom].properties file.)");
 		} else {
             log.info("Loading themes from {}...", themesdir.getAbsolutePath());
 

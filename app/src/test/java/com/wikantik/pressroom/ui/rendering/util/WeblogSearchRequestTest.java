@@ -59,20 +59,20 @@ class WeblogSearchRequestTest {
 
     @Test
     void handleOnlyPathIsTheOnlyAcceptedForm() throws Exception {
-        WeblogSearchRequest request = parse("/myblog", "q", "roller");
+        WeblogSearchRequest request = parse("/myblog", "q", "pressroom");
 
         assertEquals("myblog", request.getWeblogHandle());
-        assertEquals("roller", request.getQuery());
+        assertEquals("pressroom", request.getQuery());
     }
 
     @Test
     void localeSegmentIsAcceptedBecauseItIsConsumedBeforeThePathInfoCheck() throws Exception {
         // The locale is stripped by WeblogRequest, so it never counts as
         // leftover path info. Localised search links must keep working.
-        WeblogSearchRequest request = parse("/myblog/en_US", "q", "roller");
+        WeblogSearchRequest request = parse("/myblog/en_US", "q", "pressroom");
 
         assertEquals("en_US", request.getLocale());
-        assertEquals("roller", request.getQuery());
+        assertEquals("pressroom", request.getQuery());
     }
 
     @Test
@@ -138,7 +138,7 @@ class WeblogSearchRequestTest {
     void settersAllowTheServletToOverrideWhatWasParsed() throws Exception {
         // SearchServlet builds a request from the URL and then adjusts it, so
         // the setters are part of the contract, not dead accessors.
-        WeblogSearchRequest request = parse("/myblog", "q", "roller");
+        WeblogSearchRequest request = parse("/myblog", "q", "pressroom");
         request.setQuery("something else");
         request.setPageNum(7);
         request.setWeblogCategoryName("Java");

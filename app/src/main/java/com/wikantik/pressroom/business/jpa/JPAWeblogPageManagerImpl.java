@@ -45,7 +45,7 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
 
     private static final Logger log = LoggerFactory.getLogger(JPAWeblogPageManagerImpl.class);
 
-    private final Weblogger roller;
+    private final Weblogger pressroom;
     private final JPAPersistenceStrategy strategy;
 
     /**
@@ -54,9 +54,9 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
      */
     private final WeblogStampedCache<List<String>> publishedPageIds;
 
-    protected JPAWeblogPageManagerImpl(Weblogger roller, JPAPersistenceStrategy strategy) {
+    protected JPAWeblogPageManagerImpl(Weblogger pressroom, JPAPersistenceStrategy strategy) {
         log.debug("Instantiating JPA Weblog Page Manager");
-        this.roller = roller;
+        this.pressroom = pressroom;
         this.strategy = strategy;
         this.publishedPageIds = new WeblogStampedCache<>(strategy);
     }
@@ -105,7 +105,7 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
         // redirect feature exists to prevent.
         String loadedSlug = page.getLoadedSlug();
         if (loadedSlug != null && !loadedSlug.equals(slug)) {
-            roller.getWeblogRedirectManager().recordRename(
+            pressroom.getWeblogRedirectManager().recordRename(
                     page.getWeblog(), "/" + loadedSlug, "/" + slug);
         }
 
@@ -114,7 +114,7 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
         // lazily by comparing itself against weblog.lastModified (see
         // saveTemplate/saveComment for the same pattern) -- so without this
         // a published page never reaches a reader holding a cached copy.
-        roller.getWeblogManager().saveWeblog(page.getWeblog());
+        pressroom.getWeblogManager().saveWeblog(page.getWeblog());
     }
 
     /**
@@ -154,7 +154,7 @@ public class JPAWeblogPageManagerImpl implements WeblogPageManager {
         this.strategy.remove(page);
 
         // update weblog last modified date.  date updated by saveWeblog()
-        roller.getWeblogManager().saveWeblog(page.getWeblog());
+        pressroom.getWeblogManager().saveWeblog(page.getWeblog());
     }
 
     @Override

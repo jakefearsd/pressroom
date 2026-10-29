@@ -52,7 +52,7 @@ public record CommentLimits(int windowLimit, int windowSeconds, int dailyLimit) 
     /** The longest window, a day; it also keeps the window's milliseconds inside an int. */
     static final int MAX_WINDOW_SECONDS = 86_400;
 
-    private static final Logger log = LoggerFactory.getLogger("roller.comments");
+    private static final Logger log = LoggerFactory.getLogger("pressroom.comments");
 
     /** @throws IllegalArgumentException unless every value is at least 1 and the window at most a day */
     public CommentLimits {

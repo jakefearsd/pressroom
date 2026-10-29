@@ -86,13 +86,13 @@ class EntriesApiDispatchTest {
     @EnableWebMvc
     static class TestConfig {
         @Bean
-        WebMvcConfig webMvcConfig(PressroomHandlerInterceptor rollerHandlerInterceptor) {
-            return new WebMvcConfig(rollerHandlerInterceptor);
+        WebMvcConfig webMvcConfig(PressroomHandlerInterceptor pressroomHandlerInterceptor) {
+            return new WebMvcConfig(pressroomHandlerInterceptor);
         }
 
         /** Bootstrapped, and backed by the MockWeblogger facade installed in @BeforeAll. */
         @Bean
-        PressroomHandlerInterceptor rollerHandlerInterceptor() {
+        PressroomHandlerInterceptor pressroomHandlerInterceptor() {
             WebloggerProvider provider = mock(WebloggerProvider.class);
             when(provider.isBootstrapped()).thenReturn(true);
             return new PressroomHandlerInterceptor(provider, weblogger.weblogger());

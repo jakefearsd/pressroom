@@ -815,7 +815,7 @@ class UserEditControllerTest {
         verify(weblogger.userManager(), never()).grantRole(eq("admin"), any());
     }
 
-    /** Spec 2026-10-13, section 6: the person editor's Enabled box and admin role are roller.admin events. */
+    /** Spec 2026-10-13, section 6: the person editor's Enabled box and admin role are pressroom.admin events. */
     @Test
     void disablingAPersonAndGrantingAdminAreLogged() throws Exception {
         storedUser("jake");

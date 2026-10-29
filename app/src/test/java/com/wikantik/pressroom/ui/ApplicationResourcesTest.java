@@ -82,9 +82,9 @@ public class ApplicationResourcesTest {
 	 * @throws Exception if file not found, or if io ecxeption occurs.
 	 */
 	private void verifyResourceBundle(String bundle) throws Exception {
-		// verify user-dir; should end with roller
+		// verify user-dir; should end with pressroom
 		//assertNotNull(userDir);
-		//assertTrue(userDir.endsWith("roller"));
+		//assertTrue(userDir.endsWith("pressroom"));
 		
 		// load Chinese resource file
 		Properties props = new Properties();

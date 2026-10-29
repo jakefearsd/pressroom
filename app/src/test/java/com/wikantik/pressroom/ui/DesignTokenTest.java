@@ -342,15 +342,15 @@ public class DesignTokenTest {
 
         int bootstrapIndex = content.indexOf("bootstrap.min.css");
         int tokensIndex = content.indexOf("roller-tokens.css");
-        int rollerCssIndex = content.indexOf("pressroom-ui/styles/roller.css");
+        int pressroomCssIndex = content.indexOf("pressroom-ui/styles/roller.css");
 
         assertTrue(bootstrapIndex >= 0, HEAD_JSP + " no longer links bootstrap.min.css");
-        assertTrue(rollerCssIndex >= 0, HEAD_JSP + " no longer links roller.css");
+        assertTrue(pressroomCssIndex >= 0, HEAD_JSP + " no longer links roller.css");
 
         assertTrue(bootstrapIndex < tokensIndex,
                 "roller-tokens.css must be linked after bootstrap.min.css so its custom "
                         + "properties are available to override, but it appears first in " + HEAD_JSP);
-        assertTrue(tokensIndex < rollerCssIndex,
+        assertTrue(tokensIndex < pressroomCssIndex,
                 "roller-tokens.css must be linked before roller.css so roller.css can override "
                         + "the tokens, but it appears after in " + HEAD_JSP);
     }

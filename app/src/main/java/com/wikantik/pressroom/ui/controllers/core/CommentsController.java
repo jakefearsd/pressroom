@@ -86,7 +86,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 @RequestMapping("/pressroom-ui/rendering")
 public class CommentsController extends BaseController {
 
-    private static final Logger log = LoggerFactory.getLogger("roller.comments");
+    private static final Logger log = LoggerFactory.getLogger("pressroom.comments");
 
     private static final AuthenticationTrustResolver TRUST = new AuthenticationTrustResolverImpl();
 

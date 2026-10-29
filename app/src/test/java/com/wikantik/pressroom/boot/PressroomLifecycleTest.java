@@ -145,7 +145,7 @@ class PressroomLifecycleTest {
 
     @Test
     void startResolvesUploadsAndThemesDirsFromRealPathThenStopsEarlyWhenPrepareFails() {
-        when(servletContext.getRealPath("/")).thenReturn("/tmp/roller-lifecycle-test");
+        when(servletContext.getRealPath("/")).thenReturn("/tmp/pressroom-lifecycle-test");
 
         try (MockedStatic<WebloggerConfig> config = mockStatic(WebloggerConfig.class);
                 MockedStatic<WebloggerStartup> startup = mockStatic(WebloggerStartup.class)) {
@@ -155,9 +155,9 @@ class PressroomLifecycleTest {
             lifecycle.start();
 
             config.verify(() -> WebloggerConfig.setUploadsDir(
-                    contains("/tmp/roller-lifecycle-test/resources")));
+                    contains("/tmp/pressroom-lifecycle-test/resources")));
             config.verify(() -> WebloggerConfig.setThemesDir(
-                    contains("/tmp/roller-lifecycle-test/themes")));
+                    contains("/tmp/pressroom-lifecycle-test/themes")));
             assertTrue(lifecycle.isRunning(),
                     "start() marks itself running even when prepare() fails, matching the old "
                             + "contextInitialized behavior of leaving the servlet context up");
@@ -181,7 +181,7 @@ class PressroomLifecycleTest {
 
     @Test
     void startLogsIncompleteAndSkipsBootstrapWhenNotPreparedAndNotIttest() throws Exception {
-        when(servletContext.getRealPath("/")).thenReturn("/tmp/roller-lifecycle-test");
+        when(servletContext.getRealPath("/")).thenReturn("/tmp/pressroom-lifecycle-test");
 
         try (MockedStatic<WebloggerConfig> config = mockStatic(WebloggerConfig.class);
                 MockedStatic<WebloggerStartup> startup = mockStatic(WebloggerStartup.class)) {
@@ -201,7 +201,7 @@ class PressroomLifecycleTest {
 
     @Test
     void startCreatesDatabaseThenBootstrapsWhenInstallationTypeIsIttest() throws Exception {
-        when(servletContext.getRealPath("/")).thenReturn("/tmp/roller-lifecycle-test");
+        when(servletContext.getRealPath("/")).thenReturn("/tmp/pressroom-lifecycle-test");
         providerBootstraps();
 
         try (MockedStatic<WebloggerConfig> config = mockStatic(WebloggerConfig.class);
@@ -223,7 +223,7 @@ class PressroomLifecycleTest {
 
     @Test
     void startWrapsCreateDatabaseFailureDuringIttestAsIllegalState() throws Exception {
-        when(servletContext.getRealPath("/")).thenReturn("/tmp/roller-lifecycle-test");
+        when(servletContext.getRealPath("/")).thenReturn("/tmp/pressroom-lifecycle-test");
 
         try (MockedStatic<WebloggerConfig> config = mockStatic(WebloggerConfig.class);
                 MockedStatic<WebloggerStartup> startup = mockStatic(WebloggerStartup.class)) {
@@ -251,7 +251,7 @@ class PressroomLifecycleTest {
      */
     @Test
     void startPreparesThenBootstrapsThroughTheProvider() throws Exception {
-        when(servletContext.getRealPath("/")).thenReturn("/tmp/roller-lifecycle-test");
+        when(servletContext.getRealPath("/")).thenReturn("/tmp/pressroom-lifecycle-test");
         List<String> sequence = new ArrayList<>();
         doAnswer(inv -> {
             sequence.add("bootstrap");
@@ -283,7 +283,7 @@ class PressroomLifecycleTest {
 
     @Test
     void startSwallowsABootstrapExceptionFromTheProviderAndStaysUp() throws Exception {
-        when(servletContext.getRealPath("/")).thenReturn("/tmp/roller-lifecycle-test");
+        when(servletContext.getRealPath("/")).thenReturn("/tmp/pressroom-lifecycle-test");
         doThrow(new BootstrapException("boom")).when(provider).bootstrap();
 
         try (MockedStatic<WebloggerConfig> config = mockStatic(WebloggerConfig.class);
@@ -379,7 +379,7 @@ class PressroomLifecycleTest {
      */
     @Test
     void startChecksForCustomDomainsNeedingSiteAbsoluteUrlWithoutDisruptingBootstrap() throws Exception {
-        when(servletContext.getRealPath("/")).thenReturn("/tmp/roller-lifecycle-test");
+        when(servletContext.getRealPath("/")).thenReturn("/tmp/pressroom-lifecycle-test");
         providerBootstraps();
 
         try (MockedStatic<WebloggerConfig> config = mockStatic(WebloggerConfig.class);

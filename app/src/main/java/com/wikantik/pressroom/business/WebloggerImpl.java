@@ -352,7 +352,7 @@ public abstract class WebloggerImpl implements Weblogger {
             userManager.release();
             weblogManager.release();
         } catch(Exception e) {
-            log.error("Error calling Roller.release()", e);
+            log.error("Error calling Weblogger.release()", e);
         }
     }
     
@@ -398,7 +398,7 @@ public abstract class WebloggerImpl implements Weblogger {
                 threadManager.shutdown();
             }
         } catch(Exception e) {
-            log.error("Error calling Roller.shutdown()", e);
+            log.error("Error calling Weblogger.shutdown()", e);
         }
     }
     

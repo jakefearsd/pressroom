@@ -488,7 +488,7 @@ public class UserEditController extends BaseController {
         return CreateUserBean.PASSWORD_LINK.equals(bean.getPasswordMode()) && PasswordLinkMailer.isReady();
     }
 
-    /** Spec 2026-10-13, section 6: an account's Enabled flag changing is a roller.admin event. */
+    /** Spec 2026-10-13, section 6: an account's Enabled flag changing is a pressroom.admin event. */
     private static void logEnabledChange(boolean enabledBefore, User user, User actor) {
         boolean enabledNow = Boolean.TRUE.equals(user.getEnabled());
         if (enabledBefore != enabledNow) {

@@ -176,8 +176,8 @@ class ServletRegistrationConfigTest {
     // -------------------------------------------------------- listener bean
 
     @Test
-    void rollerSessionListenerRegistersTheListenerType() {
-        ServletListenerRegistrationBean<PressroomSession> bean = config.rollerSessionListener();
+    void pressroomSessionListenerRegistersTheListenerType() {
+        ServletListenerRegistrationBean<PressroomSession> bean = config.pressroomSessionListener();
         assertInstanceOf(PressroomSession.class, bean.getListener());
     }
 

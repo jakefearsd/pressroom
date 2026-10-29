@@ -28,7 +28,7 @@
 WebloggerProvider provider = WebApplicationContextUtils
         .getRequiredWebApplicationContext(application).getBean(WebloggerProvider.class);
 Weblogger weblogger = provider.getWeblogger();
-User user = PressroomSession.getRollerSession(request, provider)
+User user = PressroomSession.getPressroomSession(request, provider)
         .getAuthenticatedUser(weblogger.getUserManager());
 List weblogs = weblogger.getWeblogManager().getUserWeblogs(user, true);
 

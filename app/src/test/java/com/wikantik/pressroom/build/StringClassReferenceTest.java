@@ -67,7 +67,9 @@ class StringClassReferenceTest {
             ".no.such.Model",
             "deliberately nonexistent class: ModelLoaderTest exercises the load failure",
             ".ui.restapi.ApiSecurityRefusalTest$Secured$Inner",
-            "name handed to isTestFixture() as a string; no such nested class exists");
+            "name handed to isTestFixture() as a string; no such nested class exists",
+            ".session",
+            "HTTP session attribute key that only looks like a package; PressroomSessionTest pins its value");
 
     /**
      * Whole legacy-root token to the reason it is allowed. These are not

@@ -99,7 +99,7 @@ class SsoHandlersTest {
     }
 
     @Test
-    void aPrincipalThatIsNotARollerReaderIsLoggedAsExisting() throws Exception {
+    void aPrincipalThatIsNotAPressroomReaderIsLoggedAsExisting() throws Exception {
         try (SsoLogCapture log = SsoLogCapture.start()) {
             MockHttpServletResponse res = new MockHttpServletResponse();
             new SsoSuccessHandler(provider).onAuthenticationSuccess(callback("", null), res,
@@ -175,7 +175,7 @@ class SsoHandlersTest {
      * holds a valid state can set it through {@code error_description}.
      */
     @Test
-    void aRefusalLogsRollersReasonButNeverTheDescription() throws Exception {
+    void aRefusalLogsPressroomsReasonButNeverTheDescription() throws Exception {
         try (SsoLogCapture log = SsoLogCapture.start()) {
             MockHttpServletResponse res = new MockHttpServletResponse();
             OAuth2AuthenticationException ex = new OAuth2AuthenticationException(

@@ -64,7 +64,7 @@ class RedirectResponderTest {
     private RedirectResponder responder;
     private Weblog weblog;
 
-    /** Collects formatted messages logged to {@code roller.redirects}. */
+    /** Collects formatted messages logged to {@code pressroom.redirects}. */
     private final List<String> logged = new ArrayList<>();
     private AbstractAppender appender;
 

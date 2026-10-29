@@ -157,7 +157,7 @@ class ReIndexEntryOperationTest {
     }
 
     /**
-     * {@code roller} is dereferenced unconditionally in {@code doRun()}
+     * {@code pressroom} is dereferenced unconditionally in {@code doRun()}
      * (getWeblogEntryManager, then release() in the finally), so the guard
      * belongs before either happens. Constructed directly rather than
      * through {@link IndexManager}, since every real caller always supplies
@@ -170,7 +170,7 @@ class ReIndexEntryOperationTest {
         WeblogEntry data = new WeblogEntry();
         data.setId("does-not-matter");
         // The second null is the LuceneIndexManager, deliberately unmocked: doRun()
-        // returns on the null-roller path before it is ever touched.
+        // returns on the null-pressroom path before it is ever touched.
         ReIndexEntryOperation op = new ReIndexEntryOperation(null, null, data);
 
         assertDoesNotThrow(op::doRun);

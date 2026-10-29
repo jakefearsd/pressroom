@@ -162,16 +162,16 @@ class LazyOidcClientRegistrationRepositoryTest {
         };
         appender.start();
         LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
-        LoggerConfig lc = new LoggerConfig("roller.sso", Level.INFO, false);
+        LoggerConfig lc = new LoggerConfig("pressroom.sso", Level.INFO, false);
         lc.addAppender(appender, Level.INFO, null);
-        ctx.getConfiguration().addLogger("roller.sso", lc);
+        ctx.getConfiguration().addLogger("pressroom.sso", lc);
         ctx.updateLoggers();
         try {
             var repo = new LazyOidcClientRegistrationRepository(SETTINGS,
                     iss -> { throw new IllegalStateException("boom"); });
             repo.findByRegistrationId("oidc");
         } finally {
-            ctx.getConfiguration().removeLogger("roller.sso");
+            ctx.getConfiguration().removeLogger("pressroom.sso");
             ctx.updateLoggers();
             appender.stop();
         }

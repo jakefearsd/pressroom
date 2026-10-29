@@ -116,7 +116,7 @@ class ConfiguredClassListTest {
         return p;
     }
 
-    private static Properties rollerProperties() {
+    private static Properties pressroomProperties() {
         try (InputStream in = WebloggerConfig.class.getResourceAsStream("pressroom.properties")) {
             return parse(new String(in.readAllBytes(), StandardCharsets.UTF_8));
         } catch (IOException e) {
@@ -145,7 +145,7 @@ class ConfiguredClassListTest {
 
     private static List<Source> sources() {
         List<Source> all = new ArrayList<>();
-        all.add(new Source("pressroom.properties", rollerProperties()));
+        all.add(new Source("pressroom.properties", pressroomProperties()));
         all.add(new Source("velocity.properties", parse(RepoFiles.read(VELOCITY))));
         for (Path root : List.of(PRESSROOM_RESOURCES, TEST_RESOURCES)) {
             try (Stream<Path> walk = Files.walk(RepoFiles.repoRoot().resolve(root))) {
@@ -224,7 +224,7 @@ class ConfiguredClassListTest {
         for (Source s : sources()) {
             Properties p = s.props();
             for (String task : classList(p.getProperty("tasks.enabled"))) {
-                if (!hasValue(p, "tasks." + task + ".class") && !hasValue(rollerProperties(), "tasks." + task + ".class")) {
+                if (!hasValue(p, "tasks." + task + ".class") && !hasValue(pressroomProperties(), "tasks." + task + ".class")) {
                     problems.add(s.origin() + ": enabled task " + task + " has no class");
                 }
             }

@@ -143,7 +143,7 @@ class SiteSpaceAccessTest {
         }
 
         @Bean
-        PressroomHandlerInterceptor rollerHandlerInterceptor(WebloggerProvider provider) {
+        PressroomHandlerInterceptor pressroomHandlerInterceptor(WebloggerProvider provider) {
             return new PressroomHandlerInterceptor(provider, TestUtils.weblogger());
         }
 

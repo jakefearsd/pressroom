@@ -150,7 +150,7 @@ class SsoConfigTest {
 
     /**
      * The probe is stopped before the test ends: left running, its retries log
-     * WARNs on {@code roller.sso} for several seconds, into whichever test class
+     * WARNs on {@code pressroom.sso} for several seconds, into whichever test class
      * runs next and counts that logger's lines.
      */
     @Test
@@ -176,7 +176,7 @@ class SsoConfigTest {
 
     private static Set<Thread> selfChecks() {
         return Thread.getAllStackTraces().keySet().stream()
-                .filter(t -> "roller-sso-selfcheck".equals(t.getName()))
+                .filter(t -> "pressroom-sso-selfcheck".equals(t.getName()))
                 .collect(Collectors.toCollection(HashSet::new));
     }
 

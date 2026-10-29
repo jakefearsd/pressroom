@@ -36,7 +36,7 @@ import org.springframework.security.web.authentication.AuthenticationFailureHand
  */
 public class SsoFailureHandler implements AuthenticationFailureHandler {
 
-    private static final Logger log = LoggerFactory.getLogger("roller.sso");
+    private static final Logger log = LoggerFactory.getLogger("pressroom.sso");
     private static final int MAX_LOGGED_CODE = 64;
 
     private final WebloggerProvider webloggerProvider;

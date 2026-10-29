@@ -393,7 +393,7 @@ class SecurityConfigTest {
 
             SecurityConfig config = new SecurityConfig();
             PasswordEncoder encoder = config.passwordEncoder();
-            PressroomUserDetailsService userDetailsService = config.rollerUserDetailsService(mock(WebloggerProvider.class));
+            PressroomUserDetailsService userDetailsService = config.pressroomUserDetailsService(mock(WebloggerProvider.class));
 
             AuthenticationManager manager = config.authenticationManager(userDetailsService, encoder);
 
@@ -418,7 +418,7 @@ class SecurityConfigTest {
 
             SecurityConfig config = new SecurityConfig();
             PasswordEncoder encoder = config.passwordEncoder();
-            PressroomUserDetailsService userDetailsService = config.rollerUserDetailsService(mock(WebloggerProvider.class));
+            PressroomUserDetailsService userDetailsService = config.pressroomUserDetailsService(mock(WebloggerProvider.class));
 
             AuthenticationManager manager = config.authenticationManager(userDetailsService, encoder);
 

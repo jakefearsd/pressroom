@@ -838,7 +838,7 @@ class MediaApiTest {
 
     private static final byte[] JPEG_BYTES = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 1, 2, 3};
     private static final String SIGNED_URL = "https://img.example.com/a/sunset.jpg?sig=SECRET";
-    private static final String IMPORT_LOGGER = "roller.media.import";
+    private static final String IMPORT_LOGGER = "pressroom.media.import";
 
     /** A controller wired with a mocked fetcher and a default directory for {@code weblog}. */
     private MediaApi importController(Weblogger weblogger, Weblog weblog, RemoteImageFetcher fetcher) throws Exception {

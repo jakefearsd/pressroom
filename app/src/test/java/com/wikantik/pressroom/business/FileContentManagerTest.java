@@ -196,7 +196,7 @@ public class FileContentManagerTest  {
             log.error("ERROR in test setup", ex);
         }
 
-        // update roller properties to prepare for test
+        // update pressroom properties to prepare for test
         PropertiesManager pmgr = TestUtils.weblogger().getPropertiesManager();
         Map<String, RuntimeConfigProperty> config = pmgr.getProperties();
         config.get("uploads.enabled").setValue("true");
@@ -206,7 +206,7 @@ public class FileContentManagerTest  {
         TestUtils.endSession(true);
 
         /* NOTE: upload dir for unit tests is set in
-        roller/testdata/pressroom-custom.properties */
+        pressroom/testdata/pressroom-custom.properties */
         FileContentManager fmgr = TestUtils.weblogger().getFileContentManager();
 
         // File should not exist initially
@@ -287,7 +287,7 @@ public class FileContentManagerTest  {
         java.io.File weblogDir = new java.io.File(
                 com.wikantik.pressroom.config.WebloggerConfig.getProperty("mediafiles.storage.dir"),
                 testWeblog.getHandle());
-        String[] leftovers = weblogDir.list((dir, name) -> name.startsWith("roller-save-"));
+        String[] leftovers = weblogDir.list((dir, name) -> name.startsWith("pressroom-save-"));
         assertNotNull(leftovers, "the weblog's uploads directory must exist");
         assertEquals(0, leftovers.length,
                 "aborted writes must clean up their temp file: " + java.util.Arrays.toString(leftovers));

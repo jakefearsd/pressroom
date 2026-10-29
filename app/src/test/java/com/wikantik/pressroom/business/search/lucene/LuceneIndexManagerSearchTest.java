@@ -77,16 +77,16 @@ class LuceneIndexManagerSearchTest {
     @TempDir
     Path indexDir;
 
-    private Weblogger roller;
+    private Weblogger pressroom;
     private WeblogEntryManager entries;
     private LuceneIndexManager manager;
 
     @BeforeEach
     void setUp() throws Exception {
-        roller = mock(Weblogger.class);
+        pressroom = mock(Weblogger.class);
         entries = mock(WeblogEntryManager.class);
-        when(roller.getWeblogEntryManager()).thenReturn(entries);
-        when(roller.getUserManager()).thenReturn(mock(UserManager.class));
+        when(pressroom.getWeblogEntryManager()).thenReturn(entries);
+        when(pressroom.getUserManager()).thenReturn(mock(UserManager.class));
         ThreadManager inline = mock(ThreadManager.class);
         doAnswer(inv -> {
             ((Runnable) inv.getArgument(0)).run();
@@ -96,9 +96,9 @@ class LuceneIndexManagerSearchTest {
             ((Runnable) inv.getArgument(0)).run();
             return null;
         }).when(inline).executeInForeground(any(Runnable.class));
-        when(roller.getThreadManager()).thenReturn(inline);
+        when(pressroom.getThreadManager()).thenReturn(inline);
 
-        manager = new LuceneIndexManager(roller);
+        manager = new LuceneIndexManager(pressroom);
         setField(manager, "indexDir", indexDir.toString());
         setField(manager, "indexConsistencyMarker", new File(indexDir.toFile(), ".index-inconsistent"));
     }
@@ -217,7 +217,7 @@ class LuceneIndexManagerSearchTest {
     @Test
     void anEntryPublishedAtExactlyNowIsFound() throws Exception {
         Timestamp instant = new Timestamp(1_700_000_000_000L);
-        LuceneIndexManager fixed = new LuceneIndexManager(roller) {
+        LuceneIndexManager fixed = new LuceneIndexManager(pressroom) {
             @Override
             Timestamp now() {
                 return instant;

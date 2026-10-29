@@ -98,7 +98,7 @@ class InstallControllerTest {
     }
 
     @Test
-    void everyInstallUrlBouncesToTheSiteOnceRollerIsRunning() {
+    void everyInstallUrlBouncesToTheSiteOncePressroomIsRunning() {
         when(webloggerProvider.isBootstrapped()).thenReturn(true);
 
         assertEquals("redirect:/", controller.execute(request(), model));

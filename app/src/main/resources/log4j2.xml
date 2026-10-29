@@ -21,14 +21,14 @@ limitations under the License.
     - set the log4j.configurationFile system property via pressroom-custom.properties or -D JVM arg -->
 
 <!--useful for testing: monitorInterval="10" -->
-<Configuration status="warn" name="Roller" >
+<Configuration status="warn" name="Pressroom" >
     
     <!-- folder is automatically created if needed -->
     <properties>
         <!-- Resolved against an absolute base rather than the process working
              directory. A bare "logs" is whatever directory the container happened
              to be launched from: under Tomcat that is not writable, log4j2 fails to
-             create the appender, and because the roller appender is referenced by an
+             create the appender, and because the pressroom appender is referenced by an
              AsyncAppender the whole context fails to start - the application does
              not merely lose its log, it does not deploy.
              Order: explicit override, then Tomcat's base, then the working
@@ -54,14 +54,14 @@ limitations under the License.
 
         <!-- Standard output: what `docker compose logs app` shows. Every logger
              below reaches it (LogRoutingTest), the named ones through
-             asyncRoller and everything else through Root. -->
+             asyncPressroom and everything else through Root. -->
         <Console name="console" target="SYSTEM_OUT">
             <PatternLayout pattern="${logging.pattern}"/>
         </Console>
         
-        <RollingFile name="roller"
-                     fileName="${logging.dir}/roller.log" 
-                     filePattern="${logging.dir}/roller-%d{yyyy-MM-dd-HHmmss}.log.gz"
+        <RollingFile name="pressroom"
+                     fileName="${logging.dir}/pressroom.log" 
+                     filePattern="${logging.dir}/pressroom-%d{yyyy-MM-dd-HHmmss}.log.gz"
                      ignoreExceptions="false">
             <PatternLayout pattern="${logging.pattern}"/>
             <Policies>
@@ -73,7 +73,7 @@ limitations under the License.
                  ever deleted one, so a long-lived container filled up. -->
             <DefaultRolloverStrategy>
                 <Delete basePath="${logging.dir}" maxDepth="1">
-                    <IfFileName glob="roller-*.log.gz">
+                    <IfFileName glob="pressroom-*.log.gz">
                         <IfAccumulatedFileCount exceeds="10"/>
                     </IfFileName>
                 </Delete>
@@ -93,11 +93,11 @@ limitations under the License.
         </RollingFile>
         -->
         <!-- Queue + thread, so a caller never waits on file or stdout IO.
-             roller.log is inside the container (not on a volume), so on its
+             pressroom.log is inside the container (not on a volume), so on its
              own it is lost on every deploy and invisible to compose logs;
              the console copy is the one operators read. -->
-        <Async name="asyncRoller">
-            <AppenderRef ref="roller"/>
+        <Async name="asyncPressroom">
+            <AppenderRef ref="pressroom"/>
             <AppenderRef ref="console"/>
         </Async>
         
@@ -105,22 +105,22 @@ limitations under the License.
 
     <Loggers>
         
-        <!-- roller.log and the console; everything not named here goes to the
+        <!-- pressroom.log and the console; everything not named here goes to the
              console alone, through Root -->
-        <Logger name="com.wikantik.pressroom"   level="info"  additivity="false"> <AppenderRef ref="asyncRoller"/> </Logger>
-        <Logger name="org.apache.velocity"     level="info"  additivity="false"> <AppenderRef ref="asyncRoller"/> </Logger>
-        <Logger name="org.springframework"     level="info"  additivity="false"> <AppenderRef ref="asyncRoller"/> </Logger>
-        <Logger name="org.openid4java"         level="info"  additivity="false"> <AppenderRef ref="asyncRoller"/> </Logger>
-        <Logger name="org.eclipse.persistence" level="info"  additivity="false"> <AppenderRef ref="asyncRoller"/> </Logger>
+        <Logger name="com.wikantik.pressroom"   level="info"  additivity="false"> <AppenderRef ref="asyncPressroom"/> </Logger>
+        <Logger name="org.apache.velocity"     level="info"  additivity="false"> <AppenderRef ref="asyncPressroom"/> </Logger>
+        <Logger name="org.springframework"     level="info"  additivity="false"> <AppenderRef ref="asyncPressroom"/> </Logger>
+        <Logger name="org.openid4java"         level="info"  additivity="false"> <AppenderRef ref="asyncPressroom"/> </Logger>
+        <Logger name="org.eclipse.persistence" level="info"  additivity="false"> <AppenderRef ref="asyncPressroom"/> </Logger>
 
         <!-- the MCP SDK logs the client's initialize text at INFO: caller-controlled -->
-        <Logger name="io.modelcontextprotocol" level="warn" additivity="false"> <AppenderRef ref="asyncRoller"/> </Logger>
-        <Logger name="roller.sso" level="info" additivity="false"> <AppenderRef ref="asyncRoller"/> </Logger>
+        <Logger name="io.modelcontextprotocol" level="warn" additivity="false"> <AppenderRef ref="asyncPressroom"/> </Logger>
+        <Logger name="pressroom.sso" level="info" additivity="false"> <AppenderRef ref="asyncPressroom"/> </Logger>
         <!-- comment ids, statuses, usernames and refusal codes; never a body or an email address -->
-        <Logger name="roller.comments" level="info" additivity="false"> <AppenderRef ref="asyncRoller"/> </Logger>
+        <Logger name="pressroom.comments" level="info" additivity="false"> <AppenderRef ref="asyncPressroom"/> </Logger>
         <!-- account, membership and API-token changes, each naming by=; never a token secret -->
-        <Logger name="roller.admin" level="info" additivity="false"> <AppenderRef ref="asyncRoller"/> </Logger>
-        <Logger name="org.webjars"             level="info"  additivity="false"> <AppenderRef ref="asyncRoller"/> </Logger>
+        <Logger name="pressroom.admin" level="info" additivity="false"> <AppenderRef ref="asyncPressroom"/> </Logger>
+        <Logger name="org.webjars"             level="info"  additivity="false"> <AppenderRef ref="asyncPressroom"/> </Logger>
 
         <!-- everything not named above -->
         <Root level="info">

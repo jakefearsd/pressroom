@@ -68,7 +68,7 @@ public class JPAWeblogManagerImpl implements WeblogManager {
     
     private static final Logger log = LoggerFactory.getLogger(JPAWeblogManagerImpl.class);
 
-    private final Weblogger roller;
+    private final Weblogger pressroom;
     private final JPAPersistenceStrategy strategy;
     private final VirtualHostRegistry virtualHosts;
     private final TagAggregateStore tagAggregates;
@@ -96,11 +96,11 @@ public class JPAWeblogManagerImpl implements WeblogManager {
      */
     private final WeblogStampedCache<Map<ComponentType, String>> templateIdsByAction;
 
-    public JPAWeblogManagerImpl(Weblogger roller, JPAPersistenceStrategy strat,
+    public JPAWeblogManagerImpl(Weblogger pressroom, JPAPersistenceStrategy strat,
                                 VirtualHostRegistry virtualHosts) {
         this.virtualHosts = virtualHosts;
         log.debug("Instantiating JPA Weblog Manager");
-        this.roller = roller;
+        this.pressroom = pressroom;
         this.strategy = strat;
         this.tagAggregates = new TagAggregateStore(strat);
         this.templateIdsByAction = new WeblogStampedCache<>(strat);
@@ -168,7 +168,7 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         // back delete keeps a weblog whose index is intact). Nothing removed
         // them before: search dropped them from the page, their entries being
         // gone, but they still counted towards every total.
-        IndexManager index = roller.getIndexManager();
+        IndexManager index = pressroom.getIndexManager();
         strategy.runAfterCommit(() -> {
             try {
                 index.removeWeblogIndex(weblog);
@@ -196,8 +196,8 @@ public class JPAWeblogManagerImpl implements WeblogManager {
     private void removeWeblogContents(Weblog weblog)
     throws  WebloggerException {
         
-        UserManager        umgr = roller.getUserManager();
-        WeblogEntryManager emgr = roller.getWeblogEntryManager();
+        UserManager        umgr = pressroom.getUserManager();
+        WeblogEntryManager emgr = pressroom.getWeblogEntryManager();
 
         // remove tags
         TypedQuery<WeblogEntryTag> tagQuery = strategy.getNamedQuery("WeblogEntryTag.getByWeblog",
@@ -234,7 +234,7 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         }
         
         // remove static pages
-        roller.getWeblogPageManager().removePages(weblog);
+        pressroom.getWeblogPageManager().removePages(weblog);
 
         // pressroom_weblog_redirect rows FK the weblog with no cascade
         strategy.getNamedUpdate("WeblogRedirect.removeByWeblog")
@@ -294,7 +294,7 @@ public class JPAWeblogManagerImpl implements WeblogManager {
      */
     private void removeMediaFiles(Weblog weblog) throws WebloggerException {
         List<String> fileIds = new ArrayList<>();
-        MediaFileManager mfmgr = roller.getMediaFileManager();
+        MediaFileManager mfmgr = pressroom.getMediaFileManager();
         for (MediaFileDirectory dir : new ArrayList<>(mfmgr.getMediaFileDirectories(weblog))) {
             for (MediaFile file : dir.getMediaFiles()) {
                 fileIds.add(file.getId());
@@ -305,7 +305,7 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         if (fileIds.isEmpty()) {
             return;
         }
-        FileContentManager content = roller.getFileContentManager();
+        FileContentManager content = pressroom.getFileContentManager();
         strategy.runAfterCommit(() -> {
             for (String fileId : fileIds) {
                 JPAMediaFileManagerImpl.deleteContentQuietly(content, weblog, fileId);
@@ -326,7 +326,7 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         this.strategy.store(template);
         
         // update weblog last modified date.  date updated by saveWeblog()
-        roller.getWeblogManager().saveWeblog(template.getWeblog());
+        pressroom.getWeblogManager().saveWeblog(template.getWeblog());
     }
 
     @Override
@@ -334,14 +334,14 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         this.strategy.store(rendition);
 
         // update weblog last modified date.  date updated by saveWeblog()
-        roller.getWeblogManager().saveWeblog(rendition.getWeblogTemplate().getWeblog());
+        pressroom.getWeblogManager().saveWeblog(rendition.getWeblogTemplate().getWeblog());
     }
     
     @Override
     public void removeTemplate(WeblogTemplate template) throws WebloggerException {
         this.strategy.remove(template);
         // update weblog last modified date.  date updated by saveWeblog()
-        roller.getWeblogManager().saveWeblog(template.getWeblog());
+        pressroom.getWeblogManager().saveWeblog(template.getWeblog());
     }
     
     @Override
@@ -445,8 +445,8 @@ public class JPAWeblogManagerImpl implements WeblogManager {
             // grant weblog creator ADMIN permission
             List<String> actions = new ArrayList<>();
             actions.add(WeblogPermission.ADMIN);
-            roller.getUserManager().grantWeblogPermission(
-                    newWeblog, roller.getUserManager().getUserByUserName(newWeblog.getCreatorUserName()), actions);
+            pressroom.getUserManager().grantWeblogPermission(
+                    newWeblog, pressroom.getUserManager().getUserByUserName(newWeblog.getCreatorUserName()), actions);
         }
         
         String cats = WebloggerConfig.getProperty("newuser.categories");
@@ -467,7 +467,7 @@ public class JPAWeblogManagerImpl implements WeblogManager {
 
         this.strategy.store(newWeblog);
 
-        roller.getMediaFileManager().createDefaultMediaFileDirectory(newWeblog);
+        pressroom.getMediaFileManager().createDefaultMediaFileDirectory(newWeblog);
 
         // flush so that all data up to this point can be available in db
         this.strategy.flush();
@@ -655,7 +655,7 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         if (user == null) {
             return weblogs;
         }
-        List<WeblogPermission> perms = roller.getUserManager().getWeblogPermissions(user);
+        List<WeblogPermission> perms = pressroom.getUserManager().getWeblogPermissions(user);
         for (WeblogPermission perm : perms) {
             Weblog weblog = getWeblogByHandle(perm.getObjectId(), null);
             if ((!enabledOnly || weblog.getVisible()) && BooleanUtils.isTrue(weblog.getActive())) {
@@ -668,10 +668,10 @@ public class JPAWeblogManagerImpl implements WeblogManager {
     @Override
     public List<User> getWeblogUsers(Weblog weblog, boolean enabledOnly) throws WebloggerException {
         List<User> users = new ArrayList<>();
-        List<WeblogPermission> perms = roller.getUserManager().getWeblogPermissions(weblog);
+        List<WeblogPermission> perms = pressroom.getUserManager().getWeblogPermissions(weblog);
         for (WeblogPermission perm : perms) {
             // enabled == null so that enabledOnly=false really lists disabled members
-            User user = roller.getUserManager().getUserByUserName(perm.getUserName(), null);
+            User user = pressroom.getUserManager().getUserByUserName(perm.getUserName(), null);
             if (user == null) {
                 log.error("ERROR user is null, userName:{}", perm.getUserName());
                 continue;

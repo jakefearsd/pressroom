@@ -85,7 +85,7 @@ class BootstrapFilterTest {
     // --- when the gate is closed ------------------------------------------
 
     @Test
-    void anUninstalledRollerSendsEveryOrdinaryRequestToTheInstaller() throws Exception {
+    void anUninstalledPressroomSendsEveryOrdinaryRequestToTheInstaller() throws Exception {
         runWith("auto", false, "/pressroom-ui/menu.rol");
         assertForwardedToInstaller();
     }
@@ -133,7 +133,7 @@ class BootstrapFilterTest {
     // --- when the gate is open --------------------------------------------
 
     @Test
-    void anInstalledRollerForwardsNothing() throws Exception {
+    void anInstalledPressroomForwardsNothing() throws Exception {
         runWith("auto", true, "/pressroom-ui/menu.rol");
         assertPassedThrough();
     }

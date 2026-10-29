@@ -64,7 +64,7 @@ class ReaderOidcUserServiceTest {
     }
 
     @Test
-    void principalNameIsTheRollerUsernameAndAuthoritiesAreRollerRoles() throws Exception {
+    void principalNameIsThePressroomUsernameAndAuthoritiesArePressroomRoles() throws Exception {
         ReaderAccounts accounts = mock(ReaderAccounts.class);
         User u = new User();
         u.setUserName("reader-abcdefghij");

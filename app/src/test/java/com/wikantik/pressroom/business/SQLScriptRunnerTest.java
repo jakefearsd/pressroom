@@ -80,7 +80,7 @@ public class SQLScriptRunnerTest  {
         }
 
         // if you are running the tests in IntelliJ, then you will need to add something like this to your VM options:
-        // -Dproject.build.directory=/Users/dave/src/apache-roller/app/target
+        // -Dproject.build.directory=/Users/dave/src/pressroom/app/target
 
         // run script to create tables
         SQLScriptRunner create = new SQLScriptRunner(System.getProperty("project.build.directory")

@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * An exception's cause chain, for {@code roller.sso} log lines that name what
+ * An exception's cause chain, for {@code pressroom.sso} log lines that name what
  * went wrong by class alone. Never a message: a message can carry an email, a
  * provider's error text or configuration.
  */

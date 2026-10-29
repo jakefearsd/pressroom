@@ -77,7 +77,7 @@ class CwebpEncoderTest {
         // A nonexistent input also guarantees encode() can't succeed even if
         // some cwebp happens to be on PATH here.
         File missingInput = new File("/nonexistent/path/should-not-exist.png");
-        File output = new File(System.getProperty("java.io.tmpdir"), "roller-cwebp-test-output.webp");
+        File output = new File(System.getProperty("java.io.tmpdir"), "pressroom-cwebp-test-output.webp");
         output.deleteOnExit();
 
         boolean result = CwebpEncoder.encode(missingInput, output, 80);
@@ -91,8 +91,8 @@ class CwebpEncoderTest {
         org.junit.jupiter.api.Assumptions.assumeTrue(CwebpEncoder.isAvailable(),
                 "cwebp is not installed on this machine -- skipping the real-encode check");
 
-        File input = File.createTempFile("roller-cwebp-test-", ".png");
-        File output = File.createTempFile("roller-cwebp-test-", ".webp");
+        File input = File.createTempFile("pressroom-cwebp-test-", ".png");
+        File output = File.createTempFile("pressroom-cwebp-test-", ".webp");
         input.deleteOnExit();
         output.deleteOnExit();
         try {

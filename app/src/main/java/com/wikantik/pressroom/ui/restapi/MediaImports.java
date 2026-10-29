@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class MediaImports {
 
-    private static final Logger IMPORT_LOG = LoggerFactory.getLogger("roller.media.import");
+    private static final Logger IMPORT_LOG = LoggerFactory.getLogger("pressroom.media.import");
 
     /** The file an import produced or matched; {@code created} is false for a match. */
     public record Imported(MediaFile file, boolean created) {
@@ -63,7 +63,7 @@ public final class MediaImports {
      * Fetches {@code url} into {@code directory}. A file already there with
      * the same bytes is returned unchanged, except that a null alt text takes
      * {@code altText} ({@code ""} is a deliberate "decorative" and is kept).
-     * One INFO line on {@code roller.media.import} either way.
+     * One INFO line on {@code pressroom.media.import} either way.
      */
     public static Imported importImage(Weblogger weblogger, RemoteImageFetcher fetcher, Weblog weblog,
                                        MediaFileDirectory directory, String url, String name, String altText)

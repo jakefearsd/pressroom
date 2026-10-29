@@ -35,7 +35,7 @@ class PressroomSessionTest {
     private Principal principal;
 
     @Mock
-    private Weblogger roller;
+    private Weblogger pressroom;
 
     @Mock
     private WebloggerProvider provider;
@@ -46,7 +46,7 @@ class PressroomSessionTest {
     @Mock
     private User user;
 
-    private PressroomSession rollerSession;
+    private PressroomSession pressroomSession;
     private PressroomLoginSessionManager sessionManager;
 
     @BeforeEach
@@ -54,20 +54,26 @@ class PressroomSessionTest {
         MockitoAnnotations.openMocks(this);
 
         sessionManager = PressroomLoginSessionManager.getInstance();
-        rollerSession = new PressroomSession();
+        pressroomSession = new PressroomSession();
 
         when(request.getSession(false)).thenReturn(session);
-        when(roller.getUserManager()).thenReturn(userManager);
+        when(pressroom.getUserManager()).thenReturn(userManager);
         when(provider.isBootstrapped()).thenReturn(true);
-        when(provider.getWeblogger()).thenReturn(roller);
+        when(provider.getWeblogger()).thenReturn(pressroom);
+    }
+
+    /** The HTTP session attribute key is a stored name: it carries the product name, not the old one. */
+    @Test
+    void theSessionAttributeKeyIsNamedForPressroom() {
+        assertEquals("com.wikantik.pressroom.session", PressroomSession.PRESSROOM_SESSION);
     }
 
     @Test
-    void testGetRollerSessionNewSession() {
+    void testGetPressroomSessionNewSession() {
         when(session.getAttribute(PressroomSession.PRESSROOM_SESSION)).thenReturn(null);
         when(request.getUserPrincipal()).thenReturn(null);
 
-        PressroomSession result = PressroomSession.getRollerSession(request, provider);
+        PressroomSession result = PressroomSession.getPressroomSession(request, provider);
 
         // Verify new session was created
         assertNotNull(result);
@@ -76,37 +82,37 @@ class PressroomSessionTest {
     }
 
     @Test
-    void testGetRollerSessionExistingValidSession() {
-        when(session.getAttribute(PressroomSession.PRESSROOM_SESSION)).thenReturn(rollerSession);
+    void testGetPressroomSessionExistingValidSession() {
+        when(session.getAttribute(PressroomSession.PRESSROOM_SESSION)).thenReturn(pressroomSession);
         when(request.getUserPrincipal()).thenReturn(null);
 
-        PressroomSession result = PressroomSession.getRollerSession(request, provider);
+        PressroomSession result = PressroomSession.getPressroomSession(request, provider);
 
         // Verify session was retrieved
         assertNotNull(result);
         // Verify returned session matches existing one
-        assertEquals(rollerSession, result);
+        assertEquals(pressroomSession, result);
     }
 
     @Test
-    void testGetRollerSessionInvalidatedSession() throws Exception {
+    void testGetPressroomSessionInvalidatedSession() throws Exception {
         String username = "testuser";
-        when(session.getAttribute(PressroomSession.PRESSROOM_SESSION)).thenReturn(rollerSession);
+        when(session.getAttribute(PressroomSession.PRESSROOM_SESSION)).thenReturn(pressroomSession);
         when(request.getUserPrincipal()).thenReturn(principal);
         when(principal.getName()).thenReturn(username);
         when(userManager.getUserByUserName(username)).thenReturn(user);
         when(user.getUserName()).thenReturn(username);
 
-        rollerSession.setAuthenticatedUser(user);
+        pressroomSession.setAuthenticatedUser(user);
         sessionManager.invalidate(username);
 
         // Force creation of new session
         when(session.getAttribute(PressroomSession.PRESSROOM_SESSION)).thenReturn(null);
 
-        PressroomSession result = PressroomSession.getRollerSession(request, provider);
+        PressroomSession result = PressroomSession.getPressroomSession(request, provider);
 
         assertNotNull(result);
-        assertNotEquals(rollerSession, result);
+        assertNotEquals(pressroomSession, result);
     }
 
     /** A principal on a bootstrapped tier is resolved through the PROVIDER's facade. */
@@ -120,7 +126,7 @@ class PressroomSessionTest {
         when(user.getUserName()).thenReturn(username);
         when(user.getEnabled()).thenReturn(Boolean.TRUE);
 
-        PressroomSession result = PressroomSession.getRollerSession(request, provider);
+        PressroomSession result = PressroomSession.getPressroomSession(request, provider);
 
         assertEquals(user, result.getAuthenticatedUser(userManager));
         verify(userManager, atLeastOnce()).getUserByUserName(username);
@@ -137,7 +143,7 @@ class PressroomSessionTest {
         when(request.getUserPrincipal()).thenReturn(principal);
         when(principal.getName()).thenReturn("testuser");
 
-        PressroomSession result = PressroomSession.getRollerSession(request, provider);
+        PressroomSession result = PressroomSession.getPressroomSession(request, provider);
 
         assertNotNull(result);
         assertNull(result.getAuthenticatedUser(userManager));
@@ -149,12 +155,12 @@ class PressroomSessionTest {
         String username = "testuser";
         when(user.getUserName()).thenReturn(username);
 
-        rollerSession.setAuthenticatedUser(user);
+        pressroomSession.setAuthenticatedUser(user);
 
         // Verify session was registered in manager
         assertNotNull(sessionManager.get(username));
         // Verify registered session matches current one
-        assertEquals(rollerSession, sessionManager.get(username));
+        assertEquals(pressroomSession, sessionManager.get(username));
     }
 
     @Test
@@ -163,8 +169,8 @@ class PressroomSessionTest {
         when(user.getUserName()).thenReturn(username);
         when(userManager.getUserByUserName(username)).thenReturn(user);
 
-        rollerSession.setAuthenticatedUser(user);
-        User result = rollerSession.getAuthenticatedUser(userManager);
+        pressroomSession.setAuthenticatedUser(user);
+        User result = pressroomSession.getAuthenticatedUser(userManager);
 
         // Verify authenticated user was retrieved
         assertNotNull(result);
@@ -176,9 +182,9 @@ class PressroomSessionTest {
     @Test
     void getAuthenticatedUserWithNoManagerIsNull() {
         when(user.getUserName()).thenReturn("testuser");
-        rollerSession.setAuthenticatedUser(user);
+        pressroomSession.setAuthenticatedUser(user);
 
-        assertNull(rollerSession.getAuthenticatedUser(null));
+        assertNull(pressroomSession.getAuthenticatedUser(null));
     }
 
     @Test
@@ -206,13 +212,13 @@ class PressroomSessionTest {
               .thenReturn(user)  // First call returns user
               .thenReturn(null); // Subsequent calls return null
 
-        rollerSession.setAuthenticatedUser(user);
+        pressroomSession.setAuthenticatedUser(user);
         sessionManager.invalidate(username);
 
         // Force UserManager to return null after invalidation
         when(userManager.getUserByUserName(username)).thenReturn(null);
 
         assertNull(sessionManager.get(username));
-        assertNull(rollerSession.getAuthenticatedUser(userManager));
+        assertNull(pressroomSession.getAuthenticatedUser(userManager));
     }
 }

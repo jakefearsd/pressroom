@@ -90,13 +90,13 @@ class LuceneIndexManagerTest {
         String bogusIndexDir = blocker.getPath() + File.separator + "sub";
 
         // A fresh index dir marks inconsistentAtStartup, which schedules a
-        // background rebuild through roller.getThreadManager() -- stubbed so
+        // background rebuild through pressroom.getThreadManager() -- stubbed so
         // that reaches a real (no-op) mock rather than a bare
         // mock(Weblogger.class)'s null default.
-        Weblogger roller = mock(Weblogger.class);
-        when(roller.getThreadManager()).thenReturn(mock(ThreadManager.class));
+        Weblogger pressroom = mock(Weblogger.class);
+        when(pressroom.getThreadManager()).thenReturn(mock(ThreadManager.class));
 
-        LuceneIndexManager manager = new LuceneIndexManager(roller);
+        LuceneIndexManager manager = new LuceneIndexManager(pressroom);
         setField(manager, "indexDir", bogusIndexDir);
         setField(manager, "indexConsistencyMarker", tempDir.resolve(".index-inconsistent").toFile());
 

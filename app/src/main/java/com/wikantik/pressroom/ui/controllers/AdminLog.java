@@ -23,7 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@code roller.admin} log (spec 2026-10-13, section 6): one INFO line
+ * The {@code pressroom.admin} log (spec 2026-10-13, section 6): one INFO line
  * per change to an account, a weblog membership or an API token, naming the
  * target and, as {@code by=}, the account that made it. The admin UI and the
  * API both write here, through this one class, so a controller keeps its
@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 public final class AdminLog {
 
     /** The logger's name, configured in log4j2.xml. */
-    public static final String NAME = "roller.admin";
+    public static final String NAME = "pressroom.admin";
 
     private static final Logger log = LoggerFactory.getLogger(NAME);
 

@@ -25,7 +25,7 @@ public final class PressroomOidcUser implements OidcUser, Serializable {
     // serialization round trip, so a non-serializable delegate shows up there.
     @SuppressWarnings("serial")
     private final OidcUser delegate;
-    private final String rollerUserName;
+    private final String pressroomUserName;
     // Always Stream.toList(), an immutable list that serializes.
     @SuppressWarnings("serial")
     private final List<GrantedAuthority> authorities;
@@ -33,14 +33,14 @@ public final class PressroomOidcUser implements OidcUser, Serializable {
 
     /**
      * @param delegate       the user the provider returned
-     * @param rollerUserName the Roller username
+     * @param pressroomUserName the Roller username
      * @param authorities    the Roller roles, as authorities
      * @param newAccount     true when this sign-in created the account
      */
-    public PressroomOidcUser(OidcUser delegate, String rollerUserName,
+    public PressroomOidcUser(OidcUser delegate, String pressroomUserName,
             Collection<? extends GrantedAuthority> authorities, boolean newAccount) {
         this.delegate = delegate;
-        this.rollerUserName = rollerUserName;
+        this.pressroomUserName = pressroomUserName;
         this.authorities = authorities.stream()
                 .map(a -> (GrantedAuthority) new SimpleGrantedAuthority(a.getAuthority()))
                 .toList();
@@ -54,7 +54,7 @@ public final class PressroomOidcUser implements OidcUser, Serializable {
 
     @Override
     public String getName() {
-        return rollerUserName;
+        return pressroomUserName;
     }
 
     @Override

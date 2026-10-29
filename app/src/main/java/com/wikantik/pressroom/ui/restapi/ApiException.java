@@ -10,7 +10,7 @@ import java.util.List;
 public class ApiException extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
-    private static final String TYPE_BASE = "https://roller.invalid/problems/";
+    private static final String TYPE_BASE = "https://pressroom.invalid/problems/";
 
     private final int status;
     private final String type;

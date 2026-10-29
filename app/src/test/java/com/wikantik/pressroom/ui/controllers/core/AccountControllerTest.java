@@ -192,7 +192,7 @@ class AccountControllerTest {
         }
 
         @Bean
-        PressroomHandlerInterceptor rollerHandlerInterceptor() {
+        PressroomHandlerInterceptor pressroomHandlerInterceptor() {
             return new PressroomHandlerInterceptor(TestUtils.provider(), TestUtils.weblogger());
         }
 

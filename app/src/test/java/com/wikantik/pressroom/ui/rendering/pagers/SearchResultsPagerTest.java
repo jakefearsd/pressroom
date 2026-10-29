@@ -74,7 +74,7 @@ class SearchResultsPagerTest {
     private SearchResultsPager pager(int pageNum, String category, boolean more) {
         WeblogSearchRequest searchRequest = new WeblogSearchRequest();
         searchRequest.setWeblog(weblog);
-        searchRequest.setQuery("roller");
+        searchRequest.setQuery("pressroom");
         searchRequest.setWeblogCategoryName(category);
         searchRequest.setLocale("en_US");
         searchRequest.setPageNum(pageNum);
@@ -96,7 +96,7 @@ class SearchResultsPagerTest {
     void firstPageOffersANextLinkWhenMoreResultsExist() {
         SearchResultsPager pager = pager(0, null, true);
 
-        assertEquals(WEBLOG_URL + "?q=roller&page=1", pager.getNextLink(),
+        assertEquals(WEBLOG_URL + "?q=pressroom&page=1", pager.getNextLink(),
                 "Page 0's next link must target page 1 and keep the query");
         assertRenderedLabel(pager.getNextName(), "searchPager.next", "The next control");
     }
@@ -115,7 +115,7 @@ class SearchResultsPagerTest {
     void previousLinkStepsBackExactlyOnePage() {
         SearchResultsPager pager = pager(2, null, false);
 
-        assertEquals(WEBLOG_URL + "?q=roller&page=1", pager.getPrevLink(),
+        assertEquals(WEBLOG_URL + "?q=pressroom&page=1", pager.getPrevLink(),
                 "Page 2's previous link must target page 1, not page 0 or page 2");
         assertRenderedLabel(pager.getPrevName(), "searchPager.prev", "The previous control");
     }
@@ -146,9 +146,9 @@ class SearchResultsPagerTest {
         pager.getPrevLink();
 
         verify(urlStrategy, atLeastOnce()).getWeblogSearchURL(eq(weblog), eq("en_US"),
-                eq("roller"), eq("Java"), eq(2), eq(false));
+                eq("pressroom"), eq("Java"), eq(2), eq(false));
         verify(urlStrategy, atLeastOnce()).getWeblogSearchURL(eq(weblog), eq("en_US"),
-                eq("roller"), eq("Java"), eq(0), eq(false));
+                eq("pressroom"), eq("Java"), eq(0), eq(false));
     }
 
     @Test
@@ -211,7 +211,7 @@ class SearchResultsPagerTest {
     void labelsResolveForAThreePartLocale() {
         WeblogSearchRequest searchRequest = new WeblogSearchRequest();
         searchRequest.setWeblog(weblog);
-        searchRequest.setQuery("roller");
+        searchRequest.setQuery("pressroom");
         searchRequest.setLocale("en_US_POSIX");
         searchRequest.setPageNum(1);
 
@@ -228,7 +228,7 @@ class SearchResultsPagerTest {
         // labels, using the weblog's own locale.
         WeblogSearchRequest searchRequest = new WeblogSearchRequest();
         searchRequest.setWeblog(weblog);
-        searchRequest.setQuery("roller");
+        searchRequest.setQuery("pressroom");
         searchRequest.setPageNum(1);
 
         SearchResultsPager pager =

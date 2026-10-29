@@ -673,7 +673,7 @@ class TokensApiTest {
 
     /**
      * Spec 2026-10-13, section 6; review focus 1: a mint is logged on
-     * roller.admin, never with its secret. Only our own line is asserted
+     * pressroom.admin, never with its secret. Only our own line is asserted
      * here: the response body IS the secret, and Spring MVC's DEBUG "Writing
      * [...]" line would carry it under a capture of every logger -- which is
      * why production keeps org.springframework at INFO. The UI mint, which

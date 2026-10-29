@@ -164,7 +164,7 @@ public final class PressroomContext {
         Map<String, PasswordEncoder> encoders = new HashMap<>();
 
         // Outdated digest encoders, for lazy upgrade from pws encoded by old
-        // roller versions. `plaintext` is deliberately NOT accepted: it
+        // versions of the product. `plaintext` is deliberately NOT accepted: it
         // registered a no-op encoder against the null prefix, which made an
         // unprefixed stored string authenticate as plaintext.
         String migrateFrom = WebloggerConfig.getProperty("passwds.encryption.lazyUpgradeFrom");

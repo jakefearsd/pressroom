@@ -176,7 +176,7 @@ class PasswordEncodingTest {
      * it to psql as a variable and to pressroom-api on stdin.
      */
     @Test
-    void theRollerScriptSeedsWithoutPuttingThePasswordInAnArgv() throws IOException {
+    void thePressroomScriptSeedsWithoutPuttingThePasswordInAnArgv() throws IOException {
         String body = read(repoRoot().resolve("roller"));
         assertTrue(body.contains("seed-dev-data.sql"), "./roller must apply the dev seed");
         assertTrue(body.contains("-v devpw="),

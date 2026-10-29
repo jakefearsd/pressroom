@@ -129,7 +129,7 @@ class RemoteImageFetcherTest {
     }
 
     @Test
-    void theRequestNamesRollerAndAsksForImagesUncompressed() throws Exception {
+    void theRequestNamesPressroomAndAsksForImagesUncompressed() throws Exception {
         AtomicReference<Headers> seen = new AtomicReference<>();
         server.createContext("/who", exchange -> {
             seen.set(exchange.getRequestHeaders());
@@ -139,7 +139,7 @@ class RemoteImageFetcherTest {
             }
         });
         fetcher.fetch(url("/who"), 1024, null);
-        assertTrue(seen.get().getFirst("User-Agent").matches("Roller/\\S+"), seen.get().getFirst("User-Agent"));
+        assertTrue(seen.get().getFirst("User-Agent").matches("Pressroom/\\S+"), seen.get().getFirst("User-Agent"));
         assertTrue(seen.get().getFirst("Accept").startsWith("image/"), seen.get().getFirst("Accept"));
         assertNull(seen.get().getFirst("Accept-Encoding"));
     }

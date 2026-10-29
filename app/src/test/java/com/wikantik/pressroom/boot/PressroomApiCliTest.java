@@ -312,7 +312,7 @@ class PressroomApiCliTest {
     }
 
     /**
-     * The credentials file moved from ~/.roller to ~/.pressroom with no
+     * The credentials file moved from ~/.roller to ~/.pressroom with no (rebrand:keep)
      * fallback. When only the old file exists the error says to move it, by
      * name of the command, and never prints what the file holds.
      */

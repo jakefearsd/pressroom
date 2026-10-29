@@ -25,7 +25,7 @@ public enum AuthMethod {
      * pressroom.properties still fails loudly at startup rather than silently
      * behaving like "db".
      */
-    ROLLERDB("db");
+    PRESSROOMDB("db");
 
     private final String propertyName;
 

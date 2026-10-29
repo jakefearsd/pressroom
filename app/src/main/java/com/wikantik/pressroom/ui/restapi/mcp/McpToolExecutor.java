@@ -40,7 +40,7 @@ public final class McpToolExecutor {
 
     private static final Logger log = LoggerFactory.getLogger(McpToolExecutor.class);
     /** The one line per tool call goes to this logger. */
-    public static final String LOG_NAME = "roller.mcp";
+    public static final String LOG_NAME = "pressroom.mcp";
     private static final Logger calls = LoggerFactory.getLogger(LOG_NAME);
     private static final String ACTION = "action";
     private static final Pattern HANDLE = Pattern.compile("[A-Za-z0-9_-]{1,64}");

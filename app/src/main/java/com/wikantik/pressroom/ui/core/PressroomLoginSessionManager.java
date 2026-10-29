@@ -12,7 +12,7 @@ import java.util.Map;
 
 public class PressroomLoginSessionManager {
    private static final Logger log = LoggerFactory.getLogger(PressroomLoginSessionManager.class);
-   private static final String CACHE_ID = "roller.session.cache";
+   private static final String CACHE_ID = "pressroom.session.cache";
    private final Cache sessionCache;
 
    public static PressroomLoginSessionManager getInstance() {

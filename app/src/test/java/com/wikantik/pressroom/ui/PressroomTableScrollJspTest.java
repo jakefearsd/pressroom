@@ -51,7 +51,7 @@ class PressroomTableScrollJspTest {
             "<div class=\"table-responsive\">(?:\\s|<%--(?:(?!--%>).)*--%>)*$", Pattern.DOTALL);
 
     @Test
-    void everyRollerTableSitsDirectlyInsideATableResponsiveWrapper() throws IOException {
+    void everyPressroomTableSitsDirectlyInsideATableResponsiveWrapper() throws IOException {
         List<String> offenders = new ArrayList<>();
         int tables = 0;
         try (Stream<Path> files = Files.walk(JSPS)) {

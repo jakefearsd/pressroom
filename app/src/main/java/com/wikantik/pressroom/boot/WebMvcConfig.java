@@ -53,21 +53,21 @@ import org.springframework.web.servlet.view.InternalResourceViewResolver;
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 
-    private final PressroomHandlerInterceptor rollerHandlerInterceptor;
+    private final PressroomHandlerInterceptor pressroomHandlerInterceptor;
 
     /**
-     * @param rollerHandlerInterceptor the {@code @Component} interceptor,
+     * @param pressroomHandlerInterceptor the {@code @Component} interceptor,
      *        constructor-injected with its {@code WebloggerProvider} and a lazy
      *        {@code Weblogger}; registering the bean rather than a {@code new}
      *        instance is what lets it hold those dependencies at all.
      */
-    public WebMvcConfig(PressroomHandlerInterceptor rollerHandlerInterceptor) {
-        this.rollerHandlerInterceptor = rollerHandlerInterceptor;
+    public WebMvcConfig(PressroomHandlerInterceptor pressroomHandlerInterceptor) {
+        this.pressroomHandlerInterceptor = pressroomHandlerInterceptor;
     }
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(rollerHandlerInterceptor);
+        registry.addInterceptor(pressroomHandlerInterceptor);
         // "/v1/**", not "/api/**": ServletRegistrationConfig.API_URL_PATTERNS
         // ("/api/*") is a servlet-spec PREFIX mapping, so the container
         // strips "/api" before the request ever reaches Spring MVC's lookup
@@ -120,7 +120,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
      * {@code spring-mvc.xml}'s {@code init-method="init"}.
      */
     @Bean(initMethod = "init")
-    public PressroomViewResolver rollerViewResolver() {
+    public PressroomViewResolver pressroomViewResolver() {
         PressroomViewResolver resolver = new PressroomViewResolver();
         resolver.setOrder(1);
         return resolver;
@@ -128,7 +128,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     /**
      * Fallback for plain JSP views (redirect:, forward:, or direct paths),
-     * order 2 -- consulted only when {@link #rollerViewResolver} declines to
+     * order 2 -- consulted only when {@link #pressroomViewResolver} declines to
      * resolve a view name.
      */
     @Bean

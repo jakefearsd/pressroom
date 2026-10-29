@@ -96,10 +96,10 @@ public class RemoteImageFetcher implements AutoCloseable {
                 .disableContentCompression()
                 .disableCookieManagement()
                 .disableAuthCaching()
-                .setUserAgent("Roller/" + version())
+                .setUserAgent("Pressroom/" + version())
                 .build();
         this.deadlines = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r, "roller-image-fetch-deadline");
+            Thread t = new Thread(r, "pressroom-image-fetch-deadline");
             t.setDaemon(true);
             return t;
         });

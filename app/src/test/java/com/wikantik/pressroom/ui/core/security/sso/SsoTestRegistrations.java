@@ -15,7 +15,7 @@ public final class SsoTestRegistrations {
     /** The stub provider's issuer. */
     public static final String PROVIDER = "http://provider.test";
     /** The stub registration's client id: the ID token's audience. */
-    public static final String CLIENT_ID = "roller-test";
+    public static final String CLIENT_ID = "pressroom-test";
     /** The stub registration's client secret, distinctive so a test can look for it anywhere. */
     public static final String CLIENT_SECRET = "stub-client-secret-7c41e9";
 

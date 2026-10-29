@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
  * so this exercises {@code doRun()} directly rather than through
  * {@code IndexManager}.
  *
- * <p>{@code roller} is dereferenced unconditionally in {@code doRun()}
+ * <p>{@code pressroom} is dereferenced unconditionally in {@code doRun()}
  * (getWeblogEntryManager, then release() in the finally), so the guard
  * belongs before either happens rather than in a redundant post-hoc check
  * (RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE).
@@ -40,7 +40,7 @@ class AddEntryOperationTest {
         WeblogEntry data = new WeblogEntry();
         data.setId("does-not-matter");
         // The second null is the LuceneIndexManager, deliberately unmocked: doRun()
-        // returns on the null-roller path before it is ever touched.
+        // returns on the null-pressroom path before it is ever touched.
         AddEntryOperation op = new AddEntryOperation(null, null, data);
 
         assertDoesNotThrow(op::doRun);

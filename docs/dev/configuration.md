@@ -22,12 +22,12 @@ resolves through the index at the end of `CLAUDE.md`.
 - **Logging**: `app/src/main/resources/log4j2.xml`. Its `logging.pattern`
   writes every message through `%encode{%m}{CRLF}`, so a CR or LF in a logged
   value comes out as `\r` or `\n`. One log call is one line, and a
-  reader-supplied value cannot forge a line in `roller.log`. Stack traces
+  reader-supplied value cannot forge a line in `pressroom.log`. Stack traces
   stay multi-line and are not encoded. Every `PatternLayout` must keep that
-  property (`LogPatternTest`); grepping `roller.log` line by line works as
+  property (`LogPatternTest`); grepping `pressroom.log` line by line works as
   before. **Every logger reaches the console (stdout)**, the named ones
-  through `asyncRoller`, which feeds both the file and the console
-  (`LogRoutingTest`): in the container `roller.log` is not on a volume, so
+  through `asyncPressroom`, which feeds both the file and the console
+  (`LogRoutingTest`): in the container `pressroom.log` is not on a volume, so
   stdout (`docker compose logs app`) is the copy operators read. The layout
   is the pattern above, not ECS JSON: SA-6's ECS layout needs
   `log4j-layout-template-json`, which is not a dependency yet.

@@ -24,7 +24,7 @@ public final class McpEndpointServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
 
     /** Transport-context key under which tools find the {@code HttpServletRequest}. */
-    public static final String REQUEST_KEY = "roller.mcp.request";
+    public static final String REQUEST_KEY = "pressroom.mcp.request";
 
     private final transient HttpServlet transport;
     private final transient ApiProblemWriter problemWriter;

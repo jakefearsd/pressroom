@@ -36,16 +36,16 @@ class OidcDiscoverySelfCheckTest {
         };
         appender.start();
         LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
-        LoggerConfig lc = new LoggerConfig("roller.sso", Level.INFO, false);
+        LoggerConfig lc = new LoggerConfig("pressroom.sso", Level.INFO, false);
         lc.addAppender(appender, Level.INFO, null);
-        ctx.getConfiguration().addLogger("roller.sso", lc);
+        ctx.getConfiguration().addLogger("pressroom.sso", lc);
         ctx.updateLoggers();
     }
 
     @AfterEach
     void release() {
         LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
-        ctx.getConfiguration().removeLogger("roller.sso");
+        ctx.getConfiguration().removeLogger("pressroom.sso");
         ctx.updateLoggers();
         appender.stop();
     }
@@ -62,7 +62,7 @@ class OidcDiscoverySelfCheckTest {
                 iss -> { throw new IllegalArgumentException("unreachable"); });
         Thread t = new OidcDiscoverySelfCheck(repo, 1).start();
         assertTrue(t.isDaemon());
-        assertEquals("roller-sso-selfcheck", t.getName());
+        assertEquals("pressroom-sso-selfcheck", t.getName());
         t.join(5000);
         assertFalse(t.isAlive());
         // Exactly one WARN per failed attempt (the repository's line); no summary WARN.

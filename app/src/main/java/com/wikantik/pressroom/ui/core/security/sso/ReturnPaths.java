@@ -8,7 +8,7 @@ package com.wikantik.pressroom.ui.core.security.sso;
 public final class ReturnPaths {
 
     /** The session attribute that carries the return path across the provider round trip. */
-    public static final String SESSION_ATTRIBUTE = "roller.sso.return";
+    public static final String SESSION_ATTRIBUTE = "pressroom.sso.return";
 
     static final int MAX_LENGTH = 2000;
 

@@ -52,7 +52,7 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
     // ========================================================
 
     private Weblog website;
-    private Weblogger roller;
+    private Weblogger pressroom;
 
     // ~ Constructors
     // ===========================================================
@@ -63,10 +63,10 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
      * @param website
      *            The website to rebuild the index for, or null for all users.
      */
-    public RebuildWebsiteIndexOperation(Weblogger roller, LuceneIndexManager mgr,
+    public RebuildWebsiteIndexOperation(Weblogger pressroom, LuceneIndexManager mgr,
             Weblog website) {
         super(mgr);
-        this.roller = roller;
+        this.pressroom = pressroom;
         this.website = website;
     }
 
@@ -89,7 +89,7 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
         if (this.website != null) {
             log.debug("Reindexining weblog {}", website.getHandle());
             try {
-                this.website = roller.getWeblogManager().getWeblog(
+                this.website = pressroom.getWeblogManager().getWeblog(
                         this.website.getId());
             } catch (WebloggerException ex) {
                 log.error("Error getting website object", ex);
@@ -115,7 +115,7 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
                 // discovers the query failed would otherwise leave the
                 // weblog with no search results until the next successful
                 // rebuild.
-                WeblogEntryManager weblogManager = roller.getWeblogEntryManager();
+                WeblogEntryManager weblogManager = pressroom.getWeblogEntryManager();
                 WeblogEntrySearchCriteria wesc = new WeblogEntrySearchCriteria();
                 wesc.setWeblog(website);
                 wesc.setStatus(PubStatus.PUBLISHED);
@@ -162,8 +162,8 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
                 }
             }
             endWriting();
-            if (roller != null) {
-                roller.release();
+            if (pressroom != null) {
+                pressroom.release();
             }
         }
 

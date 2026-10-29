@@ -11,7 +11,7 @@ setup: `docker_deployment.md`, "Reader sign-in (Google)". Code:
 1. A link to `/pressroom-ui/sso/start?return=<path>` (the login page carries it).
    `SsoStartFilter` (GET only, inside the UI security chain) checks that the
    Absolute URL is set and the registration resolves, stores
-   `ReturnPaths.sanitize(return)` in the session attribute `roller.sso.return`,
+   `ReturnPaths.sanitize(return)` in the session attribute `pressroom.sso.return`,
    and redirects to `/pressroom-ui/sso/authorize/oidc`. Otherwise it redirects to
    `/pressroom-ui/login.rol?sso=unavailable`. **A start on any host but the
    Absolute URL's** (scheme, host or port differ; a default port equals none)
@@ -75,12 +75,12 @@ Each failed attempt logs one WARN naming the cause chain's classes
 resolution logs three, and the start filter then logs its own
 `unavailable (registration_unresolved)` line; the sign-in answers
 `sso=unavailable`, and the next sign-in retries. No failure is cached. `OidcDiscoverySelfCheck` (daemon
-thread `roller-sso-selfcheck`, started on `ApplicationReadyEvent`, three
+thread `pressroom-sso-selfcheck`, started on `ApplicationReadyEvent`, three
 attempts, 2 s then 4 s apart) probes once and only logs: INFO "OIDC discovery
 reachable" on success. It never fails startup.
 
-Logger `roller.sso` goes to `asyncRoller` (`additivity="false"` in
-`log4j2.xml`), which writes both `roller.log` and the console, so `docker
+Logger `pressroom.sso` goes to `asyncPressroom` (`additivity="false"` in
+`log4j2.xml`), which writes both `pressroom.log` and the console, so `docker
 compose logs app` shows it (`LogRoutingTest`). In the container the file is
 `/app/logs/roller.log` (the working directory's `logs/`, not the `/data`
 volume, so a recreated container starts a fresh one). One INFO per sign-in (username,

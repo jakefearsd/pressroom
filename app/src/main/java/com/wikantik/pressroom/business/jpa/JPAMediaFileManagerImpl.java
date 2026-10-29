@@ -65,16 +65,16 @@ import com.wikantik.pressroom.util.Utilities;
 
 public class JPAMediaFileManagerImpl implements MediaFileManager {
 
-    private final Weblogger roller;
+    private final Weblogger pressroom;
     private final JPAPersistenceStrategy strategy;
     private static final Logger log = LoggerFactory.getLogger(JPAMediaFileManagerImpl.class);
 
     /**
      * Creates a new instance of MediaFileManagerImpl
      */
-    public JPAMediaFileManagerImpl(Weblogger roller,
+    public JPAMediaFileManagerImpl(Weblogger pressroom,
             JPAPersistenceStrategy persistenceStrategy) {
-        this.roller = roller;
+        this.pressroom = pressroom;
         this.strategy = persistenceStrategy;
     }
 
@@ -111,10 +111,10 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
             this.strategy.store(targetDirectory);
         }
         // update weblog last modified date. date updated by saveWebsite()
-        roller.getWeblogManager().saveWeblog(targetDirectory.getWeblog());
+        pressroom.getWeblogManager().saveWeblog(targetDirectory.getWeblog());
 
         // Refresh associated parent for changes
-        roller.flush();
+        pressroom.flush();
         if (!moved.isEmpty()) {
             strategy.refresh(moved.get(0).getDirectory());
         }
@@ -141,7 +141,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         this.strategy.store(directory);
 
         // update weblog last modified date. date updated by saveWebsite()
-        roller.getWeblogManager().saveWeblog(directory.getWeblog());
+        pressroom.getWeblogManager().saveWeblog(directory.getWeblog());
 
         // Refresh associated parent for changes
         // strategy.refresh(directory.getParent());
@@ -172,7 +172,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         }
 
         // update weblog last modified date. date updated by saveWeblog()
-        roller.getWeblogManager().saveWeblog(weblog);
+        pressroom.getWeblogManager().saveWeblog(weblog);
 
         return newDirectory;
     }
@@ -196,7 +196,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
     public void createMediaFile(Weblog weblog, MediaFile mediaFile,
             PressroomMessages errors) throws WebloggerException {
 
-        FileContentManager cmgr = roller.getFileContentManager();
+        FileContentManager cmgr = pressroom.getFileContentManager();
         if (!cmgr.canSave(weblog, mediaFile.getName(),
                 mediaFile.getContentType(), mediaFile.getLength(), errors)) {
             return;
@@ -213,11 +213,11 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
 
     private void persistNewMediaFile(Weblog weblog, MediaFileDirectory directory,
             MediaFile mediaFile, InputStream is) throws WebloggerException {
-        FileContentManager cmgr = roller.getFileContentManager();
+        FileContentManager cmgr = pressroom.getFileContentManager();
         strategy.store(mediaFile);
 
         // Refresh associated parent for changes
-        roller.flush();
+        pressroom.flush();
         strategy.refresh(directory);
 
         // The hash is taken from the bytes as they stream to disk, so an
@@ -245,12 +245,12 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
      * Date updated by saveWeblog().
      */
     private void touchAfterDerivedData(Weblog weblog) throws WebloggerException {
-        roller.getWeblogManager().saveWeblog(weblog);
+        pressroom.getWeblogManager().saveWeblog(weblog);
     }
 
     private void updateThumbnail(MediaFile mediaFile) {
         try {
-            FileContentManager cmgr = roller.getFileContentManager();
+            FileContentManager cmgr = pressroom.getFileContentManager();
             FileContent fc = cmgr.getFileContent(mediaFile.getWeblog(),
                     mediaFile.getId());
             BufferedImage img;
@@ -274,7 +274,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
 
             writeAdminThumbnail(cmgr, mediaFile, img);
 
-            roller.flush();
+            pressroom.flush();
             // Refresh associated parent for changes
             strategy.refresh(mediaFile.getDirectory());
 
@@ -394,12 +394,12 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         mediaFile.setLastUpdated(new Timestamp(System.currentTimeMillis()));
         strategy.store(mediaFile);
 
-        roller.flush();
+        pressroom.flush();
         // Refresh associated parent for changes
         strategy.refresh(mediaFile.getDirectory());
 
         // update weblog last modified date. date updated by saveWeblog()
-        roller.getWeblogManager().saveWeblog(weblog);
+        pressroom.getWeblogManager().saveWeblog(weblog);
     }
 
     /**
@@ -412,7 +412,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         mediaFile.setContentHash(null);
         updateMediaFile(weblog, mediaFile);
 
-        FileContentManager cmgr = roller.getFileContentManager();
+        FileContentManager cmgr = pressroom.getFileContentManager();
         PressroomMessages msgs = new PressroomMessages();
         if (!cmgr.canSave(weblog, mediaFile.getName(),
                 mediaFile.getContentType(), mediaFile.getLength(), msgs)) {
@@ -445,7 +445,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         MediaFile mediaFile = (MediaFile) this.strategy.load(MediaFile.class,
                 id);
         if (includeContent) {
-            FileContentManager cmgr = roller.getFileContentManager();
+            FileContentManager cmgr = pressroom.getFileContentManager();
 
             FileContent content = cmgr.getFileContent(mediaFile.getDirectory()
                     .getWeblog(), id);
@@ -551,7 +551,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         } catch (NoResultException e) {
             return null;
         }
-        FileContentManager cmgr = roller.getFileContentManager();
+        FileContentManager cmgr = pressroom.getFileContentManager();
         FileContent content = cmgr.getFileContent(
                 mf.getDirectory().getWeblog(), mf.getId());
         mf.setContent(content);
@@ -596,7 +596,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
     @Override
     public void removeMediaFile(Weblog weblog, MediaFile mediaFile)
             throws WebloggerException {
-        FileContentManager cmgr = roller.getFileContentManager();
+        FileContentManager cmgr = pressroom.getFileContentManager();
 
         this.strategy.remove(mediaFile);
 
@@ -604,7 +604,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         strategy.refresh(mediaFile.getDirectory());
 
         // update weblog last modified date. date updated by saveWeblog()
-        roller.getWeblogManager().saveWeblog(weblog);
+        pressroom.getWeblogManager().saveWeblog(weblog);
 
         // Off the disk only once the row's removal has committed: deleted
         // now, a rollback would leave the row pointing at nothing.
@@ -751,7 +751,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         if (dir == null) {
             return;
         }
-        FileContentManager cmgr = roller.getFileContentManager();
+        FileContentManager cmgr = pressroom.getFileContentManager();
         Weblog weblog = dir.getWeblog();
         List<String> fileIds = new ArrayList<>();
         Set<MediaFile> files = dir.getMediaFiles();
@@ -769,12 +769,12 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         dir.getWeblog().getMediaFileDirectories().remove(dir);
 
         // Contained media files
-        roller.flush();
+        pressroom.flush();
 
         this.strategy.remove(dir);
 
         // Refresh associated parent
-        roller.flush();
+        pressroom.flush();
     }
 
     /**
@@ -784,7 +784,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
     public int regenerateRenditions(Weblog weblog) throws WebloggerException {
         // Rebuilds every image's rendition ladder, thumbnail, stored
         // dimensions, EXIF fields and blurhash from the original on disk.
-        FileContentManager cmgr = roller.getFileContentManager();
+        FileContentManager cmgr = pressroom.getFileContentManager();
         int count = 0;
         for (MediaFileDirectory dir : getMediaFileDirectories(weblog)) {
             for (MediaFile mf : dir.getMediaFiles()) {
@@ -832,8 +832,8 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         // [gallery]; like every other media change this must move
         // lastModified, the only thing that expires a rendered page or a kept
         // entry render (EntryHtmlCache). Date updated by saveWeblog().
-        roller.getWeblogManager().saveWeblog(weblog);
-        roller.flush();
+        pressroom.getWeblogManager().saveWeblog(weblog);
+        pressroom.flush();
         return count;
     }
 
@@ -876,7 +876,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
                     + " has no server-side re-encode path");
         }
 
-        FileContentManager cmgr = roller.getFileContentManager();
+        FileContentManager cmgr = pressroom.getFileContentManager();
         try {
             FileContent fc = cmgr.getFileContent(weblog, mediaFile.getId());
             BufferedImage img = ImageIO.read(fc.getInputStream());
@@ -956,11 +956,11 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
             }
 
             strategy.store(mediaFile);
-            roller.flush();
+            pressroom.flush();
             strategy.refresh(mediaFile.getDirectory());
 
             // update weblog last modified date so render caches invalidate
-            roller.getWeblogManager().saveWeblog(weblog);
+            pressroom.getWeblogManager().saveWeblog(weblog);
         } catch (WebloggerException e) {
             throw e;
         } catch (Exception e) {

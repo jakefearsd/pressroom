@@ -101,8 +101,8 @@
                  weblog's name and address on the request; the name is author
                  input, so both are escaped. --%>
             <c:choose>
-            <c:when test="${not empty requestScope['roller.notFound.weblogUrl']}">
-            <p><a href="${fn:escapeXml(requestScope['roller.notFound.weblogUrl'])}">Back to ${fn:escapeXml(requestScope['roller.notFound.weblogName'])}</a></p>
+            <c:when test="${not empty requestScope['pressroom.notFound.weblogUrl']}">
+            <p><a href="${fn:escapeXml(requestScope['pressroom.notFound.weblogUrl'])}">Back to ${fn:escapeXml(requestScope['pressroom.notFound.weblogName'])}</a></p>
             </c:when>
             <c:otherwise>
             <p><a href="${fn:escapeXml(pageContext.request.contextPath)}/">Return to the home page</a></p>

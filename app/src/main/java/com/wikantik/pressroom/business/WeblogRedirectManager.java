@@ -41,9 +41,9 @@ public interface WeblogRedirectManager {
      * The logger every served redirect and every rule mutation is written
      * to, deliberately named rather than per-class: its verbosity is tunable
      * independently of the rendering tier's, and every redirect ever served
-     * is one {@code grep roller.redirects} away in the app log.
+     * is one {@code grep pressroom.redirects} away in the app log.
      */
-    String LOG_NAME = "roller.redirects";
+    String LOG_NAME = "pressroom.redirects";
 
     /**
      * Save a rule, normalizing both paths and validating: weblog-relative

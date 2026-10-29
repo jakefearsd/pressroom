@@ -91,7 +91,7 @@ moderation page, the account page, the API. Nothing else saves a
   threshold. The browser suite raises them (`roller-it.properties`:
   1000/600/10000) so `CommentsIT` is never one owner write from a 429; the unit
   tests prove the defaults.
-- **Logging:** logger `roller.comments` (routed to roller.log): ids, statuses,
+- **Logging:** logger `pressroom.comments` (routed to pressroom.log): ids, statuses,
   usernames, codes. Never a body, an email address or a token.
 
 ### The trust rule

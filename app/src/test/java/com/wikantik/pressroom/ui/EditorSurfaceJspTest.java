@@ -248,9 +248,9 @@ class EditorSurfaceJspTest {
     @Test
     void theEditorTitleIsInTheUiFaceAndNoUnusedFaceShips() throws IOException {
         String editorCss = read(Paths.get("src/main/webapp/pressroom-ui/styles/roller-editor.css"));
-        String rollerCss = read(Paths.get("src/main/webapp/pressroom-ui/styles/roller.css"));
-        int title = rollerCss.indexOf(".editor-title {");
-        assertTrue(title >= 0 && rollerCss.substring(title, rollerCss.indexOf('}', title))
+        String pressroomCss = read(Paths.get("src/main/webapp/pressroom-ui/styles/roller.css"));
+        int title = pressroomCss.indexOf(".editor-title {");
+        assertTrue(title >= 0 && pressroomCss.substring(title, pressroomCss.indexOf('}', title))
                 .contains("font-family: var(--font-ui);"), "the editor title is not in the UI face");
         assertFalse(editorCss.contains("IBM Plex Serif"), "roller-editor.css loads a face no rule uses");
     }

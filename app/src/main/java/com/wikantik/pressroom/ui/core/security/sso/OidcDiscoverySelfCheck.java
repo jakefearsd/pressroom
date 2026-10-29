@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class OidcDiscoverySelfCheck {
 
-    private static final Logger log = LoggerFactory.getLogger("roller.sso");
+    private static final Logger log = LoggerFactory.getLogger("pressroom.sso");
     private static final int ATTEMPTS = 3;
 
     private final LazyOidcClientRegistrationRepository repo;
@@ -23,7 +23,7 @@ public final class OidcDiscoverySelfCheck {
 
     /** Starts the daemon probe thread and returns it. */
     public Thread start() {
-        Thread t = new Thread(this::run, "roller-sso-selfcheck");
+        Thread t = new Thread(this::run, "pressroom-sso-selfcheck");
         t.setDaemon(true);
         t.start();
         return t;

@@ -82,7 +82,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     /** {@code weblogentry.anchor} is varchar(255) (V002__baseline_schema.sql). */
     private static final int ANCHOR_MAX_LENGTH = 255;
     
-    private final Weblogger roller;
+    private final Weblogger pressroom;
     private final JPAPersistenceStrategy strategy;
     private final TagAggregateStore tagAggregates;
     
@@ -95,9 +95,9 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
             Collections.reverseOrder(TagStatCountComparator.getInstance());
 
 
-    public JPAWeblogEntryManagerImpl(Weblogger roller, JPAPersistenceStrategy strategy) {
+    public JPAWeblogEntryManagerImpl(Weblogger pressroom, JPAPersistenceStrategy strategy) {
         log.debug("Instantiating JPA Weblog Manager");
-        this.roller = roller;
+        this.pressroom = pressroom;
         this.strategy = strategy;
         this.tagAggregates = new TagAggregateStore(strategy);
     }
@@ -113,7 +113,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         }
 
         // update weblog last modified date.  date updated by saveWebsite()
-        roller.getWeblogManager().saveWeblog(cat.getWeblog());
+        pressroom.getWeblogManager().saveWeblog(cat.getWeblog());
         this.strategy.store(cat);
     }
     
@@ -148,7 +148,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         this.strategy.remove(cat);
 
         // update weblog last modified date.  date updated by saveWebsite()
-        roller.getWeblogManager().saveWeblog(cat.getWeblog());
+        pressroom.getWeblogManager().saveWeblog(cat.getWeblog());
     }
 
     /**
@@ -267,7 +267,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
                 event.setEventType(PressroomEvent.EventType.ENTRY_PUBLISHED);
                 event.setEntryAnchor(entry.getAnchor());
                 event.setOccurredAt(new Timestamp(System.currentTimeMillis()));
-                roller.getEventManager().record(event);
+                pressroom.getEventManager().record(event);
             } catch (Exception ex) {
                 log.warn("Could not record entry_published event for {}",
                         entry.getAnchor(), ex);
@@ -283,7 +283,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         // (or re-scheduled) entry must leave every cached page and sitemap,
         // and those expire only through this timestamp.
         if (entry.isPublished() || wasPublished) {
-            roller.getWeblogManager().saveWeblog(entry.getWebsite());
+            pressroom.getWeblogManager().saveWeblog(entry.getWebsite());
         }
         
     }
@@ -404,7 +404,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
 
         // reader comments cascade in the database too; removing the entities
         // keeps the shared cache from serving them after the entry is gone
-        roller.getCommentManager().removeCommentsForEntry(entry);
+        pressroom.getCommentManager().removeCommentsForEntry(entry);
 
         // remove tag & tag aggregates
         if (entry.getTags() != null) {
@@ -428,7 +428,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         
         // update weblog last modified date.  date updated by saveWebsite()
         if (entry.isPublished()) {
-            roller.getWeblogManager().saveWeblog(weblog);
+            pressroom.getWeblogManager().saveWeblog(weblog);
         }
         
         // remove entry from cache mapping
@@ -464,7 +464,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         saveWeblogEntry(entry);
 
         if (wasPublished) {
-            roller.getWeblogManager().saveWeblog(entry.getWebsite());
+            pressroom.getWeblogManager().saveWeblog(entry.getWebsite());
         }
     }
 

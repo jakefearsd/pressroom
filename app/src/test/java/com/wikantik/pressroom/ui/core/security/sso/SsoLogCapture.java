@@ -17,12 +17,12 @@ import org.apache.logging.log4j.core.config.Property;
 
 /**
  * Captures log events for one test, then puts back whatever configuration the
- * loggers had before: the {@code roller.sso} logger alone ({@link #start()}),
+ * loggers had before: the {@code pressroom.sso} logger alone ({@link #start()}),
  * or every logger at every level ({@link #everyLogger()}).
  */
 public final class SsoLogCapture implements AutoCloseable {
 
-    private static final String LOGGER = "roller.sso";
+    private static final String LOGGER = "pressroom.sso";
     private static final String APPENDER = "sso-capture";
 
     private final List<LogEvent> events = Collections.synchronizedList(new ArrayList<>());
@@ -43,7 +43,7 @@ public final class SsoLogCapture implements AutoCloseable {
         ctx.updateLoggers();
     }
 
-    /** Captures {@code roller.sso} at INFO, as production configures it. */
+    /** Captures {@code pressroom.sso} at INFO, as production configures it. */
     static SsoLogCapture start() {
         return new SsoLogCapture(false);
     }

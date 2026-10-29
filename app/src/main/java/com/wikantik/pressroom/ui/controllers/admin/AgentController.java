@@ -53,7 +53,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * agent is a {@code pressroom_user} with kind AGENT that never signs in: its page
  * has no password and no set-password link, only its details, one confirmed
  * Disable or Enable, its weblogs, and the tokens a site admin mints for it.
- * Every change writes a {@code roller.admin} line.
+ * Every change writes a {@code pressroom.admin} line.
  */
 @Controller
 @RequestMapping("/pressroom-ui/admin")

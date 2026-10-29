@@ -110,9 +110,9 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   link) are likewise never written through `PATCH /admin/config` (403, nothing applied); add a
   setting there to protect it. Agent accounts likewise: `requireNotAgent` answers 403 `Agent accounts are managed in the admin UI.`, and `patchUser` calls it before `requireNotAdmin`.
 - `McpEndpointServlet` refuses non-token callers (Basic is accepted chain-wide for `/v1/tokens`).
-  `McpOriginValidator` refuses a foreign `Origin`. Each call logs one `roller.mcp` INFO line, with no
+  `McpOriginValidator` refuses a foreign `Origin`. Each call logs one `pressroom.mcp` INFO line, with no
   argument values; the weblog appears only when it is handle-shaped (else `?`). That logger goes to
-  the console appender, like `roller.redirects`, not to `roller.log`.
+  the console appender, like `pressroom.redirects`, not to `pressroom.log`.
 
 ## New-weblog needs (step 2)
 
@@ -130,7 +130,7 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   offset is the instant it names (`EntryFieldRules.parsePubTime`), because
   `EntryView` reads every time back as an instant and a GET-then-PATCH must
   round-trip (`EntryTimeRoundTripTest`).
-- **Import logging:** `roller.media.import` logs the host only.
+- **Import logging:** `pressroom.media.import` logs the host only.
 
 ## Entry writes: check, import, apply
 
@@ -190,7 +190,7 @@ Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`.
   one), shared by `TokensApi` and the token form; `issueToken` records `issued_by`, the owner for a
   self-mint.
 - **Every account, membership and token change made from the Admin pages, Profile and the API writes one
-  INFO line through `AdminLog`** (logger `roller.admin`, `by=` the actor; the weblog Members page does
+  INFO line through `AdminLog`** (logger `pressroom.admin`, `by=` the actor; the weblog Members page does
   not, and that is out of scope). A token is named by `AdminLog.tokenDetails`, which leaves the
   secret out by construction; a controller never holds a second logger (`MoreThanOneLogger`).
 - **The API never changes an agent** (`AdminAccountGuard.requireNotAgent`); `kind` is reported by

@@ -219,9 +219,9 @@ class LuceneIndexManagerStartupTest {
     // ---------------------------------------------------------------- helpers
 
     private static LuceneIndexManager managerOver(Path indexDir, ThreadManager threads) throws Exception {
-        Weblogger roller = mock(Weblogger.class);
-        when(roller.getThreadManager()).thenReturn(threads);
-        LuceneIndexManager manager = new LuceneIndexManager(roller);
+        Weblogger pressroom = mock(Weblogger.class);
+        when(pressroom.getThreadManager()).thenReturn(threads);
+        LuceneIndexManager manager = new LuceneIndexManager(pressroom);
         setField(manager, "indexDir", indexDir.toString());
         setField(manager, "indexConsistencyMarker", new File(indexDir.toFile(), MARKER));
         return manager;

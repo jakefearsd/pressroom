@@ -34,7 +34,7 @@ import org.jdom2.input.SAXBuilder;
 
 
 /**
- * The parser for the rollerRuntimeConfigDefs.xml file.
+ * The parser for the runtimeConfigDefs.xml file.
  * This class uses jdom to unmarshall the xml into a series of java objects.
  *
  * @author Allen Gilliland

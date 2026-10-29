@@ -152,7 +152,7 @@ class DatabaseInstallerMigrationTest {
     }
 
     @Test
-    void aDatabaseWithRollerTablesButNoTrackingTableIsRefused() throws Exception {
+    void aDatabaseWithPressroomTablesButNoTrackingTableIsRefused() throws Exception {
         // Upstream's table name: an Apache Roller schema. rebrand:keep
         execute("CREATE TABLE roller_user (id VARCHAR(48) PRIMARY KEY)"); // rebrand:keep
         DatabaseInstaller installer = new DatabaseInstaller(provider, new ClasspathDatabaseScriptProvider());

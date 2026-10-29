@@ -16,7 +16,7 @@ import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
  */
 public class LazyOidcClientRegistrationRepository implements ClientRegistrationRepository {
 
-    private static final Logger log = LoggerFactory.getLogger("roller.sso");
+    private static final Logger log = LoggerFactory.getLogger("pressroom.sso");
     private static final int ATTEMPTS = 3;
 
     private final SsoSettings settings;

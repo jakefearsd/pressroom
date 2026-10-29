@@ -122,7 +122,7 @@ public class PressroomLifecycle implements SmartLifecycle {
         if (!WebloggerStartup.isPrepared() && !ittest) {
 
             log.info("\n--------------------------------------------------------------"
-                    + "\nRoller Weblogger startup INCOMPLETE, user interaction required"
+                    + "\nPressroom Weblogger startup INCOMPLETE, user interaction required"
                     + "\n--------------------------------------------------------------");
 
         } else {

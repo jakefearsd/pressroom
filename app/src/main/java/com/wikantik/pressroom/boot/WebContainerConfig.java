@@ -44,7 +44,7 @@ public class WebContainerConfig {
      * elements, including the 400-reuses-404 comment.
      */
     @Bean
-    public ErrorPageRegistrar rollerErrorPageRegistrar() {
+    public ErrorPageRegistrar pressroomErrorPageRegistrar() {
         return (ErrorPageRegistry registry) -> registry.addErrorPages(
                 new ErrorPage(Exception.class, "/pressroom-ui/errors/error.jsp"),
                 new ErrorPage(HttpStatus.INTERNAL_SERVER_ERROR, "/pressroom-ui/errors/error.jsp"),
@@ -77,7 +77,7 @@ public class WebContainerConfig {
      * {@code org.apache.catalina.Context}.
      */
     @Bean
-    public WebServerFactoryCustomizer<TomcatServletWebServerFactory> rollerTomcatCustomizer() {
+    public WebServerFactoryCustomizer<TomcatServletWebServerFactory> pressroomTomcatCustomizer() {
         return factory -> {
             // Whitespace. Jasper splits template text at every tag, so the
             // line break between <spring:message/> and a following <span> is

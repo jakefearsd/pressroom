@@ -51,7 +51,7 @@ class WebMvcConfigTest {
     private final WebMvcConfig config = new WebMvcConfig(interceptor);
 
     @Test
-    void addsTheRollerHandlerInterceptor() {
+    void addsThePressroomHandlerInterceptor() {
         InterceptorRegistry registry = mock(InterceptorRegistry.class);
         InterceptorRegistration registration = mock(InterceptorRegistration.class);
         when(registry.addInterceptor(org.mockito.ArgumentMatchers.isA(ApiScopeInterceptor.class)))
@@ -112,8 +112,8 @@ class WebMvcConfigTest {
     }
 
     @Test
-    void rollerViewResolverIsCheckedBeforeThePlainJspFallback() {
-        PressroomViewResolver resolver = config.rollerViewResolver();
+    void pressroomViewResolverIsCheckedBeforeThePlainJspFallback() {
+        PressroomViewResolver resolver = config.pressroomViewResolver();
 
         assertEquals(1, resolver.getOrder());
     }

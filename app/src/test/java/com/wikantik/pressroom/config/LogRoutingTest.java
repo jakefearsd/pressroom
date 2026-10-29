@@ -76,17 +76,17 @@ class LogRoutingTest {
         assertEquals("SYSTEM_OUT", console.getAttribute("target"));
     }
 
-    /** The file stays: the IT harness and the SSO runbook read roller.log. */
+    /** The file stays: the IT harness and the SSO runbook read pressroom.log. */
     @Test
     void namedLoggersStillReachTheFile() throws Exception {
         Document config = config();
         Map<String, Set<String>> wrapped = wrappedAppenders(config);
-        Element roller = (Element) config.getElementsByTagName("Logger").item(0);
-        assertTrue(reaches(refs(roller), wrapped, "roller"), "com.wikantik.pressroom still writes roller.log");
+        Element pressroom = (Element) config.getElementsByTagName("Logger").item(0);
+        assertTrue(reaches(refs(pressroom), wrapped, "pressroom"), "com.wikantik.pressroom still writes pressroom.log");
     }
 
     /**
-     * roller.log rolls on every start and at 8 MB, and nothing deleted the
+     * pressroom.log rolls on every start and at 8 MB, and nothing deleted the
      * rolled {@code .gz} files, so inside a long-lived container they
      * accumulated without bound. The rollover keeps a bounded set: a Delete
      * action matching the rolled files, capped by count.
@@ -94,7 +94,7 @@ class LogRoutingTest {
     @Test
     void rolledLogFilesAreBounded() throws Exception {
         NodeList files = config().getElementsByTagName("RollingFile");
-        assertTrue(files.getLength() > 0, "roller.log is a rolling file");
+        assertTrue(files.getLength() > 0, "pressroom.log is a rolling file");
         for (int i = 0; i < files.getLength(); i++) {
             Element file = (Element) files.item(i);
             NodeList strategies = file.getElementsByTagName("DefaultRolloverStrategy");
@@ -117,9 +117,9 @@ class LogRoutingTest {
      * console through Root. Characterised 2026-10-29, routing unchanged.
      */
     private static final Map<String, String> ROOT_ONLY_BY_DESIGN = Map.of(
-            "roller.mcp", "characterised 2026-10-29: reaches the console through Root",
-            "roller.media.import", "characterised 2026-10-29: reaches the console through Root",
-            "roller.redirects", "characterised 2026-10-29: reaches the console through Root");
+            "pressroom.mcp", "characterised 2026-10-29: reaches the console through Root",
+            "pressroom.media.import", "characterised 2026-10-29: reaches the console through Root",
+            "pressroom.redirects", "characterised 2026-10-29: reaches the console through Root");
 
     private static final Pattern GET_LOGGER = Pattern.compile("getLogger\\(\\s*([^()]*?)\\s*\\)");
 
@@ -151,14 +151,14 @@ class LogRoutingTest {
         Element logger = loggerNamed(config, ProjectNames.currentRoot());
         assertNotNull(logger, "log4j2.xml has no Logger named " + ProjectNames.currentRoot());
         Map<String, Set<String>> wrapped = wrappedAppenders(config);
-        assertTrue(reaches(refs(logger), wrapped, "roller"), "the root package logger reaches roller.log");
+        assertTrue(reaches(refs(logger), wrapped, "pressroom"), "the root package logger reaches pressroom.log");
         assertTrue(reaches(refs(logger), wrapped, "console"), "the root package logger reaches the console");
     }
 
     /**
      * Characterisation: every logger name the code uses is routed or consciously left to Root.
      *
-     * <p>Proven to bite: deleting the {@code roller.sso} Logger from log4j2.xml fails this test.
+     * <p>Proven to bite: deleting the {@code pressroom.sso} Logger from log4j2.xml fails this test.
      */
     @Test
     void everyNamedLoggerHasADecidedRoute() throws Exception {
@@ -197,17 +197,17 @@ class LogRoutingTest {
     @Test
     void theScannerResolvesNewConstantsAndRejectsWhatItCannotRead() throws Exception {
         Scan constant = new Scan();
-        scanSource("Foo.java", "class Foo { static final String LOG_NAME = \"roller.foo\";\n"
+        scanSource("Foo.java", "class Foo { static final String LOG_NAME = \"pressroom.foo\";\n"
                 + " Logger l = LoggerFactory.getLogger(LOG_NAME); }", name -> null, constant);
         assertTrue(constant.problems.isEmpty(), "a bare constant resolves: " + constant.problems);
-        assertEquals(Set.of("roller.foo"), constant.names);
-        assertEquals(List.of("roller.foo"), missingRoutes(constant.names, config()),
+        assertEquals(Set.of("pressroom.foo"), constant.names);
+        assertEquals(List.of("pressroom.foo"), missingRoutes(constant.names, config()),
                 "an unrouted new logger name is reported");
 
         Scan qualified = new Scan();
         scanSource("Bar.java", "class Bar { Logger l = LoggerFactory.getLogger(Other.NAME); }",
-                cls -> "Other".equals(cls) ? "interface Other { String NAME = \"roller.other\"; }" : null, qualified);
-        assertEquals(Set.of("roller.other"), qualified.names);
+                cls -> "Other".equals(cls) ? "interface Other { String NAME = \"pressroom.other\"; }" : null, qualified);
+        assertEquals(Set.of("pressroom.other"), qualified.names);
 
         Scan unresolved = new Scan();
         scanSource("Baz.java", "class Baz { Logger l = LoggerFactory.getLogger(NAME); }", name -> null, unresolved);

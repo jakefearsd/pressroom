@@ -72,8 +72,8 @@ public class PageServlet extends HttpServlet {
      * The error dispatch is a forward within the same request, so they
      * survive it. The name is raw author input: the JSP escapes it.
      */
-    static final String NOT_FOUND_WEBLOG_NAME = "roller.notFound.weblogName";
-    static final String NOT_FOUND_WEBLOG_URL = "roller.notFound.weblogUrl";
+    static final String NOT_FOUND_WEBLOG_NAME = "pressroom.notFound.weblogName";
+    static final String NOT_FOUND_WEBLOG_URL = "pressroom.notFound.weblogUrl";
     // for caching
     private boolean excludeOwnerPages = false;
     private transient RenderCache<WeblogPageRequest> siteWideRenderCache = null;

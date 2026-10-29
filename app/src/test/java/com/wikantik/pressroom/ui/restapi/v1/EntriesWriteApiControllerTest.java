@@ -1361,7 +1361,7 @@ class EntriesWriteApiControllerTest {
         assertEquals("10", response.getHeader("Retry-After"));
         tools.jackson.databind.JsonNode json = new tools.jackson.databind.ObjectMapper()
                 .readTree(response.getContentAsString());
-        assertEquals("https://roller.invalid/problems/busy", json.get("type").asString());
+        assertEquals("https://pressroom.invalid/problems/busy", json.get("type").asString());
         assertEquals("Another save of this weblog is in progress; retry shortly.", json.get("detail").asString());
         verify(weblogger, never()).flush();
     }

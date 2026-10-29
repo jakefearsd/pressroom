@@ -51,16 +51,16 @@ import com.wikantik.pressroom.pojos.WeblogPermission;
 public class JPAUserManagerImpl implements UserManager {
     private static final Logger log = LoggerFactory.getLogger(JPAUserManagerImpl.class);
 
-    private final Weblogger roller;
+    private final Weblogger pressroom;
     private final JPAPersistenceStrategy strategy;
     
     // cached mapping of userNames -> userIds
     private final Map<String, String> userNameToIdMap = Collections.synchronizedMap(new HashMap<>());
     
 
-    public JPAUserManagerImpl(Weblogger roller, JPAPersistenceStrategy strat) {
+    public JPAUserManagerImpl(Weblogger pressroom, JPAPersistenceStrategy strat) {
         log.debug("Instantiating JPA User Manager");
-        this.roller = roller;
+        this.pressroom = pressroom;
         this.strategy = strat;
     }
 
@@ -108,7 +108,7 @@ public class JPAUserManagerImpl implements UserManager {
 
         // reader comments by the user, and the owners' replies to them; the
         // database would cascade, but not the shared cache
-        roller.getCommentManager().removeCommentsByAuthor(user);
+        pressroom.getCommentManager().removeCommentsByAuthor(user);
 
         this.strategy.remove(user);
 

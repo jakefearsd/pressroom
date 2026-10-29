@@ -74,7 +74,7 @@ public class LuceneIndexManager implements IndexManager {
     // the write returns. Searches read it without a lock (volatile, and
     // created lazily under this object's monitor); see acquireSearcher.
     private volatile SearcherManager searcherManager;
-    private final Weblogger roller;
+    private final Weblogger pressroom;
 
     private static final Logger log = LoggerFactory.getLogger(LuceneIndexManager.class);
 
@@ -100,7 +100,7 @@ public class LuceneIndexManager implements IndexManager {
 
     /** The tier an {@link IndexOperation} resolves entry authors through. */
     Weblogger weblogger() {
-        return roller;
+        return pressroom;
     }
 
     /**
@@ -109,15 +109,15 @@ public class LuceneIndexManager implements IndexManager {
      * errors. The preferred way of getting an index is through the
      * PressroomContext.
      * 
-     * @param roller - the weblogger instance
+     * @param pressroom - the weblogger instance
      */
     @SuppressFBWarnings(
             value = {"PATH_TRAVERSAL_IN", "IMPROPER_UNICODE"},
             justification = "indexDir is search.index.dir, operator configuration (pressroom.properties or "
                     + "PRESSROOM_SEARCH_INDEX_DIR); no request reaches it. search.enabled, compared with "
                     + "false in any case, is operator configuration too.")
-    public LuceneIndexManager(Weblogger roller) {
-        this.roller = roller;
+    public LuceneIndexManager(Weblogger pressroom) {
+        this.pressroom = pressroom;
 
         // check config to see if the internal search is enabled
         String enabled = WebloggerConfig.getProperty("search.enabled");
@@ -224,32 +224,32 @@ public class LuceneIndexManager implements IndexManager {
 
     @Override
     public void rebuildWeblogIndex() throws WebloggerException {
-        scheduleIndexOperation(new RebuildWebsiteIndexOperation(roller, this, null));
+        scheduleIndexOperation(new RebuildWebsiteIndexOperation(pressroom, this, null));
     }
 
     @Override
     public void rebuildWeblogIndex(Weblog website) throws WebloggerException {
-        scheduleIndexOperation(new RebuildWebsiteIndexOperation(roller, this, website));
+        scheduleIndexOperation(new RebuildWebsiteIndexOperation(pressroom, this, website));
     }
 
     @Override
     public void removeWeblogIndex(Weblog website) throws WebloggerException {
-        scheduleIndexOperation(new RemoveWebsiteIndexOperation(roller, this, website));
+        scheduleIndexOperation(new RemoveWebsiteIndexOperation(pressroom, this, website));
     }
 
     @Override
     public void addEntryIndexOperation(WeblogEntry entry) throws WebloggerException {
-        scheduleIndexOperation(new AddEntryOperation(roller, this, entry));
+        scheduleIndexOperation(new AddEntryOperation(pressroom, this, entry));
     }
 
     @Override
     public void addEntryReIndexOperation(WeblogEntry entry) throws WebloggerException {
-        scheduleIndexOperation(new ReIndexEntryOperation(roller, this, entry));
+        scheduleIndexOperation(new ReIndexEntryOperation(pressroom, this, entry));
     }
 
     @Override
     public void removeEntryIndexOperation(WeblogEntry entry) throws WebloggerException {
-        executeIndexOperationNow(new RemoveEntryOperation(roller, this, entry));
+        executeIndexOperationNow(new RemoveEntryOperation(pressroom, this, entry));
     }
 
     @Override
@@ -341,7 +341,7 @@ public class LuceneIndexManager implements IndexManager {
             // only if search is enabled
             if (this.searchEnabled) {
                 log.debug("Starting scheduled index operation: {}", op.getClass().getName());
-                roller.getThreadManager().executeInBackground(op);
+                pressroom.getThreadManager().executeInBackground(op);
             }
         } catch (InterruptedException e) {
             log.error("Error executing operation", e);
@@ -356,7 +356,7 @@ public class LuceneIndexManager implements IndexManager {
             // only if search is enabled
             if (this.searchEnabled) {
                 log.debug("Executing index operation now: {}", op.getClass().getName());
-                roller.getThreadManager().executeInForeground(op);
+                pressroom.getThreadManager().executeInForeground(op);
             }
         } catch (InterruptedException e) {
             log.error("Error executing operation", e);
@@ -643,7 +643,7 @@ public class LuceneIndexManager implements IndexManager {
         try {
             Set<String> categories = new TreeSet<>();
             Set<String> categorySet = new TreeSet<>();
-            WeblogEntryManager weblogMgr = roller.getWeblogEntryManager();
+            WeblogEntryManager weblogMgr = pressroom.getWeblogEntryManager();
 
             WeblogEntry entry;
             Document doc;
@@ -672,7 +672,7 @@ public class LuceneIndexManager implements IndexManager {
                 // being current, the same defence ReIndexEntryOperation
                 // already applies on the write side.
                 if (entry != null && entry.isPublished() && !entry.getPubTime().after(now)) {
-                    results.add(WeblogEntryWrapper.wrap(entry, urlStrategy, roller));
+                    results.add(WeblogEntryWrapper.wrap(entry, urlStrategy, pressroom));
                 }
             }
 

@@ -651,11 +651,11 @@ class CommentServiceTest {
     }
 
     /**
-     * The comments logger writes at INFO through asyncRoller, as roller.sso does: to roller.log and
+     * The comments logger writes at INFO through asyncPressroom, as pressroom.sso does: to pressroom.log and
      * the console both (LogRoutingTest pins the console half).
      */
     @Test
-    void theCommentsLoggerWritesToRollerLog() throws Exception {
+    void theCommentsLoggerWritesToPressroomLog() throws Exception {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
         Document config = factory.newDocumentBuilder().parse(Path.of("src/main/resources/log4j2.xml").toFile());
@@ -663,15 +663,15 @@ class CommentServiceTest {
         Element comments = null;
         for (int i = 0; i < loggers.getLength(); i++) {
             Element logger = (Element) loggers.item(i);
-            if ("roller.comments".equals(logger.getAttribute("name"))) {
+            if ("pressroom.comments".equals(logger.getAttribute("name"))) {
                 comments = logger;
             }
         }
-        assertNotNull(comments, "log4j2.xml configures roller.comments");
+        assertNotNull(comments, "log4j2.xml configures pressroom.comments");
         assertEquals("info", comments.getAttribute("level"));
         assertEquals("false", comments.getAttribute("additivity"));
         Element ref = (Element) comments.getElementsByTagName("AppenderRef").item(0);
-        assertEquals("asyncRoller", ref.getAttribute("ref"));
+        assertEquals("asyncPressroom", ref.getAttribute("ref"));
     }
 
     // ------------------------------------------------------------- review round 1

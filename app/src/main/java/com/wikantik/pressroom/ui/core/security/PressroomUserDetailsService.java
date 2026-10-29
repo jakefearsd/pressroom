@@ -41,9 +41,9 @@ public class PressroomUserDetailsService implements UserDetailsService {
      */
     @Override
     public UserDetails loadUserByUsername(String userName) {
-        Weblogger roller;
+        Weblogger pressroom;
         try {
-            roller = provider.getWeblogger();
+            pressroom = provider.getWeblogger();
         } catch (Exception e) {
             // Should only happen in case of 1st time startup, setup required
             log.debug("Ignorable error getting Roller instance", e);
@@ -51,7 +51,7 @@ public class PressroomUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException("User info not available yet.", e);
         }
         try {
-            UserManager umgr = roller.getUserManager();
+            UserManager umgr = pressroom.getUserManager();
             User userData;
             try {
                 userData = umgr.getUserByUserName(userName);

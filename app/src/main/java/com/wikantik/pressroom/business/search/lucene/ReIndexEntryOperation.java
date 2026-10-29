@@ -46,7 +46,7 @@ public class ReIndexEntryOperation extends WriteToIndexOperation {
     // ========================================================
 
     private WeblogEntry data;
-    private Weblogger roller;
+    private Weblogger pressroom;
 
     // ~ Constructors
     // ===========================================================
@@ -54,10 +54,10 @@ public class ReIndexEntryOperation extends WriteToIndexOperation {
     /**
      * Adds a web log entry into the index.
      */
-    public ReIndexEntryOperation(Weblogger roller, LuceneIndexManager mgr,
+    public ReIndexEntryOperation(Weblogger pressroom, LuceneIndexManager mgr,
             WeblogEntry data) {
         super(mgr);
-        this.roller = roller;
+        this.pressroom = pressroom;
         this.data = data;
     }
 
@@ -72,11 +72,11 @@ public class ReIndexEntryOperation extends WriteToIndexOperation {
     @Override
     protected void doRun() {
 
-        // roller is dereferenced unconditionally below (getWeblogEntryManager,
+        // pressroom is dereferenced unconditionally below (getWeblogEntryManager,
         // then release() in the finally); the guard belongs here, before
         // either happens, not after -- there is nothing this operation can do
         // without it.
-        if (roller == null) {
+        if (pressroom == null) {
             log.error("Weblogger unavailable; cannot re-index weblog entry");
             return;
         }
@@ -89,7 +89,7 @@ public class ReIndexEntryOperation extends WriteToIndexOperation {
         // to know what id to remove from the index.
         String entryId = this.data.getId();
         try {
-            WeblogEntryManager wMgr = roller.getWeblogEntryManager();
+            WeblogEntryManager wMgr = pressroom.getWeblogEntryManager();
             this.data = wMgr.getWeblogEntry(entryId);
         } catch (WebloggerException ex) {
             log.error("Error getting weblogentry object", ex);
@@ -121,7 +121,7 @@ public class ReIndexEntryOperation extends WriteToIndexOperation {
         } catch (IOException e) {
             log.error("Problems adding/deleting doc to index", e);
         } finally {
-            roller.release();
+            pressroom.release();
             endWriting();
         }
     }

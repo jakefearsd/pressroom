@@ -413,7 +413,7 @@ class WeblogEntryTrashOperationsTest {
      * assumed from the gate's code.
      */
     @Test
-    void trashingAPublishedEntryEmitsNoRollerEvent() throws Exception {
+    void trashingAPublishedEntryEmitsNoPressroomEvent() throws Exception {
         WeblogEntry created = TestUtils.setupWeblogEntry("published-no-double-event", blog, user);
         TestUtils.endSession(true);
 

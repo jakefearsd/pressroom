@@ -139,7 +139,7 @@ public class FileContentManagerImpl implements FileContentManager {
             // The temp file must live in the SAME directory as the target:
             // Files.move is only atomic within a filesystem, and a rename
             // within one directory is the strongest portable guarantee.
-            tempFile = Files.createTempFile(requireParent(saveFile), "roller-save-", ".tmp");
+            tempFile = Files.createTempFile(requireParent(saveFile), "pressroom-save-", ".tmp");
             try (FileChannel channel = FileChannel.open(tempFile,
                     StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
                 is.transferTo(Channels.newOutputStream(channel));

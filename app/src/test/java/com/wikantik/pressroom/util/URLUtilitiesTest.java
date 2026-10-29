@@ -169,7 +169,7 @@ public class URLUtilitiesTest {
     public void encodedTagsAreJoinedWithPlusSigns() {
         // The tag URL syntax is /tags/foo+bar, so the join character is part
         // of the route and not just cosmetic.
-        assertEquals("java+roller", URLUtilities.getEncodedTagsString(List.of("java", "roller")));
+        assertEquals("java+pressroom", URLUtilities.getEncodedTagsString(List.of("java", "pressroom")));
         assertEquals("java", URLUtilities.getEncodedTagsString(List.of("java")));
     }
 

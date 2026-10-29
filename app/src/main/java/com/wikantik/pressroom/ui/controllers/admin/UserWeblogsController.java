@@ -45,7 +45,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * section 4): grant, change and remove memberships by the weblog Members
  * page's own rules -- a weblog keeps at least one Admin, nothing is granted
  * while group blogging is off, and a reader-only account is never granted.
- * Each change writes a {@code roller.admin} line.
+ * Each change writes a {@code pressroom.admin} line.
  *
  * <p>The weblog travels as {@code handle}, never {@code weblog}:
  * {@code PressroomHandlerInterceptor} would read that as the action weblog.

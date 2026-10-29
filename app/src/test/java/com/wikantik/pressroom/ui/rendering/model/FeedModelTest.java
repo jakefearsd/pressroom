@@ -218,7 +218,7 @@ class FeedModelTest {
         WeblogFeedRequest request = feedRequest("entries", "atom");
         request.setLocale("fr_FR");
         request.setWeblogCategoryName("Tech News");
-        request.setTags(List.of("java", "roller"));
+        request.setTags(List.of("java", "pressroom"));
         request.setExcerpts(true);
 
         FeedModel model = modelFor(request);
@@ -226,7 +226,7 @@ class FeedModelTest {
         assertEquals("fr_FR", model.getLocale(), "$model.locale drives feed language.");
         assertEquals("Tech News", model.getCategoryName(),
                 "$model.categoryName is rendered into the feed title.");
-        assertEquals(List.of("java", "roller"), model.getTags(),
+        assertEquals(List.of("java", "pressroom"), model.getTags(),
                 "$model.tags is rendered into the feed title.");
         assertTrue(model.getExcerpts(),
                 "$model.excerpts decides whether entries carry full text.");
@@ -258,14 +258,14 @@ class FeedModelTest {
     void theEntriesPagerUrlKeepsTheCategoryTagsAndExcerptFilters() throws Exception {
         WeblogFeedRequest request = feedRequest("entries", "atom");
         request.setWeblogCategoryName("Tech News");
-        request.setTags(List.of("java", "roller"));
+        request.setTags(List.of("java", "pressroom"));
         request.setExcerpts(true);
 
         String url = entriesPager(modelFor(request)).getUrl();
 
         assertEquals(ABSOLUTE_SITE + "/testblog/feed/entries/atom", path(url),
                 "The filters belong in the query string, not the path.");
-        assertEquals(Map.of("tags", "java+roller", "cat", "Tech+News", "excerpts", "true"),
+        assertEquals(Map.of("tags", "java+pressroom", "cat", "Tech+News", "excerpts", "true"),
                 queryParams(url),
                 "Every filter the subscriber asked for must survive into the feed's "
                         + "own URL, encoded.");

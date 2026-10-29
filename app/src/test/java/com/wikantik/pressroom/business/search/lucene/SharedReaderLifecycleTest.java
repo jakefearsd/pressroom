@@ -99,17 +99,17 @@ class SharedReaderLifecycleTest {
     @TempDir
     Path indexDir;
 
-    private Weblogger roller;
+    private Weblogger pressroom;
     private WeblogEntryManager entries;
     private Weblog blog;
     private LuceneIndexManager manager;
 
     @BeforeEach
     void setUp() throws Exception {
-        roller = mock(Weblogger.class);
+        pressroom = mock(Weblogger.class);
         entries = mock(WeblogEntryManager.class);
-        when(roller.getWeblogEntryManager()).thenReturn(entries);
-        when(roller.getUserManager()).thenReturn(mock(UserManager.class));
+        when(pressroom.getWeblogEntryManager()).thenReturn(entries);
+        when(pressroom.getUserManager()).thenReturn(mock(UserManager.class));
         ThreadManager inline = mock(ThreadManager.class);
         doAnswer(inv -> {
             ((Runnable) inv.getArgument(0)).run();
@@ -119,7 +119,7 @@ class SharedReaderLifecycleTest {
             ((Runnable) inv.getArgument(0)).run();
             return null;
         }).when(inline).executeInForeground(any(Runnable.class));
-        when(roller.getThreadManager()).thenReturn(inline);
+        when(pressroom.getThreadManager()).thenReturn(inline);
 
         blog = new Weblog();
         blog.setHandle(HANDLE);
@@ -135,7 +135,7 @@ class SharedReaderLifecycleTest {
 
     @Test
     void aWriteClosesTheReaderItSuperseded() throws Exception {
-        manager = initialized(new LuceneIndexManager(roller));
+        manager = initialized(new LuceneIndexManager(pressroom));
         index(entry("first"));
         assertEquals(List.of("first"), titles(search(WORD)));
         IndexReader before = currentReader();
@@ -151,7 +151,7 @@ class SharedReaderLifecycleTest {
     void aSearchThatStraddlesAWriteFinishesOnItsOwnReaderWhichThenCloses() throws Exception {
         AtomicReference<IndexReader> used = new AtomicReference<>();
         AtomicInteger refsAfterTheWrite = new AtomicInteger(-1);
-        LuceneIndexManager straddling = new LuceneIndexManager(roller) {
+        LuceneIndexManager straddling = new LuceneIndexManager(pressroom) {
             @Override
             SearchResultList convertHitsToEntryList(ScoreDoc[] hits, SearchOperation search,
                     int pageNum, int entryCount, String weblogHandle, boolean websiteSpecificSearch,
@@ -187,7 +187,7 @@ class SharedReaderLifecycleTest {
 
     @Test
     void aSearchWithNoHitsLetsGoOfItsReader() throws Exception {
-        manager = initialized(new LuceneIndexManager(roller));
+        manager = initialized(new LuceneIndexManager(pressroom));
         index(entry("first"));
         assertEquals(List.of(), titles(search("absentfromeveryentry")));
         IndexReader before = currentReader();
@@ -199,7 +199,7 @@ class SharedReaderLifecycleTest {
 
     @Test
     void aSearchTheParserRejectsLetsGoOfItsReader() throws Exception {
-        manager = initialized(new LuceneIndexManager(roller));
+        manager = initialized(new LuceneIndexManager(pressroom));
         index(entry("first"));
         assertThrows(WebloggerException.class, () -> search("\"" + WORD));
         IndexReader before = currentReader();
@@ -211,7 +211,7 @@ class SharedReaderLifecycleTest {
 
     @Test
     void aSearchWhoseConversionThrowsLetsGoOfItsReader() throws Exception {
-        manager = initialized(new LuceneIndexManager(roller));
+        manager = initialized(new LuceneIndexManager(pressroom));
         index(entry("first"));
         when(entries.getWeblogEntry("first")).thenThrow(new IllegalStateException("store down"));
         assertThrows(IllegalStateException.class, () -> search(WORD));
@@ -224,7 +224,7 @@ class SharedReaderLifecycleTest {
 
     @Test
     void repeatedWritesLeaveExactlyOneOpenReaderAndShutdownClosesIt() throws Exception {
-        manager = initialized(new LuceneIndexManager(roller));
+        manager = initialized(new LuceneIndexManager(pressroom));
         List<IndexReader> seen = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
             index(entry("entry-" + i));
@@ -251,7 +251,7 @@ class SharedReaderLifecycleTest {
      */
     @Test
     void anOperationClosedBeforeItRunsTakesNoReference() throws Exception {
-        manager = initialized(new LuceneIndexManager(roller));
+        manager = initialized(new LuceneIndexManager(pressroom));
         index(entry("first"));
         IndexReader current = currentReader();
 
@@ -269,7 +269,7 @@ class SharedReaderLifecycleTest {
     @SuppressWarnings("try")
     @Test
     void anOperationRunTwiceHoldsOnlyItsLatestReader() throws Exception {
-        manager = initialized(new LuceneIndexManager(roller));
+        manager = initialized(new LuceneIndexManager(pressroom));
         index(entry("first"));
         try (SearchOperation op = new SearchOperation(manager)) {
             op.setTerm(WORD);
@@ -301,7 +301,7 @@ class SharedReaderLifecycleTest {
      */
     @Test
     void aReaderThatFailsToCloseDoesNotFailTheRelease() throws Exception {
-        manager = initialized(new LuceneIndexManager(roller));
+        manager = initialized(new LuceneIndexManager(pressroom));
         index(entry("first"));
         try (Directory dir = FSDirectory.open(indexDir);
                 DirectoryReader real = DirectoryReader.open(dir)) {
@@ -337,7 +337,7 @@ class SharedReaderLifecycleTest {
      */
     @Test
     void aWriteWhoseRefreshFailsReleasesTheLockAndTheNextSearchReopens() throws Exception {
-        manager = initialized(new LuceneIndexManager(roller));
+        manager = initialized(new LuceneIndexManager(pressroom));
         index(entry("first"));
         IndexReader dead = currentReader();
         dead.close();
@@ -359,7 +359,7 @@ class SharedReaderLifecycleTest {
      */
     @Test
     void aSearchThatFindsTheSearchersClosedUnderItReopensThem() throws Exception {
-        manager = initialized(new LuceneIndexManager(roller));
+        manager = initialized(new LuceneIndexManager(pressroom));
         index(entry("first"));
         IndexReader before = currentReader();
         Field field = LuceneIndexManager.class.getDeclaredField("searcherManager");
@@ -379,7 +379,7 @@ class SharedReaderLifecycleTest {
      */
     @Test
     void shutdownToleratesAReaderAlreadyClosed() throws Exception {
-        manager = initialized(new LuceneIndexManager(roller));
+        manager = initialized(new LuceneIndexManager(pressroom));
         index(entry("first"));
         currentReader().close();
 
@@ -394,7 +394,7 @@ class SharedReaderLifecycleTest {
      */
     @Test
     void initializingAgainRetiresTheReaderAlreadyHeld() throws Exception {
-        manager = initialized(new LuceneIndexManager(roller));
+        manager = initialized(new LuceneIndexManager(pressroom));
         index(entry("first"));
         IndexReader held = currentReader();
         // a clean previous run: no in-use marker, so the index is reopened
@@ -413,7 +413,7 @@ class SharedReaderLifecycleTest {
      */
     @Test
     void aWriteAfterShutdownReopensNothing() throws Exception {
-        manager = initialized(new LuceneIndexManager(roller));
+        manager = initialized(new LuceneIndexManager(pressroom));
         index(entry("first"));
         IndexReader current = currentReader();
         manager.shutdown();

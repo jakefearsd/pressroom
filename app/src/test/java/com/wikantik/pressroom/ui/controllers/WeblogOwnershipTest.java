@@ -109,7 +109,7 @@ class WeblogOwnershipTest {
 
     /**
      * M7: an id is a request parameter, so a CR/LF in it could forge a line of
-     * its own in roller.log. A failed lookup of any kind logs the weblog, not the
+     * its own in pressroom.log. A failed lookup of any kind logs the weblog, not the
      * raw id.
      */
     @Test

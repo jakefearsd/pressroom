@@ -447,7 +447,7 @@ class AdminApiTest {
         assertEquals("AGENT", json.get(1).get("kind").asString());
     }
 
-    /** Spec 2026-10-13, section 6: enabling or disabling an account through the API is a roller.admin event too. */
+    /** Spec 2026-10-13, section 6: enabling or disabling an account through the API is a pressroom.admin event too. */
     @Test
     void disablingThroughTheApiIsLogged() throws Exception {
         Weblogger weblogger = mockedWeblogger();

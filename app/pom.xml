@@ -362,7 +362,7 @@ limitations under the License.
              `java -jar` boot smoke against a migrated ./roller db dev
              database - full PressroomLifecycle/EclipseLink/Lucene bootstrap,
              front page (302) and login page (200) both serve - with zero
-             JAXB-related exceptions in roller.log. -->
+             JAXB-related exceptions in pressroom.log. -->
 
         <!-- Eclipselink is the only JPA implementation Roller supports.
              Logging, other special configuration during JUnit tests can be

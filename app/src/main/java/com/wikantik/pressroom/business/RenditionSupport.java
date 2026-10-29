@@ -442,8 +442,8 @@ public final class RenditionSupport {
         File tempInput = null;
         File tempOutput = null;
         try {
-            tempInput = File.createTempFile("roller-rendition-", "." + sourceFormat);
-            tempOutput = File.createTempFile("roller-rendition-", ".webp");
+            tempInput = File.createTempFile("pressroom-rendition-", "." + sourceFormat);
+            tempOutput = File.createTempFile("pressroom-rendition-", ".webp");
             ImageIO.write(resized, sourceFormat, tempInput);
 
             if (CwebpEncoder.encode(tempInput, tempOutput, WEBP_QUALITY)) {

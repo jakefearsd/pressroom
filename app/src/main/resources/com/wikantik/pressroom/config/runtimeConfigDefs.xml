@@ -40,10 +40,10 @@
 <runtime-configs> 
 
  <!--
-   The global-properties represents the base set of roller runtime properties.
+   The global-properties represents the base set of pressroom runtime properties.
    In *most* cases you should be putting your properties here and they can
    then be changed from the admin configuration page at ...
-        /admin/rollerConfig.do
+        /admin/pressroomConfig.do
  -->
  <config-def name="global-properties">
 

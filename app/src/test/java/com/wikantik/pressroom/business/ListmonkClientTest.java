@@ -44,7 +44,7 @@ import static org.mockito.Mockito.when;
 class ListmonkClientTest {
 
     private static final String LIST_UUID = "2f0f1b0c-1111-2222-3333-444455556666";
-    private static final String API_USER = "roller-admin";
+    private static final String API_USER = "pressroom-admin";
     private static final String API_TOKEN = "s3cr3t-token";
 
     private HttpServer server;

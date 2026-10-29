@@ -70,7 +70,7 @@ class ReaderCacheKeyTest {
     }
 
     @Test
-    void aReaderRequestIsAuthenticatedAsTheRollerUsername() throws Exception {
+    void aReaderRequestIsAuthenticatedAsThePressroomUsername() throws Exception {
         assertEquals(READER, pageRequest(readerToken()).getAuthenticUser(),
                 "the principal's name must be the Roller username, not the provider subject");
     }

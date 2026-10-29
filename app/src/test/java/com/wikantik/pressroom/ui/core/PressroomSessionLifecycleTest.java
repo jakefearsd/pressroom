@@ -63,16 +63,16 @@ class PressroomSessionLifecycleTest {
     }
 
     @Test
-    void aRequestWithNoHttpSessionHasNoRollerSession() {
-        assertNull(PressroomSession.getRollerSession(new MockHttpServletRequest(), provider));
+    void aRequestWithNoHttpSessionHasNoPressroomSession() {
+        assertNull(PressroomSession.getPressroomSession(new MockHttpServletRequest(), provider));
     }
 
     @Test
     void anEnabledUsersLoginIsRegisteredAndReusedOnTheNextRequest() throws Exception {
         user(true);
 
-        PressroomSession first = PressroomSession.getRollerSession(requestWithPrincipal(), provider);
-        PressroomSession second = PressroomSession.getRollerSession(requestWithPrincipal(), provider);
+        PressroomSession first = PressroomSession.getPressroomSession(requestWithPrincipal(), provider);
+        PressroomSession second = PressroomSession.getPressroomSession(requestWithPrincipal(), provider);
 
         assertSame(first, second);
         assertSame(first, logins.get(name));
@@ -83,7 +83,7 @@ class PressroomSessionLifecycleTest {
     void aDisabledAccountIsNeverAttachedToTheSession() throws Exception {
         user(false);
 
-        PressroomSession result = PressroomSession.getRollerSession(requestWithPrincipal(), provider);
+        PressroomSession result = PressroomSession.getPressroomSession(requestWithPrincipal(), provider);
 
         assertNull(result.getAuthenticatedUser(users));
         assertNull(logins.get(name));
@@ -93,7 +93,7 @@ class PressroomSessionLifecycleTest {
     void aPrincipalWhoseUserDoesNotExistLeavesTheSessionAnonymous() throws Exception {
         when(users.getUserByUserName(name)).thenReturn(null);
 
-        PressroomSession result = PressroomSession.getRollerSession(requestWithPrincipal(), provider);
+        PressroomSession result = PressroomSession.getPressroomSession(requestWithPrincipal(), provider);
 
         assertNull(result.getAuthenticatedUser(users));
     }
@@ -102,7 +102,7 @@ class PressroomSessionLifecycleTest {
     void aUserLookupThatFailsLeavesTheSessionAnonymousRatherThanThrowing() throws Exception {
         when(users.getUserByUserName(name)).thenThrow(new WebloggerException("store down"));
 
-        PressroomSession result = PressroomSession.getRollerSession(requestWithPrincipal(), provider);
+        PressroomSession result = PressroomSession.getPressroomSession(requestWithPrincipal(), provider);
 
         assertNotNull(result);
         assertNull(result.getAuthenticatedUser(users));
@@ -111,20 +111,20 @@ class PressroomSessionLifecycleTest {
     @Test
     void aLoginTheServerHasInvalidatedIsReplacedByAFreshSession() throws Exception {
         user(true);
-        PressroomSession first = PressroomSession.getRollerSession(requestWithPrincipal(), provider);
+        PressroomSession first = PressroomSession.getPressroomSession(requestWithPrincipal(), provider);
         logins.invalidate(name);
 
         // no principal now: the replacement must not quietly inherit the old user
         MockHttpServletRequest again = new MockHttpServletRequest();
         again.setSession(httpSession);
-        PressroomSession second = PressroomSession.getRollerSession(again, provider);
+        PressroomSession second = PressroomSession.getPressroomSession(again, provider);
 
         assertNotSame(first, second);
         assertNull(second.getAuthenticatedUser(users));
     }
 
     @Test
-    void theContainersSessionEventsCreateAndPurgeTheRollerSession() {
+    void theContainersSessionEventsCreateAndPurgeThePressroomSession() {
         PressroomSession listener = new PressroomSession();
         listener.sessionCreated(new HttpSessionEvent(httpSession));
         assertNotNull(httpSession.getAttribute(PressroomSession.PRESSROOM_SESSION));

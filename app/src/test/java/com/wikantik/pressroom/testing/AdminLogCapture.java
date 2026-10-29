@@ -30,10 +30,10 @@ import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.logging.log4j.core.config.Property;
 
-/** Captures the {@code roller.admin} logger at INFO for one test, then puts its configuration back. */
+/** Captures the {@code pressroom.admin} logger at INFO for one test, then puts its configuration back. */
 public final class AdminLogCapture implements AutoCloseable {
 
-    private static final String LOGGER = "roller.admin";
+    private static final String LOGGER = "pressroom.admin";
     private static final String APPENDER = "admin-capture";
 
     private final List<String> lines = Collections.synchronizedList(new ArrayList<>());

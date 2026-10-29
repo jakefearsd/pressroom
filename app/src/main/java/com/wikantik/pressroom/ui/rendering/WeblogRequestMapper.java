@@ -139,7 +139,7 @@ public class WeblogRequestMapper {
         this.redirectResponder = new RedirectResponder(weblogger);
         this.restricted = new HashSet<>();
 
-        // build roller restricted list
+        // build pressroom restricted list
         String restrictList =
                 WebloggerConfig.getProperty("rendering.weblogMapper.pressroomProtectedUrls");
         if(restrictList != null && !restrictList.isBlank()) {

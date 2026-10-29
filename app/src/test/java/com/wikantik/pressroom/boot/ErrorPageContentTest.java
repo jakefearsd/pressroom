@@ -141,11 +141,11 @@ class ErrorPageContentTest {
     void theNotFoundPageOffersTheWayBackToTheWeblog() throws IOException {
         String content = JSP_COMMENT.matcher(Files.readString(ERRORS_DIR.resolve("404.jsp"),
                 StandardCharsets.UTF_8)).replaceAll("");
-        assertTrue(content.contains("roller.notFound.weblogName")
-                        && content.contains("roller.notFound.weblogUrl"),
+        assertTrue(content.contains("pressroom.notFound.weblogName")
+                        && content.contains("pressroom.notFound.weblogUrl"),
                 "404.jsp reads the weblog PageServlet left on the request");
-        assertTrue(content.contains("fn:escapeXml(requestScope['roller.notFound.weblogName'])")
-                        && content.contains("fn:escapeXml(requestScope['roller.notFound.weblogUrl'])"),
+        assertTrue(content.contains("fn:escapeXml(requestScope['pressroom.notFound.weblogName'])")
+                        && content.contains("fn:escapeXml(requestScope['pressroom.notFound.weblogUrl'])"),
                 "both are escaped");
     }
 }

@@ -25,7 +25,7 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
  */
 public class SsoSuccessHandler implements AuthenticationSuccessHandler {
 
-    private static final Logger log = LoggerFactory.getLogger("roller.sso");
+    private static final Logger log = LoggerFactory.getLogger("pressroom.sso");
 
     private final WebloggerProvider webloggerProvider;
 

@@ -98,7 +98,7 @@ public class ReflectionTest {
     public void anUnsetPropertyYieldsNoInstancesRatherThanFailing() throws ReflectiveOperationException {
         // Optional extension points (cache.customHandlers and friends) are
         // usually unset; that must not be an error.
-        assertTrue(Reflection.newInstancesFromProperty("no.such.property.in.roller").isEmpty());
+        assertTrue(Reflection.newInstancesFromProperty("no.such.property.in.pressroom").isEmpty());
     }
 
     @Test

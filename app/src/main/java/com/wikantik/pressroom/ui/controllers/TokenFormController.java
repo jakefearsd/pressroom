@@ -45,7 +45,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  *
  * <p>The secret travels from the mint to the reveal page only as a one-read
  * flash attribute: never in a URL, and never in a log line -- the mint's
- * {@code roller.admin} line names the token by {@link AdminLog#tokenDetails}.
+ * {@code pressroom.admin} line names the token by {@link AdminLog#tokenDetails}.
  */
 public abstract class TokenFormController extends BaseController {
 

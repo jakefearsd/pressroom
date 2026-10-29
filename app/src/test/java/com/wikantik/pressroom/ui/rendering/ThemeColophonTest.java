@@ -137,7 +137,7 @@ class ThemeColophonTest {
     }
 
     @Test
-    void frontpageNoLongerSaysPoweredByRoller() throws Exception {
+    void frontpageNoLongerSaysPoweredByPressroom() throws Exception {
         String footer = Files.readString(THEMES.resolve("frontpage/_footer.vm"), StandardCharsets.UTF_8);
         assertFalse(footer.contains("Powered by Roller"), footer);
     }

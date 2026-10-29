@@ -49,7 +49,7 @@ public final class SiteWideCache implements CacheHandler {
     private static final Logger log = LoggerFactory.getLogger(SiteWideCache.class);
     
     // a unique identifier for this cache, this is used as the prefix for
-    // roller config properties that apply to this cache
+    // pressroom config properties that apply to this cache
     public static final String CACHE_ID = "cache.sitewide";
     
     // keep cached content

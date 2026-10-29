@@ -17,7 +17,7 @@ limitations under the License.
 -->
 
 <!-- logging config for tests -->
-<Configuration status="warn" name="Roller" >
+<Configuration status="warn" name="Pressroom" >
     
     <properties>
         <property name="logging.dir">${project.build.directory}/logs</property>
@@ -25,9 +25,9 @@ limitations under the License.
 
     <Appenders>
         
-        <RollingFile name="roller"
-                     fileName="${logging.dir}/roller.log" 
-                     filePattern="${logging.dir}/roller-%d{yyyy-MM-dd-HHmmss}.log.gz"
+        <RollingFile name="pressroom"
+                     fileName="${logging.dir}/pressroom.log" 
+                     filePattern="${logging.dir}/pressroom-%d{yyyy-MM-dd-HHmmss}.log.gz"
                      ignoreExceptions="false">
             <PatternLayout pattern="%-5p %d{yyyy-MM-dd HH:mm:ss} [%t] %C - %m%n"/>
             <Policies>
@@ -51,19 +51,19 @@ limitations under the License.
 
     <Loggers>
         
-        <!-- roller.log; everything not defined here will end up in server.log -->
-        <Logger name="com.wikantik.pressroom"   level="debug"  additivity="false"> <AppenderRef ref="roller"/> </Logger>
-        <Logger name="org.apache.velocity" level="info"  additivity="false"> <AppenderRef ref="roller"/> </Logger>
-        <Logger name="org.springframework" level="info"  additivity="false"> <AppenderRef ref="roller"/> </Logger>
-        <Logger name="org.openid4java"     level="info"  additivity="false"> <AppenderRef ref="roller"/> </Logger>
-        <Logger name="org.apache.tiles"    level="info"  additivity="false"> <AppenderRef ref="roller"/> </Logger>
-        <Logger name="org.webjars"         level="info"  additivity="false"> <AppenderRef ref="roller"/> </Logger>
+        <!-- pressroom.log; everything not defined here will end up in server.log -->
+        <Logger name="com.wikantik.pressroom"   level="debug"  additivity="false"> <AppenderRef ref="pressroom"/> </Logger>
+        <Logger name="org.apache.velocity" level="info"  additivity="false"> <AppenderRef ref="pressroom"/> </Logger>
+        <Logger name="org.springframework" level="info"  additivity="false"> <AppenderRef ref="pressroom"/> </Logger>
+        <Logger name="org.openid4java"     level="info"  additivity="false"> <AppenderRef ref="pressroom"/> </Logger>
+        <Logger name="org.apache.tiles"    level="info"  additivity="false"> <AppenderRef ref="pressroom"/> </Logger>
+        <Logger name="org.webjars"         level="info"  additivity="false"> <AppenderRef ref="pressroom"/> </Logger>
         
         <!--
-        <Logger name="com.wikantik.pressroom.business.jpa.JPAPropertiesManagerImpl" level="debug" additivity="false"> <AppenderRef ref="roller"/> </Logger>
-        <Logger name="com.wikantik.pressroom.business"                              level="debug" additivity="false"> <AppenderRef ref="roller"/> </Logger>
+        <Logger name="com.wikantik.pressroom.business.jpa.JPAPropertiesManagerImpl" level="debug" additivity="false"> <AppenderRef ref="pressroom"/> </Logger>
+        <Logger name="com.wikantik.pressroom.business"                              level="debug" additivity="false"> <AppenderRef ref="pressroom"/> </Logger>
 
-        <Logger name="com.wikantik.pressroom.config.WebloggerConfig" level="debug" additivity="false"> <AppenderRef ref="roller"/> </Logger>
+        <Logger name="com.wikantik.pressroom.config.WebloggerConfig" level="debug" additivity="false"> <AppenderRef ref="pressroom"/> </Logger>
         -->
         
         <!-- server.log catches everything that hasn't been logged yet-->

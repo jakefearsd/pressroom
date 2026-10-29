@@ -45,7 +45,7 @@ class MainJavaStringNameTest {
     private static final String NEW_ROOT = "com.wikantik.pressroom";
 
     /** The session attribute key, root-relative. */
-    private static final String SESSION_KEY = ".rollersession";
+    private static final String SESSION_KEY = ".session";
 
     /**
      * Root-relative literal ({@link ProjectNames#rootRelative}) to the reason

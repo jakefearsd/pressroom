@@ -450,7 +450,7 @@ public class ServletRegistrationConfig {
      * permanent home for web.xml-derived registrations.
      */
     @Bean
-    public ServletListenerRegistrationBean<PressroomSession> rollerSessionListener() {
+    public ServletListenerRegistrationBean<PressroomSession> pressroomSessionListener() {
         return new ServletListenerRegistrationBean<>(new PressroomSession());
     }
 }

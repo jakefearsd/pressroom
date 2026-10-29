@@ -52,7 +52,7 @@ class WebContainerConfigTest {
 
     @Test
     void errorPagesMatchWebXmlVerbatimIncludingThe400ReusesTheFileNotFoundPage() {
-        ErrorPageRegistrar registrar = config.rollerErrorPageRegistrar();
+        ErrorPageRegistrar registrar = config.pressroomErrorPageRegistrar();
 
         List<ErrorPage> registered = new ArrayList<>();
         registrar.registerErrorPages(pages -> registered.addAll(Arrays.asList(pages)));
@@ -80,7 +80,7 @@ class WebContainerConfigTest {
         // .customize(factory) is what Boot calls during context refresh, and it is
         // what actually registers the inner TomcatContextCustomizer this test needs
         // to invoke against a mocked Context.
-        config.rollerTomcatCustomizer().customize(factory);
+        config.pressroomTomcatCustomizer().customize(factory);
 
         assertEquals(1, factory.getContextCustomizers().size());
         TomcatContextCustomizer customizer = factory.getContextCustomizers().iterator().next();
@@ -118,7 +118,7 @@ class WebContainerConfigTest {
     void whitespaceOnlyTemplateTextCollapsesToOneSpaceRatherThanVanishing() {
         TomcatServletWebServerFactory factory = new TomcatServletWebServerFactory();
 
-        config.rollerTomcatCustomizer().customize(factory);
+        config.pressroomTomcatCustomizer().customize(factory);
 
         assertEquals("single", factory.getSettings().getJsp().getInitParameters().get("trimSpaces"));
     }

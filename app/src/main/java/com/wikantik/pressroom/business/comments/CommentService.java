@@ -54,13 +54,13 @@ import org.springframework.stereotype.Component;
  *
  * <p>Comments passed in ({@link #setStatus}, {@link #delete}, {@link #reply})
  * must be managed, that is, fetched in the current request. Logs go to
- * {@code roller.comments}: ids, statuses, usernames and refusal codes, never
+ * {@code pressroom.comments}: ids, statuses, usernames and refusal codes, never
  * a body or an email address.
  */
 @Component
 public class CommentService {
 
-    private static final Logger log = LoggerFactory.getLogger("roller.comments");
+    private static final Logger log = LoggerFactory.getLogger("pressroom.comments");
 
     private static final int DAY_SECONDS = 86_400;
     // Bounded memory over exactness: each throttle keeps the 1000 most recently active commenters

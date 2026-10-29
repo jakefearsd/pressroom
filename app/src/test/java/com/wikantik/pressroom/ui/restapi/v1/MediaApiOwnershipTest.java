@@ -50,7 +50,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 class MediaApiOwnershipTest {
 
-    private static final String IMPORT_LOGGER = "roller.media.import";
+    private static final String IMPORT_LOGGER = "pressroom.media.import";
 
     private final Weblogger weblogger = mock(Weblogger.class);
     private final MediaFileManager mfm = mock(MediaFileManager.class);

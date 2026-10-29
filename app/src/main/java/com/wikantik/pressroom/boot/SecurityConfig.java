@@ -101,12 +101,12 @@ public class SecurityConfig {
     }
 
     @Bean
-    public PressroomUserDetailsService rollerUserDetailsService(WebloggerProvider webloggerProvider) {
+    public PressroomUserDetailsService pressroomUserDetailsService(WebloggerProvider webloggerProvider) {
         return new PressroomUserDetailsService(webloggerProvider);
     }
 
     @Bean
-    public PressroomRememberMeServices rollerRememberMeServices(PressroomUserDetailsService userDetailsService) {
+    public PressroomRememberMeServices pressroomRememberMeServices(PressroomUserDetailsService userDetailsService) {
         return new PressroomRememberMeServices(userDetailsService);
     }
 

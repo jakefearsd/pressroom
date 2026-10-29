@@ -500,7 +500,7 @@ class PressroomHandlerInterceptorTest {
      * included (found by SsoSignInIT, spec criterion 29).
      */
     @Test
-    void aProviderSignedInPrincipalResolvesToItsRollerAccount() throws Exception {
+    void aProviderSignedInPrincipalResolvesToItsPressroomAccount() throws Exception {
         SecurityContextHolder.getContext().setAuthentication(providerToken(
                 new PressroomOidcUser(oidcUser("provider-subject-1"), "alice", EDITOR, false)));
 

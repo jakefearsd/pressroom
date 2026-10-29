@@ -127,7 +127,7 @@ class JPAPersistenceStrategyBootstrapTest {
     }
 
     @Test
-    void aPersistenceXmlWithoutTheRollerUnitFailsBootstrap() throws Exception {
+    void aPersistenceXmlWithoutThePressroomUnitFailsBootstrap() throws Exception {
         String xml = HEADER + "<persistence version=\"3.0\"><persistence-unit name=\"OtherPU\">"
                 + "<mapping-file>x.orm.xml</mapping-file></persistence-unit></persistence>";
         Throwable reason = bootstrapFailure(serving(write(tmp, xml)));
@@ -136,7 +136,7 @@ class JPAPersistenceStrategyBootstrapTest {
     }
 
     @Test
-    void aRollerUnitListingNoMappingFilesFailsBootstrap() throws Exception {
+    void aPressroomUnitListingNoMappingFilesFailsBootstrap() throws Exception {
         String xml = HEADER + "<persistence version=\"3.0\"><persistence-unit name=\"OtherPU\">"
                 + "<mapping-file>elsewhere.orm.xml</mapping-file></persistence-unit>"
                 + "<persistence-unit name=\"PressroomPU\"/></persistence>";

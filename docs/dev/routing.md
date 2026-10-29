@@ -109,7 +109,7 @@ screen).
   `UPDATE ... hit_count = hit_count + 1` (no load-modify-store) in its own
   try/catch. `hitCount`/`lastHitAt` are on the API list.
 - **Every served redirect and rule mutation logs one INFO line on logger
-  `roller.redirects`** (`WeblogRedirectManager.LOG_NAME`): rule id, origin,
+  `pressroom.redirects`** (`WeblogRedirectManager.LOG_NAME`): rule id, origin,
   requested URI + query string, target, referer, user-agent — the last
   two attacker-controlled: `{}` slots only, nothing after them.
 - **JPA trap**: `getNamedQuery` sets `FlushModeType.COMMIT` (queries never

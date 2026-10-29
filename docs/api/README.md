@@ -312,7 +312,7 @@ from every other failure in this document.
 
 ```json
 {
-  "type": "https://roller.invalid/problems/not-found",
+  "type": "https://pressroom.invalid/problems/not-found",
   "title": "Not found",
   "status": 404,
   "detail": "No such entry.",
@@ -333,7 +333,7 @@ is every taken name: a category or directory `name`, a page `slug`, a user's
 
 ```json
 {
-  "type": "https://roller.invalid/problems/invalid-request",
+  "type": "https://pressroom.invalid/problems/invalid-request",
   "title": "Invalid request",
   "status": 400,
   "detail": "geoLatitude must be between -90 and 90. Unknown category 'Travle'; it is one of: Food, Travel.",
@@ -625,7 +625,7 @@ fields it sends.
 
 ```json
 {
-  "type": "https://roller.invalid/problems/entry-changed",
+  "type": "https://pressroom.invalid/problems/entry-changed",
   "title": "Entry changed",
   "status": 409,
   "detail": "The entry's text changed after it was read; get the entry again and redo the change.",
@@ -883,7 +883,7 @@ chain two rules together are refused as 400s with the reason in the body.
 There is no update verb: delete and recreate. The list echoes each rule's
 `hitCount` and `lastHitAt` — the way to see whether a stale URL is still
 being asked for — and every *served* redirect also logs one line to the
-`roller.redirects` logger with the requested URI, referer, and user-agent
+`pressroom.redirects` logger with the requested URI, referer, and user-agent
 for diagnosis.
 
 ## Comments

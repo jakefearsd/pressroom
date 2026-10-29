@@ -32,7 +32,7 @@ class ApiExceptionHandlerTest {
     @Test
     void theInternalErrorFactoryIsTheOpaque500() {
         ApiProblem problem = ApiException.internalError().toProblem("/api/mcp");
-        assertEquals("https://roller.invalid/problems/internal-error", problem.type());
+        assertEquals("https://pressroom.invalid/problems/internal-error", problem.type());
         assertEquals("Internal error", problem.title());
         assertEquals(500, problem.status());
         assertEquals("The request could not be completed.", problem.detail());
@@ -55,7 +55,7 @@ class ApiExceptionHandlerTest {
         assertEquals("10", response.getHeaders().getFirst("Retry-After"));
         ApiProblem body = response.getBody();
         assertNotNull(body);
-        assertEquals("https://roller.invalid/problems/busy", body.type());
+        assertEquals("https://pressroom.invalid/problems/busy", body.type());
         assertEquals("Busy", body.title());
         assertEquals(503, body.status());
         assertEquals("Another save of this weblog is in progress; retry shortly.", body.detail());

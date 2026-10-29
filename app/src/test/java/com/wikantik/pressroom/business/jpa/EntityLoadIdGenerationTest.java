@@ -91,25 +91,25 @@ class EntityLoadIdGenerationTest {
 
     @Test
     void loadingStoredEntitiesGeneratesNoIds() throws Exception {
-        Weblogger roller = TestUtils.weblogger();
+        Weblogger pressroom = TestUtils.weblogger();
         int loaded = 0;
 
         try (MockedStatic<UUIDGenerator> generator = mockStatic(UUIDGenerator.class, CALLS_REAL_METHODS)) {
-            User storedUser = roller.getUserManager().getUserByUserName(user.getUserName());
-            Weblog storedWeblog = roller.getWeblogManager().getWeblogByHandle(weblog.getHandle());
+            User storedUser = pressroom.getUserManager().getUserByUserName(user.getUserName());
+            Weblog storedWeblog = pressroom.getWeblogManager().getWeblogByHandle(weblog.getHandle());
             loaded += 2;
 
-            for (WeblogCategory category : roller.getWeblogEntryManager().getWeblogCategories(storedWeblog)) {
+            for (WeblogCategory category : pressroom.getWeblogEntryManager().getWeblogCategories(storedWeblog)) {
                 assertNotNull(category.getId());
                 loaded++;
             }
-            for (WeblogPermission permission : roller.getUserManager().getWeblogPermissions(storedUser)) {
+            for (WeblogPermission permission : pressroom.getUserManager().getWeblogPermissions(storedUser)) {
                 assertNotNull(permission.getId());
                 loaded++;
             }
             WeblogEntrySearchCriteria criteria = new WeblogEntrySearchCriteria();
             criteria.setWeblog(storedWeblog);
-            List<WeblogEntry> entries = roller.getWeblogEntryManager().getWeblogEntries(criteria);
+            List<WeblogEntry> entries = pressroom.getWeblogEntryManager().getWeblogEntries(criteria);
             assertEquals(ENTRIES, entries.size(), "the fixture's entries must load, or this test is vacuous");
             for (WeblogEntry entry : entries) {
                 assertNotNull(entry.getId());

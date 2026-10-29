@@ -235,7 +235,7 @@ public class GlobalConfigController extends BaseController {
             addMessage(model, "generic.changes.saved", request);
 
         } catch (WebloggerException ex) {
-            log.error("Error saving roller properties", ex);
+            log.error("Error saving pressroom properties", ex);
             addError(model, "generic.error.check.logs", request);
         }
 

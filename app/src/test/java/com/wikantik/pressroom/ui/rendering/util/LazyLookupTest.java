@@ -428,7 +428,7 @@ class LazyLookupTest {
         when(entryManager.getWeblogCategoryByName(any(), eq("Java"))).thenReturn(category);
 
         WeblogSearchRequest request = new WeblogSearchRequest(weblogger, MockRequest.with(WeblogSearchRequest.SEARCH_SERVLET, "/myblog",
-                        "q", "roller", "cat", "Java"));
+                        "q", "pressroom", "cat", "Java"));
 
         assertSame(category, request.getWeblogCategory());
         assertSame(category, request.getWeblogCategory());
@@ -446,7 +446,7 @@ class LazyLookupTest {
                 .thenThrow(new WebloggerException("database is down"));
 
         WeblogSearchRequest request = new WeblogSearchRequest(weblogger, MockRequest.with(WeblogSearchRequest.SEARCH_SERVLET, "/myblog",
-                        "q", "roller", "cat", "Java"));
+                        "q", "pressroom", "cat", "Java"));
 
         assertNull(request.getWeblogCategory());
     }
@@ -613,14 +613,14 @@ class LazyLookupTest {
         feed.setFormat("atom");
         feed.setPage(3);
         feed.setExcerpts(true);
-        feed.setTerm("roller");
+        feed.setTerm("pressroom");
         feed.setTags(java.util.List.of("java"));
         feed.setWeblogCategoryName("Java");
         assertEquals("entries", feed.getType());
         assertEquals("atom", feed.getFormat());
         assertEquals(3, feed.getPage());
         assertEquals(true, feed.isExcerpts());
-        assertEquals("roller", feed.getTerm());
+        assertEquals("pressroom", feed.getTerm());
         assertEquals(java.util.List.of("java"), feed.getTags());
         assertEquals("Java", feed.getWeblogCategoryName());
 

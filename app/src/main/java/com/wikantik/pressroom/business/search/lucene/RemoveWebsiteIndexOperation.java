@@ -47,7 +47,7 @@ public class RemoveWebsiteIndexOperation extends WriteToIndexOperation {
     // ========================================================
 
     private final Weblog website;
-    private Weblogger roller;
+    private Weblogger pressroom;
 
     // ~ Constructors
     // ===========================================================
@@ -58,10 +58,10 @@ public class RemoveWebsiteIndexOperation extends WriteToIndexOperation {
      * @param website
      *            The website to rebuild the index for, or null for all sites.
      */
-    public RemoveWebsiteIndexOperation(Weblogger roller, LuceneIndexManager mgr,
+    public RemoveWebsiteIndexOperation(Weblogger pressroom, LuceneIndexManager mgr,
             Weblog website) {
         super(mgr);
-        this.roller = roller;
+        this.pressroom = pressroom;
         this.website = website;
     }
 
@@ -85,7 +85,7 @@ public class RemoveWebsiteIndexOperation extends WriteToIndexOperation {
         String handle = website.getHandle();
         String name = website.getName();
         try {
-            Weblog current = roller.getWeblogManager().getWeblog(website.getId());
+            Weblog current = pressroom.getWeblogManager().getWeblog(website.getId());
             if (current != null) {
                 handle = current.getHandle();
                 name = current.getName();

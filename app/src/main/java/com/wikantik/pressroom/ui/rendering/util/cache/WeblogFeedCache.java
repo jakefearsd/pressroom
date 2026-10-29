@@ -32,7 +32,7 @@ public final class WeblogFeedCache extends LazyExpiringRenderCache {
     private static final Logger log = LoggerFactory.getLogger(WeblogFeedCache.class);
     
     // a unique identifier for this cache, this is used as the prefix for
-    // roller config properties that apply to this cache
+    // pressroom config properties that apply to this cache
     public static final String CACHE_ID = "cache.weblogfeed";
     
     // reference to our singleton instance

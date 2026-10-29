@@ -42,16 +42,16 @@ public class AddEntryOperation extends WriteToIndexOperation {
     //~ Instance fields ========================================================
     
     private WeblogEntry data;
-    private Weblogger roller;
+    private Weblogger pressroom;
     
     //~ Constructors ===========================================================
     
     /**
      * Adds a web log entry into the index.
      */
-    public AddEntryOperation(Weblogger roller, LuceneIndexManager mgr, WeblogEntry data) {
+    public AddEntryOperation(Weblogger pressroom, LuceneIndexManager mgr, WeblogEntry data) {
         super(mgr);
-        this.roller = roller;
+        this.pressroom = pressroom;
         this.data = data;
     }
     
@@ -64,11 +64,11 @@ public class AddEntryOperation extends WriteToIndexOperation {
     @SuppressWarnings("PMD.CloseResource")
     @Override
     protected void doRun() {
-        // roller is dereferenced unconditionally below (getWeblogEntryManager,
+        // pressroom is dereferenced unconditionally below (getWeblogEntryManager,
         // then release() in the finally); the guard belongs here, before
         // either happens, not after -- there is nothing this operation can do
         // without it.
-        if (roller == null) {
+        if (pressroom == null) {
             log.error("Weblogger unavailable; cannot index weblog entry");
             return;
         }
@@ -80,7 +80,7 @@ public class AddEntryOperation extends WriteToIndexOperation {
         // here with it open leaked the writer and the directory's
         // write.lock, and every later write then failed to open its own
         try {
-            WeblogEntryManager wMgr = roller.getWeblogEntryManager();
+            WeblogEntryManager wMgr = pressroom.getWeblogEntryManager();
             this.data = wMgr.getWeblogEntry(this.data.getId());
         } catch (WebloggerException ex) {
             log.error("Error getting weblogentry object", ex);
@@ -103,7 +103,7 @@ public class AddEntryOperation extends WriteToIndexOperation {
         } catch (IOException e) {
             log.error("Problems adding doc to index", e);
         } finally {
-            roller.release();
+            pressroom.release();
             endWriting();
         }
     }

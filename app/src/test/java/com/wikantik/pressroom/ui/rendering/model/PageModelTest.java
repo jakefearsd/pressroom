@@ -271,8 +271,8 @@ class PageModelTest {
                 "No /tags/ in the URL means no tag list.");
 
         WeblogPageRequest request = pageRequest();
-        request.setTags(List.of("java", "roller"));
-        assertEquals(List.of("java", "roller"), modelFor(request).getTags(),
+        request.setTags(List.of("java", "pressroom"));
+        assertEquals(List.of("java", "pressroom"), modelFor(request).getTags(),
                 "$model.tags is what a theme prints as 'showing posts tagged ...'.");
     }
 
