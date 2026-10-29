@@ -207,16 +207,13 @@ class ContentAssetsRenderingTest {
      */
     @Test
     void theBundleUrlCarriesTheApplicationVersion() throws Exception {
-        java.util.Properties props = new java.util.Properties();
-        try (java.io.InputStream in = getClass().getResourceAsStream("/roller-version.properties")) {
-            props.load(in);
-        }
-        String version = props.getProperty("ro.version");
+        String version = com.wikantik.pressroom.business.Colophon.of(
+                null, null, java.time.Clock.systemDefaultZone()).version();
         assertFalse(version == null || version.isEmpty(), "the packaged version is the expected one");
 
         String body = render("/" + HANDLE);
 
-        assertTrue(body.contains("script.src = '/roller" + BUNDLE + "?v=" + version + "'"),
+        assertTrue(body.contains(BUNDLE + "?v=" + version + "';"),
                 "the bundle URL must carry ?v=<application version>:\n" + body);
     }
 

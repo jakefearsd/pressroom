@@ -18,7 +18,7 @@ there, so blame reaches the real authors instead of the move commit.
   + esbuild at `generate-resources` (before every compile); never run `npm`
   by hand.
 - Both bundle URLs carry `?v=<application version>` (head.jsp via `Colophon`;
-  weblog.vm via `$config.rollerVersion`): the names are unversioned and no
+  weblog.vm via the config model's colophon): the names are unversioned and no
   Cache-Control is sent, so a release must change the URL.
 - Output `app/src/main/webapp/roller-ui/scripts/roller-editor.js`
   (git-ignored, regenerated) lives under `src/main/webapp`, not
