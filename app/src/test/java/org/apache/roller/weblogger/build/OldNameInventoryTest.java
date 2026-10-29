@@ -34,6 +34,15 @@ import org.junit.jupiter.api.Test;
  * baseline fails (old name added), and a count below it fails too (lower the
  * baseline), so the baseline never goes slack.
  *
+ * <p>File names are inventoried too: the same counting is run over each
+ * tracked file's repo-relative path and recorded under {@code PATH-<KIND>}
+ * keys, so a stray {@code org/apache/roller} directory or a {@code Roller*.java}
+ * file name cannot survive the rename unseen.
+ *
+ * <p>Proven to bite: {@code // roller} appended to a main Java file produced
+ * "old name added in OTHER/main-java: 781 > baseline 780"; restored with
+ * git checkout.
+ *
  * <p>Excluded forever (they legitimately keep the old name): LICENSE.txt,
  * NOTICE.txt, migrations V001 to V040, docs/superpowers/**, this file and
  * {@link ProjectNames}. Binary files (a NUL in the first 8 KB) are skipped.
@@ -77,6 +86,21 @@ class OldNameInventoryTest {
             Map.entry("PACKAGE/main-java", 2777),
             Map.entry("PACKAGE/main-resources", 162),
             Map.entry("PACKAGE/test", 3746),
+            Map.entry("PATH-CLASS/docs", 1),
+            Map.entry("PATH-CLASS/it", 1),
+            Map.entry("PATH-CLASS/main-java", 22),
+            Map.entry("PATH-CLASS/main-resources", 1),
+            Map.entry("PATH-CLASS/test", 25),
+            Map.entry("PATH-OTHER/deploy", 2),
+            Map.entry("PATH-OTHER/docs", 15),
+            Map.entry("PATH-OTHER/it", 2),
+            Map.entry("PATH-OTHER/main-resources", 31),
+            Map.entry("PATH-OTHER/test", 4),
+            Map.entry("PATH-PACKAGE/docs", 8),
+            Map.entry("PATH-PACKAGE/it", 50),
+            Map.entry("PATH-PACKAGE/main-java", 573),
+            Map.entry("PATH-PACKAGE/main-resources", 31),
+            Map.entry("PATH-PACKAGE/test", 678),
             Map.entry("TOKEN_PREFIX/docs", 3),
             Map.entry("TOKEN_PREFIX/it", 2),
             Map.entry("TOKEN_PREFIX/main-java", 2),
@@ -135,6 +159,14 @@ class OldNameInventoryTest {
         return "other";
     }
 
+    /** Old-name occurrences in the path string itself, keyed "PATH-" + kind. */
+    static Map<String, Integer> pathCounts(Path repoRelative) {
+        Map<String, Integer> out = new LinkedHashMap<>();
+        count(repoRelative.toString().replace('\\', '/'))
+                .forEach((kind, n) -> out.put("PATH-" + kind, n));
+        return out;
+    }
+
     private static boolean keepsOldName(Path p) {
         String s = p.toString().replace('\\', '/');
         if (s.equals("LICENSE.txt") || s.equals("NOTICE.txt") || s.startsWith("docs/superpowers/")
@@ -171,9 +203,20 @@ class OldNameInventoryTest {
 
     @Test
     void classifiesEachKindOnce() {
-        assertEquals(Map.of("PACKAGE", 2), count("org.apache.roller.x org/apache/roller/y"));
+        assertEquals(Map.of("PACKAGE", 2), count(ProjectNames.LEGACY_ROOT + ".x " + ProjectNames.LEGACY_ROOT.replace('.', '/') + "/y"));
         assertEquals(Map.of("CLASS", 1), count("RollerSession"));
         assertEquals(Map.of("TOKEN_PREFIX", 1), count("rlr_abc"));
+    }
+
+    @Test
+    void pathsAreCountedUnderPathKinds() {
+        Path p = Path.of("app/src/main/java/" + ProjectNames.LEGACY_ROOT.replace('.', '/')
+                + "/weblogger/ui/core/RollerSession.java");
+        Map<String, Integer> expected = new TreeMap<>();
+        expected.put("PATH-PACKAGE", 1);
+        expected.put("PATH-CLASS", 1);
+        assertEquals(expected, new TreeMap<>(pathCounts(p)));
+        assertEquals("main-java", area(p));
     }
 
     @Test
@@ -223,12 +266,13 @@ class OldNameInventoryTest {
             if (keepsOldName(p)) {
                 continue;
             }
-            String text = textOrNull(p);
-            if (text == null) {
-                continue;
-            }
             String area = area(p);
-            for (Map.Entry<String, Integer> e : count(text).entrySet()) {
+            List<Map.Entry<String, Integer>> found = new ArrayList<>(pathCounts(p).entrySet());
+            String text = textOrNull(p);
+            if (text != null) {
+                found.addAll(count(text).entrySet());
+            }
+            for (Map.Entry<String, Integer> e : found) {
                 String key = e.getKey() + "/" + area;
                 totals.merge(key, e.getValue(), Integer::sum);
                 perFile.computeIfAbsent(key, k -> new LinkedHashMap<>()).put(p, e.getValue());
