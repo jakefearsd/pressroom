@@ -1277,7 +1277,7 @@ function rollerInitContent(root) {
   if (rollerContent.state === 'loading') { return; }
   rollerContent.state = 'loading';
   var script = document.createElement('script');
-  script.src = '$url.site/roller-ui/scripts/roller-content.js?v=$utils.escapeJavaScript($config.getColophon($weblog).version)';
+  script.src = '$url.site/roller-ui/scripts/roller-content.js?v=$utils.escapeJavaScript($config.getColophon($model.weblog).version)';
   script.onload = function () {
     rollerContent.state = 'ready';
     var queued = rollerContent.queue;
@@ -1381,7 +1381,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // Both slots' data-endpoint is server-built (ContactShortcode/
-  // SubscribeShortcode/#showSubscribeForm), never derived here: the app's
+  // SubscribeShortcode and the showSubscribeForm macro), never derived here: the app's
   // context path cannot be reliably guessed from the page, and guessing it
   // wrong used to post to the wrong origin with no visible cause. This is a
   // second, cheap check on TOP of that -- an authored div anywhere in

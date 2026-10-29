@@ -30,7 +30,7 @@ markup so a page does not look foreign inside any of them.
     #showAutodiscoveryLinks($model.weblog)
     #showSeoHead()
     #showAnalyticsTrackingCode($model.weblog)
-    <link rel="stylesheet" href="$model.weblog.stylesheet">
+    #if($model.weblog.stylesheet)<link rel="stylesheet" href="$model.weblog.stylesheet">#end
     #showGalleryGridStyles()
     ## These five belong in the head, beside the grid styles, exactly as every
     ## bundled theme calls them: #showEmbedAssets and #showAudienceAssets bind

@@ -24,7 +24,6 @@ class FeedServletRenderingTest {
 
     /**
      * What the shipped templates leave unresolved on these renders, each with its reason.
-     * A "KNOWN DEFECT" entry is a bug recorded here, not a rationale.
      */
     private static final Set<String> EXPECTED_REFERENCES = Set.of(
             "feeds.vm: $entry.findEntryAttribute()", // null when the entry has no media-cast attribute; the result is tested with #if($mc_url && ...)

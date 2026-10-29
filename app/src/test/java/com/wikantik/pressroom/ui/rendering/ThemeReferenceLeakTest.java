@@ -110,7 +110,6 @@ class ThemeReferenceLeakTest {
 
     /**
      * What the shipped templates leave unresolved on these renders, each with its reason.
-     * A "KNOWN DEFECT" entry is a bug recorded here, not a rationale.
      */
     private static final Set<String> EXPECTED_REFERENCES = Set.of(
             "feeds.vm: $entry.findEntryAttribute()", // null when the entry has no media-cast attribute; the result is tested with #if($mc_url && ...)
@@ -199,7 +198,6 @@ class ThemeReferenceLeakTest {
             "weblog.vm: $utils.businessJsonLd()", // returns null when the weblog has no business profile; the result is tested with #if($seoBusinessJson)
             "weblog.vm: $utils.businessPublisherJson()", // returns null when the weblog has no business profile; the result is tested with #if($seoPublisher)
             "weblog.vm: $utils.travelJsonLd()", // returns null for an entry that is not a travel entry; the result is tested with #if($seoTypedJson)
-            "weblog.vm: $weblog", // KNOWN DEFECT: showContentAssets takes no argument, so $weblog in its $config.getColophon($weblog) call is never bound; getColophon(null) falls back to the site colophon, which is why only the version (the same for every blog) is read and nothing visibly breaks
             "weblog.vm: $weblog.analyticsSiteId", // null unless analytics is configured; tested with $utils.isNotEmpty
             "weblog.vm: $weblog.newsletterListUuid", // null unless a newsletter list is configured; tested with #if
             "weblog.vm: responsiveObjectPosition", // #set of a null focal point; tested with #if

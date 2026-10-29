@@ -26,7 +26,7 @@ measure-free defaults and the shortcode assets right instead.
     ## published page does not have.
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src * data:; frame-src https://www.youtube-nocookie.com https://player.vimeo.com; font-src 'self'; base-uri 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'self'">
     <title>Preview</title>
-    <link rel="stylesheet" href="$model.weblog.stylesheet">
+    #if($model.weblog.stylesheet)<link rel="stylesheet" href="$model.weblog.stylesheet">#end
     <style>
     .roller-preview { margin: 0; }
     .roller-preview-main { max-width: 46rem; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }

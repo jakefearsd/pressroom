@@ -29,11 +29,10 @@ class FallbackPageTitleTest {
 
     /**
      * What the shipped templates leave unresolved on these renders, each with its reason.
-     * A "KNOWN DEFECT" entry is a bug recorded here, not a rationale.
      */
     private static final Set<String> EXPECTED_REFERENCES = Set.of(
+            "templates/weblog/page.vm|standard: $model.weblog.stylesheet", // null for a custom theme with no stylesheet; the link is emitted only under #if (page.vm line 33)
             "templates/weblog/page.vm|standard: $model.page.metaTitle", // null when the page has no meta title; tested with $utils.isNotEmpty
-            "templates/weblog/page.vm|standard: $model.weblog.stylesheet", // KNOWN DEFECT: WeblogWrapper.getStylesheet() returns null for a custom theme with no stylesheet and templates/weblog/page.vm line 33 emits it unguarded, so the href prints as the literal text $model.weblog.stylesheet
             "weblog.vm: $model.pageOgImage", // null when the page has no OG image; assigned to $seoImage, which is tested with #if
             "weblog.vm: $model.tags", // null when the view is not a tag view; tested with #if/#elseif
             "weblog.vm: $model.weblogCategory", // null when the view is not a category view; tested with #if/#elseif
@@ -42,7 +41,6 @@ class FallbackPageTitleTest {
             "weblog.vm: $seoPage.metaTitle", // null when the page has no meta title; tested with $utils.isNotEmpty
             "weblog.vm: $seoPage.searchDescription", // null when the page has no search description; tested with $utils.isNotEmpty
             "weblog.vm: $utils.businessJsonLd()", // returns null when the weblog has no business profile; the result is tested with #if($seoBusinessJson)
-            "weblog.vm: $weblog", // KNOWN DEFECT: showContentAssets takes no argument, so $weblog in its $config.getColophon($weblog) call is never bound; getColophon(null) falls back to the site colophon, which is why only the version (the same for every blog) is read and nothing visibly breaks
             "weblog.vm: $weblog.analyticsSiteId", // null unless analytics is configured; tested with $utils.isNotEmpty
             "weblog.vm: seoBusinessJson", // #set of a null business JSON-LD; tested with #if
             "weblog.vm: seoImage" // #set of a null image; tested with #if

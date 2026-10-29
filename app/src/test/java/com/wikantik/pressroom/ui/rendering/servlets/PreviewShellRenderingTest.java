@@ -54,7 +54,6 @@ class PreviewShellRenderingTest {
 
     /**
      * What the shipped templates leave unresolved on these renders, each with its reason.
-     * A "KNOWN DEFECT" entry is a bug recorded here, not a rationale.
      */
     private static final Set<String> EXPECTED_REFERENCES = Set.of(
             "journal:Weblog|standard: $model.tags", // null when the view is not a tag view; tested with #if/#elseif
@@ -70,7 +69,6 @@ class PreviewShellRenderingTest {
             "weblog.vm: $model.weblogDate", // null when the view is not a date archive; tested with #if / negated in #set
             "weblog.vm: $seoBusinessJson", // null when the weblog has no business profile; tested with #if
             "weblog.vm: $utils.businessJsonLd()", // returns null when the weblog has no business profile; the result is tested with #if($seoBusinessJson)
-            "weblog.vm: $weblog", // KNOWN DEFECT: showContentAssets takes no argument, so $weblog in its $config.getColophon($weblog) call is never bound; getColophon(null) falls back to the site colophon, which is why only the version (the same for every blog) is read and nothing visibly breaks
             "weblog.vm: $weblog.analyticsSiteId", // null unless analytics is configured; tested with $utils.isNotEmpty
             "weblog.vm: $weblog.newsletterListUuid", // null unless a newsletter list is configured; tested with #if
             "weblog.vm: seoBusinessJson" // #set of a null business JSON-LD; tested with #if
