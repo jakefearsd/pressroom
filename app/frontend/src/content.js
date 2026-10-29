@@ -1,4 +1,4 @@
-/* The reader's content enhancements, bundled as roller-content.js and loaded
+/* The reader's content enhancements, bundled as pressroom-content.js and loaded
    only by the content-asset macro in WEB-INF/velocity/weblog.vm, and only on a
    page that has something for it to do (a fenced code block or a heading id
    inside entry or page content).
@@ -52,7 +52,7 @@ function selectForHand(doc, code) {
 }
 
 function copyButton(doc, code, text, labels) {
-  const button = element(doc, 'button', 'roller-code-copy', labels.copy);
+  const button = element(doc, 'button', 'pressroom-code-copy', labels.copy);
   button.type = 'button';
   button.setAttribute('aria-live', 'polite');
   let reset = null;
@@ -75,16 +75,16 @@ function copyButton(doc, code, text, labels) {
 }
 
 /* <pre><code class="language-x"> becomes:
-     div.roller-code
-       div.roller-code-bar      span.roller-code-lang (when tagged), the copy button
-       div.roller-code-body     span.roller-code-lines (multi-line only), the original pre
+     div.pressroom-code
+       div.pressroom-code-bar      span.pressroom-code-lang (when tagged), the copy button
+       div.pressroom-code-body     span.pressroom-code-lines (multi-line only), the original pre
    The gutter sits outside the pre, so the pre's horizontal scroll moves the
    code and not the numbers, and neither selecting the pre nor the copy button
    can take a number with the code. */
 function enhanceCodeBlock(doc, code, labels) {
   const pre = code.parentElement;
-  if (!pre || pre.hasAttribute('data-roller-code')) return;
-  pre.setAttribute('data-roller-code', '1');
+  if (!pre || pre.hasAttribute('data-pressroom-code')) return;
+  pre.setAttribute('data-pressroom-code', '1');
 
   const text = code.textContent;
   const language = languageOf(code.className);
@@ -94,19 +94,19 @@ function enhanceCodeBlock(doc, code, labels) {
     code.classList.add('hljs');
   }
 
-  const block = element(doc, 'div', 'roller-code');
+  const block = element(doc, 'div', 'pressroom-code');
   if (language) block.setAttribute('data-language', language);
-  const bar = element(doc, 'div', 'roller-code-bar');
-  if (language) bar.appendChild(element(doc, 'span', 'roller-code-lang', language));
+  const bar = element(doc, 'div', 'pressroom-code-bar');
+  if (language) bar.appendChild(element(doc, 'span', 'pressroom-code-lang', language));
   bar.appendChild(copyButton(doc, code, copyableText(text), labels));
-  const body = element(doc, 'div', 'roller-code-body');
+  const body = element(doc, 'div', 'pressroom-code-body');
 
   pre.parentNode.insertBefore(block, pre);
   block.appendChild(bar);
   block.appendChild(body);
   const lines = lineCount(text);
   if (lines > 1) {
-    const gutter = element(doc, 'span', 'roller-code-lines', gutterText(lines));
+    const gutter = element(doc, 'span', 'pressroom-code-lines', gutterText(lines));
     gutter.setAttribute('aria-hidden', 'true');
     body.appendChild(gutter);
   }
@@ -114,9 +114,9 @@ function enhanceCodeBlock(doc, code, labels) {
 }
 
 function addHeadingAnchor(doc, heading, labels) {
-  if (heading.hasAttribute('data-roller-anchor') || !heading.id) return;
-  heading.setAttribute('data-roller-anchor', '1');
-  const anchor = element(doc, 'a', 'roller-heading-anchor', '#');
+  if (heading.hasAttribute('data-pressroom-anchor') || !heading.id) return;
+  heading.setAttribute('data-pressroom-anchor', '1');
+  const anchor = element(doc, 'a', 'pressroom-heading-anchor', '#');
   anchor.href = '#' + heading.id;
   anchor.setAttribute('aria-label', labels.anchor);
   heading.appendChild(anchor);

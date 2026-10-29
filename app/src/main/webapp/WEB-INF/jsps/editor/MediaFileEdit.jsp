@@ -21,7 +21,7 @@
     <spring:message code="mediaFileEdit.pagetip"/>
 </p>
 
-<script src="<c:url value='/theme/scripts/roller-guard-submit.js'/>"></script>
+<script src="<c:url value='/theme/scripts/pressroom-guard-submit.js'/>"></script>
 
 <form id="entry" class="form-stacked" action="${pageContext.request.contextPath}/pressroom-ui/authoring/mediaFileEdit!save.rol" method="POST" enctype="multipart/form-data">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
@@ -316,7 +316,7 @@
             }
 
             // Confirmation is handled upstream now, by data-confirm on
-            // #cropButton (see roller.js): a click that fails to confirm never
+            // #cropButton (see pressroom.js): a click that fails to confirm never
             // reaches this submit handler at all. This still guards against
             // submitting with no valid selection drawn.
             document.getElementById('cropForm').addEventListener('submit', function (event) {

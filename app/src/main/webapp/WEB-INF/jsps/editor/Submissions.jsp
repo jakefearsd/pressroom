@@ -65,7 +65,7 @@
     <c:choose>
     <c:when test="${not empty submissions}">
 
-    <%-- The selection bar: hidden until roller.js's delegated checkbox
+    <%-- The selection bar: hidden until pressroom.js's delegated checkbox
          handler finds a checked row in #submissionsDeleteForm. Inquiries are
          deleted permanently -- there is no trash for them -- so the one
          action here is destructive and the button opens the confirmation
@@ -78,18 +78,18 @@
     </div>
 
     <div class="table-responsive">
-    <table class="rollertable table table-striped" width="100%">
+    <table class="pressroomtable table table-striped" width="100%">
 
             <tr>
-                <th scope="col" class="rollertable" width="3%">
+                <th scope="col" class="pressroomtable" width="3%">
                     <input type="checkbox" id="selectAllSubmissions" class="form-check-input" data-select-all
                            title="<spring:message code="weblogEntryQuery.selectAll"/>"/>
                 </th>
-                <th scope="col" class="rollertable"><spring:message code="submissions.column.received"/></th>
-                <th scope="col" class="rollertable"><spring:message code="submissions.column.from"/></th>
-                <th scope="col" class="rollertable"><spring:message code="submissions.column.subject"/></th>
-                <th scope="col" class="rollertable"><spring:message code="submissions.column.message"/></th>
-                <th scope="col" class="rollertable"><spring:message code="submissions.column.source"/></th>
+                <th scope="col" class="pressroomtable"><spring:message code="submissions.column.received"/></th>
+                <th scope="col" class="pressroomtable"><spring:message code="submissions.column.from"/></th>
+                <th scope="col" class="pressroomtable"><spring:message code="submissions.column.subject"/></th>
+                <th scope="col" class="pressroomtable"><spring:message code="submissions.column.message"/></th>
+                <th scope="col" class="pressroomtable"><spring:message code="submissions.column.source"/></th>
             </tr>
 
             <c:forEach items="${submissions}" var="s">

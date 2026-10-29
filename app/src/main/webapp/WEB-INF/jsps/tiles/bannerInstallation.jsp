@@ -17,7 +17,7 @@
 --%>
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
 
-<nav class="navbar navbar-expand-md roller-topbar">
+<nav class="navbar navbar-expand-md pressroom-topbar">
     <div class="container-fluid">
 
         <%-- A <span>, not an <a href="#">: during installation there is no

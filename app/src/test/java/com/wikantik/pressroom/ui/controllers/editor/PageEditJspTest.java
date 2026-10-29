@@ -72,7 +72,7 @@ class PageEditJspTest {
                 "editor-form" }) {
             assertTrue(jsp.contains(required),
                     "PageEdit.jsp must carry " + required + " -- the rail layout is the "
-                            + "whole point of the screen, and roller.css styles nothing "
+                            + "whole point of the screen, and pressroom.css styles nothing "
                             + "without these hooks");
         }
         assertTrue(jsp.contains("class=\"editor-title\""),
@@ -322,14 +322,14 @@ class PageEditJspTest {
 
     /**
      * A resolved upload replaces its own placeholder by document range, not by
-     * rewriting the whole buffer: {@code rollerSetEntryText} moves the caret to
+     * rewriting the whole buffer: {@code pressroomSetEntryText} moves the caret to
      * the end, so a second file dropped in one go took the author's cursor with
      * it.
      */
     @Test
     void aResolvedUploadEditsItsOwnRangeRatherThanTheWholeDocument() throws IOException {
         String script = read(EDITOR_SCRIPT);
-        assertTrue(script.contains("rollerReplaceInEditor"),
+        assertTrue(script.contains("pressroomReplaceInEditor"),
                 "the upload must resolve its placeholder through a targeted range edit");
         assertTrue(script.contains("view.dispatch("),
                 "a targeted edit is a CodeMirror transaction, not a setValue");

@@ -48,11 +48,11 @@
      header above a single colspan="6" strip -- on a four-column table. The
      invitation below is a sibling of the table, not a row inside it. --%>
     <div class="table-responsive">
-    <table id="category-table" class="rollertable table table-striped" width="100%">
+    <table id="category-table" class="pressroomtable table table-striped" width="100%">
 
         <c:if test="${not empty allCategories}">
 
-            <tr class="rollertable">
+            <tr class="pressroomtable">
                 <th scope="col" width="30%"><spring:message code="generic.name"/></th>
                 <th scope="col"><spring:message code="generic.description"/></th>
                 <th scope="col" class="row-actions"><span class="visually-hidden"><spring:message code="mainPage.actions"/></span></th>

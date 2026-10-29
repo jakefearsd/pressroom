@@ -241,7 +241,7 @@ class ThemeCspCoverageTest {
      * gaurav} (retired) shape this test was written for: a file vendored inside the
      * theme's own directory, addressed by a path relative to the CSS file --
      * checked by resolving that path on disk, same as the original check.
-     * {@code journal} takes the {@code roller-tokens.css} shape instead: IBM
+     * {@code journal} takes the {@code pressroom-tokens.css} shape instead: IBM
      * Plex self-hosted from the {@code org.webjars.npm:ibm__plex-*}
      * dependencies (app/pom.xml), served at runtime from the classpath
      * (Spring Boot's static-resource merge of {@code classpath:/META-INF/

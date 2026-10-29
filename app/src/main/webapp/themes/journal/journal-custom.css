@@ -10,7 +10,7 @@
  * sits above the body tier (signature move 4).
  *
  * Unlike travel/portfolio (system fonts only, no font-src), this theme
- * self-hosts IBM Plex Serif/Sans/Mono the way roller-tokens.css does for the
+ * self-hosts IBM Plex Serif/Sans/Mono the way pressroom-tokens.css does for the
  * admin UI, via the org.webjars.npm:ibm__plex-serif/ibm__plex-sans/
  * ibm__plex-mono dependencies in app/pom.xml. That is why weblog.vm's CSP
  * carries a font-src 'self' the other two themes' policies do not --

@@ -142,7 +142,7 @@ class SitePageRoutingTest {
         assertEquals(200, response.getStatus(), body);
         assertTrue(body.contains("About the Site"), body);
         assertTrue(body.contains("<strong>about</strong>"), "the page body, as markdown:\n" + body);
-        assertTrue(body.contains("class=\"fd-page roller-content\""),
+        assertTrue(body.contains("class=\"fd-page pressroom-content\""),
                 "the site space renders in its frontpage theme:\n" + body);
     }
 

@@ -61,14 +61,14 @@ class EditorBundlePomTest {
     @Test
     void theBundleLandsWhereHeadJspLoadsIt() throws IOException {
         String build = Files.readString(Path.of("frontend", "build.mjs"));
-        assertTrue(build.contains("src/main/webapp/pressroom-ui/scripts/roller-editor.js"),
+        assertTrue(build.contains("src/main/webapp/pressroom-ui/scripts/pressroom-editor.js"),
                 "esbuild outfile must be the webapp root, the only static location this "
                         + "deployment serves");
         assertFalse(build.contains("target/classes/"),
                 "no classpath location is served here -- DispatcherServlet is mapped to *.rol "
                         + "only, and WEB-INF/classes is nested inside the executable WAR");
         String head = Files.readString(HEAD_JSP);
-        assertTrue(head.contains("/pressroom-ui/scripts/roller-editor.js"),
+        assertTrue(head.contains("/pressroom-ui/scripts/pressroom-editor.js"),
                 "head.jsp must load the bundle");
     }
 
@@ -83,12 +83,12 @@ class EditorBundlePomTest {
     void theReaderBundleLandsBesideTheEditorBundleWhereWeblogVmLoadsIt() throws IOException {
         String build = Files.readString(Path.of("frontend", "build.mjs"));
         assertTrue(build.contains("src/content.js"), "build.mjs must bundle the reader entry");
-        assertTrue(build.contains("src/main/webapp/pressroom-ui/scripts/roller-content.js"),
-                "the reader bundle must land in the webapp root beside roller-editor.js");
+        assertTrue(build.contains("src/main/webapp/pressroom-ui/scripts/pressroom-content.js"),
+                "the reader bundle must land in the webapp root beside pressroom-editor.js");
         assertTrue(build.contains("globalName: 'PressroomContent'"),
                 "the macro calls window.PressroomContent.enhance, so the IIFE must expose it");
         String weblogVm = Files.readString(WEBLOG_VM);
-        assertTrue(weblogVm.contains("$url.site/pressroom-ui/scripts/roller-content.js"),
+        assertTrue(weblogVm.contains("$url.site/pressroom-ui/scripts/pressroom-content.js"),
                 "the content-asset macro must load the bundle under the context path");
     }
 
@@ -100,7 +100,7 @@ class EditorBundlePomTest {
      */
     @Test
     void theReaderBundleCarriesHighlightJsLicenseNotice() throws IOException {
-        String bundle = Files.readString(Path.of("src/main/webapp/pressroom-ui/scripts/roller-content.js"));
+        String bundle = Files.readString(Path.of("src/main/webapp/pressroom-ui/scripts/pressroom-content.js"));
 
         assertTrue(bundle.startsWith("/*! highlight.js "), bundle.substring(0, Math.min(120, bundle.length())));
         String notice = bundle.substring(0, bundle.indexOf("*/") + 2);
@@ -131,9 +131,9 @@ class EditorBundlePomTest {
         // The bundle has to live under the webapp root to be served at all
         // (see above), which puts a build output inside src/. Ignoring it is
         // what keeps it from being committed by the next `git add -A`.
-        assertTrue(ignore.contains("app/src/main/webapp/pressroom-ui/scripts/roller-editor.js"),
+        assertTrue(ignore.contains("app/src/main/webapp/pressroom-ui/scripts/pressroom-editor.js"),
                 "the built bundle must be git-ignored: it lives under src/main/webapp");
-        assertTrue(ignore.contains("app/src/main/webapp/pressroom-ui/scripts/roller-content.js"),
+        assertTrue(ignore.contains("app/src/main/webapp/pressroom-ui/scripts/pressroom-content.js"),
                 "the reader bundle must be git-ignored too: it lives beside the editor's");
         assertTrue(Files.exists(PACKAGE_JSON.resolveSibling("package-lock.json")),
                 "package-lock.json must be committed so npm ci is reproducible");

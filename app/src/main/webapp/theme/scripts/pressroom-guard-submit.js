@@ -58,7 +58,7 @@
     }
 
     document.addEventListener("submit", function (event) {
-        // roller.js's own submit listener answers a form-level data-confirm
+        // pressroom.js's own submit listener answers a form-level data-confirm
         // FIRST (both are capturing listeners on document, so registration
         // order decides) and calls preventDefault() on Cancel. Without this
         // check the button still gets disabled on that same event, and

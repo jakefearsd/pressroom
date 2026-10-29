@@ -126,7 +126,7 @@ class BootstrapFilterTest {
 
     @Test
     void theInstallPageKeepsItsStylesheet() throws Exception {
-        runWith("auto", false, "/pressroom-ui/styles/roller.css");
+        runWith("auto", false, "/pressroom-ui/styles/pressroom.css");
         assertPassedThrough();
     }
 

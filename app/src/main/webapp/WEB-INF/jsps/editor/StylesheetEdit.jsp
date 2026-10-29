@@ -87,7 +87,7 @@
 <script type="text/javascript">
 
     // Confirmation is handled upstream now, by data-confirm on each button
-    // (see roller.js): a click that fails to confirm never reaches here.
+    // (see pressroom.js): a click that fails to confirm never reaches here.
     function revertStylesheet() {
         var form = document.getElementById('stylesheetEditForm');
         form.action = "<c:url value='/pressroom-ui/authoring/stylesheetEdit!revert.rol'/>";

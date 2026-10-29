@@ -40,7 +40,7 @@
 <spring:message code="generic.delete" var="deleteLabel"/>
 <spring:message code="mainPage.actions" var="actionsLabel"/>
 <div class="table-responsive">
-<table class="rollertable table table-striped" width="100%">
+<table class="pressroomtable table table-striped" width="100%">
     <tr>
         <th scope="col"><spring:message code="businesses.name"/></th>
         <th scope="col"><spring:message code="businesses.type"/></th>
@@ -59,7 +59,7 @@
             <a href="${editBusinessUrl}" class="row-action"
                aria-label="${editLabel}: ${fn:escapeXml(b.name)}"><span class="bi bi-pencil-square" aria-hidden="true"></span></a>
             <%-- The prompt names the business: formatted with the RAW name,
-                 then escaped once for the attribute (see roller.js on why
+                 then escaped once for the attribute (see pressroom.js on why
                  data-confirm is safe with fn:escapeXml). --%>
             <spring:message code="businesses.delete.confirm" arguments="${[b.name]}" var="businessDeleteConfirm"/>
             <form method="post" action="<c:url value='/pressroom-ui/admin/businesses!delete.rol'/>">

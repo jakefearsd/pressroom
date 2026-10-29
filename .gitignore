@@ -57,5 +57,5 @@ app/frontend/node/
 # The editor and reader bundles: build outputs that have to sit under the
 # webapp root, because that is the only static location this deployment
 # serves (see app/frontend/build.mjs).
-app/src/main/webapp/pressroom-ui/scripts/roller-editor.js
-app/src/main/webapp/pressroom-ui/scripts/roller-content.js
+app/src/main/webapp/pressroom-ui/scripts/pressroom-editor.js
+app/src/main/webapp/pressroom-ui/scripts/pressroom-content.js

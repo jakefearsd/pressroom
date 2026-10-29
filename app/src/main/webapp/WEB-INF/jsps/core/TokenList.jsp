@@ -24,7 +24,7 @@
     <c:when test="${not empty tokens}">
         <spring:message code="apiTokens.revoke.confirm" var="revokeConfirm"/>
         <div class="table-responsive">
-        <table class="rollertable table" id="tokenListTable">
+        <table class="pressroomtable table" id="tokenListTable">
             <tr>
                 <th scope="col"><spring:message code="apiTokens.label"/></th>
                 <th scope="col"><spring:message code="apiTokens.role"/></th>

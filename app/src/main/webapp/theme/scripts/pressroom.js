@@ -368,7 +368,7 @@ document.addEventListener('change', function (event) {
  * console error on every blog post.
  *
  * The class and the aria state are set together on purpose: .is-invalid is
- * the red border a sighted reader sees (roller.css defines it in terms of
+ * the red border a sighted reader sees (pressroom.css defines it in terms of
  * --bad), aria-invalid is the same fact for a screen reader, and shipping one
  * without the other means the marker exists for only half the audience.
  */

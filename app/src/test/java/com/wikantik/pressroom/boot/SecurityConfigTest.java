@@ -225,7 +225,7 @@ class SecurityConfigTest {
      * abuse. Only a real embedded servlet container running Boot's own
      * {@code ServletContextInitializerBeans} logic can see this at all --
      * {@code ApiIT} is what actually caught it, via a heavy admin-page
-     * browser flow tripping 429s on {@code roller.js} and webfont requests.
+     * browser flow tripping 429s on {@code pressroom.js} and webfont requests.
      */
     @Test
     void apiTokenAuthFilterIsNotAutoRegisteredAsAContainerWideFilter() {

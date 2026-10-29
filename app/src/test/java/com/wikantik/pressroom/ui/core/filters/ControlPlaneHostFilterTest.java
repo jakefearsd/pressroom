@@ -68,9 +68,9 @@ class ControlPlaneHostFilterTest {
      */
     @Test
     void theReadersContentBundleStaysButTheEditorsDoesNot() {
-        assertFalse(ControlPlaneHostFilter.belongsToSiteHost("/pressroom-ui/scripts/roller-content.js"));
-        assertTrue(ControlPlaneHostFilter.belongsToSiteHost("/pressroom-ui/scripts/roller-editor.js"));
-        assertTrue(ControlPlaneHostFilter.belongsToSiteHost("/pressroom-ui/scripts/roller-content.js.map"),
+        assertFalse(ControlPlaneHostFilter.belongsToSiteHost("/pressroom-ui/scripts/pressroom-content.js"));
+        assertTrue(ControlPlaneHostFilter.belongsToSiteHost("/pressroom-ui/scripts/pressroom-editor.js"));
+        assertTrue(ControlPlaneHostFilter.belongsToSiteHost("/pressroom-ui/scripts/pressroom-content.js.map"),
                 "the exemption is the one file, not a prefix");
         assertTrue(ControlPlaneHostFilter.belongsToSiteHost("/pressroom-ui/scripts/"));
     }
@@ -195,7 +195,7 @@ class ControlPlaneHostFilterTest {
     @Test
     void theContentBundleIsServedOnTheCustomDomain() throws Exception {
         givenSiteAbsoluteUrl(SITE_URL);
-        MockHttpServletRequest request = vhostRequest("GET", "/pressroom-ui/scripts/roller-content.js");
+        MockHttpServletRequest request = vhostRequest("GET", "/pressroom-ui/scripts/pressroom-content.js");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
 

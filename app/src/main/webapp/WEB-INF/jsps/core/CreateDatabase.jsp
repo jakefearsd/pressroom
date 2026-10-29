@@ -20,7 +20,7 @@
 <c:choose>
 <c:when test="${error}">
 
-    <h1 class="roller-page-title"><spring:message code="installer.errorCreatingTables" /></h1>
+    <h1 class="pressroom-page-title"><spring:message code="installer.errorCreatingTables" /></h1>
     <p><spring:message code="installer.errorCreatingTablesExplanation" /></p>
 <pre>
 <c:forEach items="${messages}" var="msg">${fn:escapeXml(msg)}<br /></c:forEach>
@@ -29,7 +29,7 @@
 </c:when>
 <c:when test="${success}">
 
-    <h1 class="roller-page-title"><spring:message code="installer.tablesCreated" /></h1>
+    <h1 class="pressroom-page-title"><spring:message code="installer.tablesCreated" /></h1>
 
     <p><spring:message code="installer.tablesCreatedExplanation" /></p>
 
@@ -42,7 +42,7 @@
 </c:when>
 <c:otherwise>
 
-    <h1 class="roller-page-title"><spring:message code="installer.noDatabaseTablesFound" /></h1>
+    <h1 class="pressroom-page-title"><spring:message code="installer.noDatabaseTablesFound" /></h1>
 
     <p>
         <spring:message code="installer.noDatabaseTablesExplanation" arguments="${databaseProductName}" />

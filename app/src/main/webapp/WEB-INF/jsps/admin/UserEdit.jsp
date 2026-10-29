@@ -267,7 +267,7 @@
                JS-string position: an address like o'brien@example.com
                terminated the string, the handler failed to compile, and the
                link was mailed with NO confirmation at all.
-             * Not on the form, because roller.js answers a click by walking
+             * Not on the form, because pressroom.js answers a click by walking
                UP from the clicked element -- so a form-level attribute
                prompts once for the click and again for the submit that click
                produces. Two dialogs for one action. The button is the shape

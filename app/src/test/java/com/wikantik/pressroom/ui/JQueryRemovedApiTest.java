@@ -69,7 +69,7 @@ class JQueryRemovedApiTest {
     private static boolean isPageSource(Path file) {
         String name = file.getFileName().toString();
         return (name.endsWith(".jsp") || name.endsWith(".js"))
-                && !name.equals("roller-editor.js") && !name.equals("roller-content.js")
+                && !name.equals("pressroom-editor.js") && !name.equals("pressroom-content.js")
                 && !file.toString().contains("node_modules");
     }
 }

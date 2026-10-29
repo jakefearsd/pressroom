@@ -102,17 +102,17 @@
     </div>
 
     <div class="table-responsive">
-    <table class="rollertable table table-striped" width="100%">
+    <table class="pressroomtable table table-striped" width="100%">
         <tr>
-            <th scope="col" class="rollertable" width="3%">
+            <th scope="col" class="pressroomtable" width="3%">
                 <input type="checkbox" id="selectAllComments" class="form-check-input" data-select-all
                        title="<spring:message code="weblogEntryQuery.selectAll"/>"/>
             </th>
-            <th scope="col" class="rollertable"><spring:message code="comments.column.writer"/></th>
-            <th scope="col" class="rollertable"><spring:message code="comments.column.comment"/></th>
-            <th scope="col" class="rollertable" width="20%"><spring:message code="comments.column.entry"/></th>
-            <th scope="col" class="rollertable"><spring:message code="comments.column.date"/></th>
-            <th scope="col" class="rollertable"></th>
+            <th scope="col" class="pressroomtable"><spring:message code="comments.column.writer"/></th>
+            <th scope="col" class="pressroomtable"><spring:message code="comments.column.comment"/></th>
+            <th scope="col" class="pressroomtable" width="20%"><spring:message code="comments.column.entry"/></th>
+            <th scope="col" class="pressroomtable"><spring:message code="comments.column.date"/></th>
+            <th scope="col" class="pressroomtable"></th>
         </tr>
 
         <c:forEach items="${comments}" var="c">
@@ -245,7 +245,7 @@
             return document.querySelectorAll('.comment-select');
         };
         // Bound on the header box itself, so the rows are set before the
-        // change bubbles to roller.js's selection-bar handler and is counted.
+        // change bubbles to pressroom.js's selection-bar handler and is counted.
         selectAll.addEventListener('change', function () {
             var checked = this.checked;
             rows().forEach(function (cb) {

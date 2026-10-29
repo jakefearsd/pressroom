@@ -50,15 +50,15 @@
     <c:when test="${not empty pages}">
 
     <div class="table-responsive">
-    <table class="rollertable table table-striped" width="100%">
+    <table class="pressroomtable table table-striped" width="100%">
 
             <tr>
-                <th scope="col" class="rollertable"><spring:message code="weblogPagesForm.slug"/></th>
-                <th scope="col" class="rollertable"><spring:message code="weblogEdit.title"/></th>
-                <th scope="col" class="rollertable" width="10%"><spring:message code="weblogEdit.status"/></th>
-                <th scope="col" class="rollertable" width="10%"><spring:message code="weblogPagesForm.showInNav"/></th>
-                <th scope="col" class="rollertable" width="10%"><spring:message code="weblogPagesForm.navOrder"/></th>
-                <th scope="col" class="rollertable row-actions"><span class="visually-hidden"><spring:message code="mainPage.actions"/></span></th>
+                <th scope="col" class="pressroomtable"><spring:message code="weblogPagesForm.slug"/></th>
+                <th scope="col" class="pressroomtable"><spring:message code="weblogEdit.title"/></th>
+                <th scope="col" class="pressroomtable" width="10%"><spring:message code="weblogEdit.status"/></th>
+                <th scope="col" class="pressroomtable" width="10%"><spring:message code="weblogPagesForm.showInNav"/></th>
+                <th scope="col" class="pressroomtable" width="10%"><spring:message code="weblogPagesForm.navOrder"/></th>
+                <th scope="col" class="pressroomtable row-actions"><span class="visually-hidden"><spring:message code="mainPage.actions"/></span></th>
             </tr>
 
             <c:forEach items="${pages}" var="p">

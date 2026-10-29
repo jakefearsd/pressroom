@@ -25,4 +25,4 @@
  Pinned by VelocityErrorTemplateTest.
 *#
 <!-- error-parse -->
-<p class="roller-render-error" role="alert" style="margin: 1em 0; padding: .75em 1em; border: 1px solid currentColor; border-radius: 6px;"><strong>$text.get("errorPage.title")</strong> $text.get("errorPage.message")</p>
+<p class="pressroom-render-error" role="alert" style="margin: 1em 0; padding: .75em 1em; border: 1px solid currentColor; border-radius: 6px;"><strong>$text.get("errorPage.title")</strong> $text.get("errorPage.message")</p>

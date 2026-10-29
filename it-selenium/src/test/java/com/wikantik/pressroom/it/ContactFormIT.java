@@ -111,8 +111,8 @@ class ContactFormIT extends PressroomIT {
         // --- the Inquiries admin screen ---------------------------------------
         loginAsAdmin();
         openPath("/pressroom-ui/authoring/submissions.rol?weblog=" + handle);
-        $("table.rollertable").shouldHave(text(name));
-        $("table.rollertable").shouldHave(text(message));
+        $("table.pressroomtable").shouldHave(text(name));
+        $("table.pressroomtable").shouldHave(text(message));
 
         $(".submission-select").should(exist).click();
         // Deleting an inquiry is permanent -- there is no trash for these --
@@ -125,7 +125,7 @@ class ContactFormIT extends PressroomIT {
         $$(".submission-select").shouldHave(CollectionCondition.size(0));
         // The empty state is a SIBLING of the table, not a row inside it: with
         // no inquiries the <table> is not rendered at all, so asserting on
-        // table.rollertable here would wait for an element that never appears.
+        // table.pressroomtable here would wait for an element that never appears.
         $(".empty-state").shouldHave(text("No inquiries yet."));
         BrowserHealth.current().assertNoBrokenResources();
         BrowserHealth.current().assertNoFailedRequests();

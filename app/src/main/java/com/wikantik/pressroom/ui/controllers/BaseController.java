@@ -225,7 +225,7 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
      * every respect the caller's {@code hasErrors} gate can see -- the message
      * lands in the same list and refuses the save the same way. The addition
      * is the id, which travels to the page as {@code
-     * <body data-invalid-fields>} and lets {@code roller.js} put
+     * <body data-invalid-fields>} and lets {@code pressroom.js} put
      * {@code .is-invalid} and {@code aria-invalid} on the control and focus
      * the first one. A banner at the top of a long settings form says
      * <em>that</em> something was refused; only the marker says <em>which</em>

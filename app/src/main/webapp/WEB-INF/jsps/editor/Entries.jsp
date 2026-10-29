@@ -63,7 +63,7 @@
      browsers drop the inner one. --%>
 <%-- entries-list-marker wraps the list region in BOTH states (table or
      empty-state invitation): the browser ITs identify this page by
-     "#entries-list-marker, table.rollertable", and gating the table on
+     "#entries-list-marker, table.pressroomtable", and gating the table on
      emptiness left an empty weblog's Entries page with neither match. --%>
 <div id="entries-list-marker">
 <form id="entriesBulkForm" method="post"
@@ -131,7 +131,7 @@
     </c:forEach>
 </nav>
 
-<%-- The selection bar: hidden until roller.js's delegated checkbox handler
+<%-- The selection bar: hidden until pressroom.js's delegated checkbox handler
      finds a checked row in #entriesBulkForm, then shows the count and these
      three actions. Publish/submit and the tag-add control are secondary here
      -- only one primary action lives on this screen at a time, and while the
@@ -170,30 +170,30 @@
 
 <c:if test="${not empty pager.items}">
 <div class="table-responsive">
-<table class="rollertable table table-striped" width="100%">
+<table class="pressroomtable table table-striped" width="100%">
 
 <tr>
-    <th scope="col" class="rollertable" width="3%">
+    <th scope="col" class="pressroomtable" width="3%">
         <input type="checkbox" id="selectAllEntries" class="form-check-input" data-select-all
                title="<spring:message code="weblogEntryQuery.selectAll"/>"/>
     </th>
-    <th scope="col" class="rollertable" width="7%">
+    <th scope="col" class="pressroomtable" width="7%">
         <spring:message code="weblogEntryQuery.pubTime"/>
     </th>
-    <th scope="col" class="rollertable" width="7%">
+    <th scope="col" class="pressroomtable" width="7%">
         <spring:message code="weblogEntryQuery.updateTime"/>
     </th>
-    <th scope="col" class="rollertable">
+    <th scope="col" class="pressroomtable">
         <spring:message code="weblogEntryQuery.title"/>
     </th>
-    <th scope="col" class="rollertable" width="10%">
+    <th scope="col" class="pressroomtable" width="10%">
         <spring:message code="weblogEdit.status"/>
     </th>
-    <th scope="col" class="rollertable" width="15%">
+    <th scope="col" class="pressroomtable" width="15%">
         <spring:message code="weblogEntryQuery.category"/>
     </th>
-    <th scope="col" class="rollertable" width="3%"> </th>
-    <th scope="col" class="rollertable" width="3%"> </th>
+    <th scope="col" class="pressroomtable" width="3%"> </th>
+    <th scope="col" class="pressroomtable" width="3%"> </th>
 </tr>
 
 <c:forEach items="${pager.items}" var="post">

@@ -99,7 +99,7 @@
 
     <%-- One select rather than a radio per option: sort is a single choice
          among a closed set, and it applies the moment it is made. The submit
-         is wired by a delegated listener in roller.js keyed off
+         is wired by a delegated listener in pressroom.js keyed off
          data-submit-on-change, never an inline onchange -- behaviour lives
          in the script, the same rule data-confirm follows. --%>
     <div class="mb-3">

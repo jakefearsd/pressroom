@@ -82,7 +82,7 @@
     // focusToUsernamePasswordForm() decided which of the two deserved focus.
     // With OpenID gone there is only one form, so focus is unconditional.
     //
-    // getCookie/setCookie come from theme/scripts/roller.js. Remembering the
+    // getCookie/setCookie come from theme/scripts/pressroom.js. Remembering the
     // username is a convenience, so it must never be the reason the login page
     // throws: guard on the helpers being there rather than assuming a load
     // order between an external script and this inline one.

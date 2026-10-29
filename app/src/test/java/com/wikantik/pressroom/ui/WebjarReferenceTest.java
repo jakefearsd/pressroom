@@ -40,7 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  *
  * Webjar versions appear in two places that drift independently: the
  * dependency versions in app/pom.xml, and the URLs written by hand into
- * templates such as WEB-INF/jsps/tiles/head.jsp (or, since roller-tokens.css
+ * templates such as WEB-INF/jsps/tiles/head.jsp (or, since pressroom-tokens.css
  * added self-hosted @font-face rules, into CSS {@code url()}s). When a
  * dependency is bumped and the reference is not, the asset silently 404s at
  * runtime. Because head.jsp is included by every admin page, such a mismatch
@@ -49,7 +49,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  *
  * <p>CSS files address webjars with a path relative to their own location
  * rather than the {@code <c:url>}-rewritten absolute path JSPs use --
- * roller-tokens.css's @font-face {@code src} is {@code
+ * pressroom-tokens.css's @font-face {@code src} is {@code
  * url("../../webjars/ibm__plex-sans/...")}. {@link #WEBJAR_URL} does not
  * need to special-case that: it matches the literal substring
  * {@code "/webjars/"} wherever it falls in the file and captures only what
@@ -148,12 +148,12 @@ public class WebjarReferenceTest {
     }
 
     /**
-     * Regression proof for the CSS scan added alongside roller-tokens.css's
+     * Regression proof for the CSS scan added alongside pressroom-tokens.css's
      * self-hosted @font-face rules: a relative {@code url()} reference with a
      * version that does not exist on the classpath must be caught, the same
      * way an absolute JSP reference already is. Before {@link #isTemplate}
      * covered {@code .css}, a mutation exactly like this one in
-     * roller-tokens.css passed silently.
+     * pressroom-tokens.css passed silently.
      */
     @Test
     public void aBrokenVersionInACssUrlIsCaught() {
@@ -171,7 +171,7 @@ public class WebjarReferenceTest {
                 "A CSS url() with a nonexistent webjar version should have failed to resolve, "
                         + "but resolvesOnClasspath() reported it as present: " + references);
 
-        // control: the real, correct reference from roller-tokens.css must still resolve,
+        // control: the real, correct reference from pressroom-tokens.css must still resolve,
         // proving the failure above is about the broken version and not the matching/lookup itself.
         String goodReference = "ibm__plex-sans/1.1.0/fonts/complete/woff2/IBMPlexSans-Text.woff2";
         assertTrue(resolvesOnClasspath(goodReference),

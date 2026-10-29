@@ -236,7 +236,7 @@
     <%-- The numeric fields used to carry onkeyup="formChanged()" and the
          checkboxes onchange="formChanged()" -- an inline handler per control,
          which is a second place translated or generated text can reach raw
-         JavaScript (see roller.js's data-confirm note for what that costs).
+         JavaScript (see pressroom.js's data-confirm note for what that costs).
          One delegated listener on the form covers every control it will ever
          have, including ones runtimeConfigDefs.xml has not grown yet. --%>
     (function () {

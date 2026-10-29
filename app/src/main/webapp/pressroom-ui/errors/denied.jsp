@@ -18,7 +18,7 @@
 <%-- Reached via RedirectController's "/access-denied.rol", which now
      returns the ".denied" view name so PressroomViewResolver wraps this
      fragment in the ".tiles-errorpage" layout (head/banner/footer, the same
-     design-system CSS -- roller-tokens.css/roller.css -- every other admin
+     design-system CSS -- pressroom-tokens.css/pressroom.css -- every other admin
      page loads) instead of forwarding straight to this raw JSP. Deliberately
      does NOT use <fmt:message>/<spring:message>: those resolve locale from
      the request's Accept-Language (falling back to the server's default
@@ -26,7 +26,7 @@
      client -- see 404.jsp's equivalent comment for the same fix applied to
      the container-level error pages. Hardcoded English. --%>
 <div class="card card-body">
-    <h1 class="roller-page-title" id="accessDenied">Access denied</h1>
+    <h1 class="pressroom-page-title" id="accessDenied">Access denied</h1>
     <p>You don't have permission to do that. The usual reasons:</p>
     <ul>
         <li>The entry belongs to a weblog you can't edit -- or you already

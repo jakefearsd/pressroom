@@ -50,8 +50,8 @@
 
 <%-- Local draft recovery. Static script, not a JSP include: every string it
      needs rides on the bar's data- attributes below. --%>
-<script src="<c:url value='/theme/scripts/roller-draft.js'/>"></script>
-<script src="<c:url value='/theme/scripts/roller-guard-submit.js'/>"></script>
+<script src="<c:url value='/theme/scripts/pressroom-draft.js'/>"></script>
+<script src="<c:url value='/theme/scripts/pressroom-guard-submit.js'/>"></script>
 <script>
     <%-- Last-used category. Keyed per install and per weblog, beside the
          draft keys and for the same reason: two Roller installs on one origin
@@ -62,7 +62,7 @@
          renamed away or deleted) nothing happens; the select keeps its own
          default. No schema, no server round trip. --%>
     (function () {
-        var key = "roller.lastCategory.v1:${pageContext.request.contextPath}:${actionWeblog.handle}";
+        var key = "pressroom.lastCategory.v1:${pageContext.request.contextPath}:${actionWeblog.handle}";
         document.addEventListener('DOMContentLoaded', function () {
             var select = document.getElementById('entry_bean_categoryId');
             if (!select) {
@@ -127,9 +127,9 @@
 <%-- Request scope, not page scope: EntryEditor.jsp arrives via jsp:include
      and cannot see page-scoped variables set here. --%>
 <c:set var="draftKey" scope="request"
-       value="roller.draft.v1:${pageContext.request.contextPath}:${actionWeblog.handle}:${actionName}:${empty bean.id ? 'new' : bean.id}"/>
+       value="pressroom.draft.v1:${pageContext.request.contextPath}:${actionWeblog.handle}:${actionName}:${empty bean.id ? 'new' : bean.id}"/>
 <c:set var="draftNewKey" scope="request"
-       value="roller.draft.v1:${pageContext.request.contextPath}:${actionWeblog.handle}:entryAdd:new"/>
+       value="pressroom.draft.v1:${pageContext.request.contextPath}:${actionWeblog.handle}:entryAdd:new"/>
 
 <div class="editor-grid">
 
@@ -158,7 +158,7 @@
             <span class="draft-bar-text"><spring:message code="session.expiringSoon"/></span>
         </div>
 
-        <%-- Draft recovery. Hidden until roller-draft.js finds a local
+        <%-- Draft recovery. Hidden until pressroom-draft.js finds a local
              snapshot the server does not have. type="button" is load-bearing:
              this sits inside #entry, where a bare <button> submits the form. --%>
         <div id="draftRecoveryBar" class="draft-bar" hidden role="status" aria-live="polite"
@@ -364,7 +364,7 @@
                          the hierarchy is intact -- without inventing a support
                          tier the scale does not have.
 
-                         The rules themselves live in roller.css beside the
+                         The rules themselves live in pressroom.css beside the
                          other .editor-* rules. --%>
                     <div class="editor-seo-group">
                         <span class="editor-field-label"><spring:message code="weblogEdit.snippetPreview"/></span>
@@ -755,7 +755,7 @@
 <script>
 
     function fullPreviewMode() {
-        window.open('${previewURL}', 'roller-preview');
+        window.open('${previewURL}', 'pressroom-preview');
     }
 
 

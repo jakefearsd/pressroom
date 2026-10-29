@@ -75,14 +75,14 @@ class MapAssetsRenderingTest {
     /**
      * The cheap lazy-init guard: no .travel-map on the page, no leaflet.js.
      *
-     * <p>The {@code :not([data-roller-map])} half arrived with the editor's
+     * <p>The {@code :not([data-pressroom-map])} half arrived with the editor's
      * live preview, which re-runs this initialiser over swapped-in content --
      * an already-initialised container must be skipped, because
      * {@code L.map()} throws on one. It is part of the guard rather than an
      * extra check, so it is pinned here with it.
      */
     private static final String MAP_GUARD =
-            ".querySelectorAll('.travel-map:not([data-roller-map])')";
+            ".querySelectorAll('.travel-map:not([data-pressroom-map])')";
 
     private static final String TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 
@@ -283,7 +283,7 @@ class MapAssetsRenderingTest {
      * The editor's live preview replaces {@code #previewArticle}'s innerHTML
      * on every push, and the asset scripts bind on {@code DOMContentLoaded} --
      * which fired long before. So each of the four macros exposes a named
-     * initialiser and chains it onto {@code window.rollerPreviewInit}, the seam
+     * initialiser and chains it onto {@code window.pressroomPreviewInit}, the seam
      * {@code #showPreviewShellScript} calls after each swap.
      *
      * <p>Asserted on a public permalink rather than on the shell, deliberately:
@@ -300,14 +300,14 @@ class MapAssetsRenderingTest {
         String body = render("/" + HANDLE + "/entry/rerunnable-init-entry");
 
         for (String initialiser : new String[] {
-                "rollerInitGalleries", "rollerInitMaps", "rollerInitEmbeds", "rollerInitContent" }) {
+                "pressroomInitGalleries", "pressroomInitMaps", "pressroomInitEmbeds", "pressroomInitContent" }) {
             assertTrue(body.contains("function " + initialiser + "("),
                     "journal permalink must declare " + initialiser + ":\n" + body);
             assertTrue(body.contains(initialiser + "(document)"),
                     "the public page must still initialise once on load via "
                             + initialiser + ":\n" + body);
         }
-        assertEquals(4, StringUtils.countMatches(body, "window.rollerPreviewInit ="),
+        assertEquals(4, StringUtils.countMatches(body, "window.pressroomPreviewInit ="),
                 "each of the four macros must chain onto the preview seam:\n" + body);
     }
 

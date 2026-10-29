@@ -144,11 +144,11 @@ class EntryEditorJspGuideTest {
     @Test
     void theHelpCommandOpensTheGuide() throws IOException {
         String jsp = read(EDITOR_SCRIPT);
-        assertTrue(jsp.contains("window.rollerOpenGuide"),
-                "commands.help() must call window.rollerOpenGuide(), and something "
+        assertTrue(jsp.contains("window.pressroomOpenGuide"),
+                "commands.help() must call window.pressroomOpenGuide(), and something "
                         + "on this page must define it");
         assertTrue(jsp.contains("bootstrap.Offcanvas.getOrCreateInstance("
                         + "document.getElementById('editorGuide')).show()"),
-                "rollerOpenGuide must show the editorGuide offcanvas");
+                "pressroomOpenGuide must show the editorGuide offcanvas");
     }
 }

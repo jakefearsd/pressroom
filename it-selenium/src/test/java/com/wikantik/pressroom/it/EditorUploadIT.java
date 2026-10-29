@@ -36,7 +36,7 @@ import static com.codeborne.selenide.Selenide.executeJavaScript;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
- * Paste/drop upload (Task A7): the editor's own {@code rollerUploadImages}
+ * Paste/drop upload (Task A7): the editor's own {@code pressroomUploadImages}
  * seam, driven the way {@code editor.js}'s {@code fileHandler} calls it for
  * a real paste or drop -- a {@code File} array, not a form submit.
  *
@@ -88,11 +88,11 @@ class EditorUploadIT extends PressroomIT {
         openPath(ENTRY_ADD);
         Editor.root();
 
-        // Simulate the drop through the page's own seam: rollerUploadImages(files).
+        // Simulate the drop through the page's own seam: pressroomUploadImages(files).
         executeJavaScript(
                 "var bytes = Uint8Array.from(atob(arguments[0]), c => c.charCodeAt(0));"
                         + "var f = new File([bytes], 'drop.png', {type: 'image/png'});"
-                        + "rollerUploadImages([f]);",
+                        + "pressroomUploadImages([f]);",
                 TINY_PNG_BASE64);
 
         Selenide.Wait().withTimeout(Duration.ofSeconds(15))
@@ -114,7 +114,7 @@ class EditorUploadIT extends PressroomIT {
         executeJavaScript(
                 "var bytes = Uint8Array.from(atob(arguments[0]), c => c.charCodeAt(0));"
                         + "var f = new File([bytes], 'x.exe', {type: 'image/png'});"
-                        + "rollerUploadImages([f]);",
+                        + "pressroomUploadImages([f]);",
                 TINY_PNG_BASE64);
 
         $("#editorStatus .is-error").shouldBe(visible, Duration.ofSeconds(15));

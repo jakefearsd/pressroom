@@ -267,12 +267,12 @@ class VirtualHostIT extends PressroomIT {
 
         openVhostPath("/entry/" + anchor);
         $("body").shouldHave(text(title));
-        // The code block's toolbar and colours come from roller-content.js,
+        // The code block's toolbar and colours come from pressroom-content.js,
         // which lives under /pressroom-ui -- the control plane this filter sends
         // to the site host. Redirected, the script would be cross-origin and
         // refused by the theme's script-src 'self'; ControlPlaneHostFilter
         // leaves that one file here, and this is what proves it.
-        $(".roller-code[data-language='java'] .hljs-keyword").should(exist);
+        $(".pressroom-code[data-language='java'] .hljs-keyword").should(exist);
         BrowserHealth.current().assertNoBrokenResources();
         BrowserHealth.current().assertNoFailedRequests();
     }

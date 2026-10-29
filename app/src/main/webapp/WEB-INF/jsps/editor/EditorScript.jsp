@@ -34,8 +34,8 @@
   declarations in its own <script> (not inside $(document).ready -- they are
   read by name when the editor mounts, which happens on ready):
 
-    rollerSaveDraft()  what Ctrl+S does
-    rollerPublish()    what Ctrl+Enter does; the page editor points both at
+    pressroomSaveDraft()  what Ctrl+S does
+    pressroomPublish()    what Ctrl+Enter does; the page editor points both at
                        its one Save button, the same collapse its keydown
                        handler already makes
 
@@ -52,40 +52,40 @@
          no alternative format to switch to -- so this is a Markdown editor
          with a preview, not a rich-text editor. A WYSIWYG surface may replace
          it one day, but it would edit Markdown rather than produce HTML. --%>
-    var rollerEditor = null;
+    var pressroomEditor = null;
 
     <%-- PressroomEditor.create takes ONE onChange, and several things on these
          pages need to know the text moved: the leave-warning dirty flag,
          local draft recovery, the live preview and the word count. The page
          owns the fan-out rather than each of them reaching into the editor,
          which is what keeps the editor swappable. --%>
-    var rollerEditorChangeListeners = [];
+    var pressroomEditorChangeListeners = [];
 
     <%-- Toolbar commands, assigned once the editor exists. Declared out here
          because the document-level Ctrl+/ handler reads it too. --%>
     var commands = {};
 
     <%-- Per-install, so two Rollers on one origin do not share a mode. --%>
-    var PRESSROOM_EDITOR_MODE_KEY = 'roller.editor.mode.v1:${pageContext.request.contextPath}';
+    var PRESSROOM_EDITOR_MODE_KEY = 'pressroom.editor.mode.v1:${pageContext.request.contextPath}';
 
     <%-- The form the surface sits in, whatever this screen calls it (#entry /
          #pageEditForm). Read off the surface rather than named here, so the
          two screens share one binding instead of one each. --%>
-    function rollerEditorForm() {
+    function pressroomEditorForm() {
         var surface = document.getElementById('editorSurface');
         return surface ? surface.closest('form') : null;
     }
 
     <%-- The toolbar's help button and Ctrl+/ both call this through
          commands.help, which only calls it if it is defined. --%>
-    window.rollerOpenGuide = function () {
+    window.pressroomOpenGuide = function () {
         bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('editorGuide')).show();
     };
 
     <%-- CodeMirror's "Mod" bindings answer to Cmd on a Mac, so that is the
          key the tooltips and the guide should name there. Same platform test
          CodeMirror itself makes. The markup says Ctrl; this only rewrites it. --%>
-    function rollerShowMacModifier() {
+    function pressroomShowMacModifier() {
         if (!/Mac|iP(hone|[oa]d)/.test(navigator.platform || '')) {
             return;
         }
@@ -97,12 +97,12 @@
         });
     }
 
-    <%-- Word count / reading time. Split from rollerUpdateStatus() below so
+    <%-- Word count / reading time. Split from pressroomUpdateStatus() below so
          the one-time call right after the editor is created (to seed existing
          content's word count on first paint) does not also mark a freshly
          opened, untouched entry as having unsaved changes. --%>
-    function rollerUpdateWordCount() {
-        var stats = rollerEditor.stats();
+    function pressroomUpdateWordCount() {
+        var stats = pressroomEditor.stats();
         var status = document.getElementById('editorStatus');
         var template = status.dataset.wordsTemplate || '';
         document.getElementById('editorStatusWords').textContent =
@@ -115,7 +115,7 @@
          ever spells out "Unsaved changes" et al. state is one of
          'unsaved' / 'savedLocally' / 'saved', matching the dataset property
          names data-unsaved / data-saved-locally / data-saved decode to. --%>
-    function rollerSetSaveState(state) {
+    function pressroomSetSaveState(state) {
         var el = document.getElementById('editorStatusSave');
         if (el) {
             el.textContent = el.dataset[state] || '';
@@ -125,9 +125,9 @@
     <%-- Registered on every editor change and every form input/change below.
          Any edit -- to the text or to a rail field like category or tags --
          means the content no longer matches what the server last saved. --%>
-    function rollerUpdateStatus() {
-        rollerUpdateWordCount();
-        rollerSetSaveState('unsaved');
+    function pressroomUpdateStatus() {
+        pressroomUpdateWordCount();
+        pressroomSetSaveState('unsaved');
     }
 
     $(document).ready(function () {
@@ -153,13 +153,13 @@
             }
             if (event.key === 's' || event.key === 'S') {
                 event.preventDefault();
-                if (window.rollerSaveDraft) {
-                    window.rollerSaveDraft();
+                if (window.pressroomSaveDraft) {
+                    window.pressroomSaveDraft();
                 }
             } else if (event.key === 'Enter') {
                 event.preventDefault();
-                if (window.rollerPublish) {
-                    window.rollerPublish();
+                if (window.pressroomPublish) {
+                    window.pressroomPublish();
                 }
             } else if (event.key === '/' && commands.help) {
                 event.preventDefault();
@@ -169,19 +169,19 @@
 
         <%-- Assigned before the editor is created, because create() is
              handed commands.help as its Ctrl+/ binding. The bodies run
-             later, so referring to rollerEditor here is fine. --%>
+             later, so referring to pressroomEditor here is fine. --%>
         commands = {
-            bold: function () { rollerEditor.wrapSelection('**', '**', '<spring:message code="editor.boldPlaceholder" javaScriptEscape="true"/>'); },
-            italic: function () { rollerEditor.wrapSelection('*', '*', '<spring:message code="editor.italicPlaceholder" javaScriptEscape="true"/>'); },
-            heading: function () { rollerEditor.toggleLinePrefix('## '); },
-            quote: function () { rollerEditor.toggleLinePrefix('> '); },
-            ul: function () { rollerEditor.toggleLinePrefix('- '); },
-            ol: function () { rollerEditor.toggleLinePrefix('1. '); },
-            link: function () { rollerEditor.wrapSelection('[', '](https://)', '<spring:message code="editor.linkPlaceholder" javaScriptEscape="true"/>'); },
-            code: function () { rollerEditor.wrapSelection('`', '`', '<spring:message code="editor.codePlaceholder" javaScriptEscape="true"/>'); },
-            table: function () { rollerEditor.insert('\n| <spring:message code="editor.tableHeader" javaScriptEscape="true"/> | <spring:message code="editor.tableHeader" javaScriptEscape="true"/> |\n| --- | --- |\n|  |  |\n'); },
+            bold: function () { pressroomEditor.wrapSelection('**', '**', '<spring:message code="editor.boldPlaceholder" javaScriptEscape="true"/>'); },
+            italic: function () { pressroomEditor.wrapSelection('*', '*', '<spring:message code="editor.italicPlaceholder" javaScriptEscape="true"/>'); },
+            heading: function () { pressroomEditor.toggleLinePrefix('## '); },
+            quote: function () { pressroomEditor.toggleLinePrefix('> '); },
+            ul: function () { pressroomEditor.toggleLinePrefix('- '); },
+            ol: function () { pressroomEditor.toggleLinePrefix('1. '); },
+            link: function () { pressroomEditor.wrapSelection('[', '](https://)', '<spring:message code="editor.linkPlaceholder" javaScriptEscape="true"/>'); },
+            code: function () { pressroomEditor.wrapSelection('`', '`', '<spring:message code="editor.codePlaceholder" javaScriptEscape="true"/>'); },
+            table: function () { pressroomEditor.insert('\n| <spring:message code="editor.tableHeader" javaScriptEscape="true"/> | <spring:message code="editor.tableHeader" javaScriptEscape="true"/> |\n| --- | --- |\n|  |  |\n'); },
             image: function () { onClickMediaFileInsert(); },
-            help: function () { if (window.rollerOpenGuide) { window.rollerOpenGuide(); } }
+            help: function () { if (window.pressroomOpenGuide) { window.pressroomOpenGuide(); } }
         };
         <%-- The insert menu is the registry's own list, read back off the
              DOM: the editor's completion source and the menu therefore
@@ -190,7 +190,7 @@
         document.querySelectorAll('#shortcodeInsertMenu .shortcode-card').forEach(function (b) {
             shortcodes.push({ name: b.dataset.shortcode, snippet: b.dataset.snippet, label: b.textContent.trim() });
         });
-        rollerEditor = PressroomEditor.create({
+        pressroomEditor = PressroomEditor.create({
             textarea: document.getElementById('edit_content'),
             placeholder: '<spring:message code="editor.placeholder" javaScriptEscape="true"/>',
             shortcodes: shortcodes,
@@ -199,8 +199,8 @@
                  document-level handler never sees them unhandled. Passed by
                  reference, so a screen that supplies neither leaves the keys
                  to CodeMirror rather than binding a dead no-op. --%>
-            onSave: window.rollerSaveDraft,
-            onPublish: window.rollerPublish,
+            onSave: window.pressroomSaveDraft,
+            onPublish: window.pressroomPublish,
             onHelp: commands.help,
             <%-- The shortcuts the toolbar tooltips and the guide advertise.
                  Bound in the editor only: outside it there is no selection to
@@ -208,12 +208,12 @@
             onBold: commands.bold,
             onItalic: commands.italic,
             onLink: commands.link,
-            onUpload: rollerUploadImages,
+            onUpload: pressroomUploadImages,
             onChange: function () {
                 <%-- A listener that throws must not stop the ones after it:
                      losing the dirty flag because draft recovery failed would
                      be a silent loss of the leave warning. --%>
-                rollerEditorChangeListeners.forEach(function (listener) {
+                pressroomEditorChangeListeners.forEach(function (listener) {
                     try {
                         listener();
                     } catch (e) {
@@ -223,28 +223,28 @@
             }
         });
 
-        rollerShowMacModifier();
+        pressroomShowMacModifier();
 
         <%-- The preview follows the text. Registered on the page's own fan-out
              array, not on the editor, so an editor swap carries it along. --%>
-        rollerEditorChangeListeners.push(rollerSchedulePreview);
+        pressroomEditorChangeListeners.push(pressroomSchedulePreview);
 
         <%-- Status line: word count follows every change, same as the preview
              above. Seeded once, right here, so existing content shows its real
              word count on first paint rather than only after the first
-             keystroke -- rollerUpdateWordCount() alone, not
-             rollerUpdateStatus(), so seeding it does not also mark untouched
+             keystroke -- pressroomUpdateWordCount() alone, not
+             pressroomUpdateStatus(), so seeding it does not also mark untouched
              content "Unsaved changes". --%>
-        rollerUpdateWordCount();
-        rollerEditorChangeListeners.push(rollerUpdateStatus);
+        pressroomUpdateWordCount();
+        pressroomEditorChangeListeners.push(pressroomUpdateStatus);
 
         <%-- The status line's own copy of the "anything changed" signal: a
              rail field (category, tags, status) has no editor change event to
              hang off, so it needs this binding independently of the editor's
              own fan-out array above. --%>
-        var editorForm = rollerEditorForm();
+        var editorForm = pressroomEditorForm();
         if (editorForm) {
-            $(editorForm).on('input change', rollerUpdateStatus);
+            $(editorForm).on('input change', pressroomUpdateStatus);
         }
 
         <%-- Scroll sync, editor -> preview only. Proportional rather than
@@ -253,20 +253,20 @@
              line-to-pixel mapping to build. Throttled to one message per
              animation frame -- a scroll event fires far faster than the frame
              can repaint, and every extra postMessage is work nobody sees. --%>
-        var rollerScrollQueued = false;
-        rollerEditor.view.scrollDOM.addEventListener('scroll', function () {
-            if (rollerScrollQueued) {
+        var pressroomScrollQueued = false;
+        pressroomEditor.view.scrollDOM.addEventListener('scroll', function () {
+            if (pressroomScrollQueued) {
                 return;
             }
-            rollerScrollQueued = true;
+            pressroomScrollQueued = true;
             window.requestAnimationFrame(function () {
-                rollerScrollQueued = false;
-                if (!rollerPreview.ready) {
+                pressroomScrollQueued = false;
+                if (!pressroomPreview.ready) {
                     return;
                 }
-                rollerPostToPreview({
-                    type: 'roller-preview-scroll',
-                    scroll: rollerEditor.scrollFraction()
+                pressroomPostToPreview({
+                    type: 'pressroom-preview-scroll',
+                    scroll: pressroomEditor.scrollFraction()
                 });
             });
         });
@@ -281,13 +281,13 @@
         document.getElementById('editorMode').addEventListener('click', function (event) {
             var button = event.target.closest('button[data-mode]');
             if (button) {
-                rollerSetEditorMode(button.dataset.mode);
+                pressroomSetEditorMode(button.dataset.mode);
             }
         });
         try {
             var storedMode = window.localStorage.getItem(PRESSROOM_EDITOR_MODE_KEY);
             if (storedMode) {
-                rollerSetEditorMode(storedMode);
+                pressroomSetEditorMode(storedMode);
             }
         } catch (e) {
             /* storage unavailable: write mode */
@@ -302,7 +302,7 @@
                 onClickMediaFileInsert();
             } else {
                 insertMediaFile(this.dataset.snippet);
-                rollerEditor.focus();
+                pressroomEditor.focus();
             }
         });
     });
@@ -313,10 +313,10 @@
          scripts around one empty #previewArticle; we post the server-rendered
          HTML in and it swaps and re-initialises. That is why an author sees
          their prose set the way it will publish rather than unstyled. --%>
-    var rollerPreview = { frame: null, ready: false, timer: null, pending: false, inflight: false };
+    var pressroomPreview = { frame: null, ready: false, timer: null, pending: false, inflight: false };
 
-    function rollerEnsurePreviewFrame() {
-        if (rollerPreview.frame) {
+    function pressroomEnsurePreviewFrame() {
+        if (pressroomPreview.frame) {
             return;
         }
         var pane = document.getElementById('editorPreviewPane');
@@ -329,7 +329,7 @@
         frame.setAttribute('title', '<spring:message code="editor.mode.preview" javaScriptEscape="true"/>');
         frame.src = pane.dataset.shellUrl;
         pane.appendChild(frame);
-        rollerPreview.frame = frame;
+        pressroomPreview.frame = frame;
         <%-- Registered once, with the frame. The shell announces itself when
              its document is ready, so the first push waits for that rather
              than guessing -- and because the ensure/push pair below is
@@ -343,24 +343,24 @@
             if (event.origin !== window.location.origin) {
                 return;
             }
-            if (event.source !== rollerPreview.frame.contentWindow) {
+            if (event.source !== pressroomPreview.frame.contentWindow) {
                 return;
             }
-            if (event.data && event.data.type === 'roller-preview-ready') {
-                rollerPreview.ready = true;
-                rollerPushPreview();
+            if (event.data && event.data.type === 'pressroom-preview-ready') {
+                pressroomPreview.ready = true;
+                pressroomPushPreview();
             }
         });
     }
 
     <%-- Debounced: a POST per keystroke would render the whole shortcode
          pipeline on every character. 400ms of idle is below "did it hang?" --%>
-    function rollerSchedulePreview() {
+    function pressroomSchedulePreview() {
         if (document.getElementById('editorSurface').dataset.mode === 'write') {
             return;
         }
-        window.clearTimeout(rollerPreview.timer);
-        rollerPreview.timer = window.setTimeout(rollerPushPreview, 400);
+        window.clearTimeout(pressroomPreview.timer);
+        pressroomPreview.timer = window.setTimeout(pressroomPushPreview, 400);
     }
 
     <%-- The preview is rendered by the SERVER, not by a Markdown library in
@@ -376,19 +376,19 @@
          be overtaken by a later one whose response arrives first, which would
          paint stale text over new. At most one request is out; anything that
          happens while it is out collapses into a single follow-up. --%>
-    function rollerPushPreview() {
-        if (!rollerPreview.ready) {
+    function pressroomPushPreview() {
+        if (!pressroomPreview.ready) {
             return;
         }
-        if (rollerPreview.inflight) {
-            rollerPreview.pending = true;
+        if (pressroomPreview.inflight) {
+            pressroomPreview.pending = true;
             return;
         }
-        rollerPreview.inflight = true;
+        pressroomPreview.inflight = true;
         var surface = document.getElementById('editorSurface');
         var idField = surface.dataset.idField;
         var payload = {
-            text: rollerGetEntryText(),
+            text: pressroomGetEntryText(),
             weblog: $("input[name='weblog']").val(),
             '${_csrf.parameterName}': '${_csrf.token}'
         };
@@ -402,19 +402,19 @@
             url: surface.dataset.previewUrl,
             data: payload,
             success: function (html) {
-                rollerPostToPreview({ type: 'roller-preview', html: html, scroll: rollerEditor.scrollFraction() });
+                pressroomPostToPreview({ type: 'pressroom-preview', html: html, scroll: pressroomEditor.scrollFraction() });
             },
             error: function () {
-                rollerPostToPreview({
-                    type: 'roller-preview',
-                    html: '<p class="roller-preview-error"><spring:message code="weblogEdit.previewFailed" javaScriptEscape="true"/></p>'
+                pressroomPostToPreview({
+                    type: 'pressroom-preview',
+                    html: '<p class="pressroom-preview-error"><spring:message code="weblogEdit.previewFailed" javaScriptEscape="true"/></p>'
                 });
             },
             complete: function () {
-                rollerPreview.inflight = false;
-                if (rollerPreview.pending) {
-                    rollerPreview.pending = false;
-                    rollerPushPreview();
+                pressroomPreview.inflight = false;
+                if (pressroomPreview.pending) {
+                    pressroomPreview.pending = false;
+                    pressroomPushPreview();
                 }
             }
         });
@@ -422,15 +422,15 @@
 
     <%-- One place that talks to the frame, so the origin argument cannot
          drift between the three callers. --%>
-    function rollerPostToPreview(message) {
-        if (!rollerPreview.frame || !rollerPreview.frame.contentWindow) {
+    function pressroomPostToPreview(message) {
+        if (!pressroomPreview.frame || !pressroomPreview.frame.contentWindow) {
             return;
         }
-        rollerPreview.frame.contentWindow.postMessage(message, window.location.origin);
+        pressroomPreview.frame.contentWindow.postMessage(message, window.location.origin);
     }
 
     <%-- Mode is a data attribute on the surface; CSS lays the panes out. --%>
-    function rollerSetEditorMode(mode) {
+    function pressroomSetEditorMode(mode) {
         var surface = document.getElementById('editorSurface');
         surface.dataset.mode = mode;
         document.querySelectorAll('#editorMode button[data-mode]').forEach(function (b) {
@@ -439,8 +439,8 @@
         var pane = document.getElementById('editorPreviewPane');
         pane.hidden = (mode === 'write');
         if (mode !== 'write') {
-            rollerEnsurePreviewFrame();
-            rollerPushPreview();
+            pressroomEnsurePreviewFrame();
+            pressroomPushPreview();
         }
         try {
             window.localStorage.setItem(PRESSROOM_EDITOR_MODE_KEY, mode);
@@ -454,26 +454,26 @@
          tests. Everything else talks to the editor through here, so swapping
          the editor again does not mean hunting down its callers. --%>
     function insertMediaFile(toInsert) {
-        rollerEditor.insert(toInsert);
+        pressroomEditor.insert(toInsert);
     }
 
-    function rollerSetEntryText(text) {
-        rollerEditor.setValue(text);
+    function pressroomSetEntryText(text) {
+        pressroomEditor.setValue(text);
     }
 
-    function rollerGetEntryText() {
-        return rollerEditor.getValue();
+    function pressroomGetEntryText() {
+        return pressroomEditor.getValue();
     }
 
     <%-- Replace one span of the document in place, leaving everything else --
          including the caret -- where it is. Deliberately NOT
-         rollerSetEntryText(whole text): setValue replaces the document and
+         pressroomSetEntryText(whole text): setValue replaces the document and
          drops the selection to the end, so dropping two images at once yanked
          the caret away while the author was still typing between them.
          Returns false when the text is no longer there (the author deleted
          the placeholder mid-upload), in which case there is nothing to fix. --%>
-    function rollerReplaceInEditor(needle, replacement) {
-        var view = rollerEditor.view;
+    function pressroomReplaceInEditor(needle, replacement) {
+        var view = pressroomEditor.view;
         var at = view.state.doc.toString().indexOf(needle);
         if (at < 0) {
             return false;
@@ -488,14 +488,14 @@
          refusal is attributable to its file -- editor.js's fileHandler is the
          caller, passing every pasted/dropped image file at once, and this is
          the only seam that reaches the upload endpoint from inside the editor. --%>
-    function rollerUploadImages(files) {
+    function pressroomUploadImages(files) {
         var queue = Array.prototype.slice.call(files);
         (function next() {
             var file = queue.shift();
             if (!file) { return; }
             var placeholder = '[<spring:message code="editor.uploadingPlaceholder" javaScriptEscape="true"/> '
                     + file.name.replace(/[\[\]]/g, '') + '…]';
-            rollerEditor.insert(placeholder + '\n');
+            pressroomEditor.insert(placeholder + '\n');
             var form = new FormData();
             form.append('file', file, file.name);
             form.append('weblog', $("input[name='weblog']").val());
@@ -505,19 +505,19 @@
                 .then(function (res) {
                     var result = res.body && res.body.results && res.body.results[0];
                     if (result && result.id) {
-                        rollerReplaceInEditor(placeholder, '[image id="' + result.id + '"]');
+                        pressroomReplaceInEditor(placeholder, '[image id="' + result.id + '"]');
                     } else {
-                        rollerDropPlaceholder(placeholder);
+                        pressroomDropPlaceholder(placeholder);
                         <%-- A per-file refusal names its file; a refusal of the
                              whole request (uploads off, no files) has no
                              results and says why at the top level. --%>
-                        rollerStatusError((result && result.detail) || (res.body && res.body.detail)
+                        pressroomStatusError((result && result.detail) || (res.body && res.body.detail)
                                 || '<spring:message code="editor.uploadFailed" javaScriptEscape="true"/>');
                     }
                 })
                 .catch(function () {
-                    rollerDropPlaceholder(placeholder);
-                    rollerStatusError('<spring:message code="editor.uploadFailed" javaScriptEscape="true"/>');
+                    pressroomDropPlaceholder(placeholder);
+                    pressroomStatusError('<spring:message code="editor.uploadFailed" javaScriptEscape="true"/>');
                 })
                 .then(next);
         })();
@@ -526,16 +526,16 @@
     <%-- The placeholder was inserted with its own trailing newline; take that
          with it when the upload was refused, and fall back to the bare text
          if the author has since typed on that line. --%>
-    function rollerDropPlaceholder(placeholder) {
-        if (!rollerReplaceInEditor(placeholder + '\n', '')) {
-            rollerReplaceInEditor(placeholder, '');
+    function pressroomDropPlaceholder(placeholder) {
+        if (!pressroomReplaceInEditor(placeholder + '\n', '')) {
+            pressroomReplaceInEditor(placeholder, '');
         }
     }
 
     <%-- The refusal detail is server text (PressroomMessages), rendered via
          textContent -- never innerHTML -- so it cannot carry markup even
          though it did not come from a message key with a known-safe shape. --%>
-    function rollerStatusError(message) {
+    function pressroomStatusError(message) {
         var status = document.getElementById('editorStatusAlerts');
         var el = document.createElement('span');
         el.className = 'is-error';
@@ -550,7 +550,7 @@
          rather than starting a second line -- except while an IME is
          composing, where Enter commits the composition -- and a pasted line
          break becomes a space. --%>
-    function rollerFitTitle(title) {
+    function pressroomFitTitle(title) {
         title.style.height = 'auto';
         title.style.height = title.scrollHeight + 'px';
     }
@@ -561,7 +561,7 @@
         title.addEventListener('keydown', function (e) {
             if (e.key === 'Enter' && !e.isComposing) {
                 e.preventDefault();
-                if (window.rollerEditor && rollerEditor.view) { rollerEditor.view.focus(); }
+                if (window.pressroomEditor && pressroomEditor.view) { pressroomEditor.view.focus(); }
             }
         });
         title.addEventListener('input', function () {
@@ -571,13 +571,13 @@
                 caret = Math.min(caret, title.value.length);
                 title.setSelectionRange(caret, caret);
             }
-            rollerFitTitle(title);
+            pressroomFitTitle(title);
         });
         <%-- A restored draft sets the value without an input event, and a
              narrower window rewraps it: measure again on both. --%>
-        title.addEventListener('focus', function () { rollerFitTitle(title); });
-        window.addEventListener('resize', function () { rollerFitTitle(title); });
-        rollerFitTitle(title);
+        title.addEventListener('focus', function () { pressroomFitTitle(title); });
+        window.addEventListener('resize', function () { pressroomFitTitle(title); });
+        pressroomFitTitle(title);
     })();
 
     <%-- Media chooser --%>
@@ -650,7 +650,7 @@
                  exactly as it is. --%>
             insertMediaFile('[image id="' + id + '"]');
         } else {
-            insertMediaFile(rollerMarkdownLink(name, url));
+            insertMediaFile(pressroomMarkdownLink(name, url));
         }
     }
 
@@ -658,7 +658,7 @@
          not raw HTML. Brackets in the name would end the link text, and a
          space or parenthesis in the URL would end the destination, so both
          are neutralised. --%>
-    function rollerMarkdownLink(name, url) {
+    function pressroomMarkdownLink(name, url) {
         var text = String(name).replace(/[\[\]]/g, '');
         var href = String(url).replace(/[ ()]/g, function (c) {
             return { ' ': '%20', '(': '%28', ')': '%29' }[c];

@@ -118,7 +118,7 @@ class EditorSurfaceJspTest {
         String select = function(read(SCRIPT), "onSelectMediaFile");
         assertFalse(select.contains("<a href="), "no raw HTML link into a Markdown editor");
         assertFalse(select.contains("?t=true"), "the id-less <img> fallback is dead: the chooser always passes an id");
-        assertTrue(select.contains("rollerMarkdownLink("), select);
+        assertTrue(select.contains("pressroomMarkdownLink("), select);
     }
 
     /**
@@ -154,7 +154,7 @@ class EditorSurfaceJspTest {
      */
     @Test
     void aWholeUploadRefusalShowsTheServersDetail() throws IOException {
-        String upload = function(read(SCRIPT), "rollerUploadImages");
+        String upload = function(read(SCRIPT), "pressroomUploadImages");
         assertTrue(upload.contains("(res.body && res.body.detail)"),
                 "a refusal with no results must show the body's own detail: " + upload);
     }
@@ -181,12 +181,12 @@ class EditorSurfaceJspTest {
             assertFalse(jsp.contains("input[name='bean.title']"),
                     screen + ": a script still looks for the title as an input");
         }
-        String fit = function(read(SCRIPT), "rollerFitTitle");
+        String fit = function(read(SCRIPT), "pressroomFitTitle");
         assertTrue(fit.contains("scrollHeight"), "the title grows to its text: " + fit);
         String js = read(SCRIPT);
         assertTrue(js.contains("e.key === 'Enter' && !e.isComposing"),
                 "Enter leaves the title (but not mid-IME composition)");
-        assertTrue(read(Paths.get("src/main/webapp/pressroom-ui/styles/roller-editor.css"))
+        assertTrue(read(Paths.get("src/main/webapp/pressroom-ui/styles/pressroom-editor.css"))
                         .contains("textarea.editor-title"),
                 "the editor stylesheet takes the textarea's resize handle and scrollbar away");
     }
@@ -236,23 +236,23 @@ class EditorSurfaceJspTest {
     @Test
     void uploadRefusalsAreAnnounced() throws IOException {
         assertTrue(read(SURFACE).contains("<span class=\"editor-status-alerts\" id=\"editorStatusAlerts\" role=\"status\">"));
-        assertTrue(function(read(SCRIPT), "rollerStatusError").contains("editorStatusAlerts"));
+        assertTrue(function(read(SCRIPT), "pressroomStatusError").contains("editorStatusAlerts"));
     }
 
     /**
-     * The entry and page titles are set in the UI face (roller.css's
+     * The entry and page titles are set in the UI face (pressroom.css's
      * .editor-title: Plex Sans at 600 -- emphasis is weight, never size).
      * They were Plex Serif once, and the editor stylesheet still loaded a
      * serif face nothing used any more.
      */
     @Test
     void theEditorTitleIsInTheUiFaceAndNoUnusedFaceShips() throws IOException {
-        String editorCss = read(Paths.get("src/main/webapp/pressroom-ui/styles/roller-editor.css"));
-        String pressroomCss = read(Paths.get("src/main/webapp/pressroom-ui/styles/roller.css"));
+        String editorCss = read(Paths.get("src/main/webapp/pressroom-ui/styles/pressroom-editor.css"));
+        String pressroomCss = read(Paths.get("src/main/webapp/pressroom-ui/styles/pressroom.css"));
         int title = pressroomCss.indexOf(".editor-title {");
         assertTrue(title >= 0 && pressroomCss.substring(title, pressroomCss.indexOf('}', title))
                 .contains("font-family: var(--font-ui);"), "the editor title is not in the UI face");
-        assertFalse(editorCss.contains("IBM Plex Serif"), "roller-editor.css loads a face no rule uses");
+        assertFalse(editorCss.contains("IBM Plex Serif"), "pressroom-editor.css loads a face no rule uses");
     }
 
     /**

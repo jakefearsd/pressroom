@@ -95,7 +95,7 @@ class ErrorCasesIT extends PressroomIT {
         // Back at a login form, and the editor is still closed to us.
         $("#j_username").should(exist);
         openPath("/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE);
-        assertTrue($$("table.rollertable").isEmpty(),
+        assertTrue($$("table.pressroomtable").isEmpty(),
                 "a failed login left the entry list reachable");
     }
 
@@ -206,7 +206,7 @@ class ErrorCasesIT extends PressroomIT {
                     path + " answered " + status + " to an anonymous caller");
             if (status == 200) {
                 String body = getAnonymously(baseUrl() + path);
-                assertFalse(body.contains("rollertable") || body.contains("bean.title"),
+                assertFalse(body.contains("pressroomtable") || body.contains("bean.title"),
                         path + " served authoring content to an anonymous caller");
             }
         }

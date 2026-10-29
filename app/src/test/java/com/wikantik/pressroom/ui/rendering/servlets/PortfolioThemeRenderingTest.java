@@ -153,7 +153,7 @@ class PortfolioThemeRenderingTest {
                         + "assert is the page template's only Leaflet coverage:\n" + body);
         assertTrue(body.contains("portfolio-custom.css"),
                 "the head must link the theme stylesheet override:\n" + body);
-        assertTrue(body.contains("function rollerInitContent(") && body.contains(".markdown-alert-note {"),
+        assertTrue(body.contains("function pressroomInitContent(") && body.contains(".markdown-alert-note {"),
                 "the content-asset macro must be in the head: callouts, code blocks and "
                         + "heading anchors in .pf-entry-content depend on it:\n" + body);
         assertFalse(body.contains("#showContentAssets"), body);

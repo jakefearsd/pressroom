@@ -56,8 +56,8 @@
 
             <%-- The weblog's name, at weight 600 in ink: a name to pick, not a
                  caps-label section header in link blue. .mm_weblog_name
-                 overrides .section-head's caps role for that (roller.css; the
-                 pair is pinned by JspConsistencyTest) and carries the icon/label gap (roller.css) that used to
+                 overrides .section-head's caps role for that (pressroom.css; the
+                 pair is pinned by JspConsistencyTest) and carries the icon/label gap (pressroom.css) that used to
                  be a hardcoded &nbsp;, and stays regardless because
                  RouteSweepIT identifies menu.rol by "h2.mm_weblog_name"
                  (Routes.java). Rename neither the element nor the class

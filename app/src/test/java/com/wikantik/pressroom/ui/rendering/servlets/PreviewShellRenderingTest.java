@@ -182,7 +182,7 @@ class PreviewShellRenderingTest {
 
         String html = preview("/" + HANDLE + "/", "shell", "true");
 
-        assertTrue(html.contains("<article id=\"previewArticle\" class=\"roller-preview-prose\""),
+        assertTrue(html.contains("<article id=\"previewArticle\" class=\"pressroom-preview-prose\""),
                 "a theme that has never heard of the editor still previews, through the "
                         + "shared shell:\n" + html);
         assertTrue(html.contains("frontpage-custom.css"),

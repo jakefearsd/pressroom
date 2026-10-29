@@ -575,14 +575,14 @@ app/pom.xml -- update both together.
 // article's innerHTML on every push and the nodes this binds to are gone by
 // then. On a public page it still runs exactly once, from the call at the
 // bottom of this module.
-async function rollerInitGalleries(root) {
+async function pressroomInitGalleries(root) {
   // Tear the old lightbox down BEFORE the .jgrid guard, not after: the live
   // preview can swap in a fragment whose last gallery was just deleted, and
   // if the early return below ran first the old lightbox would be left
   // bound to nodes this swap already removed from the document.
-  if (window.rollerGalleryLightbox) {
-    window.rollerGalleryLightbox.destroy();
-    window.rollerGalleryLightbox = null;
+  if (window.pressroomGalleryLightbox) {
+    window.pressroomGalleryLightbox.destroy();
+    window.pressroomGalleryLightbox = null;
   }
   if (!(root || document).querySelector('.jgrid')) { return; }
   const { default: PhotoSwipeLightbox } =
@@ -638,16 +638,16 @@ async function rollerInitGalleries(root) {
     });
   });
   lightbox.init();
-  window.rollerGalleryLightbox = lightbox;
+  window.pressroomGalleryLightbox = lightbox;
 }
-rollerInitGalleries(document);
+pressroomInitGalleries(document);
 // The seam the preview shell's own script calls after each swap (see
 // showPreviewShellScript below). Chained rather than assigned: the map and
 // embed macros register on the same hook, and whichever runs last must not
 // silently drop the others.
-window.rollerPreviewInit = (function (prev) {
-  return function (root) { if (prev) { prev(root); } rollerInitGalleries(root); };
-})(window.rollerPreviewInit);
+window.pressroomPreviewInit = (function (prev) {
+  return function (root) { if (prev) { prev(root); } pressroomInitGalleries(root); };
+})(window.pressroomPreviewInit);
 </script>
 #end
 
@@ -725,28 +725,28 @@ app/pom.xml -- update both together.
 // Leaflet is loaded once per document and then reused; 'idle' until the
 // first map is found, 'loading' while the script element is in flight,
 // 'ready' once L exists and the marker icons are pinned.
-var rollerLeafletState = 'idle';
+var pressroomLeafletState = 'idle';
 // Containers found while the script was still loading, built when it lands.
-var rollerLeafletQueue = [];
+var pressroomLeafletQueue = [];
 // Every map this page has built, so the ones whose container the editor's
 // preview has since replaced can be torn down. Leaflet binds a window
 // 'resize' listener per map, which would otherwise retain every map (and
 // its detached DOM) for the life of a long editing session.
-var rollerLiveMaps = [];
+var pressroomLiveMaps = [];
 
 // Re-runnable, because the editor's live preview swaps the article's
 // innerHTML and the containers below arrive after DOMContentLoaded has long
-// fired. The :not([data-roller-map]) filter is what makes a second call over
+// fired. The :not([data-pressroom-map]) filter is what makes a second call over
 // a document that partly overlaps the first one safe -- L.map() on an
 // already-initialised container throws.
-function rollerInitMaps(root) {
-  rollerReleaseDetachedMaps();
-  var containers = (root || document).querySelectorAll('.travel-map:not([data-roller-map])');
+function pressroomInitMaps(root) {
+  pressroomReleaseDetachedMaps();
+  var containers = (root || document).querySelectorAll('.travel-map:not([data-pressroom-map])');
   if (!containers.length) { return; }
-  if (rollerLeafletState === 'ready') { rollerBuildMaps(containers); return; }
-  Array.prototype.push.apply(rollerLeafletQueue, containers);
-  if (rollerLeafletState === 'loading') { return; }
-  rollerLeafletState = 'loading';
+  if (pressroomLeafletState === 'ready') { pressroomBuildMaps(containers); return; }
+  Array.prototype.push.apply(pressroomLeafletQueue, containers);
+  if (pressroomLeafletState === 'loading') { return; }
+  pressroomLeafletState = 'loading';
   var script = document.createElement('script');
   script.src = '$url.site/webjars/leaflet/1.9.4/dist/leaflet.js';
   script.onload = function () {
@@ -758,53 +758,53 @@ function rollerInitMaps(root) {
       shadowUrl: '$url.site/webjars/leaflet/1.9.4/dist/images/marker-shadow.png'
     });
     L.Icon.Default.imagePath = '';
-    rollerLeafletState = 'ready';
-    var queued = rollerLeafletQueue;
-    rollerLeafletQueue = [];
-    rollerBuildMaps(queued);
+    pressroomLeafletState = 'ready';
+    var queued = pressroomLeafletQueue;
+    pressroomLeafletQueue = [];
+    pressroomBuildMaps(queued);
   };
   // A network hiccup or a blocked CDN request must not strand the state at
   // 'loading' forever -- without this, every later map on the page (or a
   // retry from the live preview) would queue behind a script that is never
   // coming and never build anything. Reset to 'idle' and drop the queue so
-  // the next rollerInitMaps call starts a fresh load attempt.
+  // the next pressroomInitMaps call starts a fresh load attempt.
   script.onerror = function () {
-    rollerLeafletState = 'idle';
-    rollerLeafletQueue = [];
+    pressroomLeafletState = 'idle';
+    pressroomLeafletQueue = [];
   };
   document.head.appendChild(script);
 }
 
-function rollerBuildMaps(containers) {
+function pressroomBuildMaps(containers) {
   Array.prototype.forEach.call(containers, function (el) {
     // The queue can hold the same container twice (two calls before the
     // script landed); the mark is set by the first pass and skips the rest.
-    if (el.dataset.rollerMap) { return; }
-    rollerCreateMap(el);
-    el.dataset.rollerMap = '1';
+    if (el.dataset.pressroomMap) { return; }
+    pressroomCreateMap(el);
+    el.dataset.pressroomMap = '1';
   });
 }
 
-function rollerReleaseDetachedMaps() {
-  for (var i = rollerLiveMaps.length - 1; i >= 0; i--) {
-    if (!document.contains(rollerLiveMaps[i].getContainer())) {
-      rollerLiveMaps[i].remove();
-      rollerLiveMaps.splice(i, 1);
+function pressroomReleaseDetachedMaps() {
+  for (var i = pressroomLiveMaps.length - 1; i >= 0; i--) {
+    if (!document.contains(pressroomLiveMaps[i].getContainer())) {
+      pressroomLiveMaps[i].remove();
+      pressroomLiveMaps.splice(i, 1);
     }
   }
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-  rollerInitMaps(document);
+  pressroomInitMaps(document);
 });
 // The seam the preview shell's own script calls after each swap (see
 // showPreviewShellScript below); chained so the gallery and embed macros'
 // own registrations survive.
-window.rollerPreviewInit = (function (prev) {
-  return function (root) { if (prev) { prev(root); } rollerInitMaps(root); };
-})(window.rollerPreviewInit);
+window.pressroomPreviewInit = (function (prev) {
+  return function (root) { if (prev) { prev(root); } pressroomInitMaps(root); };
+})(window.pressroomPreviewInit);
 
-function rollerReadPins(el) {
+function pressroomReadPins(el) {
   // the browser has already decoded the attribute entities for us
   if (!el.dataset.pins) { return []; }
   try {
@@ -815,7 +815,7 @@ function rollerReadPins(el) {
   }
 }
 
-function rollerReadCenter(el) {
+function pressroomReadCenter(el) {
   if (!el.dataset.center) { return null; }
   var parts = el.dataset.center.split(',');
   var lat = parseFloat(parts[0]);
@@ -823,9 +823,9 @@ function rollerReadCenter(el) {
   return isFinite(lat) && isFinite(lng) ? [lat, lng] : null;
 }
 
-function rollerCreateMap(el) {
-  var pins = rollerReadPins(el);
-  var center = rollerReadCenter(el);
+function pressroomCreateMap(el) {
+  var pins = pressroomReadPins(el);
+  var center = pressroomReadCenter(el);
   var zoom = parseInt(el.dataset.zoom, 10);
   var authorZoom = zoom > 0 && zoom <= 19;
   var points = [];
@@ -879,7 +879,7 @@ function rollerCreateMap(el) {
   if (latlngs.length && !authorZoom) {
     map.fitBounds(latlngs, { padding: [24, 24], maxZoom: 15 });
   }
-  rollerLiveMaps.push(map);
+  pressroomLiveMaps.push(map);
 }
 </script>
 #end
@@ -908,14 +908,14 @@ frame-src but not connect-src for these hosts.
 </style>
 <script>
 // Re-runnable for the editor's live preview, which replaces the article's
-// innerHTML long after DOMContentLoaded. The data-roller-embed mark is what
+// innerHTML long after DOMContentLoaded. The data-pressroom-embed mark is what
 // keeps a second pass over overlapping nodes from binding a second click
 // handler to the same placeholder.
-function rollerInitEmbeds(root) {
-  var embeds = (root || document).querySelectorAll('.video-embed:not([data-roller-embed])');
+function pressroomInitEmbeds(root) {
+  var embeds = (root || document).querySelectorAll('.video-embed:not([data-pressroom-embed])');
   if (!embeds.length) { return; }
   Array.prototype.forEach.call(embeds, function (embed) {
-    embed.dataset.rollerEmbed = '1';
+    embed.dataset.pressroomEmbed = '1';
     // Set here, not by the shortcode: the sanitizer strips these from
     // authored content. Without them the placeholder is a div with a click
     // handler, which a keyboard cannot reach and a screen reader cannot name.
@@ -955,14 +955,14 @@ function rollerInitEmbeds(root) {
   });
 }
 document.addEventListener('DOMContentLoaded', function () {
-  rollerInitEmbeds(document);
+  pressroomInitEmbeds(document);
 });
 // The seam the preview shell's own script calls after each swap (see
 // showPreviewShellScript below); chained so the gallery and map macros'
 // own registrations survive.
-window.rollerPreviewInit = (function (prev) {
-  return function (root) { if (prev) { prev(root); } rollerInitEmbeds(root); };
-})(window.rollerPreviewInit);
+window.pressroomPreviewInit = (function (prev) {
+  return function (root) { if (prev) { prev(root); } pressroomInitEmbeds(root); };
+})(window.pressroomPreviewInit);
 </script>
 #end
 
@@ -996,7 +996,7 @@ WCAG ratios behind the colours are in docs/dev/themes-and-templates.md.
 
 Everything except the callouts and highlight.js token classes is scoped to
 the content containers named in $rollerContentScope -- one per bundled theme,
-roller-preview-prose for the shared preview shell and roller-content for the
+pressroom-preview-prose for the shared preview shell and pressroom-content for the
 shared page fallback (and for a custom theme that wants these rules) -- so a
 theme's chrome is never touched. The scope sits inside :where(), adding no
 specificity, so a theme's own rule for the same element still wins; the
@@ -1004,11 +1004,11 @@ heading anchor is the exception, specific enough to beat a theme's content
 link colour, because a # in a link colour reads as part of the heading text.
 
 The script half is a classic bootstrap, the shape of #showMapAssets: it
-injects roller-content.js (highlight.js and the DOM work; built from
+injects pressroom-content.js (highlight.js and the DOM work; built from
 app/frontend/src/content.js) only after finding an unprocessed code block or
 content heading with an id, and hands it the selectors and the weblog's own
 words for the controls on every call. Re-runnable for the editor's preview,
-chained onto window.rollerPreviewInit like the others. The bundle lives
+chained onto window.pressroomPreviewInit like the others. The bundle lives
 under /pressroom-ui/scripts, the one static location this deployment serves,
 and ControlPlaneHostFilter leaves that one file on a weblog's custom domain:
 a redirect to the site host would be cross-origin under script-src 'self'.
@@ -1017,7 +1017,7 @@ CSP: the bundle is same-origin script; the callout icons are data: SVG masks,
 covered by the img-src * data: every bundled head declares. Nothing else.
 *#
 #macro(showContentAssets)
-#set($rollerContentScope = ".qj-prose, .tg-entry-content, .pf-entry-content, .roller-preview-prose, .roller-content")
+#set($rollerContentScope = ".qj-prose, .tg-entry-content, .pf-entry-content, .pressroom-preview-prose, .pressroom-content")
 <style>
 .markdown-alert {
   margin: 1.25em 0;
@@ -1044,12 +1044,12 @@ covered by the img-src * data: every bundled head declares. Nothing else.
     width: 1em;
     height: 1em;
     background-color: currentColor;
-    -webkit-mask: var(--roller-alert-icon) center / contain no-repeat;
-    mask: var(--roller-alert-icon) center / contain no-repeat;
+    -webkit-mask: var(--pressroom-alert-icon) center / contain no-repeat;
+    mask: var(--pressroom-alert-icon) center / contain no-repeat;
   }
 }
 .markdown-alert-note {
-  --roller-alert-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1ZM8 3.75a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2ZM7.2 7h1.6v5.25H7.2Z'/%3E%3C/svg%3E");
+  --pressroom-alert-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1ZM8 3.75a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2ZM7.2 7h1.6v5.25H7.2Z'/%3E%3C/svg%3E");
   border-left-color: color-mix(in srgb, currentColor 35%, transparent);
   border-left-color: light-dark(#0969da, #4493f8);
   background-color: color-mix(in srgb, currentColor 5%, transparent);
@@ -1057,7 +1057,7 @@ covered by the img-src * data: every bundled head declares. Nothing else.
 }
 .markdown-alert-note .markdown-alert-title { color: inherit; color: light-dark(#0550ae, #4493f8); }
 .markdown-alert-tip {
-  --roller-alert-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1a4.75 4.75 0 0 0-2.75 8.62V11.5h5.5V9.62A4.75 4.75 0 0 0 8 1ZM5.75 12.5h4.5V14a1 1 0 0 1-1 1h-2.5a1 1 0 0 1-1-1Z'/%3E%3C/svg%3E");
+  --pressroom-alert-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1a4.75 4.75 0 0 0-2.75 8.62V11.5h5.5V9.62A4.75 4.75 0 0 0 8 1ZM5.75 12.5h4.5V14a1 1 0 0 1-1 1h-2.5a1 1 0 0 1-1-1Z'/%3E%3C/svg%3E");
   border-left-color: color-mix(in srgb, currentColor 35%, transparent);
   border-left-color: light-dark(#1a7f37, #3fb950);
   background-color: color-mix(in srgb, currentColor 5%, transparent);
@@ -1065,7 +1065,7 @@ covered by the img-src * data: every bundled head declares. Nothing else.
 }
 .markdown-alert-tip .markdown-alert-title { color: inherit; color: light-dark(#116329, #3fb950); }
 .markdown-alert-important {
-  --roller-alert-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M2.5 1.5h11a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H7.25L4 14.5v-3H2.5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1ZM7.2 3.5v4.25h1.6V3.5ZM7.2 8.75v1.5h1.6v-1.5Z'/%3E%3C/svg%3E");
+  --pressroom-alert-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M2.5 1.5h11a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H7.25L4 14.5v-3H2.5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1ZM7.2 3.5v4.25h1.6V3.5ZM7.2 8.75v1.5h1.6v-1.5Z'/%3E%3C/svg%3E");
   border-left-color: color-mix(in srgb, currentColor 35%, transparent);
   border-left-color: light-dark(#8250df, #ab7df8);
   background-color: color-mix(in srgb, currentColor 5%, transparent);
@@ -1073,7 +1073,7 @@ covered by the img-src * data: every bundled head declares. Nothing else.
 }
 .markdown-alert-important .markdown-alert-title { color: inherit; color: light-dark(#6639ba, #ab7df8); }
 .markdown-alert-warning {
-  --roller-alert-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M8 1l7.25 13.5H.75ZM7.2 5.5v4.5h1.6V5.5ZM7.2 11v1.6h1.6V11Z'/%3E%3C/svg%3E");
+  --pressroom-alert-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M8 1l7.25 13.5H.75ZM7.2 5.5v4.5h1.6V5.5ZM7.2 11v1.6h1.6V11Z'/%3E%3C/svg%3E");
   border-left-color: color-mix(in srgb, currentColor 35%, transparent);
   border-left-color: light-dark(#9a6700, #d29922);
   background-color: color-mix(in srgb, currentColor 5%, transparent);
@@ -1081,7 +1081,7 @@ covered by the img-src * data: every bundled head declares. Nothing else.
 }
 .markdown-alert-warning .markdown-alert-title { color: inherit; color: light-dark(#7d4e00, #d29922); }
 .markdown-alert-caution {
-  --roller-alert-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M5.1 1h5.8L15 5.1v5.8L10.9 15H5.1L1 10.9V5.1ZM7.2 4v5h1.6V4ZM7.2 10.25v1.6h1.6v-1.6Z'/%3E%3C/svg%3E");
+  --pressroom-alert-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M5.1 1h5.8L15 5.1v5.8L10.9 15H5.1L1 10.9V5.1ZM7.2 4v5h1.6V4ZM7.2 10.25v1.6h1.6v-1.6Z'/%3E%3C/svg%3E");
   border-left-color: color-mix(in srgb, currentColor 35%, transparent);
   border-left-color: light-dark(#d1242f, #f85149);
   background-color: color-mix(in srgb, currentColor 5%, transparent);
@@ -1115,7 +1115,7 @@ covered by the img-src * data: every bundled head declares. Nothing else.
   font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   font-size: .875em;
 }
-.roller-code {
+.pressroom-code {
   margin: 1.25em 0;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
@@ -1125,7 +1125,7 @@ covered by the img-src * data: every bundled head declares. Nothing else.
   font-size: .875em;
   line-height: 1.55;
 }
-.roller-code-bar {
+.pressroom-code-bar {
   display: flex;
   align-items: center;
   gap: .75em;
@@ -1135,8 +1135,8 @@ covered by the img-src * data: every bundled head declares. Nothing else.
   font-size: .8571em;
   line-height: 1.4;
 }
-.roller-code-lang { color: color-mix(in srgb, currentColor 75%, transparent); }
-.roller-code-copy {
+.pressroom-code-lang { color: color-mix(in srgb, currentColor 75%, transparent); }
+.pressroom-code-copy {
   margin-left: auto;
   padding: .2em .75em;
   border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
@@ -1146,10 +1146,10 @@ covered by the img-src * data: every bundled head declares. Nothing else.
   font: inherit;
   cursor: pointer;
 }
-.roller-code-copy:hover,
-.roller-code-copy.is-copied { background-color: color-mix(in srgb, currentColor 10%, transparent); }
-.roller-code-body { display: flex; align-items: flex-start; }
-.roller-code .roller-code-body pre {
+.pressroom-code-copy:hover,
+.pressroom-code-copy.is-copied { background-color: color-mix(in srgb, currentColor 10%, transparent); }
+.pressroom-code-body { display: flex; align-items: flex-start; }
+.pressroom-code .pressroom-code-body pre {
   flex: 1 1 auto;
   min-width: 0;
   margin: 0;
@@ -1158,7 +1158,7 @@ covered by the img-src * data: every bundled head declares. Nothing else.
   background: none;
   font-size: 1em;
 }
-.roller-code-lines {
+.pressroom-code-lines {
   flex: none;
   padding: .85em .75em .85em 1em;
   border-right: 1px solid color-mix(in srgb, currentColor 10%, transparent);
@@ -1169,7 +1169,7 @@ covered by the img-src * data: every bundled head declares. Nothing else.
   -webkit-user-select: none;
   user-select: none;
 }
-.roller-code .roller-code-lines + pre { padding-left: .85em; }
+.pressroom-code .pressroom-code-lines + pre { padding-left: .85em; }
 
 .hljs-doctag, .hljs-keyword, .hljs-meta .hljs-keyword, .hljs-template-tag,
 .hljs-template-variable, .hljs-type, .hljs-variable.language_ { color: inherit; color: light-dark(#cf222e, #ff7b72); }
@@ -1223,7 +1223,7 @@ covered by the img-src * data: every bundled head declares. Nothing else.
 :where($rollerContentScope) tbody tr:nth-child(2n) { background-color: color-mix(in srgb, currentColor 3%, transparent); }
 
 :where($rollerContentScope) :is(h2, h3, h4)[id] { scroll-margin-top: 1rem; }
-body :is($rollerContentScope) :is(h2, h3, h4) > a.roller-heading-anchor {
+body :is($rollerContentScope) :is(h2, h3, h4) > a.pressroom-heading-anchor {
   margin-left: .35em;
   padding: 0 .1em;
   color: inherit;
@@ -1231,22 +1231,22 @@ body :is($rollerContentScope) :is(h2, h3, h4) > a.roller-heading-anchor {
   text-decoration: none;
   opacity: 0;
 }
-body :is($rollerContentScope) :is(h2, h3, h4):hover > a.roller-heading-anchor,
-body :is($rollerContentScope) :is(h2, h3, h4) > a.roller-heading-anchor:focus-visible { opacity: .7; }
-body :is($rollerContentScope) :is(h2, h3, h4) > a.roller-heading-anchor:hover { opacity: 1; text-decoration: underline; }
+body :is($rollerContentScope) :is(h2, h3, h4):hover > a.pressroom-heading-anchor,
+body :is($rollerContentScope) :is(h2, h3, h4) > a.pressroom-heading-anchor:focus-visible { opacity: .7; }
+body :is($rollerContentScope) :is(h2, h3, h4) > a.pressroom-heading-anchor:hover { opacity: 1; text-decoration: underline; }
 @media (hover: none) {
-  body :is($rollerContentScope) :is(h2, h3, h4) > a.roller-heading-anchor { opacity: .7; }
+  body :is($rollerContentScope) :is(h2, h3, h4) > a.pressroom-heading-anchor { opacity: .7; }
 }
 </style>
 <script data-copy="$utils.escapeHTML($text.get('content.code.copy'))" data-copied="$utils.escapeHTML($text.get('content.code.copied'))" data-copy-failed="$utils.escapeHTML($text.get('content.code.copyFailed'))" data-anchor="$utils.escapeHTML($text.get('content.heading.anchor'))">
-// The contract with roller-content.js, handed to it on every call rather
+// The contract with pressroom-content.js, handed to it on every call rather
 // than known to it: an unprocessed code block, or an unprocessed heading
 // with an id, inside content. The not() halves are what make a second call
 // over a document that overlaps the first one safe, and what keep a page
 // with nothing left to do from loading the bundle at all.
-var rollerContent = {
-  code: ':is($rollerContentScope) pre:not([data-roller-code]) > code',
-  headings: ':is($rollerContentScope) :is(h2, h3, h4)[id]:not([data-roller-anchor])',
+var pressroomContent = {
+  code: ':is($rollerContentScope) pre:not([data-pressroom-code]) > code',
+  headings: ':is($rollerContentScope) :is(h2, h3, h4)[id]:not([data-pressroom-anchor])',
   labels: (function (script) {
     if (!script) { return {}; }
     return {
@@ -1263,46 +1263,46 @@ var rollerContent = {
   queue: []
 };
 
-function rollerEnhanceContent(root) {
-  window.PressroomContent.enhance(root, rollerContent);
+function pressroomEnhanceContent(root) {
+  window.PressroomContent.enhance(root, pressroomContent);
 }
 
 // Re-runnable, because the editor's live preview swaps the article's
 // innerHTML long after DOMContentLoaded has fired.
-function rollerInitContent(root) {
+function pressroomInitContent(root) {
   var scope = root || document;
-  if (!scope.querySelector(rollerContent.code) && !scope.querySelector(rollerContent.headings)) { return; }
-  if (rollerContent.state === 'ready') { rollerEnhanceContent(scope); return; }
-  rollerContent.queue.push(scope);
-  if (rollerContent.state === 'loading') { return; }
-  rollerContent.state = 'loading';
+  if (!scope.querySelector(pressroomContent.code) && !scope.querySelector(pressroomContent.headings)) { return; }
+  if (pressroomContent.state === 'ready') { pressroomEnhanceContent(scope); return; }
+  pressroomContent.queue.push(scope);
+  if (pressroomContent.state === 'loading') { return; }
+  pressroomContent.state = 'loading';
   var script = document.createElement('script');
-  script.src = '$url.site/pressroom-ui/scripts/roller-content.js?v=$utils.escapeJavaScript($config.getColophon($model.weblog).version)';
+  script.src = '$url.site/pressroom-ui/scripts/pressroom-content.js?v=$utils.escapeJavaScript($config.getColophon($model.weblog).version)';
   script.onload = function () {
-    rollerContent.state = 'ready';
-    var queued = rollerContent.queue;
-    rollerContent.queue = [];
-    queued.forEach(function (queuedRoot) { rollerEnhanceContent(queuedRoot); });
+    pressroomContent.state = 'ready';
+    var queued = pressroomContent.queue;
+    pressroomContent.queue = [];
+    queued.forEach(function (queuedRoot) { pressroomEnhanceContent(queuedRoot); });
   };
   // A failed load must not strand the state at 'loading': reset, so the
   // next call (a preview push, say) tries again. The page stays readable
   // either way -- every style above applies without the script.
   script.onerror = function () {
-    rollerContent.state = 'idle';
-    rollerContent.queue = [];
+    pressroomContent.state = 'idle';
+    pressroomContent.queue = [];
   };
   document.head.appendChild(script);
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-  rollerInitContent(document);
+  pressroomInitContent(document);
 });
 // The seam the preview shell's own script calls after each swap (see the
 // showPreviewShellScript macro below); chained so the gallery, map and
 // embed macros' own registrations survive.
-window.rollerPreviewInit = (function (prev) {
-  return function (root) { if (prev) { prev(root); } rollerInitContent(root); };
-})(window.rollerPreviewInit);
+window.pressroomPreviewInit = (function (prev) {
+  return function (root) { if (prev) { prev(root); } pressroomInitContent(root); };
+})(window.pressroomPreviewInit);
 </script>
 #end
 
@@ -1321,7 +1321,7 @@ never see it. elapsedMs is a naive-bot timer: the server refuses a submit
 faster than a human could type. Neither is secret; neither needs to be.
 
 Every visible word of the two forms comes from the bundle (audience.*), in
-the weblog's locale, through the rollerAudienceText object below: escaped
+the weblog's locale, through the pressroomAudienceText object below: escaped
 for HTML where it is spliced into a form's markup, and for a JavaScript
 string everywhere. The status line under each form is role="status", so
 "sent" and "failed" are announced, and a 429 (the throttle) and a 400 (a
@@ -1347,7 +1347,7 @@ Velocity would read as references or directives.
 .audience-message { margin-top: .75em; }
 </style>
 <script>
-var rollerAudienceText = {
+var pressroomAudienceText = {
   name: "$utils.escapeJson($utils.escapeHTML($text.get("audience.contact.name")))",
   email: "$utils.escapeJson($utils.escapeHTML($text.get("audience.email")))",
   subject: "$utils.escapeJson($utils.escapeHTML($text.get("audience.contact.subject")))",
@@ -1364,7 +1364,7 @@ var rollerAudienceText = {
 };
 document.addEventListener('DOMContentLoaded', function () {
   var loadedAt = Date.now();
-  var words = rollerAudienceText;
+  var words = pressroomAudienceText;
 
   // What a refused submit says: the throttle and a refused field each name
   // their cause; anything else is the generic failure.
@@ -1812,7 +1812,7 @@ document, posts the server-rendered fragment in and this swaps it.
 Three things here are load-bearing. The origin check is what stops any other
 frame or window scripting the preview surface -- the editor and the shell are
 same-origin by construction, so an event from anywhere else is not ours.
-window.rollerPreviewInit is the seam A5 defines: swapping innerHTML leaves
+window.pressroomPreviewInit is the seam A5 defines: swapping innerHTML leaves
 the new nodes uninitialised, so the galleries, maps and embeds in the
 fragment need the asset scripts run over them again, and only the editor
 bundle knows how. And the ready message is what lets the editor stop
@@ -1823,7 +1823,7 @@ not parsed yet.
 <script>
 // Proportional, because there is no honest line-to-pixel mapping between
 // Markdown and its rendering: two lines of [gallery] become a screenful.
-function rollerPreviewScrollTo(fraction) {
+function pressroomPreviewScrollTo(fraction) {
   var max = document.documentElement.scrollHeight - window.innerHeight;
   window.scrollTo(0, Math.max(0, max) * fraction);
 }
@@ -1836,26 +1836,26 @@ window.addEventListener('message', function (event) {
   var data = event.data || {};
   // A scroll carries no html: the editor sends one of these per animation
   // frame while the author scrolls, and re-rendering on each would be absurd.
-  if (data.type === 'roller-preview-scroll') {
-    if (typeof data.scroll === 'number') { rollerPreviewScrollTo(data.scroll); }
+  if (data.type === 'pressroom-preview-scroll') {
+    if (typeof data.scroll === 'number') { pressroomPreviewScrollTo(data.scroll); }
     return;
   }
-  if (data.type !== 'roller-preview') { return; }
+  if (data.type !== 'pressroom-preview') { return; }
   var article = document.getElementById('previewArticle');
   if (!article) { return; }
   article.innerHTML = data.html;
-  if (window.rollerPreviewInit) { window.rollerPreviewInit(article); }
-  if (typeof data.scroll === 'number') { rollerPreviewScrollTo(data.scroll); }
+  if (window.pressroomPreviewInit) { window.pressroomPreviewInit(article); }
+  if (typeof data.scroll === 'number') { pressroomPreviewScrollTo(data.scroll); }
 });
 // Announced on DOMContentLoaded rather than from this inline script, which
 // runs during head parse. The gallery asset macro registers its half of
-// rollerPreviewInit from a module, and a module is deferred -- so announcing
+// pressroomPreviewInit from a module, and a module is deferred -- so announcing
 // readiness here would open a window in which the editor could push a
 // fragment whose galleries have nobody to initialise them. Deferred modules
 // are guaranteed to have run by DOMContentLoaded; the map and embed macros
 // are classic scripts and have run already either way.
 document.addEventListener('DOMContentLoaded', function () {
-  window.parent.postMessage({ type: 'roller-preview-ready' }, window.location.origin);
+  window.parent.postMessage({ type: 'pressroom-preview-ready' }, window.location.origin);
 });
 </script>
 #end

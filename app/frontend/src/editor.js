@@ -6,12 +6,12 @@ import { markdown, markdownLanguage, markdownKeymap } from '@codemirror/lang-mar
 import { bracketMatching } from '@codemirror/language';
 import { closeBrackets, autocompletion } from '@codemirror/autocomplete';
 import { search, searchKeymap } from '@codemirror/search';
-import { rollerTheme, rollerHighlighting } from './markdown-theme.js';
+import { pressroomTheme, pressroomHighlighting } from './markdown-theme.js';
 import { shortcodeRanges } from './shortcodes.js';
 import { wordCount, readingMinutes } from './stats.js';
 import { hostBindings } from './keys.js';
 
-const shortcodeMark = Decoration.mark({ class: 'roller-shortcode' });
+const shortcodeMark = Decoration.mark({ class: 'pressroom-shortcode' });
 
 function shortcodePlugin(names) {
   return ViewPlugin.fromClass(class {
@@ -90,8 +90,8 @@ export function create(options) {
       closeBrackets(),
       search({ top: true }),
       markdown({ base: markdownLanguage, addKeymap: false }),
-      rollerHighlighting,
-      rollerTheme,
+      pressroomHighlighting,
+      pressroomTheme,
       EditorView.lineWrapping,
       EditorView.contentAttributes.of({ 'aria-label': label }),
       placeholderExt(options.placeholder || ''),
@@ -106,7 +106,7 @@ export function create(options) {
   });
 
   const wrapper = document.createElement('div');
-  wrapper.className = 'roller-editor';
+  wrapper.className = 'pressroom-editor';
   textarea.parentNode.insertBefore(wrapper, textarea);
   textarea.hidden = true;
   const view = new EditorView({ state, parent: wrapper });

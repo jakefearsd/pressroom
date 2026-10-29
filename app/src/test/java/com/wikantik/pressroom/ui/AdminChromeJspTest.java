@@ -321,7 +321,7 @@ class AdminChromeJspTest {
     void theSimplePageTitleSitsInsideTheCard() {
         String src = jsp("tiles/tiles-simplepage.jsp");
         int card = src.indexOf("<div class=\"card-body\">");
-        int title = src.indexOf("<h1 class=\"roller-page-title\">");
+        int title = src.indexOf("<h1 class=\"pressroom-page-title\">");
         assertTrue(card >= 0 && title > card, "the h1 is rendered outside the card");
     }
 

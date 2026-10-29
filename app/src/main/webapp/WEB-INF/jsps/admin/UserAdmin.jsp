@@ -68,7 +68,7 @@
 <c:choose>
     <c:when test="${not empty accounts}">
         <div class="table-responsive">
-        <table class="rollertable table" id="userListTable">
+        <table class="pressroomtable table" id="userListTable">
             <tr>
                 <th scope="col"><spring:message code="userList.column.account"/></th>
                 <th scope="col"><spring:message code="userList.column.kind"/></th>

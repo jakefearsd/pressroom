@@ -23,15 +23,15 @@ mismatch 404s the asset on every page that includes this file.
 
 <%-- "Quiet Instrument" design tokens (docs/design/design-system.md). Loads
      after Bootstrap so its custom properties are available, and before
-     roller.css so roller.css can override on top of it. --%>
-<link rel="stylesheet" media="all" href='<c:url value="/pressroom-ui/styles/roller-tokens.css"/>' />
+     pressroom.css so pressroom.css can override on top of it. --%>
+<link rel="stylesheet" media="all" href='<c:url value="/pressroom-ui/styles/pressroom-tokens.css"/>' />
 
-<link rel="stylesheet" media="all" href='<c:url value="/pressroom-ui/styles/roller.css"/>' />
+<link rel="stylesheet" media="all" href='<c:url value="/pressroom-ui/styles/pressroom.css"/>' />
 
-<script src="<c:url value="/theme/scripts/roller.js"/>"></script>
+<script src="<c:url value="/theme/scripts/pressroom.js"/>"></script>
 
 <%-- The Markdown editor. Built from app/frontend by Maven (esbuild) into
-     pressroom-ui/scripts/roller-editor.js under the webapp root -- see
+     pressroom-ui/scripts/pressroom-editor.js under the webapp root -- see
      app/frontend/build.mjs for why that path and no classpath one. Loaded
      only on the two screens that mount an editor: the bundle is a few
      hundred KB and every other admin page would pay for it.
@@ -43,7 +43,7 @@ mismatch 404s the asset on every page that includes this file.
      editor, add it here; the failure mode is loud (the page's own inline
      script throws "PressroomEditor is not defined"), not silent.
 
-     Last in this file so roller-editor.css can override roller.css. --%>
+     Last in this file so pressroom-editor.css can override pressroom.css. --%>
 <c:if test="${fn:contains(tile_content, 'EntryEdit.jsp') or fn:contains(tile_content, 'PageEdit.jsp')}">
 <%-- ?v=<application version>: the bundle's name is unversioned and the app
      sends no Cache-Control, so a browser or CDN would keep a bundle from the
@@ -51,7 +51,7 @@ mismatch 404s the asset on every page that includes this file.
      Colophon's, the one the footer shows; c:param encodes it. --%>
 <% request.setAttribute("editorBundleVersion", com.wikantik.pressroom.business.Colophon.of(
        null, null, java.time.Clock.systemDefaultZone()).version()); %>
-<script src="<c:url value='/pressroom-ui/scripts/roller-editor.js'><c:param name='v' value='${editorBundleVersion}'/></c:url>"></script>
-<link rel="stylesheet" media="all" href="<c:url value='/pressroom-ui/styles/roller-editor.css'/>" />
+<script src="<c:url value='/pressroom-ui/scripts/pressroom-editor.js'><c:param name='v' value='${editorBundleVersion}'/></c:url>"></script>
+<link rel="stylesheet" media="all" href="<c:url value='/pressroom-ui/styles/pressroom-editor.css'/>" />
 </c:if>
 

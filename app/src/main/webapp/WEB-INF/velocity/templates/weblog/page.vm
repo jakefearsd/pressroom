@@ -38,7 +38,7 @@ markup so a page does not look foreign inside any of them.
     ## stylesheets whose late arrival at the end of <body> is a flash of
     ## unstyled gallery/map. The content assets (callouts, code blocks, heading
     ## anchors) style and enhance the article below, which carries their
-    ## roller-content class for that reason.
+    ## pressroom-content class for that reason.
     #showGalleryAssets()
     #showMapAssets()
     #showContentAssets()
@@ -52,7 +52,7 @@ markup so a page does not look foreign inside any of them.
     <nav><ul class="page-nav">#showPageLinks($model.weblog)</ul></nav>
 </header>
 <main>
-    <article class="roller-content">
+    <article class="pressroom-content">
         <h1>$utils.escapeHTML($model.page.title)</h1>
         $model.page.renderedContent
     </article>

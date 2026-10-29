@@ -13,17 +13,17 @@ resolves through the index at the end of `CLAUDE.md`.
   Its three per-weblog actions (flush cache, rebuild index, regenerate
   renditions) pick a weblog in a `<select>`.
 - **Design system**: `docs/design/design-system.md` is the committed spec
-  ("Quiet Instrument"). Tokens live in `pressroom-ui/styles/roller-tokens.css`
+  ("Quiet Instrument"). Tokens live in `pressroom-ui/styles/pressroom-tokens.css`
   (light under `:root`, dark under `@media (prefers-color-scheme: dark)`,
   self-hosted IBM Plex `@font-face`), linked in `head.jsp` *after*
-  `bootstrap.min.css` and *before* `roller.css` (each layer overriding the
+  `bootstrap.min.css` and *before* `pressroom.css` (each layer overriding the
   last). `DesignTokenTest` enforces that ordering, every hex literal tracing
   to the spec's 21 values, and light/dark defining the same tokens.
 - **Never restyle by renaming a selector.** Every admin route's content tile
   must keep emitting the CSS marker `Routes` pins for it in
   `it-selenium/.../support/Routes.java`; `RouteSweepIT` asserts it on every
   route, because full chrome (banner, nav, footer,
-  `<h2 class="roller-page-title">`) renders even with no content tile — the
+  `<h2 class="pressroom-page-title">`) renders even with no content tile — the
   `categoryEdit.rol` failure mode: a healthy 200 with no form. Update `Routes`
   in the same commit as the CSS.
 - **The tiles system** is homegrown, not Apache Tiles: `ViewDefinition`
@@ -46,7 +46,7 @@ resolves through the index at the end of `CLAUDE.md`.
   decodes to `'` *before* the JS compiles, so one apostrophe
   (`o'brien@example.com`) breaks the handler and the click proceeds
   unconfirmed; an attribute has no second parser, so `dataset.confirm` gets
-  the literal text. In `theme/scripts/roller.js`, `click` owns `data-confirm`
+  the literal text. In `theme/scripts/pressroom.js`, `click` owns `data-confirm`
   on a *control* (a `formaction` button, a link), `submit` owns it on the
   *form* (catching Enter in a text field), and the click handler's ancestor
   walk stops at the form or both prompt (shipped once on `UserEdit`).
@@ -104,7 +104,7 @@ resolves through the index at the end of `CLAUDE.md`.
 - **One selection bar for every list with bulk actions.** `.selection-bar`
   (`data-selection-bar="<form id>"`, `hidden` by default) sits above the table
   on Entries/Submissions/MediaFileView; the header checkbox carries
-  `data-select-all` and is excluded from the count. `roller.js`'s delegated
+  `data-select-all` and is excluded from the count. `pressroom.js`'s delegated
   document-level `change` listener finds the bar whose `data-selection-bar`
   matches the checkbox's `form.id`, counts
   `input[type=checkbox]:checked:not([data-select-all])`, toggles `bar.hidden`,
@@ -134,7 +134,7 @@ resolves through the index at the end of `CLAUDE.md`.
   (`INVALID_FIELD_IDS`). All three admin layouts render
   `<body data-invalid-fields="${fn:escapeXml(invalidFieldIds)}">` **only when
   non-empty** (sticky, it would mark every later clean render refused).
-  `roller.js` reads `document.body.dataset.invalidFields` on
+  `pressroom.js` reads `document.body.dataset.invalidFields` on
   `DOMContentLoaded` and, for each id that resolves, adds `.is-invalid`, sets
   `aria-invalid="true"`, and focuses the first — null-guarded (it also loads
   on public pages), an unrendered id skipped silently; the CSS

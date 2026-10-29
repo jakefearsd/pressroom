@@ -14,9 +14,9 @@
 #set($fdReading = true)
 #includeTemplate($model.weblog "_header")
 
-## roller-content puts the article inside the content assets' scope
+## pressroom-content puts the article inside the content assets' scope
 ## (callouts, code blocks, heading anchors), as the shared fallback did.
-<article class="fd-page roller-content">
+<article class="fd-page pressroom-content">
     <h1 class="fd-page-title">$utils.escapeHTML($model.page.title)</h1>
     <div class="fd-prose">$model.page.renderedContent</div>
 </article>

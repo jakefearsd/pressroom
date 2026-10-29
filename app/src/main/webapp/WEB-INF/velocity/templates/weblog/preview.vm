@@ -7,7 +7,7 @@ shell exists so an author sees their prose in the weblog's own stylesheet
 while they type, and the editor fills #previewArticle over postMessage (see
 #showPreviewShellScript). A theme that ships its own _preview names the
 classes its reading column is actually styled through; this one cannot know
-them, so it uses neutral roller-preview-* names and gets the stylesheet, the
+them, so it uses neutral pressroom-preview-* names and gets the stylesheet, the
 measure-free defaults and the shortcode assets right instead.
 *#
 <!DOCTYPE html>
@@ -28,8 +28,8 @@ measure-free defaults and the shortcode assets right instead.
     <title>Preview</title>
     #if($model.weblog.stylesheet)<link rel="stylesheet" href="$model.weblog.stylesheet">#end
     <style>
-    .roller-preview { margin: 0; }
-    .roller-preview-main { max-width: 46rem; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+    .pressroom-preview { margin: 0; }
+    .pressroom-preview-main { max-width: 46rem; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
     </style>
     ## The same ones the themes call, in the same order and for the same
     ## reason: #showEmbedAssets and the content assets bind on
@@ -44,9 +44,9 @@ measure-free defaults and the shortcode assets right instead.
     #showEmbedAssets()
     #showPreviewShellScript()
 </head>
-<body class="roller-preview">
-<main class="roller-preview-main">
-    <article id="previewArticle" class="roller-preview-prose"></article>
+<body class="pressroom-preview">
+<main class="pressroom-preview-main">
+    <article id="previewArticle" class="pressroom-preview-prose"></article>
 </main>
 </body>
 </html>

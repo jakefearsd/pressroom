@@ -51,7 +51,7 @@ class ExcerptsTest {
         // paragraph of the writer's own prose.
         String html = "<h2 id=\"intro\">Introduction</h2>\n"
                 + "<pre><code>SELECT 1;</code></pre>\n"
-                + "<figure class=\"roller-figure\"><img src=\"a.jpg\" alt=\"A\"><figcaption>A caption.</figcaption></figure>\n"
+                + "<figure class=\"pressroom-figure\"><img src=\"a.jpg\" alt=\"A\"><figcaption>A caption.</figcaption></figure>\n"
                 + "<div class=\"markdown-alert markdown-alert-note\"><p class=\"markdown-alert-title\">Note</p>"
                 + "<p>An aside.</p></div>\n"
                 + "<blockquote><p>Somebody else's words.</p></blockquote>\n"

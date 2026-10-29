@@ -83,7 +83,7 @@ public final class Routes {
         /**
          * The view definition resolves, but its content tile points at
          * empty.jsp. The page returns HTTP 200 with the full site chrome --
-         * banner, menu, footer and even an {@code <h1 class="roller-page-title">}
+         * banner, menu, footer and even an {@code <h1 class="pressroom-page-title">}
          * from the layout -- and no form. Status-only assertions pass on it.
          * Expect 200 and no content marker.
          */

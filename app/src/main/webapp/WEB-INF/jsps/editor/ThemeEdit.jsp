@@ -21,7 +21,7 @@
     <spring:message code="themeEditor.subtitle" arguments="${actionWeblog.handle}"/>
 </p>
 
-<script src="<c:url value='/theme/scripts/roller-guard-submit.js'/>"></script>
+<script src="<c:url value='/theme/scripts/pressroom-guard-submit.js'/>"></script>
 
 <form action="${pageContext.request.contextPath}/pressroom-ui/authoring/themeEdit!save.rol" method="post" class="guard-submit">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
@@ -277,7 +277,7 @@
 </c:choose>
         <%-- Delegated, not an inline onchange on 50 controls: an inline
              handler is a second place generated text reaches raw JavaScript
-             (see roller.js's data-confirm note), and the cards are generated
+             (see pressroom.js's data-confirm note), and the cards are generated
              from ${themes}. The type radios are wired the same way for the
              same reason. --%>
         $('.theme-cards').on('change', "input[name='selectedThemeId']", function () {

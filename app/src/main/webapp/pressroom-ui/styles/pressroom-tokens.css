@@ -88,7 +88,7 @@ body {
 /* Dark-mode <select> caret. Bootstrap re-strokes its stock chevron per
    color-scheme (dark grey by default, a light grey under its own
    data-bs-theme="dark" attribute) via the --bs-form-select-bg-img custom
-   property; roller.css can't do the equivalent itself and stay hex-free
+   property; pressroom.css can't do the equivalent itself and stay hex-free
    (`url()` doesn't resolve CSS custom properties, so a var(--ink) reference
    inside the SVG string is just literal text, not a color) -- this file
    already carries the dark palette's hex by design (DesignTokenTest audits

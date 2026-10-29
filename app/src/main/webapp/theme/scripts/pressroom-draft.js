@@ -35,7 +35,7 @@
 (function (window, document) {
     'use strict';
 
-    var PREFIX = 'roller.draft.v1:';
+    var PREFIX = 'pressroom.draft.v1:';
     var DEBOUNCE_MS = 2000;
     var MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -331,7 +331,7 @@
             // indicator (Task A8), which listens on the bar element rather
             // than reaching into this module's internals.
             if (bar) {
-                dispatch(bar, 'roller-draft:saved');
+                dispatch(bar, 'pressroom-draft:saved');
             }
         }
 
@@ -472,6 +472,6 @@
         });
     }
 
-    window.rollerDraft = { install: install };
+    window.pressroomDraft = { install: install };
 
 }(window, document));

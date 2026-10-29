@@ -79,7 +79,7 @@ class BusinessProfileIT extends PressroomIT {
             $("#messages").should(exist);
             assertTrue($$("#errors").isEmpty(), "saving the business reported an error");
             openPath("/pressroom-ui/admin/businesses.rol");
-            $$("table.rollertable td").findBy(text(businessName)).should(exist);
+            $$("table.pressroomtable td").findBy(text(businessName)).should(exist);
 
             // --- the blog owner selects it and describes the place --------
             openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + handle);
@@ -150,13 +150,13 @@ class BusinessProfileIT extends PressroomIT {
             return;
         }
         openPath("/pressroom-ui/admin/businesses.rol");
-        SelenideElement row = $$("table.rollertable tr").findBy(text(businessName));
+        SelenideElement row = $$("table.pressroomtable tr").findBy(text(businessName));
         awaitNewPageAfter(() -> {
             row.find("button[data-confirm]").click();
             Selenide.confirm();
         });
         $("#messages").should(exist);
-        $$("table.rollertable td").findBy(text(businessName)).shouldNot(exist);
+        $$("table.pressroomtable td").findBy(text(businessName)).shouldNot(exist);
     }
 
     private void saveSettings() {

@@ -59,7 +59,7 @@ class McpIT extends PressroomIT {
                     "clientInfo", Map.of("name", "McpIT", "version", "1"))), Map.of());
             assertEquals(200, response.statusCode(), response.body());
             JsonNode result = JSON.readTree(response.body()).get("result");
-            assertEquals("roller", result.get("serverInfo").get("name").asString(), response.body());
+            assertEquals("pressroom", result.get("serverInfo").get("name").asString(), response.body());
             assertTrue(response.headers().firstValue("Mcp-Session-Id").isEmpty(), "stateless: no session id");
         } finally {
             revoke(token.id());

@@ -100,7 +100,7 @@ class CategoryIT extends PressroomIT {
                 "the category must be gone once its entries have been moved");
         openPath("/pressroom-ui/authoring/entries.rol?weblog=" + WEBLOG_HANDLE);
         BrowserHealth.current().settle();
-        assertTrue($$("table.rollertable").first().getText().contains(title),
+        assertTrue($$("table.pressroomtable").first().getText().contains(title),
                 "the entry must survive its category being deleted");
         logout();
     }
@@ -275,7 +275,7 @@ class CategoryIT extends PressroomIT {
 
     private String categoryNames() {
         openPath(CATEGORIES);
-        $("table.rollertable").should(exist);
+        $("table.pressroomtable").should(exist);
         String names = executeJavaScript(
                 "return Array.from(document.querySelectorAll('tr[data-category-name]'))"
                         + ".map(r => r.getAttribute('data-category-name')).join(',');");

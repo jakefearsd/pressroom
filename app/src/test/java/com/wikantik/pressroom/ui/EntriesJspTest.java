@@ -46,8 +46,8 @@ class EntriesJspTest {
     private static final Path JSPS = Path.of("src/main/webapp/WEB-INF/jsps");
     private static final Path ENTRIES = JSPS.resolve("editor/Entries.jsp");
     private static final Path SIDEBAR = JSPS.resolve("editor/EntriesSidebar.jsp");
-    private static final Path PRESSROOM_JS = Path.of("src/main/webapp/theme/scripts/roller.js");
-    private static final Path PRESSROOM_CSS = Path.of("src/main/webapp/pressroom-ui/styles/roller.css");
+    private static final Path PRESSROOM_JS = Path.of("src/main/webapp/theme/scripts/pressroom.js");
+    private static final Path PRESSROOM_CSS = Path.of("src/main/webapp/pressroom-ui/styles/pressroom.css");
 
     private static String read(Path path) throws IOException {
         return Files.readString(path, StandardCharsets.UTF_8);
@@ -207,7 +207,7 @@ class EntriesJspTest {
     /**
      * Sort is a select that submits on change, and the submit is wired by a
      * delegated listener rather than an inline {@code onchange} -- same
-     * reasoning as {@code data-confirm} (see roller.js): behaviour belongs in
+     * reasoning as {@code data-confirm} (see pressroom.js): behaviour belongs in
      * the script, not in an attribute a translated string can break.
      */
     @Test
@@ -221,7 +221,7 @@ class EntriesJspTest {
         assertFalse(sidebar.contains("onchange="), "EntriesSidebar.jsp uses an inline onchange handler");
 
         assertTrue(read(PRESSROOM_JS).contains("data-submit-on-change"),
-                "roller.js has no delegated handler for data-submit-on-change");
+                "pressroom.js has no delegated handler for data-submit-on-change");
     }
 
     @Test
@@ -229,7 +229,7 @@ class EntriesJspTest {
         String css = read(PRESSROOM_CSS);
 
         for (String selector : List.of(".entry-title", ".entry-meta", ".quiet-link", "time.data")) {
-            assertTrue(css.contains(selector), "roller.css lacks " + selector);
+            assertTrue(css.contains(selector), "pressroom.css lacks " + selector);
         }
     }
 }

@@ -56,7 +56,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>The macro is one {@code <style>} block (which must work with no script
  * at all) and one classic bootstrap script that loads
- * {@code roller-content.js} only when the page has a code block or a heading
+ * {@code pressroom-content.js} only when the page has a code block or a heading
  * id inside content to enhance -- the same lazy bargain the map assets make
  * with Leaflet.
  */
@@ -65,9 +65,9 @@ class ContentAssetsRenderingTest {
     private static final String HANDLE = "contentassetblog";
 
     /** The bundle the bootstrap injects; context-relative, from $url.site. */
-    private static final String BUNDLE = "/pressroom-ui/scripts/roller-content.js";
+    private static final String BUNDLE = "/pressroom-ui/scripts/pressroom-content.js";
 
-    private static final String INITIALISER = "function rollerInitContent(";
+    private static final String INITIALISER = "function pressroomInitContent(";
 
     /** One rule from the style block, standing for the whole of it. */
     private static final String CALLOUT_RULE = ".markdown-alert-note {";
@@ -125,13 +125,13 @@ class ContentAssetsRenderingTest {
 
         savePage("about", "About", "Some **text**.");
         String themed = render("/" + HANDLE + "/about");
-        assertTrue(themed.contains("<article class=\"fd-page roller-content\">"),
+        assertTrue(themed.contains("<article class=\"fd-page pressroom-content\">"),
                 "frontpage's own _page must put its article in the content scope:\n" + themed);
         assertAssetsExactlyOnce(themed, "frontpage page.vm");
 
         switchTheme(com.wikantik.pressroom.pojos.WeblogTheme.CUSTOM);
         String page = render("/" + HANDLE + "/about");
-        assertTrue(page.contains("<article class=\"roller-content\">"),
+        assertTrue(page.contains("<article class=\"pressroom-content\">"),
                 "the fallback page's article must be a content container, or its "
                         + "headings get no anchors:\n" + page);
         assertAssetsExactlyOnce(page, "the shared templates/weblog/page.vm");
@@ -233,13 +233,13 @@ class ContentAssetsRenderingTest {
                         + "bootstrap's injected script element:\n" + body);
         assertFalse(body.contains("<script src=\"/roller" + BUNDLE),
                 "the bundle must never be a static script tag -- it is lazy:\n" + body);
-        assertTrue(body.contains("pre:not([data-roller-code]) > code"),
+        assertTrue(body.contains("pre:not([data-pressroom-code]) > code"),
                 "the presence check must skip blocks already enhanced:\n" + body);
-        assertTrue(body.contains(":is(h2, h3, h4)[id]:not([data-roller-anchor])"),
+        assertTrue(body.contains(":is(h2, h3, h4)[id]:not([data-pressroom-anchor])"),
                 "the presence check must skip headings already anchored:\n" + body);
-        assertTrue(body.contains("rollerInitContent(document)"),
+        assertTrue(body.contains("pressroomInitContent(document)"),
                 "the public page must still enhance once on load:\n" + body);
-        assertTrue(body.contains("rollerInitContent(root);"),
+        assertTrue(body.contains("pressroomInitContent(root);"),
                 "the initialiser must chain onto the preview seam:\n" + body);
         assertTrue(body.contains("data-copy=\"Copy\""), body);
         assertTrue(body.contains("data-copied=\"Copied\""), body);
@@ -316,8 +316,8 @@ class ContentAssetsRenderingTest {
     @Test
     void theStylesAreScopedToContentAndKeepThemeRulesInCharge() throws Exception {
         String css = contentStyleBlock(render("/" + HANDLE));
-        String scope = ".qj-prose, .tg-entry-content, .pf-entry-content, .roller-preview-prose, "
-                + ".roller-content";
+        String scope = ".qj-prose, .tg-entry-content, .pf-entry-content, .pressroom-preview-prose, "
+                + ".pressroom-content";
         assertTrue(css.contains(":where(" + scope + ") pre {"),
                 "code blocks are styled inside content only, at zero added specificity:\n" + css);
         assertTrue(css.contains(":where(" + scope + ") :not(pre) > code {"),
@@ -326,7 +326,7 @@ class ContentAssetsRenderingTest {
         for (String type : List.of("note", "tip", "important", "warning", "caution")) {
             assertTrue(css.contains(".markdown-alert-" + type + " {"), type + ":\n" + css);
         }
-        assertTrue(css.contains(".roller-code-lines {") && css.contains("user-select: none;"),
+        assertTrue(css.contains(".pressroom-code-lines {") && css.contains("user-select: none;"),
                 "line numbers must never be selectable:\n" + css);
     }
 
@@ -353,7 +353,7 @@ class ContentAssetsRenderingTest {
 
     private static void assertNoLeaks(String body, String where) {
         assertFalse(body.contains("#showContentAssets"), where + " leaked the macro call:\n" + body);
-        assertFalse(body.contains("$rollerContent"), where + " leaked a macro variable:\n" + body);
+        assertFalse(body.contains("$pressroomContent"), where + " leaked a macro variable:\n" + body);
         assertFalse(body.contains("$text."), where + " leaked a message reference:\n" + body);
         assertFalse(body.contains("$utils."), where + " leaked a utility reference:\n" + body);
         assertFalse(body.contains("$url."), where + " leaked a url reference:\n" + body);

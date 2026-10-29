@@ -47,7 +47,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AdminJspHygieneTest {
 
     private static final Path JSPS = Path.of("src/main/webapp/WEB-INF/jsps");
-    private static final Path STYLES = Path.of("src/main/webapp/pressroom-ui/styles/roller.css");
+    private static final Path STYLES = Path.of("src/main/webapp/pressroom-ui/styles/pressroom.css");
 
     private static String read(Path p) {
         try {
@@ -193,9 +193,9 @@ class AdminJspHygieneTest {
     @Test
     void messagesJspCarriesNoInlineStyleBlock() {
         assertTrue(!jsp("tiles/messages.jsp").contains("<style>"),
-                "tiles/messages.jsp: move the alert list styling into roller.css");
+                "tiles/messages.jsp: move the alert list styling into pressroom.css");
         assertTrue(read(STYLES).contains(".alert ul"),
-                "roller.css: the .alert ul rule from messages.jsp should live here");
+                "pressroom.css: the .alert ul rule from messages.jsp should live here");
     }
 
     /**
@@ -222,7 +222,7 @@ class AdminJspHygieneTest {
         List<String> wrong = new ArrayList<>();
         for (String layout : List.of("tiles/tiles-tabbedpage.jsp", "tiles/tiles-mainmenupage.jsp")) {
             String src = jsp(layout);
-            int title = src.indexOf("roller-page-title");
+            int title = src.indexOf("pressroom-page-title");
             int messages = src.indexOf("${tile_messages}");
             if (title < 0 || messages < 0 || title > messages) {
                 wrong.add(layout);
@@ -285,7 +285,7 @@ class AdminJspHygieneTest {
     void thePageTitleIsTheDocumentHeading() {
         List<String> wrong = new ArrayList<>();
         for (String layout : List.of("tiles/tiles-tabbedpage.jsp", "tiles/tiles-mainmenupage.jsp")) {
-            if (!jsp(layout).contains("<h1 class=\"roller-page-title\"")) {
+            if (!jsp(layout).contains("<h1 class=\"pressroom-page-title\"")) {
                 wrong.add(layout);
             }
         }
@@ -393,7 +393,7 @@ class AdminJspHygieneTest {
     @Test
     void theSubtitleRoleIsActuallyStyled() {
         assertTrue(read(STYLES).contains("p.subtitle"),
-                "roller.css has no p.subtitle rule, so the class is inert on ~15 screens");
+                "pressroom.css has no p.subtitle rule, so the class is inert on ~15 screens");
     }
 
     /**
@@ -465,7 +465,7 @@ class AdminJspHygieneTest {
         assertTrue(found.isEmpty(), "dead #leftcontent-era scaffolding still in: " + found);
     }
 
-    /** Inline style attributes on admin screens belong in roller.css. */
+    /** Inline style attributes on admin screens belong in pressroom.css. */
     @Test
     void theSweptScreensCarryNoInlineStyleAttributes() {
         List<String> found = new ArrayList<>();
@@ -693,7 +693,7 @@ class AdminJspHygieneTest {
      *
      * <p>The replacement puts the message in {@code data-confirm}, where
      * fn:escapeXml IS the correct escape because there is no second parser,
-     * and one delegated handler in roller.js reads it back through
+     * and one delegated handler in pressroom.js reads it back through
      * {@code dataset.confirm}.
      *
      * <p>The editor tree has a second shape of the same failure: a bare
@@ -749,7 +749,7 @@ class AdminJspHygieneTest {
      * part that matters -- WHERE each attribute sits.
      *
      * <p>All three belong on their CONTROL, not on the enclosing form. A
-     * form-level {@code data-confirm} is answered twice: roller.js's click
+     * form-level {@code data-confirm} is answered twice: pressroom.js's click
      * handler walks up from the clicked button and finds it, the operator
      * confirms, the native submit proceeds, and the submit handler finds the
      * same attribute and asks again. Two dialogs for one click. That shipped
@@ -774,15 +774,15 @@ class AdminJspHygieneTest {
                 }
             }
         }
-        String js = read(Path.of("src/main/webapp/theme/scripts/roller.js"));
+        String js = read(Path.of("src/main/webapp/theme/scripts/pressroom.js"));
         if (!js.contains("data-confirm")) {
-            wrong.add("theme/scripts/roller.js has no data-confirm handler");
+            wrong.add("theme/scripts/pressroom.js has no data-confirm handler");
         }
         // The general defence behind the convention: the click handler's walk
         // must stop at the form, or a form-level attribute double-prompts
         // again the moment someone adds one.
         if (!js.contains("node.tagName !== \"FORM\"")) {
-            wrong.add("roller.js: the click handler's ancestor walk must stop at the form");
+            wrong.add("pressroom.js: the click handler's ancestor walk must stop at the form");
         }
         assertTrue(wrong.isEmpty(), String.join("; ", wrong));
     }

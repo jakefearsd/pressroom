@@ -88,14 +88,14 @@
          the wrong one. Ctrl+S clicks whichever button EntryEdit.jsp marks:
          Save draft, or Update on a published entry, where Save draft would
          unpublish it. --%>
-    function rollerSaveDraft() {
+    function pressroomSaveDraft() {
         var button = document.querySelector("#entry button[data-save-shortcut]");
         if (button) {
             button.click();
         }
     }
 
-    function rollerPublish() {
+    function pressroomPublish() {
         var button = document.querySelector("#entry button[formaction$='publish.rol']");
         if (button) {
             button.click();
@@ -113,18 +113,18 @@
              The warning stays even though drafts now survive a lost tab: a
              local snapshot is a recovery mechanism, not a reason to stop
              telling someone they are walking away from unsaved work. --%>
-        var rollerEntryDirty = false;
-        rollerEditorChangeListeners.push(function () {
-            rollerEntryDirty = true;
+        var pressroomEntryDirty = false;
+        pressroomEditorChangeListeners.push(function () {
+            pressroomEntryDirty = true;
         });
         $("#entry").on('input change', function () {
-            rollerEntryDirty = true;
+            pressroomEntryDirty = true;
         });
         <%-- Namespaced. A bare .off("beforeunload") below would unbind every
              beforeunload handler on the page, including one belonging to
              something else added later -- silently, with no signal. --%>
-        $(window).on("beforeunload.rollerLeaveWarning", function (event) {
-            if (!rollerEntryDirty) {
+        $(window).on("beforeunload.pressroomLeaveWarning", function (event) {
+            if (!pressroomEntryDirty) {
                 return undefined;
             }
             if (event.originalEvent) {
@@ -133,8 +133,8 @@
             return "<spring:message code='weblogEdit.leaveWarning' javaScriptEscape='true'/>";
         });
         $("#entry").on('submit', function () {
-            rollerEntryDirty = false;
-            $(window).off("beforeunload.rollerLeaveWarning");
+            pressroomEntryDirty = false;
+            $(window).off("beforeunload.pressroomLeaveWarning");
         });
 
         <%-- Local draft recovery. The key carries the context path so two
@@ -143,8 +143,8 @@
              names the entryAdd:new snapshot: saving a new entry redirects
              here under a real id, and without this the "new" draft would
              linger and be offered to whoever starts the next entry. --%>
-        if (window.rollerDraft) {
-            window.rollerDraft.install({
+        if (window.pressroomDraft) {
+            window.pressroomDraft.install({
                 form: document.getElementById('entry'),
                 key: '${fn:escapeXml(draftKey)}',
                 staleKeys: ['${draftNewKey}'],
@@ -158,18 +158,18 @@
                      holds DRAFT -- comparing it would raise a phantom
                      "unsaved changes" bar over a save that just succeeded. --%>
                 exclude: ['bean.text', 'bean.status'],
-                getText: rollerGetEntryText,
-                setText: rollerSetEntryText,
+                getText: pressroomGetEntryText,
+                setText: pressroomSetEntryText,
                 onEditorChange: function (callback) {
-                    rollerEditorChangeListeners.push(callback);
+                    pressroomEditorChangeListeners.push(callback);
                 }
             });
         }
 
-        <%-- roller-draft.js dispatches this on the bar element right after it
+        <%-- pressroom-draft.js dispatches this on the bar element right after it
              writes a snapshot to localStorage. "Only if still dirty" matters
              at submit time: the entry's own submit handler above sets
-             rollerEntryDirty = false BEFORE roller-draft.js's own submit
+             pressroomEntryDirty = false BEFORE pressroom-draft.js's own submit
              handler runs save() and dispatches this event (both are bound on
              #entry; jQuery and native handlers on the same element still run
              in registration order, and this page's dirty-flag handler is
@@ -177,9 +177,9 @@
              locally" a moment before the page reloads to "Saved". --%>
         var draftBarForStatus = document.getElementById('draftRecoveryBar');
         if (draftBarForStatus) {
-            draftBarForStatus.addEventListener('roller-draft:saved', function () {
-                if (rollerEntryDirty) {
-                    rollerSetSaveState('savedLocally');
+            draftBarForStatus.addEventListener('pressroom-draft:saved', function () {
+                if (pressroomEntryDirty) {
+                    pressroomSetSaveState('savedLocally');
                 }
             });
         }

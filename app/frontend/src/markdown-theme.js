@@ -2,9 +2,9 @@ import { EditorView } from '@codemirror/view';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
 
-/* Every colour is a design token (roller-tokens.css); no hex here. Emphasis
+/* Every colour is a design token (pressroom-tokens.css); no hex here. Emphasis
    is weight, never size (design-system.md, signature move 4). */
-export const rollerTheme = EditorView.theme({
+export const pressroomTheme = EditorView.theme({
   '&': {
     backgroundColor: 'var(--surface)',
     color: 'var(--ink)',
@@ -27,7 +27,7 @@ export const rollerTheme = EditorView.theme({
   '.cm-searchMatch': { backgroundColor: 'var(--accent-quiet)', outline: '1px solid var(--accent)' },
   '.cm-tooltip': { backgroundColor: 'var(--surface)', border: '1px solid var(--line)', color: 'var(--ink)' },
   '.cm-tooltip-autocomplete ul li[aria-selected]': { backgroundColor: 'var(--accent-quiet)', color: 'var(--ink)' },
-  '.roller-shortcode': { color: 'var(--accent)', fontFamily: 'var(--font-data)', fontSize: '13.5px' }
+  '.pressroom-shortcode': { color: 'var(--accent)', fontFamily: 'var(--font-data)', fontSize: '13.5px' }
 });
 
 const style = HighlightStyle.define([
@@ -43,4 +43,4 @@ const style = HighlightStyle.define([
   { tag: tags.meta, color: 'var(--ink-soft)' }
 ]);
 
-export const rollerHighlighting = syntaxHighlighting(style);
+export const pressroomHighlighting = syntaxHighlighting(style);

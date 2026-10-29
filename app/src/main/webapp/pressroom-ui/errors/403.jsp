@@ -33,7 +33,7 @@
         <meta name="robots" content="noindex">
         <title>Access denied</title>
         <style>
-            /* The quiet-instrument palette (roller-tokens.css), as literals:
+            /* The quiet-instrument palette (pressroom-tokens.css), as literals:
                this page must render with no stylesheet and no Spring. */
             :root {
                 color-scheme: light dark;

@@ -20,7 +20,7 @@ there, so blame reaches the real authors instead of the move commit.
 - Both bundle URLs carry `?v=<application version>` (head.jsp via `Colophon`;
   weblog.vm via the config model's colophon): the names are unversioned and no
   Cache-Control is sent, so a release must change the URL.
-- Output `app/src/main/webapp/pressroom-ui/scripts/roller-editor.js`
+- Output `app/src/main/webapp/pressroom-ui/scripts/pressroom-editor.js`
   (git-ignored, regenerated) lives under `src/main/webapp`, not
   `target/classes/static`: with `DispatcherServlet` on `*.rol` only, neither
   classpath static resources nor `WEB-INF/classes` nesting can serve it; only
@@ -37,11 +37,11 @@ there, so blame reaches the real authors instead of the move commit.
 - `docker build` starts from a fresh `maven` image (no `app/frontend/node/`
   or `node_modules/`) so always pays the cold cost and needs
   `nodejs.org`/`registry.npmjs.org` (docker_deployment.md).
-- **Bundle size ruling**: `roller-editor.js` is ~575 KB minified / ~192 KB
+- **Bundle size ruling**: `pressroom-editor.js` is ~575 KB minified / ~192 KB
   gzipped, served only to the two login-gated editors; accepted — dropping
   fenced-code highlighting (the bulk) costs a feature for bytes nobody else
   pays.
-- **A second bundle, `roller-content.js`, serves readers** (entry
+- **A second bundle, `pressroom-content.js`, serves readers** (entry
   `app/frontend/src/content.js`, same directory, same git-ignore, pinned by
   `EditorBundlePomTest`): highlight.js `11.12.0` core with 20 explicitly
   registered grammars, copy buttons, line numbers, heading anchors. ~83 KB

@@ -22,7 +22,7 @@
      (tiles-tabbedpage.jsp / tiles-mainmenupage.jsp), not here -- this bar
      only keeps the pinned, always-present links. --%>
 
-<nav class="navbar navbar-expand-md roller-topbar">
+<nav class="navbar navbar-expand-md pressroom-topbar">
     <div class="container-fluid">
 
         <%-- The brand links home. It was href="#" while a second nav item

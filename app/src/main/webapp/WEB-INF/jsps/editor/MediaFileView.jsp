@@ -307,7 +307,7 @@
 
         <div style="clear:left;"></div>
 
-            <%-- The selection bar: hidden until roller.js's delegated checkbox
+            <%-- The selection bar: hidden until pressroom.js's delegated checkbox
                  handler finds a checked box in #mediaFileViewForm. Toggle,
                  move (with its target folder) and "new entry" are secondary;
                  delete is last because it is the one destructive control.
@@ -486,7 +486,7 @@
             $("#moveTargetMenu").attr('disabled', true);
         }
         <%-- toggleFunction() sets each checkbox's .checked directly and fires
-             no 'change' event of its own, so the selection bar in roller.js
+             no 'change' event of its own, so the selection bar in pressroom.js
              -- which only recounts in response to a real checkbox change --
              would never notice a Toggle click. Dispatch one bubbling change
              event on any single row; the delegated handler recounts every
@@ -498,7 +498,7 @@
     }
 
     // Confirmation is handled upstream now, by data-confirm on each
-    // triggering button (see roller.js): a click that fails to confirm never
+    // triggering button (see pressroom.js): a click that fails to confirm never
     // reaches here.
     function onDeleteSelected() {
         document.mediaFileViewForm.action = '<c:url value="/pressroom-ui/authoring/mediaFileView!deleteSelected.rol"/>';

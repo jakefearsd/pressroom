@@ -26,7 +26,7 @@ import static com.codeborne.selenide.Selenide.executeJavaScript;
 /**
  * The one place the browser suite names the Markdown editor's DOM. Every
  * read and write goes through the page's own seam functions
- * (rollerGetEntryText / rollerSetEntryText), never the editor's internals,
+ * (pressroomGetEntryText / pressroomSetEntryText), never the editor's internals,
  * so replacing the editor again is a change to this class only.
  *
  * <p>It exists because the previous swap was not like that: 25 IT classes
@@ -37,8 +37,8 @@ import static com.codeborne.selenide.Selenide.executeJavaScript;
 public final class Editor {
 
     /** The editor's root element; visible once the bundle has mounted. */
-    public static final String ROOT = ".roller-editor .cm-editor";
-    public static final String CONTENT = ".roller-editor .cm-content";
+    public static final String ROOT = ".pressroom-editor .cm-editor";
+    public static final String CONTENT = ".pressroom-editor .cm-content";
     public static final String TOOLBAR = "#editorToolbar";
     public static final String MODE_SPLIT = "#editorMode button[data-mode='split']";
     public static final String MODE_PREVIEW = "#editorMode button[data-mode='preview']";
@@ -57,12 +57,12 @@ public final class Editor {
 
     public static void setText(String markdown) {
         root();
-        executeJavaScript("rollerSetEntryText(arguments[0]);", markdown);
+        executeJavaScript("pressroomSetEntryText(arguments[0]);", markdown);
     }
 
     public static String getText() {
         root();
-        return executeJavaScript("return rollerGetEntryText();");
+        return executeJavaScript("return pressroomGetEntryText();");
     }
 
     /** Types through the keyboard, for tests that need real input events. */

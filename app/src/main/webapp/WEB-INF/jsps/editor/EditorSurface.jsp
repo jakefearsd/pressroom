@@ -108,8 +108,8 @@
              data-shell-url="<c:out value='${previewShellURL}'/>"></div>
     </div>
     <%-- The two status spans replace what used to be an empty div that only
-         ever grew error spans from rollerStatusError. Rendering them here --
-         rather than from rollerUpdateStatus() on first run -- means the
+         ever grew error spans from pressroomStatusError. Rendering them here --
+         rather than from pressroomUpdateStatus() on first run -- means the
          status line's CSS ("empty" hides it) never needs to distinguish
          "not yet initialised" from "genuinely nothing to say", and existing
          content's word count is correct on the very first paint rather than

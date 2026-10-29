@@ -34,7 +34,7 @@
 </p>
 
 <%-- Local draft recovery -- see EntryEdit.jsp. --%>
-<script src="<c:url value='/theme/scripts/roller-draft.js'/>"></script>
+<script src="<c:url value='/theme/scripts/pressroom-draft.js'/>"></script>
 <script>
     // ClipboardJS is loaded globally by head.jsp.
     $(document).ready(function () {
@@ -83,9 +83,9 @@
 <%-- Request scope, not page scope: EditorSurface.jsp arrives via jsp:include
      and cannot see page-scoped variables set here. --%>
 <c:set var="draftKey" scope="request"
-       value="roller.draft.v1:${pageContext.request.contextPath}:${actionWeblog.handle}:pageEdit:${empty bean.id ? 'new' : bean.id}"/>
+       value="pressroom.draft.v1:${pageContext.request.contextPath}:${actionWeblog.handle}:pageEdit:${empty bean.id ? 'new' : bean.id}"/>
 <c:set var="draftNewKey" scope="request"
-       value="roller.draft.v1:${pageContext.request.contextPath}:${actionWeblog.handle}:pageEdit:new"/>
+       value="pressroom.draft.v1:${pageContext.request.contextPath}:${actionWeblog.handle}:pageEdit:new"/>
 
 <%-- The same writing surface plus publish rail the entry editor runs (the
      approved card is docs/design/editor/editor-writing-surface.html): the main
@@ -109,7 +109,7 @@
             <span class="draft-bar-text"><spring:message code="session.expiringSoon"/></span>
         </div>
 
-        <%-- Draft recovery. Hidden until roller-draft.js finds a local
+        <%-- Draft recovery. Hidden until pressroom-draft.js finds a local
              snapshot the server does not have. type="button" is load-bearing:
              this sits inside the form, where a bare <button> submits it. --%>
         <div id="draftRecoveryBar" class="draft-bar" hidden role="status" aria-live="polite"
@@ -364,15 +364,15 @@
          Declared at script top level, not inside ready(): EditorScript.jsp
          reads both by name when it mounts the editor, which happens on
          ready. --%>
-    function rollerSavePage() {
+    function pressroomSavePage() {
         var button = document.getElementById('pageSaveButton');
         if (button) {
             button.click();
         }
     }
 
-    var rollerSaveDraft = rollerSavePage;
-    var rollerPublish = rollerSavePage;
+    var pressroomSaveDraft = pressroomSavePage;
+    var pressroomPublish = pressroomSavePage;
 
     $(document).ready(function () {
 
@@ -380,17 +380,17 @@
              EntryEditor.jsp, where registering both handlers inside the change
              callback left one submit handler per keystroke on the form about
              to be posted. --%>
-        var rollerPageDirty = false;
-        rollerEditorChangeListeners.push(function () {
-            rollerPageDirty = true;
+        var pressroomPageDirty = false;
+        pressroomEditorChangeListeners.push(function () {
+            pressroomPageDirty = true;
         });
         $("#pageEditForm").on('input change', function () {
-            rollerPageDirty = true;
+            pressroomPageDirty = true;
         });
         <%-- Namespaced, same reason as EntryEditor.jsp: a bare
              .off("beforeunload") unbinds every handler on the page. --%>
-        $(window).on("beforeunload.rollerLeaveWarning", function (event) {
-            if (!rollerPageDirty) {
+        $(window).on("beforeunload.pressroomLeaveWarning", function (event) {
+            if (!pressroomPageDirty) {
                 return undefined;
             }
             if (event.originalEvent) {
@@ -399,12 +399,12 @@
             return "<spring:message code='weblogEdit.leaveWarning' javaScriptEscape='true'/>";
         });
         $("#pageEditForm").on('submit', function () {
-            rollerPageDirty = false;
-            $(window).off("beforeunload.rollerLeaveWarning");
+            pressroomPageDirty = false;
+            $(window).off("beforeunload.pressroomLeaveWarning");
         });
 
-        if (window.rollerDraft) {
-            window.rollerDraft.install({
+        if (window.pressroomDraft) {
+            window.pressroomDraft.install({
                 form: document.getElementById('pageEditForm'),
                 key: '${fn:escapeXml(draftKey)}',
                 staleKeys: ['${draftNewKey}'],
@@ -415,25 +415,25 @@
                      visible <select> the author sets and PageBean.copyTo
                      writes it straight through, so it is real content. --%>
                 exclude: ['bean.content'],
-                getText: rollerGetEntryText,
-                setText: rollerSetEntryText,
+                getText: pressroomGetEntryText,
+                setText: pressroomSetEntryText,
                 onEditorChange: function (callback) {
-                    rollerEditorChangeListeners.push(callback);
+                    pressroomEditorChangeListeners.push(callback);
                 }
             });
         }
 
-        <%-- roller-draft.js dispatches this on the bar element right after it
+        <%-- pressroom-draft.js dispatches this on the bar element right after it
              writes a snapshot to localStorage. "Only if still dirty" matters
              at submit time: this page's own submit handler above clears the
-             flag BEFORE roller-draft.js's runs save() and dispatches -- so a
+             flag BEFORE pressroom-draft.js's runs save() and dispatches -- so a
              real save does not flash "Draft saved locally" a moment before the
              page reloads to "Saved". --%>
         var draftBarForStatus = document.getElementById('draftRecoveryBar');
         if (draftBarForStatus) {
-            draftBarForStatus.addEventListener('roller-draft:saved', function () {
-                if (rollerPageDirty) {
-                    rollerSetSaveState('savedLocally');
+            draftBarForStatus.addEventListener('pressroom-draft:saved', function () {
+                if (pressroomPageDirty) {
+                    pressroomSetSaveState('savedLocally');
                 }
             });
         }

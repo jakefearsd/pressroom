@@ -74,10 +74,10 @@ class MarkdownContentIT extends PressroomIT {
             + "```\nplain block\nsecond line\n```\n\n"
             + "Run `mvn verify` before you push.\n";
 
-    private static final String JAVA_BLOCK = ".roller-code[data-language='java']";
+    private static final String JAVA_BLOCK = ".pressroom-code[data-language='java']";
 
     /** The untagged block: enhanced like the other, with no language to name. */
-    private static final String PLAIN_BLOCK = ".roller-code:not([data-language])";
+    private static final String PLAIN_BLOCK = ".pressroom-code:not([data-language])";
 
     /** The live preview is debounced, then round-trips to the server. */
     private static final Duration RENDER = Duration.ofSeconds(10);
@@ -103,21 +103,21 @@ class MarkdownContentIT extends PressroomIT {
 
         // --- the java block: toolbar, highlighting, gutter -------------------
         SelenideElement java = $(content + " " + JAVA_BLOCK).should(exist);
-        java.$(".roller-code-lang").shouldHave(exactText("java"));
-        java.$("button.roller-code-copy").shouldBe(visible);
+        java.$(".pressroom-code-lang").shouldHave(exactText("java"));
+        java.$("button.pressroom-code-copy").shouldBe(visible);
         java.$$(".hljs-keyword").shouldHave(sizeGreaterThan(0));
-        java.$(".roller-code-lines").shouldHave(attribute("aria-hidden", "true"));
-        assertEquals("1\n2\n3", java.$(".roller-code-lines").getAttribute("textContent"),
+        java.$(".pressroom-code-lines").shouldHave(attribute("aria-hidden", "true"));
+        assertEquals("1\n2\n3", java.$(".pressroom-code-lines").getAttribute("textContent"),
                 "one number per line of the block");
         assertEquals("none", executeJavaScript(
-                "return getComputedStyle(arguments[0]).userSelect;", java.$(".roller-code-lines")),
+                "return getComputedStyle(arguments[0]).userSelect;", java.$(".pressroom-code-lines")),
                 "the gutter must not be selectable");
 
         // --- the untagged block: copy and numbers, no colour, no label --------
         SelenideElement plain = $(content + " " + PLAIN_BLOCK).should(exist);
-        plain.$(".roller-code-lang").shouldNot(exist);
-        plain.$("button.roller-code-copy").shouldBe(visible);
-        plain.$(".roller-code-lines").should(exist);
+        plain.$(".pressroom-code-lang").shouldNot(exist);
+        plain.$("button.pressroom-code-copy").shouldBe(visible);
+        plain.$(".pressroom-code-lines").should(exist);
         plain.$$("[class*='hljs']").shouldHave(size(0));
 
         // --- copy takes the code, never the gutter ---------------------------
@@ -126,8 +126,8 @@ class MarkdownContentIT extends PressroomIT {
         executeJavaScript("window.__copied = null;"
                 + "Object.defineProperty(navigator, 'clipboard', {configurable: true,"
                 + " value: {writeText: function (t) { window.__copied = t; return Promise.resolve(); }}});");
-        java.$("button.roller-code-copy").click();
-        java.$("button.roller-code-copy").shouldHave(exactText("Copied"));
+        java.$("button.pressroom-code-copy").click();
+        java.$("button.pressroom-code-copy").shouldHave(exactText("Copied"));
         assertEquals(JAVA, executeJavaScript("return window.__copied;"));
 
         // --- inline code is a chip -------------------------------------------
@@ -137,7 +137,7 @@ class MarkdownContentIT extends PressroomIT {
                 "inline code must sit on a tint");
 
         // --- the heading anchor ----------------------------------------------
-        SelenideElement anchor = $(content + " h2#storage-tier > a.roller-heading-anchor").should(exist);
+        SelenideElement anchor = $(content + " h2#storage-tier > a.pressroom-heading-anchor").should(exist);
         String href = anchor.getAttribute("href");
         assertNotNull(href);
         assertTrue(href.endsWith("#storage-tier"), "the anchor must link to its heading: " + href);
@@ -161,10 +161,10 @@ class MarkdownContentIT extends PressroomIT {
         try {
             String article = "#previewArticle.qj-prose";
             $(article + " .markdown-alert-note .markdown-alert-title").shouldHave(text("Note"), RENDER);
-            $(article + " " + JAVA_BLOCK + " .roller-code-lang").shouldHave(exactText("java"), RENDER);
+            $(article + " " + JAVA_BLOCK + " .pressroom-code-lang").shouldHave(exactText("java"), RENDER);
             $$(article + " " + JAVA_BLOCK + " .hljs-keyword").shouldHave(sizeGreaterThan(0));
-            $(article + " " + PLAIN_BLOCK + " button.roller-code-copy").should(exist);
-            $(article + " h2#storage-tier > a.roller-heading-anchor").should(exist);
+            $(article + " " + PLAIN_BLOCK + " button.pressroom-code-copy").should(exist);
+            $(article + " h2#storage-tier > a.pressroom-heading-anchor").should(exist);
         } finally {
             switchTo().defaultContent();
         }

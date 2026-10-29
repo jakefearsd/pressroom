@@ -266,7 +266,7 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
      *
      * <p>It reaches it as {@code tabTitle}, NOT by overwriting {@code
      * pageTitle}: the layouts render {@code pageTitle} a second time as the
-     * visible {@code <h2 class="roller-page-title">}, so appending there put
+     * visible {@code <h2 class="pressroom-page-title">}, so appending there put
      * the whole "Stored title -- Edit entry" string into the page's own
      * heading. The two are separate attributes precisely so the tab and the
      * heading can differ.

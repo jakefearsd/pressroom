@@ -51,7 +51,7 @@ import static org.junit.jupiter.api.Assumptions.assumeFalse;
  *
  * <p>Reachability sweeps usually degrade into "did it return 200", which is
  * worthless here. Roller's tabbedpage layout supplies a banner, a navigation
- * menu, a footer and an {@code <h1 class="roller-page-title">} regardless of
+ * menu, a footer and an {@code <h1 class="pressroom-page-title">} regardless of
  * what the content tile contains, so {@code categoryEdit.rol} -- whose content
  * tile is wired to empty.jsp -- returns a perfectly healthy-looking 200 with no
  * form on it. Every route therefore asserts a marker that only its own content

@@ -19,9 +19,9 @@
 /* Editor surface: toolbar, panes, status. Layout only -- CodeMirror's own
    look comes from EditorView.theme in app/frontend/src/markdown-theme.js.
    Loaded only on the two screens that mount an editor (head.jsp), which is
-   also why it is a separate file rather than a section of roller.css.
+   also why it is a separate file rather than a section of pressroom.css.
    Tokens only, no hex: DesignTokenTest audits this file the same way it
-   audits roller.css. */
+   audits pressroom.css. */
 
 .editor-surface { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
 /* Wraps rather than scrolls. `overflow-x: auto` computes overflow-y to
@@ -68,7 +68,7 @@
 
 /* The Summary drawer's toggle is a <button> (it toggles, it goes nowhere);
    take off the browser's button dress so it reads exactly like the anchor
-   .editor-drawer toggles in roller.css. */
+   .editor-drawer toggles in pressroom.css. */
 button.editor-drawer { width: 100%; padding: 0; border: 0; background: none; text-align: left; line-height: inherit; cursor: pointer; }
 button.editor-drawer:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 
@@ -81,9 +81,9 @@ button.editor-drawer:focus-visible { outline: 2px solid var(--focus); outline-of
 .editor-chooser-refusal { margin: 0 auto 0 0; font-size: 14.5px; color: var(--bad); }
 
 /* The title is a one-row textarea so a long title wraps instead of being cut
-   off (EditorScript.jsp, rollerFitTitle, sets its height to its text;
+   off (EditorScript.jsp, pressroomFitTitle, sets its height to its text;
    field-sizing does the same without script where a browser has it). Its
-   face and size are roller.css's .editor-title; this only takes away what a
+   face and size are pressroom.css's .editor-title; this only takes away what a
    textarea adds: the resize handle, the scrollbar and the inline baseline gap. */
 textarea.editor-title {
     display: block;

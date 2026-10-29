@@ -16,7 +16,7 @@
   directory of this distribution.
 --%>
 
-.roller-page-title {
+.pressroom-page-title {
     margin-top: 0px;
     margin-bottom: 2em;
     text-align: center;

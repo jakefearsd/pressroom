@@ -33,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Pins the couplings between the editors and {@code roller-draft.js}.
+ * Pins the couplings between the editors and {@code pressroom-draft.js}.
  *
  * <p>None of these can fail at compile time and none of them fail loudly in a
  * browser either: a missing {@code <script>} tag, a bar whose class the module
@@ -58,8 +58,8 @@ class EditorAutosaveWiringTest {
 
     @Test
     void theEntryEditorLoadsTheDraftScript() throws IOException {
-        assertTrue(read(ENTRY_EDIT).contains("/theme/scripts/roller-draft.js"),
-                "EntryEdit.jsp must load roller-draft.js; without it the editor "
+        assertTrue(read(ENTRY_EDIT).contains("/theme/scripts/pressroom-draft.js"),
+                "EntryEdit.jsp must load pressroom-draft.js; without it the editor "
                         + "looks entirely normal and never recovers anything");
     }
 
@@ -72,7 +72,7 @@ class EditorAutosaveWiringTest {
                 "draft-bar-text", "draft-bar-restore", "draft-bar-discard",
                 "data-template=", "data-restored=" }) {
             assertTrue(jsp.contains(required),
-                    "roller-draft.js querySelector()s '" + required
+                    "pressroom-draft.js querySelector()s '" + required
                             + "' and silently declines to offer anything without it");
         }
     }
@@ -94,8 +94,8 @@ class EditorAutosaveWiringTest {
     @Test
     void theEntryEditorsDraftKeyIsScopedToTheWeblogTheActionAndTheEntry() throws IOException {
         String jsp = read(ENTRY_EDIT);
-        assertTrue(jsp.contains("roller.draft.v1:"),
-                "the storage key must carry the versioned prefix roller-draft.js sweeps on");
+        assertTrue(jsp.contains("pressroom.draft.v1:"),
+                "the storage key must carry the versioned prefix pressroom-draft.js sweeps on");
         assertTrue(jsp.contains("${pageContext.request.contextPath}")
                         && jsp.contains("${actionWeblog.handle}")
                         && jsp.contains("${actionName}"),
@@ -118,12 +118,12 @@ class EditorAutosaveWiringTest {
     @Test
     void theEntryEditorInstallsTheModuleWithBothEditorSeams() throws IOException {
         String jsp = read(ENTRY_EDITOR);
-        assertTrue(jsp.contains("rollerDraft.install("),
+        assertTrue(jsp.contains("pressroomDraft.install("),
                 "EntryEditor.jsp must install the module");
-        assertTrue(jsp.contains("getText: rollerGetEntryText"),
-                "the module reads the editor through rollerGetEntryText");
-        assertTrue(jsp.contains("setText: rollerSetEntryText"),
-                "Restore writes back through rollerSetEntryText");
+        assertTrue(jsp.contains("getText: pressroomGetEntryText"),
+                "the module reads the editor through pressroomGetEntryText");
+        assertTrue(jsp.contains("setText: pressroomSetEntryText"),
+                "Restore writes back through pressroomSetEntryText");
     }
 
     @Test
@@ -148,14 +148,14 @@ class EditorAutosaveWiringTest {
     @Test
     void thePageEditorIsWiredTheSameWay() throws IOException {
         String jsp = read(PAGE_EDIT);
-        assertTrue(jsp.contains("/theme/scripts/roller-draft.js"),
-                "PageEdit.jsp must load roller-draft.js");
+        assertTrue(jsp.contains("/theme/scripts/pressroom-draft.js"),
+                "PageEdit.jsp must load pressroom-draft.js");
         assertTrue(jsp.contains("id=\"draftRecoveryBar\""),
                 "PageEdit.jsp must render the recovery bar");
-        assertTrue(jsp.contains("rollerDraft.install("),
+        assertTrue(jsp.contains("pressroomDraft.install("),
                 "PageEdit.jsp must install the module");
-        assertTrue(jsp.contains("getText: rollerGetEntryText")
-                        && jsp.contains("setText: rollerSetEntryText"),
+        assertTrue(jsp.contains("getText: pressroomGetEntryText")
+                        && jsp.contains("setText: pressroomSetEntryText"),
                 "PageEdit.jsp has its own copy of the editor seam and must pass both halves");
 
         // The bar's internals are hand-duplicated from EntryEdit.jsp rather
@@ -166,7 +166,7 @@ class EditorAutosaveWiringTest {
                 "draft-bar-text", "draft-bar-restore", "draft-bar-discard",
                 "data-template=", "data-restored=" }) {
             assertTrue(jsp.contains(required),
-                    "roller-draft.js querySelector()s '" + required
+                    "pressroom-draft.js querySelector()s '" + required
                             + "' and silently declines to offer anything without it");
         }
     }
@@ -174,8 +174,8 @@ class EditorAutosaveWiringTest {
     @Test
     void thePageEditorsDraftKeyIsScopedToTheWeblogAndThePage() throws IOException {
         String jsp = read(PAGE_EDIT);
-        assertTrue(jsp.contains("roller.draft.v1:"),
-                "the storage key must carry the versioned prefix roller-draft.js sweeps on");
+        assertTrue(jsp.contains("pressroom.draft.v1:"),
+                "the storage key must carry the versioned prefix pressroom-draft.js sweeps on");
         assertTrue(jsp.contains("${actionWeblog.handle}"),
                 "a key without the handle lets two weblogs' page editors share a snapshot");
         assertTrue(jsp.contains(":pageEdit:"),
@@ -214,7 +214,7 @@ class EditorAutosaveWiringTest {
         // on submit.
         for (Path jsp : new Path[] { ENTRY_EDITOR, PAGE_EDIT }) {
             String code = codeOnly(read(jsp));
-            assertTrue(code.contains("beforeunload.rollerLeaveWarning"),
+            assertTrue(code.contains("beforeunload.pressroomLeaveWarning"),
                     jsp + " must namespace its leave-warning binding");
             assertFalse(code.contains("off(\"beforeunload\")"),
                     jsp + " must not unbind beforeunload wholesale");
@@ -228,9 +228,9 @@ class EditorAutosaveWiringTest {
         // nothing breaks except housekeeping, which silently stops reaping
         // the keys the JSPs keep writing -- forever, in every author's
         // browser.
-        String module = read(Paths.get("src/main/webapp/theme/scripts/roller-draft.js"));
+        String module = read(Paths.get("src/main/webapp/theme/scripts/pressroom-draft.js"));
         Matcher prefix = Pattern.compile("var PREFIX = '([^']+)'").matcher(module);
-        assertTrue(prefix.find(), "roller-draft.js must declare a PREFIX");
+        assertTrue(prefix.find(), "pressroom-draft.js must declare a PREFIX");
 
         for (Path jsp : new Path[] { ENTRY_EDIT, PAGE_EDIT }) {
             assertTrue(read(jsp).contains(prefix.group(1)),
@@ -337,7 +337,7 @@ class EditorAutosaveWiringTest {
         // not mean rewriting this test.
         int flag = jsp.indexOf("Dirty = true;");
         assertTrue(flag > 0, "the leave-warning must still track a dirty flag");
-        int start = jsp.lastIndexOf("rollerEditorChangeListeners.push(", flag);
+        int start = jsp.lastIndexOf("pressroomEditorChangeListeners.push(", flag);
         assertTrue(start > 0, "the dirty flag must be set from an editor change listener");
         int open = jsp.indexOf('{', jsp.indexOf("function", start));
         assertTrue(open > 0, "the change handler must have a function body");

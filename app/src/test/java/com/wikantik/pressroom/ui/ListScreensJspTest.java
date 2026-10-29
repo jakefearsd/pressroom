@@ -315,7 +315,7 @@ class ListScreensJspTest {
         assertTrue(Pattern.compile("<c:if test=\"\\$\\{status != 'HIDDEN'}\">\\s*"
                         + "<p class=\"form-text\"><spring:message code=\"comments.hideVsDelete\"/></p>").matcher(src).find(),
                 "the hide-versus-delete help is not limited to the tabs that offer Hide");
-        assertTrue(src.contains("<th scope=\"col\" class=\"rollertable\" width=\"20%\"><spring:message code=\"comments.column.entry\"/></th>"),
+        assertTrue(src.contains("<th scope=\"col\" class=\"pressroomtable\" width=\"20%\"><spring:message code=\"comments.column.entry\"/></th>"),
                 "the Entry column is not capped, so it squeezes the comment");
     }
 

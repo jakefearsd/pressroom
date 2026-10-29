@@ -38,7 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Verifies {@code roller-tokens.css} -- the "Quiet Instrument" design
+ * Verifies {@code pressroom-tokens.css} -- the "Quiet Instrument" design
  * tokens (see {@code docs/design/design-system.md}) -- stays in sync with
  * its spec and stays wired into the page.
  *
@@ -64,21 +64,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class DesignTokenTest {
 
     private static final Path TOKENS_CSS =
-            Paths.get("src/main/webapp/pressroom-ui/styles/roller-tokens.css");
+            Paths.get("src/main/webapp/pressroom-ui/styles/pressroom-tokens.css");
 
     /**
-     * The stylesheets that load alongside {@code roller-tokens.css} and may
+     * The stylesheets that load alongside {@code pressroom-tokens.css} and may
      * therefore declare NO color of their own. Both are admin-UI files served
      * from the same {@code <head>} as the token file, so every color they
      * need is already available as a {@code var(--token)}.
      */
     private static final List<Path> TOKENS_ONLY_STYLESHEETS = List.of(
-            Paths.get("src/main/webapp/pressroom-ui/styles/roller.css"),
-            Paths.get("src/main/webapp/pressroom-ui/styles/roller-editor.css"));
+            Paths.get("src/main/webapp/pressroom-ui/styles/pressroom.css"),
+            Paths.get("src/main/webapp/pressroom-ui/styles/pressroom-editor.css"));
 
     /**
      * The CodeMirror bundle's own source, under Maven (frontend-maven-plugin
-     * builds it into {@code roller-editor.js}, see CLAUDE.md's "Frontend
+     * builds it into {@code pressroom-editor.js}, see CLAUDE.md's "Frontend
      * build"). {@code markdown-theme.js} styles the editor entirely through
      * {@code var(--token)} strings handed to CodeMirror's own theming API
      * (see its header comment), so it is tokens-only in the same sense the
@@ -112,8 +112,8 @@ public class DesignTokenTest {
     private static final Pattern HEX_LITERAL = Pattern.compile("#[0-9A-Fa-f]{6}\\b");
 
     /**
-     * Strips CSS block comments before the roller.css audit runs -- unlike
-     * roller-tokens.css, an admin stylesheet's own comments legitimately
+     * Strips CSS block comments before the pressroom.css audit runs -- unlike
+     * pressroom-tokens.css, an admin stylesheet's own comments legitimately
      * document hex values it does not itself declare (a third-party
      * stylesheet's hardcoded caret color, say), so those must not trip the
      * literal check below.
@@ -161,14 +161,14 @@ public class DesignTokenTest {
     }
 
     /**
-     * roller.css and roller-editor.css are deliberately tokens-only -- design-system.md's whole
-     * point is that a color is chosen once, in roller-tokens.css's 21-value
+     * pressroom.css and pressroom-editor.css are deliberately tokens-only -- design-system.md's whole
+     * point is that a color is chosen once, in pressroom-tokens.css's 21-value
      * spec, and every other stylesheet references it through
      * {@code var(--token)} rather than picking its own literal. The
      * background-shorthand bug this test guards against (a {@code
      * background:} rule silently wiping Bootstrap's {@code
      * background-image} caret) shipped as a hex/literal-shaped mistake, so
-     * this audits the same failure class the roller-tokens.css test above
+     * this audits the same failure class the pressroom-tokens.css test above
      * does -- a bare {@code #RRGGBB} outside a comment -- but expects ZERO
      * matches rather than checking against the spec set, since neither file
      * is supposed to declare any hex at all. Named CSS color keywords
@@ -204,7 +204,7 @@ public class DesignTokenTest {
      * The JS twin of {@link #tokensOnlyStylesheetsHaveNoHexColorLiteralsOutsideComments()}:
      * every {@code .js} file under {@code app/frontend/src/} must stay
      * tokens-only too. A hex literal there is exactly as much an off-spec
-     * color as one in {@code roller-editor.css} -- CodeMirror's theming API
+     * color as one in {@code pressroom-editor.css} -- CodeMirror's theming API
      * takes plain strings, so nothing stops a future edit from typing a
      * literal {@code '#17262A'} where {@code 'var(--ink)'} belongs, and this
      * directory sat unaudited while the CSS half was already covered.
@@ -250,12 +250,12 @@ public class DesignTokenTest {
      * it.
      *
      * <p>The assertion here is membership, not absence, and the distinction
-     * matters. {@code roller.css} may hold NO hex at all because
-     * {@code roller-tokens.css} loads alongside it and it can say
+     * matters. {@code pressroom.css} may hold NO hex at all because
+     * {@code pressroom-tokens.css} loads alongside it and it can say
      * {@code var(--accent)}. The feed stylesheets cannot: an XSL transform emits
      * a standalone document with one inline {@code <style>} and no companion
      * file to import, so it has to declare the palette it then references --
-     * the same job {@code roller-tokens.css} does, in a file that has to carry
+     * the same job {@code pressroom-tokens.css} does, in a file that has to carry
      * it itself. Demanding zero literals there would be demanding they render
      * uncolored. So the rule is the one that actually expresses the intent:
      * every color a stylesheet names must be one of the spec's 21 values.
@@ -263,7 +263,7 @@ public class DesignTokenTest {
      * fails a 3-digit {@code #f00} too, while letting a self-contained document
      * define the tokens it needs.
      *
-     * <p>{@code roller-tokens.css} itself is skipped -- it is the palette of
+     * <p>{@code pressroom-tokens.css} itself is skipped -- it is the palette of
      * record, and {@link #everyHexLiteralIsFromTheSpec()} already guards it.
      */
     @Test
@@ -337,21 +337,21 @@ public class DesignTokenTest {
         assertTrue(Files.exists(HEAD_JSP), "Expected to find " + HEAD_JSP.toAbsolutePath());
         String content = Files.readString(HEAD_JSP, StandardCharsets.UTF_8);
 
-        assertTrue(content.contains("roller-tokens.css"),
-                HEAD_JSP + " no longer references roller-tokens.css");
+        assertTrue(content.contains("pressroom-tokens.css"),
+                HEAD_JSP + " no longer references pressroom-tokens.css");
 
         int bootstrapIndex = content.indexOf("bootstrap.min.css");
-        int tokensIndex = content.indexOf("roller-tokens.css");
-        int pressroomCssIndex = content.indexOf("pressroom-ui/styles/roller.css");
+        int tokensIndex = content.indexOf("pressroom-tokens.css");
+        int pressroomCssIndex = content.indexOf("pressroom-ui/styles/pressroom.css");
 
         assertTrue(bootstrapIndex >= 0, HEAD_JSP + " no longer links bootstrap.min.css");
-        assertTrue(pressroomCssIndex >= 0, HEAD_JSP + " no longer links roller.css");
+        assertTrue(pressroomCssIndex >= 0, HEAD_JSP + " no longer links pressroom.css");
 
         assertTrue(bootstrapIndex < tokensIndex,
-                "roller-tokens.css must be linked after bootstrap.min.css so its custom "
+                "pressroom-tokens.css must be linked after bootstrap.min.css so its custom "
                         + "properties are available to override, but it appears first in " + HEAD_JSP);
         assertTrue(tokensIndex < pressroomCssIndex,
-                "roller-tokens.css must be linked before roller.css so roller.css can override "
+                "pressroom-tokens.css must be linked before pressroom.css so pressroom.css can override "
                         + "the tokens, but it appears after in " + HEAD_JSP);
     }
 

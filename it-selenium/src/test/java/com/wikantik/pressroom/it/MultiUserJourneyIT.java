@@ -243,7 +243,7 @@ class MultiUserJourneyIT extends PressroomIT {
         // Reaching the new weblog's own entry list is the first evidence the
         // weblog exists AND that its creator has permission on it.
         openPath("/pressroom-ui/authoring/entries.rol?weblog=" + handle);
-        $("#entries-list-marker, table.rollertable").should(exist);
+        $("#entries-list-marker, table.pressroomtable").should(exist);
         BrowserHealth.current().settle();
     }
 

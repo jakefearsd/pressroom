@@ -175,7 +175,7 @@ class AuthoringJourneyIT extends PressroomIT {
      * you whether it was.
      *
      * <p>Typed through the editor's own surface rather than {@code
-     * rollerSetEntryText}, for the same reason: the seam function would prove
+     * pressroomSetEntryText}, for the same reason: the seam function would prove
      * nothing about which keymap wins.
      */
     @Test
@@ -236,7 +236,7 @@ class AuthoringJourneyIT extends PressroomIT {
     /**
      * Fills the entry form.
      *
-     * <p>The body goes in through {@code rollerSetEntryText}, the page's own
+     * <p>The body goes in through {@code pressroomSetEntryText}, the page's own
      * seam, rather than by typing into the editor's surface. The editor keeps
      * its value in its own model and only writes back to the underlying
      * {@code bean.text} textarea on submit, so driving the visible element

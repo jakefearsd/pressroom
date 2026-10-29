@@ -136,7 +136,7 @@ class JournalThemeRenderingTest {
                 "#showMapAssets must ship Leaflet:\n" + body);
         assertTrue(body.contains("journal-custom.css"),
                 "the head must link the theme stylesheet:\n" + body);
-        assertTrue(body.contains("function rollerInitContent(") && body.contains(".markdown-alert-note {"),
+        assertTrue(body.contains("function pressroomInitContent(") && body.contains(".markdown-alert-note {"),
                 "the content-asset macro must be in the head: callouts, code blocks and "
                         + "heading anchors in .qj-prose depend on it:\n" + body);
         assertFalse(body.contains("#showContentAssets"), body);

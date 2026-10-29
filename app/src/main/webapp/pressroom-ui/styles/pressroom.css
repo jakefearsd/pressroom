@@ -16,7 +16,7 @@
 * directory of this distribution.
 */
 
-/* roller.css: Base CSS styles for Roller web UI */
+/* pressroom.css: Base CSS styles for Roller web UI */
 
 /* Quiet Instrument: map Bootstrap's own root channel onto the design
    tokens. Bootstrap 5.3 reads --bs-body-bg/--bs-body-color/--bs-border-color
@@ -25,7 +25,7 @@
    newsletter-confirm dialogs), the shortcode-insert dropdown, and the
    navbar-toggler border among them. Without this mapping those stayed
    pure white with a black border in dark mode even though every token
-   resolved correctly elsewhere. roller-tokens.css defines --paper/--ink/
+   resolved correctly elsewhere. pressroom-tokens.css defines --paper/--ink/
    --line (light on :root, dark under prefers-color-scheme) and loads
    before this file, so the three var() references below always resolve;
    in light mode they equal Bootstrap's own defaults, so this is a no-op
@@ -73,11 +73,11 @@ p {
 }
 
 /* Quiet Instrument: page title row -- 20px/600 with a bottom rule; a
-   primary action nested inside the same h1.roller-page-title (a
+   primary action nested inside the same h1.pressroom-page-title (a
    future content wave's job, none exist yet) lands on the right for free
    because the title itself is the flex container -- no JSP change needed
    when one shows up. */
-.roller-page-title {
+.pressroom-page-title {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -92,16 +92,16 @@ p {
     text-wrap: balance;
 }
 
-.roller-content-body {
+.pressroom-content-body {
     min-height: 30em;
 }
 
-.roller-column-right {
+.pressroom-column-right {
     padding-left: 1em;
     padding-right: 2em;
 }
 
-.roller-column-left{
+.pressroom-column-left{
     padding-left: 2em;
     padding-right: 1em;
 }
@@ -246,7 +246,7 @@ fieldset:disabled .btn {
 }
 
 /* Bootstrap's own `.btn:focus-visible` sets `outline: 0` with higher
-   specificity than the global `:focus-visible` rule in roller-tokens.css,
+   specificity than the global `:focus-visible` rule in pressroom-tokens.css,
    so buttons need their own ring restored here. Color/background on this
    state still come from the `--bs-btn-hover-*` vars above (Bootstrap's
    `.btn:focus-visible` rule reuses them), so only the ring itself needs
@@ -355,7 +355,7 @@ label,
    --bs-form-select-bg-icon at specificity (0,4,0) via
    ".form-select.is-invalid:not([multiple]):not([size])" (plus a
    [size="1"] sibling selector for an explicit single-row select) --
-   matching that specificity exactly here means roller.css's later position
+   matching that specificity exactly here means pressroom.css's later position
    in the cascade decides the winner. Verified empirically against the real
    bootstrap.css in headless Chrome: computed background-image keeps the
    caret url and drops the icon. */
@@ -383,7 +383,7 @@ label,
    white SVG (--bs-form-check-bg-image) and stays legible unchanged against
    --accent. Focus follows the same border-color/box-shadow:none convention
    as .form-control:focus/.form-select:focus above -- the ring itself comes
-   from roller-tokens.css's global :focus-visible rule. */
+   from pressroom-tokens.css's global :focus-visible rule. */
 .form-check-input {
     --bs-form-check-bg: var(--surface);
     border-color: var(--line);
@@ -431,22 +431,22 @@ label,
 
 /* ---- Top bar ---- */
 
-.roller-topbar {
+.pressroom-topbar {
     background: var(--surface);
     border-bottom: 1px solid var(--line);
 }
 
-.roller-topbar .navbar-brand,
-.roller-topbar .nav-link {
+.pressroom-topbar .navbar-brand,
+.pressroom-topbar .nav-link {
     color: var(--ink);
 }
 
-.roller-topbar .nav-link:hover,
-.roller-topbar .nav-link:focus {
+.pressroom-topbar .nav-link:hover,
+.pressroom-topbar .nav-link:focus {
     color: var(--accent);
 }
 
-.roller-topbar .navbar-toggler {
+.pressroom-topbar .navbar-toggler {
     border-color: var(--line);
 }
 
@@ -721,8 +721,8 @@ table.mm_table_actions td {
 }
 
 /* The same demotion, for the one place headings still arrive at their
-   element's own size. roller.css deliberately has no global h1-h6 reset --
-   .roller-page-title owns 20px and everything else was expected to opt in --
+   element's own size. pressroom.css deliberately has no global h1-h6 reset --
+   .pressroom-page-title owns 20px and everything else was expected to opt in --
    but "opt in" only ever happened inside .card-header, so a bare <h3>/<h4>
    elsewhere rendered at Bootstrap's fluid default: 24-28px, i.e. LARGER than
    the page title it sits beneath. Modal titles are the one survivor -- BS5
@@ -731,7 +731,7 @@ table.mm_table_actions td {
    -- EntriesSidebar, MediaFileSidebar, MainMenuSidebar, CategoriesSidebar,
    TemplatesSidebar -- used to be the other half of this rule; they no longer
    emit <h3> at all, having moved to .sidebar-label below, so the
-   .roller-column-left .card-body selector this rule used to carry for them
+   .pressroom-column-left .card-body selector this rule used to carry for them
    is gone too.) Same six declarations as .card-header/.section-head above. */
 .modal-header h3,
 .modal-header .modal-title {
@@ -1130,7 +1130,7 @@ table.mm_table_actions td {
 
 /* Draft recovery: an offer, not an alarm. One line above the title, in the
    same register as .empty-state ("invitations, not shrugs") -- accent-quiet
-   ground, no icon, no modal, no red. Hidden until roller-draft.js has
+   ground, no icon, no modal, no red. Hidden until pressroom-draft.js has
    something to offer. */
 
 .draft-bar {
@@ -1395,7 +1395,7 @@ table.mm_table_actions td {
     transform: rotate(90deg);
 }
 
-/* ---- Tables: table.rollertable ----
+/* ---- Tables: table.pressroomtable ----
    Bootstrap 5 themes tables through --bs-table-* custom properties, the
    same mechanism .btn uses above: .table's own rules read
    var(--bs-table-border-color)/-color/-bg/-striped-*, so retheming happens
@@ -1406,7 +1406,7 @@ table.mm_table_actions td {
    borders and a single hover tint, not zebra banding, so the striped
    variant is pointed at the same background as a plain row -- neutralized,
    not removed. */
-table.rollertable {
+table.pressroomtable {
     --bs-table-color: var(--ink);
     --bs-table-bg: var(--surface);
     --bs-table-border-color: var(--line);
@@ -1415,15 +1415,15 @@ table.rollertable {
 }
 
 /* Header row: caps-label per the type scale (12px/600, .08em tracking,
-   uppercase, --ink-soft). The literal class "rollertable" is reused
+   uppercase, --ink-soft). The literal class "pressroomtable" is reused
    inconsistently across these tables -- sometimes on the header <th>s
    (Entries/Pages/Submissions/Members), sometimes on body <td>s
    (Members.jsp's data cells) -- so trusting the class would caps-label
    real data. None of these tables declare a <thead>, so the header row is
    always the first <tr> of the table's own (implicit) <tbody>; targeting
    that structurally is correct everywhere the class is not. */
-table.rollertable > tbody > tr:first-child > th,
-table.rollertable > tbody > tr:first-child > td {
+table.pressroomtable > tbody > tr:first-child > th,
+table.pressroomtable > tbody > tr:first-child > td {
     font-family: var(--font-ui);
     font-size: 12px;
     font-weight: 600;
@@ -1433,7 +1433,7 @@ table.rollertable > tbody > tr:first-child > td {
     text-align: left;
 }
 
-table.rollertable > tbody > tr:hover > * {
+table.pressroomtable > tbody > tr:hover > * {
     background: var(--accent-quiet);
 }
 
@@ -1472,7 +1472,7 @@ time.data {
    is the content. An uncapped entry title took ~300px at 1280 and squeezed
    short comments onto several lines; it is cut with an ellipsis instead
    (the full title stays in the link's text for readers and screen readers). */
-#commentsModerationForm table.rollertable td:nth-child(4) a {
+#commentsModerationForm table.pressroomtable td:nth-child(4) a {
     display: inline-block;
     max-width: 16em;
     overflow: hidden;
@@ -1627,7 +1627,7 @@ a.status-pill:hover { color: var(--ink); border-color: var(--accent); }
 
 /* ---- Selection bar (task B3) ----
    One shared bar for every list that offers bulk actions (Entries,
-   Submissions, MediaFileView): hidden until roller.js's delegated checkbox
+   Submissions, MediaFileView): hidden until pressroom.js's delegated checkbox
    handler finds at least one row checked in the form it names via
    data-selection-bar, then shows a caps-label count plus the action buttons.
    Trash is deliberately excluded -- see CLAUDE.md's Trash section; it has no
@@ -1672,7 +1672,7 @@ a.status-pill:hover { color: var(--ink); border-color: var(--accent); }
 
 /* sign-in */
 
-/* Quiet Instrument: roller-tokens.css already sets `body { background:
+/* Quiet Instrument: pressroom-tokens.css already sets `body { background:
    var(--paper); }` -- this second, later-in-cascade `body` rule used to force
    a literal white background on every page regardless of token or
    prefers-color-scheme (same specificity, later wins), which broke dark mode
@@ -1923,7 +1923,7 @@ span.button {
    ids pinned, restyled only) and the theme-change notices on ThemeEdit.jsp
    ride Bootstrap's alert-* classes. Bootstrap 5.3 themes .alert-* entirely
    through --bs-alert-* custom properties (no !important), so -- like .btn
-   and table.rollertable above -- redefining those variables here is enough;
+   and table.pressroomtable above -- redefining those variables here is enough;
    a later same-specificity rule wins the cascade tie without a specificity
    fight. */
 .alert-success {

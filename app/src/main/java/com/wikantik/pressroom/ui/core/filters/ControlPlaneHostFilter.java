@@ -48,7 +48,7 @@ public class ControlPlaneHostFilter implements Filter {
      * {@code script-src 'self'}. One file, not the directory: the editor's
      * bundle beside it is control plane like the rest of /pressroom-ui.
      */
-    private static final String READER_CONTENT_BUNDLE = "/pressroom-ui/scripts/roller-content.js";
+    private static final String READER_CONTENT_BUNDLE = "/pressroom-ui/scripts/pressroom-content.js";
 
     private final WebloggerProvider provider;
     private final Weblogger weblogger;

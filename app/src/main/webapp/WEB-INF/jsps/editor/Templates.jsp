@@ -32,13 +32,13 @@
 <form id="templateRemoveForm" action="${pageContext.request.contextPath}/pressroom-ui/authoring/templates!remove.rol" method="post">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>
 
-    <%-- rollertable, not just table: it is the class that carries the token
+    <%-- pressroomtable, not just table: it is the class that carries the token
          palette and the caps-label header row every other admin list gets.
          Its header rule keys off the first <tr> of the table, so the header
          row has to stay the first thing inside -- which is why the empty
          branch is a sibling of the table rather than a row in it. --%>
     <div class="table-responsive">
-    <table class="rollertable table table-striped align-middle"> <%-- of weblog templates --%>
+    <table class="pressroomtable table table-striped align-middle"> <%-- of weblog templates --%>
 
         <c:if test="${not empty templates}">
 

@@ -29,7 +29,7 @@
 <c:choose>
     <c:when test="${not empty permissions}">
         <div class="table-responsive">
-        <table class="rollertable table" id="userWeblogsTable">
+        <table class="pressroomtable table" id="userWeblogsTable">
             <tr>
                 <th scope="col"><spring:message code="generic.name"/></th>
                 <th scope="col"><spring:message code="userWeblogs.level"/></th>

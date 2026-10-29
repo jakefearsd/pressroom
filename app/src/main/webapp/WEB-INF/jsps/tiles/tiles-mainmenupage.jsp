@@ -31,7 +31,7 @@
     <%-- tabTitle, when a controller sets one, names the browser TAB more
          specifically than the visible heading does (the entry editor sets it to
          "<entry title> - Edit entry", so a dozen open tabs are told apart).
-         pageTitle is what the <h1 class="roller-page-title"> below renders, so
+         pageTitle is what the <h1 class="pressroom-page-title"> below renders, so
          it must NOT carry that append -- the two attributes exist to let the
          tab and the heading differ. It is never a message key: the controller
          builds it as plain text (EntriesController.plainTitle) and it is
@@ -51,7 +51,7 @@
 
     <div class="row">
 
-        <div class="col-md-3 roller-column-left">
+        <div class="col-md-3 pressroom-column-left">
 
             <%-- Below md the rail and the page's sidebar fold behind this
                  button: stacked above the content they pushed the page
@@ -114,12 +114,12 @@
 
         </div>
 
-        <main class="col-md-9 roller-column-right">
+        <main class="col-md-9 pressroom-column-right">
 
             <div class="card">
                 <div class="card-body">
 
-                    <h1 class="roller-page-title"><spring:message code="${pageTitle}" text="${pageTitle}"/></h1>
+                    <h1 class="pressroom-page-title"><spring:message code="${pageTitle}" text="${pageTitle}"/></h1>
                     <jsp:include page="${tile_messages}"/>
                     <jsp:include page="${tile_content}"/>
 

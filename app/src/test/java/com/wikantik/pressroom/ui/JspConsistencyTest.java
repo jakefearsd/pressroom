@@ -59,7 +59,7 @@ class JspConsistencyTest {
 
     static final Path JSPS = Path.of("src/main/webapp/WEB-INF/jsps");
 
-    static final Path PRESSROOM_CSS = Path.of("src/main/webapp/pressroom-ui/styles/roller.css");
+    static final Path PRESSROOM_CSS = Path.of("src/main/webapp/pressroom-ui/styles/pressroom.css");
 
     /**
      * Every JSP in the tree, once. A {@code List} rather than the
@@ -93,7 +93,7 @@ class JspConsistencyTest {
 
         String css = Files.readString(PRESSROOM_CSS, StandardCharsets.UTF_8);
         for (String s : List.of("published", "draft", "pending", "scheduled", "trashed")) {
-            assertTrue(css.contains(".status-pill.status-" + s), "roller.css lacks .status-pill.status-" + s);
+            assertTrue(css.contains(".status-pill.status-" + s), "pressroom.css lacks .status-pill.status-" + s);
         }
     }
 
@@ -142,7 +142,7 @@ class JspConsistencyTest {
      * exactly one selection bar -- a {@code .selection-bar} that names, via
      * {@code data-selection-bar}, the id of the {@code <form>} whose
      * checkboxes it counts. The bar and its form must live in the same JSP
-     * (the delegated handler in roller.js looks the bar up by the checked
+     * (the delegated handler in pressroom.js looks the bar up by the checked
      * checkbox's own {@code .form.id}), and the old per-file bulk-action
      * markup ({@code #entriesBulkActions}) must be gone. Trash is
      * deliberately excluded -- see task-B3's brief: TrashController has no
@@ -305,8 +305,8 @@ class JspConsistencyTest {
             String src = Files.readString(JSPS.resolve(layout), StandardCharsets.UTF_8);
             assertTrue(src.contains("id=\"adminSidebar\""), layout + " lacks the <aside id=\"adminSidebar\"> wrapper");
 
-            int leftStart = src.indexOf("roller-column-left");
-            int leftEnd = src.indexOf("roller-column-right");
+            int leftStart = src.indexOf("pressroom-column-left");
+            int leftEnd = src.indexOf("pressroom-column-right");
             assertTrue(leftStart >= 0 && leftEnd > leftStart,
                     layout + ": could not isolate the left column -- the scan is not looking where it thinks it is.");
             String leftColumn = src.substring(leftStart, leftEnd);
@@ -321,7 +321,7 @@ class JspConsistencyTest {
      * <ul>
      *   <li>no {@code confirm(} in any JSP -- every
      *       destructive action is confirmed through {@code data-confirm}
-     *       (see roller.js), never a native {@code window.confirm()} called
+     *       (see pressroom.js), never a native {@code window.confirm()} called
      *       from a JSP's own inline script;</li>
      *   <li>no {@code onsubmit=} attribute anywhere
      *       -- a form's behavior on submit is wired with
@@ -445,7 +445,7 @@ class JspConsistencyTest {
      * A field id a controller names must be an id the page actually renders.
      *
      * <p>The marker is invisible when it misses: {@code getElementById} of a
-     * renamed control simply returns null and {@code roller.js} moves on, so
+     * renamed control simply returns null and {@code pressroom.js} moves on, so
      * the form comes back with a banner and nothing highlighted -- which looks
      * exactly like the behaviour before this feature existed. Nothing else
      * catches that, which is why it is a source scan rather than a convention.
@@ -499,7 +499,7 @@ class JspConsistencyTest {
 
     /**
      * The three layouts an admin form can render through must all put the
-     * joined ids on {@code <body>}; {@code roller.js} reads them from nowhere
+     * joined ids on {@code <body>}; {@code pressroom.js} reads them from nowhere
      * else. Miss one and every form on it silently loses the marker --
      * {@code .Profile} and {@code .CreateWeblog} are simplepage, the editor
      * screens are tabbedpage, and {@code .MainMenu} is mainmenupage.
@@ -522,12 +522,12 @@ class JspConsistencyTest {
         }
 
         String js = Files.readString(
-                Path.of("src/main/webapp/theme/scripts/roller.js"), StandardCharsets.UTF_8);
+                Path.of("src/main/webapp/theme/scripts/pressroom.js"), StandardCharsets.UTF_8);
         assertTrue(js.contains("invalidFields"),
-                "roller.js does not read document.body.dataset.invalidFields, so nothing "
+                "pressroom.js does not read document.body.dataset.invalidFields, so nothing "
                         + "consumes what the layouts render");
         assertTrue(js.contains("is-invalid") && js.contains("aria-invalid"),
-                "roller.js must set both the visual class and the accessible state");
+                "pressroom.js must set both the visual class and the accessible state");
     }
 
     // --- B9a: Global Config gets the settings rail ---
@@ -665,7 +665,7 @@ class JspConsistencyTest {
         String css = Files.readString(PRESSROOM_CSS, StandardCharsets.UTF_8);
         for (String rule : List.of(".theme-cards", ".theme-card", ".theme-card-thumb",
                 ".theme-card-name", ".theme-card-desc")) {
-            assertTrue(css.contains(rule), "roller.css lacks " + rule);
+            assertTrue(css.contains(rule), "pressroom.css lacks " + rule);
         }
     }
 
@@ -719,7 +719,7 @@ class JspConsistencyTest {
 
         String css = Files.readString(PRESSROOM_CSS, StandardCharsets.UTF_8);
         for (String rule : List.of(".weblog-row", ".weblog-actions")) {
-            assertTrue(css.contains(rule), "roller.css lacks " + rule);
+            assertTrue(css.contains(rule), "pressroom.css lacks " + rule);
         }
     }
 
@@ -747,7 +747,7 @@ class JspConsistencyTest {
                 "the switcher is a nav control -- no inline onclick, ever");
 
         String css = Files.readString(PRESSROOM_CSS, StandardCharsets.UTF_8);
-        assertTrue(css.contains(".weblog-switcher"), "roller.css lacks .weblog-switcher");
+        assertTrue(css.contains(".weblog-switcher"), "pressroom.css lacks .weblog-switcher");
     }
 
     /**
@@ -882,7 +882,7 @@ class JspConsistencyTest {
      *
      * <p>Every one of them used {@code h4}, or in one place {@code h5},
      * immediately inside a page whose own title is the tiles layout's
-     * {@code h2.roller-page-title}, with no {@code h3} anywhere between.
+     * {@code h2.pressroom-page-title}, with no {@code h3} anywhere between.
      * {@code h3} is the single level every other admin card already used.
      *
      * <p>This subsumes what used to be a MainMenuSidebar-only assertion in
@@ -926,7 +926,7 @@ class JspConsistencyTest {
      * already printed.
      *
      * <p>The h4/h5 ban above was written when the layouts titled every page
-     * {@code h2.roller-page-title} and the cards used {@code h3}. The layouts
+     * {@code h2.pressroom-page-title} and the cards used {@code h3}. The layouts
      * moved to {@code h1}, and the cards stayed {@code h3.section-head}, so
      * fourteen screens went h1 to h3 with nothing in between -- a gap a
      * screen reader's heading list shows as a missing section -- and the scan
@@ -977,7 +977,7 @@ class JspConsistencyTest {
         assertEquals(List.of("C.jsp:1  h1 under a layout that already printed the h1"),
                 headingSkips("C.jsp", "<h1>a</h1>", 1));
         assertEquals(List.of("D.jsp:1  h2 follows h0"),
-                headingSkips("D.jsp", "<h2 class=\"roller-page-title\">Access denied</h2>", 0));
+                headingSkips("D.jsp", "<h2 class=\"pressroom-page-title\">Access denied</h2>", 0));
         assertEquals(List.of(),
                 headingSkips("E.jsp", "<h1>one branch</h1><h1>another branch</h1><header>", 0));
     }

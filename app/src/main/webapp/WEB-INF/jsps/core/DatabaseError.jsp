@@ -21,7 +21,7 @@
      here while Roller cannot start: so the page names the problem and where
      to read about it, nothing more. The startup log (the JDBC URL and user),
      the exception and its trace are in the server log only. --%>
-<h1 class="roller-page-title"><spring:message code="installer.cannotConnectToDatabase" /></h1>
+<h1 class="pressroom-page-title"><spring:message code="installer.cannotConnectToDatabase" /></h1>
 
 <p><spring:message code="installer.detailsInServerLog" /></p>
 

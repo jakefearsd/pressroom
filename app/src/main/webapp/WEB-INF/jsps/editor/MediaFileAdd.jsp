@@ -21,7 +21,7 @@
 <p class="subtitle"> <spring:message code="mediaFileAdd.title"/> </p>
 <p class="pagetip"> <spring:message code="mediaFileAdd.pageTip"/> </p>
 
-<script src="<c:url value='/theme/scripts/roller-guard-submit.js'/>"></script>
+<script src="<c:url value='/theme/scripts/pressroom-guard-submit.js'/>"></script>
 
 <form id="entry" class="form-stacked guard-submit" action="${pageContext.request.contextPath}/pressroom-ui/authoring/mediaFileAdd!save.rol" method="POST" enctype="multipart/form-data">
 <input type="hidden" name="weblog" value="${actionWeblog.handle}"/>

@@ -81,7 +81,7 @@ resolves through the index at the end of `CLAUDE.md`.
   must not strand it).
 - `journal`, `travel`, `portfolio` and `frontpage` each ship a `_page` template
   (`themes/<id>/page.vm`; frontpage's is built on its `_header`/`_footer`,
-  `article.fd-page.roller-content` with `.fd-prose`, and keeps the shared
+  `article.fd-page.pressroom-content` with `.fd-prose`, and keeps the shared
   header's embed assets so a `[video]` still plays); a `WeblogPage` reaches it via the
   `StaticThemeTemplate` fallback, so a static page renders in the theme's
   own chrome (travel's `tg-header`, portfolio's dark frame), not the fallback
@@ -337,9 +337,9 @@ map assets without this macro fails the build.
   Every heading gets an `id`.
 - **Scope.** Everything except the callouts and the `hljs-*` token classes
   applies inside `$rollerContentScope` only: `.qj-prose`,
-  `.tg-entry-content`, `.pf-entry-content`, `.roller-preview-prose` (shared
-  preview) and `.roller-content` (the shared page fallback's `<article>`).
-  A custom theme opts in by putting `roller-content` on its content
+  `.tg-entry-content`, `.pf-entry-content`, `.pressroom-preview-prose` (shared
+  preview) and `.pressroom-content` (the shared page fallback's `<article>`).
+  A custom theme opts in by putting `pressroom-content` on its content
   container. The scope sits in `:where()`, so a theme's own rule for the same
   element still wins. The heading anchor is the exception: it is specific
   enough to beat a theme's content-link colour.
@@ -363,12 +363,12 @@ map assets without this macro fails the build.
   link 7.7, hover 10.3, captions and quotes (`--pf-muted`) 6.0. Journal
   links: 5.8 light, 6.9 dark.
 - **Script.** A classic bootstrap, shaped like the map assets. It injects
-  `$url.site/pressroom-ui/scripts/roller-content.js` only after finding an
+  `$url.site/pressroom-ui/scripts/pressroom-content.js` only after finding an
   unprocessed `pre > code` or content `h2`-`h4` with an id. Each call hands
   the bundle the selectors and the weblog's labels (`content.code.*`,
   `content.heading.anchor`, escaped into data attributes). Blocks and
-  headings are marked once done (`data-roller-code`, `data-roller-anchor`),
-  which makes it re-runnable. It chains onto `window.rollerPreviewInit`, so
+  headings are marked once done (`data-pressroom-code`, `data-pressroom-anchor`),
+  which makes it re-runnable. It chains onto `window.pressroomPreviewInit`, so
   the editor's preview is enhanced after each swap. Highlighting never
   auto-detects: an unknown or absent language keeps its copy button and line
   numbers, with no colours. The gutter sits outside the `pre`, and the copy
@@ -376,7 +376,7 @@ map assets without this macro fails the build.
 - **Custom domains.** `ControlPlaneHostFilter` 301s `/pressroom-ui/**` to the
   site host. A redirected script is cross-origin and every theme's CSP is
   `script-src 'self'`, so the filter exempts exactly
-  `/pressroom-ui/scripts/roller-content.js`. The editor bundle beside it is
+  `/pressroom-ui/scripts/pressroom-content.js`. The editor bundle beside it is
   still control plane.
 - **Theme fixes that came with it.** Portfolio's `body.pf a` (inherit, no
   underline) stays for the chrome. Content links (`body.pf .pf-entry-content

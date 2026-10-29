@@ -788,7 +788,7 @@ public class EntryEditController extends BaseController {
         // This is a SEPARATE attribute rather than an overwrite of pageTitle,
         // and the separation is the whole point: the layout renders pageTitle
         // twice -- once in <title>, once as the visible
-        // <h2 class="roller-page-title"> -- so appending here used to print
+        // <h2 class="pressroom-page-title"> -- so appending here used to print
         // "Stored title <em dash> Edit entry" into the page's own heading.
         // tiles-tabbedpage.jsp prefers tabTitle in <title> and falls back to
         // pageTitle; the h2 only ever reads pageTitle.

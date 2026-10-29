@@ -38,7 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Local draft recovery, end to end, in a real browser.
  *
- * <p>{@code roller-draft.js} (unit-tested for its JSP wiring already) is
+ * <p>{@code pressroom-draft.js} (unit-tested for its JSP wiring already) is
  * exercised here the way an author actually meets it: type something,
  * abandon the page, come back. Four cases: a snapshot is offered back, a
  * properly saved draft offers nothing (the content-comparison rule, not a
@@ -54,10 +54,10 @@ class EntryAutosaveIT extends PressroomIT {
     private static final String DRAFT_RESTORE = ".draft-bar-restore";
     private static final String DRAFT_DISCARD = ".draft-bar-discard";
 
-    private static final String DRAFT_PREFIX = "roller.draft.v1:";
+    private static final String DRAFT_PREFIX = "pressroom.draft.v1:";
 
     /**
-     * The debounce inside roller-draft.js is 2 seconds; this is how long a
+     * The debounce inside pressroom-draft.js is 2 seconds; this is how long a
      * wait for the resulting localStorage write is allowed to take on a
      * loaded CI runner before the test gives up and reports "no snapshot was
      * ever written" rather than a mysteriously missing recovery bar.
@@ -218,8 +218,8 @@ class EntryAutosaveIT extends PressroomIT {
     /**
      * The status line (Task A8), end to end: word count follows typing, the
      * save-state span reads "Unsaved changes" as soon as something has
-     * changed, and reads "Draft saved locally" once {@code roller-draft.js}
-     * actually writes a snapshot -- the {@code roller-draft:saved} event this
+     * changed, and reads "Draft saved locally" once {@code pressroom-draft.js}
+     * actually writes a snapshot -- the {@code pressroom-draft:saved} event this
      * wave added to that module, consumed here rather than in a unit test
      * because the event only exists once a real debounce has elapsed.
      */

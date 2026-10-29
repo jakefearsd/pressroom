@@ -91,27 +91,27 @@ incidental re-save) — minor PII residue worth clearing.
   `selectParentSyntax`, and Ctrl+B/K never reach the browser's bookmarks
   or search bar (unsupplied: CM6's default). The bold/italic/link bindings
   run the toolbar's own commands. The title is a one-row
-  `textarea[name='bean.title']` that wraps and grows (`rollerFitTitle`);
+  `textarea[name='bean.title']` that wraps and grows (`pressroomFitTitle`);
   Enter moves to the body and a pasted line break becomes a space, so ITs
   select it as `[name='bean.title']`, never `input[...]`. Exactly three seam
-  functions — `insertMediaFile`, `rollerSetEntryText`, `rollerGetEntryText` —
+  functions — `insertMediaFile`, `pressroomSetEntryText`, `pressroomGetEntryText` —
   so replacing the editor is one file; Browser ITs use those and the `Editor`
   test helper, never CM6's API.
-  `rollerEditorChangeListeners` is the fourth seam: every change-driven
+  `pressroomEditorChangeListeners` is the fourth seam: every change-driven
   feature (autosave, live preview, word count) pushes a listener onto it.
   **Live preview is theme-true**: an iframe onto `PreviewServlet?shell=true`,
   which resolves the theme's own `_preview` template (or a shared shell) so
   the pane carries the weblog's real stylesheet; the editor posts rendered
   fragments over `postMessage` after each debounced render, and
   `#showPreviewShellScript` (`weblog.vm`) swaps `#previewArticle`'s content
-  and calls `window.rollerPreviewInit` so galleries/maps/embeds initialise.
+  and calls `window.pressroomPreviewInit` so galleries/maps/embeds initialise.
   Paste/drop of an image posts to `mediaFileAdd!upload.rol` (the REST API's
   `MediaUploads` helper) and inserts an `[image]` shortcode. The writing
   guide (offcanvas, `Ctrl+/` or the toolbar help control) and status line
   (word count/reading time; Unsaved/Draft-saved-locally/Saved) live there
   too.
 - **Autosave is LOCAL ONLY; there is no server endpoint** —
-  `theme/scripts/roller-draft.js` writing to `localStorage`, installed from
+  `theme/scripts/pressroom-draft.js` writing to `localStorage`, installed from
   `EntryEditor.jsp` and `PageEdit.jsp`. A server endpoint would multiply
   `weblogentry_revision` rows against `entry.revisions.retention`'s default
   **-1, keep everything** (see Revisions) and need a real entry row per
@@ -147,7 +147,7 @@ incidental re-save) — minor PII residue worth clearing.
   `…:new` slot (later debounce wins); a draft outlives logout, up to 30 days
   in that browser profile, so on a shared machine the next author sees it.
   The leave-warning is bound **once** against a dirty flag under the
-  `beforeunload.rollerLeaveWarning` namespace (not a fresh `beforeunload`
+  `beforeunload.pressroomLeaveWarning` namespace (not a fresh `beforeunload`
   *and* `submit` handler per CodeMirror `change`, as before), and stays
   despite drafts.
 - **Preview** is server-side (`entryEdit!preview.rol`): only the server can

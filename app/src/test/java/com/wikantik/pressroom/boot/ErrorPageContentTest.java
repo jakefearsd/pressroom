@@ -107,7 +107,7 @@ class ErrorPageContentTest {
         assertTrue(content.contains("<style>"),
                 jsp + " should carry its own self-contained inline <style>, no theme/admin "
                         + "stylesheet dependency");
-        assertFalse(content.contains("roller.css"),
+        assertFalse(content.contains("pressroom.css"),
                 jsp + " must not depend on the admin stylesheet");
 
         assertTrue(content.contains("<html lang=\"en\">"),

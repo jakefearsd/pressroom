@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Every admin list table scrolls inside its own wrapper at phone width.
  *
- * <p>An unwrapped {@code .rollertable} widened the whole page instead: at
+ * <p>An unwrapped {@code .pressroomtable} widened the whole page instead: at
  * 390px Entries measured 579px and Comments 457px, with the row actions
  * (Approve/Hide/Delete, Revoke) off-screen. Wrapping was done screen by
  * screen and kept missing screens, so this scans the tree: a new list table
@@ -44,7 +44,7 @@ class PressroomTableScrollJspTest {
 
     private static final Path JSPS = Path.of("src/main/webapp/WEB-INF/jsps");
 
-    private static final Pattern TABLE = Pattern.compile("<table\\b[^>]*\\bclass=\"rollertable\\b");
+    private static final Pattern TABLE = Pattern.compile("<table\\b[^>]*\\bclass=\"pressroomtable\\b");
 
     /** Whitespace and JSP comments may sit between the wrapper and its table. */
     private static final Pattern WRAPPED = Pattern.compile(

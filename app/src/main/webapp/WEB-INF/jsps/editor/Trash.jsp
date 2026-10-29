@@ -57,14 +57,14 @@
 
 <c:if test="${not empty trashedEntries}">
 <div class="table-responsive">
-<table class="rollertable table table-striped" width="100%">
+<table class="pressroomtable table table-striped" width="100%">
 
 <tr>
-    <th scope="col" class="rollertable"><spring:message code="trash.column.title"/></th>
-    <th scope="col" class="rollertable" width="15%"><spring:message code="trash.column.trashed"/></th>
-    <th scope="col" class="rollertable" width="15%"><spring:message code="trash.column.category"/></th>
-    <th scope="col" class="rollertable" width="10%"> </th>
-    <th scope="col" class="rollertable" width="10%"> </th>
+    <th scope="col" class="pressroomtable"><spring:message code="trash.column.title"/></th>
+    <th scope="col" class="pressroomtable" width="15%"><spring:message code="trash.column.trashed"/></th>
+    <th scope="col" class="pressroomtable" width="15%"><spring:message code="trash.column.category"/></th>
+    <th scope="col" class="pressroomtable" width="10%"> </th>
+    <th scope="col" class="pressroomtable" width="10%"> </th>
 </tr>
 
 <c:forEach items="${trashedEntries}" var="entry">

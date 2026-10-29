@@ -232,7 +232,7 @@ class FrontpageRenderingTest {
                 "#showSeoHead must contribute the canonical link:\n" + body);
         assertTrue(body.contains("frontpage-custom.css"),
                 "the head must link the theme stylesheet:\n" + body);
-        assertTrue(body.contains("function rollerInitContent(") && body.contains(".markdown-alert-note {"),
+        assertTrue(body.contains("function pressroomInitContent(") && body.contains(".markdown-alert-note {"),
                 "the content-asset macro must be in the head, like every other theme's:\n" + body);
         assertFalse(body.contains("#showContentAssets"), body);
         // a Velocity error would leak the raw directive or reference text
@@ -638,7 +638,7 @@ class FrontpageRenderingTest {
                 "the raw page title must be escaped once, as the page's h1:\n" + body);
         assertEquals(1, occurrences(body, "<h1"),
                 "the site name steps down to a paragraph on a page with its own title:\n" + body);
-        assertTrue(body.contains("<article class=\"fd-page roller-content\">"),
+        assertTrue(body.contains("<article class=\"fd-page pressroom-content\">"),
                 "the content sits in the content-asset scope:\n" + body);
         assertTrue(body.contains("contact-form-slot"), "shortcodes must expand:\n" + body);
         assertTrue(body.contains(".video-embed"),

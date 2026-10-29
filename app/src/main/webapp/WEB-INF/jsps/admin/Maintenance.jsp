@@ -16,7 +16,7 @@
   directory of this distribution.
 --%>
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
-<script src="<c:url value='/theme/scripts/roller-guard-submit.js'/>"></script>
+<script src="<c:url value='/theme/scripts/pressroom-guard-submit.js'/>"></script>
 
 <p class="subtitle"><spring:message code="maintenance.subtitle"/></p>
 
@@ -89,7 +89,7 @@
     <%-- data-confirm, NOT onclick="return confirm('...')": an HTML escape in a
          JS-string position is decoded by the HTML parser before the JS
          compiles, so one apostrophe in a translated value breaks the handler
-         and the button submits with NO confirmation. See roller.js.
+         and the button submits with NO confirmation. See pressroom.js.
          Escaped exactly once, as a whole: the template's argument is the
          plain token, so fn:escapeXml on the formatted message is the one
          escape the attribute needs and the browser hands the script the

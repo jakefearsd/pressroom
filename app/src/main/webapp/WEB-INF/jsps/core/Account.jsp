@@ -52,13 +52,13 @@
         <c:choose>
         <c:when test="${not empty comments}">
         <div class="table-responsive">
-        <table class="rollertable table table-striped">
+        <table class="pressroomtable table table-striped">
             <tr>
-                <th scope="col" class="rollertable"><spring:message code="account.column.status"/></th>
-                <th scope="col" class="rollertable"><spring:message code="comments.column.comment"/></th>
-                <th scope="col" class="rollertable"><spring:message code="comments.column.entry"/></th>
-                <th scope="col" class="rollertable"><spring:message code="comments.column.date"/></th>
-                <th scope="col" class="rollertable row-actions"><span class="visually-hidden"><spring:message code="mainPage.actions"/></span></th>
+                <th scope="col" class="pressroomtable"><spring:message code="account.column.status"/></th>
+                <th scope="col" class="pressroomtable"><spring:message code="comments.column.comment"/></th>
+                <th scope="col" class="pressroomtable"><spring:message code="comments.column.entry"/></th>
+                <th scope="col" class="pressroomtable"><spring:message code="comments.column.date"/></th>
+                <th scope="col" class="pressroomtable row-actions"><span class="visually-hidden"><spring:message code="mainPage.actions"/></span></th>
             </tr>
             <c:forEach items="${comments}" var="c">
             <tr>
