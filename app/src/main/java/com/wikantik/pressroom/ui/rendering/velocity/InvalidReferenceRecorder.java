@@ -43,7 +43,7 @@ public final class InvalidReferenceRecorder implements InvalidReferenceEventHand
             return;
         }
         String entry = (info == null ? "?" : info.getTemplateName()) + ": " + reference;
-        if (RECORDED.add(entry)) {
+        if (RECORDED.add(entry) && log.isDebugEnabled()) {
             log.debug("Unresolved Velocity reference {}", entry);
         }
     }
@@ -65,7 +65,8 @@ public final class InvalidReferenceRecorder implements InvalidReferenceEventHand
     @Override
     public Object invalidMethod(Context context, String reference, Object object,
             String method, Info info) {
-        record(reference == null ? object + "." + method : reference, info);
+        // reference is null only for a method call on a non-reference; never toString() an arbitrary object
+        record(reference == null ? (object == null ? "null" : object.getClass().getSimpleName()) + "." + method + "()" : reference, info);
         return null;
     }
 }

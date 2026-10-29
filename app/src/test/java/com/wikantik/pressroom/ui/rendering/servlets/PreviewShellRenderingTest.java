@@ -17,14 +17,15 @@
  */
 package com.wikantik.pressroom.ui.rendering.servlets;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import com.wikantik.pressroom.ui.rendering.velocity.InvalidReferenceRecorder;
-import com.wikantik.pressroom.ui.rendering.StrictReferences;
 import com.wikantik.pressroom.TestUtils;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.ui.rendering.StrictReferences;
+import com.wikantik.pressroom.ui.rendering.velocity.InvalidReferenceRecorder;
+import java.util.Set;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -51,25 +52,28 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class PreviewShellRenderingTest {
 
-    /** Legitimately unresolved references: optional model values tested in #if, quiet $! references. */
-    private static final java.util.Set<String> EXPECTED_REFERENCES = java.util.Set.of(
-            "journal:Weblog|standard: $model.tags", // optional model value, null on this page and tested or quiet
-            "journal:Weblog|standard: $model.weblogCategory", // optional model value, null on this page and tested or quiet
-            "journal:Weblog|standard: $model.weblogDateLabel", // optional model value, null on this page and tested or quiet
-            "journal:Weblog|standard: $pager.nextLink", // pager link absent on the first or last page, tested before use
-            "journal:Weblog|standard: $pager.prevLink", // pager link absent on the first or last page, tested before use
-            "weblog.vm: $colophonFacts.copyrightText", // optional setting, null when unconfigured and tested before use
-            "weblog.vm: $colophonFacts.privacyUrl", // optional setting, null when unconfigured and tested before use
-            "weblog.vm: $model.page", // optional model value, null on this page and tested or quiet
-            "weblog.vm: $model.tags", // optional model value, null on this page and tested or quiet
-            "weblog.vm: $model.weblogCategory", // optional model value, null on this page and tested or quiet
-            "weblog.vm: $model.weblogDate", // optional model value, null on this page and tested or quiet
-            "weblog.vm: $seoBusinessJson", // optional SEO value, tested before use
-            "weblog.vm: $utils.businessJsonLd()", // optional SEO value, tested before use
-            "weblog.vm: $weblog", // optional setting, null when unconfigured and tested before use
-            "weblog.vm: $weblog.analyticsSiteId", // optional setting, null when unconfigured and tested before use
-            "weblog.vm: $weblog.newsletterListUuid", // optional setting, null when unconfigured and tested before use
-            "weblog.vm: seoBusinessJson" // a #set whose right-hand side is null, so the variable stays unset
+    /**
+     * What the shipped templates leave unresolved on these renders, each with its reason.
+     * A "KNOWN DEFECT" entry is a bug recorded here, not a rationale.
+     */
+    private static final Set<String> EXPECTED_REFERENCES = Set.of(
+            "journal:Weblog|standard: $model.tags", // null when the view is not a tag view; tested with #if/#elseif
+            "journal:Weblog|standard: $model.weblogCategory", // null when the view is not a category view; tested with #if/#elseif
+            "journal:Weblog|standard: $model.weblogDateLabel", // null when the view is not a date archive; tested with #elseif
+            "journal:Weblog|standard: $pager.nextLink", // null on the last page; tested with #if
+            "journal:Weblog|standard: $pager.prevLink", // null on the first page; tested with #if
+            "weblog.vm: $colophonFacts.copyrightText", // null unless the weblog sets copyright text; tested with $utils.isNotEmpty
+            "weblog.vm: $colophonFacts.privacyUrl", // null unless a privacy URL is configured; tested with $utils.isNotEmpty
+            "weblog.vm: $model.page", // null when the view is not a static page; tested with #if / negated in #set
+            "weblog.vm: $model.tags", // null when the view is not a tag view; tested with #if/#elseif
+            "weblog.vm: $model.weblogCategory", // null when the view is not a category view; tested with #if/#elseif
+            "weblog.vm: $model.weblogDate", // null when the view is not a date archive; tested with #if / negated in #set
+            "weblog.vm: $seoBusinessJson", // null when the weblog has no business profile; tested with #if
+            "weblog.vm: $utils.businessJsonLd()", // returns null when the weblog has no business profile; the result is tested with #if($seoBusinessJson)
+            "weblog.vm: $weblog", // KNOWN DEFECT: showContentAssets takes no argument, so $weblog in its $config.getColophon($weblog) call is never bound; getColophon(null) falls back to the site colophon, which is why only the version (the same for every blog) is read and nothing visibly breaks
+            "weblog.vm: $weblog.analyticsSiteId", // null unless analytics is configured; tested with $utils.isNotEmpty
+            "weblog.vm: $weblog.newsletterListUuid", // null unless a newsletter list is configured; tested with #if
+            "weblog.vm: seoBusinessJson" // #set of a null business JSON-LD; tested with #if
     );
 
     @BeforeAll

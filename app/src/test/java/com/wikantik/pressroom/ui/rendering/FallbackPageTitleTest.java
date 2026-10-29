@@ -1,15 +1,16 @@
 package com.wikantik.pressroom.ui.rendering;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import com.wikantik.pressroom.ui.rendering.velocity.InvalidReferenceRecorder;
 import com.wikantik.pressroom.TestUtils;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.WeblogTheme;
 import com.wikantik.pressroom.ui.rendering.servlets.RenderingTestSupport;
+import com.wikantik.pressroom.ui.rendering.velocity.InvalidReferenceRecorder;
+import java.util.Set;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -26,22 +27,25 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class FallbackPageTitleTest {
 
-    /** Legitimately unresolved references: optional model values tested in #if, quiet $! references. */
-    private static final java.util.Set<String> EXPECTED_REFERENCES = java.util.Set.of(
-            "templates/weblog/page.vm|standard: $model.page.metaTitle", // optional model value, null on this page and tested or quiet
-            "templates/weblog/page.vm|standard: $model.weblog.stylesheet", // optional model value, null on this page and tested or quiet
-            "weblog.vm: $model.pageOgImage", // optional model value, null on this page and tested or quiet
-            "weblog.vm: $model.tags", // optional model value, null on this page and tested or quiet
-            "weblog.vm: $model.weblogCategory", // optional model value, null on this page and tested or quiet
-            "weblog.vm: $seoBusinessJson", // optional SEO value, tested before use
-            "weblog.vm: $seoImage", // optional SEO value, tested before use
-            "weblog.vm: $seoPage.metaTitle", // optional SEO value, tested before use
-            "weblog.vm: $seoPage.searchDescription", // optional SEO value, tested before use
-            "weblog.vm: $utils.businessJsonLd()", // optional SEO value, tested before use
-            "weblog.vm: $weblog", // optional setting, null when unconfigured and tested before use
-            "weblog.vm: $weblog.analyticsSiteId", // optional setting, null when unconfigured and tested before use
-            "weblog.vm: seoBusinessJson", // a #set whose right-hand side is null, so the variable stays unset
-            "weblog.vm: seoImage" // a #set whose right-hand side is null, so the variable stays unset
+    /**
+     * What the shipped templates leave unresolved on these renders, each with its reason.
+     * A "KNOWN DEFECT" entry is a bug recorded here, not a rationale.
+     */
+    private static final Set<String> EXPECTED_REFERENCES = Set.of(
+            "templates/weblog/page.vm|standard: $model.page.metaTitle", // null when the page has no meta title; tested with $utils.isNotEmpty
+            "templates/weblog/page.vm|standard: $model.weblog.stylesheet", // KNOWN DEFECT: WeblogWrapper.getStylesheet() returns null for a custom theme with no stylesheet and templates/weblog/page.vm line 33 emits it unguarded, so the href prints as the literal text $model.weblog.stylesheet
+            "weblog.vm: $model.pageOgImage", // null when the page has no OG image; assigned to $seoImage, which is tested with #if
+            "weblog.vm: $model.tags", // null when the view is not a tag view; tested with #if/#elseif
+            "weblog.vm: $model.weblogCategory", // null when the view is not a category view; tested with #if/#elseif
+            "weblog.vm: $seoBusinessJson", // null when the weblog has no business profile; tested with #if
+            "weblog.vm: $seoImage", // null when nothing supplies an image; tested with #if
+            "weblog.vm: $seoPage.metaTitle", // null when the page has no meta title; tested with $utils.isNotEmpty
+            "weblog.vm: $seoPage.searchDescription", // null when the page has no search description; tested with $utils.isNotEmpty
+            "weblog.vm: $utils.businessJsonLd()", // returns null when the weblog has no business profile; the result is tested with #if($seoBusinessJson)
+            "weblog.vm: $weblog", // KNOWN DEFECT: showContentAssets takes no argument, so $weblog in its $config.getColophon($weblog) call is never bound; getColophon(null) falls back to the site colophon, which is why only the version (the same for every blog) is read and nothing visibly breaks
+            "weblog.vm: $weblog.analyticsSiteId", // null unless analytics is configured; tested with $utils.isNotEmpty
+            "weblog.vm: seoBusinessJson", // #set of a null business JSON-LD; tested with #if
+            "weblog.vm: seoImage" // #set of a null image; tested with #if
     );
 
     @BeforeAll

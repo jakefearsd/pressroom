@@ -24,6 +24,7 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -107,103 +108,106 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ThemeReferenceLeakTest {
 
-    /** Legitimately unresolved references: optional model values tested in #if, quiet $! references. */
-    private static final java.util.Set<String> EXPECTED_REFERENCES = java.util.Set.of(
-            "feeds.vm: $entry.findEntryAttribute()", // optional model value, null on this page and tested or quiet
-            "feeds.vm: $entry.summary", // optional model value, null on this page and tested or quiet
-            "feeds.vm: $mc_url", // enclosure value absent on an entry without media, tested before use
-            "feeds.vm: mc_length", // a #set whose right-hand side is null, so the variable stays unset
-            "feeds.vm: mc_type", // a #set whose right-hand side is null, so the variable stays unset
-            "feeds.vm: mc_url", // a #set whose right-hand side is null, so the variable stays unset
-            "frontpage:Weblog|standard: $pager.nextLink", // pager link absent on the first or last page, tested before use
-            "frontpage:Weblog|standard: $pager.prevLink", // pager link absent on the first or last page, tested before use
-            "frontpage:_blogdirectory|standard: $chosenLetter", // pager link absent on the first or last page, tested before use
-            "frontpage:_blogdirectory|standard: $model.getRequestParameter()", // optional model value, null on this page and tested or quiet
-            "frontpage:_blogdirectory|standard: $weblogsPager.nextLink", // pager link absent on the first or last page, tested before use
-            "frontpage:_blogdirectory|standard: $weblogsPager.prevLink", // pager link absent on the first or last page, tested before use
-            "frontpage:_header|standard: $fdMetaTitle", // optional header value, tested before use
-            "frontpage:_header|standard: $fdPageTitle", // optional header value, tested before use
-            "frontpage:_header|standard: $fdReading", // optional header value, tested before use
-            "journal:Weblog|standard: $model.tags", // optional model value, null on this page and tested or quiet
-            "journal:Weblog|standard: $model.weblogCategory", // optional model value, null on this page and tested or quiet
-            "journal:Weblog|standard: $model.weblogDateLabel", // optional model value, null on this page and tested or quiet
-            "journal:Weblog|standard: $pager.nextLink", // pager link absent on the first or last page, tested before use
-            "journal:Weblog|standard: $pager.prevLink", // pager link absent on the first or last page, tested before use
-            "journal:_page|standard: $model.page.metaTitle", // optional model value, null on this page and tested or quiet
-            "journal:permalink|standard: $model.weblogEntry.pojo.metaTitle", // optional model value, null on this page and tested or quiet
-            "journal:permalink|standard: $newer", // pager link absent on the first or last page, tested before use
-            "journal:permalink|standard: $older", // pager link absent on the first or last page, tested before use
-            "journal:permalink|standard: $pager.nextEntry", // pager link absent on the first or last page, tested before use
-            "journal:permalink|standard: $pager.prevEntry", // pager link absent on the first or last page, tested before use
-            "journal:permalink|standard: newer", // a #set whose right-hand side is null, so the variable stays unset
-            "journal:permalink|standard: older", // a #set whose right-hand side is null, so the variable stays unset
-            "portfolio:Weblog|standard: $model.tags", // optional model value, null on this page and tested or quiet
-            "portfolio:Weblog|standard: $model.weblogCategory", // optional model value, null on this page and tested or quiet
-            "portfolio:Weblog|standard: $model.weblogDateLabel", // optional model value, null on this page and tested or quiet
-            "portfolio:Weblog|standard: $pager.nextLink", // pager link absent on the first or last page, tested before use
-            "portfolio:Weblog|standard: $pager.prevLink", // pager link absent on the first or last page, tested before use
-            "portfolio:_day|standard: $entry.featuredImage.altText", // optional model value, null on this page and tested or quiet
-            "portfolio:_page|standard: $model.page.metaTitle", // optional model value, null on this page and tested or quiet
-            "portfolio:permalink|standard: $model.weblogEntry.pojo.metaTitle", // optional model value, null on this page and tested or quiet
-            "portfolio:permalink|standard: $newer", // pager link absent on the first or last page, tested before use
-            "portfolio:permalink|standard: $older", // pager link absent on the first or last page, tested before use
-            "portfolio:permalink|standard: $pager.nextEntry", // pager link absent on the first or last page, tested before use
-            "portfolio:permalink|standard: $pager.prevEntry", // pager link absent on the first or last page, tested before use
-            "portfolio:permalink|standard: newer", // a #set whose right-hand side is null, so the variable stays unset
-            "portfolio:permalink|standard: older", // a #set whose right-hand side is null, so the variable stays unset
-            "site-entries-atom.vm|standard: $model.categoryName", // optional model value, null on this page and tested or quiet
-            "site-entries-atom.vm|standard: $model.tags", // optional model value, null on this page and tested or quiet
-            "travel:Weblog|standard: $model.tags", // optional model value, null on this page and tested or quiet
-            "travel:Weblog|standard: $model.weblogCategory", // optional model value, null on this page and tested or quiet
-            "travel:Weblog|standard: $model.weblogDateLabel", // optional model value, null on this page and tested or quiet
-            "travel:Weblog|standard: $pager.nextLink", // pager link absent on the first or last page, tested before use
-            "travel:Weblog|standard: $pager.prevLink", // pager link absent on the first or last page, tested before use
-            "travel:_day|standard: $entry.featuredImage.altText", // optional model value, null on this page and tested or quiet
-            "travel:_page|standard: $model.page.metaTitle", // optional model value, null on this page and tested or quiet
-            "travel:permalink|standard: $model.weblogEntry.pojo.metaTitle", // optional model value, null on this page and tested or quiet
-            "travel:permalink|standard: $newer", // pager link absent on the first or last page, tested before use
-            "travel:permalink|standard: $older", // pager link absent on the first or last page, tested before use
-            "travel:permalink|standard: $pager.nextEntry", // pager link absent on the first or last page, tested before use
-            "travel:permalink|standard: $pager.prevEntry", // pager link absent on the first or last page, tested before use
-            "travel:permalink|standard: newer", // a #set whose right-hand side is null, so the variable stays unset
-            "travel:permalink|standard: older", // a #set whose right-hand side is null, so the variable stays unset
-            "weblog-entries-atom.vm|standard: $model.categoryName", // optional model value, null on this page and tested or quiet
-            "weblog-entries-atom.vm|standard: $model.tags", // optional model value, null on this page and tested or quiet
-            "weblog.vm: $colophonFacts.copyrightText", // optional setting, null when unconfigured and tested before use
-            "weblog.vm: $colophonFacts.privacyUrl", // optional setting, null when unconfigured and tested before use
-            "weblog.vm: $entry.pojo.metaTitle", // optional model value, null on this page and tested or quiet
-            "weblog.vm: $image.objectPosition", // optional model value, null on this page and tested or quiet
-            "weblog.vm: $model.canonicalUrl", // optional model value, null on this page and tested or quiet
-            "weblog.vm: $model.page", // optional model value, null on this page and tested or quiet
-            "weblog.vm: $model.pageOgImage", // optional model value, null on this page and tested or quiet
-            "weblog.vm: $model.tags", // optional model value, null on this page and tested or quiet
-            "weblog.vm: $model.term", // optional model value, null on this page and tested or quiet
-            "weblog.vm: $model.weblogCategory", // optional model value, null on this page and tested or quiet
-            "weblog.vm: $model.weblogDate", // optional model value, null on this page and tested or quiet
-            "weblog.vm: $page.metaTitle", // optional model value, null on this page and tested or quiet
-            "weblog.vm: $responsiveObjectPosition", // optional SEO value, tested before use
-            "weblog.vm: $seoBusinessJson", // optional SEO value, tested before use
-            "weblog.vm: $seoCanonical", // optional SEO value, tested before use
-            "weblog.vm: $seoEntry.ogImage", // optional SEO value, tested before use
-            "weblog.vm: $seoEntry.pojo.metaTitle", // optional SEO value, tested before use
-            "weblog.vm: $seoImage", // optional SEO value, tested before use
-            "weblog.vm: $seoPage.metaTitle", // optional SEO value, tested before use
-            "weblog.vm: $seoPage.searchDescription", // optional SEO value, tested before use
-            "weblog.vm: $seoPublisher", // optional SEO value, tested before use
-            "weblog.vm: $seoTypedJson", // optional SEO value, tested before use
-            "weblog.vm: $site", // optional setting, null when unconfigured and tested before use
-            "weblog.vm: $utils.businessJsonLd()", // optional SEO value, tested before use
-            "weblog.vm: $utils.businessPublisherJson()", // optional SEO value, tested before use
-            "weblog.vm: $utils.travelJsonLd()", // optional SEO value, tested before use
-            "weblog.vm: $weblog", // optional setting, null when unconfigured and tested before use
-            "weblog.vm: $weblog.analyticsSiteId", // optional setting, null when unconfigured and tested before use
-            "weblog.vm: $weblog.newsletterListUuid", // optional setting, null when unconfigured and tested before use
-            "weblog.vm: responsiveObjectPosition", // a #set whose right-hand side is null, so the variable stays unset
-            "weblog.vm: seoBusinessJson", // a #set whose right-hand side is null, so the variable stays unset
-            "weblog.vm: seoCanonical", // a #set whose right-hand side is null, so the variable stays unset
-            "weblog.vm: seoImage", // a #set whose right-hand side is null, so the variable stays unset
-            "weblog.vm: seoPublisher", // a #set whose right-hand side is null, so the variable stays unset
-            "weblog.vm: seoTypedJson" // a #set whose right-hand side is null, so the variable stays unset
+    /**
+     * What the shipped templates leave unresolved on these renders, each with its reason.
+     * A "KNOWN DEFECT" entry is a bug recorded here, not a rationale.
+     */
+    private static final Set<String> EXPECTED_REFERENCES = Set.of(
+            "feeds.vm: $entry.findEntryAttribute()", // null when the entry has no media-cast attribute; the result is tested with #if($mc_url && ...)
+            "feeds.vm: $entry.summary", // null when the entry has no summary; tested with $utils.isNotEmpty
+            "feeds.vm: $mc_url", // null without a media-cast attribute; tested with #if in feeds.vm
+            "feeds.vm: mc_length", // #set of a null media-cast attribute; tested with #if in feeds.vm
+            "feeds.vm: mc_type", // #set of a null media-cast attribute; tested with #if in feeds.vm
+            "feeds.vm: mc_url", // #set of a null media-cast attribute; tested with #if in feeds.vm
+            "frontpage:Weblog|standard: $pager.nextLink", // null on the last page; tested with #if
+            "frontpage:Weblog|standard: $pager.prevLink", // null on the first page; tested with #if
+            "frontpage:_blogdirectory|standard: $chosenLetter", // directory letter filter (_blogdirectory.vm line 7), set only when ?letter= is given; tested with #if and ==
+            "frontpage:_blogdirectory|standard: $model.getRequestParameter()", // null without a ?letter= parameter; tested by #if at _blogdirectory.vm line 6
+            "frontpage:_blogdirectory|standard: $weblogsPager.nextLink", // null on the last directory page; tested with #if
+            "frontpage:_blogdirectory|standard: $weblogsPager.prevLink", // null on the first directory page; tested with #if
+            "frontpage:_header|standard: $fdMetaTitle", // null unless a static page has a meta title; tested with #if in frontpage _header.vm
+            "frontpage:_header|standard: $fdPageTitle", // unset on the home view; tested with #elseif in frontpage _header.vm
+            "frontpage:_header|standard: $fdReading", // unset except on a page whose title is the h1; tested with #if in frontpage _header.vm
+            "journal:Weblog|standard: $model.tags", // null when the view is not a tag view; tested with #if/#elseif
+            "journal:Weblog|standard: $model.weblogCategory", // null when the view is not a category view; tested with #if/#elseif
+            "journal:Weblog|standard: $model.weblogDateLabel", // null when the view is not a date archive; tested with #elseif
+            "journal:Weblog|standard: $pager.nextLink", // null on the last page; tested with #if
+            "journal:Weblog|standard: $pager.prevLink", // null on the first page; tested with #if
+            "journal:_page|standard: $model.page.metaTitle", // null when the page has no meta title; tested with $utils.isNotEmpty
+            "journal:permalink|standard: $model.weblogEntry.pojo.metaTitle", // null when the entry has no meta title; tested with $utils.isNotEmpty
+            "journal:permalink|standard: $newer", // unset on the newest entry; tested with #if($older || $newer)
+            "journal:permalink|standard: $older", // unset on the oldest entry; tested with #if($older || $newer)
+            "journal:permalink|standard: $pager.nextEntry", // null on the newest entry; assigned to $newer, which is tested with #if
+            "journal:permalink|standard: $pager.prevEntry", // null on the oldest entry; assigned to $older, which is tested with #if
+            "journal:permalink|standard: newer", // #set of a null value ($pager.nextEntry) on the newest entry
+            "journal:permalink|standard: older", // #set of a null value ($pager.prevEntry) on the oldest entry
+            "portfolio:Weblog|standard: $model.tags", // null when the view is not a tag view; tested with #if/#elseif
+            "portfolio:Weblog|standard: $model.weblogCategory", // null when the view is not a category view; tested with #if/#elseif
+            "portfolio:Weblog|standard: $model.weblogDateLabel", // null when the view is not a date archive; tested with #elseif
+            "portfolio:Weblog|standard: $pager.nextLink", // null on the last page; tested with #if
+            "portfolio:Weblog|standard: $pager.prevLink", // null on the first page; tested with #if
+            "portfolio:_day|standard: $entry.featuredImage.altText", // null when the featured image has no alt text; tested with $utils.isNotEmpty
+            "portfolio:_page|standard: $model.page.metaTitle", // null when the page has no meta title; tested with $utils.isNotEmpty
+            "portfolio:permalink|standard: $model.weblogEntry.pojo.metaTitle", // null when the entry has no meta title; tested with $utils.isNotEmpty
+            "portfolio:permalink|standard: $newer", // unset on the newest entry; tested with #if($older || $newer)
+            "portfolio:permalink|standard: $older", // unset on the oldest entry; tested with #if($older || $newer)
+            "portfolio:permalink|standard: $pager.nextEntry", // null on the newest entry; assigned to $newer, which is tested with #if
+            "portfolio:permalink|standard: $pager.prevEntry", // null on the oldest entry; assigned to $older, which is tested with #if
+            "portfolio:permalink|standard: newer", // #set of a null value ($pager.nextEntry) on the newest entry
+            "portfolio:permalink|standard: older", // #set of a null value ($pager.prevEntry) on the oldest entry
+            "site-entries-atom.vm|standard: $model.categoryName", // null when the feed is not a category feed; tested with #elseif
+            "site-entries-atom.vm|standard: $model.tags", // null when the view is not a tag view; tested with #if/#elseif
+            "travel:Weblog|standard: $model.tags", // null when the view is not a tag view; tested with #if/#elseif
+            "travel:Weblog|standard: $model.weblogCategory", // null when the view is not a category view; tested with #if/#elseif
+            "travel:Weblog|standard: $model.weblogDateLabel", // null when the view is not a date archive; tested with #elseif
+            "travel:Weblog|standard: $pager.nextLink", // null on the last page; tested with #if
+            "travel:Weblog|standard: $pager.prevLink", // null on the first page; tested with #if
+            "travel:_day|standard: $entry.featuredImage.altText", // null when the featured image has no alt text; tested with $utils.isNotEmpty
+            "travel:_page|standard: $model.page.metaTitle", // null when the page has no meta title; tested with $utils.isNotEmpty
+            "travel:permalink|standard: $model.weblogEntry.pojo.metaTitle", // null when the entry has no meta title; tested with $utils.isNotEmpty
+            "travel:permalink|standard: $newer", // unset on the newest entry; tested with #if($older || $newer)
+            "travel:permalink|standard: $older", // unset on the oldest entry; tested with #if($older || $newer)
+            "travel:permalink|standard: $pager.nextEntry", // null on the newest entry; assigned to $newer, which is tested with #if
+            "travel:permalink|standard: $pager.prevEntry", // null on the oldest entry; assigned to $older, which is tested with #if
+            "travel:permalink|standard: newer", // #set of a null value ($pager.nextEntry) on the newest entry
+            "travel:permalink|standard: older", // #set of a null value ($pager.prevEntry) on the oldest entry
+            "weblog-entries-atom.vm|standard: $model.categoryName", // null when the feed is not a category feed; tested with #elseif
+            "weblog-entries-atom.vm|standard: $model.tags", // null when the view is not a tag view; tested with #if/#elseif
+            "weblog.vm: $colophonFacts.copyrightText", // null unless the weblog sets copyright text; tested with $utils.isNotEmpty
+            "weblog.vm: $colophonFacts.privacyUrl", // null unless a privacy URL is configured; tested with $utils.isNotEmpty
+            "weblog.vm: $entry.pojo.metaTitle", // null when the entry has no meta title; tested with $utils.isNotEmpty in the showEntryTitle macro
+            "weblog.vm: $image.objectPosition", // null when the image has no focal point; assigned to $responsiveObjectPosition, which is tested with #if
+            "weblog.vm: $model.canonicalUrl", // null when no canonical URL applies; assigned to $seoCanonical, which is tested with #if
+            "weblog.vm: $model.page", // null when the view is not a static page; tested with #if / negated in #set
+            "weblog.vm: $model.pageOgImage", // null when the page has no OG image; assigned to $seoImage, which is tested with #if
+            "weblog.vm: $model.tags", // null when the view is not a tag view; tested with #if/#elseif
+            "weblog.vm: $model.term", // null outside a search; tested with $utils.isNotEmpty
+            "weblog.vm: $model.weblogCategory", // null when the view is not a category view; tested with #if/#elseif
+            "weblog.vm: $model.weblogDate", // null when the view is not a date archive; tested with #if / negated in #set
+            "weblog.vm: $page.metaTitle", // null when the page has no meta title; tested with $utils.isNotEmpty in the showPageTitle macro
+            "weblog.vm: $responsiveObjectPosition", // null when the image has no focal point; tested with #if
+            "weblog.vm: $seoBusinessJson", // null when the weblog has no business profile; tested with #if
+            "weblog.vm: $seoCanonical", // null when no canonical URL applies; tested with #if
+            "weblog.vm: $seoEntry.ogImage", // null when the entry has no OG image; falls back to the featured image under #if(!$seoImage)
+            "weblog.vm: $seoEntry.pojo.metaTitle", // null when the entry has no meta title; tested with $utils.isNotEmpty
+            "weblog.vm: $seoImage", // null when nothing supplies an image; tested with #if
+            "weblog.vm: $seoPage.metaTitle", // null when the page has no meta title; tested with $utils.isNotEmpty
+            "weblog.vm: $seoPage.searchDescription", // null when the page has no search description; tested with $utils.isNotEmpty
+            "weblog.vm: $seoPublisher", // null when the weblog has no business profile; tested with #if
+            "weblog.vm: $seoTypedJson", // null unless the entry is a travel entry; tested with #if
+            "weblog.vm: $site", // bound only on the aggregated front page; absence is the test in #if(!$site && ...) in showWeblogSearchAgainForm
+            "weblog.vm: $utils.businessJsonLd()", // returns null when the weblog has no business profile; the result is tested with #if($seoBusinessJson)
+            "weblog.vm: $utils.businessPublisherJson()", // returns null when the weblog has no business profile; the result is tested with #if($seoPublisher)
+            "weblog.vm: $utils.travelJsonLd()", // returns null for an entry that is not a travel entry; the result is tested with #if($seoTypedJson)
+            "weblog.vm: $weblog", // KNOWN DEFECT: showContentAssets takes no argument, so $weblog in its $config.getColophon($weblog) call is never bound; getColophon(null) falls back to the site colophon, which is why only the version (the same for every blog) is read and nothing visibly breaks
+            "weblog.vm: $weblog.analyticsSiteId", // null unless analytics is configured; tested with $utils.isNotEmpty
+            "weblog.vm: $weblog.newsletterListUuid", // null unless a newsletter list is configured; tested with #if
+            "weblog.vm: responsiveObjectPosition", // #set of a null focal point; tested with #if
+            "weblog.vm: seoBusinessJson", // #set of a null business JSON-LD; tested with #if
+            "weblog.vm: seoCanonical", // #set of a null canonical URL; tested with #if
+            "weblog.vm: seoImage", // #set of a null image; tested with #if
+            "weblog.vm: seoPublisher", // #set of a null publisher JSON; tested with #if
+            "weblog.vm: seoTypedJson" // #set of a null typed JSON-LD; tested with #if
     );
 
     @BeforeAll

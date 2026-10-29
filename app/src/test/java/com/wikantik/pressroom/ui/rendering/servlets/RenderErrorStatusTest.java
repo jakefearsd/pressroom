@@ -1,12 +1,11 @@
 package com.wikantik.pressroom.ui.rendering.servlets;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import com.wikantik.pressroom.ui.rendering.velocity.InvalidReferenceRecorder;
 import com.wikantik.pressroom.ui.rendering.StrictReferences;
+import com.wikantik.pressroom.ui.rendering.velocity.InvalidReferenceRecorder;
 import java.util.ArrayList;
 import java.util.List;
 
+import java.util.Set;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LogEvent;
@@ -26,7 +25,9 @@ import com.wikantik.pressroom.pojos.WeblogTemplate;
 import com.wikantik.pressroom.ui.rendering.util.WeblogPageRequest;
 import com.wikantik.pressroom.ui.rendering.util.cache.RenderCache;
 import com.wikantik.pressroom.ui.rendering.util.cache.RenderCaches;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -53,9 +54,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class RenderErrorStatusTest {
 
-    /** Legitimately unresolved references: optional model values tested in #if, quiet $! references. */
-    private static final java.util.Set<String> EXPECTED_REFERENCES = java.util.Set.of(
-    );
+    private static final Set<String> EXPECTED_REFERENCES = Set.of();
 
     @BeforeAll
     static void clearInvalidReferenceRecorder() {

@@ -14,6 +14,9 @@ import java.util.TreeSet;
  * shipped templates legitimately leave unresolved (optional model values tested
  * in {@code #if}, quiet {@code $!} references); anything else, or anything
  * missing, fails with the sorted difference both ways.
+ *
+ * <p>The recorder is a static, JVM-wide set, so this assumes rendering test classes
+ * do not run concurrently in one JVM (they do not: no parallel execution is configured).
  */
 public final class StrictReferences {
 

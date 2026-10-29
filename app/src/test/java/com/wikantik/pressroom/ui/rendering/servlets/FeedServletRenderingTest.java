@@ -1,14 +1,15 @@
 package com.wikantik.pressroom.ui.rendering.servlets;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import com.wikantik.pressroom.ui.rendering.velocity.InvalidReferenceRecorder;
-import com.wikantik.pressroom.ui.rendering.StrictReferences;
 import com.wikantik.pressroom.TestUtils;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
+import com.wikantik.pressroom.ui.rendering.StrictReferences;
+import com.wikantik.pressroom.ui.rendering.velocity.InvalidReferenceRecorder;
+import java.util.Set;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -21,16 +22,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FeedServletRenderingTest {
 
-    /** Legitimately unresolved references: optional model values tested in #if, quiet $! references. */
-    private static final java.util.Set<String> EXPECTED_REFERENCES = java.util.Set.of(
-            "feeds.vm: $entry.findEntryAttribute()", // optional model value, null on this page and tested or quiet
-            "feeds.vm: $entry.summary", // optional model value, null on this page and tested or quiet
-            "feeds.vm: $mc_url", // enclosure value absent on an entry without media, tested before use
-            "feeds.vm: mc_length", // a #set whose right-hand side is null, so the variable stays unset
-            "feeds.vm: mc_type", // a #set whose right-hand side is null, so the variable stays unset
-            "feeds.vm: mc_url", // a #set whose right-hand side is null, so the variable stays unset
-            "weblog-entries-atom.vm|standard: $model.categoryName", // optional model value, null on this page and tested or quiet
-            "weblog-entries-atom.vm|standard: $model.tags" // optional model value, null on this page and tested or quiet
+    /**
+     * What the shipped templates leave unresolved on these renders, each with its reason.
+     * A "KNOWN DEFECT" entry is a bug recorded here, not a rationale.
+     */
+    private static final Set<String> EXPECTED_REFERENCES = Set.of(
+            "feeds.vm: $entry.findEntryAttribute()", // null when the entry has no media-cast attribute; the result is tested with #if($mc_url && ...)
+            "feeds.vm: $entry.summary", // null when the entry has no summary; tested with $utils.isNotEmpty
+            "feeds.vm: $mc_url", // null without a media-cast attribute; tested with #if in feeds.vm
+            "feeds.vm: mc_length", // #set of a null media-cast attribute; tested with #if in feeds.vm
+            "feeds.vm: mc_type", // #set of a null media-cast attribute; tested with #if in feeds.vm
+            "feeds.vm: mc_url", // #set of a null media-cast attribute; tested with #if in feeds.vm
+            "weblog-entries-atom.vm|standard: $model.categoryName", // null when the feed is not a category feed; tested with #elseif
+            "weblog-entries-atom.vm|standard: $model.tags" // null when the view is not a tag view; tested with #if/#elseif
     );
 
     @BeforeAll
