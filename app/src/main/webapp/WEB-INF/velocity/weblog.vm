@@ -1277,7 +1277,7 @@ function rollerInitContent(root) {
   if (rollerContent.state === 'loading') { return; }
   rollerContent.state = 'loading';
   var script = document.createElement('script');
-  script.src = '$url.site/roller-ui/scripts/roller-content.js';
+  script.src = '$url.site/roller-ui/scripts/roller-content.js?v=$utils.escapeJavaScript($config.rollerVersion)';
   script.onload = function () {
     rollerContent.state = 'ready';
     var queued = rollerContent.queue;

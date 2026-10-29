@@ -200,6 +200,27 @@ class ContentAssetsRenderingTest {
     // ---------------------------------------------------------- the bootstrap
 
     /**
+     * The bundle URL is unversioned by name, and a cached bundle from before
+     * the PressroomContent rename defines the wrong global, so the URL carries
+     * the application version as a query string: a release changes it and
+     * every browser and CDN fetches the new bundle.
+     */
+    @Test
+    void theBundleUrlCarriesTheApplicationVersion() throws Exception {
+        java.util.Properties props = new java.util.Properties();
+        try (java.io.InputStream in = getClass().getResourceAsStream("/roller-version.properties")) {
+            props.load(in);
+        }
+        String version = props.getProperty("ro.version");
+        assertFalse(version == null || version.isEmpty(), "the packaged version is the expected one");
+
+        String body = render("/" + HANDLE);
+
+        assertTrue(body.contains("script.src = '/roller" + BUNDLE + "?v=" + version + "'"),
+                "the bundle URL must carry ?v=<application version>:\n" + body);
+    }
+
+    /**
      * Lazy, re-runnable and localised. The bundle is only injected after the
      * presence check finds an unprocessed code block or content heading; the
      * initialiser chains onto the preview seam so a swapped-in preview
@@ -210,7 +231,7 @@ class ContentAssetsRenderingTest {
     void theBootstrapIsLazyRerunnableAndLocalised() throws Exception {
         String body = render("/" + HANDLE);
 
-        assertTrue(body.contains("script.src = '/roller" + BUNDLE + "'"),
+        assertTrue(body.contains("script.src = '/roller" + BUNDLE + "?v="),
                 "the bundle must load under the context path, and only from the "
                         + "bootstrap's injected script element:\n" + body);
         assertFalse(body.contains("<script src=\"/roller" + BUNDLE),

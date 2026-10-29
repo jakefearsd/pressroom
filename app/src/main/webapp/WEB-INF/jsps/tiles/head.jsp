@@ -45,7 +45,13 @@ mismatch 404s the asset on every page that includes this file.
 
      Last in this file so roller-editor.css can override roller.css. --%>
 <c:if test="${fn:contains(tile_content, 'EntryEdit.jsp') or fn:contains(tile_content, 'PageEdit.jsp')}">
-<script src="<c:url value='/roller-ui/scripts/roller-editor.js'/>"></script>
+<%-- ?v=<application version>: the bundle's name is unversioned and the app
+     sends no Cache-Control, so a browser or CDN would keep a bundle from the
+     previous release (one that defines other globals). The version is the
+     Colophon's, the one the footer shows; c:param encodes it. --%>
+<% request.setAttribute("editorBundleVersion", com.wikantik.pressroom.business.Colophon.of(
+       null, null, java.time.Clock.systemDefaultZone()).version()); %>
+<script src="<c:url value='/roller-ui/scripts/roller-editor.js'><c:param name='v' value='${editorBundleVersion}'/></c:url>"></script>
 <link rel="stylesheet" media="all" href="<c:url value='/roller-ui/styles/roller-editor.css'/>" />
 </c:if>
 

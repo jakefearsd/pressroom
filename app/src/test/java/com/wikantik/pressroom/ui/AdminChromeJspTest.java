@@ -430,4 +430,18 @@ class AdminChromeJspTest {
             assertTrue(jsp(page).contains("<%@ page session=\"false\" %>"), page + " creates a session");
         }
     }
+
+    /**
+     * The editor bundle's URL is unversioned by name, and a cached bundle from
+     * before the PressroomEditor rename defines the wrong global, so head.jsp
+     * appends the application version (the Colophon's, the one the footer
+     * shows) as a query string, escaped.
+     */
+    @Test
+    void theEditorBundleUrlCarriesTheApplicationVersion() {
+        String src = jsp("tiles/head.jsp");
+        assertTrue(src.contains("Colophon.of("), "the version comes from the Colophon");
+        assertTrue(src.contains("<c:param name='v' value='${editorBundleVersion}'/>"),
+                "the editor bundle URL carries ?v=<version>, encoded by c:param");
+    }
 }
