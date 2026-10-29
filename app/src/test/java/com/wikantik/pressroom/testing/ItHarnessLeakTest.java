@@ -57,8 +57,8 @@ import static org.junit.jupiter.api.Assertions.fail;
  * run truncated -- so run N+1 destroyed the only record of run N's leaked pid.
  *
  * <p>The replacement is identity-based rather than pidfile-based: every process
- * the harness starts carries {@code -Droller.it.run=<run id>} and
- * {@code -Droller.it.owner=<pid>@<start time>} on its command line, so it can
+ * the harness starts carries {@code -Dpressroom.it.run=<run id>} and
+ * {@code -Dpressroom.it.owner=<pid>@<start time>} on its command line, so it can
  * always be found without a file, and "is this process stale?" is answered by
  * asking whether the Maven build that owns it is still alive. These tests pin
  * the three mechanisms that follow from that: a {@code start-app.sh} that kills
@@ -1053,7 +1053,7 @@ class ItHarnessLeakTest {
 
     /** A fresh marker namespace: unique on this machine, and never the real harness's. */
     private static String newNamespace() {
-        return "roller.itleak" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        return "pressroom.itleak" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
     }
 
     private static String runId(String label) {

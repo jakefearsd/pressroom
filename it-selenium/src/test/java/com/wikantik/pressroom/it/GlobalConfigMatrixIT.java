@@ -126,7 +126,7 @@ class GlobalConfigMatrixIT extends PressroomIT {
      *
      * <p>Only reachable at all since this property was promoted from
      * startup-only: before that, seeing the other branch meant restarting the
-     * server with a different {@code roller.properties}. It was also a
+     * server with a different {@code pressroom.properties}. It was also a
      * {@code static final} read once at class load, so even a restart-free
      * change would have been ignored.
      *

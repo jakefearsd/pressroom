@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Pins the ROLLER_* environment overlay -- the mechanism that lets the
+ * Pins the PRESSROOM_* environment overlay -- the mechanism that lets the
  * production image take its whole configuration from .env, with no
  * bind-mounted properties file (see
  * docs/superpowers/specs/2026-08-14-container-push-deployment-design.md).
@@ -62,20 +62,20 @@ class WebloggerConfigEnvOverrideTest {
         Properties config = props("database.jdbc.username", "from-file");
 
         WebloggerConfig.applyEnvironmentOverrides(
-                config, env("ROLLER_DATABASE_JDBC_USERNAME", "from-env"));
+                config, env("PRESSROOM_DATABASE_JDBC_USERNAME", "from-env"));
 
         assertEquals("from-env", config.getProperty("database.jdbc.username"));
     }
 
     @Test
     void aKnownKeyKeepsItsOriginalSpelling() {
-        // database.jdbc.driverClass is camelCase in roller.properties. A naive
+        // database.jdbc.driverClass is camelCase in pressroom.properties. A naive
         // lowercase mapping would create a SECOND key that nothing ever reads,
         // and the override would appear to do nothing.
         Properties config = props("database.jdbc.driverClass", "org.h2.Driver");
 
         WebloggerConfig.applyEnvironmentOverrides(
-                config, env("ROLLER_DATABASE_JDBC_DRIVERCLASS", "org.postgresql.Driver"));
+                config, env("PRESSROOM_DATABASE_JDBC_DRIVERCLASS", "org.postgresql.Driver"));
 
         assertEquals("org.postgresql.Driver", config.getProperty("database.jdbc.driverClass"));
         assertNull(config.getProperty("database.jdbc.driverclass"),
@@ -84,14 +84,14 @@ class WebloggerConfigEnvOverrideTest {
 
     @Test
     void anUnknownKeyIsCreatedFromTheDerivedName() {
-        // mail.port does not appear in roller.properties at all, and
+        // mail.port does not appear in pressroom.properties at all, and
         // uploads.dir is present only as a comment. An allowlist restricted to
         // keys with active defaults could not set either one.
         Properties config = new Properties();
 
         WebloggerConfig.applyEnvironmentOverrides(
-                config, env("ROLLER_MAIL_PORT", "587",
-                            "ROLLER_UPLOADS_DIR", "/data/uploads"));
+                config, env("PRESSROOM_MAIL_PORT", "587",
+                            "PRESSROOM_UPLOADS_DIR", "/data/uploads"));
 
         assertEquals("587", config.getProperty("mail.port"));
         assertEquals("/data/uploads", config.getProperty("uploads.dir"));
@@ -104,10 +104,20 @@ class WebloggerConfigEnvOverrideTest {
         WebloggerConfig.applyEnvironmentOverrides(
                 config, env("POSTGRES_PASSWORD", "hunter2",
                             "PATH", "/usr/bin",
-                            "ROLLER_", "empty-name"));
+                            "PRESSROOM_", "empty-name"));
 
         assertTrue(config.isEmpty(),
-                "only ROLLER_<something> variables may reach the configuration");
+                "only PRESSROOM_<something> variables may reach the configuration");
+    }
+
+    @Test
+    void oldPrefixIsNotAnOverride() {
+        // The startup guard (LegacyConfigNames), not the overlay, owns refusal.
+        Properties config = new Properties();
+
+        WebloggerConfig.applyEnvironmentOverrides(config, env("ROLLER_SITE_NAME", "x")); // rebrand:keep
+
+        assertNull(config.getProperty("site.name"));
     }
 
     @Test
@@ -115,7 +125,7 @@ class WebloggerConfigEnvOverrideTest {
         // Clearing mail.username is a legitimate thing to express in .env.
         Properties config = props("mail.username", "someone");
 
-        WebloggerConfig.applyEnvironmentOverrides(config, env("ROLLER_MAIL_USERNAME", ""));
+        WebloggerConfig.applyEnvironmentOverrides(config, env("PRESSROOM_MAIL_USERNAME", ""));
 
         assertEquals("", config.getProperty("mail.username"));
     }

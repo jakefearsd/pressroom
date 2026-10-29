@@ -162,7 +162,7 @@ public final class WebloggerStartup {
                         + "at most once a minute.", mailTarget, cause);
             } else {
                 log.warn("Mail is not configured ({}): password reset and notification mail are off. "
-                        + "Set the mail.* properties (ROLLER_MAIL_* in a container).", cause);
+                        + "Set the mail.* properties (PRESSROOM_MAIL_* in a container).", cause);
             }
             log.debug("Mail provider setup failed", ex);
         }

@@ -15,7 +15,7 @@
 -- Seed data for the LOCAL DEVELOPMENT database.
 --
 -- Applied by `./roller db|dev|reset` via:
---     psql -v devpw="$ROLLER_DEV_ADMIN_PASSWORD" -f bin/db/seed-dev-data.sql
+--     psql -v devpw="$PRESSROOM_DEV_ADMIN_PASSWORD" -f bin/db/seed-dev-data.sql
 --
 -- NOT a migration, and deliberately not under bin/db/migrations/: migrate.sh,
 -- DatabaseInstaller and the test harness apply only that directory, so this

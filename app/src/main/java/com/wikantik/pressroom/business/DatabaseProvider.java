@@ -84,7 +84,7 @@ public class DatabaseProvider  {
     @SuppressFBWarnings(
             value = "LDAP_INJECTION",
             justification = "The JNDI name is database.jndi.name, operator configuration "
-                    + "(roller.properties or ROLLER_* environment); no request reaches it.")
+                    + "(pressroom.properties or PRESSROOM_* environment); no request reaches it.")
     public DatabaseProvider() throws StartupException {
         
         String connectionTypeString = 

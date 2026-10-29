@@ -197,7 +197,7 @@ nisi. Duis lacinia enim id dui. Maecenas a leo. Duis lacus.""" ]
 
     def createDatabase() {
         def properties = new Properties()
-        properties.load(new FileInputStream("roller-custom.properties"))
+        properties.load(new FileInputStream("pressroom-custom.properties"))
         def jdbcClass    = properties.get("database.jdbc.driverClass")
         def jdbcUrl      = properties.get("database.jdbc.connectionURL")
         def jdbcUser     = properties.get("database.jdbc.username")

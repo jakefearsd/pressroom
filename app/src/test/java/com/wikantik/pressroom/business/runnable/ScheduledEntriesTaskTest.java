@@ -189,7 +189,7 @@ class ScheduledEntriesTaskTest {
     }
 
     /**
-     * A mistyped override in {@code roller-custom.properties} must not stop
+     * A mistyped override in {@code pressroom-custom.properties} must not stop
      * the task being constructed, and must leave the default in place rather
      * than half-applying a bad value.
      */
@@ -243,7 +243,7 @@ class ScheduledEntriesTaskTest {
 
     /**
      * Overrides a startup property (standing in for
-     * {@code roller-custom.properties}) and returns the previous value.
+     * {@code pressroom-custom.properties}) and returns the previous value.
      * Same reflective access as {@code TrashPurgeTaskTest}.
      */
     private static String overrideConfigProperty(String name, String value) throws Exception {

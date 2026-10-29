@@ -3,7 +3,7 @@ package com.wikantik.pressroom.ui.core.security.sso;
 import com.wikantik.pressroom.config.WebloggerConfig;
 
 /**
- * The single-sign-on configuration read from {@code roller.properties}.
+ * The single-sign-on configuration read from {@code pressroom.properties}.
  *
  * <p>The client secret is held here but {@link #toString()} never prints it.
  *

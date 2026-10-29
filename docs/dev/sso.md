@@ -38,7 +38,7 @@ setup: `docker_deployment.md`, "Reader sign-in (Google)". Code:
 characters, not starting `//` or `/\`, with no control character.
 
 **The callback comes from the Absolute URL**, `site.absoluteurl` (Global
-Config) or `ROLLER_SITE_ABSOLUTEURL` (`SsoConfig.configuredAbsoluteUrl`, via
+Config) or `PRESSROOM_SITE_ABSOLUTEURL` (`SsoConfig.configuredAbsoluteUrl`, via
 `getPropertyWithConfigFallback`), with the trailing `/` stripped. It is never
 the value `InitFilter` latches from the first request: a visitor on
 `http://docker2.lan:8080` would produce a callback the provider refuses.
@@ -50,10 +50,10 @@ no remember-me for SSO sign-ins.
 
 | Property | Env var | Default |
 |---|---|---|
-| `sso.oidc.client.id` | `ROLLER_SSO_OIDC_CLIENT_ID` | empty |
-| `sso.oidc.client.secret` | `ROLLER_SSO_OIDC_CLIENT_SECRET` | empty |
-| `sso.oidc.discovery.uri` | `ROLLER_SSO_OIDC_DISCOVERY_URI` | Google's `/.well-known/openid-configuration` |
-| `sso.provider.label` | `ROLLER_SSO_PROVIDER_LABEL` | `Google` |
+| `sso.oidc.client.id` | `PRESSROOM_SSO_OIDC_CLIENT_ID` | empty |
+| `sso.oidc.client.secret` | `PRESSROOM_SSO_OIDC_CLIENT_SECRET` | empty |
+| `sso.oidc.discovery.uri` | `PRESSROOM_SSO_OIDC_DISCOVERY_URI` | Google's `/.well-known/openid-configuration` |
+| `sso.provider.label` | `PRESSROOM_SSO_PROVIDER_LABEL` | `Google` |
 
 SSO is on when the id and the secret are both non-blank (`SsoSettings.enabled`).
 The scope is fixed at `openid profile email`; client authentication is

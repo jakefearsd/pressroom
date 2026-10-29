@@ -65,7 +65,7 @@ public class PressroomDatabaseExtension {
     }
 
     /**
-     * Roller reads {@code roller.custom.config} last, so writing the
+     * Roller reads {@code pressroom.custom.config} last, so writing the
      * container's JDBC coordinates there overrides the checked-in test
      * properties without them needing to know the randomly-assigned port.
      */
@@ -87,7 +87,7 @@ public class PressroomDatabaseExtension {
 
             // WebloggerConfig loads this in a static initializer, so it must be
             // set before anything touches that class.
-            System.setProperty("roller.custom.config", overrides.toAbsolutePath().toString());
+            System.setProperty("pressroom.custom.config", overrides.toAbsolutePath().toString());
         } catch (IOException e) {
             throw new UncheckedIOException("Could not publish test database config", e);
         }

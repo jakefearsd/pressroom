@@ -45,7 +45,7 @@ public class SsoConfig {
 
     /**
      * The configured Absolute URL: the Global Config value, else
-     * {@code ROLLER_SITE_ABSOLUTEURL}. Never {@code getAbsoluteContextURL()},
+     * {@code PRESSROOM_SITE_ABSOLUTEURL}. Never {@code getAbsoluteContextURL()},
      * whose last fallback is latched from whatever host the first request used.
      */
     static String configuredAbsoluteUrl() {

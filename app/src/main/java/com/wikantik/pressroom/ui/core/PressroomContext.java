@@ -128,7 +128,7 @@ public final class PressroomContext {
      * Fails when a deployer explicitly sets the removed encryption flag.
      *
      * <p>Silently ignoring it is the failure mode this exists to prevent: a
-     * deploy carrying {@code ROLLER_PASSWDS_ENCRYPTION_ENABLED=false} would
+     * deploy carrying {@code PRESSROOM_PASSWDS_ENCRYPTION_ENABLED=false} would
      * boot looking configured while behaving differently than its operator
      * believes. Same convention as an unsupported {@code authentication.method}.
      *

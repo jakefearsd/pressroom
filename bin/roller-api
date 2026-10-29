@@ -2,7 +2,7 @@
 # roller-api -- command-line client for Roller's automation API.
 #
 # Configuration precedence: --url/--token flags (highest), then
-# ROLLER_API_URL / ROLLER_API_TOKEN, then ~/.roller/credentials (lowest).
+# PRESSROOM_API_URL / PRESSROOM_API_TOKEN, then ~/.roller/credentials (lowest).
 # The environment layer is what makes this usable from CI without an
 # interactive login; the flags exist so a one-off call against a second
 # instance never has to touch either the environment or the credentials
@@ -17,7 +17,7 @@
 # rather than continuing on with half-applied state.
 set -euo pipefail
 
-CRED_FILE="${ROLLER_CREDENTIALS:-$HOME/.roller/credentials}"
+CRED_FILE="${PRESSROOM_CREDENTIALS:-$HOME/.roller/credentials}"
 
 die() { printf '%s\n' "$*" >&2; exit 1; }
 
@@ -60,14 +60,14 @@ _cred_file_value() {
 }
 
 load_credentials() {
-    if [ -z "${ROLLER_API_URL:-}" ]; then
-        ROLLER_API_URL="$(_cred_file_value ROLLER_API_URL)"
+    if [ -z "${PRESSROOM_API_URL:-}" ]; then
+        PRESSROOM_API_URL="$(_cred_file_value PRESSROOM_API_URL)"
     fi
-    if [ -z "${ROLLER_API_TOKEN:-}" ]; then
-        ROLLER_API_TOKEN="$(_cred_file_value ROLLER_API_TOKEN)"
+    if [ -z "${PRESSROOM_API_TOKEN:-}" ]; then
+        PRESSROOM_API_TOKEN="$(_cred_file_value PRESSROOM_API_TOKEN)"
     fi
-    : "${ROLLER_API_URL:?No API URL. Run 'roller-api auth login --url ...' first.}"
-    : "${ROLLER_API_TOKEN:?No API token. Run 'roller-api auth login --url ...' first.}"
+    : "${PRESSROOM_API_URL:?No API URL. Run 'roller-api auth login --url ...' first.}"
+    : "${PRESSROOM_API_TOKEN:?No API token. Run 'roller-api auth login --url ...' first.}"
 }
 
 # Issues one authenticated request against /api/v1<path>. Extra args (e.g.
@@ -79,10 +79,10 @@ api() {
     local method="$1" path="$2"; shift 2
     curl -sS --fail-with-body \
         -X "$method" \
-        -H "Authorization: Bearer ${ROLLER_API_TOKEN:-}" \
+        -H "Authorization: Bearer ${PRESSROOM_API_TOKEN:-}" \
         -H "Content-Type: application/json" \
         "$@" \
-        "${ROLLER_API_URL}/api/v1${path}"
+        "${PRESSROOM_API_URL}/api/v1${path}"
 }
 
 # Like api(), but does not force Content-Type: application/json -- used for
@@ -91,9 +91,9 @@ api_raw() {
     local method="$1" path="$2"; shift 2
     curl -sS --fail-with-body \
         -X "$method" \
-        -H "Authorization: Bearer ${ROLLER_API_TOKEN:-}" \
+        -H "Authorization: Bearer ${PRESSROOM_API_TOKEN:-}" \
         "$@" \
-        "${ROLLER_API_URL}/api/v1${path}"
+        "${PRESSROOM_API_URL}/api/v1${path}"
 }
 
 # Reads --text-file F's content, or stdin when F is "-". Entry/preview bodies
@@ -200,7 +200,7 @@ cmd_auth_login() {
 
     mkdir -p "$(dirname "$CRED_FILE")"
     umask 077
-    printf 'ROLLER_API_URL=%s\nROLLER_API_TOKEN=%s\n' "$url" "$token" > "$CRED_FILE"
+    printf 'PRESSROOM_API_URL=%s\nPRESSROOM_API_TOKEN=%s\n' "$url" "$token" > "$CRED_FILE"
     chmod 600 "$CRED_FILE"
     printf 'Saved credentials to %s\n' "$CRED_FILE"
 }
@@ -992,7 +992,7 @@ roller-api -- Roller automation API client
 
   [--url URL] [--token TOKEN] <command> ...
       Global overrides, parsed before the command -- highest-precedence
-      configuration tier, above ROLLER_API_URL/ROLLER_API_TOKEN and above
+      configuration tier, above PRESSROOM_API_URL/PRESSROOM_API_TOKEN and above
       ~/.roller/credentials. Lets a one-off call reach a second instance
       without touching the environment or the stored credentials file.
 
@@ -1037,7 +1037,7 @@ main() {
                 [ $# -ge 2 ] || die "$flag requires a value."
                 # A caller who forgot the value entirely --
                 # `roller-api --url auth login --weblog h` -- would otherwise
-                # silently set ROLLER_API_URL="auth", treat "login" as the
+                # silently set PRESSROOM_API_URL="auth", treat "login" as the
                 # top-level command, and fail with a generic usage message
                 # that never hints the flag ate the command. Refuse it here
                 # instead, while the actual mistake is still visible.
@@ -1047,9 +1047,9 @@ main() {
                         ;;
                 esac
                 if [ "$flag" = "--url" ]; then
-                    ROLLER_API_URL="$2"
+                    PRESSROOM_API_URL="$2"
                 else
-                    ROLLER_API_TOKEN="$2"
+                    PRESSROOM_API_TOKEN="$2"
                 fi
                 shift 2
                 ;;

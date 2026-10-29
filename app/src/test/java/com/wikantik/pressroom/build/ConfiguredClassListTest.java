@@ -32,7 +32,7 @@ import org.junit.jupiter.api.Test;
  *
  * <p>Characterisation tests, written against the current configuration: they
  * pass today and exist so the Phase 1 package move cannot leave a stale name
- * in {@code roller.properties}, {@code velocity.properties} or a test
+ * in {@code pressroom.properties}, {@code velocity.properties} or a test
  * override, where it would only fail at runtime (a lenient or log-and-continue
  * loader). The splitter test is the one genuinely new behaviour.
  *
@@ -46,7 +46,7 @@ import org.junit.jupiter.api.Test;
 class ConfiguredClassListTest {
 
     private static final String LOADER_BASE = "org.apache.velocity.runtime.resource.loader.ResourceLoader";
-    private static final Path ROLLER_RESOURCES = Path.of("app/src/main/resources");
+    private static final Path PRESSROOM_RESOURCES = Path.of("app/src/main/resources");
     private static final Path TEST_RESOURCES = Path.of("app/src/test/resources");
     private static final Path VELOCITY = Path.of("app/src/main/webapp/WEB-INF/velocity.properties");
 
@@ -67,7 +67,7 @@ class ConfiguredClassListTest {
         Map<String, Class<?>> m = new LinkedHashMap<>();
         m.put("tasks.<name>.class", PressroomTask.class);
         m.put("cache.defaultFactory", CacheFactory.class);
-        m.put("rendering.rollerRendererFactories", RendererFactory.class);
+        m.put("rendering.pressroomRendererFactories", RendererFactory.class);
         m.put("rendering.userRendererFactories", RendererFactory.class);
         for (String k : List.of("pageModels", "feedModels", "searchModels", "previewModels", "siteModels")) {
             m.put("rendering." + k, Model.class);
@@ -117,7 +117,7 @@ class ConfiguredClassListTest {
     }
 
     private static Properties rollerProperties() {
-        try (InputStream in = WebloggerConfig.class.getResourceAsStream("roller.properties")) {
+        try (InputStream in = WebloggerConfig.class.getResourceAsStream("pressroom.properties")) {
             return parse(new String(in.readAllBytes(), StandardCharsets.UTF_8));
         } catch (IOException e) {
             throw new IllegalStateException(e);
@@ -145,13 +145,13 @@ class ConfiguredClassListTest {
 
     private static List<Source> sources() {
         List<Source> all = new ArrayList<>();
-        all.add(new Source("roller.properties", rollerProperties()));
+        all.add(new Source("pressroom.properties", rollerProperties()));
         all.add(new Source("velocity.properties", parse(RepoFiles.read(VELOCITY))));
-        for (Path root : List.of(ROLLER_RESOURCES, TEST_RESOURCES)) {
+        for (Path root : List.of(PRESSROOM_RESOURCES, TEST_RESOURCES)) {
             try (Stream<Path> walk = Files.walk(RepoFiles.repoRoot().resolve(root))) {
                 for (Path f : walk.filter(x -> x.toString().endsWith(".properties")).sorted().toList()) {
                     Path rel = RepoFiles.repoRoot().relativize(f);
-                    if (rel.endsWith("roller.properties")) {
+                    if (rel.endsWith("pressroom.properties")) {
                         continue;
                     }
                     Properties p = parse(RepoFiles.read(rel));

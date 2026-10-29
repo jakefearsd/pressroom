@@ -366,7 +366,7 @@ limitations under the License.
 
         <!-- Eclipselink is the only JPA implementation Roller supports.
              Logging, other special configuration during JUnit tests can be
-             placed in the src/test/resources/roller-custom.properties file.
+             placed in the src/test/resources/pressroom-custom.properties file.
          -->
         <dependency>
             <groupId>org.eclipse.persistence</groupId>
@@ -1304,7 +1304,7 @@ limitations under the License.
                 <directory>${project.basedir}/src/main/resources-filtered</directory>
                 <filtering>true</filtering>
                 <includes>
-                    <include>roller-version.properties</include>
+                    <include>pressroom-version.properties</include>
                 </includes>
             </resource>
         </resources>

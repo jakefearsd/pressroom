@@ -82,7 +82,7 @@ class WeblogCreateApiTest {
                     .thenReturn(true);
             runtime.when(() -> WebloggerRuntimeConfig.getProperty("site.adminemail")).thenReturn(siteEmail);
             config.when(() -> WebloggerConfig.getProperty("username.allowedChars")).thenReturn("A-Za-z0-9");
-            config.when(() -> WebloggerConfig.getProperty("rendering.weblogMapper.rollerProtectedUrls"))
+            config.when(() -> WebloggerConfig.getProperty("rendering.weblogMapper.pressroomProtectedUrls"))
                     .thenReturn("api,page,search");
             config.when(() -> WebloggerConfig.getProperty("rendering.weblogMapper.userProtectedUrls"))
                     .thenReturn("");

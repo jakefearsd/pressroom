@@ -9,7 +9,7 @@ resolves through the index at the end of `CLAUDE.md`.
 
 Everything an IT run creates carries its id (`${it.run.id}` = build
 timestamp + reserved HTTP port); the app JVM's command line adds
-`-Droller.it.run=<id>` and `-Droller.it.owner=<pid>@<start time>` (owning
+`-Dpressroom.it.run=<id>` and `-Dpressroom.it.owner=<pid>@<start time>` (owning
 build). The pidfile scheme it replaced silently leaked an app JVM, a
 chromedriver and a Docker volume per abnormal run
 (`build-helper:reserve-network-port`'s free port meant leaks never collided).
@@ -33,12 +33,12 @@ Five mechanisms in `it-selenium/src/test/script/`:
 - **Staleness is decided by the owning build, never by "an IT process
   exists"**: a concurrent `mvn verify -Pit` is legitimate and must survive
   another run's sweep.
-- **The supervisor marks itself `-Droller.it.supervisor=`, not
-  `-Droller.it.run=`.** A forked subshell (command substitution, pipeline
+- **The supervisor marks itself `-Dpressroom.it.supervisor=`, not
+  `-Dpressroom.it.run=`.** A forked subshell (command substitution, pipeline
   halves) shows its *parent's* command line in `ps`; a supervisor in its
   own run would kill its own subshells (`ItHarnessLeakTest` pins it).
 - **Every marker lives in a namespace, and a sweep sees only its own**
-  (`IT_NAMESPACE`, default `roller.it`, so real runs share one and a real
+  (`IT_NAMESPACE`, default `pressroom.it`, so real runs share one and a real
   sweep still finds every real leftover). `ItHarnessLeakTest` gives each test
   a random one. Before that it passed alone and failed beside another build:
   a sweep is machine-wide, so a concurrent sweep (`mvn verify -Pit`, or this

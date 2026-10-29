@@ -884,7 +884,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         String mappingKey = website.getHandle() + ":" + anchor;
         
         // check cache first; the find is free while the entry is in
-        // EclipseLink's shared cache (sized in roller.properties)
+        // EclipseLink's shared cache (sized in pressroom.properties)
         if(this.entryAnchorToIdMap.containsKey(mappingKey)) {
             
             WeblogEntry entry = this.getWeblogEntry(this.entryAnchorToIdMap.get(mappingKey));

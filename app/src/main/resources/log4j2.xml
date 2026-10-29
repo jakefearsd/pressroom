@@ -18,7 +18,7 @@ limitations under the License.
 
 <!-- to customize logging:
     - copy this file into the servers classpath and tweak it
-    - set the log4j.configurationFile system property via roller-custom.properties or -D JVM arg -->
+    - set the log4j.configurationFile system property via pressroom-custom.properties or -D JVM arg -->
 
 <!--useful for testing: monitorInterval="10" -->
 <Configuration status="warn" name="Roller" >
@@ -34,7 +34,7 @@ limitations under the License.
              Order: explicit override, then Tomcat's base, then the working
              directory (which is what the embedded-Tomcat spring-boot:run dev
              server wants). -->
-        <property name="logging.dir">${sys:roller.log.dir:-${sys:catalina.base:-.}/logs}</property>
+        <property name="logging.dir">${sys:pressroom.log.dir:-${sys:catalina.base:-.}/logs}</property>
         <!-- %encode{%m}{CRLF} writes a CR or LF inside a message as the two
              characters \r or \n, so one log call is one line and a
              reader-supplied value (a display name, a sign-in failure reason, a

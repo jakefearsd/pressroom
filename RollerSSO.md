@@ -59,7 +59,7 @@ project shares it. Readers see its app name and links.
 ### 3. Set the site's Absolute URL
 
 In Roller, go to **Admin → Global Config** and set **Absolute URL** to
-`https://blog.wikantik.com`. Alternatively, set `ROLLER_SITE_ABSOLUTEURL` in
+`https://blog.wikantik.com`. Alternatively, set `PRESSROOM_SITE_ABSOLUTEURL` in
 `.env`. When both are set, Global Config wins.
 
 The sign-in callback is built from this address, never from the visitor's
@@ -77,8 +77,8 @@ nano .env        # add the two lines below; the client secret stays in this file
 ```
 
 ```bash
-ROLLER_SSO_OIDC_CLIENT_ID=<client id from step 1>
-ROLLER_SSO_OIDC_CLIENT_SECRET=<client secret from step 1>
+PRESSROOM_SSO_OIDC_CLIENT_ID=<client id from step 1>
+PRESSROOM_SSO_OIDC_CLIENT_SECRET=<client secret from step 1>
 ```
 
 The compose file does not change, because `.env` is already passed to the
@@ -86,8 +86,8 @@ app. Two settings are optional and rarely needed:
 
 | Variable | Default |
 |---|---|
-| `ROLLER_SSO_OIDC_DISCOVERY_URI` | `https://accounts.google.com/.well-known/openid-configuration` |
-| `ROLLER_SSO_PROVIDER_LABEL` | `Google` (the button reads "Sign in with Google") |
+| `PRESSROOM_SSO_OIDC_DISCOVERY_URI` | `https://accounts.google.com/.well-known/openid-configuration` |
+| `PRESSROOM_SSO_PROVIDER_LABEL` | `Google` (the button reads "Sign in with Google") |
 
 ### 5. Check it
 
@@ -152,7 +152,7 @@ app. Two settings are optional and rarely needed:
   never take over a password account.
 - **Passwords:** a Google-bound account never gets one. Forgot-password sends
   it nothing, and User Admin hides its password fields.
-- **Turning sign-in off:** remove the two `ROLLER_SSO_OIDC_*` lines from
+- **Turning sign-in off:** remove the two `PRESSROOM_SSO_OIDC_*` lines from
   `.env` and run `./deploy.sh`. Existing reader accounts stay, but they
   cannot sign in.
 
@@ -179,7 +179,7 @@ logs app`):
 |---|---|
 | Redirect URI to register | `https://blog.wikantik.com/roller-ui/sso/callback` |
 | Start (the button's link) | `/roller-ui/sso/start?return=<path on this site>` |
-| Required `.env` lines | `ROLLER_SSO_OIDC_CLIENT_ID`, `ROLLER_SSO_OIDC_CLIENT_SECRET` |
+| Required `.env` lines | `PRESSROOM_SSO_OIDC_CLIENT_ID`, `PRESSROOM_SSO_OIDC_CLIENT_SECRET` |
 | Scopes requested | `openid profile email` |
 | Account binding | Google's issuer plus subject (`sub`), stored in `roller_user.sso_issuer`/`sso_subject` (migration V030) |
 | Reader username | `reader-` plus 10 random characters |

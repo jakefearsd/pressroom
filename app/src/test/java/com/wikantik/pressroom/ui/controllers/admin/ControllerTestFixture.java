@@ -189,7 +189,7 @@ final class ControllerTestFixture {
     /**
      * Temporarily changes a static configuration property.
      *
-     * <p>{@code WebloggerConfig} reads {@code roller.properties} once in a
+     * <p>{@code WebloggerConfig} reads {@code pressroom.properties} once in a
      * static initializer, so a test that needs a different value -- or none at
      * all -- has no other way in.
      *

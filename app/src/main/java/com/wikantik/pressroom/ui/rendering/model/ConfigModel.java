@@ -101,7 +101,7 @@ public class ConfigModel implements Model {
      * {@code https://tile.openstreetmap.org/{z}/{x}/{y}.png}.
      *
      * <p>Unlike every other accessor here this reads the <em>static</em>
-     * config (roller.properties / the deployer's override file), not the
+     * config (pressroom.properties / the deployer's override file), not the
      * runtime properties table: a runtime property would need a
      * {@code configForm.*} message key that appears only in
      * runtimeConfigDefs.xml, which MessageKeyTest's orphan ratchet counts as
@@ -119,8 +119,8 @@ public class ConfigModel implements Model {
      *
      * <p>Same static-config precedent as {@link #getMapTileUrl}: this
      * describes the reverse proxy in front of the JVM, which does not change
-     * while the JVM runs, so it is read from roller.properties /
-     * roller-custom.properties rather than the hot runtime properties table.
+     * while the JVM runs, so it is read from pressroom.properties /
+     * pressroom-custom.properties rather than the hot runtime properties table.
      */
     public String getAnalyticsBasePath() {
         return WebloggerConfig.getProperty("analytics.umami.basePath");

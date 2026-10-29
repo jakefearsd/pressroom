@@ -8,8 +8,8 @@
 # Everything the harness starts carries two system properties on its command
 # line:
 #
-#   -Droller.it.run=<run id>          which run it belongs to
-#   -Droller.it.owner=<pid>@<start>   which Maven build owns it
+#   -Dpressroom.it.run=<run id>          which run it belongs to
+#   -Dpressroom.it.owner=<pid>@<start>   which Maven build owns it
 #
 # so any process can be found again without a file surviving, and "is this
 # stale?" has an exact answer -- the owning build is either still running or it
@@ -28,7 +28,7 @@
 
 # THE NAMESPACE. Every marker lives under -D<namespace>.*, and a sweep sees only
 # its own namespace. Real runs never set IT_NAMESPACE, so they all share
-# "roller.it" and a real sweep still finds every real leftover on the machine.
+# "pressroom.it" and a real sweep still finds every real leftover on the machine.
 # ItHarnessLeakTest gives each test a namespace of its own: a sweep is
 # machine-wide by design, and with one shared namespace a concurrent run's
 # sweep reaped that test's deliberately stale fixtures before the test's own
@@ -36,7 +36,7 @@
 # builds' leftovers), so its verdict depended on what else the machine was
 # running. Tests only; never set it for a real run, or its leftovers become
 # invisible to the next real sweep.
-IT_NAMESPACE="${IT_NAMESPACE:-roller.it}"
+IT_NAMESPACE="${IT_NAMESPACE:-pressroom.it}"
 
 IT_RUN_PROP="-D${IT_NAMESPACE}.run="
 IT_OWNER_PROP="-D${IT_NAMESPACE}.owner="
@@ -44,7 +44,7 @@ IT_OWNER_PROP="-D${IT_NAMESPACE}.owner="
 # The supervisor marks itself with a DIFFERENT property, and the split is not
 # cosmetic. A forked shell subprocess (command substitution, either side of a
 # pipeline) shows its parent's command line in ps, so a supervisor marked with
-# -Droller.it.run= finds its own short-lived subshells while enumerating the
+# -Dpressroom.it.run= finds its own short-lived subshells while enumerating the
 # run's processes and kills them. Observed, not theoretical. Keeping the two
 # roles on two properties means the kill list ("what belongs to this run?")
 # and the liveness question ("is this run still claimed?") never overlap.

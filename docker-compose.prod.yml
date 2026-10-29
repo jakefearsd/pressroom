@@ -128,13 +128,13 @@ services:
     depends_on:
       provision:
         condition: service_completed_successfully
-    # The app's entire configuration is the ROLLER_* block in .env, overlaid on
+    # The app's entire configuration is the PRESSROOM_* block in .env, overlaid on
     # the image's built-in defaults by WebloggerConfig. Everything else in .env
-    # simply has no ROLLER_ prefix and is ignored by the app -- but env_file
+    # simply has no PRESSROOM_ prefix and is ignored by the app -- but env_file
     # loads the WHOLE file into the container's environment regardless, so
     # every secret in .env (POSTGRES_PASSWORD, UMAMI_APP_SECRET, etc.) is
     # visible to `docker inspect`/`/proc/1/environ` on this container too,
-    # not just the ROLLER_* keys the app reads. Deliberate (one file, one
+    # not just the PRESSROOM_* keys the app reads. Deliberate (one file, one
     # place to look), documented in docker_deployment.md's "Configure .env".
     env_file: .env
     environment:

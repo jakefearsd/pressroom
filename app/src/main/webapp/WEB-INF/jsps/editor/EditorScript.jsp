@@ -66,7 +66,7 @@
     var commands = {};
 
     <%-- Per-install, so two Rollers on one origin do not share a mode. --%>
-    var ROLLER_EDITOR_MODE_KEY = 'roller.editor.mode.v1:${pageContext.request.contextPath}';
+    var PRESSROOM_EDITOR_MODE_KEY = 'roller.editor.mode.v1:${pageContext.request.contextPath}';
 
     <%-- The form the surface sits in, whatever this screen calls it (#entry /
          #pageEditForm). Read off the surface rather than named here, so the
@@ -285,7 +285,7 @@
             }
         });
         try {
-            var storedMode = window.localStorage.getItem(ROLLER_EDITOR_MODE_KEY);
+            var storedMode = window.localStorage.getItem(PRESSROOM_EDITOR_MODE_KEY);
             if (storedMode) {
                 rollerSetEditorMode(storedMode);
             }
@@ -443,7 +443,7 @@
             rollerPushPreview();
         }
         try {
-            window.localStorage.setItem(ROLLER_EDITOR_MODE_KEY, mode);
+            window.localStorage.setItem(PRESSROOM_EDITOR_MODE_KEY, mode);
         } catch (e) {
             /* storage unavailable: the choice simply does not persist */
         }

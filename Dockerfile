@@ -31,10 +31,10 @@
 # Run: java -jar roller.war (Boot's embedded Tomcat serves the app at /roller
 # on 8080, and a second embedded connector serves /actuator/health on the
 # management port 8090 -- see app/src/main/resources/application.properties).
-# Runtime config is supplied entirely by ROLLER_* environment variables, which
+# Runtime config is supplied entirely by PRESSROOM_* environment variables, which
 # WebloggerConfig overlays on top of its built-in defaults; at minimum set
-# ROLLER_DATABASE_CONFIGURATIONTYPE, ROLLER_DATABASE_JDBC_*, and the
-# ROLLER_MAIL_* keys. See deploy/.env.example for the full set.
+# PRESSROOM_DATABASE_CONFIGURATIONTYPE, PRESSROOM_DATABASE_JDBC_*, and the
+# PRESSROOM_MAIL_* keys. See deploy/.env.example for the full set.
 
 # ---- Stage 1: build -------------------------------------------------------
 FROM maven:3.9-eclipse-temurin-25@sha256:93b8a14ea2f412782e4e842651273b4d903e35cc496284f178fbbe2d67d00976 AS builder
@@ -119,7 +119,7 @@ COPY bin/roller-api /app/roller-api
 
 # Runtime data: mediafiles, search index, uploads, all under /data per the
 # runtime contract. There is no /config any more -- configuration arrives as
-# ROLLER_* environment variables (see WebloggerConfig.applyEnvironmentOverrides).
+# PRESSROOM_* environment variables (see WebloggerConfig.applyEnvironmentOverrides).
 RUN chmod 755 /app/migrate.sh /app/provision.sh /app/admin-account.sh /app/analytics-views.sh /app/backup/backup.sh /app/backup/loop.sh \
     && chmod +x /app/roller-api \
     && mkdir -p /data/mediafiles /data/search-index /data/uploads \
@@ -133,7 +133,7 @@ EXPOSE 8080 8090
 
 ENV JAVA_OPTS=""
 
-# Shell form so JAVA_OPTS expands. No -Droller.custom.config: configuration
-# comes from ROLLER_* environment variables, which compose supplies from .env.
+# Shell form so JAVA_OPTS expands. No -Dpressroom.custom.config: configuration
+# comes from PRESSROOM_* environment variables, which compose supplies from .env.
 # WebloggerConfig still honours the flag if an operator sets it in JAVA_OPTS.
 ENTRYPOINT ["/bin/sh", "-c", "exec java $JAVA_OPTS -jar /app/roller.war"]

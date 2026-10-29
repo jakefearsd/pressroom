@@ -96,7 +96,7 @@ to it (gitignored — it holds secrets). You already renamed the downloaded
 `env.example` to `.env` above; edit it in place.
 
 The `app` service loads `.env` wholesale via `env_file: .env`, not just the
-`ROLLER_*` keys `WebloggerConfig` actually reads — every variable in the
+`PRESSROOM_*` keys `WebloggerConfig` actually reads — every variable in the
 file, including `POSTGRES_PASSWORD`, `UMAMI_APP_SECRET` and
 `LISTMONK_ADMIN_PASSWORD`, ends up in the `app` container's environment and
 is visible to anything that can read it: `docker inspect`, `/proc/1/environ`
@@ -126,35 +126,35 @@ environment-variable-configured container.
   `read:packages`.
 - **`SITE_DOMAIN`** — your real domain (e.g. `blog.example.com`) for
   auto-TLS, or `:80` for a domain-less LAN/testing deployment with plain
-  HTTP only (see [TLS](#tls)). Deliberately not named `ROLLER_DOMAIN`: that
+  HTTP only (see [TLS](#tls)). Deliberately not named `PRESSROOM_DOMAIN`: that
   prefix is reserved for app configuration (below), and a stray
-  `ROLLER_DOMAIN` would be overlaid onto the app's properties as a junk key
+  `PRESSROOM_DOMAIN` would be overlaid onto the app's properties as a junk key
   named `domain`.
-- **The `ROLLER_*` block — the app's entire runtime configuration.** There is
+- **The `PRESSROOM_*` block — the app's entire runtime configuration.** There is
   no properties file in the image; every property the app reads comes from
-  `ROLLER_*` variables in this file, overlaid onto the image's built-in
+  `PRESSROOM_*` variables in this file, overlaid onto the image's built-in
   defaults by `WebloggerConfig.applyEnvironmentOverrides` at startup: strip
-  the `ROLLER_` prefix, lowercase the remainder, turn `_` into `.` to get the
-  property name — so `ROLLER_DATABASE_JDBC_USERNAME` sets
-  `database.jdbc.username`, `ROLLER_MAIL_HOSTNAME` sets `mail.hostname`, and
+  the `PRESSROOM_` prefix, lowercase the remainder, turn `_` into `.` to get the
+  property name — so `PRESSROOM_DATABASE_JDBC_USERNAME` sets
+  `database.jdbc.username`, `PRESSROOM_MAIL_HOSTNAME` sets `mail.hostname`, and
   so on for any key documented in
-  `app/src/main/resources/com/wikantik/pressroom/config/roller.properties`.
+  `app/src/main/resources/com/wikantik/pressroom/config/pressroom.properties`.
   The variables `.env.example` ships (and their meaning) are:
-  - `ROLLER_INSTALLATION_TYPE=auto` — the app applies no migration itself;
+  - `PRESSROOM_INSTALLATION_TYPE=auto` — the app applies no migration itself;
     by then the `provision` service has already applied every pending one
     (see [First run](#first-run)). If one is still pending, the app does not
     start and every request, public pages included, lands on the install
     wizard: check `docker compose -f docker-compose.prod.yml logs provision`.
     (The other value, `manual`, the built-in default, applies pending
     migrations silently at startup. The names read backwards.)
-  - `ROLLER_DATABASE_CONFIGURATIONTYPE`, `ROLLER_DATABASE_JDBC_DRIVERCLASS`,
-    `ROLLER_DATABASE_JDBC_CONNECTIONURL` — fixed by the image's layout and the
+  - `PRESSROOM_DATABASE_CONFIGURATIONTYPE`, `PRESSROOM_DATABASE_JDBC_DRIVERCLASS`,
+    `PRESSROOM_DATABASE_JDBC_CONNECTIONURL` — fixed by the image's layout and the
     compose network (the connection URL's host is the `postgres` service
     name); normally leave these as shipped.
-  - `ROLLER_DATABASE_JDBC_USERNAME` / `ROLLER_DATABASE_JDBC_PASSWORD` — **must
+  - `PRESSROOM_DATABASE_JDBC_USERNAME` / `PRESSROOM_DATABASE_JDBC_PASSWORD` — **must
     match** `POSTGRES_USER` / `POSTGRES_PASSWORD` below. The two are not
     templated against each other; keep them in sync by hand. The same is true
-    of the database **name**: `ROLLER_DATABASE_JDBC_CONNECTIONURL`'s trailing
+    of the database **name**: `PRESSROOM_DATABASE_JDBC_CONNECTIONURL`'s trailing
     path segment (`.../rollerdb`) and `POSTGRES_DB` below are two independent
     strings, not one templated value. Changing `POSTGRES_DB` alone makes
     `provision` create and migrate a database under the new name while the
@@ -162,19 +162,19 @@ environment-variable-configured container.
     bootstrap against a database that was never migrated, rather than
     against a missing one, which reads like a permissions problem rather
     than the name mismatch it actually is. Change both together.
-  - `ROLLER_THEMES_DIR`, `ROLLER_MEDIAFILES_STORAGE_DIR`,
-    `ROLLER_SEARCH_INDEX_DIR`, `ROLLER_UPLOADS_DIR` — match the image's own
+  - `PRESSROOM_THEMES_DIR`, `PRESSROOM_MEDIAFILES_STORAGE_DIR`,
+    `PRESSROOM_SEARCH_INDEX_DIR`, `PRESSROOM_UPLOADS_DIR` — match the image's own
     layout and the volumes `docker-compose.prod.yml` mounts; no reason to
     change them.
-  - `ROLLER_MAIL_CONFIGURATIONTYPE`, `ROLLER_MAIL_HOSTNAME`,
-    `ROLLER_MAIL_PORT`, and optionally `ROLLER_MAIL_USERNAME` /
-    `ROLLER_MAIL_PASSWORD` — your SMTP relay, for password-reset and
+  - `PRESSROOM_MAIL_CONFIGURATIONTYPE`, `PRESSROOM_MAIL_HOSTNAME`,
+    `PRESSROOM_MAIL_PORT`, and optionally `PRESSROOM_MAIL_USERNAME` /
+    `PRESSROOM_MAIL_PASSWORD` — your SMTP relay, for password-reset and
     notification mail. Roller runs fine without these set; those two
-    features just won't send anything. `ROLLER_MAIL_SECURITY` defaults to
+    features just won't send anything. `PRESSROOM_MAIL_SECURITY` defaults to
     `starttls` (required, not just offered, once username/password are set),
     use `ssl` for a port-465 relay or `none` only for a local relay with no
     TLS.
-  - `ROLLER_NEWSLETTER_LISTMONK_BASEURL` — where `/newsletter/subscribe`
+  - `PRESSROOM_NEWSLETTER_LISTMONK_BASEURL` — where `/newsletter/subscribe`
     forwards to. Blank makes that endpoint return 503; see
     [Newsletter](#newsletter).
 - **Postgres credentials, backup schedule, Analytics and Newsletter
@@ -244,7 +244,7 @@ over the LAN. For that layout:
 4. **Set the site's address.** In Admin -> Global Config, set **Absolute URL
    to site (if required)** to the public `https://` address. Feed ids, the
    sitemap and password-reset links are built from it. A value saved there
-   wins over `ROLLER_SITE_ABSOLUTEURL`.
+   wins over `PRESSROOM_SITE_ABSOLUTEURL`.
 
 **Why `TRUSTED_PROXIES`.** Caddy discards `X-Forwarded-For` and
 `X-Forwarded-Proto` from any peer it doesn't trust, writing the peer's own
@@ -314,7 +314,7 @@ the first administrator is made from the host, in this order:
    never starts it. Being able to run it at all means controlling this host
    and its `.env`, which is the trust it relies on.
 2. **Log in** at `/roller-ui/login.rol`, then in Admin -> Global Config set
-   **Absolute URL to site (if required)** (`ROLLER_SITE_ABSOLUTEURL`) and
+   **Absolute URL to site (if required)** (`PRESSROOM_SITE_ABSOLUTEURL`) and
    **Site Administrator's email address** (`site.adminemail`). That address is the From address of every mail Roller sends, and
    password-reset mail cannot go out without it.
 3. **Set up mail**, next section: [Mail and account recovery](#mail-and-account-recovery).
@@ -330,11 +330,11 @@ Roller sends password-reset and notification mail through an SMTP relay.
 Worked example with Brevo, in `.env`:
 
 ```bash
-ROLLER_MAIL_CONFIGURATIONTYPE=properties
-ROLLER_MAIL_HOSTNAME=smtp-relay.brevo.com
-ROLLER_MAIL_PORT=587
-ROLLER_MAIL_USERNAME=<Brevo SMTP login>
-ROLLER_MAIL_PASSWORD=<Brevo SMTP key>
+PRESSROOM_MAIL_CONFIGURATIONTYPE=properties
+PRESSROOM_MAIL_HOSTNAME=smtp-relay.brevo.com
+PRESSROOM_MAIL_PORT=587
+PRESSROOM_MAIL_USERNAME=<Brevo SMTP login>
+PRESSROOM_MAIL_PASSWORD=<Brevo SMTP key>
 ```
 
 `mail.security` defaults to `starttls`, which is what port 587 wants (`ssl`
@@ -346,7 +346,7 @@ Reset mail needs **both** halves: the SMTP settings above **and** the site
 admin email (`site.adminemail`, labelled **Site Administrator's email address**
 in Admin -> Global Config). Until both are set, the forgot-password page says
 the server has no outgoing mail configured (or no site email address set). The reset link
-is built from **Absolute URL to site (if required)** (`ROLLER_SITE_ABSOLUTEURL`), lasts 1 hour, works
+is built from **Absolute URL to site (if required)** (`PRESSROOM_SITE_ABSOLUTEURL`), lasts 1 hour, works
 once, and goes to the email address on the account.
 
 **Applying changes.** A change to `.env` needs
@@ -423,7 +423,7 @@ and `ProductionComposeTest` fails the build if that stops being true.
 
 Five steps, in order:
 
-0. **Set `site.absoluteurl`** (`ROLLER_SITE_ABSOLUTEURL` in `.env`, or
+0. **Set `site.absoluteurl`** (`PRESSROOM_SITE_ABSOLUTEURL` in `.env`, or
    Admin → Global Config → "Absolute URL to site"; a value saved on that page
    wins over the variable) to the site's own address, e.g.
    `https://blog.example.com`. This becomes required the moment ANY weblog
@@ -438,11 +438,11 @@ Five steps, in order:
    finds a weblog with a domain and this still unset.
 1. **Tell the app which domains are covered**, so a mistyped custom domain is
    caught on Weblog Settings instead of surfacing later as a browser TLS
-   error. `vhost.cert.zones` is a startup property (`roller.properties`), not
+   error. `vhost.cert.zones` is a startup property (`pressroom.properties`), not
    a runtime one — it isn't on Admin Settings and a change needs a restart —
    so set it via the environment override in `.env`:
    ```bash
-   ROLLER_VHOST_CERT_ZONES=example.org
+   PRESSROOM_VHOST_CERT_ZONES=example.org
    ```
    (comma-separated apex names, e.g. `example.org` for a `*.example.org`
    cert). This is advisory only: nothing refuses to save a domain outside
@@ -649,7 +649,7 @@ coexist with `weblogAdminsUntrusted` staying on: there is no admin-authored
 markup anywhere in the path. If you
 set `UMAMI_SCRIPT_NAME` to something other than `script.js` when deploying
 (the cheapest defence against content blockers that match the default
-path), also set `ROLLER_ANALYTICS_UMAMI_SCRIPTNAME` to the same value in
+path), also set `PRESSROOM_ANALYTICS_UMAMI_SCRIPTNAME` to the same value in
 `.env` or the tag will
 point at a script Caddy never serves.
 
@@ -737,11 +737,11 @@ what keeps consent and retention obligations out of the blog software.
    credentials live in listmonk's own database, not in `.env`.
 5. Create a list, set it to **double opt-in**, and copy its UUID.
 
-`.env.example` already sets `ROLLER_NEWSLETTER_LISTMONK_BASEURL=http://listmonk:9000`
+`.env.example` already sets `PRESSROOM_NEWSLETTER_LISTMONK_BASEURL=http://listmonk:9000`
 — that's the compose **service name**, reached over the internal Docker
 network, not `LISTMONK_DOMAIN` (which is for a browser reaching the
 opt-in/unsubscribe pages, not for Roller reaching the API). You normally
-don't need to touch it; blank (the `roller.properties` built-in default,
+don't need to touch it; blank (the `pressroom.properties` built-in default,
 what you'd have if the variable were unset entirely) is what makes
 `/newsletter/subscribe` return 503 in local dev, where no listmonk service
 exists — that's the intended fallback, not a bug.
@@ -811,8 +811,8 @@ credential than the public subscribe endpoint above: a listmonk **API user**.
 4. Put both in `.env`:
 
    ```bash
-   ROLLER_NEWSLETTER_LISTMONK_APIUSER=your-api-username
-   ROLLER_NEWSLETTER_LISTMONK_APITOKEN=the-generated-token
+   PRESSROOM_NEWSLETTER_LISTMONK_APIUSER=your-api-username
+   PRESSROOM_NEWSLETTER_LISTMONK_APITOKEN=the-generated-token
    ```
 
 5. Redeploy (`./deploy.sh`). Leaving either blank disables only the "Send as newsletter"
@@ -850,12 +850,12 @@ Developer notes: `docs/dev/sso.md`.
    suite-level app name, and make its privacy policy cover the blog. The
    blog stores readers' names and email addresses.
 3. **Set the Absolute URL** in Global Config to `https://blog.wikantik.com`.
-   Setting `ROLLER_SITE_ABSOLUTEURL` in `.env` does the same; the Global
+   Setting `PRESSROOM_SITE_ABSOLUTEURL` in `.env` does the same; the Global
    Config value wins when both are set. The callback is built from this
    address, never from the visitor's host, and with none set sign-in answers
    "unavailable".
 4. **Add the credentials** to `.env` on the deploy host as
-   `ROLLER_SSO_OIDC_CLIENT_ID` and `ROLLER_SSO_OIDC_CLIENT_SECRET`, then run
+   `PRESSROOM_SSO_OIDC_CLIENT_ID` and `PRESSROOM_SSO_OIDC_CLIENT_SECRET`, then run
    `./deploy.sh`. The compose file does not change. The client secret goes
    only into `.env`: never into Global Config, a commit, a chat or a ticket.
 5. **Check it.** The login page shows "Sign in with Google", and the app
@@ -870,7 +870,7 @@ Developer notes: `docs/dev/sso.md`.
    LAN address (`http://<host>.lan:8080`) redirects there first, because
    Google returns the browser to the Absolute URL's host.
 
-`ROLLER_SSO_OIDC_DISCOVERY_URI` and `ROLLER_SSO_PROVIDER_LABEL` are optional;
+`PRESSROOM_SSO_OIDC_DISCOVERY_URI` and `PRESSROOM_SSO_PROVIDER_LABEL` are optional;
 the defaults are Google's discovery document and the label "Google".
 
 **Letting a reader write.** User Admin, open the account (marked "Signs in
@@ -898,9 +898,9 @@ comments on, per weblog.
 - **Rate limit:** each account may post 5 comments or replies in 10 minutes
   and 30 a day; the next is refused. To change it, set in `.env` (read at
   startup, so restart the app):
-  `ROLLER_COMMENTS_THROTTLE_WINDOW_LIMIT` (default 5),
-  `ROLLER_COMMENTS_THROTTLE_WINDOW_SECONDS` (default 600, at most 86400) and
-  `ROLLER_COMMENTS_THROTTLE_DAILY_LIMIT` (default 30), the
+  `PRESSROOM_COMMENTS_THROTTLE_WINDOW_LIMIT` (default 5),
+  `PRESSROOM_COMMENTS_THROTTLE_WINDOW_SECONDS` (default 600, at most 86400) and
+  `PRESSROOM_COMMENTS_THROTTLE_DAILY_LIMIT` (default 30), the
   `comments.throttle.*` properties. An unusable value keeps the default.
 - **Developer notes:** `docs/dev/comments.md`.
 
@@ -1175,59 +1175,59 @@ volume until the new cluster has served real traffic.
 If this host has been running Roller since before the `provision.sh`/
 `analytics-views.sh`/image-only rework (i.e. it still has a
 `deploy/config/roller-production.properties` bind-mounted in, or a
-`ROLLER_DOMAIN`/`ROLLER_IMAGE` pair in `.env`), moving it onto a current
+`PRESSROOM_DOMAIN`/`PRESSROOM_IMAGE` pair in `.env`), moving it onto a current
 release needs three changes, not just a version bump:
 
 1. **Replace `docker-compose.prod.yml`** with the current release's copy —
    the old file bind-mounts a properties file and a Caddyfile that no longer
    exist as separate artifacts; both are baked into the images now (see
    "Development vs Production" in `docs/dev/configuration.md` and the top of this document).
-2. **Rename two `.env` keys**: `ROLLER_DOMAIN` becomes `SITE_DOMAIN`, and
-   `ROLLER_IMAGE` becomes `IMAGE_VERSION` — and `IMAGE_VERSION` is a **bare
+2. **Rename two `.env` keys**: `PRESSROOM_DOMAIN` becomes `SITE_DOMAIN`, and
+   `PRESSROOM_IMAGE` becomes `IMAGE_VERSION` — and `IMAGE_VERSION` is a **bare
    version tag** (e.g. `0.1.0`), not a full image reference the way
-   `ROLLER_IMAGE` used to be. Both were deliberately renamed off the
-   `ROLLER_` prefix: that prefix is now reserved for the app's own
-   configuration, and a stray `ROLLER_DOMAIN` would be overlaid onto the
+   `PRESSROOM_IMAGE` used to be. Both were deliberately renamed off the
+   `PRESSROOM_` prefix: that prefix is now reserved for the app's own
+   configuration, and a stray `PRESSROOM_DOMAIN` would be overlaid onto the
    app's properties as a junk key named `domain`.
 3. **Transcribe every setting from the old
-   `deploy/config/roller-production.properties`** into the `ROLLER_*` block
+   `deploy/config/roller-production.properties`** into the `PRESSROOM_*` block
    in `.env` — there is no properties file in the new image, so anything
-   that file used to set has to become a `ROLLER_*` environment variable or
+   that file used to set has to become a `PRESSROOM_*` environment variable or
    it silently reverts to the app's built-in default. The mapping (old
    property → new variable) is:
 
    | Property | Environment variable |
    |---|---|
-   | `database.jdbc.connectionURL` | `ROLLER_DATABASE_JDBC_CONNECTIONURL` |
-   | `database.jdbc.username` | `ROLLER_DATABASE_JDBC_USERNAME` |
-   | `database.jdbc.password` | `ROLLER_DATABASE_JDBC_PASSWORD` |
-   | `database.jdbc.driverClass` | `ROLLER_DATABASE_JDBC_DRIVERCLASS` |
-   | `database.configurationType` | `ROLLER_DATABASE_CONFIGURATIONTYPE` |
-   | `installation.type` | `ROLLER_INSTALLATION_TYPE` |
-   | `themes.dir` | `ROLLER_THEMES_DIR` |
-   | `mediafiles.storage.dir` | `ROLLER_MEDIAFILES_STORAGE_DIR` |
-   | `search.index.dir` | `ROLLER_SEARCH_INDEX_DIR` |
-   | `uploads.dir` | `ROLLER_UPLOADS_DIR` |
-   | `mail.configurationType` | `ROLLER_MAIL_CONFIGURATIONTYPE` |
-   | `mail.hostname` | `ROLLER_MAIL_HOSTNAME` |
-   | `mail.port` | `ROLLER_MAIL_PORT` |
-   | `mail.username` | `ROLLER_MAIL_USERNAME` |
-   | `mail.password` | `ROLLER_MAIL_PASSWORD` |
-   | `newsletter.listmonk.baseurl` | `ROLLER_NEWSLETTER_LISTMONK_BASEURL` |
+   | `database.jdbc.connectionURL` | `PRESSROOM_DATABASE_JDBC_CONNECTIONURL` |
+   | `database.jdbc.username` | `PRESSROOM_DATABASE_JDBC_USERNAME` |
+   | `database.jdbc.password` | `PRESSROOM_DATABASE_JDBC_PASSWORD` |
+   | `database.jdbc.driverClass` | `PRESSROOM_DATABASE_JDBC_DRIVERCLASS` |
+   | `database.configurationType` | `PRESSROOM_DATABASE_CONFIGURATIONTYPE` |
+   | `installation.type` | `PRESSROOM_INSTALLATION_TYPE` |
+   | `themes.dir` | `PRESSROOM_THEMES_DIR` |
+   | `mediafiles.storage.dir` | `PRESSROOM_MEDIAFILES_STORAGE_DIR` |
+   | `search.index.dir` | `PRESSROOM_SEARCH_INDEX_DIR` |
+   | `uploads.dir` | `PRESSROOM_UPLOADS_DIR` |
+   | `mail.configurationType` | `PRESSROOM_MAIL_CONFIGURATIONTYPE` |
+   | `mail.hostname` | `PRESSROOM_MAIL_HOSTNAME` |
+   | `mail.port` | `PRESSROOM_MAIL_PORT` |
+   | `mail.username` | `PRESSROOM_MAIL_USERNAME` |
+   | `mail.password` | `PRESSROOM_MAIL_PASSWORD` |
+   | `newsletter.listmonk.baseurl` | `PRESSROOM_NEWSLETTER_LISTMONK_BASEURL` |
 
    (Same table as `docs/superpowers/specs/2026-08-14-container-push-deployment-design.md`
    — reuse it rather than re-deriving it; it is the single source of truth
    for this mapping.) The values fixed by the image's own layout
-   (`ROLLER_THEMES_DIR=/app/themes`, the three `/data/*` directories,
-   `ROLLER_INSTALLATION_TYPE=auto`, `ROLLER_DATABASE_CONFIGURATIONTYPE=jdbc`,
-   `ROLLER_DATABASE_JDBC_DRIVERCLASS`) already ship as defaults in
+   (`PRESSROOM_THEMES_DIR=/app/themes`, the three `/data/*` directories,
+   `PRESSROOM_INSTALLATION_TYPE=auto`, `PRESSROOM_DATABASE_CONFIGURATIONTYPE=jdbc`,
+   `PRESSROOM_DATABASE_JDBC_DRIVERCLASS`) already ship as defaults in
    `env.example`, so you only need to add the ones that carry a real,
    host-specific value.
 
 Every failure mode here is loud, not silent: compose refuses to start at all
 if `SITE_DOMAIN` or `IMAGE_VERSION` is unset (`${SITE_DOMAIN:?...}` /
 `${IMAGE_VERSION:?...}` in `docker-compose.prod.yml`), and a missing or wrong
-`ROLLER_DATABASE_*` block leaves the app unable to bootstrap — its health
+`PRESSROOM_DATABASE_*` block leaves the app unable to bootstrap — its health
 check never turns green and `deploy.sh` exits non-zero rather than reporting
 success. A mistake in this migration will not corrupt data; it will stop the
 stack from coming up, which is the failure mode you want while getting it
@@ -1270,7 +1270,7 @@ one-off DB access for debugging, use `docker compose exec postgres psql
 
 **The forgot-password page says the server has no outgoing mail configured**
 
-Reset mail needs both the `ROLLER_MAIL_*` SMTP settings in `.env` (applied
+Reset mail needs both the `PRESSROOM_MAIL_*` SMTP settings in `.env` (applied
 with `up -d --force-recreate app`) and the **Site Administrator's email address** in Admin -> Global
 Config (`site.adminemail`). Check both; see [Mail and account recovery](#mail-and-account-recovery).
 If the relay did not answer when the app started, the log has one line,
@@ -1343,7 +1343,7 @@ The app needs a reachable, migrated Postgres to bootstrap
 `provision` service has exited successfully — check
 `docker compose -f docker-compose.prod.yml logs provision` first. If
 provisioning succeeded, confirm `.env`'s
-`ROLLER_DATABASE_JDBC_USERNAME`/`ROLLER_DATABASE_JDBC_PASSWORD` match
+`PRESSROOM_DATABASE_JDBC_USERNAME`/`PRESSROOM_DATABASE_JDBC_PASSWORD` match
 `POSTGRES_USER`/`POSTGRES_PASSWORD` exactly — the two are not templated
 against each other. Re-running `./deploy.sh` (or `docker compose up -d`) is
 safe and idempotent if you want to retry provisioning from scratch.
@@ -1362,7 +1362,7 @@ in [Configure `.env`](#configure-env) does), then update `.env` to match:
 NEW='...'   # e.g. $(openssl rand -base64 33 | tr '+/' '-_')
 docker compose -f docker-compose.prod.yml exec postgres \
     psql -U roller -d rollerdb -c "ALTER ROLE roller PASSWORD '$NEW'"
-# then set BOTH POSTGRES_PASSWORD and ROLLER_DATABASE_JDBC_PASSWORD in .env
+# then set BOTH POSTGRES_PASSWORD and PRESSROOM_DATABASE_JDBC_PASSWORD in .env
 # to $NEW, and re-run ./deploy.sh (or docker compose up -d)
 ```
 

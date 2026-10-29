@@ -22,7 +22,7 @@ import java.util.Properties;
 
 /**
  * Test fixture: sets one key of the static {@link WebloggerConfig} -- the
- * layer a {@code ROLLER_*} environment variable lands in, since
+ * layer a {@code PRESSROOM_*} environment variable lands in, since
  * {@code applyEnvironmentOverrides} writes into it once per JVM -- for the
  * duration of a try-with-resources block, and on close puts back exactly what
  * was there before, absence included.

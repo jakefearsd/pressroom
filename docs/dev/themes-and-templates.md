@@ -257,7 +257,7 @@ resolves through the index at the end of `CLAUDE.md`.
   preview servlet) always render. `CacheManager` does not reach it, by
   design; a change that reaches entry output without moving `lastModified`
   is a stale-content bug for the page cache and this one alike (rendition
-  regeneration was one; it now bumps). Off in `roller-boot-dev.properties`
+  regeneration was one; it now bumps). Off in `pressroom-boot-dev.properties`
   with the other render caches.
 - **A Velocity resource loader that cannot report modification may not be
   cached; the two settings only ever change together.** With `cache=true`

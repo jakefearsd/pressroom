@@ -17,7 +17,7 @@ import static org.mockito.Mockito.when;
  * The filter that hands weblog urls to {@code WeblogRequestMapper}. Since the
  * DI wave (plan Task 6b) it constructs that one mapper directly with the
  * provider and facade it is given -- the reflective
- * {@code rendering.rollerRequestMappers}/{@code userRequestMappers} lists
+ * {@code rendering.pressroomRequestMappers}/{@code userRequestMappers} lists
  * named a single class and had no way to pass a dependency, so they are gone.
  * What is pinned here is the filter's own contract: a url the mapper declines
  * continues down the chain, one it routes does not.

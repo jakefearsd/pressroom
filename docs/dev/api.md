@@ -21,7 +21,7 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   `NewsletterController` likewise `/newsletter`, not `/newsletter/subscribe`).
   Getting it wrong compiles and 404s; no test catches it. `api` and
   `newsletter` are reserved roots in
-  `rendering.weblogMapper.rollerProtectedUrls` so no weblog handle can shadow
+  `rendering.weblogMapper.pressroomProtectedUrls` so no weblog handle can shadow
   them.
 - **The API and the JSP admin UI share exactly one authorization path:
   `PressroomHandlerInterceptor`.** Every `*Api` controller implements

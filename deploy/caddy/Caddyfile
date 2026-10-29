@@ -1,10 +1,10 @@
 # Caddy config for the production stack (docker-compose.prod.yml).
 #
 # {$SITE_DOMAIN} is substituted from the SITE_DOMAIN environment variable (see
-# deploy/.env.example). It is deliberately NOT named ROLLER_DOMAIN any more:
+# deploy/.env.example). It is deliberately NOT named PRESSROOM_DOMAIN any more:
 # that prefix is reserved for app configuration, which the app container takes
 # wholesale from .env via WebloggerConfig's environment overlay, and a stray
-# ROLLER_DOMAIN would land there as a junk property named "domain".
+# PRESSROOM_DOMAIN would land there as a junk property named "domain".
 #
 # Two ways to run this:
 #

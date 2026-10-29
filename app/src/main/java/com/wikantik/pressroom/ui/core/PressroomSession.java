@@ -55,7 +55,7 @@ public class PressroomSession
     
     private static final Logger log;
     
-    public static final String ROLLER_SESSION = "com.wikantik.pressroom.rollersession";
+    public static final String PRESSROOM_SESSION = "com.wikantik.pressroom.rollersession";
 
     static{
         WebloggerConfig.init(); // must be called before calls to logging APIs
@@ -79,19 +79,19 @@ public class PressroomSession
             UserManager users = provider.isBootstrapped()
                     ? provider.getWeblogger().getUserManager() : null;
 
-            rollerSession = (PressroomSession)session.getAttribute(ROLLER_SESSION);
+            rollerSession = (PressroomSession)session.getAttribute(PRESSROOM_SESSION);
 
             if (rollerSession == null) {
                 // Create new session if none exists
                 rollerSession = new PressroomSession();
-                session.setAttribute(ROLLER_SESSION, rollerSession);
+                session.setAttribute(PRESSROOM_SESSION, rollerSession);
             } else if (rollerSession.getAuthenticatedUser(users) != null) {
                 // Check if session is still valid in cache
                 PressroomLoginSessionManager manager = PressroomLoginSessionManager.getInstance();
                 String username = rollerSession.getAuthenticatedUser(users).getUserName();
                 if (manager.get(username) == null) {
                     rollerSession = new PressroomSession();
-                    session.setAttribute(ROLLER_SESSION, rollerSession);
+                    session.setAttribute(PRESSROOM_SESSION, rollerSession);
                 }
             }
             Principal principal = request.getUserPrincipal();
@@ -122,7 +122,7 @@ public class PressroomSession
     @Override
     public void sessionCreated(HttpSessionEvent se) {
         PressroomSession rollerSession = new PressroomSession();
-        se.getSession().setAttribute(ROLLER_SESSION, rollerSession);
+        se.getSession().setAttribute(PRESSROOM_SESSION, rollerSession);
     }
 
 
@@ -173,7 +173,7 @@ public class PressroomSession
     private void clearSession(HttpSessionEvent se) {
         HttpSession session = se.getSession();
         try {
-            session.removeAttribute(ROLLER_SESSION);
+            session.removeAttribute(PRESSROOM_SESSION);
         } catch (Exception e) {
             // ignore purge exceptions
             log.debug("EXCEPTION PURGING session attributes", e);

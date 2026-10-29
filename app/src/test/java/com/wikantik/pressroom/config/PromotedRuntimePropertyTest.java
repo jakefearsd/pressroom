@@ -42,7 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 /**
  * The properties promoted from startup-only to runtime-settable.
  *
- * <p>These three used to be readable only from {@code roller.properties}, which
+ * <p>These three used to be readable only from {@code pressroom.properties}, which
  * meant the only way to exercise the other branch of any of them was to restart
  * the server with a different file. They now live in
  * {@code runtimeConfigDefs.xml} as well, so one running instance can be
@@ -53,7 +53,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * hazard these tests exist for. The database row wins once it exists, so a
  * drifting default would give a fresh install and an upgraded one different
  * behaviour from identical configuration, and a naive seeding would throw away
- * whatever the deployer had set in {@code roller-custom.properties}.
+ * whatever the deployer had set in {@code pressroom-custom.properties}.
  */
 class PromotedRuntimePropertyTest {
 
@@ -96,7 +96,7 @@ class PromotedRuntimePropertyTest {
     }
 
     /**
-     * Both files must agree. {@code roller.properties} is what a running
+     * Both files must agree. {@code pressroom.properties} is what a running
      * instance falls back to before the row is seeded and what
      * {@code JPAPropertiesManagerImpl} seeds the row *from*; the
      * {@code <default-value>} is what a deployment with no such file entry
@@ -111,11 +111,11 @@ class PromotedRuntimePropertyTest {
                     + "without one it is not runtime-settable at all");
 
             String startupValue = WebloggerConfig.getProperty(name);
-            assertNotNull(startupValue, name + " must stay in roller.properties: it is the "
+            assertNotNull(startupValue, name + " must stay in pressroom.properties: it is the "
                     + "fallback before the row is seeded, and the value the row is seeded from");
 
             assertEquals(startupValue, def.getDefaultValue(),
-                    name + " has drifted between roller.properties and runtimeConfigDefs.xml. "
+                    name + " has drifted between pressroom.properties and runtimeConfigDefs.xml. "
                             + "A fresh install takes the property-def default and an upgraded "
                             + "one takes the file value, so they would behave differently.");
         }
@@ -126,7 +126,7 @@ class PromotedRuntimePropertyTest {
      * definition's default.
      *
      * <p>This is the upgrade path: an installation whose {@code
-     * roller-custom.properties} turns one of these off boots for the first
+     * pressroom-custom.properties} turns one of these off boots for the first
      * time on the release that promoted it, and the row does not exist yet.
      * The row is authoritative from the moment it is written, so seeding the
      * shipped default here would discard the deployer's setting permanently
@@ -199,7 +199,7 @@ class PromotedRuntimePropertyTest {
 
     /**
      * Overrides a value in the startup configuration, standing in for a
-     * deployer's {@code roller-custom.properties} entry, and returns what was
+     * deployer's {@code pressroom-custom.properties} entry, and returns what was
      * there before. The backing {@code Properties} is process-global, so
      * callers must put it back.
      */

@@ -15,7 +15,7 @@ Before you can run you must:
 
 3) Edit the provided groovy script to set GROOVY_HOME, WEBAPP_DIR and JARS_DIR
 
-4) Edit the provided roller-custom.properties to point to your Roller database
+4) Edit the provided pressroom-custom.properties to point to your Roller database
 
 Once you've done that you can run the scripts like so:
 

@@ -44,7 +44,7 @@ public final class CwebpEncoder {
      * Intended for tests and for operators who want to force the mode
      * without relying on PATH detection.
      */
-    public static final String FORCE_PROPERTY = "roller.rendition.cwebp.forceAvailable";
+    public static final String FORCE_PROPERTY = "pressroom.rendition.cwebp.forceAvailable";
 
     // null = not yet detected
     private static volatile Boolean available;

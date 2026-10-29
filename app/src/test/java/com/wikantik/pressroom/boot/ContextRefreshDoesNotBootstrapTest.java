@@ -51,7 +51,7 @@ import org.springframework.core.type.classreading.MetadataReaderFactory;
  * <p>Why it starts the real Boot application and not a hand-built context:
  * the invariant is about what the <em>production</em> wiring instantiates at
  * refresh, and only the production wiring knows every injection point. The
- * lifecycle is switched off ({@code roller.lifecycle.enabled=false}, the
+ * lifecycle is switched off ({@code pressroom.lifecycle.enabled=false}, the
  * {@code @ConditionalOnProperty} on {@code PressroomLifecycle}) so nothing
  * legitimately bootstraps; the connector and the management port bind to
  * ephemeral/disabled ports so the test cannot collide with a dev server.
@@ -97,7 +97,7 @@ class ContextRefreshDoesNotBootstrapTest {
         // server.port=8080 and management.server.port=8090 beat them and the
         // test bound the real ports -- failing on any machine with 8080 taken.
         try (ConfigurableApplicationContext ctx = builder.run(
-                "--roller.lifecycle.enabled=false",
+                "--pressroom.lifecycle.enabled=false",
                 "--server.port=0",
                 "--management.server.port=-1",
                 "--spring.main.banner-mode=off")) {

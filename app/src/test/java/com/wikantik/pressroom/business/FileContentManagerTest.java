@@ -206,7 +206,7 @@ public class FileContentManagerTest  {
         TestUtils.endSession(true);
 
         /* NOTE: upload dir for unit tests is set in
-        roller/testdata/roller-custom.properties */
+        roller/testdata/pressroom-custom.properties */
         FileContentManager fmgr = TestUtils.weblogger().getFileContentManager();
 
         // File should not exist initially

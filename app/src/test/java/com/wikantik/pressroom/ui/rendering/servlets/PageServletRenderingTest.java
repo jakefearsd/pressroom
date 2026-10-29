@@ -360,7 +360,7 @@ class PageServletRenderingTest {
      * non-custom-themed weblog (the seeded fixture runs the shared "journal"
      * theme) must still render normally after re-loading the theme from
      * disk. {@code themeReload} defaults to false in the test config
-     * ({@code themes.reload.mode} is unset in roller-custom.properties), so
+     * ({@code themes.reload.mode} is unset in pressroom-custom.properties), so
      * this is the only test that actually reaches that branch.
      */
     @Test

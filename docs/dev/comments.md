@@ -80,7 +80,7 @@ moderation page, the account page, the API. Nothing else saves a
   per-account lock. Owners' replies count (the moderation page says so with its
   own message, `comments.reply.rateLimited`). The window is fixed, not sliding:
   a burst across a reset can store up to twice the window's limit in a little
-  over one window. Configured in roller.properties as ALLOWED counts, read once
+  over one window. Configured in pressroom.properties as ALLOWED counts, read once
   at startup by `CommentLimits`:
   - `comments.throttle.window.limit` (default 5),
   - `comments.throttle.window.seconds` (default 600, at most 86400),
@@ -123,7 +123,7 @@ moderation page, the account page, the API. Nothing else saves a
 
 `GlobalPermission.COMMENT = "comment"` is a new global action;
 `role.action.reader=comment`, `editor=login,weblog,comment`,
-`admin=login,weblog,admin,comment` (`roller.properties`).
+`admin=login,weblog,admin,comment` (`pressroom.properties`).
 
 The old `implies` fell through to `return true` for any required action it did
 not recognise: a holder of `login` only was refused `weblog` and `admin` by

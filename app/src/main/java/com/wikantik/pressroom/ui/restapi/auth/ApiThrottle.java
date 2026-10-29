@@ -39,7 +39,7 @@ public final class ApiThrottle {
         this.intervalSeconds = intervalSeconds;
     }
 
-    /** The production throttle, sized from {@code roller.properties}. */
+    /** The production throttle, sized from {@code pressroom.properties}. */
     public static ApiThrottle create() {
         int threshold = intProperty("api.throttle.threshold", 120);
         int interval = intProperty("api.throttle.interval", 60);
@@ -89,7 +89,7 @@ public final class ApiThrottle {
             return Integer.parseInt(WebloggerConfig.getProperty(name));
         } catch (NumberFormatException e) {
             // A bad value falls back to the default rather than stopping startup; say so,
-            // or a typo in roller-custom.properties silently leaves the stock limits in force.
+            // or a typo in pressroom-custom.properties silently leaves the stock limits in force.
             log.warn("{} is not a number; using {}", name, fallback);
             return fallback;
         }

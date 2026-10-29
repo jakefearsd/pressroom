@@ -77,7 +77,7 @@ Per-weblog Umami tracking plus a read-only Grafana contract over two databases.
   `<script defer src="…" data-website-id="…" data-host-url="…">` tag from that
   UUID plus `ConfigModel.getAnalyticsBasePath()`/`getAnalyticsScriptName()`
   (`analytics.umami.basePath`/`analytics.umami.scriptName` in
-  `roller.properties`). The legacy free-text `analyticsCode` textarea (gated on
+  `pressroom.properties`). The legacy free-text `analyticsCode` textarea (gated on
   *Allow analytics code override* **and** `weblogAdminsUntrusted` off, so never
   reachable here) is gone end to end — `Weblog`/`WeblogConfigBean` plumbing,
   JSP, `ConfigModel`/macro branches, and the `weblog.analyticscode` column

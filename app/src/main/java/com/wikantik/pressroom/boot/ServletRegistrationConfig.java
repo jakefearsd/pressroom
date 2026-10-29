@@ -247,7 +247,7 @@ public class ServletRegistrationConfig {
      * controller's {@code @PostMapping} is therefore written relative to
      * {@code /newsletter} -- {@code /subscribe}, not
      * {@code /newsletter/subscribe}. The {@code newsletter} path root is
-     * reserved in {@code rollerProtectedUrls} so no weblog handle can shadow
+     * reserved in {@code pressroomProtectedUrls} so no weblog handle can shadow
      * it.
      */
     static final String[] NEWSLETTER_URL_PATTERNS = {"/newsletter/*"};
@@ -260,7 +260,7 @@ public class ServletRegistrationConfig {
      * servlet path prefix is stripped from the lookup path, so every API
      * controller is mapped relative to {@code /api} -- {@code /v1/...}, not
      * {@code /api/v1/...}. The {@code api} path root is reserved in
-     * {@code rendering.weblogMapper.rollerProtectedUrls} so no weblog handle
+     * {@code rendering.weblogMapper.pressroomProtectedUrls} so no weblog handle
      * can shadow it.
      */
     // List.of(...), not a String[]: this is read cross-package by

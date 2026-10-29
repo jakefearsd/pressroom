@@ -145,8 +145,8 @@ public class JPAPersistenceStrategy {
      */
     @SuppressFBWarnings(
             value = "LDAP_INJECTION",
-            justification = "The JNDI name is jpa.emf.jndi.name, operator configuration (roller.properties "
-                    + "or ROLLER_* environment); no request reaches it.")
+            justification = "The JNDI name is jpa.emf.jndi.name, operator configuration (pressroom.properties "
+                    + "or PRESSROOM_* environment); no request reaches it.")
     public JPAPersistenceStrategy(DatabaseProvider dbProvider) throws WebloggerException {
         String jpaConfigurationType = WebloggerConfig.getProperty("jpa.configurationType");
         if ("jndi".equals(jpaConfigurationType)) {
@@ -164,7 +164,7 @@ public class JPAPersistenceStrategy {
 
             // Default weaving off, set *before* the WebloggerConfig passthrough
             // below so an operator who explicitly sets eclipselink.weaving in
-            // roller-custom.properties still wins (the loop overwrites this
+            // pressroom-custom.properties still wins (the loop overwrites this
             // entry if that key is present). EclipseLink's
             // createContainerEntityManagerFactoryImpl unconditionally calls
             // PersistenceUnitInfo.addTransformer(transformer) to register a
@@ -191,7 +191,7 @@ public class JPAPersistenceStrategy {
             // password for one of its own encrypted ones and refuses to
             // deploy (EclipseLink-7360). See PlaintextPasswordEncryptor. Set
             // before the passthrough, like weaving, so an explicit
-            // eclipselink.login.encryptor in roller-custom.properties wins.
+            // eclipselink.login.encryptor in pressroom-custom.properties wins.
             emfProps.setProperty(PersistenceUnitProperties.LOGIN_ENCRYPTOR,
                     PlaintextPasswordEncryptor.class.getName());
 

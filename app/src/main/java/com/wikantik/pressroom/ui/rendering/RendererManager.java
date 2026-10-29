@@ -50,7 +50,7 @@ public final class RendererManager {
             log.error("Unable to create user rendering factories", ex);
         }
         try {
-            rendererFactories.addAll(Reflection.newInstancesFromProperty("rendering.rollerRendererFactories"));
+            rendererFactories.addAll(Reflection.newInstancesFromProperty("rendering.pressroomRendererFactories"));
         } catch (ReflectiveOperationException ex) {
             log.error("Unable to create roller rendering factories", ex);
         }

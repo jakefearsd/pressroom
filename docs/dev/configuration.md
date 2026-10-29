@@ -10,8 +10,8 @@ resolves through the index at the end of `CLAUDE.md`.
 ### Key Configuration Locations
 - **Boot Config**: `app/src/main/resources/application.properties` (server
   port/context-path, filter ordering, actuator exposure)
-- **Dev Properties**: `app/src/test/resources/roller-boot-dev.properties`
-  (loaded via `-Droller.custom.config` by `./roller dev` and NetBeans
+- **Dev Properties**: `app/src/test/resources/pressroom-boot-dev.properties`
+  (loaded via `-Dpressroom.custom.config` by `./roller dev` and NetBeans
   run/debug actions)
 - **Servlets/Filters**: `app/src/main/java/.../boot/ServletRegistrationConfig.java`
   (Java-config transcription of the retired `web.xml`)
@@ -83,24 +83,28 @@ resolves through the index at the end of `CLAUDE.md`.
   the site directory. `site.privacy.page` is a page reference, `slug` (a site
   page) or `handle/slug` (a blog's page). Both are set from Global Config
   (`admin-ui.md`) and touch every weblog on change.
-- **Startup** (`roller.properties` / `roller-custom.properties`): read once
+- **Startup** (`pressroom.properties` / `pressroom-custom.properties`): read once
   via `WebloggerConfig`; needs a restart.
 - **Per-weblog** (`Weblog` columns, Weblog Settings) and **per-entry**.
-- **Environment** (`ROLLER_*`): highest precedence
-  (`WebloggerConfig.applyEnvironmentOverrides`): strip `ROLLER_`, lowercase,
+- **Old names are refused.** <!-- rebrand:keep -->
+  `LegacyConfigNames.refuse` runs first in `WebloggerConfig.loadLayers`: any <!-- rebrand:keep -->
+  `ROLLER_*` environment variable or `roller.*` system property aborts <!-- rebrand:keep -->
+  startup, naming each (never values). The overlay itself ignores `ROLLER_`. <!-- rebrand:keep -->
+- **Environment** (`PRESSROOM_*`): highest precedence
+  (`WebloggerConfig.applyEnvironmentOverrides`): strip `PRESSROOM_`, lowercase,
   `_` → `.`. A case-insensitive match on an existing key writes to its
-  spelling (`ROLLER_DATABASE_JDBC_DRIVERCLASS` →
+  spelling (`PRESSROOM_DATABASE_JDBC_DRIVERCLASS` →
   `database.jdbc.driverClass`); an unmatched name is used as derived —
-  required, since `mail.port` has no entry in `roller.properties` and
+  required, since `mail.port` has no entry in `pressroom.properties` and
   `uploads.dir` is commented out. Production is configured this way.
-- **A `ROLLER_*` variable for a *runtime* property reaches only the static
+- **A `PRESSROOM_*` variable for a *runtime* property reaches only the static
   layer.** `WebloggerRuntimeConfig.getProperty`/`getIntProperty` read the DB
   row alone, and a runtime row exists with its (often blank) default, so the
   variable is silently ignored unless the reader uses
   `getPropertyWithConfigFallback` (non-blank row, else static) or
   `getBooleanProperty`. A saved non-blank row beats the variable. Shipped
   once: `getAbsoluteContextURL()` read only the row, so
-  `ROLLER_SITE_ABSOLUTEURL` never reached generated urls and they took the
+  `PRESSROOM_SITE_ABSOLUTEURL` never reached generated urls and they took the
   first request's host (fixed 2026-10-10, `WebloggerRuntimeConfigTest`,
   `SeoControllerTest.robotsAdvertisesTheEnvironmentSiteUrl...`). Tests set
   the static layer with `StaticConfigOverride` (restores on close).

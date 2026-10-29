@@ -662,7 +662,7 @@ class MenuHelperTest {
         // Answered from the runtime (database-backed) configuration...
         when(properties.getProperty("themes.customtheme.allowed"))
                 .thenReturn(new RuntimeConfigProperty("themes.customtheme.allowed", "true"));
-        // ...and this one is not, so the static roller.properties value applies.
+        // ...and this one is not, so the static pressroom.properties value applies.
         when(properties.getProperty("groupblogging.enabled")).thenReturn(null);
 
         try (RuntimeConfigAttachment _ = businessTier(properties)) {
@@ -676,7 +676,7 @@ class MenuHelperTest {
                     "The current action must still be highlighted when the menu is built "
                             + "through getMenu.");
             assertTrue(itemActions(tabNamed(menu, "tabbedmenu.website")).contains("members"),
-                    "groupblogging.enabled is true in roller.properties, so with no runtime "
+                    "groupblogging.enabled is true in pressroom.properties, so with no runtime "
                             + "override the Members screen must be shown. Missing here means "
                             + "the fall-through from runtime to static configuration is broken "
                             + "and every property-guarded menu entry has vanished.");
@@ -694,7 +694,7 @@ class MenuHelperTest {
         beAWeblogAdministrator();
         PropertiesManager properties = mock(PropertiesManager.class);
         // themes.customtheme.allowed is in neither the runtime configuration
-        // nor roller.properties.
+        // nor pressroom.properties.
         when(properties.getProperty("themes.customtheme.allowed")).thenReturn(null);
 
         try (RuntimeConfigAttachment _ = businessTier(properties)) {

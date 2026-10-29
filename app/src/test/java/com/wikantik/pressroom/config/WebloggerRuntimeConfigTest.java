@@ -114,7 +114,7 @@ class WebloggerRuntimeConfigTest {
     @Test
     void theBooleanReaderFallsBackToTheStaticConfigWhenTheRuntimeRowIsAbsent()
             throws WebloggerException {
-        // groupblogging.enabled is true in roller.properties; an attached
+        // groupblogging.enabled is true in pressroom.properties; an attached
         // manager that has no row for it must not mask that fallback.
         PropertiesManager manager = mock(PropertiesManager.class);
         when(manager.getProperty("groupblogging.enabled")).thenReturn(null);
@@ -127,7 +127,7 @@ class WebloggerRuntimeConfigTest {
     }
 
     /**
-     * {@code ROLLER_SITE_ABSOLUTEURL} lands in the static config, not the
+     * {@code PRESSROOM_SITE_ABSOLUTEURL} lands in the static config, not the
      * database row, and the row's default is blank. The deployment that proved
      * the bug: the environment said {@code http://docker2.lan}, the Global
      * Config row was untouched, the first request after a restart arrived by
@@ -141,7 +141,7 @@ class WebloggerRuntimeConfigTest {
             WebloggerRuntimeConfig.setAbsoluteContextURL("http://192.168.5.52");
 
             assertEquals("http://docker2.lan", WebloggerRuntimeConfig.getAbsoluteContextURL(),
-                    "a configured ROLLER_SITE_ABSOLUTEURL must win over whichever host hit first");
+                    "a configured PRESSROOM_SITE_ABSOLUTEURL must win over whichever host hit first");
         }
     }
 

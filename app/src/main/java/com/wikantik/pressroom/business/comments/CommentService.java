@@ -83,7 +83,7 @@ public class CommentService {
     private final Object[] stripes = new Object[LOCK_STRIPES];
 
     /**
-     * With the rate limit roller.properties configures ({@link CommentLimits}).
+     * With the rate limit pressroom.properties configures ({@link CommentLimits}).
      *
      * @param weblogger the lazily-resolved business tier
      * @param notifier  told about each comment stored {@code PENDING}

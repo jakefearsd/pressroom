@@ -34,7 +34,7 @@ import static org.mockito.Mockito.mock;
 
 /**
  * Unit tests for {@link ModelLoader}, which turns the comma-separated class
- * names in {@code roller.properties} into the objects a template can reference.
+ * names in {@code pressroom.properties} into the objects a template can reference.
  *
  * <p>The {@code fail} flag is the whole point of this class. Renderers pass
  * {@code true} for the models a page cannot do without and {@code false} for

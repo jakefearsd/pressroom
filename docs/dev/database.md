@@ -59,7 +59,7 @@ with a hex password. Anything else that builds an EMF must do the same.
 
 ### Shared cache sizes
 
-EclipseLink's shared cache is sized in `roller.properties`
+EclipseLink's shared cache is sized in `pressroom.properties`
 (`eclipselink.cache.*`, passed to the persistence unit with every other
 `eclipselink.` key; `persistence.xml` properties are **not** read, since
 `PressroomPersistenceUnitInfo.getProperties()` is empty). Every type is
@@ -106,12 +106,12 @@ weakly. **Entries 5000, revisions 100, everything else 1000.** Until
   found (misses are not stored, `removeWeblogEntry` drops its key). Only a
   deleted weblog's keys linger, each until its anchor is looked up again.
 - **Tuning** is a startup property: `eclipselink.cache.size.WeblogEntry` in
-  `roller-custom.properties` or `ROLLER_ECLIPSELINK_CACHE_SIZE_WEBLOGENTRY`.
-  **A `ROLLER_*` variable reaches only a key already in the loaded properties**
+  `pressroom-custom.properties` or `PRESSROOM_ECLIPSELINK_CACHE_SIZE_WEBLOGENTRY`.
+  **A `PRESSROOM_*` variable reaches only a key already in the loaded properties**
   (it then takes that key's spelling). Any other arrives lowercased
   (`eclipselink.cache.size.readercomment`), and EclipseLink matches entity
   names case-sensitively, so it is ignored without an error: add the key to
-  `roller.properties` first, or set it in `roller-custom.properties`.
+  `pressroom.properties` first, or set it in `pressroom-custom.properties`.
 
 ### Schema changes
 

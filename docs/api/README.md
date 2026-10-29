@@ -152,7 +152,7 @@ its `revokedAt`.
 `bin/roller-api auth login` wraps exactly this call (minting an `ADMIN`-role
 token under the label `roller-api cli`) and writes the URL and token to
 `~/.roller/credentials` (`chmod 600`). Every other `roller-api` subcommand
-reads that file, or `ROLLER_API_URL`/`ROLLER_API_TOKEN` if set, so it never
+reads that file, or `PRESSROOM_API_URL`/`PRESSROOM_API_TOKEN` if set, so it never
 asks for a password again.
 
 ## Token scopes
@@ -214,7 +214,7 @@ weblog.`, whether or not that weblog exists.
 Every non-mint call is Bearer-authenticated:
 
 ```bash
-curl -sS -H "Authorization: Bearer $ROLLER_API_TOKEN" \
+curl -sS -H "Authorization: Bearer $PRESSROOM_API_TOKEN" \
   http://localhost:8083/api/v1/weblogs/myblog/entries
 ```
 
@@ -373,7 +373,7 @@ must be a whole number.`
 
 Every request to `/api/**` is rate-limited: **120 requests per 60-second
 window** by default (`api.throttle.threshold` / `api.throttle.interval` in
-`roller.properties`; the on/off switch, `api.throttle.enabled`, is a runtime
+`pressroom.properties`; the on/off switch, `api.throttle.enabled`, is a runtime
 property changeable from Admin Settings without a restart). The key is the
 token's own SHA-256 digest for a request carrying `Authorization: Bearer
 ...`, or the caller's IP address for any request that does not — in
@@ -413,7 +413,7 @@ Reads need `READ`; writes need `POST` or `ADMIN`.
 **Create:**
 
 ```bash
-curl -sS -H "Authorization: Bearer $ROLLER_API_TOKEN" \
+curl -sS -H "Authorization: Bearer $PRESSROOM_API_TOKEN" \
   -H 'Content-Type: application/json' \
   -X POST http://localhost:8083/api/v1/weblogs/myblog/entries \
   -d '{
@@ -567,7 +567,7 @@ response is the whole entry, `text` included.
 
 ```bash
 # every entry's slug and search description, for an SEO pass
-curl -sS -H "Authorization: Bearer $ROLLER_API_TOKEN" \
+curl -sS -H "Authorization: Bearer $PRESSROOM_API_TOKEN" \
   'http://localhost:8083/api/v1/weblogs/myblog/entries?fields=anchor&fields=searchDescription&limit=200'
 ```
 
@@ -792,7 +792,7 @@ included, so page it. A page shorter than `limit` is the last one.
 somewhere other than the weblog's default directory:
 
 ```bash
-curl -sS -H "Authorization: Bearer $ROLLER_API_TOKEN" \
+curl -sS -H "Authorization: Bearer $PRESSROOM_API_TOKEN" \
   -X POST http://localhost:8083/api/v1/weblogs/myblog/media \
   -F 'file=@photo1.jpg' -F 'file=@photo2.jpg'
 ```
@@ -917,16 +917,16 @@ returned unchanged. An empty `body` on a `HIDDEN` comment means its author
 deleted it.
 
 ```bash
-curl -sS -H "Authorization: Bearer $ROLLER_API_TOKEN" \
+curl -sS -H "Authorization: Bearer $PRESSROOM_API_TOKEN" \
   "https://blog.example.com/api/v1/weblogs/myblog/comments?status=PENDING"
 
 # approve it
-curl -sS -X PATCH -H "Authorization: Bearer $ROLLER_API_TOKEN" \
+curl -sS -X PATCH -H "Authorization: Bearer $PRESSROOM_API_TOKEN" \
   -H 'Content-Type: application/json' -d '{"status": "PUBLISHED"}' \
   https://blog.example.com/api/v1/weblogs/myblog/comments/COMMENT_ID
 
 # answer it, as the token's user
-curl -sS -H "Authorization: Bearer $ROLLER_API_TOKEN" \
+curl -sS -H "Authorization: Bearer $PRESSROOM_API_TOKEN" \
   -H 'Content-Type: application/json' -d '{"body": "Thanks!"}' \
   https://blog.example.com/api/v1/weblogs/myblog/comments/COMMENT_ID/replies
 ```
@@ -1188,7 +1188,7 @@ Connect a client that supports Streamable HTTP with a custom header, for example
 
 ```bash
 claude mcp add --transport http roller https://blog.example.com/api/mcp \
-    --header "Authorization: Bearer $ROLLER_API_TOKEN"
+    --header "Authorization: Bearer $PRESSROOM_API_TOKEN"
 ```
 
 | Tool | Actions |
@@ -1221,7 +1221,7 @@ through MCP: minting, listing or revoking tokens, and uploading media from local
 ## The OpenAPI document
 
 ```bash
-curl -sS -H "Authorization: Bearer $ROLLER_API_TOKEN" \
+curl -sS -H "Authorization: Bearer $PRESSROOM_API_TOKEN" \
   http://localhost:8083/api/v1/openapi.json
 ```
 
@@ -1263,5 +1263,5 @@ The CLI, REST and MCP name some operations differently:
 | `admin weblogs patch` | `PATCH /api/v1/weblogs/{handle}` | `weblogs` `update` |
 | `auth status` | `GET /api/v1/me` | `whoami` |
 A leading `--url URL`/`--token TOKEN`, before the command name, overrides
-`ROLLER_API_URL`/`ROLLER_API_TOKEN` and `~/.roller/credentials` for a single
+`PRESSROOM_API_URL`/`PRESSROOM_API_TOKEN` and `~/.roller/credentials` for a single
 one-off call against a different instance, without touching either.

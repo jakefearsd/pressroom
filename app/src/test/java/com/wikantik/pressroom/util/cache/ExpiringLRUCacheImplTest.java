@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Tests the expiring variant of the LRU cache, which is the default for every
- * cache in Roller (see cache.defaultFactory in roller.properties).
+ * cache in Roller (see cache.defaultFactory in pressroom.properties).
  *
  * The timeout is what bounds how stale a rendered page can get when nothing
  * invalidates it explicitly, so "still served at the timeout, gone just after"

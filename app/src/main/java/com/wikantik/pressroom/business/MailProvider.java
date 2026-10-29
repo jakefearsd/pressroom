@@ -69,8 +69,8 @@ public class MailProvider {
     
     @SuppressFBWarnings(
             value = "LDAP_INJECTION",
-            justification = "The JNDI name is mail.jndi.name, operator configuration (roller.properties or "
-                    + "ROLLER_* environment); no request reaches it.")
+            justification = "The JNDI name is mail.jndi.name, operator configuration (pressroom.properties or "
+                    + "PRESSROOM_* environment); no request reaches it.")
     public MailProvider() throws StartupException {
         
         String connectionTypeString = WebloggerConfig.getProperty("mail.configurationType"); 

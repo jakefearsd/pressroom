@@ -12,10 +12,10 @@ resolves through the index at the end of `CLAUDE.md`.
   id `noop`), the unconditional `noop` encoder (`{noop}` rows authenticated
   anyway), `lazyUpgradeFrom=plaintext` (null-prefix no-op encoder:
   unprefixed strings authenticated), and the `enabled=false` lines in
-  `roller-boot-dev.properties` / `roller-custom.properties`. Only
+  `pressroom-boot-dev.properties` / `pressroom-custom.properties`. Only
   `passwds.encryption.algorithm` (bcrypt/pbkdf2/scrypt/argon2) remains. An
   explicit `passwds.encryption.enabled` — file or
-  `ROLLER_PASSWDS_ENCRYPTION_ENABLED` — **throws at startup**, like an
+  `PRESSROOM_PASSWDS_ENCRYPTION_ENABLED` — **throws at startup**, like an
   unsupported `authentication.method`. A `{noop}` row is refused outright.
   `PasswordEncodingTest` pins it.
 - **`TestUtils.setupUser` stores a precomputed `{bcrypt}` constant**

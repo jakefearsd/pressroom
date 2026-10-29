@@ -61,7 +61,7 @@ public final class HTMLSanitizer {
     /**
      * Whether authored entry content is sanitized at all.
      *
-     * <p>Mutable and public because tests flip it; {@code roller.properties}
+     * <p>Mutable and public because tests flip it; {@code pressroom.properties}
      * ships it enabled. Turning it off trusts every blog author with raw script
      * on their own pages -- defensible for a single-owner install, dangerous the
      * moment a blog has members.

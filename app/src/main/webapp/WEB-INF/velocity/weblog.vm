@@ -688,7 +688,7 @@ that would otherwise trigger detection and keeps the prefix Leaflet
 concatenates harmless.
 
 Tile policy (operations.osmfoundation.org/policies/tiles/): the tile template
-comes from $config.mapTileUrl (roller.properties travel.map.tileUrl) so a
+comes from $config.mapTileUrl (pressroom.properties travel.map.tileUrl) so a
 deployer can point it elsewhere; there is no {s} subdomain placeholder,
 attribution is required and therefore never suppressed, maxZoom is raised
 from Leaflet's default 18 to the 19 the OSM standard layer renders, and tiles

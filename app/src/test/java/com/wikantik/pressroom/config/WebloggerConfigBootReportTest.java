@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
  * configuration), so the class keeps what it found and logs it once logging is
  * up. A {@code System.out} line bypasses the log layout: it carries no level,
  * time or logger name, and is not one event a log reader can pick out. The
- * test suite's own classpath carries {@code roller-custom.properties}, so the
+ * test suite's own classpath carries {@code pressroom-custom.properties}, so the
  * report here must say it was loaded.
  */
 class WebloggerConfigBootReportTest {
@@ -23,7 +23,7 @@ class WebloggerConfigBootReportTest {
     void theReportSaysWhichCustomPropertiesWereLoaded() {
         List<String> report = WebloggerConfig.bootReport();
 
-        assertTrue(report.stream().anyMatch(line -> line.contains("roller-custom.properties")),
+        assertTrue(report.stream().anyMatch(line -> line.contains("pressroom-custom.properties")),
                 "the report names the custom properties file it loaded: " + report);
     }
 

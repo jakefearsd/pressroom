@@ -198,7 +198,7 @@ public final class Routes {
 
             // Renders .CreateWeblog rather than .GenericError because
             // site.allowUserWeblogCreation defaults to true (runtimeConfigDefs.xml)
-            // and groupblogging.enabled defaults to true (roller.properties), which
+            // and groupblogging.enabled defaults to true (pressroom.properties), which
             // skips the "you already have a blog" bail-out.
             new Route("/roller-ui/createWeblog.rol", Role.EDITOR, "",
                     "form[action$='/roller-ui/createWeblog!save.rol']"),

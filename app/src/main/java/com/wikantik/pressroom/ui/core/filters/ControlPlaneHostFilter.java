@@ -142,7 +142,7 @@ public class ControlPlaneHostFilter implements Filter {
 
     /**
      * The site host, read from site.absoluteurl DIRECTLY (database row, then
-     * ROLLER_SITE_ABSOLUTEURL) and never through getAbsoluteContextURL(),
+     * PRESSROOM_SITE_ABSOLUTEURL) and never through getAbsoluteContextURL(),
      * which falls back to InitFilter's latched value.
      */
     private static String siteHostUrl() {

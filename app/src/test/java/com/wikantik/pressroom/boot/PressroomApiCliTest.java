@@ -170,7 +170,7 @@ class PressroomApiCliTest {
     /**
      * A caller who forgets the value entirely --
      * {@code roller-api --url auth login --weblog h} -- must not have
-     * ROLLER_API_URL silently set to "auth" with "login" then misread as the
+     * PRESSROOM_API_URL silently set to "auth" with "login" then misread as the
      * top-level command.
      */
     @Test
@@ -297,9 +297,9 @@ class PressroomApiCliTest {
         ProcessBuilder pb = new ProcessBuilder("bash", script.toString(), "entries", "preview",
                 "--weblog", "w", "--text-file", text.toString());
         pb.environment().put("PATH", bin + ":" + System.getenv("PATH"));
-        pb.environment().put("ROLLER_API_URL", "http://roller.invalid");
-        pb.environment().put("ROLLER_API_TOKEN", "t");
-        pb.environment().put("ROLLER_CREDENTIALS", dir.resolve("none").toString());
+        pb.environment().put("PRESSROOM_API_URL", "http://roller.invalid");
+        pb.environment().put("PRESSROOM_API_TOKEN", "t");
+        pb.environment().put("PRESSROOM_CREDENTIALS", dir.resolve("none").toString());
         pb.redirectError(dir.resolve("stderr").toFile());
         Process p = pb.start();
         String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
@@ -330,13 +330,13 @@ class PressroomApiCliTest {
         command.addAll(java.util.List.of(args));
         ProcessBuilder pb = new ProcessBuilder(command);
         pb.environment().put("PATH", bin + ":" + System.getenv("PATH"));
-        pb.environment().remove("ROLLER_API_URL");
-        pb.environment().remove("ROLLER_API_TOKEN");
+        pb.environment().remove("PRESSROOM_API_URL");
+        pb.environment().remove("PRESSROOM_API_TOKEN");
         if (credentials) {
-            pb.environment().put("ROLLER_API_URL", "http://roller.invalid");
-            pb.environment().put("ROLLER_API_TOKEN", "t");
+            pb.environment().put("PRESSROOM_API_URL", "http://roller.invalid");
+            pb.environment().put("PRESSROOM_API_TOKEN", "t");
         }
-        pb.environment().put("ROLLER_CREDENTIALS", dir.resolve("none").toString());
+        pb.environment().put("PRESSROOM_CREDENTIALS", dir.resolve("none").toString());
         Path stderr = dir.resolve("stderr-" + System.nanoTime());
         pb.redirectError(stderr.toFile());
         Process p = pb.start();

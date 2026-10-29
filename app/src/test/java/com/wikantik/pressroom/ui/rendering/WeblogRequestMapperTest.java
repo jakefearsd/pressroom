@@ -221,7 +221,7 @@ class WeblogRequestMapperTest {
 
     /**
      * The protected-URL list is what stops an application path being mistaken
-     * for a weblog. Every name in {@code rendering.weblogMapper.rollerProtectedUrls}
+     * for a weblog. Every name in {@code rendering.weblogMapper.pressroomProtectedUrls}
      * is a path this mapper must decline so the real servlet behind it runs --
      * and a weblog registered under one of those handles must not be able to
      * shadow it.

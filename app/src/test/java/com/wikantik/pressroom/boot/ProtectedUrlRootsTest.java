@@ -19,7 +19,7 @@ class ProtectedUrlRootsTest {
 
     private static List<String> roots() {
         return Arrays.asList(WebloggerConfig
-                .getProperty("rendering.weblogMapper.rollerProtectedUrls").split(","));
+                .getProperty("rendering.weblogMapper.pressroomProtectedUrls").split(","));
     }
 
     @Test

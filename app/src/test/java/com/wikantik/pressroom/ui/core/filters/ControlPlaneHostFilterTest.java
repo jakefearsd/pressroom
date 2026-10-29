@@ -170,7 +170,7 @@ class ControlPlaneHostFilterTest {
     }
 
     /**
-     * Characterisation: {@code ROLLER_SITE_ABSOLUTEURL} (the static config,
+     * Characterisation: {@code PRESSROOM_SITE_ABSOLUTEURL} (the static config,
      * not the blank database row) also engages the control-plane boundary.
      * The filter read both layers by hand before it was routed through
      * {@code WebloggerRuntimeConfig.getPropertyWithConfigFallback}; this

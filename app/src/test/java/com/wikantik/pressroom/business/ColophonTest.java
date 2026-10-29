@@ -252,7 +252,7 @@ class ColophonTest {
     @Test
     void nullWebloggerReadsTheVersionFromThePackagedProperties() throws Exception {
         java.util.Properties packaged = new java.util.Properties();
-        try (var in = Colophon.class.getResourceAsStream("/roller-version.properties")) {
+        try (var in = Colophon.class.getResourceAsStream("/pressroom-version.properties")) {
             packaged.load(in);
         }
         Colophon c = Colophon.of(null, null, NOW);

@@ -308,7 +308,7 @@ class ProductionComposeTest {
     @Test
     void theAppTakesItsConfigurationFromEnvFile() {
         assertEquals(".env", String.valueOf(service("app").get("env_file")),
-                "the app's whole configuration arrives as ROLLER_* variables from .env");
+                "the app's whole configuration arrives as PRESSROOM_* variables from .env");
     }
 
     @Test

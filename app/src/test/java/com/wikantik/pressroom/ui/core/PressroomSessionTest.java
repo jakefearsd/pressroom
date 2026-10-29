@@ -64,7 +64,7 @@ class PressroomSessionTest {
 
     @Test
     void testGetRollerSessionNewSession() {
-        when(session.getAttribute(PressroomSession.ROLLER_SESSION)).thenReturn(null);
+        when(session.getAttribute(PressroomSession.PRESSROOM_SESSION)).thenReturn(null);
         when(request.getUserPrincipal()).thenReturn(null);
 
         PressroomSession result = PressroomSession.getRollerSession(request, provider);
@@ -72,12 +72,12 @@ class PressroomSessionTest {
         // Verify new session was created
         assertNotNull(result);
         // Verify session was stored in HTTP session
-        verify(session).setAttribute(eq(PressroomSession.ROLLER_SESSION), any(PressroomSession.class));
+        verify(session).setAttribute(eq(PressroomSession.PRESSROOM_SESSION), any(PressroomSession.class));
     }
 
     @Test
     void testGetRollerSessionExistingValidSession() {
-        when(session.getAttribute(PressroomSession.ROLLER_SESSION)).thenReturn(rollerSession);
+        when(session.getAttribute(PressroomSession.PRESSROOM_SESSION)).thenReturn(rollerSession);
         when(request.getUserPrincipal()).thenReturn(null);
 
         PressroomSession result = PressroomSession.getRollerSession(request, provider);
@@ -91,7 +91,7 @@ class PressroomSessionTest {
     @Test
     void testGetRollerSessionInvalidatedSession() throws Exception {
         String username = "testuser";
-        when(session.getAttribute(PressroomSession.ROLLER_SESSION)).thenReturn(rollerSession);
+        when(session.getAttribute(PressroomSession.PRESSROOM_SESSION)).thenReturn(rollerSession);
         when(request.getUserPrincipal()).thenReturn(principal);
         when(principal.getName()).thenReturn(username);
         when(userManager.getUserByUserName(username)).thenReturn(user);
@@ -101,7 +101,7 @@ class PressroomSessionTest {
         sessionManager.invalidate(username);
 
         // Force creation of new session
-        when(session.getAttribute(PressroomSession.ROLLER_SESSION)).thenReturn(null);
+        when(session.getAttribute(PressroomSession.PRESSROOM_SESSION)).thenReturn(null);
 
         PressroomSession result = PressroomSession.getRollerSession(request, provider);
 
@@ -113,7 +113,7 @@ class PressroomSessionTest {
     @Test
     void aPrincipalIsResolvedThroughTheProvidersUserManager() throws Exception {
         String username = "testuser";
-        when(session.getAttribute(PressroomSession.ROLLER_SESSION)).thenReturn(null);
+        when(session.getAttribute(PressroomSession.PRESSROOM_SESSION)).thenReturn(null);
         when(request.getUserPrincipal()).thenReturn(principal);
         when(principal.getName()).thenReturn(username);
         when(userManager.getUserByUserName(username)).thenReturn(user);
@@ -133,7 +133,7 @@ class PressroomSessionTest {
     @Test
     void beforeBootstrapAPrincipalIsNotResolved() {
         when(provider.isBootstrapped()).thenReturn(false);
-        when(session.getAttribute(PressroomSession.ROLLER_SESSION)).thenReturn(null);
+        when(session.getAttribute(PressroomSession.PRESSROOM_SESSION)).thenReturn(null);
         when(request.getUserPrincipal()).thenReturn(principal);
         when(principal.getName()).thenReturn("testuser");
 

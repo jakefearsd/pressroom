@@ -36,7 +36,7 @@ import tools.jackson.databind.node.ObjectNode;
 /**
  * The only outbound HTTP in the audience wave, and it points at deployer
  * configuration, never at author or reader input: the Listmonk base URL
- * comes from roller.properties, and the request bodies carry an email (or a
+ * comes from pressroom.properties, and the request bodies carry an email (or a
  * blog entry an editor has already chosen to send) plus a list uuid that has
  * already been matched against a weblog's configured list. There is nothing
  * here a reader can aim at an internal address.

@@ -143,7 +143,7 @@ A weblog with `weblog.custom_domain` set is served at that hostname's root:
   methods root through `MultiWeblogURLStrategy.getWeblogURL`;
   `AbstractURLStrategy`'s six `/roller-ui/` methods are control plane and
   must **not** become domain-aware.
-- **`appProtectedUrls` is a strict subset of `rollerProtectedUrls`**, which
+- **`appProtectedUrls` is a strict subset of `pressroomProtectedUrls`**, which
   mixes application paths (`roller-ui`, `api`, `themes`, `webjars`,
   `robots.txt`, `sitemap.xml`, `newsletter`) with weblog request contexts
   (`page`, `search`, `resource`, legacy `flavor`/`rss`/`atom`/`language`). On
@@ -165,7 +165,7 @@ A weblog with `weblog.custom_domain` set is served at that hostname's root:
   body), breaking every `[contact]`/`[subscribe]` on vhost weblogs.
 - **`site.absoluteurl` is required once any weblog has a custom domain**,
   read directly (`getPropertyWithConfigFallback`: the row, then
-  `ROLLER_SITE_ABSOLUTEURL`) — never `getAbsoluteContextURL()`, whose
+  `PRESSROOM_SITE_ABSOLUTEURL`) — never `getAbsoluteContextURL()`, whose
   `InitFilter` fallback can itself be a custom domain. Unset, the filter
   serves rather than redirects: never a loop.
 - The path form 301s (never `sendRedirect`, whose 302 tells crawlers not to

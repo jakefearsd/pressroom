@@ -21,7 +21,7 @@
 <%@ page import="org.springframework.security.web.authentication.rememberme.TokenBasedRememberMeServices" %>
 
 <%
-request.getSession().removeAttribute(PressroomSession.ROLLER_SESSION);
+request.getSession().removeAttribute(PressroomSession.PRESSROOM_SESSION);
 request.getSession().invalidate(); 
 
 // Mimic exactly TokenBasedRememberMeServices.makeCancelCookie()

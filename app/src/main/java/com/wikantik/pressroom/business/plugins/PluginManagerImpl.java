@@ -123,7 +123,7 @@ public class PluginManagerImpl implements PluginManager {
     
     
     /**
-     * Initialize PagePlugins declared in roller.properties.
+     * Initialize PagePlugins declared in pressroom.properties.
      * By using the full class name we also allow for the implementation of
      * "external" Plugins (maybe even packaged seperately). These classes are
      * then later instantiated by PageHelper.

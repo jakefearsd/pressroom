@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
  * {@code dailyLimit} in a day. {@link CommentService} turns them into
  * {@code GenericThrottle} thresholds in one place.
  *
- * <p>Read once, at startup, from roller.properties (or a {@code ROLLER_*}
+ * <p>Read once, at startup, from pressroom.properties (or a {@code PRESSROOM_*}
  * environment override): {@value #WINDOW_LIMIT}, {@value #WINDOW_SECONDS} and
  * {@value #DAILY_LIMIT}. A missing, malformed or out-of-range value falls back
  * to its default, which is the strict one, and says so in the log. The window
@@ -62,7 +62,7 @@ public record CommentLimits(int windowLimit, int windowSeconds, int dailyLimit) 
         }
     }
 
-    /** The limits roller.properties configures. */
+    /** The limits pressroom.properties configures. */
     public static CommentLimits fromConfig() {
         return from(WebloggerConfig::getProperty);
     }

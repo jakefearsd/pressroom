@@ -41,12 +41,12 @@ import com.wikantik.pressroom.util.PropertyExpander;
  */
 public final class WebloggerConfig {
     
-    private static final String default_config = "roller.properties";
-    private static final String custom_config = "/roller-custom.properties";
-    private static final String junit_config = "/roller-junit.properties";
-    private static final String custom_jvm_param = "roller.custom.config";
+    private static final String default_config = "pressroom.properties";
+    private static final String custom_config = "/pressroom-custom.properties";
+    private static final String junit_config = "/pressroom-junit.properties";
+    private static final String custom_jvm_param = "pressroom.custom.config";
 
-    private static final String env_prefix = "ROLLER_";
+    private static final String env_prefix = "PRESSROOM_";
 
     private static final Pattern SECRET_KEY =
             Pattern.compile("password|token|secret", Pattern.CASE_INSENSITIVE);
@@ -117,6 +117,9 @@ public final class WebloggerConfig {
      * logs once the logger is up.
      */
     private static void loadLayers() throws Exception {
+        // Refuse before any file is read: an old name left in the deploy would otherwise be ignored silently.
+        LegacyConfigNames.refuse(System.getenv(), System.getProperties());
+
         // we'll need this to get at our properties files in the classpath
         Class<?> configClass = WebloggerConfig.class;
 
@@ -144,7 +147,7 @@ public final class WebloggerConfig {
                         note(false, "Loaded the custom properties from the classpath: "
                                 + configClass.getResource(custom_config).getFile());
                     } else {
-                        note(false, "No custom properties file found on the classpath (roller-custom.properties)");
+                        note(false, "No custom properties file found on the classpath (pressroom-custom.properties)");
                     }
                 }
             }
@@ -168,7 +171,7 @@ public final class WebloggerConfig {
 
         }
 
-        // Highest-precedence layer: ROLLER_* environment variables. Placed
+        // Highest-precedence layer: PRESSROOM_* environment variables. Placed
         // before property expansion below so an env-supplied value can
         // still carry ${...} references.
         applyEnvironmentOverrides(config, System.getenv());
@@ -248,7 +251,7 @@ public final class WebloggerConfig {
     private WebloggerConfig() {}
 
     /**
-     * Overlay {@code ROLLER_*} environment variables onto the loaded
+     * Overlay {@code PRESSROOM_*} environment variables onto the loaded
      * configuration. This is the highest-precedence layer, which is what lets
      * the production image take its whole configuration from the deploy host's
      * .env with no properties file mounted (see
@@ -257,11 +260,11 @@ public final class WebloggerConfig {
      * <p>The name mapping strips the prefix, lowercases, and turns {@code _}
      * into {@code .}. A derived name that matches an existing key
      * case-insensitively is written to that key's ORIGINAL spelling, so
-     * {@code ROLLER_DATABASE_JDBC_DRIVERCLASS} reaches
+     * {@code PRESSROOM_DATABASE_JDBC_DRIVERCLASS} reaches
      * {@code database.jdbc.driverClass} instead of quietly creating a
      * lowercase twin nothing reads. A derived name matching nothing is used
      * as-is, which is required rather than incidental: {@code mail.port} has no
-     * entry in roller.properties and {@code uploads.dir} is commented out, so
+     * entry in pressroom.properties and {@code uploads.dir} is commented out, so
      * an allowlist of keys with active defaults could set neither.
      *
      * <p>Package-private and taking an explicit map so it can be tested;
@@ -270,7 +273,7 @@ public final class WebloggerConfig {
      */
     @SuppressFBWarnings(
             value = "IMPROPER_UNICODE",
-            justification = "Matches ROLLER_ environment variable names to roller.properties keys "
+            justification = "Matches PRESSROOM_ environment variable names to pressroom.properties keys "
                     + "case-insensitively: operator configuration read once at startup, no request input.")
     static void applyEnvironmentOverrides(Properties config, Map<String, String> env) {
 

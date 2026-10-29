@@ -113,8 +113,8 @@ public class LuceneIndexManager implements IndexManager {
      */
     @SuppressFBWarnings(
             value = {"PATH_TRAVERSAL_IN", "IMPROPER_UNICODE"},
-            justification = "indexDir is search.index.dir, operator configuration (roller.properties or "
-                    + "ROLLER_SEARCH_INDEX_DIR); no request reaches it. search.enabled, compared with "
+            justification = "indexDir is search.index.dir, operator configuration (pressroom.properties or "
+                    + "PRESSROOM_SEARCH_INDEX_DIR); no request reaches it. search.enabled, compared with "
                     + "false in any case, is operator configuration too.")
     public LuceneIndexManager(Weblogger roller) {
         this.roller = roller;
@@ -144,8 +144,8 @@ public class LuceneIndexManager implements IndexManager {
     @Override
     @SuppressFBWarnings(
             value = "PATH_TRAVERSAL_IN",
-            justification = "indexDir is search.index.dir, operator configuration (roller.properties or "
-                    + "ROLLER_SEARCH_INDEX_DIR); no request reaches it.")
+            justification = "indexDir is search.index.dir, operator configuration (pressroom.properties or "
+                    + "PRESSROOM_SEARCH_INDEX_DIR); no request reaches it.")
     public void initialize() throws InitializationException {
 
         // only initialize the index if search is enabled

@@ -10,7 +10,7 @@ To use it in Roller:
 
 3) In your roller-custom.properies file add this override:
 
-   rendering.rollerRendererFactories=\
+   rendering.pressroomRendererFactories=\
       org.apache.roller.ui.rendering.velocity.VelocityRendererFactory,\
       org.apache.roller.scripting.BSFRendererFactory
 

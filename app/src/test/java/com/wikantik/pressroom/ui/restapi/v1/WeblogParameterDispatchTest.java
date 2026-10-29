@@ -182,7 +182,7 @@ class WeblogParameterDispatchTest {
             runtime.when(() -> WebloggerRuntimeConfig.getBooleanProperty("groupblogging.enabled"))
                     .thenReturn(true);
             config.when(() -> WebloggerConfig.getProperty("username.allowedChars")).thenReturn("A-Za-z0-9");
-            config.when(() -> WebloggerConfig.getProperty("rendering.weblogMapper.rollerProtectedUrls"))
+            config.when(() -> WebloggerConfig.getProperty("rendering.weblogMapper.pressroomProtectedUrls"))
                     .thenReturn("api,page,search");
             return mockMvc.perform(post("/api/v1/weblogs" + query)
                     .servletPath("/api").pathInfo("/v1/weblogs")

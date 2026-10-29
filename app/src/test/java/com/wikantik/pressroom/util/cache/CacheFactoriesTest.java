@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the two cache factories, which turn the string properties an admin
- * writes in roller.properties into a configured cache.
+ * writes in pressroom.properties into a configured cache.
  *
  * Everything here comes in as text from a config file that nothing validates,
  * so the factories have to survive nonsense without taking the site down: a
@@ -68,7 +68,7 @@ public class CacheFactoriesTest {
     public void expiringFactoryIgnoresPropertiesItCannotRead() {
         Map<String, Object> props = new HashMap<>();
         props.put("id", "cache.test");
-        // a typo in roller.properties, and a value that is not even a String
+        // a typo in pressroom.properties, and a value that is not even a String
         props.put("size", "one hundred");
         props.put("timeout", 1800);
 

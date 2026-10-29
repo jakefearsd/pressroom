@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * cleanup, so these tests describe what is rather than what might be nicer.
  *
  * <p>The assertions establish their own preconditions from the live config
- * rather than hard-coding values from {@code roller.properties}, so that
+ * rather than hard-coding values from {@code pressroom.properties}, so that
  * retuning a default cannot quietly turn one of these into a test of nothing.
  */
 class WebloggerConfigAccessorTest {

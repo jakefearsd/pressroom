@@ -69,7 +69,7 @@ import org.springframework.stereotype.Component;
  * hard failure: there is no sensible fallback for it.
  */
 @Component
-@ConditionalOnProperty(name = "roller.lifecycle.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "pressroom.lifecycle.enabled", havingValue = "true", matchIfMissing = true)
 public class PressroomLifecycle implements SmartLifecycle {
 
     private static final Logger log = LoggerFactory.getLogger(PressroomLifecycle.class);
@@ -170,7 +170,7 @@ public class PressroomLifecycle implements SmartLifecycle {
                             + "arrive on (InitFilter's latch) in its canonical url, og:url, "
                             + "feed id, sitemap, robots.txt and password-reset links. Set "
                             + "site.absoluteurl (Admin -> Global Config, or "
-                            + "ROLLER_SITE_ABSOLUTEURL) to the site's own address.");
+                            + "PRESSROOM_SITE_ABSOLUTEURL) to the site's own address.");
                 }
 
             } catch (BootstrapException ex) {
@@ -222,8 +222,8 @@ public class PressroomLifecycle implements SmartLifecycle {
      * returned null; that's no longer acceptable now that {@code java -jar}
      * is the primary deployment mode, so archive mode instead requires
      * {@code themes.dir} (and by the same reasoning, {@code uploads.dir}) to
-     * already be configured via {@code roller.properties}/
-     * {@code roller.custom.config}. {@code WebloggerConfig.setUploadsDir}/
+     * already be configured via {@code pressroom.properties}/
+     * {@code pressroom.custom.config}. {@code WebloggerConfig.setUploadsDir}/
      * {@code setThemesDir} are placeholder-only no-ops -- they only replace
      * a literal {@code ${webapp.context}} value -- so a configured value
      * always wins over the webapp-context guess either way.
@@ -241,7 +241,7 @@ public class PressroomLifecycle implements SmartLifecycle {
             if (themesDir == null || themesDir.startsWith("${")) {
                 throw new IllegalStateException(
                         "Running from an archive: themes.dir must be configured "
-                        + "(roller.properties / roller.custom.config)");
+                        + "(pressroom.properties / pressroom.custom.config)");
             }
         }
     }

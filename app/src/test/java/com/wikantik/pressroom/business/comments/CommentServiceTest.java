@@ -403,12 +403,12 @@ class CommentServiceTest {
 
     /**
      * M11 (ruling R9): the limits are configuration. The defaults above come from
-     * roller.properties; a configured limit, here two in the window, is honoured
+     * pressroom.properties; a configured limit, here two in the window, is honoured
      * the same way, as allowed counts: the third is refused.
      */
     @Test
     void aConfiguredRateLimitIsHonoured() throws Exception {
-        assertEquals(CommentLimits.DEFAULTS, CommentLimits.fromConfig(), "roller.properties holds the defaults");
+        assertEquals(CommentLimits.DEFAULTS, CommentLimits.fromConfig(), "pressroom.properties holds the defaults");
         assertEquals(new CommentLimits(5, 600, 30), CommentLimits.DEFAULTS);
 
         CommentService two = new CommentService(TestUtils.weblogger(), new MailCommentNotifier(TestUtils.weblogger()),

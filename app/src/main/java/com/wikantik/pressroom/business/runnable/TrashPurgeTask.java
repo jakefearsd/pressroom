@@ -44,7 +44,7 @@ import com.wikantik.pressroom.pojos.Weblog;
  *
  * <p>Modeled directly on {@link ScheduledEntriesTask} -- same base class,
  * same {@code tasks.<name>.*} configuration shape, same registration via
- * {@code tasks.enabled} in {@code roller.properties} -- because this project
+ * {@code tasks.enabled} in {@code pressroom.properties} -- because this project
  * has exactly one way of running a scheduled task.
  */
 public class TrashPurgeTask extends PressroomTaskWithLeasing {

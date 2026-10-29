@@ -106,7 +106,7 @@ mkdir -p "$(dirname "$PIDFILE")" "$(dirname "$LOG")"
 # runs the same way a fixed app port would -- 0 sidesteps that with no need
 # to reserve/thread a dedicated port property through this module.
 #
-# roller.it.run / roller.it.owner are inert as far as Roller is concerned: they
+# pressroom.it.run / pressroom.it.owner are inert as far as Roller is concerned: they
 # exist so this process can be found again by anything that has to clean it up.
 #
 # The two DEBUG loggers exist for one reason: an unexplained 403 (the one on
@@ -118,12 +118,12 @@ mkdir -p "$(dirname "$PIDFILE")" "$(dirname "$LOG")"
 # said nothing at all. IT runs are short and the log is per-run; the volume
 # is affordable and the next occurrence names its cause. Those loggers reach
 # $LOG (log4j2.xml sends every logger to the console) and also log4j2's file
-# appender; roller.log.dir puts that file beside this run's stdout log
+# appender; pressroom.log.dir puts that file beside this run's stdout log
 # (roller-<run id>/roller.log) instead of in ./logs under the module, where
 # it was shared by every run and found by nobody.
-"$JAVA" -Xmx"$APP_HEAP" -Djava.awt.headless=true -Droller.custom.config="$PROPS" \
+"$JAVA" -Xmx"$APP_HEAP" -Djava.awt.headless=true -Dpressroom.custom.config="$PROPS" \
      "${IT_RUN_PROP}$RUN_ID" "${IT_OWNER_PROP}$OWNER" \
-     "-Droller.log.dir=$(dirname "$LOG")/roller-$RUN_ID" \
+     "-Dpressroom.log.dir=$(dirname "$LOG")/roller-$RUN_ID" \
      -jar "$WAR" --server.port="$PORT" --server.servlet.context-path="$CONTEXT_PATH" \
      --management.server.port=0 \
      --logging.level.org.springframework.security=DEBUG \

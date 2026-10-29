@@ -24,7 +24,7 @@
   
   This file defines what properties are made available to get/set
   during the running of the Roller application (in contrast to the settings
-  in roller-custom.properties which are read once before Roller startup).
+  in pressroom-custom.properties which are read once before Roller startup).
   These runtime properties are stored in the database (roller_properties
   table) and the code *must* be able to make use of changed values during
   runtime.
@@ -95,7 +95,7 @@
            <type>boolean</type>
            <default-value>true</default-value>
        </property-def>
-       <!-- Both promoted from roller.properties. CreateWeblogController reads
+       <!-- Both promoted from pressroom.properties. CreateWeblogController reads
             groupblogging.enabled per request; UserWrapper reads
             user.hideUserNames per render. Defaults match the startup file. -->
        <property-def name="groupblogging.enabled" key="configForm.groupBloggingEnabled">
@@ -134,7 +134,7 @@
          <type>integer</type>
          <default-value>30</default-value>
       </property-def>
-      <!-- Promoted from roller.properties. Only affects anchors generated
+      <!-- Promoted from pressroom.properties. Only affects anchors generated
            after the change; anchors already stored on entries keep whichever
            separator was in force when they were created. -->
       <property-def  name="weblogentry.title.useUnderscoreSeparator"  key="configForm.underscoreSeparator">
@@ -194,7 +194,7 @@
    <display-group name="apiSettings" key="configForm.apiSettings">
 
       <!-- Sizing (api.throttle.threshold, api.throttle.interval,
-           api.throttle.maxentries) stays startup scoped in roller.properties:
+           api.throttle.maxentries) stays startup scoped in pressroom.properties:
            it dimensions a fixed cache that cannot be resized under live
            callers. Only the switch below is promoted to runtime. -->
       <property-def  name="api.throttle.enabled"  key="configForm.apiThrottleEnabled">

@@ -206,8 +206,8 @@ class McpServerConfigTest {
 
     private static String builtVersion() throws Exception {
         Properties props = new Properties();
-        try (InputStream in = McpServerConfigTest.class.getResourceAsStream("/roller-version.properties")) {
-            assertNotNull(in, "roller-version.properties is on the classpath");
+        try (InputStream in = McpServerConfigTest.class.getResourceAsStream("/pressroom-version.properties")) {
+            assertNotNull(in, "pressroom-version.properties is on the classpath");
             props.load(in);
         }
         return props.getProperty("ro.version");

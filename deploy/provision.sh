@@ -34,7 +34,7 @@ export PGPORT="${PGPORT:-5432}"
 export PGUSER="${POSTGRES_USER:?POSTGRES_USER must be set}"
 export PGPASSWORD="${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}"
 
-ROLLER_DB="${POSTGRES_DB:-rollerdb}"
+PRESSROOM_DB="${POSTGRES_DB:-rollerdb}"
 UMAMI_DB="${UMAMI_DB:-umami}"
 LISTMONK_DB="${LISTMONK_DB:-listmonk}"
 
@@ -44,7 +44,7 @@ echo "==> Ensuring the service databases exist..."
 # so on an already-deployed stack there is nobody to create them. `createdb` on
 # an existing database is an error, so ask first.
 for db in "${UMAMI_DB}" "${LISTMONK_DB}"; do
-    exists="$(psql -d "${ROLLER_DB}" -tAc "SELECT 1 FROM pg_database WHERE datname = ${db@Q}")"
+    exists="$(psql -d "${PRESSROOM_DB}" -tAc "SELECT 1 FROM pg_database WHERE datname = ${db@Q}")"
     if [[ -z "${exists}" ]]; then
         createdb "${db}"
         echo "    created ${db}."
@@ -53,12 +53,12 @@ for db in "${UMAMI_DB}" "${LISTMONK_DB}"; do
     fi
 done
 
-echo "==> Applying ${ROLLER_DB} migrations..."
+echo "==> Applying ${PRESSROOM_DB} migrations..."
 # migrate.sh unmodified, so a deploy's migration step and a manual run can
 # never disagree about what "applied" means. It resolves its migrations
 # directory relative to its own location, which is why the Dockerfile places it
 # at /app/migrate.sh beside /app/migrations.
-DB_NAME="${ROLLER_DB}" DB_APP_USER="${PGUSER}" bash /app/migrate.sh
+DB_NAME="${PRESSROOM_DB}" DB_APP_USER="${PGUSER}" bash /app/migrate.sh
 
 echo "==> Granting grafana_ro CONNECT on both databases..."
 # Issued here rather than inside a migration or umami-views.sql because neither
@@ -66,9 +66,9 @@ echo "==> Granting grafana_ro CONNECT on both databases..."
 # SQL to use inside a GRANT), but the real names are known here. Double quotes,
 # not ${db@Q}: a database name after GRANT ... ON DATABASE is an SQL
 # IDENTIFIER, which takes double quotes, and @Q emits a shell-style literal.
-psql -d "${ROLLER_DB}" -v ON_ERROR_STOP=1 -c \
-    "GRANT CONNECT ON DATABASE \"${ROLLER_DB}\" TO grafana_ro;"
-psql -d "${ROLLER_DB}" -v ON_ERROR_STOP=1 -c \
+psql -d "${PRESSROOM_DB}" -v ON_ERROR_STOP=1 -c \
+    "GRANT CONNECT ON DATABASE \"${PRESSROOM_DB}\" TO grafana_ro;"
+psql -d "${PRESSROOM_DB}" -v ON_ERROR_STOP=1 -c \
     "GRANT CONNECT ON DATABASE \"${UMAMI_DB}\" TO grafana_ro;"
 
 echo "==> Provisioning complete."

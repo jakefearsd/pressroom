@@ -4,7 +4,7 @@ Some experiments with using Groovy
 A) Some scripts that run against the Roller API
 
    examples/rollerapi/groovy - Runs Groovy with Roller jars in path. Edit it to set paths.
-   examples/rollerapi/roller-custom.properties - Database properties for bin/groovy
+   examples/rollerapi/pressroom-custom.properties - Database properties for bin/groovy
    examples/rollerapi/listusers.gy - Lists users and roles in Roller system
    examples/rollerapi/createuser.gy - Create a user
    examples/rollerapi/createblog.gy - Create a blog
@@ -91,7 +91,7 @@ To use renderers (C) and (D) in Roller:
 
 3) In your roller-custom.properies file add this override:
 
-   rendering.rollerRendererFactories=\
+   rendering.pressroomRendererFactories=\
       org.apache.roller.ui.rendering.velocity.VelocityRendererFactory,\
       org.apache.roller.scripting.GroovletRendererFactory,\
       org.apache.roller.scripting.GSPRendererFactory,\

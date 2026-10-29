@@ -247,7 +247,7 @@ public class AccountController extends BaseController {
     private static void endSession(HttpServletRequest request, HttpServletResponse response, String userName) {
         HttpSession session = request.getSession(false);
         if (session != null) {
-            session.removeAttribute(PressroomSession.ROLLER_SESSION);
+            session.removeAttribute(PressroomSession.PRESSROOM_SESSION);
             session.invalidate();
         }
         SecurityContextHolder.clearContext();

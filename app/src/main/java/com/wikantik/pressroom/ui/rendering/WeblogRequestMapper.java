@@ -124,7 +124,7 @@ public class WeblogRequestMapper {
     Set<String> restricted;
 
     // Reserved on a custom domain. See appProtectedUrls' comment in
-    // roller.properties for why this is a strict subset of `restricted`.
+    // pressroom.properties for why this is a strict subset of `restricted`.
     Set<String> appRestricted;
 
     private final WebloggerProvider provider;
@@ -141,7 +141,7 @@ public class WeblogRequestMapper {
 
         // build roller restricted list
         String restrictList =
-                WebloggerConfig.getProperty("rendering.weblogMapper.rollerProtectedUrls");
+                WebloggerConfig.getProperty("rendering.weblogMapper.pressroomProtectedUrls");
         if(restrictList != null && !restrictList.isBlank()) {
             String[] restrict = restrictList.split(",");
             this.restricted.addAll(Arrays.asList(restrict));
@@ -158,7 +158,7 @@ public class WeblogRequestMapper {
         this.appRestricted = new HashSet<>();
 
         // build app-level restricted list -- the subset reserved on a
-        // custom domain (see appProtectedUrls' comment in roller.properties)
+        // custom domain (see appProtectedUrls' comment in pressroom.properties)
         String appRestrictList =
                 WebloggerConfig.getProperty("rendering.weblogMapper.appProtectedUrls");
         if(appRestrictList != null && !appRestrictList.isBlank()) {

@@ -33,7 +33,7 @@
         </goals>
         <properties>
             <spring-boot.run.arguments>--server.port=8083</spring-boot.run.arguments>
-            <spring-boot.run.jvmArguments>-Droller.custom.config=${basedir}/target/test-classes/roller-boot-dev.properties</spring-boot.run.jvmArguments>
+            <spring-boot.run.jvmArguments>-Dpressroom.custom.config=${basedir}/target/test-classes/pressroom-boot-dev.properties</spring-boot.run.jvmArguments>
         </properties>
     </action>
 
@@ -47,7 +47,7 @@
         <properties>
             <jpda.listen>maven</jpda.listen>
             <spring-boot.run.arguments>--server.port=8083</spring-boot.run.arguments>
-            <spring-boot.run.jvmArguments>-Droller.custom.config=${basedir}/target/test-classes/roller-boot-dev.properties</spring-boot.run.jvmArguments>
+            <spring-boot.run.jvmArguments>-Dpressroom.custom.config=${basedir}/target/test-classes/pressroom-boot-dev.properties</spring-boot.run.jvmArguments>
         </properties>
     </action>
     

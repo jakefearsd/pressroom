@@ -108,7 +108,7 @@ resolves through the index at the end of `CLAUDE.md`.
 ## Plugin System
 - **The entry-plugin seam has nothing registered, on purpose.**
   `ConvertLineBreaksPlugin` (the only `WeblogEntryPlugin` ever shipped,
-  `roller.properties` `plugins.page`), the "Plugins to apply" card and
+  `pressroom.properties` `plugins.page`), the "Plugins to apply" card and
   `WeblogConfig.jsp`'s per-weblog default are deleted;
   `weblogentry.plugins`/`weblog.defaultplugins` drop via V021 (idempotent),
   discarding live `"ConvertLineBreaks"` data. `PluginManagerImpl`,

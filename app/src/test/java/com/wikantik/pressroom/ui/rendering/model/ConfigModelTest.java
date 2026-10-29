@@ -192,10 +192,10 @@ class ConfigModelTest {
 
     @Test
     void anUnsetBooleanFallsBackToTheStaticConfigFile() {
-        // site.newsfeeds.history.enabled is shipped as false in roller.properties,
+        // site.newsfeeds.history.enabled is shipped as false in pressroom.properties,
         // so an empty runtime table must still produce a definite answer.
         assertFalse(model.getFeedHistoryEnabled(),
-                "With no runtime value the static roller.properties default applies.");
+                "With no runtime value the static pressroom.properties default applies.");
     }
 
     // ------------------------------------------------------------ trackbacks
@@ -225,12 +225,12 @@ class ConfigModelTest {
         // No stubbing at all: this accessor deliberately bypasses the runtime
         // properties table (a runtime property would need a configForm.* key
         // that only lives in XML, which MessageKeyTest counts as an orphan),
-        // so it must still answer with the roller.properties default even
+        // so it must still answer with the pressroom.properties default even
         // when the table knows nothing.
         assertEquals("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 model.getMapTileUrl(),
                 "$config.mapTileUrl reads travel.map.tileUrl out of "
-                        + "roller.properties; #showMapAssets hands it straight to "
+                        + "pressroom.properties; #showMapAssets hands it straight to "
                         + "L.tileLayer.");
     }
 
@@ -250,15 +250,15 @@ class ConfigModelTest {
     @Test
     void analyticsBasePathAndScriptNameComeFromTheStaticConfigNotTheRuntimeTable() {
         // No stubbing: like getMapTileUrl, these describe the reverse proxy in
-        // front of the JVM and must answer from roller.properties even when
+        // front of the JVM and must answer from pressroom.properties even when
         // the runtime table (an administrator-editable DB row) knows nothing.
         assertEquals("/analytics", model.getAnalyticsBasePath(),
                 "$config.analyticsBasePath reads analytics.umami.basePath out of "
-                        + "roller.properties; #showAnalyticsTrackingCode builds the "
+                        + "pressroom.properties; #showAnalyticsTrackingCode builds the "
                         + "script src and data-host-url from it.");
         assertEquals("script.js", model.getAnalyticsScriptName(),
                 "$config.analyticsScriptName reads analytics.umami.scriptName out "
-                        + "of roller.properties.");
+                        + "of pressroom.properties.");
     }
 
     // --------------------------------------------------------- build details

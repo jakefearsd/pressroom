@@ -223,7 +223,7 @@ class URLModelTest {
                     "getAbsoluteSite must no longer read the per-weblog property at all.");
 
             // The one static read allowed is the SITE's own url: a blank
-            // Global Config row falls back to ROLLER_SITE_ABSOLUTEURL, which
+            // Global Config row falls back to PRESSROOM_SITE_ABSOLUTEURL, which
             // lives in the static config. Nothing per-weblog may be read.
             config.verify(() -> WebloggerConfig.getProperty("site.absoluteurl"), atMostOnce());
             config.verifyNoMoreInteractions();

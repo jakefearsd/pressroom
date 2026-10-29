@@ -153,7 +153,7 @@ limitations under the License.
         <!-- ONE ID PER RUN, stamped into every process, file, directory and
              container this module creates. It is what makes cleanup
              identity-based rather than pidfile-based: an app JVM carries it as
-             -Droller.it.run=<id> on its command line, so it can be found again
+             -Dpressroom.it.run=<id> on its command line, so it can be found again
              after any file has been lost, and a container carries it in its
              name, so "whose is this?" always has an answer. See
              src/test/script/it-harness-lib.sh.
@@ -259,7 +259,7 @@ limitations under the License.
     </dependencies>
 
     <build>
-        <!-- roller-it.properties (Roller's own -Droller.custom.config overlay, read by
+        <!-- roller-it.properties (Roller's own -Dpressroom.custom.config overlay, read by
              start-app.sh) needs ${it.db.port}, ${it.db.name}, ${project.basedir}, and
              ${project.build.directory} substituted; filtering is off by default for
              testResources, so it must be turned on explicitly here. seed-it-data.sql

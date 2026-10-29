@@ -59,7 +59,7 @@ class JspConsistencyTest {
 
     static final Path JSPS = Path.of("src/main/webapp/WEB-INF/jsps");
 
-    static final Path ROLLER_CSS = Path.of("src/main/webapp/roller-ui/styles/roller.css");
+    static final Path PRESSROOM_CSS = Path.of("src/main/webapp/roller-ui/styles/roller.css");
 
     /**
      * Every JSP in the tree, once. A {@code List} rather than the
@@ -91,7 +91,7 @@ class JspConsistencyTest {
                     jsp + " tints rows by status");
         }
 
-        String css = Files.readString(ROLLER_CSS, StandardCharsets.UTF_8);
+        String css = Files.readString(PRESSROOM_CSS, StandardCharsets.UTF_8);
         for (String s : List.of("published", "draft", "pending", "scheduled", "trashed")) {
             assertTrue(css.contains(".status-pill.status-" + s), "roller.css lacks .status-pill.status-" + s);
         }
@@ -662,7 +662,7 @@ class JspConsistencyTest {
         assertFalse(markup.contains("onchange="),
                 "wire the chooser with a delegated change listener, not an inline onchange");
 
-        String css = Files.readString(ROLLER_CSS, StandardCharsets.UTF_8);
+        String css = Files.readString(PRESSROOM_CSS, StandardCharsets.UTF_8);
         for (String rule : List.of(".theme-cards", ".theme-card", ".theme-card-thumb",
                 ".theme-card-name", ".theme-card-desc")) {
             assertTrue(css.contains(rule), "roller.css lacks " + rule);
@@ -717,7 +717,7 @@ class JspConsistencyTest {
         assertEquals(1, countOccurrences(markup, "urls.weblogAbsolute(perms.weblog)"),
                 "the raw URL line is gone; the weblog name is the only link to it");
 
-        String css = Files.readString(ROLLER_CSS, StandardCharsets.UTF_8);
+        String css = Files.readString(PRESSROOM_CSS, StandardCharsets.UTF_8);
         for (String rule : List.of(".weblog-row", ".weblog-actions")) {
             assertTrue(css.contains(rule), "roller.css lacks " + rule);
         }
@@ -746,7 +746,7 @@ class JspConsistencyTest {
         assertFalse(markup.contains("onclick="),
                 "the switcher is a nav control -- no inline onclick, ever");
 
-        String css = Files.readString(ROLLER_CSS, StandardCharsets.UTF_8);
+        String css = Files.readString(PRESSROOM_CSS, StandardCharsets.UTF_8);
         assertTrue(css.contains(".weblog-switcher"), "roller.css lacks .weblog-switcher");
     }
 
@@ -797,7 +797,7 @@ class JspConsistencyTest {
                         + "or not empty bean.copyrightText ? 'open' : ''}>"),
                 "the details must reopen when a re-render carries description, tags or copyright");
 
-        String css = Files.readString(ROLLER_CSS, StandardCharsets.UTF_8);
+        String css = Files.readString(PRESSROOM_CSS, StandardCharsets.UTF_8);
         int drawerBlockStart = css.indexOf(".editor-drawer {");
         int drawerBlockEnd = css.indexOf("}", drawerBlockStart);
         String drawerBlock = css.substring(drawerBlockStart, drawerBlockEnd);

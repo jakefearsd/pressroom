@@ -117,14 +117,14 @@ load_dev_secret() {
         # migrations -- no error, no seed. Reading a bounded amount FIRST means
         # every stage sees EOF normally.
         generated="$(head -c 24 /dev/urandom | base64 | LC_ALL=C tr -dc 'A-Za-z0-9')"
-        ( umask 077; printf 'ROLLER_DEV_ADMIN_PASSWORD=%s\n' "${generated}" > "${DEV_SECRET_FILE}" )
+        ( umask 077; printf 'PRESSROOM_DEV_ADMIN_PASSWORD=%s\n' "${generated}" > "${DEV_SECRET_FILE}" )
         print_ok "Generated ${DEV_SECRET_FILE} (mode 600, git-ignored)"
         echo "  Dev admin login:  admin / ${generated}"
         echo "  This is the only time it is printed. Edit the file to change it."
     fi
     # shellcheck disable=SC1090
     . "${DEV_SECRET_FILE}"
-    : "${ROLLER_DEV_ADMIN_PASSWORD:?${DEV_SECRET_FILE} has no ROLLER_DEV_ADMIN_PASSWORD}"
+    : "${PRESSROOM_DEV_ADMIN_PASSWORD:?${DEV_SECRET_FILE} has no PRESSROOM_DEV_ADMIN_PASSWORD}"
 }
 
 # Applies bin/db/seed-dev-data.sql. The password goes in as a psql variable,
@@ -134,7 +134,7 @@ seed_dev_data() {
     PGPASSWORD="${DB_APP_USER}" psql \
         --no-psqlrc --quiet --set ON_ERROR_STOP=1 \
         -h localhost -p "${DB_PORT}" -U "${DB_APP_USER}" -d "${DB_NAME}" \
-        -v devpw="${ROLLER_DEV_ADMIN_PASSWORD}" \
+        -v devpw="${PRESSROOM_DEV_ADMIN_PASSWORD}" \
         -f "${SCRIPT_DIR}/bin/db/seed-dev-data.sql" >/dev/null
     print_ok "Dev admin seeded (user: admin)"
 }
@@ -161,13 +161,13 @@ case "${1:-dev}" in
         run_migrations
         seed_dev_data
         print_ok "Starting Roller on ${DEV_URL}"
-        # process-test-resources runs first so roller-boot-dev.properties is
+        # process-test-resources runs first so pressroom-boot-dev.properties is
         # filtered into target/test-classes before spring-boot:run starts the
         # app; without it, ${basedir}-style filtering never happens and the
         # custom config points at a file that doesn't exist yet.
         mvn -ntp -pl app process-test-resources spring-boot:run \
             -Dspring-boot.run.arguments="--server.port=${DEV_PORT} --server.servlet.context-path=${DEV_CONTEXT_PATH:-/}" \
-            -Dspring-boot.run.jvmArguments="-Droller.custom.config=${SCRIPT_DIR}/app/target/test-classes/roller-boot-dev.properties"
+            -Dspring-boot.run.jvmArguments="-Dpressroom.custom.config=${SCRIPT_DIR}/app/target/test-classes/pressroom-boot-dev.properties"
         ;;
     migrate)
         run_migrations
@@ -194,7 +194,7 @@ case "${1:-dev}" in
         ;;
     token)
         load_dev_secret
-        printf '%s\n' "${ROLLER_DEV_ADMIN_PASSWORD}" | \
+        printf '%s\n' "${PRESSROOM_DEV_ADMIN_PASSWORD}" | \
             bin/roller-api auth login \
                 --url "${DEV_URL}" \
                 --user admin \

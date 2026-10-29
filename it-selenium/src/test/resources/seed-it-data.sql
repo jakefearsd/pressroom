@@ -25,7 +25,7 @@
 -- Idempotent so a re-run against a surviving container is harmless.
 
 -- The password hash is bcrypt with Spring Security's DelegatingPasswordEncoder
--- {id} prefix, matching passwds.encryption.algorithm=bcrypt in roller.properties.
+-- {id} prefix, matching passwds.encryption.algorithm=bcrypt in pressroom.properties.
 -- Plaintext is 'it-admin-password'. Deliberately a real bcrypt hash rather than
 -- {noop}, so the tests exercise the same login path production uses.
 INSERT INTO roller_user (id, username, passphrase, screenname, fullname,

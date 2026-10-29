@@ -250,8 +250,8 @@ public class JPAPropertiesManagerImpl implements PropertiesManager {
     /**
      * The value a property is stored with the first time it is seeded.
      *
-     * <p>A value already present in {@code roller.properties} (or the
-     * deployer's {@code roller-custom.properties} overlay) wins over the
+     * <p>A value already present in {@code pressroom.properties} (or the
+     * deployer's {@code pressroom-custom.properties} overlay) wins over the
      * definition's {@code <default-value>}. That matters when a property is
      * <em>promoted</em> from startup-only to runtime-settable: the property
      * name then appears in both files, and without this the first boot after

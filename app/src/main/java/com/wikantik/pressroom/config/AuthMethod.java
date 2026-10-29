@@ -22,7 +22,7 @@ public enum AuthMethod {
      * Database-backed authentication, the only method Roller supports. The
      * LDAP, OpenID, db-openid and container-managed options were removed along
      * with their implementations; the enum is kept so an unsupported value in
-     * roller.properties still fails loudly at startup rather than silently
+     * pressroom.properties still fails loudly at startup rather than silently
      * behaving like "db".
      */
     ROLLERDB("db");

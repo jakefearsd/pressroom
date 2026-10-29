@@ -137,7 +137,7 @@ public class McpServerConfig {
      */
     static String rollerVersion() {
         Properties props = new Properties();
-        try (InputStream in = McpServerConfig.class.getResourceAsStream("/roller-version.properties")) {
+        try (InputStream in = McpServerConfig.class.getResourceAsStream("/pressroom-version.properties")) {
             if (in != null) {
                 props.load(in);
             }

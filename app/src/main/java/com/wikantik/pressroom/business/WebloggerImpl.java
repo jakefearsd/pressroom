@@ -123,10 +123,10 @@ public abstract class WebloggerImpl implements Weblogger {
         // JPAWebloggerImpl extends it, so getClass() would resolve via the
         // subclass's Class object (UI_INHERITANCE_UNSAFE_GETRESOURCE). The
         // resource itself belongs to this class either way.
-        try (InputStream in = WebloggerImpl.class.getResourceAsStream("/roller-version.properties")) {
+        try (InputStream in = WebloggerImpl.class.getResourceAsStream("/pressroom-version.properties")) {
             props.load(in);
         } catch (IOException e) {
-            log.error("roller-version.properties not found", e);
+            log.error("pressroom-version.properties not found", e);
         }
         
         version = props.getProperty("ro.version", "UNKNOWN");

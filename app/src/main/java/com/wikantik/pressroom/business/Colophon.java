@@ -72,7 +72,7 @@ public record Colophon(String version, String shortRevision, String releaseDate,
     /**
      * weblog may be null (admin screens: holder = site.name). weblogger may be
      * null too (install and pre-bootstrap pages): the version facts then come
-     * straight from the packaged {@code /roller-version.properties}, with no
+     * straight from the packaged {@code /pressroom-version.properties}, with no
      * runtime-config or database access, so there is no copyright holder and
      * no privacy link. Never throws.
      */
@@ -113,7 +113,7 @@ public record Colophon(String version, String shortRevision, String releaseDate,
     /** The no-Weblogger colophon: version facts only, same keys WebloggerImpl reads. */
     private static Colophon packaged(Clock clock) {
         java.util.Properties props = new java.util.Properties();
-        try (java.io.InputStream in = Colophon.class.getResourceAsStream("/roller-version.properties")) {
+        try (java.io.InputStream in = Colophon.class.getResourceAsStream("/pressroom-version.properties")) {
             if (in != null) {
                 props.load(in);
             }

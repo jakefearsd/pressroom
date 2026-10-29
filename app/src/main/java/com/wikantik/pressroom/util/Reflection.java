@@ -42,7 +42,7 @@ public final class Reflection {
     // factories, ModelLoader's page models,
     // PluginManagerImpl's entry plugins) resolves the class name
     // from a startup-scoped WebloggerConfig property
-    // (roller.properties/roller-custom.properties or a ROLLER_* env var),
+    // (pressroom.properties/pressroom-custom.properties or a PRESSROOM_* env var),
     // never from request input, so this is deployer-configured extension
     // wiring, not an attacker-reachable path. setAccessible is required
     // because an extension class's declared no-arg constructor is not

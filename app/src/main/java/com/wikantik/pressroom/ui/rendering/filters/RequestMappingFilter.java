@@ -42,7 +42,7 @@ import com.wikantik.pressroom.ui.rendering.WeblogRequestMapper;
  * <p>The mapper is constructed here, directly, with the {@link WebloggerProvider}
  * and facade this filter is given (a bean in {@code ServletRegistrationConfig};
  * DI wave, plan Task 6b). It used to be instantiated reflectively from the
- * {@code rendering.rollerRequestMappers} / {@code rendering.userRequestMappers}
+ * {@code rendering.pressroomRequestMappers} / {@code rendering.userRequestMappers}
  * property lists -- which named exactly one class, had no user entries, and had
  * no way to hand a mapper a dependency. An extension point with one
  * implementation, no consumer and no injection is not an extension point, so

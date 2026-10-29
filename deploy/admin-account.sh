@@ -107,9 +107,9 @@ SQL
 ) || die "database error while checking for an existing account"
     [[ "${taken}" == 0 ]] || die "an account named ${USERNAME} already exists (perhaps disabled)"
     read_password
-    ROLLER_ADMIN_PASSWORD="${PASSWORD}" sql -v username="${USERNAME}" -v email="${EMAIL}" >/dev/null <<'SQL' || die "database error: nothing was written"
+    PRESSROOM_ADMIN_PASSWORD="${PASSWORD}" sql -v username="${USERNAME}" -v email="${EMAIL}" >/dev/null <<'SQL' || die "database error: nothing was written"
 SET client_min_messages = warning;
-\getenv pw ROLLER_ADMIN_PASSWORD
+\getenv pw PRESSROOM_ADMIN_PASSWORD
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 INSERT INTO roller_user (id, username, passphrase, screenname, fullname,
@@ -140,9 +140,9 @@ SQL
     [[ "${kind}" == PERSON ]] \
         || die "${USERNAME} is an agent and has no password: manage it from Admin > Users, agent page"
     read_password
-    ROLLER_ADMIN_PASSWORD="${PASSWORD}" sql -v username="${USERNAME}" >/dev/null <<'SQL' || die "database error: password not changed"
+    PRESSROOM_ADMIN_PASSWORD="${PASSWORD}" sql -v username="${USERNAME}" >/dev/null <<'SQL' || die "database error: password not changed"
 SET client_min_messages = warning;
-\getenv pw ROLLER_ADMIN_PASSWORD
+\getenv pw PRESSROOM_ADMIN_PASSWORD
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 UPDATE roller_user SET passphrase = '{bcrypt}' || crypt($1, gen_salt('bf', 10))

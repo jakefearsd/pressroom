@@ -139,7 +139,7 @@ class SeoControllerTest {
 
     /**
      * The symptom that proved the bug on a real deployment: the app's
-     * environment carried {@code ROLLER_SITE_ABSOLUTEURL=http://docker2.lan},
+     * environment carried {@code PRESSROOM_SITE_ABSOLUTEURL=http://docker2.lan},
      * the Global Config row was left at its blank default, the first request
      * after a restart arrived by IP -- and robots.txt advertised
      * {@code Sitemap: http://192.168.5.52/sitemap.xml}.

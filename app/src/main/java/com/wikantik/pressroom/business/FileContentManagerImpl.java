@@ -66,7 +66,7 @@ public class FileContentManagerImpl implements FileContentManager {
 
         if (inStorageDir == null || inStorageDir.isBlank()) {
             inStorageDir = System.getProperty("user.home") + File.separator
-                    + "roller_data" + File.separator + "mediafiles";
+                    + "pressroom_data" + File.separator + "mediafiles";
         }
 
         if (!inStorageDir.endsWith(File.separator)) {

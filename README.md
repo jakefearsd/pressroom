@@ -112,11 +112,11 @@ JPEG/PNG-only rendition ladder and everything else works the same.
 
 ```bash
 mvn -DskipTests=true -pl app install
-java -Droller.custom.config=app/target/test-classes/roller-boot-dev.properties \
+java -Dpressroom.custom.config=app/target/test-classes/pressroom-boot-dev.properties \
     -jar app/target/roller.war --server.port=8083
 ```
 
-`-Droller.custom.config` is a JVM system property, so it goes before `-jar`.
+`-Dpressroom.custom.config` is a JVM system property, so it goes before `-jar`.
 After it, it is a program argument that nothing reads, and startup fails with
 "No custom properties file found".
 

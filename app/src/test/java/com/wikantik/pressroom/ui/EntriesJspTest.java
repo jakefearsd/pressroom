@@ -46,8 +46,8 @@ class EntriesJspTest {
     private static final Path JSPS = Path.of("src/main/webapp/WEB-INF/jsps");
     private static final Path ENTRIES = JSPS.resolve("editor/Entries.jsp");
     private static final Path SIDEBAR = JSPS.resolve("editor/EntriesSidebar.jsp");
-    private static final Path ROLLER_JS = Path.of("src/main/webapp/theme/scripts/roller.js");
-    private static final Path ROLLER_CSS = Path.of("src/main/webapp/roller-ui/styles/roller.css");
+    private static final Path PRESSROOM_JS = Path.of("src/main/webapp/theme/scripts/roller.js");
+    private static final Path PRESSROOM_CSS = Path.of("src/main/webapp/roller-ui/styles/roller.css");
 
     private static String read(Path path) throws IOException {
         return Files.readString(path, StandardCharsets.UTF_8);
@@ -220,13 +220,13 @@ class EntriesJspTest {
                 "the sort select does not submit its form on change: " + select.group());
         assertFalse(sidebar.contains("onchange="), "EntriesSidebar.jsp uses an inline onchange handler");
 
-        assertTrue(read(ROLLER_JS).contains("data-submit-on-change"),
+        assertTrue(read(PRESSROOM_JS).contains("data-submit-on-change"),
                 "roller.js has no delegated handler for data-submit-on-change");
     }
 
     @Test
     void theListTypographyIsInTheStylesheet() throws IOException {
-        String css = read(ROLLER_CSS);
+        String css = read(PRESSROOM_CSS);
 
         for (String selector : List.of(".entry-title", ".entry-meta", ".quiet-link", "time.data")) {
             assertTrue(css.contains(selector), "roller.css lacks " + selector);

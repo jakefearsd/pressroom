@@ -319,7 +319,7 @@ public class RemoteImageFetcher implements AutoCloseable {
 
     private static String version() {
         Properties props = new Properties();
-        try (InputStream in = RemoteImageFetcher.class.getResourceAsStream("/roller-version.properties")) {
+        try (InputStream in = RemoteImageFetcher.class.getResourceAsStream("/pressroom-version.properties")) {
             if (in != null) {
                 props.load(in);
             }

@@ -346,7 +346,7 @@ class TrashPurgeTaskTest {
      * The one-arg {@code init(weblogger)} is the convenience entry point
      * for a task started by name -- it must delegate to
      * {@code init(weblogger, name)} using THIS task's own registered
-     * name ({@code tasks.TrashPurgeTask.*} in {@code roller.properties}), not
+     * name ({@code tasks.TrashPurgeTask.*} in {@code pressroom.properties}), not
      * silently no-op or read some other task's configuration. {@code
      * clientId} is the one field with no matching default (it starts {@code
      * null}), so seeing it become the shipped {@code tasks.clientId} value
@@ -359,14 +359,14 @@ class TrashPurgeTaskTest {
         task.init(weblogger);
 
         assertEquals("defaultClientId", task.getClientId(),
-                "init() must have read the global tasks.clientId from roller.properties");
+                "init() must have read the global tasks.clientId from pressroom.properties");
     }
 
     /**
      * {@code init(name)} is what turns {@code tasks.<name>.*} configuration
      * (plus the global {@code tasks.clientId}) into the four scheduling
      * fields. If this stopped reading any one of them, an operator's
-     * {@code roller-custom.properties} override for that field would be
+     * {@code pressroom-custom.properties} override for that field would be
      * silently ignored and the shipped default would run in production
      * instead.
      */
@@ -399,7 +399,7 @@ class TrashPurgeTaskTest {
      * The one branch in this scaffolding with real behaviour: a malformed
      * {@code interval} in config is caught and logged, not thrown, and must
      * leave the default interval in place rather than half-applying a bad
-     * value. A mistyped override in {@code roller-custom.properties} must
+     * value. A mistyped override in {@code pressroom-custom.properties} must
      * not stop the task from being constructed at all.
      */
     @Test
@@ -446,7 +446,7 @@ class TrashPurgeTaskTest {
 
     /**
      * Overrides a value in the startup configuration (standing in for
-     * {@code roller-custom.properties}) and returns what was there before, so
+     * {@code pressroom-custom.properties}) and returns what was there before, so
      * callers can put it back. The backing {@code Properties} is
      * process-global -- same reflective access pattern as
      * {@code PromotedRuntimePropertyTest}.

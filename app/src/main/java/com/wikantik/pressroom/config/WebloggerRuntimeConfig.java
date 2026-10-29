@@ -152,12 +152,12 @@ public final class WebloggerRuntimeConfig {
     
     /**
      * Retrieve a property, checking the runtime (database) config first and
-     * falling through to the static (roller.properties / environment)
+     * falling through to the static (pressroom.properties / environment)
      * config when unset or blank -- the same two-step lookup {@link
      * #getBooleanProperty} already applies below, generalised for callers
      * that need the raw string rather than a boolean. {@code
      * site.absoluteurl} is the motivating caller: it is a runtime property
-     * an operator can also set via {@code ROLLER_SITE_ABSOLUTEURL} (which
+     * an operator can also set via {@code PRESSROOM_SITE_ABSOLUTEURL} (which
      * lands in the static config, not the database row), and callers that
      * need to know "is this actually configured, by either route" must
      * check both rather than reimplementing this fallback each time.
@@ -280,7 +280,7 @@ public final class WebloggerRuntimeConfig {
      *
      * <p>Precedence: the {@code site.absoluteurl} database row (Admin ->
      * Global Config) when non-blank, then the static config -- where
-     * {@code ROLLER_SITE_ABSOLUTEURL} lands -- when non-blank, and only then
+     * {@code PRESSROOM_SITE_ABSOLUTEURL} lands -- when non-blank, and only then
      * the non-persisted value InitFilter latched from the first request after
      * boot. The row alone is not enough: its default is blank, so reading only
      * the row silently ignored the environment route the deployment runbook

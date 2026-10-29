@@ -36,9 +36,9 @@ services:
     ports:
       # 5433 on the host: 5432 is commonly taken by a locally-installed
       # PostgreSQL. Override with DEV_DB_PORT if 5433 is busy too. Deliberately
-      # NOT named ROLLER_DB_PORT: that prefix is reserved for the app's own
+      # NOT named PRESSROOM_DB_PORT: that prefix is reserved for the app's own
       # configuration (see docker-compose.prod.yml/docker_deployment.md), and a
-      # stray ROLLER_DB_PORT would be overlaid onto the app's properties as a
+      # stray PRESSROOM_DB_PORT would be overlaid onto the app's properties as a
       # junk key named "db.port" -- same reasoning as SITE_DOMAIN/IMAGE_VERSION
       # in the production compose file.
       - "${DEV_DB_PORT:-5433}:5432"

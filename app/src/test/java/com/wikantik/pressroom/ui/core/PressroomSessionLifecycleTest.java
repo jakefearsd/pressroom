@@ -127,14 +127,14 @@ class PressroomSessionLifecycleTest {
     void theContainersSessionEventsCreateAndPurgeTheRollerSession() {
         PressroomSession listener = new PressroomSession();
         listener.sessionCreated(new HttpSessionEvent(httpSession));
-        assertNotNull(httpSession.getAttribute(PressroomSession.ROLLER_SESSION));
+        assertNotNull(httpSession.getAttribute(PressroomSession.PRESSROOM_SESSION));
 
         listener.sessionWillPassivate(new HttpSessionEvent(httpSession));
-        assertNull(httpSession.getAttribute(PressroomSession.ROLLER_SESSION), "passivation purges the session");
+        assertNull(httpSession.getAttribute(PressroomSession.PRESSROOM_SESSION), "passivation purges the session");
 
         listener.sessionCreated(new HttpSessionEvent(httpSession));
         listener.sessionDestroyed(new HttpSessionEvent(httpSession));
-        assertNull(httpSession.getAttribute(PressroomSession.ROLLER_SESSION));
+        assertNull(httpSession.getAttribute(PressroomSession.PRESSROOM_SESSION));
     }
 
     @Test

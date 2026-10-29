@@ -31,5 +31,5 @@ done
 export RGPATH
 
 java \
- -Droller.custom.config=roller-custom.properties \
+ -Dpressroom.custom.config=pressroom-custom.properties \
 -classpath ${RGPATH} groovy.lang.GroovyShell $1 $2 $3 $4 $5 $6 $7 $8 $9 $10

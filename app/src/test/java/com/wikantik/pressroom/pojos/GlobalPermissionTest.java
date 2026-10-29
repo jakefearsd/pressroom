@@ -119,7 +119,7 @@ class GlobalPermissionTest {
 
     @Test
     void permissionForUserIsBuiltFromTheActionsTheirRolesImply() throws Exception {
-        // The role -> action mapping lives in roller.properties as
+        // The role -> action mapping lives in pressroom.properties as
         // role.action.<role>. Roles overlap (admin and editor both grant login
         // and weblog), so the union must not repeat an action.
         User user = new User();
@@ -134,7 +134,7 @@ class GlobalPermissionTest {
         List<String> actions = perm.getActionsAsList();
         assertTrue(actions.contains(GlobalPermission.ADMIN),
                 "The 'admin' role must contribute the admin action; check "
-                        + "role.action.admin in roller.properties");
+                        + "role.action.admin in pressroom.properties");
         assertTrue(actions.contains(GlobalPermission.WEBLOG));
         assertTrue(actions.contains(GlobalPermission.LOGIN));
         assertEquals(actions.size(), actions.stream().distinct().count(),
@@ -207,7 +207,7 @@ class GlobalPermissionTest {
 
     @Test
     void editorsAndAdminsHoldComment() throws Exception {
-        // via role.action.* in the shipped roller.properties
+        // via role.action.* in the shipped pressroom.properties
         assertTrue(GlobalPermission.impliedByRoles(user(), List.of("editor"))
                 .implies(required(GlobalPermission.COMMENT)));
         assertTrue(GlobalPermission.impliedByRoles(user(), List.of("admin"))

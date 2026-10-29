@@ -143,16 +143,16 @@ mvn clean install
 mvn -DskipTests=true install   # without tests
 
 # Dev server (PostgreSQL + migrations + spring-boot:run with
-# roller-boot-dev.properties) at http://localhost:8083, from the ROOT
+# pressroom-boot-dev.properties) at http://localhost:8083, from the ROOT
 # (server.servlet.context-path=/). No code may assume a context path;
 # DEV_CONTEXT_PATH=/roller reproduces one (see Virtual hosts).
 ./roller dev
 
-# Or run the packaged WAR (default port 8080). -Droller.custom.config is a JVM
+# Or run the packaged WAR (default port 8080). -Dpressroom.custom.config is a JVM
 # system property, so it goes BEFORE -jar -- after it, it is an ignored program
 # argument and bootstrap fails ("No custom properties file found"). It must
 # name a real DB config:
-java -Droller.custom.config=app/target/test-classes/roller-boot-dev.properties \
+java -Dpressroom.custom.config=app/target/test-classes/pressroom-boot-dev.properties \
     -jar app/target/roller.war --server.port=8083
 # Health check (works before the tier bootstraps). Actuator is on its own
 # port, management.server.port=8090 (DispatcherServlet is *.rol only, so 8083
