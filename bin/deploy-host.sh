@@ -24,8 +24,10 @@
 # script does the work (backup, release files, IMAGE_VERSION, deploy.sh).
 # With --cutover it copies deploy/cutover-pressroom.sh and
 # deploy/rollback-pressroom.sh into the old directory instead and runs the
-# cutover there; the rollback stays beside it for as long as that directory
-# is kept. The release must be published first: bin/release.sh VERSION --push.
+# cutover there, detached from the ssh session (a dropped connection does not
+# stop it), logging to ~/pressroom-cutover-<UTC stamp>.log, which it follows
+# until the cutover exits. The rollback stays beside it for as long as that
+# directory is kept. The release must be published first: bin/release.sh VERSION --push.
 set -euo pipefail
 
 ROOT="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )/.." >/dev/null 2>&1 && pwd )"
@@ -80,8 +82,32 @@ if [[ "${CUTOVER}" -eq 1 ]]; then
     done
     echo "==> Copying the cutover and rollback scripts to ${HOST}:${OLD_DIR}/"
     scp -q "${ROOT}/deploy/cutover-pressroom.sh" "${ROOT}/deploy/rollback-pressroom.sh" "${HOST}:${OLD_DIR}/"
-    echo "==> Cutting ${HOST} over to ${VERSION}..."
-    ssh "${HOST}" "cd ${OLD_DIR} && bash cutover-pressroom.sh ${VERSION}"
+    # Detached on the host: its own session (setsid), deaf to the hang-up
+    # (nohup), output to a log beside both deploy directories. This session
+    # only follows the log, so a dropped ssh stops the following, never the
+    # cutover. The exit status lands in <log>.exit.
+    log="pressroom-cutover-$(date -u +%Y%m%dT%H%M%SZ).log"
+    echo "==> Cutting ${HOST} over to ${VERSION}, detached on the host, logging to ~/${log}."
+    echo "    If this session drops, reattach with: ssh ${HOST} 'tail -f ~/${log}'"
+    echo "    (the cutover's exit status is then in ~/${log}.exit)"
+    # shellcheck disable=SC2016
+    remote='cd OLD_DIR || exit 1; log=../LOG
+setsid nohup bash -c '"'"'bash cutover-pressroom.sh "$1"; echo "$?" > "$2.exit"'"'"' cutover VERSION "$log" > "$log" 2>&1 < /dev/null &
+pid=$!
+tail -n +1 --pid="$pid" -F "$log" 2>/dev/null
+while [ ! -s "$log.exit" ] && kill -0 "$pid" 2>/dev/null; do sleep 1; done
+rc=$(cat "$log.exit" 2>/dev/null || echo 255)
+exit "$rc"'
+    remote="${remote//OLD_DIR/${OLD_DIR}}"
+    remote="${remote//LOG/${log}}"
+    remote="${remote//VERSION/${VERSION}}"
+    rc=0
+    ssh "${HOST}" "${remote}" || rc=$?
+    if [[ "${rc}" -ne 0 ]]; then
+        echo "The cutover on ${HOST} exited ${rc}. Its log: ${HOST}:~/${log}" \
+             "(255 can also mean the ssh session dropped: reattach with tail -f as above)." >&2
+        exit "${rc}"
+    fi
 else
     echo "==> Copying upgrade.sh to ${HOST}:${DIR}/"
     scp -q "${ROOT}/deploy/upgrade.sh" "${HOST}:${DIR}/upgrade.sh"

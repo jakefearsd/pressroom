@@ -2,12 +2,18 @@
 # Put this host back on the stack it ran before cutover-pressroom.sh.
 #
 # Usage:
-#   bash rollback-pressroom.sh
+#   bash rollback-pressroom.sh --yes
+#
+#   --yes  required: without it the script refuses, so an accidental run
+#          cannot take a healthy Pressroom site back to 0.4.x
 #
 # Run from the OLD deploy directory (~/roller), where the cutover left this
 # script. It stops the new stack (its volumes kept, for a look at what went
-# wrong), then runs this directory's own deploy.sh on its untouched .env
-# (IMAGE_VERSION 0.4.x) and old volumes, and waits for the app to be healthy.
+# wrong), then starts this directory's stack on its untouched .env
+# (IMAGE_VERSION 0.4.x) and old volumes from the images already on the host
+# (`up -d --pull never`: the old deploy.sh pulls first, and a registry that
+# cannot be reached must not block a rollback), and waits for the app to be
+# healthy.
 #
 # Anything written to the new stack since the cutover (posts, comments,
 # subscribers, page views) is not in the old database and does not come back
@@ -33,16 +39,33 @@ refuse() {
 }
 
 case "${1:-}" in
-    "") ;;
+    --yes) ;;
     -h|--help) awk '/^#!/{next} !/^#/{exit} {sub(/^# ?/,""); print}' "$0"; exit 0 ;;
-    *) echo "rollback-pressroom.sh takes no arguments." >&2; exit 2 ;;
+    "") refuse "this stops the Pressroom stack and starts the old one again. Rerun with --yes to mean it." ;;
+    *) echo "Usage: bash rollback-pressroom.sh --yes" >&2; exit 2 ;;
 esac
 
-for required in "${COMPOSE_FILE}" .env deploy.sh; do
+# The last value .env gives KEY, without an export prefix, a trailing CR or
+# surrounding quotes. Used only for names and versions, never for a secret.
+env_value() {
+    local key="$1" file="$2"
+    awk -v key="${key}" '
+        {
+            line = $0
+            sub(/\r$/, "", line)
+            if (match(line, "^[ \t]*(export[ \t]+)?" key "[ \t]*=")) {
+                v = substr(line, RLENGTH + 1)
+                if (v ~ /^".*"$/ || v ~ /^\047.*\047$/) { v = substr(v, 2, length(v) - 2) }
+                found = 1; value = v
+            }
+        }
+        END { if (found) print value }' "${file}"
+}
+
+for required in "${COMPOSE_FILE}" .env; do
     [[ -f "${required}" ]] || refuse "no ${required} in $(pwd). Run this from the old deploy directory."
 done
-current=$(sed -n 's/^[[:space:]]*\(export[[:space:]]\{1,\}\)\{0,1\}IMAGE_VERSION=//p' .env | tail -n 1)
-current="${current%$'\r'}"
+current=$(env_value IMAGE_VERSION .env)
 [[ "${current}" =~ ^0\.4\.[0-9]+$ ]] \
     || refuse ".env's IMAGE_VERSION is ${current:-unset}, not 0.4.x: this is not the directory the cutover left."
 
@@ -55,8 +78,8 @@ else
     echo "==> ${NEW_DIR} holds no new stack to stop."
 fi
 
-echo "==> Starting the old stack from $(pwd)..."
-COMPOSE_PROJECT_NAME="${OLD_PROJECT}" ./deploy.sh </dev/null
+echo "==> Starting the old stack from $(pwd), from the images on this host..."
+docker compose -p "${OLD_PROJECT}" -f "${COMPOSE_FILE}" up -d --pull never </dev/null
 
 echo "==> Waiting for the old app to be healthy..."
 healthy=0

@@ -136,18 +136,34 @@ class CutoverScriptTest {
                 case "$*" in
                   "volume inspect "*) grep -qxF -- "$last" "$STUB_VOLUMES"; exit $? ;;
                   "volume create "*) echo "$last" >> "$STUB_VOLUMES"; echo "$last"; exit 0 ;;
-                  *"exec -T backup /app/backup/backup.sh"*) exit "${STUB_BACKUP_RC:-0}" ;;
+                  *"exec -T backup /app/backup/backup.sh"*) touch "$STUB_STATE/backed-up"; exit "${STUB_BACKUP_RC:-0}" ;;
+                  *"exec -T backup ls -1 /backups"*)
+                    echo "roller-20261001T030000Z.dump"  # rebrand:keep
+                    if [[ -e "$STUB_STATE/backed-up" ]]; then
+                      echo "roller-20261029T120000Z.dump"  # rebrand:keep
+                      echo "umami-20261029T120000Z.dump"
+                      echo "listmonk-20261029T120000Z.dump"
+                      echo "volumes-20261029T120000Z.tar.gz"
+                    fi ;;
+                  *" cp backup:/backups/"*) echo "copy of ${*: -2:1}" > "$last" ;;
+                  *" down"*) touch "$STUB_STATE/down" ;;
+                  *" ps "*) echo "ghcr.io/jakefearsd/pressroom:${STUB_APP_VERSION:-0.5.1}" ;;
                   *"exec -T postgres psql"*)
+                    if [[ -n "${STUB_FAIL_RENAME:-}" && "$in" == *"ALTER DATABASE"* ]]; then exit 1; fi
+                    if [[ -n "${STUB_FAIL_KIND:-}" && "$in" == *pg_authid* ]]; then exit 1; fi
                     case "$in" in
                       *pg_authid*) echo "${STUB_PASSWORD_KIND:-SCR}" ;;
                       *"count(*)"*)
-                        if [[ "$in" == *pressroom_user* && -n "${STUB_LOST_ROW:-}" ]]; then echo 6; else echo 7; fi ;;
+                        if [[ "$in" == *pressroom_user* && -n "${STUB_LOST_ROW:-}" ]]; then echo 6
+                        elif [[ "$in" == *website_event* && -n "${STUB_GREW:-}" && -e "$STUB_STATE/down" ]]; then echo 9
+                        else echo 7; fi ;;
                     esac ;;
                 esac
                 exit 0
                 """);
         env.put("STUB_LOG", log().toString());
         env.put("STUB_VOLUMES", volumesFile().toString());
+        env.put("STUB_STATE", dir.toString());
         env.put("RELEASE_URL", dir.resolve("release").toUri().toString());
     }
 
@@ -467,7 +483,7 @@ class CutoverScriptTest {
 
         assertNotEquals(0, r.exit(), r.out());
         assertTrue(r.out().contains("pressroom_user"), r.out());
-        assertTrue(r.out().contains("rollback-pressroom.sh"), r.out());
+        assertTrue(r.out().contains("bash rollback-pressroom.sh --yes"), r.out());
     }
 
     @Test
@@ -498,5 +514,165 @@ class CutoverScriptTest {
         for (String f : List.of("docker-compose.prod.yml", "deploy.sh", "env.example", "upgrade.sh")) {
             assertTrue(workflow.contains("            release-assets/" + f + "\n"), f + " is not a release asset");
         }
+    }
+
+    // ---- fix round 1 -------------------------------------------------------
+
+    /** A step 8 failure must not leave a passwordless superuser behind. */
+    @Test
+    void theTemporarySuperuserIsDroppedWhenTheRenameFails() throws Exception {
+        env.put("STUB_FAIL_RENAME", "1");
+
+        ScriptRun.Result r = cutover("0.5.0");
+
+        assertNotEquals(0, r.exit(), r.out());
+        String calls = calls();
+        int rename = calls.indexOf("ALTER DATABASE rollerdb RENAME"); // rebrand:keep
+        List<String> drops = lines(calls.substring(rename), "DROP ROLE IF EXISTS pressroom_cutover");
+        assertEquals(1, drops.size(), calls);
+        assertTrue(drops.get(0).contains("-p pressroom "), drops.get(0));
+        assertTrue(drops.get(0).contains("-U roller -d rollerdb"), "the rename never happened: " + drops); // rebrand:keep
+        assertFalse(calls.contains("deploy.sh"), calls);
+    }
+
+    @Test
+    void theTemporarySuperuserIsDroppedWhenAStepAfterTheRenameFails() throws Exception {
+        env.put("STUB_FAIL_KIND", "1");
+
+        ScriptRun.Result r = cutover("0.5.0");
+
+        assertNotEquals(0, r.exit(), r.out());
+        List<String> drops = lines(calls(), "DROP ROLE IF EXISTS pressroom_cutover");
+        assertEquals(1, drops.size(), calls());
+        assertTrue(drops.get(0).contains("-p pressroom ") && drops.get(0).contains("-U pressroom -d pressroom"),
+                drops.get(0));
+    }
+
+    @Test
+    void aCleanRunNeedsNoCleanupDrop() throws Exception {
+        ScriptRun.Result r = cutover("0.5.0");
+
+        assertEquals(0, r.exit(), r.out());
+        assertFalse(calls().contains("DROP ROLE IF EXISTS"), calls());
+    }
+
+    /** The pre-cutover backup outlives the old volumes' 30-day cleanup. */
+    @Test
+    void keepsThePreCutoverBackupOnTheHost() throws Exception {
+        ScriptRun.Result r = cutover("0.5.0");
+
+        assertEquals(0, r.exit(), r.out());
+        Path copy;
+        try (Stream<Path> s = Files.list(dir.resolve("host"))) {
+            copy = s.filter(p -> p.getFileName().toString().startsWith("pressroom-cutover-backup-"))
+                    .findFirst().orElseThrow();
+        }
+        try (Stream<Path> s = Files.list(copy)) {
+            assertEquals(List.of("listmonk-20261029T120000Z.dump", "roller-20261029T120000Z.dump", // rebrand:keep
+                            "umami-20261029T120000Z.dump", "volumes-20261029T120000Z.tar.gz"),
+                    s.map(p -> p.getFileName().toString()).sorted().toList(), "only that backup's files");
+        }
+        assertTrue(r.out().contains(copy.getFileName().toString()), r.out());
+        String calls = calls();
+        assertTrue(calls.indexOf(" cp backup:/backups/") > calls.indexOf("backup.sh"), calls);
+        assertTrue(calls.indexOf(" cp backup:/backups/") < calls.indexOf(" down"), calls);
+    }
+
+    /** The live site writes between the count and the stop, and after the new one starts. */
+    @Test
+    void aCountThatGrewIsReportedNotFailed() throws Exception {
+        env.put("STUB_GREW", "1");
+
+        ScriptRun.Result r = cutover("0.5.0");
+
+        assertEquals(0, r.exit(), r.out());
+        assertTrue(r.out().lines().anyMatch(l -> l.contains("website_event") && l.contains("written since")), r.out());
+    }
+
+    @Test
+    void theRenameSessionsRunInTheNewProject() throws Exception {
+        ScriptRun.Result r = cutover("0.5.0");
+
+        assertEquals(0, r.exit(), r.out());
+        String calls = calls();
+        for (String needle : List.of("CREATE ROLE pressroom_cutover", "pg_authid", "ALTER ROLE roller RENAME", // rebrand:keep
+                "DROP ROLE pressroom_cutover")) {
+            List<String> found = lines(calls, needle);
+            assertEquals(1, found.size(), needle + ": " + calls);
+            assertTrue(found.get(0).contains("compose -p pressroom "), found.get(0));
+        }
+    }
+
+    @Test
+    void theOldProjectIsNeverTouchedAfterItsDown() throws Exception {
+        ScriptRun.Result r = cutover("0.5.0");
+
+        assertEquals(0, r.exit(), r.out());
+        String calls = calls();
+        int down = calls.indexOf("compose -p roller -f docker-compose.prod.yml down"); // rebrand:keep
+        String after = calls.substring(calls.indexOf('\n', down) + 1);
+        assertEquals(List.of(), lines(after, "-p roller "), "no old-project exec or up after its down"); // rebrand:keep
+    }
+
+    @Test
+    void aCrlfEnvKeepsItsLineEndings() throws Exception {
+        Files.writeString(oldDir.resolve(".env"), OLD_ENV.replace("\n", "\r\n"));
+
+        ScriptRun.Result r = cutover("0.5.0");
+
+        assertEquals(0, r.exit(), r.out());
+        assertEquals(NEW_ENV.replace("\n", "\r\n"), Files.readString(newDir.resolve(".env")));
+    }
+
+    @Test
+    void aQuotedImageVersionIsRead() throws Exception {
+        Files.writeString(oldDir.resolve(".env"), OLD_ENV.replace("IMAGE_VERSION=0.4.2", "IMAGE_VERSION=\"0.4.2\""));
+
+        ScriptRun.Result r = cutover("0.5.0");
+
+        assertEquals(0, r.exit(), r.out());
+        assertTrue(Files.readString(newDir.resolve(".env")).contains("\nIMAGE_VERSION=0.5.0\n"));
+    }
+
+    /** upgrade.sh moves only a plain IMAGE_VERSION line, so the cutover writes one. */
+    @Test
+    void anExportedImageVersionBecomesALineUpgradeShCanMove() throws Exception {
+        Files.writeString(oldDir.resolve(".env"), OLD_ENV.replace("IMAGE_VERSION=0.4.2", "export IMAGE_VERSION=0.4.2"));
+
+        ScriptRun.Result r = cutover("0.5.0");
+
+        assertEquals(0, r.exit(), r.out());
+        assertEquals(NEW_ENV, Files.readString(newDir.resolve(".env")));
+        Path next = Files.createDirectories(dir.resolve("release/v0.5.1"));
+        try (Stream<Path> files = Files.list(release)) {
+            for (Path f : files.toList()) {
+                Files.copy(f, next.resolve(f.getFileName()));
+            }
+        }
+        ScriptRun.Result up = ScriptRun.run(newDir, dir.resolve("bin"), env,
+                Paths.get("../deploy/upgrade.sh").toAbsolutePath(), "0.5.1", "--no-backup");
+        assertEquals(0, up.exit(), up.out());
+        assertTrue(Files.readString(newDir.resolve(".env")).contains("\nIMAGE_VERSION=0.5.1\n"));
+    }
+
+    /** One parser for IMAGE_VERSION and the database names, in both scripts. */
+    @Test
+    void bothScriptsReadEnvWithTheSameParser() throws Exception {
+        String cutover = Files.readString(CUTOVER);
+        String rollback = Files.readString(Paths.get("../deploy/rollback-pressroom.sh"));
+        int start = cutover.indexOf("env_value() {");
+        assertTrue(start > 0, "cutover has env_value");
+        String parser = cutover.substring(start, cutover.indexOf("\n}\n", start) + 3);
+        assertTrue(rollback.contains(parser), "rollback-pressroom.sh carries the same env_value");
+    }
+
+    @Test
+    void aMissingOldVolumeNamesTheDaemonToo() throws Exception {
+        Files.writeString(volumesFile(), "");
+
+        ScriptRun.Result r = cutover("0.5.0");
+
+        assertEquals(1, r.exit(), r.out());
+        assertTrue(r.out().contains("or the Docker daemon is unreachable"), r.out());
     }
 }

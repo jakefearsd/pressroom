@@ -25,6 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -62,7 +63,15 @@ class DeployHostScriptTest {
 
         Path bin = dir.resolve("stubs");
         ScriptRun.stub(bin, "scp", "echo \"scp $*\" >> \"$STUB_LOG\"\n");
-        ScriptRun.stub(bin, "ssh", "echo \"ssh $*\" >> \"$STUB_LOG\"\nexit \"${STUB_SSH_RC:-0}\"\n");
+        // With STUB_HOME set it runs the remote command there, as the host's shell would.
+        ScriptRun.stub(bin, "ssh", """
+                echo "ssh $*" >> "$STUB_LOG"
+                if [[ -n "${STUB_HOME:-}" ]]; then
+                  ps -o sid= -p $$ > "$STUB_HOME/ssh-sid"
+                  shift; cd "$STUB_HOME" && exec bash -c "$*"
+                fi
+                exit "${STUB_SSH_RC:-0}"
+                """);
         ScriptRun.stub(bin, "curl", "echo \"curl $*\" >> \"$STUB_LOG\"\nprintf %s \"${STUB_HTTP:-200}\"\n");
         env.put("STUB_LOG", dir.resolve("calls.log").toString());
     }
@@ -99,15 +108,68 @@ class DeployHostScriptTest {
     /** The one-time move from the old deploy directory, which stays as it was for a rollback. */
     @Test
     void cutoverCopiesBothScriptsToTheOldDirectoryAndRunsTheCutoverThere() throws Exception {
+        Path home = fakeHostWithCutover(0);
+
         ScriptRun.Result r = deploy("docker1", "0.5.0", "--cutover", "--url", "https://blog.example.com");
 
         assertEquals(0, r.exit(), r.out());
         String calls = calls();
         assertTrue(calls.contains("scp -q " + checkout.resolve("deploy/cutover-pressroom.sh") + " "
                 + checkout.resolve("deploy/rollback-pressroom.sh") + " docker1:roller/\n"), calls); // rebrand:keep
-        assertTrue(calls.contains("ssh docker1 cd roller && bash cutover-pressroom.sh 0.5.0\n"), calls); // rebrand:keep
+        assertTrue(calls.contains("ssh docker1 cd roller || exit 1;"), calls); // rebrand:keep
         assertFalse(calls.contains("upgrade.sh"), calls);
         assertTrue(calls.indexOf("scp") < calls.indexOf("ssh") && calls.indexOf("ssh") < calls.indexOf("curl"), calls);
+        assertTrue(r.out().contains("cutover ran 0.5.0 in roller"), "the log is followed: " + r.out()); // rebrand:keep
+        assertTrue(Files.readString(onlyLog(home)).contains("cutover ran 0.5.0"));
+    }
+
+    /** A dropped ssh session must not kill the cutover half way: it runs in its own session. */
+    @Test
+    void cutoverRunsDetachedFromTheSessionAndLogsBesideTheDirectories() throws Exception {
+        Path home = fakeHostWithCutover(0);
+
+        ScriptRun.Result r = deploy("docker1", "0.5.0", "--cutover");
+
+        assertEquals(0, r.exit(), r.out());
+        assertTrue(calls().contains("setsid nohup bash"), calls());
+        Path log = onlyLog(home);
+        assertTrue(log.getFileName().toString().matches("pressroom-cutover-\\d{8}T\\d{6}Z\\.log"), log.toString());
+        assertTrue(r.out().contains("tail -f ~/" + log.getFileName()), "says how to reattach: " + r.out());
+        assertNotEquals(Files.readString(home.resolve("ssh-sid")).strip(), Files.readString(home.resolve("sid")).strip(),
+                "the cutover runs in a session of its own, which a hang-up of the ssh one does not reach");
+    }
+
+    @Test
+    void aFailedCutoverReportsItsExitStatus() throws Exception {
+        Path home = fakeHostWithCutover(3);
+
+        ScriptRun.Result r = deploy("docker1", "0.5.0", "--cutover", "--url", "https://blog.example.com");
+
+        assertEquals(3, r.exit(), r.out());
+        assertTrue(r.out().contains("exited 3"), r.out());
+        assertTrue(r.out().contains(onlyLog(home).getFileName().toString()), r.out());
+        assertFalse(calls().contains("curl"), calls());
+    }
+
+    /** A home whose old deploy directory holds a stand-in cutover that exits RC. */
+    private Path fakeHostWithCutover(int rc) throws Exception {
+        Path home = Files.createDirectories(dir.resolve("home"));
+        Path old = Files.createDirectories(home.resolve("roller")); // rebrand:keep
+        Files.writeString(old.resolve("cutover-pressroom.sh"), """
+                echo "cutover ran $1 in $(basename "$PWD")"
+                ps -o sid= -p $$ > ../sid
+                exit %d
+                """.formatted(rc));
+        env.put("STUB_HOME", home.toString());
+        return home;
+    }
+
+    private static Path onlyLog(Path home) throws Exception {
+        try (java.util.stream.Stream<Path> s = Files.list(home)) {
+            List<Path> logs = s.filter(p -> p.getFileName().toString().endsWith(".log")).toList();
+            assertEquals(1, logs.size(), logs.toString());
+            return logs.get(0);
+        }
     }
 
     /** The cutover always backs up and always moves to the default directory. */

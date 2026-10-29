@@ -1149,7 +1149,7 @@ The steps, in order:
 
 It prints the one-line rollback, which restores the `.bak` files and reruns `./deploy.sh`.
 On a host the cutover made, it also says that the `.bak` files reach only the version they
-replaced: going back to the 0.4.x stack is the old directory's `rollback-pressroom.sh`.
+replaced: going back to the 0.4.x stack is the old directory's `rollback-pressroom.sh --yes`.
 `deploy.sh --no-pull` starts the images already on the host, for images built there.
 
 ### Upgrading PostgreSQL across a major version

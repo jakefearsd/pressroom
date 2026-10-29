@@ -30,8 +30,9 @@
 #   1. refuses unless .env is on 0.4.x, NEW_DIR does not exist, every old
 #      volume exists and no new one does
 #   2. fetches the release files into NEW_DIR
-#   3. backs up through the old stack's backup service, and records row counts
-#      into NEW_DIR/cutover-counts-before.txt
+#   3. backs up through the old stack's backup service, copies that backup out
+#      of the volume into NEW_DIR/../pressroom-cutover-backup-<ts>/, and
+#      records row counts into NEW_DIR/cutover-counts-before.txt
 #   4. writes NEW_DIR/.env from .env (key names and the database values move;
 #      every other byte stays), checks it, and pulls the new images
 #   5. stops the old stack: down, volumes kept. Nothing can run the rename
@@ -161,7 +162,7 @@ for v in "${CADDY_VOLUMES[@]}"; do
     NEW_VOLUMES+=("${NEW_PROJECT}_${v}")
 done
 for v in "${OLD_VOLUMES[@]}"; do
-    docker volume inspect "${v}" >/dev/null 2>&1 </dev/null || refuse "volume ${v} does not exist; is OLD_PROJECT right?"
+    docker volume inspect "${v}" >/dev/null 2>&1 </dev/null || refuse "volume ${v} does not exist (or the Docker daemon is unreachable); is OLD_PROJECT right?"
 done
 for v in "${NEW_VOLUMES[@]}"; do
     if docker volume inspect "${v}" >/dev/null 2>&1 </dev/null; then
@@ -170,8 +171,23 @@ for v in "${NEW_VOLUMES[@]}"; do
 done
 
 # From here on, a failure says where it stopped and what still stands.
+# Step 8 sets these, so a failure there never leaves the temporary superuser.
+TEMP_ROLE=0
+RENAMED=0
+drop_temp_role() {
+    local sql="DROP ROLE IF EXISTS pressroom_cutover;"
+    if [[ "${RENAMED}" -eq 1 ]]; then
+        echo "${sql}" | new_psql pressroom pressroom || true
+    else
+        echo "${sql}" | new_psql "${OLD_ROLE}" "${OLD_DB}" || true
+    fi
+}
 on_exit() {
     local rc=$?
+    if [[ "${TEMP_ROLE}" -eq 1 ]]; then
+        echo "Dropping the temporary superuser pressroom_cutover..." >&2
+        drop_temp_role
+    fi
     if [[ "${rc}" -ne 0 && "${STEP}" -ge 2 ]]; then
         echo >&2
         echo "The cutover stopped at step ${STEP} (exit ${rc})." >&2
@@ -180,7 +196,7 @@ on_exit() {
                  "cutover; remove it before running this again." >&2
         else
             echo "The old stack is down; its directory and volumes are untouched. To put it back:" >&2
-            echo "  bash rollback-pressroom.sh" >&2
+            echo "  bash rollback-pressroom.sh --yes" >&2
             echo "Before trying again, see docs/dev/pressroom-cutover.md, \"Trying again\"." >&2
         fi
     fi
@@ -212,7 +228,24 @@ PG_IMAGE=$(sed -n 's/^[[:space:]]*image:[[:space:]]*\(postgres:[^[:space:]]*\).*
 # ---- 3. Backup and the counts to check against -----------------------------
 STEP=3
 echo "==> Taking a backup through the old stack..."
+list_backups() { old_compose exec -T backup ls -1 /backups </dev/null | LC_ALL=C sort; }
+backups_before=$(list_backups)
 old_compose exec -T backup /app/backup/backup.sh </dev/null
+backups_after=$(list_backups)
+# That backup's files: the ones it added, finished (no .tmp).
+this_backup=$(LC_ALL=C comm -13 <(printf '%s\n' "${backups_before}") <(printf '%s\n' "${backups_after}") \
+    | grep -v '\.tmp$' || true)
+if ! grep -q '\.dump$' <<<"${this_backup}" || ! grep -q '^volumes-.*\.tar\.gz$' <<<"${this_backup}"; then
+    echo "The backup added no database dump and volumes archive to /backups." >&2
+    exit 1
+fi
+# Out of the volumes, so it outlives their 30-day cleanup.
+BACKUP_COPY="$(dirname -- "${NEW_DIR}")/pressroom-cutover-backup-$(date -u +%Y%m%dT%H%M%SZ)"
+mkdir -- "${BACKUP_COPY}"
+while IFS= read -r f; do
+    old_compose cp "backup:/backups/${f}" "${BACKUP_COPY}/${f}" </dev/null
+done <<<"${this_backup}"
+echo "    The pre-cutover backup is kept in ${BACKUP_COPY}"
 
 # label database table, in the order both files list them.
 COUNT_TABLES_BEFORE=(
@@ -244,7 +277,8 @@ STEP=4
 echo "==> Writing ${NEW_DIR}/.env from .env..."
 # Line by line, and only three kinds of change: a ROLLER_ key becomes a
 # PRESSROOM_ key; the role and database values (roller, rollerdb, and the
-# JDBC URL's /rollerdb) become pressroom; IMAGE_VERSION becomes VERSION.
+# JDBC URL's /rollerdb) become pressroom; IMAGE_VERSION becomes a plain
+# IMAGE_VERSION=VERSION line, the one shape upgrade.sh moves.
 # Comments, blank lines, quoting, export prefixes, line endings and every
 # other value pass through byte for byte. Prints the names (never the
 # values) of keys whose value still mentions roller.
@@ -281,7 +315,7 @@ still_named=$(awk -v version="${VERSION}" -v out="${NEW_DIR}/.env" '
             if (key == "POSTGRES_USER" || key == "PRESSROOM_DATABASE_JDBC_USERNAME") value = swap_whole(value, "roller", "pressroom")
             else if (key == "POSTGRES_DB") value = swap_whole(value, "rollerdb", "pressroom")
             else if (key == "PRESSROOM_DATABASE_JDBC_CONNECTIONURL") value = swap_db_path(value)
-            else if (key == "IMAGE_VERSION") value = version
+            else if (key == "IMAGE_VERSION") { head = "IMAGE_VERSION="; value = version }
             if (tolower(value) ~ /(^|[^a-z])roller/) print key
             line = head value
         }
@@ -353,9 +387,11 @@ done
 STEP=8
 echo "==> Renaming database ${OLD_DB} and role ${OLD_ROLE} to pressroom..."
 # A role cannot rename itself, so a second superuser does it.
+TEMP_ROLE=1
 echo "CREATE ROLE pressroom_cutover SUPERUSER LOGIN;" | new_psql "${OLD_ROLE}" "${OLD_DB}"
 printf 'ALTER DATABASE %s RENAME TO pressroom;\nALTER ROLE %s RENAME TO pressroom;\n' "${OLD_DB}" "${OLD_ROLE}" \
     | new_psql pressroom_cutover postgres
+RENAMED=1
 # An MD5 password is salted with the role name, so PostgreSQL clears it on a
 # rename. SCRAM survives. Only the kind is read, never the hash.
 kind=$(echo "SELECT coalesce(left(rolpassword, 3), 'none') FROM pg_authid WHERE rolname = 'pressroom';" \
@@ -375,6 +411,7 @@ elif [[ "${kind}" != SCR ]]; then
     exit 1
 fi
 echo "DROP ROLE pressroom_cutover;" | new_psql pressroom pressroom
+TEMP_ROLE=0
 # Over TCP to the service name, as the app connects: the local socket is
 # trust, and would prove nothing.
 # shellcheck disable=SC2016
@@ -419,7 +456,7 @@ STEP=11
 cat <<EOF
 ==> The cutover to ${VERSION} is done; the new stack runs from ${NEW_DIR}.
     The old directory, its volumes and images stay for 30 days; until then
-    \`bash rollback-pressroom.sh\` here puts the old stack back.
+    \`bash rollback-pressroom.sh --yes\` here puts the old stack back.
     By hand now (docs/dev/pressroom-cutover.md, "After the cutover"):
       - Google console: add the redirect URI /pressroom-ui/sso/callback
       - revoke the old agent token; mint a prs_ token for blogger-agent

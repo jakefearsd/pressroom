@@ -23,9 +23,12 @@ serving throughout.
    not exist; every old volume exists; and no new volume exists.
 2. It fetches the release's `docker-compose.prod.yml`, `deploy.sh`,
    `env.example` and `upgrade.sh` into `~/pressroom`.
-3. It takes a backup through the old stack's `backup` service and records
-   row counts into `~/pressroom/cutover-counts-before.txt`. The counts cover
-   the app tables, umami's `website`/`website_event` and listmonk's
+3. It takes a backup through the old stack's `backup` service. It then copies
+   that backup's files out of the backup volume into
+   `~/pressroom-cutover-backup-<UTC stamp>/`: the app, umami and listmonk
+   dumps and the volumes archive. It prints that path. Last, it records row
+   counts into `~/pressroom/cutover-counts-before.txt`. The counts cover the
+   app tables, umami's `website`/`website_event` and listmonk's
    `subscribers`.
 4. It writes `~/pressroom/.env` from the old one:
    - `ROLLER_*` keys become `PRESSROOM_*`. <!-- rebrand:keep -->
@@ -78,8 +81,19 @@ copy.
 bin/deploy-host.sh docker1 0.5.0 --cutover --url https://blog.wikantik.com/
 ```
 
-This copies both scripts into `~/roller` and runs the cutover there. <!-- rebrand:keep -->
-It then requires the public URL to answer 200.
+This copies both scripts into `~/roller` and starts the cutover there. <!-- rebrand:keep -->
+The cutover runs detached from the ssh session, under `setsid nohup`, and
+logs to `~/pressroom-cutover-<UTC stamp>.log`. `deploy-host.sh` follows that
+log until the cutover exits, then reports the exit status. It then requires
+the public URL to answer 200.
+
+If the connection drops, the cutover keeps going. To reattach, using the log
+name that `deploy-host.sh` printed:
+
+```bash
+ssh docker1 'tail -f ~/pressroom-cutover-<stamp>.log'
+ssh docker1 'cat ~/pressroom-cutover-<stamp>.log.exit'   # the exit status, once it is done
+```
 
 ## After the cutover
 
@@ -117,18 +131,24 @@ Accepted side effects:
   hand.
 - **jakemon's container-name relabel goes dark.** The relabel
   (`roller-.+`) matches nothing until Phase 4. <!-- rebrand:keep -->
+- **Grafana has no datasource on the app database yet** (Jake confirmed it is
+  not wired up), so the renamed database, role and tables break nothing
+  there.
 
 ## Rollback
 
 ```bash
-ssh docker1 'cd roller && bash rollback-pressroom.sh'   # rebrand:keep
+ssh docker1 'cd roller && bash rollback-pressroom.sh --yes'   # rebrand:keep
 ```
 
-The rollback:
+Without `--yes` it refuses, so a stray run cannot take a healthy site back
+to 0.4.x. The rollback:
 
 1. stops the new stack, keeping its volumes;
-2. runs the old directory's own `deploy.sh` on its untouched `.env` (0.4.x)
-   and its old volumes;
+2. starts the old directory's stack on its untouched `.env` (0.4.x) and its
+   old volumes, with `docker compose up -d --pull never`. It uses the 0.4.2
+   images already on the host, because the old `deploy.sh` would pull first,
+   and a registry that cannot be reached must not block a rollback;
 3. waits for the app to report healthy.
 
 Anything written to the new stack since the cutover does not come back.
@@ -155,10 +175,16 @@ the cause first, then do the following.
 
 ## Cleanup, after 30 days
 
-Keep the old directory, its volumes and the 0.4.2 images for 30 days. The
-backups in the old backup volume were copied into the new one, so nothing
-from before the cutover lives only in the old volumes. Once the new stack
-has run for 30 days and its own daily backups have rotated in, run:
+Keep the old directory, its volumes and the 0.4.2 images for 30 days.
+
+**The pre-cutover backup lives in `~/pressroom-cutover-backup-<UTC stamp>/`
+on docker1**, outside every volume. The old backup volume was also copied
+into the new one, but the new stack's rotation deletes those copies once
+they are older than `BACKUP_RETENTION_DAYS`. The host directory survives
+the cleanup below. It stays until Jake deletes it.
+
+Once the new stack has run for 30 days and its own daily backups have
+rotated in, run:
 
 ```bash
 rm -r ~/roller                                                    # rebrand:keep
@@ -167,5 +193,5 @@ docker volume rm roller_caddy-data roller_caddy-config            # rebrand:keep
 docker image rm ghcr.io/jakefearsd/roller:0.4.2 ghcr.io/jakefearsd/roller-caddy:0.4.2  # rebrand:keep
 ```
 
-After the cleanup, there is no way back to 0.4.x except a restore from a
-backup taken before the cutover.
+After the cleanup, the only way back to 0.4.x is a restore from
+`~/pressroom-cutover-backup-<UTC stamp>/`, onto a 0.4.2 stack.

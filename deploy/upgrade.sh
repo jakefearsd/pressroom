@@ -144,7 +144,7 @@ if [[ -f cutover-counts-before.txt ]]; then
     echo "    That reaches ${current}, no further back. To return to the stack this host ran before"
     echo "    the cutover, while its old deploy directory is kept, run rollback-pressroom.sh there;"
     echo "    never an image swap:"
-    echo "      cd ../roller && bash rollback-pressroom.sh"  # rebrand:keep
+    echo "      cd ../roller && bash rollback-pressroom.sh --yes"  # rebrand:keep
 fi
 
 missing=""

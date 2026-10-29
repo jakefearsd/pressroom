@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -80,24 +81,50 @@ class RollbackScriptTest {
     }
 
     private ScriptRun.Result rollback() throws Exception {
-        return ScriptRun.run(oldDir, dir.resolve("bin"), env, ROLLBACK);
+        return ScriptRun.run(oldDir, dir.resolve("bin"), env, ROLLBACK, "--yes");
     }
 
+    /**
+     * Ruling R12: the old stack starts from the images already on the host.
+     * The old 0.4.x deploy.sh pulls under set -e, so a registry outage would
+     * fail the rollback.
+     */
     @Test
-    void downsTheNewProjectAndDeploysTheOldDirectory() throws Exception {
+    void downsTheNewProjectAndStartsTheOldOneFromLocalImages() throws Exception {
         ScriptRun.Result r = rollback();
 
         assertEquals(0, r.exit(), r.out());
         String calls = calls();
         int down = calls.indexOf("compose -p pressroom -f ../pressroom/docker-compose.prod.yml down");
-        int deploy = calls.indexOf("deploy.sh  project=roller IMAGE_VERSION=0.4.2"); // rebrand:keep
+        int up = calls.indexOf("compose -p roller -f docker-compose.prod.yml up -d --pull never"); // rebrand:keep
         assertTrue(down >= 0, calls);
-        assertTrue(deploy > down, "the new stack frees the ports before the old one starts: " + calls);
-        assertTrue(calls.indexOf("exec -T app curl") > deploy, "health checked after the deploy: " + calls);
+        assertTrue(up > down, "the new stack frees the ports before the old one starts: " + calls);
+        assertTrue(calls.indexOf("exec -T app curl") > up, "health checked after the start: " + calls);
+        assertFalse(Pattern.compile("(?m)\\spull(\\s|$)").matcher(calls).find(), "no pull: " + calls);
+        assertFalse(calls.contains("deploy.sh"), calls);
         assertFalse(calls.contains("down -v"), calls);
         assertFalse(calls.contains("volume rm"), calls);
         assertEquals(OLD_ENV, Files.readString(oldDir.resolve(".env")));
         assertFalse(r.out().contains("s3cret"), r.out());
+    }
+
+    /** An accidental run must not take a healthy site back to 0.4.x. */
+    @Test
+    void refusesWithoutYes() throws Exception {
+        ScriptRun.Result r = ScriptRun.run(oldDir, dir.resolve("bin"), env, ROLLBACK);
+
+        assertEquals(1, r.exit(), r.out());
+        assertTrue(r.out().contains("Refusing") && r.out().contains("--yes"), r.out());
+        assertEquals("", calls());
+    }
+
+    @Test
+    void aQuotedImageVersionIsRead() throws Exception {
+        Files.writeString(oldDir.resolve(".env"), "IMAGE_VERSION=\"0.4.2\"\r\n");
+
+        ScriptRun.Result r = rollback();
+
+        assertEquals(0, r.exit(), r.out());
     }
 
     @Test
@@ -130,6 +157,6 @@ class RollbackScriptTest {
 
         assertEquals(0, r.exit(), r.out());
         assertFalse(calls().contains(" down"), calls());
-        assertTrue(calls().contains("deploy.sh  project=roller"), calls()); // rebrand:keep
+        assertTrue(calls().contains("compose -p roller -f docker-compose.prod.yml up -d --pull never"), calls()); // rebrand:keep
     }
 }
