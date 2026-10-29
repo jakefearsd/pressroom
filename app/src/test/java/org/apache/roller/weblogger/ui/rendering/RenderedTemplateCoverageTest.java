@@ -20,6 +20,16 @@ import org.junit.jupiter.api.Test;
  * rename every theme and every {@code WEB-INF/velocity} template must be
  * rendered by some test that would notice. A new theme directory or a new
  * {@code .vm} fails here until it is named.
+ *
+ * <p>This is a characterisation test: it passes on arrival against today's
+ * tree and pins the current set of themes and templates.
+ *
+ * <p>Proven to bite: with an empty {@code themes/scratch/} directory holding
+ * one file, {@code everyBundledThemeIsRendered} failed (expected [frontpage,
+ * journal, portfolio, travel] but was [frontpage, journal, portfolio,
+ * scratch, travel]); with an empty stray {@code WEB-INF/velocity/templates/stray.vm},
+ * {@code everyVelocityTemplateHasANamedRenderingTest} failed ("every .vm
+ * under ... must be in RENDERED_BY"). Both files were deleted afterwards.
  */
 class RenderedTemplateCoverageTest {
 
@@ -33,7 +43,8 @@ class RenderedTemplateCoverageTest {
      * Shipped templates no test renders. Empty is the goal; an entry is a
      * known gap, not coverage. noop_decorator.vm has no reference anywhere
      * in main code, themes or tests (the decorator mechanism was never wired
-     * up, see VelocityRenderer).
+     * up, see VelocityRenderer lines 141-143). Deleting it is a follow-up
+     * outside Phase 0.
      */
     private static final Set<String> KNOWN_UNRENDERED =
             Set.of("templates/weblog/noop_decorator.vm");
