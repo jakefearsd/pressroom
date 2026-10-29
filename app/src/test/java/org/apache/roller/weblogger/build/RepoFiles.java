@@ -24,18 +24,18 @@ import org.xml.sax.SAXException;
  * is its parent. Tracked files come from {@code git ls-files -z}, so
  * untracked build output and editor droppings are never scanned.
  */
-final class RepoFiles {
+public final class RepoFiles {
 
     private RepoFiles() {
     }
 
     /** The repository root (parent of the module directory the tests run in). */
-    static Path repoRoot() {
+    public static Path repoRoot() {
         return Path.of(System.getProperty("user.dir")).getParent();
     }
 
     /** Repo-relative paths of every tracked file; fails the test if git fails. */
-    static List<Path> trackedFiles() {
+    public static List<Path> trackedFiles() {
         try {
             Process p = new ProcessBuilder("git", "ls-files", "-z")
                     .directory(repoRoot().toFile())
@@ -65,7 +65,7 @@ final class RepoFiles {
     }
 
     /** The file's text, UTF-8. */
-    static String read(Path repoRelative) {
+    public static String read(Path repoRelative) {
         try {
             return Files.readString(repoRoot().resolve(repoRelative), StandardCharsets.UTF_8);
         } catch (IOException e) {

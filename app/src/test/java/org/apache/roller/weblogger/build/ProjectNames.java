@@ -14,7 +14,7 @@ import org.apache.roller.util.RollerConstants;
  * is the one literal of the old root in this package; it keeps old-name
  * tokens in scope once the two roots differ.
  */
-final class ProjectNames {
+public final class ProjectNames {
 
     /** The pre-rebrand root package. */
     static final String LEGACY_ROOT = "org.apache.roller";
@@ -26,7 +26,7 @@ final class ProjectNames {
     }
 
     /** The parent package of {@code RollerConstants}. */
-    static String currentRoot() {
+    public static String currentRoot() {
         String pkg = RollerConstants.class.getPackageName();
         return pkg.substring(0, pkg.lastIndexOf('.'));
     }

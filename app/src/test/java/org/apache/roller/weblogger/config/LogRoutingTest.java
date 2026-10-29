@@ -7,12 +7,22 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.xml.parsers.DocumentBuilderFactory;
+import org.apache.roller.weblogger.build.ProjectNames;
+import org.apache.roller.weblogger.build.RepoFiles;
+import org.apache.roller.weblogger.business.WeblogRedirectManager;
+import org.apache.roller.weblogger.ui.controllers.AdminLog;
+import org.apache.roller.weblogger.ui.restapi.mcp.McpToolExecutor;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -99,6 +109,101 @@ class LogRoutingTest {
             assertEquals(1, delete.getElementsByTagName("IfAccumulatedFileCount").getLength(),
                     "the delete keeps a bounded count");
         }
+    }
+
+    /**
+     * Loggers deliberately without their own {@code <Logger>}: they reach the
+     * console through Root. Characterised 2026-10-29, routing unchanged.
+     */
+    private static final Map<String, String> ROOT_ONLY_BY_DESIGN = Map.of(
+            "roller.mcp", "characterised 2026-10-29: reaches the console through Root",
+            "roller.media.import", "characterised 2026-10-29: reaches the console through Root",
+            "roller.redirects", "characterised 2026-10-29: reaches the console through Root");
+
+    private static final Set<String> KNOWN_CONSTANTS =
+            Set.of("NAME", "LOG_NAME", "WeblogRedirectManager.LOG_NAME", "AdminLog.NAME");
+
+    private static final Pattern GET_LOGGER = Pattern.compile("getLogger\\(\\s*([^()]*?)\\s*\\)");
+
+    private static final Pattern STRING_LITERAL = Pattern.compile("\"([^\"]*)\"");
+
+    /**
+     * Characterisation: the root package's logger is what gives the whole
+     * application its file log and level; a package move that misses it drops
+     * everything to Root.
+     */
+    @Test
+    void theProjectRootPackageHasItsOwnLoggerToFileAndConsole() throws Exception {
+        Document config = config();
+        Element logger = loggerNamed(config, ProjectNames.currentRoot());
+        assertNotNull(logger, "log4j2.xml has no Logger named " + ProjectNames.currentRoot());
+        Map<String, Set<String>> wrapped = wrappedAppenders(config);
+        assertTrue(reaches(refs(logger), wrapped, "roller"), "the root package logger reaches roller.log");
+        assertTrue(reaches(refs(logger), wrapped, "console"), "the root package logger reaches the console");
+    }
+
+    /** Characterisation: every logger name the code uses is routed or consciously left to Root. */
+    @Test
+    void everyNamedLoggerHasADecidedRoute() throws Exception {
+        Set<String> names = new TreeSet<>(List.of(AdminLog.NAME, McpToolExecutor.LOG_NAME,
+                WeblogRedirectManager.LOG_NAME));
+        for (String argument : getLoggerArguments()) {
+            Matcher literal = STRING_LITERAL.matcher(argument);
+            if (literal.matches()) {
+                names.add(literal.group(1));
+            }
+        }
+        assertTrue(names.size() >= 6, "found the named loggers: " + names);
+        Document config = config();
+        for (String name : names) {
+            boolean routed = loggerNamed(config, name) != null;
+            assertTrue(routed || ROOT_ONLY_BY_DESIGN.containsKey(name),
+                    "logger " + name + " has no <Logger> in log4j2.xml and is not listed in ROOT_ONLY_BY_DESIGN");
+            assertFalse(routed && ROOT_ONLY_BY_DESIGN.containsKey(name),
+                    "logger " + name + " now has a route; drop it from ROOT_ONLY_BY_DESIGN");
+        }
+        for (String listed : ROOT_ONLY_BY_DESIGN.keySet()) {
+            assertTrue(names.contains(listed), "ROOT_ONLY_BY_DESIGN names " + listed + ", which no code uses");
+        }
+    }
+
+    /** Characterisation: a constant-named logger cannot slip past the check above. */
+    @Test
+    void everyNonLiteralGetLoggerArgumentIsAKnownConstant() {
+        for (String argument : getLoggerArguments()) {
+            if (argument.endsWith(".class") || STRING_LITERAL.matcher(argument).matches()) {
+                continue;
+            }
+            assertTrue(KNOWN_CONSTANTS.contains(argument),
+                    "getLogger(" + argument + ") is not a class, a literal or a known constant; "
+                            + "add it to everyNamedLoggerHasADecidedRoute's inputs");
+        }
+    }
+
+    /** The argument text of every getLogger call in tracked main Java (calls may span lines). */
+    private static List<String> getLoggerArguments() {
+        List<String> arguments = new ArrayList<>();
+        for (Path file : RepoFiles.trackedFiles()) {
+            String path = file.toString().replace('\\', '/');
+            if (path.startsWith("app/src/main/java/") && path.endsWith(".java")) {
+                Matcher m = GET_LOGGER.matcher(RepoFiles.read(file));
+                while (m.find()) {
+                    arguments.add(m.group(1));
+                }
+            }
+        }
+        return arguments;
+    }
+
+    private static Element loggerNamed(Document config, String name) {
+        NodeList loggers = config.getElementsByTagName("Logger");
+        for (int i = 0; i < loggers.getLength(); i++) {
+            Element logger = (Element) loggers.item(i);
+            if (name.equals(logger.getAttribute("name"))) {
+                return logger;
+            }
+        }
+        return null;
     }
 
     private static boolean reaches(Set<String> start, Map<String, Set<String>> wrapped, String target) {
