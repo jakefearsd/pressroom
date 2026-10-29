@@ -25,7 +25,7 @@
 #
 # The rules, numbered as in the plan:
 #  1. File set: tracked files under app/ it-selenium/ .github/ config/, plus
-#     a fixed list of root files and docs/dev/*.md; minus LICENSE.txt,
+#     a fixed list of root files, docs/dev/*.md and docs/api/*.md; minus LICENSE.txt,
 #     NOTICE.txt, bin/db/migrations/**, docs/superpowers/**, docs/examples/**.
 #     Binary files (a NUL byte in the first 8 KB) move but are never rewritten.
 #  2. Moves: every file-set path containing /org/apache/roller/ moves to
@@ -37,7 +37,9 @@
 #     (RollerFactory, RollerDB, RollerSecurity). RollerX -> PressroomX. Wiki
 #     page names and RollerSSO are never on it.
 #  4. Substitutions, per line, skipping any line containing rebrand:keep.
-#  5. Maven artifactIds in the three poms.
+#  5. Maven artifact names in the three poms, as whole tokens (comments
+#     included): roller-project, roller-webapp, roller-selenium-tests.
+#     <finalName>roller</finalName> stays.
 #  6. git add -A over the (moved) file set.
 set -euo pipefail
 
@@ -83,6 +85,8 @@ done
     git ls-files -z -- app it-selenium .github config | nl_list
     git ls-files -z -- "${EXTRA_FILES[@]}" | nl_list
     git ls-files -z -- docs/dev | nl_list | grep -E '^docs/dev/[^/]+\.md$' || true
+    # Controller ruling: the public API reference names packages too.
+    git ls-files -z -- docs/api | nl_list | grep -E '^docs/api/[^/]+\.md$' || true
 } | grep -vE '^(bin/db/migrations/|docs/superpowers/|docs/examples/)|(^|/)(LICENSE|NOTICE)\.txt$' \
   | LC_ALL=C sort -u > "$WORK/fileset"
 
@@ -183,10 +187,15 @@ my $idre = qr/\b($alt)\b/;
 my $tgt = join "|", map { (my $t = $_) =~ s/^Roller/Pressroom/; quotemeta $t } @ids;
 my $tgtre = qr/\b($tgt)\b/;
 my %poms = map { $_ => 1 } ("pom.xml", "app/pom.xml", "it-selenium/pom.xml");
+# Whole tokens, comments included (controller ruling): a token is not
+# preceded by [A-Za-z0-9_.-] nor followed by [A-Za-z0-9_-], so
+# <finalName>roller</finalName> and every other "roller" word stay.
+# Counts as measured at 150364bf4: roller-project 3 artifactIds + 1 comment
+# (app/pom.xml), roller-webapp 2, roller-selenium-tests 1.
 my @maven = (
-    ["<artifactId>roller-project</artifactId>",        "<artifactId>pressroom-project</artifactId>", 3],
-    ["<artifactId>roller-webapp</artifactId>",         "<artifactId>pressroom</artifactId>", 2],
-    ["<artifactId>roller-selenium-tests</artifactId>", "<artifactId>pressroom-selenium-tests</artifactId>", 1],
+    ["roller-project",        "pressroom-project",        4],
+    ["roller-webapp",         "pressroom",                2],
+    ["roller-selenium-tests", "pressroom-selenium-tests", 1],
 );
 my %mavencount;
 
@@ -201,7 +210,7 @@ sub rewrite {
         for my $m (@maven) {
             my ($from, $to) = @$m;
             my $n = 0;
-            $n++ while $line =~ s/\Q$from\E/$to/;
+            $n++ while $line =~ s/(?<![A-Za-z0-9_.-])\Q$from\E(?![A-Za-z0-9_-])/$to/;
             $mavencount{$from} += $n;
         }
     }
