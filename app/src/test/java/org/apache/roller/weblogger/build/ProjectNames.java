@@ -1,0 +1,54 @@
+package org.apache.roller.weblogger.build;
+
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.regex.Pattern;
+import org.apache.roller.util.RollerConstants;
+
+/**
+ * The project's root package name, for the rebrand safety-net scanners.
+ *
+ * <p>The current root is derived from a real class
+ * ({@code RollerConstants}), not written as a literal, so after the Phase 1
+ * package move the scanners follow the code with no edit. {@link #LEGACY_ROOT}
+ * is the one literal of the old root in this package; it keeps old-name
+ * tokens in scope once the two roots differ.
+ */
+final class ProjectNames {
+
+    /** The pre-rebrand root package. */
+    static final String LEGACY_ROOT = "org.apache.roller";
+
+    /** A dotted or slashed qualified name under any of {@link #roots()}. */
+    static final Pattern QUALIFIED_NAME = buildPattern();
+
+    private ProjectNames() {
+    }
+
+    /** The parent package of {@code RollerConstants}. */
+    static String currentRoot() {
+        String pkg = RollerConstants.class.getPackageName();
+        return pkg.substring(0, pkg.lastIndexOf('.'));
+    }
+
+    /** The current root and the legacy root (equal until the package move). */
+    static Set<String> roots() {
+        Set<String> roots = new LinkedHashSet<>();
+        roots.add(currentRoot());
+        roots.add(LEGACY_ROOT);
+        return roots;
+    }
+
+    private static Pattern buildPattern() {
+        StringBuilder sb = new StringBuilder();
+        for (String root : roots()) {
+            if (sb.length() > 0) {
+                sb.append('|');
+            }
+            sb.append(Pattern.quote(root)).append("(?:\\.[A-Za-z_$][\\w$]*)+");
+            sb.append('|');
+            sb.append(Pattern.quote(root.replace('.', '/'))).append("(?:/[\\w$.-]+)+");
+        }
+        return Pattern.compile(sb.toString());
+    }
+}
