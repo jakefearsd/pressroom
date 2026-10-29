@@ -294,7 +294,7 @@ Every failure a controller method can see is [RFC
 9457](https://www.rfc-editor.org/rfc/rfc9457) `application/problem+json`.
 **Four ordinary failures never reach a controller method at all, so they
 are not:** `ApiExceptionHandler` is `@RestControllerAdvice(basePackages =
-"org.apache.roller.weblogger.ui.restapi")`, and package-scoped advice is
+"com.wikantik.pressroom.ui.restapi")`, and package-scoped advice is
 only ever consulted once a request has been dispatched to a handler method
 in that package. A request to an unmapped path under `/api/...` (404), the
 right path with the wrong HTTP verb (405), a `POST .../media` with no

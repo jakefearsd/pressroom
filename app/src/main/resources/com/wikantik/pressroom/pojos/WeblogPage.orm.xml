@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<entity-mappings version="3.0" xmlns="https://jakarta.ee/xml/ns/persistence/orm"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence/orm https://jakarta.ee/xml/ns/persistence/orm_3_0.xsd">
+    <package>com.wikantik.pressroom.pojos</package>
+    <entity metadata-complete="true" name="WeblogPage"
+            class="com.wikantik.pressroom.pojos.WeblogPage" access="PROPERTY">
+        <table name="roller_weblogpage"/>
+        <named-query name="WeblogPage.getByWeblogAndSlug">
+            <query>SELECT p FROM WeblogPage p WHERE p.weblog = ?1 AND p.slug = ?2</query>
+        </named-query>
+        <!-- Nav order first, then title, so two pages sharing an order do not
+             swap places between reads. -->
+        <named-query name="WeblogPage.getByWeblog">
+            <query>SELECT p FROM WeblogPage p WHERE p.weblog = ?1 ORDER BY p.navOrder ASC, p.title ASC</query>
+        </named-query>
+        <named-query name="WeblogPage.getByWeblogAndStatus">
+            <query>SELECT p FROM WeblogPage p WHERE p.weblog = ?1 AND p.status = ?2 ORDER BY p.navOrder ASC, p.title ASC</query>
+        </named-query>
+        <named-query name="WeblogPage.removeByWeblog">
+            <query>DELETE FROM WeblogPage p WHERE p.weblog = ?1</query>
+        </named-query>
+        <!-- Remembers the slug this page was loaded with, so savePage can
+             tell a rename from any other edit and mint the redirect that
+             keeps the old URL alive (same mechanism as WeblogEntry's
+             revision snapshot). -->
+        <post-load method-name="snapshotLoadedSlug"/>
+        <attributes>
+            <id name="id">
+                <column name="id"/>
+            </id>
+            <basic name="slug">
+                <column name="slug" insertable="true" updatable="true" nullable="false"/>
+            </basic>
+            <basic name="title">
+                <column name="title" insertable="true" updatable="true" nullable="false"/>
+            </basic>
+            <basic name="content">
+                <column name="content" insertable="true" updatable="true" nullable="true"/>
+            </basic>
+            <basic name="status">
+                <column name="status" insertable="true" updatable="true" nullable="false"/>
+                <enumerated>STRING</enumerated>
+            </basic>
+            <basic name="showInNav">
+                <column name="show_in_nav" insertable="true" updatable="true" nullable="false"/>
+            </basic>
+            <basic name="navOrder">
+                <column name="nav_order" insertable="true" updatable="true" nullable="false"/>
+            </basic>
+            <basic name="created">
+                <column name="created" insertable="true" updatable="true" nullable="false"/>
+            </basic>
+            <basic name="updated">
+                <column name="updated" insertable="true" updatable="true" nullable="false"/>
+            </basic>
+            <basic name="metaTitle">
+                <column name="meta_title" insertable="true" updatable="true" nullable="true"/>
+            </basic>
+            <basic name="searchDescription">
+                <column name="search_description" insertable="true" updatable="true" nullable="true"/>
+            </basic>
+            <basic name="canonicalUrl">
+                <column name="canonical_url" insertable="true" updatable="true" nullable="true"/>
+            </basic>
+            <basic name="noindex">
+                <column name="noindex" insertable="true" updatable="true" nullable="false"/>
+            </basic>
+            <basic name="ogImageId">
+                <column name="og_image_id" insertable="true" updatable="true" nullable="true"/>
+            </basic>
+            <many-to-one name="weblog" target-entity="com.wikantik.pressroom.pojos.Weblog">
+                <join-column name="weblogid" insertable="true" updatable="true" nullable="false"/>
+            </many-to-one>
+        </attributes>
+    </entity>
+</entity-mappings>

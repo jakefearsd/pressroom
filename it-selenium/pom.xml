@@ -22,13 +22,13 @@ limitations under the License.
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.apache.roller</groupId>
-        <artifactId>roller-project</artifactId>
+        <groupId>com.wikantik.pressroom</groupId>
+        <artifactId>pressroom-project</artifactId>
         <version>0.4.2</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>roller-selenium-tests</artifactId>
+    <artifactId>pressroom-selenium-tests</artifactId>
     <name>Roller browser integration tests</name>
     <description>
         Selenide integration tests. The executable Roller WAR (Spring Boot 4,
@@ -97,7 +97,7 @@ limitations under the License.
              default, not pin a prefix production does not use.
 
              it.base.url below therefore ends in a trailing slash at the root;
-             RollerIT.baseUrl() strips one, which is why that is harmless and
+             PressroomIT.baseUrl() strips one, which is why that is harmless and
              why this can stay a plain string substitution.
 
              `mvn verify -Pit -Dit.context.path=roller` runs the entire suite
@@ -250,8 +250,8 @@ limitations under the License.
              executable jar-in-war start-app.sh needs) before this module's
              pre-integration-test phase runs. -->
         <dependency>
-            <groupId>org.apache.roller</groupId>
-            <artifactId>roller-webapp</artifactId>
+            <groupId>com.wikantik.pressroom</groupId>
+            <artifactId>pressroom</artifactId>
             <version>${project.version}</version>
             <type>war</type>
             <scope>test</scope>

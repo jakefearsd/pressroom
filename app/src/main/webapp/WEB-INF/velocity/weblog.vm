@@ -1257,14 +1257,14 @@ var rollerContent = {
     };
   })(document.currentScript),
   // 'idle' until the first block is found, 'loading' while the script
-  // element is in flight, 'ready' once window.RollerContent exists.
+  // element is in flight, 'ready' once window.PressroomContent exists.
   state: 'idle',
   // Roots found while the bundle was still loading, enhanced when it lands.
   queue: []
 };
 
 function rollerEnhanceContent(root) {
-  window.RollerContent.enhance(root, rollerContent);
+  window.PressroomContent.enhance(root, rollerContent);
 }
 
 // Re-runnable, because the editor's live preview swaps the article's

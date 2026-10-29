@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<entity-mappings version="3.0" xmlns="https://jakarta.ee/xml/ns/persistence/orm"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence/orm https://jakarta.ee/xml/ns/persistence/orm_3_0.xsd">
+    <package>com.wikantik.pressroom.pojos</package>
+    <entity metadata-complete="true" name="MediaFile"
+            class="com.wikantik.pressroom.pojos.MediaFile" access="PROPERTY">
+        <table name="roller_mediafile"/>
+        <named-query name="MediaFile.getByWeblogAndOrigpath">
+            <query>SELECT f FROM MediaFile f WHERE f.weblog = ?1 AND f.originalPath = ?2</query>
+        </named-query>
+        <named-query name="MediaFile.getByDirectoryAndContentHash">
+            <query>SELECT f FROM MediaFile f WHERE f.directory = ?1 AND f.contentHash = ?2 ORDER BY f.dateUploaded</query>
+        </named-query>
+        <attributes>
+            <id name="id">
+                <column name="id"/>
+            </id>
+            <basic name="name">
+                <column name="name" insertable="true" updatable="true" unique="false" nullable="false"/>
+            </basic>
+            <basic name="width">
+                <column name="width" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="height">
+                <column name="height" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="originalPath">
+                <column name="origpath" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="description">
+                <column name="description" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="altText">
+                <column name="alt_text" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="contentType">
+                <column name="content_type" insertable="true" updatable="true" unique="false" nullable="false"/>
+            </basic>
+            <basic name="copyrightText">
+                <column name="copyright_text" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="length">
+                <column name="size_in_bytes" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="dateUploaded">
+                <column name="date_uploaded" insertable="true" updatable="true" unique="false"/>
+            </basic>
+            <basic name="lastUpdated">
+                <column name="last_updated" insertable="true" updatable="true" unique="false"/>
+            </basic>
+            <basic name="creatorUserName">
+                <column name="creator" insertable="true" updatable="true" unique="false" />
+            </basic>
+            <basic name="blurhash">
+                <column name="blurhash" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="contentHash">
+                <column name="content_hash" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="exifCamera">
+                <column name="exif_camera" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="exifLens">
+                <column name="exif_lens" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="exifExposure">
+                <column name="exif_exposure" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="exifAperture">
+                <column name="exif_aperture" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="exifIso">
+                <column name="exif_iso" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="exifFocalLength">
+                <column name="exif_focal_length" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="exifTaken">
+                <column name="exif_taken" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="gpsLatitude">
+                <column name="gps_latitude" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="gpsLongitude">
+                <column name="gps_longitude" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="sortOrder">
+                <column name="sort_order" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="focalX">
+                <column name="focal_x" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="focalY">
+                <column name="focal_y" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <many-to-one name="directory" target-entity="com.wikantik.pressroom.pojos.MediaFileDirectory">
+                <join-column name="directoryid" insertable="true" updatable="true" nullable="false"/>
+            </many-to-one>
+            <many-to-one name="weblog" target-entity="com.wikantik.pressroom.pojos.Weblog">
+                <join-column name="weblogid" insertable="true" updatable="true" nullable="false"/>
+            </many-to-one>
+            <one-to-many name="tags" mapped-by="mediaFile" target-entity="com.wikantik.pressroom.pojos.MediaFileTag" fetch="LAZY">
+                <cascade>
+                    <cascade-persist /> <!-- Added so entry added by addTag() gets persisted -->
+                    <cascade-remove />
+                </cascade>
+            </one-to-many>
+            <transient name="lastModified"/>
+            <transient name="path"/>
+            <transient name="imageFile"/>
+            <transient name="addedTags"/>
+            <transient name="removedTags"/>
+            <transient name="tagsAsString"/>
+            <transient name="inputStream"/>
+            <transient name="thumbnailInputStream"/>
+            <transient name="thumbnailHeight"/>
+            <transient name="thumbnailWidth"/>
+        </attributes>
+    </entity>
+</entity-mappings>

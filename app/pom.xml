@@ -22,14 +22,14 @@ limitations under the License.
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.apache.roller</groupId>
-        <artifactId>roller-project</artifactId>
+        <groupId>com.wikantik.pressroom</groupId>
+        <artifactId>pressroom-project</artifactId>
         <version>0.4.2</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <name>Roller webapp</name>
-    <artifactId>roller-webapp</artifactId>
+    <artifactId>pressroom</artifactId>
     <packaging>war</packaging>
 
     <properties>
@@ -45,8 +45,8 @@ limitations under the License.
         <pitest.version>1.30.1</pitest.version>
         <pitest-junit5.version>1.2.3</pitest-junit5.version>
         <!-- Overridden on the command line to scope a mutation run. -->
-        <pit.targets>org.apache.roller.weblogger.util.*</pit.targets>
-        <pit.tests>org.apache.roller.weblogger.util.*</pit.tests>
+        <pit.targets>com.wikantik.pressroom.util.*</pit.targets>
+        <pit.tests>com.wikantik.pressroom.util.*</pit.tests>
         <spring-boot.version>4.1.2</spring-boot.version>
         <velocity.version>2.4.1</velocity.version>
         <!-- Ahead of Boot 4.1.2's managed 6.0.3; see the junit-bom import. -->
@@ -356,11 +356,11 @@ limitations under the License.
         </dependency>
 
         <!-- jakarta.xml.bind-api removed: zero source references
-             (org.apache.roller.**), and `dependency:tree` shows it was only
+             (com.wikantik.pressroom.**), and `dependency:tree` shows it was only
              present because of this now-deleted declaration - nothing else
              in the graph pulls it transitively. Confirmed at runtime too: a
              `java -jar` boot smoke against a migrated ./roller db dev
-             database - full RollerLifecycle/EclipseLink/Lucene bootstrap,
+             database - full PressroomLifecycle/EclipseLink/Lucene bootstrap,
              front page (302) and login page (200) both serve - with zero
              JAXB-related exceptions in roller.log. -->
 
@@ -816,7 +816,7 @@ limitations under the License.
             <scope>test</scope>
         </dependency>
 
-        <!-- RollerTestBootstrap is a LauncherSessionListener, so the launcher
+        <!-- PressroomTestBootstrap is a LauncherSessionListener, so the launcher
              API must be on the test classpath at compile time. -->
         <dependency>
             <groupId>org.junit.platform</groupId>
@@ -912,7 +912,7 @@ limitations under the License.
                     <attachClasses>true</attachClasses>
                     <!-- web.xml is deleted (Stage 1B Task 3): all its servlet/
                          filter/error-page/welcome-file/jsp-config content is now
-                         Java config under org.apache.roller.weblogger.boot, and
+                         Java config under com.wikantik.pressroom.boot, and
                          Boot's embedded container never read web.xml anyway.
                          Without this flag maven-war-plugin fails the build
                          outright when web.xml is missing. -->
@@ -928,7 +928,7 @@ limitations under the License.
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <!-- spring-boot-dependencies is imported as a dependency BOM only
-                     (the parent stays roller-project, not spring-boot-starter-parent),
+                     (the parent stays pressroom-project, not spring-boot-starter-parent),
                      so it does not manage plugin versions; pin explicitly. -->
                 <version>${spring-boot.version}</version>
                 <executions>
@@ -1214,8 +1214,8 @@ limitations under the License.
                  code you are working on:
 
                    mvn -pl app test-compile org.pitest:pitest-maven:mutationCoverage \
-                       -Dpit.targets='org.apache.roller.weblogger.util.*' \
-                       -Dpit.tests='org.apache.roller.weblogger.util.*'
+                       -Dpit.targets='com.wikantik.pressroom.util.*' \
+                       -Dpit.tests='com.wikantik.pressroom.util.*'
 
                  Report: app/target/pit-reports/index.html -->
             <plugin>
@@ -1238,8 +1238,8 @@ limitations under the License.
                          the suite once per mutant and container startup would dominate
                          the runtime. Mutation testing targets pure logic anyway. -->
                     <excludedTestClasses>
-                        <param>org.apache.roller.weblogger.business.*</param>
-                        <param>org.apache.roller.weblogger.ui.rendering.model.SearchResults*</param>
+                        <param>com.wikantik.pressroom.business.*</param>
+                        <param>com.wikantik.pressroom.ui.rendering.model.SearchResults*</param>
                     </excludedTestClasses>
                 </configuration>
                 <dependencies>

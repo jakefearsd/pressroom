@@ -20,7 +20,7 @@
     -->
     <tag>
         <name>date</name>
-        <tag-class>org.apache.roller.weblogger.ui.tags.DateTag</tag-class>
+        <tag-class>com.wikantik.pressroom.ui.tags.DateTag</tag-class>
         <body-content>empty</body-content>
         <attribute>
             <name>value</name>
@@ -41,13 +41,13 @@
 
     <function>
         <name>getProp</name>
-        <function-class>org.apache.roller.weblogger.config.WebloggerRuntimeConfig</function-class>
+        <function-class>com.wikantik.pressroom.config.WebloggerRuntimeConfig</function-class>
         <function-signature>java.lang.String getProperty(java.lang.String)</function-signature>
     </function>
 
     <function>
         <name>getBooleanProp</name>
-        <function-class>org.apache.roller.weblogger.config.WebloggerRuntimeConfig</function-class>
+        <function-class>com.wikantik.pressroom.config.WebloggerRuntimeConfig</function-class>
         <function-signature>boolean getBooleanProperty(java.lang.String)</function-signature>
     </function>
 

@@ -221,7 +221,7 @@
 
     <div class="rail-box">
         <%-- id="saveButton" is load-bearing beyond this page:
-             RollerIT.setGlobalFlags -- which every browser test that permutes a
+             PressroomIT.setGlobalFlags -- which every browser test that permutes a
              runtime property goes through -- clicks it by that id. --%>
         <button id="saveButton" class="btn btn-primary w-100" type="submit"><spring:message code="generic.save"/></button>
     </div>

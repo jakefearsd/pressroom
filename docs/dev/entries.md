@@ -70,7 +70,7 @@ incidental re-save) — minor PII residue worth clearing.
   minute (`formatWallClock` drops seconds, so an unchanged editor save
   truncates an API-set event time's seconds; ruled acceptable).
 - **The sidebar is retired.** `EntrySidebar.jsp` is deleted;
-  `RollerViewResolver`'s `.EntryEdit` layout maps `"sidebar"` to
+  `PressroomViewResolver`'s `.EntryEdit` layout maps `"sidebar"` to
   `tiles/empty.jsp`; its four recent-entries lists (20 each) are gone from
   `EntryEditController` too.
 - **Entry plugins are gone; the shortcode render seam stays.**
@@ -81,7 +81,7 @@ incidental re-save) — minor PII residue worth clearing.
   because `ShortcodeExpander` runs through that call (see Shortcodes); both
   call sites now apply every site-registered plugin unconditionally.
 - **Editor**: CodeMirror 6, built by Maven from `app/frontend/` (see "Frontend
-  build"); one global, `RollerEditor.create(options)`, called from
+  build"); one global, `PressroomEditor.create(options)`, called from
   `EditorScript.jsp`. `EditorSurface.jsp` (markup) and `EditorScript.jsp`
   (script) are shared verbatim by the entry and page editors. `options`
   carries `onSave`/`onPublish`/`onHelp` and `onBold`/`onItalic`/`onLink`,

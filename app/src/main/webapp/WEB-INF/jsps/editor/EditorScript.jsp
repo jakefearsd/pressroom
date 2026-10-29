@@ -19,7 +19,7 @@
   The editor's script half, shared by the entry editor and the page editor;
   EditorSurface.jsp is the markup half and both screens include both.
 
-  What is here: mounting RollerEditor, the toolbar commands, the write/split/
+  What is here: mounting PressroomEditor, the toolbar commands, the write/split/
   preview mode control and the live preview, the three seam functions, paste
   and drop upload, the status line, the guide, the media chooser and the SEO
   image pickers.
@@ -54,7 +54,7 @@
          it one day, but it would edit Markdown rather than produce HTML. --%>
     var rollerEditor = null;
 
-    <%-- RollerEditor.create takes ONE onChange, and several things on these
+    <%-- PressroomEditor.create takes ONE onChange, and several things on these
          pages need to know the text moved: the leave-warning dirty flag,
          local draft recovery, the live preview and the word count. The page
          owns the fan-out rather than each of them reaching into the editor,
@@ -190,7 +190,7 @@
         document.querySelectorAll('#shortcodeInsertMenu .shortcode-card').forEach(function (b) {
             shortcodes.push({ name: b.dataset.shortcode, snippet: b.dataset.snippet, label: b.textContent.trim() });
         });
-        rollerEditor = RollerEditor.create({
+        rollerEditor = PressroomEditor.create({
             textarea: document.getElementById('edit_content'),
             placeholder: '<spring:message code="editor.placeholder" javaScriptEscape="true"/>',
             shortcodes: shortcodes,
@@ -532,7 +532,7 @@
         }
     }
 
-    <%-- The refusal detail is server text (RollerMessages), rendered via
+    <%-- The refusal detail is server text (PressroomMessages), rendered via
          textContent -- never innerHTML -- so it cannot carry markup even
          though it did not come from a message key with a known-safe shape. --%>
     function rollerStatusError(message) {

@@ -159,7 +159,7 @@ jobs:
           distribution: 'zulu'
           cache: maven
 
-      # Chrome ships on ubuntu-latest; RollerIT runs it headless.
+      # Chrome ships on ubuntu-latest; PressroomIT runs it headless.
       #
       # -Dit.parallel.enabled=false: CI runs the browser suite SERIALLY.
       #

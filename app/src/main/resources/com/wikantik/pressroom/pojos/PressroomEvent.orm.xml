@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<entity-mappings version="3.0" xmlns="https://jakarta.ee/xml/ns/persistence/orm"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence/orm https://jakarta.ee/xml/ns/persistence/orm_3_0.xsd">
+    <package>com.wikantik.pressroom.pojos</package>
+    <entity metadata-complete="true" name="PressroomEvent"
+            class="com.wikantik.pressroom.pojos.PressroomEvent" access="PROPERTY">
+        <table name="roller_event"/>
+        <named-query name="PressroomEvent.getByWeblog">
+            <query>SELECT e FROM PressroomEvent e WHERE e.weblog = ?1 ORDER BY e.occurredAt DESC</query>
+        </named-query>
+        <named-query name="PressroomEvent.removeByWeblog">
+            <query>DELETE FROM PressroomEvent e WHERE e.weblog = ?1</query>
+        </named-query>
+        <attributes>
+            <id name="id">
+                <column name="id"/>
+            </id>
+            <basic name="eventType">
+                <column name="event_type" insertable="true" updatable="true" nullable="false"/>
+                <enumerated>STRING</enumerated>
+            </basic>
+            <basic name="entryAnchor">
+                <column name="entry_anchor" insertable="true" updatable="true" nullable="true"/>
+            </basic>
+            <basic name="pageSlug">
+                <column name="page_slug" insertable="true" updatable="true" nullable="true"/>
+            </basic>
+            <basic name="occurredAt">
+                <column name="occurred_at" insertable="true" updatable="true" nullable="false"/>
+            </basic>
+            <many-to-one name="weblog" target-entity="com.wikantik.pressroom.pojos.Weblog">
+                <join-column name="weblogid" insertable="true" updatable="true" nullable="false"/>
+            </many-to-one>
+        </attributes>
+    </entity>
+</entity-mappings>

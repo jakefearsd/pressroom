@@ -113,7 +113,7 @@ mkdir -p "$(dirname "$PIDFILE")" "$(dirname "$LOG")"
 # createUser!save.rol was named by them -- docs/dev/build-and-ci.md, "CI: three
 # tiers" -- and the next one should be too). Every path that answers
 # 403 to an admin POST -- Spring Security's CsrfFilter, its
-# ExceptionTranslationFilter, and RollerHandlerInterceptor's own DENIED
+# ExceptionTranslationFilter, and PressroomHandlerInterceptor's own DENIED
 # branches -- logs only at DEBUG, so at INFO the app log of a failing run
 # said nothing at all. IT runs are short and the log is per-run; the volume
 # is affordable and the next occurrence names its cause. Those loggers reach
@@ -127,7 +127,7 @@ mkdir -p "$(dirname "$PIDFILE")" "$(dirname "$LOG")"
      -jar "$WAR" --server.port="$PORT" --server.servlet.context-path="$CONTEXT_PATH" \
      --management.server.port=0 \
      --logging.level.org.springframework.security=DEBUG \
-     --logging.level.org.apache.roller.weblogger.ui.controllers.RollerHandlerInterceptor=DEBUG \
+     --logging.level.com.wikantik.pressroom.ui.controllers.PressroomHandlerInterceptor=DEBUG \
      > "$LOG" 2>&1 &
 APP_PID=$!
 echo "$APP_PID" > "$PIDFILE"

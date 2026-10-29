@@ -16,9 +16,9 @@
   directory of this distribution.
 --%>
 <%@ page language="java" contentType="text/html; charset=UTF-8" %>
-<%@ page import="org.apache.roller.weblogger.business.*" %>
-<%@ page import="org.apache.roller.weblogger.pojos.*" %>
-<%@ page import="org.apache.roller.weblogger.ui.core.RollerSession" %>
+<%@ page import="com.wikantik.pressroom.business.*" %>
+<%@ page import="com.wikantik.pressroom.pojos.*" %>
+<%@ page import="com.wikantik.pressroom.ui.core.PressroomSession" %>
 <%@ page import="java.util.List" %>
 <%@ page import="org.springframework.web.context.support.WebApplicationContextUtils" %>
 <%
@@ -28,7 +28,7 @@
 WebloggerProvider provider = WebApplicationContextUtils
         .getRequiredWebApplicationContext(application).getBean(WebloggerProvider.class);
 Weblogger weblogger = provider.getWeblogger();
-User user = RollerSession.getRollerSession(request, provider)
+User user = PressroomSession.getRollerSession(request, provider)
         .getAuthenticatedUser(weblogger.getUserManager());
 List weblogs = weblogger.getWeblogManager().getUserWeblogs(user, true);
 

@@ -83,24 +83,24 @@ passwords are test-only values, kept in those two files. `VERIFY_PROFILE` is
 disabled in the realm, or Keycloak 24+ stops a user with no name at an
 "Update Account Information" form. `SsoSignInIT` drives it at both context
 paths, and `CommentsIT` signs its readers in through it with the shared
-`RollerIT.signInWithKeycloak`. The sign-in callback is built from the Absolute URL, so the class
-sets `site.absoluteurl` to `baseUrl()` (`RollerIT.setSiteAbsoluteUrl`) once,
+`PressroomIT.signInWithKeycloak`. The sign-in callback is built from the Absolute URL, so the class
+sets `site.absoluteurl` to `baseUrl()` (`PressroomIT.setSiteAbsoluteUrl`) once,
 restores it in `@AfterAll`, and holds `GLOBAL_CONFIG` **write** for the
 whole class, as `VirtualHostIT` does: anything that writes
 `site.absoluteurl` takes that lock.
 
-`RollerPostgresContainer` (the unit suite's shared, never-stopped container)
+`PressroomPostgresContainer` (the unit suite's shared, never-stopped container)
 adds a JVM shutdown hook behind Ryuk, one process that can be missing.
 
 Tests (fast suite, not `-Pit`): `ItHarnessLeakTest` (real scripts, fake
 processes, and a fake `docker` on `PATH` for the container passes),
 `ItHarnessPomTest` (`removeVolumes`, every container named per run and handed
 to the supervisor, plugin order putting `app-stop` before `pg-stop`),
-`RollerPostgresContainerTest`.
+`PressroomPostgresContainerTest`.
 
 ## Permuting global runtime flags
 
-Browser tests permute global runtime properties via `RollerIT.setGlobalFlag`
+Browser tests permute global runtime properties via `PressroomIT.setGlobalFlag`
 (`setGlobalFlags` for several in one save), which drives the real Admin
 Settings page, returning the old value. One shared instance: every caller
 must restore in a `finally`.
@@ -156,7 +156,7 @@ built in `@BeforeAll`; the parallelism worth having is across classes.
 Two resource locks, whose failure modes both look like something other than
 a race:
 
-- **`RollerIT.GLOBAL_CONFIG`** — held **write** by the six classes that
+- **`PressroomIT.GLOBAL_CONFIG`** — held **write** by the six classes that
   call `setGlobalFlag`: `GlobalConfigMatrixIT`, `ThemeIT`
   (`CUSTOM_THEMES_ALLOWED`), `ThemeMatrixIT` (`uploads.enabled`), `ApiIT`,
   `VirtualHostIT`, and `McpIT` (`uploads.enabled`, on its one import-refusal
@@ -182,7 +182,7 @@ a race:
   `Element not found {button[formaction$='entryAddWithMediaFile.rol']}`).
   `MarkdownContentIT`'s publishing test holds it read too, as McpIT's
   weblog-creating methods do: it creates a weblog.
-- **`RollerIT.SHARED_MEDIA`** — held **write** by the five classes that
+- **`PressroomIT.SHARED_MEDIA`** — held **write** by the five classes that
   upload, crop or delete media on the shared `WEBLOG_HANDLE` (`GalleryIT`,
   `MediaCropIT`, `MediaBulkUploadIT`, `EditorSeoIT`, `EditorUploadIT`); **read** by
   `ErrorCasesIT`, which only browses the media page.
@@ -260,7 +260,7 @@ click's user activation -- as a navigation that overrides the next test's
 new recorder's listeners exist (the "blind" failure).
 
 **Rule.** A click that navigates is followed by a wait only the NEW page can
-satisfy. `RollerIT.clickAndAwaitNewPage(element)` (and
+satisfy. `PressroomIT.clickAndAwaitNewPage(element)` (and
 `awaitNewPageAfter(action)` for a click plus `confirm()` or a scripted
 submit) waits for the old `<html>` to go stale, which happens only when the
 answer commits. Waits that look sufficient and are not: `#entry` after an

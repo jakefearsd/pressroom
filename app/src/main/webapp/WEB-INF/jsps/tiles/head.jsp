@@ -36,12 +36,12 @@ mismatch 404s the asset on every page that includes this file.
      only on the two screens that mount an editor: the bundle is a few
      hundred KB and every other admin page would pay for it.
 
-     Keyed off ${tile_content}, the content-area JSP path RollerViewResolver
+     Keyed off ${tile_content}, the content-area JSP path PressroomViewResolver
      publishes as a request attribute for the layout, rather than off the
      request URL: that is the same value the layout uses to decide what it is
      rendering, so the two cannot disagree. If a third screen ever mounts an
      editor, add it here; the failure mode is loud (the page's own inline
-     script throws "RollerEditor is not defined"), not silent.
+     script throws "PressroomEditor is not defined"), not silent.
 
      Last in this file so roller-editor.css can override roller.css. --%>
 <c:if test="${fn:contains(tile_content, 'EntryEdit.jsp') or fn:contains(tile_content, 'PageEdit.jsp')}">

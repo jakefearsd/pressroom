@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<entity-mappings version="3.0" xmlns="https://jakarta.ee/xml/ns/persistence/orm"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence/orm https://jakarta.ee/xml/ns/persistence/orm_3_0.xsd">
+    <package>com.wikantik.pressroom.pojos</package>
+    <entity metadata-complete="true" name="RuntimeConfigProperty"
+            class="com.wikantik.pressroom.pojos.RuntimeConfigProperty" access="PROPERTY">
+        <table name="roller_properties"/>
+        <named-query name="RuntimeConfigProperty.getAll">
+            <query>SELECT r FROM RuntimeConfigProperty r</query>
+        </named-query>
+        <!-- Values only, straight from the rows: what JPAPropertiesManagerImpl
+             remembers, never an entity a unit of work may have edited. -->
+        <named-query name="RuntimeConfigProperty.getAllValues">
+            <query>SELECT r.name, r.value FROM RuntimeConfigProperty r</query>
+        </named-query>
+        <attributes>
+            <id name="name">
+                <column name="name" unique="true" />
+            </id>
+            <basic name="value">
+                <column name="value" insertable="true" updatable="true" unique="false"/>
+            </basic>
+        </attributes>
+    </entity>
+</entity-mappings>

@@ -3,7 +3,7 @@
               xmlns="https://jakarta.ee/xml/ns/persistence"
               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
               xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd">
-  <persistence-unit name="RollerPU" transaction-type="RESOURCE_LOCAL">
+  <persistence-unit name="PressroomPU" transaction-type="RESOURCE_LOCAL">
     <!-- DB configuration done in roller-custom.properties (see Install guide)
          Avoiding DB configuration here to allow the same persistence.xml to be used between
          testing and prod (which have different DB configuration)
@@ -11,31 +11,31 @@
 
     <!-- Don't put trailing spaces after the .orm.xml, Hibernate doesn't strip them and
          hence reports can't-find-the-mapping-file errors -->
-    <mapping-file>org/apache/roller/weblogger/pojos/WeblogEntryAttribute.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/UserRole.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/RuntimeConfigProperty.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/TaskLock.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/User.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/WeblogCategory.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/WeblogEntry.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/WeblogEntryTagAggregate.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/WeblogEntryTag.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/WeblogTemplate.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/ObjectPermission.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/WeblogPermission.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/Weblog.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/MediaFile.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/MediaFileTag.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/MediaFileDirectory.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/WeblogEntryRevision.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/CustomTemplateRendition.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/WeblogPage.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/WeblogRedirect.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/Business.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/ReaderComment.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/RollerEvent.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/FormSubmission.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/UserToken.orm.xml</mapping-file>
-    <mapping-file>org/apache/roller/weblogger/pojos/ApiToken.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/WeblogEntryAttribute.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/UserRole.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/RuntimeConfigProperty.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/TaskLock.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/User.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/WeblogCategory.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/WeblogEntry.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/WeblogEntryTagAggregate.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/WeblogEntryTag.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/WeblogTemplate.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/ObjectPermission.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/WeblogPermission.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/Weblog.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/MediaFile.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/MediaFileTag.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/MediaFileDirectory.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/WeblogEntryRevision.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/CustomTemplateRendition.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/WeblogPage.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/WeblogRedirect.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/Business.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/ReaderComment.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/PressroomEvent.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/FormSubmission.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/UserToken.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/ApiToken.orm.xml</mapping-file>
   </persistence-unit>
 </persistence>

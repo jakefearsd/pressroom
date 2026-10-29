@@ -17,7 +17,7 @@ resolves through the index at the end of `CLAUDE.md`.
   (Java-config transcription of the retired `web.xml`)
 - **Security Config**: `app/src/main/java/.../boot/SecurityConfig.java`
   (Java-config transcription of the retired `WEB-INF/security.xml`)
-- **JPA Mappings**: `app/src/main/resources/org/apache/roller/weblogger/pojos/*.orm.xml`
+- **JPA Mappings**: `app/src/main/resources/com/wikantik/pressroom/pojos/*.orm.xml`
 - **Velocity Templates**: `app/src/main/webapp/WEB-INF/velocity/templates/`
 - **Logging**: `app/src/main/resources/log4j2.xml`. Its `logging.pattern`
   writes every message through `%encode{%m}{CRLF}`, so a CR or LF in a logged

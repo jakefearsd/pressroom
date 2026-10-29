@@ -38,7 +38,7 @@ const common = {
 await build({
   ...common,
   entryPoints: ['src/editor.js'],
-  globalName: 'RollerEditor',
+  globalName: 'PressroomEditor',
   outfile: '../src/main/webapp/roller-ui/scripts/roller-editor.js'
 });
 
@@ -50,7 +50,7 @@ const hljsVersion = JSON.parse(readFileSync('node_modules/highlight.js/package.j
 await build({
   ...common,
   entryPoints: ['src/content.js'],
-  globalName: 'RollerContent',
+  globalName: 'PressroomContent',
   banner: { js: `/*! highlight.js ${hljsVersion} | BSD-3-Clause | Copyright (c) 2006, Ivan Sagalaev */` },
   outfile: '../src/main/webapp/roller-ui/scripts/roller-content.js'
 });

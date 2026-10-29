@@ -23,11 +23,11 @@ setup: `docker_deployment.md`, "Reader sign-in (Google)". Code:
    (`authorization_request_not_found`, `sso=failed`). An Absolute URL with no
    scheme or host answers `unavailable`.
 2. Spring's `oauth2Login()` redirects to the provider with `state`, `nonce`
-   and PKCE. `RollerAuthorizationRequestResolver` sets the redirect URI.
+   and PKCE. `PressroomAuthorizationRequestResolver` sets the redirect URI.
 3. The provider returns to `/roller-ui/sso/callback`. Spring validates `state`,
    exchanges the code and checks the ID token.
 4. `ReaderOidcUserService` hands the claims to `ReaderAccounts.signIn`. The
-   principal (`RollerOidcUser`) has the **Roller username** as its name and the
+   principal (`PressroomOidcUser`) has the **Roller username** as its name and the
    account's Roller roles, read from the database, as authorities. Nothing in
    the token grants a role.
 5. `SsoSuccessHandler` redirects to the stored return path (re-sanitised;
@@ -141,7 +141,7 @@ render by principal name, so a reader's render is never shared.
 
 ## Passwords and administration
 
-A bound account never gets or uses a password: `RollerUserDetailsService`
+A bound account never gets or uses a password: `PressroomUserDetailsService`
 refuses it, forgot-password and reset-password skip it, User Admin's
 set-password link and password fields and Profile's password change are
 hidden and refused server-side (`User.isSsoBound`). User Admin marks it
@@ -202,10 +202,10 @@ provider. Sign-in changes the session id.
   registers it container-wide on `/*`. Same hazard as `ApiTokenAuthFilter`.
 - The authorized-client repository discards the access token; the default
   in-memory one would hold every reader's token forever.
-- **The principal is a `RollerOidcUser`, not a `UserDetails`.** Anything that
+- **The principal is a `PressroomOidcUser`, not a `UserDetails`.** Anything that
   reads the signed-in user off the security context must accept it (its
   `getName()` is the Roller username; a bare `OidcUser`'s is the provider's
-  subject, never trusted). `RollerHandlerInterceptor.resolveAuthenticatedUser`
+  subject, never trusted). `PressroomHandlerInterceptor.resolveAuthenticatedUser`
   handled only `UserDetails` and `String`, so a reader promoted to editor was
   sent back to log in from `menu.rol` and every other page requiring a user.
   The unit sweeps signed readers in with a `UserDetails`, so only

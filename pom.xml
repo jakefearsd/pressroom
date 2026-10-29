@@ -20,8 +20,8 @@ limitations under the License.
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
-    <groupId>org.apache.roller</groupId>
-    <artifactId>roller-project</artifactId>
+    <groupId>com.wikantik.pressroom</groupId>
+    <artifactId>pressroom-project</artifactId>
     <version>0.4.2</version>
     <packaging>pom</packaging>
 
@@ -366,9 +366,9 @@ limitations under the License.
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
-                                        <include>org.apache.roller.weblogger.ui.rendering</include>
-                                        <include>org.apache.roller.weblogger.ui.rendering.servlets</include>
-                                        <include>org.apache.roller.weblogger.ui.rendering.velocity</include>
+                                        <include>com.wikantik.pressroom.ui.rendering</include>
+                                        <include>com.wikantik.pressroom.ui.rendering.servlets</include>
+                                        <include>com.wikantik.pressroom.ui.rendering.velocity</include>
                                     </includes>
                                     <limits>
                                         <limit>
@@ -433,11 +433,11 @@ limitations under the License.
                                          ratchet. -->
                                     <element>PACKAGE</element>
                                     <includes>
-                                        <include>org.apache.roller.weblogger.ui.core.security.sso</include>
-                                        <include>org.apache.roller.weblogger.business.comments</include>
-                                        <include>org.apache.roller.weblogger.ui.restapi.auth</include>
-                                        <include>org.apache.roller.weblogger.ui.restapi.v1</include>
-                                        <include>org.apache.roller.weblogger.ui.restapi.mcp</include>
+                                        <include>com.wikantik.pressroom.ui.core.security.sso</include>
+                                        <include>com.wikantik.pressroom.business.comments</include>
+                                        <include>com.wikantik.pressroom.ui.restapi.auth</include>
+                                        <include>com.wikantik.pressroom.ui.restapi.v1</include>
+                                        <include>com.wikantik.pressroom.ui.restapi.mcp</include>
                                     </includes>
                                     <limits>
                                         <limit>

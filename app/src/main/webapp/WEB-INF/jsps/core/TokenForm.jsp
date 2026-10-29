@@ -21,7 +21,7 @@
      included by the agent page and Profile -> API tokens. The controller sets
      tokenFormAction, tokenFormOwner (an agent's username, or nothing),
      pinChoices and tokenFormValues. The weblog field is "pin", never
-     "weblog": RollerHandlerInterceptor reads that as the action weblog. --%>
+     "weblog": PressroomHandlerInterceptor reads that as the action weblog. --%>
 <form method="post" action="<c:url value='${tokenFormAction}'/>" class="form-stacked" id="tokenForm">
     <sec:csrfInput/>
     <c:if test="${not empty tokenFormOwner}">

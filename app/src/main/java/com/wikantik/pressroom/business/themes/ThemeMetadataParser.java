@@ -1,0 +1,240 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ *  contributor license agreements.  The ASF licenses this file to You
+ * under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.  For additional information regarding
+ * copyright in this work, please see the NOTICE file in the top level
+ * directory of this distribution.
+ */
+
+package com.wikantik.pressroom.business.themes;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.apache.commons.lang3.StringUtils;
+import com.wikantik.pressroom.pojos.TemplateRendition.RenditionType;
+import com.wikantik.pressroom.pojos.TemplateRendition.TemplateLanguage;
+import com.wikantik.pressroom.pojos.ThemeTemplate.ComponentType;
+import org.jdom2.Document;
+import org.jdom2.Element;
+import org.jdom2.JDOMException;
+import com.wikantik.pressroom.util.SafeXml;
+import org.jdom2.input.SAXBuilder;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.List;
+import java.util.Locale;
+
+
+/**
+ * The parser for theme xml descriptors.
+ *
+ * This class unmarshalls a theme descriptor into a set of objects.
+ */
+public class ThemeMetadataParser {
+
+    /**
+     * Unmarshall the given input stream into our defined
+     * set of Java objects.
+     **/
+    public ThemeMetadata unmarshall(InputStream instream)
+        throws ThemeParsingException, IOException, JDOMException {
+        
+        if(instream == null) {
+            throw new IOException("InputStream is null!");
+        }
+        
+        ThemeMetadata theme = new ThemeMetadata();
+        
+        SAXBuilder builder = SafeXml.saxBuilder();
+        Document doc = builder.build(instream);
+        
+        // start at root and get theme id, name, description and author
+        Element root = doc.getRootElement();
+        theme.setId(root.getChildText("id"));
+        theme.setName(root.getChildText("name"));
+        theme.setDescription(root.getChildText("description"));
+        theme.setAuthor(root.getChildText("author"));
+
+        // if either id or name is null then throw a parsing exception
+        if(StringUtils.isEmpty(theme.getId()) || StringUtils.isEmpty(theme.getName())) {
+            throw new ThemeParsingException("'id' and 'name' are required theme elements");
+        }
+        
+        // now grab the preview image path
+        Element previewImage = root.getChild("preview-image");
+        if (previewImage != null) {
+            theme.setPreviewImage(previewImage.getAttributeValue("path"));
+        } else {
+            throw new ThemeParsingException("No preview image specified");
+        }
+        
+        // grab the stylesheet if it exists
+        Element stylesheet = root.getChild("stylesheet");
+        if (stylesheet != null) {
+            theme.setStylesheet(elementToStylesheet(stylesheet));
+
+        }
+        
+        // now grab the static resources
+        List<Element> resources = root.getChildren("resource");
+        for (Element resource : resources) {
+            theme.addResource(resource.getAttributeValue("path"));
+        }
+        
+        // now grab the templates
+        boolean weblogActionTemplate = false;
+        List<Element> templates = root.getChildren("template");
+        for (Element template : templates) {
+
+            ThemeMetadataTemplate tmpl = elementToTemplateMetadata(template);
+            theme.addTemplate(tmpl);
+
+            if(ComponentType.WEBLOG.equals(tmpl.getAction())) {
+                weblogActionTemplate = true;
+            }
+        }
+        
+        // make sure all required elements are present and values are valid
+        // check that there is a template with action='weblog'
+        if(!weblogActionTemplate) {
+            throw new ThemeParsingException("did not find a template of action = 'weblog'");
+        }
+        
+        return theme;
+    }
+    
+    
+	@SuppressFBWarnings(
+			value = "IMPROPER_UNICODE",
+			justification = "Reads the navbar and hidden flags as true in any case from a theme's own theme.xml, "
+					+ "which ships with the theme; no request or author supplies it.")
+	private ThemeMetadataTemplate elementToTemplateMetadata(Element element)
+			throws ThemeParsingException {
+
+		ThemeMetadataTemplate template = new ThemeMetadataTemplate();
+
+		template.setName(element.getChildText("name"));
+		template.setDescription(element.getChildText("description"));
+		template.setLink(element.getChildText("link"));
+		template.setContentType(element.getChildText("contentType"));
+        String actionString = element.getAttributeValue("action");
+        if (StringUtils.isEmpty(actionString)) {
+            throw new ThemeParsingException("Template must contain an 'action' element");
+        } else {
+            try {
+                template.setAction(ComponentType.valueOf(actionString.toUpperCase(Locale.ROOT)));
+            } catch (IllegalArgumentException e) {
+                throw new ThemeParsingException("Unknown template action value '" + actionString + "'", e);
+            }
+        }
+
+		//parsing template code segment
+		parseRenditions(element, template, "Rendition");
+
+		String navbar = element.getChildText("navbar");
+		if ("true".equalsIgnoreCase(navbar)) {
+			template.setNavbar(true);
+		}
+
+		String hidden = element.getChildText("hidden");
+		if ("true".equalsIgnoreCase(hidden)) {
+			template.setHidden(true);
+		}
+
+		// validate template
+		if (StringUtils.isEmpty(template.getName())) {
+			throw new ThemeParsingException("templates must contain a 'name' element");
+		}
+
+		return template;
+	}
+    
+    
+
+    /**
+     * Reads every {@code <rendition>} under an element onto its template.
+     *
+     * <p>Templates and the stylesheet declare renditions identically, and this
+     * loop was written out once for each -- 193 tokens of duplication, the
+     * largest block in the tree below CPD's 200-token gate, and so invisible to
+     * it. The two copies differed in exactly one thing: the word each used when
+     * complaining about a missing contentsFile.
+     *
+     * @param label how to name this element in that one error message, so
+     *              "Rendition must contain..." and "stylesheet must contain..."
+     *              both survive verbatim -- ThemeMetadataParserTest asserts on
+     *              them
+     */
+    private void parseRenditions(Element element, ThemeMetadataTemplate template, String label)
+            throws ThemeParsingException {
+
+        for (Element renditionElement : element.getChildren("rendition")) {
+            ThemeMetadataTemplateRendition rendition = new ThemeMetadataTemplateRendition();
+
+            String renditionValue = renditionElement.getAttributeValue("type");
+            if (renditionValue != null) {
+                try {
+                    rendition.setType(RenditionType.valueOf(renditionValue.toUpperCase(Locale.ROOT)));
+                } catch (IllegalArgumentException e) {
+                    throw new ThemeParsingException("Invalid rendition type " + renditionValue + " found.", e);
+                }
+            } else {
+                // default to standard if type not provided, as most templates are single-rendition
+                rendition.setType(RenditionType.STANDARD);
+            }
+
+            String templateString = renditionElement.getChildText("templateLanguage");
+            if (StringUtils.isEmpty(templateString)) {
+                throw new ThemeParsingException("rendition must contain a 'templateLanguage' element");
+            }
+            try {
+                rendition.setTemplateLang(TemplateLanguage.valueOf(templateString.toUpperCase(Locale.ROOT)));
+            } catch (IllegalArgumentException e) {
+                throw new ThemeParsingException("Unknown templateLanguage value '" + templateString + "'", e);
+            }
+
+            rendition.setContentsFile(renditionElement.getChildText("contentsFile"));
+            if (StringUtils.isEmpty(rendition.getContentsFile())) {
+                throw new ThemeParsingException(label + " must contain a 'contentsFile' element");
+            }
+
+            template.addTemplateRendition(rendition);
+        }
+    }
+
+    private ThemeMetadataTemplate elementToStylesheet(Element element) 
+            throws ThemeParsingException {
+        
+        ThemeMetadataTemplate template = new ThemeMetadataTemplate();
+        
+        template.setName(element.getChildText("name"));
+        template.setDescription(element.getChildText("description"));
+        template.setLink(element.getChildText("link"));
+        template.setContentType(element.getChildText("contentType"));
+        template.setAction(ComponentType.STYLESHEET);
+
+        // parsing rendition segment
+        parseRenditions(element, template, "stylesheet");
+
+        // validate template
+        if(StringUtils.isEmpty(template.getName())) {
+            throw new ThemeParsingException("stylesheet must contain a 'name' element");
+        }
+        if(StringUtils.isEmpty(template.getLink())) {
+            throw new ThemeParsingException("stylesheet must contain a 'link' element");
+        }
+
+        return template;
+    }
+    
+}

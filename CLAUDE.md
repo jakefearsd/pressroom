@@ -129,7 +129,7 @@ This repository is part of the **Simple Agility** small-business ecosystem:
   methods named `*validate*`/`check*` with a log-only catch, and
   `boolean` methods that swallow — what matters is the value they fall
   through to (every one today falls to `false`, i.e. deny or degrade;
-  `RollerHandlerInterceptor.preHandle` is fail-closed because a
+  `PressroomHandlerInterceptor.preHandle` is fail-closed because a
   swallowed weblog lookup leaves `actionWeblog` null and `enforceSecurity`
   then refuses).
 
@@ -225,7 +225,7 @@ Details and history: `docs/dev/quality-gates.md`, `docs/dev/build-and-ci.md`.
 - **No static service locator.** Container-managed classes take
   `@Lazy Weblogger` in the constructor (the `@Lazy` is load-bearing);
   entities under `pojos/` import no business-tier type.
-- **One authorization path**: `RollerHandlerInterceptor`, shared by the JSP
+- **One authorization path**: `PressroomHandlerInterceptor`, shared by the JSP
   UI and `/api/v1`; it vouches only for the action weblog, so every by-id
   lookup goes through `WeblogOwnership` / `BaseController.lookup*`. The API
   answers 404, never 403, for anything the caller may not see.

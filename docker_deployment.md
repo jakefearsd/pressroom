@@ -138,7 +138,7 @@ environment-variable-configured container.
   property name — so `ROLLER_DATABASE_JDBC_USERNAME` sets
   `database.jdbc.username`, `ROLLER_MAIL_HOSTNAME` sets `mail.hostname`, and
   so on for any key documented in
-  `app/src/main/resources/org/apache/roller/weblogger/config/roller.properties`.
+  `app/src/main/resources/com/wikantik/pressroom/config/roller.properties`.
   The variables `.env.example` ships (and their meaning) are:
   - `ROLLER_INSTALLATION_TYPE=auto` — the app applies no migration itself;
     by then the `provision` service has already applied every pending one

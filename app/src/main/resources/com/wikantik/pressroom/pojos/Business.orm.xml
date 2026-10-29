@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<entity-mappings version="3.0" xmlns="https://jakarta.ee/xml/ns/persistence/orm"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence/orm https://jakarta.ee/xml/ns/persistence/orm_3_0.xsd">
+    <package>com.wikantik.pressroom.pojos</package>
+    <entity metadata-complete="true" name="Business"
+            class="com.wikantik.pressroom.pojos.Business" access="PROPERTY">
+        <table name="roller_business"/>
+        <named-query name="Business.getAll">
+            <query>SELECT b FROM Business b ORDER BY b.name</query>
+        </named-query>
+        <named-query name="Weblog.countByBusiness">
+            <query>SELECT COUNT(w) FROM Weblog w WHERE w.business = ?1</query>
+        </named-query>
+        <named-query name="Weblog.getByBusiness">
+            <query>SELECT w FROM Weblog w WHERE w.business = ?1</query>
+        </named-query>
+        <attributes>
+            <id name="id">
+                <column name="id"/>
+            </id>
+            <basic name="name">
+                <column name="name" nullable="false"/>
+            </basic>
+            <basic name="businessType">
+                <column name="business_type" nullable="false"/>
+                <enumerated>STRING</enumerated>
+            </basic>
+            <basic name="websiteUrl">
+                <column name="website_url"/>
+            </basic>
+            <basic name="bookingUrl">
+                <column name="booking_url"/>
+            </basic>
+            <basic name="telephone">
+                <column name="telephone"/>
+            </basic>
+            <basic name="email">
+                <column name="email"/>
+            </basic>
+            <basic name="logoUrl">
+                <column name="logo_url"/>
+            </basic>
+            <basic name="sameAs">
+                <column name="same_as"/>
+            </basic>
+            <basic name="areaServed">
+                <column name="area_served"/>
+            </basic>
+            <basic name="description">
+                <column name="description"/>
+            </basic>
+            <basic name="created">
+                <column name="created" nullable="false"/>
+            </basic>
+            <basic name="lastModified">
+                <column name="last_modified" nullable="false"/>
+            </basic>
+        </attributes>
+    </entity>
+</entity-mappings>

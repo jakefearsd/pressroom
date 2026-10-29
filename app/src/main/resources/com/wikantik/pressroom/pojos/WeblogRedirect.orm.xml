@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<entity-mappings version="3.0" xmlns="https://jakarta.ee/xml/ns/persistence/orm"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence/orm https://jakarta.ee/xml/ns/persistence/orm_3_0.xsd">
+    <package>com.wikantik.pressroom.pojos</package>
+    <entity metadata-complete="true" name="WeblogRedirect"
+            class="com.wikantik.pressroom.pojos.WeblogRedirect" access="PROPERTY">
+        <table name="roller_weblog_redirect"/>
+        <named-query name="WeblogRedirect.getByWeblogAndSource">
+            <query>SELECT r FROM WeblogRedirect r WHERE r.weblog = ?1 AND r.sourcePath = ?2</query>
+        </named-query>
+        <!-- Newest first; source as tiebreak so two rules minted in the same
+             millisecond do not swap places between reads. -->
+        <named-query name="WeblogRedirect.getByWeblog">
+            <query>SELECT r FROM WeblogRedirect r WHERE r.weblog = ?1 ORDER BY r.createdAt DESC, r.sourcePath ASC</query>
+        </named-query>
+        <named-query name="WeblogRedirect.getByWeblogAndTarget">
+            <query>SELECT r FROM WeblogRedirect r WHERE r.weblog = ?1 AND r.targetPath = ?2</query>
+        </named-query>
+        <named-query name="WeblogRedirect.removeByWeblog">
+            <query>DELETE FROM WeblogRedirect r WHERE r.weblog = ?1</query>
+        </named-query>
+        <!-- The hit is bumped in one statement rather than load-modify-store
+             so concurrent redirects cannot lose updates to each other. -->
+        <named-query name="WeblogRedirect.recordHit">
+            <query>UPDATE WeblogRedirect r SET r.hitCount = r.hitCount + 1, r.lastHitAt = ?2 WHERE r.id = ?1</query>
+        </named-query>
+        <attributes>
+            <id name="id">
+                <column name="id"/>
+            </id>
+            <basic name="sourcePath">
+                <column name="source_path" insertable="true" updatable="true" nullable="false"/>
+            </basic>
+            <basic name="targetPath">
+                <column name="target_path" insertable="true" updatable="true" nullable="false"/>
+            </basic>
+            <basic name="origin">
+                <column name="origin" insertable="true" updatable="true" nullable="false"/>
+                <enumerated>STRING</enumerated>
+            </basic>
+            <basic name="createdAt">
+                <column name="created_at" insertable="true" updatable="true" nullable="false"/>
+            </basic>
+            <basic name="hitCount">
+                <column name="hit_count" insertable="true" updatable="true" nullable="false"/>
+            </basic>
+            <basic name="lastHitAt">
+                <column name="last_hit_at" insertable="true" updatable="true" nullable="true"/>
+            </basic>
+            <many-to-one name="weblog" target-entity="com.wikantik.pressroom.pojos.Weblog">
+                <join-column name="weblogid" insertable="true" updatable="true" nullable="false"/>
+            </many-to-one>
+        </attributes>
+    </entity>
+</entity-mappings>

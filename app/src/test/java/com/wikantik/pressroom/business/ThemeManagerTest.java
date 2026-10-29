@@ -1,0 +1,62 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  The ASF licenses this file to You
+ * under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.  For additional information regarding
+ * copyright in this work, please see the NOTICE file in the top level
+ * directory of this distribution.
+ */
+
+package com.wikantik.pressroom.business;
+
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import com.wikantik.pressroom.TestUtils;
+import com.wikantik.pressroom.business.themes.ThemeManager;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+public class ThemeManagerTest  {
+    private static final Logger log = LoggerFactory.getLogger(ThemeManagerTest.class);
+
+    @BeforeEach
+    public void setUp() throws Exception {
+        TestUtils.setupWeblogger();
+    }
+
+    @AfterEach
+    public void tearDown() throws Exception {
+    }
+
+    @Test
+    public void testThemeAssumptions() throws Exception {
+
+        ThemeManager themeManager = TestUtils.weblogger().getThemeManager();
+        themeManager.initialize();
+
+        assertNotNull( themeManager.getTheme("journal") );
+        assertNotNull( themeManager.getTheme("journal").getStylesheet() );
+        // Frontpage front-door restyle (Theme Wave Task 5): frontpage now
+        // ships its own stylesheet (frontpage-custom.css) the same way
+        // journal/travel/portfolio do, so per-weblog overrides work here too.
+        assertNotNull( themeManager.getTheme("frontpage").getStylesheet() );
+    }
+        
+}
+
+
+
+

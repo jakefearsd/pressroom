@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<entity-mappings version="3.0" xmlns="https://jakarta.ee/xml/ns/persistence/orm"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence/orm https://jakarta.ee/xml/ns/persistence/orm_3_0.xsd">
+    <package>com.wikantik.pressroom.pojos</package>
+    <entity metadata-complete="true" name="WeblogEntry"
+            class="com.wikantik.pressroom.pojos.WeblogEntry" access="PROPERTY">
+        <table name="weblogentry"/>
+        <!-- Names no status, and must keep seeing trash: a trashed entry
+             still holds its category, and deleting the category out from
+             under it would leave nothing to restore into. See
+             WeblogEntrySearchCriteria for the one place trash IS excluded. -->
+        <named-query name="WeblogEntry.getByCategory">
+            <query>SELECT w FROM WeblogEntry w WHERE w.category = ?1</query>
+        </named-query>
+        <named-query name="WeblogEntry.getByPinnedToMain&amp;statusOrderByPubTimeDesc">
+            <query>SELECT w FROM WeblogEntry w WHERE w.pinnedToMain = ?1 AND w.status = ?2 ORDER BY w.pubTime DESC</query>
+        </named-query>
+        <!-- Names no status, and must keep seeing trash: the caller (permalink
+             lookup) only renders isPublished() entries and TRASHED is never
+             PUBLISHED, so a trashed entry 404s at its permalink without this
+             query knowing anything about trash. -->
+        <named-query name="WeblogEntry.getByWebsite&amp;AnchorOrderByPubTimeDesc">
+            <query>SELECT w FROM WeblogEntry w WHERE w.website = ?1 AND w.anchor = ?2 ORDER BY w.pubTime DESC</query>
+        </named-query>
+        <!-- Names no status, and must keep seeing trash: a trashed entry
+             still occupies its anchor. Excluding it here would let a new
+             entry take the anchor and collide the moment the old one is
+             restored. -->
+        <named-query name="WeblogEntry.getByWebsite&amp;Anchor">
+            <query>SELECT w FROM WeblogEntry w WHERE w.website = ?1 AND w.anchor = ?2</query>
+        </named-query>
+        <!-- Names no status, and must keep seeing trash: this backs the
+             weblog-deletion cascade, and deleting a weblog must take its
+             trash with it. -->
+        <named-query name="WeblogEntry.getByWebsite">
+            <query>SELECT w FROM WeblogEntry w WHERE w.website = ?1</query>
+        </named-query>
+        <named-query name="WeblogEntry.getIdsByCreator">
+            <!-- Any status, the trash included; the caller asks for one row
+                 (an existence test on the we_creator_idx index). -->
+            <query>SELECT e.id FROM WeblogEntry e WHERE e.creatorUserName = ?1</query>
+        </named-query>
+        <named-query name="WeblogEntry.getCountDistinctByStatus">
+            <!-- DISTINCT is not required for this query -->
+            <query>SELECT COUNT(e) FROM WeblogEntry e WHERE e.status = ?1</query>
+        </named-query>
+        <named-query name="WeblogEntry.getCountDistinctByStatus&amp;Website">
+            <!-- DISTINCT is not required for this query -->
+            <query>SELECT COUNT(e) FROM WeblogEntry e WHERE e.status = ?1 AND e.website = ?2</query>
+        </named-query>
+        <!-- Remembers the title/text/summary this entry was loaded with, so a
+             later save can tell whether the content actually changed and, when
+             it did, record what it displaced. Without this the entry has only
+             the caller's new values by the time it reaches saveWeblogEntry. -->
+        <post-load method-name="snapshotLoadedContent"/>
+        <attributes>
+            <id name="id">
+                <column name="id"/>
+            </id>
+            <basic name="title">
+                <column name="title" insertable="true" updatable="true" unique="false"/>
+            </basic>
+            <basic name="summary">
+                <column name="summary" insertable="true" updatable="true" unique="false"/>
+            </basic>
+            <basic name="text">
+                <column name="text" insertable="true" updatable="true" unique="false"/>
+            </basic>
+            <basic name="searchDescription">
+                <column name="search_description" insertable="true" updatable="true" unique="false"/>
+            </basic>
+            <basic name="anchor">
+                <column name="anchor" insertable="true" updatable="true" unique="false"/>
+            </basic>
+            <basic name="pubTime">
+                <column name="pubtime" insertable="true" updatable="true" unique="false"/>
+            </basic>
+            <basic name="updateTime">
+                <column name="updatetime" insertable="true" updatable="true" unique="false"/>
+            </basic>
+            <basic name="status">
+                <column name="status" insertable="true" updatable="true" unique="false"/>
+                <enumerated>STRING</enumerated>
+            </basic>
+            <basic name="link">
+                <column name="link" insertable="true" updatable="true" unique="false"/>
+            </basic>
+            <basic name="rightToLeft">
+                <column name="righttoleft" insertable="true" updatable="true" unique="false"/>
+            </basic>
+            <basic name="pinnedToMain">
+                <column name="pinnedtomain" insertable="true" updatable="true" unique="false"/>
+            </basic>
+            <basic name="locale">
+                <column name="locale" insertable="true" updatable="true" unique="false"/>
+            </basic>
+            <basic name="creatorUserName">
+                <column name="creator" insertable="true" updatable="true" unique="false" />
+            </basic>
+            <basic name="featuredImageId">
+                <column name="featured_image_id" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="metaTitle">
+                <column name="meta_title" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="ogImageId">
+                <column name="og_image_id" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="canonicalUrl">
+                <column name="canonical_url" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="noindex">
+                <column name="noindex" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="commentsClosed">
+                <column name="comments_closed" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="jsonLdType">
+                <column name="jsonld_type" insertable="true" updatable="true" unique="false" nullable="true"/>
+                <enumerated>STRING</enumerated>
+            </basic>
+            <basic name="geoLatitude">
+                <column name="geo_latitude" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="geoLongitude">
+                <column name="geo_longitude" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="eventStart">
+                <column name="event_start" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="eventEnd">
+                <column name="event_end" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="eventLocation">
+                <column name="event_location" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="newsletterSentAt">
+                <column name="newsletter_sent_at" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="trashedAt">
+                <column name="trashed_at" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <many-to-one name="category" target-entity="com.wikantik.pressroom.pojos.WeblogCategory">
+                <join-column name="categoryid" insertable="true" updatable="true" nullable="false"/>
+            </many-to-one>
+            <many-to-one name="website" target-entity="com.wikantik.pressroom.pojos.Weblog">
+                <join-column name="websiteid" insertable="true" updatable="true" nullable="false"/>
+            </many-to-one>
+            <one-to-many name="entryAttributes" mapped-by="entry" target-entity="com.wikantik.pressroom.pojos.WeblogEntryAttribute" fetch="LAZY">
+                <cascade>
+                    <cascade-persist/>
+                    <cascade-remove />
+                </cascade>
+            </one-to-many>
+            <one-to-many name="tags" mapped-by="weblogEntry" target-entity="com.wikantik.pressroom.pojos.WeblogEntryTag" fetch="LAZY">
+                <order-by>name</order-by>
+                <cascade>
+                    <cascade-persist /> <!-- Added so entry added by addTag() gets persisted -->
+                    <cascade-remove />
+                </cascade>
+            </one-to-many>
+            <transient name="categories"/>
+            <transient name="displayTitle"/>
+            <transient name="draft"/>
+            <transient name="pending"/>
+            <transient name="permaLink"/>
+            <transient name="published"/>
+            <transient name="rss09xDescription"/>
+            <transient name="tagsAsString"/>
+            <transient name="addedTags"/>
+            <transient name="removedTags"/>
+        </attributes>
+    </entity>
+</entity-mappings>

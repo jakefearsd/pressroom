@@ -17,9 +17,9 @@
 --%><%@ page session="false" %><%
 // What / shows -- a site page, a front-page blog or the site directory -- is
 // FrontDoor's decision (docs/dev/routing.md, "The site root").
-request.getRequestDispatcher(org.apache.roller.weblogger.ui.rendering.FrontDoor.forwardPath(
+request.getRequestDispatcher(com.wikantik.pressroom.ui.rendering.FrontDoor.forwardPath(
         org.springframework.web.context.support.WebApplicationContextUtils
                 .getRequiredWebApplicationContext(application)
-                .getBean(org.apache.roller.weblogger.business.WebloggerProvider.class)))
+                .getBean(com.wikantik.pressroom.business.WebloggerProvider.class)))
         .forward(request, response);
 %>

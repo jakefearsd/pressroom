@@ -16,7 +16,7 @@ Roller is **PostgreSQL-only** — one engine for dev, test and production
 - **JNDI Name**: `jdbc/rollerdb`
 
 **Four files name the server major, and `PostgresMajorPinTest` fails the build
-when they disagree**: both compose files, `RollerPostgresContainer`
+when they disagree**: both compose files, `PressroomPostgresContainer`
 (Testcontainers) and `it-selenium/pom.xml`. They had already drifted — the
 compose files pinned a digest while both harnesses floated on a bare tag —
 and nothing went red, which is the point: a suite green on a different major
@@ -62,7 +62,7 @@ with a hex password. Anything else that builds an EMF must do the same.
 EclipseLink's shared cache is sized in `roller.properties`
 (`eclipselink.cache.*`, passed to the persistence unit with every other
 `eclipselink.` key; `persistence.xml` properties are **not** read, since
-`RollerPersistenceUnitInfo.getProperties()` is empty). Every type is
+`PressroomPersistenceUnitInfo.getProperties()` is empty). Every type is
 `SoftWeak`: the N most recently cached objects are held softly, the rest
 weakly. **Entries 5000, revisions 100, everything else 1000.** Until
 2026-10-22 nothing was configured, so every type had EclipseLink's 100.

@@ -28,7 +28,7 @@ resolves through the index at the end of `CLAUDE.md`.
   in the same commit as the CSS.
 - **The tiles system** is homegrown, not Apache Tiles: `ViewDefinition`
   (layout JSP + attribute JSPs such as `content`, `menu`) is resolved by
-  `RollerViewResolver`, which registers eight base layouts in `init()`:
+  `PressroomViewResolver`, which registers eight base layouts in `init()`:
   `.tiles-mainmenupage`, `.tiles-tabbedpage`, `.tiles-simplepage`,
   `.tiles-loginpage`, `.tiles-installpage`, `.tiles-errorpage`,
   `.tiles-popuppage`, `.tiles-barepage`. `.tiles-barepage` (content, no head)
@@ -172,7 +172,7 @@ resolves through the index at the end of `CLAUDE.md`.
   for everyone else) shows a Site row with Pages, Media and Theme, the only
   three screens that accept the site space. `UISecurityEnforced.allowsSiteSpace()`
   is false by default and true on the Pages, PageEdit, ThemeEdit and media
-  controllers; `RollerHandlerInterceptor.siteSpaceOffered` clears the action
+  controllers; `PressroomHandlerInterceptor.siteSpaceOffered` clears the action
   weblog for any other request (and for a non-admin, an anonymous caller or any
   API/MCP request), so a refusal looks exactly like an unknown handle (redirect
   to access-denied; API 404). `MenuHelper` shows only those three tabs on the
@@ -257,7 +257,7 @@ resolves through the index at the end of `CLAUDE.md`.
   Saving a business touches `lastModified` of every weblog using it (see
   Business profiles in content-features.md).
 - **Copyright**: Settings carries a per-blog `copyright` (V038, plain text, 255 max, blank stored as null so the footer falls back to "(c) year blog name"); the bean trims it, `WeblogSettingsRules` bounds it, `/api/v1` mirrors `tagline`.
-- **Footer (colophon)**: `tiles/footer.jsp` renders one `Colophon.of(weblogger, null, clock)` record (holder = `site.name` on admin screens): `div.colophon` > `p.colophon-copyright`, `p.colophon-meta` (privacy link, `Roller 0.4.0 (abc1234)`, `released yyyy-MM-dd`, each a span, dots from CSS, each omitted when null). Keys are `footer.copyright.default|privacy|version|version.revision|released`; the Velocity footer reuses them and the three class names. The Velocity footer alone also carries `span.colophon-account`, the way into the admin screens from any blog (a blog on `/` replaces the site directory, which had the only such link): Sign in for a visitor, Main menu and Sign out for an author, Sign out for a reader, the frontpage top bar's keys and rules. It is safe in cached pages because page-cache keys carry `/user=<name>` (`ThemeColophonRenderingTest`). Colophon strings are raw: the JSP `fn:escapeXml`s each, and passes message arguments as nested `<spring:argument>` tags, because a string `arguments=` attribute is split on commas and a holder can contain one (the year goes through `escapeXml` too, so MessageFormat prints `2026`, not `2,026`). Every full-page layout includes the footer tile; `tiles-popuppage` (modal/iframe) and `tiles-barepage` (transient script iframe) deliberately do not, and the install/bootstrap pages carry it too: before bootstrap the JSP's Weblogger lookup is caught and `Colophon.of(null, ...)` reads version, revision and build time from the packaged `/roller-version.properties` (no copyright line, no privacy link) (`AdminChromeJspTest`, `RollerViewResolverTest`).
+- **Footer (colophon)**: `tiles/footer.jsp` renders one `Colophon.of(weblogger, null, clock)` record (holder = `site.name` on admin screens): `div.colophon` > `p.colophon-copyright`, `p.colophon-meta` (privacy link, `Roller 0.4.0 (abc1234)`, `released yyyy-MM-dd`, each a span, dots from CSS, each omitted when null). Keys are `footer.copyright.default|privacy|version|version.revision|released`; the Velocity footer reuses them and the three class names. The Velocity footer alone also carries `span.colophon-account`, the way into the admin screens from any blog (a blog on `/` replaces the site directory, which had the only such link): Sign in for a visitor, Main menu and Sign out for an author, Sign out for a reader, the frontpage top bar's keys and rules. It is safe in cached pages because page-cache keys carry `/user=<name>` (`ThemeColophonRenderingTest`). Colophon strings are raw: the JSP `fn:escapeXml`s each, and passes message arguments as nested `<spring:argument>` tags, because a string `arguments=` attribute is split on commas and a holder can contain one (the year goes through `escapeXml` too, so MessageFormat prints `2026`, not `2,026`). Every full-page layout includes the footer tile; `tiles-popuppage` (modal/iframe) and `tiles-barepage` (transient script iframe) deliberately do not, and the install/bootstrap pages carry it too: before bootstrap the JSP's Weblogger lookup is caught and `Colophon.of(null, ...)` reads version, revision and build time from the packaged `/roller-version.properties` (no copyright line, no privacy link) (`AdminChromeJspTest`, `PressroomViewResolverTest`).
 
 ## Categories
 - **Ownership-check every id.** `BaseController.lookupEntry`/
@@ -290,7 +290,7 @@ Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`; 
   agent's page alike, with the Members page's rules: a weblog keeps one Admin, nothing is granted
   while `groupblogging.enabled` is off (the section says so), a reader is never granted. Its weblog
   field is `handle` and the token form's is `pin`: a field named `weblog` is read by
-  `RollerHandlerInterceptor` as the action weblog.
+  `PressroomHandlerInterceptor` as the action weblog.
 - **The token form, reveal and revoke live in `TokenFormController`**, the abstract base of
   `ProfileTokensController`, `AgentController` and `AdminTokensController`. The secret reaches
   `profileTokens!reveal.rol` only as a one-read flash attribute (`REVEALED_TOKEN`), never in a URL;

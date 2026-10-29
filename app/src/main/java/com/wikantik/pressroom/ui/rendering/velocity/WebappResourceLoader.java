@@ -1,0 +1,322 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ *  contributor license agreements.  The ASF licenses this file to You
+ * under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.  For additional information regarding
+ * copyright in this work, please see the NOTICE file in the top level
+ * directory of this distribution.
+ */
+
+package com.wikantik.pressroom.ui.rendering.velocity;
+
+import java.io.File;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+
+import jakarta.servlet.ServletContext;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import com.wikantik.pressroom.ui.core.PressroomContext;
+import org.apache.velocity.exception.ResourceNotFoundException;
+import org.apache.velocity.runtime.resource.Resource;
+import org.apache.velocity.runtime.resource.loader.ResourceLoader;
+import org.apache.velocity.util.ExtProperties;
+
+/**
+ * Loads Velocity resources from the webapp.
+ * 
+ * All resource urls begin from the root of the webapp. If a resource path is
+ * relative (does not begin with a /) then it is prefixed with the path
+ * /WEB-INF/velocity/, which is where Roller keeps its velocity files.
+ * 
+ * Resource loader that uses the ServletContext of a webapp to load Velocity
+ * templates. (it's much easier to use with servlets than the standard
+ * FileResourceLoader, in particular the use of war files is transparent).
+ * 
+ * The default search path is '/' (relative to the webapp root), but you can
+ * change this behaviour by specifying one or more paths by mean of as many
+ * resource.loader.webapp.path properties as needed in the velocity.properties
+ * file.
+ * 
+ * All paths must be relative to the root of the webapp.
+ * 
+ * To enable caching and cache refreshing the resource.loader.webapp.cache and
+ * resource.loader.webapp.modification_check_interval properties need to be set in
+ * the velocity.properties file ... auto-reloading of global macros requires the
+ * resource.loader.webapp.cache property to be set to 'false'.
+ * 
+ */
+public class WebappResourceLoader extends ResourceLoader {
+
+	private static final Logger log = LoggerFactory.getLogger(WebappResourceLoader.class);
+
+	// The root paths for templates (relative to webapp's root).
+	protected String[] paths = null;
+	protected Map<String, String> templatePaths = null;
+	protected ServletContext servletContext = null;
+
+	/**
+	 * This is abstract in the base class, so we need it. <br>
+	 * NOTE: this expects that the ServletContext has already been placed in the
+	 * runtime's application attributes under its full class name (i.e.
+	 * "javax.servlet.ServletContext").
+	 * 
+	 * @param configuration
+	 *            the {@link ExtProperties} associated with this resource
+	 *            loader.
+	 */
+    @Override
+	public void init(ExtProperties configuration) {
+
+		log.debug("WebappResourceLoader: initialization starting.");
+
+		// get configured paths
+		paths = configuration.getStringArray("path");
+		if (paths == null || paths.length == 0) {
+			paths = new String[1];
+			paths[0] = "/";
+		} else {
+			// make sure the paths end with a '/'
+			for (int i = 0; i < paths.length; i++) {
+				if (!paths[i].endsWith("/")) {
+					paths[i] += '/';
+				}
+				log.debug("WebappResourceLoader: added template path - '{}'", paths[i]);
+			}
+		}
+
+		// get the ServletContext
+		servletContext = PressroomContext.getServletContext();
+
+		if (log.isDebugEnabled()) {
+			log.debug("Servlet Context = {}", servletContext.getRealPath("/WEB-INF/velocity/"));
+        }
+
+		// init the template paths map
+		templatePaths = new HashMap<>();
+
+		log.debug("WebappResourceLoader: initialization complete.");
+	}
+
+	/**
+	 * Get an Reader so that the Runtime can build a template with it.
+	 * 
+	 * @param name
+	 *            name of template to get
+	 * @return Reader containing the template
+	 * @throws ResourceNotFoundException if template not found in classpath.
+	 *
+	 */
+    // The InputStream found below is wrapped and RETURNED to the caller as
+    // an InputStreamReader (see the return statement at the end of this
+    // method) -- Velocity's own resource-manager machinery reads and closes
+    // it once the template load completes. Closing it here would hand back
+    // an already-closed reader.
+    @SuppressWarnings("PMD.CloseResource")
+    @Override
+	public Reader getResourceReader(String name, String encoding) {
+
+		InputStream result = null;
+		Exception exception = null;
+
+		if (name == null || name.length() == 0) {
+			throw new ResourceNotFoundException(
+					"WebappResourceLoader: No template name provided");
+		}
+
+		// names are <template>|<renditionType>
+		// loading weblog.vm etc will not have the type so only check for
+		// one.
+		// split always yields at least one element -- name is known non-empty
+		// above, and String.split never returns a zero-length array -- so there
+		// is nothing here to guard against.
+		String[] split = name.split("\\|", 2);
+
+		if (servletContext == null) {
+			// getResourceAsStream() below would otherwise throw an
+			// unchecked NullPointerException; a null check here reports the
+			// real problem (no ServletContext was set) as the same
+			// ResourceNotFoundException every other failure in this method
+			// produces, instead of catching-and-rethrowing NPE as a
+			// diagnostic technique.
+			throw new ResourceNotFoundException(
+					"WebappResourceLoader: ServletContext not initialized; cannot load '" + name + "'");
+		}
+
+		String savedPath = templatePaths.get(name);
+		if (savedPath != null) {
+			result = servletContext.getResourceAsStream(savedPath + split[0]);
+		}
+
+		if (result == null) {
+            for (String pathSegment : paths) {
+				String path = pathSegment + split[0];
+				try {
+					result = servletContext.getResourceAsStream(path);
+
+					// save the path and exit the loop if we found the template
+					if (result != null) {
+						templatePaths.put(name, pathSegment);
+						break;
+					}
+				} catch (Exception e) {
+					// only save the first one for later throwing
+					if (exception == null) {
+						log.debug("WebappResourceLoader: Could not load {}", path, e);
+						exception = e;
+					}
+				}
+			}
+		}
+
+		// If we never found the template
+		if (result == null) {
+			String msg = "WebappResourceLoader: Resource '" + name
+					+ "' not found.";
+
+			// convert to a general Velocity ResourceNotFoundException
+			if (exception == null) {
+				throw new ResourceNotFoundException(msg);
+			} else {
+				msg += "  Due to: " + exception;
+				throw new ResourceNotFoundException(msg, exception);
+			}
+		}
+
+		return new InputStreamReader(result, StandardCharsets.UTF_8);
+	}
+
+	/**
+	 * Gets the cached file.
+	 * 
+	 * @param rootPath
+	 *            the root path
+	 * @param fileName
+	 *            the file name
+	 * 
+	 * @return the cached file
+	 */
+	@SuppressFBWarnings(
+			value = "PATH_TRAVERSAL_IN",
+			justification = "Only names Velocity has already loaded through ServletContext.getResourceAsStream, "
+					+ "which serves nothing outside the webapp, reach this; the File is only checked for existence and a "
+					+ "modification time, never read.")
+	private File getCachedFile(String rootPath, String fileName) {
+
+		// Looked up under the name exactly as getResourceReader stored it. This
+		// used to strip leading slashes first, with a comment claiming the same
+		// was done at cache time -- it is not, and never was, so a name that
+		// began with '/' was stored under one key and looked for under another.
+		// The miss was silent: savedPath came back null and concatenated into
+		// the path below as the literal text "null", which cannot exist, so the
+		// resource was reported modified on every check and reloaded forever.
+		String savedPath = templatePaths.get(fileName);
+
+		// names are <template>|<renditionType>
+		// loading weblog.vm etc will not have the type so only check for
+		// one.
+		String[] split = fileName.split("\\|", 2);
+		return new File(rootPath + savedPath, split[0]);
+
+	}
+
+	/**
+	 * Checks to see if a resource has been deleted, moved or modified. When
+	 * using the resource.loader.cache=true option
+	 * 
+	 * @param resource
+	 *            Resource The resource to check for modification
+	 * 
+	 * @return boolean True if the resource has been modified
+	 */
+    @Override
+	@SuppressFBWarnings(
+			value = "PATH_TRAVERSAL_IN",
+			justification = "Only names Velocity has already loaded through ServletContext.getResourceAsStream, "
+					+ "which serves nothing outside the webapp, reach this; the Files are only checked for existence and "
+					+ "a modification time, never read.")
+	public boolean isSourceModified(Resource resource) {
+
+		String rootPath = servletContext.getRealPath("/");
+		if (rootPath == null) {
+			// RootPath is null if the servlet container cannot translate the
+			// virtual path to a real path for any reason (such as when the
+			// content is being made available from a .war archive)
+			return false;
+		}
+
+		// first, try getting the previously found file
+		String fileName = resource.getName();
+		File cachedFile = getCachedFile(rootPath, fileName);
+		if (!cachedFile.exists()) {
+			// then the source has been moved and/or deleted
+			return true;
+		}
+
+		/*
+		 * Check to see if the file can now be found elsewhere before it is
+		 * found in the previously saved path
+		 */
+		File currentFile = null;
+		for (String path : paths) {
+			currentFile = new File(rootPath + path, fileName);
+			if (currentFile.canRead()) {
+				/*
+				 * stop at the first resource found (just like in
+				 * getResourceStream())
+				 */
+				break;
+			}
+		}
+
+		// A new file was found for the resource, or the resource is no longer
+		// readable -- unless it's still the cached file and still readable, in
+		// which case (and only then) compare the last modified values.
+		return !(cachedFile.equals(currentFile) && cachedFile.canRead())
+				|| cachedFile.lastModified() != resource.getLastModified();
+	}
+
+	/**
+	 * Checks to see when a resource was last modified
+	 * 
+	 * @param resource
+	 *            Resource the resource to check
+	 * 
+	 * @return long The time when the resource was last modified or 0 if the
+	 *         file can't be read
+	 */
+    @Override
+	public long getLastModified(Resource resource) {
+
+		String rootPath = servletContext.getRealPath("/");
+		if (rootPath == null) {
+			// RootPath is null if the servlet container cannot translate the
+			// virtual path to a real path for any reason (such as when the
+			// content is being made available from a .war archive)
+			return 0;
+		}
+
+		File cachedFile = getCachedFile(rootPath, resource.getName());
+		if (cachedFile.canRead()) {
+			return cachedFile.lastModified();
+		} else {
+			return 0;
+		}
+
+	}
+}

@@ -267,7 +267,7 @@ resolves through the index at the end of `CLAUDE.md`.
   `ThemeResourceLoader` used to answer that constant (hence
   `resource.loader.theme.cache` false); it now reports the theme's real disk
   timestamp, `0` → "modified" when it cannot tell, and is cached.
-  `RollerResourceLoader` serves CUSTOM templates from database rows with no
+  `PressroomResourceLoader` serves CUSTOM templates from database rows with no
   timestamp and still answers a constant `false`, so
   `resource.loader.roller.cache` must stay `false` until it reports a real
   timestamp. `LoaderCachingContractTest` probes every *cached* loader with a

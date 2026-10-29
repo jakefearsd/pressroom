@@ -107,7 +107,7 @@ limitations under the License.
         
         <!-- roller.log and the console; everything not named here goes to the
              console alone, through Root -->
-        <Logger name="org.apache.roller"       level="info"  additivity="false"> <AppenderRef ref="asyncRoller"/> </Logger>
+        <Logger name="com.wikantik.pressroom"       level="info"  additivity="false"> <AppenderRef ref="asyncRoller"/> </Logger>
         <Logger name="org.apache.velocity"     level="info"  additivity="false"> <AppenderRef ref="asyncRoller"/> </Logger>
         <Logger name="org.springframework"     level="info"  additivity="false"> <AppenderRef ref="asyncRoller"/> </Logger>
         <Logger name="org.openid4java"         level="info"  additivity="false"> <AppenderRef ref="asyncRoller"/> </Logger>

@@ -1,0 +1,1006 @@
+package com.wikantik.pressroom.util;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import jakarta.activation.FileTypeMap;
+import jakarta.activation.MimetypesFileTypeMap;
+import jakarta.mail.internet.AddressException;
+import jakarta.mail.internet.InternetAddress;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.text.StringEscapeUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import com.wikantik.pressroom.util.RegexUtil;
+import com.wikantik.pressroom.util.PressroomConstants;
+
+/**
+ * General purpose utilities, not for use in templates.
+ */
+public final class Utilities {
+
+    private Utilities() {
+    }
+
+    /** The <code>Log</code> instance for this class. */
+    private static final Logger log = LoggerFactory.getLogger(Utilities.class);
+
+    public static final String TAG_SPLIT_CHARS = " ,\n\r\f\t";
+
+    private static final Pattern mLinkPattern = Pattern.compile("<a href=.*?>",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern OPENING_B_TAG_PATTERN = Pattern.compile(
+            "&lt;b&gt;", Pattern.CASE_INSENSITIVE);
+    private static final Pattern CLOSING_B_TAG_PATTERN = Pattern.compile(
+            "&lt;/b&gt;", Pattern.CASE_INSENSITIVE);
+    private static final Pattern OPENING_I_TAG_PATTERN = Pattern.compile(
+            "&lt;i&gt;", Pattern.CASE_INSENSITIVE);
+    private static final Pattern CLOSING_I_TAG_PATTERN = Pattern.compile(
+            "&lt;/i&gt;", Pattern.CASE_INSENSITIVE);
+    private static final Pattern OPENING_BLOCKQUOTE_TAG_PATTERN = Pattern
+            .compile("&lt;blockquote&gt;", Pattern.CASE_INSENSITIVE);
+    private static final Pattern CLOSING_BLOCKQUOTE_TAG_PATTERN = Pattern
+            .compile("&lt;/blockquote&gt;", Pattern.CASE_INSENSITIVE);
+    private static final Pattern BR_TAG_PATTERN = Pattern.compile(
+            "&lt;br */*&gt;", Pattern.CASE_INSENSITIVE);
+    private static final Pattern OPENING_P_TAG_PATTERN = Pattern.compile(
+            "&lt;p&gt;", Pattern.CASE_INSENSITIVE);
+    private static final Pattern CLOSING_P_TAG_PATTERN = Pattern.compile(
+            "&lt;/p&gt;", Pattern.CASE_INSENSITIVE);
+    private static final Pattern OPENING_PRE_TAG_PATTERN = Pattern.compile(
+            "&lt;pre&gt;", Pattern.CASE_INSENSITIVE);
+    private static final Pattern CLOSING_PRE_TAG_PATTERN = Pattern.compile(
+            "&lt;/pre&gt;", Pattern.CASE_INSENSITIVE);
+    private static final Pattern OPENING_UL_TAG_PATTERN = Pattern.compile(
+            "&lt;ul&gt;", Pattern.CASE_INSENSITIVE);
+    private static final Pattern CLOSING_UL_TAG_PATTERN = Pattern.compile(
+            "&lt;/ul&gt;", Pattern.CASE_INSENSITIVE);
+    private static final Pattern OPENING_OL_TAG_PATTERN = Pattern.compile(
+            "&lt;ol&gt;", Pattern.CASE_INSENSITIVE);
+    private static final Pattern CLOSING_OL_TAG_PATTERN = Pattern.compile(
+            "&lt;/ol&gt;", Pattern.CASE_INSENSITIVE);
+    private static final Pattern OPENING_LI_TAG_PATTERN = Pattern.compile(
+            "&lt;li&gt;", Pattern.CASE_INSENSITIVE);
+    private static final Pattern CLOSING_LI_TAG_PATTERN = Pattern.compile(
+            "&lt;/li&gt;", Pattern.CASE_INSENSITIVE);
+    private static final Pattern CLOSING_A_TAG_PATTERN = Pattern.compile(
+            "&lt;/a&gt;", Pattern.CASE_INSENSITIVE);
+    private static final Pattern OPENING_A_TAG_PATTERN = Pattern.compile(
+            "&lt;a href=.*?&gt;", Pattern.CASE_INSENSITIVE);
+    private static final Pattern QUOTE_PATTERN = Pattern.compile("&quot;",
+            Pattern.CASE_INSENSITIVE);
+
+    // ------------------------------------------------------------------------
+    /** Strip jsessionid off of a URL */
+    public static String stripJsessionId(String url) {
+        // Strip off jsessionid found in referer URL
+        int startPos = url.indexOf(";jsessionid=");
+        if (startPos != -1) {
+            int endPos = url.indexOf('?', startPos);
+            if (endPos == -1) {
+                url = url.substring(0, startPos);
+            } else {
+                url = url.substring(0, startPos)
+                        + url.substring(endPos, url.length());
+            }
+        }
+        return url;
+    }
+
+    // ------------------------------------------------------------------------
+    /**
+     * Escape, but do not replace HTML. The default behaviour is to escape
+     * ampersands.
+     */
+    public static String escapeHTML(String s) {
+        return escapeHTML(s, true);
+    }
+
+    // ------------------------------------------------------------------------
+    /**
+     * Escape, but do not replace HTML.
+     * 
+     * @param escapeAmpersand
+     *            Optionally escape ampersands (&amp;).
+     */
+    public static String escapeHTML(String s, boolean escapeAmpersand) {
+        // got to do amp's first so we don't double escape
+        if (escapeAmpersand) {
+            s = Strings.CS.replace(s, "&", "&amp;");
+        }
+        s = Strings.CS.replace(s, "&nbsp;", " ");
+        s = Strings.CS.replace(s, "\"", "&quot;");
+        s = Strings.CS.replace(s, "<", "&lt;");
+        s = Strings.CS.replace(s, ">", "&gt;");
+        return s;
+    }
+
+    public static String unescapeHTML(String str) {
+        return StringEscapeUtils.unescapeHtml4(str);
+    }
+
+    // ------------------------------------------------------------------------
+    /**
+     * Remove occurrences of html, defined as any text between the characters
+     * "&lt;" and "&gt;". Replace any HTML tags with a space.
+     */
+    public static String removeHTML(String str) {
+        return removeHTML(str, true);
+    }
+
+    /**
+     * Remove occurrences of html, defined as any text between the characters
+     * "&lt;" and "&gt;". Optionally replace HTML tags with a space.
+     * 
+     * @param str
+     * @param addSpace
+     * @return
+     */
+    public static String removeHTML(String str, boolean addSpace) {
+        if (str == null) {
+            return "";
+        }
+        StringBuilder ret = new StringBuilder(str.length());
+        int start = 0;
+        int beginTag = str.indexOf('<');
+        int endTag = 0;
+        if (beginTag == -1) {
+            return str;
+        }
+
+        while (beginTag >= start) {
+            if (beginTag > 0) {
+                ret.append(str.substring(start, beginTag));
+
+                // replace each tag with a space (looks better)
+                if (addSpace) {
+                    ret.append(" ");
+                }
+            }
+            endTag = str.indexOf('>', beginTag);
+
+            // if endTag found move "cursor" forward
+            if (endTag > -1) {
+                start = endTag + 1;
+                beginTag = str.indexOf('<', start);
+            }
+            // if no endTag found, get rest of str and break
+            else {
+                ret.append(str.substring(beginTag));
+                break;
+            }
+        }
+        // append everything after the last endTag
+        if (endTag > -1 && endTag + 1 < str.length()) {
+            ret.append(str.substring(endTag + 1));
+        }
+        return ret.toString().trim();
+    }
+
+    // ------------------------------------------------------------------------
+    /**
+     * Run both removeHTML and escapeHTML on a string.
+     * 
+     * @param s
+     *            String to be run through removeHTML and escapeHTML.
+     * @return String with HTML removed and HTML special characters escaped.
+     */
+    public static String removeAndEscapeHTML(String s) {
+        if (s == null) {
+            return "";
+        } else {
+            return escapeHTML(removeHTML(s));
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    /**
+     * Autoformat.
+     */
+    public static String autoformat(String s) {
+        return Strings.CS.replace(s, "\n", "<br />");
+    }
+
+    /**
+     * Code (stolen from Pebble) to add rel="nofollow" string to all links in
+     * HTML.
+     */
+    public static String addNofollow(String html) {
+        if (html == null || html.length() == 0) {
+            return html;
+        }
+        Matcher m = mLinkPattern.matcher(html);
+        StringBuilder buf = new StringBuilder();
+        while (m.find()) {
+            int start = m.start();
+            int end = m.end();
+            String link = html.substring(start, end);
+            buf.append(html.substring(0, start));
+            if (link.contains("rel=\"nofollow\"")) {
+                // already tagged, leave it alone rather than emitting a second
+                // rel attribute (invalid HTML; browsers honour only the first)
+                buf.append(link);
+            } else {
+                buf.append(link, 0, link.length() - 1)
+                        .append(" rel=\"nofollow\">");
+            }
+            html = html.substring(end, html.length());
+            m = mLinkPattern.matcher(html);
+        }
+        buf.append(html);
+        return buf.toString();
+    }
+
+    // ------------------------------------------------------------------------
+    /**
+     * Replaces occurences of non-alphanumeric characters with an underscore.
+     */
+    public static String replaceNonAlphanumeric(String str) {
+        return replaceNonAlphanumeric(str, '_');
+    }
+
+    // ------------------------------------------------------------------------
+    /**
+     * Replaces occurrences of non-alphanumeric characters with a supplied char.
+     */
+    public static String replaceNonAlphanumeric(String str, char subst) {
+        StringBuilder ret = new StringBuilder(str.length());
+        char[] testChars = str.toCharArray();
+        for (char testChar : testChars) {
+            if (Character.isLetterOrDigit(testChar)) {
+                ret.append(testChar);
+            } else {
+                ret.append(subst);
+            }
+        }
+        return ret.toString();
+    }
+
+    // ------------------------------------------------------------------------
+    /**
+     * Remove occurences of non-alphanumeric characters.
+     */
+    public static String removeNonAlphanumeric(String str) {
+        StringBuilder ret = new StringBuilder(str.length());
+        char[] testChars = str.toCharArray();
+        for (char testChar : testChars) {
+            // MR: Allow periods in page links
+            if (Character.isLetterOrDigit(testChar) || testChar == '.') {
+                ret.append(testChar);
+            }
+        }
+        return ret.toString();
+    }
+
+    // ------------------------------------------------------------------------
+    /** Convert string array to string with delimeters. */
+    public static String stringArrayToString(String[] stringArray, String delim) {
+        StringBuilder bldr = new StringBuilder();
+        for (String s : stringArray) {
+            if (bldr.length() > 0) {
+                bldr.append(delim).append(s);
+            } else {
+                bldr.append(s);
+            }
+        }
+        return bldr.toString();
+    }
+
+    // ------------------------------------------------------------------------
+    /** Convert string array to string with delimeters. */
+    public static String stringListToString(List<String> stringList,
+            String delim) {
+        StringBuilder bldr = new StringBuilder();
+        for (String s : stringList) {
+            if (bldr.length() > 0) {
+                bldr.append(delim).append(s);
+            } else {
+                bldr.append(s);
+            }
+        }
+        return bldr.toString();
+    }
+
+    // --------------------------------------------------------------------------
+    /** Convert string with delimeters to string array. */
+    public static String[] stringToStringArray(String instr, String delim) {
+        return StringUtils.split(instr, delim);
+    }
+
+    // --------------------------------------------------------------------------
+    /** Convert string with delimiters to string list.
+     */
+    public static List<String> stringToStringList(String instr, String delim) {
+        List<String> stringList = new ArrayList<>();
+        String[] str = StringUtils.split(instr, delim);
+        stringList.addAll(Arrays.asList(str));
+        return stringList;
+    }
+
+    // --------------------------------------------------------------------------
+    /** Convert string to integer array. */
+    public static int[] stringToIntArray(String instr, String delim) {
+        String[] str = StringUtils.split(instr, delim);
+        int intArray[] = new int[str.length];
+        int i = 0;
+        for (String string : str) {
+            int nInt = Integer.parseInt(string);
+            intArray[i++] = nInt;
+        }
+        return intArray;
+    }
+
+    // -------------------------------------------------------------------
+    /** Convert integer array to a string. */
+    public static String intArrayToString(int[] intArray) {
+        StringBuilder bldr = new StringBuilder();
+        for (int s : intArray) {
+            if (bldr.length() > 0) {
+                bldr.append(",").append(Integer.toString(s));
+            } else {
+                bldr.append(Integer.toString(s));
+            }
+        }
+        return bldr.toString();
+    }
+
+    // ------------------------------------------------------------------------
+    // `in`/`out` are closed inside copyInputToOutput(InputStream, OutputStream,
+    // long) below, on every path -- the success path and both IOException
+    // branches all close both streams before returning or rethrowing. PMD's
+    // CloseResource can't see a close happening inside a different method.
+    @SuppressWarnings("PMD.CloseResource")
+    public static void copyFile(File from, File to) throws IOException {
+        InputStream in;
+        OutputStream out;
+
+        try {
+            in = new FileInputStream(from);
+        } catch (IOException ex) {
+            throw new IOException("Utilities.copyFile: opening input stream '"
+                    + from.getPath() + "', " + ex.getMessage(), ex);
+        }
+
+        try {
+            out = new FileOutputStream(to);
+        } catch (Exception ex) {
+            try {
+                in.close();
+            } catch (IOException ignored) {
+                // We are already about to throw the more informative
+                // exception below; a failure to close the still-open input
+                // stream here is secondary and would only mask it.
+            }
+            throw new IOException("Utilities.copyFile: opening output stream '"
+                    + to.getPath() + "', " + ex.getMessage(), ex);
+        }
+
+        copyInputToOutput(in, out, from.length());
+    }
+
+    /**
+     * Reads an inputstream into a string
+     */
+    public static String streamToString(InputStream is) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        BufferedReader in = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+        String line;
+        while ((line = in.readLine()) != null) {
+            sb.append(line);
+            sb.append(System.getProperty("line.separator"));
+        }
+        return sb.toString();
+    }
+
+    // ------------------------------------------------------------------------
+    /**
+     * Utility method to copy an input stream to an output stream. Wraps both
+     * streams in buffers. Ensures right numbers of bytes copied.
+     */
+    public static void copyInputToOutput(InputStream input,
+            OutputStream output, long byteCount) throws IOException {
+        int bytes;
+        long length;
+
+        BufferedInputStream in = new BufferedInputStream(input);
+        BufferedOutputStream out = new BufferedOutputStream(output);
+
+        byte[] buffer;
+        buffer = new byte[PressroomConstants.EIGHT_KB_IN_BYTES];
+
+        for (length = byteCount; length > 0;) {
+            bytes = (int) (length > PressroomConstants.EIGHT_KB_IN_BYTES ? PressroomConstants.EIGHT_KB_IN_BYTES : length);
+
+            try {
+                bytes = in.read(buffer, 0, bytes);
+            } catch (IOException ex) {
+                try {
+                    in.close();
+                    out.close();
+                } catch (IOException ignored) {
+                    // Already failing the read; a close failure on top of
+                    // that has nothing further to tell the caller.
+                }
+                throw new IOException("Reading input stream, "
+                        + ex.getMessage(), ex);
+            }
+
+            if (bytes < 0) {
+                break;
+            }
+
+            length -= bytes;
+
+            try {
+                out.write(buffer, 0, bytes);
+            } catch (IOException ex) {
+                try {
+                    in.close();
+                    out.close();
+                } catch (IOException ignored) {
+                    // Already failing the write; a close failure on top of
+                    // that has nothing further to tell the caller.
+                }
+                throw new IOException("Writing output stream, "
+                        + ex.getMessage(), ex);
+            }
+        }
+
+        try {
+            in.close();
+            out.close();
+        } catch (IOException ex) {
+            throw new IOException("Closing file streams, " + ex.getMessage(), ex);
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    public static void copyInputToOutput(InputStream input, OutputStream output)
+            throws IOException {
+        BufferedInputStream in = new BufferedInputStream(input);
+        BufferedOutputStream out = new BufferedOutputStream(output);
+        byte buffer[] = new byte[PressroomConstants.EIGHT_KB_IN_BYTES];
+        for (int count = in.read(buffer, 0, PressroomConstants.EIGHT_KB_IN_BYTES); count != -1;
+                count = in.read(buffer, 0, PressroomConstants.EIGHT_KB_IN_BYTES)) {
+            out.write(buffer, 0, count);
+        }
+
+        try {
+            in.close();
+            out.close();
+        } catch (IOException ex) {
+            throw new IOException("Closing file streams, " + ex.getMessage(), ex);
+        }
+    }
+
+    /**
+     * Encode a string using algorithm specified in web.xml and return the
+     * resulting encrypted password. If exception, the plain credentials string
+     * is returned
+     * 
+     * @param password
+     *            Password or other credentials to use in authenticating this
+     *            username
+     * @param algorithm
+     *            Algorithm used to do the digest
+     * 
+     * @return encypted password based on the algorithm.
+     */
+    public static String encodePassword(String password, String algorithm) {
+        byte[] unencodedPassword = password.getBytes(StandardCharsets.UTF_8);
+
+        MessageDigest md;
+
+        try {
+            // first create an instance, given the provider
+            md = MessageDigest.getInstance(algorithm);
+        } catch (Exception e) {
+            log.error("Exception", e);
+            return password;
+        }
+
+        md.reset();
+
+        // call the update method one or more times
+        // (useful when you don't know the size of your data, eg. stream)
+        md.update(unencodedPassword);
+
+        // now calculate the hash
+        byte[] encodedPassword = md.digest();
+
+        StringBuilder buf = new StringBuilder();
+
+        for (byte b : encodedPassword) {
+            if ((b & 0xff) < 0x10) {
+                buf.append("0");
+            }
+
+            buf.append(Long.toString(b & 0xff, 16));
+        }
+
+        return buf.toString();
+    }
+
+    /**
+     * Encode a string using Base64 encoding. Used when storing passwords as
+     * cookies.
+     * 
+     * This is weak encoding in that anyone can use the decodeString routine to
+     * reverse the encoding.
+     * 
+     * @param str
+     *            String to encode
+     * @return String
+     * @throws IOException
+     */
+    public static String encodeString(String str) throws IOException {
+        String encodedStr = new String(Base64.encodeBase64(str.getBytes(StandardCharsets.UTF_8)),
+                StandardCharsets.UTF_8);
+        return encodedStr.trim();
+    }
+
+    /**
+     * Decode a string using Base64 encoding.
+     * 
+     * @param str
+     *            String to decode
+     * @return decoded string
+     * @throws IOException
+     */
+    public static String decodeString(String str) throws IOException {
+        return new String(Base64.decodeBase64(str.getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Strips HTML and truncates.
+     */
+    public static String truncate(String str, int lower, int upper,
+            String appendToEnd) {
+        // strip markup from the string
+        String str2 = removeHTML(str, false);
+
+        // quickly adjust the upper if it is set lower than 'lower'
+        if (upper < lower) {
+            upper = lower;
+        }
+
+        // now determine if the string fits within the upper limit
+        // if it does, go straight to return, do not pass 'go' and collect $200
+        if (str2.length() > upper) {
+            // the magic location int
+            int loc;
+
+            // first we determine where the next space appears after lower
+            loc = str2.lastIndexOf(' ', upper);
+
+            // now we'll see if the location is greater than the lower limit
+            if (loc >= lower) {
+                // yes it was, so we'll cut it off here
+                str2 = str2.substring(0, loc);
+            } else {
+                // no it wasnt, so we'll cut it off at the upper limit
+                str2 = str2.substring(0, upper);
+            }
+
+            // the string was truncated, so we append the appendToEnd String
+            str2 = str2 + appendToEnd;
+        }
+
+        return str2;
+    }
+
+    /**
+     * This method based on code from the String taglib at Apache Jakarta:
+     * http:/
+     * /cvs.apache.org/viewcvs/jakarta-taglibs/string/src/org/apache/taglibs
+     * /string/util/StringW.java?rev=1.16&content-type=text/vnd.viewcvs-markup
+     * Copyright (c) 1999 The Apache Software Foundation. Author:
+     * timster@mac.com
+     * 
+     * @param str
+     * @param lower
+     * @param upper
+     * @param appendToEnd
+     * @return
+     */
+    public static String truncateNicely(String str, int lower, int upper,
+            String appendToEnd) {
+        // strip markup from the string
+        String str2 = removeHTML(str, false);
+        boolean diff = str2.length() < str.length();
+
+        // quickly adjust the upper if it is set lower than 'lower'
+        if (upper < lower) {
+            upper = lower;
+        }
+
+        // now determine if the string fits within the upper limit
+        // if it does, go straight to return, do not pass 'go' and collect $200
+        if (str2.length() > upper) {
+            // the magic location int
+            int loc;
+
+            // first we determine where the next space appears after lower
+            loc = str2.lastIndexOf(' ', upper);
+
+            // now we'll see if the location is greater than the lower limit
+            if (loc >= lower) {
+                // yes it was, so we'll cut it off here
+                str2 = str2.substring(0, loc);
+            } else {
+                // no it wasnt, so we'll cut it off at the upper limit
+                str2 = str2.substring(0, upper);
+                loc = upper;
+            }
+
+            // HTML was removed from original str
+            if (diff) {
+
+                // location of last space in truncated string
+                loc = str2.lastIndexOf(' ', loc);
+
+                // get last "word" in truncated string (add 1 to loc to
+                // eliminate space
+                String str3 = str2.substring(loc + 1);
+
+                // find this fragment in original str, from 'loc' position
+                loc = str.indexOf(str3, loc) + str3.length();
+
+                // get truncated string from original str, given new 'loc'
+                str2 = str.substring(0, loc);
+
+                // get all the HTML from original str after loc
+                str3 = extractHTML(str.substring(loc));
+
+                // append the appendToEnd String and
+                // add extracted HTML back onto truncated string
+                str = str2 + appendToEnd + str3;
+            } else {
+                // the string was truncated, so we append the appendToEnd String
+                str = str2 + appendToEnd;
+            }
+
+        }
+
+        return str;
+    }
+
+    public static String truncateText(String str, int lower, int upper,
+            String appendToEnd) {
+        // strip markup from the string
+        String str2 = removeHTML(str, false);
+
+        // quickly adjust the upper if it is set lower than 'lower'
+        if (upper < lower) {
+            upper = lower;
+        }
+
+        // now determine if the string fits within the upper limit
+        // if it does, go straight to return, do not pass 'go' and collect $200
+        if (str2.length() > upper) {
+            // the magic location int
+            int loc;
+
+            // first we determine where the next space appears after lower
+            loc = str2.lastIndexOf(' ', upper);
+
+            // now we'll see if the location is greater than the lower limit
+            if (loc >= lower) {
+                // yes it was, so we'll cut it off here
+                str2 = str2.substring(0, loc);
+            } else {
+                // no it wasnt, so we'll cut it off at the upper limit
+                str2 = str2.substring(0, upper);
+            }
+            // the string was truncated, so we append the appendToEnd String
+            str = str2 + appendToEnd;
+        }
+        return str;
+    }
+
+    /**
+     * Extract (keep) JUST the HTML from the String.
+     * 
+     * @param str
+     * @return
+     */
+    public static String extractHTML(String str) {
+        if (str == null) {
+            return "";
+        }
+        StringBuilder ret = new StringBuilder(str.length());
+        int start = 0;
+        int beginTag = str.indexOf('<');
+        int endTag;
+        if (beginTag == -1) {
+            return str;
+        }
+
+        while (beginTag >= start) {
+            endTag = str.indexOf('>', beginTag);
+
+            // if endTag found, keep tag
+            if (endTag > -1) {
+                ret.append(str.substring(beginTag, endTag + 1));
+
+                // move start forward and find another tag
+                start = endTag + 1;
+                beginTag = str.indexOf('<', start);
+            }
+            // if no endTag found, break
+            else {
+                break;
+            }
+        }
+        return ret.toString();
+    }
+
+    public static String hexEncode(String str) {
+        if (StringUtils.isEmpty(str)) {
+            return str;
+        }
+
+        return RegexUtil.encode(str);
+    }
+
+    public static String encodeEmail(String str) {
+        return str != null ? RegexUtil.encodeEmail(str) : null;
+    }
+
+    /**
+     * @param string
+     * @return
+     */
+    public static int stringToInt(String string) {
+        try {
+            return Integer.parseInt(string);
+        } catch (NumberFormatException e) {
+            log.debug("Invalid Integer:{}", string);
+        }
+        return 0;
+    }
+
+    /**
+     * Convert a byte array into a Base64 string (as used in mime formats)
+     */
+    public static String toBase64(byte[] aValue) {
+
+        final String strBase64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+        int byte1;
+        int byte2;
+        int byte3;
+        int iByteLen = aValue.length;
+        StringBuilder tt = new StringBuilder();
+
+        for (int i = 0; i < iByteLen; i += 3) {
+            boolean bByte2 = (i + 1) < iByteLen;
+            boolean bByte3 = (i + 2) < iByteLen;
+            byte1 = aValue[i] & 0xFF;
+            byte2 = bByte2 ? (aValue[i + 1] & 0xFF) : 0;
+            byte3 = bByte3 ? (aValue[i + 2] & 0xFF) : 0;
+
+            tt.append(strBase64Chars.charAt(byte1 / 4));
+            tt.append(strBase64Chars
+                    .charAt((byte2 / 16) + ((byte1 & 0x3) * 16)));
+            tt.append(bByte2 ? strBase64Chars.charAt((byte3 / 64)
+                    + ((byte2 & 0xF) * 4)) : '=');
+            tt.append(bByte3 ? strBase64Chars.charAt(byte3 & 0x3F) : '=');
+        }
+
+        return tt.toString();
+    }
+
+    /**
+     * @param tag
+     * @return
+     */
+    public static String stripInvalidTagCharacters(String tag) {
+        Objects.requireNonNull(tag);
+
+        StringBuilder sb = new StringBuilder();
+        char[] charArray = tag.toCharArray();
+        for (char c : charArray) {
+            // fast-path exclusions quotes and commas are obvious
+            // 34 = double-quote, 44 = comma
+            switch (c) {
+            case 34:
+            case 44:
+                continue;
+            default:
+                // every other character falls through to the filter below
+                break;
+            }
+
+            if ((33 <= c && c <= 126) || Character.isUnicodeIdentifierPart(c)
+                    || Character.isUnicodeIdentifierStart(c)) {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
+
+    public static String normalizeTag(String tag, Locale locale) {
+        tag = stripInvalidTagCharacters(tag);
+        return locale == null ? tag.toLowerCase(Locale.ROOT) : tag.toLowerCase(locale);
+    }
+
+    /**
+     * @param tags String holding space separated list of tags
+     * @return List of strings, one string for each tag
+     */
+    public static List<String> splitStringAsTags(String tags) {
+        String[] tagsarr = StringUtils.split(tags, TAG_SPLIT_CHARS);
+        if (tagsarr == null) {
+            return Collections.emptyList();
+        }
+        return Arrays.asList(tagsarr);
+    }
+
+    /**
+     * Transforms the given String into a subset of HTML displayable on a web
+     * page. The subset includes &lt;b&gt;, &lt;i&gt;, &lt;p&gt;, &lt;br&gt;,
+     * &lt;pre&gt; and &lt;a href&gt; (and their corresponding end tags).
+     * 
+     * @param s
+     *            the String to transform
+     * @return the transformed String
+     */
+    @SuppressFBWarnings(
+            value = "MODIFICATION_AFTER_VALIDATION",
+            justification = "Nothing here validates: each Matcher is a find-and-replace turning one "
+                    + "escaped tag back into that tag. The method is template API only ($utils) with no "
+                    + "caller in Roller's own templates, and templates are written by weblog admins, who "
+                    + "can already emit any markup.")
+    public static String transformToHTMLSubset(String s) {
+
+        if (s == null) {
+            return null;
+        }
+
+        s = replace(s, OPENING_B_TAG_PATTERN, "<b>");
+        s = replace(s, CLOSING_B_TAG_PATTERN, "</b>");
+        s = replace(s, OPENING_I_TAG_PATTERN, "<i>");
+        s = replace(s, CLOSING_I_TAG_PATTERN, "</i>");
+        s = replace(s, OPENING_BLOCKQUOTE_TAG_PATTERN, "<blockquote>");
+        s = replace(s, CLOSING_BLOCKQUOTE_TAG_PATTERN, "</blockquote>");
+        s = replace(s, BR_TAG_PATTERN, "<br />");
+        s = replace(s, OPENING_P_TAG_PATTERN, "<p>");
+        s = replace(s, CLOSING_P_TAG_PATTERN, "</p>");
+        s = replace(s, OPENING_PRE_TAG_PATTERN, "<pre>");
+        s = replace(s, CLOSING_PRE_TAG_PATTERN, "</pre>");
+        s = replace(s, OPENING_UL_TAG_PATTERN, "<ul>");
+        s = replace(s, CLOSING_UL_TAG_PATTERN, "</ul>");
+        s = replace(s, OPENING_OL_TAG_PATTERN, "<ol>");
+        s = replace(s, CLOSING_OL_TAG_PATTERN, "</ol>");
+        s = replace(s, OPENING_LI_TAG_PATTERN, "<li>");
+        s = replace(s, CLOSING_LI_TAG_PATTERN, "</li>");
+        s = replace(s, QUOTE_PATTERN, "\"");
+
+        // HTTP links
+        s = replace(s, CLOSING_A_TAG_PATTERN, "</a>");
+        Matcher m = OPENING_A_TAG_PATTERN.matcher(s);
+        while (m.find()) {
+            int start = m.start();
+            int end = m.end();
+            String link = s.substring(start, end);
+            link = "<" + link.substring(4, link.length() - 4) + ">";
+            s = s.substring(0, start) + link + s.substring(end, s.length());
+            m = OPENING_A_TAG_PATTERN.matcher(s);
+        }
+
+        // escaped angle brackets
+        s = s.replace("&amp;lt;", "&lt;");
+        s = s.replace("&amp;gt;", "&gt;");
+        s = s.replace("&amp;#", "&#");
+
+        return s;
+    }
+
+    private static String replace(String string, Pattern pattern,
+            String replacement) {
+        Matcher m = pattern.matcher(string);
+        return m.replaceAll(replacement);
+    }
+
+    public static String getContentTypeFromFileName(String fileName) {
+
+        FileTypeMap map = FileTypeMap.getDefaultFileTypeMap();
+
+        // TODO: figure out why PNG is missing from Java MIME types
+        if (map instanceof MimetypesFileTypeMap mftm) {
+            registerPngMimeType(mftm);
+        }
+
+        return map.getContentType(fileName);
+    }
+
+    /**
+     * Extracted from {@link #getContentTypeFromFileName} so a test can drive
+     * the failure path directly with a throwing {@code MimetypesFileTypeMap}
+     * subclass -- {@code addMimeTypes} has no declared or documented failure
+     * mode for the literal, well-formed string this is called with, so the
+     * real JDK implementation cannot be made to throw from a black-box test.
+     */
+    static void registerPngMimeType(MimetypesFileTypeMap map) {
+        try {
+            map.addMimeTypes("image/png png PNG");
+        } catch (Exception ex) {
+            // This guards against a future JDK/vendor MimetypesFileTypeMap
+            // that behaves differently. If it ever does throw, PNG simply
+            // falls back to whatever the platform default answers, which is
+            // exactly the "missing from Java MIME types" case above -- worth
+            // a trace if someone is chasing that down.
+            log.debug("Could not register PNG mime type", ex);
+        }
+    }
+
+    /**
+     * Validate the form of an email address.
+     * 
+     * <P>
+     * Return <tt>true</tt> only if
+     * <ul>
+     * <li> <tt>aEmailAddress</tt> can successfully construct an
+     * {@link javax.mail.internet.InternetAddress}
+     * <li>when parsed with "@" as delimiter, <tt>aEmailAddress</tt> contains
+     * two tokens which satisfy
+     * </ul>
+     * <P>
+     * The second condition arises since local email addresses, simply of the
+     * form "<tt>albert</tt>", for example, are valid for
+     * {@link javax.mail.internet.InternetAddress}, but almost always undesired.
+     */
+    public static boolean isValidEmailAddress(String aEmailAddress) {
+        if (aEmailAddress == null) {
+            return false;
+        }
+        boolean result = true;
+        try {
+            // See if its valid
+            new InternetAddress(aEmailAddress);
+            if (!hasNameAndDomain(aEmailAddress)) {
+                result = false;
+            }
+        } catch (AddressException ex) {
+            result = false;
+        }
+        return result;
+    }
+
+    /**
+     * Checks for name and domain.
+     * 
+     * @param aEmailAddress
+     *            the a email address
+     * @return true, if successful
+     */
+    private static boolean hasNameAndDomain(String aEmailAddress) {
+        String[] tokens = aEmailAddress.split("@");
+        return tokens.length == 2 && StringUtils.isNotEmpty(tokens[0])
+                && StringUtils.isNotEmpty(tokens[1]);
+    }
+
+}

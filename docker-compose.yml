@@ -28,7 +28,7 @@ services:
 
   postgres:
     # Pinned by digest (postgres:18 at time of pin). Testcontainers uses the
-    # same major version — see RollerPostgresContainer.
+    # same major version — see PressroomPostgresContainer.
     #
     # Production (docker-compose.prod.yml) is still on 16: moving it is a data
     # migration with its own cutover, not an image bump.

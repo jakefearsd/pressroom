@@ -6,7 +6,7 @@ names are unchanged, so an older "see CLAUDE.md, <section>" pointer
 resolves through the index at the end of `CLAUDE.md`.
 
 ## Automation API
-`org.apache.roller.weblogger.ui.restapi` (`/api/v1`) is a REST surface for
+`com.wikantik.pressroom.ui.restapi` (`/api/v1`) is a REST surface for
 scripts and agents alongside the JSP admin UI. Reference and error contract:
 `docs/api/README.md`, the front door. Tokens are minted in the admin UI
 (Profile → API tokens, or an agent's page) or with `bin/roller-api auth login`.
@@ -24,14 +24,14 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   `rendering.weblogMapper.rollerProtectedUrls` so no weblog handle can shadow
   them.
 - **The API and the JSP admin UI share exactly one authorization path:
-  `RollerHandlerInterceptor`.** Every `*Api` controller implements
+  `PressroomHandlerInterceptor`.** Every `*Api` controller implements
   `UISecurityEnforced` and declares `GlobalPermission`/`WeblogPermission` like
   `CategoryEditController`, `WeblogConfigController` and the rest; no API-side
   permission system exists. `ApiScopeInterceptor` is registered *after* it in
   `WebMvcConfig` (order is load-bearing, see its javadoc) and only narrows by
   token scope.
 - **An API route names its weblog only by its `{handle}` path variable.** The
-  `weblog` request parameter is JSP vocabulary and `RollerHandlerInterceptor`
+  `weblog` request parameter is JSP vocabulary and `PressroomHandlerInterceptor`
   ignores it for an API handler (one under `ui.restapi`). Reading it let a
   limited token satisfy its own ceiling on a route with no `{handle}`
   (`POST /v1/weblogs?weblog=<its handle>` created a weblog);
@@ -39,12 +39,12 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   read the parameter.
 - **`ApiToken.Role` (`READ`/`POST`/`ADMIN`) and the optional weblog pin are a
   ceiling, never a grant.** `ApiScopeInterceptor` refuses what the scope
-  disallows and never approves what `RollerHandlerInterceptor`'s
+  disallows and never approves what `PressroomHandlerInterceptor`'s
   `GlobalPermission`/`WeblogPermission` check would refuse: a `READ` token held
   by a `GlobalPermission.ADMIN` user cannot POST; a pinned token cannot act on
   another weblog its owner could edit.
 - **`EntryFieldRules` and `WeblogOwnership`
-  (`org.apache.roller.weblogger.ui.controllers`) are shared by JSP editor and
+  (`com.wikantik.pressroom.ui.controllers`) are shared by JSP editor and
   API — one home each for entry-field rules and by-id ownership checks.**
   `EntryBean` and `EntryDtos.applyWrite` both call
   `EntryFieldRules.escapeTitle` and `EntryFieldRules.parsePubTime`
@@ -57,7 +57,7 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   controller: a pin-excluded weblog, a foreign entry/category/media/page id and
   a missing id are indistinguishable — a 403 would leak that the resource
   exists. So is a weblog the caller holds no role on:
-  `RollerHandlerInterceptor` answers an API caller who fails the weblog
+  `PressroomHandlerInterceptor` answers an API caller who fails the weblog
   permission check 404 unless they hold at least `EDIT_DRAFT` there (a member
   below the required level stays 403; `ApiSecurityRefusalTest`). `ApiScopeInterceptor.checkWeblogScope` and every `requireX` helper in
   `BaseApiController` follow this.
@@ -70,11 +70,11 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   or Bearer), not exempted like `GET /api/v1/ping`. `OpenApiDocumentTest` pins
   two `docs/api/README.md` claims the document cannot convey — v1 is unstable,
   and `roller-api auth login` is the bootstrap path.
-- **`RollerHandlerInterceptor`'s `import ...ui.restapi.ApiException` is the ONE
+- **`PressroomHandlerInterceptor`'s `import ...ui.restapi.ApiException` is the ONE
   permitted import from `ui.restapi` into `ui.controllers`, and must stay the
   only one.** A second interceptor for `/api/**` would be exactly the parallel
   authorization path avoided here.
-  `grep -r "import org.apache.roller.weblogger.ui.restapi" app/src/main/java/org/apache/roller/weblogger/ui/controllers/`
+  `grep -r "import com.wikantik.pressroom.ui.restapi" app/src/main/java/com/wikantik/pressroom/ui/controllers/`
   must return exactly one line.
 
 ## MCP endpoint
@@ -83,7 +83,7 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
 
 - **A tool call is forwarded in process** (`InProcessApiDispatcher`, `RequestDispatcher.forward`)
   to its `/api/v1` route, on the request thread (the SDK server runs with immediate execution). So
-  `RollerHandlerInterceptor`/`ApiScopeInterceptor` decide exactly as for REST. The Spring Security
+  `PressroomHandlerInterceptor`/`ApiScopeInterceptor` decide exactly as for REST. The Spring Security
   filter chain does run again on the FORWARD (`spring.security.filter.dispatcher-types=request,forward`
   in `application.properties`), but authentication and the throttle run once, because
   `ApiTokenAuthFilter` is a `OncePerRequestFilter` and its marker is still on the request. A
@@ -181,7 +181,7 @@ Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`.
 - **An agent is a `roller_user` with `kind = AGENT` (V033)**: no password (`passphrase` is nullable
   since V033), the `editor` role plus `admin` when its Site administrator switch is on, created only
   by `UserManager.addAgent`. Memberships, permissions and tokens are the people's machinery.
-- **Every sign-in gate refuses an agent, explicitly**: `RollerUserDetailsService` (form login,
+- **Every sign-in gate refuses an agent, explicitly**: `PressroomUserDetailsService` (form login,
   remember-me and HTTP Basic all resolve accounts there), `ReaderAccounts` (SSO),
   `JPAUserTokenManagerImpl.issueToken`/`validate` and `PasswordResetController.findUser` (reset and
   set-password links). `ApiTokenAuthFilter` refuses a token whose owner is disabled, person or agent,

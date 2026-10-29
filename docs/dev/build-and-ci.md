@@ -54,7 +54,7 @@ mvn test -Dtest=TestClassName   # one class
 mvn clean test && mvn jacoco:report -pl app  # coverage: app/target/site/jacoco/index.html
 ```
 
-- Tests need Docker: `RollerTestBootstrap` (JUnit `LauncherSessionListener`)
+- Tests need Docker: `PressroomTestBootstrap` (JUnit `LauncherSessionListener`)
   starts one PostgreSQL container per JVM, schema from the real
   `bin/db/migrations` chain.
 - Fixtures: `TestUtils.setupX(...)`, removed in `@AfterEach`
@@ -74,7 +74,7 @@ mvn clean test && mvn jacoco:report -pl app  # coverage: app/target/site/jacoco/
 - A servlet over a faulty collaborator: mock `Weblogger`, delegate only the
   managers the servlet uses to `TestUtils.weblogger()`, and build the servlet
   directly (`new XServlet(weblogger)` plus
-  `init(new MockServletConfig(RollerContext.getServletContext()))`). No
+  `init(new MockServletConfig(PressroomContext.getServletContext()))`). No
   production seam is needed.
 - One `WebloggerConfig` key for one test: `StaticConfigOverride.set(key,
   value)` in try-with-resources (it restores on close). Several `var _ = ...`
@@ -214,7 +214,7 @@ whose recorder was attached after all of its traffic. Not a server defect:
 refusing a POST with no session is correct. Reproduced on demand by
 repeating the pair with the submission held back 20-135 ms: 14 of 144
 failed, with both CI messages, and the app log held 70 `Invalid CSRF token`
-refusals; with `RollerIT.clickAndAwaitNewPage` (wait for the old document
+refusals; with `PressroomIT.clickAndAwaitNewPage` (wait for the old document
 to go stale), 0 and 0. The `MultiUserJourneyIT` `Element not found {#entry}`
 nightlies are the same defect. `docs/dev/browser-its.md`, "A click is not a
 barrier", has the family and `IT_LATE_CLICK_MS`.

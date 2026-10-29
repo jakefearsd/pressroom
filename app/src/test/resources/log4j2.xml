@@ -52,7 +52,7 @@ limitations under the License.
     <Loggers>
         
         <!-- roller.log; everything not defined here will end up in server.log -->
-        <Logger name="org.apache.roller"   level="debug"  additivity="false"> <AppenderRef ref="roller"/> </Logger>
+        <Logger name="com.wikantik.pressroom"   level="debug"  additivity="false"> <AppenderRef ref="roller"/> </Logger>
         <Logger name="org.apache.velocity" level="info"  additivity="false"> <AppenderRef ref="roller"/> </Logger>
         <Logger name="org.springframework" level="info"  additivity="false"> <AppenderRef ref="roller"/> </Logger>
         <Logger name="org.openid4java"     level="info"  additivity="false"> <AppenderRef ref="roller"/> </Logger>
@@ -60,10 +60,10 @@ limitations under the License.
         <Logger name="org.webjars"         level="info"  additivity="false"> <AppenderRef ref="roller"/> </Logger>
         
         <!--
-        <Logger name="org.apache.roller.weblogger.business.jpa.JPAPropertiesManagerImpl" level="debug" additivity="false"> <AppenderRef ref="roller"/> </Logger>
-        <Logger name="org.apache.roller.weblogger.business"                              level="debug" additivity="false"> <AppenderRef ref="roller"/> </Logger>
+        <Logger name="com.wikantik.pressroom.business.jpa.JPAPropertiesManagerImpl" level="debug" additivity="false"> <AppenderRef ref="roller"/> </Logger>
+        <Logger name="com.wikantik.pressroom.business"                              level="debug" additivity="false"> <AppenderRef ref="roller"/> </Logger>
 
-        <Logger name="org.apache.roller.weblogger.config.WebloggerConfig" level="debug" additivity="false"> <AppenderRef ref="roller"/> </Logger>
+        <Logger name="com.wikantik.pressroom.config.WebloggerConfig" level="debug" additivity="false"> <AppenderRef ref="roller"/> </Logger>
         -->
         
         <!-- server.log catches everything that hasn't been logged yet-->

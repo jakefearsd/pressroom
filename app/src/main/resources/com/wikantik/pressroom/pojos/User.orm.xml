@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<entity-mappings version="3.0" xmlns="https://jakarta.ee/xml/ns/persistence/orm"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence/orm https://jakarta.ee/xml/ns/persistence/orm_3_0.xsd">
+    <package>com.wikantik.pressroom.pojos</package>
+    <entity metadata-complete="true" name="User" class="com.wikantik.pressroom.pojos.User"
+            access="PROPERTY">
+        <table name="roller_user"/>
+        <named-query name="User.getAll">
+            <query>SELECT u FROM User u ORDER BY u.dateCreated DESC, u.id</query>
+        </named-query>
+        <named-query name="User.getAllOrderByUserName">
+            <query>SELECT u FROM User u ORDER BY u.userName</query>
+        </named-query>
+        <named-query name="User.getByKindOrderByUserName">
+            <query>SELECT u FROM User u WHERE u.kind = ?1 ORDER BY u.userName</query>
+        </named-query>
+        <named-query name="User.getByEnabled">
+            <query>SELECT u FROM User u WHERE u.enabled = ?1</query>
+        </named-query>
+        <named-query name="User.getByEnabled&amp;UserNameOrEmailAddressStartsWith">
+            <query>SELECT u FROM User u WHERE u.enabled = ?1 AND (u.userName LIKE ?2 OR u.emailAddress LIKE ?3)</query>
+        </named-query>
+        <named-query name="User.getByUserName">
+            <query>SELECT u FROM User u WHERE u.userName= ?1</query>
+        </named-query>
+        <named-query name="User.getByUserName&amp;Enabled">
+            <query>SELECT u FROM User u WHERE u.userName= ?1 AND u.enabled = ?2</query>
+        </named-query>
+        <named-query name="User.getByEmailAddress&amp;Enabled">
+            <!-- emailaddress has no unique constraint at the database level
+                 (V002 baseline schema), so this orders deterministically and
+                 the caller caps it to one row: see
+                 JPAUserManagerImpl.getUserByEmail.
+                 Local accounts only: a reader who shares an author's address
+                 must never capture the author's password reset (reader
+                 sign-in spec, criterion 33).
+                 People only (V033): nothing is ever mailed to an agent. -->
+            <query>SELECT u FROM User u WHERE u.emailAddress = ?1 AND u.enabled = ?2 AND u.ssoSubject IS NULL AND u.kind = ?3 ORDER BY u.userName</query>
+        </named-query>
+        <named-query name="User.getScreenNamesOfWeblogMembers">
+            <!-- A member is an account holding any weblog permission (pending
+                 or not). The account page refuses a reader's display name
+                 matching one of these, so a reader cannot pass as an author. -->
+            <query>SELECT DISTINCT u.screenName FROM User u
+                   WHERE u.userName IN (SELECT p.userName FROM WeblogPermission p)</query>
+        </named-query>
+        <named-query name="User.getBySsoIdentity">
+            <query>SELECT u FROM User u WHERE u.ssoIssuer = ?1 AND u.ssoSubject = ?2</query>
+        </named-query>
+        <named-query name="User.getByUserNameOrEmailAddressStartsWith">
+            <query>SELECT u FROM User u WHERE u.userName LIKE ?1 OR u.emailAddress LIKE ?1</query>
+        </named-query>
+        <named-query name="User.getByUserNameOrderByUserName">
+            <!-- Prefix match, not equality. The only caller (getUsersByLetter)
+                 passes a letter followed by a percent sign. As an '=' this
+                 compared the literal string "J%" against whole usernames and so
+                 matched nothing, ever, while getCountByUserNameLike counted the
+                 same users happily; the admin letter index showed counts that
+                 opened onto an empty list. UPPER() mirrors that count query so
+                 the two agree. -->
+            <query>SELECT u FROM User u WHERE UPPER(u.userName) LIKE ?1 ORDER BY u.userName</query>
+        </named-query>
+        <named-query name="User.getCountByUserNameLike">
+            <query>SELECT COUNT(u) FROM User u WHERE UPPER(u.userName) LIKE ?1</query>
+        </named-query>
+        <named-query name="User.getCountEnabledDistinct">
+            <!--
+            DISTINCT is not required for this query as no duplicate User would be retrieved
+            -->
+            <query>SELECT COUNT(u) FROM User u WHERE u.enabled = ?1</query>
+        </named-query>  
+        <attributes>
+            <id name="id">
+                <column name="id"/>
+            </id>
+            <basic name="enabled">
+                <column name="isenabled" insertable="true" updatable="true" unique="false"/>
+            </basic>
+            <basic name="userName">
+                <column name="username" insertable="true" updatable="true" unique="true"/>
+            </basic>
+            <basic name="screenName">
+                <column name="screenname" insertable="true" updatable="true" unique="true"/>
+            </basic>
+            <basic name="password">
+                <column name="passphrase" insertable="true" updatable="true" unique="false"/>
+            </basic>
+            <basic name="fullName">
+                <column name="fullname" insertable="true" updatable="true" unique="true"/>
+            </basic>
+            <basic name="emailAddress">
+                <column name="emailaddress" insertable="true" updatable="true" unique="true"/>
+            </basic>
+            <basic name="ssoIssuer">
+                <column name="sso_issuer" insertable="true" updatable="true" unique="false"/>
+            </basic>
+            <basic name="ssoSubject">
+                <column name="sso_subject" insertable="true" updatable="true" unique="false"/>
+            </basic>
+            <basic name="kind">
+                <column name="kind" insertable="true" updatable="true" nullable="false"/>
+                <enumerated>STRING</enumerated>
+            </basic>
+            <basic name="notes">
+                <column name="notes" insertable="true" updatable="true" nullable="true"/>
+            </basic>
+            <basic name="lastLogin">
+                <column name="last_login" insertable="true" updatable="true" nullable="true"/>
+                <temporal>TIMESTAMP</temporal>
+            </basic>
+            <basic name="dateCreated">
+                <column name="datecreated" insertable="true" updatable="true" unique="false"/>
+                <temporal>TIMESTAMP</temporal>
+            </basic>
+            <basic name="locale">
+                <column name="locale" insertable="true" updatable="true" unique="false"/>
+            </basic>
+            <basic name="timeZone">
+                <column name="timeZone" insertable="true" updatable="true" unique="false"/>
+            </basic>
+        </attributes>
+    </entity>
+</entity-mappings>

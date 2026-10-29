@@ -16,7 +16,7 @@
   directory of this distribution.
 --%>
 <%-- Reached via RedirectController's "/access-denied.rol", which now
-     returns the ".denied" view name so RollerViewResolver wraps this
+     returns the ".denied" view name so PressroomViewResolver wraps this
      fragment in the ".tiles-errorpage" layout (head/banner/footer, the same
      design-system CSS -- roller-tokens.css/roller.css -- every other admin
      page loads) instead of forwarding straight to this raw JSP. Deliberately

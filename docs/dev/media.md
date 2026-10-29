@@ -75,7 +75,7 @@ resolves through the index at the end of `CLAUDE.md`.
   `bean.copyTo`).
   **A batch is not a transaction**: `createMediaFile` reports quota and
   forbidden-extension refusals per file *without throwing*, so the
-  controller snapshots `RollerMessages.getErrorCount()` around each call,
+  controller snapshots `PressroomMessages.getErrorCount()` around each call,
   and a partly-failed batch shows both what landed and what did not.
 - **`MediaFile.sharedForGallery` / `roller_mediafile.is_public` are gone** (`V024`).
 - `EntryAddWithMediaFileController` (entry from selected files) seeds the

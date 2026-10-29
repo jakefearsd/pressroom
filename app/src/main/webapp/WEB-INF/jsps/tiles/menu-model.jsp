@@ -15,7 +15,7 @@
   copyright in this work, please see the NOTICE file in the top level
   directory of this distribution.
 --%>
-<%@ page import="org.apache.roller.weblogger.ui.core.util.menu.Menu" %>
+<%@ page import="com.wikantik.pressroom.ui.core.util.menu.Menu" %>
 
 <%-- Extract the menu from the request. The model attribute "menu" may collide
      with other attributes during request dispatching, so we safely cast it.

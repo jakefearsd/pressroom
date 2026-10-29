@@ -118,7 +118,7 @@ resolves through the index at the end of `CLAUDE.md`.
   Entry editing.
 
 ## Shortcodes
-`org.apache.roller.weblogger.business.shortcodes` — `ShortcodeExpander` expands
+`com.wikantik.pressroom.business.shortcodes` — `ShortcodeExpander` expands
 `[name attr="v"]body[/name]` **unconditionally** at both render seams
 (`WeblogEntry.render()` and `PluginManagerImpl.applyWeblogEntryPlugins`),
 immediately before sanitization.

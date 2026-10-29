@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Licensed to the Apache Software Foundation (ASF) under one or more
+  contributor license agreements.  The ASF licenses this file to You
+  under the Apache License, Version 2.0 (the "License"); you may not
+  use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<entity-mappings version="3.0" xmlns="https://jakarta.ee/xml/ns/persistence/orm"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence/orm https://jakarta.ee/xml/ns/persistence/orm_3_0.xsd">
+    <package>com.wikantik.pressroom.pojos</package>
+    <entity metadata-complete="true" name="WeblogEntryRevision"
+            class="com.wikantik.pressroom.pojos.WeblogEntryRevision" access="PROPERTY">
+        <table name="weblogentry_revision"/>
+        <!-- Newest first. The id tie-break is arbitrary but stable, and it is
+             what keeps two saves landing in the same millisecond from ordering
+             differently between two reads, which would otherwise make the
+             pruner's idea of "oldest" depend on the query. -->
+        <named-query name="WeblogEntryRevision.getByEntry">
+            <query>SELECT r FROM WeblogEntryRevision r WHERE r.weblogEntry = ?1 ORDER BY r.created DESC, r.id DESC</query>
+        </named-query>
+        <named-query name="WeblogEntryRevision.removeByEntry">
+            <query>DELETE FROM WeblogEntryRevision r WHERE r.weblogEntry = ?1</query>
+        </named-query>
+        <!-- Reaches every revision of every entry of one weblog in a single
+             statement, so deleting a weblog does not have to load its entries
+             first just to clear what hangs off them. -->
+        <named-query name="WeblogEntryRevision.removeByWeblog">
+            <query>DELETE FROM WeblogEntryRevision r WHERE r.weblogEntry IN
+                   (SELECT e FROM WeblogEntry e WHERE e.website = ?1)</query>
+        </named-query>
+        <attributes>
+            <id name="id">
+                <column name="id"/>
+            </id>
+            <basic name="created">
+                <column name="created" insertable="true" updatable="true" unique="false" nullable="false"/>
+            </basic>
+            <basic name="creator">
+                <column name="creator" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="title">
+                <column name="title" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="text">
+                <column name="text" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="summary">
+                <column name="summary" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <basic name="note">
+                <column name="note" insertable="true" updatable="true" unique="false" nullable="true"/>
+            </basic>
+            <many-to-one name="weblogEntry" target-entity="com.wikantik.pressroom.pojos.WeblogEntry">
+                <join-column name="entryid" insertable="true" updatable="true" nullable="false"/>
+            </many-to-one>
+        </attributes>
+    </entity>
+</entity-mappings>

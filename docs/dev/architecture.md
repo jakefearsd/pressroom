@@ -32,10 +32,10 @@ Roller is a multi-user blog server built with:
   (`WebloggerFactory` deleted 2026-08-22; spec
   `docs/superpowers/specs/2026-08-22-retire-static-service-locator-design.md`).
   Beans: `WebloggerBeanConfig` (`@Configuration @Lazy`,
-  `org.apache.roller.weblogger.business.jpa`), built lazily by
+  `com.wikantik.pressroom.business.jpa`), built lazily by
   `SpringWebloggerProvider.bootstrap()` (`@Component` implementing
   `WebloggerProvider`: `isBootstrapped()`/`bootstrap()`/`getWeblogger()`)
-  after `WebloggerStartup.prepare()`, from `RollerLifecycle` (phase 0) or
+  after `WebloggerStartup.prepare()`, from `PressroomLifecycle` (phase 0) or
   the install wizard. **How a class reaches the tier depends only on how it
   is constructed:**
   - Container-managed (controllers, the nine rendering/ajax servlets, filters,
@@ -46,13 +46,13 @@ Roller is a multi-user blog server built with:
   - `WebloggerProvider` only where "is the tier up?" is a runtime question:
     `BootstrapFilter`, `PersistenceSessionFilter`, `ControlPlaneHostFilter`,
     `InitFilter`, `RequestMappingFilter`/`WeblogRequestMapper`,
-    `RollerHandlerInterceptor`, `RollerUserDetailsService`,
-    `ApiTokenAuthFilter`, `RollerSession`.
+    `PressroomHandlerInterceptor`, `PressroomUserDetailsService`,
+    `ApiTokenAuthFilter`, `PressroomSession`.
   - Models: `weblogger` (and `urlStrategy`) from `initData` (`ModelLoader`
     requires it). Pagers, `*Request` objects, wrappers, shortcode
     handlers, theme subclasses, background tasks: constructor / `init`.
     Velocity resource loaders: the engine's application attribute, set by
-    `RollerVelocity.initialize(servletContext, weblogger)`.
+    `PressroomVelocity.initialize(servletContext, weblogger)`.
   - **Entities under `pojos/` are data plus invariants and import no
     business-tier type.** URLs: `URLStrategy` (JSPs via `BaseController`'s
     `urls` helper, `AdminUrls`; themes via the wrappers, which hold the
@@ -61,7 +61,7 @@ Roller is a multi-user blog server built with:
   - `StaticServiceLocatorTest` pins this as a source scan: nothing names
     `WebloggerFactory`; no main-source `static` field has a business-tier
     type except `WebloggerRuntimeConfig`'s attached `PropertiesManager`
-    (until the config wave retires it) and `RollerVelocity`'s engine; no
+    (until the config wave retires it) and `PressroomVelocity`'s engine; no
     entity references one.
   - **JSP scriptlets are callers** (`footer.jsp`/`login-redirect.jsp` use
     `WebApplicationContextUtils`); only a clean build's `jspc-validate`
@@ -71,7 +71,7 @@ Roller is a multi-user blog server built with:
 
 ### Core Package Structure
 ```
-org.apache.roller.weblogger.
+com.wikantik.pressroom.
 ├── boot/            # Boot entrypoint, Java config (servlets, security, MVC)
 ├── business/        # Service layer
 │   ├── jpa/
@@ -85,7 +85,7 @@ org.apache.roller.weblogger.
 │   ├── ajax/        # the user/theme data servlets
 │   ├── core/        # Login, profile, reader account and comments
 │   └── editor/
-├── ui/core/         # filters, security (incl. sso/), RollerSession
+├── ui/core/         # filters, security (incl. sso/), PressroomSession
 ├── ui/rendering/    # blog rendering: servlets, models, Velocity
 ├── ui/restapi/      # /api/v1 and the MCP endpoint
 └── util/
@@ -106,7 +106,7 @@ getUserManager() / getWeblogManager() / getWeblogEntryManager() / getThemeManage
   removed); an unsupported `authentication.method` fails loudly at startup
   rather than silently behaving like `db`.
 - **Authorization**: `GlobalPermission`, `WeblogPermission`, `ObjectPermission`
-- **Custom Interceptor**: `RollerHandlerInterceptor` enforces access controls
+- **Custom Interceptor**: `PressroomHandlerInterceptor` enforces access controls
 - **CSRF Protection**: Spring Security built-in, automatic on all POST forms
 
 ### Database Schema

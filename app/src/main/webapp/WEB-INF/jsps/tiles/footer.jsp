@@ -26,16 +26,16 @@
      throws, and the footer then gets null, which Colophon.of answers from the
      packaged version file. weblog is null on admin screens, so the copyright
      holder is the site name. --%>
-<% org.apache.roller.weblogger.business.Weblogger rollerTier = null;
+<% com.wikantik.pressroom.business.Weblogger rollerTier = null;
    try {
        rollerTier = org.springframework.web.context.support.WebApplicationContextUtils
            .getRequiredWebApplicationContext(application)
-           .getBean(org.apache.roller.weblogger.business.WebloggerProvider.class)
+           .getBean(com.wikantik.pressroom.business.WebloggerProvider.class)
            .getWeblogger();
    } catch (RuntimeException notBootstrapped) {
        rollerTier = null; // pre-bootstrap: version facts only
    }
-   request.setAttribute("colophon", org.apache.roller.weblogger.business.Colophon.of(
+   request.setAttribute("colophon", com.wikantik.pressroom.business.Colophon.of(
        rollerTier, null, java.time.Clock.systemDefaultZone())); %>
 
 <%-- All Colophon strings are raw, so each is escaped here. Arguments are nested

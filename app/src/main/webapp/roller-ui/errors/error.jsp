@@ -22,7 +22,7 @@
      No exception detail is rendered here on purpose: this is the page shown
      for an *unexpected* server error, and neither the exception message nor
      its class name is for a reader to see -- the real detail goes to the
-     server log (see RollerHandlerInterceptor / the container's own error
+     server log (see PressroomHandlerInterceptor / the container's own error
      logging), not the response body. --%>
 <%-- session="false": an anonymous visitor's error page makes no session,
      so no Set-Cookie; and the home link is the context path, not a
