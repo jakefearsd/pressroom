@@ -17,7 +17,7 @@ all three databases (checked with `pg_namespace`, so no other schema was missed)
 | umami | 227 | varchar 68, text 11, char 1, jsonb 5, uuid 59; plus bool, date/timestamp, numeric | 1 `bytea` column (binary, not text) |
 | listmonk | 134 | text 33, varchar[] 2, text[] 1, json 2 (matviews), jsonb 9, uuid 5, 15 enum columns; plus bool, date/timestamp, numeric | none |
 
-The first pass covered only `text`, `varchar`, `json`, `jsonb` in `information_schema`; the second
+The first pass covered only `text`, `varchar`, `char`, `json`, `jsonb` in `information_schema`; the second
 pass found the same four hits and no new ones, so arrays, enums, uuid, char and views add nothing.
 
 Generator (run with `psql -At -v ON_ERROR_STOP=1`, `\gexec` runs each generated count):
@@ -94,7 +94,7 @@ No matches in any column.
 | "controller" matches in entries and revisions | Leave: false positives, do not run a blind search-and-replace on `roller` |
 | `rlr_` token prefix | Nothing stored to migrate. Old-prefix tokens are refused by design (spec, Phase 2); re-mint the publishing agent's token after the deploy |
 | 18 `roller_*` tables | Rename in a migration. `DatabaseInstaller` detects an existing install by `roller_user`, so Phase 2 must handle both before and after the rename. View `analytics_events` (uses `roller_event`) follows a table rename by oid, but `V017` and tests spell the old name |
-| `rollerdb` database, `roller` role | Rename the `roller` role from a different superuser session (Postgres refuses renaming the current session's role), and confirm the password survives (a rename clears MD5 hashes; SCRAM is salted by name too, so verify and reset if needed). Umami and Listmonk also log in as `roller` (POSTGRES_USER), so their connection strings follow the rename. Database rename needs no connections open; `.env` (`POSTGRES_DB`, `ROLLER_DATABASE_JDBC_CONNECTIONURL`) changes with it. Privileges, including `grafana_ro`'s grants, follow the object, not the name. Restart-window item |
+| `rollerdb` database, `roller` role | Rename the `roller` role from a different superuser session (Postgres refuses renaming the current session's role), and confirm the password survives (renaming clears the password only if it is stored as MD5, which uses the role name as salt; SCRAM-SHA-256 uses a random salt and survives; check which one docker1's `roller` role uses via the `pg_authid.rolpassword` prefix during Phase 2, not now, and verify the login after the rename either way). Umami and Listmonk also log in as `roller` (POSTGRES_USER), so their connection strings follow the rename. Database rename needs no connections open; `.env` (`POSTGRES_DB`, `ROLLER_DATABASE_JDBC_CONNECTIONURL`) changes with it. Privileges, including `grafana_ro`'s grants, follow the object, not the name. Restart-window item |
 | `.env` / compose names (`ROLLER_*`, `rollerdb`) | Migrate with the host files; the only two files on docker1 that mention the db |
 | umami, listmonk databases | Nothing to do: no stored references |
 
