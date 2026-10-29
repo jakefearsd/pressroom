@@ -5,9 +5,34 @@ Running images: `ghcr.io/jakefearsd/roller:0.4.2` (app, backup), `roller-caddy:0
 postgres 18, listmonk and umami run pinned third-party images.
 
 Method: every query ran inside `BEGIN READ ONLY; ... ROLLBACK;` as the compose superuser
-(`roller`). One `count(*)` per `text`/`varchar`/`char`/`json`/`jsonb` column of every base table in
-schema `public`, matching `ILIKE '%roller%' OR ILIKE '%rlr\_%'`, generated with `\gexec`.
-Nothing on docker1 was written or restarted.
+(`roller`). Coverage (second pass, after review): every column of every table, partitioned
+table, materialized view and view in every non-system schema, cast with `::text` (so
+json/jsonb, arrays, enums, uuid and citext-style types are matched as text), excluding only
+`bytea`. Matching is `ILIKE '%roller%' OR ILIKE '%rlr\_%'`. Only schema `public` exists in
+all three databases (checked with `pg_namespace`, so no other schema was missed).
+
+| Database | Columns scanned | By type (tables/matviews/views) | Excluded |
+|---|---|---|---|
+| rollerdb | 281 | varchar 189, text 12, char 1, jsonb 1; plus bool 18, date/timestamp 40, numeric types 20 (cast, scanned, cannot match) | none |
+| umami | 227 | varchar 68, text 11, char 1, jsonb 5, uuid 59; plus bool, date/timestamp, numeric | 1 `bytea` column (binary, not text) |
+| listmonk | 134 | text 33, varchar[] 2, text[] 1, json 2 (matviews), jsonb 9, uuid 5, 15 enum columns; plus bool, date/timestamp, numeric | none |
+
+The first pass covered only `text`, `varchar`, `json`, `jsonb` in `information_schema`; the second
+pass found the same four hits and no new ones, so arrays, enums, uuid, char and views add nothing.
+
+Generator (run with `psql -At -v ON_ERROR_STOP=1`, `\gexec` runs each generated count):
+
+```sql
+BEGIN READ ONLY;
+SELECT format('SELECT %L AS rel, %L AS col, count(*) AS n FROM %I.%I WHERE %I::text ILIKE %L OR %I::text ILIKE %L HAVING count(*) > 0',
+  n.nspname||'.'||c.relname, a.attname, n.nspname, c.relname, a.attname, '%roller%', a.attname, '%rlr\_%')
+FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE a.attnum > 0 AND NOT a.attisdropped AND c.relkind IN ('r','p','m','v')
+  AND n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname NOT LIKE 'pg_toast%'
+  AND a.atttypid <> 'bytea'::regtype
+ORDER BY 1 \gexec
+ROLLBACK;
+```
 
 Privacy: email addresses (one matched value is the admin contact address, and one context
 snippet contained a fragment of one), password hashes and token digests are left out. Rows
@@ -63,13 +88,13 @@ No matches in any column.
 
 | Stored reference | Phase 2 action |
 |---|---|
-| `/roller-ui/account.rol` in the `wikantik` privacy page | Migrate (edit the page text to the new path); a redirect from `/roller-ui/` would also cover it, but the visible text should be fixed |
+| `/roller-ui/account.rol` in the `wikantik` privacy page | A stored page edit (migration or by hand, per the spec's "Stored templates"); the `/roller-ui/` redirect covers readers meanwhile |
 | "Roller" prose in that privacy page and in `site.description` | Migrate (reword to Pressroom); content decision for Jake |
 | `site.adminemail` (address containing "roller") | Leave unless Jake wants a new address; a mailbox, not code |
 | "controller" matches in entries and revisions | Leave: false positives, do not run a blind search-and-replace on `roller` |
-| `rlr_` token prefix | Nothing stored to migrate; digests only. Old tokens keep working only if the verifier accepts both prefixes (code decision) |
-| 18 `roller_*` tables | Rename in a migration; views `analytics_events` (uses `roller_event`) must be re-checked, since Postgres views follow renames by oid but `V017` and tests spell the name |
-| `rollerdb` database, `roller` role | Rename only with a connection-string change in `.env` (`POSTGRES_DB`, `ROLLER_DATABASE_JDBC_CONNECTIONURL`) and the `grafana_ro` CONNECT grants re-applied; shared Postgres also hosts umami and listmonk, so this is a restart-window item |
+| `rlr_` token prefix | Nothing stored to migrate. Old-prefix tokens are refused by design (spec, Phase 2); re-mint the publishing agent's token after the deploy |
+| 18 `roller_*` tables | Rename in a migration. `DatabaseInstaller` detects an existing install by `roller_user`, so Phase 2 must handle both before and after the rename. View `analytics_events` (uses `roller_event`) follows a table rename by oid, but `V017` and tests spell the old name |
+| `rollerdb` database, `roller` role | Rename the `roller` role from a different superuser session (Postgres refuses renaming the current session's role), and confirm the password survives (a rename clears MD5 hashes; SCRAM is salted by name too, so verify and reset if needed). Umami and Listmonk also log in as `roller` (POSTGRES_USER), so their connection strings follow the rename. Database rename needs no connections open; `.env` (`POSTGRES_DB`, `ROLLER_DATABASE_JDBC_CONNECTIONURL`) changes with it. Privileges, including `grafana_ro`'s grants, follow the object, not the name. Restart-window item |
 | `.env` / compose names (`ROLLER_*`, `rollerdb`) | Migrate with the host files; the only two files on docker1 that mention the db |
 | umami, listmonk databases | Nothing to do: no stored references |
 
