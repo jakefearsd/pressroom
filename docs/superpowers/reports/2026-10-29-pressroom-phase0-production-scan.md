@@ -81,6 +81,13 @@ No matches in any column.
   `weblog`) and `analytics_weblog_sites` (reads `weblog`). The repo's `V017` migration and
   `deploy/analytics/umami-views.sql` own these; Grafana joins `analytics_traffic` (umami db) to
   `analytics_weblog_sites` on website_id.
+- Old class and package names in the host config (final-review I-6, one read-only command,
+  key names only: `grep -nE 'org[./]apache[./]roller' ~/roller/.env ~/roller/docker-compose.prod.yml
+  | sed -E 's/=.*//'`): one hit, `~/roller/.env` line 92, a **comment** naming the source path
+  `app/src/main/resources/org/apache/roller/weblogger/config/roller.properties` (copied from the
+  `.env` template). No key or value in either file names a class or package, so the package move
+  needs no host-config change; the comment can be reworded with the Phase 2 `.env` migration.
+  `docker-compose.prod.yml`: none.
 - **No Grafana datasource was found in any file I could reach.** The role is NOLOGIN, so the
   consumer must log in some other way (or is not yet configured). See questions.
 
