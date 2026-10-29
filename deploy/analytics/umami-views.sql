@@ -13,8 +13,8 @@
 -- limitations under the License.
 --
 -- The Umami half of the analytics contract (see
--- bin/db/migrations/V017__analytics_contract.sql for the rollerdb half).
--- This file lives in the umami DATABASE, not the rollerdb migration chain
+-- bin/db/migrations/V017__analytics_contract.sql for the pressroom half).
+-- This file lives in the umami DATABASE, not the pressroom migration chain
 -- -- PostgreSQL has no cross-database queries, so V017 could not create a
 -- view over website_event even though it owns everything else in the
 -- contract. Applied by the one-shot `analytics-views` compose service
@@ -24,7 +24,7 @@
 -- not exist until Umami's own first-boot migrations create it, so this
 -- cannot run any earlier. CREATE OR REPLACE + GRANT are idempotent, so
 -- re-running this on every deploy is a no-op, same contract migrate.sh
--- gives the rollerdb chain. Versioned here (not hand-applied) so replacing
+-- gives the pressroom chain. Versioned here (not hand-applied) so replacing
 -- Umami later means rewriting this one file, not any dashboard.
 --
 -- Column shapes follow Umami v2's postgresql schema (website_event, with
@@ -34,7 +34,7 @@
 -- shape in a scratch table and applies this exact file, so the repo's only
 -- knowledge of Umami's schema lives here plus that test's minimal copy.
 --
--- Grafana joins this view's website_id against rollerdb's
+-- Grafana joins this view's website_id against pressroom's
 -- analytics_weblog_sites view (V017) to resolve a weblog handle -- a
 -- cross-database join Grafana performs itself, since Postgres cannot.
 --
@@ -42,7 +42,7 @@
 -- (or a plain script like this one) cannot portably state its own
 -- database's name -- current_database() would need dynamic SQL to use
 -- inside a GRANT -- so provision.sh issues
--- `GRANT CONNECT ON DATABASE ... TO grafana_ro` for BOTH rollerdb and
+-- `GRANT CONNECT ON DATABASE ... TO grafana_ro` for BOTH pressroom and
 -- umami already, earlier in the same `docker compose up -d`, where the real
 -- database names are already known as env vars (see provision.sh's grant
 -- step and V017's header for the same decision, restated on that side of

@@ -6,7 +6,7 @@
     <package>com.wikantik.pressroom.pojos</package>
     <entity metadata-complete="true" name="MediaFileTag"
             class="com.wikantik.pressroom.pojos.MediaFileTag" access="PROPERTY">
-        <table name="roller_mediafiletag"/>
+        <table name="pressroom_mediafiletag"/>
         <named-query name="MediaFileTag.getByMediaFile">
             <query>SELECT w FROM MediaFileTag w WHERE w.mediaFile = ?1</query>
         </named-query>

@@ -6,7 +6,7 @@
     <package>com.wikantik.pressroom.pojos</package>
     <entity metadata-complete="true" name="ObjectPermission"
             class="com.wikantik.pressroom.pojos.ObjectPermission" access="PROPERTY">
-        <table name="roller_permission"/>
+        <table name="pressroom_permission"/>
         <inheritance />
         <discriminator-column name="objecttype" />
         <attributes>

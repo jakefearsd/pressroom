@@ -178,7 +178,7 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
 
 Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`.
 
-- **An agent is a `roller_user` with `kind = AGENT` (V033)**: no password (`passphrase` is nullable
+- **An agent is a `pressroom_user` with `kind = AGENT` (V033)**: no password (`passphrase` is nullable
   since V033), the `editor` role plus `admin` when its Site administrator switch is on, created only
   by `UserManager.addAgent`. Memberships, permissions and tokens are the people's machinery.
 - **Every sign-in gate refuses an agent, explicitly**: `PressroomUserDetailsService` (form login,

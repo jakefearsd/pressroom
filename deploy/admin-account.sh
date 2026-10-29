@@ -28,7 +28,7 @@ export PGHOST="${PGHOST:-postgres}"
 export PGPORT="${PGPORT:-5432}"
 export PGUSER="${POSTGRES_USER:?POSTGRES_USER must be set}"
 export PGPASSWORD="${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}"
-export PGDATABASE="${POSTGRES_DB:-rollerdb}"
+export PGDATABASE="${POSTGRES_DB:-pressroom}"
 
 MIN_PASSWORD_LENGTH=8
 EMAIL_MAX=255
@@ -64,7 +64,7 @@ sql() {
 require_schema() {
     local present
     present=$(sql <<'SQL'
-SELECT to_regclass('public.roller_user') IS NOT NULL;
+SELECT to_regclass('public.pressroom_user') IS NOT NULL;
 SQL
 ) || die "database error (is ${PGDATABASE} on ${PGHOST}:${PGPORT} reachable?)"
     [[ "${present}" == t ]] \
@@ -102,7 +102,7 @@ cmd_create() {
     require_schema
     local taken
     taken=$(sql -v username="${USERNAME}" <<'SQL'
-SELECT count(*) FROM roller_user WHERE lower(username) = lower(:'username');
+SELECT count(*) FROM pressroom_user WHERE lower(username) = lower(:'username');
 SQL
 ) || die "database error while checking for an existing account"
     [[ "${taken}" == 0 ]] || die "an account named ${USERNAME} already exists (perhaps disabled)"
@@ -112,7 +112,7 @@ SET client_min_messages = warning;
 \getenv pw PRESSROOM_ADMIN_PASSWORD
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
-INSERT INTO roller_user (id, username, passphrase, screenname, fullname,
+INSERT INTO pressroom_user (id, username, passphrase, screenname, fullname,
                          emailaddress, datecreated, locale, timezone, isenabled)
 VALUES (gen_random_uuid()::text, :'username',
         '{bcrypt}' || crypt($1, gen_salt('bf', 10)),
@@ -130,7 +130,7 @@ cmd_reset() {
     require_schema
     local found enabled kind
     found=$(sql -v username="${USERNAME}" <<'SQL'
-SELECT isenabled, kind FROM roller_user WHERE username = :'username';
+SELECT isenabled, kind FROM pressroom_user WHERE username = :'username';
 SQL
 ) || die "database error while looking up ${USERNAME}"
     [[ -n "${found}" ]] || die "no account named ${USERNAME}"
@@ -145,7 +145,7 @@ SET client_min_messages = warning;
 \getenv pw PRESSROOM_ADMIN_PASSWORD
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
-UPDATE roller_user SET passphrase = '{bcrypt}' || crypt($1, gen_salt('bf', 10))
+UPDATE pressroom_user SET passphrase = '{bcrypt}' || crypt($1, gen_salt('bf', 10))
  WHERE username = :'username'
 \bind :pw \g
 COMMIT;
@@ -163,7 +163,7 @@ cmd_status() {
     require_schema
     local admins
     admins=$(sql <<'SQL'
-SELECT u.username FROM roller_user u
+SELECT u.username FROM pressroom_user u
  WHERE u.isenabled
    AND u.kind = 'PERSON'
    AND EXISTS (SELECT 1 FROM userrole r

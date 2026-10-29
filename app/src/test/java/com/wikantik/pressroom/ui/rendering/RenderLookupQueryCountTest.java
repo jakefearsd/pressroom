@@ -81,7 +81,7 @@ class RenderLookupQueryCountTest {
     /**
      * Before: each warm render of this home page sent two
      * {@code weblog_custom_template} selects (the absent stylesheet override)
-     * and one {@code roller_weblogpage} select to the database, and ran twelve
+     * and one {@code pressroom_weblogpage} select to the database, and ran twelve
      * {@code RuntimeConfigProperty} finds (served by EclipseLink's shared
      * cache, so CPU rather than SQL).
      */
@@ -96,14 +96,14 @@ class RenderLookupQueryCountTest {
                 "the stylesheet override (absent here) is read on every render: " + queries);
         assertEquals(List.of(), QueryRecorder.sqlOn(queries, "weblog_custom_template"),
                 "the stylesheet override is selected on every render: " + queries);
-        assertEquals(List.of(), QueryRecorder.sqlOn(queries, "roller_weblogpage"),
+        assertEquals(List.of(), QueryRecorder.sqlOn(queries, "pressroom_weblogpage"),
                 "the nav pages are selected on every render: " + queries);
         assertTrue(QueryRecorder.on(queries, WeblogPage.class).stream()
                         .allMatch(q -> q.startsWith("ReadObjectQuery:")),
                 "a remembered nav page is resolved by id, never by a query: " + queries);
         assertEquals(List.of(), QueryRecorder.on(queries, RuntimeConfigProperty.class),
                 "runtime properties are looked up on every read: " + queries);
-        assertEquals(List.of(), QueryRecorder.sqlOn(queries, "roller_properties"),
+        assertEquals(List.of(), QueryRecorder.sqlOn(queries, "pressroom_properties"),
                 "runtime properties are selected on every read: " + queries);
     }
 

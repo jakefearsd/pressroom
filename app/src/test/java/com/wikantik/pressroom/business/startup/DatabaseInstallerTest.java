@@ -61,8 +61,8 @@ class DatabaseInstallerTest {
 
     @Test
     void aWellFormedUsernamePassesThrough() throws Exception {
-        Connection con = connectionWithUser("roller_app");
-        assertEquals("roller_app", installer().connectionUser(con));
+        Connection con = connectionWithUser("pressroom_app");
+        assertEquals("pressroom_app", installer().connectionUser(con));
     }
 
     @Test

@@ -72,9 +72,9 @@ limitations under the License.
              exec-maven-plugin declaration used for app-start and the pg-* steps. -->
         <antrun.plugin.version>3.2.0</antrun.plugin.version>
 
-        <it.db.name>roller_it</it.db.name>
-        <it.db.user>roller</it.db.user>
-        <it.db.password>roller</it.db.password>
+        <it.db.name>pressroom_it</it.db.name>
+        <it.db.user>pressroom</it.db.user>
+        <it.db.password>pressroom</it.db.password>
         <it.db.container-alias>roller-it-postgres</it.db.container-alias>
         <it.postgres.image>postgres:18</it.postgres.image>
 

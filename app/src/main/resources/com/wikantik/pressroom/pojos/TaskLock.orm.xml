@@ -5,7 +5,7 @@
     <package>com.wikantik.pressroom.pojos</package>
     <entity metadata-complete="true" name="TaskLock" class="com.wikantik.pressroom.pojos.TaskLock"
             access="PROPERTY">
-        <table name="roller_tasklock"/>
+        <table name="pressroom_tasklock"/>
         
         <named-query name="TaskLock.getByName">
             <query>SELECT t FROM TaskLock t WHERE t.name = ?1</query>

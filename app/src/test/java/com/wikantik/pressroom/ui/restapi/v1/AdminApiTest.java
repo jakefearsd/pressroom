@@ -209,7 +209,7 @@ class AdminApiTest {
     }
 
     /**
-     * Review round 1, Important 2: roller_user.username is varchar(255).
+     * Review round 1, Important 2: pressroom_user.username is varchar(255).
      * Past that, store() reaches Postgres and "value too long" comes back
      * wrapped in a bare WebloggerException -- an unguarded 500.
      */
@@ -259,7 +259,7 @@ class AdminApiTest {
     void postRejectsAnEmailAddressLongerThanTheColumn() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         // Still matches EMAIL_PATTERN (local@domain.tld) but overflows
-        // roller_user.emailaddress's 255 characters.
+        // pressroom_user.emailaddress's 255 characters.
         String tooLong = "a".repeat(250) + "@example.test";
 
         String body = mockMvc(controllerFor(weblogger))
@@ -850,7 +850,7 @@ class AdminApiTest {
     }
 
     /**
-     * roller_properties is pre-seeded at startup, so this is always an
+     * pressroom_properties is pre-seeded at startup, so this is always an
      * update -- see AdminApi.patchConfig's comment on the same landmine:
      * PropertiesManager.saveProperty persists a not-yet-managed instance
      * outright rather than upserting, so handing it a bare {@code new

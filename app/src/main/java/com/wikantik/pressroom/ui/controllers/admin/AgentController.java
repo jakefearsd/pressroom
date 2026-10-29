@@ -50,7 +50,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
  * New agent and an agent's page (spec 2026-10-13, sections 1, 3 and 4). An
- * agent is a {@code roller_user} with kind AGENT that never signs in: its page
+ * agent is a {@code pressroom_user} with kind AGENT that never signs in: its page
  * has no password and no set-password link, only its details, one confirmed
  * Disable or Enable, its weblogs, and the tokens a site admin mints for it.
  * Every change writes a {@code roller.admin} line.
@@ -64,7 +64,7 @@ public class AgentController extends TokenFormController {
     private static final String MINT_ACTION = "/roller-ui/admin/agent!mintToken.rol";
     private static final String REVOKE_ACTION = "/roller-ui/admin/agent!revokeToken.rol";
 
-    /** roller_user.screenname and fullname are varchar(255). */
+    /** pressroom_user.screenname and fullname are varchar(255). */
     private static final int MAX_NAME_LENGTH = 255;
 
     @Override

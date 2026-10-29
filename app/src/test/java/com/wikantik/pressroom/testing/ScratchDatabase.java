@@ -43,16 +43,46 @@ public final class ScratchDatabase {
      * {@link #drop(String)}.
      */
     public static Connection migrated(String name) throws Exception {
+        return migratedThrough(name, Integer.MAX_VALUE);
+    }
+
+    /**
+     * Like {@link #migrated(String)}, but stops after migration
+     * {@code V<lastVersion>}: the database as a deployment at that version
+     * holds it, for tests of the migration that comes next.
+     */
+    public static Connection migratedThrough(String name, int lastVersion) throws Exception {
         empty(name);
         Connection con = DriverManager.getConnection(jdbcUrl(name),
                 PressroomPostgresContainer.getUsername(), PressroomPostgresContainer.getPassword());
         for (Path migration : MigrationFiles.all()) {
-            try (Statement st = con.createStatement()) {
-                st.execute(Files.readString(migration, StandardCharsets.UTF_8)
-                        .replace(":app_user", PressroomPostgresContainer.getUsername()));
+            if (version(migration) > lastVersion) {
+                break;
             }
+            apply(con, migration);
         }
         return con;
+    }
+
+    /** Applies one migration file to {@code con}, expanding {@code :app_user} as migrate.sh does. */
+    public static void apply(Connection con, Path migration) throws Exception {
+        try (Statement st = con.createStatement()) {
+            st.execute(Files.readString(migration, StandardCharsets.UTF_8)
+                    .replace(":app_user", PressroomPostgresContainer.getUsername()));
+        }
+    }
+
+    /** The migration file numbered {@code V<version>}. */
+    public static Path migration(int version) {
+        return MigrationFiles.all().stream()
+                .filter(file -> version(file) == version)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("no migration V" + version));
+    }
+
+    private static int version(Path migration) {
+        String file = migration.getFileName().toString();
+        return Integer.parseInt(file.substring(1, file.indexOf("__")));
     }
 
     /** Drops and recreates {@code name} with no schema at all. */

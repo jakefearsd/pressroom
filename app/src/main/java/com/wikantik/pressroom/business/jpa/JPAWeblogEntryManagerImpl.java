@@ -787,8 +787,8 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
             + " CASE WHEN d.is_private THEN NULL ELSE m.id END,"
             + " e.canonical_url"
             + " FROM weblogentry e"
-            + " LEFT JOIN roller_mediafile m ON m.id = e.featured_image_id"
-            + " LEFT JOIN roller_mediafiledir d ON d.id = m.directoryid"
+            + " LEFT JOIN pressroom_mediafile m ON m.id = e.featured_image_id"
+            + " LEFT JOIN pressroom_mediafiledir d ON d.id = m.directoryid"
             + " WHERE e.websiteid = ?1 AND e.status = ?2"
             + " ORDER BY e.pubtime DESC, e.id"
             + " LIMIT ?3";

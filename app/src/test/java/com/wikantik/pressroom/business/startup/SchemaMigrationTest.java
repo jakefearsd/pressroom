@@ -57,11 +57,11 @@ public class SchemaMigrationTest {
      */
     private static final List<String> EXPECTED_TABLES = List.of(
             "custom_template_rendition", "entryattribute", "newsfeed",
-            "roller_audit_log",
-            "roller_mediafile", "roller_mediafiledir", "roller_mediafiletag",
-            "roller_permission", "roller_properties",
-            "roller_tasklock",
-            "roller_user", "roller_weblogentrytag", "roller_weblogentrytagagg",
+            "pressroom_audit_log",
+            "pressroom_mediafile", "pressroom_mediafiledir", "pressroom_mediafiletag",
+            "pressroom_permission", "pressroom_properties",
+            "pressroom_tasklock",
+            "pressroom_user", "pressroom_weblogentrytag", "pressroom_weblogentrytagagg",
             "userrole", "weblog", "weblog_custom_template", "weblogcategory",
             "weblogentry", "weblogentry_revision");
 
@@ -164,15 +164,30 @@ public class SchemaMigrationTest {
     /**
      * README.md rule 1: applying a migration twice must be a no-op. Enforced
      * here so the rule is checked rather than merely documented.
+     *
+     * <p>Each migration is applied twice in a row, at its own place in the
+     * chain. Until V041 this re-ran the whole chain over the finished schema,
+     * but V041 renames the {@code roller_*} tables (rebrand:keep), so
+     * re-running V002 after it would create the old tables a second time,
+     * empty, beside the renamed ones. No applier does that:
+     * {@code schema_migrations} records each version once.
      */
     @Test
     public void everyMigrationIsIdempotent() throws Exception {
         String dbName = "migrationtest_idempotency";
-        try (Connection con = freshDatabase(dbName)) {
-            List<String> before = tableNames(con);
-
+        try (Connection admin = adminConnection();
+             Statement st = admin.createStatement()) {
+            st.execute("DROP DATABASE IF EXISTS " + dbName);
+            st.execute("CREATE DATABASE " + dbName);
+        }
+        try (Connection con = DriverManager.getConnection(jdbcUrlFor(dbName),
+                PressroomPostgresContainer.getUsername(), PressroomPostgresContainer.getPassword())) {
             for (Path migration : MigrationFiles.all()) {
                 String sql = readMigration(migration);
+                try (Statement st = con.createStatement()) {
+                    st.execute(sql);
+                }
+                List<String> once = schemaNames(con);
                 try (Statement st = con.createStatement()) {
                     st.execute(sql);
                 } catch (Exception e) {
@@ -180,10 +195,9 @@ public class SchemaMigrationTest {
                             + "idempotent. See rule 1 in bin/db/migrations/README.md. Cause: "
                             + e.getMessage());
                 }
+                assertEquals(once, schemaNames(con),
+                        "Re-applying " + migration.getFileName() + " changed the schema");
             }
-
-            assertEquals(before, tableNames(con),
-                    "Re-applying the migration chain changed the set of tables");
         } finally {
             dropDatabase(dbName);
         }
@@ -247,5 +261,21 @@ public class SchemaMigrationTest {
             }
         }
         return tables;
+    }
+
+    /** Every relation and constraint in public, with its kind: what a re-run must leave alone. */
+    private List<String> schemaNames(Connection con) throws Exception {
+        List<String> names = new ArrayList<>();
+        String sql = "SELECT c.relkind::text || ' ' || c.relname FROM pg_class c "
+                + "JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' "
+                + "UNION ALL SELECT 'constraint ' || con.conname FROM pg_constraint con "
+                + "JOIN pg_namespace n ON n.oid = con.connamespace WHERE n.nspname = 'public' "
+                + "ORDER BY 1";
+        try (Statement st = con.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                names.add(rs.getString(1));
+            }
+        }
+        return names;
     }
 }

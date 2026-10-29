@@ -7,7 +7,7 @@ migration so databases can be brought forward safely and repeatably.
 Roller is **PostgreSQL-only**. The earlier scheme — Velocity
 templates rendered by Texen into vendor-specific DDL for seven databases, with
 a hardcoded `upgradeToNNN()` chain in `DatabaseInstaller` keyed off a
-`roller.database.version` row in `roller_properties` — has been removed.
+schema-version row in the runtime properties table — has been removed.
 
 ## Files
 
@@ -56,7 +56,7 @@ V<NNN>__<snake_case_description>.sql
    ```
 
 2. **Must not hard-code role names for grants.** Use the `:app_user` psql
-   variable — `migrate.sh` sets it from `DB_APP_USER` (default `roller`).
+   variable — `migrate.sh` sets it from `DB_APP_USER` (default `pressroom`).
 
 3. **Must not be edited after it has been applied anywhere but local dev.**
    Fix mistakes with a follow-up migration. The `schema_migrations` table
@@ -95,7 +95,7 @@ bin/db/migrate.sh
 bin/db/migrate.sh --status
 
 # Production: set connection vars and run
-DB_NAME=rollerdb PGHOST=db.example.com PGUSER=postgres \
+DB_NAME=pressroom PGHOST=db.example.com PGUSER=postgres \
     PGPASSWORD='…' bin/db/migrate.sh
 ```
 

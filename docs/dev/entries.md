@@ -11,7 +11,7 @@ Comments for signed-in readers are documented in `docs/dev/comments.md`
 moderation, API, hazards). The W1 subsystem removed by V022 is not restored.
 
 A sweep for "comment" must leave alone:
-- **`roller_audit_log.comment_text`** — the audit log's own change note; a
+- **`pressroom_audit_log.comment_text`** — the audit log's own change note; a
   name collision only.
 - **`util/GenericThrottle`** — `CommentServlet` was only its most visible
   caller; it throttles `ContactController` (`contact.throttle.*`),
@@ -203,7 +203,7 @@ at runtime while unit tests (which call the method directly) pass;
 
 ## Tag counts
 
-A tag's count (`roller_weblogentrytagagg`, see `database.md`) is the number
+A tag's count (`pressroom_weblogentrytagagg`, see `database.md`) is the number
 of PUBLISHED entries carrying it. **`saveWeblogEntry` and
 `removeWeblogEntry` only name the tags they touched** (the entry's tags,
 removed ones included, plus at commit whatever tags the entry has in the

@@ -74,7 +74,7 @@ class PermissionActionsTest {
 
     @Test
     void nullActionsParseToNoActionsInsteadOfThrowing() {
-        // roller_permission.actions is a nullable column (see V002__baseline_schema.sql)
+        // pressroom_permission.actions is a nullable column (see V002__baseline_schema.sql)
         // and isEmpty() already anticipates null. getActionsAsList() must agree:
         // before this was fixed it threw NullPointerException, which would take
         // down every permission check for the affected row.

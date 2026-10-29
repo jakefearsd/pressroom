@@ -34,13 +34,13 @@
 #     export PGUSER="${POSTGRES_USER}"
 #     export PGPASSWORD="${POSTGRES_PASSWORD}"
 #     pg_restore -d "${POSTGRES_DB}" --clean --if-exists
-#   ' < /path/on/host/to/rollerdb-<timestamp>.dump
+#   ' < /path/on/host/to/pressroom-<timestamp>.dump
 #
 #   docker compose -f docker-compose.prod.yml start app
 #
 #   (The dump lives in the roller-backups volume, at
-#   /backups/rollerdb-<timestamp>.dump inside the backup container --
-#   `docker compose cp backup:/backups/rollerdb-<timestamp>.dump .` to get it
+#   /backups/pressroom-<timestamp>.dump inside the backup container --
+#   `docker compose cp backup:/backups/pressroom-<timestamp>.dump .` to get it
 #   onto the host first if restoring from a different machine.)
 #
 # Media/search-index/uploads volumes (stack must be down -- the archive
@@ -78,7 +78,7 @@ mkdir -p "${BACKUP_DIR}"
 
 echo "[$(date -u +%FT%TZ)] Starting backup..."
 
-DUMP_FILE="${BACKUP_DIR}/rollerdb-${TIMESTAMP}.dump"
+DUMP_FILE="${BACKUP_DIR}/pressroom-${TIMESTAMP}.dump"
 pg_dump -Fc -d "${DB_NAME}" -f "${DUMP_FILE}.tmp"
 mv "${DUMP_FILE}.tmp" "${DUMP_FILE}"
 echo "  database -> ${DUMP_FILE}"
@@ -109,7 +109,7 @@ echo "  volumes  -> ${VOLUMES_FILE}"
 
 echo "Rotating backups older than ${RETENTION_DAYS} day(s)..."
 find "${BACKUP_DIR}" -maxdepth 1 -type f \
-    \( -name 'rollerdb-*.dump' -o -name '*-[0-9]*T[0-9]*Z.dump' \
+    \( -name 'pressroom-*.dump' -o -name '*-[0-9]*T[0-9]*Z.dump' \
        -o -name 'volumes-*.tar.gz' -o -name '*.tmp' \) \
     -mtime "+${RETENTION_DAYS}" -print -delete
 

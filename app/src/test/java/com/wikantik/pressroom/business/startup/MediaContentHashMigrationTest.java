@@ -18,6 +18,7 @@
 package com.wikantik.pressroom.business.startup;
 
 import com.wikantik.pressroom.testing.MigrationFiles;
+import com.wikantik.pressroom.testing.ScratchDatabase;
 import com.wikantik.pressroom.testing.PressroomPostgresContainer;
 import org.junit.jupiter.api.Test;
 
@@ -80,23 +81,13 @@ public class MediaContentHashMigrationTest {
         }
     }
 
+    /**
+     * The schema as V040 left it: V041 renamed the tables this test names,
+     * and re-running an earlier migration after that rename would create
+     * them again beside the renamed ones.
+     */
     private Connection freshDatabase(String dbName) throws Exception {
-        try (Connection admin = adminConnection();
-             Statement st = admin.createStatement()) {
-            st.execute("DROP DATABASE IF EXISTS " + dbName);
-            st.execute("CREATE DATABASE " + dbName);
-        }
-        Connection con = DriverManager.getConnection(
-                jdbcUrlFor(dbName),
-                PressroomPostgresContainer.getUsername(),
-                PressroomPostgresContainer.getPassword());
-        for (Path migration : MigrationFiles.all()) {
-            try (Statement st = con.createStatement()) {
-                st.execute(Files.readString(migration, StandardCharsets.UTF_8)
-                        .replace(":app_user", PressroomPostgresContainer.getUsername()));
-            }
-        }
-        return con;
+        return ScratchDatabase.migratedThrough(dbName, 40);
     }
 
     private void dropDatabase(String dbName) throws Exception {
@@ -111,13 +102,5 @@ public class MediaContentHashMigrationTest {
                 PressroomPostgresContainer.getJdbcUrl(),
                 PressroomPostgresContainer.getUsername(),
                 PressroomPostgresContainer.getPassword());
-    }
-
-    private String jdbcUrlFor(String dbName) {
-        String url = PressroomPostgresContainer.getJdbcUrl();
-        int dbStart = url.lastIndexOf('/') + 1;
-        int queryStart = url.indexOf('?', dbStart);
-        String tail = queryStart < 0 ? "" : url.substring(queryStart);
-        return url.substring(0, dbStart) + dbName + tail;
     }
 }

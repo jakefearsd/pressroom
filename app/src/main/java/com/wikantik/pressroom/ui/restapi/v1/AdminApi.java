@@ -166,7 +166,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         User user = new User();
         user.setUserName(userName);
         user.setScreenName(screenName);
-        // roller_user.fullname is NOT NULL and UserCreate carries no field
+        // pressroom_user.fullname is NOT NULL and UserCreate carries no field
         // for it -- adding one just to satisfy a column an automation
         // caller has no reason to fill in would be a worse API than
         // defaulting it the same way screenName already defaults to
@@ -305,7 +305,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
             String value = entry.getValue();
             requireValidType(def, value);
 
-            // Every runtime property is pre-seeded into roller_properties at
+            // Every runtime property is pre-seeded into pressroom_properties at
             // startup (JPAPropertiesManagerImpl.initializeMissingProps), so
             // this is (almost) always an update, never an insert.
             // JPAPersistenceStrategy.store() calls em.persist() outright for

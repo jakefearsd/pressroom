@@ -7,8 +7,8 @@
         </session-manager>
   </session-config>
   <resource-ref>
-    <res-ref-name>jdbc/rollerdb</res-ref-name>
-    <jndi-name>jdbc/rollerdb</jndi-name>
+    <res-ref-name>jdbc/pressroom</res-ref-name>
+    <jndi-name>jdbc/pressroom</jndi-name>
   </resource-ref>
   <resource-ref>
     <res-ref-name>mail/Session</res-ref-name>

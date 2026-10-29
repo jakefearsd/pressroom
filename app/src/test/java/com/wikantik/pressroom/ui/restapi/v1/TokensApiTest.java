@@ -322,7 +322,7 @@ class TokensApiTest {
     }
 
     /**
-     * Whole-branch review, Must Fix 2: roller_api_token.label is VARCHAR(255)
+     * Whole-branch review, Must Fix 2: pressroom_api_token.label is VARCHAR(255)
      * NOT NULL (V026) and issueToken copies it straight through --
      * parseRole above already degrades a missing role to a 400; label never
      * got the equivalent, so a mint with no label used to reach the manager
@@ -363,7 +363,7 @@ class TokensApiTest {
         verify(weblogger.getApiTokenManager(), never()).issueToken(any(), anyString(), any(), any(), any());
     }
 
-    /** roller_api_token.label is VARCHAR(255) -- the same guard, over-length rather than blank. */
+    /** pressroom_api_token.label is VARCHAR(255) -- the same guard, over-length rather than blank. */
     @Test
     void mintingWithALabelLongerThanTheColumnIsBadRequest() throws Exception {
         authenticateWithBasicAuth();
@@ -381,7 +381,7 @@ class TokensApiTest {
         verify(weblogger.getApiTokenManager(), never()).issueToken(any(), anyString(), any(), any(), any());
     }
 
-    /** roller_api_token.scope_weblog is VARCHAR(255) too. */
+    /** pressroom_api_token.scope_weblog is VARCHAR(255) too. */
     @Test
     void mintingWithAWeblogLongerThanTheColumnIsBadRequest() throws Exception {
         authenticateWithBasicAuth();

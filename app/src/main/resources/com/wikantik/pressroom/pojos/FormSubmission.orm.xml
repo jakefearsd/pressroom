@@ -5,7 +5,7 @@
     <package>com.wikantik.pressroom.pojos</package>
     <entity metadata-complete="true" name="FormSubmission"
             class="com.wikantik.pressroom.pojos.FormSubmission" access="PROPERTY">
-        <table name="roller_form_submission"/>
+        <table name="pressroom_form_submission"/>
         <named-query name="FormSubmission.getByWeblog">
             <query>SELECT s FROM FormSubmission s WHERE s.weblog = ?1 ORDER BY s.created DESC</query>
         </named-query>

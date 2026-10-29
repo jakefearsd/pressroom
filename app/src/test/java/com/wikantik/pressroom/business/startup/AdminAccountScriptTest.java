@@ -94,7 +94,7 @@ class AdminAccountScriptTest {
                 PressroomPostgresContainer.getUsername(), PressroomPostgresContainer.getPassword())) {
             for (String name : created) {
                 try (PreparedStatement r = c.prepareStatement("DELETE FROM userrole WHERE username = ?");
-                     PreparedStatement u = c.prepareStatement("DELETE FROM roller_user WHERE username = ?")) {
+                     PreparedStatement u = c.prepareStatement("DELETE FROM pressroom_user WHERE username = ?")) {
                     r.setString(1, name); r.executeUpdate();
                     u.setString(1, name); u.executeUpdate();
                 }
@@ -146,7 +146,7 @@ class AdminAccountScriptTest {
         try (Connection c = DriverManager.getConnection(PressroomPostgresContainer.getJdbcUrl(),
                 PressroomPostgresContainer.getUsername(), PressroomPostgresContainer.getPassword());
              PreparedStatement s = c.prepareStatement(
-                     "SELECT (SELECT count(*) FROM roller_user WHERE lower(username) = lower(?))"
+                     "SELECT (SELECT count(*) FROM pressroom_user WHERE lower(username) = lower(?))"
                              + " + (SELECT count(*) FROM userrole WHERE lower(username) = lower(?))")) {
             s.setString(1, name);
             s.setString(2, name);
@@ -246,7 +246,7 @@ class AdminAccountScriptTest {
                 "--email", name + "@example.com", "--password-stdin").exit());
         try (Connection c = DriverManager.getConnection(PressroomPostgresContainer.getJdbcUrl(),
                 PressroomPostgresContainer.getUsername(), PressroomPostgresContainer.getPassword());
-             PreparedStatement s = c.prepareStatement("UPDATE roller_user SET isenabled = false WHERE username = ?")) {
+             PreparedStatement s = c.prepareStatement("UPDATE pressroom_user SET isenabled = false WHERE username = ?")) {
             s.setString(1, name);
             s.executeUpdate();
         }
@@ -316,7 +316,7 @@ class AdminAccountScriptTest {
         String name = createWith(GOOD_PASSWORD);
         try (Connection c = DriverManager.getConnection(PressroomPostgresContainer.getJdbcUrl(),
                 PressroomPostgresContainer.getUsername(), PressroomPostgresContainer.getPassword());
-             PreparedStatement s = c.prepareStatement("UPDATE roller_user SET isenabled = false WHERE username = ?")) {
+             PreparedStatement s = c.prepareStatement("UPDATE pressroom_user SET isenabled = false WHERE username = ?")) {
             s.setString(1, name);
             s.executeUpdate();
         }
@@ -330,7 +330,7 @@ class AdminAccountScriptTest {
     static String passphraseOf(String db, String name) throws Exception {
         try (Connection c = DriverManager.getConnection(ScratchDatabase.jdbcUrl(db),
                 PressroomPostgresContainer.getUsername(), PressroomPostgresContainer.getPassword());
-             PreparedStatement s = c.prepareStatement("SELECT passphrase FROM roller_user WHERE username = ?")) {
+             PreparedStatement s = c.prepareStatement("SELECT passphrase FROM pressroom_user WHERE username = ?")) {
             s.setString(1, name);
             try (ResultSet rs = s.executeQuery()) {
                 assertTrue(rs.next(), "no account " + name);
@@ -352,12 +352,12 @@ class AdminAccountScriptTest {
             assertEquals(0, run(db, GOOD_PASSWORD + "\n", "create", "--username", "alice",
                     "--email", "alice@example.com", "--password-stdin").exit());
             try (Statement s = c.createStatement()) {
-                s.executeUpdate("UPDATE roller_user SET isenabled = false WHERE username = 'alice'");
+                s.executeUpdate("UPDATE pressroom_user SET isenabled = false WHERE username = 'alice'");
             }
             assertEquals(3, run(db, "", "status").exit(), "a disabled admin is no admin");
 
             try (Statement s = c.createStatement()) {
-                s.executeUpdate("UPDATE roller_user SET isenabled = true WHERE username = 'alice'");
+                s.executeUpdate("UPDATE pressroom_user SET isenabled = true WHERE username = 'alice'");
             }
             Run some = run(db, "", "status");
             assertEquals(0, some.exit(), some.stderr());
@@ -375,7 +375,7 @@ class AdminAccountScriptTest {
             assertEquals(0, run(db, GOOD_PASSWORD + "\n", "create", "--username", "alice",
                     "--email", "alice@example.com", "--password-stdin").exit());
             try (Statement s = c.createStatement()) {
-                s.executeUpdate("UPDATE roller_user SET kind = 'AGENT' WHERE username = 'alice'");
+                s.executeUpdate("UPDATE pressroom_user SET kind = 'AGENT' WHERE username = 'alice'");
             }
             Run r = run(db, "", "status");
             assertEquals(3, r.exit(), "an agent holding admin is no admin account: " + r.stdout());
@@ -391,7 +391,7 @@ class AdminAccountScriptTest {
         String name = createWith(GOOD_PASSWORD);
         try (Connection c = DriverManager.getConnection(PressroomPostgresContainer.getJdbcUrl(),
                 PressroomPostgresContainer.getUsername(), PressroomPostgresContainer.getPassword());
-             PreparedStatement s = c.prepareStatement("UPDATE roller_user SET kind = 'AGENT' WHERE username = ?")) {
+             PreparedStatement s = c.prepareStatement("UPDATE pressroom_user SET kind = 'AGENT' WHERE username = ?")) {
             s.setString(1, name);
             s.executeUpdate();
         }
@@ -439,7 +439,7 @@ class AdminAccountScriptTest {
         String db = "admintool_logc";
         try (Connection c = ScratchDatabase.migrated(db); Statement st = c.createStatement()) {
             st.execute(FAIL_FN);
-            st.execute("CREATE TRIGGER admintool_fail BEFORE INSERT ON roller_user"
+            st.execute("CREATE TRIGGER admintool_fail BEFORE INSERT ON pressroom_user"
                     + " FOR EACH ROW EXECUTE FUNCTION admintool_fail()");
             String secret = "s3cret-" + UUID.randomUUID();
             Run r = run(db, secret + "\n", "create", "--username", "carol",
@@ -462,7 +462,7 @@ class AdminAccountScriptTest {
             assertEquals(0, run(db, GOOD_PASSWORD + "\n", "create", "--username", "dave",
                     "--email", "dave@example.com", "--password-stdin").exit());
             st.execute(FAIL_FN);
-            st.execute("CREATE TRIGGER admintool_fail BEFORE UPDATE ON roller_user"
+            st.execute("CREATE TRIGGER admintool_fail BEFORE UPDATE ON pressroom_user"
                     + " FOR EACH ROW EXECUTE FUNCTION admintool_fail()");
             String secret = "s3cret-" + UUID.randomUUID();
             Run r = run(db, secret + "\n", "reset-password", "--username", "dave", "--password-stdin");

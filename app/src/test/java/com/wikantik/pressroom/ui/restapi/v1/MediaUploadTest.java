@@ -386,7 +386,7 @@ class MediaUploadTest {
     }
 
     /**
-     * Whole-branch review, Must Fix 1: roller_mediafile.name is varchar(255)
+     * Whole-branch review, Must Fix 1: pressroom_mediafile.name is varchar(255)
      * NOT NULL. A batch is not a transaction (see class javadoc) -- one
      * oversized filename must be reported as that ONE file's failure, not
      * reach the manager and not affect the other files in the same batch.
@@ -419,7 +419,7 @@ class MediaUploadTest {
     }
 
     /**
-     * Whole-branch review, Must Fix 1: roller_mediafile.content_type is
+     * Whole-branch review, Must Fix 1: pressroom_mediafile.content_type is
      * varchar(50) -- much shorter than name/description -- and a real
      * browser-supplied MIME type for an ordinary document (e.g. a .docx's,
      * 73 characters) overflows it. Before this guard, that reached

@@ -5,7 +5,7 @@
     <package>com.wikantik.pressroom.pojos</package>
     <entity metadata-complete="true" name="ApiToken"
             class="com.wikantik.pressroom.pojos.ApiToken" access="PROPERTY">
-        <table name="roller_api_token"/>
+        <table name="pressroom_api_token"/>
         <named-query name="ApiToken.getByDigest">
             <query>SELECT t FROM ApiToken t WHERE t.tokenSha256 = ?1</query>
         </named-query>

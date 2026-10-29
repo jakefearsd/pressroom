@@ -91,7 +91,7 @@ public class TokensApi {
         }
 
         ApiToken.Role role = parseRole(request.role());
-        // roller_api_token.label is VARCHAR(255) NOT NULL (V026) and
+        // pressroom_api_token.label is VARCHAR(255) NOT NULL (V026) and
         // issueToken copies it straight through -- parseRole above already
         // degrades a missing role to a 400; label never got the equivalent,
         // so a mint with no label reached the manager and died on the

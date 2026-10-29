@@ -54,8 +54,8 @@ services:
     image: postgres:18@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280
     logging: *logging
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-rollerdb}
-      POSTGRES_USER: ${POSTGRES_USER:-roller}
+      POSTGRES_DB: ${POSTGRES_DB:-pressroom}
+      POSTGRES_USER: ${POSTGRES_USER:-pressroom}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
     volumes:
       # 18 keeps the cluster in a version-specific subdirectory
@@ -67,7 +67,7 @@ services:
       # PostgresMajorPinTest pins this path against the image's major.
       - roller-pgdata:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-roller} -d ${POSTGRES_DB:-rollerdb}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pressroom} -d ${POSTGRES_DB:-pressroom}"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -75,7 +75,7 @@ services:
     networks:
       - internal
 
-  # One-shot: creates the umami/listmonk databases, applies the rollerdb
+  # One-shot: creates the umami/listmonk databases, applies the pressroom
   # migration chain, and grants grafana_ro. Every step is idempotent, so this
   # runs on every `up -d` and is a no-op once current. app/umami/listmonk wait
   # for it to EXIT SUCCESSFULLY, which is what replaced deploy.sh's hand-rolled
@@ -91,8 +91,8 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-rollerdb}
-      POSTGRES_USER: ${POSTGRES_USER:-roller}
+      POSTGRES_DB: ${POSTGRES_DB:-pressroom}
+      POSTGRES_USER: ${POSTGRES_USER:-pressroom}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
       UMAMI_DB: ${UMAMI_DB:-umami}
       LISTMONK_DB: ${LISTMONK_DB:-listmonk}
@@ -116,8 +116,8 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-rollerdb}
-      POSTGRES_USER: ${POSTGRES_USER:-roller}
+      POSTGRES_DB: ${POSTGRES_DB:-pressroom}
+      POSTGRES_USER: ${POSTGRES_USER:-pressroom}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
     networks:
       - internal
@@ -217,7 +217,7 @@ services:
       provision:
         condition: service_completed_successfully
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-roller}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@postgres:5432/${UMAMI_DB:-umami}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-pressroom}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@postgres:5432/${UMAMI_DB:-umami}
       DATABASE_TYPE: postgresql
       APP_SECRET: ${UMAMI_APP_SECRET:?UMAMI_APP_SECRET must be set in .env (openssl rand -hex 32)}
       CLIENT_IP_HEADER: X-Forwarded-For
@@ -246,7 +246,7 @@ services:
       umami:
         condition: service_started
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-roller}
+      POSTGRES_USER: ${POSTGRES_USER:-pressroom}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
       UMAMI_DB: ${UMAMI_DB:-umami}
       ANALYTICS_VIEWS_WAIT_SECONDS: ${ANALYTICS_VIEWS_WAIT_SECONDS:-180}
@@ -275,7 +275,7 @@ services:
       LISTMONK_app__root_url: ${LISTMONK_ROOT_URL:-https://newsletter.invalid}
       LISTMONK_db__host: postgres
       LISTMONK_db__port: "5432"
-      LISTMONK_db__user: ${POSTGRES_USER:-roller}
+      LISTMONK_db__user: ${POSTGRES_USER:-pressroom}
       LISTMONK_db__password: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
       LISTMONK_db__database: ${LISTMONK_DB:-listmonk}
       LISTMONK_db__ssl_mode: disable
@@ -300,8 +300,8 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-rollerdb}
-      POSTGRES_USER: ${POSTGRES_USER:-roller}
+      POSTGRES_DB: ${POSTGRES_DB:-pressroom}
+      POSTGRES_USER: ${POSTGRES_USER:-pressroom}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
       PGHOST: postgres
       UMAMI_DB: ${UMAMI_DB:-umami}

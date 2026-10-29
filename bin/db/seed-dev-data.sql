@@ -37,7 +37,7 @@ SET client_min_messages = warning;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-INSERT INTO roller_user (id, username, passphrase, screenname, fullname,
+INSERT INTO pressroom_user (id, username, passphrase, screenname, fullname,
                          emailaddress, datecreated, locale, timezone, isenabled)
 VALUES ('dev-admin-0000-0000-0000-000000000001',
         'admin',
@@ -52,9 +52,9 @@ ON CONFLICT (username) DO UPDATE
          -- salt, and PostgreSQL does NOT guarantee short-circuit evaluation
          -- inside OR -- so this MUST stay a CASE. Flattening it into an OR
          -- chain aborts the seed on exactly the {noop} row it exists to fix.
-         WHEN roller_user.passphrase LIKE '{bcrypt}$2%'
-           THEN substring(roller_user.passphrase from 9)
-                <> crypt(:'devpw', substring(roller_user.passphrase from 9))
+         WHEN pressroom_user.passphrase LIKE '{bcrypt}$2%'
+           THEN substring(pressroom_user.passphrase from 9)
+                <> crypt(:'devpw', substring(pressroom_user.passphrase from 9))
          -- null, {noop}, bare plaintext, truncated: rewrite without calling
          -- crypt() on it at all.
          ELSE true

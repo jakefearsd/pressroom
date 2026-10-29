@@ -221,7 +221,7 @@ class WeblogLookupCacheTest {
         List<String> queries = QueryRecorder.during(
                 () -> assertEquals(List.of("about"), publishedSlugs()));
 
-        assertEquals(List.of(), QueryRecorder.sqlOn(queries, "roller_weblogpage"),
+        assertEquals(List.of(), QueryRecorder.sqlOn(queries, "pressroom_weblogpage"),
                 "remembered pages are resolved by id in the shared cache: " + queries);
     }
 

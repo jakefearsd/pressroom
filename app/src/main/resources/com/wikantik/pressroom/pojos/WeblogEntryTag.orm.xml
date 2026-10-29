@@ -5,7 +5,7 @@
     <package>com.wikantik.pressroom.pojos</package>
     <entity metadata-complete="true" name="WeblogEntryTag"
             class="com.wikantik.pressroom.pojos.WeblogEntryTag" access="PROPERTY">
-        <table name="roller_weblogentrytag"/>
+        <table name="pressroom_weblogentrytag"/>
         <named-query name="WeblogEntryTag.getByWeblog">
             <query>SELECT w FROM WeblogEntryTag w WHERE w.weblog = ?1</query>
         </named-query>

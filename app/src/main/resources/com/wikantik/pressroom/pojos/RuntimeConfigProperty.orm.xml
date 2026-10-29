@@ -5,7 +5,7 @@
     <package>com.wikantik.pressroom.pojos</package>
     <entity metadata-complete="true" name="RuntimeConfigProperty"
             class="com.wikantik.pressroom.pojos.RuntimeConfigProperty" access="PROPERTY">
-        <table name="roller_properties"/>
+        <table name="pressroom_properties"/>
         <named-query name="RuntimeConfigProperty.getAll">
             <query>SELECT r FROM RuntimeConfigProperty r</query>
         </named-query>

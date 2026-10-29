@@ -80,7 +80,7 @@ class JPAPersistenceStrategyBootstrapTest {
     private static DatabaseProvider jndiProvider() {
         DatabaseProvider provider = mock(DatabaseProvider.class);
         when(provider.getType()).thenReturn(DatabaseProvider.ConfigurationType.JNDI_NAME);
-        when(provider.getFullJndiName()).thenReturn("java:comp/env/jdbc/rollerdb");
+        when(provider.getFullJndiName()).thenReturn("java:comp/env/jdbc/pressroom");
         return provider;
     }
 

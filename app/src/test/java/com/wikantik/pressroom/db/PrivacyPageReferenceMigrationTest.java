@@ -41,7 +41,7 @@ class PrivacyPageReferenceMigrationTest {
 
     /** The privacy value after V040 ran over these two stored values (null = row absent). */
     private String migrate(String privacy, String frontHandle) throws Exception {
-        try (Connection con = ScratchDatabase.migrated(DB)) {
+        try (Connection con = ScratchDatabase.migratedThrough(DB, 40)) {
             exec(con, "DELETE FROM roller_properties");
             if (privacy != null) {
                 exec(con, "INSERT INTO roller_properties (name, value) VALUES ('site.privacy.page', '"

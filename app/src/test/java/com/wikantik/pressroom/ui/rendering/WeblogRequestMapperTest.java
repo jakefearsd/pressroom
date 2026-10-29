@@ -833,7 +833,7 @@ class WeblogRequestMapperTest {
         List<String> queries = QueryRecorder.during(() -> assertFalse(
                 mapper.handleRequest(publicUrl("GET", "/mapperprobe"), new MockHttpServletResponse())));
 
-        assertEquals(List.of(), QueryRecorder.sqlOn(queries, "roller_weblogpage"), queries.toString());
+        assertEquals(List.of(), QueryRecorder.sqlOn(queries, "pressroom_weblogpage"), queries.toString());
     }
 
     /**

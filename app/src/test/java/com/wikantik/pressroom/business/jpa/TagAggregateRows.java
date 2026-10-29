@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Reads {@code roller_weblogentrytagagg} and the truth it should hold straight
+ * Reads {@code pressroom_weblogentrytagagg} and the truth it should hold straight
  * from the database, over a connection of its own, so what a test sees is
  * what was committed.
  */
@@ -76,8 +76,8 @@ final class TagAggregateRows {
     /** The stored totals for the tag: one per row, so a duplicate shows. */
     static List<Integer> storedTotals(String weblogId, String tag) throws SQLException {
         String sql = weblogId == null
-                ? "SELECT total FROM roller_weblogentrytagagg WHERE websiteid IS NULL AND name = ?"
-                : "SELECT total FROM roller_weblogentrytagagg WHERE websiteid = ? AND name = ?";
+                ? "SELECT total FROM pressroom_weblogentrytagagg WHERE websiteid IS NULL AND name = ?"
+                : "SELECT total FROM pressroom_weblogentrytagagg WHERE websiteid = ? AND name = ?";
         try (Connection con = connection(); PreparedStatement ps = con.prepareStatement(sql)) {
             int i = 1;
             if (weblogId != null) {
@@ -96,7 +96,7 @@ final class TagAggregateRows {
 
     /** PUBLISHED entries carrying the tag, on one weblog or (null) site-wide. */
     static int trueCount(String weblogId, String tag) throws SQLException {
-        String sql = "SELECT count(DISTINCT t.entryid) FROM roller_weblogentrytag t "
+        String sql = "SELECT count(DISTINCT t.entryid) FROM pressroom_weblogentrytag t "
                 + "JOIN weblogentry e ON e.id = t.entryid "
                 + "WHERE e.status = 'PUBLISHED' AND t.name = ?"
                 + (weblogId == null ? "" : " AND e.websiteid = ?");

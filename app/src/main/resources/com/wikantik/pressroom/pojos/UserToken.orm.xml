@@ -5,7 +5,7 @@
     <package>com.wikantik.pressroom.pojos</package>
     <entity metadata-complete="true" name="UserToken"
             class="com.wikantik.pressroom.pojos.UserToken" access="PROPERTY">
-        <table name="roller_user_token"/>
+        <table name="pressroom_user_token"/>
         <named-query name="UserToken.getByDigest">
             <query>SELECT t FROM UserToken t WHERE t.tokenSha256 = ?1</query>
         </named-query>

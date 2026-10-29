@@ -201,7 +201,7 @@ class RedirectsApiTest {
         assertTrue(controller.requiredGlobalPermissionActions().isEmpty());
     }
 
-    /** roller_weblog_redirect.source_path/target_path are varchar(255) (V028). */
+    /** pressroom_weblog_redirect.source_path/target_path are varchar(255) (V028). */
     @Test
     void aPathLongerThanItsColumnIsBadRequest() throws Exception {
         Weblogger weblogger = mockedWeblogger();

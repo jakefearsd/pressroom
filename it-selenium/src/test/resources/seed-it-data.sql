@@ -28,7 +28,7 @@
 -- {id} prefix, matching passwds.encryption.algorithm=bcrypt in pressroom.properties.
 -- Plaintext is 'it-admin-password'. Deliberately a real bcrypt hash rather than
 -- {noop}, so the tests exercise the same login path production uses.
-INSERT INTO roller_user (id, username, passphrase, screenname, fullname,
+INSERT INTO pressroom_user (id, username, passphrase, screenname, fullname,
                          emailaddress, datecreated, locale, timezone, isenabled)
 VALUES ('it-admin-0000-0000-0000-000000000001',
         'it_admin',
@@ -48,7 +48,7 @@ ON CONFLICT (id) DO NOTHING;
 
 -- An agent account (V033), so the route sweep can open an agent's page. An
 -- agent has no password and never signs in (spec 2026-10-13).
-INSERT INTO roller_user (id, username, passphrase, screenname, fullname,
+INSERT INTO pressroom_user (id, username, passphrase, screenname, fullname,
                          emailaddress, datecreated, locale, timezone, isenabled, kind, notes)
 VALUES ('it-agent-0000-0000-0000-000000000001',
         'it_agent', NULL, 'IT Agent', 'IT Agent', 'it_agent@agents.invalid',
@@ -80,7 +80,7 @@ ON CONFLICT (handle) DO NOTHING;
 -- objectId = weblog.getHandle() and resolves it with getWeblogByHandle().
 -- Seeding the uuid here makes the main menu throw
 -- "WebloggerException: Invalid handle".
-INSERT INTO roller_permission (id, username, actions, objectid, objecttype,
+INSERT INTO pressroom_permission (id, username, actions, objectid, objecttype,
                                datecreated)
 VALUES ('it-perm-0000-0000-0000-000000000001',
         'it_admin', 'admin,post,edit_draft',

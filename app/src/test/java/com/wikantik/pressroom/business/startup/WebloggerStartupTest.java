@@ -60,7 +60,7 @@ import static org.mockito.Mockito.when;
  * the rest of the suite (the real tier's {@code DatabaseProvider} lives
  * there), so every test saves all four and restores them afterwards, as
  * {@code InstallControllerTest} does. Databases are throwaway ones created on
- * the shared server and dropped afterwards; the suite's {@code rollerdb} is
+ * the shared server and dropped afterwards; the suite's {@code pressroom} database is
  * never touched.
  */
 class WebloggerStartupTest {

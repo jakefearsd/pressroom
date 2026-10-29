@@ -18,8 +18,8 @@ set -euo pipefail
 SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd "${SCRIPT_DIR}"
 
-DB_NAME="${DB_NAME:-rollerdb}"
-DB_APP_USER="${DB_APP_USER:-roller}"
+DB_NAME="${DB_NAME:-pressroom}"
+DB_APP_USER="${DB_APP_USER:-pressroom}"
 DB_PORT="${DB_PORT:-${DEV_DB_PORT:-5433}}"
 
 # The dev server runs at the ROOT, matching application.properties' shipped

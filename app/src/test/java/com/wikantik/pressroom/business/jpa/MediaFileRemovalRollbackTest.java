@@ -102,14 +102,14 @@ class MediaFileRemovalRollbackTest {
     void aDirectoryRemovalWhoseCommitFailsKeepsItsFiles() throws Exception {
         sql("CREATE OR REPLACE FUNCTION " + REFUSE_FN + "() RETURNS trigger AS $$ BEGIN "
                 + "RAISE EXCEPTION 'refused by MediaFileRemovalRollbackTest'; END $$ LANGUAGE plpgsql");
-        sql("CREATE TRIGGER " + REFUSE_FN + " BEFORE DELETE ON roller_mediafile FOR EACH ROW "
+        sql("CREATE TRIGGER " + REFUSE_FN + " BEFORE DELETE ON pressroom_mediafile FOR EACH ROW "
                 + "WHEN (OLD.id = '" + fileId + "') EXECUTE FUNCTION " + REFUSE_FN + "()");
         try {
             assertThrows(Exception.class, () -> media().removeMediaFileDirectory(
                     media().getMediaFileDirectoryByName(managedWeblog(), "rollbackdir")));
             TestUtils.weblogger().release();
         } finally {
-            sql("DROP TRIGGER IF EXISTS " + REFUSE_FN + " ON roller_mediafile");
+            sql("DROP TRIGGER IF EXISTS " + REFUSE_FN + " ON pressroom_mediafile");
             sql("DROP FUNCTION IF EXISTS " + REFUSE_FN + "()");
         }
 

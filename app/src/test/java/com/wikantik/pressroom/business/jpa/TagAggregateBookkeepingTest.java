@@ -281,7 +281,7 @@ class TagAggregateBookkeepingTest {
         try {
             createIn(other, "summed");
             try (Connection con = connection(); PreparedStatement ps = con.prepareStatement(
-                    "UPDATE roller_weblogentrytagagg SET total = 40 WHERE websiteid = ? AND name = 'summed'")) {
+                    "UPDATE pressroom_weblogentrytagagg SET total = 40 WHERE websiteid = ? AND name = 'summed'")) {
                 ps.setString(1, other.getId());
                 assertEquals(1, ps.executeUpdate());
             }

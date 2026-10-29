@@ -499,7 +499,7 @@ class WeblogEntryLogicTest {
     /**
      * A tag added before the entry has an update time must still carry one.
      *
-     * <p>{@code roller_weblogentrytag.time} is NOT NULL, and {@code addTag}
+     * <p>{@code pressroom_weblogentrytag.time} is NOT NULL, and {@code addTag}
      * copies whatever {@code getUpdateTime()} happens to return at the moment
      * it is called. On a brand-new entry that is null, so the insert fails --
      * which made {@code POST /api/v1/weblogs/{handle}/entries} answer 500 for
@@ -521,7 +521,7 @@ class WeblogEntryLogicTest {
 
         WeblogEntryTag tag = entry.getTags().iterator().next();
         assertNotNull(tag.getTime(),
-                "roller_weblogentrytag.time is NOT NULL, so a null here is an insert "
+                "pressroom_weblogentrytag.time is NOT NULL, so a null here is an insert "
                         + "that fails at the database rather than a field left empty");
     }
 

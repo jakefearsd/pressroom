@@ -3,7 +3,7 @@ package com.wikantik.pressroom.ui.restapi;
 /**
  * Column-width limits for the varchar columns this API's patchable string
  * fields land in, sourced from {@code bin/db/migrations/V002__baseline_schema
- * .sql} ({@code roller_user}/{@code weblog} table definitions). A value that
+ * .sql} ({@code pressroom_user}/{@code weblog} table definitions). A value that
  * overflows one of these reaches JPA's INSERT/UPDATE and Postgres answers
  * "value too long for type character varying(N)", wrapped in a bare
  * {@code WebloggerException} -- an unguarded 500. Centralized here rather
@@ -21,7 +21,7 @@ public final class ColumnLimits {
     private ColumnLimits() {
     }
 
-    // roller_user (V002__baseline_schema.sql)
+    // pressroom_user (V002__baseline_schema.sql)
     public static final int USERNAME = 255;
     public static final int SCREEN_NAME = 255;
     public static final int FULL_NAME = 255;
@@ -49,10 +49,10 @@ public final class ColumnLimits {
     // weblogentry_revision (V037__entry_revision_note.sql)
     public static final int REVISION_NOTE = 255;
 
-    // roller_weblogentrytag (V002__baseline_schema.sql)
+    // pressroom_weblogentrytag (V002__baseline_schema.sql)
     public static final int TAG_NAME = 255;
 
-    // roller_mediafile / roller_mediafiledir (V002__baseline_schema.sql,
+    // pressroom_mediafile / pressroom_mediafiledir (V002__baseline_schema.sql,
     // V024__media_alt_text.sql)
     public static final int MEDIA_NAME = 255;
     public static final int MEDIA_ALT_TEXT = 255;
@@ -64,14 +64,14 @@ public final class ColumnLimits {
     public static final int CATEGORY_NAME = 255;
     public static final int CATEGORY_DESCRIPTION = 255;
 
-    // roller_weblogpage (V014__weblog_pages.sql)
+    // pressroom_weblogpage (V014__weblog_pages.sql)
     public static final int PAGE_SLUG = 255;
 
-    // roller_weblog_redirect (V028__weblog_redirects.sql)
+    // pressroom_weblog_redirect (V028__weblog_redirects.sql)
     public static final int REDIRECT_PATH = 255;
     public static final int PAGE_TITLE = 255;
 
-    // roller_api_token (V026__api_tokens.sql)
+    // pressroom_api_token (V026__api_tokens.sql)
     public static final int TOKEN_LABEL = 255;
     public static final int TOKEN_WEBLOG = 255;
 

@@ -160,7 +160,7 @@ class EntriesApiWriteTest {
         assertEquals(com.wikantik.pressroom.pojos.JsonLdType.TECH_ARTICLE, entry.getJsonLdType());
     }
 
-    /** featuredImageId/ogImageId store a roller_mediafile id -- varchar(48), the shortest column here. */
+    /** featuredImageId/ogImageId store a pressroom_mediafile id -- varchar(48), the shortest column here. */
     @Test
     void aFeaturedImageIdLongerThanTheColumnIsRejected() {
         EntryDtos.EntryWrite write = EntryWrites.write().featuredImageId("x".repeat(49)).build();

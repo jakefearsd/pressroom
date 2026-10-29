@@ -97,7 +97,7 @@ class MediaApiTest {
     }
 
     /**
-     * Whole-branch review, Must Fix 1: roller_mediafile carries no dedicated
+     * Whole-branch review, Must Fix 1: pressroom_mediafile carries no dedicated
      * alt-text column width of its own in this table -- {@code alt_text} is
      * varchar(255) (V024__media_alt_text.sql) -- and model-written
      * descriptions routinely exceed 255 characters, so this is the highest
@@ -694,7 +694,7 @@ class MediaApiTest {
     }
 
     /**
-     * roller_mediafiledir.name/description are both varchar(255)
+     * pressroom_mediafiledir.name/description are both varchar(255)
      * (V002__baseline_schema.sql) -- whole-branch review, Must Fix 1. Checked
      * against the NORMALISED name (leading slash stripped), the same value
      * the manager would actually store, matching the blank/reserved/

@@ -181,7 +181,7 @@ logs app`):
 | Start (the button's link) | `/roller-ui/sso/start?return=<path on this site>` |
 | Required `.env` lines | `PRESSROOM_SSO_OIDC_CLIENT_ID`, `PRESSROOM_SSO_OIDC_CLIENT_SECRET` |
 | Scopes requested | `openid profile email` |
-| Account binding | Google's issuer plus subject (`sub`), stored in `roller_user.sso_issuer`/`sso_subject` (migration V030) |
+| Account binding | Google's issuer plus subject (`sub`), stored in `pressroom_user.sso_issuer`/`sso_subject` (migration V030) |
 | Reader username | `reader-` plus 10 random characters |
 | Log | `docker compose -f docker-compose.prod.yml logs app`; also `/app/logs/roller.log` in the app container (logger `roller.sso`) |
 | Released in | Roller 0.1.16 |

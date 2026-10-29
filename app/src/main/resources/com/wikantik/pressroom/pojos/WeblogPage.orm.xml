@@ -5,7 +5,7 @@
     <package>com.wikantik.pressroom.pojos</package>
     <entity metadata-complete="true" name="WeblogPage"
             class="com.wikantik.pressroom.pojos.WeblogPage" access="PROPERTY">
-        <table name="roller_weblogpage"/>
+        <table name="pressroom_weblogpage"/>
         <named-query name="WeblogPage.getByWeblogAndSlug">
             <query>SELECT p FROM WeblogPage p WHERE p.weblog = ?1 AND p.slug = ?2</query>
         </named-query>

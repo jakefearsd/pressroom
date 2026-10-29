@@ -131,7 +131,7 @@ class WeblogDeletionAtomicityTest {
         assertNotNull(TestUtils.weblogger().getMediaFileManager().getMediaFile(mediaFileId), "its media row");
         assertNotNull(content().getFileContent(survivor, mediaFileId), "its media file on disk");
         assertEquals(1, tagAggregateRows(doomed.getId()), "its tag counts");
-        assertEquals(1, count("SELECT count(*) FROM roller_permission WHERE objectid = ?", doomed.getHandle()),
+        assertEquals(1, count("SELECT count(*) FROM pressroom_permission WHERE objectid = ?", doomed.getHandle()),
                 "its member");
     }
 
@@ -149,7 +149,7 @@ class WeblogDeletionAtomicityTest {
         assertNull(weblogs().getWeblog(doomed.getId()));
         assertThrows(FileNotFoundException.class, () -> content().getFileContent(weblog, mediaFileId));
         assertEquals(0, tagAggregateRows(doomed.getId()));
-        assertEquals(0, count("SELECT count(*) FROM roller_mediafile WHERE id = ?", mediaFileId));
+        assertEquals(0, count("SELECT count(*) FROM pressroom_mediafile WHERE id = ?", mediaFileId));
     }
 
     // ------------------------------------------------------------- fixtures
@@ -167,7 +167,7 @@ class WeblogDeletionAtomicityTest {
     }
 
     private static int tagAggregateRows(String weblogId) throws SQLException {
-        return count("SELECT count(*) FROM roller_weblogentrytagagg WHERE websiteid = ?", weblogId);
+        return count("SELECT count(*) FROM pressroom_weblogentrytagagg WHERE websiteid = ?", weblogId);
     }
 
     private static Connection connection() throws SQLException {

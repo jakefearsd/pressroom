@@ -5,7 +5,7 @@
     <package>com.wikantik.pressroom.pojos</package>
     <entity metadata-complete="true" name="Business"
             class="com.wikantik.pressroom.pojos.Business" access="PROPERTY">
-        <table name="roller_business"/>
+        <table name="pressroom_business"/>
         <named-query name="Business.getAll">
             <query>SELECT b FROM Business b ORDER BY b.name</query>
         </named-query>

@@ -5,7 +5,7 @@
     <package>com.wikantik.pressroom.pojos</package>
     <entity metadata-complete="true" name="ReaderComment"
             class="com.wikantik.pressroom.pojos.ReaderComment" access="PROPERTY">
-        <table name="roller_reader_comment"/>
+        <table name="pressroom_reader_comment"/>
         <!-- One query for an entry's thread: top-level PUBLISHED comments with
              their author, and the reply (in ANY status; consumers filter) with its author. -->
         <named-query name="ReaderComment.getPublishedForEntry">

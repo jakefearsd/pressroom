@@ -87,12 +87,12 @@ public class JPAUserManagerImpl implements UserManager {
             this.strategy.remove(perm);
         }
 
-        // roller_user_token rows FK the user with no cascade
+        // pressroom_user_token rows FK the user with no cascade
         Query removeTokens = strategy.getNamedUpdate("UserToken.removeByUser");
         removeTokens.setParameter(1, user);
         removeTokens.executeUpdate();
 
-        // roller_api_token rows FK the user with no cascade, same reason
+        // pressroom_api_token rows FK the user with no cascade, same reason
         Query removeApiTokens = strategy.getNamedUpdate("ApiToken.removeByUser");
         removeApiTokens.setParameter(1, user);
         removeApiTokens.executeUpdate();

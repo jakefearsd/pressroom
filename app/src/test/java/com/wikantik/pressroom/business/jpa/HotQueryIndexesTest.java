@@ -43,7 +43,7 @@ class HotQueryIndexesTest {
     /** TagAggregateStore's per-weblog recount: one weblog's rows for one tag. */
     @Test
     void theTagRecountReadsTagRowsByWeblogAndName() throws Exception {
-        assertEquals("CREATE INDEX wet_weblog_name_entry_idx ON public.roller_weblogentrytag "
+        assertEquals("CREATE INDEX wet_weblog_name_entry_idx ON public.pressroom_weblogentrytag "
                 + "USING btree (websiteid, name, entryid)", indexDef("wet_weblog_name_entry_idx"));
     }
 

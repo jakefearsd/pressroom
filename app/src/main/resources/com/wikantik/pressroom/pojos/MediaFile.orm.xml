@@ -5,7 +5,7 @@
     <package>com.wikantik.pressroom.pojos</package>
     <entity metadata-complete="true" name="MediaFile"
             class="com.wikantik.pressroom.pojos.MediaFile" access="PROPERTY">
-        <table name="roller_mediafile"/>
+        <table name="pressroom_mediafile"/>
         <named-query name="MediaFile.getByWeblogAndOrigpath">
             <query>SELECT f FROM MediaFile f WHERE f.weblog = ?1 AND f.originalPath = ?2</query>
         </named-query>

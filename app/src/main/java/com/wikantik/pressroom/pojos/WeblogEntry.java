@@ -784,7 +784,7 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
         tag.setCreatorUserName(getCreatorUserName());
         tag.setWeblog(getWebsite());
         tag.setWeblogEntry(this);
-        // Not getUpdateTime() alone: roller_weblogentrytag.time is NOT NULL, and
+        // Not getUpdateTime() alone: pressroom_weblogentrytag.time is NOT NULL, and
         // a brand-new entry has no update time until saveWeblogEntry stamps one,
         // which happens AFTER the caller has applied its tags. Reading it
         // unguarded made every tagged POST to the entries API fail with a

@@ -56,7 +56,7 @@ import static org.mockito.Mockito.when;
 /**
  * Tests for {@link GlobalConfigController}, the admin settings page.
  *
- * <p>The page edits the live {@code roller_properties} rows, so the interesting
+ * <p>The page edits the live {@code pressroom_properties} rows, so the interesting
  * question at every turn is whether a given submission actually reaches
  * {@code saveProperties} and with what value. A rejected form that saves anyway
  * would silently change the running site.

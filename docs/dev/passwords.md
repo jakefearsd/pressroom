@@ -7,7 +7,7 @@ resolves through the index at the end of `CLAUDE.md`.
 
 ## Passwords
 - **Password encryption cannot be configured or turned off.** Gone, all
-  four paths that put plaintext in `roller_user.passphrase`:
+  four paths that put plaintext in `pressroom_user.passphrase`:
   `passwds.encryption.enabled=false` (`DelegatingPasswordEncoder` encoding
   id `noop`), the unconditional `noop` encoder (`{noop}` rows authenticated
   anyway), `lazyUpgradeFrom=plaintext` (null-prefix no-op encoder:

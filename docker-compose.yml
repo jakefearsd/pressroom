@@ -43,9 +43,9 @@ services:
       # in the production compose file.
       - "${DEV_DB_PORT:-5433}:5432"
     environment:
-      POSTGRES_DB: rollerdb
-      POSTGRES_USER: roller
-      POSTGRES_PASSWORD: roller
+      POSTGRES_DB: pressroom
+      POSTGRES_USER: pressroom
+      POSTGRES_PASSWORD: pressroom
     volumes:
       # Named volume, not a bind mount: dev content survives restarts and
       # `docker compose down`. Use `docker compose down -v` to wipe it.
@@ -60,7 +60,7 @@ services:
       #   docker volume rm roller_roller-pgdata
       - roller-pgdata18:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U roller -d rollerdb"]
+      test: ["CMD-SHELL", "pg_isready -U pressroom -d pressroom"]
       interval: 5s
       timeout: 5s
       retries: 20

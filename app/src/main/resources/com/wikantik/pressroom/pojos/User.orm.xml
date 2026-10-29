@@ -5,7 +5,7 @@
     <package>com.wikantik.pressroom.pojos</package>
     <entity metadata-complete="true" name="User" class="com.wikantik.pressroom.pojos.User"
             access="PROPERTY">
-        <table name="roller_user"/>
+        <table name="pressroom_user"/>
         <named-query name="User.getAll">
             <query>SELECT u FROM User u ORDER BY u.dateCreated DESC, u.id</query>
         </named-query>

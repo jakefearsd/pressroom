@@ -28,7 +28,7 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
  * published).
  *
  * <p>Deliberately has no {@code metadata} field, even though the underlying
- * {@code roller_event.metadata} column exists -- see the header comment on
+ * {@code pressroom_event.metadata} column exists -- see the header comment on
  * {@code V015__form_submissions_and_tokens.sql} for why: nothing writes it
  * yet, and the cast layer can wait for a writer.
  */

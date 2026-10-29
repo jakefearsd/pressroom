@@ -5,7 +5,7 @@
     <package>com.wikantik.pressroom.pojos</package>
     <entity metadata-complete="true" name="WeblogRedirect"
             class="com.wikantik.pressroom.pojos.WeblogRedirect" access="PROPERTY">
-        <table name="roller_weblog_redirect"/>
+        <table name="pressroom_weblog_redirect"/>
         <named-query name="WeblogRedirect.getByWeblogAndSource">
             <query>SELECT r FROM WeblogRedirect r WHERE r.weblog = ?1 AND r.sourcePath = ?2</query>
         </named-query>

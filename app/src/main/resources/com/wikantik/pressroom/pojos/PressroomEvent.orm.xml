@@ -5,7 +5,7 @@
     <package>com.wikantik.pressroom.pojos</package>
     <entity metadata-complete="true" name="PressroomEvent"
             class="com.wikantik.pressroom.pojos.PressroomEvent" access="PROPERTY">
-        <table name="roller_event"/>
+        <table name="pressroom_event"/>
         <named-query name="PressroomEvent.getByWeblog">
             <query>SELECT e FROM PressroomEvent e WHERE e.weblog = ?1 ORDER BY e.occurredAt DESC</query>
         </named-query>

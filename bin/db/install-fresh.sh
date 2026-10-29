@@ -11,8 +11,8 @@
 #   ./install-fresh.sh --help
 #
 # Environment variables (with defaults):
-#   DB_NAME          rollerdb    target database (created if absent)
-#   DB_APP_USER      roller      application role (created if absent)
+#   DB_NAME          pressroom   target database (created if absent)
+#   DB_APP_USER      pressroom   application role (created if absent)
 #   DB_APP_PASSWORD  (required)  password set on the application role
 #   PGHOST           localhost
 #   PGPORT           5432
@@ -39,8 +39,8 @@ done
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-DB_NAME="${DB_NAME:-rollerdb}"
-DB_APP_USER="${DB_APP_USER:-roller}"
+DB_NAME="${DB_NAME:-pressroom}"
+DB_APP_USER="${DB_APP_USER:-pressroom}"
 DB_APP_PASSWORD="${DB_APP_PASSWORD:-}"
 export PGHOST="${PGHOST:-localhost}"
 export PGPORT="${PGPORT:-5432}"

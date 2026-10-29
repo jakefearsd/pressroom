@@ -23,13 +23,13 @@ already allows the fetch.
   client-guessed `/newsletter/subscribe` — a client heuristic (a `<link>`
   containing `/roller-ui/`) posted to the site root under a context path.
 - **Persist-first, then notify.** `ContactController` writes the
-  `roller_form_submission` row before any notification email, so the lead
+  `pressroom_form_submission` row before any notification email, so the lead
   survives an SMTP outage. Defences in order: per-IP throttle (429); unknown
   weblog handle 404s; **a filled honeypot or a too-fast submit answers 204,
   identically to success, and stores nothing**, so automation learns nothing.
   Subscribe mirrors both.
 - **`/newsletter/subscribe` is served by the app, not Caddy.** Throttle and
-  `roller_event` recording live in `NewsletterController`; the old Caddy
+  `pressroom_event` recording live in `NewsletterController`; the old Caddy
   `handle /newsletter/subscribe { rewrite ... reverse_proxy listmonk }` block
   bypassed both and **must never come back**. **Roller stores no subscriber
   data** — Listmonk owns the list, opt-in, sending and unsubscribe; Roller
@@ -37,7 +37,7 @@ already allows the fetch.
   `weblogentry.newsletter_sent_at`. List uuids are **not** unique across
   weblogs: `getWeblogByNewsletterListUuid` orders by handle, so a shared uuid
   credits one weblog rather than throwing `NonUniqueResultException`.
-- **`roller_event`** (V015) — `FORM_SUBMITTED` (`ContactController`),
+- **`pressroom_event`** (V015) — `FORM_SUBMITTED` (`ContactController`),
   `NEWSLETTER_SUBSCRIBED` (`NewsletterController`, not on an already-subscribed
   409), `ENTRY_PUBLISHED` (`JPAWeblogEntryManagerImpl.saveWeblogEntry`, gated
   on `entry.getLoadedStatus() != PubStatus.PUBLISHED`, the revisions' post-load
@@ -45,7 +45,7 @@ already allows the fetch.
   `ENTRY_PUBLISHED` because the reload resets `loadedStatus` away from
   `PUBLISHED`). Writes are best-effort and never fail the request. `metadata`
   (jsonb) stays unmapped in JPA until something writes it.
-- **`roller_user_token`** (V015) stores a SHA-256 digest only, never the raw
+- **`pressroom_user_token`** (V015) stores a SHA-256 digest only, never the raw
   token — a database read must not yield working reset links. `consume` is an
   atomic rows-affected `UPDATE ... WHERE used_at IS NULL AND ...`, not
   validate-then-mark, closing the double-redemption race; tokens expire after
@@ -97,14 +97,14 @@ Per-weblog Umami tracking plus a read-only Grafana contract over two databases.
   `ThemeCspCoverageTest.everyPolicyStillAllowsSameOriginScriptsAndBeacons`
   fails otherwise.
 - **The Grafana contract splits across two databases — Postgres cannot query
-  across them.** `analytics_events` (outcomes from `roller_event`) and
-  `analytics_weblog_sites` (handle ↔ Umami website-id) live in `rollerdb`, via
+  across them.** `analytics_events` (outcomes from `pressroom_event`) and
+  `analytics_weblog_sites` (handle ↔ Umami website-id) live in `pressroom`, via
   `bin/db/migrations/V017__analytics_contract.sql`. `analytics_traffic` (over
   Umami's `website_event`) lives in Umami's database:
   `deploy/analytics/umami-views.sql` (in the image at `/app/umami-views.sql`),
   applied by the **separate** one-shot `analytics-views`
   (`deploy/analytics-views.sh`), never by `provision.sh` or the migration chain
-  (which only touches `rollerdb`). `website_event` exists only after Umami's
+  (which only touches `pressroom`). `website_event` exists only after Umami's
   first boot and `provision` runs before `umami` starts, so applying the view
   from `provision` deadlocked every fresh install; `analytics-views` gates
   nothing — a failure costs only the Grafana traffic panel. Grafana joins the

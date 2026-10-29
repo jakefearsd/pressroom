@@ -61,7 +61,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * The tag aggregate table ({@code roller_weblogentrytagagg}) under concurrent
+ * The tag aggregate table ({@code pressroom_weblogentrytagagg}) under concurrent
  * entry saves, against the real PostgreSQL.
  *
  * <p>Each worker runs on its own thread, so it gets its own thread-local
@@ -267,7 +267,7 @@ class TagAggregateConcurrencyTest {
         try (Connection holder = connection()) {
             holder.setAutoCommit(false);
             try (PreparedStatement lock = holder.prepareStatement(
-                    "SELECT total FROM roller_weblogentrytagagg WHERE websiteid IS NULL AND name = 'queued' FOR UPDATE")) {
+                    "SELECT total FROM pressroom_weblogentrytagagg WHERE websiteid IS NULL AND name = 'queued' FOR UPDATE")) {
                 lock.executeQuery().close();
             }
             List<Throwable> failures = inParallel(3, worker -> {
@@ -328,7 +328,7 @@ class TagAggregateConcurrencyTest {
         } finally {
             // on failure, leave no rows behind for the suites that start from none
             try (Connection con = connection(); Statement st = con.createStatement()) {
-                st.executeUpdate("DELETE FROM roller_weblogentrytagagg WHERE name IN ('late', 'held')");
+                st.executeUpdate("DELETE FROM pressroom_weblogentrytagagg WHERE name IN ('late', 'held')");
             }
         }
     }
@@ -345,7 +345,7 @@ class TagAggregateConcurrencyTest {
             assertEquals(1, ps.executeUpdate());
         }
         try (PreparedStatement ps = publisher.prepareStatement(
-                "UPDATE roller_weblogentrytagagg SET total = total + 1 "
+                "UPDATE pressroom_weblogentrytagagg SET total = total + 1 "
                         + "WHERE websiteid IS NOT DISTINCT FROM ? AND name = 'held'")) {
             for (String id : new String[] {weblogId, null}) {
                 ps.setString(1, id);
@@ -353,7 +353,7 @@ class TagAggregateConcurrencyTest {
             }
         }
         try (PreparedStatement ps = publisher.prepareStatement(
-                "INSERT INTO roller_weblogentrytagagg (id, websiteid, name, total, lastused) "
+                "INSERT INTO pressroom_weblogentrytagagg (id, websiteid, name, total, lastused) "
                         + "VALUES (?, ?, 'late', 1, now())")) {
             for (String id : new String[] {weblogId, null}) {
                 ps.setString(1, UUID.randomUUID().toString());
@@ -436,7 +436,7 @@ class TagAggregateConcurrencyTest {
 
     @Test
     void theDatabaseRefusesASecondSiteWideRowForTheSameTag() throws Exception {
-        String insert = "INSERT INTO roller_weblogentrytagagg (id, websiteid, name, total, lastused) "
+        String insert = "INSERT INTO pressroom_weblogentrytagagg (id, websiteid, name, total, lastused) "
                 + "VALUES (?, NULL, 'sitedup', 1, now())";
         try (Connection con = connection()) {
             try (PreparedStatement first = con.prepareStatement(insert)) {
@@ -449,7 +449,7 @@ class TagAggregateConcurrencyTest {
                 assertEquals("23505", refused.getSQLState(), refused.getMessage());
             } finally {
                 try (Statement st = con.createStatement()) {
-                    st.executeUpdate("DELETE FROM roller_weblogentrytagagg WHERE name = 'sitedup'");
+                    st.executeUpdate("DELETE FROM pressroom_weblogentrytagagg WHERE name = 'sitedup'");
                 }
             }
         }
@@ -652,7 +652,7 @@ class TagAggregateConcurrencyTest {
     private static List<String> entryIdsTagged(String tag) throws SQLException {
         try (Connection con = connection();
              PreparedStatement ps = con.prepareStatement(
-                     "SELECT DISTINCT entryid FROM roller_weblogentrytag WHERE name = ?")) {
+                     "SELECT DISTINCT entryid FROM pressroom_weblogentrytag WHERE name = ?")) {
             ps.setString(1, tag);
             List<String> ids = new ArrayList<>();
             try (ResultSet rs = ps.executeQuery()) {

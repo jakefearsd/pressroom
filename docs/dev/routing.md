@@ -70,7 +70,7 @@ site.frontpage.weblog.handle is null".
 
 ## Redirects (301s for URLs that would otherwise 404)
 
-`roller_weblog_redirect` (V028) maps one weblog-relative path to another
+`pressroom_weblog_redirect` (V028) maps one weblog-relative path to another
 (301). Spec: `docs/superpowers/specs/2026-08-24-url-redirects-design.md`;
 `docs/api/README.md`'s API section is the admin surface (deliberately no JSP
 screen).

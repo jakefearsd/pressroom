@@ -32,7 +32,7 @@ import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 
 /**
- * The one writer of {@code roller_weblogentrytagagg}: one row per (weblog,
+ * The one writer of {@code pressroom_weblogentrytagagg}: one row per (weblog,
  * tag) and one site-wide row per tag ({@code websiteid IS NULL}), each holding
  * how many PUBLISHED entries carry the tag.
  *
@@ -91,20 +91,20 @@ import com.wikantik.pressroom.pojos.WeblogEntry;
 final class TagAggregateStore {
 
     private static final String TAGS_OF_ENTRY =
-            "SELECT DISTINCT name FROM roller_weblogentrytag WHERE entryid = ?1";
+            "SELECT DISTINCT name FROM pressroom_weblogentrytag WHERE entryid = ?1";
 
     private static final String TAGS_OF_WEBLOG =
-            "SELECT name FROM roller_weblogentrytagagg WHERE websiteid = ?1";
+            "SELECT name FROM pressroom_weblogentrytagagg WHERE websiteid = ?1";
 
     private static final String LOCK_WEBLOG_ROW =
-            "INSERT INTO roller_weblogentrytagagg (id, websiteid, name, total, lastused) "
+            "INSERT INTO pressroom_weblogentrytagagg (id, websiteid, name, total, lastused) "
             + "VALUES (?1, ?2, ?3, 0, ?4) "
-            + "ON CONFLICT ON CONSTRAINT weta_weblog_tag_uq DO UPDATE SET total = roller_weblogentrytagagg.total";
+            + "ON CONFLICT ON CONSTRAINT weta_weblog_tag_uq DO UPDATE SET total = pressroom_weblogentrytagagg.total";
 
     private static final String LOCK_SITE_ROW =
-            "INSERT INTO roller_weblogentrytagagg (id, websiteid, name, total, lastused) "
+            "INSERT INTO pressroom_weblogentrytagagg (id, websiteid, name, total, lastused) "
             + "VALUES (?1, NULL, ?2, 0, ?3) "
-            + "ON CONFLICT ON CONSTRAINT weta_weblog_tag_uq DO UPDATE SET total = roller_weblogentrytagagg.total";
+            + "ON CONFLICT ON CONSTRAINT weta_weblog_tag_uq DO UPDATE SET total = pressroom_weblogentrytagagg.total";
 
     /*
      * A tag row carries its entry's weblog (WeblogEntry.addTag), and entries
@@ -113,22 +113,22 @@ final class TagAggregateStore {
      * e.websiteid keeps the count defined by the entry, as V034 computes it.
      */
     private static final String RECOUNT_WEBLOG_ROW =
-            "UPDATE roller_weblogentrytagagg a "
+            "UPDATE pressroom_weblogentrytagagg a "
             + "SET total = c.n, lastused = CASE WHEN a.total = c.n THEN a.lastused ELSE ?1 END "
-            + "FROM (SELECT count(DISTINCT t.entryid) AS n FROM roller_weblogentrytag t "
+            + "FROM (SELECT count(DISTINCT t.entryid) AS n FROM pressroom_weblogentrytag t "
             + "JOIN weblogentry e ON e.id = t.entryid "
             + "WHERE e.status = 'PUBLISHED' AND t.name = ?2 AND t.websiteid = ?3 AND e.websiteid = ?4) c "
             + "WHERE a.name = ?5 AND a.websiteid = ?6";
 
     private static final String SUM_SITE_ROW =
-            "UPDATE roller_weblogentrytagagg a "
+            "UPDATE pressroom_weblogentrytagagg a "
             + "SET total = c.n, lastused = CASE WHEN a.total = c.n THEN a.lastused ELSE ?1 END "
-            + "FROM (SELECT CAST(COALESCE(SUM(w.total), 0) AS integer) AS n FROM roller_weblogentrytagagg w "
+            + "FROM (SELECT CAST(COALESCE(SUM(w.total), 0) AS integer) AS n FROM pressroom_weblogentrytagagg w "
             + "WHERE w.name = ?2 AND w.websiteid IS NOT NULL) c "
             + "WHERE a.name = ?3 AND a.websiteid IS NULL";
 
     private static final String DELETE_EMPTY_ROWS =
-            "DELETE FROM roller_weblogentrytagagg "
+            "DELETE FROM pressroom_weblogentrytagagg "
             + "WHERE name = ?1 AND (websiteid = ?2 OR websiteid IS NULL) AND total <= 0";
 
     private final JPAPersistenceStrategy strategy;

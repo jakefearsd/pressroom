@@ -135,7 +135,7 @@ public class DateTag extends SimpleTagSupport {
      *
      * <p>Note it reads {@code getTimeZone()} before calling
      * {@code getTimeZoneInstance()}. That accessor <em>writes</em> when the
-     * column is null ({@code roller_weblog.timezone} is nullable), which on a
+     * column is null ({@code weblog.timezone} is nullable), which on a
      * managed entity during view rendering would dirty the weblog and let the
      * persistence session flush a column nobody asked to change. The guard
      * falls to the identical zone that accessor would have -- the JVM default

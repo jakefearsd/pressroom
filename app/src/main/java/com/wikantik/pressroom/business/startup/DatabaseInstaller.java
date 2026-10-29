@@ -45,8 +45,8 @@ import java.util.Set;
  *
  * <p>This replaces the earlier design, which rendered vendor-specific DDL for
  * seven databases from Velocity templates and walked a hardcoded
- * {@code upgradeTo400/500/510/520/610} chain keyed off a
- * {@code roller.database.version} row in {@code roller_properties}.
+ * {@code upgradeTo400/500/510/520/610} chain keyed off a schema-version row
+ * in the runtime properties table. Nothing reads or writes that row any more.
  */
 public class DatabaseInstaller {
 
@@ -96,8 +96,10 @@ public class DatabaseInstaller {
                 // A database predating this fork's migration chain has Roller
                 // tables but no tracking table. There is no upgrade path from
                 // upstream, so say so plainly rather than silently re-running
-                // the baseline over a populated schema.
-                if (tableExists(con, "userrole") || tableExists(con, "roller_user")) {
+                // the baseline over a populated schema. The probe names
+                // upstream's tables, so it keeps the old name: it detects an
+                // Apache Roller schema. rebrand:keep
+                if (tableExists(con, "userrole") || tableExists(con, "roller_user")) { // rebrand:keep
                     throw new IllegalStateException(
                             "This database has Roller tables but no " + TRACKING_TABLE + " table, "
                             + "so it predates this fork's migration chain. There is no in-place "

@@ -8,7 +8,7 @@ account from Google sign-in (`docs/dev/sso.md`). The W1 comment subsystem
 
 ## A sweep for "comment" must leave alone
 
-- **`roller_audit_log.comment_text`**: the audit log's own change note.
+- **`pressroom_audit_log.comment_text`**: the audit log's own change note.
 - **`util/GenericThrottle`**: it throttles `ContactController`
   (`contact.throttle.*`), `NewsletterController`
   (`newsletter.subscribe.throttle.*`) and `PasswordResetController`
@@ -22,10 +22,10 @@ account from Google sign-in (`docs/dev/sso.md`). The W1 comment subsystem
 
 Migration `bin/db/migrations/V031__reader_comments.sql` (idempotent).
 
-- **Table `roller_reader_comment`** (ruling R3). Not `roller_comment`: V022 is
+- **Table `pressroom_reader_comment`** (ruling R3). Not `roller_comment`: V022 is
   replayed by the appliers and would drop live comments, and a replayed V002
   fails on the W1 indexes. Columns: `id`, `entry_id` (FK `weblogentry`, cascade),
-  `author_id` (FK `roller_user`, cascade), `reply_to_id` (FK to itself,
+  `author_id` (FK `pressroom_user`, cascade), `reply_to_id` (FK to itself,
   cascade), `body`, `status` (check constraint), `author_is_owner`, `created`,
   `status_changed`. Indexes `(entry_id, status, created)` and `(author_id)`,
   plus the partial unique index `rrc_reply_to_uq` on `reply_to_id`: a comment has

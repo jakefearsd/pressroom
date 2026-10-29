@@ -90,7 +90,7 @@ email, token or secret is ever logged; `WebloggerConfig` masks `secret` keys.
 ## Account binding
 
 Migration `V030__user_sso_identity.sql` adds `sso_issuer` and `sso_subject` to
-`roller_user` (null together or set together, partial unique index on the
+`pressroom_user` (null together or set together, partial unique index on the
 pair).
 
 - **The lookup is by `(iss, sub)` only** (`UserManager.getUserBySsoIdentity`),

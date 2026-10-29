@@ -49,7 +49,7 @@ public final class ExifSupport {
     private static final Logger log = LoggerFactory.getLogger(ExifSupport.class);
 
     /**
-     * Column width of {@code roller_mediafile.exif_camera} (migration V006).
+     * Column width of {@code pressroom_mediafile.exif_camera} (migration V006).
      *
      * <p>EXIF ASCII tags are attacker-controlled and unbounded -- a crafted
      * JPEG can carry a 500-character Make -- while the columns these strings
@@ -61,7 +61,7 @@ public final class ExifSupport {
      */
     public static final int MAX_CAMERA_LENGTH = 128;
 
-    /** Column width of {@code roller_mediafile.exif_lens} (V006). See {@link #MAX_CAMERA_LENGTH}. */
+    /** Column width of {@code pressroom_mediafile.exif_lens} (V006). See {@link #MAX_CAMERA_LENGTH}. */
     public static final int MAX_LENS_LENGTH = 128;
 
     /**

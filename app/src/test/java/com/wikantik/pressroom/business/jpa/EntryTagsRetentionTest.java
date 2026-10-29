@@ -78,7 +78,7 @@ class EntryTagsRetentionTest {
     private static final int TEXT_LENGTH = 20_000;
 
     private static final Pattern TAG_READ = Pattern.compile(
-            "(?is)^\\s*SELECT\\b.*\\bFROM\\s+roller_weblogentrytag\\b");
+            "(?is)^\\s*SELECT\\b.*\\bFROM\\s+pressroom_weblogentrytag\\b");
     private static final Pattern IN_LIST = Pattern.compile("(?i)\\bentryid\\s+IN\\s*\\(");
 
     private User user;

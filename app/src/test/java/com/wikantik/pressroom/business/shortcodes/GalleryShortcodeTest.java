@@ -359,7 +359,7 @@ class GalleryShortcodeTest {
         // candidate was blank, and escape(null) fed straight into
         // StringBuilder#append(String), which appends the four characters
         // "null" -- screen-reader-visible garbage, not an empty attribute.
-        // roller_mediafile.name is NOT NULL but an empty string is not
+        // pressroom_mediafile.name is NOT NULL but an empty string is not
         // excluded, so this is reachable in production.
         image("mf-1", "   ", 100, 100).setAltText("   ");
 

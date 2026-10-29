@@ -155,7 +155,7 @@ environment-variable-configured container.
     match** `POSTGRES_USER` / `POSTGRES_PASSWORD` below. The two are not
     templated against each other; keep them in sync by hand. The same is true
     of the database **name**: `PRESSROOM_DATABASE_JDBC_CONNECTIONURL`'s trailing
-    path segment (`.../rollerdb`) and `POSTGRES_DB` below are two independent
+    path segment (`.../pressroom`) and `POSTGRES_DB` below are two independent
     strings, not one templated value. Changing `POSTGRES_DB` alone makes
     `provision` create and migrate a database under the new name while the
     app's connection URL still points at the old one — the app fails to
@@ -662,16 +662,16 @@ Roller and Umami both expose their data to Grafana as small, versioned SQL
 **views** — never raw tables, and Grafana is never granted anything beyond
 `SELECT` on those views.
 
-**Two databases, two view halves, and why.** `rollerdb` and Umami's own
+**Two databases, two view halves, and why.** `pressroom` and Umami's own
 database (`${UMAMI_DB:-umami}`) both live inside the one shared Postgres
 instance, but PostgreSQL has no cross-database queries, so the contract is
 split down that seam — each half lives with the data it reads:
 
 | View | Lives in | Ships via | What it holds |
 | --- | --- | --- | --- |
-| `analytics_events` | `rollerdb` | `bin/db/migrations/V017__analytics_contract.sql` (the migration chain) | First-party outcomes from `roller_event` — form submissions, newsletter subscriptions, entry publishes — grouped by weblog handle, event type, day |
-| `analytics_weblog_sites` | `rollerdb` | same migration | The join key: which Umami website UUID belongs to which weblog handle |
-| `analytics_traffic` | `${UMAMI_DB:-umami}` | `deploy/analytics/umami-views.sql` (baked into the app image as `/app/umami-views.sql`), applied by the separate `analytics-views` one-shot (`deploy/analytics-views.sh`), not `provision` and not the migration chain (it can only reach `rollerdb`) — see [First run](#first-run) for why it runs after `umami` starts rather than before | Umami's raw `website_event` rolled up to sessions/views by website, path and day |
+| `analytics_events` | `pressroom` | `bin/db/migrations/V017__analytics_contract.sql` (the migration chain) | First-party outcomes from `pressroom_event` — form submissions, newsletter subscriptions, entry publishes — grouped by weblog handle, event type, day |
+| `analytics_weblog_sites` | `pressroom` | same migration | The join key: which Umami website UUID belongs to which weblog handle |
+| `analytics_traffic` | `${UMAMI_DB:-umami}` | `deploy/analytics/umami-views.sql` (baked into the app image as `/app/umami-views.sql`), applied by the separate `analytics-views` one-shot (`deploy/analytics-views.sh`), not `provision` and not the migration chain (it can only reach `pressroom`) — see [First run](#first-run) for why it runs after `umami` starts rather than before | Umami's raw `website_event` rolled up to sessions/views by website, path and day |
 
 Grafana joins the two halves itself: two PostgreSQL datasources (one per
 database, both authenticating as `grafana_ro`), with `analytics_traffic.website_id`
@@ -684,18 +684,18 @@ role with `CREATE ROLE grafana_ro NOLOGIN` (guarded by a `DO $$ … EXCEPTION
 WHEN duplicate_object …` block, since roles are cluster-global and the
 migration chain re-applies on every deploy) and grants it `SELECT` on
 exactly the contract views — never the underlying tables, never
-`roller_user`'s privileges. A migration cannot carry a secret, so the role
+`pressroom_user`'s privileges. A migration cannot carry a secret, so the role
 ships with no password and cannot log in until you set one:
 
 ```bash
 docker compose -f docker-compose.prod.yml exec postgres \
-    psql -U "${POSTGRES_USER:-roller}" -d "${POSTGRES_DB:-rollerdb}" \
+    psql -U "${POSTGRES_USER:-pressroom}" -d "${POSTGRES_DB:-pressroom}" \
     -c "ALTER ROLE grafana_ro LOGIN PASSWORD 'choose-a-strong-password-here';"
 ```
 
 The `provision` service already grants `grafana_ro` `CONNECT` on both
 databases (see `deploy/provision.sh`), so the one role/password pair you set
-above works for both Grafana datasources — just point one at `rollerdb` and
+above works for both Grafana datasources — just point one at `pressroom` and
 the other at `${UMAMI_DB:-umami}`, same credentials.
 
 **Access is tunnel-only.** Postgres never gets a published host port in this
@@ -788,7 +788,7 @@ theme CSP applies, so routing them through the app buys nothing.
 > do, an old rewrite from before this design keeps forwarding subscribe
 > requests straight to listmonk — Roller's own `/newsletter/subscribe` route
 > is registered and correct underneath, but Caddy never lets a request reach
-> it, so the throttle and the `roller_event` write are silently bypassed the
+> it, so the throttle and the `pressroom_event` write are silently bypassed the
 > whole time the stale image is running.
 
 A subscriber who is already on the list gets the same "check your email"
@@ -915,7 +915,7 @@ scheduler that wakes hourly and, once a day at `BACKUP_HOUR` (UTC), runs
 the `roller-backups` volume is root-owned, and the image's unprivileged
 `roller` user cannot write into it. Each cycle:
 
-1. `pg_dump -Fc` the database to `/backups/rollerdb-<timestamp>.dump`.
+1. `pg_dump -Fc` the database to `/backups/pressroom-<timestamp>.dump`.
 2. `tar czf` the `mediafiles`/`search-index`/`uploads` volumes to
    `/backups/volumes-<timestamp>.tar.gz`.
 3. Deletes anything in `/backups` older than `BACKUP_RETENTION_DAYS`.
@@ -965,13 +965,13 @@ docker compose -f docker-compose.prod.yml exec -T postgres bash -c '
     export PGUSER="${POSTGRES_USER}"
     export PGPASSWORD="${POSTGRES_PASSWORD}"
     pg_restore -d "${POSTGRES_DB}" --clean --if-exists
-' < /path/on/host/to/rollerdb-<timestamp>.dump
+' < /path/on/host/to/pressroom-<timestamp>.dump
 
 docker compose -f docker-compose.prod.yml start app
 ```
 
 (Get the dump onto the host first with
-`docker compose -f docker-compose.prod.yml cp backup:/backups/rollerdb-<timestamp>.dump .`
+`docker compose -f docker-compose.prod.yml cp backup:/backups/pressroom-<timestamp>.dump .`
 if restoring from a different machine than the one that made it.)
 
 **The client that restores must be at least as new as the client that
@@ -990,7 +990,7 @@ docker compose -f docker-compose.prod.yml run --rm --entrypoint bash backup -c '
     export PGHOST=postgres
     export PGUSER="${POSTGRES_USER}"
     export PGPASSWORD="${POSTGRES_PASSWORD}"
-    pg_restore -d "${POSTGRES_DB}" --clean --if-exists /backups/rollerdb-<timestamp>.dump
+    pg_restore -d "${POSTGRES_DB}" --clean --if-exists /backups/pressroom-<timestamp>.dump
 '
 ```
 
@@ -1361,12 +1361,12 @@ in [Configure `.env`](#configure-env) does), then update `.env` to match:
 ```bash
 NEW='...'   # e.g. $(openssl rand -base64 33 | tr '+/' '-_')
 docker compose -f docker-compose.prod.yml exec postgres \
-    psql -U roller -d rollerdb -c "ALTER ROLE roller PASSWORD '$NEW'"
+    psql -U pressroom -d pressroom -c "ALTER ROLE pressroom PASSWORD '$NEW'"
 # then set BOTH POSTGRES_PASSWORD and PRESSROOM_DATABASE_JDBC_PASSWORD in .env
 # to $NEW, and re-run ./deploy.sh (or docker compose up -d)
 ```
 
-(`roller`/`rollerdb` are the `.env.example` defaults for `POSTGRES_USER` and
+(`pressroom`/`pressroom` are the `.env.example` defaults for `POSTGRES_USER` and
 `POSTGRES_DB`. `POSTGRES_PASSWORD` only takes effect when the data volume is first
 initialised, so changing `.env` alone does not change the role's password.)
 Fixed in 0.1.11, which passes the password through as

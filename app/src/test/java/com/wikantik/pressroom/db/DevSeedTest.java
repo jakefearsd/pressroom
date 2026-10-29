@@ -108,7 +108,7 @@ class DevSeedTest {
             if (storedBefore != null) {
                 try (Statement st = con.createStatement()) {
                     st.executeUpdate("""
-                            INSERT INTO roller_user (id, username, passphrase, screenname,
+                            INSERT INTO pressroom_user (id, username, passphrase, screenname,
                                                      fullname, emailaddress, datecreated,
                                                      locale, timezone, isenabled)
                             VALUES ('probe-0000-0000-0000-000000000001', 'admin', '%s',
@@ -163,7 +163,7 @@ class DevSeedTest {
     private String adminPassphrase(Connection con) throws Exception {
         try (Statement st = con.createStatement();
              ResultSet rs = st.executeQuery(
-                     "SELECT passphrase FROM roller_user WHERE username = 'admin'")) {
+                     "SELECT passphrase FROM pressroom_user WHERE username = 'admin'")) {
             assertTrue(rs.next(), "the seed did not create the admin user");
             return rs.getString(1);
         }

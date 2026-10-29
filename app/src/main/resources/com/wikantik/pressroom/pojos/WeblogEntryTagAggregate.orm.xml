@@ -10,7 +10,7 @@
     <entity metadata-complete="true" name="WeblogEntryTagAggregate"
             class="com.wikantik.pressroom.pojos.WeblogEntryTagAggregate" access="PROPERTY"
             cacheable="false">
-        <table name="roller_weblogentrytagagg"/>
+        <table name="pressroom_weblogentrytagagg"/>
         <named-query name="WeblogEntryTagAggregate.getPopularTagsByWebsite">
             <query>SELECT w.name, SUM(w.total) FROM WeblogEntryTagAggregate w WHERE w.weblog = ?1 GROUP BY w.name, w.total ORDER BY w.total DESC</query>
         </named-query>

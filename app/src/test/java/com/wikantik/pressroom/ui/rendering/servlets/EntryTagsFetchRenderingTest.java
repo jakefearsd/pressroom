@@ -54,7 +54,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * How many times reading a page of entries reads {@code
- * roller_weblogentrytag}: the Atom feed through the real feed servlet (it
+ * pressroom_weblogentrytag}: the Atom feed through the real feed servlet (it
  * lists every entry's tags as categories) and an entry list as the API
  * reads it. The themes' list pages show no tags; a permalink shows one
  * entry's.
@@ -83,7 +83,7 @@ class EntryTagsFetchRenderingTest {
 
     /** A read of the entry-tag table itself; the trailing \b keeps out the tag-count table. */
     private static final Pattern TAG_READ = Pattern.compile(
-            "(?is)^\\s*SELECT\\b.*\\bFROM\\s+roller_weblogentrytag\\b");
+            "(?is)^\\s*SELECT\\b.*\\bFROM\\s+pressroom_weblogentrytag\\b");
 
     private User user;
     private Weblog weblog;

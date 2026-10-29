@@ -63,7 +63,7 @@ public abstract class TokenFormController extends BaseController {
     /** The reveal page, which {@code ProfileTokensController} serves to any signed-in author. */
     public static final String REVEAL_PATH = "/roller-ui/profileTokens!reveal.rol";
 
-    /** roller_api_token.label is varchar(255): ColumnLimits.TOKEN_LABEL, which this package may not import. */
+    /** pressroom_api_token.label is varchar(255): ColumnLimits.TOKEN_LABEL, which this package may not import. */
     public static final int MAX_LABEL_LENGTH = 255;
 
     /** The expiry choices besides "never", in days. */

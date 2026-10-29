@@ -119,7 +119,7 @@ class InstallControllerTest {
         StartupException failure = new StartupException("could not connect",
                 new IllegalStateException("connection refused"),
                 List.of("-- Using JDBC connection URL: jdbc:postgresql://db.internal:5432/roller",
-                        "-- Using JDBC username: roller_app"));
+                        "-- Using JDBC username: pressroom_app"));
         setStartupField("dbProviderException", failure);
 
         String view = controller.execute(request(), model);
@@ -204,7 +204,7 @@ class InstallControllerTest {
         // Nothing to create and nothing to upgrade: the installer has no work
         // left, and the remaining step is starting the application.
         setStartupField("dbProviderException", null);
-        installDatabaseProvider(new String[]{"schema_migrations", "roller_user"},
+        installDatabaseProvider(new String[]{"schema_migrations", "pressroom_user"},
                 MigrationCatalog.versions().toArray(new String[0]));
 
         String view = controller.execute(request(), model);
@@ -222,7 +222,7 @@ class InstallControllerTest {
         // them: that is an upgrade, and offering to create the schema instead
         // would be offering to re-run the baseline over live data.
         setStartupField("dbProviderException", null);
-        installDatabaseProvider(new String[]{"schema_migrations", "roller_user"}, "V001__baseline");
+        installDatabaseProvider(new String[]{"schema_migrations", "pressroom_user"}, "V001__baseline");
 
         String view = controller.execute(request(), model);
 
@@ -315,7 +315,7 @@ class InstallControllerTest {
             assertFalse(model.containsAttribute(name), name + " must not reach the page");
         }
         String everything = model.toString();
-        for (String detail : List.of("jdbc:", "roller_app", "Exception", "connection refused", "\tat ")) {
+        for (String detail : List.of("jdbc:", "pressroom_app", "Exception", "connection refused", "\tat ")) {
             assertFalse(everything.contains(detail), "the model carries " + detail + ": " + everything);
         }
     }

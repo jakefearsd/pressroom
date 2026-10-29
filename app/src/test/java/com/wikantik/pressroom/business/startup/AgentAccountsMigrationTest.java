@@ -69,13 +69,13 @@ public class AgentAccountsMigrationTest {
     void kindIsPersonOrAgentAndAnAgentNeedsNoPassword() throws Exception {
         String db = "migrationtest_agent_accounts_kind";
         try (Connection con = freshDatabase(db)) {
-            exec(con, "INSERT INTO roller_user (id, username, passphrase, screenname, fullname, "
+            exec(con, "INSERT INTO pressroom_user (id, username, passphrase, screenname, fullname, "
                     + "emailaddress, datecreated, isenabled, kind) "
                     + "VALUES ('a1', 'bot', NULL, 'Bot', 'Bot', 'bot@agents.invalid', now(), true, 'AGENT')");
-            assertEquals("AGENT", string(con, "SELECT kind FROM roller_user WHERE id = 'a1'"));
+            assertEquals("AGENT", string(con, "SELECT kind FROM pressroom_user WHERE id = 'a1'"));
 
             SQLException refused = assertThrows(SQLException.class, () -> exec(con,
-                    "INSERT INTO roller_user (id, username, passphrase, screenname, fullname, "
+                    "INSERT INTO pressroom_user (id, username, passphrase, screenname, fullname, "
                     + "emailaddress, datecreated, isenabled, kind) "
                     + "VALUES ('r1', 'robot', 'x', 'R', 'R', 'r@example.com', now(), true, 'ROBOT')"));
             assertEquals("23514", refused.getSQLState(), "the check constraint refuses any other kind");

@@ -236,7 +236,7 @@ public class JPAPropertiesManagerImpl implements PropertiesManager {
 
                         props.put(propDef.getName(), newprop);
 
-                        log.info("Property {} not yet in roller_properties database table, will store with "
+                        log.info("Property {} not yet in pressroom_properties database table, will store with "
                             + "value of [{}`]", propDef.getName(), initialValue);
                     }
                 }

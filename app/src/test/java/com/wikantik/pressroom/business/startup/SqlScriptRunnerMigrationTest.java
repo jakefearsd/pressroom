@@ -42,28 +42,30 @@ class SqlScriptRunnerMigrationTest {
     @Test
     void everyMigrationParsesAndAppliesThroughTheInstallWizardsSplitter() throws Exception {
         try (Connection con = freshDatabase("sqlscriptrunner")) {
-            applyChain(con);
+            for (Path migration : MigrationFiles.all()) {
+                apply(con, migration);
 
-            // README.md rule 1: re-applying a migration must be a no-op, through
-            // this applier too.
-            applyChain(con);
+                // README.md rule 1: re-applying a migration must be a no-op,
+                // through this applier too. Twice in a row, at its own place
+                // in the chain (see SchemaMigrationTest.everyMigrationIsIdempotent
+                // for why not the whole chain again: V041 renames tables).
+                apply(con, migration);
+            }
         }
     }
 
     /**
-     * Applies every migration through {@link SQLScriptRunner}, matching the
+     * Applies one migration through {@link SQLScriptRunner}, matching the
      * exact call shape {@code DatabaseInstaller.applyMigration} uses (see
      * DatabaseInstaller.java:189-199): a fresh runner per migration, built
      * from the migration's bytes, run with {@code failonerror=true} so any
      * parsing/execution error throws instead of being swallowed.
      */
-    private void applyChain(Connection con) throws Exception {
-        for (Path migration : MigrationFiles.all()) {
-            String sql = readMigration(migration);
-            SQLScriptRunner runner = new SQLScriptRunner(
-                    new ByteArrayInputStream(sql.getBytes(StandardCharsets.UTF_8)));
-            runner.runScript(con, true);
-        }
+    private void apply(Connection con, Path migration) throws Exception {
+        String sql = readMigration(migration);
+        SQLScriptRunner runner = new SQLScriptRunner(
+                new ByteArrayInputStream(sql.getBytes(StandardCharsets.UTF_8)));
+        runner.runScript(con, true);
     }
 
     private String readMigration(Path migration) throws Exception {

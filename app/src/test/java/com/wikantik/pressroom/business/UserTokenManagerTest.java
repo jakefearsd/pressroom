@@ -38,7 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 /**
  * Tests for {@link UserTokenManager}: hashed storage, single-use, expiry, and
  * that a user with outstanding tokens can still be torn down (the FK from
- * {@code roller_user_token} to {@code roller_user} has no cascade).
+ * {@code pressroom_user_token} to {@code pressroom_user} has no cascade).
  */
 class UserTokenManagerTest {
 
@@ -223,7 +223,7 @@ class UserTokenManagerTest {
 
     @Test
     void teardownUserSucceedsForAUserWithOutstandingTokens() throws Exception {
-        // Proves JPAUserManagerImpl.removeUser cleans up roller_user_token
+        // Proves JPAUserManagerImpl.removeUser cleans up pressroom_user_token
         // rows itself -- the FK has no cascade, so leaving this token behind
         // would make teardownUser (and therefore this whole suite's @AfterEach)
         // fail with a foreign-key violation.

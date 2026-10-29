@@ -39,7 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Pins the Grafana contract shipped by {@code V017__analytics_contract.sql}
  * and widened by {@code V027__weblog_custom_domain.sql}: the {@code
  * grafana_ro} role can read exactly the two contract views and nothing else,
- * {@code analytics_events} rolls up {@code roller_event} rows correctly by
+ * {@code analytics_events} rolls up {@code pressroom_event} rows correctly by
  * weblog handle, event type and day, and {@code analytics_weblog_sites}
  * carries {@code custom_domain} -- including for a weblog that has a
  * hostname but no Umami id yet, which is exactly the {@code OR} in that
@@ -71,8 +71,8 @@ public class AnalyticsContractTest {
             assertEquals(Set.of("analytics_events", "analytics_weblog_sites"),
                     grantedTableNames(con, "grafana_ro"),
                     "grafana_ro must hold a privilege on exactly the two contract views and "
-                            + "nothing else -- not roller_event, weblog, roller_form_submission, "
-                            + "roller_user_token, or anything else in the schema");
+                            + "nothing else -- not pressroom_event, weblog, pressroom_form_submission, "
+                            + "pressroom_user_token, or anything else in the schema");
         } finally {
             dropDatabase(dbName);
         }
@@ -230,7 +230,7 @@ public class AnalyticsContractTest {
     private void insertEvent(Connection con, String weblogId, String eventType, Instant occurredAt)
             throws Exception {
         try (var ps = con.prepareStatement("""
-                INSERT INTO roller_event (id, weblogid, event_type, occurred_at)
+                INSERT INTO pressroom_event (id, weblogid, event_type, occurred_at)
                 VALUES (?, ?, ?, ?)
                 """)) {
             ps.setString(1, UUID.randomUUID().toString());

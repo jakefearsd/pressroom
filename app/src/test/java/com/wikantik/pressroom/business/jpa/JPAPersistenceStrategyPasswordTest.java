@@ -51,7 +51,7 @@ import static org.mockito.Mockito.mockStatic;
  */
 class JPAPersistenceStrategyPasswordTest {
 
-    private static final String ROLE = "roller_hex_password";
+    private static final String ROLE = "pressroom_hex_password";
 
     /** 48 hex characters, the shape {@code openssl rand -hex 24} produces. */
     private static final String HEX_PASSWORD = "9f3c0b7e1a64d2c85e0f7b3a96d14c2e8b5a0f6d37c19e42";

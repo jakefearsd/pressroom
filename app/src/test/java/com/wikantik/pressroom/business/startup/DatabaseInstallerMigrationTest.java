@@ -52,7 +52,7 @@ import static org.mockito.Mockito.when;
  * the existing behaviour and expected to pass immediately.
  *
  * <p>Each test gets its own freshly created database and drops it afterwards;
- * the suite's shared {@code rollerdb} is never touched.
+ * the suite's shared {@code pressroom} database is never touched.
  */
 class DatabaseInstallerMigrationTest {
 
@@ -89,7 +89,7 @@ class DatabaseInstallerMigrationTest {
         installer.createDatabase();
 
         assertEquals(versions, recordedVersions(), "every migration on the classpath is recorded, in order");
-        assertTrue(tableExists("roller_user"), "the baseline schema really was created");
+        assertTrue(tableExists("pressroom_user"), "the baseline schema really was created");
         List<String> messages = installer.getMessages();
         assertEquals("Bootstrapping schema_migrations from V001", messages.get(0));
         assertTrue(messages.contains(V001 + " applied"), messages.toString());
@@ -153,7 +153,8 @@ class DatabaseInstallerMigrationTest {
 
     @Test
     void aDatabaseWithRollerTablesButNoTrackingTableIsRefused() throws Exception {
-        execute("CREATE TABLE roller_user (id VARCHAR(48) PRIMARY KEY)");
+        // Upstream's table name: an Apache Roller schema. rebrand:keep
+        execute("CREATE TABLE roller_user (id VARCHAR(48) PRIMARY KEY)"); // rebrand:keep
         DatabaseInstaller installer = new DatabaseInstaller(provider, new ClasspathDatabaseScriptProvider());
 
         IllegalStateException refused = assertThrows(IllegalStateException.class, installer::isCreationRequired);

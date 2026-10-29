@@ -20,7 +20,7 @@
 -- Extend the pattern list in query 2 with whatever that wave removes.
 --
 -- Run it:
---   docker compose exec -T postgres psql -U roller -d rollerdb \
+--   docker compose exec -T postgres psql -U pressroom -d pressroom \
 --     < bin/db/check-stored-templates.sql
 --
 -- Query 1 is the whole answer for most installs. If it returns 0 rows there is
@@ -34,7 +34,7 @@ SELECT
     (SELECT count(*) FROM weblog WHERE editortheme = 'custom')        AS custom_theme_weblogs,
     (SELECT count(*) FROM weblog_custom_template)                     AS stored_templates,
     (SELECT count(*) FROM custom_template_rendition)                  AS stored_renditions,
-    COALESCE((SELECT value FROM roller_properties
+    COALESCE((SELECT value FROM pressroom_properties
               WHERE name = 'themes.customtheme.allowed'), '(unset -> default false)')
                                                                       AS customtheme_allowed;
 

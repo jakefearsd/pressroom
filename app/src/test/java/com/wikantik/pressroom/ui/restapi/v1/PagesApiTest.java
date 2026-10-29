@@ -177,7 +177,7 @@ class PagesApiTest {
         verify(weblogger).flush();
     }
 
-    /** roller_weblogpage.slug/title are both varchar(255) NOT NULL (V014__weblog_pages.sql). */
+    /** pressroom_weblogpage.slug/title are both varchar(255) NOT NULL (V014__weblog_pages.sql). */
     @Test
     void postWithASlugLongerThanTheColumnIsBadRequest() throws Exception {
         Weblogger weblogger = mockedWeblogger();

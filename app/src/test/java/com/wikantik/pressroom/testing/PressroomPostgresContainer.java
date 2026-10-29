@@ -59,11 +59,11 @@ public final class PressroomPostgresContainer {
             synchronized (PressroomPostgresContainer.class) {
                 if (container == null) {
                     PostgreSQLContainer started = new PostgreSQLContainer(IMAGE)
-                            .withDatabaseName("rollerdb")
-                            .withUsername("roller")
-                            .withPassword("roller");
+                            .withDatabaseName("pressroom")
+                            .withUsername("pressroom")
+                            .withPassword("pressroom");
                     started.start();
-                    Thread hook = new Thread(() -> stopQuietly(started), "roller-postgres-container-stop");
+                    Thread hook = new Thread(() -> stopQuietly(started), "pressroom-postgres-container-stop");
                     Runtime.getRuntime().addShutdownHook(hook);
                     shutdownHook = hook;
                     container = started;

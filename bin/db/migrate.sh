@@ -9,11 +9,11 @@
 #   ./migrate.sh [--status] [--help]
 #
 # Environment variables (with defaults):
-#   DB_NAME      rollerdb    target database
-#   DB_APP_USER  roller      role granted DML access in each migration
+#   DB_NAME      pressroom   target database
+#   DB_APP_USER  pressroom   role granted DML access in each migration
 #   PGHOST       localhost
 #   PGPORT       5432
-#   PGUSER       roller      role that runs migrations; needs CREATE on
+#   PGUSER       pressroom   role that runs migrations; needs CREATE on
 #                            schema public. Override with PGUSER=postgres
 #                            when running against a fresh server.
 #   PGPASSWORD               optional
@@ -38,11 +38,11 @@ set -euo pipefail
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 MIGRATIONS_DIR="${SCRIPT_DIR}/migrations"
 
-DB_NAME="${DB_NAME:-rollerdb}"
-DB_APP_USER="${DB_APP_USER:-roller}"
+DB_NAME="${DB_NAME:-pressroom}"
+DB_APP_USER="${DB_APP_USER:-pressroom}"
 export PGHOST="${PGHOST:-localhost}"
 export PGPORT="${PGPORT:-5432}"
-export PGUSER="${PGUSER:-roller}"
+export PGUSER="${PGUSER:-pressroom}"
 
 RED="\033[0;31m"
 GREEN="\033[0;32m"

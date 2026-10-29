@@ -77,7 +77,7 @@ resolves through the index at the end of `CLAUDE.md`.
   forbidden-extension refusals per file *without throwing*, so the
   controller snapshots `PressroomMessages.getErrorCount()` around each call,
   and a partly-failed batch shows both what landed and what did not.
-- **`MediaFile.sharedForGallery` / `roller_mediafile.is_public` are gone** (`V024`).
+- **`MediaFile.sharedForGallery` / `pressroom_mediafile.is_public` are gone** (`V024`).
 - `EntryAddWithMediaFileController` (entry from selected files) seeds the
   draft with `[image id=".."]`, not hand-built `<img>` markup, so alt text
   and the rendition ladder arrive through the normal path.

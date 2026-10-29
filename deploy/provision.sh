@@ -4,7 +4,7 @@
 # Runs as the `provision` service in docker-compose.prod.yml, from the app
 # image, after postgres reports healthy and before app/umami/listmonk start
 # (compose enforces both with depends_on conditions). Three steps: create the
-# umami/listmonk databases, apply the rollerdb migration chain, and grant
+# umami/listmonk databases, apply the pressroom migration chain, and grant
 # grafana_ro CONNECT on both databases. Every step is idempotent, so it runs
 # on every `docker compose up -d` and is a no-op once the stack is current.
 #
@@ -34,7 +34,7 @@ export PGPORT="${PGPORT:-5432}"
 export PGUSER="${POSTGRES_USER:?POSTGRES_USER must be set}"
 export PGPASSWORD="${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}"
 
-PRESSROOM_DB="${POSTGRES_DB:-rollerdb}"
+PRESSROOM_DB="${POSTGRES_DB:-pressroom}"
 UMAMI_DB="${UMAMI_DB:-umami}"
 LISTMONK_DB="${LISTMONK_DB:-listmonk}"
 

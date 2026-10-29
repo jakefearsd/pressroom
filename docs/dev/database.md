@@ -13,7 +13,7 @@ Roller is **PostgreSQL-only** — one engine for dev, test and production
 - **Development**: PostgreSQL 18 via `docker-compose.yml` (named volume; persists)
 - **Testing**: PostgreSQL 18 via Testcontainers, schema from the migration chain
 - **Production**: PostgreSQL 18 via `docker-compose.prod.yml`
-- **JNDI Name**: `jdbc/rollerdb`
+- **JNDI Name**: `jdbc/pressroom`
 
 **Four files name the server major, and `PostgresMajorPinTest` fails the build
 when they disagree**: both compose files, `PressroomPostgresContainer`
@@ -96,7 +96,7 @@ weakly. **Entries 5000, revisions 100, everything else 1000.** Until
 - **Never stale, by construction.** Roller is one JVM and writes through
   JPA, which merges into the cache at commit (nothing on rollback); JPQL
   bulk updates and deletes invalidate their class. The only native writes go
-  to `roller_weblogentrytagagg`, which is `cacheable="false"`. A row changed
+  to `pressroom_weblogentrytagagg`, which is `cacheable="false"`. A row changed
   with SQL behind the app's back (the admin account tool, a hand edit) stays
   stale until a restart; a bigger cache makes that window longer, not new.
 - **The anchor map checks the anchor.** A hit whose entry now has another
@@ -130,6 +130,20 @@ weblog (site_space) WHERE site_space` (at most one site space).
 to `handle/slug` using the front-page blog's handle (guarded `UPDATE`: once
 the value contains `/` it no longer matches, and a blank value or an install
 with no front-page blog is left alone, where a bare slug now means a site page).
+
+`V041__pressroom_rename.sql` renames every `roller_*` relation and constraint <!-- rebrand:keep -->
+in `public` to `pressroom_*` (catalog only: rows, grants, foreign keys and the
+`analytics_*` views follow by oid) and rewrites stored `/roller-ui/` links in <!-- rebrand:keep -->
+pages and entry text/summary (revisions keep what was written). It refuses,
+before renaming anything, when an old name and its new name both exist or a
+new name would pass 63 bytes. **After it, re-running an earlier migration is
+no longer harmless**: V002's `CREATE TABLE IF NOT EXISTS` would create the old
+tables again, empty, beside the renamed ones. So `SchemaMigrationTest` and
+`SqlScriptRunnerMigrationTest` check idempotency by applying each migration
+twice in a row at its own place in the chain, and a test of an older
+migration builds its database with `ScratchDatabase.migratedThrough(name,
+40)`, not the whole chain. `DatabaseInstaller`'s upstream probe still looks
+for `roller_user` (upstream Apache Roller's name; `rebrand:keep`).
 
 The install wizard is anonymous, and with `installation.type=auto` every
 public request reaches it while Roller cannot start. So its pages carry no
@@ -191,7 +205,7 @@ counts the reads and pins edit, create and delete freshness;
 permalink reads. A permalink still reads its one entry's tags when the
 entry was dropped from the cache.
 
-### Tag aggregates (`roller_weblogentrytagagg`)
+### Tag aggregates (`pressroom_weblogentrytagagg`)
 
 One row per (weblog, tag) and one site-wide row per tag (`websiteid IS
 NULL`), each the number of PUBLISHED entries carrying the tag. **Only

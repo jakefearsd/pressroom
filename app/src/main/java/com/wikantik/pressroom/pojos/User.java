@@ -114,7 +114,7 @@ public class User implements Serializable {
     /** The domain of the address an agent created with no email is given; never deliverable (RFC 2606). */
     public static final String AGENT_EMAIL_DOMAIN = "agents.invalid";
 
-    /** roller_user.notes is varchar(1000). */
+    /** pressroom_user.notes is varchar(1000). */
     public static final int NOTES_MAX_LENGTH = 1000;
 
     /** True when this account signs in through an OpenID Connect identity rather than a password. */

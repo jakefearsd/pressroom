@@ -57,7 +57,7 @@ import org.springframework.web.multipart.MultipartFile;
  */
 public final class MediaUploads {
 
-    // roller_mediafile.name / content_type column widths
+    // pressroom_mediafile.name / content_type column widths
     // (bin/db/migrations/V002__baseline_schema.sql). Kept as local constants
     // rather than importing com.wikantik.pressroom.ui.restapi.ColumnLimits
     // -- see the class javadoc on why ui.controllers may not import ui.restapi.
@@ -207,7 +207,7 @@ public final class MediaUploads {
                     text.getString("mediaUploads.detail.nameTooLong", new Object[] {MEDIA_NAME_MAX}), null);
         }
 
-        // roller_mediafile.content_type is varchar(50) -- a real-world MIME
+        // pressroom_mediafile.content_type is varchar(50) -- a real-world MIME
         // type (a .docx's, for one, is 73 characters) can overflow it. Left
         // unchecked this reached the manager and threw a bare
         // WebloggerException that the caller (the per-file loop) does not

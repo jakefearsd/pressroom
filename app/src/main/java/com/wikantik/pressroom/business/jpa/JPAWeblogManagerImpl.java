@@ -236,15 +236,15 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         // remove static pages
         roller.getWeblogPageManager().removePages(weblog);
 
-        // roller_weblog_redirect rows FK the weblog with no cascade
+        // pressroom_weblog_redirect rows FK the weblog with no cascade
         strategy.getNamedUpdate("WeblogRedirect.removeByWeblog")
                 .setParameter(1, weblog).executeUpdate();
 
-        // roller_event rows FK the weblog with no cascade
+        // pressroom_event rows FK the weblog with no cascade
         strategy.getNamedUpdate("PressroomEvent.removeByWeblog")
                 .setParameter(1, weblog).executeUpdate();
 
-        // roller_form_submission rows FK the weblog with no cascade
+        // pressroom_form_submission rows FK the weblog with no cascade
         strategy.getNamedUpdate("FormSubmission.removeByWeblog")
                 .setParameter(1, weblog).executeUpdate();
 

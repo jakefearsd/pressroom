@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 /**
  * Validates {@code deploy/analytics/umami-views.sql} -- the Umami-side half
  * of the analytics contract (see {@code V017__analytics_contract.sql} for the
- * rollerdb half). That file is never exercised by {@link SchemaMigrationTest}
+ * pressroom half). That file is never exercised by {@link SchemaMigrationTest}
  * because it does not live in {@code bin/db/migrations}: it is applied to a
  * separate {@code umami} database by the one-shot {@code analytics-views}
  * compose service ({@code deploy/analytics-views.sh}, baked into the app

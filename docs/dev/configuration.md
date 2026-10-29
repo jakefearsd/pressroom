@@ -57,11 +57,11 @@ resolves through the index at the end of `CLAUDE.md`.
   `docker_deployment.md`.
 
 ## Configuration scope
-- **Runtime** (`runtimeConfigDefs.xml` → `roller_properties` → Admin
+- **Runtime** (`runtimeConfigDefs.xml` → `pressroom_properties` → Admin
   Settings): `WebloggerRuntimeConfig`, DB row first, else `WebloggerConfig`.
   Hot. `JPAPropertiesManagerImpl` remembers every row's committed value
   (`RuntimeConfigSnapshot`, one projection query) and drops them whenever a
-  commit writes a `roller_properties` row (an EclipseLink row-write listener,
+  commit writes a `pressroom_properties` row (an EclipseLink row-write listener,
   `JPAPersistenceStrategy.onRowWrite`, once the commit succeeds: a read
   between the row write and the commit loads the old rows, so only a drop
   after the commit is enough; `RuntimeConfigCacheTest` races one), so the next request reads any change, saved through

@@ -47,7 +47,7 @@ public abstract class PressroomPermission extends java.security.Permission {
     /**
      * The granted actions, or an empty list if none are granted.
      *
-     * <p>{@code roller_permission.actions} is a nullable column and
+     * <p>{@code pressroom_permission.actions} is a nullable column and
      * {@link #isEmpty()} already treats null as "grants nothing"; this method
      * has to agree, because {@code Utilities.stringToStringList} throws
      * NullPointerException on a null input. The returned list is mutable --

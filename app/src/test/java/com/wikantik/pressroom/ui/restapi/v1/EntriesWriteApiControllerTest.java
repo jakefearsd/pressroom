@@ -434,7 +434,7 @@ class EntriesWriteApiControllerTest {
     }
 
     /**
-     * roller_weblogentrytag.name is varchar(255) (V002__baseline_schema.sql)
+     * pressroom_weblogentrytag.name is varchar(255) (V002__baseline_schema.sql)
      * -- checked per tag, AFTER splitting on the same characters {@code
      * WeblogEntry.setTagsAsString} splits on (see {@code applyTags}'s
      * javadoc), so one oversized tag in a batch is refused before any of

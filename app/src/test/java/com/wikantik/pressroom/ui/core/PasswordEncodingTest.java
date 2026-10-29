@@ -124,8 +124,12 @@ class PasswordEncodingTest {
                     .filter(p -> {
                         String body = read(p);
                         if (p.toString().contains("/migrations/")) {
+                            // Both names: V041 renamed the table, and the
+                            // migrations before it still spell the old one.
+                            String lower = body.toLowerCase();
                             return body.contains("passphrase")
-                                    && body.toLowerCase().contains("insert into roller_user");
+                                    && (lower.contains("insert into pressroom_user")
+                                        || lower.contains("insert into roller_user")); // rebrand:keep
                         }
                         // Comments are stripped first: the dev seed legitimately
                         // *mentions* {noop} while explaining which rows it

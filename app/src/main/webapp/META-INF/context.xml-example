@@ -11,9 +11,9 @@ If you'd like to use Tomcat provided datasource and/or mail sessions then:
 -->
 <Context path="/roller" debug="0">
 
-  <!--Resource name="jdbc/rollerdb" auth="Container" type="javax.sql.DataSource"
+  <!--Resource name="jdbc/pressroom" auth="Container" type="javax.sql.DataSource"
     driverClassName="com.mysql.jdbc.Driver"
-    url="jdbc:mysql://localhost:3306/rollerdb?autoReconnect=true&amp;useUnicode=true&amp;characterEncoding=utf-8&amp;mysqlEncoding=utf8"
+    url="jdbc:mysql://localhost:3306/pressroom?autoReconnect=true&amp;useUnicode=true&amp;characterEncoding=utf-8&amp;mysqlEncoding=utf8"
     username="scott"
     password="tiger"
     maxActive="20" maxIdle="3" removeAbandoned="true" maxWait="3000" /-->

@@ -99,7 +99,7 @@ class WeblogPermissionTest {
 
     @Test
     void aPermissionGrantingNothingImpliesNothing() {
-        // roller_permission.actions is nullable and revoking the last action
+        // pressroom_permission.actions is nullable and revoking the last action
         // leaves "". Before this was fixed, implies() fell through every branch
         // and returned true, so a permission row granting *nothing* implied
         // *everything*, including weblog administration.

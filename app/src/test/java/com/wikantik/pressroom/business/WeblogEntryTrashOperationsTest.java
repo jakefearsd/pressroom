@@ -50,7 +50,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * because both are easy to get subtly wrong by reasoning alone: trashing (a
  * pure status change) must not deposit an entry revision, since revisions
  * exist to record CONTENT changes; and trashing a published entry must not
- * emit a second {@code roller_event} row, since {@code ENTRY_PUBLISHED} is
+ * emit a second {@code pressroom_event} row, since {@code ENTRY_PUBLISHED} is
  * gated on the save's new status being PUBLISHED, which TRASHED never is.
  */
 class WeblogEntryTrashOperationsTest {
@@ -409,7 +409,7 @@ class WeblogEntryTrashOperationsTest {
      * {@code ENTRY_PUBLISHED} fires only when a save's NEW status is
      * PUBLISHED. Trashing a published entry moves it to TRASHED, so no event
      * fires; restoring it afterwards moves it to DRAFT, so still no event.
-     * Verified against {@code roller_event} through the event manager, not
+     * Verified against {@code pressroom_event} through the event manager, not
      * assumed from the gate's code.
      */
     @Test

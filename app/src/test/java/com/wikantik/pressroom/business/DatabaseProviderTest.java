@@ -142,18 +142,18 @@ class DatabaseProviderTest {
         Connection connection = mock(Connection.class);
         DataSource dataSource = mock(DataSource.class);
         when(dataSource.getConnection()).thenReturn(connection);
-        BindingsContextFactory.BINDINGS.put("java:comp/env/jdbc/rollerdb", dataSource);
+        BindingsContextFactory.BINDINGS.put("java:comp/env/jdbc/pressroom", dataSource);
 
-        DatabaseProvider provider = providerWith(Map.of("database.jndi.name", "jdbc/rollerdb"));
+        DatabaseProvider provider = providerWith(Map.of("database.jndi.name", "jdbc/pressroom"));
 
         assertEquals(DatabaseProvider.ConfigurationType.JNDI_NAME, provider.getType(),
                 "anything but 'jdbc' means JNDI");
-        assertEquals("java:comp/env/jdbc/rollerdb", provider.getFullJndiName());
+        assertEquals("java:comp/env/jdbc/pressroom", provider.getFullJndiName());
         assertSame(connection, provider.getConnection());
         assertEquals(List.of(
                 "SUCCESS: Got parameters. Using configuration type JNDI_NAME",
-                "-- Using JNDI datasource name: java:comp/env/jdbc/rollerdb",
-                "SUCCESS: located JNDI DataSource [java:comp/env/jdbc/rollerdb]",
+                "-- Using JNDI datasource name: java:comp/env/jdbc/pressroom",
+                "SUCCESS: located JNDI DataSource [java:comp/env/jdbc/pressroom]",
                 "SUCCESS: obtained a database connection"), provider.getStartupLog());
     }
 
@@ -161,13 +161,13 @@ class DatabaseProviderTest {
     void anAbsoluteJndiNameIsLookedUpAsGivenAndAnUnboundOneFailsStartup() {
         StartupException failure = assertThrows(StartupException.class, () -> providerWith(Map.of(
                 "database.configurationType", "jndi",
-                "database.jndi.name", "java:global/rollerdb")));
+                "database.jndi.name", "java:global/pressroom")));
 
-        String expected = "ERROR: cannot locate JNDI DataSource [java:global/rollerdb]. "
+        String expected = "ERROR: cannot locate JNDI DataSource [java:global/pressroom]. "
                 + "Likely problem: no DataSource or datasource is misconfigured.";
         assertEquals(expected, failure.getMessage());
         NamingException cause = assertInstanceOf(NamingException.class, failure.getCause());
-        assertTrue(cause.getMessage().contains("java:global/rollerdb"), cause.getMessage());
+        assertTrue(cause.getMessage().contains("java:global/pressroom"), cause.getMessage());
         assertEquals(expected, failure.getStartupLog().getLast());
     }
 

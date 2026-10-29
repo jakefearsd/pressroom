@@ -50,7 +50,7 @@ import com.wikantik.pressroom.config.WebloggerConfig;
  * database.configurationType=jndi
  * 
  * # For database configuration type 'jndi',this will be used
- * database.jndi.name=jdbc/rollerdb
+ * database.jndi.name=jdbc/pressroom
  * 
  * # For database configuration type of 'jdbc', you MUST override these
  * database.jdbc.driverClass=
