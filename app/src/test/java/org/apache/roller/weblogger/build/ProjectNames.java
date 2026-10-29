@@ -19,7 +19,7 @@ import org.apache.roller.util.RollerConstants;
 public final class ProjectNames {
 
     /** The pre-rebrand root package. */
-    static final String LEGACY_ROOT = "org.apache.roller";
+    static final String LEGACY_ROOT = "org.apache.roller"; // rebrand:keep
 
     /** A dotted or slashed qualified name under any of {@link #roots()}. */
     static final Pattern QUALIFIED_NAME = buildPattern();

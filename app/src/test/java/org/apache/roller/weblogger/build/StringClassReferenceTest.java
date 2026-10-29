@@ -74,11 +74,7 @@ class StringClassReferenceTest {
      * package names, so the package move does not rename them and they stay
      * keyed on the legacy root.
      */
-    private static final Map<String, String> ALLOWED_LEGACY = Map.of(
-            ProjectNames.LEGACY_ROOT + ".configuration",
-            "legacy-only: JBoss module name in jboss-deployment-structure.xml, not a class or package",
-            ProjectNames.LEGACY_ROOT.replace('.', '/') + "/aapp",
-            "legacy-only: tail of the XML namespace URI http://purl.org/apache/roller/aapp#, not a path");
+    private static final Map<String, String> ALLOWED_LEGACY = Map.of();
 
     /** Stand-in resolvers for the self-tests. */
     private static final Function<String, Optional<String>> RESOLVES = t -> Optional.empty();
@@ -241,8 +237,7 @@ class StringClassReferenceTest {
     @Test
     void legacyOnlyEntriesStayKeyedOnTheLegacyRoot() {
         String legacy = ProjectNames.LEGACY_ROOT;
-        assertTrue(problem(legacy + ".configuration", NEW_ROOT, legacy, DOES_NOT_RESOLVE).isEmpty());
-        assertTrue(problem(legacy.replace('.', '/') + "/aapp", NEW_ROOT, legacy, DOES_NOT_RESOLVE).isEmpty());
+        assertTrue(problem(legacy + ".configuration", NEW_ROOT, legacy, DOES_NOT_RESOLVE).isPresent());
         assertTrue(problem(NEW_ROOT + ".configuration", NEW_ROOT, legacy, DOES_NOT_RESOLVE).isPresent());
     }
 }

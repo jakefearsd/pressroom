@@ -13,6 +13,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -36,7 +37,7 @@ import org.junit.jupiter.api.Test;
  *
  * <p>File names are inventoried too: the same counting is run over each
  * tracked file's repo-relative path and recorded under {@code PATH-<KIND>}
- * keys, so a stray {@code org/apache/roller} directory or a {@code Roller*.java}
+ * keys, so a stray {@code org/apache/roller} directory or a {@code Roller*.java} // rebrand:keep
  * file name cannot survive the rename unseen.
  *
  * <p>Proven to bite: {@code // roller} appended to a main Java file produced
@@ -57,10 +58,10 @@ import org.junit.jupiter.api.Test;
  */
 class OldNameInventoryTest {
 
-    private static final Pattern PACKAGE = Pattern.compile("org\\.apache\\.roller|org/apache/roller");
-    private static final Pattern CLASS = Pattern.compile("\\bRoller[A-Z]\\w*");
+    private static final Pattern PACKAGE = Pattern.compile("org\\.apache\\.roller|org/apache/roller"); // rebrand:keep
+    private static final Pattern CLASS = Pattern.compile("\\bRoller[A-Z]\\w*"); // rebrand:keep
     private static final Pattern TOKEN_PREFIX = Pattern.compile("rlr_");
-    private static final Pattern OTHER = Pattern.compile("Roller|ROLLER|(?<![A-Za-z])roller");
+    private static final Pattern OTHER = Pattern.compile("Roller|ROLLER|(?<![A-Za-z])roller"); // rebrand:keep
 
     private static final Pattern MIGRATION = Pattern.compile("bin/db/migrations/V(\\d+)__.*");
 
@@ -74,7 +75,7 @@ class OldNameInventoryTest {
             Map.entry("CLASS/docs", 55),
             Map.entry("CLASS/it", 166),
             Map.entry("CLASS/main-java", 438),
-            Map.entry("CLASS/main-resources", 32),
+            Map.entry("CLASS/main-resources", 30),
             Map.entry("CLASS/other", 2),
             Map.entry("CLASS/test", 830),
             Map.entry("OTHER/build", 40),
@@ -82,7 +83,7 @@ class OldNameInventoryTest {
             Map.entry("OTHER/docs", 674),
             Map.entry("OTHER/it", 450),
             Map.entry("OTHER/main-java", 780),
-            Map.entry("OTHER/main-resources", 1079),
+            Map.entry("OTHER/main-resources", 1076),
             Map.entry("OTHER/other", 48),
             Map.entry("OTHER/test", 1903),
             Map.entry("PACKAGE/build", 18),
@@ -90,8 +91,8 @@ class OldNameInventoryTest {
             Map.entry("PACKAGE/docs", 125),
             Map.entry("PACKAGE/it", 166),
             Map.entry("PACKAGE/main-java", 2777),
-            Map.entry("PACKAGE/main-resources", 162),
-            Map.entry("PACKAGE/test", 3744),
+            Map.entry("PACKAGE/main-resources", 161),
+            Map.entry("PACKAGE/test", 3737),
             Map.entry("PATH-CLASS/docs", 1),
             Map.entry("PATH-CLASS/it", 1),
             Map.entry("PATH-CLASS/main-java", 22),
@@ -111,6 +112,25 @@ class OldNameInventoryTest {
             Map.entry("TOKEN_PREFIX/it", 2),
             Map.entry("TOKEN_PREFIX/main-java", 2),
             Map.entry("TOKEN_PREFIX/test", 42));
+
+    /** Kinds Phase 1 (the package move) must bring to zero. */
+    static final Set<String> PHASE_ONE_KINDS = Set.of("PACKAGE", "CLASS", "PATH-PACKAGE", "PATH-CLASS");
+
+    /** Areas Phase 1 covers. */
+    static final Set<String> PHASE_ONE_AREAS = Set.of("main-java", "main-resources", "test", "it", "build");
+
+    /** The entries of {@code counts} that are Phase 1 keys ({@code <kind>/<area>}) with a count above zero. */
+    static Map<String, Integer> phaseOneLeftovers(Map<String, Integer> counts) {
+        Map<String, Integer> out = new TreeMap<>();
+        counts.forEach((key, n) -> {
+            int slash = key.indexOf('/');
+            if (slash > 0 && n > 0 && PHASE_ONE_KINDS.contains(key.substring(0, slash))
+                    && PHASE_ONE_AREAS.contains(key.substring(slash + 1))) {
+                out.put(key, n);
+            }
+        });
+        return out;
+    }
 
     private static Path sourceOf(Class<?> c) {
         return Path.of("app/src/test/java/" + c.getName().replace('.', '/') + ".java");
@@ -160,7 +180,7 @@ class OldNameInventoryTest {
             return "build";
         }
         if (p.startsWith("deploy/") || p.startsWith("bin/") || p.equals("Dockerfile")
-                || p.matches("docker-compose[^/]*\\.yml") || p.equals("roller")) {
+                || p.matches("docker-compose[^/]*\\.yml") || p.equals("roller")) { // rebrand:keep
             return "deploy";
         }
         if (name.endsWith(".md") || p.startsWith("docs/")) {
@@ -208,20 +228,20 @@ class OldNameInventoryTest {
     @Test
     void countsOnlyTheBrand() {
         assertTrue(count("Controller controller scroller").isEmpty());
-        assertEquals(Map.of("OTHER", 3), count("asyncRoller ROLLER_DB $rollerContentScope"));
+        assertEquals(Map.of("OTHER", 3), count("asyncRoller ROLLER_DB $rollerContentScope")); // rebrand:keep
     }
 
     @Test
     void classifiesEachKindOnce() {
         assertEquals(Map.of("PACKAGE", 2), count(ProjectNames.LEGACY_ROOT + ".x " + ProjectNames.LEGACY_ROOT.replace('.', '/') + "/y"));
-        assertEquals(Map.of("CLASS", 1), count("RollerSession"));
+        assertEquals(Map.of("CLASS", 1), count("RollerSession")); // rebrand:keep
         assertEquals(Map.of("TOKEN_PREFIX", 1), count("rlr_abc"));
     }
 
     @Test
     void pathsAreCountedUnderPathKinds() {
         Path p = Path.of("app/src/main/java/" + ProjectNames.LEGACY_ROOT.replace('.', '/')
-                + "/weblogger/ui/core/RollerSession.java");
+                + "/weblogger/ui/core/RollerSession.java"); // rebrand:keep
         Map<String, Integer> expected = new TreeMap<>();
         expected.put("PATH-PACKAGE", 1);
         expected.put("PATH-CLASS", 1);
@@ -233,7 +253,7 @@ class OldNameInventoryTest {
     void scansOnlyTrackedFiles() throws IOException {
         Path probe = RepoFiles.repoRoot().resolve("app/target/old-name-probe.txt");
         Files.createDirectories(probe.getParent());
-        Files.writeString(probe, "Roller");
+        Files.writeString(probe, "Roller"); // rebrand:keep
         try {
             assertFalse(RepoFiles.trackedFiles().contains(Path.of("app/target/old-name-probe.txt")));
         } finally {
@@ -258,7 +278,7 @@ class OldNameInventoryTest {
             {"bin/release.sh", "deploy"},
             {"Dockerfile", "deploy"},
             {"docker-compose.prod.yml", "deploy"},
-            {"roller", "deploy"},
+            {"roller", "deploy"}, // rebrand:keep
             {"README.md", "docs"},
             {"docs/dev/x.txt", "docs"},
             {"something.txt", "other"},
@@ -268,8 +288,11 @@ class OldNameInventoryTest {
         }
     }
 
-    @Test
-    void oldNameCountsMatchTheBaseline() {
+    /** Totals keyed "KIND/area" over the tracked tree, and per-file contributions to each key. */
+    private record Inventory(Map<String, Integer> totals, Map<String, Map<Path, Integer>> perFile) {
+    }
+
+    private static Inventory inventory() {
         Map<String, Integer> totals = new TreeMap<>();
         Map<String, Map<Path, Integer>> perFile = new TreeMap<>();
         for (Path p : RepoFiles.trackedFiles()) {
@@ -288,6 +311,44 @@ class OldNameInventoryTest {
                 perFile.computeIfAbsent(key, k -> new LinkedHashMap<>()).put(p, e.getValue());
             }
         }
+        return new Inventory(totals, perFile);
+    }
+
+    @Test
+    void phaseOneLeftoversPicksOnlyLayerOneKeys() {
+        assertEquals(Map.of("PACKAGE/main-java", 3), phaseOneLeftovers(Map.of(
+                "PACKAGE/main-java", 3, "OTHER/main-java", 9, "CLASS/docs", 2, "PATH-CLASS/test", 0)));
+    }
+
+    /**
+     * Once the package move has happened, Layer 1 (package and class names in
+     * code, resources, tests, ITs and the build) must be empty. Before the
+     * move the root is still the legacy one, so this passes trivially; it arms
+     * itself when {@link ProjectNames#currentRoot()} changes.
+     */
+    @Test
+    void layerOneIsEmptyOnceMoved() {
+        if (ProjectNames.currentRoot().equals(ProjectNames.LEGACY_ROOT)) {
+            return;
+        }
+        Inventory inv = inventory();
+        Map<String, Integer> left = phaseOneLeftovers(inv.totals());
+        StringBuilder sb = new StringBuilder("Layer 1 old names remain:");
+        left.forEach((k, n) -> {
+            sb.append("\n  ").append(k).append(": ").append(n);
+            inv.perFile().get(k).entrySet().stream()
+                    .sorted(Map.Entry.<Path, Integer>comparingByValue(Comparator.reverseOrder()))
+                    .limit(5)
+                    .forEach(f -> sb.append("\n      ").append(f.getKey()).append(" (").append(f.getValue()).append(')'));
+        });
+        assertTrue(left.isEmpty(), sb.toString());
+    }
+
+    @Test
+    void oldNameCountsMatchTheBaseline() {
+        Inventory inv = inventory();
+        Map<String, Integer> totals = inv.totals();
+        Map<String, Map<Path, Integer>> perFile = inv.perFile();
         List<String> problems = new ArrayList<>();
         boolean added = false;
         Map<String, Integer> keys = new TreeMap<>(totals);
