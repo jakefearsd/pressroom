@@ -74,7 +74,7 @@ class ShellPortabilityTest {
                         .forEach(scripts::add);
             }
         }
-        for (String named : List.of("roller", "bin/roller-api")) {
+        for (String named : List.of("roller", "bin/pressroom-api")) {
             Path p = REPO.resolve(named);
             if (Files.isRegularFile(p)) {
                 scripts.add(p);

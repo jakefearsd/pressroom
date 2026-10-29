@@ -36,7 +36,7 @@ It is an independent fork of [Apache Roller](https://roller.apache.org), which w
 
 ### Automation
 - REST API under `/api/v1` with per-account API tokens, and an MCP endpoint at `/api/mcp` for AI agents ([API reference](docs/api/README.md))
-- `bin/roller-api`, a command-line client for the API
+- `bin/pressroom-api`, a command-line client for the API
 - Agent accounts, whose tokens are managed in the admin UI
 
 ### Search
@@ -158,7 +158,7 @@ and one-command upgrades — see the production stack
 ## Documentation
 
 - **[Production Deployment Runbook](docker_deployment.md)** — Fresh-VPS Docker deployment, TLS, backups, upgrades
-- **[API reference](docs/api/README.md)** — the REST API, the MCP endpoint and `bin/roller-api`
+- **[API reference](docs/api/README.md)** — the REST API, the MCP endpoint and `bin/pressroom-api`
 - **[Reader sign-in](RollerSSO.md)** — setting up Google sign-in for reader comments
 - **[Design System](docs/design/design-system.md)** — the admin UI's tokens, type scale and layout rules
 

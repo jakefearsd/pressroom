@@ -134,7 +134,7 @@ class ApiIT extends PressroomIT {
 
     @Test
     void aBadBearerTokenIsRefused() throws Exception {
-        HttpResponse<String> response = get("/api/v1/me", "rlr_definitelynotreal");
+        HttpResponse<String> response = get("/api/v1/me", "prs_definitelynotreal");
         assertEquals(401, response.statusCode());
         // Status alone could pass against a container-level 401 (e.g. an
         // HTML error page) that never reached ApiAuthenticationEntryPoint.

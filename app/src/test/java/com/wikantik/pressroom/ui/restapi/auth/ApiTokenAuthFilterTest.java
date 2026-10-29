@@ -52,10 +52,10 @@ class ApiTokenAuthFilterTest {
     @Test
     void aValidBearerTokenAuthenticatesWithTheUserNameAsPrincipal() throws Exception {
         ApiTokenManager mgr = mock(ApiTokenManager.class);
-        when(mgr.authenticate("rlr_good")).thenReturn(token("testblog", ApiToken.Role.POST));
+        when(mgr.authenticate("prs_good")).thenReturn(token("testblog", ApiToken.Role.POST));
 
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/ping");
-        request.addHeader("Authorization", "Bearer rlr_good");
+        request.addHeader("Authorization", "Bearer prs_good");
         FilterChain chain = mock(FilterChain.class);
 
         new ApiTokenAuthFilter(() -> mgr, provider, PROBLEM_WRITER)
@@ -78,7 +78,7 @@ class ApiTokenAuthFilterTest {
         when(mgr.authenticate(anyString())).thenReturn(null);
 
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/ping");
-        request.addHeader("Authorization", "Bearer rlr_bad");
+        request.addHeader("Authorization", "Bearer prs_bad");
         FilterChain chain = mock(FilterChain.class);
 
         new ApiTokenAuthFilter(() -> mgr, provider, PROBLEM_WRITER)
@@ -110,7 +110,7 @@ class ApiTokenAuthFilterTest {
         when(mgr.authenticate(anyString())).thenReturn(null);
 
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/me");
-        request.addHeader("Authorization", "Bearer rlr_bad");
+        request.addHeader("Authorization", "Bearer prs_bad");
         FilterChain chain = mock(FilterChain.class);
 
         new ApiTokenAuthFilter(() -> mgr, provider, PROBLEM_WRITER)
@@ -133,7 +133,7 @@ class ApiTokenAuthFilterTest {
         when(mgr.authenticate(anyString())).thenReturn(null);
 
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/me");
-        request.addHeader("Authorization", "Bearer rlr_bad");
+        request.addHeader("Authorization", "Bearer prs_bad");
         FilterChain chain = mock(FilterChain.class);
 
         assertDoesNotThrow(() -> new ApiTokenAuthFilter(() -> mgr, notUp, PROBLEM_WRITER)
@@ -159,10 +159,10 @@ class ApiTokenAuthFilterTest {
     @Test
     void aSuccessfulAuthenticationDoesNotReleaseHere() throws Exception {
         ApiTokenManager mgr = mock(ApiTokenManager.class);
-        when(mgr.authenticate("rlr_good")).thenReturn(token("testblog", ApiToken.Role.POST));
+        when(mgr.authenticate("prs_good")).thenReturn(token("testblog", ApiToken.Role.POST));
 
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/ping");
-        request.addHeader("Authorization", "Bearer rlr_good");
+        request.addHeader("Authorization", "Bearer prs_good");
         FilterChain chain = mock(FilterChain.class);
 
         new ApiTokenAuthFilter(() -> mgr, provider, PROBLEM_WRITER)
@@ -180,9 +180,9 @@ class ApiTokenAuthFilterTest {
 
     private Authentication filterWith(ApiToken token) throws Exception {
         ApiTokenManager mgr = mock(ApiTokenManager.class);
-        when(mgr.authenticate("rlr_owned")).thenReturn(token);
+        when(mgr.authenticate("prs_owned")).thenReturn(token);
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/me");
-        request.addHeader("Authorization", "Bearer rlr_owned");
+        request.addHeader("Authorization", "Bearer prs_owned");
         FilterChain chain = mock(FilterChain.class);
 
         new ApiTokenAuthFilter(() -> mgr, provider, PROBLEM_WRITER)
@@ -251,13 +251,13 @@ class ApiTokenAuthFilterTest {
         ApiTokenAuthFilter filter = new ApiTokenAuthFilter(() -> mgr, provider, throttle, PROBLEM_WRITER);
 
         MockHttpServletRequest first = new MockHttpServletRequest("GET", "/api/v1/ping");
-        first.addHeader("Authorization", "Bearer rlr_same");
+        first.addHeader("Authorization", "Bearer prs_same");
         FilterChain firstChain = mock(FilterChain.class);
         filter.doFilter(first, new MockHttpServletResponse(), firstChain);
         verify(firstChain).doFilter(any(), any());
 
         MockHttpServletRequest second = new MockHttpServletRequest("GET", "/api/v1/ping");
-        second.addHeader("Authorization", "Bearer rlr_same");
+        second.addHeader("Authorization", "Bearer prs_same");
         MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain secondChain = mock(FilterChain.class);
 

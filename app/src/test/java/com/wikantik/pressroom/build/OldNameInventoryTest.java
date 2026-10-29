@@ -97,17 +97,17 @@ class OldNameInventoryTest {
     /** Keyed "KIND/area". Later phases lower these; the end state is empty. */
     static final Map<String, Integer> BASELINE = Map.ofEntries(
             Map.entry("CLASS/docs", 12),
-            Map.entry("MACHINE/build", 20),
-            Map.entry("MACHINE/deploy", 107),
-            Map.entry("MACHINE/docs", 314),
+            Map.entry("MACHINE/build", 17),
+            Map.entry("MACHINE/deploy", 88),
+            Map.entry("MACHINE/docs", 293),
             Map.entry("MACHINE/it", 112),
-            Map.entry("MACHINE/main-java", 269),
+            Map.entry("MACHINE/main-java", 266),
             Map.entry("MACHINE/main-resources", 590),
             Map.entry("MACHINE/other", 41),
-            Map.entry("MACHINE/test", 914),
+            Map.entry("MACHINE/test", 897),
             Map.entry("PACKAGE/docs", 115),
             Map.entry("PATH-CLASS/docs", 1),
-            Map.entry("PATH-MACHINE/deploy", 2),
+            Map.entry("PATH-MACHINE/deploy", 1),
             Map.entry("PATH-MACHINE/docs", 15),
             Map.entry("PATH-MACHINE/it", 2),
             Map.entry("PATH-MACHINE/main-resources", 11),
@@ -119,11 +119,7 @@ class OldNameInventoryTest {
             Map.entry("PROSE/it", 53),
             Map.entry("PROSE/main-java", 178),
             Map.entry("PROSE/main-resources", 228),
-            Map.entry("PROSE/test", 104),
-            Map.entry("TOKEN_PREFIX/docs", 3),
-            Map.entry("TOKEN_PREFIX/it", 2),
-            Map.entry("TOKEN_PREFIX/main-java", 2),
-            Map.entry("TOKEN_PREFIX/test", 42));
+            Map.entry("PROSE/test", 104));
 
     /** Kinds Phase 1 (the package move) must bring to zero. */
     static final Set<String> PHASE_ONE_KINDS = Set.of("PACKAGE", "CLASS", "PATH-PACKAGE", "PATH-CLASS");

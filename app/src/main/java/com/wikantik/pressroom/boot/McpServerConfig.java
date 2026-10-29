@@ -109,7 +109,7 @@ public class McpServerConfig {
                     (HttpServletRequest) ctx.get(McpEndpointServlet.REQUEST_KEY), tool, request.arguments())));
         }
         return McpServer.sync(mcpTransport)
-                .serverInfo("roller", rollerVersion())
+                .serverInfo("pressroom", pressroomVersion())
                 .instructions(McpInstructions.TEXT)
                 .capabilities(McpSchema.ServerCapabilities.builder().tools(false).build())
                 .immediateExecution(true)
@@ -135,7 +135,7 @@ public class McpServerConfig {
      * The version WebloggerImpl reports, read from the same build-filtered
      * resource without bootstrapping the business tier.
      */
-    static String rollerVersion() {
+    static String pressroomVersion() {
         Properties props = new Properties();
         try (InputStream in = McpServerConfig.class.getResourceAsStream("/pressroom-version.properties")) {
             if (in != null) {

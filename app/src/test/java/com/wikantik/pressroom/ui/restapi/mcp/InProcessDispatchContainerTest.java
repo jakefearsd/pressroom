@@ -165,7 +165,7 @@ class InProcessDispatchContainerTest {
     private static HttpResponse<String> callMcp(String query, String to, int times) throws Exception {
         try (HttpClient client = HttpClient.newHttpClient()) {
             return client.send(HttpRequest.newBuilder(URI.create(mcpUrl + query))
-                    .header("Authorization", "Bearer rlr_secret")
+                    .header("Authorization", "Bearer prs_secret")
                     .header("to", to)
                     .header("times", Integer.toString(times))
                     .POST(HttpRequest.BodyPublishers.ofString("{\"jsonrpc\":\"2.0\"}"))

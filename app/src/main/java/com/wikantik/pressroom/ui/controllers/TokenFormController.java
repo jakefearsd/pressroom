@@ -148,7 +148,7 @@ public abstract class TokenFormController extends BaseController {
         if (model.getAttribute(REVEALED_TOKEN) instanceof String secret) {
             String mcpUrl = Strings.CS.removeEnd(WebloggerRuntimeConfig.getAbsoluteContextURL(), "/") + "/api/mcp";
             model.addAttribute("mcpUrl", mcpUrl);
-            model.addAttribute("mcpSnippet", "claude mcp add --transport http roller " + mcpUrl
+            model.addAttribute("mcpSnippet", "claude mcp add --transport http pressroom " + mcpUrl
                     + " --header \"Authorization: Bearer " + secret + "\"");
         }
         return ".TokenReveal";

@@ -66,7 +66,7 @@ public class JPAApiTokenManagerImpl implements ApiTokenManager {
 
     @Override
     public ApiToken authenticate(String rawToken) throws WebloggerException {
-        if (rawToken == null || rawToken.isBlank()) {
+        if (rawToken == null || rawToken.isBlank() || !rawToken.startsWith(TOKEN_PREFIX)) {
             return null;
         }
         TypedQuery<ApiToken> query = strategy.getNamedQuery("ApiToken.getByDigest", ApiToken.class);

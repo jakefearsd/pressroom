@@ -22,7 +22,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Turns {@code Authorization: Bearer rlr_...} into an authenticated
+ * Turns {@code Authorization: Bearer prs_...} into an authenticated
  * SecurityContext.
  *
  * <p>Never rejects an authentication failure: an absent or bad token simply

@@ -202,7 +202,7 @@ class TokensApiTest {
         when(weblogger.getUserManager().getUserByUserName("owner")).thenReturn(owner);
         when(weblogger.getWeblogManager().getWeblogByHandle("testblog", null)).thenReturn(new Weblog());
 
-        String rawToken = "rlr_knownRawSecretForTest";
+        String rawToken = "prs_knownRawSecretForTest";
         ApiToken persisted = new ApiToken();
         persisted.setId("token-1");
         persisted.setUser(owner);
@@ -279,7 +279,7 @@ class TokensApiTest {
         authenticateWithBasicAuth();
         Weblogger weblogger = mockedWeblogger();
         User owner = basicOwner(weblogger);
-        ApiToken token = issued(owner, "t-7", "rlr_neverInALog").token();
+        ApiToken token = issued(owner, "t-7", "prs_neverInALog").token();
         token.setTokenSha256("digest-neverInALog");
         when(weblogger.getApiTokenManager().getToken("t-7")).thenReturn(token);
         when(weblogger.getApiTokenManager().revoke(owner, "t-7")).thenReturn(true);
@@ -487,7 +487,7 @@ class TokensApiTest {
         persisted.setScopeRole(ApiToken.Role.POST);
         persisted.setCreated(new Timestamp(System.currentTimeMillis()));
         when(weblogger.getApiTokenManager().issueToken(any(), anyString(), any(), any(), any()))
-                .thenReturn(new ApiTokenManager.Issued("rlr_x", persisted));
+                .thenReturn(new ApiTokenManager.Issued("prs_x", persisted));
 
         mockMvc(new TokensApi(weblogger))
                 .perform(post("/v1/tokens").contentType("application/json")
@@ -610,7 +610,7 @@ class TokensApiTest {
         when(weblogger.getUserManager().getWeblogPermission(mine, owner))
                 .thenReturn(new WeblogPermission(mine, owner, List.of(WeblogPermission.POST)));
         when(weblogger.getApiTokenManager().issueToken(any(), anyString(), any(), any(), any()))
-                .thenReturn(issued(owner, "t-7", "rlr_mine"));
+                .thenReturn(issued(owner, "t-7", "prs_mine"));
 
         mockMvc(new TokensApi(weblogger))
                 .perform(post("/v1/tokens").contentType("application/json")
@@ -626,7 +626,7 @@ class TokensApiTest {
         User owner = basicOwner(weblogger);
         when(weblogger.getWeblogManager().getWeblogByHandle("anyblog", null)).thenReturn(new Weblog());
         when(weblogger.getApiTokenManager().issueToken(any(), anyString(), any(), any(), any()))
-                .thenReturn(issued(owner, "t-8", "rlr_any"));
+                .thenReturn(issued(owner, "t-8", "prs_any"));
 
         mockMvc(new TokensApi(weblogger))
                 .perform(post("/v1/tokens").contentType("application/json")
@@ -656,8 +656,8 @@ class TokensApiTest {
         authenticateWithBasicAuth();
         Weblogger weblogger = mockedWeblogger();
         User owner = basicOwner(weblogger);
-        ApiToken live = issued(owner, "t-live", "rlr_a").token();
-        ApiToken revoked = issued(owner, "t-revoked", "rlr_b").token();
+        ApiToken live = issued(owner, "t-live", "prs_a").token();
+        ApiToken revoked = issued(owner, "t-revoked", "prs_b").token();
         revoked.setRevokedAt(Timestamp.from(Instant.parse("2026-10-01T00:00:00Z")));
         when(weblogger.getApiTokenManager().getTokens(owner)).thenReturn(List.of(live, revoked));
 
@@ -686,7 +686,7 @@ class TokensApiTest {
         Weblogger weblogger = mockedWeblogger();
         User owner = basicOwner(weblogger);
         when(weblogger.getApiTokenManager().issueToken(any(), anyString(), any(), any(), any()))
-                .thenReturn(issued(owner, "t-9", "rlr_neverInALog"));
+                .thenReturn(issued(owner, "t-9", "prs_neverInALog"));
 
         try (AdminLogCapture admin = AdminLogCapture.start()) {
             mockMvc(new TokensApi(weblogger))
@@ -699,7 +699,7 @@ class TokensApiTest {
             for (String part : new String[] {"token.minted", "id=t-9", "label=ci", "owner=owner", "by=owner"}) {
                 assertTrue(line.contains(part), part + " in " + line);
             }
-            assertFalse(line.contains("rlr_neverInALog"), line);
+            assertFalse(line.contains("prs_neverInALog"), line);
         }
     }
 

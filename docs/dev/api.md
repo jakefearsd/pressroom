@@ -9,7 +9,7 @@ resolves through the index at the end of `CLAUDE.md`.
 `com.wikantik.pressroom.ui.restapi` (`/api/v1`) is a REST surface for
 scripts and agents alongside the JSP admin UI. Reference and error contract:
 `docs/api/README.md`, the front door. Tokens are minted in the admin UI
-(Profile → API tokens, or an agent's page) or with `bin/roller-api auth login`.
+(Profile → API tokens, or an agent's page) or with `bin/pressroom-api auth login`.
 `/api/v1` is unstable while Roller is 0.x.
 
 - **The `/api` prefix is a servlet-spec prefix mapping, not part of any
@@ -69,7 +69,7 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   depth. It sits behind `apiSecurityFilterChain` like all of `/api/**` (Basic
   or Bearer), not exempted like `GET /api/v1/ping`. `OpenApiDocumentTest` pins
   two `docs/api/README.md` claims the document cannot convey — v1 is unstable,
-  and `roller-api auth login` is the bootstrap path.
+  and `pressroom-api auth login` is the bootstrap path.
 - **`PressroomHandlerInterceptor`'s `import ...ui.restapi.ApiException` is the ONE
   permitted import from `ui.restapi` into `ui.controllers`, and must stay the
   only one.** A second interceptor for `/api/**` would be exactly the parallel

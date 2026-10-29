@@ -142,7 +142,7 @@ app. Two settings are optional and rarely needed:
      at sign-in.
 
   They then write in the admin UI only. With no password they cannot mint an
-  API token, so the `roller-api` CLI and MCP are not for them.
+  API token, so the `pressroom-api` CLI and MCP are not for them.
 - **Admin is never possible:** an account that signs in with Google can never
   be made an administrator. Admins keep password accounts.
 - **Disabling a reader:** in User Admin, untick **Enabled**. Their next

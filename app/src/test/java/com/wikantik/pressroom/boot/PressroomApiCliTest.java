@@ -16,11 +16,11 @@ import static org.junit.jupiter.api.Assertions.*;
 class PressroomApiCliTest {
 
     private static String cli() throws Exception {
-        Path path = Path.of("..", "bin", "roller-api");
+        Path path = Path.of("..", "bin", "pressroom-api");
         if (!Files.exists(path)) {
-            path = Path.of("bin", "roller-api");
+            path = Path.of("bin", "pressroom-api");
         }
-        assertTrue(Files.exists(path), "bin/roller-api must exist");
+        assertTrue(Files.exists(path), "bin/pressroom-api must exist");
         return Files.readString(path);
     }
 
@@ -169,7 +169,7 @@ class PressroomApiCliTest {
 
     /**
      * A caller who forgets the value entirely --
-     * {@code roller-api --url auth login --weblog h} -- must not have
+     * {@code pressroom-api --url auth login --weblog h} -- must not have
      * PRESSROOM_API_URL silently set to "auth" with "login" then misread as the
      * top-level command.
      */
@@ -293,17 +293,17 @@ class PressroomApiCliTest {
                 + "'{\"html\":\"<p>hi</p>\",\"warnings\":[\"1 code block names no language\"]}'\n");
         assertTrue(curl.toFile().setExecutable(true));
         Path text = Files.writeString(dir.resolve("post.md"), "hi");
-        Path script = Path.of("..", "bin", "roller-api").toAbsolutePath();
+        Path script = Path.of("..", "bin", "pressroom-api").toAbsolutePath();
         ProcessBuilder pb = new ProcessBuilder("bash", script.toString(), "entries", "preview",
                 "--weblog", "w", "--text-file", text.toString());
         pb.environment().put("PATH", bin + ":" + System.getenv("PATH"));
-        pb.environment().put("PRESSROOM_API_URL", "http://roller.invalid");
+        pb.environment().put("PRESSROOM_API_URL", "http://pressroom.invalid");
         pb.environment().put("PRESSROOM_API_TOKEN", "t");
         pb.environment().put("PRESSROOM_CREDENTIALS", dir.resolve("none").toString());
         pb.redirectError(dir.resolve("stderr").toFile());
         Process p = pb.start();
         String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        assertTrue(p.waitFor(30, TimeUnit.SECONDS), "roller-api hung");
+        assertTrue(p.waitFor(30, TimeUnit.SECONDS), "pressroom-api hung");
         String err = Files.readString(dir.resolve("stderr"));
 
         assertEquals(0, p.exitValue(), out + err);
@@ -311,11 +311,39 @@ class PressroomApiCliTest {
         assertEquals("warning: 1 code block names no language\n", err);
     }
 
+    /**
+     * The credentials file moved from ~/.roller to ~/.pressroom with no
+     * fallback. When only the old file exists the error says to move it, by
+     * name of the command, and never prints what the file holds.
+     */
+    @Test
+    void anOldCredentialsFileIsNotReadAndTheErrorSaysToMoveIt(@TempDir Path dir) throws Exception {
+        Path home = Files.createDirectories(dir.resolve("home"));
+        Files.createDirectories(home.resolve(".roller")); // rebrand:keep
+        Files.writeString(home.resolve(".roller/credentials"), // rebrand:keep
+                "PRESSROOM_API_URL=http://secret.invalid\nPRESSROOM_API_TOKEN=prs_topsecret\n");
+        Path script = Path.of("..", "bin", "pressroom-api").toAbsolutePath();
+        ProcessBuilder pb = new ProcessBuilder("bash", script.toString(), "entries", "list", "--weblog", "w");
+        pb.environment().put("HOME", home.toString());
+        pb.environment().remove("PRESSROOM_API_URL");
+        pb.environment().remove("PRESSROOM_API_TOKEN");
+        pb.environment().remove("PRESSROOM_CREDENTIALS");
+        pb.redirectError(dir.resolve("err").toFile());
+        Process p = pb.start();
+        p.getInputStream().readAllBytes();
+        assertTrue(p.waitFor(30, TimeUnit.SECONDS), "pressroom-api hung");
+        String err = Files.readString(dir.resolve("err"));
+
+        assertNotEquals(0, p.exitValue(), err);
+        assertTrue(err.contains("mv ~/.roller ~/.pressroom"), err); // rebrand:keep
+        assertFalse(err.contains("topsecret") || err.contains("secret.invalid"), err);
+    }
+
     /** What one run of the real script printed and returned. */
     private record Run(int exit, String out, String err) { }
 
     /**
-     * Runs bin/roller-api with a stub curl that prints the URL it was given,
+     * Runs bin/pressroom-api with a stub curl that prints the URL it was given,
      * so a test can see which route a command reaches. {@code credentials}
      * false runs with no URL, no token and no credentials file.
      */
@@ -325,7 +353,7 @@ class PressroomApiCliTest {
         Files.writeString(curl, "#!/bin/bash\nfor a in \"$@\"; do last=\"$a\"; done\n"
                 + "printf '{\"url\":\"%s\"}' \"$last\"\n");
         assertTrue(curl.toFile().setExecutable(true));
-        Path script = Path.of("..", "bin", "roller-api").toAbsolutePath();
+        Path script = Path.of("..", "bin", "pressroom-api").toAbsolutePath();
         java.util.List<String> command = new java.util.ArrayList<>(java.util.List.of("bash", script.toString()));
         command.addAll(java.util.List.of(args));
         ProcessBuilder pb = new ProcessBuilder(command);
@@ -333,7 +361,7 @@ class PressroomApiCliTest {
         pb.environment().remove("PRESSROOM_API_URL");
         pb.environment().remove("PRESSROOM_API_TOKEN");
         if (credentials) {
-            pb.environment().put("PRESSROOM_API_URL", "http://roller.invalid");
+            pb.environment().put("PRESSROOM_API_URL", "http://pressroom.invalid");
             pb.environment().put("PRESSROOM_API_TOKEN", "t");
         }
         pb.environment().put("PRESSROOM_CREDENTIALS", dir.resolve("none").toString());
@@ -341,7 +369,7 @@ class PressroomApiCliTest {
         pb.redirectError(stderr.toFile());
         Process p = pb.start();
         String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        assertTrue(p.waitFor(30, TimeUnit.SECONDS), "roller-api hung");
+        assertTrue(p.waitFor(30, TimeUnit.SECONDS), "pressroom-api hung");
         return new Run(p.exitValue(), out, Files.readString(stderr));
     }
 
@@ -365,7 +393,7 @@ class PressroomApiCliTest {
         }
         Run top = run(dir, false, "--help");
         assertEquals(0, top.exit(), top.err());
-        assertTrue(top.out().contains("roller-api <group> --help"), top.out());
+        assertTrue(top.out().contains("pressroom-api <group> --help"), top.out());
         assertFalse(top.out().contains("'-shaped"), "the garbled help line is gone: " + top.out());
     }
 
@@ -399,7 +427,7 @@ class PressroomApiCliTest {
         for (String name : new String[] {"rebuild-index", "reindex"}) {
             Run r = run(dir, true, "admin", name, "--weblog", "w");
             assertEquals(0, r.exit(), name + ": " + r.out() + r.err());
-            assertTrue(r.out().contains("http://roller.invalid/api/v1/admin/weblogs/w/actions/rebuild-index"),
+            assertTrue(r.out().contains("http://pressroom.invalid/api/v1/admin/weblogs/w/actions/rebuild-index"),
                     name + ": " + r.out());
         }
     }

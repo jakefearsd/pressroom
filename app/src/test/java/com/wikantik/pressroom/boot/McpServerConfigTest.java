@@ -106,7 +106,7 @@ class McpServerConfigTest {
     }
 
     @Test
-    void initializeAnswersAsRollerWithTheBuildsVersion() throws Exception {
+    void initializeAnswersAsPressroomWithTheBuildsVersion() throws Exception {
         JsonNode answer = post(rpc("initialize", Map.of(
                 "protocolVersion", "2025-06-18",
                 "capabilities", Map.of(),
@@ -114,7 +114,7 @@ class McpServerConfigTest {
                 (request, call) -> fail("initialize dispatches nothing"));
 
         JsonNode serverInfo = answer.get("result").get("serverInfo");
-        assertEquals("roller", serverInfo.get("name").asString(), answer.toString());
+        assertEquals("pressroom", serverInfo.get("name").asString(), answer.toString());
         assertEquals(builtVersion(), serverInfo.get("version").asString());
         assertTrue(answer.get("result").get("capabilities").has("tools"), answer.toString());
     }

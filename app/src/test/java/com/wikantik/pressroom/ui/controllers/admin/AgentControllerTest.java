@@ -408,7 +408,7 @@ class AgentControllerTest {
         when(weblogger.userManager().getWeblogPermission(travel, agent))
                 .thenReturn(new WeblogPermission(travel, agent, List.of(WeblogPermission.POST)));
         when(weblogger.apiTokenManager().issueToken(any(), anyString(), any(), any(), any(), any()))
-                .thenReturn(new ApiTokenManager.Issued("rlr_agent", tokenOf(agent, "t1")));
+                .thenReturn(new ApiTokenManager.Issued("prs_agent", tokenOf(agent, "t1")));
         long before = System.currentTimeMillis();
 
         String view = controller.mint(asAdmin(), model, redirect, "bot1", "publisher", "POST", "travel", null);
@@ -421,7 +421,7 @@ class AgentControllerTest {
         long expiry = expires.getValue().getTime();
         assertTrue(expiry >= before + ninetyDays - 60_000L
                 && expiry <= System.currentTimeMillis() + ninetyDays + 60_000L, "the default expiry is 90 days");
-        assertEquals("rlr_agent", redirect.getFlashAttributes().get(TokenFormController.REVEALED_TOKEN));
+        assertEquals("prs_agent", redirect.getFlashAttributes().get(TokenFormController.REVEALED_TOKEN));
         assertEquals("bot1", redirect.getFlashAttributes().get(TokenFormController.REVEALED_FOR_AGENT));
     }
 
@@ -446,7 +446,7 @@ class AgentControllerTest {
         stored();
         siteAdmin(true);
         when(weblogger.apiTokenManager().issueToken(any(), anyString(), any(), any(), any(), any()))
-                .thenReturn(new ApiTokenManager.Issued("rlr_ops", tokenOf(agent, "t2")));
+                .thenReturn(new ApiTokenManager.Issued("prs_ops", tokenOf(agent, "t2")));
 
         assertEquals("redirect:/pressroom-ui/profileTokens!reveal.rol",
                 controller.mint(asAdmin(), model, redirect, "bot1", "ops", "ADMIN", "travel", "never"));

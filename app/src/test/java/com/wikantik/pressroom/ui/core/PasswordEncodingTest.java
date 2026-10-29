@@ -173,7 +173,7 @@ class PasswordEncodingTest {
 
     /**
      * The dev credential must never become an argv entry: {@code ./roller} hands
-     * it to psql as a variable and to roller-api on stdin.
+     * it to psql as a variable and to pressroom-api on stdin.
      */
     @Test
     void theRollerScriptSeedsWithoutPuttingThePasswordInAnArgv() throws IOException {

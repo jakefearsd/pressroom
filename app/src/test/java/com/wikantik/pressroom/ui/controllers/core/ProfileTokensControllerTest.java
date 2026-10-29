@@ -138,7 +138,7 @@ class ProfileTokensControllerTest {
     /** Criterion 15: my live tokens, and pin choices limited to my own weblogs. */
     @Test
     void thePageListsMyLiveTokensAndOffersOnlyMyWeblogs() throws Exception {
-        ApiToken mine = issued("rlr_x", "ci").token();
+        ApiToken mine = issued("prs_x", "ci").token();
         when(mocks.apiTokenManager().getLiveTokens(me)).thenReturn(List.of(mine));
 
         String view = controller.list(request(), model);
@@ -157,7 +157,7 @@ class ProfileTokensControllerTest {
     /** Criteria 9 and 15: the mint stores the choices and the issuer, then goes to the reveal. */
     @Test
     void mintingStoresTheChoicesRecordsTheIssuerAndRedirectsToTheReveal() throws Exception {
-        mintsAs("rlr_secret", "ci");
+        mintsAs("prs_secret", "ci");
         long before = System.currentTimeMillis();
 
         String view = controller.create(request(), model, redirect, "  ci ", "POST", "travel", null);
@@ -171,7 +171,7 @@ class ProfileTokensControllerTest {
         assertTrue(expiry >= before + ninetyDays - 60_000L
                 && expiry <= System.currentTimeMillis() + ninetyDays + 60_000L, "the default expiry is 90 days");
         assertEquals(1, mocks.flushCount());
-        assertEquals("rlr_secret", redirect.getFlashAttributes().get(TokenFormController.REVEALED_TOKEN));
+        assertEquals("prs_secret", redirect.getFlashAttributes().get(TokenFormController.REVEALED_TOKEN));
         assertEquals("ci", redirect.getFlashAttributes().get(TokenFormController.REVEALED_LABEL));
         assertTrue(redirect.asMap().isEmpty(), "nothing rides in the redirect's query: the secret never reaches a URL");
     }
@@ -195,7 +195,7 @@ class ProfileTokensControllerTest {
     @Test
     void aSiteAdminMayPinAnyExistingWeblog() throws Exception {
         siteAdmin(true);
-        mintsAs("rlr_ops", "ops");
+        mintsAs("prs_ops", "ops");
 
         assertEquals("redirect:/pressroom-ui/profileTokens!reveal.rol",
                 controller.create(request(), model, redirect, "ops", "ADMIN", "food", "365"));
@@ -230,7 +230,7 @@ class ProfileTokensControllerTest {
 
     @Test
     void neverMeansNoExpiryAndABlankPinMeansAllItsWeblogs() throws Exception {
-        mintsAs("rlr_n", "forever");
+        mintsAs("prs_n", "forever");
 
         controller.create(request(), model, redirect, "forever", "READ", "", "never");
 
@@ -241,7 +241,7 @@ class ProfileTokensControllerTest {
     /** Criterion 9: the reveal shows the secret once, is never cached, and carries an MCP snippet. */
     @Test
     void theRevealShowsTheSecretOnceWithNoStoreAndAnMcpSnippet() {
-        model.addAttribute(TokenFormController.REVEALED_TOKEN, "rlr_secret");
+        model.addAttribute(TokenFormController.REVEALED_TOKEN, "prs_secret");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         String view = controller.reveal(request(), response, model);
@@ -251,7 +251,7 @@ class ProfileTokensControllerTest {
         assertEquals("https://blog.example/api/mcp", model.getAttribute("mcpUrl"));
         String snippet = (String) model.getAttribute("mcpSnippet");
         assertTrue(snippet.contains("https://blog.example/api/mcp"), snippet);
-        assertTrue(snippet.contains("Authorization: Bearer rlr_secret"), snippet);
+        assertTrue(snippet.contains("Authorization: Bearer prs_secret"), snippet);
     }
 
     /** Criterion 10: loading the reveal again has no secret to show, and is still not cached. */
@@ -269,7 +269,7 @@ class ProfileTokensControllerTest {
     /** Criterion 10; review focus 1: no log line a mint writes carries the secret, on any logger, at any level. */
     @Test
     void noLogLineWrittenByAMintContainsTheSecret() throws Exception {
-        mintsAs("rlr_neverLogged", "ci");
+        mintsAs("prs_neverLogged", "ci");
 
         try (SsoLogCapture everything = SsoLogCapture.everyLogger();
              AdminLogCapture admin = AdminLogCapture.start()) {
@@ -279,8 +279,8 @@ class ProfileTokensControllerTest {
             String line = admin.lines().get(0);
             assertTrue(line.startsWith("token.minted id=t1 label=ci owner=jake"), line);
             assertTrue(line.endsWith("by=jake"), line);
-            assertFalse(line.contains("rlr_neverLogged"), line);
-            assertTrue(everything.everything().stream().noneMatch(l -> l.contains("rlr_neverLogged")),
+            assertFalse(line.contains("prs_neverLogged"), line);
+            assertTrue(everything.everything().stream().noneMatch(l -> l.contains("prs_neverLogged")),
                     everything.everything().toString());
         }
     }
@@ -288,7 +288,7 @@ class ProfileTokensControllerTest {
     /** Criterion 14: I can revoke my own token, and revoking it again succeeds and changes nothing. */
     @Test
     void revokingMyOwnTokenWorksAndTwiceIsHarmless() throws Exception {
-        ApiToken mine = issued("rlr_a", "ci").token();
+        ApiToken mine = issued("prs_a", "ci").token();
         when(mocks.apiTokenManager().getToken("t1")).thenReturn(mine);
 
         try (AdminLogCapture admin = AdminLogCapture.start()) {
@@ -310,7 +310,7 @@ class ProfileTokensControllerTest {
     void anotherPersonsTokenIsNoSuchToken() throws Exception {
         User someoneElse = new User();
         someoneElse.setUserName("other");
-        ApiToken theirs = issued("rlr_b", "theirs").token();
+        ApiToken theirs = issued("prs_b", "theirs").token();
         theirs.setUser(someoneElse);
         when(mocks.apiTokenManager().getToken("t2")).thenReturn(theirs);
 
@@ -354,7 +354,7 @@ class ProfileTokensControllerTest {
     /** Ruling 10: the revoke itself failing is the same visible failure. */
     @Test
     void aStoreFailureInTheRevokeItselfIsAFailure() throws Exception {
-        ApiToken mine = issued("rlr_a", "ci").token();
+        ApiToken mine = issued("prs_a", "ci").token();
         when(mocks.apiTokenManager().getToken("t1")).thenReturn(mine);
         org.mockito.Mockito.doThrow(new WebloggerException("db down")).when(mocks.apiTokenManager()).revoke(mine);
 

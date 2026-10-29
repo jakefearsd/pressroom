@@ -56,7 +56,7 @@ class ApiAuthenticationEntryPointTest {
         MockHttpServletRequest requestB = new MockHttpServletRequest("GET", "/api/v1/ping");
         MockHttpServletResponse responseB = new MockHttpServletResponse();
         entryPoint.commence(requestB, responseB,
-                new BadCredentialsException("token rlr_xyz is expired"));
+                new BadCredentialsException("token prs_xyz is expired"));
 
         assertArrayEquals(responseA.getContentAsByteArray(), responseB.getContentAsByteArray(),
                 "a missing header and a bad token must produce byte-identical bodies");

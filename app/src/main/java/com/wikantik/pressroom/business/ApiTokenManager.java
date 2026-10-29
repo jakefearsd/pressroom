@@ -32,7 +32,7 @@ import com.wikantik.pressroom.pojos.User;
 public interface ApiTokenManager {
 
     /** Prefix on every raw token, so one is recognisable in a log or a paste. */
-    String TOKEN_PREFIX = "rlr_";
+    String TOKEN_PREFIX = "prs_";
 
     /**
      * The result of minting a token: the one-time raw secret (never stored,

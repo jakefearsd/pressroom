@@ -26,7 +26,7 @@ class DispatchedRequestTest {
 
     private static MockHttpServletRequest mcpRequest() {
         MockHttpServletRequest mcp = new MockHttpServletRequest("POST", "/api/mcp");
-        mcp.addHeader("Authorization", "Bearer rlr_secret");
+        mcp.addHeader("Authorization", "Bearer prs_secret");
         mcp.addHeader("Mcp-Protocol-Version", "2025-06-18");
         mcp.setCookies(new Cookie("JSESSIONID", "x"));
         mcp.setContent("{\"jsonrpc\":\"2.0\"}".getBytes(StandardCharsets.UTF_8));

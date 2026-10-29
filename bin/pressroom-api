@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# roller-api -- command-line client for Roller's automation API.
+# pressroom-api -- command-line client for Roller's automation API.
 #
 # Configuration precedence: --url/--token flags (highest), then
-# PRESSROOM_API_URL / PRESSROOM_API_TOKEN, then ~/.roller/credentials (lowest).
+# PRESSROOM_API_URL / PRESSROOM_API_TOKEN, then ~/.pressroom/credentials (lowest).
 # The environment layer is what makes this usable from CI without an
 # interactive login; the flags exist so a one-off call against a second
 # instance never has to touch either the environment or the credentials
@@ -17,7 +17,7 @@
 # rather than continuing on with half-applied state.
 set -euo pipefail
 
-CRED_FILE="${PRESSROOM_CREDENTIALS:-$HOME/.roller/credentials}"
+CRED_FILE="${PRESSROOM_CREDENTIALS:-$HOME/.pressroom/credentials}"
 
 die() { printf '%s\n' "$*" >&2; exit 1; }
 
@@ -45,8 +45,8 @@ _run_cleanup() {
 trap _run_cleanup EXIT
 
 require_tools() {
-    command -v curl >/dev/null 2>&1 || die "roller-api needs curl on PATH."
-    command -v jq   >/dev/null 2>&1 || die "roller-api needs jq on PATH."
+    command -v curl >/dev/null 2>&1 || die "pressroom-api needs curl on PATH."
+    command -v jq   >/dev/null 2>&1 || die "pressroom-api needs jq on PATH."
 }
 
 # Reads NAME's value out of the credentials file's own "NAME=value" lines
@@ -66,8 +66,12 @@ load_credentials() {
     if [ -z "${PRESSROOM_API_TOKEN:-}" ]; then
         PRESSROOM_API_TOKEN="$(_cred_file_value PRESSROOM_API_TOKEN)"
     fi
-    : "${PRESSROOM_API_URL:?No API URL. Run 'roller-api auth login --url ...' first.}"
-    : "${PRESSROOM_API_TOKEN:?No API token. Run 'roller-api auth login --url ...' first.}"
+    if [ -z "${PRESSROOM_API_URL:-}" ] && [ -z "${PRESSROOM_CREDENTIALS:-}" ] \
+        && [ ! -f "$CRED_FILE" ] && [ -f "$HOME/.roller/credentials" ]; then # rebrand:keep
+        die "The credentials file moved. Run: mv ~/.roller ~/.pressroom" # rebrand:keep
+    fi
+    : "${PRESSROOM_API_URL:?No API URL. Run 'pressroom-api auth login --url ...' first.}"
+    : "${PRESSROOM_API_TOKEN:?No API token. Run 'pressroom-api auth login --url ...' first.}"
 }
 
 # Issues one authenticated request against /api/v1<path>. Extra args (e.g.
@@ -157,7 +161,7 @@ cmd_auth_login() {
     host="${host%%/*}"
     host="${host%%:*}"
 
-    netrc_file="$(mktemp "${TMPDIR:-/tmp}/roller-api-netrc.XXXXXX")"
+    netrc_file="$(mktemp "${TMPDIR:-/tmp}/pressroom-api-netrc.XXXXXX")"
     chmod 600 "$netrc_file"
     _register_cleanup "$netrc_file"
     printf 'machine %s\nlogin %s\npassword %s\n' "$host" "$user" "$password" > "$netrc_file"
@@ -182,7 +186,7 @@ cmd_auth_login() {
         --netrc-file "$netrc_file" \
         -H "Content-Type: application/json" \
         -X POST "${url}/api/v1/tokens" \
-        -d "$(jq -n --arg label "roller-api cli" '{label: $label, role: "ADMIN"}')")"; then
+        -d "$(jq -n --arg label "pressroom-api cli" '{label: $label, role: "ADMIN"}')")"; then
         rm -f "$netrc_file"
         local detail
         detail="$(printf '%s' "$login_response" | jq -r '.detail // empty' 2>/dev/null || true)"
@@ -604,7 +608,7 @@ media_upload() {
     # BSD/macOS mktemp hands the template straight to mkstemp(3), which requires
     # the last six characters to be XXXXXX and fails with "Invalid argument".
     # Nothing reads this file's extension.
-    response_file="$(mktemp "${TMPDIR:-/tmp}/roller-api-upload.XXXXXX")"
+    response_file="$(mktemp "${TMPDIR:-/tmp}/pressroom-api-upload.XXXXXX")"
     _register_cleanup "$response_file"
     if ! status="$(api_raw POST "/weblogs/${weblog}/media" "${form_args[@]}" \
         -o "$response_file" -w '%{http_code}')"; then
@@ -988,12 +992,12 @@ EOF
 
 usage() {
     cat <<'EOF'
-roller-api -- Roller automation API client
+pressroom-api -- Roller automation API client
 
   [--url URL] [--token TOKEN] <command> ...
       Global overrides, parsed before the command -- highest-precedence
       configuration tier, above PRESSROOM_API_URL/PRESSROOM_API_TOKEN and above
-      ~/.roller/credentials. Lets a one-off call reach a second instance
+      ~/.pressroom/credentials. Lets a one-off call reach a second instance
       without touching the environment or the stored credentials file.
 
   auth login --url URL [--user NAME] [--password-stdin]
@@ -1017,7 +1021,7 @@ roller-api -- Roller automation API client
   admin flush-cache --weblog H
   admin regenerate-renditions --weblog H
 
-Run 'roller-api <group> --help' to see every subcommand of a group and its
+Run 'pressroom-api <group> --help' to see every subcommand of a group and its
 flags (groups: auth, entries, media, audit, admin).
 EOF
 }
@@ -1028,7 +1032,7 @@ main() {
     # --url/--token are the highest-precedence configuration tier (see the
     # file header), parsed here before the command name so any group can be
     # reached against a one-off URL/token without touching the environment
-    # or ~/.roller/credentials. Only recognised in this leading position --
+    # or ~/.pressroom/credentials. Only recognised in this leading position --
     # a subcommand's own flags are parsed by that subcommand.
     while [ $# -gt 0 ]; do
         case "$1" in
@@ -1036,7 +1040,7 @@ main() {
                 local flag="$1"
                 [ $# -ge 2 ] || die "$flag requires a value."
                 # A caller who forgot the value entirely --
-                # `roller-api --url auth login --weblog h` -- would otherwise
+                # `pressroom-api --url auth login --weblog h` -- would otherwise
                 # silently set PRESSROOM_API_URL="auth", treat "login" as the
                 # top-level command, and fail with a generic usage message
                 # that never hints the flag ate the command. Refuse it here

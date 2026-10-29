@@ -35,7 +35,7 @@ class ApiTokenManagerTest {
         TestUtils.endSession(true);
 
         String raw = issued.rawToken();
-        assertTrue(raw.startsWith("rlr_"), "tokens are prefixed so they are recognisable in logs");
+        assertTrue(raw.startsWith("prs_"), "tokens are prefixed so they are recognisable in logs");
         assertEquals("testblog", issued.token().getScopeWeblog(),
                 "the returned row is the same one that was persisted");
 
@@ -97,9 +97,23 @@ class ApiTokenManagerTest {
         TestUtils.endSession(true);
     }
 
+    /**
+     * Old-prefix tokens are refused outright, even when a row with their
+     * digest is stored: the prefix check runs before any lookup.
+     */
+    @Test
+    void oldPrefixTokenIsRefusedEvenWithAStoredDigest() throws Exception {
+        String old = "rlr_" + "a".repeat(40); // rebrand:keep
+        ApiTokenManager.Issued issued = mgr.issueToken(user, "legacy", "testblog", ApiToken.Role.POST, null);
+        issued.token().setTokenSha256(com.wikantik.pressroom.util.TokenGenerator.sha256Hex(old));
+        TestUtils.endSession(true);
+
+        assertNull(mgr.authenticate(old));
+    }
+
     @Test
     void anUnknownTokenDoesNotAuthenticate() throws Exception {
-        assertNull(mgr.authenticate("rlr_notarealtoken"));
+        assertNull(mgr.authenticate("prs_notarealtoken"));
         assertNull(mgr.authenticate(null));
         assertNull(mgr.authenticate("   "));
     }

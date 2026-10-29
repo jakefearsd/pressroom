@@ -65,7 +65,7 @@ class InProcessApiDispatcherTest {
 
     private MockHttpServletRequest mcpRequest() {
         MockHttpServletRequest mcp = new MockHttpServletRequest(context, "POST", "/api/mcp");
-        mcp.addHeader("Authorization", "Bearer rlr_secret");
+        mcp.addHeader("Authorization", "Bearer prs_secret");
         return mcp;
     }
 

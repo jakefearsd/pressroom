@@ -14,7 +14,7 @@ agent's page (**Admin → Users →** the agent) for an agent account. The secre
 is shown once. A script can mint one with the CLI instead:
 
 ```
-bin/roller-api auth login --url http://localhost:8083
+bin/pressroom-api auth login --url http://localhost:8083
 ```
 
 Everything below assumes a Roller running at that URL (the default for
@@ -44,7 +44,7 @@ from stdin instead — never an argv entry, never an environment variable, so it
 is safe in CI:
 
 ```bash
-printf '%s\n' "$PASSWORD" | bin/roller-api auth login \
+printf '%s\n' "$PASSWORD" | bin/pressroom-api auth login \
     --url https://example.com/roller --user admin --password-stdin
 ```
 
@@ -68,7 +68,7 @@ printf '%s\n' "$PASSWORD" | bin/roller-api auth login \
 - [Maintenance actions](#maintenance-actions)
 - [MCP](#mcp)
 - [The OpenAPI document](#the-openapi-document)
-- [`bin/roller-api`](#binroller-api)
+- [`bin/pressroom-api`](#binpressroom-api)
 
 ## Getting a token
 
@@ -121,7 +121,7 @@ curl -sS -u alice:hunter2 \
 
 ```json
 {
-  "token": "rlr_9f3a1c...",
+  "token": "prs_9f3a1c...",
   "info": {
     "id": "a1b2c3...",
     "label": "seo-agent",
@@ -149,9 +149,9 @@ existing weblog); a foreign or unknown weblog is a 400 whose
 400 on `expiresAt`. `GET /api/v1/tokens` lists revoked tokens too, each with
 its `revokedAt`.
 
-`bin/roller-api auth login` wraps exactly this call (minting an `ADMIN`-role
-token under the label `roller-api cli`) and writes the URL and token to
-`~/.roller/credentials` (`chmod 600`). Every other `roller-api` subcommand
+`bin/pressroom-api auth login` wraps exactly this call (minting an `ADMIN`-role
+token under the label `pressroom-api cli`) and writes the URL and token to
+`~/.pressroom/credentials` (`chmod 600`). Every other `pressroom-api` subcommand
 reads that file, or `PRESSROOM_API_URL`/`PRESSROOM_API_TOKEN` if set, so it never
 asks for a password again.
 
@@ -1168,7 +1168,7 @@ call runs the matching `/api/v1` route inside Roller, so every rule here (token 
 error details) applies unchanged. A weblog or item the token may not see answers "not found"; an
 action beyond the token's role answers "forbidden", exactly as over REST.
 
-- **API tokens only.** Mint one with `bin/roller-api auth login` or `POST /api/v1/tokens`. Username
+- **API tokens only.** Mint one with `bin/pressroom-api auth login` or `POST /api/v1/tokens`. Username
   and password are refused at `/api/mcp` with 401 `MCP accepts API tokens only.`
 - **Admin accounts are read-only through the API**, and so through MCP. Changing one (for example
   `PATCH /api/v1/admin/users/{userName}` on an admin) answers 403 `Admin accounts are managed in the
@@ -1187,7 +1187,7 @@ action beyond the token's role answers "forbidden", exactly as over REST.
 Connect a client that supports Streamable HTTP with a custom header, for example:
 
 ```bash
-claude mcp add --transport http roller https://blog.example.com/api/mcp \
+claude mcp add --transport http pressroom https://blog.example.com/api/mcp \
     --header "Authorization: Bearer $PRESSROOM_API_TOKEN"
 ```
 
@@ -1234,14 +1234,14 @@ exempt from the site-wide `/api/**` security chain the way `GET
 /api/v1/ping` is. If you want to browse it visually, fetch it with `curl`
 and open it in any external OpenAPI viewer/editor.
 
-## `bin/roller-api`
+## `bin/pressroom-api`
 
 A thin `curl`+`jq` wrapper covering most of the above:
 `auth login`/`auth status`, `entries {list,get,create,patch,trash,restore,
 delete-forever,preview}`, `media {list,get,upload,patch,delete,dirs,
 create-dir}`, `audit {seo,media}`, and `admin {rebuild-index,flush-cache,
 regenerate-renditions,users,config,weblogs}` (`admin reindex` is the old
-name of `rebuild-index` and still works). `bin/roller-api <group> --help`
+name of `rebuild-index` and still works). `bin/pressroom-api <group> --help`
 prints that group's full usage. It does not wrap categories and tags, pages,
 redirects, comments, weblog creation (`POST /api/v1/weblogs`), media imports
 by URL, the one-entry SEO audit, or listing and revoking tokens: call those with `curl`, using the
@@ -1249,7 +1249,7 @@ paths documented above, or through MCP.
 
 The CLI, REST and MCP name some operations differently:
 
-| `bin/roller-api` | REST | MCP tool `action` |
+| `bin/pressroom-api` | REST | MCP tool `action` |
 |---|---|---|
 | `entries patch` | `PATCH .../entries/{id}` | `entries` `update` |
 | `entries delete-forever` | `POST .../entries/{id}/delete-forever` | `entries` `delete_forever` |
@@ -1263,5 +1263,5 @@ The CLI, REST and MCP name some operations differently:
 | `admin weblogs patch` | `PATCH /api/v1/weblogs/{handle}` | `weblogs` `update` |
 | `auth status` | `GET /api/v1/me` | `whoami` |
 A leading `--url URL`/`--token TOKEN`, before the command name, overrides
-`PRESSROOM_API_URL`/`PRESSROOM_API_TOKEN` and `~/.roller/credentials` for a single
+`PRESSROOM_API_URL`/`PRESSROOM_API_TOKEN` and `~/.pressroom/credentials` for a single
 one-off call against a different instance, without touching either.

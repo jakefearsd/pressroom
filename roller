@@ -195,7 +195,7 @@ case "${1:-dev}" in
     token)
         load_dev_secret
         printf '%s\n' "${PRESSROOM_DEV_ADMIN_PASSWORD}" | \
-            bin/roller-api auth login \
+            bin/pressroom-api auth login \
                 --url "${DEV_URL}" \
                 --user admin \
                 --password-stdin

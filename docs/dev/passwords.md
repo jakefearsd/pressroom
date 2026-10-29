@@ -33,7 +33,7 @@ resolves through the index at the end of `CLAUDE.md`.
   `{noop}`/truncated row it repairs. `DevSeedTest` runs the *shipped file*
   over every row shape.
 - **`./roller token`** mints an API token for that admin via
-  `roller-api auth login --password-stdin`. In `./roller`, never generate
+  `pressroom-api auth login --password-stdin`. In `./roller`, never generate
   the secret with `tr -dc … </dev/urandom | head -c N`: under
   `set -o pipefail` `head` exiting early SIGPIPEs `tr` and the script dies
   silently at 141.

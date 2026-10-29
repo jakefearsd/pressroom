@@ -877,7 +877,7 @@ the defaults are Google's discovery document and the label "Google".
 with Google"), tick "Can write", save. The reader must then **sign out and
 sign in again**: their roles are read when they sign in, so until then the
 menu still refuses them. They write in the admin UI only: with no password
-they cannot mint an API token, so the `roller-api` CLI and the MCP endpoint
+they cannot mint an API token, so the `pressroom-api` CLI and the MCP endpoint
 are not for them.
 
 ## Comments

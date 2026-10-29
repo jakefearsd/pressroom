@@ -30,7 +30,7 @@ class OpenApiDocumentTest {
 
     @Test
     void theBootstrapPathIsDocumented() throws Exception {
-        assertTrue(docs().contains("roller-api auth login"),
+        assertTrue(docs().contains("pressroom-api auth login"),
                 "there is no UI for minting a token -- the CLI is the only route");
     }
 

@@ -139,7 +139,7 @@ class McpIT extends PressroomIT {
         HttpResponse<String> none = post(null, init, Map.of());
         assertEquals(401, none.statusCode());
         assertTrue(none.headers().firstValue("Set-Cookie").isEmpty());
-        assertEquals(401, post("rlr_not_a_real_token", init, Map.of()).statusCode());
+        assertEquals(401, post("prs_not_a_real_token", init, Map.of()).statusCode());
     }
 
     @Test
