@@ -91,9 +91,9 @@ class PageModelTest {
         runtimeConfig = RuntimeConfigAttachment.of(mock(PropertiesManager.class));
 
         previousRelativeContextURL = WebloggerRuntimeConfig.getRelativeContextURL();
-        WebloggerRuntimeConfig.setRelativeContextURL("/roller");
+        WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
         previousAbsoluteContextURL = WebloggerRuntimeConfig.getAbsoluteContextURL();
-        WebloggerRuntimeConfig.setAbsoluteContextURL("http://localhost:8080/roller");
+        WebloggerRuntimeConfig.setAbsoluteContextURL("http://localhost:8080/pressroom");
 
         weblog = new Weblog("testblog", "testuser", "Test Blog", "a test blog",
                 "blog@example.com", "journal", "en_US", "UTC");
@@ -467,7 +467,7 @@ class PageModelTest {
         request.setWeblogAnchor("my-entry");
         request.setWeblogEntry(new WeblogEntry());
 
-        assertEquals("http://localhost:8080/roller/testblog/entry/my-entry",
+        assertEquals("http://localhost:8080/pressroom/testblog/entry/my-entry",
                 modelFor(request).getCanonicalUrl(),
                 "With no per-entry override the canonical URL of a permalink is "
                         + "the entry's natural absolute URL.");
@@ -495,7 +495,7 @@ class PageModelTest {
         request.setWeblogAnchor("my-entry");
         request.setWeblogEntry(entry);
 
-        assertEquals("http://localhost:8080/roller/testblog/entry/my-entry",
+        assertEquals("http://localhost:8080/pressroom/testblog/entry/my-entry",
                 modelFor(request).getCanonicalUrl(),
                 "Whitespace in the editor field must not produce a blank "
                         + "rel=canonical, which would deindex the entry.");
@@ -503,7 +503,7 @@ class PageModelTest {
 
     @Test
     void canonicalUrlOnTheFrontPageIsTheAbsoluteHomeUrl() throws Exception {
-        assertEquals("http://localhost:8080/roller/testblog/",
+        assertEquals("http://localhost:8080/pressroom/testblog/",
                 modelFor(pageRequest()).getCanonicalUrl(),
                 "The front page canonicalises to the weblog's home URL.");
     }
@@ -533,7 +533,7 @@ class PageModelTest {
 
         assertTrue(canonical.contains("page/directory"),
                 "A custom page canonicalises to its own URL; was: " + canonical);
-        assertTrue(canonical.startsWith("http://localhost:8080/roller/testblog/"),
+        assertTrue(canonical.startsWith("http://localhost:8080/pressroom/testblog/"),
                 "The canonical URL must be absolute; was: " + canonical);
     }
 

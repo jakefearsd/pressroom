@@ -135,7 +135,7 @@ cmd_auth_login() {
     #
     # --password-stdin is the standard non-interactive idiom (`docker login`
     # uses it). The password crosses on stdin: never an argv entry, never an
-    # environment variable, so it is safe for CI as well as for `./roller
+    # environment variable, so it is safe for CI as well as for `./pressroom
     # token`. IFS= and -r keep leading/trailing whitespace and backslashes
     # intact -- a password is bytes, not a shell word.
     local password

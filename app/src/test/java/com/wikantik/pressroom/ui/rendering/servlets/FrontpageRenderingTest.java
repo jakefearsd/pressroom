@@ -58,7 +58,7 @@ class FrontpageRenderingTest {
 
     private static final String SITE_HANDLE = "frontpagesiteblog";
     private static final String CONTRIBUTOR_HANDLE = "frontpagecontributorblog";
-    private static final String BASE = "/roller/" + SITE_HANDLE;
+    private static final String BASE = "/pressroom/" + SITE_HANDLE;
 
     private static final String FRONTPAGE_HANDLE_PROP = "site.frontpage.weblog.handle";
     private static final String FRONTPAGE_AGGREGATED_PROP = "site.frontpage.weblog.aggregated";

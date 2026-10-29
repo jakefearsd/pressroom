@@ -11,14 +11,14 @@ class AudienceSanitizationTest {
     void thePlaceholderDataAttributesSurvive() {
         String clean = HTMLSanitizer.conditionallySanitize(
                 "<div class=\"contact-form-slot\" data-weblog=\"myblog\" "
-                + "data-endpoint=\"/roller/pressroom-ui/rendering/contact.rol\"></div>"
+                + "data-endpoint=\"/pressroom/pressroom-ui/rendering/contact.rol\"></div>"
                 + "<div class=\"subscribe-form-slot\" data-list-uuid=\"2f0f1b0c-1111-2222-3333-444455556666\" "
-                + "data-endpoint=\"/roller/newsletter/subscribe\"></div>");
+                + "data-endpoint=\"/pressroom/newsletter/subscribe\"></div>");
 
         assertTrue(clean.contains("data-weblog=\"myblog\""), clean);
-        assertTrue(clean.contains("data-endpoint=\"/roller/pressroom-ui/rendering/contact.rol\""), clean);
+        assertTrue(clean.contains("data-endpoint=\"/pressroom/pressroom-ui/rendering/contact.rol\""), clean);
         assertTrue(clean.contains("data-list-uuid="), clean);
-        assertTrue(clean.contains("data-endpoint=\"/roller/newsletter/subscribe\""), clean);
+        assertTrue(clean.contains("data-endpoint=\"/pressroom/newsletter/subscribe\""), clean);
     }
 
     @Test

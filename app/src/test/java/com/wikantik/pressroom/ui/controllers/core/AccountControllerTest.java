@@ -567,25 +567,25 @@ class AccountControllerTest {
     @Test
     void theSessionEndsAfterDeletion() throws Exception {
         MockHttpSession browser = signedInSession(reader);
-        assertEquals(200, perform(get("/roller" + ACCOUNT).contextPath("/roller").session(browser))
+        assertEquals(200, perform(get("/pressroom" + ACCOUNT).contextPath("/pressroom").session(browser))
                 .getResponse().getStatus(), "control: the session signs the reader in");
 
-        MvcResult result = perform(post("/roller" + DELETE_ACCOUNT).contextPath("/roller")
+        MvcResult result = perform(post("/pressroom" + DELETE_ACCOUNT).contextPath("/pressroom")
                 .with(csrf()).session(browser));
 
-        assertEquals("/roller/", result.getResponse().getRedirectedUrl());
+        assertEquals("/pressroom/", result.getResponse().getRedirectedUrl());
         assertTrue(browser.isInvalid(), "the signed-in session is invalidated");
         Cookie rememberMe = result.getResponse().getCookie("remember-me");
         assertNotNull(rememberMe, "any remember-me cookie is cancelled");
         assertEquals(0, rememberMe.getMaxAge());
-        assertEquals("/roller", rememberMe.getPath(), "on the path it was set for");
+        assertEquals("/pressroom", rememberMe.getPath(), "on the path it was set for");
 
         MockHttpSession next = (MockHttpSession) result.getRequest().getSession(false);
         MockHttpSession carried = next == null ? new MockHttpSession() : next;
         assertNull(carried.getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY),
                 "whatever session the browser holds now carries no sign-in");
-        MvcResult after = perform(get("/roller" + ACCOUNT).contextPath("/roller").session(carried));
-        assertEquals("/roller/pressroom-ui/login.rol", after.getResponse().getRedirectedUrl(),
+        MvcResult after = perform(get("/pressroom" + ACCOUNT).contextPath("/pressroom").session(carried));
+        assertEquals("/pressroom/pressroom-ui/login.rol", after.getResponse().getRedirectedUrl(),
                 "the next request is anonymous");
     }
 

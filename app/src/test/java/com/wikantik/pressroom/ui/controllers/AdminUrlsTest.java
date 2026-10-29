@@ -60,18 +60,18 @@ class AdminUrlsTest {
 
     @Test
     void weblogAsksForTheContextRelativeForm() {
-        when(strategy.getWeblogURL(weblog, null, false)).thenReturn("/roller/testblog/");
+        when(strategy.getWeblogURL(weblog, null, false)).thenReturn("/pressroom/testblog/");
 
-        assertEquals("/roller/testblog/", urls.weblog(weblog),
+        assertEquals("/pressroom/testblog/", urls.weblog(weblog),
                 "weblog(w) replaced Weblog.getURL(), which asked for the relative form");
         verify(strategy).getWeblogURL(weblog, null, false);
     }
 
     @Test
     void weblogAbsoluteAsksForTheAbsoluteForm() {
-        when(strategy.getWeblogURL(weblog, null, true)).thenReturn("http://example.com/roller/testblog/");
+        when(strategy.getWeblogURL(weblog, null, true)).thenReturn("http://example.com/pressroom/testblog/");
 
-        assertEquals("http://example.com/roller/testblog/", urls.weblogAbsolute(weblog),
+        assertEquals("http://example.com/pressroom/testblog/", urls.weblogAbsolute(weblog),
                 "weblogAbsolute(w) replaced Weblog.getAbsoluteURL() -- the settings page, the "
                         + "theme page and the user-status tile all link the weblog's public address");
         verify(strategy).getWeblogURL(weblog, null, true);
@@ -80,9 +80,9 @@ class AdminUrlsTest {
     @Test
     void staticPageAsksTheStrategyForTheAbsolutePageUrl() {
         when(strategy.getWeblogStaticPageURL(weblog, "about", true))
-                .thenReturn("http://example.com/roller/about");
+                .thenReturn("http://example.com/pressroom/about");
 
-        assertEquals("http://example.com/roller/about", urls.staticPage(weblog, "about"),
+        assertEquals("http://example.com/pressroom/about", urls.staticPage(weblog, "about"),
                 "an admin link to a page must come from the one rule the renderer uses");
         verify(strategy).getWeblogStaticPageURL(weblog, "about", true);
     }
@@ -93,9 +93,9 @@ class AdminUrlsTest {
         entry.setWebsite(weblog);
         entry.setAnchor("hello-world");
         when(strategy.getWeblogEntryURL(weblog, null, "hello-world", true))
-                .thenReturn("http://example.com/roller/testblog/entry/hello-world");
+                .thenReturn("http://example.com/pressroom/testblog/entry/hello-world");
 
-        assertEquals("http://example.com/roller/testblog/entry/hello-world", urls.entry(entry),
+        assertEquals("http://example.com/pressroom/testblog/entry/hello-world", urls.entry(entry),
                 "entry(e) replaced WeblogEntry.getPermalink(): absolute, no locale, the entry's anchor");
         verify(strategy).getWeblogEntryURL(weblog, null, "hello-world", true);
     }

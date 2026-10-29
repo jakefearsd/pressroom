@@ -241,10 +241,10 @@ class AbstractWeblogEntriesPagerTest {
     void pageOneIsTheFirstPageWithAPreviousLink() {
         withSiteMaxEntries(SITE_MAX_ENTRIES, () -> {
             when(urlStrategy.getWeblogCollectionURL(any(), any(), any(), any(), any(),
-                    anyInt(), anyBoolean())).thenReturn("http://localhost/roller/myblog/");
+                    anyInt(), anyBoolean())).thenReturn("http://localhost/pressroom/myblog/");
 
             assertNull(pager(weblog(10), 0, true).getPrevLink());
-            assertEquals("http://localhost/roller/myblog/",
+            assertEquals("http://localhost/pressroom/myblog/",
                     pager(weblog(10), 1, true).getPrevLink(),
                     "Page 1 must be able to get back to page 0, with the URL the "
                             + "strategy produced rather than an empty string");
@@ -267,7 +267,7 @@ class AbstractWeblogEntriesPagerTest {
     void navigationLinksStepExactlyOnePageInEachDirection() {
         withSiteMaxEntries(SITE_MAX_ENTRIES, () -> {
             when(urlStrategy.getWeblogCollectionURL(any(), any(), any(), any(), any(),
-                    anyInt(), anyBoolean())).thenReturn("http://localhost/roller/myblog/");
+                    anyInt(), anyBoolean())).thenReturn("http://localhost/pressroom/myblog/");
 
             FixedEntriesPager pager = pager(weblog(10), 5, true);
             pager.getNextLink();
@@ -284,9 +284,9 @@ class AbstractWeblogEntriesPagerTest {
     void homeLinkAlwaysTargetsPageZero() {
         withSiteMaxEntries(SITE_MAX_ENTRIES, () -> {
             when(urlStrategy.getWeblogCollectionURL(any(), any(), any(), any(), any(),
-                    anyInt(), anyBoolean())).thenReturn("http://localhost/roller/myblog/");
+                    anyInt(), anyBoolean())).thenReturn("http://localhost/pressroom/myblog/");
 
-            assertEquals("http://localhost/roller/myblog/",
+            assertEquals("http://localhost/pressroom/myblog/",
                     pager(weblog(10), 5, true).getHomeLink(),
                     "Home must return the URL the strategy produced");
 
@@ -316,11 +316,11 @@ class AbstractWeblogEntriesPagerTest {
     void permalinkViewsUseTheEntryUrlForm() {
         withSiteMaxEntries(SITE_MAX_ENTRIES, () -> {
             when(urlStrategy.getWeblogEntryURL(any(), any(), any(), anyBoolean()))
-                    .thenReturn("http://localhost/roller/myblog/entry/hello-world");
+                    .thenReturn("http://localhost/pressroom/myblog/entry/hello-world");
             FixedEntriesPager pager = new FixedEntriesPager(urlStrategy, weblog(10), "en_US",
                     null, "hello-world", null, null, null, 0, true);
 
-            assertEquals("http://localhost/roller/myblog/entry/hello-world", pager.getNextLink(),
+            assertEquals("http://localhost/pressroom/myblog/entry/hello-world", pager.getNextLink(),
                     "The permalink form must return the strategy's URL, not an empty string");
 
             verify(urlStrategy).getWeblogEntryURL(any(), eq("en_US"), eq("hello-world"),

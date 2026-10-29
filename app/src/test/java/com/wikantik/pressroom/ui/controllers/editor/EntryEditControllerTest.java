@@ -1194,11 +1194,11 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
     @Test
     void thePreviewShellUrlCarriesTheServletContextPath() {
         String previous = WebloggerRuntimeConfig.getRelativeContextURL();
-        WebloggerRuntimeConfig.setRelativeContextURL("/roller");
+        WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
         try {
             controller.entryAddExecute(request, model, bean);
 
-            assertEquals("/roller/pressroom-ui/authoring/preview/" + WEBLOG_HANDLE + "/?shell=true",
+            assertEquals("/pressroom/pressroom-ui/authoring/preview/" + WEBLOG_HANDLE + "/?shell=true",
                     model.getAttribute("previewShellURL"));
         } finally {
             WebloggerRuntimeConfig.setRelativeContextURL(previous);

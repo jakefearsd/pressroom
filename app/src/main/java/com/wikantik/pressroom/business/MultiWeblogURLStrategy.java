@@ -91,10 +91,10 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
             // The weblog owns this hostname, so its root replaces the
             // handle segment -- but NOT the context path. This is one
             // Tomcat context reached under many hostnames, so a deployment
-            // under a prefix (e.g. /roller) still needs that prefix on the
-            // custom domain: the weblog's root there is "/roller/", not
+            // under a prefix (e.g. /pressroom) still needs that prefix on the
+            // custom domain: the weblog's root there is "/pressroom/", not
             // "/". getRelativeContextURL() is "" at the root context and
-            // "/roller" under a prefix, so it is correct un-guarded in both
+            // "/pressroom" under a prefix, so it is correct un-guarded in both
             // the absolute and relative forms.
             if (absolute) {
                 url.append("https://").append(customDomain);

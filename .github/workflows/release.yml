@@ -120,10 +120,12 @@ jobs:
           echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
           echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
-      # GHCR requires an all-lowercase repository path; github.repository keeps
-      # the casing configured on GitHub.
-      - name: Compute lowercase image repository
-        run: echo "IMAGE_REPO=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+      # The image name is fixed, NOT derived from the repository name: the
+      # GitHub repository is renamed later, and the published images must be
+      # ghcr.io/<owner>/pressroom and ghcr.io/<owner>/pressroom-caddy on either
+      # side of that rename. GHCR requires a lowercase path (the owner is).
+      - name: Set the image repository
+        run: echo "IMAGE_REPO=${{ github.repository_owner }}/pressroom" >> "$GITHUB_ENV"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -180,7 +182,7 @@ jobs:
           docker pull "$image"
           cid="$(docker create "$image")"
           mkdir -p release-assets
-          docker cp "$cid:/app/roller.war" release-assets/roller.war
+          docker cp "$cid:/app/pressroom.war" release-assets/pressroom.war
           docker rm "$cid"
           cp docker-compose.prod.yml release-assets/
           # GitHub renames any release asset whose filename starts with a
@@ -218,7 +220,7 @@ jobs:
           # instead of in CI. Explicit paths (not globs), so a missing asset is
           # a missing file rather than an unexpanded pattern.
           assets=(
-            release-assets/roller.war
+            release-assets/pressroom.war
             release-assets/docker-compose.prod.yml
             release-assets/env.example
             release-assets/deploy.sh

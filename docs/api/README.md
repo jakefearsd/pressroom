@@ -18,7 +18,7 @@ bin/pressroom-api auth login --url http://localhost:8083
 ```
 
 Everything below assumes a Roller running at that URL (the default for
-`./roller dev`, which serves from the root; see the repository's
+`./pressroom dev`, which serves from the root; see the repository's
 `CLAUDE.md`, "Build and Development Commands"). In production, substitute
 your site's own origin.
 
@@ -27,12 +27,12 @@ your site's own origin.
 Two commands, no password to remember:
 
 ```bash
-./roller dev      # starts postgres, seeds the dev admin, runs the app
-./roller token    # mints a bearer token for that admin
+./pressroom dev      # starts postgres, seeds the dev admin, runs the app
+./pressroom token    # mints a bearer token for that admin
 ```
 
-The dev admin password lives in `.roller-dev-secret`, generated with mode 0600
-on the first `./roller db|dev|reset` and printed once at that moment. It is
+The dev admin password lives in `.pressroom-dev-secret`, generated with mode 0600
+on the first `./pressroom db|dev|reset` and printed once at that moment. It is
 git-ignored and is the source of truth: the seed re-applies it on every run, so
 a password changed through the web UI is reverted next time. Edit the file to
 choose your own.

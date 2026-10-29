@@ -24,8 +24,8 @@ import org.junit.jupiter.api.Test;
  *
  * <p>This is not hypothetical. {@code bin/db/migrate.sh} used {@code mapfile}
  * and {@code declare -A}, neither of which exists in 3.2, and it is on the path
- * of {@code ./roller dev}, {@code ./roller db}, {@code ./roller migrate} and
- * {@code ./roller reset} -- so the first command a new Mac developer runs died
+ * of {@code ./pressroom dev}, {@code ./pressroom db}, {@code ./pressroom migrate} and
+ * {@code ./pressroom reset} -- so the first command a new Mac developer runs died
  * with {@code mapfile: command not found}. The same file is baked into the
  * production app image as {@code /app/migrate.sh} and run by
  * {@code deploy/provision.sh}, so portability here is not only a dev-laptop
@@ -57,7 +57,7 @@ class ShellPortabilityTest {
 
     /**
      * Every shell script the repo ships, including the two entrypoints that
-     * carry no {@code .sh} extension -- {@code ./roller} is precisely the file
+     * carry no {@code .sh} extension -- {@code ./pressroom} is precisely the file
      * a new developer runs first, so omitting it would leave the highest-value
      * script unchecked.
      */
@@ -74,7 +74,7 @@ class ShellPortabilityTest {
                         .forEach(scripts::add);
             }
         }
-        for (String named : List.of("roller", "bin/pressroom-api")) {
+        for (String named : List.of("pressroom", "bin/pressroom-api")) {
             Path p = REPO.resolve(named);
             if (Files.isRegularFile(p)) {
                 scripts.add(p);

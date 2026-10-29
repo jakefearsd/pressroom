@@ -12,7 +12,7 @@
    and then fails with one console line on the one page that needs it.
 
    The webapp root works in both shapes that matter: maven-war-plugin copies
-   src/main/webapp into the WAR, and spring-boot:run (./roller dev) uses
+   src/main/webapp into the WAR, and spring-boot:run (./pressroom dev) uses
    src/main/webapp as the document root directly. The files themselves are
    build outputs and are git-ignored; EditorBundlePomTest pins that.
 

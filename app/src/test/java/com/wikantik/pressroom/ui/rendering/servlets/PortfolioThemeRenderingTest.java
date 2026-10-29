@@ -52,7 +52,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PortfolioThemeRenderingTest {
 
     private static final String HANDLE = "portfoliorenderblog";
-    private static final String BASE = "http://localhost:8080/roller/" + HANDLE;
+    private static final String BASE = "http://localhost:8080/pressroom/" + HANDLE;
 
     /**
      * The directives this test actually cares about, not the whole policy

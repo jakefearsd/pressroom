@@ -15,7 +15,7 @@
 # fails:
 #
 #   1. mvn clean install (the unit suite and every gate), then the browser
-#      suite at the root and at /roller
+#      suite at the root and at /pressroom
 #   2. moves the version in pom.xml, app/pom.xml and it-selenium/pom.xml,
 #      and IMAGE_VERSION in deploy/.env.example
 #   3. commits "release: VERSION" and tags vVERSION
@@ -87,8 +87,8 @@ if [[ "${VERIFY}" -eq 1 ]]; then
     mvn clean install
     echo "==> The browser suite at the root..."
     mvn verify -Pit -DskipUnitTests=true
-    echo "==> The browser suite at /roller..."
-    mvn verify -Pit -DskipUnitTests=true -Dit.context.path=roller
+    echo "==> The browser suite at /pressroom..."
+    mvn verify -Pit -DskipUnitTests=true -Dit.context.path=pressroom
 fi
 
 echo "==> Moving the version from ${current} to ${VERSION}..."

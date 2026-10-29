@@ -22,8 +22,8 @@ resolves through the index at the end of `CLAUDE.md`.
   (`TestUtils.TEST_PASSWORD` / `TEST_PASSWORD_HASH`), not a live `encode()`
   — bcrypt is slow, ~106 call sites (the bare `"password"` it once stored
   never authenticated).
-- **The dev admin credential is `.roller-dev-secret`** — git-ignored,
-  generated (`umask 077`) on the first `./roller db|dev|reset`, printed once.
+- **The dev admin credential is `.pressroom-dev-secret`** — git-ignored,
+  generated (`umask 077`) on the first `./pressroom db|dev|reset`, printed once.
   `bin/db/seed-dev-data.sql` applies it via pgcrypto inside Postgres; **not**
   under `bin/db/migrations/`, so it never reaches production. Source of
   truth: the next seed reverts web-UI password changes.
@@ -32,8 +32,8 @@ resolves through the index at the end of `CLAUDE.md`.
   short-circuit `OR`, so an `OR` chain aborts on exactly the
   `{noop}`/truncated row it repairs. `DevSeedTest` runs the *shipped file*
   over every row shape.
-- **`./roller token`** mints an API token for that admin via
-  `pressroom-api auth login --password-stdin`. In `./roller`, never generate
+- **`./pressroom token`** mints an API token for that admin via
+  `pressroom-api auth login --password-stdin`. In `./pressroom`, never generate
   the secret with `tr -dc … </dev/urandom | head -c N`: under
   `set -o pipefail` `head` exiting early SIGPIPEs `tr` and the script dies
   silently at 141.

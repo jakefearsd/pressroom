@@ -66,12 +66,12 @@ class SsoStartFilterTest {
 
     @Test
     void storesTheReturnPathAndRedirectsToTheAuthorizationEndpoint() throws Exception {
-        MockHttpServletRequest req = get("/roller", "/roller/pressroom-ui/sso/start", "/roller/blog/");
+        MockHttpServletRequest req = get("/pressroom", "/pressroom/pressroom-ui/sso/start", "/pressroom/blog/");
         MockHttpServletResponse res = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
         filter(() -> "https://blog.example", registrationPresent()).doFilter(req, res, chain);
-        assertEquals("/roller/pressroom-ui/sso/authorize/oidc", res.getRedirectedUrl());
-        assertEquals("/roller/blog/", req.getSession().getAttribute(ReturnPaths.SESSION_ATTRIBUTE));
+        assertEquals("/pressroom/pressroom-ui/sso/authorize/oidc", res.getRedirectedUrl());
+        assertEquals("/pressroom/blog/", req.getSession().getAttribute(ReturnPaths.SESSION_ATTRIBUTE));
         assertNull(chain.getRequest(), "the start step ends the request");
     }
 
@@ -86,10 +86,10 @@ class SsoStartFilterTest {
 
     @Test
     void aReturnOffThisSiteIsStoredAsTheSiteRoot() throws Exception {
-        MockHttpServletRequest req = get("/roller", "/roller/pressroom-ui/sso/start", "https://evil.example/");
+        MockHttpServletRequest req = get("/pressroom", "/pressroom/pressroom-ui/sso/start", "https://evil.example/");
         filter(() -> "https://blog.example", registrationPresent())
                 .doFilter(req, new MockHttpServletResponse(), new MockFilterChain());
-        assertEquals("/roller/", req.getSession().getAttribute(ReturnPaths.SESSION_ATTRIBUTE));
+        assertEquals("/pressroom/", req.getSession().getAttribute(ReturnPaths.SESSION_ATTRIBUTE));
     }
 
     // ------------------------------------------- the Absolute URL's own host (I1)
@@ -166,40 +166,40 @@ class SsoStartFilterTest {
 
     @Test
     void anAbsoluteUrlCarryingTheContextPathKeepsIt() throws Exception {
-        MockHttpServletRequest req = on("http", "127.0.0.1", 8080, "/roller", "/roller/pressroom-ui/sso/start",
-                "/roller/blog/");
+        MockHttpServletRequest req = on("http", "127.0.0.1", 8080, "/pressroom", "/pressroom/pressroom-ui/sso/start",
+                "/pressroom/blog/");
         MockHttpServletResponse res = new MockHttpServletResponse();
-        filter(() -> "http://localhost:8080/roller/", registrationPresent())
+        filter(() -> "http://localhost:8080/pressroom/", registrationPresent())
                 .doFilter(req, res, new MockFilterChain());
-        assertEquals("http://localhost:8080/roller/pressroom-ui/sso/start?return=%2Froller%2Fblog%2F",
+        assertEquals("http://localhost:8080/pressroom/pressroom-ui/sso/start?return=%2Fpressroom%2Fblog%2F",
                 res.getRedirectedUrl());
         assertNull(req.getSession(false));
     }
 
     @Test
     void onTheAbsoluteUrlsOwnHostUnderAContextPathTheStartIsUnchanged() throws Exception {
-        MockHttpServletRequest req = on("http", "localhost", 8080, "/roller", "/roller/pressroom-ui/sso/start",
-                "/roller/blog/");
+        MockHttpServletRequest req = on("http", "localhost", 8080, "/pressroom", "/pressroom/pressroom-ui/sso/start",
+                "/pressroom/blog/");
         MockHttpServletResponse res = new MockHttpServletResponse();
-        filter(() -> "http://localhost:8080/roller", registrationPresent())
+        filter(() -> "http://localhost:8080/pressroom", registrationPresent())
                 .doFilter(req, res, new MockFilterChain());
-        assertEquals("/roller/pressroom-ui/sso/authorize/oidc", res.getRedirectedUrl());
-        assertEquals("/roller/blog/", req.getSession().getAttribute(ReturnPaths.SESSION_ATTRIBUTE));
+        assertEquals("/pressroom/pressroom-ui/sso/authorize/oidc", res.getRedirectedUrl());
+        assertEquals("/pressroom/blog/", req.getSession().getAttribute(ReturnPaths.SESSION_ATTRIBUTE));
     }
 
     @Test
     void theReturnCarriedToTheAbsoluteUrlIsSanitisedFirst() throws Exception {
-        MockHttpServletRequest req = on("http", "docker2.lan", 8080, "/roller", "/roller/pressroom-ui/sso/start",
+        MockHttpServletRequest req = on("http", "docker2.lan", 8080, "/pressroom", "/pressroom/pressroom-ui/sso/start",
                 "https://evil.example/");
         MockHttpServletResponse res = new MockHttpServletResponse();
-        filter(() -> "https://blog.example/roller", registrationPresent())
+        filter(() -> "https://blog.example/pressroom", registrationPresent())
                 .doFilter(req, res, new MockFilterChain());
-        assertEquals("https://blog.example/roller/pressroom-ui/sso/start?return=%2Froller%2F", res.getRedirectedUrl());
+        assertEquals("https://blog.example/pressroom/pressroom-ui/sso/start?return=%2Fpressroom%2F", res.getRedirectedUrl());
     }
 
     @Test
     void anAbsoluteUrlWithNoSchemeOrHostAnswersUnavailable() throws Exception {
-        for (String absolute : new String[] {"blog.example", "/roller", "https://", "http://bad host/"}) {
+        for (String absolute : new String[] {"blog.example", "/pressroom", "https://", "http://bad host/"}) {
             try (SsoLogCapture log = SsoLogCapture.start()) {
                 MockHttpServletRequest req = get("", "/pressroom-ui/sso/start", "/blog/");
                 MockHttpServletResponse res = new MockHttpServletResponse();
@@ -220,10 +220,10 @@ class SsoStartFilterTest {
                 lookups.incrementAndGet();
                 return SsoTestRegistrations.registration();
             };
-            MockHttpServletRequest req = get("/roller", "/roller/pressroom-ui/sso/start", "/roller/blog/");
+            MockHttpServletRequest req = get("/pressroom", "/pressroom/pressroom-ui/sso/start", "/pressroom/blog/");
             MockHttpServletResponse res = new MockHttpServletResponse();
             filter(() -> absolute, repo).doFilter(req, res, new MockFilterChain());
-            assertEquals("/roller/pressroom-ui/login.rol?sso=unavailable", res.getRedirectedUrl());
+            assertEquals("/pressroom/pressroom-ui/login.rol?sso=unavailable", res.getRedirectedUrl());
             assertNull(req.getSession(false), "no session is created for a sign-in that cannot start");
             assertEquals(0, lookups.get(), "no discovery for a sign-in that cannot complete");
         }
@@ -240,7 +240,7 @@ class SsoStartFilterTest {
     @Test
     void otherPathsPassThroughWithoutReadingConfiguration() throws Exception {
         AtomicInteger reads = new AtomicInteger();
-        MockHttpServletRequest req = get("/roller", "/roller/pressroom-ui/login.rol", null);
+        MockHttpServletRequest req = get("/pressroom", "/pressroom/pressroom-ui/login.rol", null);
         MockHttpServletResponse res = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
         filter(() -> {
@@ -284,13 +284,13 @@ class SsoStartFilterTest {
     @Test
     void releasesThePersistenceSessionExactlyOnceEvenWhenTheSupplierThrows() throws Exception {
         try (SsoLogCapture log = SsoLogCapture.start()) {
-            MockHttpServletRequest req = get("/roller", "/roller/pressroom-ui/sso/start", "/roller/blog/");
+            MockHttpServletRequest req = get("/pressroom", "/pressroom/pressroom-ui/sso/start", "/pressroom/blog/");
             MockHttpServletResponse res = new MockHttpServletResponse();
             filter(() -> {
                 throw new IllegalStateException("database said: secret detail");
             }, registrationPresent()).doFilter(req, res, new MockFilterChain());
 
-            assertEquals("/roller/pressroom-ui/login.rol?sso=unavailable", res.getRedirectedUrl(),
+            assertEquals("/pressroom/pressroom-ui/login.rol?sso=unavailable", res.getRedirectedUrl(),
                     "a check that could not run is not a check that passed");
             verify(weblogger, times(1)).release();
 

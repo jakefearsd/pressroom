@@ -65,7 +65,7 @@ class TravelShortcodeRenderingTest {
      * "localhost". With a localhost base the CTA anchor would be stripped
      * and this test would prove nothing (see GalleryRenderingTest).
      */
-    private static final String CONTEXT = "http://127.0.0.1:8080/roller";
+    private static final String CONTEXT = "http://127.0.0.1:8080/pressroom";
 
     private User user;
     private Weblog weblog;
@@ -83,7 +83,7 @@ class TravelShortcodeRenderingTest {
     @AfterEach
     void tearDown() throws Exception {
         // restore what ensureRenderingRuntime installed for the other tests
-        WebloggerRuntimeConfig.setAbsoluteContextURL("http://localhost:8080/roller");
+        WebloggerRuntimeConfig.setAbsoluteContextURL("http://localhost:8080/pressroom");
         TestUtils.teardownWeblog(weblog.getId());
         TestUtils.teardownUser(user.getUserName());
         TestUtils.endSession(true);

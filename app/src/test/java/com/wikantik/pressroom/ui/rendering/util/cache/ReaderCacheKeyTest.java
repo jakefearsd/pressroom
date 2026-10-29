@@ -62,7 +62,7 @@ class ReaderCacheKeyTest {
     }
 
     private static WeblogPageRequest pageRequest(OAuth2AuthenticationToken token) throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/roller/pressroom-ui/rendering/page/myblog/");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/pressroom/pressroom-ui/rendering/page/myblog/");
         request.setServletPath("/pressroom-ui/rendering/page");
         request.setPathInfo("/myblog/");
         request.setUserPrincipal(token);

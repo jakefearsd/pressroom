@@ -52,7 +52,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class JournalThemeRenderingTest {
 
     private static final String HANDLE = "journalrenderblog";
-    private static final String BASE = "/roller/" + HANDLE;
+    private static final String BASE = "/pressroom/" + HANDLE;
 
     /**
      * Journal self-hosts Plex Serif/Sans/Mono via webjar, unlike travel and

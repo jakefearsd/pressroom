@@ -353,7 +353,7 @@ public final class WeblogEntryWrapper {
     }
 
     /**
-     * The permalink as a path under the context ({@code /roller/blog/entry/x},
+     * The permalink as a path under the context ({@code /pressroom/blog/entry/x},
      * or {@code /blog/entry/x} at the root context), from the same strategy as
      * {@link #getPermalink()}: where a reader who signs in to comment is sent
      * back to. Relative, so it never names a host.

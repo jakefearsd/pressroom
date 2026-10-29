@@ -28,7 +28,7 @@ import static com.codeborne.selenide.Selenide.$;
 /**
  * The forgot-password / reset-password flows, in the IT environment's actual
  * configuration: no mail transport and no {@code site.adminemail} (see
- * {@code roller-it.properties} / the default runtime property), so
+ * {@code pressroom-it.properties} / the default runtime property), so
  * {@code PasswordLinkMailer.isReady()} is false and both the form and a
  * submission say so plainly rather than pretending to send anything.
  *

@@ -265,7 +265,7 @@ class ItHarnessLeakTest {
         env.put("IT_OWNER_STAMP", ownerToken);
         env.put("IT_RECORD_DIR", recordDir().toString());
         Instant before = Instant.now();
-        Result result = run(List.of(SUPERVISE.toString(), runId, "roller-it-postgres-" + runId, work.toString()),
+        Result result = run(List.of(SUPERVISE.toString(), runId, "pressroom-it-postgres-" + runId, work.toString()),
                 env, Duration.ofSeconds(30));
 
         assertEquals(0, result.exit(), result.output());
@@ -298,7 +298,7 @@ class ItHarnessLeakTest {
         env.put("IT_OWNER_STAMP", ownerToken);
         env.put("IT_POLL_SECONDS", "1");
         env.put("IT_RECORD_DIR", recordDir().toString());
-        Result start = run(List.of(SUPERVISE.toString(), runId, "roller-it-postgres-" + runId, work.toString()),
+        Result start = run(List.of(SUPERVISE.toString(), runId, "pressroom-it-postgres-" + runId, work.toString()),
                 env, Duration.ofSeconds(30));
         assertEquals(0, start.exit(), start.output());
 
@@ -417,7 +417,7 @@ class ItHarnessLeakTest {
     @Test
     void chromedriverRecordSurvivesTargetDirectoryBeingDeleted() throws Exception {
         Path fakeTarget = Files.createDirectories(work.resolve("fake-target")); // stands in for target/
-        Path cache = Files.createDirectories(work.resolve("fake-cache")); // stands in for ~/.cache/roller-it
+        Path cache = Files.createDirectories(work.resolve("fake-cache")); // stands in for ~/.cache/pressroom-it
         Process owner = spawnOwnerRunningFakeChromedriver();
         String runId = runId("clean");
         String ownerToken = ownerToken(owner.pid());
@@ -427,7 +427,7 @@ class ItHarnessLeakTest {
         env.put("IT_OWNER_STAMP", ownerToken);
         env.put("IT_POLL_SECONDS", "1");
         env.put("IT_RECORD_DIR", cache.toString());
-        Result start = run(List.of(SUPERVISE.toString(), runId, "roller-it-postgres-" + runId, fakeTarget.toString()),
+        Result start = run(List.of(SUPERVISE.toString(), runId, "pressroom-it-postgres-" + runId, fakeTarget.toString()),
                 env, Duration.ofSeconds(30));
         assertEquals(0, start.exit(), start.output());
 
@@ -567,7 +567,7 @@ class ItHarnessLeakTest {
         env.put("IT_OWNER_STAMP", ownerToken);
         env.put("IT_POLL_SECONDS", "1");
         env.put("IT_RECORD_DIR", cache.toString());
-        Result start = run(List.of(SUPERVISE.toString(), runId, "roller-it-postgres-" + runId, work.toString()),
+        Result start = run(List.of(SUPERVISE.toString(), runId, "pressroom-it-postgres-" + runId, work.toString()),
                 env, Duration.ofSeconds(30));
         assertEquals(0, start.exit(), start.output());
 
@@ -608,7 +608,7 @@ class ItHarnessLeakTest {
      * IT_RECORD_DIR is ALWAYS set, even by callers that don't care about
      * chromedriver records: sweep-stale.sh now scans it unconditionally, and
      * without an override that means the developer's own
-     * {@code ~/.cache/roller-it} -- exactly the directory this class must
+     * {@code ~/.cache/pressroom-it} -- exactly the directory this class must
      * never touch, since it may hold real records from a real leak.
      */
     private Result runSweep(String currentRunId) throws Exception {
@@ -640,7 +640,7 @@ class ItHarnessLeakTest {
     /**
      * This test's Keycloak container for a run: the postgres prefix with its role
      * swapped, which is how it-harness-lib.sh derives IT_KC_CONTAINER_PREFIX and how
-     * it-selenium/pom.xml names the real one (roller-it-keycloak-run id).
+     * it-selenium/pom.xml names the real one (pressroom-it-keycloak-run id).
      */
     private String keycloakContainer(String runId) {
         return namespace.replace('.', '-') + "-keycloak-" + runId;
@@ -696,7 +696,7 @@ class ItHarnessLeakTest {
     }
 
     /**
-     * Stands in for {@code java -jar roller.war}: keeps the command line it was
+     * Stands in for {@code java -jar pressroom.war}: keeps the command line it was
      * given (so the run marker stays greppable, exactly as the real JVM's does)
      * and never answers on the port, so readiness always times out.
      */

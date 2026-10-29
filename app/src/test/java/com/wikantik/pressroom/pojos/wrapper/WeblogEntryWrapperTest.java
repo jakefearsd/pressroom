@@ -232,12 +232,12 @@ class WeblogEntryWrapperTest {
     @Test
     void permalinksComeFromTheUrlStrategyAndTheDeprecatedFormsFromTheHandle() throws Exception {
         when(urls.getWeblogEntryURL(weblog, null, "hello-world", true))
-                .thenReturn("http://example.com/roller/testblog/entry/hello-world");
+                .thenReturn("http://example.com/pressroom/testblog/entry/hello-world");
 
         // No static locator: the strategy the wrapper was GIVEN is the only
         // source of its permalink (spec Decision 6 -- a preview installs a
         // preview-aware one, and the wrapper used to bypass it).
-        assertEquals("http://example.com/roller/testblog/entry/hello-world",
+        assertEquals("http://example.com/pressroom/testblog/entry/hello-world",
                 wrapper.getPermalink(),
                 "The canonical permalink is whatever the injected URL strategy says, absolute "
                         + "so it survives being copied into a feed");
@@ -467,11 +467,11 @@ class WeblogEntryWrapperTest {
     @Test
     void theRelativePermalinkComesFromTheUrlStrategyWithTheContextPath() {
         when(urls.getWeblogEntryURL(weblog, null, "hello-world", false))
-                .thenReturn("/roller/testblog/entry/hello-world");
+                .thenReturn("/pressroom/testblog/entry/hello-world");
         when(urls.getWeblogEntryURL(weblog, null, "hello-world", true))
-                .thenReturn("https://example.com/roller/testblog/entry/hello-world");
+                .thenReturn("https://example.com/pressroom/testblog/entry/hello-world");
 
-        assertEquals("/roller/testblog/entry/hello-world", wrapper.getRelativePermalink());
+        assertEquals("/pressroom/testblog/entry/hello-world", wrapper.getRelativePermalink());
     }
 
     private static ReaderComment published(String id, String screenName) {

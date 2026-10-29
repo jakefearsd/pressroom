@@ -6,7 +6,7 @@ This describes the actual production stack shipped in this tree, not a
 hypothetical one — every file it references exists in the repo.
 
 If you're looking for the **local development** stack instead (Postgres
-only, run the app via `./roller dev`), see the root `docker-compose.yml` and
+only, run the app via `./pressroom dev`), see the root `docker-compose.yml` and
 `CLAUDE.md`. This document is for a real deployment on a server with a
 public IP.
 

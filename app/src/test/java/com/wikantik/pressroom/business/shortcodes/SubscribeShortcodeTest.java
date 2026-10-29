@@ -52,7 +52,7 @@ class SubscribeShortcodeTest {
         // static field (see ContactShortcodeTest/URLModelTest for the same
         // discipline).
         previousRelativeContextURL = WebloggerRuntimeConfig.getRelativeContextURL();
-        WebloggerRuntimeConfig.setRelativeContextURL("/roller");
+        WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
     }
 
     @AfterEach
@@ -95,7 +95,7 @@ class SubscribeShortcodeTest {
     void theEndpointCarriesTheContextPathServerSide() {
         String html = shortcode.render(Map.of(), null, context(weblogWithUuid(VALID_UUID)));
 
-        assertTrue(html.contains("data-endpoint=\"/roller/newsletter/subscribe\""), html);
+        assertTrue(html.contains("data-endpoint=\"/pressroom/newsletter/subscribe\""), html);
     }
 
     @Test

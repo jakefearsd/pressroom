@@ -36,7 +36,7 @@ import com.wikantik.pressroom.util.I18nMessages;
  *
  * <p><b>{@code data-endpoint} is server-built, not client-guessed.</b> The
  * client-side script cannot reliably rebuild the app's context path (e.g.
- * {@code /roller}) on its own -- an earlier version tried to infer it by
+ * {@code /pressroom}) on its own -- an earlier version tried to infer it by
  * scanning the page for a stylesheet link containing {@code /pressroom-ui/},
  * which breaks the moment the first stylesheet on the page is something else
  * (a weblog's own theme CSS, a webjar), silently posting to the wrong origin

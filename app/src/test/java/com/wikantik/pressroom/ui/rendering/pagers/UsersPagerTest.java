@@ -52,7 +52,7 @@ import static org.mockito.Mockito.when;
  */
 class UsersPagerTest {
 
-    private static final String BASE_URL = "http://localhost/roller/users";
+    private static final String BASE_URL = "http://localhost/pressroom/users";
     private static final int LENGTH = 4;
 
     private final URLStrategy urlStrategy = mock(URLStrategy.class);

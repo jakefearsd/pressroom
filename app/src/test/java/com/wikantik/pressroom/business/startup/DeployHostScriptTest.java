@@ -86,11 +86,11 @@ class DeployHostScriptTest {
 
     @Test
     void passesAVersionADirectoryAndTheUpgradeFlagsThrough() throws Exception {
-        ScriptRun.Result r = deploy("docker1", "0.3.0", "--dir", "/srv/roller", "--no-backup", "--prune");
+        ScriptRun.Result r = deploy("docker1", "0.3.0", "--dir", "/srv/pressroom", "--no-backup", "--prune");
 
         assertEquals(0, r.exit(), r.out());
-        assertTrue(calls().contains("docker1:/srv/roller/upgrade.sh"), calls());
-        assertTrue(calls().contains("ssh docker1 cd /srv/roller && bash upgrade.sh 0.3.0 --no-backup --prune\n"),
+        assertTrue(calls().contains("docker1:/srv/pressroom/upgrade.sh"), calls());
+        assertTrue(calls().contains("ssh docker1 cd /srv/pressroom && bash upgrade.sh 0.3.0 --no-backup --prune\n"),
                 calls());
     }
 

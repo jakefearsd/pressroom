@@ -223,7 +223,7 @@ public final class BrowserHealth {
         // Deliberately NOT Selenide.open("about:blank"). Selenide only treats a URL
         // as absolute when it starts with http/https, so "about:blank" is taken as
         // relative and appended to Configuration.baseUrl -- the browser lands on
-        // http://host:port/rollerabout:blank, a 404, and every subsequent assertion
+        // http://host:port/pressroomabout:blank, a 404, and every subsequent assertion
         // fails against a Tomcat error page. Starting the driver directly and
         // navigating through WebDriver skips that rewriting.
         WebDriver driver = WebDriverRunner.getAndCheckWebDriver();
@@ -269,15 +269,15 @@ public final class BrowserHealth {
      * belongs to as an argument, and Chrome derives the domain and path from it.
      *
      * <p><b>The path is passed explicitly and must not be left to CDP.</b> Given only a
-     * url, Chrome derives the cookie's path from the url's directory -- {@code /roller/}
-     * for {@code http://host/roller/} -- while Tomcat sets its session cookie on the
-     * context path itself, {@code /roller}. Those are DIFFERENT cookies. Both match a
-     * request under {@code /roller/}, so the browser sends two JSESSIONIDs, the server
+     * url, Chrome derives the cookie's path from the url's directory -- {@code /pressroom/}
+     * for {@code http://host/pressroom/} -- while Tomcat sets its session cookie on the
+     * context path itself, {@code /pressroom}. Those are DIFFERENT cookies. Both match a
+     * request under {@code /pressroom/}, so the browser sends two JSESSIONIDs, the server
      * honours whichever it reads first, and a freshly installed session is silently
      * ignored in favour of a stale one left over from an earlier navigation. At the root
      * context both paths are {@code /}, so the two agree and nothing looks wrong -- which
      * is exactly why this survived a green suite and only failed under
-     * {@code -Dit.context.path=roller}.
+     * {@code -Dit.context.path=pressroom}.
      *
      * @param name  cookie name, e.g. {@code JSESSIONID}
      * @param value cookie value
@@ -664,7 +664,7 @@ public final class BrowserHealth {
      * <p>For a document that declares no icon -- {@code sitemap.xml}, {@code robots.txt},
      * a feed -- Chrome probes {@code /favicon.ico} at the <em>origin root</em>, not under
      * the document's path. When Roller is deployed under a servlet context prefix
-     * ({@code -Dit.context.path=roller}) that location is outside the application: Tomcat
+     * ({@code -Dit.context.path=pressroom}) that location is outside the application: Tomcat
      * answers 404 and nothing Roller ships can change that, because no file of the
      * application's can live above its context. HTML pages are unaffected -- their heads
      * declare the icon inside the context, so the probe never fires for them. At the root

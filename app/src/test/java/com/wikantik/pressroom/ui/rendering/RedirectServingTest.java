@@ -121,8 +121,8 @@ class RedirectServingTest {
 
     private MockHttpServletRequest mapperGet(String uriAfterContext) {
         MockHttpServletRequest request =
-                new MockHttpServletRequest("GET", "/roller" + uriAfterContext);
-        request.setContextPath("/roller");
+                new MockHttpServletRequest("GET", "/pressroom" + uriAfterContext);
+        request.setContextPath("/pressroom");
         return request;
     }
 

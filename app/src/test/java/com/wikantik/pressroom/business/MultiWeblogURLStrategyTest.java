@@ -109,16 +109,16 @@ class MultiWeblogURLStrategyTest {
 
     /**
      * Under a servlet-container prefix, a custom-domain weblog's root on
-     * that hostname is "/roller/", not "/" -- the host supplies the handle,
+     * that hostname is "/pressroom/", not "/" -- the host supplies the handle,
      * not the context path. The prefix must appear exactly once.
      */
     @Test
     void underAContextPathTheCustomDomainUrlCarriesThePrefixExactlyOnce() {
-        WebloggerRuntimeConfig.setRelativeContextURL("/roller");
+        WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
 
-        assertEquals("https://vhost.example.com/roller/",
+        assertEquals("https://vhost.example.com/pressroom/",
                 strategy.getWeblogURL(weblog("vhostblog", "vhost.example.com"), null, true));
-        assertEquals("/roller/",
+        assertEquals("/pressroom/",
                 strategy.getWeblogURL(weblog("vhostblog", "vhost.example.com"), null, false));
     }
 
@@ -128,9 +128,9 @@ class MultiWeblogURLStrategyTest {
      */
     @Test
     void underAContextPathADerivedUrlCarriesThePrefixToo() {
-        WebloggerRuntimeConfig.setRelativeContextURL("/roller");
+        WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
 
-        assertEquals("https://vhost.example.com/roller/entry/my-post",
+        assertEquals("https://vhost.example.com/pressroom/entry/my-post",
                 strategy.getWeblogEntryURL(
                         weblog("vhostblog", "vhost.example.com"), null, "my-post", true));
     }

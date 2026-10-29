@@ -14,7 +14,7 @@
 
 -- Seed data for the LOCAL DEVELOPMENT database.
 --
--- Applied by `./roller db|dev|reset` via:
+-- Applied by `./pressroom db|dev|reset` via:
 --     psql -v devpw="$PRESSROOM_DEV_ADMIN_PASSWORD" -f bin/db/seed-dev-data.sql
 --
 -- NOT a migration, and deliberately not under bin/db/migrations/: migrate.sh,
@@ -23,7 +23,7 @@
 --
 -- The password is hashed HERE, inside Postgres, via pgcrypto. That keeps the
 -- plaintext out of the repository (it lives in the git-ignored
--- .roller-dev-secret) and needs no host-side bcrypt tool -- no htpasswd, no
+-- .pressroom-dev-secret) and needs no host-side bcrypt tool -- no htpasswd, no
 -- Python bcrypt, no JVM for a database-only command. pgcrypto's
 -- gen_salt('bf',10) emits $2a$, which Spring's BCryptPasswordEncoder accepts.
 --
@@ -32,7 +32,7 @@
 -- reset and no manual SQL.
 
 -- IF NOT EXISTS still emits a NOTICE when the extension is already there, and
--- this file runs on every ./roller db. Warnings and errors still surface.
+-- this file runs on every ./pressroom db. Warnings and errors still surface.
 SET client_min_messages = warning;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;

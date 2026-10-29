@@ -31,8 +31,9 @@ pre-18 cluster mounted at the new path is refused by the entrypoint rather
 than silently re-initialised — loud, but it does not say "your compose file
 is a major behind", which is why the test pins the path against the image.
 Production keeps the plain `roller-pgdata` name, never having been deployed
-on 16; **dev** renamed its volume to `roller-pgdata18` because the 16 cluster
-still occupies `roller_roller-pgdata` and is the dev rollback.
+on 16; **dev** renamed its volume to `pressroom-pgdata18` (compose project
+`pressroom`, so `pressroom_pressroom-pgdata18`) because the 16 cluster
+occupied the pre-rebrand volume `roller_roller-pgdata` (rebrand:keep).
 
 **`pg_dump` refuses a server newer than itself, and the app image is also the
 backup runner**, so its client floor is declared in the `Dockerfile` as

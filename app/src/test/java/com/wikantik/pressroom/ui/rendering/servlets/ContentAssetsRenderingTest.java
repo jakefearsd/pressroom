@@ -228,10 +228,10 @@ class ContentAssetsRenderingTest {
     void theBootstrapIsLazyRerunnableAndLocalised() throws Exception {
         String body = render("/" + HANDLE);
 
-        assertTrue(body.contains("script.src = '/roller" + BUNDLE + "?v="),
+        assertTrue(body.contains("script.src = '/pressroom" + BUNDLE + "?v="),
                 "the bundle must load under the context path, and only from the "
                         + "bootstrap's injected script element:\n" + body);
-        assertFalse(body.contains("<script src=\"/roller" + BUNDLE),
+        assertFalse(body.contains("<script src=\"/pressroom" + BUNDLE),
                 "the bundle must never be a static script tag -- it is lazy:\n" + body);
         assertTrue(body.contains("pre:not([data-pressroom-code]) > code"),
                 "the presence check must skip blocks already enhanced:\n" + body);

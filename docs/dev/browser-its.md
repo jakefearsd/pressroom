@@ -52,8 +52,8 @@ Five mechanisms in `it-selenium/src/test/script/`:
   `aSweepNeverTouchesAStaleAppInAnotherNamespace`. Never set either variable
   for a real run: its leftovers would be invisible to the next real sweep.
 
-Per run: containers `roller-it-postgres-<run id>` and
-`roller-it-keycloak-<run id>` (no fixed-name 409 needing `docker rm`); the
+Per run: containers `pressroom-it-postgres-<run id>` and
+`pressroom-it-keycloak-<run id>` (no fixed-name 409 needing `docker rm`); the
 supervisor is handed both, and the sweep looks under both prefixes (the
 Keycloak one is derived from `IT_CONTAINER_PREFIX`, never defaulted on its
 own, so a test's sweep cannot reach a real run's Keycloak);
@@ -65,9 +65,9 @@ newest.
 
 **Keycloak (reader sign-in).** `pg-start` starts a second image,
 `quay.io/keycloak/keycloak:26.0` (`it.keycloak.image`), in dev mode on the
-reserved port `it.kc.port`, importing realm `roller-it` from
-`it-selenium/src/test/resources/keycloak/roller-it-realm.json`: a confidential
-client `roller-it` and seven users (`reader-it`, `unverified-it`, `noname-it`,
+reserved port `it.kc.port`, importing realm `pressroom-it` from
+`it-selenium/src/test/resources/keycloak/pressroom-it-realm.json`: a confidential
+client `pressroom-it` and seven users (`reader-it`, `unverified-it`, `noname-it`,
 plus `writer-it` and `disabled-it`, which only the promote and disable tests
 change, and `commenter-it` and `commenter2-it`, which belong to `CommentsIT`
 alone: it renames and deletes their Roller accounts). `noname-it`'s email is `nameless-reader@example.com`: a local part
@@ -75,7 +75,7 @@ that is not the username, so criterion 18 tells the email fallback from a
 `preferred_username` one. "Not signed in" is asserted as a 302 **to the login
 page** (`SsoSignInIT.assertSentToLogIn`), never a bare 302: a 302 to
 access-denied is how a signed-in account is refused. The wait is the realm's discovery document, which answers only
-after the import (about 15 s). `roller-it.properties` points `sso.oidc.*` at
+after the import (about 15 s). `pressroom-it.properties` points `sso.oidc.*` at
 `http://localhost:${it.kc.port}` (localhost, because Keycloak takes its
 issuer from the Host it is asked on), so **SSO is on for the whole suite**
 and every login page shows "Sign in with Keycloak". The client secret and
@@ -171,7 +171,7 @@ a race:
   Held **read** by `PublicSurfaceIT`'s site-root test (`/` is the site
   directory only while no front-page weblog is set, and `ColophonIT` sets
   one), and by `RouteSweepIT`, which visits every admin route and so is
-  exposed to every site-wide flag (on a `/roller`-prefix run with
+  exposed to every site-wide flag (on a `/pressroom`-prefix run with
   `groupblogging.enabled` off, `createWeblog.rol` returned a healthy 200
   with no form — the `categoryEdit.rol` failure mode the sweep exists to
   catch — because `CreateWeblogController` answers `.GenericError` to an
@@ -292,8 +292,8 @@ hand. Run `IT_LATE_CLICK_MS=150` after adding a test that clicks.
 
 ## Run the browser suite at BOTH context paths before shipping routing changes
 
-`mvn verify -Pit` covers the root context; `mvn verify -Pit -Dit.context.path=roller`
+`mvn verify -Pit` covers the root context; `mvn verify -Pit -Dit.context.path=pressroom`
 alone exercises a servlet prefix end-to-end. The prefix pass found a defect
 the root pass could not; `SeoController.robots()`'s test, already under
-`/roller`, had hardcoded the buggy url. A fixture pinning a context path must
+`/pressroom`, had hardcoded the buggy url. A fixture pinning a context path must
 *derive* its expected url, never hardcode a shape.

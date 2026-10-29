@@ -390,7 +390,7 @@ class EntriesControllerTest extends EditorControllerTestSupport {
     void aBulkActionReturnsToTheFilteredListItWasRunFrom() throws Exception {
         bean.setStatus("DRAFT");
         bean.setCategoryName("Travel");
-        stubActionUrlWithContextPath("/roller");
+        stubActionUrlWithContextPath("/pressroom");
 
         String view = controller.bulkDelete(request, null, bean, newRedirectAttributes());
 
@@ -411,7 +411,7 @@ class EntriesControllerTest extends EditorControllerTestSupport {
      * Spring's {@code InternalResourceViewResolver} runs with {@code
      * redirectContextRelative=true} and prepends the context path again, so
      * reusing the pager's base url produced {@code
-     * /roller/roller/pressroom-ui/...} and a 404 under a servlet prefix.
+     * /pressroom/pressroom/pressroom-ui/...} and a 404 under a servlet prefix.
      *
      * <p>The expectation is DERIVED from the stubbed context path rather than
      * hardcoded -- the {@code SeoController.robots()} lesson, where a fixture
@@ -419,7 +419,7 @@ class EntriesControllerTest extends EditorControllerTestSupport {
      */
     @Test
     void theBulkRedirectDoesNotInheritTheContextPathTwice() throws Exception {
-        String contextPath = "/roller";
+        String contextPath = "/pressroom";
         stubActionUrlWithContextPath(contextPath);
         bean.setStatus("DRAFT");
 

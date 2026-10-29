@@ -58,7 +58,7 @@ class ModDateHeaderUtilTest {
     void setUp() {
         request = mock(HttpServletRequest.class);
         response = mock(HttpServletResponse.class);
-        when(request.getRequestURL()).thenReturn(new StringBuffer("http://localhost/roller/x"));
+        when(request.getRequestURL()).thenReturn(new StringBuffer("http://localhost/pressroom/x"));
     }
 
     @Test

@@ -101,8 +101,8 @@ class SiteModelTest {
         runtimeConfig = RuntimeConfigAttachment.of(mock(PropertiesManager.class));
 
         previousRelativeContextURL = WebloggerRuntimeConfig.getRelativeContextURL();
-        WebloggerRuntimeConfig.setRelativeContextURL("/roller");
-        WebloggerRuntimeConfig.setAbsoluteContextURL("http://blogs.example.com/roller");
+        WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
+        WebloggerRuntimeConfig.setAbsoluteContextURL("http://blogs.example.com/pressroom");
 
         weblog = new Weblog("frontpage", "testuser", "Front Page", "the site blog",
                 "blog@example.com", "journal", "en_US", "UTC");
@@ -204,7 +204,7 @@ class SiteModelTest {
 
         String link = modelFor(request).getWeblogEntriesPager(-1, 10).getHomeLink();
 
-        assertTrue(link.startsWith("/roller/frontpage/page/frontpage"),
+        assertTrue(link.startsWith("/pressroom/frontpage/page/frontpage"),
                 "Paging must return to the same custom page; link was: " + link);
         assertTrue(link.contains("tags=java"),
                 "The tag filter must survive into the paging link; link was: " + link);
@@ -224,7 +224,7 @@ class SiteModelTest {
 
         String link = modelFor(request).getWeblogEntriesPager(-1, 10).getHomeLink();
 
-        assertTrue(link.startsWith("http://blogs.example.com/roller/frontpage/feed/entries/atom"),
+        assertTrue(link.startsWith("http://blogs.example.com/pressroom/frontpage/feed/entries/atom"),
                 "A feed request must page within the feed, absolutely addressed; link "
                         + "was: " + link);
         assertTrue(link.contains("cat=Tech") && link.contains("excerpts=true"),
@@ -237,7 +237,7 @@ class SiteModelTest {
         request.setWeblog(weblog);
         request.setWeblogHandle(weblog.getHandle());
 
-        assertEquals("/roller/frontpage/",
+        assertEquals("/pressroom/frontpage/",
                 modelFor(request).getWeblogEntriesPager(-1, 10).getHomeLink(),
                 "A request that is neither a page nor a feed request still needs a "
                         + "usable base URL.");
@@ -254,7 +254,7 @@ class SiteModelTest {
         request.setFormat("atom");
 
         SiteModel model = modelFor(request);
-        String expected = "http://blogs.example.com/roller/frontpage/feed/entries/atom";
+        String expected = "http://blogs.example.com/pressroom/frontpage/feed/entries/atom";
         WeblogWrapper wrapper = WeblogWrapper.wrap(otherWeblog("other", "Other"),
                 new MultiWeblogURLStrategy(), weblogger);
 
@@ -268,9 +268,9 @@ class SiteModelTest {
     void theDirectoryPagersShareThePageUrl() throws Exception {
         SiteModel model = model();
 
-        assertEquals("/roller/frontpage/", model.getUsersByLetterPager("A", -1, 10).getHomeLink(),
+        assertEquals("/pressroom/frontpage/", model.getUsersByLetterPager("A", -1, 10).getHomeLink(),
                 "The user directory pages from the same base URL.");
-        assertEquals("/roller/frontpage/", model.getWeblogsByLetterPager("A", -1, 10).getHomeLink(),
+        assertEquals("/pressroom/frontpage/", model.getWeblogsByLetterPager("A", -1, 10).getHomeLink(),
                 "The weblog directory pages from the same base URL.");
     }
 

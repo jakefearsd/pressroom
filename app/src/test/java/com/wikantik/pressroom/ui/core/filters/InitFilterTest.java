@@ -89,57 +89,57 @@ public class InitFilterTest  {
     @Test
     public void testGetAbsoluteUrlAgainstPermalinkWithHttps() throws Exception {
         boolean secure = true;
-        String contextPath = "/roller";
-        String requestURI = "/roller/handle/entry/title";
-        String requestURL = "https://roller.example.com/roller/handle/entry/title";
+        String contextPath = "/pressroom";
+        String requestURI = "/pressroom/handle/entry/title";
+        String requestURL = "https://roller.example.com/pressroom/handle/entry/title";
 
         String absoluteUrl = InitFilter.getAbsoluteUrl(secure, SERVER_NAME, contextPath, requestURI, requestURL);
-        assertEquals("https://roller.example.com/roller", absoluteUrl);
+        assertEquals("https://roller.example.com/pressroom", absoluteUrl);
     }
 
     @Test
     public void testGetAbsoluteUrlPreservesAnExplicitHttpsPort() throws Exception {
         boolean secure = true;
-        String contextPath = "/roller";
-        String requestURI = "/roller/";
-        String requestURL = "https://roller.example.com:8443/roller/";
+        String contextPath = "/pressroom";
+        String requestURI = "/pressroom/";
+        String requestURL = "https://roller.example.com:8443/pressroom/";
 
         String absoluteUrl = InitFilter.getAbsoluteUrl(secure, SERVER_NAME, contextPath, requestURI, requestURL);
-        assertEquals("https://roller.example.com:8443/roller", absoluteUrl);
+        assertEquals("https://roller.example.com:8443/pressroom", absoluteUrl);
     }
 
     @Test
     public void testASecureRequestWhoseUrlStillSaysHttpIsUpgraded() throws Exception {
         // a connector that sets the secure flag without rewriting the scheme
         boolean secure = true;
-        String contextPath = "/roller";
-        String requestURI = "/roller/";
-        String requestURL = "http://roller.example.com/roller/";
+        String contextPath = "/pressroom";
+        String requestURI = "/pressroom/";
+        String requestURL = "http://roller.example.com/pressroom/";
 
         String absoluteUrl = InitFilter.getAbsoluteUrl(secure, SERVER_NAME, contextPath, requestURI, requestURL);
-        assertEquals("https://roller.example.com/roller", absoluteUrl);
+        assertEquals("https://roller.example.com/pressroom", absoluteUrl);
     }
 
     @Test
     public void testGetAbsoluteUrlAgainstTop() throws Exception {
         boolean secure = false;
-        String contextPath = "/roller";
-        String requestURI = "/roller/";
-        String requestURL = "http://roller.example.com/roller/";
+        String contextPath = "/pressroom";
+        String requestURI = "/pressroom/";
+        String requestURL = "http://roller.example.com/pressroom/";
 
         String absoluteUrl = InitFilter.getAbsoluteUrl(secure, SERVER_NAME, contextPath, requestURI, requestURL);
-        assertEquals("http://roller.example.com/roller", absoluteUrl);
+        assertEquals("http://roller.example.com/pressroom", absoluteUrl);
     }
 
     @Test
     public void testGetAbsoluteUrlAgainstPermalink() throws Exception {
         boolean secure = false;
-        String contextPath = "/roller";
-        String requestURI = "/roller/handle/entry/title";
-        String requestURL = "http://roller.example.com/roller/handle/entry/title";
+        String contextPath = "/pressroom";
+        String requestURI = "/pressroom/handle/entry/title";
+        String requestURL = "http://roller.example.com/pressroom/handle/entry/title";
 
         String absoluteUrl = InitFilter.getAbsoluteUrl(secure, SERVER_NAME, contextPath, requestURI, requestURL);
-        assertEquals("http://roller.example.com/roller", absoluteUrl);
+        assertEquals("http://roller.example.com/pressroom", absoluteUrl);
     }
 
     @Test
@@ -169,10 +169,10 @@ public class InitFilterTest  {
             new ForwardedHeaderFilter().doFilter(request, new MockHttpServletResponse(),
                     new MockFilterChain(new HttpServlet() { }, plainFilter()));
 
-            assertEquals("https://photos.example.com/roller",
+            assertEquals("https://photos.example.com/pressroom",
                     WebloggerRuntimeConfig.getAbsoluteContextURL(),
                     "X-Forwarded-Proto: https must produce an https absolute context URL");
-            assertEquals("/roller", WebloggerRuntimeConfig.getRelativeContextURL());
+            assertEquals("/pressroom", WebloggerRuntimeConfig.getRelativeContextURL());
         } finally {
             WebloggerRuntimeConfig.setAbsoluteContextURL(priorAbsolute);
             WebloggerRuntimeConfig.setRelativeContextURL(priorRelative);
@@ -187,7 +187,7 @@ public class InitFilterTest  {
             new ForwardedHeaderFilter().doFilter(proxiedRequest(), new MockHttpServletResponse(),
                     new MockFilterChain(new HttpServlet() { }, plainFilter()));
 
-            assertEquals("http://photos.example.com/roller",
+            assertEquals("http://photos.example.com/pressroom",
                     WebloggerRuntimeConfig.getAbsoluteContextURL(),
                     "plain-http dev behavior must be unchanged when no proxy header is present");
         } finally {
@@ -198,7 +198,7 @@ public class InitFilterTest  {
 
     /** A plain-http request as the app sees it behind the reverse proxy. */
     private static MockHttpServletRequest proxiedRequest() {
-        return proxiedRequest("/roller");
+        return proxiedRequest("/pressroom");
     }
 
     private static MockHttpServletRequest proxiedRequest(String contextPath) {
@@ -214,7 +214,7 @@ public class InitFilterTest  {
     // The shipped default is the root context (application.properties), so
     // these are the ordinary case rather than an exotic one. Serving from the
     // root is what lets a weblog own a bare hostname -- https://example.com/
-    // rather than https://example.com/roller/ -- which is both what a reverse
+    // rather than https://example.com/pressroom/ -- which is both what a reverse
     // proxy in front of this app is usually for and what keeps a canonical
     // url free of a deployment artefact nobody can ever remove later without
     // a redirect map.

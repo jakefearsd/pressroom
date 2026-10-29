@@ -14,7 +14,7 @@
 
 # The reverse proxy with its config baked in, so a production host needs no
 # checkout to bind-mount a Caddyfile from. Build from the REPO ROOT:
-#   docker build -t ghcr.io/jakefearsd/roller-caddy:<tag> -f deploy/caddy/Dockerfile .
+#   docker build -t ghcr.io/jakefearsd/pressroom-caddy:<tag> -f deploy/caddy/Dockerfile .
 #
 # Two stages, both pinned to the SAME Caddy version:
 #

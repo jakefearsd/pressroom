@@ -93,7 +93,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * three links, which holds even a trusted reader's (criterion 6).
  *
  * <p><b>The rate limit is raised for this suite.</b> Production allows each account five
- * comments or replies in ten minutes and thirty a day; {@code roller-it.properties} sets
+ * comments or replies in ten minutes and thirty a day; {@code pressroom-it.properties} sets
  * {@code comments.throttle.*} to 1000 in ten minutes and 10000 a day (ruling R9), so the
  * seeded admin and the readers post and reply as often as the tests need. The limit
  * itself, at its defaults and as configured, is proven by {@code CommentServiceTest}.
@@ -113,7 +113,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ResourceLock(PressroomIT.GLOBAL_CONFIG)
 class CommentsIT extends PressroomIT {
 
-    /** Keycloak readers of this class alone; see roller-it-realm.json. */
+    /** Keycloak readers of this class alone; see pressroom-it-realm.json. */
     private static final String READER = "commenter-it";
     private static final String READER2 = "commenter2-it";
 

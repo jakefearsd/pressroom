@@ -20,7 +20,7 @@
 # Environment:
 #   IT_WORK_DIR      overrides <work-dir>
 #   IT_RECORD_DIR    overrides where chromedriver records are read from
-#                     (default: ${XDG_CACHE_HOME:-$HOME/.cache}/roller-it) --
+#                     (default: ${XDG_CACHE_HOME:-$HOME/.cache}/pressroom-it) --
 #                     tests only.
 #   IT_SWEEP_STRICT  set to 1 to fail the build when anything was reaped,
 #                    rather than warning loudly (default: warn)

@@ -11,14 +11,14 @@ class ReturnPathsTest {
 
     @ParameterizedTest
     @CsvSource(value = {
-        "/roller/blog/entry/x|/roller|/roller/blog/entry/x",
+        "/pressroom/blog/entry/x|/pressroom|/pressroom/blog/entry/x",
         "/blog/|''|/blog/",
-        "https://evil.example/|/roller|/roller/",
+        "https://evil.example/|/pressroom|/pressroom/",
         "//evil.example/|''|/",
         "/\\evil.example|''|/",
-        "/other/x|/roller|/roller/",
-        "/roller|/roller|/roller/",
-        "''|/roller|/roller/"}, delimiter = '|')
+        "/other/x|/pressroom|/pressroom/",
+        "/pressroom|/pressroom|/pressroom/",
+        "''|/pressroom|/pressroom/"}, delimiter = '|')
     void sanitize(String raw, String ctx, String expected) {
         assertEquals(expected, ReturnPaths.sanitize(raw, ctx));
     }
@@ -29,9 +29,9 @@ class ReturnPathsTest {
      */
     @Test
     void aCarriageReturnOrLineFeedFallsBack() {
-        assertEquals("/roller/", ReturnPaths.sanitize("/roller/a\rb", "/roller"));
-        assertEquals("/roller/", ReturnPaths.sanitize("/roller/a\nb", "/roller"));
-        assertEquals("/roller/", ReturnPaths.sanitize("/roller/a\r\nSet-Cookie: x=y", "/roller"));
+        assertEquals("/pressroom/", ReturnPaths.sanitize("/pressroom/a\rb", "/pressroom"));
+        assertEquals("/pressroom/", ReturnPaths.sanitize("/pressroom/a\nb", "/pressroom"));
+        assertEquals("/pressroom/", ReturnPaths.sanitize("/pressroom/a\r\nSet-Cookie: x=y", "/pressroom"));
     }
 
     @Test

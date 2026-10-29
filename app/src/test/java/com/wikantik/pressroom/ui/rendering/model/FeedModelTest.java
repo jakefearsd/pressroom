@@ -65,7 +65,7 @@ import static org.mockito.Mockito.when;
  */
 class FeedModelTest {
 
-    private static final String ABSOLUTE_SITE = "http://blogs.example.com/roller";
+    private static final String ABSOLUTE_SITE = "http://blogs.example.com/pressroom";
 
     private RuntimeConfigAttachment runtimeConfig;
     private Weblogger weblogger;
@@ -86,7 +86,7 @@ class FeedModelTest {
         runtimeConfig = RuntimeConfigAttachment.of(properties);
 
         previousRelativeContextURL = WebloggerRuntimeConfig.getRelativeContextURL();
-        WebloggerRuntimeConfig.setRelativeContextURL("/roller");
+        WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
         WebloggerRuntimeConfig.setAbsoluteContextURL(ABSOLUTE_SITE);
 
         weblog = new Weblog("testblog", "testuser", "Test Blog", "a test blog",

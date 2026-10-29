@@ -63,7 +63,7 @@ import static org.mockito.Mockito.when;
  *
  * <p>Requests go through the real {@link WeblogRequestMapper} and then, as a
  * FORWARD dispatch, the servlet it names, so a url a theme emits is proved
- * reachable rather than merely well formed. Context {@code /roller}.
+ * reachable rather than merely well formed. Context {@code /pressroom}.
  */
 class SiteSpaceThemeRenderingTest {
 
@@ -178,10 +178,10 @@ class SiteSpaceThemeRenderingTest {
         for (String theme : THEMES) {
             String body = sitePage(theme);
             assertTrue(body.contains(BODY_CLASS.get(theme)), theme + " chrome:\n" + body);
-            assertTrue(body.contains("href=\"/roller/sitethemecontact\">Contact Desk</a>"),
+            assertTrue(body.contains("href=\"/pressroom/sitethemecontact\">Contact Desk</a>"),
                     theme + ": the nav lists the show-in-nav site page:\n" + body);
             assertTrue(body.contains(">" + SITE_NAME + "</a>"), theme + ": the site's name:\n" + body);
-            assertTrue(body.contains("<link rel=\"canonical\" href=\"http://localhost:8080/roller/sitethemeabout\">"),
+            assertTrue(body.contains("<link rel=\"canonical\" href=\"http://localhost:8080/pressroom/sitethemeabout\">"),
                     theme + ": the canonical is the page's own /<slug>:\n" + body);
             int colophon = body.indexOf("<div class=\"colophon\">");
             assertTrue(colophon >= 0, theme + ": no colophon:\n" + body);
@@ -208,7 +208,7 @@ class SiteSpaceThemeRenderingTest {
         String body = sitePage("frontpage");
 
         assertFalse(body.contains("Recent posts"), body);
-        assertTrue(body.contains("href=\"/roller/pressroom-ui/siteDirectory.rol\""), body);
+        assertTrue(body.contains("href=\"/pressroom/pressroom-ui/siteDirectory.rol\""), body);
     }
 
     @Test
@@ -220,7 +220,7 @@ class SiteSpaceThemeRenderingTest {
                     PAGE_SERVLET + "/site-space/sitethemeabout", null);
             String body = response.getContentAsString();
             assertEquals(200, response.getStatus(), body);
-            assertTrue(body.contains("<link rel=\"canonical\" href=\"http://localhost:8080/roller/\">"),
+            assertTrue(body.contains("<link rel=\"canonical\" href=\"http://localhost:8080/pressroom/\">"),
                     theme + ":\n" + body);
         }
     }
@@ -238,7 +238,7 @@ class SiteSpaceThemeRenderingTest {
 
             Matcher css = STYLESHEET.matcher(body);
             assertTrue(css.find(), theme + ": no stylesheet:\n" + body);
-            assertTrue(css.group(1).startsWith("/roller/site-space/page/" + theme + "-custom.css"),
+            assertTrue(css.group(1).startsWith("/pressroom/site-space/page/" + theme + "-custom.css"),
                     css.group(1));
             MockHttpServletResponse stylesheet = served(css.group(1));
             assertEquals(200, stylesheet.getStatus(), theme + " stylesheet " + css.group(1));
@@ -246,7 +246,7 @@ class SiteSpaceThemeRenderingTest {
 
             Matcher img = MEDIA_SRC.matcher(body);
             assertTrue(img.find(), theme + ": the [image] did not render:\n" + body);
-            assertTrue(img.group(1).contains("/roller/site-space/mediaresource/" + image.getId()),
+            assertTrue(img.group(1).contains("/pressroom/site-space/mediaresource/" + image.getId()),
                     img.group(1));
             MockHttpServletResponse media = served(img.group(1));
             assertEquals(200, media.getStatus(), theme + " image " + img.group(1));
@@ -262,7 +262,7 @@ class SiteSpaceThemeRenderingTest {
                         "sitetheme-orig.jpg", false);
         TestUtils.endSession(true);
 
-        assertEquals("/roller/site-space/resource/sitetheme-orig.jpg", url);
+        assertEquals("/pressroom/site-space/resource/sitetheme-orig.jpg", url);
         MockHttpServletResponse response = served(url);
         assertEquals(200, response.getStatus());
         assertTrue(response.getContentAsByteArray().length > 0);
@@ -295,8 +295,8 @@ class SiteSpaceThemeRenderingTest {
     void theSiteSpaceServesOnlyItsStylesheetUnderPage() throws Exception {
         useSiteTheme("frontpage");
 
-        assertEquals(200, served("/roller/site-space/page/frontpage-custom.css").getStatus());
-        assertEquals(404, served("/roller/site-space/page/directory").getStatus());
+        assertEquals(200, served("/pressroom/site-space/page/frontpage-custom.css").getStatus());
+        assertEquals(404, served("/pressroom/site-space/page/directory").getStatus());
     }
 
     /**
@@ -310,7 +310,7 @@ class SiteSpaceThemeRenderingTest {
         savePage(blog, "sitethemeblogwrite", "Write", "Say hello.\n\n[contact]", false);
         useSiteTheme("journal");
 
-        MockHttpServletResponse onSite = served("/roller/sitethemewrite");
+        MockHttpServletResponse onSite = served("/pressroom/sitethemewrite");
         String siteBody = onSite.getContentAsString();
         assertEquals(200, onSite.getStatus(), siteBody);
         assertFalse(siteBody.contains("contact-form-slot\""), siteBody);
@@ -388,7 +388,7 @@ class SiteSpaceThemeRenderingTest {
     /** The site page at its public address, {@code /<slug>}, in {@code theme}. */
     private String sitePage(String theme) throws Exception {
         useSiteTheme(theme);
-        MockHttpServletResponse response = served("/roller/sitethemeabout");
+        MockHttpServletResponse response = served("/pressroom/sitethemeabout");
         String body = response.getContentAsString();
         assertEquals(200, response.getStatus(), body);
         return body;
@@ -414,7 +414,7 @@ class SiteSpaceThemeRenderingTest {
         String uri = q < 0 ? url : url.substring(0, q);
         String query = q < 0 ? null : url.substring(q + 1);
 
-        MockHttpServletRequest request = publicGet(uri.substring("/roller".length()));
+        MockHttpServletRequest request = publicGet(uri.substring("/pressroom".length()));
         request.setQueryString(query);
         MockHttpServletResponse mapped = new MockHttpServletResponse();
         assertTrue(mapper.handleRequest(request, mapped), "the mapper must route " + emitted);
@@ -424,8 +424,8 @@ class SiteSpaceThemeRenderingTest {
     }
 
     private static MockHttpServletRequest publicGet(String uriAfterContext) {
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/roller" + uriAfterContext);
-        request.setContextPath("/roller");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/pressroom" + uriAfterContext);
+        request.setContextPath("/pressroom");
         return request;
     }
 

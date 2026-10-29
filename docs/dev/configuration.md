@@ -11,7 +11,7 @@ resolves through the index at the end of `CLAUDE.md`.
 - **Boot Config**: `app/src/main/resources/application.properties` (server
   port/context-path, filter ordering, actuator exposure)
 - **Dev Properties**: `app/src/test/resources/pressroom-boot-dev.properties`
-  (loaded via `-Dpressroom.custom.config` by `./roller dev` and NetBeans
+  (loaded via `-Dpressroom.custom.config` by `./pressroom dev` and NetBeans
   run/debug actions)
 - **Servlets/Filters**: `app/src/main/java/.../boot/ServletRegistrationConfig.java`
   (Java-config transcription of the retired `web.xml`)
@@ -36,13 +36,13 @@ resolves through the index at the end of `CLAUDE.md`.
 
 ### Development vs Production
 - **Development**: PostgreSQL via `docker-compose.yml` (postgres only; the
-  app runs via `./roller dev` / `spring-boot:run`, not in a container),
+  app runs via `./pressroom dev` / `spring-boot:run`, not in a container),
   theme reload enabled, caching disabled.
 - **Production**: containerized end-to-end and **image-only** — the deploy
   host holds `docker-compose.prod.yml` and `.env`, nothing else. Two images
-  per release tag: `ghcr.io/jakefearsd/roller` (WAR, themes, migrations,
+  per release tag: `ghcr.io/jakefearsd/pressroom` (WAR, themes, migrations,
   `provision.sh`, `analytics-views.sh`, `umami-views.sql`, `migrate.sh`, backup
-  scripts, a PostgreSQL client) and `ghcr.io/jakefearsd/roller-caddy`
+  scripts, a PostgreSQL client) and `ghcr.io/jakefearsd/pressroom-caddy`
   (Caddy, Caddyfile baked in). A one-shot `provision` service creates the
   umami and listmonk databases, applies the migration chain, and grants
   `grafana_ro`; `app`, `umami` and `listmonk` declare

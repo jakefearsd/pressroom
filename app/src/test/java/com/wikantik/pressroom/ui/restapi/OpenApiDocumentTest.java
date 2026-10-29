@@ -42,9 +42,9 @@ class OpenApiDocumentTest {
     @Test
     void theLocalBootstrapPathIsDocumented() throws Exception {
         String text = docs();
-        assertTrue(text.contains("./roller token"),
+        assertTrue(text.contains("./pressroom token"),
                 "the README must record how to get a token locally");
-        assertTrue(text.contains(".roller-dev-secret"),
+        assertTrue(text.contains(".pressroom-dev-secret"),
                 "the README must say where the dev credential lives");
     }
 }

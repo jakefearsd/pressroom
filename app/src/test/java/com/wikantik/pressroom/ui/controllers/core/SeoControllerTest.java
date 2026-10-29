@@ -78,7 +78,7 @@ import static org.mockito.Mockito.when;
  */
 class SeoControllerTest {
 
-    private static final String ABSOLUTE_CONTEXT = "http://localhost:8080/roller";
+    private static final String ABSOLUTE_CONTEXT = "http://localhost:8080/pressroom";
 
     /**
      * An {@code InitFilter} over the suite's real, bootstrapped tier -- it
@@ -103,7 +103,7 @@ class SeoControllerTest {
         TestUtils.setupWeblogger();
         // What InitFilter would have computed from the first request.
         WebloggerRuntimeConfig.setAbsoluteContextURL(ABSOLUTE_CONTEXT);
-        WebloggerRuntimeConfig.setRelativeContextURL("/roller");
+        WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
 
         user = TestUtils.setupUser("seoControllerUser");
         weblog = TestUtils.setupWeblog("seocontrollerblog", user);
@@ -171,10 +171,10 @@ class SeoControllerTest {
             // server.forward-headers-strategy=framework) in front of
             // InitFilter -- and let it capture the absolute context URL,
             // exactly as the first proxied request in production would.
-            MockHttpServletRequest first = new MockHttpServletRequest("GET", "/roller/");
+            MockHttpServletRequest first = new MockHttpServletRequest("GET", "/pressroom/");
             first.setServerName("photos.example.com");
             first.setServerPort(80);
-            first.setContextPath("/roller");
+            first.setContextPath("/pressroom");
             first.addHeader("X-Forwarded-Proto", "https");
             new ForwardedHeaderFilter().doFilter(first, new MockHttpServletResponse(),
                     new MockFilterChain(new HttpServlet() { }, initFilterOverTheRealTier()));
@@ -184,14 +184,14 @@ class SeoControllerTest {
             assertEquals(200, response.getStatusCode().value());
             String body = response.getBody();
             assertNotNull(body);
-            assertTrue(body.contains("<loc>https://photos.example.com/roller/sitemap-"
+            assertTrue(body.contains("<loc>https://photos.example.com/pressroom/sitemap-"
                             + weblog.getHandle() + ".xml</loc>"),
                     "sitemap <loc>s must be https when TLS is terminated upstream:\n" + body);
             assertFalse(body.contains("<loc>http://"),
                     "no http:// loc may survive behind a TLS-terminating proxy:\n" + body);
         } finally {
             WebloggerRuntimeConfig.setAbsoluteContextURL(ABSOLUTE_CONTEXT);
-            WebloggerRuntimeConfig.setRelativeContextURL("/roller");
+            WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
         }
     }
 
@@ -456,7 +456,7 @@ class SeoControllerTest {
      */
     @Test
     void weblogSitemapSurvivesMissingDatesAndAmpersands() throws Exception {
-        String rawEntryURL = "http://localhost:8080/roller/mockblog/entry/mock-entry?a=1&b=2";
+        String rawEntryURL = "http://localhost:8080/pressroom/mockblog/entry/mock-entry?a=1&b=2";
 
         Weblogger broken = mock(Weblogger.class);
         WeblogManager weblogManager = mock(WeblogManager.class);
@@ -476,7 +476,7 @@ class SeoControllerTest {
         when(entryManager.getSitemapEntries(mockWeblog, SeoController.MAX_SITEMAP_URLS))
                 .thenReturn(List.of(new SitemapEntry("mock-entry", null, null, false, null, null)));
         when(urlStrategy.getWeblogURL(mockWeblog, null, true))
-                .thenReturn("http://localhost:8080/roller/mockblog/");
+                .thenReturn("http://localhost:8080/pressroom/mockblog/");
         when(urlStrategy.getWeblogEntryURL(mockWeblog, null, "mock-entry", true))
                 .thenReturn(rawEntryURL);
 

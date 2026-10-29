@@ -24,7 +24,7 @@ import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
 
 /**
- * Keycloak's sign-in form, as the IT run's provider (realm {@code roller-it}) serves it.
+ * Keycloak's sign-in form, as the IT run's provider (realm {@code pressroom-it}) serves it.
  * Modelled on Wikantik's page object of the same name.
  */
 public final class KeycloakLoginPage {
@@ -37,7 +37,7 @@ public final class KeycloakLoginPage {
 
     /**
      * The realm's test-only password convention: every user in
-     * src/test/resources/keycloak/roller-it-realm.json signs in with its username
+     * src/test/resources/keycloak/pressroom-it-realm.json signs in with its username
      * followed by {@code -password}.
      */
     public static String passwordOf(String user) {

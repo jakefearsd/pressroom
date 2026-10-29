@@ -252,16 +252,16 @@ class CommentsControllerTest {
     @Test
     void theSessionAnswersAnonymousWithASignInUrlOnlyWhenSsoIsOn() throws Exception {
         when(SSO.enabled()).thenReturn(true);
-        MvcResult on = perform(get("/roller" + SESSION).contextPath("/roller").param("entry", entry.getId()));
+        MvcResult on = perform(get("/pressroom" + SESSION).contextPath("/pressroom").param("entry", entry.getId()));
 
-        String entryPath = "/roller/ccblog/entry/ccentry";
+        String entryPath = "/pressroom/ccblog/entry/ccentry";
         assertEquals(200, on.getResponse().getStatus());
         assertEquals("no-store", on.getResponse().getHeader("Cache-Control"));
         assertEquals(Map.of("signedIn", false,
-                        "signInUrl", "/roller/pressroom-ui/sso/start?return="
+                        "signInUrl", "/pressroom/pressroom-ui/sso/start?return="
                                 + URLEncoder.encode(entryPath, StandardCharsets.UTF_8)),
                 json(on));
-        assertEquals(entryPath, ReturnPaths.sanitize(entryPath, "/roller"),
+        assertEquals(entryPath, ReturnPaths.sanitize(entryPath, "/pressroom"),
                 "the start step must accept the return path as it is, not send the reader to the root");
         assertNull(on.getRequest().getSession(false), "an anonymous visitor is given no session, and no token");
 
@@ -575,7 +575,7 @@ class CommentsControllerTest {
     void noCsrfExemptionWasAdded() throws Exception {
         Method predicate = SecurityConfig.class.getDeclaredMethod("isPublicAudiencePost", HttpServletRequest.class);
         predicate.setAccessible(true);
-        for (String contextPath : List.of("", "/roller")) {
+        for (String contextPath : List.of("", "/pressroom")) {
             MockHttpServletRequest posting = new MockHttpServletRequest("POST", contextPath + POST);
             posting.setContextPath(contextPath);
             MockHttpServletRequest deleting = new MockHttpServletRequest("DELETE", contextPath + deletePath("x"));

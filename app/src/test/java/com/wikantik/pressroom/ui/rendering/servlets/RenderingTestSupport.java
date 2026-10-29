@@ -60,8 +60,8 @@ public final class RenderingTestSupport {
         // and every rendering test after it would render null-prefixed links.
         // So these two calls run on every invocation, not just the first --
         // do not move them back inside the runtimeReady guard.
-        WebloggerRuntimeConfig.setAbsoluteContextURL("http://localhost:8080/roller");
-        WebloggerRuntimeConfig.setRelativeContextURL("/roller");
+        WebloggerRuntimeConfig.setAbsoluteContextURL("http://localhost:8080/pressroom");
+        WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
         if (runtimeReady) {
             return;
         }
@@ -201,8 +201,8 @@ public final class RenderingTestSupport {
     private static MockHttpServletRequest anonymousRequest(String method,
             String servletPath, String pathInfo) {
         MockHttpServletRequest request =
-                new MockHttpServletRequest(method, "/roller" + servletPath + pathInfo);
-        request.setContextPath("/roller");
+                new MockHttpServletRequest(method, "/pressroom" + servletPath + pathInfo);
+        request.setContextPath("/pressroom");
         request.setServletPath(servletPath);
         request.setPathInfo(pathInfo);
         // honoured by PageServlet only; FeedServlet has no cache escape, use

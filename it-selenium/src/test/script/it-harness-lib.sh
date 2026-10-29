@@ -54,11 +54,11 @@ IT_SUPERVISOR_PROP="-D${IT_NAMESPACE}.supervisor="
 # default must match it.db.container-alias in it-selenium/pom.xml. Overridden
 # by ItHarnessLeakTest alongside IT_NAMESPACE, so its sweeps never remove a
 # real run's container.
-IT_CONTAINER_PREFIX="${IT_CONTAINER_PREFIX:-roller-it-postgres}"
+IT_CONTAINER_PREFIX="${IT_CONTAINER_PREFIX:-pressroom-it-postgres}"
 
 # A run's second container, the Keycloak that SsoSignInIT signs readers in
 # through: <this prefix>-<run id>, the postgres prefix with its role swapped
-# (roller-it-keycloak by default, matching it.kc.container-alias). DERIVED, never
+# (pressroom-it-keycloak by default, matching it.kc.container-alias). DERIVED, never
 # defaulted on its own: ItHarnessLeakTest overrides IT_CONTAINER_PREFIX alone,
 # and an independent default would hand its sweeps the real prefix -- from
 # another namespace a live run looks unclaimed, so a test would remove that
@@ -211,7 +211,7 @@ it_descendants() {
 # (falling back to ~/.cache, the same convention selenium-manager already
 # uses on this machine) is neither of those things. Override with
 # IT_RECORD_DIR for tests -- never point it at a real target/ or /tmp.
-IT_RECORD_DIR="${IT_RECORD_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/roller-it}"
+IT_RECORD_DIR="${IT_RECORD_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/pressroom-it}"
 
 # it_record_path <run id> -> the path of that run's chromedriver record.
 it_record_path() {

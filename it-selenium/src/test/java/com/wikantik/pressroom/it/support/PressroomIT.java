@@ -81,7 +81,7 @@ public abstract class PressroomIT {
      * classes for the duration of each of these five, which is most of the
      * benefit of running in parallel at all.
      */
-    public static final String GLOBAL_CONFIG = "roller.global-runtime-config";
+    public static final String GLOBAL_CONFIG = "pressroom.global-runtime-config";
 
     /**
      * Resource-lock key for the shared weblog's media directory.
@@ -99,9 +99,9 @@ public abstract class PressroomIT {
      * change to fixtures than the parallelism work warranted; these three
      * classes total under a minute serialised.
      */
-    public static final String SHARED_MEDIA = "roller.shared-media-directory";
+    public static final String SHARED_MEDIA = "pressroom.shared-media-directory";
 
-    /** Root URL of the Roller under test, context path included, e.g. {@code http://localhost:8080/roller}. */
+    /** Root URL of the Roller under test, context path included, e.g. {@code http://localhost:8080/pressroom}. */
     public static final String BASE_URL_PROPERTY = "it.base.url";
 
     /** Seed administrator, created by the integration-test fixture. */
@@ -130,7 +130,7 @@ public abstract class PressroomIT {
         if (configured == null || configured.isBlank()) {
             throw new IllegalStateException("System property '" + BASE_URL_PROPERTY + "' is not set. "
                     + "Point it at the Roller instance under test, "
-                    + "e.g. -D" + BASE_URL_PROPERTY + "=http://localhost:8080/roller");
+                    + "e.g. -D" + BASE_URL_PROPERTY + "=http://localhost:8080/pressroom");
         }
         return configured.endsWith("/") ? configured.substring(0, configured.length() - 1) : configured;
     }
@@ -454,7 +454,7 @@ public abstract class PressroomIT {
     private static final String SSO_START_PATH = "/pressroom-ui/sso/start";
 
     /**
-     * Signs a reader in through the run's Keycloak (realm {@code roller-it}): starts a
+     * Signs a reader in through the run's Keycloak (realm {@code pressroom-it}): starts a
      * sign-in that returns to {@code returnTo} and completes it on the provider's form,
      * returning once the provider's answer has replaced the page.
      *
@@ -462,7 +462,7 @@ public abstract class PressroomIT {
      * is built from it; the caller holds {@link #GLOBAL_CONFIG} exclusively and sets it.
      * Shared by {@code SsoSignInIT} and {@code CommentsIT}.
      *
-     * @param user     a username from roller-it-realm.json
+     * @param user     a username from pressroom-it-realm.json
      * @param returnTo the path, context path included, the sign-in should land on
      */
     protected void signInWithKeycloak(String user, String returnTo) {

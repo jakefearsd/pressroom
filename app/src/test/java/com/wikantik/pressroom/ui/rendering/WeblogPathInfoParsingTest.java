@@ -156,7 +156,7 @@ class WeblogPathInfoParsingTest {
      */
     @Test
     void aPrefixedContextPathIsRemoved() {
-        var normalized = WeblogRequestMapper.normalizePath("/roller/myblog/entry", "/roller");
+        var normalized = WeblogRequestMapper.normalizePath("/pressroom/myblog/entry", "/pressroom");
 
         assertEquals("myblog/entry", normalized.path(),
                 "the deployment prefix is not part of the weblog url space");

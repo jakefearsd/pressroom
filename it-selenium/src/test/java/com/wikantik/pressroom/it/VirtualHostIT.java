@@ -549,8 +549,8 @@ class VirtualHostIT extends PressroomIT {
     /**
      * The custom-domain form of {@code path} under the configured servlet
      * context path -- e.g. {@code https://vhost.example.com/entry/x} at the
-     * root context, {@code https://vhost.example.com/roller/entry/x} under a
-     * {@code /roller} prefix. Every assertion in this class that predicts a
+     * root context, {@code https://vhost.example.com/pressroom/entry/x} under a
+     * {@code /pressroom} prefix. Every assertion in this class that predicts a
      * domain-form URL (a 301 {@code Location}, a canonical/og:url, a sitemap
      * {@code <loc>}) must route through this rather than concatenating
      * {@code "https://" + VHOST} directly, because that literal shape is only
@@ -563,7 +563,7 @@ class VirtualHostIT extends PressroomIT {
 
     /**
      * The servlet context path segment of {@link #baseUrl()} -- {@code ""} at
-     * the root context, {@code "/roller"} under a prefix. Derived from the
+     * the root context, {@code "/pressroom"} under a prefix. Derived from the
      * same {@value PressroomIT#BASE_URL_PROPERTY} system property the harness
      * was actually started with, rather than a second, independently-read
      * source (e.g. an {@code it.context.path} property) that could drift

@@ -46,7 +46,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class SeoControllerVirtualHostTest {
 
-    private static final String ABSOLUTE_CONTEXT = "http://localhost:8080/roller";
+    private static final String ABSOLUTE_CONTEXT = "http://localhost:8080/pressroom";
 
     private SeoController controller;
     private User user;
@@ -57,7 +57,7 @@ class SeoControllerVirtualHostTest {
     void setUp() throws Exception {
         TestUtils.setupWeblogger();
         WebloggerRuntimeConfig.setAbsoluteContextURL(ABSOLUTE_CONTEXT);
-        WebloggerRuntimeConfig.setRelativeContextURL("/roller");
+        WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
 
         user = TestUtils.setupUser("seoVhostUser");
         vhostBlog = TestUtils.setupWeblog("vhostblog", user);
@@ -95,7 +95,7 @@ class SeoControllerVirtualHostTest {
     /**
      * On a custom domain, robots.txt points at THAT weblog's sitemap -- and,
      * since this is one Tomcat context reached under many hostnames (this
-     * fixture's setUp() pins the context to "/roller"), the sitemap url must
+     * fixture's setUp() pins the context to "/pressroom"), the sitemap url must
      * still carry the context path. The real {@code /sitemap.xml} route is
      * mapped under the same prefix; omitting it here would advertise a url
      * that 404s.
@@ -103,7 +103,7 @@ class SeoControllerVirtualHostTest {
     @Test
     void robotsOnACustomDomainAdvertisesTheWeblogSitemap() {
         String body = controller.robots(onHost("vhost.example.com")).getBody();
-        assertTrue(body.contains("Sitemap: https://vhost.example.com/roller/sitemap.xml"),
+        assertTrue(body.contains("Sitemap: https://vhost.example.com/pressroom/sitemap.xml"),
                 "robots.txt was: " + body);
     }
 
@@ -121,7 +121,7 @@ class SeoControllerVirtualHostTest {
             assertTrue(body.contains("Sitemap: https://vhost.example.com/sitemap.xml"),
                     "robots.txt was: " + body);
         } finally {
-            WebloggerRuntimeConfig.setRelativeContextURL("/roller");
+            WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
         }
     }
 

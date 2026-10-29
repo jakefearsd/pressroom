@@ -217,12 +217,12 @@ class WeblogWrapperDelegationTest {
 
     @Test
     void theRelativeAndAbsoluteUrlsAreKeptDistinct() {
-        when(urls.getWeblogURL(weblog, null, false)).thenReturn("/roller/testblog/");
+        when(urls.getWeblogURL(weblog, null, false)).thenReturn("/pressroom/testblog/");
         when(urls.getWeblogURL(weblog, null, true)).thenReturn("http://example.com/testblog/");
 
         // No static locator: the strategy the wrapper was GIVEN is the only
         // source of its urls (spec Decision 6).
-        assertEquals("/roller/testblog/", wrapper.getURL());
+        assertEquals("/pressroom/testblog/", wrapper.getURL());
         assertEquals("http://example.com/testblog/", wrapper.getAbsoluteURL(),
                 "Feeds and notification e-mails are read away from the site and need the "
                         + "absolute form; swapping the two produces links that 404 in a "
@@ -342,9 +342,9 @@ class WeblogWrapperDelegationTest {
         WeblogTemplate stylesheet = template("Stylesheet", "custom.css");
         when(theme.getStylesheet()).thenReturn(stylesheet);
         when(urls.getWeblogPageURL(weblog, null, "custom.css", null, null, null, null, 0, false))
-                .thenReturn("/roller/testblog/page/custom.css");
+                .thenReturn("/pressroom/testblog/page/custom.css");
 
-        assertEquals("/roller/testblog/page/custom.css?v=" + ServingSince.started() / 1000,
+        assertEquals("/pressroom/testblog/page/custom.css?v=" + ServingSince.started() / 1000,
                 wrapper.getStylesheet(), "The stylesheet link has to be resolved through the URL strategy; emitting "
                 + "the template's own link would produce a URL relative to the page");
     }
@@ -360,11 +360,11 @@ class WeblogWrapperDelegationTest {
         WeblogTemplate stylesheet = template("Stylesheet", "custom.css");
         when(theme.getStylesheet()).thenReturn(stylesheet);
         when(urls.getWeblogPageURL(weblog, null, "custom.css", null, null, null, null, 0, false))
-                .thenReturn("/roller/testblog/page/custom.css");
+                .thenReturn("/pressroom/testblog/page/custom.css");
         long changed = ServingSince.started() + 5_000L;
         weblog.setLastModified(new Date(changed));
 
-        assertEquals("/roller/testblog/page/custom.css?v=" + changed / 1000, wrapper.getStylesheet());
+        assertEquals("/pressroom/testblog/page/custom.css?v=" + changed / 1000, wrapper.getStylesheet());
     }
 
     @Test

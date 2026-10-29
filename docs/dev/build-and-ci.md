@@ -169,9 +169,9 @@ A flake goes here once it is explained; a rerun that passes explains nothing.
   before a release.
 - **CodeQL** (`codeql-analysis.yml`): weekly + `workflow_dispatch`.
 - **Publishing happens only on a `v*.*.*` tag** (`release.yml`): pushes
-  `ghcr.io/jakefearsd/roller:<version>` and
-  `ghcr.io/jakefearsd/roller-caddy:<version>` (plus `:latest`,
-  `:sha-<short>`), extracts the WAR from the `roller` image into a
+  `ghcr.io/jakefearsd/pressroom:<version>` and
+  `ghcr.io/jakefearsd/pressroom-caddy:<version>` (plus `:latest`,
+  `:sha-<short>`), extracts the WAR from the `pressroom` image into a
   GitHub Release with the deploy bundle (`docker-compose.prod.yml`,
   `env.example`, `deploy.sh`). The asset is `deploy/.env.example` renamed: a
   release asset whose name starts with a dot would not download as itself.
@@ -229,7 +229,7 @@ nightlies are the same defect. `docs/dev/browser-its.md`, "A click is not a
 barrier", has the family and `IT_LATE_CLICK_MS`.
 
 The general rule stands: on the next unexplained 403, read
-`it-selenium/target/it-work/roller-<run id>/roller.log` (the IT app runs
+`it-selenium/target/it-work/pressroom-<run id>/pressroom.log` (the IT app runs
 `CsrfFilter`, `ExceptionTranslationFilter` and the interceptor at DEBUG for
 this; every named logger also writes to the console, so the run's stdout log
 beside it carries the same lines), and capture what else was in flight from the failsafe report

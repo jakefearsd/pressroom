@@ -359,7 +359,7 @@ limitations under the License.
              (com.wikantik.pressroom.**), and `dependency:tree` shows it was only
              present because of this now-deleted declaration - nothing else
              in the graph pulls it transitively. Confirmed at runtime too: a
-             `java -jar` boot smoke against a migrated ./roller db dev
+             `java -jar` boot smoke against a migrated ./pressroom db dev
              database - full PressroomLifecycle/EclipseLink/Lucene bootstrap,
              front page (302) and login page (200) both serve - with zero
              JAXB-related exceptions in pressroom.log. -->
@@ -443,13 +443,13 @@ limitations under the License.
              coordinate). The packages now publish real releases (Sans 1.1.0,
              Mono 2.5.0, Serif 2.0.0; 0.0.3-alpha.0 was the only version for
              years) with the same fonts/complete/woff2 layout; the CSS url()s
-             carry the version, so a bump here means editing roller-tokens.css,
+             carry the version, so a bump here means editing pressroom-tokens.css,
              journal-custom.css and frontpage-custom.css too, and
              WebjarReferenceTest fails if one is missed. The glyphs
              themselves are IBM's released OFL-1.1 Plex fonts
              (license text ships inside the jar at
              META-INF/resources/webjars/ibm__plex-*/*/LICENSE.txt), not a
-             prerelease build of the typeface. roller-tokens.css declares
+             prerelease build of the typeface. pressroom-tokens.css declares
              @font-face for exactly the weights the spec uses: Sans 450
              (body) and 600 (headings/labels), Mono 400 (data). -->
         <dependency>
@@ -468,7 +468,7 @@ limitations under the License.
              journal theme's serif titles/prose (docs/design/journal/,
              Theme Wave Stage 2). Same coordinate shape as Sans/Mono.
              journal-custom.css declares @font-face for weights 400 (body)
-             and 600 (titles/headings), the way roller-tokens.css does for
+             and 600 (titles/headings), the way pressroom-tokens.css does for
              Sans/Mono. -->
         <dependency>
             <groupId>org.webjars.npm</groupId>
@@ -900,7 +900,7 @@ limitations under the License.
 
     <build>
 
-        <finalName>roller</finalName>
+        <finalName>pressroom</finalName>
 
         <plugins>
 
@@ -922,7 +922,7 @@ limitations under the License.
 
             <!-- Rewrites the primary WAR into an executable one (Boot loader
                  classes + WEB-INF/lib-provided) after maven-war-plugin builds it.
-                 `java -jar app/target/roller.war` runs it standalone; the same
+                 `java -jar app/target/pressroom.war` runs it standalone; the same
                  WAR can still be deployed unpacked to an external container. -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
@@ -1037,7 +1037,7 @@ limitations under the License.
                             <goal>copy-resources</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>${project.build.directory}/roller/WEB-INF/classes/dbscripts</outputDirectory>
+                            <outputDirectory>${project.build.directory}/pressroom/WEB-INF/classes/dbscripts</outputDirectory>
                             <resources>
                                 <resource>
                                     <directory>target/dbscripts</directory>

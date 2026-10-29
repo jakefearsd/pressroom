@@ -50,7 +50,7 @@ class McpIT extends PressroomIT {
     // ---------------------------------------------------------- the endpoint
 
     @Test
-    void initializeAnswersAsRollerWithNoSession() throws Exception {
+    void initializeAnswersAsPressroomWithNoSession() throws Exception {
         Token token = mint("McpIT initialize", "ADMIN", null);
         try {
             HttpResponse<String> response = post(token.raw(), rpcBody("initialize", Map.of(

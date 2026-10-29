@@ -119,7 +119,7 @@ class CustomDomainRulesTest {
     @Test
     void schemePortAndPathAreIgnoredWhenComparingToTheSiteHost() {
         assertTrue(CustomDomainRules.isSiteHost(
-                "blog.example.com", "http://blog.example.com:8080/roller"));
+                "blog.example.com", "http://blog.example.com:8080/pressroom"));
     }
 
     @Test

@@ -305,7 +305,7 @@ class WeblogConfigControllerTest extends EditorControllerTestSupport {
     /** Scheme and path in site.absoluteurl must not defeat the host comparison. */
     @Test
     void claimingTheSitesOwnHostnameIsRejectedRegardlessOfSchemeOrPath() throws Exception {
-        givenRuntimeProperty("site.absoluteurl", "https://blog.example.com/roller");
+        givenRuntimeProperty("site.absoluteurl", "https://blog.example.com/pressroom");
         bean.setCustomDomain("blog.example.com");
 
         controller.save(request, model, bean);

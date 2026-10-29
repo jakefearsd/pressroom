@@ -255,16 +255,16 @@ class ControlPlaneHostFilterTest {
      */
     @Test
     void aContextPathIsStrippedFromThePathAndReappliedViaSiteAbsoluteUrl() throws Exception {
-        givenSiteAbsoluteUrl(SITE_URL + "/roller");
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/roller/pressroom-ui/menu.rol");
-        request.setContextPath("/roller");
+        givenSiteAbsoluteUrl(SITE_URL + "/pressroom");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/pressroom/pressroom-ui/menu.rol");
+        request.setContextPath("/pressroom");
         request.addHeader("Host", VHOST);
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
 
         filter.doFilter(request, response, chain);
 
-        assertEquals("https://control.example.com/roller/pressroom-ui/menu.rol",
+        assertEquals("https://control.example.com/pressroom/pressroom-ui/menu.rol",
                 response.getHeader("Location"));
     }
 

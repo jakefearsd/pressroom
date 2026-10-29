@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-/** The public-URL front door: /roller/<handle>/... → rendering servlet forwards. */
+/** The public-URL front door: /pressroom/<handle>/... → rendering servlet forwards. */
 class WeblogRequestMapperTest {
 
     private User user;
@@ -84,7 +84,7 @@ class WeblogRequestMapperTest {
     }
 
     private MockHttpServletRequest publicUrl(String method, String uriAfterContext) {
-        return publicUrlAt("/roller", method, uriAfterContext);
+        return publicUrlAt("/pressroom", method, uriAfterContext);
     }
 
     /**
@@ -168,7 +168,7 @@ class WeblogRequestMapperTest {
      * so it must carry the context path. A leading-slash location is resolved
      * by the container against the SERVER root, not the application root
      * (Servlet 6.1, {@code sendRedirect}) -- so dropping the context sends a
-     * reader deployed at /roller to /mapperblog/, which 404s.
+     * reader deployed at /pressroom to /mapperblog/, which 404s.
      */
     @Test
     void missingTrailingSlashRedirects() throws Exception {
@@ -177,7 +177,7 @@ class WeblogRequestMapperTest {
 
         assertTrue(mapper.handleRequest(request, response));
         assertNotNull(response.getRedirectedUrl(), "must redirect to the canonical slash form");
-        assertEquals("/roller/mapperblog/", response.getRedirectedUrl());
+        assertEquals("/pressroom/mapperblog/", response.getRedirectedUrl());
     }
 
     /** The same redirect at the root context, where there is no prefix to add. */
@@ -274,7 +274,7 @@ class WeblogRequestMapperTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(mapper.handleRequest(request, response));
-        assertEquals("/roller/mapperblog/en/", response.getRedirectedUrl());
+        assertEquals("/pressroom/mapperblog/en/", response.getRedirectedUrl());
     }
 
     /**
@@ -318,7 +318,7 @@ class WeblogRequestMapperTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(mapper.handleRequest(request, response));
-        assertEquals("/roller/mapperblog/?page=2", response.getRedirectedUrl());
+        assertEquals("/pressroom/mapperblog/?page=2", response.getRedirectedUrl());
     }
 
     /**
@@ -606,7 +606,7 @@ class WeblogRequestMapperTest {
      * unlike the mapper's OWN trailing-slash redirect (see
      * {@link #missingTrailingSlashRedirects}) the target is built from
      * {@code pathInfo}, which is already context-stripped -- the context path
-     * has to be re-added, or a reader deployed at /roller is sent to
+     * has to be re-added, or a reader deployed at /pressroom is sent to
      * https://vhost.example.com/entry/my-post, which 404s on that same
      * deployment.
      */
@@ -619,7 +619,7 @@ class WeblogRequestMapperTest {
 
         assertTrue(mapper.handleRequest(request, response));
         assertEquals(301, response.getStatus());
-        assertEquals("https://vhost.example.com/roller/entry/my-post",
+        assertEquals("https://vhost.example.com/pressroom/entry/my-post",
                 response.getRedirectedUrl());
     }
 
@@ -636,7 +636,7 @@ class WeblogRequestMapperTest {
 
         assertTrue(mapper.handleRequest(request, response));
         assertEquals(301, response.getStatus());
-        assertEquals("https://vhost.example.com/roller/", response.getRedirectedUrl());
+        assertEquals("https://vhost.example.com/pressroom/", response.getRedirectedUrl());
     }
 
     @Test
@@ -720,7 +720,7 @@ class WeblogRequestMapperTest {
      * trailing-slash redirect branch. On the site host that branch's target
      * legitimately carries the handle -- but on a custom domain the handle
      * was never in the path to begin with, so appending it here leaked it
-     * back into a url that only 404s: {@code /roller/mapperblog/de/} on a
+     * back into a url that only 404s: {@code /pressroom/mapperblog/de/} on a
      * host that resolves the ENTIRE path as weblog-relative.
      */
     @Test
@@ -916,7 +916,7 @@ class WeblogRequestMapperTest {
 
         assertTrue(mapper.handleRequest(publicUrl("GET", "/mapperhome"), response));
         assertEquals(301, response.getStatus());
-        assertEquals("/roller/", response.getHeader("Location"));
+        assertEquals("/pressroom/", response.getHeader("Location"));
         assertNull(response.getForwardedUrl());
     }
 
@@ -960,7 +960,7 @@ class WeblogRequestMapperTest {
 
             assertTrue(mapper.handleRequest(publicUrl("GET", "/mapperclash"), response));
             assertNull(response.getForwardedUrl());
-            assertEquals("/roller/mapperclash/", response.getRedirectedUrl(),
+            assertEquals("/pressroom/mapperclash/", response.getRedirectedUrl(),
                     "the blog's own trailing-slash redirect, not the site page");
         } finally {
             TestUtils.teardownWeblog(clash.getId());
@@ -1046,7 +1046,7 @@ class WeblogRequestMapperTest {
                 "/pressroom-ui/rendering/resources/site-space/img/logo.png",
                 "/site-space/mediaresource/abc123",
                 "/pressroom-ui/rendering/media-resources/site-space/abc123");
-        for (String contextPath : new String[] {"/roller", ""}) {
+        for (String contextPath : new String[] {"/pressroom", ""}) {
             for (Map.Entry<String, String> route : expected.entrySet()) {
                 MockHttpServletResponse response = new MockHttpServletResponse();
                 assertTrue(mapper.handleRequest(

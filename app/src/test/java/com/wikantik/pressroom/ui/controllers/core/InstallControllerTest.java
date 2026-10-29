@@ -118,7 +118,7 @@ class InstallControllerTest {
     void aDatabaseConnectionFailureShowsTheVisitorNoConnectionDetails() {
         StartupException failure = new StartupException("could not connect",
                 new IllegalStateException("connection refused"),
-                List.of("-- Using JDBC connection URL: jdbc:postgresql://db.internal:5432/roller",
+                List.of("-- Using JDBC connection URL: jdbc:postgresql://db.internal:5432/pressroom",
                         "-- Using JDBC username: pressroom_app"));
         setStartupField("dbProviderException", failure);
 

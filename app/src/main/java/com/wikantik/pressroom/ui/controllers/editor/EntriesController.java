@@ -347,7 +347,7 @@ public class EntriesController extends BaseController {
      * view name, because Spring's {@code InternalResourceViewResolver} has
      * {@code redirectContextRelative=true} and prepends the context path
      * AGAIN. Under a servlet prefix that produced {@code
-     * /roller/roller/pressroom-ui/authoring/entries.rol} and a 404 -- invisible
+     * /pressroom/pressroom/pressroom-ui/authoring/entries.rol} and a 404 -- invisible
      * at the root context, where both prefixes are empty. The query string
      * still comes from the shared {@link #filterParams}, so the redirect and
      * the pager's base url cannot drift apart on which filters they carry.

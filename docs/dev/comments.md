@@ -88,7 +88,7 @@ moderation page, the account page, the API. Nothing else saves a
 
   A missing or unusable value falls back to its default, never to no limit.
   `CommentService.limit` is the one place an allowed count becomes a throttle
-  threshold. The browser suite raises them (`roller-it.properties`:
+  threshold. The browser suite raises them (`pressroom-it.properties`:
   1000/600/10000) so `CommentsIT` is never one owner write from a 429; the unit
   tests prove the defaults.
 - **Logging:** logger `pressroom.comments` (routed to pressroom.log): ids, statuses,

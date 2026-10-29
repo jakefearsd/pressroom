@@ -85,7 +85,7 @@ class PressroomHandlerInterceptorTest {
 
     private static final String LOGIN = "/pressroom-ui/login.rol";
     private static final String ACCESS_DENIED = "/pressroom-ui/access-denied.rol";
-    private static final String CONTEXT = "/roller";
+    private static final String CONTEXT = "/pressroom";
 
     private PressroomHandlerInterceptor interceptor;
     private MockHttpServletRequest request;

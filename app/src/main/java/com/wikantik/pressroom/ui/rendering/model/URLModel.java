@@ -88,7 +88,7 @@ public class URLModel implements Model {
     }
     
     
-    /** Relative URL of Roller, e.g. /roller */
+    /** Relative URL of Roller, e.g. /pressroom */
     public String getSite() {
         return WebloggerRuntimeConfig.getRelativeContextURL();
     }

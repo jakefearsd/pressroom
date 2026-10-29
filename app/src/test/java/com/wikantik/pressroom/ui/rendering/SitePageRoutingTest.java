@@ -49,7 +49,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * only by a container forward (the mapper's, {@code index.jsp}'s), so these
  * requests are FORWARD-dispatched; the one that is not is the crafted direct
  * request to the servlet's own path, which must not serve the site space
- * (spec AC7: not reachable by its internal handle). Context {@code /roller}.
+ * (spec AC7: not reachable by its internal handle). Context {@code /pressroom}.
  */
 class SitePageRoutingTest {
 

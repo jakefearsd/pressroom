@@ -827,11 +827,11 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         // An absolute-root iframe src under a servlet prefix loads the site
         // root instead -- the trap ContactShortcode already hit.
         String previous = WebloggerRuntimeConfig.getRelativeContextURL();
-        WebloggerRuntimeConfig.setRelativeContextURL("/roller");
+        WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
         try {
             controller.edit(null, requestFor(weblogA), model);
 
-            assertEquals("/roller/pressroom-ui/authoring/preview/" + WEBLOG_HANDLE + "/?shell=true",
+            assertEquals("/pressroom/pressroom-ui/authoring/preview/" + WEBLOG_HANDLE + "/?shell=true",
                     model.getAttribute("previewShellURL"));
         } finally {
             WebloggerRuntimeConfig.setRelativeContextURL(previous);

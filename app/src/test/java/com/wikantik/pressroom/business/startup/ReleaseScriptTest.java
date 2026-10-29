@@ -158,7 +158,7 @@ class ReleaseScriptTest {
         assertEquals("""
                 mvn clean install
                 mvn verify -Pit -DskipUnitTests=true
-                mvn verify -Pit -DskipUnitTests=true -Dit.context.path=roller
+                mvn verify -Pit -DskipUnitTests=true -Dit.context.path=pressroom
                 """, calls());
     }
 

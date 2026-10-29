@@ -85,22 +85,22 @@ removed in favour of a single, tested schema.
 git clone https://github.com/jakefearsd/roller.git
 cd roller
 mvn -DskipTests=true install
-./roller dev     # starts PostgreSQL, applies migrations, seeds an admin,
+./pressroom dev     # starts PostgreSQL, applies migrations, seeds an admin,
                  # runs spring-boot:run
 ```
 
 Browse to http://localhost:8083/ and sign in as `admin`.
 
 The password is generated on that first run, printed once, and stored in
-`.roller-dev-secret` (mode 0600, git-ignored) — `cat` it any time. Edit that
-file to choose your own; the next `./roller db|dev|reset` applies it. Nothing
+`.pressroom-dev-secret` (mode 0600, git-ignored) — `cat` it any time. Edit that
+file to choose your own; the next `./pressroom db|dev|reset` applies it. Nothing
 is ever committed, and no configuration can make Roller store a password in
 plain text.
 
 To drive the REST API locally:
 
 ```bash
-./roller token   # mints a bearer token for that admin
+./pressroom token   # mints a bearer token for that admin
 ```
 
 Optional: install `cwebp` (package `webp` on Debian/Ubuntu, `libwebp-tools`
@@ -113,7 +113,7 @@ JPEG/PNG-only rendition ladder and everything else works the same.
 ```bash
 mvn -DskipTests=true -pl app install
 java -Dpressroom.custom.config=app/target/test-classes/pressroom-boot-dev.properties \
-    -jar app/target/roller.war --server.port=8083
+    -jar app/target/pressroom.war --server.port=8083
 ```
 
 `-Dpressroom.custom.config` is a JVM system property, so it goes before `-jar`.
@@ -121,15 +121,15 @@ After it, it is a program argument that nothing reads, and startup fails with
 "No custom properties file found".
 
 No Maven plugin or IDE involved — the WAR embeds Tomcat and runs standalone
-(requires a running, migrated PostgreSQL; `./roller db` starts one).
+(requires a running, migrated PostgreSQL; `./pressroom db` starts one).
 
 ### Option 3: PostgreSQL via compose
 
-`./roller dev` starts PostgreSQL for you. To run it yourself instead:
+`./pressroom dev` starts PostgreSQL for you. To run it yourself instead:
 
 ```bash
 docker compose up -d   # starts PostgreSQL only, for local dev
-./roller migrate       # applies the migrations
+./pressroom migrate       # applies the migrations
 ```
 
 ### Production

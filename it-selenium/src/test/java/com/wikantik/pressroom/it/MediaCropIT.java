@@ -379,7 +379,7 @@ class MediaCropIT extends PressroomIT {
     /** Media file names come from the uploaded file's name, so copy the fixture. */
     private static File uniquelyNamedCopy(File original, String uniqueName) {
         try {
-            Path dir = Files.createTempDirectory("roller-it-upload");
+            Path dir = Files.createTempDirectory("pressroom-it-upload");
             dir.toFile().deleteOnExit();
             Path copy = dir.resolve(uniqueName);
             Files.copy(original.toPath(), copy);

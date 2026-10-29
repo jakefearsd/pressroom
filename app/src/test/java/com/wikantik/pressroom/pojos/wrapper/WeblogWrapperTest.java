@@ -225,9 +225,9 @@ class WeblogWrapperTest {
     void aBareIconFilenameIsResolvedAgainstTheWeblogsUploads() {
         weblog.setIconPath("icon.png");
         when(urls.getWeblogResourceURL(weblog, "icon.png", false))
-                .thenReturn("/roller/testblog/resource/icon.png");
+                .thenReturn("/pressroom/testblog/resource/icon.png");
 
-        assertEquals("/roller/testblog/resource/icon.png", wrapper.getIcon(),
+        assertEquals("/pressroom/testblog/resource/icon.png", wrapper.getIcon(),
                 "A bare filename names a file in the weblog's own uploads area and has "
                         + "to be expanded into a URL; emitting it unchanged would resolve "
                         + "against whatever page happened to be rendering");

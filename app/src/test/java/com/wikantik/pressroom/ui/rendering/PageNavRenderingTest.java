@@ -55,7 +55,7 @@ class PageNavRenderingTest {
             List.of("journal", "portfolio", "travel");
 
     private static final String HANDLE = "pagenavrenderblog";
-    private static final String BASE = "/roller/" + HANDLE;
+    private static final String BASE = "/pressroom/" + HANDLE;
 
     private User user;
     private Weblog weblog;
@@ -223,7 +223,7 @@ class PageNavRenderingTest {
         // path). Skipping this step would test something a browser can never
         // actually send.
         String pathInfo = URI.create("http://example.invalid"
-                        + href.substring("/roller".length()))
+                        + href.substring("/pressroom".length()))
                 .getPath();
 
         MockHttpServletRequest request = RenderingTestSupport

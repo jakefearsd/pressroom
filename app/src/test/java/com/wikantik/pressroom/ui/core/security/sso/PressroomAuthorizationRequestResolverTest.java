@@ -58,8 +58,8 @@ class PressroomAuthorizationRequestResolverTest {
         "https://blog.example|https://blog.example/pressroom-ui/sso/callback",
         "https://blog.example/|https://blog.example/pressroom-ui/sso/callback",
         "https://blog.example//|https://blog.example/pressroom-ui/sso/callback",
-        "http://localhost:8080/roller|http://localhost:8080/roller/pressroom-ui/sso/callback",
-        "http://localhost:8080/roller/|http://localhost:8080/roller/pressroom-ui/sso/callback"}, delimiter = '|')
+        "http://localhost:8080/pressroom|http://localhost:8080/pressroom/pressroom-ui/sso/callback",
+        "http://localhost:8080/pressroom/|http://localhost:8080/pressroom/pressroom-ui/sso/callback"}, delimiter = '|')
     void trailingSlashIsNotDoubled(String absolute, String expectedCallback) {
         OAuth2AuthorizationRequest r = resolver(() -> absolute).resolve(authorize());
         assertNotNull(r);
@@ -73,11 +73,11 @@ class PressroomAuthorizationRequestResolverTest {
 
     @Test
     void underAContextPathTheAuthorizationEndpointStillMatches() {
-        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/roller/pressroom-ui/sso/authorize/oidc");
-        req.setContextPath("/roller");
-        OAuth2AuthorizationRequest r = resolver(() -> "https://blog.example/roller").resolve(req);
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/pressroom/pressroom-ui/sso/authorize/oidc");
+        req.setContextPath("/pressroom");
+        OAuth2AuthorizationRequest r = resolver(() -> "https://blog.example/pressroom").resolve(req);
         assertNotNull(r);
-        assertEquals("https://blog.example/roller/pressroom-ui/sso/callback", r.getRedirectUri());
+        assertEquals("https://blog.example/pressroom/pressroom-ui/sso/callback", r.getRedirectUri());
     }
 
     @Test

@@ -46,7 +46,7 @@ import static org.mockito.Mockito.when;
  */
 class ImageShortcodeTest {
 
-    private static final String URL = "http://example.com/roller/blog/mediaresource/mf-1";
+    private static final String URL = "http://example.com/pressroom/blog/mediaresource/mf-1";
 
     private ImageShortcode shortcode;
     private Weblog weblog;

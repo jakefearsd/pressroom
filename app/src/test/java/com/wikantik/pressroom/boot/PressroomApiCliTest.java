@@ -246,7 +246,7 @@ class PressroomApiCliTest {
     }
 
     /**
-     * --password-stdin is what lets ./roller token (and CI) log in without a
+     * --password-stdin is what lets ./pressroom token (and CI) log in without a
      * terminal. It must be a real case label, not just a line of usage text.
      */
     @Test

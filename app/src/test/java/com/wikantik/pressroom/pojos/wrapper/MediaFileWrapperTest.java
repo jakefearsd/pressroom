@@ -177,7 +177,7 @@ class MediaFileWrapperTest {
         }
     }
 
-    private static final String PERMALINK = "http://example.com/roller/testblog/media-resources/abc123";
+    private static final String PERMALINK = "http://example.com/pressroom/testblog/media-resources/abc123";
 
     private void withMockedPermalink(Runnable body) {
         // The strategy the wrapper was GIVEN is the only source of its urls

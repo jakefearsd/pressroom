@@ -62,8 +62,8 @@ class WeblogRequestMapperProtectedUrlsTest {
     }
 
     private static MockHttpServletRequest get(String uri) {
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/roller" + uri);
-        request.setContextPath("/roller");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/pressroom" + uri);
+        request.setContextPath("/pressroom");
         return request;
     }
 

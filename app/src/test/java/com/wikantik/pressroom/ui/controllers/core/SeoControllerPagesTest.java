@@ -47,7 +47,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class SeoControllerPagesTest {
 
-    private static final String ABSOLUTE_CONTEXT = "http://localhost:8080/roller";
+    private static final String ABSOLUTE_CONTEXT = "http://localhost:8080/pressroom";
 
     private SeoController controller;
     private User user;
@@ -57,7 +57,7 @@ class SeoControllerPagesTest {
     void setUp() throws Exception {
         TestUtils.setupWeblogger();
         WebloggerRuntimeConfig.setAbsoluteContextURL(ABSOLUTE_CONTEXT);
-        WebloggerRuntimeConfig.setRelativeContextURL("/roller");
+        WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
 
         user = TestUtils.setupUser("seoPagesUser");
         weblog = TestUtils.setupWeblog("seopagesblog", user);

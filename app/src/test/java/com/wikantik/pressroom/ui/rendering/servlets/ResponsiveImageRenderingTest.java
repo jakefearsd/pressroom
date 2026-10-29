@@ -60,7 +60,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ResponsiveImageRenderingTest {
 
     private static final String HANDLE = "responsiverenderblog";
-    private static final String BASE = "http://localhost:8080/roller/" + HANDLE;
+    private static final String BASE = "http://localhost:8080/pressroom/" + HANDLE;
 
     private User user;
     private Weblog weblog;

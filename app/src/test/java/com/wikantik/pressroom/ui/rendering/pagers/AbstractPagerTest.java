@@ -42,7 +42,7 @@ import static org.mockito.Mockito.mock;
  */
 class AbstractPagerTest {
 
-    private static final String BASE_URL = "http://localhost/roller/users";
+    private static final String BASE_URL = "http://localhost/pressroom/users";
 
     /**
      * Minimal concrete pager.
@@ -213,12 +213,12 @@ class AbstractPagerTest {
         // SiteModel and the feed models build a pager and then retarget it, so
         // these setters are part of the contract.
         FixedPager pager = new FixedPager(0, List.of("a"), true);
-        pager.setUrl("http://localhost/roller/weblogs");
+        pager.setUrl("http://localhost/pressroom/weblogs");
         pager.setPage(2);
 
-        assertEquals("http://localhost/roller/weblogs", pager.getUrl());
+        assertEquals("http://localhost/pressroom/weblogs", pager.getUrl());
         assertEquals(2, pager.getPage());
-        assertEquals("http://localhost/roller/weblogs?page=3", pager.getNextLink(),
+        assertEquals("http://localhost/pressroom/weblogs?page=3", pager.getNextLink(),
                 "Links must be built from the reassigned url and page");
         assertNotNull(pager.getPrevLink(), "Page 2 has a previous page");
     }

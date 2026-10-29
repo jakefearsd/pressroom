@@ -54,7 +54,7 @@ import static org.mockito.Mockito.when;
  */
 class SearchResultsPagerTest {
 
-    private static final String WEBLOG_URL = "http://localhost/roller/myblog/";
+    private static final String WEBLOG_URL = "http://localhost/pressroom/myblog/";
 
     private URLStrategy urlStrategy;
     private Weblog weblog;

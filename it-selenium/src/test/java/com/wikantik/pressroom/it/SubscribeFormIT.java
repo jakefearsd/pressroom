@@ -52,7 +52,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * <p>The 404/503-by-status checks go through raw {@code HttpClient}, not the
  * browser: the forward legitimately fails in this environment (no Listmonk
  * configured, {@code newsletter.listmonk.baseurl} blank -- see {@code
- * roller-it.properties}), and asserting an exact status code from a browser
+ * pressroom-it.properties}), and asserting an exact status code from a browser
  * {@code fetch} would need reading the response back out of page script for
  * no benefit raw HTTP doesn't already give directly.
  *
@@ -100,7 +100,7 @@ class SubscribeFormIT extends PressroomIT {
         // Server-built, context-path-aware (SubscribeShortcode/#showSubscribeForm),
         // never a client-guessed absolute-root "/newsletter/subscribe" -- that
         // 404s under any non-root context path. baseUrl() already carries the
-        // context path (e.g. ".../roller"), so its own path component is what
+        // context path (e.g. ".../pressroom"), so its own path component is what
         // the injected form must be pointed at.
         String expectedEndpoint = URI.create(baseUrl()).getPath() + SUBSCRIBE_ENDPOINT;
         $(".subscribe-form-slot").shouldHave(attribute("data-endpoint", expectedEndpoint));

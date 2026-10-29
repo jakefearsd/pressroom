@@ -69,7 +69,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class SeoControllerSitemapTest {
 
-    private static final String ABSOLUTE_CONTEXT = "http://localhost:8080/roller";
+    private static final String ABSOLUTE_CONTEXT = "http://localhost:8080/pressroom";
     private static final String HANDLE = "seositemapblog";
     private static final Instant BASE = Instant.parse("2026-01-01T00:00:00Z");
 
@@ -81,7 +81,7 @@ class SeoControllerSitemapTest {
     void setUp() throws Exception {
         TestUtils.setupWeblogger();
         WebloggerRuntimeConfig.setAbsoluteContextURL(ABSOLUTE_CONTEXT);
-        WebloggerRuntimeConfig.setRelativeContextURL("/roller");
+        WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
 
         user = TestUtils.setupUser("seoSitemapUser");
         weblog = TestUtils.setupWeblog(HANDLE, user);
@@ -206,7 +206,7 @@ class SeoControllerSitemapTest {
     void aSelfCanonicalSpelledDifferentlyStillKeepsTheItem() throws Exception {
         // Not localhost: the canonical validator refuses a local host, so a
         // localhost canonical is no override at all and would prove nothing.
-        String context = "http://blog.example.com:8080/roller";
+        String context = "http://blog.example.com:8080/pressroom";
         WebloggerRuntimeConfig.setAbsoluteContextURL(context);
         try {
             String root = context + "/" + HANDLE + "/";
@@ -215,7 +215,7 @@ class SeoControllerSitemapTest {
             WeblogEntry encoded = entry("encoded-entry", PubStatus.PUBLISHED, 3, null, false);
             WeblogEntry elsewhere = entry("elsewhere-entry", PubStatus.PUBLISHED, 4, null, false);
             canonical(slash, root + "entry/slash-entry/");
-            canonical(scheme, "https://BLOG.example.com:8080/roller/" + HANDLE + "/entry/scheme-entry");
+            canonical(scheme, "https://BLOG.example.com:8080/pressroom/" + HANDLE + "/entry/scheme-entry");
             canonical(encoded, root + "entry/%65ncoded-entry");
             canonical(elsewhere, root + "entry/some-other-entry");
 
@@ -450,7 +450,7 @@ class SeoControllerSitemapTest {
             weblogs().saveWeblog(managed);
             TestUtils.endSession(true);
 
-            assertTrue(sitemap().getBody().contains("<loc>https://sitemap.example.com/roller/</loc>"));
+            assertTrue(sitemap().getBody().contains("<loc>https://sitemap.example.com/pressroom/</loc>"));
         } finally {
             Weblog managed = TestUtils.getManagedWebsite(weblog);
             managed.setCustomDomain(null);

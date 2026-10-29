@@ -145,26 +145,26 @@ mvn -DskipTests=true install   # without tests
 # Dev server (PostgreSQL + migrations + spring-boot:run with
 # pressroom-boot-dev.properties) at http://localhost:8083, from the ROOT
 # (server.servlet.context-path=/). No code may assume a context path;
-# DEV_CONTEXT_PATH=/roller reproduces one (see Virtual hosts).
-./roller dev
+# DEV_CONTEXT_PATH=/pressroom reproduces one (see Virtual hosts).
+./pressroom dev
 
 # Or run the packaged WAR (default port 8080). -Dpressroom.custom.config is a JVM
 # system property, so it goes BEFORE -jar -- after it, it is an ignored program
 # argument and bootstrap fails ("No custom properties file found"). It must
 # name a real DB config:
 java -Dpressroom.custom.config=app/target/test-classes/pressroom-boot-dev.properties \
-    -jar app/target/roller.war --server.port=8083
+    -jar app/target/pressroom.war --server.port=8083
 # Health check (works before the tier bootstraps). Actuator is on its own
 # port, management.server.port=8090 (DispatcherServlet is *.rol only, so 8083
 # has no "/" catch-all). Never expose 8090 beyond the deploy host.
 # curl http://localhost:8090/actuator/health
 
 # Database-only helpers
-./roller db       # PostgreSQL + migrate, no app
-./roller migrate  # apply pending migrations
-./roller status   # show applied migrations
-./roller stop     # stop dev DB (data kept)
-./roller reset    # DESTROY dev DB volume and rebuild
+./pressroom db       # PostgreSQL + migrate, no app
+./pressroom migrate  # apply pending migrations
+./pressroom status   # show applied migrations
+./pressroom stop     # stop dev DB (data kept)
+./pressroom reset    # DESTROY dev DB volume and rebuild
 
 # Release and deploy (docs/dev/build-and-ci.md, "Releasing and deploying")
 bin/release.sh 0.2.3 [--skip-verify] [--push]  # verify, bump, commit, tag; push only when asked
@@ -268,7 +268,7 @@ done.
   `runtimeConfigDefs.xml` silently; a literal `{}` anywhere in
   `config/pmd/ruleset.xml` breaks PMD's ruleset merge.
 - **No code may assume a context path**: routing changes run the browser
-  suite at both `/` and `-Dit.context.path=roller`.
+  suite at both `/` and `-Dit.context.path=pressroom`.
 
 ## Module Organization
 

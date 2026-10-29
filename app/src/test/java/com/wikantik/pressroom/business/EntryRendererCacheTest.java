@@ -245,7 +245,7 @@ class EntryRendererCacheTest {
         // context url alone.
         renderer.cachedTransformedText(entry);
         probeOutput = "two";
-        WebloggerRuntimeConfig.setRelativeContextURL("/roller");
+        WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
 
         assertEquals("<p>Body <b>two</b></p>\n", renderer.cachedTransformedText(entry));
     }

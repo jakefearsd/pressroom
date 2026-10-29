@@ -68,7 +68,7 @@ class McpOriginValidatorTest {
 
     @Test
     void aNonDefaultPortIsPartOfTheOrigin() {
-        McpOriginValidator lan = new McpOriginValidator(() -> "http://docker2.lan:8080/roller");
+        McpOriginValidator lan = new McpOriginValidator(() -> "http://docker2.lan:8080/pressroom");
         assertDoesNotThrow(() -> lan.validate(headers("Origin", "http://docker2.lan:8080")));
         assertThrows(ServerTransportSecurityException.class,
                 () -> lan.validate(headers("Origin", "http://docker2.lan")));

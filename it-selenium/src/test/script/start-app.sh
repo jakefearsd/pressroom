@@ -29,11 +29,11 @@
 #   IT_OWNER_PID              build process that owns this app (default: $PPID,
 #                             which under exec-maven-plugin is the Maven JVM)
 #   IT_CONTEXT_PATH           bare context segment the app is deployed under,
-#                             e.g. "roller". EMPTY (the default) means the
+#                             e.g. "pressroom". EMPTY (the default) means the
 #                             root, which is what the app itself defaults to --
 #                             the suite tracks the shipped default rather than
 #                             pinning a prefix production does not use.
-#                             `mvn verify -Pit -Dit.context.path=roller` runs
+#                             `mvn verify -Pit -Dit.context.path=pressroom` runs
 #                             the whole suite under a prefix instead, which is
 #                             the only end-to-end coverage of that case.
 set -euo pipefail
@@ -49,7 +49,7 @@ APP_HEAP="${IT_APP_HEAP:-1g}"
 READY_TIMEOUT="${IT_READY_TIMEOUT_SECONDS:-180}"
 OWNER="$(it_owner_stamp "${IT_OWNER_PID:-$PPID}")"
 
-# The bare segment ("roller") becomes the servlet context path ("/roller") and
+# The bare segment ("pressroom") becomes the servlet context path ("/pressroom") and
 # the readiness url prefix. Empty means the root: Spring Boot normalises a lone
 # "/" to the empty string, so passing "/" is the same thing and keeps the
 # command line free of an empty-looking argument. URL_PREFIX must stay empty in
@@ -119,11 +119,11 @@ mkdir -p "$(dirname "$PIDFILE")" "$(dirname "$LOG")"
 # is affordable and the next occurrence names its cause. Those loggers reach
 # $LOG (log4j2.xml sends every logger to the console) and also log4j2's file
 # appender; pressroom.log.dir puts that file beside this run's stdout log
-# (roller-<run id>/roller.log) instead of in ./logs under the module, where
+# (pressroom-<run id>/pressroom.log) instead of in ./logs under the module, where
 # it was shared by every run and found by nobody.
 "$JAVA" -Xmx"$APP_HEAP" -Djava.awt.headless=true -Dpressroom.custom.config="$PROPS" \
      "${IT_RUN_PROP}$RUN_ID" "${IT_OWNER_PROP}$OWNER" \
-     "-Dpressroom.log.dir=$(dirname "$LOG")/roller-$RUN_ID" \
+     "-Dpressroom.log.dir=$(dirname "$LOG")/pressroom-$RUN_ID" \
      -jar "$WAR" --server.port="$PORT" --server.servlet.context-path="$CONTEXT_PATH" \
      --management.server.port=0 \
      --logging.level.org.springframework.security=DEBUG \

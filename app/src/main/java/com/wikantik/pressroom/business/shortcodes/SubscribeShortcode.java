@@ -38,7 +38,7 @@ import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
  * <p><b>{@code data-endpoint} is server-built, not client-guessed</b> --
  * exactly the same reasoning as {@link ContactShortcode}: the client-side
  * script cannot reliably rebuild the app's context path (e.g. {@code
- * /roller}) on its own, so an absolute-root {@code /newsletter/subscribe}
+ * /pressroom}) on its own, so an absolute-root {@code /newsletter/subscribe}
  * 404s under any non-root context path. {@link WebloggerRuntimeConfig}
  * carries the context path the {@code InitFilter} published for this exact
  * reason.

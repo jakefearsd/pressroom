@@ -108,7 +108,7 @@ class SubscribeFormRenderingTest {
                 assertTrue(body.contains("data-list-uuid=\"" + LIST_UUID + "\""),
                         theme + ": expected the exact stored uuid as the attribute value:\n"
                                 + body);
-                assertTrue(body.contains("data-endpoint=\"/roller/newsletter/subscribe\""),
+                assertTrue(body.contains("data-endpoint=\"/pressroom/newsletter/subscribe\""),
                         theme + ": expected the server-built, context-path-aware endpoint "
                                 + "(never a client-guessed absolute-root path):\n" + body);
                 assertTrue(body.contains("audience-hp"),

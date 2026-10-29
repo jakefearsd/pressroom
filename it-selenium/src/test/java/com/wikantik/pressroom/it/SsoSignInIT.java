@@ -63,7 +63,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Reader sign-in end to end: a real browser, the packaged WAR, and a real OIDC provider
- * (the run's Keycloak container, realm {@code roller-it}, see it-selenium/pom.xml). Covers
+ * (the run's Keycloak container, realm {@code pressroom-it}, see it-selenium/pom.xml). Covers
  * the acceptance criteria the spec marks (I), numbered as in
  * docs/superpowers/specs/2026-10-11-reader-sign-in-design.md; criterion 1 (SSO off) is
  * unit-tested only, because SSO is on for this whole suite.
@@ -108,7 +108,7 @@ class SsoSignInIT extends PressroomIT {
     private static final String MENU = "/pressroom-ui/menu.rol";
     private static final String USER_ADMIN = "/pressroom-ui/admin/userAdmin.rol";
 
-    /** Keycloak users in src/test/resources/keycloak/roller-it-realm.json. */
+    /** Keycloak users in src/test/resources/keycloak/pressroom-it-realm.json. */
     private static final String READER = "reader-it";
     private static final String UNVERIFIED = "unverified-it";
     private static final String NONAME = "noname-it";

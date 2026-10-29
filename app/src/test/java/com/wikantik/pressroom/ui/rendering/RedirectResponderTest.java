@@ -80,7 +80,7 @@ class RedirectResponderTest {
         // The Location must derive from the WEBLOG (the vhost-wave rule:
         // never from the request), so the strategy is the seam we stub.
         when(mock.urlStrategy().getWeblogURL(weblog, null, true))
-                .thenReturn("https://example.com/roller/testblog/");
+                .thenReturn("https://example.com/pressroom/testblog/");
 
         appender = new AbstractAppender("redirect-capture", null, null,
                 true, Property.EMPTY_ARRAY) {
@@ -119,14 +119,14 @@ class RedirectResponderTest {
     void aMatchAnswersWithA301DerivedFromTheWeblog() throws Exception {
         when(redirects.resolve(weblog, "/old-page")).thenReturn(rule("/old-page", "/new-page"));
         MockHttpServletRequest request =
-                new MockHttpServletRequest("GET", "/roller/testblog/old-page");
+                new MockHttpServletRequest("GET", "/pressroom/testblog/old-page");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         boolean answered = responder.answer(weblog, "/old-page", request, response);
 
         assertTrue(answered);
         assertEquals(HttpServletResponse.SC_MOVED_PERMANENTLY, response.getStatus());
-        assertEquals("https://example.com/roller/testblog/new-page",
+        assertEquals("https://example.com/pressroom/testblog/new-page",
                 response.getHeader("Location"));
     }
 
@@ -134,14 +134,14 @@ class RedirectResponderTest {
     void theQueryStringSurvivesTheRedirect() throws Exception {
         when(redirects.resolve(weblog, "/old-page")).thenReturn(rule("/old-page", "/new-page"));
         MockHttpServletRequest request =
-                new MockHttpServletRequest("GET", "/roller/testblog/old-page");
+                new MockHttpServletRequest("GET", "/pressroom/testblog/old-page");
         request.setQueryString("utm_source=old-newsletter&x=1");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(responder.answer(weblog, "/old-page", request, response));
 
         assertEquals(
-                "https://example.com/roller/testblog/new-page?utm_source=old-newsletter&x=1",
+                "https://example.com/pressroom/testblog/new-page?utm_source=old-newsletter&x=1",
                 response.getHeader("Location"));
     }
 
@@ -155,17 +155,17 @@ class RedirectResponderTest {
     void aForwardedRequestUsesTheOriginalUriAndQuery() throws Exception {
         when(redirects.resolve(weblog, "/old-page")).thenReturn(rule("/old-page", "/new-page"));
         MockHttpServletRequest request = new MockHttpServletRequest(
-                "GET", "/roller/pressroom-ui/rendering/page/testblog/old-page");
+                "GET", "/pressroom/pressroom-ui/rendering/page/testblog/old-page");
         request.setAttribute(RequestDispatcher.FORWARD_REQUEST_URI,
-                "/roller/testblog/old-page");
+                "/pressroom/testblog/old-page");
         request.setAttribute(RequestDispatcher.FORWARD_QUERY_STRING, "utm=1");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertTrue(responder.answer(weblog, "/old-page", request, response));
 
-        assertEquals("https://example.com/roller/testblog/new-page?utm=1",
+        assertEquals("https://example.com/pressroom/testblog/new-page?utm=1",
                 response.getHeader("Location"));
-        assertTrue(logged.get(0).contains("/roller/testblog/old-page?utm=1"),
+        assertTrue(logged.get(0).contains("/pressroom/testblog/old-page?utm=1"),
                 "the log names the url the reader asked for, not the internal forward: "
                         + logged.get(0));
     }
@@ -176,7 +176,7 @@ class RedirectResponderTest {
         matched.setOrigin(WeblogRedirect.Origin.SLUG_HISTORY);
         when(redirects.resolve(weblog, "/old-page")).thenReturn(matched);
         MockHttpServletRequest request =
-                new MockHttpServletRequest("GET", "/roller/testblog/old-page");
+                new MockHttpServletRequest("GET", "/pressroom/testblog/old-page");
         request.setQueryString("utm=1");
         request.addHeader("Referer", "https://linker.example/some-post");
         request.addHeader("User-Agent", "Googlebot/2.1");
@@ -189,9 +189,9 @@ class RedirectResponderTest {
         assertTrue(line.contains("testblog"), "weblog handle: " + line);
         assertTrue(line.contains(matched.getId()), "rule id: " + line);
         assertTrue(line.contains("SLUG_HISTORY"), "origin: " + line);
-        assertTrue(line.contains("/roller/testblog/old-page?utm=1"),
+        assertTrue(line.contains("/pressroom/testblog/old-page?utm=1"),
                 "requested uri with query: " + line);
-        assertTrue(line.contains("https://example.com/roller/testblog/new-page"),
+        assertTrue(line.contains("https://example.com/pressroom/testblog/new-page"),
                 "target: " + line);
         assertTrue(line.contains("https://linker.example/some-post"),
                 "referer: " + line);
@@ -203,7 +203,7 @@ class RedirectResponderTest {
         WeblogRedirect matched = rule("/old-page", "/new-page");
         when(redirects.resolve(weblog, "/old-page")).thenReturn(matched);
         MockHttpServletRequest request =
-                new MockHttpServletRequest("GET", "/roller/testblog/old-page");
+                new MockHttpServletRequest("GET", "/pressroom/testblog/old-page");
 
         responder.answer(weblog, "/old-page", request, new MockHttpServletResponse());
 
@@ -216,7 +216,7 @@ class RedirectResponderTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertFalse(responder.answer(weblog, "/never-was",
-                new MockHttpServletRequest("GET", "/roller/testblog/never-was"), response));
+                new MockHttpServletRequest("GET", "/pressroom/testblog/never-was"), response));
 
         assertNull(response.getHeader("Location"));
         assertEquals(200, response.getStatus(), "MockHttpServletResponse default");
@@ -236,7 +236,7 @@ class RedirectResponderTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertFalse(responder.answer(weblog, "/old-page",
-                new MockHttpServletRequest("GET", "/roller/testblog/old-page"), response));
+                new MockHttpServletRequest("GET", "/pressroom/testblog/old-page"), response));
 
         assertNull(response.getHeader("Location"));
     }

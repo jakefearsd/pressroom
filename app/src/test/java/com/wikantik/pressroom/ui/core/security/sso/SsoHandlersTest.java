@@ -74,11 +74,11 @@ class SsoHandlersTest {
     @Test
     void successRedirectsToTheStoredReturnPathAndClearsIt() throws Exception {
         try (SsoLogCapture log = SsoLogCapture.start()) {
-            MockHttpServletRequest req = callback("/roller", "/roller/blog/");
+            MockHttpServletRequest req = callback("/pressroom", "/pressroom/blog/");
             MockHttpServletResponse res = new MockHttpServletResponse();
             new SsoSuccessHandler(provider).onAuthenticationSuccess(req, res, reader("reader-abcdefghij", true));
 
-            assertEquals("/roller/blog/", res.getRedirectedUrl());
+            assertEquals("/pressroom/blog/", res.getRedirectedUrl());
             assertNull(req.getSession().getAttribute(ReturnPaths.SESSION_ATTRIBUTE));
             List<String> infos = log.lines(Level.INFO);
             assertEquals(1, infos.size(), infos.toString());
@@ -112,26 +112,26 @@ class SsoHandlersTest {
     @Test
     void successWithoutAStoredPathGoesToTheSiteRoot() throws Exception {
         MockHttpServletResponse res = new MockHttpServletResponse();
-        new SsoSuccessHandler(provider).onAuthenticationSuccess(callback("/roller", null), res,
+        new SsoSuccessHandler(provider).onAuthenticationSuccess(callback("/pressroom", null), res,
                 reader("reader-abcdefghij", false));
-        assertEquals("/roller/", res.getRedirectedUrl());
+        assertEquals("/pressroom/", res.getRedirectedUrl());
     }
 
     @Test
     void successWithoutASessionGoesToTheSiteRoot() throws Exception {
-        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/roller/pressroom-ui/sso/callback");
-        req.setContextPath("/roller");
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/pressroom/pressroom-ui/sso/callback");
+        req.setContextPath("/pressroom");
         MockHttpServletResponse res = new MockHttpServletResponse();
         new SsoSuccessHandler(provider).onAuthenticationSuccess(req, res, reader("reader-abcdefghij", false));
-        assertEquals("/roller/", res.getRedirectedUrl());
+        assertEquals("/pressroom/", res.getRedirectedUrl());
     }
 
     @Test
     void aStoredPathIsCheckedAgainBeforeItIsFollowed() throws Exception {
         MockHttpServletResponse res = new MockHttpServletResponse();
-        new SsoSuccessHandler(provider).onAuthenticationSuccess(callback("/roller", "https://evil.example/"), res,
+        new SsoSuccessHandler(provider).onAuthenticationSuccess(callback("/pressroom", "https://evil.example/"), res,
                 reader("reader-abcdefghij", false));
-        assertEquals("/roller/", res.getRedirectedUrl());
+        assertEquals("/pressroom/", res.getRedirectedUrl());
     }
 
     // ------------------------------------------------------------- failure
@@ -145,9 +145,9 @@ class SsoHandlersTest {
             OAuth2AuthenticationException ex = new OAuth2AuthenticationException(
                     new OAuth2Error(oauthError, "provider description jo@example.com", null),
                     "message carrying a token abc.def.ghi");
-            new SsoFailureHandler(provider).onAuthenticationFailure(callback("/roller", null), res, ex);
+            new SsoFailureHandler(provider).onAuthenticationFailure(callback("/pressroom", null), res, ex);
 
-            assertEquals("/roller/pressroom-ui/login.rol?sso=" + code, res.getRedirectedUrl());
+            assertEquals("/pressroom/pressroom-ui/login.rol?sso=" + code, res.getRedirectedUrl());
             List<String> warns = log.lines(Level.WARN);
             assertEquals(1, warns.size(), warns.toString());
             assertTrue(warns.get(0).contains(code), warns.get(0));

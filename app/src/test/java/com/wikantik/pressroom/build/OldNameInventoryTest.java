@@ -97,19 +97,15 @@ class OldNameInventoryTest {
     /** Keyed "KIND/area". Later phases lower these; the end state is empty. */
     static final Map<String, Integer> BASELINE = Map.ofEntries(
             Map.entry("CLASS/docs", 12),
-            Map.entry("MACHINE/build", 16),
-            Map.entry("MACHINE/deploy", 88),
-            Map.entry("MACHINE/docs", 243),
-            Map.entry("MACHINE/it", 61),
-            Map.entry("MACHINE/main-java", 14),
-            Map.entry("MACHINE/main-resources", 26),
-            Map.entry("MACHINE/other", 5),
-            Map.entry("MACHINE/test", 451),
+            Map.entry("MACHINE/build", 4),
+            Map.entry("MACHINE/deploy", 45),
+            Map.entry("MACHINE/docs", 193),
+            Map.entry("MACHINE/main-java", 2),
+            Map.entry("MACHINE/main-resources", 21),
+            Map.entry("MACHINE/test", 75),
             Map.entry("PACKAGE/docs", 115),
             Map.entry("PATH-CLASS/docs", 1),
-            Map.entry("PATH-MACHINE/deploy", 1),
             Map.entry("PATH-MACHINE/docs", 15),
-            Map.entry("PATH-MACHINE/it", 2),
             Map.entry("PATH-MACHINE/main-resources", 3),
             Map.entry("PATH-MACHINE/test", 2),
             Map.entry("PATH-PACKAGE/docs", 8),
@@ -195,7 +191,7 @@ class OldNameInventoryTest {
             return "build";
         }
         if (p.startsWith("deploy/") || p.startsWith("bin/") || p.equals("Dockerfile")
-                || p.matches("docker-compose[^/]*\\.yml") || p.equals("roller")) { // rebrand:keep
+                || p.matches("docker-compose[^/]*\\.yml") || p.equals("pressroom")) {
             return "deploy";
         }
         if (name.endsWith(".md") || p.startsWith("docs/")) {
@@ -331,7 +327,7 @@ class OldNameInventoryTest {
             {"bin/release.sh", "deploy"},
             {"Dockerfile", "deploy"},
             {"docker-compose.prod.yml", "deploy"},
-            {"roller", "deploy"}, // rebrand:keep
+            {"pressroom", "deploy"},
             {"README.md", "docs"},
             {"docs/dev/x.txt", "docs"},
             {"something.txt", "other"},

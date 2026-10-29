@@ -21,7 +21,7 @@ import static org.mockito.Mockito.mock;
  * One URL rule for pages: the site space lives at the context root, the page
  * named by {@code site.frontpage.page} is the root itself, and everything that
  * links a page (the strategy, {@code $url.staticPage}, the canonical link)
- * agrees. Run under context {@code /roller}, never the root context.
+ * agrees. Run under context {@code /pressroom}, never the root context.
  */
 class SiteSpaceUrlTest {
 
@@ -36,8 +36,8 @@ class SiteSpaceUrlTest {
     void setUp() {
         previousRelative = WebloggerRuntimeConfig.getRelativeContextURL();
         previousAbsolute = WebloggerRuntimeConfig.getAbsoluteContextURL();
-        WebloggerRuntimeConfig.setRelativeContextURL("/roller");
-        WebloggerRuntimeConfig.setAbsoluteContextURL("http://localhost:8080/roller");
+        WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
+        WebloggerRuntimeConfig.setAbsoluteContextURL("http://localhost:8080/pressroom");
         runtimeConfig = RuntimeConfigAttachment.answering("site.frontpage.page", "home");
         site = new Weblog(Weblog.SITE_SPACE_HANDLE, "admin", "Site", "d",
                 "a@example.com", "frontpage", "en_US", "UTC");
@@ -55,28 +55,28 @@ class SiteSpaceUrlTest {
 
     @Test
     void theSiteSpaceRootIsTheContextRoot() {
-        assertEquals("/roller/", strategy.getWeblogURL(site, null, false));
-        assertEquals("http://localhost:8080/roller/", strategy.getWeblogURL(site, null, true));
+        assertEquals("/pressroom/", strategy.getWeblogURL(site, null, false));
+        assertEquals("http://localhost:8080/pressroom/", strategy.getWeblogURL(site, null, true));
     }
 
     @Test
     void aSitePageHangsOffTheContextRoot() {
-        assertEquals("/roller/about", strategy.getWeblogStaticPageURL(site, "about", false));
-        assertEquals("http://localhost:8080/roller/about",
+        assertEquals("/pressroom/about", strategy.getWeblogStaticPageURL(site, "about", false));
+        assertEquals("http://localhost:8080/pressroom/about",
                 strategy.getWeblogStaticPageURL(site, "about", true));
     }
 
     @Test
     void theFrontDoorPageIsTheRootItself() {
-        assertEquals("/roller/", strategy.getWeblogStaticPageURL(site, "home", false));
-        assertEquals("http://localhost:8080/roller/",
+        assertEquals("/pressroom/", strategy.getWeblogStaticPageURL(site, "home", false));
+        assertEquals("http://localhost:8080/pressroom/",
                 strategy.getWeblogStaticPageURL(site, "home", true));
     }
 
     @Test
     void anOrdinaryBlogsPageNamedLikeTheFrontDoorIsStillItsOwn() {
-        assertEquals("/roller/blog/home", strategy.getWeblogStaticPageURL(ordinary, "home", false));
-        assertEquals("/roller/blog/about", strategy.getWeblogStaticPageURL(ordinary, "about", false));
+        assertEquals("/pressroom/blog/home", strategy.getWeblogStaticPageURL(ordinary, "home", false));
+        assertEquals("/pressroom/blog/about", strategy.getWeblogStaticPageURL(ordinary, "about", false));
     }
 
     /**
@@ -87,30 +87,30 @@ class SiteSpaceUrlTest {
      */
     @Test
     void assetUrlsOfTheSiteSpaceKeepTheHandle() {
-        assertEquals("/roller/site-space/page/frontpage-custom.css", strategy.getWeblogPageURL(
+        assertEquals("/pressroom/site-space/page/frontpage-custom.css", strategy.getWeblogPageURL(
                 site, null, "frontpage-custom.css", null, null, null, null, 0, false));
-        assertEquals("/roller/site-space/resource/img/logo.png",
+        assertEquals("/pressroom/site-space/resource/img/logo.png",
                 strategy.getWeblogResourceURL(site, "/img/logo.png", false));
-        assertEquals("http://localhost:8080/roller/site-space/mediaresource/abc123",
+        assertEquals("http://localhost:8080/pressroom/site-space/mediaresource/abc123",
                 strategy.getMediaFileURL(site, "abc123", true));
-        assertEquals("/roller/site-space/mediaresource/abc123?t=true",
+        assertEquals("/pressroom/site-space/mediaresource/abc123?t=true",
                 strategy.getMediaFileThumbnailURL(site, "abc123", false));
     }
 
     @Test
     void theSiteSpaceHomeAndCollectionStayAtTheRoot() {
-        assertEquals("/roller/", strategy.getWeblogCollectionURL(site, null, null, null, null, -1, false));
-        assertEquals("/roller/", strategy.getWeblogPageURL(
+        assertEquals("/pressroom/", strategy.getWeblogCollectionURL(site, null, null, null, null, -1, false));
+        assertEquals("/pressroom/", strategy.getWeblogPageURL(
                 site, null, null, null, null, null, null, 0, false));
     }
 
     @Test
     void anOrdinaryBlogsAssetUrlsAreUnchanged() {
-        assertEquals("/roller/blog/page/journal-custom.css", strategy.getWeblogPageURL(
+        assertEquals("/pressroom/blog/page/journal-custom.css", strategy.getWeblogPageURL(
                 ordinary, null, "journal-custom.css", null, null, null, null, 0, false));
-        assertEquals("/roller/blog/resource/img/logo.png",
+        assertEquals("/pressroom/blog/resource/img/logo.png",
                 strategy.getWeblogResourceURL(ordinary, "img/logo.png", false));
-        assertEquals("/roller/blog/mediaresource/abc123",
+        assertEquals("/pressroom/blog/mediaresource/abc123",
                 strategy.getMediaFileURL(ordinary, "abc123", false));
     }
 
@@ -118,24 +118,24 @@ class SiteSpaceUrlTest {
     @Test
     void aPreviewOfTheSiteSpaceCarriesTheHandleOnce() {
         PreviewURLStrategy preview = new PreviewURLStrategy(null);
-        assertEquals("/roller/pressroom-ui/authoring/preview/site-space/page/frontpage-custom.css",
+        assertEquals("/pressroom/pressroom-ui/authoring/preview/site-space/page/frontpage-custom.css",
                 preview.getWeblogPageURL(site, null, "frontpage-custom.css", null, null, null, null, 0, false));
-        assertEquals("/roller/pressroom-ui/authoring/preview/site-space/mediaresource/abc123",
+        assertEquals("/pressroom/pressroom-ui/authoring/preview/site-space/mediaresource/abc123",
                 preview.getMediaFileURL(site, "abc123", false));
     }
 
     @Test
     void urlModelStaticPageDelegatesToTheStrategy() throws Exception {
-        assertEquals("/roller/about", urlModel(site).staticPage("about"));
-        assertEquals("/roller/", urlModel(site).staticPage("home"));
-        assertEquals("/roller/blog/about", urlModel(ordinary).staticPage("about"));
+        assertEquals("/pressroom/about", urlModel(site).staticPage("about"));
+        assertEquals("/pressroom/", urlModel(site).staticPage("home"));
+        assertEquals("/pressroom/blog/about", urlModel(ordinary).staticPage("about"));
     }
 
     @Test
     void theCanonicalUrlOfASitePageIsTheStrategysAbsoluteUrl() throws Exception {
-        assertEquals("http://localhost:8080/roller/about", canonical(site, "about"));
-        assertEquals("http://localhost:8080/roller/", canonical(site, "home"));
-        assertEquals("http://localhost:8080/roller/blog/about", canonical(ordinary, "about"));
+        assertEquals("http://localhost:8080/pressroom/about", canonical(site, "about"));
+        assertEquals("http://localhost:8080/pressroom/", canonical(site, "home"));
+        assertEquals("http://localhost:8080/pressroom/blog/about", canonical(ordinary, "about"));
     }
 
     private URLModel urlModel(Weblog weblog) throws Exception {

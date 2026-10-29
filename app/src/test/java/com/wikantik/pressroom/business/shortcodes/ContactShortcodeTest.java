@@ -31,7 +31,7 @@ class ContactShortcodeTest {
         // whatever some earlier-running test left behind in this shared
         // static field (see URLModelTest for the same discipline).
         previousRelativeContextURL = WebloggerRuntimeConfig.getRelativeContextURL();
-        WebloggerRuntimeConfig.setRelativeContextURL("/roller");
+        WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
     }
 
     @AfterEach
@@ -75,7 +75,7 @@ class ContactShortcodeTest {
     void theEndpointCarriesTheContextPathServerSide() {
         String html = shortcode.render(Map.of(), null, context("travelblog"));
 
-        assertTrue(html.contains("data-endpoint=\"/roller/pressroom-ui/rendering/contact.rol\""), html);
+        assertTrue(html.contains("data-endpoint=\"/pressroom/pressroom-ui/rendering/contact.rol\""), html);
     }
 
     /**

@@ -127,7 +127,7 @@ class InProcessDispatchContainerTest {
         tomcat = new Tomcat();
         tomcat.setBaseDir(baseDir.toString());
         tomcat.setPort(0);
-        Context context = tomcat.addContext("/roller", baseDir.toString());
+        Context context = tomcat.addContext("/pressroom", baseDir.toString());
         Tomcat.addServlet(context, "api", new EchoApi()).addMapping("/api/*");
         McpEndpointServlet endpoint = new McpEndpointServlet(new ForwardingTransport(),
                 new ApiProblemWriter(JsonMapper.builder().build()));
@@ -152,7 +152,7 @@ class InProcessDispatchContainerTest {
         mcpServlet.addMapping("/api/mcp");
         tomcat.getConnector();
         tomcat.start();
-        mcpUrl = "http://127.0.0.1:" + tomcat.getConnector().getLocalPort() + "/roller/api/mcp";
+        mcpUrl = "http://127.0.0.1:" + tomcat.getConnector().getLocalPort() + "/pressroom/api/mcp";
     }
 
     @AfterAll
@@ -174,7 +174,7 @@ class InProcessDispatchContainerTest {
     }
 
     private static final String THINGS_ECHO = "transport saw 201 application/json"
-            + " [POST /roller/api/v1/things params={q=[a+b]} auth=null body={\"title\":\"t\"}]";
+            + " [POST /pressroom/api/v1/things params={q=[a+b]} auth=null body={\"title\":\"t\"}]";
 
     @Test
     void theTransportStillAnswersAfterTheForwardWithWhatTheApiRouteWrote() throws Exception {

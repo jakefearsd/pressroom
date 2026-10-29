@@ -875,11 +875,11 @@ class UtilitiesModelTest {
     void commentEndpointsHangOffTheContextPath() {
         String previous = WebloggerRuntimeConfig.getRelativeContextURL();
         try {
-            WebloggerRuntimeConfig.setRelativeContextURL("/roller");
+            WebloggerRuntimeConfig.setRelativeContextURL("/pressroom");
             assertEquals(Map.of(
-                    "session", "/roller/pressroom-ui/rendering/comments/session.rol",
-                    "post", "/roller/pressroom-ui/rendering/comments.rol",
-                    "delete", "/roller/pressroom-ui/rendering/comments/"),
+                    "session", "/pressroom/pressroom-ui/rendering/comments/session.rol",
+                    "post", "/pressroom/pressroom-ui/rendering/comments.rol",
+                    "delete", "/pressroom/pressroom-ui/rendering/comments/"),
                     model().getCommentEndpoints());
 
             WebloggerRuntimeConfig.setRelativeContextURL("");

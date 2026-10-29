@@ -67,8 +67,8 @@ import static org.mockito.Mockito.when;
  */
 class URLModelTest {
 
-    private static final String SITE = "/roller";
-    private static final String ABSOLUTE_SITE = "http://blogs.example.com/roller";
+    private static final String SITE = "/pressroom";
+    private static final String ABSOLUTE_SITE = "http://blogs.example.com/pressroom";
 
     private RuntimeConfigAttachment runtimeConfig;
     private Weblogger weblogger;

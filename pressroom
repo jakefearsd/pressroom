@@ -2,17 +2,17 @@
 # Roller development entry point.
 #
 # Usage:
-#   ./roller dev        start postgres, apply migrations, run the app via spring-boot:run
-#   ./roller db         start postgres only and apply migrations
-#   ./roller migrate    apply pending migrations to the dev database
-#   ./roller status     show which migrations have been applied
-#   ./roller stop       stop the dev database (data is preserved)
-#   ./roller reset      DESTROY the dev database volume, then recreate it
-#   ./roller token      mint an API token for the dev admin (needs ./roller dev running)
+#   ./pressroom dev        start postgres, apply migrations, run the app via spring-boot:run
+#   ./pressroom db         start postgres only and apply migrations
+#   ./pressroom migrate    apply pending migrations to the dev database
+#   ./pressroom status     show which migrations have been applied
+#   ./pressroom stop       stop the dev database (data is preserved)
+#   ./pressroom reset      DESTROY the dev database volume, then recreate it
+#   ./pressroom token      mint an API token for the dev admin (needs ./pressroom dev running)
 #
 # The dev database is the `postgres` service in docker-compose.yml. Its data
-# lives in the roller-pgdata named volume and survives restarts; only
-# `./roller reset` removes it.
+# lives in the pressroom-pgdata named volume and survives restarts; only
+# `./pressroom reset` removes it.
 set -euo pipefail
 
 SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
@@ -23,9 +23,9 @@ DB_APP_USER="${DB_APP_USER:-pressroom}"
 DB_PORT="${DB_PORT:-${DEV_DB_PORT:-5433}}"
 
 # The dev server runs at the ROOT, matching application.properties' shipped
-# default -- `./roller dev` must reproduce the deployed url shape, or the one
+# default -- `./pressroom dev` must reproduce the deployed url shape, or the one
 # place a bad context assumption would show up is the one place nobody looks.
-# Set DEV_CONTEXT_PATH=/roller (leading slash, no trailing) to reproduce a
+# Set DEV_CONTEXT_PATH=/pressroom (leading slash, no trailing) to reproduce a
 # prefixed deployment locally. DEV_URL is what both `dev` and `token` print and
 # pass around, so the two can never drift.
 DEV_PORT="${DEV_PORT:-8083}"
@@ -98,12 +98,12 @@ start_db() {
     exit 1
 }
 
-DEV_SECRET_FILE="${SCRIPT_DIR}/.roller-dev-secret"
+DEV_SECRET_FILE="${SCRIPT_DIR}/.pressroom-dev-secret"
 
-# Loads .roller-dev-secret, generating it on first use.
+# Loads .pressroom-dev-secret, generating it on first use.
 #
 # There is deliberately no branch that stops and asks: a fresh checkout runs
-# ./roller dev and gets a working login plus the credential printed once. The
+# ./pressroom dev and gets a working login plus the credential printed once. The
 # file is git-ignored and is the source of truth for the dev admin password --
 # a password changed through the UI is reverted by the next seed, which is the
 # intended behaviour for a disposable local database whose whole purpose is a

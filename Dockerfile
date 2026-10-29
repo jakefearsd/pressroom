@@ -28,7 +28,7 @@
 #   2. runtime -- just a JRE, the WAR, baked-in themes, and the migrations
 #      SQL for reference/exec-based use by deploy tooling (Stage 1C Task 3).
 #
-# Run: java -jar roller.war (Boot's embedded Tomcat serves the app at /roller
+# Run: java -jar pressroom.war (Boot's embedded Tomcat serves the app at /pressroom
 # on 8080, and a second embedded connector serves /actuator/health on the
 # management port 8090 -- see app/src/main/resources/application.properties).
 # Runtime config is supplied entirely by PRESSROOM_* environment variables, which
@@ -96,11 +96,11 @@ RUN major="$(pg_dump --version | sed -E 's/.*PostgreSQL\) ([0-9]+).*/\1/')"; \
         exit 1; \
     fi
 
-RUN groupadd --system roller && useradd --system --gid roller --home-dir /app --shell /usr/sbin/nologin roller
+RUN groupadd --system pressroom && useradd --system --gid pressroom --home-dir /app --shell /usr/sbin/nologin pressroom
 
 WORKDIR /app
 
-COPY --from=builder /build/app/target/roller.war /app/roller.war
+COPY --from=builder /build/app/target/pressroom.war /app/pressroom.war
 COPY --from=builder /build/app/src/main/webapp/themes /app/themes
 COPY --from=builder /build/bin/db/migrations /app/migrations
 
@@ -123,11 +123,11 @@ COPY bin/pressroom-api /app/pressroom-api
 RUN chmod 755 /app/migrate.sh /app/provision.sh /app/admin-account.sh /app/analytics-views.sh /app/backup/backup.sh /app/backup/loop.sh \
     && chmod +x /app/pressroom-api \
     && mkdir -p /data/mediafiles /data/search-index /data/uploads \
-    && chown -R roller:roller /app /data
+    && chown -R pressroom:pressroom /app /data
 
 VOLUME ["/data"]
 
-USER roller
+USER pressroom
 
 EXPOSE 8080 8090
 
@@ -136,4 +136,4 @@ ENV JAVA_OPTS=""
 # Shell form so JAVA_OPTS expands. No -Dpressroom.custom.config: configuration
 # comes from PRESSROOM_* environment variables, which compose supplies from .env.
 # WebloggerConfig still honours the flag if an operator sets it in JAVA_OPTS.
-ENTRYPOINT ["/bin/sh", "-c", "exec java $JAVA_OPTS -jar /app/roller.war"]
+ENTRYPOINT ["/bin/sh", "-c", "exec java $JAVA_OPTS -jar /app/pressroom.war"]

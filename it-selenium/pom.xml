@@ -75,21 +75,21 @@ limitations under the License.
         <it.db.name>pressroom_it</it.db.name>
         <it.db.user>pressroom</it.db.user>
         <it.db.password>pressroom</it.db.password>
-        <it.db.container-alias>roller-it-postgres</it.db.container-alias>
+        <it.db.container-alias>pressroom-it-postgres</it.db.container-alias>
         <it.postgres.image>postgres:18</it.postgres.image>
 
         <!-- The OIDC provider SsoSignInIT signs readers in through. It joins
              PostgreSQL under docker-maven-plugin (pg-start starts every image
              below, pg-stop stops and removes every one), imports the realm in
-             src/test/resources/keycloak/roller-it-realm.json, and listens on the
-             reserved ${it.kc.port}; roller-it.properties points the app's
+             src/test/resources/keycloak/pressroom-it-realm.json, and listens on the
+             reserved ${it.kc.port}; pressroom-it.properties points the app's
              sso.oidc.* at it, so SSO is on for the whole IT suite.
 
              The alias must be what it-harness-lib.sh derives from the
              postgres prefix (IT_KC_CONTAINER_PREFIX), or the sweep cannot
              find a container an aborted run left behind. -->
         <it.keycloak.image>quay.io/keycloak/keycloak:26.0</it.keycloak.image>
-        <it.kc.container-alias>roller-it-keycloak</it.kc.container-alias>
+        <it.kc.container-alias>pressroom-it-keycloak</it.kc.container-alias>
 
         <!-- The bare context segment the app under test is deployed under.
              EMPTY = the root, which is what application.properties now ships
@@ -100,8 +100,8 @@ limitations under the License.
              PressroomIT.baseUrl() strips one, which is why that is harmless and
              why this can stay a plain string substitution.
 
-             `mvn verify -Pit -Dit.context.path=roller` runs the entire suite
-             under /roller instead. That is the ONLY end-to-end coverage of the
+             `mvn verify -Pit -Dit.context.path=pressroom` runs the entire suite
+             under /pressroom instead. That is the ONLY end-to-end coverage of the
              non-root case (the unit tests cover the url-building rules at both
              contexts, but only a real container proves the servlet mappings,
              the security chain and the rendering forwards survive a prefix), so
@@ -171,7 +171,7 @@ limitations under the License.
              way. start-app.sh symlinks it-work/app-latest.log at the newest
              one for convenience. -->
         <it.work.dir>${project.build.directory}/it-work</it.work.dir>
-        <it.app.war>${project.basedir}/../app/target/roller.war</it.app.war>
+        <it.app.war>${project.basedir}/../app/target/pressroom.war</it.app.war>
         <it.app.pidfile>${it.work.dir}/app-${it.run.id}.pid</it.app.pidfile>
         <it.app.log>${it.work.dir}/app-${it.run.id}.log</it.app.log>
         <it.db.container-name>${it.db.container-alias}-${it.run.id}</it.db.container-name>
@@ -242,11 +242,11 @@ limitations under the License.
             <scope>test</scope>
         </dependency>
 
-        <!-- Not consumed directly (start-app.sh reads app/target/roller.war off
+        <!-- Not consumed directly (start-app.sh reads app/target/pressroom.war off
              the filesystem, not via Maven artifact resolution): declared purely
              to force Maven reactor build order. Without a real inter-module
              dependency, `mvn verify -Pit` from the repo root has no guarantee
-             app builds (and spring-boot:repackage rewrites roller.war into the
+             app builds (and spring-boot:repackage rewrites pressroom.war into the
              executable jar-in-war start-app.sh needs) before this module's
              pre-integration-test phase runs. -->
         <dependency>
@@ -259,7 +259,7 @@ limitations under the License.
     </dependencies>
 
     <build>
-        <!-- roller-it.properties (Roller's own -Dpressroom.custom.config overlay, read by
+        <!-- pressroom-it.properties (Roller's own -Dpressroom.custom.config overlay, read by
              start-app.sh) needs ${it.db.port}, ${it.db.name}, ${project.basedir}, and
              ${project.build.directory} substituted; filtering is off by default for
              testResources, so it must be turned on explicitly here. seed-it-data.sql
@@ -275,7 +275,7 @@ limitations under the License.
         <plugins>
 
             <!-- Reserve free ports so a developer's local PostgreSQL on 5432, or the
-                 dev server (./roller dev, spring-boot:run) on 8083, cannot collide
+                 dev server (./pressroom dev, spring-boot:run) on 8083, cannot collide
                  with a test run. -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
@@ -447,7 +447,7 @@ limitations under the License.
                                 </volumes>
                                 <wait>
                                     <http>
-                                        <url>http://localhost:${it.kc.port}/realms/roller-it/.well-known/openid-configuration</url>
+                                        <url>http://localhost:${it.kc.port}/realms/pressroom-it/.well-known/openid-configuration</url>
                                         <method>GET</method>
                                         <status>200</status>
                                     </http>
@@ -577,7 +577,7 @@ limitations under the License.
                             <arguments>
                                 <argument>${it.app.war}</argument>
                                 <argument>${it.http.port}</argument>
-                                <argument>${project.build.testOutputDirectory}/roller-it.properties</argument>
+                                <argument>${project.build.testOutputDirectory}/pressroom-it.properties</argument>
                                 <argument>${it.app.pidfile}</argument>
                                 <argument>${it.app.log}</argument>
                                 <argument>${it.run.id}</argument>

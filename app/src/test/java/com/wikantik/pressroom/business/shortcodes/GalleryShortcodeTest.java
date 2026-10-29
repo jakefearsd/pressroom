@@ -48,7 +48,7 @@ import static org.mockito.Mockito.when;
  */
 class GalleryShortcodeTest {
 
-    private static final String BASE = "http://example.com/roller/blog/mediaresource/";
+    private static final String BASE = "http://example.com/pressroom/blog/mediaresource/";
 
     private GalleryShortcode shortcode;
     private Weblog weblog;

@@ -284,7 +284,7 @@ public class WeblogRequestMapper {
         // exactly one address per page, and any other host permanently
         // redirects there. Absolute by necessity -- this crosses hosts -- and
         // it STILL needs the context path: this is one Tomcat context reached
-        // under many hostnames, so a deployment under a prefix (e.g. /roller)
+        // under many hostnames, so a deployment under a prefix (e.g. /pressroom)
         // has that prefix on the custom domain too. pathInfo was stripped of
         // it above (line ~139), so it has to be added back here rather than
         // assumed away the way the container-internal FORWARD below can.
@@ -334,8 +334,8 @@ public class WeblogRequestMapper {
             //    therefore context-relative -- this location goes back to the
             //    browser, and a leading-slash location is resolved against the
             //    SERVER root, not the application root (Servlet 6.1,
-            //    sendRedirect). Deployed under /roller, omitting it sent every
-            //    reader of /roller/<weblog> to /<weblog>, which 404s. The bug
+            //    sendRedirect). Deployed under /pressroom, omitting it sent every
+            //    reader of /pressroom/<weblog> to /<weblog>, which 404s. The bug
             //    is invisible at the root context, which is now the default --
             //    hence the test at both contexts.
             // 2. The locale has to survive. The comment above always claimed

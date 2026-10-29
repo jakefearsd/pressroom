@@ -49,7 +49,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>Written after the behaviour, so the watch-it-fail step was a deliberate
  * mutation: with the "choose it as the front door" step removed the anonymous
  * {@code GET /} assertion failed (the directory, not the heading); with the
- * step restored it passes at the root and at {@code -Dit.context.path=roller}.
+ * step restored it passes at the root and at {@code -Dit.context.path=pressroom}.
  *
  * <p>{@code site.frontpage.page} and {@code site.frontpage.weblog.handle} are
  * global, so the class holds {@link PressroomIT#GLOBAL_CONFIG} for WRITE and

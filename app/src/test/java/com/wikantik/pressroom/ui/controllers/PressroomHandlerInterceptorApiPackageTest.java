@@ -45,7 +45,7 @@ class PressroomHandlerInterceptorApiPackageTest {
     @BeforeEach
     void setUp() {
         request = new MockHttpServletRequest();
-        request.setContextPath("/roller");
+        request.setContextPath("/pressroom");
         response = new MockHttpServletResponse();
         weblogger = MockWeblogger.attached();
         WebloggerProvider provider = mock(WebloggerProvider.class);
@@ -76,7 +76,7 @@ class PressroomHandlerInterceptorApiPackageTest {
 
     private void assertNotApi(Class<?> beanType) throws Exception {
         assertFalse(interceptor.preHandle(request, response, handlerWithBeanType(beanType)));
-        assertEquals("/roller" + LOGIN, response.getRedirectedUrl(),
+        assertEquals("/pressroom" + LOGIN, response.getRedirectedUrl(),
                 beanType.getName() + " must be answered with a browser redirect");
     }
 

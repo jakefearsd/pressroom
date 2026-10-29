@@ -47,7 +47,7 @@ import static org.mockito.Mockito.mock;
  */
 class ApiSecurityRefusalTest {
 
-    private static final String CONTEXT = "/roller";
+    private static final String CONTEXT = "/pressroom";
 
     private PressroomHandlerInterceptor interceptor;
     private MockHttpServletRequest request;

@@ -30,7 +30,7 @@
 #                   under maven-antrun-plugin is the Maven JVM)
 #   IT_POLL_SECONDS how often to check on the build (default: 3)
 #   IT_RECORD_DIR   overrides where the chromedriver record is written
-#                   (default: ${XDG_CACHE_HOME:-$HOME/.cache}/roller-it) --
+#                   (default: ${XDG_CACHE_HOME:-$HOME/.cache}/pressroom-it) --
 #                   tests only; never point this at target/ or /tmp.
 set -euo pipefail
 

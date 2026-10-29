@@ -55,7 +55,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SeoHeadRenderingTest {
 
     private static final String HANDLE = "seorenderblog";
-    private static final String BASE = "http://localhost:8080/roller/" + HANDLE;
+    private static final String BASE = "http://localhost:8080/pressroom/" + HANDLE;
 
     private static final Pattern LD_JSON = Pattern.compile(
             "<script type=\"application/ld\\+json\">(.*?)</script>", Pattern.DOTALL);
@@ -953,7 +953,7 @@ class SeoHeadRenderingTest {
                 + "        \"@type\": \"BlogPosting\",\n"
                 + "\"datePublished\": \"T\",\"dateModified\": \"T\",\"description\": \"Fixture description.\","
                 + "\"author\": { \"@type\": \"Person\", \"name\": \"Test User Screen Name\" },"
-                + "        \"mainEntityOfPage\": \"http:\\/\\/localhost:8080\\/roller\\/seorenderblog"
+                + "        \"mainEntityOfPage\": \"http:\\/\\/localhost:8080\\/pressroom\\/seorenderblog"
                 + "\\/entry\\/fixture-entry\",\n"
                 + "        \"headline\": \"fixture-entry\"\n    }\n    ", normalised);
     }

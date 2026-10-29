@@ -44,7 +44,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * blog the front-page blog and names the page as the privacy policy in Global
  * Config; a blog page (fetched anonymously, as a reader sees it) and an admin
  * page then both show {@code Roller <version>} and a "Privacy policy" link whose
- * href resolves to the page. The same run at {@code -Dit.context.path=roller}
+ * href resolves to the page. The same run at {@code -Dit.context.path=pressroom}
  * proves the link carries the prefix.
  *
  * <p>Owns its weblog and its page. {@code site.frontpage.weblog.handle} and

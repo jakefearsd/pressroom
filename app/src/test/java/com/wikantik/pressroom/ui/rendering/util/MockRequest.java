@@ -66,7 +66,7 @@ final class MockRequest {
         when(request.getServletPath()).thenReturn(servletPath);
         when(request.getPathInfo()).thenReturn(pathInfo);
         when(request.getRequestURL()).thenReturn(
-                new StringBuffer("http://localhost/roller" + servletPath + pathInfo));
+                new StringBuffer("http://localhost/pressroom" + servletPath + pathInfo));
 
         Map<String, String[]> parameterMap = new LinkedHashMap<>();
         for (int i = 0; i < params.length; i += 2) {

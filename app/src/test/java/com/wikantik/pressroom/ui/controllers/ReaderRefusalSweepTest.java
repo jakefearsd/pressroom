@@ -202,7 +202,7 @@ class ReaderRefusalSweepTest {
             weblogger.detach();
             weblogger = null;
         }
-        assertEquals("/roller/pressroom-ui/login.rol", response.getRedirectedUrl());
+        assertEquals("/pressroom/pressroom-ui/login.rol", response.getRedirectedUrl());
     }
 
     /**
@@ -260,7 +260,7 @@ class ReaderRefusalSweepTest {
         }
 
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setContextPath("/roller");
+        request.setContextPath("/pressroom");
         request.setParameter("weblog", BLOG);
         request.setAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, Map.of("handle", BLOG));
         HandlerMethod handler = new HandlerMethod(controller,

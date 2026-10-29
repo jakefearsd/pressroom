@@ -453,10 +453,10 @@ class CommentsSectionRenderingTest {
         String slot = s.substring(s.indexOf("<div class=\"comments-slot\""), s.indexOf("</div>",
                 s.indexOf("<div class=\"comments-slot\"")));
         assertTrue(slot.contains(" data-entry=\"" + entry.getId() + "\""), slot);
-        assertTrue(slot.contains(" data-permalink=\"/roller/" + handle + "/entry/" + ANCHOR + "\""), slot);
-        assertTrue(slot.contains(" data-session=\"/roller/pressroom-ui/rendering/comments/session.rol\""), slot);
-        assertTrue(slot.contains(" data-post=\"/roller/pressroom-ui/rendering/comments.rol\""), slot);
-        assertTrue(slot.contains(" data-delete=\"/roller/pressroom-ui/rendering/comments/\""), slot);
+        assertTrue(slot.contains(" data-permalink=\"/pressroom/" + handle + "/entry/" + ANCHOR + "\""), slot);
+        assertTrue(slot.contains(" data-session=\"/pressroom/pressroom-ui/rendering/comments/session.rol\""), slot);
+        assertTrue(slot.contains(" data-post=\"/pressroom/pressroom-ui/rendering/comments.rol\""), slot);
+        assertTrue(slot.contains(" data-delete=\"/pressroom/pressroom-ui/rendering/comments/\""), slot);
         assertTrue(slot.contains(" data-msg-sign-in=\"Sign in with Google to comment\""), slot);
         assertFalse(slot.contains("data-unavailable"), slot);
         assertFalse(s.contains("comments-closed"), s);

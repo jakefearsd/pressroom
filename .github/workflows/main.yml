@@ -26,7 +26,7 @@ name: Roller
 # the GalleryIT upload race). They run nightly and on demand instead.
 #
 # Publishing is NOT here. Pushing to master used to publish
-# ghcr.io/jakefearsd/roller:latest, which meant every commit silently became
+# ghcr.io/jakefearsd/pressroom:latest, which meant every commit silently became
 # the image `deploy/deploy.sh` would pull next. Images now come from a
 # release tag only -- see release.yml.
 on:
@@ -131,7 +131,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: dev-build
-          path: ./app/target/roller.war
+          path: ./app/target/pressroom.war
           retention-days: 90
           if-no-files-found: error
 
