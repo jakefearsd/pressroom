@@ -26,11 +26,13 @@ import org.junit.jupiter.api.Test;
  * state is an empty map, in the style of the i18n ratchets.
  *
  * <p>This replaces the spec's "grouped by layer". {@code PACKAGE} and
- * {@code CLASS} are layer 1. {@code TOKEN_PREFIX} and {@code OTHER} in the
- * non-docs areas are layers 2 and 3. {@code OTHER/docs} is layer 3.
+ * {@code CLASS} are layer 1. Layer 2 is {@code MACHINE} and {@code TOKEN_PREFIX}
+ * outside {@code docs}; layer 3 is {@code PROSE} everywhere plus
+ * {@code MACHINE/docs}. Phase 2 must empty {@link #layerTwoLeftovers}. A line
+ * containing the keep marker contributes nothing to any count.
  *
  * <p>Each occurrence is counted under exactly one kind, tried in order
- * PACKAGE, CLASS, TOKEN_PREFIX, OTHER; a match is masked before the next kind
+ * PACKAGE, CLASS, TOKEN_PREFIX, MACHINE, PROSE; a match is masked before the next kind
  * is tried. The ratchet is exact in both directions: a count above the
  * baseline fails (old name added), and a count below it fails too (lower the
  * baseline), so the baseline never goes slack.
@@ -41,7 +43,7 @@ import org.junit.jupiter.api.Test;
  * file name cannot survive the rename unseen.
  *
  * <p>Proven to bite: {@code // roller} appended to a main Java file produced
- * "old name added in OTHER/main-java: 781 > baseline 780"; restored with
+ * "old name added in MACHINE/main-java: 781 > baseline 780"; restored with
  * git checkout.
  *
  * <p>Phase 1 (the Java package move) must bring these keys to zero:
@@ -53,7 +55,7 @@ import org.junit.jupiter.api.Test;
  * list either.
  *
  * <p>Excluded forever (they legitimately keep the old name): LICENSE.txt,
- * NOTICE.txt, migrations V001 to V040, docs/superpowers/**, this file and
+ * NOTICE.txt, migrations V001 to V041, docs/superpowers/**, this file and
  * {@link ProjectNames}. Binary files (a NUL in the first 8 KB) are skipped.
  */
 class OldNameInventoryTest {
@@ -61,7 +63,31 @@ class OldNameInventoryTest {
     private static final Pattern PACKAGE = Pattern.compile("org\\.apache\\.roller|org/apache/roller"); // rebrand:keep
     private static final Pattern CLASS = Pattern.compile("\\bRoller[A-Z]\\w*"); // rebrand:keep
     private static final Pattern TOKEN_PREFIX = Pattern.compile("rlr_");
-    private static final Pattern OTHER = Pattern.compile("Roller|ROLLER|(?<![A-Za-z])roller"); // rebrand:keep
+    private static final Pattern MACHINE = Pattern.compile("ROLLER|(?<![A-Za-z])roller|(?<=[a-z])Roller"); // rebrand:keep
+    private static final Pattern PROSE = Pattern.compile("Roller"); // rebrand:keep
+    private static final String KEEP_MARKER = "rebrand:keep";
+
+    /** Migrations V001 to this one are kept files: V041 is the rename migration itself. */
+    static final int LAST_OLD_NAME_MIGRATION = 41;
+
+    /** Kinds that are layer 2 (machine names) when found outside docs. */
+    static final Set<String> LAYER_TWO_KINDS = Set.of("TOKEN_PREFIX", "MACHINE", "PATH-TOKEN_PREFIX", "PATH-MACHINE");
+
+    /** Areas Layer 2 covers (everything but docs). */
+    static final Set<String> LAYER_TWO_AREAS = Set.of("main-java", "main-resources", "test", "it", "build", "deploy", "other");
+
+    /** The entries of {@code counts} that are Layer 2 keys ({@code <kind>/<area>}) with a count above zero. */
+    static Map<String, Integer> layerTwoLeftovers(Map<String, Integer> counts) {
+        Map<String, Integer> out = new TreeMap<>();
+        counts.forEach((key, n) -> {
+            int slash = key.indexOf('/');
+            if (slash > 0 && n > 0 && LAYER_TWO_KINDS.contains(key.substring(0, slash))
+                    && LAYER_TWO_AREAS.contains(key.substring(slash + 1))) {
+                out.put(key, n);
+            }
+        });
+        return out;
+    }
 
     private static final Pattern MIGRATION = Pattern.compile("bin/db/migrations/V(\\d+)__.*");
 
@@ -71,22 +97,29 @@ class OldNameInventoryTest {
     /** Keyed "KIND/area". Later phases lower these; the end state is empty. */
     static final Map<String, Integer> BASELINE = Map.ofEntries(
             Map.entry("CLASS/docs", 12),
-            Map.entry("OTHER/build", 36),
-            Map.entry("OTHER/deploy", 298),
-            Map.entry("OTHER/docs", 674),
-            Map.entry("OTHER/it", 447),
-            Map.entry("OTHER/main-java", 780),
-            Map.entry("OTHER/main-resources", 1076),
-            Map.entry("OTHER/other", 48),
-            Map.entry("OTHER/test", 1903),
+            Map.entry("MACHINE/build", 22),
+            Map.entry("MACHINE/deploy", 268),
+            Map.entry("MACHINE/docs", 551),
+            Map.entry("MACHINE/it", 394),
+            Map.entry("MACHINE/main-java", 599),
+            Map.entry("MACHINE/main-resources", 840),
+            Map.entry("MACHINE/other", 48),
+            Map.entry("MACHINE/test", 1797),
             Map.entry("PACKAGE/docs", 115),
             Map.entry("PATH-CLASS/docs", 1),
-            Map.entry("PATH-OTHER/deploy", 2),
-            Map.entry("PATH-OTHER/docs", 15),
-            Map.entry("PATH-OTHER/it", 2),
-            Map.entry("PATH-OTHER/main-resources", 31),
-            Map.entry("PATH-OTHER/test", 4),
+            Map.entry("PATH-MACHINE/deploy", 2),
+            Map.entry("PATH-MACHINE/docs", 15),
+            Map.entry("PATH-MACHINE/it", 2),
+            Map.entry("PATH-MACHINE/main-resources", 31),
+            Map.entry("PATH-MACHINE/test", 4),
             Map.entry("PATH-PACKAGE/docs", 8),
+            Map.entry("PROSE/build", 14),
+            Map.entry("PROSE/deploy", 30),
+            Map.entry("PROSE/docs", 123),
+            Map.entry("PROSE/it", 53),
+            Map.entry("PROSE/main-java", 181),
+            Map.entry("PROSE/main-resources", 236),
+            Map.entry("PROSE/test", 106),
             Map.entry("TOKEN_PREFIX/docs", 3),
             Map.entry("TOKEN_PREFIX/it", 2),
             Map.entry("TOKEN_PREFIX/main-java", 2),
@@ -118,12 +151,19 @@ class OldNameInventoryTest {
     /** Occurrences of each kind in the text; kinds with none are absent. */
     static Map<String, Integer> count(String text) {
         Map<String, Integer> counts = new LinkedHashMap<>();
-        String rest = text;
+        StringBuilder kept = new StringBuilder();
+        for (String line : text.split("\n", -1)) {
+            if (!line.contains(KEEP_MARKER)) {
+                kept.append(line).append('\n');
+            }
+        }
+        String rest = kept.toString();
         Map<String, Pattern> kinds = new LinkedHashMap<>();
         kinds.put("PACKAGE", PACKAGE);
         kinds.put("CLASS", CLASS);
         kinds.put("TOKEN_PREFIX", TOKEN_PREFIX);
-        kinds.put("OTHER", OTHER);
+        kinds.put("MACHINE", MACHINE);
+        kinds.put("PROSE", PROSE);
         for (Map.Entry<String, Pattern> kind : kinds.entrySet()) {
             Matcher m = kind.getValue().matcher(rest);
             int n = 0;
@@ -176,14 +216,15 @@ class OldNameInventoryTest {
         return out;
     }
 
-    private static boolean keepsOldName(Path p) {
+    static boolean keepsOldName(Path p) {
         String s = p.toString().replace('\\', '/');
         if (s.equals("LICENSE.txt") || s.equals("NOTICE.txt") || s.startsWith("docs/superpowers/")
+                || s.equals("deploy/cutover-pressroom.sh") || s.equals("deploy/rollback-pressroom.sh")
                 || p.equals(THIS_FILE) || p.equals(PROJECT_NAMES)) {
             return true;
         }
         Matcher m = MIGRATION.matcher(s);
-        return m.matches() && Integer.parseInt(m.group(1)) <= 40;
+        return m.matches() && Integer.parseInt(m.group(1)) <= LAST_OLD_NAME_MIGRATION;
     }
 
     private static String textOrNull(Path p) {
@@ -207,7 +248,33 @@ class OldNameInventoryTest {
     @Test
     void countsOnlyTheBrand() {
         assertTrue(count("Controller controller scroller").isEmpty());
-        assertEquals(Map.of("OTHER", 3), count("asyncRoller ROLLER_DB $rollerContentScope")); // rebrand:keep
+        assertEquals(Map.of("MACHINE", 3), count("asyncRoller ROLLER_DB $rollerContentScope")); // rebrand:keep
+        assertEquals(Map.of("PROSE", 1), count("The Roller project")); // rebrand:keep
+    }
+
+    @Test
+    void keepMarkedLinesAreNotCounted() {
+        assertEquals(Map.of("MACHINE", 1), count("a roller // rebrand:keep\nb roller")); // rebrand:keep
+    }
+
+    @Test
+    void layerTwoLeftoversPicksOnlyLayerTwoKeys() {
+        assertEquals(Map.of("MACHINE/main-java", 2, "PATH-MACHINE/deploy", 1), layerTwoLeftovers(Map.of(
+                "MACHINE/main-java", 2, "PROSE/main-java", 5, "MACHINE/docs", 3, "PATH-MACHINE/deploy", 1,
+                "TOKEN_PREFIX/test", 0)));
+    }
+
+    @Test
+    void migrationsUpToTheRenameAreKept() {
+        assertTrue(keepsOldName(Path.of("bin/db/migrations/V041__pressroom_rename.sql")));
+        assertFalse(keepsOldName(Path.of("bin/db/migrations/V042__x.sql")));
+    }
+
+    @Test
+    void cutoverScriptsAreKept() {
+        assertTrue(keepsOldName(Path.of("deploy/cutover-pressroom.sh")));
+        assertTrue(keepsOldName(Path.of("deploy/rollback-pressroom.sh")));
+        assertFalse(keepsOldName(Path.of("deploy/other.sh")));
     }
 
     @Test
