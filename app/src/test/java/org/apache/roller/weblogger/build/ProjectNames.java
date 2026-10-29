@@ -1,6 +1,8 @@
 package org.apache.roller.weblogger.build;
 
+import java.util.Collection;
 import java.util.LinkedHashSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.apache.roller.util.RollerConstants;
@@ -37,6 +39,35 @@ public final class ProjectNames {
         roots.add(currentRoot());
         roots.add(LEGACY_ROOT);
         return roots;
+    }
+
+    /**
+     * The token with its root removed, and with the {@code weblogger} level
+     * that the package move drops, so a name keys the same before and after
+     * the move: {@code <legacy>.weblogger.a.B} and {@code <new>.a.B} both give
+     * {@code .a.B}. Dotted and slashed tokens alike. Empty when the token
+     * starts with none of the roots.
+     */
+    static Optional<String> rootRelative(String token, Collection<String> roots) {
+        for (String root : roots) {
+            for (String form : new String[] {root, root.replace('.', '/')}) {
+                if (token.startsWith(form) && atBoundary(token, form.length())) {
+                    String rest = token.substring(form.length());
+                    for (String level : new String[] {".weblogger", "/weblogger"}) {
+                        if (rest.startsWith(level) && atBoundary(rest, level.length())) {
+                            rest = rest.substring(level.length());
+                        }
+                    }
+                    return Optional.of(rest);
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** True when {@code s} ends at {@code i} or continues with a separator there. */
+    private static boolean atBoundary(String s, int i) {
+        return i == s.length() || ".$/".indexOf(s.charAt(i)) >= 0;
     }
 
     private static Pattern buildPattern() {

@@ -5,47 +5,85 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
+import org.apache.roller.weblogger.config.WebloggerConfig;
+import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
+import org.apache.roller.weblogger.pojos.Weblog;
 import org.junit.jupiter.api.Test;
 
-/** Self-tests for {@link ClassNameResolver} and {@link ProjectNames}. */
+/**
+ * Self-tests for {@link ClassNameResolver} and {@link ProjectNames}.
+ *
+ * <p>Fixtures are derived from classes, never written under a literal root,
+ * so they hold after the Phase 1 package move (which also drops the
+ * {@code weblogger} package level).
+ */
 class ClassNameResolverTest {
 
-    private static final String ROOT = ProjectNames.currentRoot();
-    private static final String SLASHED = ROOT.replace('.', '/');
+    /** The post-move root, written so no literal here is a qualified name under it. */
+    private static final String NEW_ROOT = "com.wikantik.pressroom";
+
+    private static final String ORM_DIR = Weblog.class.getPackageName().replace('.', '/');
 
     @Test
     void resolvesARealClassPackageAndResource() {
-        assertTrue(ClassNameResolver.unresolved(ROOT + ".weblogger.config.WebloggerConfig").isEmpty());
-        assertTrue(ClassNameResolver.unresolved(ROOT + ".weblogger.config").isEmpty());
-        assertTrue(ClassNameResolver.unresolved(SLASHED + "/weblogger/pojos/Weblog.orm.xml").isEmpty());
+        assertTrue(ClassNameResolver.unresolved(WebloggerConfig.class.getName()).isEmpty());
+        assertTrue(ClassNameResolver.unresolved(WebloggerConfig.class.getPackageName()).isEmpty());
+        assertTrue(ClassNameResolver.unresolved(ORM_DIR + "/Weblog.orm.xml").isEmpty());
     }
 
     @Test
     void resolvesMembersAndNestedClasses() {
         assertTrue(ClassNameResolver.unresolved(
-                ROOT + ".weblogger.config.WebloggerRuntimeConfig.getProperty").isEmpty());
+                WebloggerRuntimeConfig.class.getName() + ".getProperty").isEmpty());
     }
 
     @Test
     void reportsATypo() {
-        assertTrue(ClassNameResolver.unresolved(ROOT + ".weblogger.config.WebloggerConfg").isPresent());
+        assertTrue(ClassNameResolver.unresolved(WebloggerConfig.class.getName() + "x").isPresent());
     }
 
     @Test
     void reportsAMissingResource() {
-        assertTrue(ClassNameResolver.unresolved(SLASHED + "/weblogger/pojos/Nope.orm.xml").isPresent());
+        assertTrue(ClassNameResolver.unresolved(ORM_DIR + "/Nope.orm.xml").isPresent());
     }
 
     @Test
     void qualifiedNamePatternFindsBothRoots() {
-        String text = "a " + ProjectNames.LEGACY_ROOT + ".x.Y, b " + ROOT + ".z.W;";
+        String root = ProjectNames.currentRoot();
+        String text = "a " + ProjectNames.LEGACY_ROOT + ".x.Y, b " + root + ".z.W;";
         Matcher m = ProjectNames.QUALIFIED_NAME.matcher(text);
         List<String> found = new ArrayList<>();
         while (m.find()) {
             found.add(m.group());
         }
-        // The roots are equal today, so each name matches once; both are found.
-        assertEquals(List.of(ProjectNames.LEGACY_ROOT + ".x.Y", ROOT + ".z.W"), found);
+        assertEquals(List.of(ProjectNames.LEGACY_ROOT + ".x.Y", root + ".z.W"), found);
+    }
+
+    @Test
+    void rootRelativeKeysANameTheSameBeforeAndAfterTheMove() {
+        String legacy = ProjectNames.LEGACY_ROOT;
+        String legacySlashed = legacy.replace('.', '/');
+        Set<String> roots = Set.of(NEW_ROOT, legacy);
+        assertEquals(Optional.of(".a.B"), ProjectNames.rootRelative(legacy + ".weblogger.a.B", roots));
+        assertEquals(Optional.of(".a.B"), ProjectNames.rootRelative(NEW_ROOT + ".a.B", roots));
+        assertEquals(Optional.of(".util.C"), ProjectNames.rootRelative(legacy + ".util.C", roots));
+        assertEquals(Optional.of("/a/b.xml"),
+                ProjectNames.rootRelative(legacySlashed + "/weblogger/a/b.xml", roots));
+        assertEquals(Optional.of("/a/b.xml"),
+                ProjectNames.rootRelative(NEW_ROOT.replace('.', '/') + "/a/b.xml", roots));
+        assertEquals(Optional.of(".A$B"), ProjectNames.rootRelative(legacy + ".weblogger.A$B", roots));
+    }
+
+    @Test
+    void rootRelativeStripsOnlyWholeSegments() {
+        String legacy = ProjectNames.LEGACY_ROOT;
+        Set<String> roots = Set.of(NEW_ROOT, legacy);
+        // A longer segment is not the dropped level, and a longer root word is not a root.
+        assertEquals(Optional.of(".webloggerx.A"), ProjectNames.rootRelative(legacy + ".webloggerx.A", roots));
+        assertEquals(Optional.empty(), ProjectNames.rootRelative(legacy + "x.A", roots));
+        assertEquals(Optional.empty(), ProjectNames.rootRelative("com.example.A", roots));
     }
 }
