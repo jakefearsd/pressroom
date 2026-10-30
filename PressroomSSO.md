@@ -1,11 +1,11 @@
-# Roller reader sign-in (SSO) setup
+# Pressroom reader sign-in (SSO) setup
 
-Readers sign in to Roller with their Google account, the same way they sign
+Readers sign in to Pressroom with their Google account, the same way they sign
 in to the wiki at wiki.wikantik.com. Their first sign-in creates a **reader**
 account. A reader cannot use the admin or authoring UI, the API, MCP or
 private media. They can comment on entries, and manage their account page.
 
-**Current state:** Roller 0.1.16 and later contain the feature. Sign-in is
+**Current state:** Pressroom 0.1.16 and later contain the feature. Sign-in is
 **off** until both Google credentials are in `.env`; until then nothing
 changes for anyone.
 
@@ -26,7 +26,7 @@ per public app.
 2. Go to **APIs & Services → Credentials**. Newer consoles also show this as
    **Google Auth Platform → Clients**.
 3. Choose **Create credentials → OAuth client ID**, application type **Web
-   application**. Name it for the blog, for example "Roller blog".
+   application**. Name it for the blog, for example "Pressroom blog".
 4. Under **Authorized redirect URIs** add exactly one entry:
 
    ```
@@ -51,14 +51,14 @@ project shares it. Readers see its app name and links.
   of the wiki.
 - **Privacy policy:** the linked policy must also cover the blog. The blog
   stores each reader's name and email address.
-- **Scopes:** Roller asks only for `openid`, `profile` and `email`. These are
+- **Scopes:** Pressroom asks only for `openid`, `profile` and `email`. These are
   not sensitive scopes, so no extra Google verification is needed.
 - **Publishing status** must be **In production**. It already is, for the
   wiki. In "Testing" mode only listed test users can sign in.
 
 ### 3. Set the site's Absolute URL
 
-In Roller, go to **Admin → Global Config** and set **Absolute URL** to
+In Pressroom, go to **Admin → Global Config** and set **Absolute URL** to
 `https://blog.wikantik.com`. Alternatively, set `PRESSROOM_SITE_ABSOLUTEURL` in
 `.env`. When both are set, Global Config wins.
 
@@ -101,7 +101,7 @@ app. Two settings are optional and rarely needed:
    `https://blog.wikantik.com/pressroom-ui/sso/start`, the proxy is not
    reporting `https` and the public host. Check `TRUSTED_PROXIES` in `.env`;
    it must be the `cloudflare` host, 192.168.5.50.
-2. **Google was reachable at startup.** Roller probes Google's discovery
+2. **Google was reachable at startup.** Pressroom probes Google's discovery
    document once at startup and logs the result to the app's log:
 
    ```bash
@@ -171,7 +171,7 @@ logs app`):
 | "This account cannot sign in here…" (`sso=refused`) | The account is disabled, or Google did not confirm the email address. The log line names the reason. | Re-enable it in User Admin, or ask the reader to verify their email with Google. |
 | "Sign-in did not complete" (`sso=failed`) | The return from Google was invalid: an expired or forged request, a cancelled consent, or a token exchange failure. | Try again from the public URL. If it repeats, check the log line's reason and that the client secret in `.env` is current. |
 | The browser keeps redirecting to `/pressroom-ui/sso/start` | The proxy reports the wrong scheme or host (see step 5.1). | Fix `TRUSTED_PROXIES`. |
-| Signed out after returning from Google | The session cookie did not survive the return. Roller sets it `SameSite=Lax` for exactly this reason. | Check that nothing in front of Roller rewrites the cookie to `SameSite=Strict`. |
+| Signed out after returning from Google | The session cookie did not survive the return. Pressroom sets it `SameSite=Lax` for exactly this reason. | Check that nothing in front of Pressroom rewrites the cookie to `SameSite=Strict`. |
 
 ## Reference
 
@@ -184,4 +184,4 @@ logs app`):
 | Account binding | Google's issuer plus subject (`sub`), stored in `pressroom_user.sso_issuer`/`sso_subject` (migration V030) |
 | Reader username | `reader-` plus 10 random characters |
 | Log | `docker compose -f docker-compose.prod.yml logs app`; also `/app/logs/pressroom.log` in the app container (logger `pressroom.sso`) |
-| Released in | Roller 0.1.16 |
+| Released in | Pressroom 0.1.16 |

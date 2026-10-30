@@ -1,6 +1,6 @@
-# Deploying Roller with Docker
+# Deploying Pressroom with Docker
 
-A from-scratch runbook for taking Roller from a fresh VPS to a TLS-terminated,
+A from-scratch runbook for taking Pressroom from a fresh VPS to a TLS-terminated,
 backed-up, one-command-upgradeable deployment using `docker-compose.prod.yml`.
 This describes the actual production stack shipped in this tree, not a
 hypothetical one — every file it references exists in the repo.
@@ -37,7 +37,7 @@ public IP.
   **v2.17 or newer** (`docker compose version`) — the compose file uses
   `depends_on: condition: service_completed_successfully`, which older
   Compose rejects with a schema error rather than misbehaving quietly. Any
-  VPS-sized box works otherwise; Roller plus Postgres is comfortable on
+  VPS-sized box works otherwise; Pressroom plus Postgres is comfortable on
   1 vCPU / 2GB RAM for a handful of low-traffic blogs.
 - A domain name (e.g. `blog.example.com`) with an A/AAAA record you control,
   **or** none at all if you only want to run over plain HTTP on a LAN (see
@@ -49,7 +49,7 @@ public IP.
   host](#behind-a-tunnel-or-a-proxy-on-another-host)).
 - Outbound SMTP relay credentials if you want password-reset mail to work
   (`mail.hostname`/`mail.port`/optional `mail.username`/`mail.password`).
-  Roller runs fine without mail configured; that feature just won't send
+  Pressroom runs fine without mail configured; that feature just won't send
   anything.
 - Nothing needs to be pre-installed on the host besides Docker: the app image
   bakes in its own JRE, themes, and migration SQL (see `Dockerfile`); Caddy
@@ -57,7 +57,7 @@ public IP.
   `cwebp` (the `webp` package, Debian's name for libwebp-tools), so WebP
   renditions of uploaded images are generated in production automatically.
   If you ever run the WAR outside this image, install libwebp-tools/webp
-  yourself — Roller feature-detects the binary at startup and quietly falls
+  yourself — Pressroom feature-detects the binary at startup and quietly falls
   back to a JPEG/PNG-only rendition ladder when it is missing.
 
 ## Get the deploy files onto the host
@@ -169,7 +169,7 @@ environment-variable-configured container.
   - `PRESSROOM_MAIL_CONFIGURATIONTYPE`, `PRESSROOM_MAIL_HOSTNAME`,
     `PRESSROOM_MAIL_PORT`, and optionally `PRESSROOM_MAIL_USERNAME` /
     `PRESSROOM_MAIL_PASSWORD` — your SMTP relay, for password-reset and
-    notification mail. Roller runs fine without these set; those two
+    notification mail. Pressroom runs fine without these set; those two
     features just won't send anything. `PRESSROOM_MAIL_SECURITY` defaults to
     `starttls` (required, not just offered, once username/password are set),
     use `ssl` for a port-465 relay or `none` only for a local relay with no
@@ -315,7 +315,7 @@ the first administrator is made from the host, in this order:
    and its `.env`, which is the trust it relies on.
 2. **Log in** at `/pressroom-ui/login.rol`, then in Admin -> Global Config set
    **Absolute URL to site (if required)** (`PRESSROOM_SITE_ABSOLUTEURL`) and
-   **Site Administrator's email address** (`site.adminemail`). That address is the From address of every mail Roller sends, and
+   **Site Administrator's email address** (`site.adminemail`). That address is the From address of every mail Pressroom sends, and
    password-reset mail cannot go out without it.
 3. **Set up mail**, next section: [Mail and account recovery](#mail-and-account-recovery).
 4. **Check it.** `docker compose -f docker-compose.prod.yml run --rm admin status`
@@ -326,7 +326,7 @@ Then create a weblog.
 
 ### Mail and account recovery
 
-Roller sends password-reset and notification mail through an SMTP relay.
+Pressroom sends password-reset and notification mail through an SMTP relay.
 Worked example with Brevo, in `.env`:
 
 ```bash
@@ -351,7 +351,7 @@ once, and goes to the email address on the account.
 
 **Applying changes.** A change to `.env` needs
 `docker compose -f docker-compose.prod.yml up -d --force-recreate app`
-(a plain `restart` does not re-read `.env`). Roller caches runtime settings
+(a plain `restart` does not re-read `.env`). Pressroom caches runtime settings
 and loaded accounts, so a setting or account changed directly in the database
 needs `docker compose -f docker-compose.prod.yml restart app`.
 
@@ -371,8 +371,8 @@ needs `docker compose -f docker-compose.prod.yml restart app`.
 
 ### The context path
 
-Roller serves from the **root**: a weblog is at `https://<domain>/<handle>/`,
-not `https://<domain>/roller/<handle>/`. That is the shipped default
+Pressroom serves from the **root**: a weblog is at `https://<domain>/<handle>/`,
+not `https://<domain>/pressroom/<handle>/`. That is the shipped default
 (`server.servlet.context-path=/`), and it is deliberate — the segment would
 otherwise end up in every canonical url, `og:url`, sitemap `<loc>`, feed id and
 inbound link, where removing it later costs a redirect map rather than a config
@@ -391,7 +391,7 @@ image change is involved. Nothing else needs adjusting: Caddy already proxies
 `/*` wholesale, and the app builds every url it emits — links, redirects,
 canonicals — from the context path the request actually arrived on.
 
-**Upgrading a site that was already crawled at `/roller`** (Roller ≤ 0.1.3
+**Upgrading a site that was already crawled at `/roller`** (Roller ≤ 0.1.3 <!-- rebrand:keep -->
 defaulted there): either keep the old urls with the variable above, or move to
 the root and add a permanent redirect ahead of the `reverse_proxy` in the
 Caddyfile, so existing inbound links and the search index survive the move:
@@ -564,7 +564,7 @@ docker compose -f docker-compose.prod.yml logs -f postgres
 docker compose -f docker-compose.prod.yml logs -f backup
 ```
 
-Every Roller logger writes to the app container's standard output, which is
+Every Pressroom logger writes to the app container's standard output, which is
 what `logs app` shows (sign-in, comment and admin-audit lines included). The
 same lines also go to `/app/logs/pressroom.log` inside the container. Every
 service's container log is rotated by Docker: `docker-compose.prod.yml` caps
@@ -632,8 +632,8 @@ registered in Umami:
    Umami shows under the website's settings, not the `<script>` snippet
    Umami also offers on the same screen (that snippet is the impossible
    textarea path above; ignore it).
-2. In Roller, as the weblog's owner or a site admin: *Settings → Weblog
-   Settings → Analytics website ID*, paste the UUID, save. Roller validates
+2. In Pressroom, as the weblog's owner or a site admin: *Settings → Weblog
+   Settings → Analytics website ID*, paste the UUID, save. Pressroom validates
    it as a UUID and rejects anything else.
 3. Optionally also set *Analytics share URL* to Umami's public share link
    for the site. This is display-only — a convenience link shown back to the
@@ -658,7 +658,7 @@ stays opt-in per blog and off until an admin sets it.
 
 ### The Grafana contract
 
-Roller and Umami both expose their data to Grafana as small, versioned SQL
+Pressroom and Umami both expose their data to Grafana as small, versioned SQL
 **views** — never raw tables, and Grafana is never granted anything beyond
 `SELECT` on those views.
 
@@ -707,7 +707,7 @@ port mapping for `postgres` to make this easier.
 **Two labels on `analytics_events` are untrusted display text, not
 metadata.** `page_slug` and `entry_anchor` on `FORM_SUBMITTED` rows are
 copied from the contact form's reader-controlled `source` field — a visitor
-chooses that text, not Roller. Treat them as display strings in any
+chooses that text, not Pressroom. Treat them as display strings in any
 dashboard, never as something safe to interpolate elsewhere. Separately,
 `ENTRY_PUBLISHED` counts publish **events**, not distinct published entries:
 unpublishing and republishing an entry records a second event, so a
@@ -718,7 +718,7 @@ republished entries.
 
 The stack ships [listmonk](https://listmonk.app): a self-hosted mailing list
 manager. It owns the subscriber list, the double opt-in flow, the sending and
-the unsubscribe links. **Roller stores no subscriber data at all**, which is
+the unsubscribe links. **Pressroom stores no subscriber data at all**, which is
 what keeps consent and retention obligations out of the blog software.
 
 ### Turning it on
@@ -740,7 +740,7 @@ what keeps consent and retention obligations out of the blog software.
 `.env.example` already sets `PRESSROOM_NEWSLETTER_LISTMONK_BASEURL=http://listmonk:9000`
 — that's the compose **service name**, reached over the internal Docker
 network, not `LISTMONK_DOMAIN` (which is for a browser reaching the
-opt-in/unsubscribe pages, not for Roller reaching the API). You normally
+opt-in/unsubscribe pages, not for Pressroom reaching the API). You normally
 don't need to touch it; blank (the `pressroom.properties` built-in default,
 what you'd have if the variable were unset entirely) is what makes
 `/newsletter/subscribe` return 503 in local dev, where no listmonk service
@@ -767,7 +767,7 @@ list UUID) and the same client-side injection
 The form posts to `/newsletter/subscribe` **on the blog's own domain**, which
 is required, not decorative: every bundled theme sends `connect-src 'self'`,
 so a form posting to `newsletter.example.com` would be blocked by the
-reader's browser and nothing would happen. **Roller itself serves that
+reader's browser and nothing would happen. **Pressroom itself serves that
 endpoint** — `NewsletterController` throttles it, checks the honeypot,
 refuses to forward a list uuid this install never configured, records a
 first-party `NEWSLETTER_SUBSCRIBED` event on success, and only then forwards
@@ -786,7 +786,7 @@ theme CSP applies, so routing them through the app buys nothing.
 > picking up the current one means pulling a newer `IMAGE_VERSION` (see
 > [Upgrades](#upgrades)) — bump it in `.env` and run `./deploy.sh`. Until you
 > do, an old rewrite from before this design keeps forwarding subscribe
-> requests straight to listmonk — Roller's own `/newsletter/subscribe` route
+> requests straight to listmonk — Pressroom's own `/newsletter/subscribe` route
 > is registered and correct underneath, but Caddy never lets a request reach
 > it, so the throttle and the `pressroom_event` write are silently bypassed the
 > whole time the stale image is running.
@@ -1183,9 +1183,9 @@ volume until the new cluster has served real traffic.
 
 ### Upgrading a deployment made before the image-only layout
 
-If this host has been running Roller since before the `provision.sh`/
+If this host has been running Pressroom since before the `provision.sh`/
 `analytics-views.sh`/image-only rework (i.e. it still has a
-`deploy/config/roller-production.properties` bind-mounted in, or a
+`deploy/config/roller-production.properties` bind-mounted in, or a <!-- rebrand:keep -->
 `PRESSROOM_DOMAIN`/`PRESSROOM_IMAGE` pair in `.env`), moving it onto a current
 release needs three changes, not just a version bump:
 
@@ -1201,7 +1201,7 @@ release needs three changes, not just a version bump:
    configuration, and a stray `PRESSROOM_DOMAIN` would be overlaid onto the
    app's properties as a junk key named `domain`.
 3. **Transcribe every setting from the old
-   `deploy/config/roller-production.properties`** into the `PRESSROOM_*` block
+   `deploy/config/roller-production.properties`** into the `PRESSROOM_*` block <!-- rebrand:keep -->
    in `.env` — there is no properties file in the new image, so anything
    that file used to set has to become a `PRESSROOM_*` environment variable or
    it silently reverts to the app's built-in default. The mapping (old

@@ -34,7 +34,7 @@ resolves through the index at the end of `CLAUDE.md`.
   API applies to `featuredImageId`. A pure
   visibility flag with no bypass of any kind. The share-link feature that
   once punched a tokened hole through it (`ShareController`,
-  `roller_share_link`) is gone and not coming back.
+  `roller_share_link`) is gone and not coming back. <!-- rebrand:keep -->
 - **Alt text (W4): `MediaFile.altText`.** Before W4 every alt fell back to
   `MediaFile.getName()`, the filename. The chain:
   - `ImageShortcode`: an `alt` attribute **present** on the shortcode wins

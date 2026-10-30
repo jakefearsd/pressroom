@@ -11,12 +11,12 @@ request, ~73% of a session's input.)
 <!-- SIMPLE-AGILITY-AGENT-HEADER-START -->
 ## Simple Agility Architectural Context
 This repository is part of the **Simple Agility** small-business ecosystem:
-- **Role in Stack:** Canonical customer communication platform ([SA-7](https://wiki.wikantik.com/SimpleAgilityDecisionLog)), hosting public outreach blogs, the reseller showcase weblog, newsletter integration (listmonk), and native agent publishing via `/api/mcp` and API tokens ([RollerHub](https://wiki.wikantik.com/RollerHub)).
+- **Role in Stack:** Canonical customer communication platform ([SA-7](https://wiki.wikantik.com/SimpleAgilityDecisionLog)), hosting public outreach blogs, the reseller showcase weblog, newsletter integration (listmonk), and native agent publishing via `/api/mcp` and API tokens ([PressroomHub](https://wiki.wikantik.com/PressroomHub)).
 - **Architecture Hub:** Refer to `SimpleAgilityStackHub` on Wikantik (`https://wiki.wikantik.com/SimpleAgilityStackHub`).
-- **Architectural Decisions:** Consult `SimpleAgilityDecisionLog` before changing cross-repo APIs, logging, or telemetry. Roller is adopting ECS JSON logging (SA-6) and `/metrics` (Phase 1).
+- **Architectural Decisions:** Consult `SimpleAgilityDecisionLog` before changing cross-repo APIs, logging, or telemetry. Pressroom is adopting ECS JSON logging (SA-6) and `/metrics` (Phase 1).
 - **Active Initiatives & Coordination:** Check `SimpleAgilityAgentCoordination` (`https://wiki.wikantik.com/SimpleAgilityAgentCoordination`) for active tasks (`SA-INIT-01`, `SA-INIT-02`, `SA-INIT-03`).
-- **Session start:** call `get_briefing(clusters=["roller"], prompt="<your first task>")` on the Wikantik knowledge MCP; the briefing carries this project's pages and the contracts it cites ([SA-13](https://wiki.wikantik.com/SimpleAgilityDecisionLog)).
-- **Role Boundary:** Implement and optimize Roller's core Java/Spring Boot capabilities, themes, and automation API; never break cross-product contracts or telemetry conventions.
+- **Session start:** call `get_briefing(clusters=["pressroom"], prompt="<your first task>")` on the Wikantik knowledge MCP; the briefing carries this project's pages and the contracts it cites ([SA-13](https://wiki.wikantik.com/SimpleAgilityDecisionLog)).
+- **Role Boundary:** Implement and optimize Pressroom's core Java/Spring Boot capabilities, themes, and automation API; never break cross-product contracts or telemetry conventions.
 <!-- SIMPLE-AGILITY-AGENT-HEADER-END -->
 
 ## Important Rules
@@ -42,7 +42,7 @@ This repository is part of the **Simple Agility** small-business ecosystem:
   The busy check must be **bracketed and scoped to this repo**:
 
   ```bash
-  pgrep -f "[s]urefirebooter.*source/roller" >/dev/null && echo BUSY || echo CLEAR
+  pgrep -f "[s]urefirebooter.*$PWD" >/dev/null && echo BUSY || echo CLEAR
   ```
 
   An unbracketed `pgrep -f surefirebooter` matches the checking command

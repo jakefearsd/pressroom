@@ -153,7 +153,7 @@ A weblog with `weblog.custom_domain` set is served at that hostname's root:
   `appProtectedUrls` applies in vhost mode; only the `isWeblog()` half of the
   guard is skippable.
 - **A custom-domain url still carries the servlet context path**: under a
-  prefix its root is `https://host/roller/`, not `https://host/`.
+  prefix its root is `https://host/pressroom/`, not `https://host/`.
   `getWeblogURL`, the mapper's path-form 301 and `SeoController.robots()`
   got this wrong; `ControlPlaneHostFilter` is right because
   `site.absoluteurl` carries the context path by convention.

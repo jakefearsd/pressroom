@@ -1,12 +1,12 @@
-# Roller Automation API
+# Pressroom Automation API
 
-Roller's automation API (`/api/v1`) lets a script or an agent create and edit
+Pressroom's automation API (`/api/v1`) lets a script or an agent create and edit
 entries, upload media, run SEO/media audits, and administer weblogs and
 users — everything the JSP admin UI can do, callable without a browser.
 
-> **`/api/v1` is unstable while Roller is 0.x.** Paths, fields and status
+> **`/api/v1` is unstable while Pressroom is 0.x.** Paths, fields and status
 > codes here can change release to release with no deprecation window. Pin a
-> Roller version if you automate against this; do not assume forward
+> Pressroom version if you automate against this; do not assume forward
 > compatibility.
 
 Mint a token in the admin UI: **Profile → API tokens** for yourself, or an
@@ -17,7 +17,7 @@ is shown once. A script can mint one with the CLI instead:
 bin/pressroom-api auth login --url http://localhost:8083
 ```
 
-Everything below assumes a Roller running at that URL (the default for
+Everything below assumes a Pressroom running at that URL (the default for
 `./pressroom dev`, which serves from the root; see the repository's
 `CLAUDE.md`, "Build and Development Commands"). In production, substitute
 your site's own origin.
@@ -45,7 +45,7 @@ is safe in CI:
 
 ```bash
 printf '%s\n' "$PASSWORD" | bin/pressroom-api auth login \
-    --url https://example.com/roller --user admin --password-stdin
+    --url https://example.com/pressroom --user admin --password-stdin
 ```
 
 ## Contents
@@ -98,7 +98,7 @@ admin UI: no API route creates or changes an agent, or mints a token for one.
 ### With the API
 
 `POST /api/v1/tokens` (mint), plus `GET`/`DELETE` on the same resource
-(list/revoke), is where you use HTTP Basic authentication — your Roller
+(list/revoke), is where you use HTTP Basic authentication — your Pressroom
 username and password — because minting your first token can't itself
 require a token to prove who you are. Every other endpoint in this API is
 Bearer-only in practice. **A Bearer-authenticated caller (an existing API
@@ -440,7 +440,7 @@ an offset (`2026-03-01T09:30+01:00`) names its own moment whatever the
 weblog's zone, so a GET followed by a PATCH of the same `pubTime` changes
 nothing.
 
-**What `text` may hold.** Write Markdown. Besides CommonMark, Roller renders:
+**What `text` may hold.** Write Markdown. Besides CommonMark, Pressroom renders:
 - GitHub tables, `~~strikethrough~~` and bare URLs as links.
 - GitHub alerts as callouts the theme styles:
 
@@ -648,7 +648,7 @@ see are the same 404 an unknown id gets. In MCP, `entries` `get` takes `id` or
 
 **`anchor`** sets the entry's URL slug. It is accepted on create only: a
 PATCH may send the stored value back unchanged, and any other value is a 400
-on `anchor`. Omit it and Roller generates one. The form is lower-case
+on `anchor`. Omit it and Pressroom generates one. The form is lower-case
 letters and digits in words joined by one `-` or `_`, never starting or
 ending with a separator, at most 255 characters
 (`^[a-z0-9]+(?:[-_][a-z0-9]+)*$`); a bad form is a 400 on `anchor`, and a
@@ -1099,7 +1099,7 @@ The user view (`UserView`) carries these fields:
 | `globalRoles` | The account's global roles (`admin`, `editor`, `reader`). |
 | `sso` | `true` when the account signs in with single sign-on (Google). Such an account has no password. An email address patched on such an account is replaced at its next sign-in. |
 
-`GET/PATCH /api/v1/admin/config` reads and writes Roller's runtime
+`GET/PATCH /api/v1/admin/config` reads and writes Pressroom's runtime
 properties (`runtimeConfigDefs.xml` is the allowlist — a name that file
 doesn't declare, including anything startup-scoped, is a 400). `PATCH` takes
 a flat `{"name": "value", ...}` map, not a list of typed objects — the type
@@ -1164,7 +1164,7 @@ caller never has to special-case one of the three.
 
 `POST /api/mcp` is a Model Context Protocol endpoint (Streamable HTTP, stateless: no sessions, no
 server-sent streams) for agents. Its tools are a facade over the routes in this document: each tool
-call runs the matching `/api/v1` route inside Roller, so every rule here (token scopes, validation,
+call runs the matching `/api/v1` route inside Pressroom, so every rule here (token scopes, validation,
 error details) applies unchanged. A weblog or item the token may not see answers "not found"; an
 action beyond the token's role answers "forbidden", exactly as over REST.
 

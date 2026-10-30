@@ -10,7 +10,7 @@ resolves through the index at the end of `CLAUDE.md`.
 scripts and agents alongside the JSP admin UI. Reference and error contract:
 `docs/api/README.md`, the front door. Tokens are minted in the admin UI
 (Profile → API tokens, or an agent's page) or with `bin/pressroom-api auth login`.
-`/api/v1` is unstable while Roller is 0.x.
+`/api/v1` is unstable while Pressroom is 0.x.
 
 - **The `/api` prefix is a servlet-spec prefix mapping, not part of any
   `@RequestMapping`.** `ServletRegistrationConfig.API_URL_PATTERNS` (`/api/*`)

@@ -304,13 +304,13 @@ resolves through the index at the end of `CLAUDE.md`.
   `colophon-copyright`, `colophon-meta`, `colophon-privacy`,
   `colophon-version`, `colophon-released`. Frontpage has no per-template
   footer: its `_footer.vm` carries the call and `weblog/page/directory`
-  `#includeTemplate` it ("Powered by Roller" is gone).
+  `#includeTemplate` it ("Powered by Pressroom" is gone).
 - **Escaping**: every `Colophon` string is raw (the blog name is stored with
   markup stripped but `&` intact), so the macro escapes each once with
   `$utils.escapeHTML`. `$text.get` does not escape and `MessageFormat` does
   not re-parse arguments, so escape before passing; the year goes in as the
   string `"$colophonFacts.copyrightYear"` or it prints as `2,026`. Readers
-  see `Roller <version>` only -- never the revision.
+  see `Pressroom <version>` only -- never the revision.
 - **A new page template needs the call.** `ThemeColophonTest` reads each
   `themes/*/theme.xml`, and every `text/html` template not named in its
   `NOT_A_PAGE` set (day partial, preview shell, frontpage partials) must call
