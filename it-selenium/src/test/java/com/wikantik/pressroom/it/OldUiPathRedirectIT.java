@@ -34,7 +34,7 @@ class OldUiPathRedirectIT extends PressroomIT {
 
     @Test
     void theOldAdminPathLandsOnTheNewOneWithItsQuery() {
-        openPath("/pressroom-ui/login.rol?x=1"); // rebrand:keep
+        openPath("/roller-ui/login.rol?x=1"); // rebrand:keep
         assertEquals(baseUrl() + "/pressroom-ui/login.rol?x=1", url());
         $("#loginForm").should(exist);
     }
