@@ -42,7 +42,7 @@ import org.junit.jupiter.api.Test;
  * keys, so a stray {@code org/apache/roller} directory or a {@code Roller*.java} // rebrand:keep
  * file name cannot survive the rename unseen.
  *
- * <p>Proven to bite: {@code // roller} appended to a main Java file produced rebrand:keep
+ * <p>Proven to bite: an old name appended to a main Java file produced
  * "old name added in MACHINE/main-java: 603 > baseline 602"; restored with
  * git checkout.
  *
@@ -63,7 +63,7 @@ class OldNameInventoryTest {
     private static final Pattern PACKAGE = Pattern.compile("org\\.apache\\.roller|org/apache/roller"); // rebrand:keep
     private static final Pattern CLASS = Pattern.compile("\\bRoller[A-Z]\\w*"); // rebrand:keep
     private static final Pattern TOKEN_PREFIX = Pattern.compile("rlr_");
-    private static final Pattern MACHINE = Pattern.compile("ROLLER|(?<![A-Za-z])roller|(?<=[A-Za-z_])Roller|Roller(?=[_\\-/0-9$]|\\.\\w)"); // rebrand:keep
+    private static final Pattern MACHINE = Pattern.compile("(?<![A-Za-z])ROLLER|(?<![A-Za-z])roller|(?<=[A-Za-z_])Roller|Roller(?=[_\\-/0-9$]|\\.\\w)"); // rebrand:keep
     private static final Pattern PROSE = Pattern.compile("Roller"); // rebrand:keep
     private static final String KEEP_MARKER = "rebrand:keep";
 
@@ -254,6 +254,12 @@ class OldNameInventoryTest {
     }
 
     @Test
+    void anUppercaseRollerNeedsABoundaryOnTheLeft() {
+        assertEquals(Map.of(), count("CONTROLLER CONTROLLERS"));
+        assertEquals(Map.of("MACHINE", 2), count("MY_ROLLER_X ROLLER_DB")); // rebrand:keep
+    }
+
+    @Test
     void layerTwoLeftoversPicksOnlyLayerTwoKeys() {
         assertEquals(Map.of("MACHINE/main-java", 2, "PATH-MACHINE/deploy", 1), layerTwoLeftovers(Map.of(
                 "MACHINE/main-java", 2, "PROSE/main-java", 5, "MACHINE/docs", 3, "PATH-MACHINE/deploy", 1,
@@ -409,7 +415,7 @@ class OldNameInventoryTest {
     @Test
     void migrationsAfterTheRenameNeverNameTheOldTables() throws IOException {
         List<String> offenders = new ArrayList<>();
-        try (java.util.stream.Stream<Path> files = Files.list(Path.of(System.getProperty("user.dir")).getParent().resolve("bin/db/migrations"))) {
+        try (java.util.stream.Stream<Path> files = Files.list(RepoFiles.repoRoot().resolve("bin/db/migrations"))) {
             for (Path p : (Iterable<Path>) files::iterator) {
                 Matcher m = MIGRATION.matcher("bin/db/migrations/" + p.getFileName());
                 if (m.matches() && Integer.parseInt(m.group(1)) > LAST_OLD_NAME_MIGRATION

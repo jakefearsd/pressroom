@@ -76,10 +76,15 @@ public class SchemaMigrationTest {
             "rag_properties", "rag_subscription", "bookmark", "bookmark_folder",
             "autoping", "pingtarget", "pingqueueentry",
             // V017: hitcount subsystem replaced by Umami traffic counting.
-            "roller_hitcounts", // rebrand:keep
+            "pressroom_hitcounts",
             // V020: share-link feature removed entirely, not coming back.
-            "roller_share_link", // rebrand:keep
+            "pressroom_share_link",
             // V022: comment subsystem removed entirely (W1), not coming back.
+            "pressroom_comment",
+            // The old-prefix names below are not reachable after V041 renames every table; they
+            // guard a resurrected pre-rename table (an old migration re-run).
+            "roller_hitcounts", // rebrand:keep
+            "roller_share_link", // rebrand:keep
             "roller_comment"); // rebrand:keep
 
     @Test

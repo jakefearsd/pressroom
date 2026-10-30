@@ -25,8 +25,8 @@ RULE="${1:-}"
 export MAVEN_OPTS="${MAVEN_OPTS:--Xmx4g}"
 
 # Scoped to THIS checkout, derived rather than hardcoded: the literal
-# "source/roller" only matches the original author's directory layout, so a rebrand:keep (the checkout directory is still named roller)
-# clone at ~/dev/roller reported CLEAR while a build was running and launched a rebrand:keep
+# "source/<dir>" only matches the original author's directory layout, so a
+# clone at ~/dev/<other> reported CLEAR while a build was running and launched a
 # second mvn into the same app/target/ -- the clobbering this guard exists to
 # prevent. The bracket on [s] keeps the pattern from matching this pgrep itself.
 # $PWD, not a re-derivation from $0: the `cd` above already put us at the repo

@@ -71,7 +71,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 public class RouteCoverageTest {
 
-    private static final String CTRL_PACKAGE = "com.wikantik.pressroom.ui.controllers";
+    private static final String CONTROLLER_PACKAGE = "com.wikantik.pressroom.ui.controllers";
 
     /**
      * The catalogue the it-selenium sweep drives from. Relative to the app
@@ -133,7 +133,7 @@ public class RouteCoverageTest {
 
         assertTrue(stale.isEmpty(),
                 "Route(s) listed in " + ROUTES_CATALOGUE.normalize() + " are no longer declared "
-                        + "by any controller in " + CTRL_PACKAGE + ":\n  "
+                        + "by any controller in " + CONTROLLER_PACKAGE + ":\n  "
                         + String.join("\n  ", stale)
                         + "\nThe handler was probably renamed or removed. Delete the entry from "
                         + "Routes.java, or correct the path if it moved.");
@@ -157,7 +157,7 @@ public class RouteCoverageTest {
 
         Set<String> declared = declaredGetRoutes();
         assertFalse(declared.isEmpty(),
-                "Scanned " + CTRL_PACKAGE + " and found no @GetMapping at all. The "
+                "Scanned " + CONTROLLER_PACKAGE + " and found no @GetMapping at all. The "
                         + "package was probably renamed, or the module was not compiled before "
                         + "the tests ran.");
         assertTrue(declared.size() > 40,
@@ -189,7 +189,7 @@ public class RouteCoverageTest {
         scanner.addIncludeFilter(new AnnotationTypeFilter(Controller.class));
 
         Set<String> routes = new TreeSet<>();
-        for (BeanDefinition definition : scanner.findCandidateComponents(CTRL_PACKAGE)) {
+        for (BeanDefinition definition : scanner.findCandidateComponents(CONTROLLER_PACKAGE)) {
             Class<?> controller = load(definition.getBeanClassName());
             String prefix = classLevelPrefix(controller);
 

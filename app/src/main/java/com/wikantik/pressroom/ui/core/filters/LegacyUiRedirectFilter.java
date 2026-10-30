@@ -11,8 +11,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 /**
- * Sends the admin UI's old path to its new one with a permanent redirect:
- * {@code /roller-ui/...} answers 301 (GET, HEAD) or 308 (anything else, so a // rebrand:keep
+ * Sends the admin UI's old path to its new one with a permanent redirect.
+ * The old prefix (see the constant below) answers 301 (GET, HEAD) or 308 (anything else, so a
  * POST keeps its method) with {@code Location} at {@code /pressroom-ui/...},
  * query string and context path kept. Registered ahead of Spring Security so
  * the redirect needs no session and no authentication. The login processing

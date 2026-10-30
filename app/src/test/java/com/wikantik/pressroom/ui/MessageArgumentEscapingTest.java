@@ -68,7 +68,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class MessageArgumentEscapingTest {
 
-    private static final Path CTRL_DIR =
+    private static final Path CONTROLLERS =
             Path.of("src/main/java/com/wikantik/pressroom/ui/controllers");
 
     /**
@@ -195,7 +195,7 @@ class MessageArgumentEscapingTest {
     }
 
     private static List<Path> controllers() throws IOException {
-        try (Stream<Path> walk = Files.walk(CTRL_DIR)) {
+        try (Stream<Path> walk = Files.walk(CONTROLLERS)) {
             return walk.filter(p -> p.toString().endsWith(".java")).sorted().toList();
         }
     }
