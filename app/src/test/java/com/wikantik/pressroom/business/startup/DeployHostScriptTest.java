@@ -183,7 +183,7 @@ class DeployHostScriptTest {
         Path home = Files.createDirectories(dir.resolve("home"));
         Path old = Files.createDirectories(home.resolve("roller")); // rebrand:keep
         Files.writeString(old.resolve("cutover-pressroom.sh"), """
-                echo "cutover ran $1 in $(basename "$PWD")"
+                echo "cutover ran $* in $(basename "$PWD")"
                 ps -o sid= -p $$ > ../sid
                 exit %d
                 """.formatted(rc));
@@ -197,6 +197,62 @@ class DeployHostScriptTest {
                     .filter(p -> !p.getFileName().toString().contains("T010203Z")).toList();
             assertEquals(1, logs.size(), logs.toString());
             return logs.get(0);
+        }
+    }
+
+    /** The read-only rehearsal on the live host: in the foreground, no log, no detach. */
+    @Test
+    void cutoverCheckCopiesTheCutoverAndRunsItsCheckInTheForeground() throws Exception {
+        Path home = fakeHostWithCutover(0);
+
+        ScriptRun.Result r = deploy("docker1", "0.5.0", "--cutover", "--check");
+
+        assertEquals(0, r.exit(), r.out());
+        String calls = calls();
+        assertTrue(calls.contains("scp -q " + checkout.resolve("deploy/cutover-pressroom.sh") + " docker1:roller/\n"), // rebrand:keep
+                calls);
+        assertTrue(calls.contains("ssh docker1 cd roller && bash cutover-pressroom.sh --check 0.5.0\n"), calls); // rebrand:keep
+        assertFalse(calls.contains("setsid"), calls);
+        assertFalse(calls.contains("rollback-pressroom.sh"), calls);
+        assertTrue(r.out().contains("cutover ran --check 0.5.0 in roller"), r.out()); // rebrand:keep
+        assertFalse(hasLog(home), "no detached run, so no log");
+        assertFalse(r.out().contains("is on 0.5.0"), "a check moves nothing: " + r.out());
+    }
+
+    @Test
+    void aFailedCutoverCheckFailsWithItsStatus() throws Exception {
+        fakeHostWithCutover(1);
+
+        ScriptRun.Result r = deploy("docker1", "0.5.0", "--cutover", "--check");
+
+        assertEquals(1, r.exit(), r.out());
+        assertTrue(r.out().contains("check"), r.out());
+    }
+
+    /** A copy over a cutover still running would rewrite the script bash is reading. */
+    @Test
+    void cutoverCheckRefusesWhileAnEarlierCutoverHasNotExited() throws Exception {
+        Path home = fakeHostWithCutover(0);
+        Files.writeString(home.resolve("pressroom-cutover-20261029T010203Z.log"), "half way\n");
+
+        ScriptRun.Result r = deploy("docker1", "0.5.0", "--cutover", "--check");
+
+        assertEquals(1, r.exit(), r.out());
+        assertFalse(calls().contains("scp"), calls());
+    }
+
+    @Test
+    void checkIsOnlyForTheCutover() throws Exception {
+        ScriptRun.Result r = deploy("docker1", "0.5.0", "--check");
+
+        assertEquals(2, r.exit(), r.out());
+        assertTrue(r.out().contains("--check"), r.out());
+        assertEquals("", calls());
+    }
+
+    private static boolean hasLog(Path home) throws Exception {
+        try (java.util.stream.Stream<Path> s = Files.list(home)) {
+            return s.anyMatch(p -> p.getFileName().toString().endsWith(".log"));
         }
     }
 

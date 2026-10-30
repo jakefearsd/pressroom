@@ -3,11 +3,19 @@
 #
 # Usage:
 #   bash cutover-pressroom.sh VERSION [--files-from DIR] [--no-pull]
+#   bash cutover-pressroom.sh --check VERSION
 #
 #   VERSION           the Pressroom release to move to, 0.5.0 or later
 #   --files-from DIR  take docker-compose.prod.yml, deploy.sh, env.example and
 #                     upgrade.sh from DIR instead of downloading the release's
 #   --no-pull         start images already on this host (the rehearsal)
+#   --check           read only, safe on the live host: runs step 1's checks
+#                     and step 4's .env rewrite into a temporary file, prints
+#                     the key names that change and every refusal, deletes the
+#                     file and exits 0 (would proceed) or 1. No backup, no
+#                     stop, no copy, no lock file; its only Docker calls are
+#                     volume inspects. bin/deploy-host.sh HOST VERSION
+#                     --cutover --check runs it.
 #
 # Run from the OLD deploy directory (~/roller), which holds the 0.4.x
 # docker-compose.prod.yml and .env. bin/deploy-host.sh HOST VERSION --cutover
@@ -31,12 +39,15 @@
 #      refuses unless .env is on 0.4.x, NEW_DIR does not exist, every old
 #      volume exists and no new one does
 #   2. fetches the release files into NEW_DIR
-#   3. backs up through the old stack's backup service, refuses unless there
-#      is room for the copies, copies that backup out of the volume into
-#      NEW_DIR/../pressroom-cutover-backup-<ts>/, and
+#   3. backs up through the old stack's backup service (the app's
+#      rollerdb-<ts>.dump and the volumes archive are required), refuses
+#      unless there is room for the copies, copies that backup out of the
+#      volume into NEW_DIR/../pressroom-cutover-backup-<ts>/, and
 #      records row counts into NEW_DIR/cutover-counts-before.txt
 #   4. writes NEW_DIR/.env from .env (key names and the database values move;
-#      every other byte stays), checks it, and pulls the new images
+#      every other byte stays), refuses what the new stack would trip on (a
+#      ROLLER_ key left over, a -Droller. property, COMPOSE_PROJECT_NAME),
+#      checks it, and pulls the new images
 #   5. stops the old stack: down, volumes kept. Nothing can run the rename
 #      migration (V041) on data the old app still uses
 #   6. copies every old volume into a new one with cp -a
@@ -79,10 +90,12 @@ refuse() {
 VERSION=""
 FILES_FROM=""
 PULL=1
+CHECK=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --files-from) FILES_FROM="${2:?--files-from needs a directory}"; shift ;;
         --no-pull) PULL=0 ;;
+        --check) CHECK=1 ;;
         -h|--help) usage; exit 0 ;;
         -*) usage >&2; exit 2 ;;
         *)
@@ -119,9 +132,16 @@ env_value() {
 STEP=1
 # One cutover at a time, held until this script exits (the kernel drops the
 # lock with the process, so a killed run leaves no stale lock).
+# --check writes nothing, so it only tests a lock file that already exists.
 LOCK_FILE="$(cd .. && pwd)/.pressroom-cutover.lock"
-exec 9>"${LOCK_FILE}"
-flock -n 9 || refuse "another cutover holds ${LOCK_FILE}. Reattach to its log instead (docs/dev/pressroom-cutover.md, \"Run it\")."
+if [[ "${CHECK}" -eq 0 ]]; then
+    exec 9>"${LOCK_FILE}"
+elif [[ -e "${LOCK_FILE}" ]]; then
+    exec 9<"${LOCK_FILE}"
+fi
+if [[ "${CHECK}" -eq 0 || -e "${LOCK_FILE}" ]]; then
+    flock -n 9 || refuse "another cutover holds ${LOCK_FILE}. Reattach to its log instead (docs/dev/pressroom-cutover.md, \"Run it\")."
+fi
 for required in "${COMPOSE_FILE}" .env; do
     [[ -f "${required}" ]] || refuse "no ${required} in $(pwd). Run this from the old deploy directory."
 done
@@ -192,8 +212,13 @@ drop_temp_role() {
 # Step 3's copy of the backup, removed if the copy-out did not finish.
 BACKUP_COPY=""
 BACKUP_COPIED=0
+# --check's trial .env, always removed.
+CHECK_ENV=""
 on_exit() {
     local rc=$?
+    if [[ -n "${CHECK_ENV}" ]]; then
+        rm -f -- "${CHECK_ENV}"
+    fi
     if [[ "${TEMP_ROLE}" -eq 1 ]]; then
         echo "Dropping the temporary superuser pressroom_cutover..." >&2
         drop_temp_role
@@ -223,6 +248,113 @@ new_compose() { docker compose -p "${NEW_PROJECT}" -f "${NEW_DIR}/${COMPOSE_FILE
 old_psql() { old_compose exec -T postgres psql -v ON_ERROR_STOP=1 -X -q -tA -U "$1" -d "$2"; }
 new_psql() { new_compose exec -T postgres psql -v ON_ERROR_STOP=1 -X -q -tA -U "$1" -d "$2"; }
 
+# Writes OUT from .env, line by line, and only three kinds of change: a
+# ROLLER_ key becomes a PRESSROOM_ key; the role and database values (roller,
+# rollerdb, and the JDBC URL's /rollerdb) become pressroom; IMAGE_VERSION
+# becomes a plain IMAGE_VERSION=VERSION line, the one shape upgrade.sh moves.
+# Comments, blank lines, quoting, export prefixes, line endings and every
+# other value pass through byte for byte. It then refuses, naming every
+# problem at once (key names, never values), whatever the new stack would
+# trip on: a ROLLER_ key left over (LegacyConfigNames refuses startup), a
+# -Droller. system property in any value (the same), a COMPOSE_PROJECT_NAME
+# (a later upgrade.sh in NEW_DIR, which names no project, would act on it),
+# or a database value it could not rewrite. Last, it lists the keys renamed
+# and rewritten, and the keys whose value still mentions roller.
+write_env() {
+    local out="$1" where="$2" report v url kind key
+    local -a problems=()
+    (umask 077 && : > "${out}")
+    report=$(awk -v version="${VERSION}" -v out="${out}" '
+    # VALUE with an exact WHOLE (optionally quoted) swapped for TO.
+    function swap_whole(value, whole, to) {
+        if (value == whole) return to
+        if (value == "\"" whole "\"") return "\"" to "\""
+        if (value == "\047" whole "\047") return "\047" to "\047"
+        return value
+    }
+    # The JDBC URL path segment /rollerdb, where it ends the database name.
+    function swap_db_path(value,    i, rest, next_char) {
+        i = index(value, "/rollerdb")
+        if (i == 0) return value
+        rest = substr(value, i + 9)
+        next_char = substr(rest, 1, 1)
+        if (next_char != "" && next_char != "?" && next_char != "\"" && next_char != "\047") return value
+        return substr(value, 1, i - 1) "/pressroom" rest
+    }
+    {
+        line = $0
+        cr = ""
+        if (line ~ /\r$/) { cr = "\r"; line = substr(line, 1, length(line) - 1) }
+        if (match(line, /^[ \t]*(export[ \t]+)?[A-Za-z_][A-Za-z0-9_]*[ \t]*=/)) {
+            head = substr(line, 1, RLENGTH)
+            value = substr(line, RLENGTH + 1)
+            old_key = head
+            sub(/^[ \t]*(export[ \t]+)?/, "", old_key)
+            sub(/[ \t]*=$/, "", old_key)
+            if (head ~ /^[ \t]*(export[ \t]+)?ROLLER_/) sub(/ROLLER_/, "PRESSROOM_", head)
+            key = head
+            sub(/^[ \t]*(export[ \t]+)?/, "", key)
+            sub(/[ \t]*=$/, "", key)
+            if (key != old_key) print "renamed " old_key " -> " key
+            was = value
+            if (key == "POSTGRES_USER" || key == "PRESSROOM_DATABASE_JDBC_USERNAME") value = swap_whole(value, "roller", "pressroom")
+            else if (key == "POSTGRES_DB") value = swap_whole(value, "rollerdb", "pressroom")
+            else if (key == "PRESSROOM_DATABASE_JDBC_CONNECTIONURL") value = swap_db_path(value)
+            else if (key == "IMAGE_VERSION") { head = "IMAGE_VERSION="; value = version }
+            if (value != was) print "rewritten " key
+            if (tolower(value) ~ /(^|[^a-z])roller/) print "still " key
+            # LegacyConfigNames refuses a roller.* system property at startup.
+            if (index(value, "-Droller.") > 0) print "sysprop " key
+            if (key == "COMPOSE_PROJECT_NAME") print "project " key
+            line = head value
+        }
+        printf "%s%s\n", line, cr > out
+    }' .env)
+    new_value() { env_value "$1" "${out}"; }
+    for key in POSTGRES_USER POSTGRES_DB PRESSROOM_DATABASE_JDBC_USERNAME; do
+        v=$(new_value "${key}")
+        [[ -z "${v}" || "${v}" == pressroom ]] \
+            || problems+=("${key} in .env is not roller/rollerdb in a form this script rewrites; set it by hand.")
+    done
+    url=$(new_value PRESSROOM_DATABASE_JDBC_CONNECTIONURL)
+    [[ -z "${url}" || "${url}" == */pressroom || "${url}" == */pressroom\?* ]] \
+        || problems+=("PRESSROOM_DATABASE_JDBC_CONNECTIONURL does not end in /rollerdb in a form this script rewrites.")
+    while IFS= read -r key; do
+        [[ -n "${key}" ]] && problems+=("${key} survived the rewrite (not a KEY=value line); Pressroom refuses to start on a ROLLER_ variable. Rename or remove it by hand.")
+    done < <(grep -Eo '^[[:space:]]*(export[[:space:]]+)?ROLLER_[A-Za-z0-9_]*' "${out}" | sed -E 's/^[[:space:]]*(export[[:space:]]+)?//')
+    while read -r kind key; do
+        case "${kind}" in
+            sysprop) problems+=("${key} sets an old -Droller. system property; Pressroom refuses to start on one. Make it -Dpressroom. in .env first.") ;;
+            project) problems+=("${key} is set in .env; the new directory's upgrade.sh, which names no project, would act on that one. Remove it from .env first.") ;;
+        esac
+    done <<<"${report}"
+    if [[ ${#problems[@]} -gt 0 ]]; then
+        for v in "${problems[@]}"; do echo "Refusing: ${v}" >&2; done
+        exit 1
+    fi
+    if grep -q '^renamed ' <<<"${report}"; then
+        echo "    Keys renamed:"
+        sed -n 's/^renamed /      /p' <<<"${report}"
+    fi
+    if grep -q '^rewritten ' <<<"${report}"; then
+        echo "    Values rewritten:"
+        sed -n 's/^rewritten /      /p' <<<"${report}"
+    fi
+    if grep -q '^still ' <<<"${report}"; then
+        echo "    These keys' values still mention roller; check them in ${where}:"
+        sed -n 's/^still /      /p' <<<"${report}"
+    fi
+}
+
+# ---- --check: step 4's rewrite into a temporary file, then stop -----------
+if [[ "${CHECK}" -eq 1 ]]; then
+    echo "==> Checking a cutover to ${VERSION}: step 1 holds. Trying step 4's .env rewrite..."
+    CHECK_ENV=$(mktemp)
+    write_env "${CHECK_ENV}" ".env (the cutover copies them as they are)"
+    echo "==> The check passed. Nothing was stopped, copied or written; the trial .env is deleted."
+    exit 0
+fi
+
 # ---- 2. The release files ---------------------------------------------------
 STEP=2
 echo "==> Fetching the v${VERSION} release files into ${NEW_DIR}..."
@@ -249,8 +381,10 @@ backups_after=$(list_backups)
 # That backup's files: the ones it added, finished (no .tmp).
 this_backup=$(LC_ALL=C comm -13 <(printf '%s\n' "${backups_before}") <(printf '%s\n' "${backups_after}") \
     | grep -v '\.tmp$' || true)
-if ! grep -q '\.dump$' <<<"${this_backup}" || ! grep -q '^volumes-.*\.tar\.gz$' <<<"${this_backup}"; then
-    echo "The backup added no database dump and volumes archive to /backups." >&2
+# The app's dump (0.4.x names it rollerdb-<ts>.dump) and the volumes archive
+# are required; the umami and listmonk dumps are extras.
+if ! grep -q '^rollerdb-.*\.dump$' <<<"${this_backup}" || ! grep -q '^volumes-.*\.tar\.gz$' <<<"${this_backup}"; then
+    echo "The backup added no app database dump (rollerdb-*.dump) and volumes archive to /backups." >&2
     exit 1
 fi
 
@@ -327,70 +461,10 @@ sed 's/^/    /' "${NEW_DIR}/cutover-counts-before.txt"
 # ---- 4. The new .env --------------------------------------------------------
 STEP=4
 echo "==> Writing ${NEW_DIR}/.env from .env..."
-# Line by line, and only three kinds of change: a ROLLER_ key becomes a
-# PRESSROOM_ key; the role and database values (roller, rollerdb, and the
-# JDBC URL's /rollerdb) become pressroom; IMAGE_VERSION becomes a plain
-# IMAGE_VERSION=VERSION line, the one shape upgrade.sh moves.
-# Comments, blank lines, quoting, export prefixes, line endings and every
-# other value pass through byte for byte. Prints the names (never the
-# values) of keys whose value still mentions roller.
-(umask 077 && : > "${NEW_DIR}/.env")
-chmod --reference=.env "${NEW_DIR}/.env"
-still_named=$(awk -v version="${VERSION}" -v out="${NEW_DIR}/.env" '
-    # VALUE with an exact WHOLE (optionally quoted) swapped for TO.
-    function swap_whole(value, whole, to) {
-        if (value == whole) return to
-        if (value == "\"" whole "\"") return "\"" to "\""
-        if (value == "\047" whole "\047") return "\047" to "\047"
-        return value
-    }
-    # The JDBC URL path segment /rollerdb, where it ends the database name.
-    function swap_db_path(value,    i, rest, next_char) {
-        i = index(value, "/rollerdb")
-        if (i == 0) return value
-        rest = substr(value, i + 9)
-        next_char = substr(rest, 1, 1)
-        if (next_char != "" && next_char != "?" && next_char != "\"" && next_char != "\047") return value
-        return substr(value, 1, i - 1) "/pressroom" rest
-    }
-    {
-        line = $0
-        cr = ""
-        if (line ~ /\r$/) { cr = "\r"; line = substr(line, 1, length(line) - 1) }
-        if (match(line, /^[ \t]*(export[ \t]+)?[A-Za-z_][A-Za-z0-9_]*[ \t]*=/)) {
-            head = substr(line, 1, RLENGTH)
-            value = substr(line, RLENGTH + 1)
-            if (head ~ /^[ \t]*(export[ \t]+)?ROLLER_/) sub(/ROLLER_/, "PRESSROOM_", head)
-            key = head
-            sub(/^[ \t]*(export[ \t]+)?/, "", key)
-            sub(/[ \t]*=$/, "", key)
-            if (key == "POSTGRES_USER" || key == "PRESSROOM_DATABASE_JDBC_USERNAME") value = swap_whole(value, "roller", "pressroom")
-            else if (key == "POSTGRES_DB") value = swap_whole(value, "rollerdb", "pressroom")
-            else if (key == "PRESSROOM_DATABASE_JDBC_CONNECTIONURL") value = swap_db_path(value)
-            else if (key == "IMAGE_VERSION") { head = "IMAGE_VERSION="; value = version }
-            if (tolower(value) ~ /(^|[^a-z])roller/) print key
-            line = head value
-        }
-        printf "%s%s\n", line, cr > out
-    }' .env)
-# Whatever the rewrite could not place is a refusal now, while the old site
+# What the rewrite could not place is a refusal now, while the old site
 # still serves, not a failed login after it has stopped.
-new_value() { env_value "$1" "${NEW_DIR}/.env"; }
-for key in POSTGRES_USER POSTGRES_DB PRESSROOM_DATABASE_JDBC_USERNAME; do
-    v=$(new_value "${key}")
-    [[ -z "${v}" || "${v}" == pressroom ]] \
-        || refuse "${key} in .env is not roller/rollerdb in a form this script rewrites; set it by hand."
-done
-url=$(new_value PRESSROOM_DATABASE_JDBC_CONNECTIONURL)
-[[ -z "${url}" || "${url}" == */pressroom || "${url}" == */pressroom\?* ]] \
-    || refuse "PRESSROOM_DATABASE_JDBC_CONNECTIONURL does not end in /rollerdb in a form this script rewrites."
-if grep -Eq '^[[:space:]]*(export[[:space:]]+)?ROLLER_' "${NEW_DIR}/.env"; then
-    refuse "a ROLLER_ key survived the rewrite."
-fi
-if [[ -n "${still_named}" ]]; then
-    echo "    These keys' values still mention roller; check them in ${NEW_DIR}/.env:"
-    while IFS= read -r key; do echo "      ${key}"; done <<<"${still_named}"
-fi
+write_env "${NEW_DIR}/.env" "${NEW_DIR}/.env"
+chmod --reference=.env "${NEW_DIR}/.env"
 new_compose config -q </dev/null
 if [[ "${PULL}" -eq 1 ]]; then
     echo "==> Pulling the new images while the old site still serves..."

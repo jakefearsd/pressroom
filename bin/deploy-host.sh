@@ -4,6 +4,7 @@
 # Usage:
 #   bin/deploy-host.sh HOST [VERSION] [--dir DIR] [--no-backup] [--prune] [--url URL]
 #   bin/deploy-host.sh HOST VERSION --cutover [--url URL]
+#   bin/deploy-host.sh HOST VERSION --cutover --check
 #
 #   HOST         an ssh destination, e.g. docker1
 #   VERSION      the release, e.g. 0.2.3; default: this checkout's version,
@@ -19,6 +20,10 @@
 #                directory to pressroom/ (docs/dev/pressroom-cutover.md).
 #                It always backs up and always makes the default directory,
 #                so it takes none of --dir, --no-backup or --prune.
+#   --check      with --cutover: the read-only check to run first. Copies
+#                only deploy/cutover-pressroom.sh into the old directory and
+#                runs its --check there, in the foreground: no backup, no
+#                stop, no copy. Exits with its status.
 #
 # Copies deploy/upgrade.sh into DIR on the host and runs it there; that
 # script does the work (backup, release files, IMAGE_VERSION, deploy.sh).
@@ -41,6 +46,7 @@ DIR_GIVEN=""
 FLAGS=""
 URL=""
 CUTOVER=0
+CHECK=0
 # The deploy directory before the cutover; the cutover makes DIR beside it.
 OLD_DIR=roller  # rebrand:keep
 while [[ $# -gt 0 ]]; do
@@ -49,6 +55,7 @@ while [[ $# -gt 0 ]]; do
         --url) URL="${2:?--url needs a url}"; shift ;;
         --no-backup|--prune) FLAGS="${FLAGS} $1" ;;
         --cutover) CUTOVER=1 ;;
+        --check) CHECK=1 ;;
         -h|--help) usage; exit 0 ;;
         -*) usage >&2; exit 2 ;;
         *)
@@ -75,6 +82,16 @@ if [[ ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     exit 2
 fi
 
+if [[ "${CHECK}" -eq 1 && "${CUTOVER}" -eq 0 ]]; then
+    echo "--check is for --cutover only." >&2
+    usage >&2
+    exit 2
+fi
+if [[ "${CHECK}" -eq 1 && -n "${URL}" ]]; then
+    echo "--check takes no --url: it moves nothing, so there is nothing new to reach." >&2
+    exit 2
+fi
+
 if [[ "${CUTOVER}" -eq 1 ]]; then
     for flag in ${DIR_GIVEN} ${FLAGS}; do
         echo "--cutover takes no ${flag}: it always backs up, and always moves ${OLD_DIR}/ to pressroom/." >&2
@@ -92,6 +109,22 @@ if [[ "${CUTOVER}" -eq 1 ]]; then
         done <<<"${unfinished}"
         echo "If the process is confirmed dead, delete or rename that log on ${HOST} and run this again." >&2
         exit 1
+    fi
+    if [[ "${CHECK}" -eq 1 ]]; then
+        # Read only, so in the foreground: nothing to lose if ssh drops.
+        echo "==> Copying the cutover script to ${HOST}:${OLD_DIR}/"
+        scp -q "${ROOT}/deploy/cutover-pressroom.sh" "${HOST}:${OLD_DIR}/"
+        echo "==> Checking a cutover of ${HOST} to ${VERSION} (read only)..."
+        rc=0
+        # Expanded here on purpose: OLD_DIR is fixed and VERSION checked as x.y.z.
+        # shellcheck disable=SC2029
+        ssh "${HOST}" "cd ${OLD_DIR} && bash cutover-pressroom.sh --check ${VERSION}" || rc=$?
+        if [[ "${rc}" -ne 0 ]]; then
+            echo "The cutover check on ${HOST} exited ${rc}; fix what it names before the cutover." >&2
+            exit "${rc}"
+        fi
+        echo "==> The cutover check on ${HOST} passed; nothing on it was changed."
+        exit 0
     fi
     echo "==> Copying the cutover and rollback scripts to ${HOST}:${OLD_DIR}/"
     scp -q "${ROOT}/deploy/cutover-pressroom.sh" "${ROOT}/deploy/rollback-pressroom.sh" "${HOST}:${OLD_DIR}/"

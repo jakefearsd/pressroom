@@ -28,7 +28,11 @@ import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -141,9 +145,12 @@ class CutoverScriptTest {
                   "volume create "*) echo "$last" >> "$STUB_VOLUMES"; echo "$last"; exit 0 ;;
                   *"exec -T backup /app/backup/backup.sh"*) touch "$STUB_STATE/backed-up"; exit "${STUB_BACKUP_RC:-0}" ;;
                   *"exec -T backup ls -1 /backups"*)
-                    echo "roller-20261001T030000Z.dump"  # rebrand:keep
-                    if [[ -e "$STUB_STATE/backed-up" ]]; then
-                      echo "roller-20261029T120000Z.dump"  # rebrand:keep
+                    echo "rollerdb-20261001T030000Z.dump"  # rebrand:keep
+                    if [[ -e "$STUB_STATE/backed-up" && -n "${STUB_ONLY_UMAMI:-}" ]]; then
+                      echo "umami-20261029T120000Z.dump"
+                      echo "volumes-20261029T120000Z.tar.gz"
+                    elif [[ -e "$STUB_STATE/backed-up" ]]; then
+                      echo "rollerdb-20261029T120000Z.dump"  # rebrand:keep
                       echo "umami-20261029T120000Z.dump"
                       echo "listmonk-20261029T120000Z.dump"
                       echo "volumes-20261029T120000Z.tar.gz"
@@ -583,7 +590,7 @@ class CutoverScriptTest {
                     .findFirst().orElseThrow();
         }
         try (Stream<Path> s = Files.list(copy)) {
-            assertEquals(List.of("listmonk-20261029T120000Z.dump", "roller-20261029T120000Z.dump", // rebrand:keep
+            assertEquals(List.of("listmonk-20261029T120000Z.dump", "rollerdb-20261029T120000Z.dump", // rebrand:keep
                             "umami-20261029T120000Z.dump", "volumes-20261029T120000Z.tar.gz"),
                     s.map(p -> p.getFileName().toString()).sorted().toList(), "only that backup's files");
         }
@@ -757,6 +764,152 @@ class CutoverScriptTest {
         assertFalse(hasBackupCopy(), "the partial copy is removed");
         assertTrue(r.out().contains("pressroom-cutover-backup-"), r.out());
         assertTrue(r.out().contains("still serves"), r.out());
+    }
+
+    // ---- final review ------------------------------------------------------
+
+    /** An old system property in a value would stop the new app at startup (LegacyConfigNames). */
+    @Test
+    void refusesAnOldSystemPropertyInAValueBeforeAnythingStops() throws Exception {
+        Files.writeString(oldDir.resolve(".env"), OLD_ENV + "JAVA_OPTS=\"-Xmx1g -Droller.log.dir=/srv/logs\"\n"); // rebrand:keep
+        Map<String, String> before = snapshot(oldDir);
+
+        ScriptRun.Result r = cutover("0.5.0");
+
+        assertRefusedBeforeAnythingStopped(r, before);
+        assertTrue(r.out().contains("Refusing") && r.out().contains("JAVA_OPTS"), r.out());
+        assertFalse(r.out().contains("-Xmx1g") || r.out().contains("/srv/logs"), "names keys, never values: " + r.out());
+        assertTrue(r.out().contains("still serves"), r.out());
+    }
+
+    /** upgrade.sh in the new directory names no project, so a stale one in .env would aim it at the old stack. */
+    @Test
+    void refusesAComposeProjectNameInEnv() throws Exception {
+        Files.writeString(oldDir.resolve(".env"), OLD_ENV + "COMPOSE_PROJECT_NAME=roller\n"); // rebrand:keep
+        Map<String, String> before = snapshot(oldDir);
+
+        ScriptRun.Result r = cutover("0.5.0");
+
+        assertRefusedBeforeAnythingStopped(r, before);
+        assertTrue(r.out().contains("Refusing") && r.out().contains("COMPOSE_PROJECT_NAME"), r.out());
+    }
+
+    /** A bare KEY line (compose passes it through from the host) is not an assignment the rewrite renames. */
+    @Test
+    void refusesAnOldKeyTheRewriteCannotRenameAndNamesIt() throws Exception {
+        Files.writeString(oldDir.resolve(".env"), OLD_ENV + "ROLLER_FROM_HOST\n"); // rebrand:keep
+        Map<String, String> before = snapshot(oldDir);
+
+        ScriptRun.Result r = cutover("0.5.0");
+
+        assertRefusedBeforeAnythingStopped(r, before);
+        assertTrue(r.out().contains("Refusing") && r.out().contains("ROLLER_FROM_HOST"), r.out()); // rebrand:keep
+    }
+
+    /** --check is run on the live host beforehand, so it may only read. */
+    @Test
+    void checkRunsThePreflightAndTheRewriteAndChangesNothing() throws Exception {
+        Path tmp = Files.createDirectories(dir.resolve("tmp"));
+        env.put("TMPDIR", tmp.toString());
+        Map<String, String> before = snapshot(oldDir);
+
+        ScriptRun.Result r = cutover("--check", "0.5.0");
+
+        assertEquals(0, r.exit(), r.out());
+        assertEquals(before, snapshot(oldDir));
+        assertFalse(Files.exists(newDir), "nothing is made");
+        assertFalse(hasBackupCopy());
+        assertFalse(Files.exists(dir.resolve("host/.pressroom-cutover.lock")), "not even the lock file");
+        try (Stream<Path> s = Files.list(tmp)) {
+            assertEquals(List.of(), s.toList(), "the trial .env is deleted");
+        }
+        String calls = calls();
+        assertFalse(calls.isEmpty(), "the volumes are inspected");
+        assertTrue(calls.lines().allMatch(l -> l.startsWith("docker volume inspect ")), "only read-only inspects: " + calls);
+        assertTrue(r.out().contains("ROLLER_A -> PRESSROOM_A"), r.out()); // rebrand:keep
+        assertTrue(r.out().contains("ROLLER_DATABASE_JDBC_PASSWORD -> PRESSROOM_DATABASE_JDBC_PASSWORD"), r.out()); // rebrand:keep
+        for (String key : List.of("POSTGRES_DB", "POSTGRES_USER", "IMAGE_VERSION", "PRESSROOM_MAIL_FROM")) {
+            assertTrue(r.out().contains(key), key + ": " + r.out());
+        }
+        assertFalse(r.out().contains(SECRET), r.out());
+        assertFalse(r.out().contains("roller@example.com"), r.out()); // rebrand:keep
+        assertFalse(r.out().contains("quoted value"), r.out());
+    }
+
+    @Test
+    void checkReportsEveryRefusalAndFails() throws Exception {
+        Path tmp = Files.createDirectories(dir.resolve("tmp"));
+        env.put("TMPDIR", tmp.toString());
+        Files.writeString(oldDir.resolve(".env"), OLD_ENV
+                + "JAVA_TOOL_OPTIONS=-Droller.custom.config=/x\nCOMPOSE_PROJECT_NAME=roller\n"); // rebrand:keep
+
+        ScriptRun.Result r = cutover("--check", "0.5.0");
+
+        assertEquals(1, r.exit(), r.out());
+        assertTrue(r.out().contains("JAVA_TOOL_OPTIONS") && r.out().contains("COMPOSE_PROJECT_NAME"), r.out());
+        assertFalse(r.out().contains("custom.config=/x"), r.out());
+        assertFalse(Files.exists(newDir));
+        try (Stream<Path> s = Files.list(tmp)) {
+            assertEquals(List.of(), s.toList(), "the trial .env is deleted on a refusal too");
+        }
+        assertTrue(calls().lines().allMatch(l -> l.startsWith("docker volume inspect ")), calls());
+    }
+
+    @Test
+    void checkRefusesWhatThePreflightRefuses() throws Exception {
+        Files.createDirectories(newDir);
+
+        ScriptRun.Result r = cutover("--check", "0.5.0");
+
+        assertEquals(1, r.exit(), r.out());
+        assertTrue(r.out().contains("already exists"), r.out());
+    }
+
+    /** The umami and listmonk dumps are extras: without the app's own dump the backup is not one. */
+    @Test
+    void refusesABackupWithoutTheAppDump() throws Exception {
+        env.put("STUB_ONLY_UMAMI", "1");
+        Map<String, String> before = snapshot(oldDir);
+
+        ScriptRun.Result r = cutover("0.5.0");
+
+        assertRefusedBeforeAnythingStopped(r, before);
+        assertTrue(r.out().contains("rollerdb-"), r.out()); // rebrand:keep
+        assertFalse(calls().contains(" cp backup:/backups/"), calls());
+    }
+
+    /**
+     * Characterisation test: the volumes the cutover copies are exactly the
+     * ones the shipped production compose file declares, so a volume added
+     * there cannot be left behind (passed when written; proven to bite by
+     * dropping caddy-config from CADDY_VOLUMES).
+     */
+    @Test
+    void copiesExactlyTheVolumesTheComposeFileDeclares() throws Exception {
+        List<String> compose = Files.readAllLines(Paths.get("../docker-compose.prod.yml"));
+        Set<String> declared = new TreeSet<>();
+        boolean inVolumes = false;
+        for (String line : compose) {
+            if (!line.isEmpty() && !Character.isWhitespace(line.charAt(0))) {
+                inVolumes = line.equals("volumes:");
+            } else if (inVolumes && line.matches("  [A-Za-z0-9_.-]+:.*")) {
+                declared.add(line.strip().substring(0, line.strip().indexOf(':')));
+            }
+        }
+        String script = Files.readString(CUTOVER);
+        Set<String> copied = new TreeSet<>();
+        for (String s : bashArray(script, "VOLUME_SUFFIXES")) {
+            copied.add("pressroom-" + s);
+        }
+        copied.addAll(bashArray(script, "CADDY_VOLUMES"));
+        assertFalse(declared.isEmpty(), "parsed the top-level volumes block");
+        assertEquals(declared, copied);
+    }
+
+    private static List<String> bashArray(String script, String name) {
+        Matcher m = Pattern.compile("(?m)^" + name + "=\\(([^)]*)\\)").matcher(script);
+        assertTrue(m.find(), name + " in the cutover");
+        return List.of(m.group(1).trim().split("\\s+"));
     }
 
     private boolean hasBackupCopy() throws Exception {

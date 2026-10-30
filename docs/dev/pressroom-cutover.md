@@ -23,8 +23,10 @@ serving throughout.
    not exist; every old volume exists; and no new volume exists.
 2. It fetches the release's `docker-compose.prod.yml`, `deploy.sh`,
    `env.example` and `upgrade.sh` into `~/pressroom`.
-3. It takes a backup through the old stack's `backup` service. It then copies
-   that backup's files out of the backup volume into
+3. It takes a backup through the old stack's `backup` service, and refuses
+   unless that backup holds the app's dump (`rollerdb-<stamp>.dump`, the 0.4.x <!-- rebrand:keep -->
+   name) and the volumes archive; the umami and listmonk dumps are extras.
+   It then copies that backup's files out of the backup volume into
    `~/pressroom-cutover-backup-<UTC stamp>/`: the app, umami and listmonk
    dumps and the volumes archive. It prints that path. Last, it records row
    counts into `~/pressroom/cutover-counts-before.txt`. The counts cover the
@@ -36,9 +38,14 @@ serving throughout.
    - `IMAGE_VERSION` becomes the new version.
    - Every other byte stays the same.
 
-   It prints the *names* of keys whose value still mentions the old name, and
-   no values. It then checks the result with `docker compose config` and
-   pulls the new images.
+   It refuses, naming every key at fault and no values, when the new stack
+   would trip on the result: a `ROLLER_` key the rewrite could not rename <!-- rebrand:keep -->
+   (a bare `KEY` line), a `-Droller.` system property in any value (both <!-- rebrand:keep -->
+   make Pressroom refuse to start), or a `COMPOSE_PROJECT_NAME` (a later
+   `upgrade.sh` in `~/pressroom`, which names no project, would act on it).
+   It prints the *names* of keys renamed and rewritten, and of keys whose
+   value still mentions the old name, and no values. It then checks the
+   result with `docker compose config` and pulls the new images.
 5. It stops the old stack with `down`, which keeps the volumes. From here the
    site is down.
 6. It copies each old volume into its new name with `cp -a`, then compares the
@@ -63,6 +70,19 @@ copy.
 - **The 0.5.0 release is published:** both images
   (`ghcr.io/jakefearsd/pressroom`, `ghcr.io/jakefearsd/pressroom-caddy`), and
   the release files, `upgrade.sh` among them.
+- **docker1 can pull both new images.** GHCR makes a new package private,
+  and `pressroom` and `pressroom-caddy` are new packages. After the release,
+  set both public (GitHub, Packages, each package's settings, "Change
+  visibility"), or confirm that docker1's `docker login ghcr.io` can read
+  them. Then prove it from docker1:
+
+  ```bash
+  ssh docker1 'docker manifest inspect ghcr.io/jakefearsd/pressroom:0.5.0 >/dev/null && echo app ok'
+  ssh docker1 'docker manifest inspect ghcr.io/jakefearsd/pressroom-caddy:0.5.0 >/dev/null && echo caddy ok'
+  ```
+
+  The cutover pulls at step 4, before anything stops, so an unreadable image
+  fails there; this check finds it a day earlier.
 - **The GitHub repository is renamed** to `jakefearsd/pressroom` (plan ruling
   1). GitHub redirects the old URL, but `upgrade.sh` and the cutover
   download from the new one.
@@ -77,6 +97,21 @@ copy.
   one filesystem, budget for the sum. Compare `docker system df -v` with
   `df -h ~ /var/lib/docker`. The cutover measures all of this at step 3 and
   refuses, before anything stops, if it will not fit.
+- **The check passes (required).** Run it after the release, again just
+  before the window, and fix whatever it names:
+
+  ```bash
+  bin/deploy-host.sh docker1 0.5.0 --cutover --check
+  ```
+
+  It copies `cutover-pressroom.sh` into `~/roller` and runs <!-- rebrand:keep -->
+  `bash cutover-pressroom.sh --check 0.5.0` there in the foreground. The
+  check is read only and safe on the live site: it runs step 1's checks and
+  step 4's `.env` rewrite into a temporary file, prints the key names that
+  change and every refusal, deletes the file, and exits 0 or 1. It takes no
+  backup, stops and copies nothing, writes no lock file, and its only Docker
+  calls are `docker volume inspect`. It does not measure disk space (that
+  needs a container on each volume); step 3 still does.
 - **The ssh connection need not hold.** The cutover runs on docker1 under
   `setsid nohup`, so a dropped session stops only `deploy-host.sh`'s view of
   the log, never the cutover. Reattach as described under "Run it". A second
@@ -142,6 +177,32 @@ Accepted side effects:
 - **Grafana has no datasource on the app database yet** (Jake confirmed it is
   not wired up), so the renamed database, role and tables break nothing
   there.
+
+## Release note for 0.5.0
+
+What changes for the people and tools that use the site:
+
+- **Everyone is signed out once.** The session key and the cookie names
+  changed. Sign in again.
+- **Old API tokens are refused.** Tokens with the old `rlr_` prefix no <!-- rebrand:keep -->
+  longer authenticate. Mint a `prs_` token (Profile → API tokens, or an
+  agent's page) and replace the old one wherever it is configured.
+- **The CLI moved.** It is `bin/pressroom-api` now. Its credentials file is
+  `~/.pressroom/credentials`: run `mv ~/.roller ~/.pressroom` once (the CLI <!-- rebrand:keep -->
+  says so when it finds only the old file). It reads `PRESSROOM_API_URL` and
+  `PRESSROOM_API_TOKEN`. Unset any exported `ROLLER_*` variable: the CLI <!-- rebrand:keep -->
+  ignores them, and a Pressroom server started with one in its environment
+  refuses to start, naming it.
+- **Old admin links keep working.** Anything under `/roller-ui/` <!-- rebrand:keep -->
+  redirects permanently to the same path under `/pressroom-ui/`, query
+  string kept; a POST gets a 308, so it stays a POST.
+- **The old login form's POST is not redirected.** It went to
+  `/roller_j_security_check`, which no longer exists. A login page cached <!-- rebrand:keep -->
+  from 0.4.x fails once; reloading the page fixes it.
+- **Unsaved editor drafts are not carried over.** The editor keeps drafts in
+  the browser's storage under a key that changed, so a draft left unsaved in
+  0.4.x is not offered back. Save or publish open drafts before the
+  cutover.
 
 ## Rollback
 
