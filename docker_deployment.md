@@ -1186,17 +1186,17 @@ volume until the new cluster has served real traffic.
 If this host has been running Pressroom since before the `provision.sh`/
 `analytics-views.sh`/image-only rework (i.e. it still has a
 `deploy/config/roller-production.properties` bind-mounted in, or a <!-- rebrand:keep -->
-`PRESSROOM_DOMAIN`/`PRESSROOM_IMAGE` pair in `.env`), moving it onto a current
+`ROLLER_DOMAIN`/`ROLLER_IMAGE` pair in `.env`), moving it onto a current <!-- rebrand:keep -->
 release needs three changes, not just a version bump:
 
 1. **Replace `docker-compose.prod.yml`** with the current release's copy —
    the old file bind-mounts a properties file and a Caddyfile that no longer
    exist as separate artifacts; both are baked into the images now (see
    "Development vs Production" in `docs/dev/configuration.md` and the top of this document).
-2. **Rename two `.env` keys**: `PRESSROOM_DOMAIN` becomes `SITE_DOMAIN`, and
-   `PRESSROOM_IMAGE` becomes `IMAGE_VERSION` — and `IMAGE_VERSION` is a **bare
+2. **Rename two `.env` keys**: `ROLLER_DOMAIN` becomes `SITE_DOMAIN`, and <!-- rebrand:keep -->
+   `ROLLER_IMAGE` becomes `IMAGE_VERSION` — and `IMAGE_VERSION` is a **bare <!-- rebrand:keep -->
    version tag** (e.g. `0.1.0`), not a full image reference the way
-   `PRESSROOM_IMAGE` used to be. Both were deliberately renamed off the
+   `ROLLER_IMAGE` used to be. Both were deliberately renamed off the <!-- rebrand:keep -->
    `PRESSROOM_` prefix: that prefix is now reserved for the app's own
    configuration, and a stray `PRESSROOM_DOMAIN` would be overlaid onto the
    app's properties as a junk key named `domain`.

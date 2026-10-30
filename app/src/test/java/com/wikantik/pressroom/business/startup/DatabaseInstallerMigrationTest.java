@@ -160,7 +160,8 @@ class DatabaseInstallerMigrationTest {
         IllegalStateException refused = assertThrows(IllegalStateException.class, installer::isCreationRequired);
 
         assertTrue(refused.getMessage().startsWith(
-                "This database has upstream tables but no schema_migrations table"), refused.getMessage());
+                "This database has Apache Roller tables but no schema_migrations table"), // rebrand:keep
+                refused.getMessage());
         assertTrue(refused.getMessage().contains("Export your content and load it into a fresh database."),
                 refused.getMessage());
     }

@@ -42,14 +42,15 @@ This repository is part of the **Simple Agility** small-business ecosystem:
   The busy check must be **bracketed and scoped to this repo**:
 
   ```bash
-  pgrep -f "[s]urefirebooter.*$PWD" >/dev/null && echo BUSY || echo CLEAR
+  pgrep -f "[s]urefirebooter.*$(git rev-parse --show-toplevel)/app/target/" >/dev/null && echo BUSY || echo CLEAR
   ```
 
   An unbracketed `pgrep -f surefirebooter` matches the checking command
   itself, so a `while pgrep …; do sleep; done` loop waits on itself forever
   (the same self-match makes `pkill -f "spring-boot:run"` kill its own
-  shell; use `[s]pring-boot` there too). An unscoped pattern matches other
-  checkouts' builds. Never poll for a lock as a separate background step —
+  shell; use `[s]pring-boot` there too). The path is the repo-exact `app/target/`
+  of the current checkout or worktree, so other checkouts' builds (and a
+  worktree's, from the main checkout) do not match, from any subdirectory. Never poll for a lock as a separate background step —
   inline the wait in the build command.
 - **Parallelising implementers means git worktrees — and a worktree's base
   MUST be pinned and verified before you dispatch into it.** Each worktree
