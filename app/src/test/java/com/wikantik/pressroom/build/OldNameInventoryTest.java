@@ -20,10 +20,11 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
 /**
- * Inventory ratchet for the old product name (Roller) during the rename to
- * Pressroom. Phase 0 renames nothing; {@link #BASELINE} records today's count
- * of old-name occurrences so each later phase can only shrink it. The end
- * state is an empty map, in the style of the i18n ratchets.
+ * Inventory ratchet for the old product name (Roller) after the rename to
+ * Pressroom. Phase 0 recorded the count of old-name occurrences in
+ * {@link #BASELINE}; Phases 1 to 3 shrank it, and Phase 3 emptied it. With
+ * the baseline empty, any old-name occurrence outside the kept files fails,
+ * naming the files it is in, in the style of the i18n ratchets.
  *
  * <p>This replaces the spec's "grouped by layer". {@code PACKAGE} and
  * {@code CLASS} are layer 1. Layer 2 is {@code MACHINE} and {@code TOKEN_PREFIX}
@@ -46,13 +47,9 @@ import org.junit.jupiter.api.Test;
  * "old name added in MACHINE/main-java: 603 > baseline 602"; restored with
  * git checkout.
  *
- * <p>Phase 1 (the Java package move) must bring these keys to zero:
- * {@code PACKAGE}, {@code CLASS}, {@code PATH-PACKAGE} and {@code PATH-CLASS}
- * in the areas {@code main-java}, {@code main-resources}, {@code test},
- * {@code it} and {@code build}. The {@code docs} area (docs/examples
- * included) and the {@code MACHINE}, {@code PROSE} and {@code TOKEN_PREFIX} kinds are later
- * phases; the {@code deploy} and {@code other} areas are not on Phase 1's
- * list either.
+ * <p>Phase 1 (the Java package move) emptied {@link #phaseOneLeftovers},
+ * Phase 2 (production names) emptied {@link #layerTwoLeftovers}, and Phase 3
+ * (what people see) emptied the rest; their own tests still pin each layer.
  *
  * <p>Excluded forever (they legitimately keep the old name): LICENSE.txt,
  * NOTICE.txt, migrations V001 to V041, docs/superpowers/**, this file and
@@ -94,21 +91,8 @@ class OldNameInventoryTest {
     private static final Path THIS_FILE = sourceOf(OldNameInventoryTest.class);
     private static final Path PROJECT_NAMES = sourceOf(ProjectNames.class);
 
-    /** Keyed "KIND/area". Later phases lower these; the end state is empty. */
-    static final Map<String, Integer> BASELINE = Map.ofEntries(
-            Map.entry("CLASS/docs", 12),
-            Map.entry("MACHINE/docs", 137),
-            Map.entry("PACKAGE/docs", 115),
-            Map.entry("PATH-CLASS/docs", 1),
-            Map.entry("PATH-MACHINE/docs", 15),
-            Map.entry("PATH-PACKAGE/docs", 8),
-            Map.entry("PROSE/build", 14),
-            Map.entry("PROSE/deploy", 30),
-            Map.entry("PROSE/docs", 118),
-            Map.entry("PROSE/it", 53),
-            Map.entry("PROSE/main-java", 178),
-            Map.entry("PROSE/main-resources", 225),
-            Map.entry("PROSE/test", 103));
+    /** Keyed "KIND/area". Empty since Phase 3: no old name remains outside the kept files. */
+    static final Map<String, Integer> BASELINE = Map.of();
 
     /** Kinds Phase 1 (the package move) must bring to zero. */
     static final Set<String> PHASE_ONE_KINDS = Set.of("PACKAGE", "CLASS", "PATH-PACKAGE", "PATH-CLASS");

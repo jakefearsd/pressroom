@@ -10,7 +10,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * Pins the attribution in {@code NOTICE.txt}: the Apache Roller notice is kept
+ * Pins the attribution in {@code NOTICE.txt}: the Apache Roller notice is kept // rebrand:keep
  * verbatim, and exactly one derivation line is added after its first paragraph.
  */
 class NoticeAttributionTest {
@@ -19,12 +19,12 @@ class NoticeAttributionTest {
             Path.of(System.getProperty("user.dir")).getParent().resolve("NOTICE.txt");
 
     private static final String DERIVATION =
-            "Pressroom is derived from Apache Roller (https://roller.apache.org/), "
+            "Pressroom is derived from Apache Roller (https://roller.apache.org/), " // rebrand:keep
                     + "developed at The Apache Software Foundation.";
 
     /** The notice as at the base of the rebrand, split on newlines. */
     private static final List<String> ORIGINAL = List.of(
-            "Apache Roller",
+            "Apache Roller", // rebrand:keep
             "Copyright 2001-2019 The Apache Software Foundation",
             "",
             "This product includes software developed at",
