@@ -86,7 +86,10 @@ copy.
 - **The GitHub repository is renamed** to `jakefearsd/pressroom` (plan ruling
   1). GitHub redirects the old URL, but `upgrade.sh` and the cutover
   download from the new one.
-- **jakemon's alerts for the blog are silenced** for the window.
+- **jakemon needs no silence.** No jakemon alert selects the blog's containers:
+  the product relabel stayed on docker2 when the stack moved to docker1. The
+  Pressroom rule (`pressroom-.+` on docker1, jakemon commit `d242318`) ships
+  with jakemon's own deploy.
 - **Jake knows the gap is coming:** the site is down from step 5 to step 9.
 - **Open editor drafts are saved or published.** Their localStorage keys
   change with 0.5.0, so an unsaved draft is not offered back afterwards.
@@ -172,8 +175,9 @@ Accepted side effects:
 - **The old dev volumes are orphaned** on developer machines (dev only). The
   `./pressroom` script starts fresh ones, and the old ones can be removed by
   hand.
-- **jakemon's container-name relabel goes dark.** The relabel
-  (`roller-.+`) matches nothing until Phase 4. <!-- rebrand:keep -->
+- **The blog's container logs carry no `service` label** until jakemon's
+  `pressroom-.+` rule is deployed on docker1; they had none on docker1 before
+  either.
 - **Grafana has no datasource on the app database yet** (Jake confirmed it is
   not wired up), so the renamed database, role and tables break nothing
   there.
