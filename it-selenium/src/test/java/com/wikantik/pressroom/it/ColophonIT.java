@@ -43,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * The colophon end to end: a site admin publishes a Page on a blog, makes that
  * blog the front-page blog and names the page as the privacy policy in Global
  * Config; a blog page (fetched anonymously, as a reader sees it) and an admin
- * page then both show {@code Roller <version>} and a "Privacy policy" link whose
+ * page then both show {@code Pressroom <version>} and a "Privacy policy" link whose
  * href resolves to the page. The same run at {@code -Dit.context.path=pressroom}
  * proves the link carries the prefix.
  *
@@ -60,7 +60,7 @@ class ColophonIT extends PressroomIT {
     private static final String PRIVACY_FIELD = "site.privacy.page";
 
     private static final Pattern VERSION = Pattern.compile(
-            "<span class=\"colophon-version\">\\s*(Roller [^<]+?)\\s*</span>");
+            "<span class=\"colophon-version\">\\s*(Pressroom [^<]+?)\\s*</span>");
     private static final Pattern PRIVACY_LINK = Pattern.compile(
             "<span class=\"colophon-privacy\"><a href=\"([^\"]+)\">Privacy policy</a></span>");
 
@@ -115,8 +115,8 @@ class ColophonIT extends PressroomIT {
             openPath(GLOBAL_CONFIG_PATH);
             $(".colophon .colophon-version").should(visible);
             String adminVersion = $(".colophon .colophon-version").getText().trim();
-            assertTrue(adminVersion.startsWith("Roller ") && adminVersion.length() > "Roller ".length(),
-                    "the admin footer must show the Roller version, got: " + adminVersion);
+            assertTrue(adminVersion.startsWith("Pressroom ") && adminVersion.length() > "Pressroom ".length(),
+                    "the admin footer must show the Pressroom version, got: " + adminVersion);
             String adminHref = $(".colophon .colophon-privacy a").should(exist).getAttribute("href");
             assertPrivacyPageLoads(adminHref, pageUrl, title);
             BrowserHealth.current().assertNoBrokenResources();
@@ -125,7 +125,7 @@ class ColophonIT extends PressroomIT {
             // --- a blog page, as an anonymous reader gets it ---------------
             String blog = getAnonymously(baseUrl() + "/" + handle + "/");
             Matcher version = VERSION.matcher(blog);
-            assertTrue(version.find(), "the blog footer must show the Roller version: " + colophonOf(blog));
+            assertTrue(version.find(), "the blog footer must show the Pressroom version: " + colophonOf(blog));
             // Admin adds " (<revision>)" to the same version string.
             assertTrue(adminVersion.startsWith(version.group(1)),
                     "blog '" + version.group(1) + "' and admin '" + adminVersion + "' disagree on the version");

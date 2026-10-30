@@ -16,7 +16,7 @@
   directory of this distribution.
 *#
 
-#** macros for use by Roller's built-in feed templates
+#** macros for use by Pressroom's built-in feed templates
 
    Contents
       #showEntriesAtom10()

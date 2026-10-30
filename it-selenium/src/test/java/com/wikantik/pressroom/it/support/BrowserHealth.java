@@ -67,8 +67,8 @@ public final class BrowserHealth {
      *
      * <p>EMPTY, and worth keeping empty. It used to hold {@code /favicon.ico}: Chrome
      * requests a favicon on every navigation whether or not the page asks for one, and
-     * Roller shipped none, so without the entry every single test in the suite failed.
-     * Roller now ships a real {@code /favicon.ico} (rasterized from favicon.svg), so the
+     * Pressroom shipped none, so without the entry every single test in the suite failed.
+     * Pressroom now ships a real {@code /favicon.ico} (rasterized from favicon.svg), so the
      * request 200s and the exemption - which excused that 404 on every page in the
      * suite - is gone. Do not reintroduce it to silence a 404; ship the file instead.
      * (The one case where no file <em>can</em> be shipped -- Chrome's origin-root probe
@@ -140,7 +140,7 @@ public final class BrowserHealth {
     }
 
     /**
-     * Only 4xx and 5xx count as broken. Roller redirects constantly - Spring Security
+     * Only 4xx and 5xx count as broken. Pressroom redirects constantly - Spring Security
      * bounces unauthenticated requests to the login form, controllers answer POSTs with
      * {@code redirect:} views - so treating "not 2xx" as failure would fail everything.
      */
@@ -359,7 +359,7 @@ public final class BrowserHealth {
         devTools.send(Network.setCacheDisabled(true));
 
         // Page.frameNavigated is how a response gets attributed to the page that pulled it in.
-        // Only the main frame counts - Roller's media-file editor uses iframes, and an iframe
+        // Only the main frame counts - Pressroom's media-file editor uses iframes, and an iframe
         // navigation must not relabel the enclosing page.
         devTools.send(Page.enable(Optional.empty()));
         devTools.addListener(Page.frameNavigated(), event -> {
@@ -663,9 +663,9 @@ public final class BrowserHealth {
      *
      * <p>For a document that declares no icon -- {@code sitemap.xml}, {@code robots.txt},
      * a feed -- Chrome probes {@code /favicon.ico} at the <em>origin root</em>, not under
-     * the document's path. When Roller is deployed under a servlet context prefix
+     * the document's path. When Pressroom is deployed under a servlet context prefix
      * ({@code -Dit.context.path=pressroom}) that location is outside the application: Tomcat
-     * answers 404 and nothing Roller ships can change that, because no file of the
+     * answers 404 and nothing Pressroom ships can change that, because no file of the
      * application's can live above its context. HTML pages are unaffected -- their heads
      * declare the icon inside the context, so the probe never fires for them. At the root
      * context the probe hits the real {@code /favicon.ico} and 200s, so this rule excuses

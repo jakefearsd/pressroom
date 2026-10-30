@@ -94,7 +94,7 @@
         <main class="box">
             <p class="code">500</p>
             <h1>Something went wrong</h1>
-            <p>Roller has encountered an unexpected error and logged it. Please try again, and
+            <p>Pressroom has encountered an unexpected error and logged it. Please try again, and
                contact your site administrator if the problem continues.</p>
             <p><a href="${fn:escapeXml(pageContext.request.contextPath)}/">Return to the home page</a></p>
         </main>

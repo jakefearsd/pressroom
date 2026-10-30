@@ -20,8 +20,8 @@
 <p class="pagetip"><spring:message code="index.prompt"/></p>
 
 <%--
-      Index page on Roller startup; tell the user how to complete their Roller install,
-      with helpful notes and links to the appropriate places in the Roller UI.
+      Index page on Pressroom startup; tell the user how to complete their Pressroom install,
+      with helpful notes and links to the appropriate places in the Pressroom UI.
 --%>
 
 

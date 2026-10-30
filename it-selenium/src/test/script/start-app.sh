@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Starts the executable Roller WAR for the browser IT suite and blocks until
+# Starts the executable Pressroom WAR for the browser IT suite and blocks until
 # it answers, or fails with the app log tail for diagnosis -- killing what it
 # started on every failure path.
 #
@@ -106,7 +106,7 @@ mkdir -p "$(dirname "$PIDFILE")" "$(dirname "$LOG")"
 # runs the same way a fixed app port would -- 0 sidesteps that with no need
 # to reserve/thread a dedicated port property through this module.
 #
-# pressroom.it.run / pressroom.it.owner are inert as far as Roller is concerned: they
+# pressroom.it.run / pressroom.it.owner are inert as far as Pressroom is concerned: they
 # exist so this process can be found again by anything that has to clean it up.
 #
 # The two DEBUG loggers exist for one reason: an unexplained 403 (the one on
@@ -153,6 +153,6 @@ while [ "$SECONDS" -lt "$DEADLINE" ]; do
     sleep 2
 done
 
-echo "start-app.sh: Roller did not answer on ${PORT} within ${READY_TIMEOUT}s; log tail:" >&2
+echo "start-app.sh: Pressroom did not answer on ${PORT} within ${READY_TIMEOUT}s; log tail:" >&2
 tail -50 "$LOG" >&2
 exit 1

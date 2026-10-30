@@ -138,7 +138,7 @@
         });
 
         <%-- Local draft recovery. The key carries the context path so two
-             Roller installs on one origin cannot share storage, and the
+             Pressroom installs on one origin cannot share storage, and the
              action name so entryAdd and entryEdit are distinct. staleKeys
              names the entryAdd:new snapshot: saving a new entry redirects
              here under a real id, and without this the "new" draft would

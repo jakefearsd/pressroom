@@ -103,11 +103,11 @@ class ScheduledEntryIT extends PressroomIT {
         String sitemap = getAnonymously(baseUrl() + "/sitemap-" + handle + ".xml");
         assertTrue(sitemap.contains(livePermalink),
                 "the published entry must be in the sitemap, got: " + snippet(sitemap));
-        // Proves anchorOf computes anchors the way Roller does. Without this the
+        // Proves anchorOf computes anchors the way Pressroom does. Without this the
         // absence check below would also pass on a helper that simply built the
         // wrong string.
         assertTrue(sitemap.contains(anchorOf(live)),
-                "anchorOf must match the anchor Roller generated for " + live
+                "anchorOf must match the anchor Pressroom generated for " + live
                         + ", got: " + snippet(sitemap));
         assertFalse(sitemap.contains(anchorOf(scheduled)),
                 "a scheduled entry must not be advertised to crawlers, got: " + snippet(sitemap));
@@ -174,7 +174,7 @@ class ScheduledEntryIT extends PressroomIT {
     }
 
     /**
-     * The anchor Roller generates from a title: the first five words,
+     * The anchor Pressroom generates from a title: the first five words,
      * lowercased and hyphen-joined. Matching on this rather than the whole
      * title is what makes the sitemap check meaningful — the sitemap carries
      * URLs, not titles.

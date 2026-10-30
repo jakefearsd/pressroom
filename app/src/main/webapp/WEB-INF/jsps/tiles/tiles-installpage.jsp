@@ -29,11 +29,11 @@
          call to WebloggerRuntimeConfig.getProperty("site.shortName") returns
          null there AND logs a WARN with a stack trace on every single render,
          so the tab read "null: Create Database" and the log filled up. No
-         business-tier call may be load-bearing on this layout. "Roller" is
-         also the honest answer: site.shortName's own default is "Roller"
+         business-tier call may be load-bearing on this layout. "Pressroom" is
+         also the honest answer: site.shortName's own default is "Pressroom"
          (runtimeConfigDefs.xml), and pre-bootstrap there is no configured
          value to prefer over it. --%>
-    <title>Roller: <spring:message code="${pageTitle}" text="${pageTitle}"/></title>
+    <title>Pressroom: <spring:message code="${pageTitle}" text="${pageTitle}"/></title>
     <jsp:include page="${tile_head}"/>
     <style>
         <jsp:include page="${tile_styles}" />

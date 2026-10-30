@@ -7,7 +7,7 @@
 #
 # Saying so is half the fix. build-helper reserves a *free* port every run, so
 # a leaked app server holding a port never collided with anything and the next
-# run started perfectly cleanly -- which is how four Roller JVMs and thirteen
+# run started perfectly cleanly -- which is how four Pressroom JVMs and thirteen
 # chromedrivers accumulated on a developer machine without one failing build.
 # The leak was never the silent part; the silence was.
 #

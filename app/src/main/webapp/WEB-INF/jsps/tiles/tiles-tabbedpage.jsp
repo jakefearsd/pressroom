@@ -25,7 +25,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="<%= request.getContextPath() %>/favicon.svg" type="image/x-icon">
     <%-- The weblog handle belongs in the tab: an admin with four weblogs open
-         had four tabs reading "Roller: Entries". Only where the model has it
+         had four tabs reading "Pressroom: Entries". Only where the model has it
          -- these layouts serve un-scoped screens (Global Config, User Admin)
          as well. --%>
     <%-- tabTitle, when a controller sets one, names the browser TAB more

@@ -1,5 +1,5 @@
 <!-- 
-Defines the Roller Weblog Editor/Admin UI menu and roles allowed to use each 
+Defines the Pressroom Weblog Editor/Admin UI menu and roles allowed to use each 
 menu. See also, admin-menu.xml, which defines the Global Admin menu.
 Each menu or menu item is governed by four attributes:
 

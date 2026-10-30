@@ -17,7 +17,7 @@
 --%>
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
 <%-- The installer's last step, shared by CreateDatabase.jsp, UpgradeDatabase.jsp
-     and Bootstrap.jsp: one sentence and one button that starts Roller. A POST,
+     and Bootstrap.jsp: one sentence and one button that starts Pressroom. A POST,
      never a "Click here" GET link beside it (two controls for one action). --%>
 <p><spring:message code="installer.readyToStart"/></p>
 <form action="${pageContext.request.contextPath}/pressroom-ui/install/install!bootstrap.rol" method="post">

@@ -40,7 +40,7 @@
 
 <c:if test="${userIsAdmin}">
 
-    <%-- Roller settings --%>
+    <%-- Pressroom settings --%>
 
     <div class="sidebar-group">
     <p class="sidebar-label"><span class="bi bi-wrench" aria-hidden="true"></span>

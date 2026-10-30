@@ -41,7 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Drives the loop Roller exists for: write an entry, publish it, read it as a
+ * Drives the loop Pressroom exists for: write an entry, publish it, read it as a
  * visitor, edit it, and delete it.
  *
  * <p>{@link RouteSweepIT} proves the admin pages load and render their own
@@ -242,7 +242,7 @@ class AuthoringJourneyIT extends PressroomIT {
      * {@code bean.text} textarea on submit, so driving the visible element
      * directly would post an empty body -- the entry would save and the
      * assertions on the public page would then fail for a reason that has
-     * nothing to do with Roller.
+     * nothing to do with Pressroom.
      */
     private void writeEntry(String title, String body) {
         $("#entry").should(exist);

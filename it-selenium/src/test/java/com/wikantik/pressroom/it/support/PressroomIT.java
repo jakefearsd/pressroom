@@ -54,8 +54,8 @@ import static com.codeborne.selenide.Selenide.webdriver;
 import static com.codeborne.selenide.WebDriverConditions.urlContaining;
 
 /**
- * Base class for Roller integration tests: drives a headless Chrome against a running
- * Roller instance and, by way of {@link BrowserHealthExtension}, fails any test whose
+ * Base class for Pressroom integration tests: drives a headless Chrome against a running
+ * Pressroom instance and, by way of {@link BrowserHealthExtension}, fails any test whose
  * pages loaded broken resources or produced JavaScript errors.
  *
  * <p>The instance under test is named by the {@value #BASE_URL_PROPERTY} system property.
@@ -101,7 +101,7 @@ public abstract class PressroomIT {
      */
     public static final String SHARED_MEDIA = "pressroom.shared-media-directory";
 
-    /** Root URL of the Roller under test, context path included, e.g. {@code http://localhost:8080/pressroom}. */
+    /** Root URL of the Pressroom under test, context path included, e.g. {@code http://localhost:8080/pressroom}. */
     public static final String BASE_URL_PROPERTY = "it.base.url";
 
     /** Seed administrator, created by the integration-test fixture. */
@@ -120,7 +120,7 @@ public abstract class PressroomIT {
     private static boolean selenideConfigured;
 
     /**
-     * Root URL of the Roller under test, without a trailing slash.
+     * Root URL of the Pressroom under test, without a trailing slash.
      *
      * @throws IllegalStateException if the property is unset, rather than letting the suite
      *                               run on and fail later with a confusing connection error
@@ -129,14 +129,14 @@ public abstract class PressroomIT {
         String configured = System.getProperty(BASE_URL_PROPERTY);
         if (configured == null || configured.isBlank()) {
             throw new IllegalStateException("System property '" + BASE_URL_PROPERTY + "' is not set. "
-                    + "Point it at the Roller instance under test, "
+                    + "Point it at the Pressroom instance under test, "
                     + "e.g. -D" + BASE_URL_PROPERTY + "=http://localhost:8080/pressroom");
         }
         return configured.endsWith("/") ? configured.substring(0, configured.length() - 1) : configured;
     }
 
     /**
-     * Roller's admin UI is Bootstrap: below the responsive breakpoint the navigation bar
+     * Pressroom's admin UI is Bootstrap: below the responsive breakpoint the navigation bar
      * collapses behind a toggle and tests would be clicking links that are not on screen.
      */
     private static final int BROWSER_WIDTH = 1366;
@@ -189,7 +189,7 @@ public abstract class PressroomIT {
     }
 
     /**
-     * Scheme, host and port of the Roller under test, without the context path -- the
+     * Scheme, host and port of the Pressroom under test, without the context path -- the
      * form CDP's storage commands want, and not something {@link #baseUrl()} can give
      * them because a prefixed deployment puts a path on the end of it.
      */
@@ -240,10 +240,10 @@ public abstract class PressroomIT {
     }
 
     /**
-     * Opens a path on the Roller under test and waits for the browser to finish, so the
+     * Opens a path on the Pressroom under test and waits for the browser to finish, so the
      * health recorder has seen every request the page made before the test asserts anything.
      *
-     * @param path server-relative path below the Roller context, e.g. {@code /pressroom-ui/menu.rol}
+     * @param path server-relative path below the Pressroom context, e.g. {@code /pressroom-ui/menu.rol}
      */
     protected void openPath(String path) {
         Selenide.open(baseUrl() + (path.startsWith("/") ? path : "/" + path));
@@ -324,7 +324,7 @@ public abstract class PressroomIT {
      * <p>Goes to the login form directly and navigates to the menu afterwards, rather
      * than requesting the menu first and letting Spring Security replay the saved
      * request. That replay appends its {@code continue} marker
-     * ({@code menu.rol?continue}, the default since Spring Security 6.1) and Roller
+     * ({@code menu.rol?continue}, the default since Spring Security 6.1) and Pressroom
      * answers that URL with a 404 -- a real defect that affects anyone deep-linking
      * while logged out, tracked separately. Depending on it here would make every
      * test in the suite fail for a reason that has nothing to do with the route

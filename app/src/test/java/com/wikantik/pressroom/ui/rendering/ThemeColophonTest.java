@@ -227,7 +227,7 @@ class ThemeColophonTest {
     void colophonOmitsCopyrightWithNoHolderAndNoText() throws Exception {
         String html = render(facts(null, "", null, null, ""));
         assertFalse(html.contains("colophon-copyright"), html);
-        assertTrue(html.contains("Roller 0.4.0"), html);
+        assertTrue(html.contains("Pressroom 0.4.0"), html);
     }
 
     @Test
@@ -249,7 +249,7 @@ class ThemeColophonTest {
     @Test
     void colophonOmitsRevision() throws Exception {
         String html = render(facts(null, "B", null, null, "abc1234"));
-        assertTrue(html.contains("<span class=\"colophon-version\">Roller 0.4.0</span>"), html);
+        assertTrue(html.contains("<span class=\"colophon-version\">Pressroom 0.4.0</span>"), html);
         assertFalse(html.contains("abc1234"), html);
     }
 

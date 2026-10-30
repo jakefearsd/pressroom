@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stops the Roller process started by start-app.sh: TERM, wait, then KILL if it
+# Stops the Pressroom process started by start-app.sh: TERM, wait, then KILL if it
 # hasn't exited.
 #
 # Works from the run id, not only from the pidfile. A pidfile is a hint that may
