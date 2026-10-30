@@ -1,10 +1,10 @@
-# Roller Database Migrations
+# Pressroom Database Migrations
 
-This directory holds the canonical, ordered schema definition for the Roller
+This directory holds the canonical, ordered schema definition for the Pressroom
 PostgreSQL database. Every schema change ships as a numbered, idempotent
 migration so databases can be brought forward safely and repeatably.
 
-Roller is **PostgreSQL-only**. The earlier scheme — Velocity
+Pressroom is **PostgreSQL-only**. The earlier scheme — Velocity
 templates rendered by Texen into vendor-specific DDL for seven databases, with
 a hardcoded `upgradeToNNN()` chain in `DatabaseInstaller` keyed off a
 schema-version row in the runtime properties table — has been removed.
@@ -68,7 +68,7 @@ V<NNN>__<snake_case_description>.sql
 5. **Document prerequisites** at the top of the file when a migration depends
    on an earlier one.
 
-6. **Keep the JPA mappings in step.** Roller maps entities through
+6. **Keep the JPA mappings in step.** Pressroom maps entities through
    `app/src/main/resources/META-INF/*.orm.xml`. A migration that adds or
    renames a column without the matching mapping change will pass
    `migrate.sh` and fail at runtime. `SchemaMigrationTest` applies the full
@@ -105,7 +105,7 @@ There are two entry points and they share this directory:
 
 - **`migrate.sh`** — build, deploy, and CI. `./pressroom dev` runs it, and the
   Maven build runs it against the test container.
-- **`DatabaseInstaller`** — Roller's web install wizard, for a first boot
+- **`DatabaseInstaller`** — Pressroom's web install wizard, for a first boot
   against an empty database. It reads the same `V*.sql` files from the
   classpath and records into the same `schema_migrations` table.
 

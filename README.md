@@ -1,8 +1,8 @@
-# Roller
+# Pressroom
 
-Roller is a Java-based, multi-user blog server, substantially simplified: PostgreSQL only, Markdown only, no Planet aggregator, and a Spring Boot executable WAR in place of the old servlet-container deployment. It adds what a small business's blogs need today: reader comments behind Google sign-in, a newsletter, privacy-friendly analytics, and an API and MCP endpoint that let scripts and AI agents publish.
+Pressroom is a Java-based, multi-user blog server, substantially simplified: PostgreSQL only, Markdown only, no Planet aggregator, and a Spring Boot executable WAR in place of the old servlet-container deployment. It adds what a small business's blogs need today: reader comments behind Google sign-in, a newsletter, privacy-friendly analytics, and an API and MCP endpoint that let scripts and AI agents publish.
 
-It is an independent fork of [Apache Roller](https://roller.apache.org), which was created in 2002 and is maintained by the Apache Software Foundation. This project is not affiliated with or endorsed by the ASF.
+**Origins.** Pressroom is an independent fork of [Apache Roller](https://roller.apache.org), which was created in 2002 and is maintained by the Apache Software Foundation. This project is not affiliated with or endorsed by the ASF. <!-- rebrand:keep -->
 
 **Releases:** [GitHub Releases](https://github.com/jakefearsd/pressroom/releases) | **License:** Apache 2.0 | **Java:** 25
 
@@ -29,7 +29,7 @@ It is an independent fork of [Apache Roller](https://roller.apache.org), which w
 - Separate templates for main page, single-entry permalink, day archive, search results, and sidebar
 
 ### Readers
-- Comments from readers signed in with Google (`docs/dev/comments.md`, [`RollerSSO.md`](RollerSSO.md)); no anonymous comments
+- Comments from readers signed in with Google (`docs/dev/comments.md`, [`PressroomSSO.md`](PressroomSSO.md)); no anonymous comments
 - Newsletter sign-up and sending through a bundled [listmonk](https://listmonk.app)
 - Cookie-free page analytics through a bundled [Umami](https://umami.is), served from the blog's own domain
 - SEO: sitemaps, canonical URLs, and JSON-LD structured data
@@ -71,7 +71,7 @@ It is an independent fork of [Apache Roller](https://roller.apache.org), which w
 |------------|----------|
 | PostgreSQL | Development, testing, and production |
 
-Roller is PostgreSQL-only. Earlier upstream releases generated vendor-specific
+Pressroom is PostgreSQL-only. Earlier upstream releases generated vendor-specific
 DDL for DB2, Derby, HSQLDB, SQL Server, MySQL and Oracle; that layer has been
 removed in favour of a single, tested schema.
 
@@ -94,7 +94,7 @@ Browse to http://localhost:8083/ and sign in as `admin`.
 The password is generated on that first run, printed once, and stored in
 `.pressroom-dev-secret` (mode 0600, git-ignored) — `cat` it any time. Edit that
 file to choose your own; the next `./pressroom db|dev|reset` applies it. Nothing
-is ever committed, and no configuration can make Roller store a password in
+is ever committed, and no configuration can make Pressroom store a password in
 plain text.
 
 To drive the REST API locally:
@@ -105,7 +105,7 @@ To drive the REST API locally:
 
 Optional: install `cwebp` (package `webp` on Debian/Ubuntu, `libwebp-tools`
 on Fedora, `brew install webp` on macOS) to get WebP renditions of uploaded
-images locally. It is feature-detected — without it Roller serves a
+images locally. It is feature-detected — without it Pressroom serves a
 JPEG/PNG-only rendition ladder and everything else works the same.
 
 ### Option 2: Run the packaged executable WAR directly
@@ -159,7 +159,7 @@ and one-command upgrades — see the production stack
 
 - **[Production Deployment Runbook](docker_deployment.md)** — Fresh-VPS Docker deployment, TLS, backups, upgrades
 - **[API reference](docs/api/README.md)** — the REST API, the MCP endpoint and `bin/pressroom-api`
-- **[Reader sign-in](RollerSSO.md)** — setting up Google sign-in for reader comments
+- **[Reader sign-in](PressroomSSO.md)** — setting up Google sign-in for reader comments
 - **[Design System](docs/design/design-system.md)** — the admin UI's tokens, type scale and layout rules
 
 ---
@@ -192,5 +192,5 @@ and one-command upgrades — see the production stack
 See [`CONTRIBUTING.md`](CONTRIBUTING.md). This is a personal fork, maintained
 independently and not affiliated with or endorsed by the Apache Software
 Foundation — upstream's mailing lists and wiki serve
-[Apache Roller](https://roller.apache.org), not this project, so questions about
+[Apache Roller](https://roller.apache.org), not this project, so questions about <!-- rebrand:keep -->
 this fork do not belong there.

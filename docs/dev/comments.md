@@ -13,7 +13,7 @@ account from Google sign-in (`docs/dev/sso.md`). The W1 comment subsystem
   (`contact.throttle.*`), `NewsletterController`
   (`newsletter.subscribe.throttle.*`) and `PasswordResetController`
   (`passwordreset.throttle.*`), and now `CommentService`.
-- **`roller_comment`**: the dead W1 table name. V002 still creates it and V022
+- **`roller_comment`**: the dead W1 table name. V002 still creates it and V022 <!-- rebrand:keep -->
   drops it. `SchemaMigrationTest` keeps it in `REMOVED_FEATURE_TABLES`.
 - **Search index**: `IndexOperation` writes no `C_CONTENT`; `SearchOperation`
   searches `{CONTENT, TITLE}`. Reader comments are not indexed (non-goal).
@@ -22,7 +22,7 @@ account from Google sign-in (`docs/dev/sso.md`). The W1 comment subsystem
 
 Migration `bin/db/migrations/V031__reader_comments.sql` (idempotent).
 
-- **Table `pressroom_reader_comment`** (ruling R3). Not `roller_comment`: V022 is
+- **Table `pressroom_reader_comment`** (ruling R3). Not `roller_comment`: V022 is <!-- rebrand:keep -->
   replayed by the appliers and would drop live comments, and a replayed V002
   fails on the W1 indexes. Columns: `id`, `entry_id` (FK `weblogentry`, cascade),
   `author_id` (FK `pressroom_user`, cascade), `reply_to_id` (FK to itself,

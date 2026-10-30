@@ -31,8 +31,8 @@ already allows the fetch.
 - **`/newsletter/subscribe` is served by the app, not Caddy.** Throttle and
   `pressroom_event` recording live in `NewsletterController`; the old Caddy
   `handle /newsletter/subscribe { rewrite ... reverse_proxy listmonk }` block
-  bypassed both and **must never come back**. **Roller stores no subscriber
-  data** — Listmonk owns the list, opt-in, sending and unsubscribe; Roller
+  bypassed both and **must never come back**. **Pressroom stores no subscriber
+  data** — Listmonk owns the list, opt-in, sending and unsubscribe; Pressroom
   holds only `weblog.newsletter_list_uuid` and
   `weblogentry.newsletter_sent_at`. List uuids are **not** unique across
   weblogs: `getWeblogByNewsletterListUuid` orders by handle, so a shared uuid
@@ -128,7 +128,7 @@ Per-weblog Umami tracking plus a read-only Grafana contract over two databases.
 - **The hitcount subsystem is gone; Umami replaced it.** Deleted:
   `HitCountQueue`, `HitCountProcessingJob`, `ResetHitCountsTask`,
   `ContinuousWorkerThread`/`WorkerThread`, `WeblogHitCount` (pojo +
-  `.orm.xml`), the `roller_hitcounts` table (`V017`), `WeblogEntryManager`'s
+  `.orm.xml`), the `roller_hitcounts` table (`V017`), `WeblogEntryManager`'s <!-- rebrand:keep -->
   `getHitCount`, `getHitCountByWeblog`, `getHotWeblogs`, `saveHitCount`,
   `removeHitCount`, `incrementHitCount`, `resetAllHitCounts`, `resetHitCount`,
   `Weblog.getTodaysHits()`/`WeblogWrapper`'s delegate, the Maintenance reset

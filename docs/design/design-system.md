@@ -1,4 +1,4 @@
-# Roller Design System — "Quiet Instrument"
+# Pressroom Design System — "Quiet Instrument"
 
 This is the design spec used to build the admin UI's preview cards and, from
 there, the shipped tokens/components.
@@ -7,7 +7,7 @@ there, the shipped tokens/components.
 committed under this directory (see [The cards](#the-cards-17) below) — spec
 text and rendered cards travel together, so a checkout is enough to see the
 whole system and nothing can drift somewhere the repo cannot see. The
-companion claude.ai/design project "Roller Design System"
+companion claude.ai/design project "Pressroom Design System"
 (`a80e9dad-2900-4ed8-a00f-c0331e247434`) renders the same files and is where
 it is convenient to *iterate* a card visually; when it and this directory
 disagree, this directory wins, and a card iterated there is not done until it
@@ -18,7 +18,7 @@ so opening one in a browser needs no build step and no server.
 
 ---
 
-# Roller Design System — "Quiet Instrument" — build spec for preview cards
+# Pressroom Design System — "Quiet Instrument" — build spec for preview cards
 
 Client decisions (locked): quiet tool personality; teal accent from the travel theme; light AND dark; one project.
 
@@ -69,7 +69,7 @@ why. Two are on the record:
 ## Signature moves
 
 1. THE SPINE: active nav item in the rail = 2px inset-left rule in --accent + --accent-quiet background + 600 weight. Nothing else in the rail is colored.
-2. THE RAIL (replaces the "Powered by Apache Roller" card): 232px sidebar; top block = weblog context (weblog name 600, handle in mono, small status dot --good "Live"); below: tool groups under caps-labels (CONTENT: Entries, Pages, Media, Comments, Inquiries / DESIGN: Theme, Stylesheet, Templates / SETTINGS: Weblog, Members, Maintenance). Footer of rail: user + Sign out, quiet.
+2. THE RAIL (replaces the "Powered by" card): 232px sidebar; top block = weblog context (weblog name 600, handle in mono, small status dot --good "Live"); below: tool groups under caps-labels (CONTENT: Entries, Pages, Media, Comments, Inquiries / DESIGN: Theme, Stylesheet, Templates / SETTINGS: Weblog, Members, Maintenance). Footer of rail: user + Sign out, quiet.
 3. EMPTY STATES AS INVITATIONS: icon-free; one 16px 600 line ("No entries yet."), one --ink-soft sentence ("Your first post starts the archive."), one primary button ("Write an entry"). Never a bare table strip.
 4. WEIGHT, NOT SIZE: a page gets at most one piece of *layout* hierarchy allowed to sit outside the type scale (an entry title, a card's lead field) — everything else that needs emphasis reaches for font-weight (600, against 450 body) rather than a bigger size. The editor's title field is the canonical example: 26px serif, the one oversized element on the page, capped there on purpose; every other "this matters" cue on the same page — status pill, rail group labels, drawer headers — stays on-scale and leans on weight/color instead. Adding a second oversized element to compete with the title is the mistake this rule exists to block.
 
@@ -79,7 +79,7 @@ why. Two are on the record:
 - Self-contained HTML: inline <style>, no external requests (fonts get family names + fallbacks only).
 - Body = two panels side by side (flex, gap 24, wrap): .panel--light and .panel--dark, each a rounded container painting its OWN --paper and carrying its full token set via scoped CSS custom properties (define both sets as classes; do NOT rely on prefers-color-scheme — the card must show both at once regardless of viewer theme).
 - Each panel labeled "Light" / "Dark" in caps-label style.
-- Realistic Roller content ONLY (weblog "Coastal Guides", handle coastal-guides; entries like "Field Notes from the Coast", "Harbor Cottage Guide"; pages About/Contact; inquiry from "Maren Vole <maren@example.com>"). No lorem.
+- Realistic Pressroom content ONLY (weblog "Coastal Guides", handle coastal-guides; entries like "Field Notes from the Coast", "Harbor Cottage Guide"; pages About/Contact; inquiry from "Maren Vole <maren@example.com>"). No lorem.
 
 ## The cards (22)
 

@@ -7,7 +7,7 @@ resolves through the index at the end of `CLAUDE.md`.
 
 ## Database
 
-Roller is **PostgreSQL-only** — one engine for dev, test and production
+Pressroom is **PostgreSQL-only** — one engine for dev, test and production
 (Derby and the Velocity/Texen DDL generator are gone).
 
 - **Development**: PostgreSQL 18 via `docker-compose.yml` (named volume; persists)
@@ -95,7 +95,7 @@ weakly. **Entries 5000, revisions 100, everything else 1000.** Until
 
   All of it is soft or weak, so it is cleared under memory pressure before
   an `OutOfMemoryError`.
-- **Never stale, by construction.** Roller is one JVM and writes through
+- **Never stale, by construction.** Pressroom is one JVM and writes through
   JPA, which merges into the cache at commit (nothing on rollback); JPQL
   bulk updates and deletes invalidate their class. The only native writes go
   to `pressroom_weblogentrytagagg`, which is `cacheable="false"`. A row changed
@@ -148,7 +148,7 @@ migration builds its database with `ScratchDatabase.migratedThrough(name,
 for `roller_user` (upstream Apache Roller's name; `rebrand:keep`).
 
 The install wizard is anonymous, and with `installation.type=auto` every
-public request reaches it while Roller cannot start. So its pages carry no
+public request reaches it while Pressroom cannot start. So its pages carry no
 diagnostics: the error pages say only that the database cannot be reached or
 prepared and point at `pressroom.log`, and `SQLScriptRunner` reports a failure by
 statement position ("statement 3 of 12"). The startup log (JDBC URL and user),
@@ -308,7 +308,7 @@ same-titled creates committed 8 entries with one anchor.
   takes (nothing is flushed first), and `TagAggregateStore` takes its row
   locks only at commit, after every save, so a waiter here holds no tag row.
   A transaction that had already flushed a write before creating an entry
-  could still wait here holding a row lock; nothing in Roller does that, and
+  could still wait here holding a row lock; nothing in Pressroom does that, and
   PostgreSQL would detect the cycle and abort one side.
 - **V035 resolved existing duplicates.** None of them was reachable before
   (`getWeblogEntryByAnchor`'s `getSingleResult` threw

@@ -2,7 +2,7 @@
 
 **Effective:** October 25, 2026
 
-This is the privacy policy for **blog.wikantik.com** and every blog it hosts, including the blogs that have their own address (their own domain). I run it: Jacob Fear, [jakefear@gmail.com](mailto:jakefear@gmail.com). The software is Roller; this policy covers the sites I operate with it. If you run your own copy of Roller, this policy says nothing about your copy. The wiki at wiki.wikantik.com has its own policy.
+This is the privacy policy for **blog.wikantik.com** and every blog it hosts, including the blogs that have their own address (their own domain). I run it: Jacob Fear, [jakefear@gmail.com](mailto:jakefear@gmail.com). The software is Pressroom; this policy covers the sites I operate with it. If you run your own copy of Pressroom, this policy says nothing about your copy. The wiki at wiki.wikantik.com has its own policy.
 
 ## The short version
 

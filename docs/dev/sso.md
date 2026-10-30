@@ -27,8 +27,8 @@ setup: `docker_deployment.md`, "Reader sign-in (Google)". Code:
 3. The provider returns to `/pressroom-ui/sso/callback`. Spring validates `state`,
    exchanges the code and checks the ID token.
 4. `ReaderOidcUserService` hands the claims to `ReaderAccounts.signIn`. The
-   principal (`PressroomOidcUser`) has the **Roller username** as its name and the
-   account's Roller roles, read from the database, as authorities. Nothing in
+   principal (`PressroomOidcUser`) has the **Pressroom username** as its name and the
+   account's Pressroom roles, read from the database, as authorities. Nothing in
    the token grants a role.
 5. `SsoSuccessHandler` redirects to the stored return path (re-sanitised;
    fallback is the context path plus `/`). `SsoFailureHandler` redirects to
@@ -204,7 +204,7 @@ provider. Sign-in changes the session id.
   in-memory one would hold every reader's token forever.
 - **The principal is a `PressroomOidcUser`, not a `UserDetails`.** Anything that
   reads the signed-in user off the security context must accept it (its
-  `getName()` is the Roller username; a bare `OidcUser`'s is the provider's
+  `getName()` is the Pressroom username; a bare `OidcUser`'s is the provider's
   subject, never trusted). `PressroomHandlerInterceptor.resolveAuthenticatedUser`
   handled only `UserDetails` and `String`, so a reader promoted to editor was
   sent back to log in from `menu.rol` and every other page requiring a user.

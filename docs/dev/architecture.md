@@ -7,7 +7,7 @@ resolves through the index at the end of `CLAUDE.md`.
 
 ## Architecture Overview
 
-Roller is a multi-user blog server built with:
+Pressroom, derived from Apache Roller 6.2, is a multi-user blog server built with: <!-- rebrand:keep -->
 - **Runtime**: Spring Boot 4.1 executable WAR (`java -jar app/target/pressroom.war`
   or an external servlet container), embedded Tomcat 11, **Java 25 — an LTS
   release, and a decision (2026-09-15) to stay on it until Java 29 (LTS,

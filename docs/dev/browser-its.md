@@ -70,7 +70,7 @@ reserved port `it.kc.port`, importing realm `pressroom-it` from
 client `pressroom-it` and seven users (`reader-it`, `unverified-it`, `noname-it`,
 plus `writer-it` and `disabled-it`, which only the promote and disable tests
 change, and `commenter-it` and `commenter2-it`, which belong to `CommentsIT`
-alone: it renames and deletes their Roller accounts). `noname-it`'s email is `nameless-reader@example.com`: a local part
+alone: it renames and deletes their Pressroom accounts). `noname-it`'s email is `nameless-reader@example.com`: a local part
 that is not the username, so criterion 18 tells the email fallback from a
 `preferred_username` one. "Not signed in" is asserted as a 302 **to the login
 page** (`SsoSignInIT.assertSentToLogIn`), never a bare 302: a 302 to
