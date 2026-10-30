@@ -1,13 +1,13 @@
 <!-- 
-Example Tomcat Context Configuration file for Roller
+Example Tomcat Context Configuration file for Pressroom
 
-Documented in Chapter 7.1-7.2 of Roller Installation Guide
+Documented in the Pressroom installation guide
 If you'd like to use Tomcat provided datasource and/or mail sessions then:
 - Uncomment the appropriate database / mail blocks below
 - Set database.connectionType=jndi property in pressroom-custom.properties
 - Set mail.connectionType=jndi property in pressroom-custom.properties
 - Set the correct values for the database and mail server
-- Rename this file to context.xml and deploy Roller WAR to Tomcat.
+- Rename this file to context.xml and deploy Pressroom WAR to Tomcat.
 -->
 <Context path="/pressroom" debug="0">
 

@@ -14,7 +14,7 @@
 
 -- Seed data for the browser integration tests.
 --
--- Runs after bin/db/migrate.sh and before Tomcat starts, because Roller reads
+-- Runs after bin/db/migrate.sh and before Tomcat starts, because Pressroom reads
 -- much of this at bootstrap and caches it in-process. Creating it afterwards
 -- would leave the running app with a stale view.
 --
@@ -37,7 +37,7 @@ VALUES ('it-admin-0000-0000-0000-000000000001',
         NOW(), 'en_US', 'UTC', true)
 ON CONFLICT (username) DO NOTHING;
 
--- Roller's authorities come from userrole; 'admin' also implies editor access.
+-- Pressroom's authorities come from userrole; 'admin' also implies editor access.
 INSERT INTO userrole (id, rolename, username)
 VALUES ('it-role-0000-0000-0000-000000000001', 'admin', 'it_admin')
 ON CONFLICT (id) DO NOTHING;

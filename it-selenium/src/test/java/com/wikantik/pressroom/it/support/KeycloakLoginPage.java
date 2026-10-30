@@ -46,7 +46,7 @@ public final class KeycloakLoginPage {
 
     /**
      * Fills the form and submits it, returning once the provider's answer has replaced
-     * the page: the redirect back through Roller's callback to wherever the sign-in
+     * the page: the redirect back through Pressroom's callback to wherever the sign-in
      * lands, or Keycloak's own form again if it refused the password.
      *
      * <p>The wait is {@link PressroomIT#clickAndAwaitNewPage}, not the click: the next thing

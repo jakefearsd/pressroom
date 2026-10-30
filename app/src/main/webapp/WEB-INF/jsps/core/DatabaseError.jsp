@@ -18,7 +18,7 @@
 <%@ include file="/WEB-INF/jsps/taglibs-spring.jsp" %>
 
 <%-- Anonymous, and with installation.type=auto every public request lands
-     here while Roller cannot start: so the page names the problem and where
+     here while Pressroom cannot start: so the page names the problem and where
      to read about it, nothing more. The startup log (the JDBC URL and user),
      the exception and its trace are in the server log only. --%>
 <h1 class="pressroom-page-title"><spring:message code="installer.cannotConnectToDatabase" /></h1>

@@ -65,7 +65,7 @@
          because the document-level Ctrl+/ handler reads it too. --%>
     var commands = {};
 
-    <%-- Per-install, so two Rollers on one origin do not share a mode. --%>
+    <%-- Per-install, so two Pressrooms on one origin do not share a mode. --%>
     var PRESSROOM_EDITOR_MODE_KEY = 'pressroom.editor.mode.v1:${pageContext.request.contextPath}';
 
     <%-- The form the surface sits in, whatever this screen calls it (#entry /
@@ -335,7 +335,7 @@
              than guessing -- and because the ensure/push pair below is
              idempotent, re-entering preview mode costs nothing.
 
-             event.source is checked in addition to event.origin: two Roller
+             event.source is checked in addition to event.origin: two Pressroom
              tabs open on the same origin each have their own iframe, and the
              origin check alone cannot tell one tab's shell from another's --
              only the frame this listener itself created may speak to it. --%>

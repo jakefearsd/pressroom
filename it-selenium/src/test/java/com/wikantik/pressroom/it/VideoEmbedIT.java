@@ -43,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * <p><b>This deliberately never clicks the facade.</b> Clicking would load a
  * real {@code youtube-nocookie.com} iframe, making the suite depend on a
  * third-party service being reachable from CI for a assertion that has
- * nothing to do with whether Roller wired the facade correctly. What is
+ * nothing to do with whether Pressroom wired the facade correctly. What is
  * asserted instead is the wiring: the placeholder's data attributes are
  * present and no {@code <iframe>} exists before any interaction --
  * {@code #showEmbedAssets} (see {@code weblog.vm}) only ever creates one from

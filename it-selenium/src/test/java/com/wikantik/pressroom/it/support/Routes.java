@@ -20,7 +20,7 @@ package com.wikantik.pressroom.it.support;
 import java.util.List;
 
 /**
- * The catalogue of every HTTP GET route Roller's Spring MVC controllers expose.
+ * The catalogue of every HTTP GET route Pressroom's Spring MVC controllers expose.
  *
  * <p>This is a plain data class with no test logic so that two things can share
  * it without sharing a build dependency: {@code RouteSweepIT} in this module

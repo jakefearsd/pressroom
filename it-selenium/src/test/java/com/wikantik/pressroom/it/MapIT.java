@@ -55,7 +55,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * through the server, and the default Java User-Agent is blocked anyway), so
  * asserting on rendered tile imagery would make CI depend on a third-party
  * best-effort service with no SLA -- flaky for reasons that have nothing to
- * do with Roller. Every element asserted below appears whether or not a
+ * do with Pressroom. Every element asserted below appears whether or not a
  * single tile arrives: {@code .leaflet-container}, the marker icons, the
  * polyline and the attribution control are all created by Leaflet from the
  * data payload alone.

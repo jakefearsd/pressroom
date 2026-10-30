@@ -68,7 +68,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * docs/superpowers/specs/2026-10-11-reader-sign-in-design.md; criterion 1 (SSO off) is
  * unit-tested only, because SSO is on for this whole suite.
  *
- * <p><b>The Absolute URL is set for the whole class.</b> The callback Roller hands the
+ * <p><b>The Absolute URL is set for the whole class.</b> The callback Pressroom hands the
  * provider is built from {@code site.absoluteurl}, and with it blank every sign-in
  * answers {@code sso=unavailable}. It is global, so the class holds
  * {@link PressroomIT#GLOBAL_CONFIG} exclusively, sets it to {@link #baseUrl()} once (the
@@ -470,10 +470,10 @@ class SsoSignInIT extends PressroomIT {
 
     // ------------------------------------------------------------ sessions
 
-    /** The browser's Roller session id; the browser must be on a Roller page. */
+    /** The browser's Pressroom session id; the browser must be on a Pressroom page. */
     private static String sessionCookie() {
         Cookie cookie = WebDriverRunner.getWebDriver().manage().getCookieNamed("JSESSIONID");
-        assertNotNull(cookie, "the browser holds no Roller session on " + WebDriverRunner.url());
+        assertNotNull(cookie, "the browser holds no Pressroom session on " + WebDriverRunner.url());
         return cookie.getValue();
     }
 

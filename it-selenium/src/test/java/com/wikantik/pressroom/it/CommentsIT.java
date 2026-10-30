@@ -917,10 +917,10 @@ class CommentsIT extends PressroomIT {
         assertTrue(location.contains(LOGIN), message + ": sent to " + location);
     }
 
-    /** The browser's Roller session id; the browser must be on a site-host page. */
+    /** The browser's Pressroom session id; the browser must be on a site-host page. */
     private static String sessionCookie() {
         Cookie cookie = WebDriverRunner.getWebDriver().manage().getCookieNamed("JSESSIONID");
-        assertNotNull(cookie, "the browser holds no Roller session on " + WebDriverRunner.url());
+        assertNotNull(cookie, "the browser holds no Pressroom session on " + WebDriverRunner.url());
         return cookie.getValue();
     }
 

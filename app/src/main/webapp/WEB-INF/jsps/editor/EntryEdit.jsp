@@ -54,7 +54,7 @@
 <script src="<c:url value='/theme/scripts/pressroom-guard-submit.js'/>"></script>
 <script>
     <%-- Last-used category. Keyed per install and per weblog, beside the
-         draft keys and for the same reason: two Roller installs on one origin
+         draft keys and for the same reason: two Pressroom installs on one origin
          must not share storage, and a category id from weblog A means nothing
          on weblog B. Purely a default for a NEW entry -- an entry being edited
          already has its own category, and preselecting over that would silently

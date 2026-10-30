@@ -17,7 +17,7 @@
 *#
 
 #**
-Set of essential macros needed in Roller velocity templates.
+Set of essential macros needed in Pressroom velocity templates.
 These are the documented macros in order defined in this file:
 
     #includeTemplate($weblog $pageName)
@@ -692,7 +692,7 @@ comes from $config.mapTileUrl (pressroom.properties travel.map.tileUrl) so a
 deployer can point it elsewhere; there is no {s} subdomain placeholder,
 attribution is required and therefore never suppressed, maxZoom is raised
 from Leaflet's default 18 to the 19 the OSM standard layer renders, and tiles
-are fetched browser-direct -- never proxied through Roller, whose Java
+are fetched browser-direct -- never proxied through Pressroom, whose Java
 User-Agent the policy blocks. The template is interpolated straight into a
 single-quoted JS string, so a deployer overriding it must not put an apostrophe
 in it; it is deployer-owned static config, at the same trust level as
@@ -1984,7 +1984,7 @@ emitting the raw one are both bugs; they just look identical in the source.
 
 
 #**
- * Show Roller Page Navigation Bar, includes links to all pages.
+ * Show Pressroom Page Navigation Bar, includes links to all pages.
  *#
 #macro(showPageMenu $weblog)
     <ul class="rNavigationBar">
@@ -2215,7 +2215,7 @@ form client-side and posts same-origin to the server-built data-endpoint
 below (never a client-guessed /newsletter/subscribe -- that 404s under any
 non-root context path, the same bug class #showAudienceAssets' contact slot
 had), which THIS application serves (throttled, honeypotted, recorded as a
-first-party event) and forwards to Listmonk. Roller stores no subscriber
+first-party event) and forwards to Listmonk. Pressroom stores no subscriber
 data -- Listmonk records the address, sends the double opt-in email and owns
 the unsubscribe link.
 *#
@@ -2365,7 +2365,7 @@ The site colophon, the last thing inside each bundled theme's footer:
 
 Shows the blog's copyright line (its own notice, else the current year and
 the blog's name), the privacy-policy link when the site names one, and
-"Roller <version>" with the release date. Every fact comes from one
+"Pressroom <version>" with the release date. Every fact comes from one
 Colophon record ($config.getColophon), the same record the admin footer
 renders, so the two cannot disagree. Each clause is omitted when its fact is
 missing, and the revision is deliberately not shown to readers.
