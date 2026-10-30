@@ -210,7 +210,7 @@ class ThemeResourceLoaderTest {
 
     /**
      * A name that is not in {@code <theme>:<template>} shape belongs to one of
-     * the other three loaders (webapp, roller, class), not this one.
+     * the other three loaders (webapp, pressroom, class), not this one.
      */
     @Test
     void aNameWithoutAThemePrefixReportsNoTimestamp() {

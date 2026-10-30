@@ -64,7 +64,7 @@
      * pickers, and losing those on a recovery is exactly the sort of work that
      * is annoying to redo.
      *
-     * Only the three universal ones live here. Anything Roller-page-specific
+     * Only the three universal ones live here. Anything Pressroom-page-specific
      * comes in through options.exclude, because the right answer differs
      * between the two editors and the module has no business guessing:
      *

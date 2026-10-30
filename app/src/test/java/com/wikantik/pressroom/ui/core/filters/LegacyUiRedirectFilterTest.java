@@ -68,6 +68,31 @@ class LegacyUiRedirectFilterTest {
     }
 
     @Test
+    void aDoubleSlashStaysHostRelativeAfterTheContextPath() throws Exception {
+        MockHttpServletResponse res = run(request("GET", "", "/roller-ui//evil.com/x"), new MockFilterChain()); // rebrand:keep
+        assertEquals(301, res.getStatus());
+        assertEquals("/pressroom-ui//evil.com/x", res.getHeader("Location"),
+                "one leading slash only: never a scheme-relative //evil.com");
+    }
+
+    @Test
+    void aPostWithAContextPathIs308() throws Exception {
+        MockHttpServletResponse res = run(request("POST", "/pressroom", "/pressroom/roller-ui/x.rol"), // rebrand:keep
+                new MockFilterChain());
+        assertEquals(308, res.getStatus());
+        assertEquals("/pressroom/pressroom-ui/x.rol", res.getHeader("Location"));
+    }
+
+    @Test
+    void aPostKeepsItsQueryString() throws Exception {
+        MockHttpServletRequest req = request("POST", "", "/roller-ui/x.rol"); // rebrand:keep
+        req.setQueryString("a=1&b=2");
+        MockHttpServletResponse res = run(req, new MockFilterChain());
+        assertEquals(308, res.getStatus());
+        assertEquals("/pressroom-ui/x.rol?a=1&b=2", res.getHeader("Location"));
+    }
+
+    @Test
     void bareDirectory() throws Exception {
         MockHttpServletResponse res = run(request("GET", "", "/roller-ui"), new MockFilterChain()); // rebrand:keep
         assertEquals(301, res.getStatus());

@@ -382,7 +382,7 @@ To deploy under a prefix instead — sharing a hostname with another app, or
 matching an existing installation's urls — set it in `.env`:
 
 ```bash
-SERVER_SERVLET_CONTEXT_PATH=/roller
+SERVER_SERVLET_CONTEXT_PATH=/roller  # rebrand:keep: the real pre-0.1.4 URL
 ```
 
 `env_file` passes the whole `.env` into the app container and Spring Boot's
@@ -398,11 +398,11 @@ Caddyfile, so existing inbound links and the search index survive the move:
 
 ```caddyfile
 # Inside the {$SITE_DOMAIN} block, BEFORE `handle { reverse_proxy app:8080 }`.
-# The bare /roller needs its own line: the capture group in the regexp below
+# The bare /roller needs its own line: the capture group in the regexp below # rebrand:keep
 # would be empty for it, and an empty redirect target is not a url.
-redir /roller / permanent
-@rollerlegacy path_regexp rollerlegacy ^/roller(/.+)$
-redir @rollerlegacy {re.rollerlegacy.1} permanent
+redir /roller / permanent # rebrand:keep
+@rollerlegacy path_regexp rollerlegacy ^/roller(/.+)$ # rebrand:keep
+redir @rollerlegacy {re.rollerlegacy.1} permanent # rebrand:keep
 ```
 
 ### Custom domains (virtual hosting)

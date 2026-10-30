@@ -95,7 +95,7 @@ public class URLModel implements Model {
     
     
     /**
-     * Absolute URL of Roller, e.g. http://localhost:8080/roller.
+     * Absolute URL of Roller, e.g. http://localhost:8080/pressroom.
      *
      * <p>$url.absoluteSite means the SITE, and every caller (the frontpage
      * theme's brand/menu links, the atom feeds' stylesheet href and site

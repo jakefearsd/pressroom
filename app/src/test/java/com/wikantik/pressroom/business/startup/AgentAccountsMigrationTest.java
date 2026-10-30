@@ -37,8 +37,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * V033 (spec 2026-10-13, section 1; criterion 1): an account kind, agent notes
- * and the last sign-in on roller_user, a nullable password, and the issuer on
- * roller_api_token. Rows from before V033 read back as people with no issuer.
+ * and the last sign-in on roller_user, a nullable password, and the issuer on // rebrand:keep
+ * roller_api_token. Rows from before V033 read back as people with no issuer. // rebrand:keep
  */
 public class AgentAccountsMigrationTest {
 
@@ -46,20 +46,20 @@ public class AgentAccountsMigrationTest {
     void rowsFromBeforeV033ReadBackAsPeopleWithNoIssuerAndV033IsRepeatable() throws Exception {
         String db = "migrationtest_agent_accounts_existing";
         try (Connection con = databaseBefore(db, "V033")) {
-            exec(con, "INSERT INTO roller_user (id, username, passphrase, screenname, fullname, "
+            exec(con, "INSERT INTO roller_user (id, username, passphrase, screenname, fullname, " // rebrand:keep
                     + "emailaddress, datecreated, isenabled) "
                     + "VALUES ('u1', 'olduser', 'x', 'Old', 'Old', 'old@example.com', now(), true)");
-            exec(con, "INSERT INTO roller_api_token (id, userid, label, token_sha256, scope_role, created) "
+            exec(con, "INSERT INTO roller_api_token (id, userid, label, token_sha256, scope_role, created) " // rebrand:keep
                     + "VALUES ('t1', 'u1', 'old', 'digest-1', 'READ', now())");
 
             String v033 = Files.readString(migration("V033"), StandardCharsets.UTF_8);
             exec(con, v033);
             exec(con, v033);
 
-            assertEquals("PERSON", string(con, "SELECT kind FROM roller_user WHERE id = 'u1'"));
-            assertNull(string(con, "SELECT notes FROM roller_user WHERE id = 'u1'"));
-            assertNull(string(con, "SELECT last_login FROM roller_user WHERE id = 'u1'"));
-            assertNull(string(con, "SELECT issued_by FROM roller_api_token WHERE id = 't1'"));
+            assertEquals("PERSON", string(con, "SELECT kind FROM roller_user WHERE id = 'u1'")); // rebrand:keep
+            assertNull(string(con, "SELECT notes FROM roller_user WHERE id = 'u1'")); // rebrand:keep
+            assertNull(string(con, "SELECT last_login FROM roller_user WHERE id = 'u1'")); // rebrand:keep
+            assertNull(string(con, "SELECT issued_by FROM roller_api_token WHERE id = 't1'")); // rebrand:keep
         } finally {
             dropDatabase(db);
         }

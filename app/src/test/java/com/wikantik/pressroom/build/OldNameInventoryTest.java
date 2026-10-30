@@ -42,7 +42,7 @@ import org.junit.jupiter.api.Test;
  * keys, so a stray {@code org/apache/roller} directory or a {@code Roller*.java} // rebrand:keep
  * file name cannot survive the rename unseen.
  *
- * <p>Proven to bite: {@code // roller} appended to a main Java file produced
+ * <p>Proven to bite: {@code // roller} appended to a main Java file produced rebrand:keep
  * "old name added in MACHINE/main-java: 603 > baseline 602"; restored with
  * git checkout.
  *
@@ -97,23 +97,17 @@ class OldNameInventoryTest {
     /** Keyed "KIND/area". Later phases lower these; the end state is empty. */
     static final Map<String, Integer> BASELINE = Map.ofEntries(
             Map.entry("CLASS/docs", 12),
-            Map.entry("MACHINE/deploy", 4),
-            Map.entry("MACHINE/docs", 147),
-            Map.entry("MACHINE/main-java", 2),
-            Map.entry("MACHINE/main-resources", 21),
-            Map.entry("MACHINE/test", 73),
+            Map.entry("MACHINE/docs", 137),
             Map.entry("PACKAGE/docs", 115),
             Map.entry("PATH-CLASS/docs", 1),
             Map.entry("PATH-MACHINE/docs", 15),
-            Map.entry("PATH-MACHINE/main-resources", 3),
-            Map.entry("PATH-MACHINE/test", 2),
             Map.entry("PATH-PACKAGE/docs", 8),
             Map.entry("PROSE/build", 14),
             Map.entry("PROSE/deploy", 30),
             Map.entry("PROSE/docs", 118),
             Map.entry("PROSE/it", 53),
             Map.entry("PROSE/main-java", 178),
-            Map.entry("PROSE/main-resources", 226),
+            Map.entry("PROSE/main-resources", 225),
             Map.entry("PROSE/test", 103));
 
     /** Kinds Phase 1 (the package move) must bring to zero. */
@@ -390,6 +384,41 @@ class OldNameInventoryTest {
                     .forEach(f -> sb.append("\n      ").append(f.getKey()).append(" (").append(f.getValue()).append(')'));
         });
         assertTrue(left.isEmpty(), sb.toString());
+    }
+
+    /** Layer 2 (machine names outside docs) must be empty: every survivor carries the keep marker. */
+    @Test
+    void layerTwoIsEmpty() {
+        Inventory inv = inventory();
+        Map<String, Integer> left = layerTwoLeftovers(inv.totals());
+        StringBuilder sb = new StringBuilder("Layer 2 old names remain:");
+        left.forEach((k, n) -> {
+            sb.append("\n  ").append(k).append(": ").append(n);
+            inv.perFile().get(k).entrySet().stream()
+                    .sorted(Map.Entry.<Path, Integer>comparingByValue(Comparator.reverseOrder()))
+                    .limit(5)
+                    .forEach(f -> sb.append("\n      ").append(f.getKey()).append(" (").append(f.getValue()).append(')'));
+        });
+        assertTrue(left.isEmpty(), sb.toString());
+    }
+
+    /**
+     * Re-running an old migration after V041 would recreate empty {@code roller_} tables, so a
+     * migration numbered above V041 must never name them.
+     */
+    @Test
+    void migrationsAfterTheRenameNeverNameTheOldTables() throws IOException {
+        List<String> offenders = new ArrayList<>();
+        try (java.util.stream.Stream<Path> files = Files.list(Path.of(System.getProperty("user.dir")).getParent().resolve("bin/db/migrations"))) {
+            for (Path p : (Iterable<Path>) files::iterator) {
+                Matcher m = MIGRATION.matcher("bin/db/migrations/" + p.getFileName());
+                if (m.matches() && Integer.parseInt(m.group(1)) > LAST_OLD_NAME_MIGRATION
+                        && Pattern.compile("(?i)(?<![a-z])roller_").matcher(Files.readString(p, StandardCharsets.UTF_8)).find()) {
+                    offenders.add(p.toString());
+                }
+            }
+        }
+        assertTrue(offenders.isEmpty(), "migrations after V041 name roller_ tables: " + offenders);
     }
 
     @Test

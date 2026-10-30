@@ -42,13 +42,13 @@ class PrivacyPageReferenceMigrationTest {
     /** The privacy value after V040 ran over these two stored values (null = row absent). */
     private String migrate(String privacy, String frontHandle) throws Exception {
         try (Connection con = ScratchDatabase.migratedThrough(DB, 40)) {
-            exec(con, "DELETE FROM roller_properties");
+            exec(con, "DELETE FROM roller_properties"); // rebrand:keep
             if (privacy != null) {
-                exec(con, "INSERT INTO roller_properties (name, value) VALUES ('site.privacy.page', '"
+                exec(con, "INSERT INTO roller_properties (name, value) VALUES ('site.privacy.page', '" // rebrand:keep
                         + privacy + "')");
             }
             if (frontHandle != null) {
-                exec(con, "INSERT INTO roller_properties (name, value) VALUES "
+                exec(con, "INSERT INTO roller_properties (name, value) VALUES " // rebrand:keep
                         + "('site.frontpage.weblog.handle', '" + frontHandle + "')");
             }
             exec(con, migration());
@@ -79,7 +79,7 @@ class PrivacyPageReferenceMigrationTest {
     private static String privacy(Connection con) throws Exception {
         try (Statement st = con.createStatement();
              ResultSet rs = st.executeQuery(
-                     "SELECT value FROM roller_properties WHERE name = 'site.privacy.page'")) {
+                     "SELECT value FROM roller_properties WHERE name = 'site.privacy.page'")) { // rebrand:keep
             return rs.next() ? rs.getString(1) : null;
         }
     }

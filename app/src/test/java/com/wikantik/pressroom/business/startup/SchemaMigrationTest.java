@@ -76,11 +76,11 @@ public class SchemaMigrationTest {
             "rag_properties", "rag_subscription", "bookmark", "bookmark_folder",
             "autoping", "pingtarget", "pingqueueentry",
             // V017: hitcount subsystem replaced by Umami traffic counting.
-            "roller_hitcounts",
+            "roller_hitcounts", // rebrand:keep
             // V020: share-link feature removed entirely, not coming back.
-            "roller_share_link",
+            "roller_share_link", // rebrand:keep
             // V022: comment subsystem removed entirely (W1), not coming back.
-            "roller_comment");
+            "roller_comment"); // rebrand:keep
 
     @Test
     public void migrationsAreDiscoverableOnTheClasspath() {

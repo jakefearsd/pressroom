@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * V034 repairs {@code roller_weblogentrytagagg}: duplicate site-wide rows are
+ * V034 repairs {@code roller_weblogentrytagagg}: duplicate site-wide rows are // rebrand:keep
  * merged, {@code weta_weblog_tag_uq} becomes {@code NULLS NOT DISTINCT}, and
  * every total is recomputed as the number of PUBLISHED entries carrying the
  * tag -- the same count {@code TagAggregateStore} maintains.
@@ -57,11 +57,11 @@ public class TagAggregateMigrationTest {
             assertEquals(expectedTotals(), totals(con));
             assertEquals("2026-10-20 00:00:00+00",
                     scalarString(con, "SELECT to_char(lastused AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS') || '+00' "
-                            + "FROM roller_weblogentrytagagg WHERE websiteid IS NULL AND name = 'a'"),
+                            + "FROM roller_weblogentrytagagg WHERE websiteid IS NULL AND name = 'a'"), // rebrand:keep
                     "the most recently used of the duplicate site-wide rows survives");
             assertEquals("2026-10-01 00:00:00+00",
                     scalarString(con, "SELECT to_char(lastused AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS') || '+00' "
-                            + "FROM roller_weblogentrytagagg WHERE websiteid = 'w2' AND name = 'a'"),
+                            + "FROM roller_weblogentrytagagg WHERE websiteid = 'w2' AND name = 'a'"), // rebrand:keep
                     "a missing row is added with its newest tag's time");
         } finally {
             dropDatabase(db);
@@ -73,10 +73,10 @@ public class TagAggregateMigrationTest {
         String db = "migrationtest_tag_agg_unique";
         try (Connection con = databaseBefore(V034, db)) {
             applyMigration(con, V034);
-            exec(con, "INSERT INTO roller_weblogentrytagagg (id, websiteid, name, total, lastused) "
+            exec(con, "INSERT INTO roller_weblogentrytagagg (id, websiteid, name, total, lastused) " // rebrand:keep
                     + "VALUES ('s1', NULL, 'x', 1, now())");
             SQLException refused = assertThrows(SQLException.class, () -> exec(con,
-                    "INSERT INTO roller_weblogentrytagagg (id, websiteid, name, total, lastused) "
+                    "INSERT INTO roller_weblogentrytagagg (id, websiteid, name, total, lastused) " // rebrand:keep
                             + "VALUES ('s2', NULL, 'x', 1, now())"));
             assertEquals("23505", refused.getSQLState(), refused.getMessage());
         } finally {
@@ -124,7 +124,7 @@ public class TagAggregateMigrationTest {
                 + "('e4', 'e4', 'u', 't', 'x', now(), 'w2', 'c2', 'PUBLISHED'), "
                 + "('e5', 'e5', 'u', 't', 'x', now(), 'w2', 'c2', 'TRASHED'), "
                 + "('e6', 'e6', 'u', 't', 'x', now(), 'w2', 'c2', 'SCHEDULED')");
-        exec(con, "INSERT INTO roller_weblogentrytag (id, entryid, websiteid, creator, name, time) VALUES "
+        exec(con, "INSERT INTO roller_weblogentrytag (id, entryid, websiteid, creator, name, time) VALUES " // rebrand:keep
                 + "('t1', 'e1', 'w1', 'u', 'a', '2026-09-01T00:00:00Z'), "
                 + "('t2', 'e1', 'w1', 'u', 'b', '2026-09-01T00:00:00Z'), "
                 + "('t3', 'e2', 'w1', 'u', 'a', '2026-09-02T00:00:00Z'), "
@@ -132,7 +132,7 @@ public class TagAggregateMigrationTest {
                 + "('t5', 'e4', 'w2', 'u', 'a', '2026-10-01T00:00:00Z'), "
                 + "('t6', 'e5', 'w2', 'u', 'b', '2026-09-05T00:00:00Z'), "
                 + "('t7', 'e6', 'w2', 'u', 'c', '2026-09-06T00:00:00Z')");
-        exec(con, "INSERT INTO roller_weblogentrytagagg (id, websiteid, name, total, lastused) VALUES "
+        exec(con, "INSERT INTO roller_weblogentrytagagg (id, websiteid, name, total, lastused) VALUES " // rebrand:keep
                 // a lost increment
                 + "('g1', 'w1', 'a', 1, '2026-10-10T00:00:00Z'), "
                 // already right
@@ -163,7 +163,7 @@ public class TagAggregateMigrationTest {
         Map<String, Integer> totals = new TreeMap<>();
         try (Statement st = con.createStatement();
              ResultSet rs = st.executeQuery("SELECT coalesce(websiteid, 'site') || '/' || name, total "
-                     + "FROM roller_weblogentrytagagg")) {
+                     + "FROM roller_weblogentrytagagg")) { // rebrand:keep
             while (rs.next()) {
                 Integer previous = totals.put(rs.getString(1), rs.getInt(2));
                 assertEquals(null, previous, "two rows for " + rs.getString(1));
@@ -176,7 +176,7 @@ public class TagAggregateMigrationTest {
         Map<String, String> rows = new TreeMap<>();
         try (Statement st = con.createStatement();
              ResultSet rs = st.executeQuery("SELECT id, coalesce(websiteid, 'site') || '/' || name "
-                     + "|| '=' || total || '@' || lastused FROM roller_weblogentrytagagg")) {
+                     + "|| '=' || total || '@' || lastused FROM roller_weblogentrytagagg")) { // rebrand:keep
             while (rs.next()) {
                 rows.put(rs.getString(1), rs.getString(2));
             }

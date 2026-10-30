@@ -183,5 +183,5 @@ logs app`):
 | Scopes requested | `openid profile email` |
 | Account binding | Google's issuer plus subject (`sub`), stored in `pressroom_user.sso_issuer`/`sso_subject` (migration V030) |
 | Reader username | `reader-` plus 10 random characters |
-| Log | `docker compose -f docker-compose.prod.yml logs app`; also `/app/logs/pressroom.log` in the app container (logger `roller.sso`) |
+| Log | `docker compose -f docker-compose.prod.yml logs app`; also `/app/logs/pressroom.log` in the app container (logger `pressroom.sso`) |
 | Released in | Roller 0.1.16 |

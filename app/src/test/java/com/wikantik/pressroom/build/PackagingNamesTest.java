@@ -31,7 +31,7 @@ class PackagingNamesTest {
     void theDevScriptIsNamedPressroomAndKeepsItsSecretThere() throws IOException {
         Path script = REPO.resolve("pressroom");
         assertTrue(Files.isExecutable(script), "./pressroom must exist and be executable");
-        assertFalse(Files.exists(REPO.resolve("roller")), "the old ./roller script must be gone");
+        assertFalse(Files.exists(REPO.resolve("roller")), "the old ./roller script must be gone"); // rebrand:keep
         assertTrue(read("pressroom").contains("/.pressroom-dev-secret"));
         assertTrue(read(".gitignore").contains(".pressroom-dev-secret"));
     }
@@ -47,7 +47,7 @@ class PackagingNamesTest {
     void theReleaseWorkflowNamesTheImagesExplicitly() throws IOException {
         String release = read(".github/workflows/release.yml");
         assertTrue(release.contains("IMAGE_REPO=${{ github.repository_owner }}/pressroom"));
-        assertTrue(release.contains("-caddy:"));
+        assertTrue(release.contains("ghcr.io/${{ env.IMAGE_REPO }}-caddy:"));
         assertTrue(release.contains("/app/pressroom.war"));
         assertFalse(release.contains("GITHUB_REPOSITORY,,"), "the image name must not follow the repository name");
     }

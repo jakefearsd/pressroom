@@ -38,7 +38,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * V041 renames the live production schema: every {@code roller_*} table,
+ * V041 renames the live production schema: every {@code roller_*} table, // rebrand:keep
  * sequence, index and constraint becomes {@code pressroom_*}, and stored
  * {@code /pressroom-ui/} links in pages and entries follow the UI's new path.
  * The data is what matters, so each test seeds rows at V040 and reads them
@@ -192,6 +192,10 @@ class PressroomRenameMigrationTest {
             assertEquals(1, count(con, "SELECT count(*) FROM analytics_events"));
             assertTrue(string(con, "SELECT pg_get_viewdef('analytics_events'::regclass)")
                     .contains("pressroom_event"), "the view follows the table by oid");
+            assertEquals("t", string(con, "SELECT has_table_privilege('grafana_ro', 'analytics_events', 'SELECT')"),
+                    "the Grafana role keeps SELECT on the contract view");
+            assertEquals("0", string(con, "SELECT count(*) FROM analytics_weblog_sites WHERE false"),
+                    "analytics_weblog_sites still answers");
         } finally {
             ScratchDatabase.drop(DB);
         }
@@ -260,6 +264,7 @@ class PressroomRenameMigrationTest {
                 + "ON n.oid = c.relnamespace WHERE n.nspname = 'public' ORDER BY 1"));
         all.addAll(strings(con, "SELECT conname FROM pg_constraint ORDER BY 1"));
         all.addAll(strings(con, "SELECT coalesce(text, '') || coalesce(summary, '') FROM weblogentry ORDER BY id"));
+        all.addAll(strings(con, "SELECT coalesce(content, '') FROM pressroom_weblogpage ORDER BY id"));
         return all;
     }
 

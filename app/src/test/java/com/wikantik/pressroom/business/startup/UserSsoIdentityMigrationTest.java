@@ -44,7 +44,7 @@ public class UserSsoIdentityMigrationTest {
         try (Connection con = freshDatabase(db);
              Statement st = con.createStatement();
              ResultSet rs = st.executeQuery("SELECT count(*) FROM information_schema.columns "
-                     + "WHERE table_name = 'roller_user' AND column_name IN ('sso_issuer','sso_subject')")) {
+                     + "WHERE table_name = 'roller_user' AND column_name IN ('sso_issuer','sso_subject')")) { // rebrand:keep
             assertTrue(rs.next());
             assertEquals(2, rs.getInt(1));
         } finally {
@@ -73,7 +73,7 @@ public class UserSsoIdentityMigrationTest {
     private void insertUser(Connection con, String id, String name, String issuer, String subject)
             throws SQLException {
         try (PreparedStatement ps = con.prepareStatement(
-                "INSERT INTO roller_user (id, username, passphrase, screenname, fullname, "
+                "INSERT INTO roller_user (id, username, passphrase, screenname, fullname, " // rebrand:keep
                 + "emailaddress, datecreated, isenabled, sso_issuer, sso_subject) "
                 + "VALUES (?, ?, 'x', ?, ?, 'e@example.com', now(), true, ?, ?)")) {
             ps.setString(1, id);

@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * V031 adds roller_reader_comment and three settings columns.
+ * V031 adds roller_reader_comment and three settings columns. // rebrand:keep
  */
 public class CommentsMigrationTest {
 
@@ -46,7 +46,7 @@ public class CommentsMigrationTest {
         String db = "migrationtest_comments_defaults";
         try (Connection con = freshDatabase(db)) {
             assertEquals(9, scalar(con, "SELECT count(*) FROM information_schema.columns "
-                    + "WHERE table_name = 'roller_reader_comment'"));
+                    + "WHERE table_name = 'roller_reader_comment'")); // rebrand:keep
             assertDefault(con, "weblog", "comments_enabled", "false");
             assertDefault(con, "weblog", "comment_notify", "true");
             assertDefault(con, "weblogentry", "comments_closed", "false");
@@ -66,7 +66,7 @@ public class CommentsMigrationTest {
                     exec(con, Files.readString(migration, StandardCharsets.UTF_8));
                 }
             }
-            assertEquals(1, scalar(con, "SELECT count(*) FROM roller_reader_comment"));
+            assertEquals(1, scalar(con, "SELECT count(*) FROM roller_reader_comment")); // rebrand:keep
         } finally {
             dropDatabase(db);
         }
@@ -83,12 +83,12 @@ public class CommentsMigrationTest {
             assertEquals("23514", bad.getSQLState());
 
             insertComment(con, "c3", "PUBLISHED", "c1");
-            exec(con, "DELETE FROM roller_reader_comment WHERE id = 'c1'");
-            assertEquals(0, scalar(con, "SELECT count(*) FROM roller_reader_comment"));
+            exec(con, "DELETE FROM roller_reader_comment WHERE id = 'c1'"); // rebrand:keep
+            assertEquals(0, scalar(con, "SELECT count(*) FROM roller_reader_comment")); // rebrand:keep
 
             insertComment(con, "c4", "PUBLISHED", null);
             exec(con, "DELETE FROM weblogentry WHERE id = 'e1'");
-            assertEquals(0, scalar(con, "SELECT count(*) FROM roller_reader_comment"));
+            assertEquals(0, scalar(con, "SELECT count(*) FROM roller_reader_comment")); // rebrand:keep
         } finally {
             dropDatabase(db);
         }
@@ -117,8 +117,8 @@ public class CommentsMigrationTest {
         try (Connection con = freshDatabase(db)) {
             seed(con);
             insertComment(con, "c1", "PENDING", null);
-            exec(con, "DELETE FROM roller_user WHERE id = 'u1'");
-            assertEquals(0, scalar(con, "SELECT count(*) FROM roller_reader_comment"));
+            exec(con, "DELETE FROM roller_user WHERE id = 'u1'"); // rebrand:keep
+            assertEquals(0, scalar(con, "SELECT count(*) FROM roller_reader_comment")); // rebrand:keep
         } finally {
             dropDatabase(db);
         }
@@ -148,7 +148,7 @@ public class CommentsMigrationTest {
     }
 
     private void seed(Connection con) throws SQLException {
-        exec(con, "INSERT INTO roller_user (id, username, passphrase, screenname, fullname, "
+        exec(con, "INSERT INTO roller_user (id, username, passphrase, screenname, fullname, " // rebrand:keep
                 + "emailaddress, datecreated, isenabled) "
                 + "VALUES ('u1', 'u1', 'x', 'u1', 'u1', 'e@example.com', now(), true)");
         exec(con, "INSERT INTO weblog (id, name, handle, emailaddress, datecreated) "
@@ -162,7 +162,7 @@ public class CommentsMigrationTest {
     private void insertComment(Connection con, String id, String status, String replyTo)
             throws SQLException {
         try (PreparedStatement ps = con.prepareStatement(
-                "INSERT INTO roller_reader_comment (id, entry_id, author_id, reply_to_id, body, status, "
+                "INSERT INTO roller_reader_comment (id, entry_id, author_id, reply_to_id, body, status, " // rebrand:keep
                 + "created, status_changed) VALUES (?, 'e1', 'u1', ?, 'b', ?, now(), now())")) {
             ps.setString(1, id);
             ps.setString(2, replyTo);

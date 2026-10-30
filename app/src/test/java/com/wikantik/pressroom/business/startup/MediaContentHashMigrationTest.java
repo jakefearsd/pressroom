@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * V032 adds roller_mediafile.content_hash and its directory-scoped index.
+ * V032 adds roller_mediafile.content_hash and its directory-scoped index. // rebrand:keep
  */
 public class MediaContentHashMigrationTest {
 
@@ -43,7 +43,7 @@ public class MediaContentHashMigrationTest {
         String db = "migrationtest_content_hash";
         try (Connection con = freshDatabase(db)) {
             assertEquals(1, scalar(con, "SELECT count(*) FROM information_schema.columns "
-                    + "WHERE table_name = 'roller_mediafile' AND column_name = 'content_hash' "
+                    + "WHERE table_name = 'roller_mediafile' AND column_name = 'content_hash' " // rebrand:keep
                     + "AND is_nullable = 'YES' AND character_maximum_length = 64"));
             assertEquals(1, scalar(con, "SELECT count(*) FROM pg_indexes "
                     + "WHERE indexname = 'mf_dir_content_hash_idx'"));
@@ -62,7 +62,7 @@ public class MediaContentHashMigrationTest {
                 }
             }
             assertEquals(1, scalar(con, "SELECT count(*) FROM information_schema.columns "
-                    + "WHERE table_name = 'roller_mediafile' AND column_name = 'content_hash'"));
+                    + "WHERE table_name = 'roller_mediafile' AND column_name = 'content_hash'")); // rebrand:keep
         } finally {
             dropDatabase(db);
         }

@@ -90,6 +90,7 @@ if [[ "${CUTOVER}" -eq 1 ]]; then
         while IFS= read -r f; do
             echo "  ssh ${HOST} 'tail -f ~/${f}'" >&2
         done <<<"${unfinished}"
+        echo "If the process is confirmed dead, delete or rename that log on ${HOST} and run this again." >&2
         exit 1
     fi
     echo "==> Copying the cutover and rollback scripts to ${HOST}:${OLD_DIR}/"

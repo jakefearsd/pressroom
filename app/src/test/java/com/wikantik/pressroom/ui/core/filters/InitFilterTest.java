@@ -44,7 +44,7 @@ import static org.mockito.Mockito.when;
  */
 public class InitFilterTest  {
 
-    private static final String SERVER_NAME = "roller.example.com";
+    private static final String SERVER_NAME = "pressroom.example.com";
 
     /**
      * A filter over a tier that is not up: the custom-domain question is
@@ -69,10 +69,10 @@ public class InitFilterTest  {
         boolean secure = false;
         String contextPath = "";
         String requestURI = "/";
-        String requestURL = "http://roller.example.com/";
+        String requestURL = "http://pressroom.example.com/";
 
         String absoluteUrl = InitFilter.getAbsoluteUrl(secure, SERVER_NAME, contextPath, requestURI, requestURL);
-        assertEquals("http://roller.example.com", absoluteUrl);
+        assertEquals("http://pressroom.example.com", absoluteUrl);
     }
 
     @Test
@@ -80,10 +80,10 @@ public class InitFilterTest  {
         boolean secure = true;
         String contextPath = "";
         String requestURI = "/";
-        String requestURL = "https://roller.example.com/";
+        String requestURL = "https://pressroom.example.com/";
 
         String absoluteUrl = InitFilter.getAbsoluteUrl(secure, SERVER_NAME, contextPath, requestURI, requestURL);
-        assertEquals("https://roller.example.com", absoluteUrl);
+        assertEquals("https://pressroom.example.com", absoluteUrl);
     }
 
     @Test
@@ -91,10 +91,10 @@ public class InitFilterTest  {
         boolean secure = true;
         String contextPath = "/pressroom";
         String requestURI = "/pressroom/handle/entry/title";
-        String requestURL = "https://roller.example.com/pressroom/handle/entry/title";
+        String requestURL = "https://pressroom.example.com/pressroom/handle/entry/title";
 
         String absoluteUrl = InitFilter.getAbsoluteUrl(secure, SERVER_NAME, contextPath, requestURI, requestURL);
-        assertEquals("https://roller.example.com/pressroom", absoluteUrl);
+        assertEquals("https://pressroom.example.com/pressroom", absoluteUrl);
     }
 
     @Test
@@ -102,10 +102,10 @@ public class InitFilterTest  {
         boolean secure = true;
         String contextPath = "/pressroom";
         String requestURI = "/pressroom/";
-        String requestURL = "https://roller.example.com:8443/pressroom/";
+        String requestURL = "https://pressroom.example.com:8443/pressroom/";
 
         String absoluteUrl = InitFilter.getAbsoluteUrl(secure, SERVER_NAME, contextPath, requestURI, requestURL);
-        assertEquals("https://roller.example.com:8443/pressroom", absoluteUrl);
+        assertEquals("https://pressroom.example.com:8443/pressroom", absoluteUrl);
     }
 
     @Test
@@ -114,10 +114,10 @@ public class InitFilterTest  {
         boolean secure = true;
         String contextPath = "/pressroom";
         String requestURI = "/pressroom/";
-        String requestURL = "http://roller.example.com/pressroom/";
+        String requestURL = "http://pressroom.example.com/pressroom/";
 
         String absoluteUrl = InitFilter.getAbsoluteUrl(secure, SERVER_NAME, contextPath, requestURI, requestURL);
-        assertEquals("https://roller.example.com/pressroom", absoluteUrl);
+        assertEquals("https://pressroom.example.com/pressroom", absoluteUrl);
     }
 
     @Test
@@ -125,10 +125,10 @@ public class InitFilterTest  {
         boolean secure = false;
         String contextPath = "/pressroom";
         String requestURI = "/pressroom/";
-        String requestURL = "http://roller.example.com/pressroom/";
+        String requestURL = "http://pressroom.example.com/pressroom/";
 
         String absoluteUrl = InitFilter.getAbsoluteUrl(secure, SERVER_NAME, contextPath, requestURI, requestURL);
-        assertEquals("http://roller.example.com/pressroom", absoluteUrl);
+        assertEquals("http://pressroom.example.com/pressroom", absoluteUrl);
     }
 
     @Test
@@ -136,10 +136,10 @@ public class InitFilterTest  {
         boolean secure = false;
         String contextPath = "/pressroom";
         String requestURI = "/pressroom/handle/entry/title";
-        String requestURL = "http://roller.example.com/pressroom/handle/entry/title";
+        String requestURL = "http://pressroom.example.com/pressroom/handle/entry/title";
 
         String absoluteUrl = InitFilter.getAbsoluteUrl(secure, SERVER_NAME, contextPath, requestURI, requestURL);
-        assertEquals("http://roller.example.com/pressroom", absoluteUrl);
+        assertEquals("http://pressroom.example.com/pressroom", absoluteUrl);
     }
 
     @Test
@@ -230,15 +230,15 @@ public class InitFilterTest  {
     @Test
     public void theAbsoluteUrlAtTheRootContextCarriesNoPathAtAll() throws Exception {
         String absoluteUrl = InitFilter.getAbsoluteUrl(false, SERVER_NAME, "",
-                "/handle/entry/title", "http://roller.example.com/handle/entry/title");
-        assertEquals("http://roller.example.com", absoluteUrl);
+                "/handle/entry/title", "http://pressroom.example.com/handle/entry/title");
+        assertEquals("http://pressroom.example.com", absoluteUrl);
     }
 
     @Test
     public void theAbsoluteUrlAtTheRootContextKeepsAnExplicitPort() throws Exception {
         String absoluteUrl = InitFilter.getAbsoluteUrl(false, SERVER_NAME, "",
-                "/handle/", "http://roller.example.com:8083/handle/");
-        assertEquals("http://roller.example.com:8083", absoluteUrl);
+                "/handle/", "http://pressroom.example.com:8083/handle/");
+        assertEquals("http://pressroom.example.com:8083", absoluteUrl);
     }
 
     /**
@@ -404,13 +404,13 @@ public class InitFilterTest  {
                     .thenReturn(new VirtualHostRegistry(mocks.getWeblogManager()));
 
             MockHttpServletRequest request = new MockHttpServletRequest("GET", "/");
-            request.setServerName("roller.example.com");
-            request.addHeader("Host", "roller.example.com");
+            request.setServerName("pressroom.example.com");
+            request.addHeader("Host", "pressroom.example.com");
             request.setContextPath("");
 
             filterOver(mocks).doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
 
-            assertEquals("http://roller.example.com", WebloggerRuntimeConfig.getAbsoluteContextURL(),
+            assertEquals("http://pressroom.example.com", WebloggerRuntimeConfig.getAbsoluteContextURL(),
                     "an unclaimed host must still latch, unaffected by the custom-domain refusal");
         } finally {
             mocks.detach();

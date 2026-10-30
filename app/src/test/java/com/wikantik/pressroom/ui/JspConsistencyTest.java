@@ -435,7 +435,7 @@ class JspConsistencyTest {
             Map.entry("controllers/TokenFormController.java", List.of("core/TokenForm.jsp")),
             Map.entry("admin/AgentController.java", List.of("admin/AgentCreate.jsp", "admin/Agent.jsp")));
 
-    private static final Path CONTROLLERS =
+    private static final Path CTRL_DIR =
             Path.of("src/main/java/com/wikantik/pressroom/ui/controllers");
 
     private static final Pattern FIELD_ERROR_CALL =
@@ -453,7 +453,7 @@ class JspConsistencyTest {
     @Test
     void everyFieldErrorNamesAnIdThatExistsInItsJsp() throws IOException {
         List<Path> controllers;
-        try (Stream<Path> walk = Files.walk(CONTROLLERS)) {
+        try (Stream<Path> walk = Files.walk(CTRL_DIR)) {
             controllers = walk.filter(p -> p.toString().endsWith(".java")).toList();
         }
 
