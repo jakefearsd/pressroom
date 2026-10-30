@@ -164,7 +164,7 @@ public final class EntryHtmlCache {
         this.clock = clock;
     }
 
-    /** The cache as {@code cache.entryhtml.*} in the Roller properties configures it. */
+    /** The cache as {@code cache.entryhtml.*} in the Pressroom properties configures it. */
     public static EntryHtmlCache fromConfig() {
         if (!WebloggerConfig.getBooleanProperty(CACHE_ID + ".enabled", true)) {
             return disabled();

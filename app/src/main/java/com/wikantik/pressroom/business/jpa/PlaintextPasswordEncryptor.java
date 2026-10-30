@@ -29,7 +29,7 @@ import org.eclipse.persistence.security.Securable;
  * even-length all-hex plaintext (what {@code openssl rand -hex 24} prints)
  * fails decryption and the persistence unit never deploys
  * (EclipseLink-7360, "Database password was encrypted by deprecated
- * algorithm"). Roller's password always arrives as plaintext from
+ * algorithm"). Pressroom's password always arrives as plaintext from
  * configuration or the environment, and EclipseLink's in-memory encryption
  * uses a key hard-coded in EclipseLink, so it protects nothing worth the
  * misreading.

@@ -88,14 +88,14 @@ public class URLModel implements Model {
     }
     
     
-    /** Relative URL of Roller, e.g. /pressroom */
+    /** Relative URL of Pressroom, e.g. /pressroom */
     public String getSite() {
         return WebloggerRuntimeConfig.getRelativeContextURL();
     }
     
     
     /**
-     * Absolute URL of Roller, e.g. http://localhost:8080/pressroom.
+     * Absolute URL of Pressroom, e.g. http://localhost:8080/pressroom.
      *
      * <p>$url.absoluteSite means the SITE, and every caller (the frontpage
      * theme's brand/menu links, the atom feeds' stylesheet href and site

@@ -34,14 +34,14 @@ import com.wikantik.pressroom.util.Reflection;
 
 
 /**
- * A governing class for Roller cache objects.
+ * A governing class for Pressroom cache objects.
  *
  * The purpose of the CacheManager is to provide a level of abstraction between
  * classes that use a cache and the implementations of a cache.  This allows
  * us to create easily pluggable cache implementations.
  * 
  * The other purpose is to provide a single interface for interacting with all
- * Roller caches at the same time.  This is beneficial because as data
+ * Pressroom caches at the same time.  This is beneficial because as data
  * changes in the system we often need to notify all caches that some part of
  * their cached data needs to be invalidated, and the CacheManager makes that
  * process easier.
@@ -122,7 +122,7 @@ public final class CacheManager {
      * example:
      *   factory -> com.wikantik.pressroom.util.cache.LRUCacheFactoryImpl
      *
-     * This allows Roller admins the ability to choose a caching strategy to
+     * This allows Pressroom admins the ability to choose a caching strategy to
      * use for the whole system, but override it in certain places where they
      * see fit.  It also allows users to write their own caching modifications
      * and have them used only by specific caches.

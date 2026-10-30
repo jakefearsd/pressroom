@@ -196,7 +196,7 @@ public class MediaResourceServlet extends HttpServlet {
             }
         } else if (renditionRequest) {
             // ?w= is validated against the ladder set only; any other value
-            // (including a syntactically valid width Roller never generates)
+            // (including a syntactically valid width Pressroom never generates)
             // falls straight through to the original below.
             int width = resourceRequest.getWidth();
             FileContentManager cmgr = weblogger.getFileContentManager();

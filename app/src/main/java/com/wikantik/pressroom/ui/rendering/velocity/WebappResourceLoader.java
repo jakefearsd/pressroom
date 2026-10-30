@@ -42,7 +42,7 @@ import org.apache.velocity.util.ExtProperties;
  * 
  * All resource urls begin from the root of the webapp. If a resource path is
  * relative (does not begin with a /) then it is prefixed with the path
- * /WEB-INF/velocity/, which is where Roller keeps its velocity files.
+ * /WEB-INF/velocity/, which is where Pressroom keeps its velocity files.
  * 
  * Resource loader that uses the ServletContext of a webapp to load Velocity
  * templates. (it's much easier to use with servlets than the standard

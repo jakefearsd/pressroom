@@ -378,7 +378,7 @@ public class WeblogPageCacheTest {
 
     @Test
     public void aDisabledCacheCachesNothing() {
-        // how Roller runs in development, and how it runs for anyone who turns
+        // how Pressroom runs in development, and how it runs for anyone who turns
         // cache.weblogpage.enabled off: the calls must all be no-ops
         WeblogPageCache disabled = WeblogPageCache.newForTest(false);
 

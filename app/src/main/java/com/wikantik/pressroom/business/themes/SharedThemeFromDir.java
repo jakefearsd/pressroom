@@ -205,7 +205,7 @@ public class SharedThemeFromDir extends SharedTheme {
         applyIdentity(themeMetadata);
         loadPreviewImage(themeMetadata);
 
-        // available types with Roller
+        // available types with Pressroom
         List<RenditionType> availableTypesList = new ArrayList<>();
         availableTypesList.add(RenditionType.STANDARD);
 

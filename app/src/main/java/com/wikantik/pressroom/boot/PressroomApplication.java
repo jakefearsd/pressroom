@@ -23,7 +23,7 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
 
 /**
- * Roller manages its own EntityManagerFactory (EclipseLink, via
+ * Pressroom manages its own EntityManagerFactory (EclipseLink, via
  * JPAPersistenceStrategy) and its own connections (DatabaseProvider), so
  * Boot's JPA and DataSource auto-configuration are excluded.
  *

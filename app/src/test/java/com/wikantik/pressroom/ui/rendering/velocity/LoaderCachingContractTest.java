@@ -85,7 +85,7 @@ class LoaderCachingContractTest {
      * <p>{@code webapp} is {@code WebappResourceLoader}, which asks the
      * {@link jakarta.servlet.ServletContext} for a real file path and reports
      * that file's timestamp. Its freshness is the servlet container's answer
-     * about a real file, not a Roller constant, so it is honest by
+     * about a real file, not a Pressroom constant, so it is honest by
      * construction; it simply throws rather than answering when it has no
      * context, which is why the probe cannot judge it.
      */
@@ -173,7 +173,7 @@ class LoaderCachingContractTest {
     }
 
     /**
-     * The loader short names mapped to their class names, limited to Roller's
+     * The loader short names mapped to their class names, limited to Pressroom's
      * own loaders -- Velocity's stock classpath loader reads immutable jar
      * entries and is not ours to make claims about.
      */
@@ -191,7 +191,7 @@ class LoaderCachingContractTest {
             }
         }
         if (loaders.isEmpty()) {
-            fail("no Roller resource loaders found in " + VELOCITY_CONFIG
+            fail("no Pressroom resource loaders found in " + VELOCITY_CONFIG
                     + "; this test would be asserting nothing");
         }
         return loaders;

@@ -65,7 +65,7 @@ class TaskLockLeaseTest {
 
         assertEquals(at("2024-03-09 10:30"), lock.getNextAllowedRun(30),
                 "The interval is in minutes; interpreting it as hours or seconds changes "
-                        + "how often every scheduled task in Roller fires");
+                        + "how often every scheduled task in Pressroom fires");
         assertEquals(at("2024-03-09 09:30"), lock.getNextAllowedRun(-30),
                 "A negative interval moves the window backwards, which is how a task is "
                         + "forced to run again");

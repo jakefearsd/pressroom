@@ -68,7 +68,7 @@ class WeblogTemplateTest {
 
     @Test
     void aTemplateLinkedAsWeblogIsRequiredWhateverItIsCalled() {
-        // Blogs migrated from much older Roller versions have a renamed main
+        // Blogs migrated from much older Pressroom versions have a renamed main
         // template that is still reached through the "Weblog" link.
         assertTrue(template("MyCustomHomePage", "Weblog").isRequired(),
                 "A template serving the 'Weblog' link is the main page under another "

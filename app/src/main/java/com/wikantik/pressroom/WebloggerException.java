@@ -19,7 +19,7 @@
 package com.wikantik.pressroom;
 
 /**
- * A base exception class for Roller Weblogger.
+ * A base exception class for Pressroom Weblogger.
  */
 public class WebloggerException extends PressroomException {
 

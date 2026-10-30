@@ -62,7 +62,7 @@ public final class CustomDomainRules {
      * True when no configured wildcard zone covers this host, which is a
      * WARNING and never an error (spec Decision 4) -- hard-validating it would
      * couple the app to the certificate model and make apex-domain support a
-     * Roller change instead of a proxy change.
+     * Pressroom change instead of a proxy change.
      *
      * <p>A wildcard covers exactly ONE label: {@code *.thelocalwiki.com} covers
      * {@code berlin.thelocalwiki.com} but neither {@code thelocalwiki.com} nor

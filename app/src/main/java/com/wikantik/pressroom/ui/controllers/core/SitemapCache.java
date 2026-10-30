@@ -80,7 +80,7 @@ final class SitemapCache {
         this.maxBytes = maxBytes;
     }
 
-    /** The cache as {@code cache.sitemap.*} in the Roller properties configures it. */
+    /** The cache as {@code cache.sitemap.*} in the Pressroom properties configures it. */
     static SitemapCache fromConfig() {
         if (!WebloggerConfig.getBooleanProperty(CACHE_ID + ".enabled", true)) {
             return new SitemapCache(null, 0);

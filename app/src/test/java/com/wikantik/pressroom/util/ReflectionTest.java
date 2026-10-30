@@ -60,7 +60,7 @@ public class ReflectionTest {
 
     @Test
     public void reachesAConstructorThatIsNotPublic() {
-        // Roller's own factories hide their constructors ("protected so only
+        // Pressroom's own factories hide their constructors ("protected so only
         // the CacheManager can instantiate us"), so the helper has to open
         // them up or every cache factory fails to load.
         assertNotNull(assertInstantiated(PackagePrivateConstructor.class.getName()));

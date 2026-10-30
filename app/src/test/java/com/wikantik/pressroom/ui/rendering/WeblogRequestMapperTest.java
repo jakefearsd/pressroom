@@ -89,7 +89,7 @@ class WeblogRequestMapperTest {
 
     /**
      * The same request, deployed under an arbitrary context path. The context
-     * path is a deployment detail -- Roller must be correct both at the root
+     * path is a deployment detail -- Pressroom must be correct both at the root
      * ({@code ""}, the shipped default) and under a prefix a reverse proxy or
      * a servlet container chose -- so every url the mapper *emits* has to be
      * built against the context it was actually reached through, never

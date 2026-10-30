@@ -39,7 +39,7 @@ import org.springframework.web.context.support.WebApplicationContextUtils;
 
 
 /**
- * Statics and helper methods for the Roller web application/context.
+ * Statics and helper methods for the Pressroom web application/context.
  *
  * <p>Startup/shutdown used to happen here too (this class extended
  * {@code ContextLoaderListener}/{@code ServletContextListener}); that role
@@ -144,7 +144,7 @@ public final class PressroomContext {
     }
 
     /**
-     * Builds the {@link DelegatingPasswordEncoder} Roller's configured
+     * Builds the {@link DelegatingPasswordEncoder} Pressroom's configured
      * password-encryption settings ({@code passwds.encryption.*}) describe.
      *
      * <p>Called exactly once, by {@code SecurityConfig}'s

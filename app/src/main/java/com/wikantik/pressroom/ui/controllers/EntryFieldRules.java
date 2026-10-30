@@ -59,7 +59,7 @@ public final class EntryFieldRules {
 
     /**
      * Whether a caller may choose {@code anchor} as an entry's slug. Stricter
-     * than the anchors Roller generates or has stored, which may carry other
+     * than the anchors Pressroom generates or has stored, which may carry other
      * characters: a chosen anchor is refused, never normalised, so the URL is
      * exactly the one the caller asked for.
      */

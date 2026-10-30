@@ -1,4 +1,4 @@
 /**
- * JUnit tests for Roller backend implementations.
+ * JUnit tests for Pressroom backend implementations.
  */
 package com.wikantik.pressroom.business;

@@ -312,7 +312,7 @@ class SsoLoginWiringTest {
     }
 
     /**
-     * Roller uses the provider only to sign the reader in. Spring's default keeps
+     * Pressroom uses the provider only to sign the reader in. Spring's default keeps
      * every reader's access token in an in-memory map for the life of the process;
      * after a real sign-in, the chain's repository must hold nothing for the reader.
      */
@@ -338,7 +338,7 @@ class SsoLoginWiringTest {
      * is pending) and a successful one (the signed ID token round trip).
      *
      * <p>Every logger is captured at every level, so a library's DEBUG or TRACE line
-     * counts as well as Roller's own: a sign-in an operator is debugging must not
+     * counts as well as Pressroom's own: a sign-in an operator is debugging must not
      * leak the secret either. Looked for as itself and as the Basic credential that
      * carries it ({@code client_secret_basic}). Each phase must have logged
      * something, or the absence would prove nothing.

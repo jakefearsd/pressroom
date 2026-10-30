@@ -946,7 +946,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
      * stuck holder.
      *
      * <p>No row lock is held while waiting, unless this transaction had
-     * already flushed a write -- nothing in Roller saves an entry after one --
+     * already flushed a write -- nothing in Pressroom saves an entry after one --
      * and the tag recount's aggregate row locks are taken only at commit,
      * after this lock. A wait here is therefore never part of a lock cycle
      * with {@link TagAggregateStore}.

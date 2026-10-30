@@ -24,10 +24,10 @@ import com.wikantik.pressroom.pojos.Weblog;
 
 
 /**
- * An interface representing the Roller Planet url strategy.
+ * An interface representing the Pressroom Planet url strategy.
  *
  * Implementations of this interface provide methods which can be used to form
- * all of the public urls used by Roller Planet.
+ * all of the public urls used by Pressroom Planet.
  */
 public interface URLStrategy {
     

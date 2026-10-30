@@ -28,7 +28,7 @@ import com.wikantik.pressroom.pojos.User;
 
 
 /**
- * An abstract class representing any request made to Roller that has been
+ * An abstract class representing any request made to Pressroom that has been
  * parsed in order to extract relevant pieces of information from the url.
  *
  * NOTE: It is extremely important to mention that this class and all of its
@@ -76,7 +76,7 @@ public abstract class ParsedRequest {
      * Parse the given http request and extract any information we can.
      *
      * This abstract version of the constructor gathers info likely to be
-     * relevant to all requests to Roller.
+     * relevant to all requests to Pressroom.
      */
     public ParsedRequest(Weblogger weblogger, HttpServletRequest request) throws InvalidRequestException {
 

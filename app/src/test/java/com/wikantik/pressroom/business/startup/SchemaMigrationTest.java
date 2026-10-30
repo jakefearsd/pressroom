@@ -40,7 +40,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 /**
  * Guards the schema migration system.
  *
- * <p>Roller has exactly one source of schema truth -- the {@code V*.sql} files
+ * <p>Pressroom has exactly one source of schema truth -- the {@code V*.sql} files
  * in {@code bin/db/migrations} -- reached three ways: {@code migrate.sh} at
  * deploy time, {@link DatabaseInstaller} through the web install wizard, and
  * the test harness. These tests check the properties all three depend on:

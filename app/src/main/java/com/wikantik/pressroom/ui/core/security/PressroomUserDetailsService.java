@@ -46,7 +46,7 @@ public class PressroomUserDetailsService implements UserDetailsService {
             pressroom = provider.getWeblogger();
         } catch (Exception e) {
             // Should only happen in case of 1st time startup, setup required
-            log.debug("Ignorable error getting Roller instance", e);
+            log.debug("Ignorable error getting Pressroom instance", e);
             // Thowing a "soft" exception here allows setup to proceed
             throw new UsernameNotFoundException("User info not available yet.", e);
         }

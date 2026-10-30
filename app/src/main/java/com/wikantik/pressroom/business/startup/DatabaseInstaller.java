@@ -35,7 +35,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Applies Roller's PostgreSQL schema migrations.
+ * Applies Pressroom's PostgreSQL schema migrations.
  *
  * <p>Migrations are the numbered {@code V<NNN>__<description>.sql} files under
  * {@code bin/db/migrations}, copied onto the classpath at {@code /dbmigrations}
@@ -58,7 +58,7 @@ public class DatabaseInstaller {
     /**
      * psql variable used for grants inside migrations. psql expands it from
      * DB_APP_USER; over JDBC we substitute the connection's own user, which is
-     * the role Roller connects as and therefore the one needing the grant.
+     * the role Pressroom connects as and therefore the one needing the grant.
      */
     private static final String APP_USER_VAR = ":app_user";
 
@@ -86,14 +86,14 @@ public class DatabaseInstaller {
     }
 
     /**
-     * True when the database has no Roller schema at all, i.e. not even the
+     * True when the database has no Pressroom schema at all, i.e. not even the
      * baseline migration has run. Drives the install wizard's "create tables"
      * step.
      */
     public boolean isCreationRequired() {
         try (Connection con = db.getConnection()) {
             if (!tableExists(con, TRACKING_TABLE)) {
-                // A database predating this fork's migration chain has Roller
+                // A database predating this fork's migration chain has Pressroom
                 // tables but no tracking table. There is no upgrade path from
                 // upstream, so say so plainly rather than silently re-running
                 // the baseline over a populated schema. The probe names
@@ -101,9 +101,9 @@ public class DatabaseInstaller {
                 // Apache Roller schema. rebrand:keep
                 if (tableExists(con, "userrole") || tableExists(con, "roller_user")) { // rebrand:keep
                     throw new IllegalStateException(
-                            "This database has Roller tables but no " + TRACKING_TABLE + " table, "
+                            "This database has upstream tables but no " + TRACKING_TABLE + " table, "
                             + "so it predates this fork's migration chain. There is no in-place "
-                            + "upgrade path from Apache Roller 6.1.x or earlier, nor from any "
+                            + "upgrade path from the upstream project (6.1.x or earlier), nor from any "
                             + "database other than PostgreSQL. Export your content and load it "
                             + "into a fresh database.");
                 }
@@ -131,7 +131,7 @@ public class DatabaseInstaller {
      * whatever is pending.
      */
     public void createDatabase() throws StartupException {
-        log.info("Creating Roller Weblogger database schema.");
+        log.info("Creating Pressroom Weblogger database schema.");
         applyPendingMigrations();
     }
 

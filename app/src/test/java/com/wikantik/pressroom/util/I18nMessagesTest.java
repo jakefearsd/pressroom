@@ -59,10 +59,10 @@ public class I18nMessagesTest {
     @Test
     public void substitutesArgumentsFromAnArrayAndFromAList() {
         I18nMessages messages = I18nMessages.getMessages(Locale.ENGLISH);
-        assertEquals("Category \"Roller\" updated",
-                messages.getString(KEY_WITH_ARGUMENT, new Object[]{"Roller"}));
-        assertEquals("Category \"Roller\" updated",
-                messages.getString(KEY_WITH_ARGUMENT, List.of("Roller")));
+        assertEquals("Category \"Pressroom\" updated",
+                messages.getString(KEY_WITH_ARGUMENT, new Object[]{"Pressroom"}));
+        assertEquals("Category \"Pressroom\" updated",
+                messages.getString(KEY_WITH_ARGUMENT, List.of("Pressroom")));
     }
 
     @Test

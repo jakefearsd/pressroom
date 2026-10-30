@@ -22,7 +22,7 @@ import java.util.Map;
 
 
 /**
- * Base interface representing a cache in Roller.
+ * Base interface representing a cache in Pressroom.
  */
 public interface Cache {
     

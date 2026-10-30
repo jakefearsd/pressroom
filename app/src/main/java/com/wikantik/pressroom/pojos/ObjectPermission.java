@@ -22,7 +22,7 @@ import java.util.Date;
 
 
 /**
- * Base permission class for Roller. 
+ * Base permission class for Pressroom. 
  */
 public abstract class ObjectPermission extends PressroomPermission {
 

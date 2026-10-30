@@ -31,7 +31,7 @@ import com.wikantik.pressroom.config.WebloggerConfig;
 
 
 /**
- * Manages Roller Weblogger startup process.
+ * Manages Pressroom Weblogger startup process.
  */
 public final class WebloggerStartup {
     
@@ -72,7 +72,7 @@ public final class WebloggerStartup {
 
 
     /**
-     * Is the Roller Weblogger app properly prepared to be bootstrapped?
+     * Is the Pressroom Weblogger app properly prepared to be bootstrapped?
      */
     public static boolean isPrepared() {
         return prepared;
@@ -87,7 +87,7 @@ public final class WebloggerStartup {
      */
     public static DatabaseProvider getDatabaseProvider() {
         if (dbProvider == null) {
-            throw new IllegalStateException("Roller Weblogger has not been prepared yet");
+            throw new IllegalStateException("Pressroom Weblogger has not been prepared yet");
         }
         return dbProvider;
     }
@@ -286,7 +286,7 @@ public final class WebloggerStartup {
     
     
     /**
-     * Run the Roller Weblogger preparation sequence.
+     * Run the Pressroom Weblogger preparation sequence.
      *
      * This sequence is what prepares the core services of the application such
      * as setting up the database and mail providers.

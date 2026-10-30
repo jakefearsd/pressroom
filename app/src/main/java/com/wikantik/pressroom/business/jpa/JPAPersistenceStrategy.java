@@ -133,7 +133,7 @@ public class JPAPersistenceStrategy {
     }
 
     /**
-     * The EntityManagerFactory for this Roller instance.
+     * The EntityManagerFactory for this Pressroom instance.
      */
     private EntityManagerFactory emf;
     
@@ -461,7 +461,7 @@ public class JPAPersistenceStrategy {
         public URL getPersistenceUnitRootUrl() {
             // Must not be null: EclipseLink's buildPersistenceUnitName calls
             // rootURL.toString() on it unconditionally (verified empirically).
-            // Every Roller entity's mapping is metadata-complete in its
+            // Every Pressroom entity's mapping is metadata-complete in its
             // .orm.xml (see the <entity metadata-complete="true"> attribute)
             // and excludeUnlistedClasses() is true below, so this root is
             // never used to scan for annotated classes — it only needs to be
@@ -876,7 +876,7 @@ public class JPAPersistenceStrategy {
         EntityManager em = getEntityManager(false);
         Query q = em.createNamedQuery(queryName);
         // For performance, never flush/commit prior to running queries.
-        // Roller code assumes this behavior
+        // Pressroom code assumes this behavior
         q.setFlushMode(FlushModeType.COMMIT);
         return q;
     }
@@ -893,7 +893,7 @@ public class JPAPersistenceStrategy {
         EntityManager em = getEntityManager(false);
         TypedQuery<T> q = em.createNamedQuery(queryName, resultClass);
         // For performance, never flush/commit prior to running queries.
-        // Roller code assumes this behavior
+        // Pressroom code assumes this behavior
         q.setFlushMode(FlushModeType.COMMIT);
         return q;
     }
@@ -922,7 +922,7 @@ public class JPAPersistenceStrategy {
         EntityManager em = getEntityManager(false);
         Query q = em.createQuery(queryString);
         // For performance, never flush/commit prior to running queries.
-        // Roller code assumes this behavior
+        // Pressroom code assumes this behavior
         q.setFlushMode(FlushModeType.COMMIT);
         return q;
     }
@@ -939,7 +939,7 @@ public class JPAPersistenceStrategy {
         EntityManager em = getEntityManager(false);
         TypedQuery<T> q = em.createQuery(queryString, resultClass);
         // For performance, never flush/commit prior to running queries.
-        // Roller code assumes this behavior
+        // Pressroom code assumes this behavior
         q.setFlushMode(FlushModeType.COMMIT);
         return q;
     }

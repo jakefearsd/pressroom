@@ -51,7 +51,7 @@ public class PropertiesTest  {
     @Test
     public void testProperiesCRUD() throws Exception {
         
-        // remember, the properties table is initialized during Roller startup
+        // remember, the properties table is initialized during Pressroom startup
         PropertiesManager mgr = TestUtils.weblogger().getPropertiesManager();
         TestUtils.endSession(true);
         

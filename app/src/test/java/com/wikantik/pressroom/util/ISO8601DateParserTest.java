@@ -33,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * <p>These strings cross the wire, so both directions have to agree with the
  * spec exactly: an instant that is off by an hour (or, as it was, by the whole
  * minutes field) silently misorders entries in every aggregator that reads the
- * feed, and nothing in Roller notices.
+ * feed, and nothing in Pressroom notices.
  */
 public class ISO8601DateParserTest {
 

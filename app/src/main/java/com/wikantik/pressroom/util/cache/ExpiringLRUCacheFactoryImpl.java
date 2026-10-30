@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * Roller Expiring LRU cache factory.
+ * Pressroom Expiring LRU cache factory.
  */
 public class ExpiringLRUCacheFactoryImpl implements CacheFactory {
     
@@ -36,7 +36,7 @@ public class ExpiringLRUCacheFactoryImpl implements CacheFactory {
     
     
     /**
-     * Construct a new instance of a Roller Expiring LRUCache.
+     * Construct a new instance of a Pressroom Expiring LRUCache.
      */
     @Override
     public Cache constructCache(Map<String, ?> properties) {

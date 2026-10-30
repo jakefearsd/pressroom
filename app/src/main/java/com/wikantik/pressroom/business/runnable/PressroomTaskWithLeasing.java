@@ -24,7 +24,7 @@ import com.wikantik.pressroom.WebloggerException;
 
 
 /**
- * An abstract class representing a scheduled task in Roller that will always
+ * An abstract class representing a scheduled task in Pressroom that will always
  * attempt to acquire a lease before doing its work.
  */
 public abstract class PressroomTaskWithLeasing extends PressroomTask {
@@ -45,7 +45,7 @@ public abstract class PressroomTaskWithLeasing extends PressroomTask {
      * setup to provide some basic functionality to the running of all tasks,
      * such as lease acquisition and releasing.
      *
-     * Roller tasks should put their logic in the runTask() method.
+     * Pressroom tasks should put their logic in the runTask() method.
      */
     @Override
     public final void run() {
@@ -83,7 +83,7 @@ public abstract class PressroomTaskWithLeasing extends PressroomTask {
                 }
             }
             
-            // always release Roller session
+            // always release Pressroom session
             weblogger().release();
         }
         

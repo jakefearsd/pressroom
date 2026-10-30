@@ -24,7 +24,7 @@ import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 
 /**
- * Interface to Roller's full-text search facility.
+ * Interface to Pressroom's full-text search facility.
  * @author Dave Johnson
  */
 public interface IndexManager {
@@ -39,7 +39,7 @@ public interface IndexManager {
     void shutdown();
 
     /**
-     * Release all resources associated with Roller session.
+     * Release all resources associated with Pressroom session.
      */
     void release();
 

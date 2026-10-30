@@ -53,7 +53,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Tests for {@link InstallController}, the wizard that runs before Roller has
+ * Tests for {@link InstallController}, the wizard that runs before Pressroom has
  * a usable database.
  *
  * <p>Its whole job is deciding what state the installation is in, and the most

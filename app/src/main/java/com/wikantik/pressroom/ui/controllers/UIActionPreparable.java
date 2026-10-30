@@ -20,7 +20,7 @@ package com.wikantik.pressroom.ui.controllers;
 
 
 /**
- * A Roller specific version of the Preparable interface.
+ * A Pressroom specific version of the Preparable interface.
  *
  * This provides a prepare option that is executed at the very end of the
  * interceptor stack, just before the action method is executed. This way the

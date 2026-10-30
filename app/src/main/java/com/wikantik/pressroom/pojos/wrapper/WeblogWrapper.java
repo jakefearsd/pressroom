@@ -244,7 +244,7 @@ public final class WeblogWrapper {
         return this.pojo.getVisible();
     }
 
-    /* deprecated in Roller 5.1 */
+    /* deprecated in the upstream 5.1 release */
     @Deprecated
     public Boolean getEnabled() {
         return getVisible();

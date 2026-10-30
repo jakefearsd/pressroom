@@ -26,11 +26,11 @@ import org.jdom2.input.SAXBuilder;
  * <p>A bare {@code new SAXBuilder()} resolves DOCTYPEs and external entities,
  * which is XXE: a document can name {@code file:///etc/passwd} (or an http
  * URL, making the server an SSRF proxy) and have the contents pulled into the
- * parse. Every SAXBuilder in Roller goes through here so that the safe
+ * parse. Every SAXBuilder in Pressroom goes through here so that the safe
  * configuration is a property of the codebase rather than of whoever wrote
  * the most recent call site.
  *
- * <p><strong>None of Roller's three callers parses attacker-controlled XML
+ * <p><strong>None of Pressroom's three callers parses attacker-controlled XML
  * today</strong> -- the runtime config defs and admin menus are classpath
  * resources, and {@code theme.xml} ships in the themes directory -- so this
  * closes no live hole. It exists because "safe only because of where the

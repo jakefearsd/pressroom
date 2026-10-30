@@ -12,8 +12,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The signed-in reader: provider claims, but Roller's username and Roller's roles.
- * The principal name is the Roller username, never the provider subject, and no
+ * The signed-in reader: provider claims, but Pressroom's username and Pressroom's roles.
+ * The principal name is the Pressroom username, never the provider subject, and no
  * provider claim can add an authority.
  */
 public final class PressroomOidcUser implements OidcUser, Serializable {
@@ -33,8 +33,8 @@ public final class PressroomOidcUser implements OidcUser, Serializable {
 
     /**
      * @param delegate       the user the provider returned
-     * @param pressroomUserName the Roller username
-     * @param authorities    the Roller roles, as authorities
+     * @param pressroomUserName the Pressroom username
+     * @param authorities    the Pressroom roles, as authorities
      * @param newAccount     true when this sign-in created the account
      */
     public PressroomOidcUser(OidcUser delegate, String pressroomUserName,

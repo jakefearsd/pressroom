@@ -49,7 +49,7 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link DatabaseProvider} resolves Roller's database from either JDBC
+ * {@link DatabaseProvider} resolves Pressroom's database from either JDBC
  * properties or a JNDI name and connects once up front, so a misconfiguration
  * fails at startup with a message an installer can act on. Characterisation
  * tests: written against the existing behaviour and expected to pass

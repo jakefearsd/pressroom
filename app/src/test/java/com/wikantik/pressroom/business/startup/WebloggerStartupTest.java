@@ -100,7 +100,7 @@ class WebloggerStartupTest {
 
         IllegalStateException refused =
                 assertThrows(IllegalStateException.class, WebloggerStartup::getDatabaseProvider);
-        assertEquals("Roller Weblogger has not been prepared yet", refused.getMessage());
+        assertEquals("Pressroom Weblogger has not been prepared yet", refused.getMessage());
         assertThrows(IllegalStateException.class, WebloggerStartup::isDatabaseCreationRequired,
                 "nor can the installer be asked anything without one");
     }

@@ -34,7 +34,7 @@ import com.wikantik.pressroom.business.WebloggerProvider;
 
 
 /**
- * Sole responsibility is to ensure that each request's Roller
+ * Sole responsibility is to ensure that each request's Pressroom
  * persistence session is released at end of the request.
  *
  * <p>Takes the {@link WebloggerProvider} (a bean in
@@ -55,7 +55,7 @@ public class PersistenceSessionFilter implements Filter {
     }
 
     /**
-     * Release Roller persistence session at end of request processing.
+     * Release Pressroom persistence session at end of request processing.
      */
     @Override
     @SuppressFBWarnings(
@@ -78,7 +78,7 @@ public class PersistenceSessionFilter implements Filter {
             chain.doFilter(request, response);
         } finally {
             if (provider.isBootstrapped()) {
-                log.debug("Releasing Roller Session");
+                log.debug("Releasing Pressroom Session");
                 provider.getWeblogger().release();
             }
             

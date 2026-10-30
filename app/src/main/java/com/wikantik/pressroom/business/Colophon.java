@@ -37,7 +37,7 @@ import com.wikantik.pressroom.pojos.Weblog;
  * cannot be read degrades to an empty or null component and the footer
  * renders without that clause.
  *
- * @param version         the Roller version, or "" when unknown
+ * @param version         the Pressroom version, or "" when unknown
  * @param shortRevision   first 7 characters of the revision, or ""
  * @param releaseDate     {@code yyyy-MM-dd} in {@link #RELEASE_ZONE}, or null
  * @param copyrightText   the blog's custom copyright notice, or null

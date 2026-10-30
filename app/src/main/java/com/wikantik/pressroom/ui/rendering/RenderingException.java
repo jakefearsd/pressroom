@@ -22,7 +22,7 @@ import com.wikantik.pressroom.WebloggerException;
 
 
 /**
- * A generic Roller rendering exception.
+ * A generic Pressroom rendering exception.
  */
 public class RenderingException extends WebloggerException {
 

@@ -30,14 +30,14 @@ import org.springframework.security.web.authentication.NullRememberMeServices;
 
 /**
  * Adds reader sign-in to the UI security chain: Spring's {@code oauth2Login()}
- * on Roller's paths, plus {@link SsoStartFilter} in front of it. Exists as a
+ * on Pressroom's paths, plus {@link SsoStartFilter} in front of it. Exists as a
  * bean only when SSO is on ({@code SsoConfig}); {@code SecurityConfig} applies it
  * when it is there.
  *
  * <p>Four things here differ from {@code oauth2Login()}'s defaults, each because
  * the default is wrong for this chain:
  * <ul>
- *   <li><b>Its own authentication manager.</b> The UI chain sets Roller's
+ *   <li><b>Its own authentication manager.</b> The UI chain sets Pressroom's
  *       password manager explicitly, and {@code HttpSecurity} then ignores the
  *       providers {@code oauth2Login()} registers -- the callback would reach a
  *       manager that cannot authenticate an OIDC sign-in, and every sign-in
@@ -50,7 +50,7 @@ import org.springframework.security.web.authentication.NullRememberMeServices;
  *       parameter, which {@code PressroomRememberMeServices} reads; not the login
  *       page's {@code _spring_security_remember_me} -- they look
  *       the reader up as a password user and fail the sign-in.</li>
- *   <li><b>No stored access token.</b> Roller never calls the provider after
+ *   <li><b>No stored access token.</b> Pressroom never calls the provider after
  *       sign-in; the default keeps every reader's token in an in-memory map for
  *       the life of the process.</li>
  *   <li><b>Failures redirect, never 500.</b> An authorization request that
@@ -76,7 +76,7 @@ public class SsoLogin {
      *
      * @param registrations  the provider registration
      * @param resolver       builds the authorization request (callback from the Absolute URL)
-     * @param userService    binds the provider identity to a Roller reader
+     * @param userService    binds the provider identity to a Pressroom reader
      * @param successHandler where a signed-in reader lands
      * @param failureHandler where a failed sign-in lands
      * @param startFilter    {@code /pressroom-ui/sso/start}
@@ -170,7 +170,7 @@ public class SsoLogin {
         };
     }
 
-    /** Keeps no authorized client: Roller uses the provider only to sign the reader in. */
+    /** Keeps no authorized client: Pressroom uses the provider only to sign the reader in. */
     static final class DiscardingAuthorizedClientRepository implements OAuth2AuthorizedClientRepository {
 
         @Override

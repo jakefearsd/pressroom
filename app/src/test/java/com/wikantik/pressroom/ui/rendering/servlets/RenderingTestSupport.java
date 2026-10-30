@@ -91,7 +91,7 @@ public final class RenderingTestSupport {
         field.setAccessible(true);
         field.set(null, context);
         // What PressroomLifecycle.start() does after bootstrap: the engine carries
-        // the facade for the two Roller resource loaders. Idempotent, and the
+        // the facade for the two Pressroom resource loaders. Idempotent, and the
         // engine is never torn down (see the class javadoc).
         PressroomVelocity.initialize(context, TestUtils.weblogger());
     }

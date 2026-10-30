@@ -79,7 +79,7 @@ public final class RendererManager {
     /**
      * Find the appropriate Renderer for the given content.
      * <p/>
-     * This method checks all renderer factories configured for the Roller
+     * This method checks all renderer factories configured for the Pressroom
      * instance and tries to find a Renderer for the content.  If no Renderer
      * can be found then we throw an exception.
      */

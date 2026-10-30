@@ -41,7 +41,7 @@ import static com.wikantik.pressroom.util.PressroomConstants.GRACEFUL_SHUTDOWN_W
 import static com.wikantik.pressroom.util.PressroomConstants.GRACEFUL_SHUTDOWN_WAIT_IN_SECONDS;
 
 /**
- * Manage Roller's thread use.
+ * Manage Pressroom's thread use.
  */
 public abstract class ThreadManagerImpl implements ThreadManager {
     
@@ -119,7 +119,7 @@ public abstract class ThreadManagerImpl implements ThreadManager {
         // start scheduler thread, but only if it's not already running
         if (schedulerThread == null) {
             log.debug("Starting scheduler thread");
-            schedulerThread = new Thread(scheduler, "Roller Weblogger Task Scheduler");
+            schedulerThread = new Thread(scheduler, "Pressroom Weblogger Task Scheduler");
             // set thread priority between MAX and NORM so we get slightly preferential treatment
             schedulerThread.setPriority((Thread.MAX_PRIORITY + Thread.NORM_PRIORITY)/2);
             schedulerThread.start();

@@ -20,7 +20,7 @@ import org.springframework.security.web.authentication.AuthenticationFailureHand
  * failing -- becomes {@code failed} (spec, Errors).
  *
  * <p>Logs one WARN line with that code and the reason (spec, Logging). The
- * reason is Roller's own refusal reason when the cause chain holds a
+ * reason is Pressroom's own refusal reason when the cause chain holds a
  * {@link ReaderSignInRefused} -- a fixed phrase that never carries an email --
  * and otherwise the OAuth2 error code, or the exception's class, followed by
  * its causes' class names ({@code AuthenticationServiceException<-IllegalStateException}),
@@ -67,7 +67,7 @@ public class SsoFailureHandler implements AuthenticationFailureHandler {
     }
 
     /**
-     * @return Roller's refusal reason if the cause chain carries one, otherwise the
+     * @return Pressroom's refusal reason if the cause chain carries one, otherwise the
      *         OAuth2 error code (or the exception's class) and its causes' class names
      */
     private static String reason(AuthenticationException exception, String oauthErrorCode) {
@@ -80,7 +80,7 @@ public class SsoFailureHandler implements AuthenticationFailureHandler {
         return head + CauseChain.causeNames(exception);
     }
 
-    /** A Roller refusal reason is a fixed phrase; control characters are dropped all the same. */
+    /** A Pressroom refusal reason is a fixed phrase; control characters are dropped all the same. */
     private static String plain(String text) {
         if (text == null) {
             return "";

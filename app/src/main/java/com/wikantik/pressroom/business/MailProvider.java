@@ -33,7 +33,7 @@ import com.wikantik.pressroom.config.WebloggerConfig;
 
 
 /**
- * Encapsulates Roller mail configuration, returns mail sessions.
+ * Encapsulates Pressroom mail configuration, returns mail sessions.
  */
 public class MailProvider {
 

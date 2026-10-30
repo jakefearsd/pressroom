@@ -33,7 +33,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * Tests for the per-weblog {@code newsletterListUuid} setting: the field
- * Weblog Settings uses to tell Roller which Listmonk list a weblog's
+ * Weblog Settings uses to tell Pressroom which Listmonk list a weblog's
  * subscribe form feeds.
  */
 class WeblogConfigNewsletterTest extends EditorControllerTestSupport {

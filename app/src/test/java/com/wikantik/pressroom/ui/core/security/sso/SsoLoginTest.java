@@ -13,7 +13,7 @@ import org.springframework.security.oauth2.core.OAuth2AccessToken;
 /** The parts of {@link SsoLogin} the wiring test cannot see from outside the chain. */
 class SsoLoginTest {
 
-    /** Roller uses the provider only to sign the reader in, so no access token outlives the callback. */
+    /** Pressroom uses the provider only to sign the reader in, so no access token outlives the callback. */
     @Test
     void theAuthorizedClientIsNeverKept() {
         var repository = new SsoLogin.DiscardingAuthorizedClientRepository();

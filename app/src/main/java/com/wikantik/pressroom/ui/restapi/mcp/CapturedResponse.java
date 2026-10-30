@@ -122,7 +122,7 @@ final class CapturedResponse implements HttpServletResponse {
     @Override
     @SuppressFBWarnings(
             value = "IMPROPER_UNICODE",
-            justification = "Header names here are set by Roller's and Spring's own code while an MCP tool "
+            justification = "Header names here are set by Pressroom's and Spring's own code while an MCP tool "
                     + "call is dispatched internally, never read from a request; the fold matches them as "
                     + "HTTP does.")
     public void setHeader(String name, String value) {
@@ -144,7 +144,7 @@ final class CapturedResponse implements HttpServletResponse {
     @Override
     @SuppressFBWarnings(
             value = "IMPROPER_UNICODE",
-            justification = "Header names here are set by Roller's and Spring's own code while an MCP tool "
+            justification = "Header names here are set by Pressroom's and Spring's own code while an MCP tool "
                     + "call is dispatched internally, never read from a request; the fold matches them as "
                     + "HTTP does.")
     public void addHeader(String name, String value) {

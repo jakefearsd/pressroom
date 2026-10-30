@@ -51,7 +51,7 @@ public final class SsoLogCapture implements AutoCloseable {
     /**
      * Captures every logger at every level: the root and each configured logger
      * are lowered to {@code ALL} for the test, so a library's DEBUG or TRACE line
-     * is captured as well as Roller's own. For a test that asserts what no log
+     * is captured as well as Pressroom's own. For a test that asserts what no log
      * line may hold.
      */
     public static SsoLogCapture everyLogger() {

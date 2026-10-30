@@ -645,7 +645,7 @@ class AdminJspHygieneTest {
 
     /**
      * Chrome asks for /favicon.ico on every navigation whether or not the page
-     * declares one, and the three bundled themes declare none -- so Roller
+     * declares one, and the three bundled themes declare none -- so Pressroom
      * shipping no .ico meant a 404 on every rendered weblog page, which
      * BrowserHealth had to excuse blanket-wide to let the suite run at all.
      * Shipping the file is what retires that exemption.
@@ -662,7 +662,7 @@ class AdminJspHygieneTest {
     }
 
     /**
-     * An admin with four weblogs open had four tabs reading "Roller: Entries".
+     * An admin with four weblogs open had four tabs reading "Pressroom: Entries".
      * Only the layouts whose model actually carries actionWeblog append it --
      * these same layouts serve un-scoped screens (Global Config, User Admin).
      */

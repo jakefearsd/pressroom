@@ -42,7 +42,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 /**
- * A mail relay that does not answer while Roller boots is tried again later.
+ * A mail relay that does not answer while Pressroom boots is tried again later.
  *
  * <p>The mail provider used to be built once, at boot. A relay that was down
  * for that moment left mail "not configured" until the next restart, which

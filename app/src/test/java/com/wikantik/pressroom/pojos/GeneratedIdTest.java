@@ -38,7 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * initialiser rather than waiting for the database. (EclipseLink's own
  * construction of loaded rows skips it: {@code EntityLoadIdGenerationTest}.)
  *
- * <p>That is what lets Roller build an object graph, put the objects in sets
+ * <p>That is what lets Pressroom build an object graph, put the objects in sets
  * and wire up their relationships before anything is flushed. An entity that
  * came into existence with a null or blank id would break
  * {@code JPAPersistenceStrategy.store}, and one that reused an id would let a

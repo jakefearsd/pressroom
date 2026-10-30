@@ -107,8 +107,8 @@ public final class BookingLink {
     @SuppressFBWarnings(
             value = "IMPROPER_UNICODE",
             justification = "Lower-cases the query parameter names already on an author's own outbound "
-                    + "link, so the ASCII utm_ parameters Roller appends are not added twice. It decides "
-                    + "only which of Roller's own parameters to add, never access.")
+                    + "link, so the ASCII utm_ parameters Pressroom appends are not added twice. It decides "
+                    + "only which of Pressroom's own parameters to add, never access.")
     private static Set<String> existingParamNames(String base) {
         Set<String> names = new HashSet<>();
         int query = base.indexOf('?');

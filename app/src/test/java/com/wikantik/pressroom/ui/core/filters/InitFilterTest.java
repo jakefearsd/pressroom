@@ -244,7 +244,7 @@ public class InitFilterTest  {
     /**
      * The relative context url is the prefix every in-page link is built from,
      * and at the root it is the EMPTY string -- not "/". A "/" here would make
-     * every url Roller emits carry a doubled slash ("//handle/entry/x"), which
+     * every url Pressroom emits carry a doubled slash ("//handle/entry/x"), which
      * a browser reads as a protocol-relative url pointing at a host called
      * "handle".
      */

@@ -34,7 +34,7 @@ import com.wikantik.pressroom.util.Utilities;
 
 
 /**
- * Represents a request for a Roller weblog feed.
+ * Represents a request for a Pressroom weblog feed.
  * 
  * /pressroom-ui/rendering/feeds/*
  *

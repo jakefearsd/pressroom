@@ -57,7 +57,7 @@ public interface PluginManager {
 
 
     /**
-     * Release all resources associated with Roller session.
+     * Release all resources associated with Pressroom session.
      */
     void release();
     

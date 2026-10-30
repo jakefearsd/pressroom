@@ -89,7 +89,7 @@ final class PojoClassScanner {
 
     /**
      * The classes that override {@code equals} themselves, i.e. the ones whose
-     * equality contract is Roller's responsibility rather than the JDK's.
+     * equality contract is Pressroom's responsibility rather than the JDK's.
      */
     static List<Class<?>> classesDeclaringEquals() {
         List<Class<?>> declaring = new ArrayList<>();

@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
  *
  * @author <a href="mailto:anil@busybuddha.org">Anil Gangolli</a> (Portions based on code from David Graff submitted for
  *         ROL-613)
- * @since Roller 1.3
+ * @since 1.3
  */
 public final class PropertyExpander {
     

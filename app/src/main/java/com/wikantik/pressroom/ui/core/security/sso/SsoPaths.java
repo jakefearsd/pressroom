@@ -22,7 +22,7 @@ public final class SsoPaths {
     public static final String ERROR_UNAVAILABLE = "unavailable";
     /** State, code exchange, ID token or the provider's own answer failed. */
     public static final String ERROR_FAILED = "failed";
-    /** Roller declined the sign-in: no usable email, or the account is disabled. */
+    /** Pressroom declined the sign-in: no usable email, or the account is disabled. */
     public static final String ERROR_REFUSED = "refused";
 
     private SsoPaths() {
