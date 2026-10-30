@@ -11,7 +11,7 @@
 #   ./pressroom token      mint an API token for the dev admin (needs ./pressroom dev running)
 #
 # The dev database is the `postgres` service in docker-compose.yml. Its data
-# lives in the pressroom-pgdata named volume and survives restarts; only
+# lives in the pressroom-pgdata18 named volume and survives restarts; only
 # `./pressroom reset` removes it.
 set -euo pipefail
 

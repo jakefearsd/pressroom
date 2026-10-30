@@ -96,7 +96,7 @@ RUN major="$(pg_dump --version | sed -E 's/.*PostgreSQL\) ([0-9]+).*/\1/')"; \
         exit 1; \
     fi
 
-RUN groupadd --system pressroom && useradd --system --gid pressroom --home-dir /app --shell /usr/sbin/nologin pressroom
+RUN groupadd --system --gid 999 pressroom && useradd --system --uid 999 --gid 999 --home-dir /app --shell /usr/sbin/nologin pressroom
 
 WORKDIR /app
 

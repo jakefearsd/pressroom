@@ -27,6 +27,19 @@ class PackagingNamesTest {
         assertTrue(read("Dockerfile").contains("/app/pressroom.war"));
     }
 
+    /**
+     * The volumes the cutover copies with {@code cp -a} keep the 0.4.x image's
+     * app user, uid and gid 999. Allocated rather than pinned, the renamed user
+     * could get another id and find its own media and search index unwritable.
+     */
+    @Test
+    void theAppUserKeepsTheOldImagesUidAndGid() throws IOException {
+        String userLine = read("Dockerfile").lines().filter(l -> l.contains("useradd")).findFirst().orElseThrow();
+        assertTrue(userLine.contains("groupadd --system --gid 999 pressroom"), userLine);
+        assertTrue(userLine.contains("useradd --system --uid 999 --gid 999 "), userLine);
+        assertTrue(userLine.contains("--home-dir /app --shell /usr/sbin/nologin pressroom"), userLine);
+    }
+
     @Test
     void theDevScriptIsNamedPressroomAndKeepsItsSecretThere() throws IOException {
         Path script = REPO.resolve("pressroom");
@@ -41,6 +54,8 @@ class PackagingNamesTest {
         String compose = read("docker-compose.yml");
         assertTrue(compose.contains("pressroom-pgdata18:/var/lib/postgresql"));
         assertTrue(compose.contains("name: pressroom"), "the compose project name");
+        assertTrue(read("pressroom").contains("lives in the pressroom-pgdata18 named volume"),
+                "the dev script's header names the volume the compose file declares");
     }
 
     @Test
