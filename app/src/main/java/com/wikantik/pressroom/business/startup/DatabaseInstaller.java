@@ -93,7 +93,7 @@ public class DatabaseInstaller {
     public boolean isCreationRequired() {
         try (Connection con = db.getConnection()) {
             if (!tableExists(con, TRACKING_TABLE)) {
-                // A database predating this fork's migration chain has Pressroom
+                // A database predating this fork's migration chain has Apache Roller // rebrand:keep
                 // tables but no tracking table. There is no upgrade path from
                 // upstream, so say so plainly rather than silently re-running
                 // the baseline over a populated schema. The probe names
@@ -101,9 +101,10 @@ public class DatabaseInstaller {
                 // Apache Roller schema. rebrand:keep
                 if (tableExists(con, "userrole") || tableExists(con, "roller_user")) { // rebrand:keep
                     throw new IllegalStateException(
-                            "This database has upstream tables but no " + TRACKING_TABLE + " table, "
+                            "This database has Apache Roller tables but no " // rebrand:keep
+                            + TRACKING_TABLE + " table, "
                             + "so it predates this fork's migration chain. There is no in-place "
-                            + "upgrade path from the upstream project (6.1.x or earlier), nor from any "
+                            + "upgrade path from Apache Roller 6.1.x or earlier, nor from any " // rebrand:keep
                             + "database other than PostgreSQL. Export your content and load it "
                             + "into a fresh database.");
                 }

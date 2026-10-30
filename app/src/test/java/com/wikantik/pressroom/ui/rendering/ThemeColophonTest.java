@@ -137,7 +137,7 @@ class ThemeColophonTest {
     }
 
     @Test
-    void frontpageNoLongerSaysPoweredByPressroom() throws Exception {
+    void frontpageNoLongerSaysPoweredBy() throws Exception {
         String footer = Files.readString(THEMES.resolve("frontpage/_footer.vm"), StandardCharsets.UTF_8);
         assertFalse(footer.contains("Powered by"), footer);
     }

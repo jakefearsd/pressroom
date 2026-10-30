@@ -304,7 +304,7 @@ resolves through the index at the end of `CLAUDE.md`.
   `colophon-copyright`, `colophon-meta`, `colophon-privacy`,
   `colophon-version`, `colophon-released`. Frontpage has no per-template
   footer: its `_footer.vm` carries the call and `weblog/page/directory`
-  `#includeTemplate` it ("Powered by Pressroom" is gone).
+  `#includeTemplate` it ("Powered by Roller" is gone <!-- rebrand:keep -->).
 - **Escaping**: every `Colophon` string is raw (the blog name is stored with
   markup stripped but `&` intact), so the macro escapes each once with
   `$utils.escapeHTML`. `$text.get` does not escape and `MessageFormat` does
