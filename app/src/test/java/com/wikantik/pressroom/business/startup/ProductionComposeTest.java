@@ -285,7 +285,7 @@ class ProductionComposeTest {
     }
 
     /**
-     * Docker's default json-file driver never rotates, and every Roller logger
+     * Docker's default json-file driver never rotates, and every Pressroom logger
      * now writes to stdout: without these options the host's container logs
      * grow until the disk fills. One-shots included -- an exited container
      * keeps its log until it is removed.

@@ -17,6 +17,6 @@
  */
 
 /**
- * Core Roller UI servlet filters.
+ * Core Pressroom UI servlet filters.
  */
 package com.wikantik.pressroom.ui.core.filters;

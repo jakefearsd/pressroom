@@ -37,7 +37,7 @@ import java.io.Serializable;
  * invalidation time, we can now be lazy and just invalidate them when we
  * actually try to retrieve the cached object.
  *
- * This is useful for Roller because we will no longer have to iterate through
+ * This is useful for Pressroom because we will no longer have to iterate through
  * the list of cached objects and inspect the keys to figure out what items to
  * invalidate.  Instead we can just sit back and let the items be invalidated as
  * we try to use them.

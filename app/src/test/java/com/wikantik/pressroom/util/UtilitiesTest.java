@@ -49,7 +49,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>Everything in {@link Utilities} runs over user-supplied text -- entry
  * bodies, comments, tags, referer URLs -- so the interesting cases are the
  * hostile ones: nulls, empty strings, unterminated markup and characters
- * outside ASCII. Each test below states what breaks in Roller if the
+ * outside ASCII. Each test below states what breaks in Pressroom if the
  * behaviour changes, because these are static helpers with dozens of callers
  * and no other safety net.
  */

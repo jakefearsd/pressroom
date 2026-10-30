@@ -24,7 +24,7 @@ import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.util.PressroomMessages;
 
 /**
- * Interface for managing contents of the files uploaded to Roller.
+ * Interface for managing contents of the files uploaded to Pressroom.
  */
 public interface FileContentManager {
 
@@ -98,7 +98,7 @@ public interface FileContentManager {
             PressroomMessages messages);
 
     /**
-     * Release all resources associated with Roller session.
+     * Release all resources associated with Pressroom session.
      */
     void release();
 

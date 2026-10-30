@@ -36,7 +36,7 @@ import com.wikantik.pressroom.pojos.User;
 
 
 /**
- * Roller session handles session startup and shutdown.
+ * Pressroom session handles session startup and shutdown.
  *
  * <p>The per-session object stores only the user <em>name</em>; it holds no
  * reference to the business tier (it is {@link Serializable} and lives in the
@@ -118,7 +118,7 @@ public class PressroomSession
         return pressroomSession;
     }
 
-    /** Create session's Roller instance */
+    /** Create session's Pressroom instance */
     @Override
     public void sessionCreated(HttpSessionEvent se) {
         PressroomSession pressroomSession = new PressroomSession();
@@ -132,7 +132,7 @@ public class PressroomSession
     }
 
     /**
-     * Purge session before passivation. Because Roller currently does not
+     * Purge session before passivation. Because Pressroom currently does not
      * support session recovery, failover, migration, or whatever you want
      * to call it when sessions are saved and then restored at some later
      * point in time.

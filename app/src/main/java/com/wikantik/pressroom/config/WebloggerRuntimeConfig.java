@@ -317,7 +317,7 @@ public final class WebloggerRuntimeConfig {
     
     
     /**
-     * Convenience method for Roller classes trying to determine if a given
+     * Convenience method for Pressroom classes trying to determine if a given
      * weblog handle represents the front page blog.
      */
     public static boolean isFrontPageWeblog(String weblogHandle) {
@@ -334,7 +334,7 @@ public final class WebloggerRuntimeConfig {
     
     
     /**
-     * Convenience method for Roller classes trying to determine if a given
+     * Convenience method for Pressroom classes trying to determine if a given
      * weblog handle represents the front page blog configured to render
      * site-wide data.
      */

@@ -46,7 +46,7 @@ import static org.mockito.Mockito.when;
 import com.wikantik.pressroom.business.UserManager;
 
 /**
- * What Roller actually puts in the mail it sends.
+ * What Pressroom actually puts in the mail it sends.
  *
  * <p>Mail is optional to configure and so was easy to leave uncovered, but when
  * it is configured it carries the things a user cannot get any other way: the

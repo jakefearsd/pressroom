@@ -17,7 +17,7 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
  * <p>Spring has already changed the session id (its fixation defence) by the
  * time this runs. The return path is taken from the session and removed, and
  * checked again on the way out although only {@link SsoStartFilter} ever
- * writes it. Logs one INFO line with the Roller username and whether the
+ * writes it. Logs one INFO line with the Pressroom username and whether the
  * account is new; never the email or a token.
  *
  * <p>Answers the request inside the security chain, so it releases the

@@ -1,6 +1,6 @@
 package com.wikantik.pressroom.ui.core.security.sso;
 
-/** A provider sign-in that Roller declines: unusable claims or a disabled account. */
+/** A provider sign-in that Pressroom declines: unusable claims or a disabled account. */
 public class ReaderSignInRefused extends Exception {
 
     private static final long serialVersionUID = 1L;

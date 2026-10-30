@@ -23,7 +23,7 @@ import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
 /**
  * A save asked for an entry anchor another entry of the same weblog already
  * holds. Thrown by {@code saveWeblogEntry} only for an anchor the caller
- * chose; one Roller generates always takes the next free suffix instead.
+ * chose; one Pressroom generates always takes the next free suffix instead.
  */
 public class AnchorTakenException extends WebloggerException {
 

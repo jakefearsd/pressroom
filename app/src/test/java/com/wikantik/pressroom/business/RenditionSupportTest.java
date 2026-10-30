@@ -141,7 +141,7 @@ class RenditionSupportTest {
     /**
      * Pins the boundary condition exactly: {@code width >= originalWidth}
      * skips a rung, so an original whose width is EXACTLY equal to a ladder
-     * rung (960 here) must not produce that rung's rendition -- Roller never
+     * rung (960 here) must not produce that rung's rendition -- Pressroom never
      * upscales, and "equal" is "not narrower".
      */
     @Test

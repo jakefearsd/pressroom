@@ -23,7 +23,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 /**
  * Lazily started PostgreSQL container shared by every test in the JVM.
  *
- * <p>Roller became PostgreSQL-only during this fork's simplification, and
+ * <p>Pressroom became PostgreSQL-only during this fork's simplification, and
  * tests run against the same database engine as production rather than
  * the embedded Derby they used before. The container's schema is built by
  * applying the real {@code bin/db/migrations} chain (see

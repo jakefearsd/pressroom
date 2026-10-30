@@ -49,7 +49,7 @@ import org.apache.hc.core5.util.Timeout;
 import org.springframework.stereotype.Component;
 
 /**
- * Fetches one image from a public URL for {@code media import}. Roller runs
+ * Fetches one image from a public URL for {@code media import}. Pressroom runs
  * inside a home network, so the fetcher must never become a way to reach it:
  * every address it connects to is checked (the client's own DnsResolver
  * refuses a host when ANY of its addresses is not public, and the connection

@@ -56,7 +56,7 @@ import static org.mockito.Mockito.when;
 import com.wikantik.pressroom.ui.controllers.WeblogPermissionView;
 
 /**
- * Tests for {@link UserEditController}, the only screen in Roller that can mint
+ * Tests for {@link UserEditController}, the only screen in Pressroom that can mint
  * an account or hand out the admin role. Every test here asserts on a decision
  * the controller made -- which view, which message, and above all whether the
  * user manager was actually asked to write anything -- because "the form came

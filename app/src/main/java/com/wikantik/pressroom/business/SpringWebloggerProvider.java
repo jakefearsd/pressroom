@@ -132,7 +132,7 @@ public class SpringWebloggerProvider implements WebloggerProvider, DisposableBea
             throw new IllegalStateException("Cannot bootstrap until application has been properly prepared");
         }
 
-        log.info("Bootstrapping Roller Weblogger business tier");
+        log.info("Bootstrapping Pressroom Weblogger business tier");
 
         if (this.context == null) {
             this.context = (existingContext != null)
@@ -151,14 +151,14 @@ public class SpringWebloggerProvider implements WebloggerProvider, DisposableBea
         // initialize() so nothing inside it can regress to a null read.
         WebloggerRuntimeConfig.attach(built.getPropertiesManager());
 
-        log.info("Roller Weblogger business tier successfully bootstrapped");
+        log.info("Pressroom Weblogger business tier successfully bootstrapped");
         log.info("   Version: {}", built.getVersion());
         log.info("   Revision: {}", built.getRevision());
 
         try {
             built.initialize();
         } catch (InitializationException ex) {
-            throw new BootstrapException("Roller Weblogger initialization failed", ex);
+            throw new BootstrapException("Pressroom Weblogger initialization failed", ex);
         } finally {
             built.release();
         }
@@ -184,7 +184,7 @@ public class SpringWebloggerProvider implements WebloggerProvider, DisposableBea
     public Weblogger getWeblogger() {
         Weblogger current = weblogger;
         if (current == null) {
-            throw new IllegalStateException("Roller Weblogger has not been bootstrapped yet");
+            throw new IllegalStateException("Pressroom Weblogger has not been bootstrapped yet");
         }
         return current;
     }

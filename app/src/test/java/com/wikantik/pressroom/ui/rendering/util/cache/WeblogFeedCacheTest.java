@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Tests the cache in front of the RSS and Atom feeds.
  *
- * Feeds are the most heavily and most mechanically fetched thing a Roller
+ * Feeds are the most heavily and most mechanically fetched thing a Pressroom
  * install serves -- readers poll them on a timer -- so this cache does more
  * work than any other, and a key that cannot tell two feeds apart is served
  * wholesale to the wrong subscribers.
@@ -308,7 +308,7 @@ public class WeblogFeedCacheTest {
 
     @Test
     public void aDisabledCacheCachesNothing() {
-        // how Roller runs in development, and how it runs for anyone who turns
+        // how Pressroom runs in development, and how it runs for anyone who turns
         // cache.weblogfeed.enabled off: the calls must all be no-ops
         WeblogFeedCache disabled = WeblogFeedCache.newForTest(false);
 

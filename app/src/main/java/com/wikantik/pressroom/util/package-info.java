@@ -17,6 +17,6 @@
  */
 
 /**
- * Roller utility classes including date processing, mail, etc.
+ * Pressroom utility classes including date processing, mail, etc.
  */
 package com.wikantik.pressroom.util;

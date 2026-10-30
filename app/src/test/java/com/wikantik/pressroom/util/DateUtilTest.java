@@ -213,7 +213,7 @@ public class DateUtilTest {
         @Test
         public void parseIso8601ReadsAFeedTimestamp() throws Exception {
             // Delegates to ISO8601DateParser; this is the entry point the rest
-            // of Roller calls, so it needs its own coverage.
+            // of Pressroom calls, so it needs its own coverage.
             assertEquals("2004-06-14 19:20:30.000", isoUtc(DateUtil.parseIso8601("2004-06-14T19:20:30Z")));
         }
 
@@ -351,7 +351,7 @@ public class DateUtilTest {
             // between concurrent request threads corrupts the output. Each
             // accessor must therefore construct a new one.
             String why = "Date formatters must not be shared: SimpleDateFormat is not thread "
-                    + "safe and Roller formats dates from concurrent request threads.";
+                    + "safe and Pressroom formats dates from concurrent request threads.";
             assertNotSame(DateUtil.get8charDateFormat(), DateUtil.get8charDateFormat(), why);
             assertNotSame(DateUtil.get6charDateFormat(), DateUtil.get6charDateFormat(), why);
             assertNotSame(DateUtil.getIso8601DateFormat(), DateUtil.getIso8601DateFormat(), why);

@@ -171,13 +171,13 @@ public class InstallController extends BaseController {
             // a single Spring context, then initializes it
             webloggerProvider.bootstrap();
 
-            log.info("Roller started from the installer");
+            log.info("Pressroom started from the installer");
             return "redirect:/";
 
         } catch (Exception ex) {
             // Logged here, the point of failure, and only here: the page is
             // anonymous, so it says where to look, not what went wrong.
-            log.error("Roller could not be bootstrapped from the installer", ex);
+            log.error("Pressroom could not be bootstrapped from the installer", ex);
         }
 
         model.addAttribute("pageTitle", "installer.start.pageTitle");

@@ -87,7 +87,7 @@ public final class TestUtils {
     public static synchronized void setupWeblogger() throws Exception {
 
         if (provider == null) {
-            // Starts the PostgreSQL container, points Roller's config at it and
+            // Starts the PostgreSQL container, points Pressroom's config at it and
             // applies bin/db/migrations. Safe to call repeatedly.
             PressroomDatabaseExtension.ensureSchema();
 

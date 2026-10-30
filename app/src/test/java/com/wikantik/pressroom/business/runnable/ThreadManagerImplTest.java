@@ -127,7 +127,7 @@ class ThreadManagerImplTest {
 
     private static long schedulerThreads() {
         return Thread.getAllStackTraces().keySet().stream()
-                .filter(t -> "Roller Weblogger Task Scheduler".equals(t.getName()) && t.isAlive())
+                .filter(t -> "Pressroom Weblogger Task Scheduler".equals(t.getName()) && t.isAlive())
                 .count();
     }
 

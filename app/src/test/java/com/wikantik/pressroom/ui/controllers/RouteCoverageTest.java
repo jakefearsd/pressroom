@@ -162,7 +162,7 @@ public class RouteCoverageTest {
                         + "the tests ran.");
         assertTrue(declared.size() > 40,
                 "Only " + declared.size() + " GET routes were discovered, which is far fewer "
-                        + "than Roller's admin UI has. The component scan is probably matching "
+                        + "than Pressroom's admin UI has. The component scan is probably matching "
                         + "a subset of the controllers: " + declared);
 
         assertFalse(cataloguedRoutes().isEmpty(),

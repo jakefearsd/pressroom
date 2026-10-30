@@ -1,7 +1,7 @@
 /**
- Roller rendering system servlets.
+ Pressroom rendering system servlets.
 
- <h2>Roller Servlets</h2>
+ <h2>Pressroom Servlets</h2>
 
  Most rendering servlets work like this:
  <ul>

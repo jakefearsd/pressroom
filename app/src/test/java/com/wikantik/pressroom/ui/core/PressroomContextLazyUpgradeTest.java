@@ -15,7 +15,7 @@ import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mockStatic;
 
 /**
- * Lazy upgrade of password hashes written by old Roller versions: a stored
+ * Lazy upgrade of password hashes written by old Pressroom versions: a stored
  * MD5 or SHA digest (no {@code {id}} prefix) must still authenticate while the
  * operator has asked for it, must not authenticate when they have not, and an
  * unsupported source algorithm must stop startup rather than be ignored.

@@ -494,7 +494,7 @@ class PressroomHandlerInterceptorTest {
 
     /**
      * A reader signed in through the provider carries a {@link PressroomOidcUser},
-     * which is not a {@code UserDetails}; its name is the Roller username.
+     * which is not a {@code UserDetails}; its name is the Pressroom username.
      * Resolving only UserDetails and String principals sent a reader promoted to
      * editor back to log in from every page that requires a user, menu.rol
      * included (found by SsoSignInIT, spec criterion 29).
@@ -514,8 +514,8 @@ class PressroomHandlerInterceptorTest {
 
     /**
      * Characterisation, passing before the fix above and pinned so it keeps
-     * passing: only Roller's own principal is trusted for a username. A bare
-     * OIDC user's name is the provider's subject, which is not a Roller
+     * passing: only Pressroom's own principal is trusted for a username. A bare
+     * OIDC user's name is the provider's subject, which is not a Pressroom
      * username and must never be looked up as one.
      */
     @Test

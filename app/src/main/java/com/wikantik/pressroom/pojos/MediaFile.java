@@ -236,7 +236,7 @@ public class MediaFile implements Serializable {
     }
 
     /**
-     * Roller lowercases all tags based on locale because there's not a 1:1
+     * Pressroom lowercases all tags based on locale because there's not a 1:1
      * mapping between uppercase/lowercase characters across all languages.
      * 
      * @param name

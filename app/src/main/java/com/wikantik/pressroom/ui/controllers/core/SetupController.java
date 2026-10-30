@@ -40,7 +40,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 
 /**
- * Page used to display Roller install instructions.
+ * Page used to display Pressroom install instructions.
  */
 @Controller
 @RequestMapping("/pressroom-ui")

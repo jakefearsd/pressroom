@@ -54,7 +54,7 @@ import java.util.Map;
  *
  * <p>For every request handled by a Spring MVC controller it:
  * <ol>
- *   <li>Resolves the authenticated Roller {@link User} from Spring Security
+ *   <li>Resolves the authenticated Pressroom {@link User} from Spring Security
  *       and stores it as request attribute "authenticatedUser".</li>
  *   <li>Resolves the target {@link Weblog} -- for a REST handler from the
  *       {@code {handle}} path variable only, for a JSP handler from the
@@ -388,11 +388,11 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
     }
 
     /**
-     * Resolve the Roller User from the Spring Security context.
+     * Resolve the Pressroom User from the Spring Security context.
      * Returns null if no user is authenticated.
      *
      * <p>A reader signed in through the provider carries a {@link PressroomOidcUser},
-     * whose name is the Roller username. Only that principal type is trusted for
+     * whose name is the Pressroom username. Only that principal type is trusted for
      * one: a bare OIDC user's name is the provider's subject, never a username.
      */
     private User resolveAuthenticatedUser() {

@@ -24,7 +24,7 @@ import com.wikantik.pressroom.pojos.RuntimeConfigProperty;
 
 
 /**
- * Manages global properties for Roller.
+ * Manages global properties for Pressroom.
  */
 public interface PropertiesManager {
     
@@ -37,7 +37,7 @@ public interface PropertiesManager {
     
     
     /**
-     * Release all resources associated with Roller session.
+     * Release all resources associated with Pressroom session.
      */
     void release();
     

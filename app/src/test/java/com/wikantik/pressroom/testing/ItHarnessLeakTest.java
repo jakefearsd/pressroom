@@ -48,7 +48,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * The browser IT harness must never leave a Roller app JVM running, whatever
+ * The browser IT harness must never leave a Pressroom app JVM running, whatever
  * killed the build. Four abort paths used to leak one permanently: the
  * readiness timeout in {@code start-app.sh} (which exited without killing what
  * it had started), an infrastructure failure anywhere in
@@ -709,7 +709,7 @@ class ItHarnessLeakTest {
         return java;
     }
 
-    /** A process carrying the harness's markers, standing in for a Roller app JVM. */
+    /** A process carrying the harness's markers, standing in for a Pressroom app JVM. */
     private long spawnMarked(String runId, String ownerToken) throws Exception {
         return spawnMarked(namespace, runId, ownerToken);
     }

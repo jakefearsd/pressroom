@@ -28,9 +28,9 @@ import com.wikantik.pressroom.util.DateUtil;
 
 
 /**
- * An abstract class representing a scheduled task in Roller.
+ * An abstract class representing a scheduled task in Pressroom.
  *
- * This class extends the java.util.TimerTask class and adds in some Roller
+ * This class extends the java.util.TimerTask class and adds in some Pressroom
  * specifics.
  */
 public abstract class PressroomTask implements Runnable {

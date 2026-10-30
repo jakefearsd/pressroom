@@ -637,9 +637,9 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
     
     /**
      * <p>Publish time is the time that an entry is to be (or was) made available
-     * for viewing by newsfeed readers and visitors to the Roller site.</p>
+     * for viewing by newsfeed readers and visitors to the Pressroom site.</p>
      *
-     * <p>Roller stores time using the timeZone of the server itself. When
+     * <p>Pressroom stores time using the timeZone of the server itself. When
      * times are displayed  in a user's weblog they must be translated
      * to the user's timeZone.</p>
      *
@@ -656,9 +656,9 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
     
     /**
      * <p>Update time is the last time that an weblog entry was saved in the
-     * Roller weblog editor or via web services API (XML-RPC or Atom).</p>
+     * Pressroom weblog editor or via web services API (XML-RPC or Atom).</p>
      *
-     * <p>Roller stores time using the timeZone of the server itself. When
+     * <p>Pressroom stores time using the timeZone of the server itself. When
      * times are displayed  in a user's weblog they must be translated
      * to the user's timeZone.</p>
      *
@@ -724,14 +724,14 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
     }
     
     /**
-     * True if story should be pinned to the top of the Roller site main blog.
+     * True if story should be pinned to the top of the Pressroom site main blog.
      * @return Returns the pinned.
      */
     public Boolean getPinnedToMain() {
         return pinnedToMain;
     }
     /**
-     * True if story should be pinned to the top of the Roller site main blog.
+     * True if story should be pinned to the top of the Pressroom site main blog.
      * @param pinnedToMain The pinned to set.
      */
     public void setPinnedToMain(Boolean pinnedToMain) {
@@ -761,7 +761,7 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
     }
      
     /**
-     * Roller lowercases all tags based on locale because there's not a 1:1 mapping
+     * Pressroom lowercases all tags based on locale because there's not a 1:1 mapping
      * between uppercase/lowercase characters across all languages.  
      * @param name
      * @throws WebloggerException
@@ -909,7 +909,7 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
     // AdminUrls.entry(entry) for the admin JSPs.
 
     /**
-     * Returns entry permalink, relative to Roller context. Pure string work --
+     * Returns entry permalink, relative to Pressroom context. Pure string work --
      * no collaborator -- which is why it stays on the entity.
      * @deprecated Use the wrapper's getPermalink() instead.
      */

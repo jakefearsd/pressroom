@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Tests the expiring variant of the LRU cache, which is the default for every
- * cache in Roller (see cache.defaultFactory in pressroom.properties).
+ * cache in Pressroom (see cache.defaultFactory in pressroom.properties).
  *
  * The timeout is what bounds how stale a rendered page can get when nothing
  * invalidates it explicitly, so "still served at the timeout, gone just after"
@@ -58,7 +58,7 @@ public class ExpiringLRUCacheImplTest {
         assertEquals("value", cache.get("key"),
                 "An entry is still fresh at exactly its timeout; expiry starts after it. "
                         + "If this fails the timeout is off by one and every cache in "
-                        + "Roller expires a fraction early.");
+                        + "Pressroom expires a fraction early.");
 
         clock.now = 1_000L + 15_001L;
         assertNull(cache.get("key"),

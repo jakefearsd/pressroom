@@ -170,7 +170,7 @@ class SsoHandlersTest {
     }
 
     /**
-     * Spec, Logging: the code and the reason. Roller's own refusal reason travels
+     * Spec, Logging: the code and the reason. Pressroom's own refusal reason travels
      * as the cause and is logged; the OAuth2 description is not, because whoever
      * holds a valid state can set it through {@code error_description}.
      */

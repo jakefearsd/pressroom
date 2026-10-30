@@ -42,7 +42,7 @@ import static org.mockito.Mockito.mock;
  *
  * <p>Characterisation test: written to pass against the existing code. A
  * reader signs in through Spring's {@link OAuth2AuthenticationToken}, whose
- * {@code getName()} is the {@link PressroomOidcUser}'s Roller username, and
+ * {@code getName()} is the {@link PressroomOidcUser}'s Pressroom username, and
  * {@code ParsedRequest} reads the user from {@code request.getUserPrincipal()}.
  * Nothing in the cache had to change for readers, and this pins that so a
  * principal whose name is not the username cannot silently merge readers'
@@ -72,7 +72,7 @@ class ReaderCacheKeyTest {
     @Test
     void aReaderRequestIsAuthenticatedAsThePressroomUsername() throws Exception {
         assertEquals(READER, pageRequest(readerToken()).getAuthenticUser(),
-                "the principal's name must be the Roller username, not the provider subject");
+                "the principal's name must be the Pressroom username, not the provider subject");
     }
 
     @Test

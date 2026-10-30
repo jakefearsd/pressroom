@@ -43,7 +43,7 @@ import com.wikantik.pressroom.ui.rendering.util.LocaleSegment;
 
 
 /**
- * Handles rendering requests for Roller pages/feeds by routing to the appropriate Servlet.
+ * Handles rendering requests for Pressroom pages/feeds by routing to the appropriate Servlet.
  *
  * This request mapper is used to map all weblog specific urls of the form
  * /<weblog handle>/* to the appropriate servlet for handling the actual

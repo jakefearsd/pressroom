@@ -229,7 +229,7 @@ class MediaFileWrapperTest {
     void urlFallsBackToThePlainPermalinkForANonLadderWidth() {
         withMockedPermalink(() ->
                 assertEquals(PERMALINK, wrapper.url(999),
-                        "999 is not a rendition width Roller ever generates; emitting ?w=999 "
+                        "999 is not a rendition width Pressroom ever generates; emitting ?w=999 "
                                 + "would be a dead link the servlet always 404-falls-back on, so "
                                 + "the wrapper must not emit it at all"));
     }

@@ -36,11 +36,11 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * The VelocityEngine used by Roller, initialised explicitly at bootstrap.
+ * The VelocityEngine used by Pressroom, initialised explicitly at bootstrap.
  *
  * <p>The engine used to be built in a static initialiser that read
  * {@code /WEB-INF/velocity.properties} through {@code PressroomContext}'s static
- * {@code ServletContext}; the two Roller resource loaders it instantiates
+ * {@code ServletContext}; the two Pressroom resource loaders it instantiates
  * ({@link PressroomResourceLoader}, {@link ThemeResourceLoader}) then reached the
  * business tier through a static service locator. Both are gone:
  * {@link #initialize(ServletContext, Weblogger)} is called once, by

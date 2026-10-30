@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
  * Pins that {@link SafeXml#saxBuilder()} refuses a DOCTYPE, which is what
  * takes XXE off the table for every XML this application parses.
  *
- * <p>Roller's three SAXBuilder callers -- the runtime config defs, the admin
+ * <p>Pressroom's three SAXBuilder callers -- the runtime config defs, the admin
  * menus, and a shared theme's {@code theme.xml} -- all read files that ship
  * with the application, so none of them is reachable by an attacker today and
  * none of this is a live vulnerability. It is done anyway for the same reason

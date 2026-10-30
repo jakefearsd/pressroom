@@ -66,7 +66,7 @@ public enum JsonLdType {
      *
      * <p>Deliberately lenient: null or blank means "never chosen" and an
      * unrecognized value (a hand-edited row, or a value written by a newer
-     * version of Roller) must not break rendering or editing, so both fall
+     * version of Pressroom) must not break rendering or editing, so both fall
      * back to {@link #BLOG_POSTING} -- the unknown value with a warning
      * rather than silently.
      */

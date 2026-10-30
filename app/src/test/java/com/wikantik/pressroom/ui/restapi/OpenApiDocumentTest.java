@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * The docs page is the API's front door. This pins the two things a reader
- * cannot recover for themselves: that /api/v1 is unstable while Roller is
+ * cannot recover for themselves: that /api/v1 is unstable while Pressroom is
  * 0.x, and that a token is minted by the CLI rather than in the UI.
  */
 class OpenApiDocumentTest {
@@ -25,7 +25,7 @@ class OpenApiDocumentTest {
     void theInstabilityOfV1IsStated() throws Exception {
         String text = docs().toLowerCase();
         assertTrue(text.contains("unstable"),
-                "a client author must be told v1 can change while Roller is 0.x");
+                "a client author must be told v1 can change while Pressroom is 0.x");
     }
 
     @Test

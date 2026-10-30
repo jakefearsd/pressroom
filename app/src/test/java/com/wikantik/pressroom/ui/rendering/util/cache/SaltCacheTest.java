@@ -63,7 +63,7 @@ public class SaltCacheTest {
     @Test
     public void anUnknownSaltIsNotRecognised() {
         assertNull(cache.get("never-issued"),
-                "A salt Roller never issued must not be recognised -- this is the whole "
+                "A salt Pressroom never issued must not be recognised -- this is the whole "
                         + "point of the cache");
     }
 

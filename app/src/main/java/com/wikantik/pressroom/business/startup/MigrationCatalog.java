@@ -72,7 +72,7 @@ public final class MigrationCatalog {
         if (dir == null) {
             throw new IllegalStateException(
                     "No /" + MIGRATIONS_PATH + " directory on the classpath. The build copies "
-                    + "bin/db/migrations there; without it Roller cannot create or migrate its "
+                    + "bin/db/migrations there; without it Pressroom cannot create or migrate its "
                     + "schema.");
         }
 

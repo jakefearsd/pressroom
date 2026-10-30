@@ -25,7 +25,7 @@ import java.util.Map;
  * An interface representing a cache factory.  Implementors of this interface
  * are responsible for providing a method to construct cache implementations.
  *
- * In Roller you switch between various caching options by choosing a different
+ * In Pressroom you switch between various caching options by choosing a different
  * cache factory before starting up the application.
  */
 public interface CacheFactory {

@@ -20,7 +20,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * The gate that stands in front of an un-installed Roller.
+ * The gate that stands in front of an un-installed Pressroom.
  *
  * <p>While {@code installation.type} is "auto" and the business tier has not
  * been bootstrapped, every request is forwarded to the installer -- except the

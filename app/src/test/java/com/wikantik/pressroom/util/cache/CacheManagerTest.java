@@ -40,7 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Tests the CacheManager, which builds Roller's caches and fans invalidation
+ * Tests the CacheManager, which builds Pressroom's caches and fans invalidation
  * events out to everything that registered an interest.
  *
  * The fan-out is the part worth guarding. Every manager that changes a weblog

@@ -45,7 +45,7 @@ import static org.mockito.Mockito.mockStatic;
  * plaintext (what {@code openssl rand -hex 24} prints) failed AES-GCM
  * decryption and the factory refused to deploy with EclipseLink-7360
  * ("Database password was encrypted by deprecated algorithm"). The 0.1.10
- * production deploy crash-looped on exactly that. This drives Roller's own
+ * production deploy crash-looped on exactly that. This drives Pressroom's own
  * bootstrap ({@link DatabaseProvider} into {@link JPAPersistenceStrategy})
  * against a real PostgreSQL role whose password is such a string.
  */

@@ -176,9 +176,9 @@ class EqualsContractTest {
                         taskLock("OtherTask")),
 
                 new Specimen("RuntimeConfigProperty (keyed on name)",
-                        new RuntimeConfigProperty("site.name", "Roller"),
+                        new RuntimeConfigProperty("site.name", "Pressroom"),
                         new RuntimeConfigProperty("site.name", "Something else"),
-                        new RuntimeConfigProperty("site.shortName", "Roller")),
+                        new RuntimeConfigProperty("site.shortName", "Pressroom")),
 
                 new Specimen("StatCount (keyed on subjectId + typeKey) -- differing type",
                         statCount("blog-a", "hits"), statCount("blog-a", "hits"),
@@ -451,7 +451,7 @@ class EqualsContractTest {
 
     @Test
     void entitiesKeyedOnABusinessFieldIgnoreTheSurrogateId() throws Exception {
-        // Roller assigns a UUID in the field initialiser, so two freshly built
+        // Pressroom assigns a UUID in the field initialiser, so two freshly built
         // copies of "the same" entity always have different ids. If equals()
         // looked at the id, de-duplication would silently stop working.
         Weblog first = weblog("blog-a");

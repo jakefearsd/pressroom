@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
- * Tests the bounded LRU map that every Roller cache is built on.
+ * Tests the bounded LRU map that every Pressroom cache is built on.
  *
  * The size bound is the only thing stopping a long-running server from growing
  * its rendering caches without limit, and "least recently used" is the only

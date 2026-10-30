@@ -35,13 +35,13 @@ import com.wikantik.pressroom.config.WebloggerConfig;
 
 
 /**
- * Encapsulates Roller database configuration via JDBC properties or JNDI.
+ * Encapsulates Pressroom database configuration via JDBC properties or JNDI.
  * 
  * <p>To keep the logs from filling up with DB connection errors, will only 
  * attempt to connect once.</p>
  * 
  * <p>Keeps startup exception and log so we can present useful debugging
- * information to whoever is installing Roller.</p>
+ * information to whoever is installing Pressroom.</p>
  * 
  * 
  * <p>Reads configuration properties from WebloggerConfig:</p>

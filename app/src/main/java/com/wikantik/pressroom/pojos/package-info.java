@@ -17,6 +17,6 @@
  */
 
 /**
- * Plain old Java objects (POJOS) that define Roller data model.
+ * Plain old Java objects (POJOS) that define Pressroom data model.
  */
 package com.wikantik.pressroom.pojos;

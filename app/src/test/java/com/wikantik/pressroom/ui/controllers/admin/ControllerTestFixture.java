@@ -61,7 +61,7 @@ import static org.mockito.Mockito.when;
 final class ControllerTestFixture {
 
     /**
-     * Message codes look like {@code some.thing.here}. Roller also passes plain
+     * Message codes look like {@code some.thing.here}. Pressroom also passes plain
      * English sentences through the same call, and those cannot be looked up in
      * the bundle, so they are left alone.
      */

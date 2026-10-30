@@ -26,7 +26,7 @@ import com.wikantik.pressroom.util.Utilities;
 
 
 /**
- * Base permission class for Roller. 
+ * Base permission class for Pressroom. 
  */
 public abstract class PressroomPermission extends java.security.Permission {
 

@@ -43,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * way {@link WebloggerImpl} does, so a regression in the pom's resource
  * filtering (wrong directory, filtering turned off, the include list
  * dropping the file) fails a fast unit test instead of shipping a footer
- * that reads "Powered by Roller Version  ()".
+ * that reads "Powered by Pressroom Version  ()".
  */
 class PressroomVersionTest {
 

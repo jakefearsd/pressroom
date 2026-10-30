@@ -19,7 +19,7 @@ package com.wikantik.pressroom.config;
 
 public enum AuthMethod {
     /**
-     * Database-backed authentication, the only method Roller supports. The
+     * Database-backed authentication, the only method Pressroom supports. The
      * LDAP, OpenID, db-openid and container-managed options were removed along
      * with their implementations; the enum is kept so an unsupported value in
      * pressroom.properties still fails loudly at startup rather than silently
@@ -44,7 +44,7 @@ public enum AuthMethod {
             }
         }
         throw new IllegalArgumentException("Unknown authentication.method property value: "
-                + propertyName + " defined in Roller properties file.");
+                + propertyName + " defined in Pressroom properties file.");
     }
 
 }

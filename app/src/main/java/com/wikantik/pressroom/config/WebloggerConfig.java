@@ -37,7 +37,7 @@ import com.wikantik.pressroom.util.PropertyExpander;
 
 
 /**
- * This is the single entry point for accessing configuration properties in Roller.
+ * This is the single entry point for accessing configuration properties in Pressroom.
  */
 public final class WebloggerConfig {
     
@@ -73,7 +73,7 @@ public final class WebloggerConfig {
 
         runAtClassLoad(() -> loadLayers(System.getenv(), System.getProperties()));
 
-        // tell log4j2 to use the optionally specified config file instead of Roller's,
+        // tell log4j2 to use the optionally specified config file instead of Pressroom's,
         // but only if it hasn't already been set with -D at JVM startup.
         String log4j2ConfigKey = "log4j.configurationFile";
         String customLog4j2File = config.getProperty(log4j2ConfigKey);
@@ -318,7 +318,7 @@ public final class WebloggerConfig {
     }
 
     /**
-     * Loads Roller's configuration.
+     * Loads Pressroom's configuration.
      * Call this as early as possible in the lifecycle.
      */
     public static void init() {

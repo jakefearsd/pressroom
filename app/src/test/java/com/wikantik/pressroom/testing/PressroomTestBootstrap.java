@@ -21,7 +21,7 @@ import org.junit.platform.launcher.LauncherSession;
 import org.junit.platform.launcher.LauncherSessionListener;
 
 /**
- * Starts the PostgreSQL container and points Roller's configuration at it
+ * Starts the PostgreSQL container and points Pressroom's configuration at it
  * before any test class is loaded.
  *
  * <p>This has to happen this early because {@code WebloggerConfig} reads its

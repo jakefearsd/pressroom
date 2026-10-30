@@ -440,7 +440,7 @@ public class Weblog implements Serializable {
 
     /**
      * The Listmonk list UUID this weblog's subscribe form feeds. Null or
-     * blank disables the subscribe form for this weblog; Roller stores no
+     * blank disables the subscribe form for this weblog; Pressroom stores no
      * subscriber data itself.
      */
     public String getNewsletterListUuid() {

@@ -48,7 +48,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * {@link PressroomVelocity} is initialised explicitly, at bootstrap, with the
- * {@link Weblogger} it hands to the two Roller resource loaders through the
+ * {@link Weblogger} it hands to the two Pressroom resource loaders through the
  * engine's application attributes (the design spec's Decision 4). These pin
  * that contract without touching the JVM-wide engine where they can avoid it:
  * the whole app module shares one forked JVM and the engine cannot be

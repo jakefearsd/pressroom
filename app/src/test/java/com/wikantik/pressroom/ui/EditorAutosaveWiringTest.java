@@ -181,7 +181,7 @@ class EditorAutosaveWiringTest {
         assertTrue(jsp.contains(":pageEdit:"),
                 "the page editor's key must not collide with the entry editor's");
         assertTrue(jsp.contains("${pageContext.request.contextPath}"),
-                "a key without the context path lets two Roller installs on one "
+                "a key without the context path lets two Pressroom installs on one "
                         + "origin share storage");
         assertTrue(jsp.contains("${empty bean.id ? 'new' : bean.id}"),
                 "one action serves both add and edit here, so the id is the ONLY "

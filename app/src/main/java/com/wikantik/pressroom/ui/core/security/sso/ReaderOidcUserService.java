@@ -14,10 +14,10 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import java.net.URL;
 import java.util.List;
 
-/** Turns the provider's OIDC user into a Roller reader principal. */
+/** Turns the provider's OIDC user into a Pressroom reader principal. */
 public class ReaderOidcUserService implements OAuth2UserService<OidcUserRequest, OidcUser> {
 
-    /** OAuth2 error code: Roller declined the sign-in. */
+    /** OAuth2 error code: Pressroom declined the sign-in. */
     public static final String REFUSED = "sso_refused";
     /** OAuth2 error code: the account store failed. */
     public static final String FAILED = "sso_failed";

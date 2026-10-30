@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Pins down {@link GlobalPermission}, the site-wide half of Roller's
+ * Pins down {@link GlobalPermission}, the site-wide half of Pressroom's
  * authorization model.
  *
  * <p>Its actions form a ladder -- {@code admin} &gt; {@code weblog} &gt;
@@ -114,7 +114,7 @@ class GlobalPermissionTest {
     void permissionsOutsidePressroomsOwnHierarchyAreNeverImplied() throws Exception {
         assertFalse(held(GlobalPermission.ADMIN).implies(new BasicPermission("anything") { }),
                 "Even a site admin must not imply an arbitrary java.security.Permission -- "
-                        + "implies() has to stay closed over Roller's own permission types");
+                        + "implies() has to stay closed over Pressroom's own permission types");
     }
 
     @Test

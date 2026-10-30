@@ -17,6 +17,6 @@
  */
 
 /**
- * Core Roller rendering system: request mapping and rendering.
+ * Core Pressroom rendering system: request mapping and rendering.
  */
 package com.wikantik.pressroom.ui.rendering;

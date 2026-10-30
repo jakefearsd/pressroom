@@ -136,7 +136,7 @@ public class URLUtilitiesTest {
         // rather than %20. Everything that consumes these URLs decodes them
         // the same way, so the pair is self-consistent -- but it is worth
         // pinning, because switching to %20 would silently change every tag
-        // link Roller has ever published.
+        // link Pressroom has ever published.
         assertEquals("a+b", URLUtilities.encode("a b"));
         assertEquals("a%26b", URLUtilities.encode("a&b"));
         assertEquals("a%2Fb", URLUtilities.encode("a/b"));

@@ -56,7 +56,7 @@ class JsonLdTypeTest {
     @ParameterizedTest
     @ValueSource(strings = {"HikingTrail", "TOURIST", "BLOG-POSTING", "42"})
     void anUnknownValueFallsBackToBlogPostingInsteadOfThrowing(String unknown) {
-        // A hand-edited row or a value written by a newer Roller must not
+        // A hand-edited row or a value written by a newer Pressroom must not
         // take down the page or the editor that encounters it.
         assertEquals(JsonLdType.BLOG_POSTING, JsonLdType.fromString(unknown));
     }

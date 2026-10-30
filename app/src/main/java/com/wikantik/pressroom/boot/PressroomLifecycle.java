@@ -38,7 +38,7 @@ import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Component;
 
 /**
- * Drives the Roller startup/shutdown sequence that {@code PressroomContext}
+ * Drives the Pressroom startup/shutdown sequence that {@code PressroomContext}
  * used to run from {@code ServletContextListener.contextInitialized}/
  * {@code contextDestroyed}.
  *
@@ -50,12 +50,12 @@ import org.springframework.stereotype.Component;
  * ({@code Integer.MAX_VALUE - 2048}, verified via {@code javap} against
  * {@code spring-boot-web-server-4.1.0.jar}). {@code DefaultLifecycleProcessor}
  * starts phases in ascending order and stops them in descending order, so
- * leaving the default phase in place would start Roller *after* the
+ * leaving the default phase in place would start Pressroom *after* the
  * connector opens and stop it *before* the connector closes -- exactly
  * inverted from what's wanted. Phase 0 is safely below
  * {@code WebServerStartStopLifecycle}'s phase, so {@link #start()} runs
  * before the connector opens and {@link #stop()} runs after it has closed --
- * requests never see a half-started or half-shutdown Roller.
+ * requests never see a half-started or half-shutdown Pressroom.
  *
  * <p>This transcribes {@code PressroomContext.contextInitialized}'s behavior
  * stage by stage, including its failure handling: most failure modes here
@@ -106,7 +106,7 @@ public class PressroomLifecycle implements SmartLifecycle {
         try {
             WebloggerStartup.prepare();
         } catch (StartupException ex) {
-            log.error("Roller Weblogger startup failed during app preparation", ex);
+            log.error("Pressroom Weblogger startup failed during app preparation", ex);
             running = true;
             return;
         }
@@ -150,7 +150,7 @@ public class PressroomLifecycle implements SmartLifecycle {
                 weblogger = webloggerProvider.getWeblogger();
 
                 // Velocity is initialised only once the tier is up: the engine
-                // carries the facade for the two Roller resource loaders, and
+                // carries the facade for the two Pressroom resource loaders, and
                 // nothing renders a Velocity template before BootstrapFilter
                 // lets requests past (the install wizard is JSP).
                 initializeVelocity(weblogger);
@@ -174,7 +174,7 @@ public class PressroomLifecycle implements SmartLifecycle {
                 }
 
             } catch (BootstrapException ex) {
-                log.error("Roller Weblogger bootstrap failed", ex);
+                log.error("Pressroom Weblogger bootstrap failed", ex);
             } finally {
                 if (weblogger != null) {
                     weblogger.release();
@@ -293,7 +293,7 @@ public class PressroomLifecycle implements SmartLifecycle {
      * {@code Integer.MAX_VALUE}, which is *higher* than Boot's
      * {@code WebServerStartStopLifecycle} phase
      * ({@code Integer.MAX_VALUE - 2048}); leaving the default in place would
-     * start Roller after the connector opens and stop it before the
+     * start Pressroom after the connector opens and stop it before the
      * connector closes. Phase 0 fixes both.
      */
     @Override

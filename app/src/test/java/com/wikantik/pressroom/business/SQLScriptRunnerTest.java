@@ -43,7 +43,7 @@ public class SQLScriptRunnerTest  {
         try {
             TestUtils.setupWeblogger();
         } catch (Exception e) {
-            log.error("ERROR initializing Roller", e);
+            log.error("ERROR initializing Pressroom", e);
         }
     }
 

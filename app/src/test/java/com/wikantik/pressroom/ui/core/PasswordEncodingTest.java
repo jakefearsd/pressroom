@@ -34,7 +34,7 @@ import org.mockito.MockedStatic;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
- * Pins that Roller cannot be configured to store a plaintext password.
+ * Pins that Pressroom cannot be configured to store a plaintext password.
  *
  * <p>Four paths could once do it: {@code passwds.encryption.enabled=false}
  * (which flipped the encoding id to {@code noop}), the unconditional

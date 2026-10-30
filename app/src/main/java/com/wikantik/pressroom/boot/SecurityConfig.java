@@ -65,7 +65,7 @@ import tools.jackson.databind.ObjectMapper;
  * (bare {@code hasRole()}/{@code hasAnyRole()} SpEL plus a
  * {@code GrantedAuthorityDefaults(rolePrefix = "")} bean) as an interim fix.
  * This class reproduces those semantics directly in Java, using
- * {@code hasAuthority}/{@code hasAnyAuthority} against Roller's verbatim
+ * {@code hasAuthority}/{@code hasAnyAuthority} against Pressroom's verbatim
  * {@code "admin"}/{@code "editor"} authority strings instead -- no
  * {@code GrantedAuthorityDefaults} bean is needed at all, since
  * {@code hasAuthority}/{@code hasAnyAuthority} never apply Spring Security's
@@ -299,7 +299,7 @@ public class SecurityConfig {
             // would appear and behave differently from the app's own.
             .logout(AbstractHttpConfigurer::disable)
             .rememberMe(remember -> remember.rememberMeServices(rememberMeServices))
-            // Roller's media-file editor uses iframes.
+            // Pressroom's media-file editor uses iframes.
             .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin));
 
         // Reader sign-in (single sign-on): the bean exists only when SSO is on --

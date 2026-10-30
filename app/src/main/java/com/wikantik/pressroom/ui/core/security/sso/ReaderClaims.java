@@ -4,7 +4,7 @@ import java.util.Collection;
 import java.util.Map;
 
 /**
- * The identity claims Roller reads from a provider's ID token.
+ * The identity claims Pressroom reads from a provider's ID token.
  *
  * @param issuer        the token issuer
  * @param subject       the provider's stable user id

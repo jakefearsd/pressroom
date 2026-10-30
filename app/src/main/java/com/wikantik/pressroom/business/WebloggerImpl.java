@@ -363,7 +363,7 @@ public abstract class WebloggerImpl implements Weblogger {
     @Override
     public void initialize() throws InitializationException {
         
-        log.info("Initializing Roller Weblogger business tier");
+        log.info("Initializing Pressroom Weblogger business tier");
         
         // TODO: this should probably be done in a more uniform fashion, possibly
         // using annotations?  biggest issue is controlling ordering
@@ -381,7 +381,7 @@ public abstract class WebloggerImpl implements Weblogger {
             throw new InitializationException("Error flushing after initialization", ex);
         } 
         
-        log.info("Roller Weblogger business tier successfully initialized");
+        log.info("Pressroom Weblogger business tier successfully initialized");
     }
     
     

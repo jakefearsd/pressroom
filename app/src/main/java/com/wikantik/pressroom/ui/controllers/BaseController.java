@@ -54,7 +54,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Abstract base controller for Spring MVC controllers in Roller.
+ * Abstract base controller for Spring MVC controllers in Pressroom.
  * Replaces the Struts 2 UIAction base class, providing common utilities
  * for authentication, authorization, message resolution, and model population.
  */

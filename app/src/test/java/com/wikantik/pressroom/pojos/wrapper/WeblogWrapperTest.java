@@ -168,7 +168,7 @@ class WeblogWrapperTest {
     @SuppressWarnings("deprecation")
     @Test
     void theDeprecatedEnabledAliasStillMirrorsVisible() {
-        // Themes written for Roller 5.0 call $weblog.enabled; it has to keep
+        // Themes written for the upstream 5.0 release call $weblog.enabled; it has to keep
         // answering the same as $weblog.visible or those themes start lying.
         assertEquals(wrapper.getVisible(), wrapper.getEnabled());
     }

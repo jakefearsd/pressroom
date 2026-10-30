@@ -187,7 +187,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
         try {
             String raw = weblogger.getUserTokenManager().issueToken(user, UserToken.Purpose.PASSWORD_SET);
             weblogger.flush();
-            PasswordLinkMailer.sendLink(user, raw, "Set your Roller password");
+            PasswordLinkMailer.sendLink(user, raw, "Set your Pressroom password");
         } catch (MessagingException e) {
             // The account exists either way -- disabled and resendable from
             // the JSP UserAdmin screen's "send set-password link" action --

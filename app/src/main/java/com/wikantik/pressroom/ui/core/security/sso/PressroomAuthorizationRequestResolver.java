@@ -72,7 +72,7 @@ public class PressroomAuthorizationRequestResolver implements OAuth2Authorizatio
 
     /**
      * Reached only through {@code ClientAuthorizationRequiredException}, which
-     * belongs to {@code oauth2Client()}; Roller configures {@code oauth2Login()}
+     * belongs to {@code oauth2Client()}; Pressroom configures {@code oauth2Login()}
      * alone. Kept consistent with {@link #resolve(HttpServletRequest)} all the same.
      */
     @Override

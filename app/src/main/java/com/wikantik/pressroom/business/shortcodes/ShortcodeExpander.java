@@ -201,7 +201,7 @@ public final class ShortcodeExpander {
 
     @SuppressFBWarnings(
             value = "IMPROPER_UNICODE",
-            justification = "Lower-cases a shortcode name to look up one of Roller's registered handlers, "
+            justification = "Lower-cases a shortcode name to look up one of Pressroom's registered handlers, "
                     + "whose names are ASCII; it chooses only which built-in renders the author's content, "
                     + "and EntryRenderer's sanitizing step still follows.")
     private String expand(ShortcodeContext content, String text, ShortcodeReads reads, int depth) {
@@ -300,7 +300,7 @@ public final class ShortcodeExpander {
      */
     @SuppressFBWarnings(
             value = "IMPROPER_UNICODE",
-            justification = "Lower-cases a shortcode name to check it against Roller's registered ASCII "
+            justification = "Lower-cases a shortcode name to check it against Pressroom's registered ASCII "
                     + "handler names, only to decide whether an escaped closer in the author's text is "
                     + "unescaped.")
     private boolean appendPlainText(StringBuilder out, String text, int from, int to) {

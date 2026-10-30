@@ -44,7 +44,7 @@ import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.util.PressroomMessages;
 
 /**
- * Manages contents of the file uploaded to Roller weblogs.
+ * Manages contents of the file uploaded to Pressroom weblogs.
  * 
  * This base implementation writes file content to a file system.
  */

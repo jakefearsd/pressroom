@@ -181,7 +181,7 @@ class MediaFileAddControllerTest extends EditorControllerTestSupport {
     void aFilenameIsTruncatedAtAnEmbeddedNulByte() throws Exception {
         // The classic poison-NUL trick: "shell.jsp\0.gif" passes an extension
         // check but is written as "shell.jsp" by anything using C string
-        // semantics. Roller truncates at the NUL so the stored name is
+        // semantics. Pressroom truncates at the NUL so the stored name is
         // unambiguous.
         controller.save(request, model, bean,
                 new MultipartFile[]{upload("photo.jpg" + NUL + ".exe", "image/jpeg", "x")});

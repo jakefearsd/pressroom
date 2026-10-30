@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Rather than hunting through the cache for the entries belonging to a weblog
  * whenever that weblog changes, those caches record when the weblog was last
  * modified and compare it against the entry on the way out. That comparison is
- * the whole invalidation mechanism for every blog page Roller serves: if it
+ * the whole invalidation mechanism for every blog page Pressroom serves: if it
  * goes the wrong way, readers keep seeing a deleted post, or every page misses
  * the cache forever.
  */

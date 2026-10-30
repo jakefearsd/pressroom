@@ -41,7 +41,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Represents a request for a Roller weblog page.
+ * Represents a request for a Pressroom weblog page.
  * 
  * any url from ... /pressroom-ui/rendering/page/*
  * 

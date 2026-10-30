@@ -35,9 +35,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code MaintenanceJspTest}: there is no JSP-rendering harness here.
  *
  * <p>The tables-ready pages offered two controls for one action (a "Click
- * here" GET link and a "Start Roller" button), the startup log rendered with
+ * here" GET link and a "Start Pressroom" button), the startup log rendered with
  * every line indented by the JSP's own whitespace inside {@code <pre>}, and
- * the "tables present, Roller not started" state showed "An unknown error
+ * the "tables present, Pressroom not started" state showed "An unknown error
  * has occurred" although nothing had gone wrong.
  */
 class InstallerJspTest {
@@ -61,7 +61,7 @@ class InstallerJspTest {
             assertFalse(jsp.contains(BOOTSTRAP_FORM), page + " builds its own start form beside the fragment");
         }
         String fragment = read(JSPS.resolve("InstallStart.jsp"));
-        assertTrue(fragment.contains(BOOTSTRAP_FORM), "the fragment is one POST form that starts Roller");
+        assertTrue(fragment.contains(BOOTSTRAP_FORM), "the fragment is one POST form that starts Pressroom");
         assertTrue(fragment.contains("installer.readyToStart"), "and says the tables are ready, without a link");
     }
 
@@ -85,7 +85,7 @@ class InstallerJspTest {
                 ".Bootstrap must render its own page, not UnknownError.jsp: " + definition);
 
         String jsp = read(JSPS.resolve("Bootstrap.jsp"));
-        assertTrue(jsp.contains(START_INCLUDE), "Bootstrap.jsp offers the Start Roller button");
+        assertTrue(jsp.contains(START_INCLUDE), "Bootstrap.jsp offers the Start Pressroom button");
         assertTrue(jsp.contains("installer.startFailedExplanation"), "and points at the server log after a failure");
         assertFalse(jsp.contains("installer.unknownError"), "nothing on it is an unknown error");
     }

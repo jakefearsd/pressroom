@@ -32,7 +32,7 @@ import com.wikantik.pressroom.util.cache.ExpiringCacheEntry;
 /**
  * Cache for XSRF salt values. This cache is part of XSRF protection wherein 
  * each HTTP POST must be accompanied by a valid salt value, i.e. one generated 
- * by Roller. If you're running distributed, then you must use a distributed 
+ * by Pressroom. If you're running distributed, then you must use a distributed 
  * cache, e.g. memcached
  */
 public final class SaltCache {

@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Covers the action-string handling in {@link PressroomPermission}.
  *
- * <p>Every authorization decision in Roller ends up going through these
+ * <p>Every authorization decision in Pressroom ends up going through these
  * methods: a permission's granted actions live in a single database column as
  * a comma-separated string, and {@code hasAction}/{@code implies} answer
  * "may this user do X?" by parsing that string. A parsing mistake here does

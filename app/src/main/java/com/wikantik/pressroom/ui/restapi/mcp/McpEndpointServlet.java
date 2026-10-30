@@ -16,7 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
  * The servlet at {@code /api/mcp}: the SDK's stateless transport, behind a
- * servlet of Roller's own so the endpoint has one place for checks the
+ * servlet of Pressroom's own so the endpoint has one place for checks the
  * transport does not make.
  */
 public final class McpEndpointServlet extends HttpServlet {

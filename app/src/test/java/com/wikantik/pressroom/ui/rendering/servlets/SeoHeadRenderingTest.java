@@ -527,7 +527,7 @@ class SeoHeadRenderingTest {
     }
 
     /**
-     * Roller stores UI-authored entry titles HTML-escaped ({@code EntryBean.copyTo}
+     * Pressroom stores UI-authored entry titles HTML-escaped ({@code EntryBean.copyTo}
      * runs them through escapeHtml4, with a symmetric unescape in copyFrom),
      * which is why themes emit {@code $entry.title} raw. #showSeoHead must
      * therefore unescape before its own emit-time escape, or "Fish & Chips"

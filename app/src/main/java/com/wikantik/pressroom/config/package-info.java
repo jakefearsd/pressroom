@@ -17,6 +17,6 @@
  */
 
 /**
- * Access to Roller's startup and runtime configuration properties.
+ * Access to Pressroom's startup and runtime configuration properties.
  */
 package com.wikantik.pressroom.config;

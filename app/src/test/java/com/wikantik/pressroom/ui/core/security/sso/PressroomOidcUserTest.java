@@ -39,7 +39,7 @@ class PressroomOidcUserTest {
             copy = (PressroomOidcUser) in.readObject();
         }
 
-        assertEquals("jo", copy.getName(), "the principal name is the Roller username, not the subject");
+        assertEquals("jo", copy.getName(), "the principal name is the Pressroom username, not the subject");
         assertEquals(List.of(new SimpleGrantedAuthority("reader")), List.copyOf(copy.getAuthorities()));
         assertEquals("jo@example.com", copy.getClaims().get("email"));
         assertTrue(copy.isNewAccount());

@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Pins down {@link WeblogPermission#implies}, the per-weblog half of Roller's
+ * Pins down {@link WeblogPermission#implies}, the per-weblog half of Pressroom's
  * authorization model.
  *
  * <p>{@code JPAUserManagerImpl.checkPermission} loads the permission row the

@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * Roller LRU Cache factory.
+ * Pressroom LRU Cache factory.
  */
 public class LRUCacheFactoryImpl implements CacheFactory {
     
@@ -36,7 +36,7 @@ public class LRUCacheFactoryImpl implements CacheFactory {
     
     
     /**
-     * Construct a new instance of a Roller LRUCache.
+     * Construct a new instance of a Pressroom LRUCache.
      */
     @Override
     public Cache constructCache(Map<String, ?> properties) {

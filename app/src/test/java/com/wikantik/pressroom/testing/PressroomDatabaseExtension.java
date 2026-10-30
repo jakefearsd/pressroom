@@ -33,7 +33,7 @@ import java.util.List;
  * test runs against.
  *
  * <p>The entry point is the static {@link #ensureSchema()}: once per JVM it
- * starts the container, points Roller's configuration at it, and builds the
+ * starts the container, points Pressroom's configuration at it, and builds the
  * schema by applying the real {@code bin/db/migrations} chain.
  * {@code PressroomTestBootstrap} and {@code TestUtils} call it directly. Tests
  * tear down their own fixtures rather than relying on any per-test reset.
@@ -47,7 +47,7 @@ public class PressroomDatabaseExtension {
     }
 
     /**
-     * Start the container, publish its coordinates to Roller's config, and
+     * Start the container, publish its coordinates to Pressroom's config, and
      * apply the migration chain. Idempotent and safe under concurrent access.
      */
     public static void ensureSchema() {
@@ -65,7 +65,7 @@ public class PressroomDatabaseExtension {
     }
 
     /**
-     * Roller reads {@code pressroom.custom.config} last, so writing the
+     * Pressroom reads {@code pressroom.custom.config} last, so writing the
      * container's JDBC coordinates there overrides the checked-in test
      * properties without them needing to know the randomly-assigned port.
      */

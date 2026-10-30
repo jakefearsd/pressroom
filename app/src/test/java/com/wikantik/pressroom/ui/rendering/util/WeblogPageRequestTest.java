@@ -410,7 +410,7 @@ class WeblogPageRequestTest {
                 "page", "1", "tags", "java", "myOwnParam", "kept");
 
         assertEquals(List.of("myOwnParam"), List.copyOf(request.getCustomParams().keySet()),
-                "customParams is what template authors see; leaking Roller's own "
+                "customParams is what template authors see; leaking Pressroom's own "
                         + "parameters into it would let templates key off internals");
     }
 

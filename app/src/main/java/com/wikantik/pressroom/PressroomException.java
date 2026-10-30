@@ -19,7 +19,7 @@
 package com.wikantik.pressroom;
 
 /**
- * Base Roller exception class.
+ * Base Pressroom exception class.
  *
  * <p>The wrapped throwable goes to {@link Throwable}'s own cause chain. It used
  * to be held in a private field instead, with {@code printStackTrace} overridden

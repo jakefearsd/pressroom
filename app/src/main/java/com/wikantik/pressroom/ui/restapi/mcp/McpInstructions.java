@@ -2,7 +2,7 @@ package com.wikantik.pressroom.ui.restapi.mcp;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
-/** What an MCP client is told about Roller when it connects (initialize's instructions). */
+/** What an MCP client is told about Pressroom when it connects (initialize's instructions). */
 public final class McpInstructions {
 
     @SuppressFBWarnings(
@@ -11,7 +11,7 @@ public final class McpInstructions {
                     + "McpServerConfig (and the test that reads it). The copies cannot drift: they are "
                     + "rebuilt from this field on every compile.")
     public static final String TEXT = """
-            These tools are a façade over Roller's REST API: its permissions and validation rules apply.
+            These tools are a façade over Pressroom's REST API: its permissions and validation rules apply.
 
             - `weblog` is a weblog's handle; `whoami` shows your token's role, weblog limit and reachable weblogs.
             - `weblogs create` makes a weblog you own; a wrong `theme` answers with the valid ones.

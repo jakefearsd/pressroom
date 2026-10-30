@@ -77,8 +77,8 @@ class PressroomLifecycleTest {
      * in {@code spring-boot-web-server-4.1.0.jar}. {@code PressroomLifecycle} must
      * report a phase strictly below this constant so that
      * {@code DefaultLifecycleProcessor} (which starts phases in ascending order
-     * and stops them in descending order) starts Roller before the connector
-     * opens and stops Roller after the connector closes. Note that
+     * and stops them in descending order) starts Pressroom before the connector
+     * opens and stops Pressroom after the connector closes. Note that
      * {@code SmartLifecycle}'s own default phase
      * ({@link org.springframework.context.SmartLifecycle#DEFAULT_PHASE}, plain
      * {@code Integer.MAX_VALUE}) is *above* this constant -- relying on the

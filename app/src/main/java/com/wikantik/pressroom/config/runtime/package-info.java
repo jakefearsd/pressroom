@@ -17,6 +17,6 @@
  */
 
 /**
- * Parses Roller's runtime configuration definition files.
+ * Parses Pressroom's runtime configuration definition files.
  */
 package com.wikantik.pressroom.config.runtime;

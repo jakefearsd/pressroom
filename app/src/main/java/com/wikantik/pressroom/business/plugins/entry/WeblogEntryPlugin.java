@@ -24,7 +24,7 @@ import com.wikantik.pressroom.pojos.Weblog;
 
 
 /**
- * Interface for Roller weblog entry plugins.
+ * Interface for Pressroom weblog entry plugins.
  *
  * Weblog entry plugins are used to make transformations to the entry text.
  * These plugins affect both the entry summary and entry body.
