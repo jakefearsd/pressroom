@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# pressroom-api -- command-line client for Roller's automation API.
+# pressroom-api -- command-line client for Pressroom's automation API.
 #
 # Configuration precedence: --url/--token flags (highest), then
 # PRESSROOM_API_URL / PRESSROOM_API_TOKEN, then ~/.pressroom/credentials (lowest).
@@ -992,7 +992,7 @@ EOF
 
 usage() {
     cat <<'EOF'
-pressroom-api -- Roller automation API client
+pressroom-api -- Pressroom automation API client
 
   [--url URL] [--token TOKEN] <command> ...
       Global overrides, parsed before the command -- highest-precedence

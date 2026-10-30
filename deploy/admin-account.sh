@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Roller admin accounts, for whoever controls the host:
+# Pressroom admin accounts, for whoever controls the host:
 #
 #   C="docker compose -f docker-compose.prod.yml"
 #   $C run --rm admin create --username NAME --email ADDRESS
@@ -68,7 +68,7 @@ SELECT to_regclass('public.pressroom_user') IS NOT NULL;
 SQL
 ) || die "database error (is ${PGDATABASE} on ${PGHOST}:${PGPORT} reachable?)"
     [[ "${present}" == t ]] \
-        || die "the Roller schema is not installed in ${PGDATABASE}: run deploy.sh first"
+        || die "the Pressroom schema is not installed in ${PGDATABASE}: run deploy.sh first"
 }
 
 # Sets PASSWORD. IFS= keeps leading/trailing spaces; -r keeps backslashes.

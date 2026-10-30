@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Roller's SpotBugs exclusion filter, re-counted on 2026-10-12 with
+  Pressroom's SpotBugs exclusion filter, re-counted on 2026-10-12 with
   find-sec-bugs 1.14.0 loaded. Five families: three of SpotBugs' own (557
   findings) and two of find-sec-bugs' (source markers 252,
   CRLF_INJECTION_LOGS 439). Everything outside them is at zero.

@@ -1,4 +1,4 @@
-name: "Roller CodeQL config"
+name: "Pressroom CodeQL config"
 
 # paths-ignore only influences interpreted languages according to the doc
 # don't scan JS files three times:

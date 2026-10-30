@@ -14,7 +14,7 @@
 # copyright in this work, please see the NOTICE file in the top level
 # directory of this distribution.
 
-# Production stack for Roller: app + postgres + caddy (TLS-terminating reverse
+# Production stack for Pressroom: app + postgres + caddy (TLS-terminating reverse
 # proxy) + umami (analytics) + listmonk (newsletter) + backup.
 #
 # This file and .env are the ONLY things a production host needs. Nothing is

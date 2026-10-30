@@ -25,9 +25,9 @@ limitations under the License.
     <version>0.4.2</version>
     <packaging>pom</packaging>
 
-    <name>Roller</name>
+    <name>Pressroom</name>
     <description>
-        Roller is an open source multi-user blog server built with Spring MVC,
+        Pressroom is an open source multi-user blog server built with Spring MVC,
         Velocity, JPA/EclipseLink, and PostgreSQL.
     </description>
     <url>https://github.com/jakefearsd/pressroom</url>
@@ -318,7 +318,7 @@ limitations under the License.
                             <rules>
                                 <requireJavaVersion>
                                     <version>[25,26)</version>
-                                    <message>Roller builds on JDK 25 only. See maven-compiler-plugin's &lt;release&gt;25&lt;/release&gt; above, the CI matrix in .github/workflows/main.yml, and the temurin-25 images in Dockerfile.</message>
+                                    <message>Pressroom builds on JDK 25 only. See maven-compiler-plugin's &lt;release&gt;25&lt;/release&gt; above, the CI matrix in .github/workflows/main.yml, and the temurin-25 images in Dockerfile.</message>
                                 </requireJavaVersion>
                             </rules>
                         </configuration>

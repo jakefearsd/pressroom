@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Roller fresh-install database bootstrap.
+# Pressroom fresh-install database bootstrap.
 #
-# Creates a brand-new Roller database and application role, then runs
+# Creates a brand-new Pressroom database and application role, then runs
 # migrate.sh to populate the schema. Idempotent: safe to run against an
 # already-bootstrapped database (the create-database and create-role steps
 # skip if their target already exists).
@@ -57,7 +57,7 @@ print_err()  { echo -e "${RED}✗${NC} $*" >&2; }
 
 if [[ -z "${DB_APP_PASSWORD}" ]]; then
     print_err "DB_APP_PASSWORD is required — it is the password set on the"
-    print_err "'${DB_APP_USER}' role that Roller connects with."
+    print_err "'${DB_APP_USER}' role that Pressroom connects with."
     print_err "Example: DB_APP_PASSWORD='choose-a-real-password' $0"
     exit 1
 fi
@@ -107,6 +107,6 @@ DB_NAME="${DB_NAME}" DB_APP_USER="${DB_APP_USER}" \
 
 print_ok "Fresh install complete."
 echo
-echo "Point Roller at this database with:"
+echo "Point Pressroom at this database with:"
 echo "  database.jdbc.connectionURL=jdbc:postgresql://${PGHOST}:${PGPORT}/${DB_NAME}"
 echo "  database.jdbc.username=${DB_APP_USER}"

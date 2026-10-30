@@ -29,9 +29,9 @@ limitations under the License.
     </parent>
 
     <artifactId>pressroom-selenium-tests</artifactId>
-    <name>Roller browser integration tests</name>
+    <name>Pressroom browser integration tests</name>
     <description>
-        Selenide integration tests. The executable Roller WAR (Spring Boot 4,
+        Selenide integration tests. The executable Pressroom WAR (Spring Boot 4,
         embedded Tomcat) is launched as a subprocess by start-app.sh against a
         dedicated PostgreSQL container whose schema is built by the real
         bin/db/migrations chain. Every test inherits browser-health checking, so a page
@@ -259,7 +259,7 @@ limitations under the License.
     </dependencies>
 
     <build>
-        <!-- pressroom-it.properties (Roller's own -Dpressroom.custom.config overlay, read by
+        <!-- pressroom-it.properties (Pressroom's own -Dpressroom.custom.config overlay, read by
              start-app.sh) needs ${it.db.port}, ${it.db.name}, ${project.basedir}, and
              ${project.build.directory} substituted; filtering is off by default for
              testResources, so it must be turned on explicitly here. seed-it-data.sql
@@ -528,7 +528,7 @@ limitations under the License.
                         </configuration>
                     </execution>
                     <!-- Seeds the admin user, weblog and category the sweep logs in
-                         with. Must run before Tomcat starts: Roller caches
+                         with. Must run before Tomcat starts: Pressroom caches
                          aggressively in-process. -->
                     <execution>
                         <id>pg-seed-it-data</id>
@@ -554,7 +554,7 @@ limitations under the License.
                          background process and blocks until pressroom-ui/login.rol answers
                          or 180s elapse; the same readiness contract cargo's pingURL
                          enforced, now against a subprocess instead of a container-managed
-                         Tomcat. Must run after pg-seed-it-data: Roller caches the seed
+                         Tomcat. Must run after pg-seed-it-data: Pressroom caches the seed
                          data aggressively in-process at startup, so seeding after the app
                          is already up would leave it looking at a stale view. See
                          start-app.sh for the WAR-not-found fast-fail message that points

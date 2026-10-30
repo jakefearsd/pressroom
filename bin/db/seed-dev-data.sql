@@ -60,7 +60,7 @@ ON CONFLICT (username) DO UPDATE
          ELSE true
        END;
 
--- Roller's authorities come from userrole; 'admin' also implies editor access.
+-- Pressroom's authorities come from userrole; 'admin' also implies editor access.
 INSERT INTO userrole (id, rolename, username)
 VALUES ('dev-role-0000-0000-0000-000000000001', 'admin', 'admin')
 ON CONFLICT (id) DO NOTHING;
