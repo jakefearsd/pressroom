@@ -1,11 +1,11 @@
 <?xml version="1.0"?>
-<ruleset name="Roller"
+<ruleset name="Pressroom"
          xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
 
     <description>
-        Roller's PMD gate: PMD's own quickstart set plus the security category,
+        Pressroom's PMD gate: PMD's own quickstart set plus the security category,
         minus six rules, plus 21 defect-finding rules chosen 2026-10 from the
         other categories (see the groups below). Zero tolerance: see
         docs/superpowers/specs/2026-08-18-static-analysis-quality-gates-design.md.

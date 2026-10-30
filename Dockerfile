@@ -14,7 +14,7 @@
 # copyright in this work, please see the NOTICE file in the top level
 # directory of this distribution.
 
-# Production image for Roller, built from THIS tree (never from an upstream
+# Production image for Pressroom, built from THIS tree (never from an upstream
 # release tag or a fresh git clone). Two stages:
 #
 #   1. builder -- Maven reactor build of the app module only, producing the
@@ -67,7 +67,7 @@ FROM eclipse-temurin:25-jre@sha256:dbb43d81099eec91e0800226ed2296d03146ee7857165
 #
 # webp (Debian/Ubuntu's name for libwebp-tools) provides the cwebp binary
 # that CwebpEncoder shells out to for WebP renditions of uploaded images.
-# Roller feature-detects it at first use and falls back to a JPEG/PNG-only
+# Pressroom feature-detects it at first use and falls back to a JPEG/PNG-only
 # rendition ladder when absent, so this is an enhancement, not a hard
 # dependency -- but production should always have it.
 #

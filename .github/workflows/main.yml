@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-name: Roller
+name: Pressroom
 
 # Two tiers, split by what each costs.
 #
@@ -96,7 +96,7 @@ jobs:
       - name: Install cwebp (WebP renditions)
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends webp
 
-      - name: Build Roller and run JUnit Tests
+      - name: Build Pressroom and run JUnit Tests
         run: mvn -V -ntp install
 
       - name: Diff coverage gate (90% on changed lines)

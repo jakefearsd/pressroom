@@ -28,7 +28,7 @@ limitations under the License.
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <name>Roller webapp</name>
+    <name>Pressroom webapp</name>
     <artifactId>pressroom</artifactId>
     <packaging>war</packaging>
 
@@ -203,7 +203,7 @@ limitations under the License.
 
         <!-- Spring Boot -->
 
-        <!-- Logging is excluded from every starter below: Roller pins its own
+        <!-- Logging is excluded from every starter below: Pressroom pins its own
              log4j2/slf4j stack (see the slf4j/log4j2 deps further down) and
              spring-boot-starter-log4j2 supplies the Boot-side log4j2 wiring
              without dragging in Logback. -->
@@ -364,7 +364,7 @@ limitations under the License.
              front page (302) and login page (200) both serve - with zero
              JAXB-related exceptions in pressroom.log. -->
 
-        <!-- Eclipselink is the only JPA implementation Roller supports.
+        <!-- Eclipselink is the only JPA implementation Pressroom supports.
              Logging, other special configuration during JUnit tests can be
              placed in the src/test/resources/pressroom-custom.properties file.
          -->
@@ -381,7 +381,7 @@ limitations under the License.
             <version>${eclipse-link.version}</version>
         </dependency>
 
-        <!-- PostgreSQL is the only database Roller supports.
+        <!-- PostgreSQL is the only database Pressroom supports.
              Version comes from Spring Boot's BOM; it-selenium runs its IT
              Postgres as a Docker image (${it.postgres.image}), not this JDBC
              driver, so nothing else needs a shared property here. -->

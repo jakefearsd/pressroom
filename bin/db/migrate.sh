@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Roller database migration runner.
+# Pressroom database migration runner.
 #
-# Applies any pending V*.sql files from the migrations/ directory to a Roller
+# Applies any pending V*.sql files from the migrations/ directory to a Pressroom
 # PostgreSQL database. Tracks applied versions in the schema_migrations table
 # so re-runs only execute new migrations.
 #
@@ -23,7 +23,7 @@
 # migration. If every statement succeeds, migrate.sh records the version in
 # schema_migrations.
 #
-# Roller also applies these same migrations at startup through the web install
+# Pressroom also applies these same migrations at startup through the web install
 # wizard (see DatabaseInstaller). Both paths read the same V*.sql files and the
 # same schema_migrations table, so it does not matter which one runs first.
 #

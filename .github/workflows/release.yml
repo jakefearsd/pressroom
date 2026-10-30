@@ -237,6 +237,6 @@ jobs:
           done
           # A production host has no checkout, so everything it needs is here.
           gh release create "${GITHUB_REF_NAME}" \
-            --title "Roller ${VERSION}" \
+            --title "Pressroom ${VERSION}" \
             --generate-notes \
             "${assets[@]}"

@@ -14,13 +14,13 @@
 # copyright in this work, please see the NOTICE file in the top level
 # directory of this distribution.
 
-# Local development stack for Roller.
+# Local development stack for Pressroom.
 #
 #   ./pressroom dev     start postgres, apply migrations, run the app via
 #                     spring-boot:run (embedded Tomcat)
 #   ./pressroom db      start postgres only
 #
-# To run Roller itself in a container instead of via spring-boot:run, see
+# To run Pressroom itself in a container instead of via spring-boot:run, see
 # docker-compose.prod.yml (production stack: app + postgres + caddy +
 # backup) or build the image directly with `docker build .` (see Dockerfile).
 

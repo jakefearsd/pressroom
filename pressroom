@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Roller development entry point.
+# Pressroom development entry point.
 #
 # Usage:
 #   ./pressroom dev        start postgres, apply migrations, run the app via spring-boot:run
@@ -160,7 +160,7 @@ case "${1:-dev}" in
         start_db
         run_migrations
         seed_dev_data
-        print_ok "Starting Roller on ${DEV_URL}"
+        print_ok "Starting Pressroom on ${DEV_URL}"
         # process-test-resources runs first so pressroom-boot-dev.properties is
         # filtered into target/test-classes before spring-boot:run starts the
         # app; without it, ${basedir}-style filtering never happens and the

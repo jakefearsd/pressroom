@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Roller production backup -- single shot: pg_dump the database, tar the
+# Pressroom production backup -- single shot: pg_dump the database, tar the
 # mediafiles/search-index/uploads volumes, then rotate anything older than
 # BACKUP_RETENTION_DAYS. Both artifacts are written atomically: pg_dump/tar
 # target "<final-name>.tmp" and a same-filesystem `mv` publishes it under
