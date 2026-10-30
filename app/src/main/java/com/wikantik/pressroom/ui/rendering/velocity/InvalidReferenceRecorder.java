@@ -4,6 +4,7 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.velocity.app.event.InvalidReferenceEventHandler;
 import org.apache.velocity.context.Context;
@@ -28,6 +29,12 @@ public final class InvalidReferenceRecorder implements InvalidReferenceEventHand
 
     private static final Logger log = LoggerFactory.getLogger(InvalidReferenceRecorder.class);
     private static final Set<String> RECORDED = new ConcurrentSkipListSet<>();
+    /**
+     * Entries added, so a full recorder answers in O(1): the skip list's
+     * size() walks every entry. Taken after each add; an add that takes a
+     * place past the cap is undone, so racing renders never pass it.
+     */
+    private static final AtomicInteger ADDED = new AtomicInteger();
 
     /** A copy of everything recorded so far. */
     public static SortedSet<String> recorded() {
@@ -36,14 +43,22 @@ public final class InvalidReferenceRecorder implements InvalidReferenceEventHand
 
     public static void clear() {
         RECORDED.clear();
+        ADDED.set(0);
     }
 
     private static void record(String reference, Info info) {
-        if (RECORDED.size() >= CAP) {
+        if (ADDED.get() >= CAP) {
             return;
         }
         String entry = (info == null ? "?" : info.getTemplateName()) + ": " + reference;
-        if (RECORDED.add(entry) && log.isDebugEnabled()) {
+        if (!RECORDED.add(entry)) {
+            return;
+        }
+        if (ADDED.incrementAndGet() > CAP) {
+            RECORDED.remove(entry);
+            return;
+        }
+        if (log.isDebugEnabled()) {
             log.debug("Unresolved Velocity reference {}", entry);
         }
     }
