@@ -80,6 +80,18 @@ if [[ "${CUTOVER}" -eq 1 ]]; then
         echo "--cutover takes no ${flag}: it always backs up, and always moves ${OLD_DIR}/ to pressroom/." >&2
         exit 2
     done
+    # A log with no .exit beside it is a cutover still running, or one that
+    # died uncleanly; either way, not one to start a second beside.
+    # shellcheck disable=SC2016
+    unfinished=$(ssh "${HOST}" 'for f in pressroom-cutover-*.log; do [ -e "$f" ] || continue; [ -e "$f.exit" ] || echo "$f"; done')
+    if [[ -n "${unfinished}" ]]; then
+        echo "Refusing: a cutover on ${HOST} has not exited (its log has no .exit beside it):" \
+             "it is still running, or it died uncleanly. Reattach:" >&2
+        while IFS= read -r f; do
+            echo "  ssh ${HOST} 'tail -f ~/${f}'" >&2
+        done <<<"${unfinished}"
+        exit 1
+    fi
     echo "==> Copying the cutover and rollback scripts to ${HOST}:${OLD_DIR}/"
     scp -q "${ROOT}/deploy/cutover-pressroom.sh" "${ROOT}/deploy/rollback-pressroom.sh" "${HOST}:${OLD_DIR}/"
     # Detached on the host: its own session (setsid), deaf to the hang-up

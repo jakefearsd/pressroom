@@ -116,9 +116,10 @@ class DeployHostScriptTest {
         String calls = calls();
         assertTrue(calls.contains("scp -q " + checkout.resolve("deploy/cutover-pressroom.sh") + " "
                 + checkout.resolve("deploy/rollback-pressroom.sh") + " docker1:roller/\n"), calls); // rebrand:keep
-        assertTrue(calls.contains("ssh docker1 cd roller || exit 1;"), calls); // rebrand:keep
+        int run = calls.indexOf("ssh docker1 cd roller || exit 1;"); // rebrand:keep
+        assertTrue(run > 0, calls);
         assertFalse(calls.contains("upgrade.sh"), calls);
-        assertTrue(calls.indexOf("scp") < calls.indexOf("ssh") && calls.indexOf("ssh") < calls.indexOf("curl"), calls);
+        assertTrue(calls.indexOf("scp") < run && run < calls.indexOf("curl"), calls);
         assertTrue(r.out().contains("cutover ran 0.5.0 in roller"), "the log is followed: " + r.out()); // rebrand:keep
         assertTrue(Files.readString(onlyLog(home)).contains("cutover ran 0.5.0"));
     }
@@ -151,6 +152,32 @@ class DeployHostScriptTest {
         assertFalse(calls().contains("curl"), calls());
     }
 
+    /** A log with no exit file is a cutover still running, or one that died uncleanly. */
+    @Test
+    void refusesWhileAnEarlierCutoverHasNotExited() throws Exception {
+        Path home = fakeHostWithCutover(0);
+        Files.writeString(home.resolve("pressroom-cutover-20261029T010203Z.log"), "half way\n");
+
+        ScriptRun.Result r = deploy("docker1", "0.5.0", "--cutover");
+
+        assertEquals(1, r.exit(), r.out());
+        assertTrue(r.out().contains("ssh docker1 'tail -f ~/pressroom-cutover-20261029T010203Z.log'"), r.out());
+        assertFalse(calls().contains("scp"), "refused before copying anything: " + calls());
+        assertFalse(Files.exists(home.resolve("sid")), "no cutover started");
+    }
+
+    @Test
+    void anEarlierCutoverThatExitedDoesNotBlockTheNext() throws Exception {
+        Path home = fakeHostWithCutover(0);
+        Files.writeString(home.resolve("pressroom-cutover-20261029T010203Z.log"), "done\n");
+        Files.writeString(home.resolve("pressroom-cutover-20261029T010203Z.log.exit"), "1\n");
+
+        ScriptRun.Result r = deploy("docker1", "0.5.0", "--cutover");
+
+        assertEquals(0, r.exit(), r.out());
+        assertTrue(Files.exists(home.resolve("sid")), r.out());
+    }
+
     /** A home whose old deploy directory holds a stand-in cutover that exits RC. */
     private Path fakeHostWithCutover(int rc) throws Exception {
         Path home = Files.createDirectories(dir.resolve("home"));
@@ -166,7 +193,8 @@ class DeployHostScriptTest {
 
     private static Path onlyLog(Path home) throws Exception {
         try (java.util.stream.Stream<Path> s = Files.list(home)) {
-            List<Path> logs = s.filter(p -> p.getFileName().toString().endsWith(".log")).toList();
+            List<Path> logs = s.filter(p -> p.getFileName().toString().endsWith(".log"))
+                    .filter(p -> !p.getFileName().toString().contains("T010203Z")).toList();
             assertEquals(1, logs.size(), logs.toString());
             return logs.get(0);
         }

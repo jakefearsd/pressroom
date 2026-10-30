@@ -27,11 +27,13 @@
 # read-only, and the rename runs on the copies. rollback-pressroom.sh puts the
 # old stack back exactly as it was. Every step stops the script on failure.
 #
-#   1. refuses unless .env is on 0.4.x, NEW_DIR does not exist, every old
+#   1. takes a lock beside this directory (one cutover at a time), then
+#      refuses unless .env is on 0.4.x, NEW_DIR does not exist, every old
 #      volume exists and no new one does
 #   2. fetches the release files into NEW_DIR
-#   3. backs up through the old stack's backup service, copies that backup out
-#      of the volume into NEW_DIR/../pressroom-cutover-backup-<ts>/, and
+#   3. backs up through the old stack's backup service, refuses unless there
+#      is room for the copies, copies that backup out of the volume into
+#      NEW_DIR/../pressroom-cutover-backup-<ts>/, and
 #      records row counts into NEW_DIR/cutover-counts-before.txt
 #   4. writes NEW_DIR/.env from .env (key names and the database values move;
 #      every other byte stays), checks it, and pulls the new images
@@ -115,6 +117,11 @@ env_value() {
 
 # ---- 1. Pre-flight: refuse rather than guess; nothing is touched yet -------
 STEP=1
+# One cutover at a time, held until this script exits (the kernel drops the
+# lock with the process, so a killed run leaves no stale lock).
+LOCK_FILE="$(cd .. && pwd)/.pressroom-cutover.lock"
+exec 9>"${LOCK_FILE}"
+flock -n 9 || refuse "another cutover holds ${LOCK_FILE}. Reattach to its log instead (docs/dev/pressroom-cutover.md, \"Run it\")."
 for required in "${COMPOSE_FILE}" .env; do
     [[ -f "${required}" ]] || refuse "no ${required} in $(pwd). Run this from the old deploy directory."
 done
@@ -171,22 +178,29 @@ for v in "${NEW_VOLUMES[@]}"; do
 done
 
 # From here on, a failure says where it stopped and what still stands.
-# Step 8 sets these, so a failure there never leaves the temporary superuser.
+# Step 8 sets this, so a failure there never leaves the temporary superuser.
+# The drop connects to database postgres, which always exists, as each role
+# that may hold the superuser's creator: a partial rename (the database
+# renamed, the role not) leaves neither rollerdb nor one sure role.
 TEMP_ROLE=0
-RENAMED=0
 drop_temp_role() {
-    local sql="DROP ROLE IF EXISTS pressroom_cutover;"
-    if [[ "${RENAMED}" -eq 1 ]]; then
-        echo "${sql}" | new_psql pressroom pressroom || true
-    else
-        echo "${sql}" | new_psql "${OLD_ROLE}" "${OLD_DB}" || true
-    fi
+    local role
+    for role in pressroom "${OLD_ROLE}"; do
+        echo "DROP ROLE IF EXISTS pressroom_cutover;" | new_psql "${role}" postgres || true
+    done
 }
+# Step 3's copy of the backup, removed if the copy-out did not finish.
+BACKUP_COPY=""
+BACKUP_COPIED=0
 on_exit() {
     local rc=$?
     if [[ "${TEMP_ROLE}" -eq 1 ]]; then
         echo "Dropping the temporary superuser pressroom_cutover..." >&2
         drop_temp_role
+    fi
+    if [[ "${rc}" -ne 0 && -n "${BACKUP_COPY}" && "${BACKUP_COPIED}" -eq 0 && -d "${BACKUP_COPY}" ]]; then
+        rm -r -- "${BACKUP_COPY}"
+        echo "Removed the partial backup copy ${BACKUP_COPY}." >&2
     fi
     if [[ "${rc}" -ne 0 && "${STEP}" -ge 2 ]]; then
         echo >&2
@@ -239,12 +253,50 @@ if ! grep -q '\.dump$' <<<"${this_backup}" || ! grep -q '^volumes-.*\.tar\.gz$' 
     echo "The backup added no database dump and volumes archive to /backups." >&2
     exit 1
 fi
-# Out of the volumes, so it outlives their 30-day cleanup.
-BACKUP_COPY="$(dirname -- "${NEW_DIR}")/pressroom-cutover-backup-$(date -u +%Y%m%dT%H%M%SZ)"
-mkdir -- "${BACKUP_COPY}"
+
+# Room for the copy-out (beside NEW_DIR) and the volume copies (under
+# Docker's data root), each with a margin of 10% plus 1 GiB, before anything
+# stops. Measured, never assumed: a size or free space that cannot be read
+# is a refusal.
+backup_files=()
 while IFS= read -r f; do
-    old_compose cp "backup:/backups/${f}" "${BACKUP_COPY}/${f}" </dev/null
+    backup_files+=("${f}")
 done <<<"${this_backup}"
+backup_kb=$(old_compose exec -T backup du -ck "${backup_files[@]/#//backups/}" </dev/null | tail -n 1 | awk '{print $1}')
+volumes_kb=0
+for v in "${OLD_VOLUMES[@]}"; do
+    kb=$(docker run --rm -v "${v}:/v:ro" --entrypoint du "${PG_IMAGE}" -sk /v </dev/null | awk 'NR == 1 {print $1}')
+    [[ "${kb}" =~ ^[0-9]+$ ]] || refuse "could not measure volume ${v}."
+    volumes_kb=$(( volumes_kb + kb ))
+done
+[[ "${backup_kb}" =~ ^[0-9]+$ ]] || refuse "could not measure the backup's files."
+with_margin() { echo $(( $1 + $1 / 10 + 1048576 )); }
+df_field() { df -Pk -- "$1" 2>/dev/null | awk -v f="$2" 'NR == 2 {print $f}'; }
+require_free() {
+    local path="$1" need_kb="$2" what="$3" free_kb
+    free_kb=$(df_field "${path}" 4)
+    [[ "${free_kb}" =~ ^[0-9]+$ ]] || refuse "could not read the free space under ${path}."
+    (( free_kb > need_kb )) \
+        || refuse "${path} has $(( free_kb / 1024 )) MB free; ${what} needs about $(( need_kb / 1024 )) MB with margin."
+}
+copy_parent=$(dirname -- "${NEW_DIR}")
+docker_root=$(docker info -f '{{.DockerRootDir}}' </dev/null)
+[[ -n "${docker_root}" ]] || refuse "could not read Docker's data root."
+if [[ "$(df_field "${copy_parent}" 6)" == "$(df_field "${docker_root}" 6)" ]]; then
+    require_free "${copy_parent}" "$(with_margin $(( backup_kb + volumes_kb )))" \
+        "the backup copy plus the volume copies"
+else
+    require_free "${copy_parent}" "$(with_margin "${backup_kb}")" "the backup copy"
+    require_free "${docker_root}" "$(with_margin "${volumes_kb}")" "the volume copies"
+fi
+
+# Out of the volumes, so it outlives their 30-day cleanup.
+BACKUP_COPY="${copy_parent}/pressroom-cutover-backup-$(date -u +%Y%m%dT%H%M%SZ)"
+mkdir -- "${BACKUP_COPY}"
+for f in "${backup_files[@]}"; do
+    old_compose cp "backup:/backups/${f}" "${BACKUP_COPY}/${f}" </dev/null
+done
+BACKUP_COPIED=1
 echo "    The pre-cutover backup is kept in ${BACKUP_COPY}"
 
 # label database table, in the order both files list them.
@@ -391,7 +443,6 @@ TEMP_ROLE=1
 echo "CREATE ROLE pressroom_cutover SUPERUSER LOGIN;" | new_psql "${OLD_ROLE}" "${OLD_DB}"
 printf 'ALTER DATABASE %s RENAME TO pressroom;\nALTER ROLE %s RENAME TO pressroom;\n' "${OLD_DB}" "${OLD_ROLE}" \
     | new_psql pressroom_cutover postgres
-RENAMED=1
 # An MD5 password is salted with the role name, so PostgreSQL clears it on a
 # rename. SCRAM survives. Only the kind is read, never the hash.
 kind=$(echo "SELECT coalesce(left(rolpassword, 3), 'none') FROM pg_authid WHERE rolname = 'pressroom';" \

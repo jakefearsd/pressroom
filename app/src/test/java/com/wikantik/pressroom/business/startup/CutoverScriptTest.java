@@ -134,6 +134,9 @@ class CutoverScriptTest {
                 echo "docker ${args//$'\\n'/ } <<< ${in//$'\\n'/ }" >> "$STUB_LOG"
                 last="${*: -1}"
                 case "$*" in
+                  "info "*) echo "$STUB_STATE" ;;
+                  *"--entrypoint du "*) printf '%s\t/v\n' "${STUB_VOLUME_KB:-100}" ;;
+                  *"exec -T backup du -ck "*) printf '%s\ttotal\n' "${STUB_BACKUP_KB:-50}" ;;
                   "volume inspect "*) grep -qxF -- "$last" "$STUB_VOLUMES"; exit $? ;;
                   "volume create "*) echo "$last" >> "$STUB_VOLUMES"; echo "$last"; exit 0 ;;
                   *"exec -T backup /app/backup/backup.sh"*) touch "$STUB_STATE/backed-up"; exit "${STUB_BACKUP_RC:-0}" ;;
@@ -145,11 +148,14 @@ class CutoverScriptTest {
                       echo "listmonk-20261029T120000Z.dump"
                       echo "volumes-20261029T120000Z.tar.gz"
                     fi ;;
-                  *" cp backup:/backups/"*) echo "copy of ${*: -2:1}" > "$last" ;;
+                  *" cp backup:/backups/"*)
+                    if [[ -n "${STUB_FAIL_COPY:-}" && "$*" == *volumes-* ]]; then exit 1; fi
+                    echo "copy of ${*: -2:1}" > "$last" ;;
                   *" down"*) touch "$STUB_STATE/down" ;;
                   *" ps "*) echo "ghcr.io/jakefearsd/pressroom:${STUB_APP_VERSION:-0.5.1}" ;;
                   *"exec -T postgres psql"*)
                     if [[ -n "${STUB_FAIL_RENAME:-}" && "$in" == *"ALTER DATABASE"* ]]; then exit 1; fi
+                    if [[ -n "${STUB_NO_ROLE:-}" && "$*" == *"-U ${STUB_NO_ROLE} "* ]]; then exit 2; fi
                     if [[ -n "${STUB_FAIL_KIND:-}" && "$in" == *pg_authid* ]]; then exit 1; fi
                     case "$in" in
                       *pg_authid*) echo "${STUB_PASSWORD_KIND:-SCR}" ;;
@@ -310,7 +316,7 @@ class CutoverScriptTest {
 
         assertEquals(0, r.exit(), r.out());
         String calls = calls();
-        List<String> copies = lines(calls, "docker run --rm");
+        List<String> copies = lines(calls, "docker run --rm").stream().filter(l -> l.contains("cp -a")).toList();
         assertEquals(7, copies.size(), calls);
         for (String s : SUFFIXES) {
             String from = "-v roller_roller-" + s + ":/from:ro "; // rebrand:keep
@@ -345,7 +351,9 @@ class CutoverScriptTest {
         assertTrue(calls.indexOf("exec -T backup /app/backup/backup.sh") < down, "backup first: " + calls);
         int firstUp = calls.indexOf(" up -d");
         assertTrue(firstUp > down, "no new-project up before the old project's down: " + calls);
-        assertTrue(calls.indexOf("docker run --rm") > down, "volumes copied only once the old stack is down");
+        assertTrue(calls.indexOf("cp -a /from/. /to/") > down, "volumes copied only once the old stack is down");
+        assertTrue(lines(calls.substring(0, down), "docker run --rm").stream().allMatch(l -> l.contains(":/v:ro ")),
+                "before the down, volumes are only measured, read-only: " + calls);
         assertTrue(calls.indexOf("deploy.sh") > down, calls);
         assertTrue(lines(calls, " up -d").stream().allMatch(l -> l.contains("-p pressroom ")), calls);
     }
@@ -518,20 +526,27 @@ class CutoverScriptTest {
 
     // ---- fix round 1 -------------------------------------------------------
 
-    /** A step 8 failure must not leave a passwordless superuser behind. */
+    /**
+     * A step 8 failure must not leave a passwordless superuser behind. The
+     * drop connects to database postgres, which always exists, and tries
+     * the new role name, then the old: a partial rename (the database renamed,
+     * the role not) leaves neither the old database nor a sure role to connect with.
+     */
     @Test
     void theTemporarySuperuserIsDroppedWhenTheRenameFails() throws Exception {
         env.put("STUB_FAIL_RENAME", "1");
+        env.put("STUB_NO_ROLE", "pressroom");
 
         ScriptRun.Result r = cutover("0.5.0");
 
         assertNotEquals(0, r.exit(), r.out());
         String calls = calls();
-        int rename = calls.indexOf("ALTER DATABASE rollerdb RENAME"); // rebrand:keep
+        int rename = calls.indexOf("ALTER ROLE roller RENAME"); // rebrand:keep
         List<String> drops = lines(calls.substring(rename), "DROP ROLE IF EXISTS pressroom_cutover");
-        assertEquals(1, drops.size(), calls);
-        assertTrue(drops.get(0).contains("-p pressroom "), drops.get(0));
-        assertTrue(drops.get(0).contains("-U roller -d rollerdb"), "the rename never happened: " + drops); // rebrand:keep
+        assertEquals(2, drops.size(), calls);
+        assertTrue(drops.stream().allMatch(l -> l.contains("-p pressroom ") && l.contains(" -d postgres ")), calls);
+        assertTrue(drops.get(0).contains("-U pressroom -d postgres"), drops.get(0));
+        assertTrue(drops.get(1).contains("-U roller -d postgres"), "the role was never renamed: " + drops); // rebrand:keep
         assertFalse(calls.contains("deploy.sh"), calls);
     }
 
@@ -543,8 +558,8 @@ class CutoverScriptTest {
 
         assertNotEquals(0, r.exit(), r.out());
         List<String> drops = lines(calls(), "DROP ROLE IF EXISTS pressroom_cutover");
-        assertEquals(1, drops.size(), calls());
-        assertTrue(drops.get(0).contains("-p pressroom ") && drops.get(0).contains("-U pressroom -d pressroom"),
+        assertFalse(drops.isEmpty(), calls());
+        assertTrue(drops.get(0).contains("-p pressroom ") && drops.get(0).contains("-U pressroom -d postgres"),
                 drops.get(0));
     }
 
@@ -674,5 +689,79 @@ class CutoverScriptTest {
 
         assertEquals(1, r.exit(), r.out());
         assertTrue(r.out().contains("or the Docker daemon is unreachable"), r.out());
+    }
+
+    // ---- fix round 2 -------------------------------------------------------
+
+    /** Two cutovers at once would race on the same new directory and volumes. */
+    @Test
+    void refusesWhileAnotherCutoverHoldsTheLock() throws Exception {
+        Path holder = dir.resolve("holder.sh");
+        Files.writeString(holder, """
+                exec 9>"$1"
+                flock -n 9 || exit 99
+                bash "$2" 0.5.0
+                """);
+        ScriptRun.Result r = ScriptRun.run(oldDir, dir.resolve("bin"), env, holder,
+                dir.resolve("host/.pressroom-cutover.lock").toString(), CUTOVER.toString());
+
+        assertEquals(1, r.exit(), r.out());
+        assertTrue(r.out().contains("Refusing") && r.out().contains("another cutover"), r.out());
+        assertEquals("", calls());
+        assertFalse(Files.exists(newDir));
+    }
+
+    @Test
+    void takesTheLockBesideTheOldDirectory() throws Exception {
+        ScriptRun.Result r = cutover("0.5.0");
+
+        assertEquals(0, r.exit(), r.out());
+        assertTrue(Files.exists(dir.resolve("host/.pressroom-cutover.lock")));
+    }
+
+    /** The copy-out and the volume copies must fit before anything stops. */
+    @Test
+    void refusesWithoutRoomForTheCopiesBeforeAnythingStops() throws Exception {
+        env.put("STUB_VOLUME_KB", "999999999999");
+        Map<String, String> before = snapshot(oldDir);
+
+        ScriptRun.Result r = cutover("0.5.0");
+
+        assertRefusedBeforeAnythingStopped(r, before);
+        assertTrue(r.out().contains("free"), r.out());
+        assertFalse(calls().contains(" cp backup:/backups/"), calls());
+        assertFalse(hasBackupCopy(), "no copy-out was begun");
+    }
+
+    @Test
+    void measuresTheBackupAndEveryOldVolume() throws Exception {
+        ScriptRun.Result r = cutover("0.5.0");
+
+        assertEquals(0, r.exit(), r.out());
+        String calls = calls();
+        List<String> sizes = lines(calls, "--entrypoint du ");
+        assertEquals(7, sizes.size(), calls);
+        assertTrue(sizes.stream().allMatch(l -> l.contains(":/v:ro ")), "measured read-only: " + sizes);
+        assertTrue(calls.contains("exec -T backup du -ck /backups/"), calls);
+        assertTrue(calls.indexOf("--entrypoint du ") < calls.indexOf(" cp backup:/backups/"), calls);
+    }
+
+    @Test
+    void aFailedCopyOutRemovesThePartialCopyAndNamesIt() throws Exception {
+        env.put("STUB_FAIL_COPY", "1");
+        Map<String, String> before = snapshot(oldDir);
+
+        ScriptRun.Result r = cutover("0.5.0");
+
+        assertRefusedBeforeAnythingStopped(r, before);
+        assertFalse(hasBackupCopy(), "the partial copy is removed");
+        assertTrue(r.out().contains("pressroom-cutover-backup-"), r.out());
+        assertTrue(r.out().contains("still serves"), r.out());
+    }
+
+    private boolean hasBackupCopy() throws Exception {
+        try (Stream<Path> s = Files.list(dir.resolve("host"))) {
+            return s.anyMatch(p -> p.getFileName().toString().startsWith("pressroom-cutover-backup-"));
+        }
     }
 }

@@ -70,10 +70,18 @@ copy.
 - **Jake knows the gap is coming:** the site is down from step 5 to step 9.
 - **Open editor drafts are saved or published.** Their localStorage keys
   change with 0.5.0, so an unsaved draft is not offered back afterwards.
-- **docker1 has room for a second copy of every volume.** Compare
-  `docker system df -v` with `df -h /var/lib/docker`.
-- **The ssh connection will hold.** A dropped session stops the script where
-  it is. The old stack is still safe then, and the rollback below recovers.
+- **docker1 has room for the copies.** It needs a second copy of every old
+  volume under Docker's data root, plus the host-side copy of the
+  pre-cutover backup (the app, umami and listmonk dumps and the volumes
+  archive) in `~`. Each needs a margin of 10% plus 1 GiB. When both are on
+  one filesystem, budget for the sum. Compare `docker system df -v` with
+  `df -h ~ /var/lib/docker`. The cutover measures all of this at step 3 and
+  refuses, before anything stops, if it will not fit.
+- **The ssh connection need not hold.** The cutover runs on docker1 under
+  `setsid nohup`, so a dropped session stops only `deploy-host.sh`'s view of
+  the log, never the cutover. Reattach as described under "Run it". A second
+  `--cutover` refuses while an earlier one's log has no `.exit` file. The
+  cutover also holds a lock (`~/.pressroom-cutover.lock`) for its whole run.
 
 ## Run it
 
