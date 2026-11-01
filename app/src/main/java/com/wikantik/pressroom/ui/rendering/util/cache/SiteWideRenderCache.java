@@ -20,6 +20,7 @@ package com.wikantik.pressroom.ui.rendering.util.cache;
 
 import java.util.function.Function;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.util.DiscoveryGeneration;
 import com.wikantik.pressroom.util.cache.CachedContent;
 
 /**
@@ -34,7 +35,8 @@ import com.wikantik.pressroom.util.cache.CachedContent;
  * is the correct reading of the code this replaces: the servlets never had a
  * timestamp to give this side -- {@link SiteWideCache#get(String)} takes none.
  * Site-wide content is dropped wholesale through {@code CacheManager}, never
- * expired against one weblog.
+ * expired against one weblog. The one exception is the discovery generation:
+ * an entry cached before it is a miss.
  */
 final class SiteWideRenderCache<R> implements RenderCache<R> {
 
@@ -53,7 +55,13 @@ final class SiteWideRenderCache<R> implements RenderCache<R> {
 
     @Override
     public CachedContent get(String key, long lastModified) {
-        return (CachedContent) cache.get(key);
+        CachedContent cached = (CachedContent) cache.get(key);
+        // The business tier cannot clear this cache when the discovery
+        // snapshot rebuilds, so an entry older than the generation is a miss.
+        if (cached != null && cached.getCreatedAt() < DiscoveryGeneration.current()) {
+            return null;
+        }
+        return cached;
     }
 
     @Override

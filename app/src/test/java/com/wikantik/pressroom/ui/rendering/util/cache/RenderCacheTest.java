@@ -68,6 +68,36 @@ public class RenderCacheTest {
         WeblogFeedCache.getInstance().clear();
     }
 
+    // --- discovery generation expires cached pages -------------------------
+
+    @Test
+    public void lastModifiedIncludesGeneration() {
+        // Dated just after server start, so the weblog's own change (older) and
+        // the start (older still than the generation) both lose to it.
+        long generation = ServingSince.started() + 1;
+        Weblog weblog = new Weblog();
+        weblog.setLastModified(new Date(ServingSince.started() - 5000));
+        com.wikantik.pressroom.util.DiscoveryGeneration.advance(generation);
+
+        assertTrue(RenderCaches.lastModifiedOf(weblog) >= generation,
+                "an entry cached before the generation must look stale once it moves");
+    }
+
+    @Test
+    public void siteWideEntryCachedBeforeTheGenerationMisses() throws InterruptedException {
+        RenderCache<WeblogPageRequest> cache = RenderCaches.forPage(true);
+        String key = cache.generateKey(pageRequest());
+        cache.put(key, content("front page"));
+        assertNotNull(cache.get(key, 0L), "a fresh entry hits");
+
+        com.wikantik.pressroom.util.DiscoveryGeneration.advance(System.currentTimeMillis() + 1);
+        Thread.sleep(5);
+
+        assertNull(cache.get(key, 0L), "an entry cached before the generation is a miss");
+        cache.put(key, content("rebuilt"));
+        assertNotNull(cache.get(key, 0L), "an entry cached after the generation hits");
+    }
+
     // --- the site-wide side has no per-weblog expiry ----------------------
 
     @Test
@@ -155,7 +185,11 @@ public class RenderCacheTest {
         Weblog unchanged = new Weblog();
         unchanged.setLastModified(new Date(1_234_567_000L));
 
-        assertEquals(ServingSince.started(), cache.lastModified(unchanged),
+        // The discovery generation is process-wide and only moves forward, so
+        // another test in this JVM may have advanced it past the start.
+        assertEquals(Math.max(ServingSince.started(),
+                        com.wikantik.pressroom.util.DiscoveryGeneration.current()),
+                cache.lastModified(unchanged),
                 "A deploy can change every page without touching the weblog; a reader's "
                         + "copy from before it must not be answered 304");
     }

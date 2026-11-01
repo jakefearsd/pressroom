@@ -21,6 +21,7 @@ package com.wikantik.pressroom.ui.rendering.util.cache;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.rendering.util.WeblogFeedRequest;
 import com.wikantik.pressroom.ui.rendering.util.WeblogPageRequest;
+import com.wikantik.pressroom.util.DiscoveryGeneration;
 import com.wikantik.pressroom.util.ServingSince;
 
 /**
@@ -55,11 +56,15 @@ public final class RenderCaches {
      * later ({@link ServingSince}: a deploy changes what every page renders
      * as), falling back to now when it has never been recorded -- the
      * per-weblog caches' notion of currency, and the value the servlets put
-     * in {@code Last-Modified}.
+     * in {@code Last-Modified}. A page carrying discovery picks is also only
+     * as new as the {@link DiscoveryGeneration} it was built from, so the
+     * result is never earlier than that: each reshuffle expires every cached
+     * page and 304s nothing older.
      */
     static long lastModifiedOf(Weblog weblog) {
         if (weblog != null && weblog.getLastModified() != null) {
-            return ServingSince.atLeast(weblog.getLastModified().getTime());
+            return Math.max(ServingSince.atLeast(weblog.getLastModified().getTime()),
+                    DiscoveryGeneration.current());
         }
         return System.currentTimeMillis();
     }
