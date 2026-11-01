@@ -219,4 +219,57 @@ class ExternalImagesTest {
         assertEquals("a ![x](L) b <img src=\"L\"> c ![](L) d",
                 ExternalImages.rewrite(text, scan.refs(), Map.of("https://ext.example/1.jpg", "L")));
     }
+
+    // --- [image id=...] for an image that stands alone as a paragraph ---
+
+    private static final Map<String, String> LOCAL = Map.of("https://ext.example/1.jpg", "L");
+    private static final Map<String, String> IDS = Map.of("https://ext.example/1.jpg", "m1");
+
+    private static String withIds(String text) {
+        return ExternalImages.rewrite(text, ExternalImages.scan(text, OWN).refs(), LOCAL, IDS);
+    }
+
+    @Test
+    void aMarkdownImageAloneInItsParagraphBecomesAnImageShortcodeKeepingItsAlt() {
+        assertEquals("Intro\n\n[image id=\"m1\" alt=\"The pier at dusk\"]\n\nMore\n",
+                withIds("Intro\n\n![The *pier* at dusk](https://ext.example/1.jpg)\n\nMore\n"));
+    }
+
+    @Test
+    void anImageWithNoAltBecomesAShortcodeWithNoAltSoTheFilesOwnAltIsUsed() {
+        assertEquals("[image id=\"m1\"]", withIds("![](https://ext.example/1.jpg)"));
+    }
+
+    @Test
+    void anAltHoldingADoubleQuoteIsSingleQuotedAndOneHoldingBothIsLeftToTheFile() {
+        assertEquals("[image id=\"m1\" alt='The \"Star\" pier']", withIds("![The \"Star\" pier](https://ext.example/1.jpg)"));
+        assertEquals("[image id=\"m1\"]", withIds("![The \"Star\" pier's end](https://ext.example/1.jpg)"));
+    }
+
+    /** The shortcode expands to a figure, an HTML block that runs to the next blank line. */
+    @Test
+    void aLineRightAfterTheImageIsMovedPastABlankLineSoTheFigureCannotSwallowIt() {
+        assertEquals("[image id=\"m1\"]\n\n# Next\n", withIds("![](https://ext.example/1.jpg)\n# Next\n"));
+        assertEquals("[image id=\"m1\"]\r\n\r\n- item\r\n", withIds("![](https://ext.example/1.jpg)\r\n- item\r\n"));
+    }
+
+    @Test
+    void anImageInASentenceAListAQuoteALinkOrWithATitleKeepsItsMarkdown() {
+        assertEquals("See ![x](L) here", withIds("See ![x](https://ext.example/1.jpg) here"));
+        assertEquals("- ![x](L)\n", withIds("- ![x](https://ext.example/1.jpg)\n"));
+        assertEquals("> ![x](L)\n", withIds("> ![x](https://ext.example/1.jpg)\n"));
+        assertEquals("[![x](L)](https://a.example/)", withIds("[![x](https://ext.example/1.jpg)](https://a.example/)"));
+        assertEquals("![x](L \"t\")", withIds("![x](https://ext.example/1.jpg \"t\")"));
+    }
+
+    @Test
+    void anHtmlImageKeepsItsTagWithOnlyTheSrcChanged() {
+        assertEquals("<img src=\"L\" class=\"wide\">", withIds("<img src=\"https://ext.example/1.jpg\" class=\"wide\">"));
+    }
+
+    @Test
+    void anImageWithNoMediaIdKeepsItsMarkdown() {
+        String text = "![x](https://ext.example/1.jpg)";
+        assertEquals("![x](L)", ExternalImages.rewrite(text, ExternalImages.scan(text, OWN).refs(), LOCAL, Map.of()));
+    }
 }

@@ -13,11 +13,13 @@ import java.util.regex.Pattern;
 import org.apache.commons.text.StringEscapeUtils;
 import org.commonmark.node.AbstractVisitor;
 import org.commonmark.node.Code;
+import org.commonmark.node.Document;
 import org.commonmark.node.HardLineBreak;
 import org.commonmark.node.HtmlBlock;
 import org.commonmark.node.HtmlInline;
 import org.commonmark.node.Image;
 import org.commonmark.node.Node;
+import org.commonmark.node.Paragraph;
 import org.commonmark.node.SoftLineBreak;
 import org.commonmark.node.SourceSpan;
 import org.commonmark.node.Text;
@@ -49,8 +51,12 @@ public final class ExternalImages {
      * escapes), ready to fetch. {@code alt} is the plain text for a media
      * file's alt text; {@code altSource} is a Markdown image's alt exactly as
      * written (null for an HTML image), so a rewrite changes only the URL.
+     * {@code standalone} is a Markdown image, without a title, that is the
+     * whole of a top-level paragraph: one that can become an
+     * {@code [image id=...]} figure without breaking the text around it.
      */
-    public record Ref(Kind kind, int start, int end, String url, String alt, String altSource, String title) { }
+    public record Ref(Kind kind, int start, int end, String url, String alt, String altSource, String title,
+                      boolean standalone) { }
 
     /** Every external image in text order, and the tags refused outright. */
     public record Scan(List<Ref> refs, List<String> refusals) {
@@ -103,7 +109,7 @@ public final class ExternalImages {
                 int[] range = range(image.getSourceSpans());
                 if (range.length == 2 && isExternal(image.getDestination(), ownHosts)) {
                     refs.add(new Ref(Kind.MARKDOWN, range[0], range[1], image.getDestination(),
-                            altOf(image), altSourceOf(text, image), image.getTitle()));
+                            altOf(image), altSourceOf(text, image), image.getTitle(), isStandalone(image)));
                 }
                 // no visitChildren: an image's children are its alt text
             }
@@ -131,6 +137,21 @@ public final class ExternalImages {
      * A ref with no local copy is left as it was.
      */
     public static String rewrite(String text, List<Ref> refs, Map<String, String> localUrls) {
+        return rewrite(text, refs, localUrls, Map.of());
+    }
+
+    /**
+     * As {@link #rewrite(String, List, Map)}, except that a
+     * {@linkplain Ref#standalone() standalone} Markdown image whose URL has a
+     * media file id in {@code mediaIds} becomes {@code [image id="..."]}: a
+     * responsive figure rather than the full-size file. Its alt text goes
+     * along when it has one that can be quoted; otherwise the file's own alt
+     * text (set from the first use) is used. The figure is an HTML block,
+     * which runs to the next blank line, so a line straight after the image
+     * is moved past one.
+     */
+    public static String rewrite(String text, List<Ref> refs, Map<String, String> localUrls,
+                                 Map<String, String> mediaIds) {
         // One forward pass: replacing in place would shift the tail once per ref.
         StringBuilder out = new StringBuilder(text.length() + 64);
         List<Ref> ordered = new ArrayList<>(refs);
@@ -138,7 +159,11 @@ public final class ExternalImages {
         int pos = 0;
         for (Ref ref : ordered) {
             String local = localUrls.get(ref.url());
-            if (local != null) {
+            String mediaId = ref.standalone() ? mediaIds.get(ref.url()) : null;
+            if (mediaId != null) {
+                out.append(text, pos, ref.start()).append(imageShortcode(mediaId, ref.alt()));
+                pos = separateFollowingLine(text, ref.end(), out);
+            } else if (local != null) {
                 out.append(text, pos, ref.start()).append(ref.kind() == Kind.HTML_SRC
                         ? StringEscapeUtils.escapeHtml4(local)
                         : markdownImage(ref, local));
@@ -146,6 +171,47 @@ public final class ExternalImages {
             }
         }
         return out.append(text, pos, text.length()).toString();
+    }
+
+    private static String imageShortcode(String mediaId, String alt) {
+        StringBuilder code = new StringBuilder("[image id=\"").append(mediaId).append('"');
+        if (alt != null && !alt.isBlank()) {
+            if (alt.indexOf('"') < 0) {
+                code.append(" alt=\"").append(alt).append('"');
+            } else if (alt.indexOf('\'') < 0) {
+                code.append(" alt='").append(alt).append('\'');
+            }
+        }
+        return code.append(']').toString();
+    }
+
+    /**
+     * Copies the line ending after {@code from} into {@code out} and, when a
+     * non-blank line follows it, the same line ending again, so a blank line
+     * separates the two. Returns where the copy stopped.
+     */
+    private static int separateFollowingLine(String text, int from, StringBuilder out) {
+        int newline = text.indexOf('\n', from);
+        if (newline < 0 || !text.substring(from, newline).isBlank()) {
+            return from;
+        }
+        int next = newline + 1;
+        int lineEnd = text.indexOf('\n', next);
+        String following = text.substring(next, lineEnd < 0 ? text.length() : lineEnd);
+        if (following.isBlank()) {
+            return from;
+        }
+        String ending = newline > from && text.charAt(newline - 1) == '\r' ? "\r\n" : "\n";
+        out.append(text, from, next).append(ending);
+        return next;
+    }
+
+    /** A title-less image that is the only thing in a paragraph directly in the document. */
+    private static boolean isStandalone(Image image) {
+        Node parent = image.getParent();
+        return parent instanceof Paragraph && parent.getParent() instanceof Document
+                && image.getPrevious() == null && image.getNext() == null
+                && (image.getTitle() == null || image.getTitle().isEmpty());
     }
 
     /**
@@ -239,7 +305,7 @@ public final class ExternalImages {
                         + "responsive image: " + abbreviate(text.substring(open.start(), tagEnd)));
             }
             if (open.group(1) != null && isExternal(src, ownHosts)) {
-                refs.add(new Ref(Kind.HTML_SRC, srcStart, srcEnd, src, alt, null, null));
+                refs.add(new Ref(Kind.HTML_SRC, srcStart, srcEnd, src, alt, null, null, false));
             }
             // Resume after this tag, so a tag-looking run inside an attribute value is not a tag.
             open.region(tagEnd, range[1]);

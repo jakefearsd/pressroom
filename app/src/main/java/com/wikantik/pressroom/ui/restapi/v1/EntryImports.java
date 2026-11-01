@@ -167,9 +167,12 @@ final class EntryImports {
         String text = null;
         if (plan.scan() != null && !plan.scan().refs().isEmpty()) {
             Map<String, String> local = new HashMap<>();
-            imported.forEach((url, file) ->
-                    local.put(url, weblogger.getUrlStrategy().getMediaFileURL(weblog, file.getId(), true)));
-            text = ExternalImages.rewrite(plan.text(), plan.scan().refs(), local);
+            Map<String, String> ids = new HashMap<>();
+            imported.forEach((url, file) -> {
+                local.put(url, weblogger.getUrlStrategy().getMediaFileURL(weblog, file.getId(), true));
+                ids.put(url, file.getId());
+            });
+            text = ExternalImages.rewrite(plan.text(), plan.scan().refs(), local, ids);
         }
         return body.withImports(featuredId, text);
     }

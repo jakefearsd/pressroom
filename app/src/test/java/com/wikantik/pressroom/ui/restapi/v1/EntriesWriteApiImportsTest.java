@@ -150,6 +150,21 @@ class EntriesWriteApiImportsTest {
         assertTrue(text.contains("![B](https://blog.example.com/myblog/mediaresource/"), text);
     }
 
+    /** An image on its own line is placed the way [image] places it, with resized copies. */
+    @Test
+    void aBodyImageOnItsOwnLineBecomesAnImageShortcodeForTheImportedFile() throws Exception {
+        serves("https://img.example.com/b.jpg");
+
+        JsonNode view = json(fx.send(post("/v1/weblogs/myblog/entries").content("{\"title\":\"t\","
+                + "\"text\":\"Intro\\n\\n![The pier](https://img.example.com/b.jpg)\\n\\nMore\","
+                + "\"importExternalImages\":true}")).andExpect(status().isCreated()));
+
+        ArgumentCaptor<MediaFile> created = ArgumentCaptor.forClass(MediaFile.class);
+        verify(media).createMediaFile(eq(fx.weblog), created.capture(), any());
+        assertEquals("Intro\n\n[image id=\"" + created.getValue().getId() + "\" alt=\"The pier\"]\n\nMore",
+                view.get("text").asString());
+    }
+
     /** Review Focus 5. */
     @Test
     void aUrlUsedTwiceAndAsTheFeaturedImageIsFetchedOnce() throws Exception {
