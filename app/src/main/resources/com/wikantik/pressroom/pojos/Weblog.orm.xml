@@ -98,6 +98,9 @@
 			<basic name="commentNotify">
 				<column name="comment_notify" insertable="true" updatable="true" unique="false"/>
 			</basic>
+			<basic name="showMoreFromSite">
+				<column name="show_more_from_site" insertable="true" updatable="true" unique="false"/>
+			</basic>
 			<basic name="creatorUserName">
 				<column name="creator" insertable="true" updatable="true" unique="false"/>
 			</basic>

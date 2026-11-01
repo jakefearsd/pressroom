@@ -122,6 +122,38 @@ class WeblogConfigBeanTest {
     }
 
     @Test
+    void showMoreFromSiteRoundTripsAndNullReadsAsTrue() {
+        Weblog w = weblog();
+        w.setShowMoreFromSite(null);
+        WeblogConfigBean b = new WeblogConfigBean();
+        b.copyFrom(w);
+        org.junit.jupiter.api.Assertions.assertTrue(b.getShowMoreFromSite());
+
+        w.setShowMoreFromSite(Boolean.FALSE);
+        b.copyFrom(w);
+        org.junit.jupiter.api.Assertions.assertFalse(b.getShowMoreFromSite());
+
+        b.setShowMoreFromSite(true);
+        b.copyTo(w);
+        assertEquals(Boolean.TRUE, w.getShowMoreFromSite());
+    }
+
+    /** An unticked checkbox posts nothing, so the bean default must be false for it to be switched off. */
+    @Test
+    void uncheckedBoxSavesFalse() {
+        WeblogConfigBean absent = new WeblogConfigBean();
+        new org.springframework.web.bind.WebDataBinder(absent, "bean")
+                .bind(new org.springframework.beans.MutablePropertyValues());
+        org.junit.jupiter.api.Assertions.assertFalse(absent.getShowMoreFromSite());
+
+        WeblogConfigBean present = new WeblogConfigBean();
+        org.springframework.beans.MutablePropertyValues pvs = new org.springframework.beans.MutablePropertyValues();
+        pvs.add("showMoreFromSite", "true");
+        new org.springframework.web.bind.WebDataBinder(present, "bean").bind(pvs);
+        org.junit.jupiter.api.Assertions.assertTrue(present.getShowMoreFromSite());
+    }
+
+    @Test
     void copyrightRoundTrips() {
         Weblog w = weblog();
         w.setCopyright("\u00a9 2024\u20132026 Maiia");

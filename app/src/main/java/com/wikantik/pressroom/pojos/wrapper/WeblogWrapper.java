@@ -262,6 +262,10 @@ public final class WeblogWrapper {
         return this.pojo.getCommentNotify();
     }
 
+    public boolean getShowMoreFromSite() {
+        return !Boolean.FALSE.equals(this.pojo.getShowMoreFromSite());
+    }
+
     /**
      * The hostname the weblog is served on besides the site host, or null.
      * Read off the weblog, never the request: a rendered page is cached by
