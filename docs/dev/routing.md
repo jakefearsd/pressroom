@@ -11,19 +11,29 @@ resolves through the index at the end of `CLAUDE.md`.
 only), which forwards wherever `FrontDoor.forwardPath` says. With
 `site.frontpage.page` set, that is the site page of that slug
 (`/pressroom-ui/rendering/page/site-space/<slug>`) when it is published, and
-the site directory when it is not (deleted, a draft, a failed lookup): `/`
-is never a 404 or a 500 (a locale-shaped slug, saved before such slugs were
-refused, is the directory too: the page servlet would read it as a locale).
+the discovery front page when it is not (deleted, a draft, a failed lookup):
+`/` is never a 404 or a 500 (a locale-shaped slug, saved before such slugs
+were refused, falls back too: the page servlet would read it as a locale).
 Global Config keeps a stale stored slug as a selected "unpublished" option so
 an unrelated save does not clear it; a change to the site name, short name or
 description (like the front door, privacy link and absolute URL) touches every
 weblog and the site space so cached pages expire. Unset, with `site.frontpage.weblog.handle` set, it
-forwards to that weblog's rendering. Both empty, it forwards to
-`/pressroom-ui/siteDirectory.rol` (`SiteDirectoryController`), a public page
-with the site description and the enabled, active weblogs by name, plus a
-"choose a front page" link for an admin. It used to forward to the setup
-page, which is admin-only, so on a site with no front page every reader got
-the sign-in form.
+forwards to that weblog's rendering. Both empty, it forwards to the
+discovery front page, `/pressroom-ui/rendering/page/site-space/page/discovery`
+(`FrontDoor.DISCOVERY`): the site space's `discovery` template, fed by
+`$discovery` (`DiscoveryModel`, the picker's selection wrapped), in the
+site's own theme -- frontpage ships one in its fd chrome, every other theme
+gets the shared `templates/weblog/discovery.vm` (themes-and-templates.md).
+Its canonical is the site root (`PageModel.getCanonicalUrl`), and with no
+eligible weblog it shows the directory's empty message (`siteDirectory.empty`).
+
+The fallback is the directory instead, `/pressroom-ui/siteDirectory.rol`
+(`SiteDirectoryController`, a public page with the site description and the
+enabled, active weblogs by name, plus a "choose a front page" link for an
+admin), only when there is no site space to render discovery in: before
+bootstrap, before the site space exists, or when looking it up fails. `/`
+used to forward to the setup page, which is admin-only, so on a site with no
+front page every reader got the sign-in form.
 
 Site pages answer at `/<slug>` on the site host: `WeblogRequestMapper`,
 after the reserved-path and blog-handle checks fail (a blog handle wins), on
@@ -54,12 +64,15 @@ page "page" with more after it, and every site page rendered unstyled with
 broken `[image]`s. The mapper forwards exactly those three contexts under the
 handle (with data, no locale, no trailing slash, GET) to the page, resource
 and media servlets; every other `/site-space/...` url (the bare handle, a
-slug, entry, feed, search, category, tags, date) declines and 404s.
+slug, entry, feed, search, category, tags, date, and `page/discovery`,
+whose one address is `/`) declines and 404s.
 `WeblogResourceRequest` and `WeblogMediaResourceRequest` admit the handle
 like `WeblogPageRequest`, and `ResourceServlet`/`MediaResourceServlet` carry
 the same FORWARD gate as `PageServlet`. Under the handle the `page/`
-context serves the theme stylesheet's link only (`PageServlet.selectTemplate`),
-so frontpage's `directory` template is not a site address. The preview strategy's root already
+context serves the theme stylesheet's link and the discovery template only
+(`PageServlet.selectTemplate`; discovery reaches it only through `/`'s
+forward, since the mapper declines it), so frontpage's `directory` template
+is not a site address. The preview strategy's root already
 names the handle, so its `assetRoot` adds nothing.
 
 Empty is a real choice, not a gap: Global Config's front-page menu starts

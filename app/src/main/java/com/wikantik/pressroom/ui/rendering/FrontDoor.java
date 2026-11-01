@@ -34,17 +34,19 @@ import org.slf4j.LoggerFactory;
  *
  * <ol>
  *   <li>{@code site.frontpage.page} set: that site page when it is published,
- *       else the site directory. A front door whose page was deleted or
- *       unpublished is the directory, never a 404 and never the blog the
- *       admin moved away from.</li>
+ *       else the fallback below. A front door whose page was deleted or
+ *       unpublished is the fallback, never a 404 and never the blog the admin
+ *       moved away from.</li>
  *   <li>{@code site.frontpage.weblog.handle} set: that blog, exactly as
  *       {@code index.jsp} forwarded before site pages existed.</li>
- *   <li>Neither: the site directory.</li>
+ *   <li>Neither: the fallback.</li>
  * </ol>
  *
- * <p>Only the first choice touches the business tier, so before bootstrap
- * (when every runtime property reads null) {@code /} is the directory without
- * asking for a tier that is not there.
+ * <p>The fallback is the discovery front page -- the site space's
+ * {@value #DISCOVERY_TEMPLATE} template, rendered by the page servlet -- when
+ * the tier is bootstrapped and the site space exists, else the site
+ * directory. So before bootstrap (when every runtime property reads null)
+ * {@code /} is the directory without asking for a tier that is not there.
  */
 public final class FrontDoor {
 
@@ -52,6 +54,16 @@ public final class FrontDoor {
 
     static final String DIRECTORY = "/pressroom-ui/siteDirectory.rol";
     private static final String PAGE_SERVLET = "/pressroom-ui/rendering/page/";
+
+    /**
+     * The site space's template that renders the discovery front page. The
+     * page servlet serves it, under the site space's handle, only to this
+     * class's forward; the request mapper never routes it, so {@code /} is
+     * its one address.
+     */
+    public static final String DISCOVERY_TEMPLATE = "discovery";
+
+    static final String DISCOVERY = PAGE_SERVLET + Weblog.SITE_SPACE_HANDLE + "/page/" + DISCOVERY_TEMPLATE;
 
     private FrontDoor() {
     }
@@ -62,8 +74,8 @@ public final class FrontDoor {
     }
 
     /**
-     * The dispatcher path for {@code /}. Never throws: a lookup that fails is
-     * the site directory.
+     * The dispatcher path for {@code /}. Never throws: a lookup that fails
+     * falls back (see the class comment).
      *
      * @param tier the business tier, or null before bootstrap
      */
@@ -71,16 +83,31 @@ public final class FrontDoor {
         String slug = WebloggerRuntimeConfig.getFrontDoorPageSlug();
         if (slug != null) {
             // A locale-shaped slug (saved before such slugs were refused) would
-            // be read as a locale by the page servlet and 404: show the directory.
+            // be read as a locale by the page servlet and 404: fall back.
             return !LocaleSegment.isLocale(slug) && canShowSitePage(tier, slug)
                     ? PAGE_SERVLET + Weblog.SITE_SPACE_HANDLE + "/" + URLUtilities.encode(slug)
-                    : DIRECTORY;
+                    : fallback(tier);
         }
         String handle = WebloggerRuntimeConfig.getProperty("site.frontpage.weblog.handle");
         if (handle != null && !handle.isBlank()) {
             return PAGE_SERVLET + handle;
         }
-        return DIRECTORY;
+        return fallback(tier);
+    }
+
+    /** The discovery page when there is a site space to render it in, else the directory. */
+    private static String fallback(Weblogger tier) {
+        if (tier == null) {
+            return DIRECTORY;
+        }
+        try {
+            return tier.getWeblogManager().getSiteSpace() != null ? DISCOVERY : DIRECTORY;
+        } catch (Exception ex) {
+            // A display decision, like canShowSitePage's: the directory needs
+            // no site space, so it is the safe answer when that lookup fails.
+            log.warn("Could not look up the site space; showing the site directory", ex);
+            return DIRECTORY;
+        }
     }
 
     private static boolean canShowSitePage(Weblogger tier, String slug) {
@@ -90,9 +117,9 @@ public final class FrontDoor {
         try {
             return isPublishedSitePage(tier, slug);
         } catch (Exception ex) {
-            // A display decision: the directory is always a safe thing to show
+            // A display decision: the fallback is always a safe thing to show
             // at /, and a page that could not be looked up is not one to forward to.
-            log.warn("Could not look up the front door's site page '{}'; showing the site directory",
+            log.warn("Could not look up the front door's site page '{}'; showing the fallback",
                     slug, ex);
             return false;
         }

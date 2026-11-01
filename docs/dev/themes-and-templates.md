@@ -101,6 +101,21 @@ resolves through the index at the end of `CLAUDE.md`.
   page.vm's header and footer with weblog.vm's; `SiteSpaceThemeRenderingTest`
   renders a site page in all four themes through the mapper and proves its
   stylesheet and `[image]` urls are served (routing.md, The site root).
+- **The discovery front page is the site space's one named template besides
+  its stylesheet.** Under the handle, `PageServlet.selectTemplate` answers
+  the `page` context with the stylesheet's link only (`isStylesheetLink`) --
+  except `discovery`, which resolves to the site theme's template of that
+  name when it has one (frontpage's `discovery.vm`, declared hidden so a
+  blog on frontpage does not serve it by name; `rejectionReason` exempts it
+  in the site space only) and else to the shared
+  `WEB-INF/velocity/templates/weblog/discovery.vm` (journal, travel,
+  portfolio, a forked theme). Both read `$discovery.frontPage`
+  (`DiscoveryModel`, in `rendering.pageModels`) and carry the same stable
+  section classes, `fd-discovery-headline`/`-popular`/`-blogs`/`-different`/
+  `-all`, which `DiscoveryFrontPageRenderingTest` and the browser suite pin:
+  restyle through the item classes, never by renaming those. Titles are
+  emitted bare, names through the wrapper, hrefs absolute and escaped. A
+  hidden `places-been` container marks where the places list goes.
 - **The `<title>` rule, every theme.** The separator is " — " (an em dash,
   the one the admin layouts use): "Entry — Weblog", "Page — Weblog",
   "Search: q — Site". On a permalink or a page, a meta title set in the

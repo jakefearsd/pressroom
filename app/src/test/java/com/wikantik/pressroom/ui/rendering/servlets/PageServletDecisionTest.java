@@ -197,6 +197,42 @@ class PageServletDecisionTest {
     }
 
     /**
+     * The one other name the site space serves under {@code page}: the
+     * discovery front page {@code /} forwards to. The theme's own
+     * {@code discovery} template when it has one (frontpage), else the shared
+     * fallback -- also when the lookup throws, since {@code /} is never a 500.
+     */
+    @Test
+    void theSiteSpaceServesTheDiscoveryTemplate() throws Exception {
+        weblog.setSiteSpace(true);
+        when(pageRequest.getContext()).thenReturn("page");
+        when(pageRequest.getWeblogPageName()).thenReturn("discovery");
+        ThemeTemplate own = mock(ThemeTemplate.class);
+        when(theme.getTemplateByName("discovery")).thenReturn(own);
+
+        assertEquals(own, PageServlet.selectTemplate(pageRequest, weblog, weblogger.getThemeManager()));
+
+        when(theme.getTemplateByName("discovery")).thenReturn(null);
+        ThemeTemplate fallback = PageServlet.selectTemplate(pageRequest, weblog, weblogger.getThemeManager());
+        assertInstanceOf(StaticThemeTemplate.class, fallback);
+        assertEquals("templates/weblog/discovery.vm", fallback.getId());
+
+        when(theme.getTemplateByName("discovery")).thenThrow(new WebloggerException("theme is broken"));
+        assertEquals("templates/weblog/discovery.vm",
+                PageServlet.selectTemplate(pageRequest, weblog, weblogger.getThemeManager()).getId());
+    }
+
+    /** An ordinary weblog's {@code page/discovery} is just a named page: its own template or a 404. */
+    @Test
+    void anOrdinaryWeblogHasNoDiscoveryFallback() throws Exception {
+        when(pageRequest.getContext()).thenReturn("page");
+        when(pageRequest.getWeblogPageName()).thenReturn("discovery");
+        when(pageRequest.getWeblogPage()).thenReturn(null);
+
+        assertNull(PageServlet.selectTemplate(pageRequest, weblog, weblogger.getThemeManager()));
+    }
+
+    /**
      * No bundled theme ships a tagsIndex template, yet every theme's
      * permalink links its tags at {@code /<handle>/tags/<tag>}. Those links
      * used to 404; a tags index now falls back to the theme's default
@@ -292,6 +328,30 @@ class PageServletDecisionTest {
 
         assertEquals("template is hidden",
                 PageServlet.rejectionReason(pageRequest, weblog, hidden, false, weblogger.weblogEntryManager()));
+    }
+
+    /**
+     * The frontpage theme's {@code discovery} template is hidden, so a blog
+     * on that theme does not serve the site's front page at
+     * {@code /<handle>/page/discovery}; the site space, whose page names
+     * {@code selectTemplate} has already narrowed, does.
+     */
+    @Test
+    void theHiddenDiscoveryTemplateIsServedOnlyInTheSiteSpace() throws Exception {
+        ThemeTemplate hidden = template();
+        when(hidden.isHidden()).thenReturn(true);
+        when(pageRequest.getWeblogPageName()).thenReturn("discovery");
+
+        assertEquals("template is hidden",
+                PageServlet.rejectionReason(pageRequest, weblog, hidden, false, weblogger.weblogEntryManager()));
+
+        weblog.setSiteSpace(true);
+        assertNull(PageServlet.rejectionReason(pageRequest, weblog, hidden, false, weblogger.weblogEntryManager()));
+
+        when(pageRequest.getWeblogPageName()).thenReturn("_header");
+        assertEquals("template is hidden",
+                PageServlet.rejectionReason(pageRequest, weblog, hidden, false, weblogger.weblogEntryManager()),
+                "only the discovery template is exempt");
     }
 
     /**
