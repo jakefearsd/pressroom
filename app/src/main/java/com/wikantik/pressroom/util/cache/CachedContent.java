@@ -24,6 +24,9 @@ public class CachedContent implements AutoCloseable, Serializable {
     // the byte array we use to maintain the cached content
     private byte[] content = new byte[0];
     
+    // when this was built, epoch millis; caches compare it to the discovery generation
+    private final long createdAt = System.currentTimeMillis();
+
     // content-type of data in byte array
     private final String contentType;
     
@@ -80,6 +83,12 @@ public class CachedContent implements AutoCloseable, Serializable {
     }
     
     
+    /** When this content was built, in epoch milliseconds. */
+    public long getCreatedAt() {
+        return createdAt;
+    }
+
+
     public String getContentType() {
         return contentType;
     }
