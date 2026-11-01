@@ -588,9 +588,10 @@ public class WeblogRequestMapper {
      * Serve {@code /site-space/<context>/<data>} when the context is one of
      * the site space's asset contexts, forwarding exactly as a blog's asset
      * url is forwarded. Anything else under the handle -- the bare handle, a
-     * slug, a locale, a trailing slash, any other context -- declines and
-     * 404s: the handle is never a public address for the site's pages. The
-     * servlets serve the site space only to this FORWARD dispatch.
+     * slug, a locale, a trailing slash, any other context, the discovery
+     * page -- declines and 404s: the handle is never a public address for
+     * the site's pages. The servlets serve the site space only to this
+     * FORWARD dispatch.
      *
      * @return true when the request was forwarded
      */
@@ -604,6 +605,11 @@ public class WeblogRequestMapper {
         WeblogPathInfo parsed = parsePathInfo(pathInfo);
         if (parsed.locale() != null || parsed.data() == null
                 || !SITE_ASSET_CONTEXTS.contains(parsed.context())) {
+            return false;
+        }
+        // The discovery front page is a template under page/ too, but no
+        // asset: its one address is /, which forwards to it (FrontDoor).
+        if ("page".equals(parsed.context()) && FrontDoor.DISCOVERY_TEMPLATE.equals(parsed.data())) {
             return false;
         }
         String forwardUrl = calculateForwardUrl(request, Weblog.SITE_SPACE_HANDLE, null,

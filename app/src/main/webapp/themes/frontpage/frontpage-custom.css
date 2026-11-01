@@ -394,6 +394,59 @@ body.fd .fd-prose a:where(:not(.cta-card)) {
 }
 
 
+/* ---- discovery front page (discovery.vm) ----
+ * The site root's sections. Posts and blog cards are the directory's fd-blog
+ * card in a grid; the lead post is the same card, its title in the serif.
+ * Nothing here sits above the body tier: the site name stays the page's one
+ * large element. The section classes themselves (fd-discovery-headline,
+ * -popular, -blogs, -different, -all) are test markers and carry no style. */
+.fd-discovery-grid,
+.fd-discovery-top,
+.fd-discovery-list { list-style: none; margin: 0; padding: 0; }
+
+.fd-discovery-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+.fd-discovery-grid-3 { grid-template-columns: repeat(3, 1fr); }
+
+.fd-discovery-post,
+.fd-discovery-card {
+    min-width: 0;
+    border: 1px solid var(--fd-line);
+    border-radius: var(--fd-radius);
+    padding: .875rem 1rem;
+    background: var(--fd-surface);
+}
+.fd-discovery-lead { background: linear-gradient(135deg, var(--fd-accent-quiet), var(--fd-surface) 65%); }
+
+.fd-discovery-post .from { margin: 0; font-size: .75rem; color: var(--fd-ink-soft); }
+.fd-discovery-post .from a { color: var(--fd-accent); font-weight: 600; text-decoration: none; }
+.fd-discovery-post .t { margin: .25rem 0 0; font-size: 1rem; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.fd-discovery-lead .t { font-family: "IBM Plex Serif", Georgia, serif; }
+
+.fd-discovery-card .n {
+    margin: 0;
+    font-family: "IBM Plex Serif", Georgia, serif;
+    font-size: 1rem;
+    font-weight: 600;
+}
+.fd-discovery-top { margin-top: .5rem; font-size: .90625rem; }
+.fd-discovery-top li + li { margin-top: .25rem; }
+
+.fd-discovery-post a,
+.fd-discovery-card a { color: var(--fd-ink); text-decoration: none; }
+.fd-discovery-post a:hover,
+.fd-discovery-card a:hover { color: var(--fd-accent); }
+
+.fd-discovery-list { columns: 2; column-gap: 1.5rem; font-size: .90625rem; }
+.fd-discovery-list li { padding: .125rem 0; break-inside: avoid; }
+.fd-discovery-list a { text-decoration: none; }
+.fd-discovery-list a:hover { color: var(--fd-accent); }
+
+@media (max-width: 560px) {
+    .fd-discovery-grid,
+    .fd-discovery-grid-3 { grid-template-columns: 1fr; }
+    .fd-discovery-list { columns: 1; }
+}
+
 /* ---- colophon: the showColophon macro's last line of the footer ---- */
 body.fd .colophon { margin-top: 1.5rem; font-size: .75rem; line-height: 1.5; color: var(--fd-ink-soft); }
 body.fd .colophon p { margin: 0 0 .25rem; }

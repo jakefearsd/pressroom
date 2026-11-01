@@ -46,6 +46,7 @@ import com.wikantik.pressroom.pojos.wrapper.WeblogCategoryWrapper;
 import com.wikantik.pressroom.pojos.wrapper.WeblogEntryWrapper;
 import com.wikantik.pressroom.pojos.wrapper.WeblogPageWrapper;
 import com.wikantik.pressroom.pojos.wrapper.WeblogWrapper;
+import com.wikantik.pressroom.ui.rendering.FrontDoor;
 import com.wikantik.pressroom.ui.rendering.pagers.WeblogEntriesDayPager;
 import com.wikantik.pressroom.ui.rendering.pagers.WeblogEntriesLatestPager;
 import com.wikantik.pressroom.ui.rendering.pagers.WeblogEntriesMonthPager;
@@ -210,6 +211,10 @@ public class PageModel implements Model {
                 // here (URLModel#staticPage asks for the relative form).
                 return urlStrategy.getWeblogStaticPageURL(weblog, page.getSlug(), true);
             }
+        }
+        if (weblog.isSiteSpace() && FrontDoor.DISCOVERY_TEMPLATE.equals(pageRequest.getWeblogPageName())) {
+            // the discovery front page's one address is /, the site root
+            return urlStrategy.getWeblogURL(weblog, null, true);
         }
         if (pageRequest.getWeblogPageName() != null) {
             return urlStrategy.getWeblogPageURL(weblog, pageRequest.getLocale(),

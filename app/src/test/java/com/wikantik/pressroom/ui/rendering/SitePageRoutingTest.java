@@ -210,7 +210,7 @@ class SitePageRoutingTest {
     /**
      * {@code /} as index.jsp serves it: FrontDoor's path, forwarded. With the
      * front door set to a published site page it is that page (AC1); once
-     * the page is unpublished it is the directory (AC12), never a 404.
+     * the page is unpublished it is the discovery front page (AC12), never a 404.
      */
     @Test
     void theFrontDoorPageRendersAtTheRootAndFallsBackWhenUnpublished() throws Exception {
@@ -223,7 +223,24 @@ class SitePageRoutingTest {
         assertTrue(response.getContentAsString().contains("About the Site"));
 
         savePage("sitepageabout", "About the Site", "Body of **about**", WeblogPage.PubStatus.DRAFT);
-        assertEquals("/pressroom-ui/siteDirectory.rol", FrontDoor.forwardPath(TestUtils.weblogger()));
+        assertEquals("/pressroom-ui/rendering/page/site-space/page/discovery",
+                FrontDoor.forwardPath(TestUtils.weblogger()));
+    }
+
+    /**
+     * The discovery front page is served only to {@code /}'s forward: asked
+     * for directly at the page servlet under the site space's handle it is a
+     * 404 like every other site-space view (the FORWARD-only gate).
+     */
+    @Test
+    void aDirectRequestForTheDiscoveryPageIs404() throws Exception {
+        assertEquals(200, render(forwarded("/site-space/page/discovery")).getStatus(),
+                "forwarded, it is served, so the 404 below is the gate's");
+
+        MockHttpServletRequest direct = RenderingTestSupport.anonymousGet(
+                "/pressroom-ui/rendering/page", "/site-space/page/discovery");
+        assertEquals(DispatcherType.REQUEST, direct.getDispatcherType());
+        assertEquals(404, render(direct).getStatus());
     }
 
     private static void waitPastLastModified() throws Exception {

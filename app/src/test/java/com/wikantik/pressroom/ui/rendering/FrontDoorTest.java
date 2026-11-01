@@ -38,14 +38,16 @@ import static org.mockito.Mockito.when;
 
 /**
  * What {@code /} shows: the site page named by {@code site.frontpage.page}
- * when it is published, the site directory when that page is set but cannot
- * be shown, and otherwise exactly what {@code index.jsp} did before (a
- * front-page blog, else the directory). {@code /} is never a 404 and never
- * a 500: a lookup that throws is the directory too.
+ * when it is published, a front-page blog when one is named, and otherwise
+ * the discovery front page (the site space's {@code discovery} template) --
+ * also when a configured page is set but cannot be shown. The site directory
+ * is what is left before bootstrap or with no site space. {@code /} is never
+ * a 404 and never a 500: a lookup that throws falls back too.
  */
 class FrontDoorTest {
 
     private static final String DIRECTORY = "/pressroom-ui/siteDirectory.rol";
+    private static final String DISCOVERY = "/pressroom-ui/rendering/page/site-space/page/discovery";
 
     private Weblogger tier;
     private WeblogManager weblogs;
@@ -97,27 +99,28 @@ class FrontDoorTest {
         }
     }
 
+    /** AC 12: a configured site page that was deleted or unpublished falls back to discovery. */
     @Test
-    void aFrontDoorPageThatIsNotPublishedIsTheDirectory() throws Exception {
+    void brokenFrontDoorPageShowsDiscovery() throws Exception {
         // a draft is not among the published pages; the blog is not a fallback
         published(page("about", WeblogPage.PubStatus.PUBLISHED));
         try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering(
                 "site.frontpage.page", "home", "site.frontpage.weblog.handle", "blog")) {
-            assertEquals(DIRECTORY, FrontDoor.forwardPath(tier));
+            assertEquals(DISCOVERY, FrontDoor.forwardPath(tier));
         }
     }
 
     @Test
-    void aLocaleShapedFrontDoorSlugIsTheDirectory() throws Exception {
+    void aLocaleShapedFrontDoorSlugShowsDiscovery() throws Exception {
         // Saved before locale-shaped slugs were refused: the page servlet would
         // read "hi" as a locale and 404, and / is never a 404.
         published(page("hi", WeblogPage.PubStatus.PUBLISHED));
         try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering("site.frontpage.page", "hi")) {
-            assertEquals(DIRECTORY, FrontDoor.forwardPath(tier));
+            assertEquals(DISCOVERY, FrontDoor.forwardPath(tier));
         }
         published(page("en_US", WeblogPage.PubStatus.PUBLISHED));
         try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering("site.frontpage.page", "en_US")) {
-            assertEquals(DIRECTORY, FrontDoor.forwardPath(tier));
+            assertEquals(DISCOVERY, FrontDoor.forwardPath(tier));
         }
     }
 
@@ -130,10 +133,17 @@ class FrontDoorTest {
     }
 
     @Test
-    void aLookupThatThrowsIsTheDirectoryNeverAnException() throws Exception {
+    void aLookupThatThrowsFallsBackNeverAnException() throws Exception {
         when(pages.getPublishedPages(site)).thenThrow(new WebloggerException("database down"));
         try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering("site.frontpage.page", "home")) {
+            assertEquals(DISCOVERY, FrontDoor.forwardPath(tier), "the page lookup failed, the site space did not");
+        }
+        when(weblogs.getSiteSpace()).thenThrow(new WebloggerException("database down"));
+        try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering("site.frontpage.page", "home")) {
             assertEquals(DIRECTORY, FrontDoor.forwardPath(tier));
+        }
+        try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering()) {
+            assertEquals(DIRECTORY, FrontDoor.forwardPath(tier), "unconfigured, with no site space to ask");
         }
         when(tier.getWeblogManager()).thenThrow(new IllegalStateException("tier gone"));
         try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering("site.frontpage.page", "home")) {
@@ -148,6 +158,24 @@ class FrontDoorTest {
         }
     }
 
+    /** AC 12: an explicitly configured, published site page still wins over discovery. */
+    @Test
+    void configuredPublishedPageStillWins() throws Exception {
+        published(page("home", WeblogPage.PubStatus.PUBLISHED));
+        try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering("site.frontpage.page", "home")) {
+            assertEquals("/pressroom-ui/rendering/page/site-space/home", FrontDoor.forwardPath(tier));
+        }
+    }
+
+    /** AC 12: an explicitly configured front-page weblog still wins over discovery. */
+    @Test
+    void configuredWeblogStillWins() {
+        try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering(
+                "site.frontpage.weblog.handle", "wikantik")) {
+            assertEquals("/pressroom-ui/rendering/page/wikantik", FrontDoor.forwardPath(tier));
+        }
+    }
+
     @Test
     void noFrontDoorPageAndAFrontPageBlogIsThatBlogUnchanged() throws Exception {
         try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering(
@@ -158,22 +186,33 @@ class FrontDoorTest {
     }
 
     @Test
-    void neitherSetIsTheDirectory() {
+    void unconfiguredForwardsToDiscovery() {
         try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering(
                 "site.frontpage.page", "", "site.frontpage.weblog.handle", " ")) {
-            assertEquals(DIRECTORY, FrontDoor.forwardPath(tier));
+            assertEquals(DISCOVERY, FrontDoor.forwardPath(tier));
         }
         try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering()) {
-            assertEquals(DIRECTORY, FrontDoor.forwardPath(tier), "both unset");
+            assertEquals(DISCOVERY, FrontDoor.forwardPath(tier), "both unset");
         }
     }
 
     @Test
-    void beforeBootstrapTheProviderIsNeverAskedForTheTier() {
+    void noSiteSpaceIsDirectory() throws Exception {
+        when(weblogs.getSiteSpace()).thenReturn(null);
+        try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering()) {
+            assertEquals(DIRECTORY, FrontDoor.forwardPath(tier));
+        }
+    }
+
+    @Test
+    void beforeBootstrapIsDirectory() {
         WebloggerProvider provider = mock(WebloggerProvider.class);
         when(provider.isBootstrapped()).thenReturn(false);
         try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering("site.frontpage.page", "home")) {
             assertEquals(DIRECTORY, FrontDoor.forwardPath(provider));
+        }
+        try (RuntimeConfigAttachment _ = RuntimeConfigAttachment.answering()) {
+            assertEquals(DIRECTORY, FrontDoor.forwardPath(provider), "unconfigured");
         }
         verify(provider, never()).getWeblogger();
     }

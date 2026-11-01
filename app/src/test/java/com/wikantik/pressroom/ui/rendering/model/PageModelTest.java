@@ -537,6 +537,20 @@ class PageModelTest {
                 "The canonical URL must be absolute; was: " + canonical);
     }
 
+    /**
+     * The discovery front page is served at {@code /}, so that is its
+     * canonical -- never the site space's internal {@code page/discovery}
+     * address, which no reader can open.
+     */
+    @Test
+    void canonicalUrlOfTheDiscoveryPageIsTheSiteRoot() throws Exception {
+        weblog.setSiteSpace(true);
+        WeblogPageRequest request = pageRequest();
+        request.setWeblogPageName("discovery");
+
+        assertEquals("http://localhost:8080/pressroom/", modelFor(request).getCanonicalUrl());
+    }
+
     // ------------------------------------------------------------- nav pages
 
     @Test
