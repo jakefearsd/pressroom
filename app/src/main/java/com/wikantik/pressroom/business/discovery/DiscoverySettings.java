@@ -124,7 +124,7 @@ public final class DiscoverySettings {
                     seconds = parsed;
                 }
             } catch (NumberFormatException e) {
-                // keep the default
+                seconds = DEFAULT_REFRESH_SECONDS;
             }
         }
         return seconds / SECONDS_PER_MINUTE;
