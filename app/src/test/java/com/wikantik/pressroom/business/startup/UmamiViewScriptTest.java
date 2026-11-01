@@ -17,15 +17,10 @@
  */
 package com.wikantik.pressroom.business.startup;
 
-import com.wikantik.pressroom.testing.PressroomPostgresContainer;
+import com.wikantik.pressroom.testing.UmamiTestDatabase;
 import org.junit.jupiter.api.Test;
 
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.UUID;
@@ -64,46 +59,19 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class UmamiViewScriptTest {
 
-    /** Relative to the app module, which is the working directory for tests. */
-    private static final Path VIEW_SCRIPT = Paths.get("../deploy/analytics/umami-views.sql");
-
     @Test
     public void viewCreatesReappliesAndAnswersAQuery() throws Exception {
         String dbName = "umami_view_test";
 
-        try (Connection admin = adminConnection();
-             Statement st = admin.createStatement()) {
-            st.execute("DROP DATABASE IF EXISTS " + dbName);
-            st.execute("CREATE DATABASE " + dbName);
-            // Cluster-global; guarded exactly like V017 so this test does not
-            // depend on another test class having created the role first.
-            st.execute("""
-                    DO $$ BEGIN
-                        CREATE ROLE grafana_ro NOLOGIN;
-                    EXCEPTION WHEN duplicate_object THEN
-                        NULL;
-                    END $$;
-                    """);
-        }
+        UmamiTestDatabase.recreate(dbName);
 
-        String viewSql = readViewScript();
+        String viewSql = UmamiTestDatabase.readViewScript();
 
-        try (Connection con = DriverManager.getConnection(
-                jdbcUrlFor(dbName), PressroomPostgresContainer.getUsername(), PressroomPostgresContainer.getPassword())) {
+        try (Connection con = UmamiTestDatabase.connect(dbName)) {
 
             // Umami v2's postgresql schema, minimal shape: only the columns
             // analytics_traffic reads.
-            try (Statement st = con.createStatement()) {
-                st.execute("""
-                        CREATE TABLE website_event (
-                            website_id uuid,
-                            session_id uuid,
-                            created_at timestamptz,
-                            url_path varchar,
-                            event_type int
-                        )
-                        """);
-            }
+            UmamiTestDatabase.createEventTable(con);
 
             try (Statement st = con.createStatement()) {
                 st.execute(viewSql);
@@ -111,7 +79,7 @@ public class UmamiViewScriptTest {
                 fail("Applying umami-views.sql to a fresh database failed: " + e.getMessage());
             }
 
-            assertTrue(viewExists(con), "analytics_traffic was not created");
+            assertTrue(UmamiTestDatabase.viewExists(con), "analytics_traffic was not created");
 
             try (Statement st = con.createStatement()) {
                 st.execute(viewSql);
@@ -119,7 +87,7 @@ public class UmamiViewScriptTest {
                 fail("Re-applying umami-views.sql failed, so it is not idempotent: " + e.getMessage());
             }
 
-            assertTrue(viewExists(con), "analytics_traffic did not survive re-application");
+            assertTrue(UmamiTestDatabase.viewExists(con), "analytics_traffic did not survive re-application");
 
             UUID websiteId = UUID.randomUUID();
             UUID sharedSessionId = UUID.randomUUID();
@@ -169,43 +137,7 @@ public class UmamiViewScriptTest {
                 assertEquals(2, rs.getInt("views"), "only event_type = 1 rows count as views");
             }
         } finally {
-            try (Connection admin = adminConnection();
-                 Statement st = admin.createStatement()) {
-                st.execute("DROP DATABASE IF EXISTS " + dbName);
-            }
+            UmamiTestDatabase.drop(dbName);
         }
-    }
-
-    private String readViewScript() throws Exception {
-        if (!Files.isRegularFile(VIEW_SCRIPT)) {
-            fail("View script not found at " + VIEW_SCRIPT.toAbsolutePath()
-                    + ". Tests expect to run with the app module as the working directory.");
-        }
-        return Files.readString(VIEW_SCRIPT, StandardCharsets.UTF_8);
-    }
-
-    private boolean viewExists(Connection con) throws Exception {
-        try (Statement st = con.createStatement();
-             ResultSet rs = st.executeQuery(
-                     "SELECT to_regclass('public.analytics_traffic') IS NOT NULL")) {
-            rs.next();
-            return rs.getBoolean(1);
-        }
-    }
-
-    private Connection adminConnection() throws Exception {
-        return DriverManager.getConnection(
-                PressroomPostgresContainer.getJdbcUrl(),
-                PressroomPostgresContainer.getUsername(),
-                PressroomPostgresContainer.getPassword());
-    }
-
-    /** Rewrites the container's JDBC URL to point at a different database. */
-    private String jdbcUrlFor(String dbName) {
-        String url = PressroomPostgresContainer.getJdbcUrl();
-        int dbStart = url.lastIndexOf('/') + 1;
-        int queryStart = url.indexOf('?', dbStart);
-        String tail = queryStart < 0 ? "" : url.substring(queryStart);
-        return url.substring(0, dbStart) + dbName + tail;
     }
 }
