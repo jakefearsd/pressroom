@@ -18,7 +18,10 @@ and the scheduled refresh may be an interval away (`TaskLock.lastRun`), so the
 first selection builds one on the request thread from candidates only (one
 local query, no scores, status unchanged) and hands a full refresh to the
 `ThreadManager` background pool; the scores arrive with that. Concurrent first
-requests share the one build. A failed Umami read keeps the last scores but
+requests share the one build. The first build never takes the refresh lock,
+so it does not queue behind a scheduled or admin refresh that is already
+waiting on Umami; whichever swaps second loses only if it is the first build
+(a refresh's snapshot is newer and scored, so it always stands). A failed Umami read keeps the last scores but
 still builds a new snapshot (new candidates, so new posts appear, and the
 random picks reshuffle); the failure is logged and shown in Maintenance.
 

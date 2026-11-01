@@ -57,7 +57,9 @@ import java.util.concurrent.atomic.AtomicReference;
  * scheduled refresh may still be an interval away), builds one on the calling
  * thread, and concurrent first requests share that one build. It reads
  * candidates only, one local query, and hands the scored refresh to the
- * background pool, so no page ever waits on the traffic source. Selections are computed as
+ * background pool. It never takes the refresh lock, so a refresh already
+ * waiting on Umami does not hold it up either: no page ever waits on the
+ * traffic source. Selections are computed as
  * ids once per snapshot (seeded by its generation, so random picks hold until
  * the next rebuild) and resolved to entities on every call, dropping anything
  * that stopped being eligible in between.
@@ -92,8 +94,18 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
     private final Clock clock;
     private final Executor background;
 
-    /** Serialises refreshes, including the first build. Readers never take it. */
+    /** Serialises refreshes. Readers and the first build never take it. */
     private final Object refreshLock = new Object();
+
+    /** Serialises first builds, so concurrent first requests share one. */
+    private final Object firstBuildLock = new Object();
+
+    /**
+     * Guards the swap: snapshot, generation and status move together. Held
+     * for no I/O, so a first build that meets a refresh's swap waits only for
+     * a few assignments.
+     */
+    private final Object swapLock = new Object();
 
     private volatile Snapshot snapshot;
     private volatile DiscoveryStatus status =
@@ -135,11 +147,12 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
      * Builds and swaps in a snapshot. With {@code readTraffic} false (the
      * first build, on a request thread) a configured source is not read: the
      * snapshot has no scores and the status still says how the last real
-     * refresh went.
+     * refresh went, and it is swapped in only if no refresh got there first.
+     *
+     * @return whether a snapshot was swapped in
      */
-    private void rebuild(boolean readTraffic) {
+    private boolean rebuild(boolean readTraffic) {
         Instant now = clock.instant();
-        DiscoveryStatus before = status;
         List<DiscoveryCandidate> candidates;
         List<Weblog> weblogs;
         try {
@@ -148,29 +161,30 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
         } catch (WebloggerException | RuntimeException e) {
             // nothing new to swap in: the previous snapshot (if any) stands
             log.error("Discovery refresh could not read candidates; keeping the last snapshot", e);
-            status = new DiscoveryStatus(DiscoveryStatus.State.FAILED, now, before.lastSuccess(),
-                    before.scoredEntries(), before.candidates(), describe(e));
-            return;
+            synchronized (swapLock) {
+                DiscoveryStatus before = status;
+                status = new DiscoveryStatus(DiscoveryStatus.State.FAILED, now, before.lastSuccess(),
+                        before.scoredEntries(), before.candidates(), describe(e));
+            }
+            return false;
         }
 
         Snapshot previous = snapshot;
         Map<String, Long> scores;
+        // null: carry the last real refresh's state, attempt and error forward
         DiscoveryStatus.State state;
-        Instant lastSuccess = before.lastSuccess();
-        Instant attempted = now;
+        boolean succeeded = false;
         String error = null;
         if (trafficSource.isConfigured() && !readTraffic) {
             scores = Map.of();
-            state = before.state();
-            attempted = before.lastAttempt();
-            error = before.lastError();
+            state = null;
         } else if (trafficSource.isConfigured()) {
             LocalDate firstDay = LocalDate.ofInstant(now, ZoneOffset.UTC)
                     .minusDays(DiscoverySettings.windowDays() - 1L);
             try {
                 scores = score(trafficSource.viewsSince(firstDay), candidates, weblogs);
                 state = DiscoveryStatus.State.OK;
-                lastSuccess = now;
+                succeeded = true;
             } catch (WebloggerException | RuntimeException e) {
                 log.error("Discovery refresh could not read traffic; keeping the last scores", e);
                 scores = previous == null ? Map.of() : previous.scores;
@@ -197,14 +211,26 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
         // round, a page rendered in between carries the old picks under the
         // new date, and a generation-keyed cache keeps them a whole interval.
         // Both writes are volatile, so a reader that sees the new generation
-        // also sees the new snapshot. Refreshes are serialised by refreshLock,
-        // so nothing else moves the generation between these lines.
-        long generation = Math.max(clock.instant().toEpochMilli(), DiscoveryGeneration.current() + 1);
-        Snapshot built = new Snapshot(generation, now, candidates, weblogs, scores);
-        snapshot = built;
-        DiscoveryGeneration.advance(generation);
-        status = new DiscoveryStatus(state, attempted, lastSuccess, built.scoredEntries(),
-                built.pool.size(), error);
+        // also sees the new snapshot. Swaps are serialised by swapLock, so
+        // nothing else moves the generation between these lines.
+        synchronized (swapLock) {
+            if (!readTraffic && snapshot != null) {
+                // a refresh swapped in while the candidates were read: newer, and scored
+                return false;
+            }
+            DiscoveryStatus before = status;
+            long generation = Math.max(clock.instant().toEpochMilli(), DiscoveryGeneration.current() + 1);
+            Snapshot built = new Snapshot(generation, now, candidates, weblogs, scores);
+            snapshot = built;
+            DiscoveryGeneration.advance(generation);
+            boolean carried = state == null;
+            status = new DiscoveryStatus(carried ? before.state() : state,
+                    carried ? before.lastAttempt() : now,
+                    succeeded ? now : before.lastSuccess(),
+                    built.scoredEntries(), built.pool.size(),
+                    carried ? before.lastError() : error);
+            return true;
+        }
     }
 
     /**
@@ -289,10 +315,9 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
             return s;
         }
         boolean built = false;
-        synchronized (refreshLock) {
+        synchronized (firstBuildLock) {
             if (snapshot == null) {
-                rebuild(false);
-                built = snapshot != null;
+                built = rebuild(false);
             }
             s = snapshot;
         }

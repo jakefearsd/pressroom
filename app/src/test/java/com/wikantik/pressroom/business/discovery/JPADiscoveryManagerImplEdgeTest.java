@@ -39,9 +39,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -223,6 +226,88 @@ class JPADiscoveryManagerImplEdgeTest {
 
         assertTrue(source.callers.isEmpty(), "traffic was read on " + source.callers);
         assertEquals(1, background.size());
+    }
+
+    /**
+     * A scheduled or admin refresh can start before any page has been asked
+     * for (the first scheduled run is a minute or two after a restart). While
+     * it waits on a slow Umami, the first page still builds its own
+     * candidates-only snapshot instead of queueing behind the refresh, and
+     * the refresh's scored snapshot replaces it when the read returns.
+     */
+    @Test
+    void theFirstPageNeverWaitsOnARefreshThatIsReadingTraffic() throws Exception {
+        candidates(3);
+        blog.setAnalyticsSiteId("site-1");
+        CountDownLatch reading = new CountDownLatch(1);
+        CountDownLatch umamiAnswers = new CountDownLatch(1);
+        Configured source = new Configured(firstDay -> {
+            reading.countDown();
+            awaitQuietly(umamiAnswers);
+            return List.of(new TrafficRow("site-1", "post-2", 10));
+        });
+        JPADiscoveryManagerImpl manager = manager(source);
+        Thread refresher = new Thread(manager::refresh, "discovery-refresh");
+        refresher.start();
+        try {
+            assertTrue(reading.await(10, TimeUnit.SECONDS), "the refresh is reading traffic");
+            AtomicReference<FrontPageSelection> first = new AtomicReference<>();
+            Thread page = new Thread(() -> first.set(manager.selectFrontPage()), "page-request");
+            page.start();
+            page.join(5_000);
+
+            assertNotNull(first.get(), "the first page waited on the refresh's Umami read");
+            assertEquals("entry-0", first.get().headline().getId(), "no scores yet: the newest post leads");
+        } finally {
+            umamiAnswers.countDown();
+            refresher.join(10_000);
+        }
+
+        assertEquals(DiscoveryStatus.State.OK, manager.getStatus().state());
+        assertEquals("entry-2", manager.selectFrontPage().headline().getId(), "the refresh's scores win");
+    }
+
+    /**
+     * The other order: a refresh swaps in while the first page is still
+     * reading candidates. The refresh's snapshot is newer and scored, so the
+     * first build keeps it rather than replacing it, and schedules no second
+     * scored refresh.
+     */
+    @Test
+    void aRefreshThatLandsDuringTheFirstBuildIsKept() throws Exception {
+        List<DiscoveryCandidate> list = candidates(3);
+        blog.setAnalyticsSiteId("site-1");
+        JPADiscoveryManagerImpl manager = manager(
+                new Configured(firstDay -> List.of(new TrafficRow("site-1", "post-2", 10))));
+        AtomicBoolean firstRead = new AtomicBoolean(true);
+        AtomicBoolean refreshed = new AtomicBoolean();
+        when(tier.weblogEntryManager().getDiscoveryCandidates()).thenAnswer(call -> {
+            if (firstRead.getAndSet(false)) {
+                Thread refresher = new Thread(() -> {
+                    manager.refresh();
+                    refreshed.set(true);
+                }, "discovery-refresh");
+                refresher.start();
+                refresher.join(5_000);
+            }
+            return list;
+        });
+
+        FrontPageSelection first = manager.selectFrontPage();
+
+        assertTrue(refreshed.get(), "the refresh waited on the first build");
+        assertEquals("entry-2", first.headline().getId(), "the refresh's scored snapshot stands");
+        assertEquals(DiscoveryStatus.State.OK, manager.getStatus().state());
+        assertTrue(background.isEmpty(), "nothing left to score");
+    }
+
+    private static void awaitQuietly(CountDownLatch latch) {
+        try {
+            assertTrue(latch.await(30, TimeUnit.SECONDS));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+        }
     }
 
     @Test
