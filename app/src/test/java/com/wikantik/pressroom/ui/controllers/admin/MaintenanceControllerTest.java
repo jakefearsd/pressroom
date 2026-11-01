@@ -17,12 +17,15 @@
  */
 package com.wikantik.pressroom.ui.controllers.admin;
 
+import java.time.Instant;
 import java.util.List;
 
 import jakarta.servlet.http.HttpServletRequest;
 
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.MockWeblogger;
+import com.wikantik.pressroom.business.discovery.DiscoveryStatus;
+import com.wikantik.pressroom.business.discovery.DiscoveryStatus.State;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -317,6 +320,65 @@ class MaintenanceControllerTest {
         assertTrue(ControllerTestFixture.errors(model).contains("maintenance.error.noSuchWeblog"),
                 "Expected a no-such-weblog error, got: " + ControllerTestFixture.errors(model));
         verify(weblogger.weblogManager(), never()).saveWeblog(any());
+    }
+
+    // --- front page discovery ---
+
+    private static DiscoveryStatus status(State state, String error) {
+        return new DiscoveryStatus(state, Instant.parse("2026-11-01T10:00:00Z"),
+                Instant.parse("2026-11-01T09:00:00Z"), 3, 40, error);
+    }
+
+    @Test
+    void getExposesDiscoveryStatus() {
+        DiscoveryStatus status = status(State.OK, null);
+        when(weblogger.discoveryManager().getStatus()).thenReturn(status);
+
+        controller.execute(request(), model, null);
+
+        assertSame(status, model.getAttribute("discoveryStatus"));
+        assertEquals(java.util.Date.from(status.lastAttempt()), model.getAttribute("discoveryLastAttempt"));
+        assertEquals(java.util.Date.from(status.lastSuccess()), model.getAttribute("discoveryLastSuccess"));
+    }
+
+    @Test
+    void refreshNowCallsRefreshAndReportsOk() {
+        when(weblogger.discoveryManager().getStatus()).thenReturn(status(State.OK, null));
+
+        String view = controller.refreshDiscovery(request(), model);
+
+        assertEquals(".Maintenance", view);
+        verify(weblogger.discoveryManager()).refresh();
+        assertTrue(ControllerTestFixture.messages(model).contains("maintenance.discovery.refreshed"),
+                String.valueOf(ControllerTestFixture.messages(model)));
+        assertTrue(ControllerTestFixture.errors(model).isEmpty());
+        assertEquals(State.OK, ((DiscoveryStatus) model.getAttribute("discoveryStatus")).state());
+    }
+
+    @Test
+    void refreshNowReportsFailureMessage() {
+        when(weblogger.discoveryManager().getStatus())
+                .thenReturn(status(State.FAILED, "<b>timeout</b> & \"more\""));
+
+        controller.refreshDiscovery(request(), model);
+
+        String error = ControllerTestFixture.errors(model).toString();
+        assertTrue(error.contains("maintenance.discovery.refreshFailed"), error);
+        assertTrue(error.contains("&lt;b&gt;timeout&lt;/b&gt; &amp; &quot;more&quot;"), error);
+        assertFalse(error.contains("<b>"), error);
+        assertTrue(ControllerTestFixture.messages(model).isEmpty());
+    }
+
+    @Test
+    void disabledStateExplainsUmamiNotConfigured() {
+        when(weblogger.discoveryManager().getStatus()).thenReturn(
+                new DiscoveryStatus(State.DISABLED, null, null, 0, 0, null));
+
+        controller.refreshDiscovery(request(), model);
+
+        assertTrue(ControllerTestFixture.errors(model).contains("maintenance.discovery.state.DISABLED"),
+                String.valueOf(ControllerTestFixture.errors(model)));
+        assertTrue(ControllerTestFixture.messages(model).isEmpty());
     }
 
     // --- helpers ---

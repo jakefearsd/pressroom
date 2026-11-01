@@ -31,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -129,6 +130,30 @@ class MaintenanceControllerRequestBindingTest {
 
         assertNoSuchWeblogErrorInModel(result);
         verify(weblogger.mediaFileManager(), never()).regenerateRenditions(any());
+    }
+
+    @Test
+    void refreshDiscoveryIsPostOnly() throws Exception {
+        mockMvc.perform(get("/pressroom-ui/admin/maintenance!refreshDiscovery.rol")
+                        .requestAttr("authenticatedUser", new User()))
+                .andExpect(status().isMethodNotAllowed());
+        verify(weblogger.discoveryManager(), never()).refresh();
+    }
+
+    @Test
+    void refreshDiscoveryNeedsNoWeblogIdAndRefreshes() throws Exception {
+        mockMvc.perform(post("/pressroom-ui/admin/maintenance!refreshDiscovery.rol")
+                        .requestAttr("authenticatedUser", new User()))
+                .andExpect(status().isOk());
+        verify(weblogger.discoveryManager()).refresh();
+    }
+
+    @Test
+    void refreshDiscoveryIsAdminOnlyLikeTheOtherOps() {
+        // PressroomHandlerInterceptor gates by the controller's class-level
+        // permission list, so the new handler inherits the same ADMIN gate.
+        assertTrue(new MaintenanceController().requiredGlobalPermissionActions()
+                .contains(com.wikantik.pressroom.pojos.GlobalPermission.ADMIN));
     }
 
     @SuppressWarnings("unchecked")

@@ -120,6 +120,45 @@
 
 </form>
 
+<%-- Its own form, not another button in the weblog form above: that form's
+     script disables every submit until a weblog is chosen, and this
+     operation is site-wide. The marker form's action stays untouched. --%>
+<c:if test="${not empty discoveryStatus}">
+<form action="${pageContext.request.contextPath}/pressroom-ui/admin/maintenance!refreshDiscovery.rol" method="post" class="form-stacked guard-submit">
+<sec:csrfInput/>
+    <div class="maintenance-op maintenance-discovery">
+        <h2><spring:message code="maintenance.discovery.title"/></h2>
+        <p>
+            <c:choose>
+                <c:when test="${discoveryStatus.state == 'DISABLED'}"><spring:message code="maintenance.discovery.state.DISABLED"/></c:when>
+                <c:when test="${discoveryStatus.state == 'OK'}"><spring:message code="maintenance.discovery.state.OK"/></c:when>
+                <c:when test="${discoveryStatus.state == 'FAILED'}"><spring:message code="maintenance.discovery.state.FAILED"/></c:when>
+                <c:otherwise><spring:message code="maintenance.discovery.state.NEVER"/></c:otherwise>
+            </c:choose>
+        </p>
+        <dl>
+            <c:if test="${not empty discoveryLastAttempt}">
+                <dt><spring:message code="maintenance.discovery.lastAttempt"/></dt>
+                <dd><rc:date value="${discoveryLastAttempt}"/></dd>
+            </c:if>
+            <c:if test="${not empty discoveryLastSuccess}">
+                <dt><spring:message code="maintenance.discovery.lastSuccess"/></dt>
+                <dd><rc:date value="${discoveryLastSuccess}"/></dd>
+            </c:if>
+            <c:if test="${discoveryStatus.state == 'OK' || discoveryStatus.state == 'FAILED'}">
+                <dd><spring:message code="maintenance.discovery.counts" arguments="${fn:escapeXml(discoveryStatus.scoredEntries)},${fn:escapeXml(discoveryStatus.candidates)}"/></dd>
+            </c:if>
+            <c:if test="${not empty discoveryStatus.lastError}">
+                <dt><spring:message code="maintenance.discovery.lastError"/></dt>
+                <dd>${fn:escapeXml(discoveryStatus.lastError)}</dd>
+            </c:if>
+        </dl>
+        <button type="submit" class="btn btn-secondary"
+                data-busy-label="<spring:message code='maintenance.regenerateRenditions.building'/>"><spring:message code="maintenance.discovery.refresh"/></button>
+    </div>
+</form>
+</c:if>
+
 <script>
     // Rewrites each long operation's prompt so it names the weblog the
     // select currently holds (see the comment above the first operation),
