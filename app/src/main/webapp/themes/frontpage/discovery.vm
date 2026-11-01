@@ -1,0 +1,97 @@
+## The discovery front page: what / shows when no site page or weblog is
+## the front door (FrontDoor forwards to the site space's page/discovery,
+## which nothing else routes). Built from _header/_footer like the other
+## views, so the head (CSP, SEO, analytics, every asset macro) stays in one
+## place; the canonical is the site root (PageModel#getCanonicalUrl).
+##
+## $discovery.frontPage is the picker's selection, wrapped: entry titles are
+## stored escaped and emitted bare, weblog names are escaped by the wrapper,
+## and every href goes through $utils.escapeHTML. Links are absolute, so a
+## blog on its own custom domain is reached on that host.
+##
+## The section classes (fd-discovery-headline, -popular, -blogs, -different,
+## -all) are stable markers the rendering tests and the browser suite pin:
+## restyle through the item classes, never by renaming these.
+#includeTemplate($model.weblog "_header")
+
+#set($dFront = $discovery.frontPage)
+#if($dFront.allBlogs.isEmpty())
+<p class="fd-list-empty">$text.get("siteDirectory.empty")</p>
+#else
+
+#if($dFront.headline)
+#set($dLead = $dFront.headline)
+<section class="fd-discovery-headline" aria-labelledby="fd-discovery-headline-label">
+    <h2 class="fd-label" id="fd-discovery-headline-label">$text.get("discovery.headline")</h2>
+    <article class="fd-discovery-post fd-discovery-lead">
+        <p class="from"><a href="$utils.escapeHTML($dLead.website.absoluteURL)">$dLead.website.name</a></p>
+        <p class="t"><a href="$utils.escapeHTML($dLead.permalink)">$dLead.title</a></p>
+    </article>
+</section>
+#end
+
+#if(!$dFront.popular.isEmpty())
+<section class="fd-discovery-popular" aria-labelledby="fd-discovery-popular-label">
+    <h2 class="fd-label" id="fd-discovery-popular-label">$text.get("discovery.popular")</h2>
+    <ul class="fd-discovery-grid">
+    #foreach($dPost in $dFront.popular)
+        <li class="fd-discovery-post">
+            <p class="from"><a href="$utils.escapeHTML($dPost.website.absoluteURL)">$dPost.website.name</a></p>
+            <p class="t"><a href="$utils.escapeHTML($dPost.permalink)">$dPost.title</a></p>
+        </li>
+    #end
+    </ul>
+</section>
+#end
+
+#if(!$dFront.blogs.isEmpty())
+<section class="fd-discovery-blogs" aria-labelledby="fd-discovery-blogs-label">
+    <h2 class="fd-label" id="fd-discovery-blogs-label">$text.get("discovery.blogs")</h2>
+    <ul class="fd-discovery-grid fd-discovery-grid-3">
+    #foreach($dCard in $dFront.blogs)
+        <li class="fd-discovery-card">
+            <p class="n"><a href="$utils.escapeHTML($dCard.weblog.absoluteURL)">$dCard.weblog.name</a></p>
+            <ul class="fd-discovery-top">
+            #foreach($dPost in $dCard.topEntries)
+                <li><a href="$utils.escapeHTML($dPost.permalink)">$dPost.title</a></li>
+            #end
+            </ul>
+        </li>
+    #end
+    </ul>
+</section>
+#end
+
+#if(!$dFront.different.isEmpty())
+<section class="fd-discovery-different" aria-labelledby="fd-discovery-different-label">
+    <h2 class="fd-label" id="fd-discovery-different-label">$text.get("discovery.different")</h2>
+    <ul class="fd-discovery-grid fd-discovery-grid-3">
+    #foreach($dPost in $dFront.different)
+        <li class="fd-discovery-post">
+            <p class="from"><a href="$utils.escapeHTML($dPost.website.absoluteURL)">$dPost.website.name</a></p>
+            <p class="t"><a href="$utils.escapeHTML($dPost.permalink)">$dPost.title</a></p>
+        </li>
+    #end
+    </ul>
+</section>
+#end
+
+## Places you've been: the reader's own recent blogs, from their browser's
+## storage only. This container stays hidden, and empty, until the
+## showPlacesYouveBeen macro (the "more from the site" work) fills it in
+## place; with no storage or no JavaScript nothing ever shows.
+<nav class="places-been" hidden data-places aria-labelledby="fd-discovery-places-label">
+    <h2 class="fd-label" id="fd-discovery-places-label">$text.get("discovery.placesBeen")</h2>
+</nav>
+
+<section class="fd-discovery-all" aria-labelledby="fd-discovery-all-label">
+    <h2 class="fd-label" id="fd-discovery-all-label">$text.get("discovery.allBlogs")</h2>
+    <ul class="fd-discovery-list">
+    #foreach($dBlog in $dFront.allBlogs)
+        <li><a href="$utils.escapeHTML($dBlog.absoluteURL)">$dBlog.name</a></li>
+    #end
+    </ul>
+</section>
+#end
+
+#includeTemplate($model.weblog "_footer")

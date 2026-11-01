@@ -36,6 +36,7 @@ import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogTheme;
 import com.wikantik.pressroom.ui.core.PressroomContext;
+import com.wikantik.pressroom.ui.rendering.FrontDoor;
 import com.wikantik.pressroom.ui.rendering.RedirectResponder;
 import com.wikantik.pressroom.ui.rendering.util.ModDateHeaderUtil;
 import com.wikantik.pressroom.ui.rendering.util.WeblogPageRequest;
@@ -420,6 +421,24 @@ public class PageServlet extends HttpServlet {
     }
 
     /**
+     * The site space's discovery front page: its theme's own template of that
+     * name (frontpage ships one, in its fd chrome), else the shared plain
+     * fallback, so a site space on journal, travel, portfolio or a forked
+     * theme still renders {@code /}. A lookup that fails falls back too:
+     * {@code /} is never a 404 or a 500.
+     */
+    private static ThemeTemplate discoveryTemplate(Weblog weblog, ThemeManager themes) {
+        ThemeTemplate template = null;
+        try {
+            template = themes.getTheme(weblog).getTemplateByName(FrontDoor.DISCOVERY_TEMPLATE);
+        } catch (Exception e) {
+            log.warn("Error looking up the discovery template of the site space; using the shared one", e);
+        }
+        return template != null ? template
+                : new StaticThemeTemplate("templates/weblog/discovery.vm", TemplateLanguage.VELOCITY);
+    }
+
+    /**
      * The template that renders this request, or {@code null} when nothing
      * does and the answer is a 404.
      *
@@ -468,10 +487,17 @@ public class PageServlet extends HttpServlet {
         }
 
         // If request specified the page, then go with that. No fallback: this
-        // one 404s rather than quietly serving the default template.
+        // one 404s rather than quietly serving the default template -- except
+        // the site space's discovery front page, which / forwards to whatever
+        // theme the site runs.
         if ("page".equals(pageRequest.getContext())) {
-            if (weblog.isSiteSpace() && !isStylesheetLink(pageRequest.getWeblogPageName(), weblog, themes)) {
-                return null;
+            if (weblog.isSiteSpace()) {
+                if (FrontDoor.DISCOVERY_TEMPLATE.equals(pageRequest.getWeblogPageName())) {
+                    return discoveryTemplate(weblog, themes);
+                }
+                if (!isStylesheetLink(pageRequest.getWeblogPageName(), weblog, themes)) {
+                    return null;
+                }
             }
             return pageRequest.getWeblogPage();
         }
@@ -523,7 +549,11 @@ public class PageServlet extends HttpServlet {
     static String rejectionReason(WeblogPageRequest pageRequest, Weblog weblog,
             ThemeTemplate page, boolean isSiteWide, WeblogEntryManager wmgr) {
 
-        if (pageRequest.getWeblogPageName() != null && page.isHidden()) {
+        // The frontpage theme's discovery template is hidden so that a blog
+        // on that theme does not serve the site's front page by name; in the
+        // site space, selectTemplate has already narrowed the names to it.
+        if (pageRequest.getWeblogPageName() != null && page.isHidden()
+                && !(weblog.isSiteSpace() && FrontDoor.DISCOVERY_TEMPLATE.equals(pageRequest.getWeblogPageName()))) {
             return "template is hidden";
         }
 

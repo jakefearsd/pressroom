@@ -325,10 +325,14 @@ class SiteSpaceThemeRenderingTest {
         assertFalse(blogBody.contains("Contact forms are not available"), blogBody);
     }
 
-    /** Everything under the handle that is not an asset stays a 404: the mapper declines it. */
+    /**
+     * Everything under the handle that is not an asset stays a 404: the mapper
+     * declines it. That includes the discovery page, whose one address is {@code /}.
+     */
     @Test
     void theSiteSpacesOtherContextsAreNotServed() throws Exception {
-        for (String path : List.of("/site-space/", "/site-space/sitethemeabout", "/site-space/entry/x",
+        for (String path : List.of("/site-space/", "/site-space/sitethemeabout", "/site-space/page/discovery",
+                "/site-space/entry/x",
                 "/site-space/feed/entries/atom", "/site-space/search", "/site-space/category/General",
                 "/site-space/tags/x", "/site-space/date/20261025")) {
             MockHttpServletResponse response = new MockHttpServletResponse();

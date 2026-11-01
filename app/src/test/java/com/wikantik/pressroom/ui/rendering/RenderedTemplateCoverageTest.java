@@ -77,6 +77,8 @@ class RenderedTemplateCoverageTest {
         RENDERED_BY.put("templates/feeds/site-entries-atom.vm", leak);
         // page.vm: static-page fallback of a CUSTOM theme with no templates.
         RENDERED_BY.put("templates/weblog/page.vm", FallbackPageTitleTest.class);
+        // discovery.vm: the discovery front page of a site space on a theme with no discovery template (journal).
+        RENDERED_BY.put("templates/weblog/discovery.vm", DiscoveryFrontPageRenderingTest.class);
         // preview.vm: the PreviewServlet shell.
         RENDERED_BY.put("templates/weblog/preview.vm", named("servlets.PreviewShellRenderingTest"));
     }

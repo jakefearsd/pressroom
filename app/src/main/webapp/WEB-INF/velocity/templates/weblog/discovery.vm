@@ -1,0 +1,108 @@
+#**
+The discovery front page at the site root, for a site space whose theme has
+no template named discovery (journal, travel, portfolio, or a forked theme):
+FrontDoor forwards / to the site space's page/discovery and PageServlet falls
+back to this. Plain markup, like the shared page.vm; the theme's stylesheet is
+linked for its base type.
+
+The section classes (fd-discovery-headline, -popular, -blogs, -different,
+-all) are the same stable markers the frontpage theme's discovery.vm carries;
+the rendering tests and the browser suite pin them.
+*#
+<!DOCTYPE html>
+## lang: WeblogWrapper#getLanguageTag, as page.vm explains.
+<html lang="$model.weblog.getLanguageTag()">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src * data:; frame-src https://www.youtube-nocookie.com https://player.vimeo.com; font-src 'self'; base-uri 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'">
+    ## The site space's name is the site's, pre-escaped by WeblogWrapper#getName.
+    <title>$model.weblog.name</title>
+    <link href="$url.absoluteSite/favicon.svg" rel="icon" type="image/svg+xml" />
+    ## The site space has no posts, so no feed autodiscovery.
+    #showSeoHead()
+    #showAnalyticsTrackingCode($model.weblog)
+    #if($model.weblog.stylesheet)<link rel="stylesheet" href="$model.weblog.stylesheet">#end
+</head>
+<body class="discovery">
+<header>
+    <p><a href="$url.home">$model.weblog.name</a></p>
+    ## the page-links macro emits bare list items, so the list is ours
+    <nav><ul class="page-nav">#showPageLinks($model.weblog)</ul></nav>
+</header>
+<main>
+## $discovery.frontPage: entry titles are stored escaped (emitted bare),
+## weblog names are escaped by the wrapper, every href is escaped here.
+#set($dFront = $discovery.frontPage)
+#if($dFront.allBlogs.isEmpty())
+    <p>$text.get("siteDirectory.empty")</p>
+#else
+#if($dFront.headline)
+#set($dLead = $dFront.headline)
+    <section class="fd-discovery-headline">
+        <h2>$text.get("discovery.headline")</h2>
+        <article class="fd-discovery-post">
+            <p><a href="$utils.escapeHTML($dLead.website.absoluteURL)">$dLead.website.name</a></p>
+            <h3><a href="$utils.escapeHTML($dLead.permalink)">$dLead.title</a></h3>
+        </article>
+    </section>
+#end
+#if(!$dFront.popular.isEmpty())
+    <section class="fd-discovery-popular">
+        <h2>$text.get("discovery.popular")</h2>
+        <ul>
+        #foreach($dPost in $dFront.popular)
+            <li class="fd-discovery-post"><a href="$utils.escapeHTML($dPost.permalink)">$dPost.title</a>
+                (<a href="$utils.escapeHTML($dPost.website.absoluteURL)">$dPost.website.name</a>)</li>
+        #end
+        </ul>
+    </section>
+#end
+#if(!$dFront.blogs.isEmpty())
+    <section class="fd-discovery-blogs">
+        <h2>$text.get("discovery.blogs")</h2>
+        <ul>
+        #foreach($dCard in $dFront.blogs)
+            <li class="fd-discovery-card"><a href="$utils.escapeHTML($dCard.weblog.absoluteURL)">$dCard.weblog.name</a>
+                <ul>
+                #foreach($dPost in $dCard.topEntries)
+                    <li><a href="$utils.escapeHTML($dPost.permalink)">$dPost.title</a></li>
+                #end
+                </ul>
+            </li>
+        #end
+        </ul>
+    </section>
+#end
+#if(!$dFront.different.isEmpty())
+    <section class="fd-discovery-different">
+        <h2>$text.get("discovery.different")</h2>
+        <ul>
+        #foreach($dPost in $dFront.different)
+            <li class="fd-discovery-post"><a href="$utils.escapeHTML($dPost.permalink)">$dPost.title</a>
+                (<a href="$utils.escapeHTML($dPost.website.absoluteURL)">$dPost.website.name</a>)</li>
+        #end
+        </ul>
+    </section>
+#end
+    ## Places you've been: hidden and empty until the showPlacesYouveBeen
+    ## macro (the "more from the site" work) fills it from the reader's own
+    ## browser storage; without storage or JavaScript nothing shows.
+    <nav class="places-been" hidden data-places aria-labelledby="discovery-places-label">
+        <h2 id="discovery-places-label">$text.get("discovery.placesBeen")</h2>
+    </nav>
+    <section class="fd-discovery-all">
+        <h2>$text.get("discovery.allBlogs")</h2>
+        <ul>
+        #foreach($dBlog in $dFront.allBlogs)
+            <li><a href="$utils.escapeHTML($dBlog.absoluteURL)">$dBlog.name</a></li>
+        #end
+        </ul>
+    </section>
+#end
+</main>
+<footer>
+    #showColophon($model.weblog)
+</footer>
+</body>
+</html>

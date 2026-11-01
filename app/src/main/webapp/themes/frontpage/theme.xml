@@ -138,6 +138,22 @@
         </rendition>
     </template>
     
+    <!-- the discovery front page at the site root: the site space serves it
+         to FrontDoor's forward alone (PageServlet looks it up by name), and
+         hidden keeps a blog on this theme from serving it by name -->
+    <template action="custom">
+        <name>discovery</name>
+        <description>discovery front page</description>
+        <link>discovery</link>
+        <navbar>false</navbar>
+        <hidden>true</hidden>
+        <contentType>text/html</contentType>
+        <rendition>
+            <contentsFile>discovery.vm</contentsFile>
+            <templateLanguage>velocity</templateLanguage>
+        </rendition>
+    </template>
+
     <!-- resources: none. The two tan GIFs declared here were the last of the
          pre-restyle raster assets; no template referenced them and the files
          are deleted, so a declaration would only make ThemeManager try to
