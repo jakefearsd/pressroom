@@ -317,8 +317,61 @@ class MoreFromSiteRenderingTest {
     void placesScriptCapsAtFive() throws Exception {
         String script = placesMacro();
         assertTrue(script.contains("'pressroom.places'"), "the storage key:\n" + script);
-        assertTrue(Pattern.compile("(?s)\\bcap\\s*=\\s*5\\b.*\\.slice\\(0,\\s*cap\\)").matcher(script).find(),
-                "the list is cut to five:\n" + script);
+        assertTrue(Pattern.compile("\\bcap\\s*=\\s*5\\b").matcher(script).find(), "the cap is five:\n" + script);
+        // Ruling 11: five OTHER blogs on a blog page, so the stored list keeps
+        // one more, the current blog included; the front page records nothing
+        // and shows five.
+        assertTrue(Pattern.compile("places\\s*=\\s*places\\.slice\\(0,\\s*cap\\s*\\+\\s*1\\)").matcher(script).find(),
+                "the stored list keeps cap + 1, the current blog included:\n" + script);
+        assertTrue(Pattern.compile("others\\s*=\\s*places\\.filter\\([^\\n]*\\)\\.slice\\(0,\\s*cap\\);").matcher(script).find(),
+                "five other blogs are shown:\n" + script);
+    }
+
+    /**
+     * Storage is writable by any script on the origin, so what comes back is
+     * untrusted: the url filter is the one barrier between it and a live
+     * href, and a name only ever reaches the page as text. Checked on the
+     * script as rendered, not just its source.
+     */
+    @Test
+    void placesScriptFiltersUrlsAndWritesNamesAsText() throws Exception {
+        Weblog current = threeBlogsOfTwo();
+        String body = page("/" + current.getHandle() + "/");
+        int start = body.indexOf("<script>", body.indexOf("data-places-record"));
+        String script = body.substring(start, body.indexOf("</script>", start));
+        assertTrue(script.contains("'pressroom.places'"), "the places script:\n" + script);
+        assertTrue(script.contains("&& /^https?:\\/\\//.test(p.url);"),
+                "only an http(s) url is usable:\n" + script);
+        assertTrue(Pattern.compile("stored\\.filter\\(function \\(p\\) \\{ return usable\\(p\\)").matcher(script).find(),
+                "every stored entry passes the filter before use:\n" + script);
+        assertTrue(Pattern.compile("if \\(usable\\(current\\)\\)").matcher(script).find(),
+                "and so does the current blog:\n" + script);
+        assertEquals(2, count(script, "p.name"), "a name is used twice, no more:\n" + script);
+        assertTrue(script.contains("typeof p.name === 'string'") && script.contains("a.textContent = p.name;"),
+                "a name is only type-checked and written as text:\n" + script);
+        assertEquals(1, count(script, ".href = "), "one href, the filtered url:\n" + script);
+        assertTrue(script.contains("a.href = p.url;"), script);
+    }
+
+    /**
+     * A corrupt value must not lock the list out forever: storage that
+     * cannot be read stops the script, but a value that will not parse is
+     * read as an empty list, so this visit's save overwrites it.
+     */
+    @Test
+    void corruptStoredListIsReplacedNotFatal() throws Exception {
+        String script = placesMacro();
+        Matcher read = Pattern.compile("try\\s*\\{([^}]*localStorage\\.getItem[^}]*)\\}\\s*catch\\s*\\(e\\)\\s*\\{([^}]*)\\}")
+                .matcher(script);
+        assertTrue(read.find(), "reading storage has its own try/catch:\n" + script);
+        assertFalse(read.group(1).contains("JSON.parse"), "parsing is not in the read's try:\n" + read.group(1));
+        assertTrue(read.group(2).contains("return"), "unreadable storage stops the script:\n" + read.group(2));
+        Matcher parse = Pattern.compile("try\\s*\\{([^}]*JSON\\.parse[^}]*)\\}\\s*catch\\s*\\(e\\)\\s*\\{([^}]*)\\}")
+                .matcher(script);
+        assertTrue(parse.find(), "parsing has its own try/catch:\n" + script);
+        assertFalse(parse.group(2).contains("return"), "a corrupt value does not stop the script:\n" + parse.group(2));
+        assertTrue(Pattern.compile("stored\\s*=\\s*\\[\\]").matcher(parse.group(2)).find(),
+                "a corrupt value reads as an empty list:\n" + parse.group(2));
     }
 
     // ------------------------------------------------------------- helpers

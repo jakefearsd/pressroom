@@ -2405,7 +2405,11 @@ browser only (localStorage, key pressroom.places, a JSON array of
 this on every page that has $discovery (not on a preview).
 
 On a blog's page a hidden recording element names the blog; the inline
-script moves it to the front of the list, cuts the list to five and saves it.
+script moves it to the front of the list, keeps six (the current blog and
+five others) and saves it, so a blog page and the front page (never
+recorded) both show five. Storage that cannot be read stops the script; a
+value that will not parse reads as an empty list, so this visit's save
+replaces it. Only an http(s) url is ever used as an href.
 Opting out of the more-from-the-site block does not stop the recording. The
 site space is never recorded. The script then writes the other blogs into
 every [data-places] container on the page -- the one inside the
@@ -2424,7 +2428,7 @@ and no hash in the script: Velocity would read either.
 #end
 <script>
 (function () {
-    var key = 'pressroom.places', cap = 5, places = [], stored;
+    var key = 'pressroom.places', cap = 5, places = [], raw, stored;
     var mark = document.querySelector('[data-places-record]');
     var here = mark ? mark.getAttribute('data-handle') : null;
     function usable(p) {
@@ -2432,9 +2436,14 @@ and no hash in the script: Velocity would read either.
             && typeof p.url === 'string' && /^https?:\/\//.test(p.url);
     }
     try {
-        stored = JSON.parse(window.localStorage.getItem(key) || '[]');
+        raw = window.localStorage.getItem(key);
     } catch (e) {
         return;
+    }
+    try {
+        stored = JSON.parse(raw || '[]');
+    } catch (e) {
+        stored = [];
     }
     if (Array.isArray(stored)) {
         places = stored.filter(function (p) { return usable(p) && p.handle !== here; });
@@ -2445,7 +2454,7 @@ and no hash in the script: Velocity would read either.
             places.unshift(current);
         }
     }
-    places = places.slice(0, cap);
+    places = places.slice(0, cap + 1);
     if (mark) {
         try {
             window.localStorage.setItem(key, JSON.stringify(places));
@@ -2453,7 +2462,7 @@ and no hash in the script: Velocity would read either.
             // storage full or refused: the list is simply not kept
         }
     }
-    var others = places.filter(function (p) { return p.handle !== here; });
+    var others = places.filter(function (p) { return p.handle !== here; }).slice(0, cap);
     function fill() {
         var lists = document.querySelectorAll('[data-places]');
         for (var i = 0; i < lists.length; i++) {
