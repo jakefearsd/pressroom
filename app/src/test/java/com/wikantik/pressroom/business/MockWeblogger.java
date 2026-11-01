@@ -22,6 +22,7 @@ import com.wikantik.pressroom.config.RuntimeConfigAttachment;
 import com.wikantik.pressroom.business.plugins.PluginManager;
 import com.wikantik.pressroom.business.shortcodes.ShortcodeExpander;
 import org.mockito.Mockito;
+import com.wikantik.pressroom.business.discovery.DiscoveryManager;
 import com.wikantik.pressroom.business.search.IndexManager;
 import com.wikantik.pressroom.business.themes.ThemeManager;
 import com.wikantik.pressroom.business.runnable.ThreadManager;
@@ -71,6 +72,7 @@ public final class MockWeblogger {
     private final PropertiesManager propertiesManager = mock(PropertiesManager.class);
     private final ThreadManager threadManager = mock(ThreadManager.class);
     private final IndexManager indexManager = mock(IndexManager.class);
+    private final DiscoveryManager discoveryManager = mock(DiscoveryManager.class);
     private final ThemeManager themeManager = mock(ThemeManager.class);
     private final PluginManager pluginManager = mock(PluginManager.class);
     private final MediaFileManager mediaFileManager = mock(MediaFileManager.class);
@@ -102,6 +104,9 @@ public final class MockWeblogger {
         when(weblogger.getPropertiesManager()).thenReturn(propertiesManager);
         when(weblogger.getThreadManager()).thenReturn(threadManager);
         when(weblogger.getIndexManager()).thenReturn(indexManager);
+        when(weblogger.getDiscoveryManager()).thenReturn(discoveryManager);
+        when(discoveryManager.getStatus()).thenReturn(new com.wikantik.pressroom.business.discovery.DiscoveryStatus(
+                com.wikantik.pressroom.business.discovery.DiscoveryStatus.State.NEVER, null, null, 0, 0, null));
         when(weblogger.getThemeManager()).thenReturn(themeManager);
         when(weblogger.getPluginManager()).thenReturn(pluginManager);
         when(weblogger.getMediaFileManager()).thenReturn(mediaFileManager);
@@ -280,6 +285,10 @@ public final class MockWeblogger {
 
     public ThreadManager threadManager() {
         return threadManager;
+    }
+
+    public DiscoveryManager discoveryManager() {
+        return discoveryManager;
     }
 
     public IndexManager indexManager() {

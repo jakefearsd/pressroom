@@ -159,6 +159,34 @@ class MaintenanceJspTest {
                 "an action stays disabled while no weblog is chosen");
     }
 
+    @Test
+    void statusBlockRendersEachState() throws IOException {
+        String source = Files.readString(JSP, StandardCharsets.UTF_8);
+        assertTrue(source.contains("code=\"maintenance.discovery.title\""));
+        for (String state : new String[] {"DISABLED", "NEVER", "OK", "FAILED"}) {
+            assertTrue(source.contains("code=\"maintenance.discovery.state." + state + "\""),
+                    "a literal key for state " + state);
+        }
+        assertTrue(source.contains("<rc:date value=\"${discoveryLastAttempt}\"/>"));
+        assertTrue(source.contains("<rc:date value=\"${discoveryLastSuccess}\"/>"));
+        assertTrue(source.contains("code=\"maintenance.discovery.counts\""));
+        assertTrue(source.contains("maintenance!refreshDiscovery.rol"));
+        assertTrue(source.contains("code=\"maintenance.discovery.refresh\""));
+        // The routed marker form is left alone, and the refresh form is its own
+        // so the weblog picker's script (which disables every submit in the
+        // marker form until a weblog is chosen) does not disable it.
+        assertEquals(1, count(source,
+                "action=\"${pageContext.request.contextPath}/pressroom-ui/admin/maintenance.rol\""));
+        assertEquals(2, count(source, "<sec:csrfInput/>"));
+    }
+
+    @Test
+    void lastErrorIsEscaped() throws IOException {
+        String source = Files.readString(JSP, StandardCharsets.UTF_8);
+        assertTrue(source.contains("${fn:escapeXml(discoveryStatus.lastError)}"));
+        assertFalse(source.contains("${discoveryStatus.lastError}"));
+    }
+
     private static int count(String haystack, String needle) {
         int n = 0;
         for (int i = haystack.indexOf(needle); i >= 0; i = haystack.indexOf(needle, i + 1)) {

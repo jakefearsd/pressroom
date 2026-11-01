@@ -19,14 +19,17 @@
 package com.wikantik.pressroom.ui.controllers.admin;
 
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import org.apache.commons.text.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.MaintenanceService;
+import com.wikantik.pressroom.business.discovery.DiscoveryStatus;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.controllers.BaseController;
@@ -113,8 +116,47 @@ public class MaintenanceController extends BaseController {
             addError(model, "maintenance.error.noSuchWeblog", request);
         }
         model.addAttribute("selectedWeblog", weblog);
+        addDiscoveryStatus(model);
 
         return ".Maintenance";
+    }
+
+    /**
+     * Rebuilds the front page popularity snapshot now and reports how it went.
+     * Synchronous: the admin pressed the button to see the outcome. The
+     * manager never throws; a failed Umami read comes back as a FAILED status.
+     */
+    @PostMapping("/maintenance!refreshDiscovery.rol")
+    public String refreshDiscovery(HttpServletRequest request, Model model) {
+        populateCommonModel(request, model);
+        model.addAttribute("weblogs", loadWeblogs());
+        model.addAttribute("selectedWeblog", null);
+
+        weblogger.getDiscoveryManager().refresh();
+        DiscoveryStatus status = addDiscoveryStatus(model);
+
+        switch (status.state()) {
+            case OK -> addMessage(model, "maintenance.discovery.refreshed", request);
+            case FAILED -> {
+                // <spring:message arguments> and the messages banner do not
+                // escape, and the error text comes from outside.
+                String reason = StringEscapeUtils.escapeHtml4(String.valueOf(status.lastError()));
+                addError(model, "maintenance.discovery.refreshFailed", reason, request);
+            }
+            default -> addError(model, "maintenance.discovery.state." + status.state().name(), request);
+        }
+        return ".Maintenance";
+    }
+
+    private DiscoveryStatus addDiscoveryStatus(Model model) {
+        DiscoveryStatus status = weblogger.getDiscoveryManager().getStatus();
+        model.addAttribute("discoveryStatus", status);
+        // rc:date renders java.util.Date.
+        model.addAttribute("discoveryLastAttempt",
+                status.lastAttempt() == null ? null : Date.from(status.lastAttempt()));
+        model.addAttribute("discoveryLastSuccess",
+                status.lastSuccess() == null ? null : Date.from(status.lastSuccess()));
+        return status;
     }
 
     @PostMapping("/maintenance!flushCache.rol")
