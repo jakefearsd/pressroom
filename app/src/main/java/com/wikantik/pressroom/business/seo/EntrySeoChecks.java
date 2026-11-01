@@ -107,7 +107,7 @@ public final class EntrySeoChecks {
                     + SeoLimits.TITLE_MAX + " characters for search results."));
         }
         if (StringUtils.isBlank(entry.getFeaturedImageId())) {
-            gaps.add(Finding.of(MISSING_FEATURED_IMAGE, WARNING, "There is no featured image, so a shared "
+            gaps.add(Finding.of(MISSING_FEATURED_IMAGE, INFO, "There is no featured image, so a shared "
                     + "link or a search result shows no picture. Set featuredImageId to one of the weblog's "
                     + "images."));
         }

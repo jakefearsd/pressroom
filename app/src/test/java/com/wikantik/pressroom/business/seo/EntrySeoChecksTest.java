@@ -61,8 +61,22 @@ class EntrySeoChecksTest {
 
         assertEquals(List.of("missing_search_description", "missing_meta_title", "missing_featured_image"),
                 codes(gaps));
-        gaps.forEach(f -> assertEquals(EntrySeoChecks.WARNING, f.severity(), f.code()));
+        gaps.forEach(f -> assertEquals(f.code().equals("missing_featured_image")
+                ? EntrySeoChecks.INFO : EntrySeoChecks.WARNING, f.severity(), f.code()));
         gaps.forEach(f -> assertFalse(f.message().isBlank(), f.code()));
+    }
+
+    /**
+     * A featured image is optional (Jake, 2026-10-31): a writing-first
+     * weblog's post is complete without one, and the warning nudged the first
+     * agent post into setting one it then also put in the text.
+     */
+    @Test
+    void aMissingFeaturedImageIsOnlyANote() {
+        Finding found = EntrySeoChecks.gaps(new WeblogEntry()).stream()
+                .filter(f -> f.code().equals("missing_featured_image")).findFirst().orElseThrow();
+
+        assertEquals(EntrySeoChecks.INFO, found.severity());
     }
 
     @Test

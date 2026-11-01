@@ -994,7 +994,8 @@ entry route. The checks report findings, never a score:
 
 | Code | Finding | Severity |
 |---|---|---|
-| `missing_search_description`, `missing_meta_title`, `missing_featured_image` | The field is blank (whitespace counts as blank). | warning |
+| `missing_search_description`, `missing_meta_title` | The field is blank (whitespace counts as blank). | warning |
+| `missing_featured_image` | No featured image. Optional: a post is complete without one, and a theme that shows it does so with the entry, so it never also goes in the text. | info |
 | `noindex` | The entry asks search engines not to list it. | warning |
 | `search_description_long` | Over 160 characters: a search result cuts it off. | warning |
 | `search_description_short` | Under 50 characters: search engines tend to replace it. | info |
