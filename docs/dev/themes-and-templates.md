@@ -343,7 +343,7 @@ resolves through the index at the end of `CLAUDE.md`.
   renders nothing on the site space, on an opted-out blog, or with no other
   eligible blog. Every non-site-space page carries `<span hidden
   data-places-record data-handle data-name data-url>` (opt-out does not stop
-  it) and the inline script, which keeps the last five blogs in
+  it) and the inline script, which keeps the current blog and the last five others in
   `localStorage["pressroom.places"]` and fills every `[data-places]` with
   `textContent`/`href` only. Both macros guard on `$discovery`, which is in
   `rendering.pageModels` and `rendering.searchModels` but deliberately not
