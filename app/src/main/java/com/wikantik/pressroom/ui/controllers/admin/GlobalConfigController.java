@@ -168,7 +168,8 @@ public class GlobalConfigController extends BaseController {
     private void addRangeError(Model model, PropertyDef propertyDef, int min, int max,
             HttpServletRequest request) {
         addError(model, DiscoverySettings.RANGE_ERROR_KEY,
-                new Object[]{bundle.getString(propertyDef.getKey()), Integer.toString(min), Integer.toString(max)},
+                new Object[]{StringEscapeUtils.escapeHtml4(bundle.getString(propertyDef.getKey())),
+                        Integer.toString(min), Integer.toString(max)},
                 request);
     }
 
