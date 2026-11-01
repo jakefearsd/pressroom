@@ -462,6 +462,13 @@ differ, some are dark, and a color picked for a light page can leave text
 unreadable on a dark one. Use an alert for a callout, and let the theme
 color everything else; preview warns about inline colors.
 
+Place this weblog's images with `[image id=...]` rather than a hand-written
+`<img>`: the shortcode serves a size that fits the reader's screen, where a
+plain `<img>` makes every reader download the full-size file. And keep the
+featured image out of the text: some themes (portfolio, travel) already
+print it with the entry, so a copy in the body shows twice. Preview warns
+about both.
+
 HTML still works, mixed with Markdown: HTML blocks pass through Markdown
 untouched, and bare paragraphs between them are wrapped in `<p>`.
 An HTML block ends at a blank line, so a line indented four or more spaces
@@ -548,8 +555,11 @@ badly, and is empty when nothing will: an element that sets a text color
 or background inline, a code block that names no language, and the body
 checks of the [SEO audit](#audits) (an `h1` in the body, a skipped heading
 level, an image with no alt text, a link to a missing part of the entry or
-to an unpublished entry), each as a sentence. Warnings are
-advice: the same text saves without complaint. `POST .../entries/{id}/preview`
+to an unpublished entry, the featured image repeated in the body, an image
+of the weblog placed with a plain `<img>`), each as a sentence. Warnings are
+advice: the same text saves without complaint. `featuredImageId`, optional,
+names the featured image the entry will have in place of its stored one, so
+a preview before a create can say whether the body repeats it. `POST .../entries/{id}/preview`
 also takes `edits` in place of `text` (below): it renders what an update
 with those edits would store, and saves nothing. On `.../entries/preview`,
 with no entry to apply them to, `edits` is a 400.
@@ -671,12 +681,19 @@ refuses every import, because readers could not see the images: a 400 on
 text loads from a host other than the site's own, and points the text at the
 local copy. Found are `<img src>` tags in HTML (the first `src` wins, as in a
 browser) and every Markdown image, reference-style ones included, never an
-image inside code. A reference-style image becomes an inline image pointing
-at the copy. Only the `src` value of an HTML tag is rewritten, and a Markdown
-image keeps its alt text exactly as written. A PATCH without `text` scans and
+image inside code. A Markdown image that is a paragraph of its own (not in a
+list, quote or link, and with no title) becomes `[image id="..." alt="..."]`,
+a responsive figure; a line directly after it is moved past a blank line,
+since the figure would otherwise take it in. Any other Markdown image stays
+Markdown pointing at the copy, its alt text exactly as written (a
+reference-style one becomes inline). Only the `src` value of an HTML tag is
+rewritten. A PATCH without `text` scans and
 rewrites the stored text. A body image's alt text (`<img alt>` or the Markdown
 alt) fills the imported file's alt text when that is null. An external
-`srcset` is refused, not imported, so it is a 400 on `text`.
+`srcset` is refused, not imported, so it is a 400 on `text`. An image left as
+a plain image is reported by the SEO checks as `image_not_responsive`: swap
+each for the `[image id=...]` the warning names. Writing body images as
+Markdown on lines of their own avoids that.
 
 - At most 10 distinct external URLs per write (`MAX_BODY_IMAGES`); more is a
   400 on `text`.
@@ -987,6 +1004,8 @@ entry route. The checks report findings, never a score:
 | `heading_skip` | A heading more than one level below the one before it (`h2` then `h4`); the entry title counts as the `h1` before the first. | info |
 | `image_alt_missing` | An image with no `alt`, or with only its file name as `alt` (what `[image]` falls back to for a media file with no alt text and no caption). `alt=""` marks a decorative image and is not reported. | warning |
 | `fragment_link_broken` | A link to `#x` with no `id="x"` in the body. `#` and `#top` always work. | warning |
+| `featured_image_repeated` | The body shows the entry's featured image, and the weblog's theme already prints the featured image with the entry (portfolio and travel do; journal does not), so readers see it twice. | warning |
+| `image_not_responsive` | An image of this weblog's media, with resized copies, placed as a plain `<img>` with no `srcset`, so every reader downloads the full-size file. `[image id=...]` and `[gallery]` always write the `srcset`; the message names the `[image id=...]` to use. | warning |
 | `entry_link_broken` | A link to one of this weblog's entry urls, relative or absolute, whose anchor is not a published entry. | warning |
 
 Body checks (the last five) are `audit/seo/entries/{id}`'s and preview's;

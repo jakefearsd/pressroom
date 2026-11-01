@@ -1168,6 +1168,58 @@ class EntriesWriteApiControllerTest {
         assertTrue(warnings.get(1).asString().contains("#fares"), body);
     }
 
+    /**
+     * A new entry's featured image is set when it is created, so preview
+     * takes the one it will have: an agent opening the body with the same
+     * picture hears, before publishing, that a theme printing featured
+     * images shows it twice. The id is only compared with the body's own
+     * media files of this weblog, so it needs no checking here.
+     */
+    @Test
+    void previewOfANewEntryWarnsWhenTheFeaturedImageItWillHaveIsInTheBody() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+        String media = "https://blog.example.com/myblog/mediaresource/";
+        when(weblogger.getUrlStrategy().getMediaFileURL(weblog, "", true)).thenReturn(media);
+        com.wikantik.pressroom.pojos.MediaFile photo = new com.wikantik.pressroom.pojos.MediaFile();
+        photo.setId("m1");
+        photo.setName("harbour.jpg");
+        photo.setContentType("image/jpeg");
+        photo.setWidth(1376);
+        photo.setWeblog(weblog);
+        com.wikantik.pressroom.business.MediaFileManager files =
+                mock(com.wikantik.pressroom.business.MediaFileManager.class);
+        when(files.getMediaFile("m1")).thenReturn(photo);
+        when(weblogger.getMediaFileManager()).thenReturn(files);
+        com.wikantik.pressroom.pojos.TemplateRendition rendition =
+                mock(com.wikantik.pressroom.pojos.TemplateRendition.class);
+        when(rendition.getTemplate()).thenReturn("#if($entry.featuredImage)<figure>...</figure>#end");
+        com.wikantik.pressroom.pojos.ThemeTemplate template = mock(com.wikantik.pressroom.pojos.ThemeTemplate.class);
+        when(template.getTemplateRendition(com.wikantik.pressroom.pojos.TemplateRendition.RenditionType.STANDARD))
+                .thenReturn(rendition);
+        com.wikantik.pressroom.pojos.WeblogTheme theme = mock(com.wikantik.pressroom.pojos.WeblogTheme.class);
+        org.mockito.Mockito.doReturn(List.of(template)).when(theme).getTemplates();
+        com.wikantik.pressroom.business.themes.ThemeManager themes =
+                mock(com.wikantik.pressroom.business.themes.ThemeManager.class);
+        when(themes.getTheme(weblog)).thenReturn(theme);
+        when(weblogger.getThemeManager()).thenReturn(themes);
+
+        String body = mockMvc(controllerFor(weblogger))
+                .perform(post("/v1/weblogs/myblog/entries/preview")
+                        .requestAttr("actionWeblog", weblog)
+                        .requestAttr("authenticatedUser", aUser("maiia"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"featuredImageId\":\"m1\",\"text\":\"<img src=\\\"" + media + "m1\\\" "
+                                + "srcset=\\\"" + media + "m1?w=480 480w\\\" alt=\\\"The harbour\\\">\\n\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        tools.jackson.databind.JsonNode warnings = new tools.jackson.databind.ObjectMapper().readTree(body)
+                .get("warnings");
+        assertEquals(1, warnings.size(), body);
+        assertTrue(warnings.get(0).asString().startsWith("The body shows the featured image"), body);
+    }
+
     /** Clean text still carries the field, empty, so a client never null-checks it. */
     @Test
     void aCleanPreviewHasAnEmptyWarningsList() throws Exception {

@@ -20,7 +20,8 @@ class SeoBodyTest {
     private static final String RELATIVE = "/coast/entry/";
     private static final String ABSOLUTE = "https://blog.example.com/coast/entry/";
     private static final SeoBody.Site SITE = new SeoBody.Site(List.of(RELATIVE, ABSOLUTE), Set.of("ferry"),
-            Map.of("https://blog.example.com/coast/mediaresource/m1", "IMG_2034-sunset.jpg"));
+            Map.of("https://blog.example.com/coast/mediaresource/m1",
+                    new SeoBody.Media("m1", "IMG_2034-sunset.jpg", false)), null);
 
     private static final String CLEAN = """
             Opening paragraph.
@@ -122,7 +123,8 @@ class SeoBodyTest {
         String html = "<figure><img src=\"https://blog.example.com/coast/mediaresource/m1?w=640\""
                 + " alt=\"IMG 2034 sunset\"></figure>";
         SeoBody.Site site = new SeoBody.Site(List.of(), Set.of(),
-                Map.of("https://blog.example.com/coast/mediaresource/m1?w=640", "IMG_2034-sunset.jpg"));
+                Map.of("https://blog.example.com/coast/mediaresource/m1?w=640",
+                        new SeoBody.Media("m1", "IMG_2034-sunset.jpg", false)), null);
 
         assertEquals(List.of("image_alt_missing"), codes(SeoBody.of(html).findings(site)));
     }
@@ -170,5 +172,93 @@ class SeoBodyTest {
         SeoBody body = SeoBody.of("<img src=\"/a.png\" alt=\"a\"><p><img src=\"/b.png\"></p>");
 
         assertEquals(List.of("/a.png", "/b.png"), body.imageSources());
+    }
+
+    // ---- the featured image again, and media placed as a plain <img> ------
+
+    private static final String PHOTO = "https://blog.example.com/coast/mediaresource/p1";
+
+    /** p1, 1376 pixels wide: the theme shows it as the featured image, and it has resized copies. */
+    private static SeoBody.Site photoSite(String shownFeaturedImageId) {
+        return new SeoBody.Site(List.of(), Set.of(), Map.of(PHOTO, new SeoBody.Media("p1", "harbour.jpg", true)),
+                shownFeaturedImageId);
+    }
+
+    /**
+     * The first agent post with a featured image opened its body with the
+     * same picture as a hand-written figure; the portfolio theme printed it
+     * above the entry as well, so readers saw it twice.
+     */
+    @Test
+    void theFeaturedImageInTheBodyIsAWarningWhenTheThemeShowsIt() {
+        String html = "<figure><img src=\"" + PHOTO + "\" alt=\"The harbour\"></figure>";
+
+        Finding found = only(SeoBody.of(html).findings(photoSite("p1")), "featured_image_repeated");
+
+        assertEquals(EntrySeoChecks.WARNING, found.severity());
+        assertTrue(found.message().contains(PHOTO), found.message());
+    }
+
+    /** A theme that prints no featured image (journal) shows the body's copy only. */
+    @Test
+    void theFeaturedImageInTheBodyIsFineWhenTheThemeDoesNotShowIt() {
+        String html = "<img src=\"" + PHOTO + "\" srcset=\"" + PHOTO + "?w=480 480w\" alt=\"The harbour\">";
+
+        assertEquals(List.of(), SeoBody.of(html).findings(photoSite(null)));
+    }
+
+    @Test
+    void anotherImageOfTheWeblogIsNotTheFeaturedOne() {
+        String html = "<img src=\"" + PHOTO + "\" srcset=\"" + PHOTO + "?w=480 480w\" alt=\"The harbour\">";
+
+        assertEquals(List.of(), SeoBody.of(html).findings(photoSite("p2")));
+    }
+
+    /**
+     * A plain img of a file with resized copies loads the full-size file;
+     * [image] and [gallery] always write a srcset for such a file, so its
+     * absence means the markup was written by hand.
+     */
+    @Test
+    void aMediaImageWithResizedCopiesButNoSrcsetIsAWarningNamingTheShortcode() {
+        String html = "<p><img src=\"" + PHOTO + "\" alt=\"The harbour\"></p>";
+
+        Finding found = only(SeoBody.of(html).findings(photoSite(null)), "image_not_responsive");
+
+        assertEquals(EntrySeoChecks.WARNING, found.severity());
+        assertTrue(found.message().contains("[image id=p1]"), found.message());
+    }
+
+    @Test
+    void aMediaImageWithASrcsetIsResponsive() {
+        String html = "<picture><img src=\"" + PHOTO + "\" srcset=\"" + PHOTO + "?w=480 480w, " + PHOTO
+                + " 1376w\" alt=\"The harbour\"></picture>";
+
+        assertEquals(List.of(), SeoBody.of(html).findings(photoSite(null)));
+    }
+
+    /** No resized copies (a gif, a small or a pre-ladder upload): a plain img is all there is. */
+    @Test
+    void aMediaImageWithoutResizedCopiesNeedsNoSrcset() {
+        SeoBody.Site site = new SeoBody.Site(List.of(), Set.of(),
+                Map.of(PHOTO, new SeoBody.Media("p1", "harbour.gif", false)), null);
+
+        assertEquals(List.of(), SeoBody.of("<img src=\"" + PHOTO + "\" alt=\"The harbour\">").findings(site));
+    }
+
+    /** An image from another site is not this weblog's to resize. */
+    @Test
+    void anImageFromElsewhereIsNotJudgedResponsive() {
+        assertEquals(List.of(), findings("![A ferry](https://images.example/ferry.jpg)\n"));
+    }
+
+    /** An img already pointing at a resized copy (?w=) downloads that copy, not the full-size file. */
+    @Test
+    void aMediaImageAlreadyAtAResizedCopyIsNotJudgedFullSize() {
+        String copy = PHOTO + "?w=960";
+        SeoBody.Site site = new SeoBody.Site(List.of(), Set.of(),
+                Map.of(copy, new SeoBody.Media("p1", "harbour.jpg", true)), null);
+
+        assertEquals(List.of(), SeoBody.of("<img src=\"" + copy + "\" alt=\"The harbour\">").findings(site));
     }
 }

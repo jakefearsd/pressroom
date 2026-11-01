@@ -80,12 +80,17 @@ public final class EntryDtos {
      * before a controller method ever runs) is treated as an empty draft
      * rather than rejected: an author previewing a blank editor is a normal
      * moment, not an error. {@code edits}, previewing an existing entry,
-     * apply to its stored text in place of {@code text}.
+     * apply to its stored text in place of {@code text}. {@code featuredImageId},
+     * optional, is the featured image the entry will have, in place of its
+     * stored one, so a preview can warn about the body repeating it.
      */
     public record PreviewRequest(
             String text,
             @Schema(description = EDITS_DESCRIPTION)
-            List<TextEdit> edits) {
+            List<TextEdit> edits,
+            @Schema(description = "The featured image the entry will have, if not its stored one; preview then "
+                    + "warns when the body shows it too and the theme already prints it.")
+            String featuredImageId) {
     }
 
     /**

@@ -23,8 +23,9 @@ public final class McpInstructions {
             SEO scan; `audits seo` lists SEO gaps, `seo_entry` checks one entry, body too.
             - `entries revisions` lists what each save replaced; `revision` diffs one; `restore_revision` puts \
             it back. `revisionNote` on `update` says why.
-            - Featured image: featuredImageUrl (a public image URL, with featuredImageAlt) imports and sets it \
-            in one call; or `media import` it and set featuredImageId. A re-import returns the first copy.
+            - Featured image: featuredImageUrl (a public image URL; featuredImageAlt) imports and sets it; or \
+            `media import` it and set featuredImageId (a re-import returns the first copy). A theme may show it: \
+            keep it out of the text.
             - `importExternalImages: true` imports images the text loads from other sites and repoints the text; \
             if one fails nothing is written, and a retry reuses those imported.
             - In entry text, `[image id=<media id> caption="..."]` places an imported image responsively; \

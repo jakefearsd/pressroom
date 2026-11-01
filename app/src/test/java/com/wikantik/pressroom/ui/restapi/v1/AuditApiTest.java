@@ -9,12 +9,16 @@ import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.plugins.PluginManager;
 import com.wikantik.pressroom.business.seo.SeoLimits;
 import com.wikantik.pressroom.business.shortcodes.ShortcodeExpander;
+import com.wikantik.pressroom.business.themes.ThemeManager;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.MediaFileDirectory;
+import com.wikantik.pressroom.pojos.TemplateRendition;
+import com.wikantik.pressroom.pojos.ThemeTemplate;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria;
 import com.wikantik.pressroom.pojos.WeblogPermission;
+import com.wikantik.pressroom.pojos.WeblogTheme;
 import com.wikantik.pressroom.ui.restapi.ApiExceptionHandler;
 import com.wikantik.pressroom.ui.restapi.dto.AuditDtos;
 import org.junit.jupiter.api.Test;
@@ -25,6 +29,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -641,5 +646,138 @@ class AuditApiTest {
                         .requestAttr("actionWeblog", aWeblog()))
                 .andExpect(status().isBadRequest())
                 .andExpect(errorFieldIs("status"));
+    }
+
+    // ---- the featured image again, and media placed as a plain <img> ------
+
+    private static final String MEDIA = "https://blog.example.com/myblog/mediaresource/";
+
+    /** Media urls as the url strategy builds them: absolute, the prefix being the url with no id. */
+    private static void mediaUrls(Weblogger weblogger, Weblog weblog, String... ids) {
+        when(weblogger.getUrlStrategy().getMediaFileURL(weblog, "", true)).thenReturn(MEDIA);
+        for (String id : ids) {
+            when(weblogger.getUrlStrategy().getMediaFileURL(weblog, id, true)).thenReturn(MEDIA + id);
+        }
+    }
+
+    private static MediaFile image(Weblogger weblogger, Weblog weblog, String id, String contentType, int width)
+            throws Exception {
+        MediaFile file = new MediaFile();
+        file.setId(id);
+        file.setName(id + ".jpg");
+        file.setAltText("Photo " + id);
+        file.setContentType(contentType);
+        file.setWidth(width);
+        file.setHeight(width / 2);
+        file.setWeblog(weblog);
+        MediaFileDirectory directory = new MediaFileDirectory();
+        directory.setId("dir-1");
+        directory.setName("photos");
+        file.setDirectory(directory);
+        when(weblogger.getMediaFileManager().getMediaFile(id)).thenReturn(file);
+        return file;
+    }
+
+    /** The weblog's theme, as the theme manager hands it over, with templates of these sources. */
+    private static void theme(Weblogger weblogger, Weblog weblog, String... sources) throws Exception {
+        List<ThemeTemplate> templates = new java.util.ArrayList<>();
+        for (String source : sources) {
+            ThemeTemplate template = mock(ThemeTemplate.class);
+            TemplateRendition rendition = mock(TemplateRendition.class);
+            when(rendition.getTemplate()).thenReturn(source);
+            when(template.getTemplateRendition(TemplateRendition.RenditionType.STANDARD)).thenReturn(rendition);
+            templates.add(template);
+        }
+        WeblogTheme weblogTheme = mock(WeblogTheme.class);
+        doReturn(templates).when(weblogTheme).getTemplates();
+        ThemeManager themes = mock(ThemeManager.class);
+        when(themes.getTheme(weblog)).thenReturn(weblogTheme);
+        when(weblogger.getThemeManager()).thenReturn(themes);
+    }
+
+    private String seoEntry(Weblogger weblogger, Weblog weblog) throws Exception {
+        when(weblogger.getWeblogEntryManager().getWeblogEntries(any())).thenReturn(List.of());
+        return mockMvc(controllerFor(weblogger))
+                .perform(get("/v1/weblogs/myblog/audit/seo/entries/{id}", "e1").requestAttr("actionWeblog", weblog))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+    }
+
+    /**
+     * Placed with [image], the featured image has the very src the theme
+     * prints, so it is recognised; and [image] gives it a srcset, so it is
+     * not a plain img.
+     */
+    @Test
+    void seoEntryReportsTheFeaturedImagePlacedInTheBodyWhenTheThemeShowsIt() throws Exception {
+        Weblogger weblogger = renderingWeblogger();
+        Weblog weblog = aWeblog();
+        mediaUrls(weblogger, weblog, "m1");
+        image(weblogger, weblog, "m1", "image/jpeg", 1376);
+        theme(weblogger, weblog, "$entry.displayContent", "#if($entry.featuredImage)<figure>...</figure>#end");
+        entryOf(weblogger, weblog, "[image id=m1]\n\nText.\n").setFeaturedImageId("m1");
+
+        String body = seoEntry(weblogger, weblog);
+
+        assertTrue(body.contains("\"featured_image_repeated\"") && body.contains(MEDIA + "m1"), body);
+        assertFalse(body.contains("image_not_responsive"), body);
+    }
+
+    /** journal prints no featured image: the body's copy is the only one a reader sees. */
+    @Test
+    void seoEntryLeavesTheFeaturedImageInTheBodyAloneWhenTheThemeDoesNotShowIt() throws Exception {
+        Weblogger weblogger = renderingWeblogger();
+        Weblog weblog = aWeblog();
+        mediaUrls(weblogger, weblog, "m1");
+        image(weblogger, weblog, "m1", "image/jpeg", 1376);
+        theme(weblogger, weblog, "$entry.displayContent");
+        entryOf(weblogger, weblog, "[image id=m1]\n").setFeaturedImageId("m1");
+
+        assertFalse(seoEntry(weblogger, weblog).contains("featured_image_repeated"));
+    }
+
+    /**
+     * Resized copies exist for a ladder format wider than the narrowest
+     * rung; a gif, a narrow jpeg and one of unknown width have none, so a
+     * plain img of them is all there is. The featured image (m-e1) is not
+     * in the body, so the theme is never asked.
+     */
+    @Test
+    void seoEntryReportsAPlainImgOnlyOfAFileWithResizedCopies() throws Exception {
+        Weblogger weblogger = renderingWeblogger();
+        Weblog weblog = aWeblog();
+        mediaUrls(weblogger, weblog);
+        image(weblogger, weblog, "wide", "image/jpeg", 1376);
+        image(weblogger, weblog, "anim", "image/gif", 2000);
+        image(weblogger, weblog, "narrow", "image/jpeg", 400);
+        image(weblogger, weblog, "unknown", "image/jpeg", 0);
+        entryOf(weblogger, weblog, "<img src=\"" + MEDIA + "wide\" alt=\"a\"> <img src=\"" + MEDIA
+                + "anim\" alt=\"b\"> <img src=\"" + MEDIA + "narrow\" alt=\"c\"> <img src=\"" + MEDIA
+                + "unknown\" alt=\"d\">\n");
+
+        String body = seoEntry(weblogger, weblog);
+
+        assertTrue(body.contains("\"image_not_responsive\"") && body.contains("[image id=wide]"), body);
+        assertFalse(body.contains("id=anim") || body.contains("id=narrow") || body.contains("id=unknown"), body);
+        verify(weblogger, never()).getThemeManager();
+    }
+
+    /**
+     * A weblog whose theme is not loaded has no theme to ask (the manager
+     * answers null and logs it): no finding, never a 500 where the same
+     * request used to answer with its other findings.
+     */
+    @Test
+    void seoEntrySurvivesAWeblogWhoseThemeIsNotLoaded() throws Exception {
+        Weblogger weblogger = renderingWeblogger();
+        Weblog weblog = aWeblog();
+        mediaUrls(weblogger, weblog, "m1");
+        image(weblogger, weblog, "m1", "image/jpeg", 1376);
+        ThemeManager themes = mock(ThemeManager.class);
+        when(weblogger.getThemeManager()).thenReturn(themes);
+        entryOf(weblogger, weblog, "[image id=m1]\n").setFeaturedImageId("m1");
+
+        assertFalse(seoEntry(weblogger, weblog).contains("featured_image_repeated"));
+        verify(themes).getTheme(weblog);
     }
 }

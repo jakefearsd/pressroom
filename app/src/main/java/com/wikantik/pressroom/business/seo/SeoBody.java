@@ -51,6 +51,8 @@ public final class SeoBody {
     public static final String IMAGE_ALT_MISSING = "image_alt_missing";
     public static final String FRAGMENT_LINK_BROKEN = "fragment_link_broken";
     public static final String ENTRY_LINK_BROKEN = "entry_link_broken";
+    public static final String FEATURED_IMAGE_REPEATED = "featured_image_repeated";
+    public static final String IMAGE_NOT_RESPONSIVE = "image_not_responsive";
 
     /**
      * What the body checks need to know about the weblog.
@@ -58,9 +60,22 @@ public final class SeoBody {
      * @param entryUrlPrefixes the weblog's entry permalink urls with the anchor left off, relative and
      *                         absolute, as its url strategy builds them ({@code /blog/entry/})
      * @param publishedAnchors which of {@link #entryAnchors} are published entries (or the entry itself)
-     * @param fileNames        for an image source that is one of the weblog's media files, its file name
+     * @param media            for an image source that is one of the weblog's media files, that file
+     * @param shownFeaturedImageId the entry's featured image when the weblog's theme prints it with the
+     *                         entry, so a copy in the body shows twice; null when there is none or the
+     *                         theme does not show it
      */
-    public record Site(List<String> entryUrlPrefixes, Set<String> publishedAnchors, Map<String, String> fileNames) {
+    public record Site(List<String> entryUrlPrefixes, Set<String> publishedAnchors, Map<String, Media> media,
+                       String shownFeaturedImageId) {
+    }
+
+    /**
+     * One of the weblog's media files, as an image source names it.
+     *
+     * @param resizable whether it has resized copies, i.e. whether {@code [image]} and
+     *                  {@code [gallery]} would give it a {@code srcset}
+     */
+    public record Media(String id, String name, boolean resizable) {
     }
 
     /** A heading, at its level, with its text. */
@@ -71,7 +86,7 @@ public final class SeoBody {
     }
 
     /** An image; {@code alt} is null when the attribute is absent, not when it is empty. */
-    private record Image(String src, String alt) {
+    private record Image(String src, String alt, boolean hasSrcset) {
     }
 
     private final List<Heading> headings = new ArrayList<>();
@@ -114,6 +129,8 @@ public final class SeoBody {
         bodyH1(findings);
         headingSkips(findings);
         imagesWithoutAlt(site, findings);
+        featuredImageRepeated(site, findings);
+        imagesNotResponsive(site, findings);
         brokenFragments(findings);
         brokenEntryLinks(site, findings);
         return findings;
@@ -174,11 +191,76 @@ public final class SeoBody {
                 + "image."));
     }
 
+    /**
+     * The featured image again in the body, on a theme that already prints
+     * it with the entry ({@link Site#shownFeaturedImageId}): readers see it
+     * twice. The first agent post with a featured image did exactly this.
+     */
+    private void featuredImageRepeated(Site site, List<Finding> findings) {
+        if (site.shownFeaturedImageId() == null) {
+            return;
+        }
+        String repeated = null;
+        for (Image image : images) {
+            Media media = image.src() == null ? null : site.media().get(image.src());
+            if (media != null && site.shownFeaturedImageId().equals(media.id())) {
+                repeated = image.src();
+                break;
+            }
+        }
+        if (repeated == null) {
+            return;
+        }
+        findings.add(Finding.of(FEATURED_IMAGE_REPEATED, EntrySeoChecks.WARNING, "The body shows the featured "
+                + "image, " + repeated + ", and this weblog's theme already shows the featured image with the "
+                + "entry, so readers see it twice. Take it out of the body, or choose a different featured "
+                + "image."));
+    }
+
+    /**
+     * A plain img of one of the weblog's files that has resized copies:
+     * every reader downloads the full-size file. {@code [image]} and
+     * {@code [gallery]} always give such a file a {@code srcset}, so an img
+     * of one without it was written by hand.
+     */
+    private void imagesNotResponsive(Site site, List<Finding> findings) {
+        List<String> placements = new ArrayList<>();
+        for (Image image : images) {
+            Media media = image.src() == null ? null : site.media().get(image.src());
+            if (media != null && media.resizable() && !image.hasSrcset() && !isResizedCopy(image.src())) {
+                String placement = "[image id=" + media.id() + "]";
+                if (!placements.contains(placement)) {
+                    placements.add(placement);
+                }
+            }
+        }
+        if (placements.isEmpty()) {
+            return;
+        }
+        findings.add(Finding.of(IMAGE_NOT_RESPONSIVE, EntrySeoChecks.WARNING, (placements.size() == 1
+                ? "1 image of this weblog is" : placements.size() + " images of this weblog are") + " placed "
+                + "with a plain img, so every reader downloads the full-size file. Place "
+                + (placements.size() == 1 ? "it" : "each") + " with " + EntrySeoChecks.named(placements)
+                + " instead, which serves a size that fits the screen; add caption=\"...\" for a caption."));
+    }
+
+    /** A src already asking for a resized copy ({@code ?w=}), which is what a reader downloads. */
+    private static boolean isResizedCopy(String src) {
+        String query = StringUtils.substringBefore(StringUtils.substringAfter(src, "?"), "#");
+        for (String parameter : query.split("&")) {
+            if (parameter.startsWith("w=")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static boolean isFileName(String alt, String src, Site site) {
         if (alt.isEmpty()) {
             return false;
         }
-        String mediaName = src == null ? null : site.fileNames().get(src);
+        Media media = src == null ? null : site.media().get(src);
+        String mediaName = media == null ? null : media.name();
         return matchesFileName(alt, mediaName) || matchesFileName(alt, lastSegment(src));
     }
 
@@ -317,7 +399,8 @@ public final class SeoBody {
                 headingLevel = level;
                 headingText = new ArrayList<>();
             } else if ("img".equals(elementName)) {
-                images.add(new Image(attribute(attrs, "src"), attribute(attrs, "alt")));
+                images.add(new Image(attribute(attrs, "src"), attribute(attrs, "alt"),
+                        StringUtils.isNotBlank(attribute(attrs, "srcset"))));
             } else if ("a".equals(elementName)) {
                 String href = attribute(attrs, "href");
                 if (href != null) {

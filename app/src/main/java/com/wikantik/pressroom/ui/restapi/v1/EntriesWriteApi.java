@@ -382,7 +382,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         FieldErrors errors = new FieldErrors();
         String text = EntryEdits.resolve(errors, body.text(), body.edits(), entry.getText());
         errors.throwIfAny();
-        return renderPreview(entry, text);
+        return renderPreview(entry, text, body.featuredImageId());
     }
 
     /**
@@ -406,7 +406,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         WeblogEntry entry = new WeblogEntry();
         entry.setWebsite(weblog);
         entry.setCreatorUserName(user.getUserName());
-        return renderPreview(entry, body.text());
+        return renderPreview(entry, body.text(), body.featuredImageId());
     }
 
     /**
@@ -425,7 +425,8 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * flush ({@code FlushModeType.COMMIT}), so they cannot persist the text
      * set below either.
      */
-    private EntryDtos.PreviewView renderPreview(WeblogEntry entry, String text) throws WebloggerException {
+    private EntryDtos.PreviewView renderPreview(WeblogEntry entry, String text, String featuredImageId)
+            throws WebloggerException {
         // Mutates a JPA-managed entity (when entry came from requireLiveEntry
         // rather than the previewNew scratch path) without saving. Safe only
         // because nothing on this request path calls weblogger.flush() or
@@ -434,7 +435,10 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         entry.setText(text == null ? "" : text);
         String html = weblogger.getEntryRenderer().transformedText(entry);
         List<String> warnings = new ArrayList<>(PreviewLint.warnings(html));
-        warnings.addAll(SeoBodies.warnings(weblogger, entry.getWebsite(), entry, html));
+        // The request's featured image is passed along, never set on the
+        // entry: like the text above, a field set here could be persisted.
+        String featured = StringUtils.isNotBlank(featuredImageId) ? featuredImageId : entry.getFeaturedImageId();
+        warnings.addAll(SeoBodies.warnings(weblogger, entry.getWebsite(), entry, html, featured));
         return new EntryDtos.PreviewView(html, warnings);
     }
 
