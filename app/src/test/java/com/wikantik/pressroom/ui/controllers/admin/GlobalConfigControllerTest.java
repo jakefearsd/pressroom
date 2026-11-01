@@ -943,6 +943,99 @@ class GlobalConfigControllerTest {
     // --- helpers ---
 
     /** A properties map as {@code PropertiesManager} would return it. */
+    // --- front page discovery settings ---
+
+    @Test
+    void refreshIsEditedInMinutesStoredInSeconds() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = properties("site.discovery.refreshSeconds", "3600");
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+        HttpServletRequest request = request();
+        when(request.getParameter("discoveryRefreshMinutes")).thenReturn("90");
+
+        controller.save(request, model);
+
+        assertEquals(List.of("generic.changes.saved"), ControllerTestFixture.messages(model));
+        assertEquals("5400", stored.get("site.discovery.refreshSeconds").getValue());
+        verify(weblogger.propertiesManager()).saveProperties(stored);
+    }
+
+    @Test
+    void anAbsentMinutesFieldLeavesTheRefreshAlone() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = properties("site.discovery.refreshSeconds", "7200");
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+
+        controller.save(request(), model);
+
+        assertEquals(List.of("generic.changes.saved"), ControllerTestFixture.messages(model));
+        assertEquals("7200", stored.get("site.discovery.refreshSeconds").getValue());
+    }
+
+    @Test
+    void outOfRangeShareIsRefusedAndNothingSaved() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = properties("site.discovery.sharePercent", "20");
+        stored.put("site.name", new RuntimeConfigProperty("site.name", "Old Name"));
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+        HttpServletRequest request = request();
+        when(request.getParameter("site.discovery.sharePercent")).thenReturn("101");
+        when(request.getParameter("site.name")).thenReturn("New Name");
+
+        String view = controller.save(request, model);
+
+        assertEquals(".GlobalConfig", view);
+        assertEquals(1, ControllerTestFixture.errors(model).size(), ControllerTestFixture.errors(model).toString());
+        assertTrue(ControllerTestFixture.errors(model).get(0).startsWith("configForm.error.discoveryRange["),
+                ControllerTestFixture.errors(model).toString());
+        assertEquals("Old Name", stored.get("site.name").getValue());
+        assertEquals("20", stored.get("site.discovery.sharePercent").getValue());
+        verify(weblogger.propertiesManager(), never()).saveProperties(any());
+    }
+
+    @Test
+    void outOfRangeWindowIsRefused() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = properties("site.discovery.windowDays", "30");
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+        HttpServletRequest request = request();
+        when(request.getParameter("site.discovery.windowDays")).thenReturn("0");
+
+        controller.save(request, model);
+
+        assertTrue(ControllerTestFixture.errors(model).get(0).startsWith("configForm.error.discoveryRange["));
+        verify(weblogger.propertiesManager(), never()).saveProperties(any());
+    }
+
+    @Test
+    void nonIntegerMinutesRefused() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = properties("site.discovery.refreshSeconds", "3600");
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+        HttpServletRequest request = request();
+        when(request.getParameter("discoveryRefreshMinutes")).thenReturn("soon");
+
+        controller.save(request, model);
+
+        assertEquals(1, ControllerTestFixture.errors(model).size());
+        assertTrue(ControllerTestFixture.errors(model).get(0).startsWith("ConfigForm.invalidIntegerProperty["));
+        assertEquals("3600", stored.get("site.discovery.refreshSeconds").getValue());
+        verify(weblogger.propertiesManager(), never()).saveProperties(any());
+    }
+
+    @Test
+    void minutesOutsideOneToADayAreRefused() throws Exception {
+        for (String minutes : List.of("0", "1441", "-5", "99999999")) {
+            Map<String, RuntimeConfigProperty> stored = properties("site.discovery.refreshSeconds", "3600");
+            when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+            HttpServletRequest request = request();
+            when(request.getParameter("discoveryRefreshMinutes")).thenReturn(minutes);
+            ExtendedModelMap m = new ExtendedModelMap();
+
+            controller.save(request, m);
+
+            assertTrue(ControllerTestFixture.errors(m).get(0).startsWith("configForm.error.discoveryRange["),
+                    minutes + ": " + ControllerTestFixture.errors(m));
+            assertEquals("3600", stored.get("site.discovery.refreshSeconds").getValue());
+        }
+        verify(weblogger.propertiesManager(), never()).saveProperties(any());
+    }
+
     private static Map<String, RuntimeConfigProperty> properties(String name, String value) {
         Map<String, RuntimeConfigProperty> props = new LinkedHashMap<>();
         props.put(name, new RuntimeConfigProperty(name, value));

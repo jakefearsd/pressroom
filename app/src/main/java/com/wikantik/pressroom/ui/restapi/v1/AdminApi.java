@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.UserManager;
+import com.wikantik.pressroom.business.discovery.DiscoverySettings;
 import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.config.runtime.ConfigDef;
@@ -356,7 +357,12 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
             }
             case "integer" -> {
                 try {
-                    Integer.parseInt(value);
+                    int parsed = Integer.parseInt(value);
+                    if (DiscoverySettings.rangeError(def.getName(), parsed).isPresent()) {
+                        throw ApiException.invalidField(def.getName(), "'" + def.getName()
+                                + "' must be between " + DiscoverySettings.min(def.getName())
+                                + " and " + DiscoverySettings.max(def.getName()) + ".");
+                    }
                 } catch (NumberFormatException e) {
                     throw ApiException.invalidField(def.getName(), "'" + def.getName() + "' must be an integer.", e);
                 }

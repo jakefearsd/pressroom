@@ -88,6 +88,26 @@
       </property-def>
    </display-group >
 
+   <!-- Front Page Discovery Group. The refresh interval is stored in seconds
+        and edited in minutes (Global Config posts discoveryRefreshMinutes);
+        its key is therefore the minutes label. Ranges are enforced by
+        DiscoverySettings.rangeError: window 1 to 365, share 0 to 100,
+        refresh 60 to 86400 seconds. -->
+   <display-group name="discoverySettings" key="configForm.discoverySettings" >
+      <property-def  name="site.discovery.windowDays"  key="configForm.discoveryWindowDays">
+         <type>integer</type>
+         <default-value>30</default-value>
+      </property-def>
+      <property-def  name="site.discovery.sharePercent"  key="configForm.discoverySharePercent">
+         <type>integer</type>
+         <default-value>20</default-value>
+      </property-def>
+      <property-def  name="site.discovery.refreshSeconds"  key="configForm.discoveryRefreshMinutes">
+         <type>integer</type>
+         <default-value>3600</default-value>
+      </property-def>
+   </display-group >
+
    <!-- User Settings Group -->
    <display-group name="userSettings" key="configForm.userSettings" >
    

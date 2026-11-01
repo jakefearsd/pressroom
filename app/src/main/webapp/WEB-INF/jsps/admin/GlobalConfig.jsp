@@ -98,6 +98,23 @@
                 </div>
             </c:if>
 
+            <%-- The refresh interval is stored in seconds but edited in whole
+                 minutes: the posted field is discoveryRefreshMinutes, never the
+                 seconds property. After a refused save the typed text is shown
+                 back as typed. --%>
+            <c:if test="${pd.name == 'site.discovery.refreshSeconds'}">
+                <div class="row mb-3">
+                    <label class="col-sm-3 col-form-label"
+                           for='globalConfig_${pd.nameWithUnderbars}'><spring:message code="${pd.key}"/></label>
+                    <div class="col-sm-9">
+                        <input type="number" name="discoveryRefreshMinutes" min="1" max="1440"
+                               value="${not empty discoveryRefreshMinutesTyped ? fn:escapeXml(discoveryRefreshMinutesTyped) : fn:escapeXml(fn:substringBefore(properties[pd.name].value div 60, '.'))}"
+                               id="globalConfig_${pd.nameWithUnderbars}"
+                               class="form-control integer"/>
+                    </div>
+                </div>
+            </c:if>
+
             <%-- "string" type means use a simple textbox --%>
             <c:if test="${pd.name != 'site.frontpage.weblog.handle' && pd.name != 'site.frontpage.page' && pd.type == 'string'}">
                 <div class="row mb-3">
@@ -144,7 +161,7 @@
             </c:if>
 
             <%-- "integer" use input type number --%>
-            <c:if test="${pd.name != 'site.frontpage.weblog.handle' && pd.type == 'integer'}">
+            <c:if test="${pd.name != 'site.frontpage.weblog.handle' && pd.name != 'site.discovery.refreshSeconds' && pd.type == 'integer'}">
                 <div class="row mb-3">
                     <label class="col-sm-3 col-form-label"
                            for='globalConfig_${pd.nameWithUnderbars}'>

@@ -56,4 +56,33 @@ class GlobalConfigJspTest {
                 "None is a real choice here (the site directory), and a disabled option is "
                         + "never submitted: " + none);
     }
+
+    @Test
+    void discoverySectionHasRailLink() throws IOException {
+        // The heading and rail index are both generated from the display
+        // groups, so the group existing in the definitions is what puts the
+        // link in the rail; the heading text must resolve too.
+        String defs = Files.readString(
+                Path.of("src/main/resources/com/wikantik/pressroom/config/runtimeConfigDefs.xml"), StandardCharsets.UTF_8);
+        assertTrue(defs.contains("key=\"configForm.discoverySettings\""));
+        String props = Files.readString(
+                Path.of("src/main/resources/ApplicationResources.properties"), StandardCharsets.UTF_8);
+        assertTrue(props.contains("\nconfigForm.discoverySettings="));
+        String source = Files.readString(JSP, StandardCharsets.UTF_8);
+        assertTrue(source.contains("href=\"#cfg-${fn:escapeXml(dg.key)}\""), "the rail lists every group");
+    }
+
+    @Test
+    void refreshShownInMinutes() throws IOException {
+        String source = Files.readString(JSP, StandardCharsets.UTF_8);
+        int at = source.indexOf("name=\"discoveryRefreshMinutes\"");
+        assertTrue(at >= 0, "the refresh interval is edited as discoveryRefreshMinutes");
+        String input = source.substring(source.lastIndexOf("<input", at), source.indexOf("/>", at));
+        assertTrue(input.contains("type=\"number\"") && input.contains("min=\"1\"") && input.contains("max=\"1440\""), input);
+        assertTrue(input.contains("div 60"), "the stored seconds are shown as minutes: " + input);
+        assertFalse(source.contains("name=\"properties[site.discovery.refreshSeconds]"),
+                "the seconds property must never be posted directly");
+        assertTrue(source.contains("pd.name != 'site.discovery.refreshSeconds'"),
+                "the generic integer widget must skip the seconds property");
+    }
 }

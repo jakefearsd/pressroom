@@ -28,6 +28,7 @@ import org.apache.commons.text.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.discovery.DiscoverySettings;
 import com.wikantik.pressroom.business.PageReference;
 import com.wikantik.pressroom.business.PropertiesManager;
 import com.wikantik.pressroom.business.WeblogManager;
@@ -120,6 +121,42 @@ public class GlobalConfigController extends BaseController {
         return ".GlobalConfig";
     }
 
+    private static final int MINUTES_MIN = DiscoverySettings.min(DiscoverySettings.REFRESH_SECONDS) / 60;
+    private static final int MINUTES_MAX = DiscoverySettings.max(DiscoverySettings.REFRESH_SECONDS) / 60;
+
+    /**
+     * Reads the refresh interval from its minutes field and, when valid,
+     * records it in seconds. A bad value adds an error and records nothing.
+     */
+    private void acceptRefreshMinutes(HttpServletRequest request, PropertyDef propertyDef,
+            Map<String, String> accepted, Model model) {
+        String minutes = request.getParameter(DiscoverySettings.REFRESH_MINUTES_FIELD);
+        if (minutes == null) {
+            return;
+        }
+        try {
+            int parsed = Integer.parseInt(minutes.trim());
+            if (parsed < MINUTES_MIN || parsed > MINUTES_MAX) {
+                addRangeError(model, propertyDef, MINUTES_MIN, MINUTES_MAX, request);
+            } else {
+                accepted.put(DiscoverySettings.REFRESH_SECONDS, Integer.toString(parsed * 60));
+            }
+        } catch (NumberFormatException nfe) {
+            String propDesc = bundle.getString(propertyDef.getKey());
+            addError(model, "ConfigForm.invalidIntegerProperty",
+                    new Object[]{propDesc, StringEscapeUtils.escapeHtml4(minutes)}, request);
+        }
+        // Echo what was typed so a refused form shows it back as typed.
+        model.addAttribute("discoveryRefreshMinutesTyped", minutes);
+    }
+
+    private void addRangeError(Model model, PropertyDef propertyDef, int min, int max,
+            HttpServletRequest request) {
+        addError(model, DiscoverySettings.RANGE_ERROR_KEY,
+                new Object[]{bundle.getString(propertyDef.getKey()), Integer.toString(min), Integer.toString(max)},
+                request);
+    }
+
     /**
      * Save global properties.
      */
@@ -154,13 +191,22 @@ public class GlobalConfigController extends BaseController {
                 continue;
             }
 
-            if ("boolean".equals(propertyDef.getType())) {
+            if (DiscoverySettings.REFRESH_SECONDS.equals(propName)) {
+                // Edited in minutes, stored in seconds: the form never posts
+                // the seconds property itself. Absent leaves it as it is.
+                acceptRefreshMinutes(request, propertyDef, accepted, model);
+
+            } else if ("boolean".equals(propertyDef.getType())) {
                 // an unticked checkbox submits nothing, so absent means false
                 accepted.put(propName, Boolean.toString(Boolean.parseBoolean(incomingProp)));
 
             } else if (incomingProp != null && "integer".equals(propertyDef.getType())) {
                 try {
-                    Integer.parseInt(incomingProp);
+                    int parsed = Integer.parseInt(incomingProp);
+                    if (DiscoverySettings.rangeError(propName, parsed).isPresent()) {
+                        addRangeError(model, propertyDef, DiscoverySettings.min(propName),
+                                DiscoverySettings.max(propName), request);
+                    }
                 } catch (NumberFormatException nfe) {
                     String propDesc = bundle.getString(propertyDef.getKey());
                     addError(model, "ConfigForm.invalidIntegerProperty", new Object[]{propDesc, StringEscapeUtils.escapeHtml4(incomingProp)}, request);
