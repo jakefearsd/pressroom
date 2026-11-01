@@ -61,6 +61,7 @@ class PreviewShellRenderingTest {
             "journal:Weblog|standard: $model.weblogDateLabel", // null when the view is not a date archive; tested with #elseif
             "journal:Weblog|standard: $pager.nextLink", // null on the last page; tested with #if
             "journal:Weblog|standard: $pager.prevLink", // null on the first page; tested with #if
+            "weblog.vm: $discovery", // not loaded on a preview (rendering.previewModels); tested with #if in the more-from-the-site and places macros
             "weblog.vm: $colophonFacts.copyrightText", // null unless the weblog sets copyright text; tested with $utils.isNotEmpty
             "weblog.vm: $colophonFacts.privacyUrl", // null unless a privacy URL is configured; tested with $utils.isNotEmpty
             "weblog.vm: $model.page", // null when the view is not a static page; tested with #if / negated in #set
@@ -205,6 +206,12 @@ class PreviewShellRenderingTest {
                 "the ordinary preview is still the theme's whole page:\n" + html);
         assertFalse(html.contains("previewArticle"),
                 "nothing about the shell may leak into the ordinary preview:\n" + html);
+        // No $discovery on a preview (rendering.previewModels): its links
+        // would be preview links, and the author's visit is not a reader's.
+        assertTrue(html.contains("<div class=\"colophon\">"), html);
+        assertFalse(html.contains("more-from-site") || html.contains("data-places-record")
+                || html.contains("pressroom.places") || html.contains("$discovery"),
+                "a preview carries neither the more-from-the-site block nor the places script:\n" + html);
     }
 
     // ---------------------------------------------------------------- helpers

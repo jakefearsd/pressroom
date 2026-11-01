@@ -856,3 +856,24 @@ body.pf .colophon { margin-top: 1.5rem; font-size: .75rem; line-height: 1.5; col
 body.pf .colophon p { margin: 0 0 .25rem; }
 body.pf .colophon a { color: inherit; text-decoration: underline; }
 body.pf .colophon-meta span + span::before { content: "\00b7"; margin: 0 .5em; }
+
+/* ---- more from the site: the showMoreFromSite macro, just above the colophon.
+ * Quiet on purpose: small type in the theme's own soft ink, one rule above it.
+ * The places list (the showPlacesYouveBeen macro's script) stays hidden until
+ * the reader's own browser has something to show, so nothing here sets a
+ * display on .places-been itself. ---- */
+body.pf .more-from-site { margin-top: 2rem; padding-top: 1.25rem; border-top: 1px solid var(--pf-line); }
+body.pf .more-from-site-title,
+body.pf .places-been-title { margin: 0 0 .5rem; font-size: .75rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--pf-muted); }
+body.pf .more-from-site-posts,
+body.pf .places-been-list { list-style: none; margin: 0; padding: 0; }
+body.pf .more-from-site-post { margin: 0 0 .5rem; font-size: .90625rem; line-height: 1.4; overflow-wrap: anywhere; }
+body.pf .more-from-site-post a { color: var(--pf-fg); text-decoration: none; }
+body.pf .more-from-site-post a:hover { color: var(--pf-accent); text-decoration: underline; }
+body.pf .more-from-site-blog { display: block; font-size: .75rem; color: var(--pf-muted); }
+body.pf .more-from-site .places-been { margin-top: 1rem; }
+body.pf .places-been-list li { display: inline; font-size: .8125rem; }
+body.pf .places-been-list li + li::before { content: "\00b7"; margin: 0 .5em; color: var(--pf-muted); }
+body.pf .places-been-list a { color: var(--pf-accent); }
+body.pf .more-from-site-home { margin: 1rem 0 0; font-size: .8125rem; }
+body.pf .more-from-site-home a { color: var(--pf-accent); }
