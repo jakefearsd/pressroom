@@ -61,6 +61,11 @@ public class GlobalConfigController extends BaseController {
     private static final String FRONTPAGE_WEBLOG_HANDLE = "site.frontpage.weblog.handle";
     /** The front door's site page; the front-door select writes it (see {@link #applyFrontDoorChoice}). */
     private static final String FRONTPAGE_PAGE = "site.frontpage.page";
+    private static final String REFRESH_MINUTES_ATTR = "discoveryRefreshMinutes";
+    private static final int MINUTES_MIN =
+            DiscoverySettings.min(DiscoverySettings.REFRESH_SECONDS) / DiscoverySettings.SECONDS_PER_MINUTE;
+    private static final int MINUTES_MAX =
+            DiscoverySettings.max(DiscoverySettings.REFRESH_SECONDS) / DiscoverySettings.SECONDS_PER_MINUTE;
     private static final String PRIVACY_PAGE = "site.privacy.page";
     private static final String ABSOLUTE_URL = "site.absoluteurl";
     /** The front-door select's value prefix for a site page; a blog's option is its bare handle. */
@@ -117,12 +122,22 @@ public class GlobalConfigController extends BaseController {
         List<WeblogPage> sitePages = loadSitePages();
         model.addAttribute("sitePages", sitePages);
         model.addAttribute("staleFrontDoorPage", staleFrontDoorPage(properties, sitePages));
+        showRefreshMinutes(model, storedValue(properties));
 
         return ".GlobalConfig";
     }
 
-    private static final int MINUTES_MIN = DiscoverySettings.min(DiscoverySettings.REFRESH_SECONDS) / 60;
-    private static final int MINUTES_MAX = DiscoverySettings.max(DiscoverySettings.REFRESH_SECONDS) / 60;
+    private static String storedValue(Map<String, RuntimeConfigProperty> properties) {
+        RuntimeConfigProperty stored = properties.get(DiscoverySettings.REFRESH_SECONDS);
+        return stored == null ? null : stored.getValue();
+    }
+
+    /** Shows the interval in minutes unless a typed (refused) value is already being echoed. */
+    private static void showRefreshMinutes(Model model, String storedSeconds) {
+        if (model.getAttribute(REFRESH_MINUTES_ATTR) == null) {
+            model.addAttribute(REFRESH_MINUTES_ATTR, Integer.toString(DiscoverySettings.refreshMinutesFrom(storedSeconds)));
+        }
+    }
 
     /**
      * Reads the refresh interval from its minutes field and, when valid,
@@ -139,7 +154,7 @@ public class GlobalConfigController extends BaseController {
             if (parsed < MINUTES_MIN || parsed > MINUTES_MAX) {
                 addRangeError(model, propertyDef, MINUTES_MIN, MINUTES_MAX, request);
             } else {
-                accepted.put(DiscoverySettings.REFRESH_SECONDS, Integer.toString(parsed * 60));
+                accepted.put(DiscoverySettings.REFRESH_SECONDS, Integer.toString(parsed * DiscoverySettings.SECONDS_PER_MINUTE));
             }
         } catch (NumberFormatException nfe) {
             String propDesc = bundle.getString(propertyDef.getKey());
@@ -147,7 +162,7 @@ public class GlobalConfigController extends BaseController {
                     new Object[]{propDesc, StringEscapeUtils.escapeHtml4(minutes)}, request);
         }
         // Echo what was typed so a refused form shows it back as typed.
-        model.addAttribute("discoveryRefreshMinutesTyped", minutes);
+        model.addAttribute(REFRESH_MINUTES_ATTR, minutes);
     }
 
     private void addRangeError(Model model, PropertyDef propertyDef, int min, int max,
@@ -235,6 +250,7 @@ public class GlobalConfigController extends BaseController {
         }
 
         applyFrontDoorChoice(accepted, properties, model, request);
+        showRefreshMinutes(model, accepted.getOrDefault(DiscoverySettings.REFRESH_SECONDS, storedValue(properties)));
 
         // Only a change to the reference is validated, so a privacy page that
         // was later unpublished never blocks an unrelated save: Global Config

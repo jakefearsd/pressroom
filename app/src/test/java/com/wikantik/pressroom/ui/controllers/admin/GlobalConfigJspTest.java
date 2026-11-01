@@ -79,7 +79,8 @@ class GlobalConfigJspTest {
         assertTrue(at >= 0, "the refresh interval is edited as discoveryRefreshMinutes");
         String input = source.substring(source.lastIndexOf("<input", at), source.indexOf("/>", at));
         assertTrue(input.contains("type=\"number\"") && input.contains("min=\"1\"") && input.contains("max=\"1440\""), input);
-        assertTrue(input.contains("div 60"), "the stored seconds are shown as minutes: " + input);
+        assertTrue(input.contains("fn:escapeXml(discoveryRefreshMinutes)"), "the input reads the controller's minutes: " + input);
+        assertFalse(input.contains("div "), "no arithmetic in EL: " + input);
         assertFalse(source.contains("name=\"properties[site.discovery.refreshSeconds]"),
                 "the seconds property must never be posted directly");
         assertTrue(source.contains("pd.name != 'site.discovery.refreshSeconds'"),

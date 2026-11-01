@@ -940,9 +940,6 @@ class GlobalConfigControllerTest {
         verify(weblogger.weblogManager()).saveWeblog(site);
     }
 
-    // --- helpers ---
-
-    /** A properties map as {@code PropertiesManager} would return it. */
     // --- front page discovery settings ---
 
     @Test
@@ -1036,6 +1033,44 @@ class GlobalConfigControllerTest {
         verify(weblogger.propertiesManager(), never()).saveProperties(any());
     }
 
+    @Test
+    void theFormShowsTheRefreshIntervalInMinutes() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = properties("site.discovery.refreshSeconds", "3600");
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+
+        controller.execute(request(), model);
+
+        assertEquals("60", model.getAttribute("discoveryRefreshMinutes"));
+    }
+
+    @Test
+    void aHandEditedRefreshValueNeverBreaksThePage() throws Exception {
+        for (String bad : List.of("abc", "", "5", "999999999999")) {
+            Map<String, RuntimeConfigProperty> stored = properties("site.discovery.refreshSeconds", bad);
+            when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+            ExtendedModelMap m = new ExtendedModelMap();
+
+            assertEquals(".GlobalConfig", controller.execute(request(), m));
+
+            assertEquals("60", m.getAttribute("discoveryRefreshMinutes"), bad);
+        }
+    }
+
+    @Test
+    void aRefusedMinutesFieldIsShownBackAsTyped() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = properties("site.discovery.refreshSeconds", "3600");
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+        HttpServletRequest request = request();
+        when(request.getParameter("discoveryRefreshMinutes")).thenReturn("soon");
+
+        controller.save(request, model);
+
+        assertEquals("soon", model.getAttribute("discoveryRefreshMinutes"));
+    }
+
+    // --- helpers ---
+
+    /** A properties map as {@code PropertiesManager} would return it. */
     private static Map<String, RuntimeConfigProperty> properties(String name, String value) {
         Map<String, RuntimeConfigProperty> props = new LinkedHashMap<>();
         props.put(name, new RuntimeConfigProperty(name, value));

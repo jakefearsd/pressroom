@@ -49,7 +49,8 @@ public final class DiscoverySettings {
     /** Message key for an out-of-range value; arguments are label, min, max. */
     public static final String RANGE_ERROR_KEY = "configForm.error.discoveryRange";
 
-    private static final int SECONDS_PER_MINUTE = 60;
+    /** The refresh interval is edited in minutes and stored in seconds. */
+    public static final int SECONDS_PER_MINUTE = 60;
 
     private static final int DEFAULT_WINDOW_DAYS = 30;
     private static final int DEFAULT_SHARE_PERCENT = 20;
@@ -107,6 +108,26 @@ public final class DiscoverySettings {
 
     private static boolean isDiscoverySetting(String name) {
         return WINDOW_DAYS.equals(name) || SHARE_PERCENT.equals(name) || REFRESH_SECONDS.equals(name);
+    }
+
+    /**
+     * The refresh interval in whole minutes for a raw stored value; a missing,
+     * unparsable or out-of-range value shows the default. Never throws, so a
+     * hand-edited row cannot lock the admin out of the page that fixes it.
+     */
+    public static int refreshMinutesFrom(String storedSeconds) {
+        int seconds = DEFAULT_REFRESH_SECONDS;
+        if (storedSeconds != null) {
+            try {
+                int parsed = Integer.parseInt(storedSeconds.trim());
+                if (parsed >= min(REFRESH_SECONDS) && parsed <= max(REFRESH_SECONDS)) {
+                    seconds = parsed;
+                }
+            } catch (NumberFormatException e) {
+                // keep the default
+            }
+        }
+        return seconds / SECONDS_PER_MINUTE;
     }
 
     private static int read(String name, int fallback) {

@@ -356,15 +356,16 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
                 }
             }
             case "integer" -> {
+                int parsed;
                 try {
-                    int parsed = Integer.parseInt(value);
-                    if (DiscoverySettings.rangeError(def.getName(), parsed).isPresent()) {
-                        throw ApiException.invalidField(def.getName(), "'" + def.getName()
-                                + "' must be between " + DiscoverySettings.min(def.getName())
-                                + " and " + DiscoverySettings.max(def.getName()) + ".");
-                    }
+                    parsed = Integer.parseInt(value);
                 } catch (NumberFormatException e) {
                     throw ApiException.invalidField(def.getName(), "'" + def.getName() + "' must be an integer.", e);
+                }
+                if (DiscoverySettings.rangeError(def.getName(), parsed).isPresent()) {
+                    throw ApiException.invalidField(def.getName(), "'" + def.getName()
+                            + "' must be between " + DiscoverySettings.min(def.getName())
+                            + " and " + DiscoverySettings.max(def.getName()) + ".");
                 }
             }
             case "float" -> {
