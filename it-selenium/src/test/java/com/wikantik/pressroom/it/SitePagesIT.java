@@ -43,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * menu's Site section to Pages, publishes {@code it-front} with a heading,
  * chooses it as the front door in Global Config; an anonymous {@code GET /}
  * then shows the heading, {@code GET /it-front} lands on {@code /}, and once
- * the page is unpublished {@code /} shows the site directory again and
+ * the page is unpublished {@code /} shows the discovery page again and
  * {@code /it-front} is a 404.
  *
  * <p>Written after the behaviour, so the watch-it-fail step was a deliberate
@@ -124,7 +124,7 @@ class SitePagesIT extends PressroomIT {
             assertTrue(sitemap.body.contains("<urlset") && sitemap.body.contains("<loc>"),
                     "the site sitemap must be a urlset with the page, got: " + truncate(sitemap.body));
 
-            // --- unpublish: / shows the directory, the slug is a 404 ---------
+            // --- unpublish: / shows the discovery page, the slug is a 404 -----
             openPath("/pressroom-ui/authoring/pages.rol?weblog=site-space");
             $("#pageRemoveForm").should(exist);
             $$("a").findBy(text("It Front")).should(exist).click();
@@ -136,8 +136,8 @@ class SitePagesIT extends PressroomIT {
             Fetched after = fetch(root);
             assertEquals(200, after.status, "an unpublished front door still leaves a working /");
             assertTrue(!after.body.contains(HEADING), "an unpublished page must not be served at /");
-            assertTrue(after.body.contains("id=\"siteDirectory\""),
-                    "/ must fall back to the site directory, got: " + truncate(after.body));
+            assertTrue(after.body.contains("fd-discovery-all"),
+                    "/ must fall back to the discovery page, got: " + truncate(after.body));
             assertEquals(404, fetch(baseUrl() + "/" + SLUG).status,
                     "a draft site page must be a 404 at /" + SLUG);
         } catch (Throwable t) {

@@ -656,6 +656,30 @@ point at a script Caddy never serves.
 Nothing is emitted for a weblog whose Analytics website ID is blank, so this
 stays opt-in per blog and off until an admin sets it.
 
+### Front page popularity (Umami)
+
+The front page (`/`) and the "more from the site" block on every blog mix
+popular posts with random ones. Popularity comes from Umami's
+`analytics_traffic` view, which Pressroom reads itself, read-only, with three
+variables in `.env`:
+
+- `PRESSROOM_ANALYTICS_JDBC_CONNECTIONURL`, normally
+  `jdbc:postgresql://postgres:5432/umami` (the `${UMAMI_DB:-umami}` database
+  on the same server);
+- `PRESSROOM_ANALYTICS_JDBC_USERNAME` and `PRESSROOM_ANALYTICS_JDBC_PASSWORD`:
+  the app's own `POSTGRES_USER` / `POSTGRES_PASSWORD` work, because the
+  connection is opened read-only (`readOnlyMode=always`, with connect and query
+  time limits). `grafana_ro` also works once its LOGIN is enabled.
+
+**Blank means random-only**: with the URL blank nothing connects, nothing is
+logged as an error, and the front page is built from the newest and random
+posts. To verify, open Global Config, then Maintenance, and read "Front page
+discovery": it shows whether scores are being read, when the last refresh ran
+and whether it failed. "Refresh now" rebuilds at once; otherwise it rebuilds
+hourly (Global Config, "Front page discovery", also sets the window, the share
+of random slots and the refresh interval). A slow or unreachable Umami keeps
+the previous scores and never delays a page.
+
 ### The Grafana contract
 
 Pressroom and Umami both expose their data to Grafana as small, versioned SQL

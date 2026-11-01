@@ -70,6 +70,11 @@ already allows the fetch.
 ## Analytics
 Per-weblog Umami tracking plus a read-only Grafana contract over two databases.
 
+- **`analytics_traffic` has a second reader: the front page.** `UmamiTrafficSource`
+  (see `discovery.md`) queries it read-only to score posts, so changing that
+  view's columns or semantics changes `/` and the "more from the site" block as
+  well as the Grafana panels. Update both in one change.
+
 - **Structured injection is the only analytics path; no free-text fallback
   (W2).** `Weblog.analyticsSiteId` is a validated UUID
   (`WeblogConfigController.myValidate`). `#showAnalyticsTrackingCode`

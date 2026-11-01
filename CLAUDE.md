@@ -305,3 +305,4 @@ here.
 | Audience; Analytics | `docs/dev/audience-and-analytics.md` |
 | Automation API; MCP endpoint; New-weblog needs | `docs/dev/api.md` (public reference: `docs/api/README.md`) |
 | Reader sign-in (SSO) | `docs/dev/sso.md` |
+| Front page discovery (`/`, "more from the site", places) | `docs/dev/discovery.md` |

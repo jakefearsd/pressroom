@@ -47,13 +47,16 @@ class PublicSurfaceIT extends PressroomIT {
 
     @Test
     @ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
-    void theSiteRootIsThePublicDirectoryWhileNoWeblogIsTheFrontPage() {
+    void theSiteRootIsTheDiscoveryPageWhileNoWeblogIsTheFrontPage() {
         // ColophonIT sets a front-page weblog under the GLOBAL_CONFIG write
         // lock and restores it; holding the read lock means no IT has one set. index.jsp used to forward / to the
         // admin-only setup page, so every reader got the sign-in form.
+        // With a site space (every installed tier has one) the root is the
+        // discovery page, whose all-blogs list is the public directory; the
+        // bare #siteDirectory view is only the fallback before a site space exists.
         openPath("/");
-        $("#siteDirectory").shouldHave(text("IT Weblog"));
-        $("#siteDirectory a[href$='/" + WEBLOG_HANDLE + "/']").shouldBe(visible);
+        $(".fd-discovery-all").shouldHave(text("IT Weblog"));
+        $(".fd-discovery-all a[href$='/" + WEBLOG_HANDLE + "/']").shouldBe(visible);
     }
 
     @Test
