@@ -667,9 +667,14 @@ variables in `.env`:
   `jdbc:postgresql://postgres:5432/umami` (the `${UMAMI_DB:-umami}` database
   on the same server);
 - `PRESSROOM_ANALYTICS_JDBC_USERNAME` and `PRESSROOM_ANALYTICS_JDBC_PASSWORD`:
-  the app's own `POSTGRES_USER` / `POSTGRES_PASSWORD` work, because the
-  connection is opened read-only (`readOnlyMode=always`, with connect and query
-  time limits). `grafana_ro` also works once its LOGIN is enabled.
+  preferably `grafana_ro`, once its LOGIN is enabled (see
+  [The Grafana contract](#the-grafana-contract)): it can `SELECT` the
+  `analytics_traffic` view and nothing else. The fallback is the app's own
+  `PRESSROOM_DATABASE_JDBC_USERNAME` / `PRESSROOM_DATABASE_JDBC_PASSWORD`; in
+  this stack that is the same role as `POSTGRES_USER`, the server's superuser,
+  which can read every database. The connection is opened read-only either
+  way (`readOnlyMode=always`, with connect and query time limits), but that is
+  a driver setting, not a privilege, so prefer `grafana_ro`.
 
 **Blank means random-only**: with the URL blank nothing connects, nothing is
 logged as an error, and the front page is built from the newest and random
@@ -677,8 +682,16 @@ posts. To verify, open Global Config, then Maintenance, and read "Front page
 discovery": it shows whether scores are being read, when the last refresh ran
 and whether it failed. "Refresh now" rebuilds at once; otherwise it rebuilds
 hourly (Global Config, "Front page discovery", also sets the window, the share
-of random slots and the refresh interval). A slow or unreachable Umami keeps
-the previous scores and never delays a page.
+of random slots and the refresh interval, and saving a changed value there
+rebuilds at once too). A slow or unreachable Umami keeps the previous scores
+and never delays a page: after a restart the first page is built from
+candidates only and the scores follow from a background refresh.
+
+For accurate ranking give each blog its own Umami website: traffic is
+credited by website id and entry anchor, so blogs sharing a website id credit
+each other's posts that share an anchor. Each refresh scans Umami's
+`website_event` table (the view's day filter cannot use an index); that is
+fine at today's volume, and the 15-second query timeout is the ceiling.
 
 ### The Grafana contract
 

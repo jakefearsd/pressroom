@@ -129,6 +129,8 @@ not on every request. This keeps pages cacheable at current throughput
 
 **Headline post** (*my call*). Always the top-ranked post, never random.
 With no traffic data it is the most recently published eligible post.
+It is labelled "Most read lately" only when it was ranked by traffic, and
+"Newest" otherwise (final-review ruling 12).
 
 ## Settings
 
@@ -259,7 +261,8 @@ Each of these must be checkable by a test.
    current blog's posts.
 6. Views older than the window do not count: a post whose only views fall
    outside the window scores 0.
-7. An Umami read failure keeps the previous snapshot. Readers see no change
+7. An Umami read failure keeps the previous scores; readers see no error and
+   no loss of content (random picks still reshuffle with the new snapshot),
    and an error is logged.
 8. Drafts, scheduled, trashed, `noindex` and site-page content never
    appear.
