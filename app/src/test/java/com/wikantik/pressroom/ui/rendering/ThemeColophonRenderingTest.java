@@ -137,6 +137,37 @@ class ThemeColophonRenderingTest {
         assertTrue(failures.isEmpty(), "colophons without the right way in: " + failures);
     }
 
+    /**
+     * The colophon macro opens with the places macro, so every theme's
+     * footer records the blog for the reader's "places you've been" list
+     * just before the colophon itself, whatever else the footer holds.
+     */
+    @Test
+    void everyBlogThemeFooterRecordsThePlaceBeforeTheColophon() throws Exception {
+        List<String> failures = new ArrayList<>();
+        for (String theme : List.of("journal", "portfolio", "travel", "frontpage")) {
+            Weblog managed = TestUtils.getManagedWebsite(weblog);
+            managed.setEditorTheme(theme);
+            TestUtils.weblogger().getWeblogManager().saveWeblog(managed);
+            TestUtils.endSession(true);
+            RenderingTestSupport.clearRenderCaches();
+
+            MockHttpServletResponse response = RenderingTestSupport.execute(RenderingTestSupport.pageServlet(),
+                    RenderingTestSupport.anonymousGet("/pressroom-ui/rendering/page", "/" + HANDLE));
+            assertEquals(200, response.getStatus());
+            String body = response.getContentAsString();
+            int footer = body.lastIndexOf("<footer");
+            int record = body.indexOf("<span hidden data-places-record data-handle=\"" + HANDLE + "\"");
+            int script = body.indexOf("'pressroom.places'");
+            int colophon = body.indexOf("<div class=\"colophon\">");
+            if (footer < 0 || record < footer || script < record || colophon < script) {
+                failures.add(theme);
+            }
+        }
+        assertTrue(failures.isEmpty(), "themes whose footer does not record the place before the colophon: "
+                + failures);
+    }
+
     /** The colophon's markup on the blog's home page, as {@code userName} (null: a visitor). */
     private static String colophon(String userName) throws Exception {
         RenderingTestSupport.clearRenderCaches();
