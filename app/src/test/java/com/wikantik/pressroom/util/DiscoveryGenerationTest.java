@@ -30,12 +30,15 @@ class DiscoveryGenerationTest {
 
     @Test
     void advanceIsMonotonic() {
-        long later = Math.max(DiscoveryGeneration.current(), System.currentTimeMillis()) + 10_000L;
+        // Just past wherever it is, never into the future: the generation is
+        // process-wide, and one parked ahead of the clock would make every
+        // cached page in later tests look stale.
+        long later = Math.max(DiscoveryGeneration.current(), 1_000L) + 10L;
 
         DiscoveryGeneration.advance(later);
         assertEquals(later, DiscoveryGeneration.current());
 
-        DiscoveryGeneration.advance(later - 5_000L);
+        DiscoveryGeneration.advance(later - 5L);
         assertEquals(later, DiscoveryGeneration.current(), "an earlier value is ignored");
 
         DiscoveryGeneration.advance(later);

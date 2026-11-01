@@ -64,6 +64,11 @@ public class RenderCacheTest {
 
     @BeforeEach
     public void startFromEmptyCaches() {
+        // The discovery generation is process-wide: another test in this JVM may
+        // have parked it at about now, and an entry cached before it is a miss.
+        while (System.currentTimeMillis() <= DiscoveryGeneration.current()) {
+            Thread.onSpinWait();
+        }
         SiteWideCache.getInstance().clear();
         WeblogPageCache.getInstance().clear();
         WeblogFeedCache.getInstance().clear();
@@ -182,7 +187,10 @@ public class RenderCacheTest {
     public void weblogLastModifiedComesFromTheWeblog() {
         RenderCache<WeblogPageRequest> cache = RenderCaches.forPage(false);
 
-        long changed = ServingSince.started() + 1_000L;
+        // Dated past the process-wide discovery generation too: another test in
+        // this JVM may already have advanced it to about now.
+        long changed = Math.max(Math.max(ServingSince.started(), DiscoveryGeneration.current()),
+                System.currentTimeMillis()) + 1_000L;
         Weblog weblog = new Weblog();
         weblog.setLastModified(new Date(changed));
 
