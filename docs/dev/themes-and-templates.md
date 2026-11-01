@@ -334,6 +334,23 @@ resolves through the index at the end of `CLAUDE.md`.
   `ThemeColophonRenderingTest` renders the three blog themes end to end.
 - Styling is per theme (`body.qj/tg/pf/fd .colophon`), small and muted from
   that theme's own tokens.
+- **The colophon opens with "more from the site" and the places recording**
+  (the showMoreFromSite and showPlacesYouveBeen macros), so a forked theme
+  that still calls the colophon inherits both. The block,
+  `aside.more-from-site` (`-title`, `-posts`, `-post`, `-blog`, `-home`),
+  holds three of `$discovery.moreFromSite($weblog)`, a hidden
+  `nav.places-been[data-places]` and a link to `$discovery.homeUrl`; it
+  renders nothing on the site space, on an opted-out blog, or with no other
+  eligible blog. Every non-site-space page carries `<span hidden
+  data-places-record data-handle data-name data-url>` (opt-out does not stop
+  it) and the inline script, which keeps the current blog and the last five others in
+  `localStorage["pressroom.places"]` and fills every `[data-places]` with
+  `textContent`/`href` only. Both macros guard on `$discovery`, which is in
+  `rendering.pageModels` and `rendering.searchModels` but deliberately not
+  `previewModels` (preview links, and an author's preview is not a visit),
+  so a preview renders neither and records `$discovery` as an expected
+  unresolved reference. The script may contain no `$` or `#`: Velocity reads
+  them (`MoreFromSiteRenderingTest` checks it reaches the page verbatim).
 
 ## Content assets (callouts, code blocks, heading anchors)
 

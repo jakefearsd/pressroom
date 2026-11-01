@@ -56,6 +56,8 @@ These are the documented macros in order defined in this file:
     #showSubscribeForm($weblog $prompt)
     #showComments($weblog $entry)
     #showBusinessCard($weblog $bookLabel)
+    #showMoreFromSite($weblog)                       (called by the colophon)
+    #showPlacesYouveBeen($weblog)                    (called by the colophon)
     #showColophon($weblog)
 
 [custom-theme API] marks a macro no bundled theme calls. They are kept
@@ -2360,8 +2362,143 @@ Every value is escaped here; the model hands back raw strings.
 #end
 
 #**
+"More from the site" on a blog: three posts from the site's other blogs (the
+discovery picker's, $discovery.moreFromSite), each with its blog's name, then
+the reader's own places list and a link to the front page. The colophon macro
+calls this first, so every bundled theme and every forked theme that still
+calls the colophon gets it.
+
+Renders nothing at all -- no empty box -- on the site space, on a blog that
+has turned the block off, when no other blog has an eligible post, and where
+$discovery is not loaded (a preview: its links would be preview links).
+Entry titles are stored escaped and emitted bare; blog names come escaped
+from WeblogWrapper; every href and the site name are escaped here.
+
+The section classes (more-from-site, -title, -posts, -post, -blog, -home)
+are stable markers the rendering tests and the browser suite pin: restyle
+through them, never by renaming them.
+*#
+#macro(showMoreFromSite $weblog)
+#if($discovery && $weblog && !$weblog.siteSpace)
+#set($mfsPosts = $discovery.moreFromSite($weblog))
+#if(!$mfsPosts.isEmpty())
+<aside class="more-from-site" aria-labelledby="more-from-site-label">
+    <h2 class="more-from-site-title" id="more-from-site-label">#if($utils.isNotEmpty($config.siteName))$text.get("discovery.moreFrom", [$utils.escapeHTML($config.siteName)])#else$text.get("discovery.moreFromSite")#end</h2>
+    <ul class="more-from-site-posts">
+    #foreach($mfsPost in $mfsPosts)
+        <li class="more-from-site-post"><a href="$utils.escapeHTML($mfsPost.permalink)">$mfsPost.title</a> <span class="more-from-site-blog">$mfsPost.website.name</span></li>
+    #end
+    </ul>
+    <nav class="places-been" hidden data-places aria-labelledby="more-from-site-places-label">
+        <h3 class="places-been-title" id="more-from-site-places-label">$text.get("discovery.placesBeen")</h3>
+    </nav>
+    <p class="more-from-site-home"><a href="$utils.escapeHTML($discovery.homeUrl)">$text.get("discovery.homeLink")</a></p>
+</aside>
+#end
+#end
+#end
+
+#**
+"Places you've been": the reader's last five blogs, kept in their own
+browser only (localStorage, key pressroom.places, a JSON array of
+{handle, name, url}); nothing is sent to the server. The colophon macro calls
+this on every page that has $discovery (not on a preview).
+
+On a blog's page a hidden recording element names the blog; the inline
+script moves it to the front of the list, keeps six (the current blog and
+five others) and saves it, so a blog page and the front page (never
+recorded) both show five. Storage that cannot be read stops the script; a
+value that will not parse reads as an empty list, so this visit's save
+replaces it. Only an http(s) url is ever used as an href.
+Opting out of the more-from-the-site block does not stop the recording. The
+site space is never recorded. The script then writes the other blogs into
+every [data-places] container on the page -- the one inside the
+more-from-the-site block, or the discovery front page's own -- with
+createElement, textContent and href only, and unhides a container only when
+it has something to show. With no storage, or no JavaScript, nothing shows.
+
+The attributes are escaped here (the name by WeblogWrapper); the script reads
+them back through getAttribute, so they arrive as plain text. No dollar sign
+and no hash in the script: Velocity would read either.
+*#
+#macro(showPlacesYouveBeen $weblog)
+#if($discovery && $weblog)
+#if(!$weblog.siteSpace)
+<span hidden data-places-record data-handle="$utils.escapeHTML($weblog.handle)" data-name="$weblog.name" data-url="$utils.escapeHTML($weblog.absoluteURL)"></span>
+#end
+<script>
+(function () {
+    var key = 'pressroom.places', cap = 5, places = [], raw, stored;
+    var mark = document.querySelector('[data-places-record]');
+    var here = mark ? mark.getAttribute('data-handle') : null;
+    function usable(p) {
+        return !!p && typeof p.handle === 'string' && typeof p.name === 'string'
+            && typeof p.url === 'string' && /^https?:\/\//.test(p.url);
+    }
+    try {
+        raw = window.localStorage.getItem(key);
+    } catch (e) {
+        return;
+    }
+    try {
+        stored = JSON.parse(raw || '[]');
+    } catch (e) {
+        stored = [];
+    }
+    if (Array.isArray(stored)) {
+        places = stored.filter(function (p) { return usable(p) && p.handle !== here; });
+    }
+    if (mark) {
+        var current = { handle: here, name: mark.getAttribute('data-name'), url: mark.getAttribute('data-url') };
+        if (usable(current)) {
+            places.unshift(current);
+        }
+    }
+    places = places.slice(0, cap + 1);
+    if (mark) {
+        try {
+            window.localStorage.setItem(key, JSON.stringify(places));
+        } catch (e) {
+            // storage full or refused: the list is simply not kept
+        }
+    }
+    var others = places.filter(function (p) { return p.handle !== here; }).slice(0, cap);
+    function fill() {
+        var lists = document.querySelectorAll('[data-places]');
+        for (var i = 0; i < lists.length; i++) {
+            if (!others.length || lists[i].querySelector('ul')) {
+                continue;
+            }
+            var ul = document.createElement('ul');
+            ul.className = 'places-been-list';
+            others.forEach(function (p) {
+                var li = document.createElement('li');
+                var a = document.createElement('a');
+                a.href = p.url;
+                a.textContent = p.name;
+                li.appendChild(a);
+                ul.appendChild(li);
+            });
+            lists[i].appendChild(ul);
+            lists[i].hidden = false;
+        }
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', fill);
+    } else {
+        fill();
+    }
+})();
+</script>
+#end
+#end
+
+#**
 The site colophon, the last thing inside each bundled theme's footer:
     #showColophon($model.weblog)
+
+It opens with the more-from-the-site block and the places recording (the two
+macros above), so a forked theme that calls the colophon gets both.
 
 Shows the blog's copyright line (its own notice, else the current year and
 the blog's name), the privacy-policy link when the site names one, and
@@ -2375,6 +2512,8 @@ The record hands back raw strings, so every one is escaped here exactly once
 print it as "2,026". All words come from the footer.* message keys.
 *#
 #macro(showColophon $weblog)
+#showMoreFromSite($weblog)
+#showPlacesYouveBeen($weblog)
 #set($colophonFacts = $config.getColophon($weblog))
 #set($colophonHasCopyright = $utils.isNotEmpty($colophonFacts.copyrightText) || $utils.isNotEmpty($colophonFacts.copyrightHolder))
 <div class="colophon">
