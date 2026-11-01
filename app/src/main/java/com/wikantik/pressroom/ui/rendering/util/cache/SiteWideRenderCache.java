@@ -31,12 +31,12 @@ import com.wikantik.pressroom.util.cache.CachedContent;
  * itself has a {@code generateKey} overload for each; which one to call is
  * supplied as {@code keyFunction} rather than branched on here.
  *
- * <p>The {@code lastModified} argument to {@link #get} is discarded, and that
- * is the correct reading of the code this replaces: the servlets never had a
- * timestamp to give this side -- {@link SiteWideCache#get(String)} takes none.
- * Site-wide content is dropped wholesale through {@code CacheManager}, never
- * expired against one weblog. The one exception is the discovery generation:
- * an entry cached before it is a miss.
+ * <p>The {@code lastModified} argument to {@link #get} is discarded: the
+ * servlets never had a timestamp to give this side, and site-wide content is
+ * dropped wholesale through {@code CacheManager}, never expired against one
+ * weblog. The one exception is the discovery generation: an entry cached
+ * before it is a miss, and {@link #lastModified} is never earlier than it, so
+ * a browser holding a page from before a reshuffle is not answered 304.
  */
 final class SiteWideRenderCache<R> implements RenderCache<R> {
 
@@ -71,7 +71,7 @@ final class SiteWideRenderCache<R> implements RenderCache<R> {
 
     @Override
     public long lastModified(Weblog weblog) {
-        return cache.getLastModified().getTime();
+        return Math.max(cache.getLastModified().getTime(), DiscoveryGeneration.current());
     }
 
     @Override

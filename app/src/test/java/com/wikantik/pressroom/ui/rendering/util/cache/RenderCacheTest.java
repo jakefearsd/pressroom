@@ -23,6 +23,7 @@ import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.rendering.util.WeblogFeedRequest;
 import com.wikantik.pressroom.ui.rendering.util.WeblogPageRequest;
+import com.wikantik.pressroom.util.DiscoveryGeneration;
 import com.wikantik.pressroom.util.ServingSince;
 import com.wikantik.pressroom.util.cache.CachedContent;
 import org.junit.jupiter.api.BeforeAll;
@@ -77,10 +78,21 @@ public class RenderCacheTest {
         long generation = ServingSince.started() + 1;
         Weblog weblog = new Weblog();
         weblog.setLastModified(new Date(ServingSince.started() - 5000));
-        com.wikantik.pressroom.util.DiscoveryGeneration.advance(generation);
+        DiscoveryGeneration.advance(generation);
 
         assertTrue(RenderCaches.lastModifiedOf(weblog) >= generation,
                 "an entry cached before the generation must look stale once it moves");
+    }
+
+    @Test
+    public void siteWideLastModifiedIncludesGeneration() {
+        RenderCache<WeblogPageRequest> cache = RenderCaches.forPage(true);
+        // The cache's own date is a 15 minute "now"; a generation just ahead of
+        // it must win, or a browser is answered 304 for a reshuffled page.
+        long generation = SiteWideCache.getInstance().getLastModified().getTime() + 1;
+        DiscoveryGeneration.advance(generation);
+
+        assertTrue(cache.lastModified(null) >= generation);
     }
 
     @Test
@@ -90,7 +102,7 @@ public class RenderCacheTest {
         cache.put(key, content("front page"));
         assertNotNull(cache.get(key, 0L), "a fresh entry hits");
 
-        com.wikantik.pressroom.util.DiscoveryGeneration.advance(System.currentTimeMillis() + 1);
+        DiscoveryGeneration.advance(System.currentTimeMillis() + 1);
         Thread.sleep(5);
 
         assertNull(cache.get(key, 0L), "an entry cached before the generation is a miss");
@@ -188,7 +200,7 @@ public class RenderCacheTest {
         // The discovery generation is process-wide and only moves forward, so
         // another test in this JVM may have advanced it past the start.
         assertEquals(Math.max(ServingSince.started(),
-                        com.wikantik.pressroom.util.DiscoveryGeneration.current()),
+                        DiscoveryGeneration.current()),
                 cache.lastModified(unchanged),
                 "A deploy can change every page without touching the weblog; a reader's "
                         + "copy from before it must not be answered 304");
