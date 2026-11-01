@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Pattern;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.lang3.CharSetUtils;
@@ -299,6 +300,7 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
 
         Map<String, RuntimeConfigProperty> toSave = new LinkedHashMap<>();
         List<AdminDtos.ConfigEntry> result = new ArrayList<>();
+        boolean discoveryChanged = false;
         for (Map.Entry<String, String> entry : body.entrySet()) {
             String name = entry.getKey();
             AdminDtos.requireRuntimeProperty(name);
@@ -317,6 +319,10 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
             // row and mutating it in place is the same pattern
             // GlobalConfigController's save uses for the JSP admin screen.
             RuntimeConfigProperty property = weblogger.getPropertiesManager().getProperty(name);
+            if (name.startsWith(DiscoverySettings.PREFIX)
+                    && (property == null || !Objects.equals(property.getValue(), value))) {
+                discoveryChanged = true;
+            }
             if (property != null) {
                 property.setValue(value);
             } else {
@@ -328,6 +334,11 @@ public class AdminApi extends BaseApiController implements UISecurityEnforced {
 
         weblogger.getPropertiesManager().saveProperties(toSave);
         weblogger.flush();
+        // The discovery snapshot holds the share and window it was built with
+        // until the next scheduled refresh, up to an hour away.
+        if (discoveryChanged) {
+            weblogger.getDiscoveryManager().refresh();
+        }
         return result;
     }
 

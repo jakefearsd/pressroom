@@ -44,7 +44,12 @@ public interface DiscoveryManager {
     /** How the last refresh went. */
     DiscoveryStatus getStatus();
 
-    /** The front page's sections; the first call builds the snapshot if none exists. */
+    /**
+     * The front page's sections. The first call (of this or
+     * {@link #selectMoreFromSite}) builds the snapshot if none exists, from
+     * candidates only; the scores follow from a refresh in the background,
+     * so no caller waits on the traffic source.
+     */
     FrontPageSelection selectFrontPage();
 
     /**

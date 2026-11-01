@@ -35,7 +35,9 @@ import java.util.Properties;
  * Reads the {@code analytics_traffic} view (see
  * {@code deploy/analytics/umami-views.sql}) in Umami's database over a
  * short-lived read-only JDBC connection. Both the connect and the query are
- * time-boxed so a slow or hung Umami can delay only a background refresh.
+ * time-boxed. Only a refresh ever reads it (the scheduled one, the first
+ * scored one in the background, or an admin's "Refresh now" or discovery
+ * settings save), never a page, so a slow or hung Umami delays no reader.
  */
 public final class UmamiTrafficSource implements TrafficSource {
 

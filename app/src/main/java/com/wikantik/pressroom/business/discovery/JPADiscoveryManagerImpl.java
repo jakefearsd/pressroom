@@ -43,6 +43,8 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -50,9 +52,12 @@ import java.util.concurrent.atomic.AtomicReference;
  * {@link TrafficSource} (scores).
  *
  * <p>A refresh builds an immutable {@link Snapshot} and swaps it in through a
- * volatile reference, so readers never wait on a refresh; only the very first
- * selection, when there is no snapshot at all, builds one synchronously, and
- * concurrent first requests share that one build. Selections are computed as
+ * volatile reference, so readers never wait on a refresh. Only the very first
+ * selection, when there is no snapshot at all (after every restart, while the
+ * scheduled refresh may still be an interval away), builds one on the calling
+ * thread, and concurrent first requests share that one build. It reads
+ * candidates only, one local query, and hands the scored refresh to the
+ * background pool, so no page ever waits on the traffic source. Selections are computed as
  * ids once per snapshot (seeded by its generation, so random picks hold until
  * the next rebuild) and resolved to entities on every call, dropping anything
  * that stopped being eligible in between.
@@ -85,6 +90,7 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
     private final Weblogger weblogger;
     private final TrafficSource trafficSource;
     private final Clock clock;
+    private final Executor background;
 
     /** Serialises refreshes, including the first build. Readers never take it. */
     private final Object refreshLock = new Object();
@@ -94,13 +100,26 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
             new DiscoveryStatus(DiscoveryStatus.State.NEVER, null, null, 0, 0, null);
 
     public JPADiscoveryManagerImpl(Weblogger weblogger, TrafficSource trafficSource) {
-        this(weblogger, trafficSource, Clock.systemUTC());
+        this(weblogger, trafficSource, Clock.systemUTC(), inBackgroundOf(weblogger));
     }
 
-    JPADiscoveryManagerImpl(Weblogger weblogger, TrafficSource trafficSource, Clock clock) {
+    JPADiscoveryManagerImpl(Weblogger weblogger, TrafficSource trafficSource, Clock clock, Executor background) {
         this.weblogger = weblogger;
         this.trafficSource = trafficSource;
         this.clock = clock;
+        this.background = background;
+    }
+
+    /** The tier's background pool; a scheduling failure surfaces as a rejection. */
+    private static Executor inBackgroundOf(Weblogger weblogger) {
+        return task -> {
+            try {
+                weblogger.getThreadManager().executeInBackground(task);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RejectedExecutionException("interrupted while scheduling", e);
+            }
+        };
     }
 
     // ------------------------------------------------------------ refresh
@@ -108,11 +127,17 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
     @Override
     public void refresh() {
         synchronized (refreshLock) {
-            rebuild();
+            rebuild(true);
         }
     }
 
-    private void rebuild() {
+    /**
+     * Builds and swaps in a snapshot. With {@code readTraffic} false (the
+     * first build, on a request thread) a configured source is not read: the
+     * snapshot has no scores and the status still says how the last real
+     * refresh went.
+     */
+    private void rebuild(boolean readTraffic) {
         Instant now = clock.instant();
         DiscoveryStatus before = status;
         List<DiscoveryCandidate> candidates;
@@ -132,8 +157,14 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
         Map<String, Long> scores;
         DiscoveryStatus.State state;
         Instant lastSuccess = before.lastSuccess();
+        Instant attempted = now;
         String error = null;
-        if (trafficSource.isConfigured()) {
+        if (trafficSource.isConfigured() && !readTraffic) {
+            scores = Map.of();
+            state = before.state();
+            attempted = before.lastAttempt();
+            error = before.lastError();
+        } else if (trafficSource.isConfigured()) {
             LocalDate firstDay = LocalDate.ofInstant(now, ZoneOffset.UTC)
                     .minusDays(DiscoverySettings.windowDays() - 1L);
             try {
@@ -154,6 +185,12 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
         // Always a new generation, even within one millisecond of the last:
         // a rebuild is what reshuffles the random picks.
         //
+        // Stamped now, after every read, not when the rebuild started: a page
+        // rendered from the old snapshot while the reads ran is dated by the
+        // old generation, so its date may be later than the start, and a
+        // generation older than that page would leave it cached (and 304'd)
+        // for a whole extra interval.
+        //
         // Ordering invariant: the snapshot is swapped in BEFORE its generation
         // is published. A rendering dated by DiscoveryGeneration.current() must
         // already read that generation's snapshot; published the other way
@@ -162,12 +199,31 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
         // Both writes are volatile, so a reader that sees the new generation
         // also sees the new snapshot. Refreshes are serialised by refreshLock,
         // so nothing else moves the generation between these lines.
-        long generation = Math.max(now.toEpochMilli(), DiscoveryGeneration.current() + 1);
+        long generation = Math.max(clock.instant().toEpochMilli(), DiscoveryGeneration.current() + 1);
         Snapshot built = new Snapshot(generation, now, candidates, weblogs, scores);
         snapshot = built;
         DiscoveryGeneration.advance(generation);
-        status = new DiscoveryStatus(state, now, lastSuccess, built.scoredEntries(),
+        status = new DiscoveryStatus(state, attempted, lastSuccess, built.scoredEntries(),
                 built.pool.size(), error);
+    }
+
+    /**
+     * Hands the first scored refresh to the background pool. Display path: a
+     * refresh that cannot be scheduled leaves the unscored snapshot to the
+     * scheduled task, and the page is unaffected.
+     */
+    private void scoreInBackground() {
+        try {
+            background.execute(() -> {
+                try {
+                    refresh();
+                } finally {
+                    weblogger.release();
+                }
+            });
+        } catch (RuntimeException e) {
+            log.warn("Discovery could not schedule the first scored refresh; the scheduled one will score", e);
+        }
     }
 
     private static String describe(Exception e) {
@@ -222,16 +278,26 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
         return status;
     }
 
-    /** The current snapshot, building the first one if there is none; null if that build failed. */
+    /**
+     * The current snapshot, building the first one if there is none; null if
+     * that build failed. The first build reads candidates only; the scored
+     * refresh follows in the background.
+     */
     private Snapshot current() {
         Snapshot s = snapshot;
-        if (s == null) {
-            synchronized (refreshLock) {
-                if (snapshot == null) {
-                    rebuild();
-                }
-                s = snapshot;
+        if (s != null) {
+            return s;
+        }
+        boolean built = false;
+        synchronized (refreshLock) {
+            if (snapshot == null) {
+                rebuild(false);
+                built = snapshot != null;
             }
+            s = snapshot;
+        }
+        if (built && trafficSource.isConfigured()) {
+            scoreInBackground();
         }
         return s;
     }

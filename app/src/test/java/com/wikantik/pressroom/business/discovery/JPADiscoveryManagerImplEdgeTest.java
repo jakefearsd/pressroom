@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -37,8 +38,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -47,6 +50,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -77,8 +82,12 @@ class JPADiscoveryManagerImplEdgeTest {
         tier.detach();
     }
 
+    /** Work the manager handed to its background pool, not yet run. */
+    private final List<Runnable> background = new ArrayList<>();
+
     private JPADiscoveryManagerImpl manager(TrafficSource source) {
-        return new JPADiscoveryManagerImpl(tier.weblogger(), source, Clock.fixed(NOW, ZoneOffset.UTC));
+        return new JPADiscoveryManagerImpl(tier.weblogger(), source, Clock.fixed(NOW, ZoneOffset.UTC),
+                background::add);
     }
 
     private static Weblog weblog(String id) {
@@ -143,6 +152,112 @@ class JPADiscoveryManagerImplEdgeTest {
 
         assertEquals(0, early.get(), "a generation was visible before its snapshot");
         assertEquals(DiscoveryGeneration.current(), manager.snapshotGeneration());
+    }
+
+    /**
+     * A page rendered from the old snapshot while a slow refresh reads is
+     * dated by the old generation; stamped with the refresh's start time, the
+     * new generation could be older than such a page, which would then
+     * survive (and answer 304) a whole extra interval.
+     */
+    @Test
+    void theGenerationIsStampedAfterTheReads() throws Exception {
+        candidates(3);
+        MovableClock clock = new MovableClock(Instant.now().minusSeconds(3600));
+        AtomicLong afterRead = new AtomicLong();
+        JPADiscoveryManagerImpl manager = new JPADiscoveryManagerImpl(tier.weblogger(),
+                new Configured(firstDay -> {
+                    // the read takes "an hour": the clock moves on while it runs
+                    Instant later = Instant.now();
+                    clock.set(later);
+                    afterRead.set(later.toEpochMilli());
+                    return List.of();
+                }), clock, background::add);
+
+        manager.refresh();
+
+        assertTrue(manager.snapshotGeneration() >= afterRead.get(),
+                "generation " + manager.snapshotGeneration() + " predates the end of the read " + afterRead.get());
+        assertEquals(DiscoveryGeneration.current(), manager.snapshotGeneration());
+    }
+
+    /**
+     * After a restart the snapshot is empty and the scheduled refresh may be
+     * an interval away, so the first page builds one. It reads candidates
+     * only (one local query) and leaves Umami to the background pool: no
+     * page waits on traffic.
+     */
+    @Test
+    void theFirstFrontPageNeverReadsTrafficOnTheCallingThread() throws Exception {
+        candidates(3);
+        blog.setAnalyticsSiteId("site-1");
+        Configured source = new Configured(firstDay -> List.of(new TrafficRow("site-1", "post-2", 10)));
+        JPADiscoveryManagerImpl manager = manager(source);
+
+        FrontPageSelection first = manager.selectFrontPage();
+
+        assertTrue(source.callers.isEmpty(), "traffic was read on " + source.callers);
+        assertEquals("entry-0", first.headline().getId(), "no scores yet: the newest post leads");
+        assertEquals(1, background.size(), "the scored refresh is handed to the background pool");
+        assertEquals(DiscoveryStatus.State.NEVER, manager.getStatus().state(), "Umami has not been read yet");
+        assertEquals(3, manager.getStatus().candidates());
+
+        Thread worker = new Thread(background.get(0), "discovery-background");
+        worker.start();
+        worker.join(10_000);
+
+        assertEquals(List.of("discovery-background"), source.callers);
+        verify(tier.weblogger()).release();
+        assertEquals(DiscoveryStatus.State.OK, manager.getStatus().state());
+        assertEquals("entry-2", manager.selectFrontPage().headline().getId(), "the scores arrive with it");
+        assertEquals(1, background.size(), "only the first build schedules one");
+    }
+
+    @Test
+    void theFirstMoreFromSiteNeverReadsTrafficOnTheCallingThread() throws Exception {
+        candidates(3);
+        Configured source = new Configured(firstDay -> List.of());
+        JPADiscoveryManagerImpl manager = manager(source);
+
+        assertEquals(3, manager.selectMoreFromSite(weblog("other"), 3).size());
+
+        assertTrue(source.callers.isEmpty(), "traffic was read on " + source.callers);
+        assertEquals(1, background.size());
+    }
+
+    @Test
+    void anUnconfiguredSourceBuildsInFullAndSchedulesNothing() throws Exception {
+        candidates(3);
+        JPADiscoveryManagerImpl manager = manager(new Unconfigured());
+
+        manager.selectFrontPage();
+
+        assertEquals(DiscoveryStatus.State.DISABLED, manager.getStatus().state());
+        assertTrue(background.isEmpty(), "nothing to score, so nothing to schedule");
+    }
+
+    @Test
+    void theTierPoolRunsTheFirstScoredRefresh() throws Exception {
+        candidates(3);
+        JPADiscoveryManagerImpl manager = new JPADiscoveryManagerImpl(tier.weblogger(),
+                new Configured(firstDay -> List.of()));
+
+        assertNotNull(manager.selectFrontPage().headline());
+
+        verify(tier.threadManager()).executeInBackground(any(Runnable.class));
+    }
+
+    @Test
+    void aScoredRefreshThatCannotBeScheduledLeavesThePageAlone() throws Exception {
+        candidates(3);
+        doThrow(new InterruptedException()).when(tier.threadManager()).executeInBackground(any(Runnable.class));
+        JPADiscoveryManagerImpl manager = new JPADiscoveryManagerImpl(tier.weblogger(),
+                new Configured(firstDay -> List.of()));
+
+        FrontPageSelection page = manager.selectFrontPage();
+
+        assertTrue(Thread.interrupted(), "the interrupt is kept (and cleared here)");
+        assertEquals("entry-0", page.headline().getId());
     }
 
     @Test
@@ -271,6 +386,7 @@ class JPADiscoveryManagerImplEdgeTest {
                 return rows;
             }
         });
+        manager.refresh();
         FrontPageSelection before = manager.selectFrontPage();
         assertEquals("entry-5", before.headline().getId());
         entries.get("entry-5").setStatus(PubStatus.DRAFT);
@@ -340,6 +456,61 @@ class JPADiscoveryManagerImplEdgeTest {
         @Override
         public List<TrafficRow> viewsSince(LocalDate firstDay) {
             return List.of();
+        }
+    }
+
+    /** What a configured source answers. */
+    @FunctionalInterface
+    private interface Reads {
+        List<TrafficRow> viewsSince(LocalDate firstDay);
+    }
+
+    /** A configured source that records the thread of every read. */
+    private static final class Configured implements TrafficSource {
+        final List<String> callers = new CopyOnWriteArrayList<>();
+        private final Reads reads;
+
+        Configured(Reads reads) {
+            this.reads = reads;
+        }
+
+        @Override
+        public boolean isConfigured() {
+            return true;
+        }
+
+        @Override
+        public List<TrafficRow> viewsSince(LocalDate firstDay) {
+            callers.add(Thread.currentThread().getName());
+            return reads.viewsSince(firstDay);
+        }
+    }
+
+    /** A clock a test moves by hand. */
+    private static final class MovableClock extends Clock {
+        private volatile Instant now;
+
+        MovableClock(Instant now) {
+            this.now = now;
+        }
+
+        void set(Instant instant) {
+            now = instant;
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return ZoneOffset.UTC;
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return this;
+        }
+
+        @Override
+        public Instant instant() {
+            return now;
         }
     }
 }

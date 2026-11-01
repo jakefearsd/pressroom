@@ -1068,6 +1068,77 @@ class GlobalConfigControllerTest {
         assertEquals("soon", model.getAttribute("discoveryRefreshMinutes"));
     }
 
+    /**
+     * The snapshot otherwise keeps the old share and window until the next
+     * scheduled refresh, up to an hour: a save that changes a discovery
+     * setting rebuilds it at once.
+     */
+    @Test
+    void aChangedDiscoverySettingRefreshesTheSnapshot() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = properties("site.discovery.sharePercent", "20");
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+        HttpServletRequest request = request();
+        when(request.getParameter("site.discovery.sharePercent")).thenReturn("30");
+
+        controller.save(request, model);
+
+        assertEquals(List.of("generic.changes.saved"), ControllerTestFixture.messages(model));
+        verify(weblogger.discoveryManager()).refresh();
+    }
+
+    @Test
+    void aChangedRefreshIntervalRefreshesTheSnapshot() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = properties("site.discovery.refreshSeconds", "3600");
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+        HttpServletRequest request = request();
+        when(request.getParameter("discoveryRefreshMinutes")).thenReturn("90");
+
+        controller.save(request, model);
+
+        verify(weblogger.discoveryManager()).refresh();
+    }
+
+    @Test
+    void anUnchangedDiscoverySettingDoesNotRefresh() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = properties("site.discovery.sharePercent", "20");
+        stored.put("site.name", new RuntimeConfigProperty("site.name", "Old Name"));
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+        HttpServletRequest request = request();
+        when(request.getParameter("site.discovery.sharePercent")).thenReturn("20");
+        when(request.getParameter("site.name")).thenReturn("New Name");
+
+        controller.save(request, model);
+
+        assertEquals(List.of("generic.changes.saved"), ControllerTestFixture.messages(model));
+        verify(weblogger.discoveryManager(), never()).refresh();
+    }
+
+    @Test
+    void aRefusedSaveDoesNotRefresh() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = properties("site.discovery.sharePercent", "20");
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+        HttpServletRequest request = request();
+        when(request.getParameter("site.discovery.sharePercent")).thenReturn("101");
+
+        controller.save(request, model);
+
+        verify(weblogger.discoveryManager(), never()).refresh();
+    }
+
+    @Test
+    void aSaveThatCannotBeStoredDoesNotRefresh() throws Exception {
+        Map<String, RuntimeConfigProperty> stored = properties("site.discovery.sharePercent", "20");
+        when(weblogger.propertiesManager().getProperties()).thenReturn(stored);
+        doThrow(new WebloggerException("db down")).when(weblogger.propertiesManager()).saveProperties(any());
+        HttpServletRequest request = request();
+        when(request.getParameter("site.discovery.sharePercent")).thenReturn("30");
+
+        controller.save(request, model);
+
+        assertEquals(List.of("generic.error.check.logs"), ControllerTestFixture.errors(model));
+        verify(weblogger.discoveryManager(), never()).refresh();
+    }
+
     // --- helpers ---
 
     /** A properties map as {@code PropertiesManager} would return it. */

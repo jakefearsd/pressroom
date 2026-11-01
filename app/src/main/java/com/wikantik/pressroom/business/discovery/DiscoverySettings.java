@@ -33,6 +33,9 @@ import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
  */
 public final class DiscoverySettings {
 
+    /** What every discovery setting's name starts with. */
+    public static final String PREFIX = "site.discovery.";
+
     /** Days of traffic counted toward popularity. */
     public static final String WINDOW_DAYS = "site.discovery.windowDays";
     /** Percent of front-page slots filled at random. */

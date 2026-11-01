@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -78,6 +79,7 @@ class JPADiscoveryManagerImplTest {
     private WeblogEntry siteSpaceEntry;
     private String originalShare;
     private FakeSource source;
+    private final List<Runnable> background = new CopyOnWriteArrayList<>();
 
     @BeforeEach
     void setUp() throws Exception {
@@ -139,7 +141,9 @@ class JPADiscoveryManagerImplTest {
                 row(f, 0, 2, 100),
                 row(f, 2, 3, 70));
 
-        FrontPageSelection page = manager().selectFrontPage();
+        JPADiscoveryManagerImpl manager = manager();
+        manager.refresh();
+        FrontPageSelection page = manager.selectFrontPage();
 
         assertEquals(f.entries[0][2].getId(), page.headline().getId());
     }
@@ -157,7 +161,9 @@ class JPADiscoveryManagerImplTest {
                 row(f, 1, 4, 60),
                 row(f, 2, 0, 50));
 
-        FrontPageSelection page = manager().selectFrontPage();
+        JPADiscoveryManagerImpl manager = manager();
+        manager.refresh();
+        FrontPageSelection page = manager.selectFrontPage();
 
         assertEquals(f.entries[0][0].getId(), page.headline().getId());
         assertEquals(List.of(f.entries[1][1].getId(), f.entries[2][2].getId(),
@@ -176,7 +182,9 @@ class JPADiscoveryManagerImplTest {
                 row(f, 0, 0, 120), row(f, 0, 1, 80),
                 row(f, 1, 0, 100));
 
-        FrontPageSelection page = manager().selectFrontPage();
+        JPADiscoveryManagerImpl manager = manager();
+        manager.refresh();
+        FrontPageSelection page = manager.selectFrontPage();
 
         assertEquals(List.of(f.blogs[2].getId(), f.blogs[0].getId(), f.blogs[1].getId()),
                 page.blogs().stream().map(card -> card.weblog().getId()).toList());
@@ -197,6 +205,7 @@ class JPADiscoveryManagerImplTest {
                 f.entries[1][3].getAnchor(), 10));
 
         JPADiscoveryManagerImpl manager = manager();
+        manager.refresh();
         FrontPageSelection page = manager.selectFrontPage();
 
         assertEquals(f.entries[1][3].getId(), page.headline().getId());
@@ -255,6 +264,7 @@ class JPADiscoveryManagerImplTest {
         source.configured = true;
         source.rows = List.of(row(f, 0, 0, 30), row(f, 1, 0, 20));
         JPADiscoveryManagerImpl manager = manager();
+        manager.refresh();
 
         for (Weblog blog : f.blogs) {
             List<WeblogEntry> more = manager.selectMoreFromSite(blog, 3);
@@ -355,6 +365,7 @@ class JPADiscoveryManagerImplTest {
         TestUtils.endSession(true);
 
         JPADiscoveryManagerImpl manager = manager();
+        manager.refresh();
         FrontPageSelection page = manager.selectFrontPage();
         Set<String> shown = new HashSet<>(allEntryIds(page));
         for (Weblog blog : f.blogs) {
@@ -381,6 +392,7 @@ class JPADiscoveryManagerImplTest {
         source.rows = List.of(row(f, 0, 0, 100), row(f, 1, 1, 90), row(f, 2, 2, 80),
                 row(f, 0, 3, 70), row(f, 1, 4, 60));
         JPADiscoveryManagerImpl manager = manager();
+        manager.refresh();
         FrontPageSelection before = manager.selectFrontPage();
         String headline = before.headline().getId();
         String popular = before.popular().get(0).getId();
@@ -423,6 +435,7 @@ class JPADiscoveryManagerImplTest {
         source.configured = true;
         source.rows = List.of(row(f, 0, 0, 100), row(f, 0, 1, 90), row(f, 0, 2, 80), row(f, 0, 3, 70));
         JPADiscoveryManagerImpl manager = manager();
+        manager.refresh();
 
         FrontPageSelection page = manager.selectFrontPage();
         List<WeblogEntry> more = manager.selectMoreFromSite(f.blogs[1], 3);
@@ -478,6 +491,7 @@ class JPADiscoveryManagerImplTest {
                 new TrafficRow(f.blogs[0].getAnalyticsSiteId(), "no-such-anchor", 400),
                 new TrafficRow(null, null, 300));
         JPADiscoveryManagerImpl manager = manager();
+        manager.refresh();
 
         FrontPageSelection page = manager.selectFrontPage();
 
@@ -513,7 +527,6 @@ class JPADiscoveryManagerImplTest {
     void firstSelectBuildsTheSnapshotOnce() throws Exception {
         threeBlogsOfSix();
         source.configured = true;
-        source.delayMillis = 200;
         JPADiscoveryManagerImpl manager = manager();
         int threads = 6;
         CountDownLatch start = new CountDownLatch(1);
@@ -538,7 +551,8 @@ class JPADiscoveryManagerImplTest {
             pool.shutdownNow();
         }
 
-        assertEquals(1, source.calls.get(), "concurrent first requests share one build");
+        assertEquals(0, source.calls.get(), "no request thread reads traffic");
+        assertEquals(1, background.size(), "concurrent first requests share one build, and one scored refresh");
     }
 
     @Test
@@ -606,8 +620,13 @@ class JPADiscoveryManagerImplTest {
         return new TrafficRow(f.blogs[blog].getAnalyticsSiteId(), f.entries[blog][entry].getAnchor(), views);
     }
 
+    /**
+     * The first selection reads candidates only and hands the scored refresh
+     * to the background pool, which these tests never run: a test that needs
+     * scores calls {@code refresh()} itself.
+     */
     private JPADiscoveryManagerImpl manager() {
-        return new JPADiscoveryManagerImpl(TestUtils.weblogger(), source, CLOCK);
+        return new JPADiscoveryManagerImpl(TestUtils.weblogger(), source, CLOCK, background::add);
     }
 
     private void setShare(String value) throws Exception {
@@ -662,7 +681,6 @@ class JPADiscoveryManagerImplTest {
         volatile List<TrafficRow> rows = List.of();
         volatile WebloggerException failure;
         volatile LocalDate lastFirstDay;
-        volatile long delayMillis;
         final AtomicInteger calls = new AtomicInteger();
 
         @Override
@@ -674,13 +692,6 @@ class JPADiscoveryManagerImplTest {
         public List<TrafficRow> viewsSince(LocalDate firstDay) throws WebloggerException {
             calls.incrementAndGet();
             lastFirstDay = firstDay;
-            if (delayMillis > 0) {
-                try {
-                    Thread.sleep(delayMillis);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
             if (failure != null) {
                 throw failure;
             }

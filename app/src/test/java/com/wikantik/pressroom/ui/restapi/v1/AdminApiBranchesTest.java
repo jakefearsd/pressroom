@@ -4,6 +4,7 @@ import java.util.Map;
 import com.wikantik.pressroom.business.PropertiesManager;
 import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.business.Weblogger;
+import com.wikantik.pressroom.business.discovery.DiscoveryManager;
 import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.pojos.RuntimeConfigProperty;
 import com.wikantik.pressroom.pojos.User;
@@ -48,6 +49,7 @@ class AdminApiBranchesTest {
         Weblogger weblogger = mock(Weblogger.class);
         when(weblogger.getUserManager()).thenReturn(mock(UserManager.class));
         when(weblogger.getPropertiesManager()).thenReturn(mock(PropertiesManager.class));
+        when(weblogger.getDiscoveryManager()).thenReturn(mock(DiscoveryManager.class));
         return weblogger;
     }
 
@@ -229,6 +231,48 @@ class AdminApiBranchesTest {
         ArgumentCaptor<Map<String, RuntimeConfigProperty>> saved = ArgumentCaptor.forClass(Map.class);
         verify(weblogger.getPropertiesManager()).saveProperties(saved.capture());
         assertEquals("120", saved.getValue().get("site.discovery.refreshSeconds").getValue());
+    }
+
+    /**
+     * The snapshot otherwise keeps the old share and window until the next
+     * scheduled refresh, up to an hour: a changed discovery setting rebuilds
+     * it at once.
+     */
+    @Test
+    void patchChangingADiscoverySettingRefreshesTheSnapshot() throws Exception {
+        Weblogger weblogger = weblogger();
+        when(weblogger.getPropertiesManager().getProperty("site.discovery.sharePercent"))
+                .thenReturn(new RuntimeConfigProperty("site.discovery.sharePercent", "20"));
+
+        mvc(weblogger).perform(patch("/v1/admin/config").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"site.discovery.sharePercent\":\"30\"}"))
+                .andExpect(status().isOk());
+
+        verify(weblogger.getDiscoveryManager()).refresh();
+    }
+
+    @Test
+    void patchRepeatingADiscoverySettingDoesNotRefresh() throws Exception {
+        Weblogger weblogger = weblogger();
+        when(weblogger.getPropertiesManager().getProperty("site.discovery.sharePercent"))
+                .thenReturn(new RuntimeConfigProperty("site.discovery.sharePercent", "30"));
+
+        mvc(weblogger).perform(patch("/v1/admin/config").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"site.discovery.sharePercent\":\"30\"}"))
+                .andExpect(status().isOk());
+
+        verify(weblogger.getDiscoveryManager(), never()).refresh();
+    }
+
+    @Test
+    void patchOfAnotherSettingDoesNotRefresh() throws Exception {
+        Weblogger weblogger = weblogger();
+
+        mvc(weblogger).perform(patch("/v1/admin/config").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"groupblogging.enabled\":\"true\"}"))
+                .andExpect(status().isOk());
+
+        verify(weblogger.getDiscoveryManager(), never()).refresh();
     }
 
     /** The field named by the first {@code errors} entry of a problem body. */

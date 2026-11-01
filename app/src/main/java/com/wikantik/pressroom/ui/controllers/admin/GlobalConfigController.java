@@ -275,6 +275,8 @@ public class GlobalConfigController extends BaseController {
 
         boolean renderedPageInputChanged = RENDERED_PAGE_INPUTS.stream()
                 .anyMatch(name -> changed(name, accepted, properties));
+        boolean discoveryChanged = accepted.keySet().stream()
+                .anyMatch(name -> name.startsWith(DiscoverySettings.PREFIX) && changed(name, accepted, properties));
         for (Map.Entry<String, String> change : accepted.entrySet()) {
             properties.get(change.getKey()).setValue(change.getValue());
             log.debug("Set {} = {}", change.getKey(), change.getValue());
@@ -292,6 +294,12 @@ public class GlobalConfigController extends BaseController {
             // clear the site-wide cache, which ignores lastModified.
             if (renderedPageInputChanged) {
                 touchEveryWeblog();
+            }
+
+            // The discovery snapshot holds the share and window it was built
+            // with until the next scheduled refresh, up to an hour away.
+            if (discoveryChanged) {
+                weblogger.getDiscoveryManager().refresh();
             }
 
             // notify user of our success
