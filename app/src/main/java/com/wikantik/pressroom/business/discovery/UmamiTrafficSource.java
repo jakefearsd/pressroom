@@ -24,8 +24,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Date;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +41,7 @@ public final class UmamiTrafficSource implements TrafficSource {
 
     private static final int CONNECT_TIMEOUT_SECONDS = 5;
     private static final int QUERY_TIMEOUT_SECONDS = 15;
+    private static final int SOCKET_TIMEOUT_SECONDS = 20;
 
     private static final String SQL =
             "SELECT CAST(website_id AS text), entry_anchor, SUM(views) "
@@ -74,9 +75,8 @@ public final class UmamiTrafficSource implements TrafficSource {
         if (!isConfigured()) {
             return List.of();
         }
-        try (Connection con = DriverManager.getConnection(url, connectionProperties());
+        try (Connection con = open();
              PreparedStatement ps = con.prepareStatement(SQL)) {
-            con.setReadOnly(true);
             ps.setQueryTimeout(queryTimeoutSeconds());
             ps.setDate(1, Date.valueOf(firstDay));
             List<TrafficRow> rows = new ArrayList<>();
@@ -89,6 +89,17 @@ public final class UmamiTrafficSource implements TrafficSource {
         } catch (SQLException e) {
             throw new WebloggerException("Could not read traffic from Umami", e);
         }
+    }
+
+    Connection open() throws SQLException {
+        Connection con = DriverManager.getConnection(url, connectionProperties());
+        try {
+            con.setReadOnly(true);
+        } catch (SQLException e) {
+            con.close();
+            throw e;
+        }
+        return con;
     }
 
     int queryTimeoutSeconds() {
@@ -104,6 +115,11 @@ public final class UmamiTrafficSource implements TrafficSource {
             p.setProperty("password", password);
         }
         p.setProperty("connectTimeout", String.valueOf(CONNECT_TIMEOUT_SECONDS));
+        // Hard backstop: connectTimeout bounds only the TCP connect and the
+        // query-timeout cancel can itself block on a half-open socket.
+        p.setProperty("socketTimeout", String.valueOf(SOCKET_TIMEOUT_SECONDS));
+        // setReadOnly(true) is a no-op under autocommit in pgjdbc; this makes it real.
+        p.setProperty("readOnlyMode", "always");
         return p;
     }
 }

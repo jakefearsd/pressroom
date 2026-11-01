@@ -128,5 +128,16 @@ public class UmamiTrafficSourceTest {
         UmamiTrafficSource s = source();
         assertEquals(15, s.queryTimeoutSeconds());
         assertEquals("5", s.connectionProperties().getProperty("connectTimeout"));
+        assertEquals("20", s.connectionProperties().getProperty("socketTimeout"));
+    }
+
+    @Test
+    public void connectionRefusesWrites() throws Exception {
+        try (Connection c = source().open();
+             java.sql.Statement st = c.createStatement()) {
+            java.sql.SQLException e = assertThrows(java.sql.SQLException.class,
+                    () -> st.execute("CREATE TABLE readonly_probe(i int)"));
+            assertTrue(e.getMessage().toLowerCase(java.util.Locale.ROOT).contains("read-only"), e.getMessage());
+        }
     }
 }
