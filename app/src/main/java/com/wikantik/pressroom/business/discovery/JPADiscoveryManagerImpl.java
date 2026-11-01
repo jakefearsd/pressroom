@@ -151,11 +151,21 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
             state = DiscoveryStatus.State.DISABLED;
         }
 
-        // always a new generation, even within one millisecond of the last:
-        // a rebuild is what reshuffles the random picks
-        DiscoveryGeneration.advance(Math.max(now.toEpochMilli(), DiscoveryGeneration.current() + 1));
-        Snapshot built = new Snapshot(DiscoveryGeneration.current(), now, candidates, weblogs, scores);
+        // Always a new generation, even within one millisecond of the last:
+        // a rebuild is what reshuffles the random picks.
+        //
+        // Ordering invariant: the snapshot is swapped in BEFORE its generation
+        // is published. A rendering dated by DiscoveryGeneration.current() must
+        // already read that generation's snapshot; published the other way
+        // round, a page rendered in between carries the old picks under the
+        // new date, and a generation-keyed cache keeps them a whole interval.
+        // Both writes are volatile, so a reader that sees the new generation
+        // also sees the new snapshot. Refreshes are serialised by refreshLock,
+        // so nothing else moves the generation between these lines.
+        long generation = Math.max(now.toEpochMilli(), DiscoveryGeneration.current() + 1);
+        Snapshot built = new Snapshot(generation, now, candidates, weblogs, scores);
         snapshot = built;
+        DiscoveryGeneration.advance(generation);
         status = new DiscoveryStatus(state, now, lastSuccess, built.scoredEntries(),
                 built.pool.size(), error);
     }
@@ -201,6 +211,12 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
         return Map.copyOf(scores);
     }
 
+    /** The generation the current snapshot was built as; 0 before the first. For tests. */
+    long snapshotGeneration() {
+        Snapshot s = snapshot;
+        return s == null ? 0 : s.generation;
+    }
+
     @Override
     public DiscoveryStatus getStatus() {
         return status;
@@ -234,7 +250,7 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
             s.frontPage.compareAndSet(null, pickFrontPage(s));
             ids = s.frontPage.get();
         }
-        return resolve(ids);
+        return resolve(s, ids);
     }
 
     private FrontPageIds pickFrontPage(Snapshot s) {
@@ -284,25 +300,26 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
         return result;
     }
 
-    private FrontPageSelection resolve(FrontPageIds ids) {
+    private FrontPageSelection resolve(Snapshot s, FrontPageIds ids) {
         WeblogEntry headline = ids.headline() == null ? null : entry(ids.headline());
         List<WeblogEntry> popular = new ArrayList<>(entries(ids.popular()));
         List<WeblogEntry> different = new ArrayList<>(entries(ids.different()));
-        if (headline == null) {
-            // the headline stopped being eligible since the snapshot: the
-            // next-ranked survivor leads rather than leaving the top empty
-            if (!popular.isEmpty()) {
-                headline = popular.remove(0);
-            } else if (!different.isEmpty()) {
-                headline = different.remove(0);
-            }
-        }
-        List<BlogCard> cards = new ArrayList<>();
+        List<Weblog> cardWeblogs = new ArrayList<>();
+        List<List<WeblogEntry>> cardEntries = new ArrayList<>();
         for (CardIds card : ids.cards()) {
             Weblog weblog = weblog(card.weblogId());
-            List<WeblogEntry> entries = weblog == null ? List.of() : entries(card.entryIds());
-            if (!entries.isEmpty()) {
-                cards.add(new BlogCard(weblog, entries));
+            if (weblog != null) {
+                cardWeblogs.add(weblog);
+                cardEntries.add(new ArrayList<>(entries(card.entryIds())));
+            }
+        }
+        if (headline == null) {
+            headline = replacementHeadline(s, ids.headline(), popular, different, cardEntries);
+        }
+        List<BlogCard> cards = new ArrayList<>();
+        for (int i = 0; i < cardWeblogs.size(); i++) {
+            if (!cardEntries.get(i).isEmpty()) {
+                cards.add(new BlogCard(cardWeblogs.get(i), cardEntries.get(i)));
             }
         }
         List<Weblog> allBlogs = new ArrayList<>();
@@ -314,6 +331,52 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
         }
         allBlogs.sort(Comparator.comparing(JPADiscoveryManagerImpl::sortName, String.CASE_INSENSITIVE_ORDER));
         return new FrontPageSelection(headline, popular, cards, different, allBlogs);
+    }
+
+    /**
+     * The headline when the memoized one stopped being eligible. Never a
+     * random pick: the best-ranked, then newest, survivor not already on the
+     * page; if every survivor is on the page, the best-ranked, then newest,
+     * of those, moved out of its section so it is not shown twice. Null only
+     * when no candidate survives at all.
+     */
+    private WeblogEntry replacementHeadline(Snapshot s, String dropped, List<WeblogEntry> popular,
+            List<WeblogEntry> different, List<List<WeblogEntry>> cardEntries) {
+        List<List<WeblogEntry>> sections = new ArrayList<>();
+        sections.add(popular);
+        sections.addAll(cardEntries);
+        sections.add(different);
+        Map<String, List<WeblogEntry>> shownIn = new HashMap<>();
+        for (List<WeblogEntry> section : sections) {
+            for (WeblogEntry entry : section) {
+                shownIn.put(entry.getId(), section);
+            }
+        }
+        List<DiscoveryCandidate> order = new ArrayList<>(s.ranked);
+        order.addAll(s.newestFirst);
+        Set<String> tried = new HashSet<>();
+        if (dropped != null) {
+            tried.add(dropped);
+        }
+        for (DiscoveryCandidate c : order) {
+            if (!shownIn.containsKey(c.entryId()) && tried.add(c.entryId())) {
+                WeblogEntry entry = entry(c.entryId());
+                if (entry != null) {
+                    return entry;
+                }
+            }
+        }
+        for (DiscoveryCandidate c : order) {
+            List<WeblogEntry> section = shownIn.get(c.entryId());
+            if (section != null) {
+                for (int i = 0; i < section.size(); i++) {
+                    if (section.get(i).getId().equals(c.entryId())) {
+                        return section.remove(i);
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     private static String sortName(Weblog weblog) {
@@ -438,6 +501,8 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
         /** Scored candidates, highest first. */
         final List<DiscoveryCandidate> ranked;
         final DiscoveryCandidate newest;
+        /** Every candidate, newest first. */
+        final List<DiscoveryCandidate> newestFirst;
         final Map<String, List<DiscoveryCandidate>> poolByWeblog;
         final Map<String, List<DiscoveryCandidate>> rankedByWeblog;
         final Map<String, Long> weblogScores;
@@ -481,14 +546,15 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
             }
             this.scores = Map.copyOf(kept);
 
-            Comparator<DiscoveryCandidate> newestFirst = Comparator.comparing(DiscoveryCandidate::pubTime,
+            Comparator<DiscoveryCandidate> byNewest = Comparator.comparing(DiscoveryCandidate::pubTime,
                     Comparator.nullsLast(Comparator.reverseOrder()));
             this.ranked = pool.stream().filter(c -> this.scores.containsKey(c.entryId()))
                     .sorted(Comparator.comparingLong((DiscoveryCandidate c) -> score(c)).reversed()
-                            .thenComparing(newestFirst).thenComparing(DiscoveryCandidate::entryId))
+                            .thenComparing(byNewest).thenComparing(DiscoveryCandidate::entryId))
                     .toList();
-            this.newest = pool.stream()
-                    .min(newestFirst.thenComparing(DiscoveryCandidate::entryId)).orElse(null);
+            this.newestFirst = pool.stream()
+                    .sorted(byNewest.thenComparing(DiscoveryCandidate::entryId)).toList();
+            this.newest = this.newestFirst.isEmpty() ? null : this.newestFirst.get(0);
 
             Map<String, List<DiscoveryCandidate>> byWeblog = new HashMap<>();
             for (DiscoveryCandidate c : pool) {

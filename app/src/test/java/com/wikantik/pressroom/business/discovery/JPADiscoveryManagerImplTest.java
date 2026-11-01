@@ -399,8 +399,15 @@ class JPADiscoveryManagerImplTest {
         assertFalse(shown.contains(headline), "a trashed entry is dropped");
         assertFalse(shown.contains(popular), "a noindexed entry is dropped");
         assertNotNull(after.headline(), "the headline is never empty while anything is eligible");
-        assertEquals(before.popular().get(1).getId(), after.headline().getId(),
-                "the next-ranked surviving pick takes the headline");
+        assertEquals(shown.size(), new HashSet<>(shown).size(), "no duplicate: " + shown);
+        assertEquals(ids(before.popular()).subList(1, 4), ids(after.popular()),
+                "the surviving popular picks keep their places");
+        // every ranked survivor is already on the page, so the newest post
+        // not already shown leads; never a pick taken from another section
+        List<String> rest = shown.subList(1, shown.size());
+        if (!rest.contains(f.newest.getId())) {
+            assertEquals(f.newest.getId(), after.headline().getId());
+        }
     }
 
     // ---------------------------------------------------------------- AC 9

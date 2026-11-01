@@ -19,9 +19,11 @@ package com.wikantik.pressroom.business.discovery;
 
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.MockWeblogger;
+import com.wikantik.pressroom.pojos.RuntimeConfigProperty;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
+import com.wikantik.pressroom.util.DiscoveryGeneration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,8 +34,11 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -99,6 +104,45 @@ class JPADiscoveryManagerImplEdgeTest {
         }
         when(tier.weblogEntryManager().getDiscoveryCandidates()).thenReturn(list);
         return list;
+    }
+
+    /**
+     * The generation is what dates a rendering: a page rendered while it
+     * names a new generation must already be reading that generation's
+     * snapshot, or a generation-keyed cache keeps the old picks for a whole
+     * refresh interval. A watcher sees each new generation and checks the
+     * manager already carries it.
+     */
+    @Test
+    void aGenerationIsPublishedOnlyAfterItsSnapshot() throws Exception {
+        candidates(20_000);
+        JPADiscoveryManagerImpl manager = manager(new Unconfigured());
+        AtomicBoolean stop = new AtomicBoolean();
+        AtomicInteger early = new AtomicInteger();
+        Thread watcher = new Thread(() -> {
+            long seen = DiscoveryGeneration.current();
+            while (!stop.get()) {
+                long generation = DiscoveryGeneration.current();
+                if (generation != seen) {
+                    seen = generation;
+                    if (manager.snapshotGeneration() < generation) {
+                        early.incrementAndGet();
+                    }
+                }
+            }
+        });
+        watcher.start();
+        try {
+            for (int i = 0; i < 15; i++) {
+                manager.refresh();
+            }
+        } finally {
+            stop.set(true);
+            watcher.join(10_000);
+        }
+
+        assertEquals(0, early.get(), "a generation was visible before its snapshot");
+        assertEquals(DiscoveryGeneration.current(), manager.snapshotGeneration());
     }
 
     @Test
@@ -180,8 +224,8 @@ class JPADiscoveryManagerImplEdgeTest {
     }
 
     @Test
-    void theHeadlineFallsBackToSomethingDifferent() throws Exception {
-        // 9 on one blog: headline 1, popular 4, the one card 3, different 1
+    void whenEverySurvivorIsOnThePageTheNewestOneLeads() throws Exception {
+        // 9 on one blog, newest first: headline 1, popular 4, the one card 3, different 1
         candidates(9);
         JPADiscoveryManagerImpl manager = manager(new Unconfigured());
         FrontPageSelection before = manager.selectFrontPage();
@@ -190,13 +234,60 @@ class JPADiscoveryManagerImplEdgeTest {
         for (WeblogEntry entry : before.popular()) {
             entry.setStatus(PubStatus.DRAFT);
         }
+        String newestSurvivor = null;
+        for (int i = 0; i < 9 && newestSurvivor == null; i++) {
+            if (entries.get("entry-" + i).getStatus() == PubStatus.PUBLISHED) {
+                newestSurvivor = "entry-" + i;
+            }
+        }
 
         FrontPageSelection after = manager.selectFrontPage();
 
-        assertNotNull(after.headline());
-        assertEquals(before.different().get(0).getId(), after.headline().getId());
+        assertNotNull(after.headline(), "null only when nothing eligible survives");
+        assertEquals(newestSurvivor, after.headline().getId(), "no scores: the newest survivor, never a random pick");
         assertTrue(after.popular().isEmpty());
-        assertTrue(after.different().isEmpty());
+        List<String> all = allEntryIds(after);
+        assertEquals(4, all.size(), "the four survivors, each once: " + all);
+        assertEquals(4, new HashSet<>(all).size(), "moved to the headline, not copied: " + all);
+    }
+
+    @Test
+    void aDroppedHeadlineFallsToTheBestRankedPostNotOnThePage() throws Exception {
+        candidates(30);
+        blog.setAnalyticsSiteId("site-1");
+        when(tier.propertiesManager().getProperty(DiscoverySettings.SHARE_PERCENT))
+                .thenReturn(new RuntimeConfigProperty(DiscoverySettings.SHARE_PERCENT, "100"));
+        List<TrafficRow> rows = List.of(new TrafficRow("site-1", "post-5", 100),
+                new TrafficRow("site-1", "post-7", 50), new TrafficRow("site-1", "post-8", 40),
+                new TrafficRow("site-1", "post-9", 30));
+        JPADiscoveryManagerImpl manager = manager(new TrafficSource() {
+            @Override
+            public boolean isConfigured() {
+                return true;
+            }
+
+            @Override
+            public List<TrafficRow> viewsSince(LocalDate firstDay) {
+                return rows;
+            }
+        });
+        FrontPageSelection before = manager.selectFrontPage();
+        assertEquals("entry-5", before.headline().getId());
+        entries.get("entry-5").setStatus(PubStatus.DRAFT);
+
+        FrontPageSelection after = manager.selectFrontPage();
+
+        // every other section is all random at 100%; the headline must still be
+        // the best-ranked survivor not already shown, then the newest one
+        List<String> rest = allEntryIds(after).subList(1, allEntryIds(after).size());
+        List<String> order = new ArrayList<>(List.of("entry-7", "entry-8", "entry-9"));
+        for (int i = 0; i < 30; i++) {
+            order.add("entry-" + i);
+        }
+        String expected = order.stream().filter(id -> !"entry-5".equals(id) && !rest.contains(id))
+                .findFirst().orElseThrow();
+        assertEquals(expected, after.headline().getId());
+        assertEquals(ids(before.popular()), ids(after.popular()), "the random picks keep their places");
     }
 
     @Test
@@ -221,6 +312,23 @@ class JPADiscoveryManagerImplEdgeTest {
         assertTrue(page.blogs().isEmpty());
         assertTrue(page.allBlogs().isEmpty());
         assertNull(page.headline(), "its entries are no longer eligible either");
+    }
+
+    private static List<String> ids(List<WeblogEntry> list) {
+        return list.stream().map(WeblogEntry::getId).toList();
+    }
+
+    private static List<String> allEntryIds(FrontPageSelection page) {
+        List<String> all = new ArrayList<>();
+        if (page.headline() != null) {
+            all.add(page.headline().getId());
+        }
+        all.addAll(ids(page.popular()));
+        for (BlogCard card : page.blogs()) {
+            all.addAll(ids(card.topEntries()));
+        }
+        all.addAll(ids(page.different()));
+        return all;
     }
 
     private static final class Unconfigured implements TrafficSource {
