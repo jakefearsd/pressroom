@@ -332,7 +332,7 @@ public final class WebloggerConfig {
      */
     public static String getProperty(String key) {
         String value = config.getProperty(key);
-        log.debug("Fetching property [{}={}]", key, value);
+        log.debug("Fetching property [{}={}]", key, maskSecret(key, value));
         return value == null ? null : value.trim();
     }
     
@@ -344,7 +344,8 @@ public final class WebloggerConfig {
      */
     public static String getProperty(String key, String defaultValue) {
         String value = config.getProperty(key);
-        log.debug("Fetching property [{}={},defaultValue={}]", key, value, defaultValue);
+        log.debug("Fetching property [{}={},defaultValue={}]", key, maskSecret(key, value),
+                maskSecret(key, defaultValue));
         if (value == null) {
             return defaultValue;
         }

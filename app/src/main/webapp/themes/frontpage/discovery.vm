@@ -22,7 +22,8 @@
 #if($dFront.headline)
 #set($dLead = $dFront.headline)
 <section class="fd-discovery-headline" aria-labelledby="fd-discovery-headline-label">
-    <h2 class="fd-label" id="fd-discovery-headline-label">$text.get("discovery.headline")</h2>
+    ## "most read" only when it was ranked by traffic; otherwise it is the newest post
+    <h2 class="fd-label" id="fd-discovery-headline-label">#if($dFront.headlineRanked)$text.get("discovery.headline")#else$text.get("discovery.headline.newest")#end</h2>
     <article class="fd-discovery-post fd-discovery-lead">
         <p class="from"><a href="$utils.escapeHTML($dLead.website.absoluteURL)">$dLead.website.name</a></p>
         <p class="t"><a href="$utils.escapeHTML($dLead.permalink)">$dLead.title</a></p>

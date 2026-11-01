@@ -35,6 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Tests the {@link RenderCache} adapters that the rendering servlets hold in
@@ -52,6 +53,9 @@ public class RenderCacheTest {
 
     private static final String HANDLE = "frontpage";
 
+    /** How long setUp waits for the clock to pass the discovery generation. */
+    private static final long GENERATION_WAIT_MILLIS = 5_000L;
+
     @BeforeAll
     public static void requireCachingToBeOn() {
         assertTrue(WebloggerConfig.getBooleanProperty(SiteWideCache.CACHE_ID + ".enabled"),
@@ -66,7 +70,15 @@ public class RenderCacheTest {
     public void startFromEmptyCaches() {
         // The discovery generation is process-wide: another test in this JVM may
         // have parked it at about now, and an entry cached before it is a miss.
+        // A generation more than a few seconds ahead was advanced into the
+        // future, which the testing rule forbids (docs/dev/discovery.md): fail
+        // and say so rather than spin until the clock catches up.
+        long deadline = System.currentTimeMillis() + GENERATION_WAIT_MILLIS;
         while (System.currentTimeMillis() <= DiscoveryGeneration.current()) {
+            if (System.currentTimeMillis() > deadline) {
+                fail("the discovery generation " + DiscoveryGeneration.current() + " is still ahead of the clock after "
+                        + GENERATION_WAIT_MILLIS + " ms: some test advanced it into the future");
+            }
             Thread.onSpinWait();
         }
         SiteWideCache.getInstance().clear();
@@ -85,7 +97,7 @@ public class RenderCacheTest {
         weblog.setLastModified(new Date(ServingSince.started() - 5000));
         DiscoveryGeneration.advance(generation);
 
-        assertTrue(RenderCaches.lastModifiedOf(weblog) >= generation,
+        assertTrue(RenderCaches.lastModifiedOfPage(weblog) >= generation,
                 "an entry cached before the generation must look stale once it moves");
     }
 
@@ -113,6 +125,45 @@ public class RenderCacheTest {
         assertNull(cache.get(key, 0L), "an entry cached before the generation is a miss");
         cache.put(key, content("rebuilt"));
         assertNotNull(cache.get(key, 0L), "an entry cached after the generation hits");
+    }
+
+    /**
+     * A feed carries no discovery picks, so a reshuffle must not expire it:
+     * feed readers would refetch every feed on every rebuild.
+     */
+    @Test
+    public void weblogFeedLastModifiedIgnoresTheGeneration() {
+        Weblog weblog = new Weblog();
+        weblog.setLastModified(new Date(ServingSince.started() - 5000));
+        DiscoveryGeneration.advance(ServingSince.started() + 1);
+
+        assertEquals(ServingSince.started(), RenderCaches.forFeed(false).lastModified(weblog),
+                "a feed is dated by its weblog (and the server start), never by the generation");
+        assertTrue(RenderCaches.forPage(false).lastModified(weblog) >= DiscoveryGeneration.current(),
+                "a page still is");
+    }
+
+    @Test
+    public void siteWideFeedLastModifiedIgnoresTheGeneration() {
+        long cacheDate = SiteWideCache.getInstance().getLastModified().getTime();
+        DiscoveryGeneration.advance(cacheDate + 1);
+
+        assertEquals(SiteWideCache.getInstance().getLastModified().getTime(),
+                RenderCaches.forFeed(true).lastModified(null));
+        assertTrue(RenderCaches.forPage(true).lastModified(null) >= DiscoveryGeneration.current(),
+                "the site-wide page still is");
+    }
+
+    @Test
+    public void siteWideFeedCachedBeforeTheGenerationStillHits() throws InterruptedException {
+        RenderCache<WeblogFeedRequest> cache = RenderCaches.forFeed(true);
+        String key = cache.generateKey(feedRequest());
+        cache.put(key, content("site feed"));
+
+        DiscoveryGeneration.advance(System.currentTimeMillis() + 1);
+        Thread.sleep(5);
+
+        assertNotNull(cache.get(key, 0L), "a reshuffle does not expire a feed");
     }
 
     // --- the site-wide side has no per-weblog expiry ----------------------

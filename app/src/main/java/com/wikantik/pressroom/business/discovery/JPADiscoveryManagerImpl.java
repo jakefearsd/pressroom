@@ -396,7 +396,10 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
             }
         }
         allBlogs.sort(Comparator.comparing(JPADiscoveryManagerImpl::sortName, String.CASE_INSENSITIVE_ORDER));
-        return new FrontPageSelection(headline, popular, cards, different, allBlogs);
+        // ranked only when the headline has views of its own: the newest post,
+        // or a replacement taken from the newest, is not "most read"
+        boolean ranked = headline != null && s.scores.containsKey(headline.getId());
+        return new FrontPageSelection(headline, ranked, popular, cards, different, allBlogs);
     }
 
     /**

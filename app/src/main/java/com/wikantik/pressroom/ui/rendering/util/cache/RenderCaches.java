@@ -39,15 +39,18 @@ public final class RenderCaches {
     public static RenderCache<WeblogPageRequest> forPage(boolean siteWide) {
         return siteWide
                 ? new SiteWideRenderCache<>(SiteWideCache.getInstance(),
-                        SiteWideCache.getInstance()::generateKey)
+                        SiteWideCache.getInstance()::generateKey, true)
                 : new WeblogPageRenderCache(WeblogPageCache.getInstance());
     }
 
-    /** The cache holding rendered feeds for this request. */
+    /**
+     * The cache holding rendered feeds for this request. A feed carries no
+     * discovery picks, so neither side follows the discovery generation.
+     */
     public static RenderCache<WeblogFeedRequest> forFeed(boolean siteWide) {
         return siteWide
                 ? new SiteWideRenderCache<>(SiteWideCache.getInstance(),
-                        SiteWideCache.getInstance()::generateKey)
+                        SiteWideCache.getInstance()::generateKey, false)
                 : new WeblogFeedRenderCache(WeblogFeedCache.getInstance());
     }
 
@@ -56,16 +59,23 @@ public final class RenderCaches {
      * later ({@link ServingSince}: a deploy changes what every page renders
      * as), falling back to now when it has never been recorded -- the
      * per-weblog caches' notion of currency, and the value the servlets put
-     * in {@code Last-Modified}. A page carrying discovery picks is also only
-     * as new as the {@link DiscoveryGeneration} it was built from, so the
-     * result is never earlier than that: each reshuffle expires every cached
-     * page and 304s nothing older.
+     * in {@code Last-Modified}. Feeds are dated by this alone.
      */
     static long lastModifiedOf(Weblog weblog) {
         if (weblog != null && weblog.getLastModified() != null) {
-            return Math.max(ServingSince.atLeast(weblog.getLastModified().getTime()),
-                    DiscoveryGeneration.current());
+            return ServingSince.atLeast(weblog.getLastModified().getTime());
         }
         return System.currentTimeMillis();
+    }
+
+    /**
+     * {@link #lastModifiedOf} for a rendered page. A page carries discovery
+     * picks (the "more from the site" block), so it is also only as new as
+     * the {@link DiscoveryGeneration} it was built from, and the result is
+     * never earlier than that: each reshuffle expires every cached page and
+     * 304s nothing older.
+     */
+    static long lastModifiedOfPage(Weblog weblog) {
+        return Math.max(lastModifiedOf(weblog), DiscoveryGeneration.current());
     }
 }

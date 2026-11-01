@@ -130,7 +130,8 @@ public final class DiscoverySettings {
                 seconds = DEFAULT_REFRESH_SECONDS;
             }
         }
-        return seconds / SECONDS_PER_MINUTE;
+        // rounded up, as PopularityRefreshTask schedules it: 90 s runs every 2 minutes
+        return (seconds + SECONDS_PER_MINUTE - 1) / SECONDS_PER_MINUTE;
     }
 
     private static int read(String name, int fallback) {

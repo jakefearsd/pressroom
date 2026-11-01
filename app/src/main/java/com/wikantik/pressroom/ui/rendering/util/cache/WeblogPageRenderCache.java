@@ -57,7 +57,7 @@ final class WeblogPageRenderCache implements RenderCache<WeblogPageRequest> {
 
     @Override
     public long lastModified(Weblog weblog) {
-        return RenderCaches.lastModifiedOf(weblog);
+        return RenderCaches.lastModifiedOfPage(weblog);
     }
 
     @Override

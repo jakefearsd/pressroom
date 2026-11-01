@@ -59,8 +59,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Umami is not configured in the IT stack, so no assertion depends on a
  * popularity score, and none depends on which posts a given snapshot picked:
  * the seeded weblog is asserted through the all-blogs list, which is every
- * visible blog. Each test creates its own weblogs and clears the places key
- * before it starts.
+ * visible blog.
+ *
+ * <p><b>Not independent of the seed.</b> Two tests need at least one eligible
+ * post in the snapshot, and only the seeded {@code it_weblog} entry is sure to
+ * be there: {@code frontPageShowsSections} (the headline link) and
+ * {@code blogPageLinksHome} (the block lists posts from other blogs, and the
+ * blog that test creates has none of its own). With no seeded entry, or one
+ * left unpublished or noindexed, both fail without any discovery regression.
+ * Tests that need a blog of their own create it, and each clears the places
+ * key before it starts.
  */
 @ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
 class DiscoveryIT extends PressroomIT {

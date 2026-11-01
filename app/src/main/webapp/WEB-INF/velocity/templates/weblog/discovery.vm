@@ -26,7 +26,9 @@ the rendering tests and the browser suite pin them.
 </head>
 <body class="discovery">
 <header>
-    <p><a href="$url.home">$model.weblog.name</a></p>
+    ## a list page: the site name is its h1 (docs/dev/themes-and-templates.md,
+    ## the heading rule)
+    <h1><a href="$url.home">$model.weblog.name</a></h1>
     ## the page-links macro emits bare list items, so the list is ours
     <nav><ul class="page-nav">#showPageLinks($model.weblog)</ul></nav>
 </header>
@@ -40,7 +42,8 @@ the rendering tests and the browser suite pin them.
 #if($dFront.headline)
 #set($dLead = $dFront.headline)
     <section class="fd-discovery-headline">
-        <h2>$text.get("discovery.headline")</h2>
+        ## "most read" only when it was ranked by traffic; otherwise it is the newest post
+        <h2>#if($dFront.headlineRanked)$text.get("discovery.headline")#else$text.get("discovery.headline.newest")#end</h2>
         <article class="fd-discovery-post">
             <p><a href="$utils.escapeHTML($dLead.website.absoluteURL)">$dLead.website.name</a></p>
             <h3><a href="$utils.escapeHTML($dLead.permalink)">$dLead.title</a></h3>

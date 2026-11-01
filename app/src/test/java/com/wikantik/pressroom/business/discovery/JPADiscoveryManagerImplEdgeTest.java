@@ -403,6 +403,9 @@ class JPADiscoveryManagerImplEdgeTest {
         String expected = order.stream().filter(id -> !"entry-5".equals(id) && !rest.contains(id))
                 .findFirst().orElseThrow();
         assertEquals(expected, after.headline().getId());
+        assertTrue(before.headlineRanked());
+        assertEquals(List.of("entry-7", "entry-8", "entry-9").contains(expected), after.headlineRanked(),
+                "ranked only when the replacement has views of its own");
         assertEquals(ids(before.popular()), ids(after.popular()), "the random picks keep their places");
     }
 

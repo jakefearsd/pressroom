@@ -369,6 +369,10 @@ class MaintenanceControllerTest {
         assertTrue(ControllerTestFixture.messages(model).isEmpty());
     }
 
+    /**
+     * Umami not being connected is a configuration choice (random picks
+     * only), not a failed refresh: the refresh ran and says so plainly.
+     */
     @Test
     void disabledStateExplainsUmamiNotConfigured() {
         when(weblogger.discoveryManager().getStatus()).thenReturn(
@@ -376,9 +380,21 @@ class MaintenanceControllerTest {
 
         controller.refreshDiscovery(request(), model);
 
-        assertTrue(ControllerTestFixture.errors(model).contains("maintenance.discovery.state.DISABLED"),
-                String.valueOf(ControllerTestFixture.errors(model)));
-        assertTrue(ControllerTestFixture.messages(model).isEmpty());
+        assertTrue(ControllerTestFixture.messages(model).contains("maintenance.discovery.state.DISABLED"),
+                String.valueOf(ControllerTestFixture.messages(model)));
+        assertTrue(ControllerTestFixture.errors(model).isEmpty(), String.valueOf(ControllerTestFixture.errors(model)));
+    }
+
+    @Test
+    void neverStateIsAPlainMessage() {
+        when(weblogger.discoveryManager().getStatus()).thenReturn(
+                new DiscoveryStatus(State.NEVER, null, null, 0, 0, null));
+
+        controller.refreshDiscovery(request(), model);
+
+        assertTrue(ControllerTestFixture.messages(model).contains("maintenance.discovery.state.NEVER"),
+                String.valueOf(ControllerTestFixture.messages(model)));
+        assertTrue(ControllerTestFixture.errors(model).isEmpty(), String.valueOf(ControllerTestFixture.errors(model)));
     }
 
     // --- helpers ---

@@ -55,10 +55,11 @@ public class DiscoveryModel implements Model {
 
     /**
      * The front page's sections, wrapped: {@link FrontPageSelection} section
-     * for section. {@code headline} is null only when nothing is eligible.
+     * for section. {@code headline} is null only when nothing is eligible;
+     * {@code headlineRanked} says whether it may be labelled "most read".
      */
-    public record FrontPage(WeblogEntryWrapper headline, List<WeblogEntryWrapper> popular, List<Card> blogs,
-            List<WeblogEntryWrapper> different, List<WeblogWrapper> allBlogs) {
+    public record FrontPage(WeblogEntryWrapper headline, boolean headlineRanked, List<WeblogEntryWrapper> popular,
+            List<Card> blogs, List<WeblogEntryWrapper> different, List<WeblogWrapper> allBlogs) {
 
         public FrontPage {
             popular = List.copyOf(popular);
@@ -91,10 +92,20 @@ public class DiscoveryModel implements Model {
         urlStrategy = ModelLoader.requireUrlStrategy(initData);
     }
 
-    /** The front page's sections; asked of the picker on the first call of a render. */
+    /**
+     * The front page's sections; asked of the picker on the first call of a
+     * render. Display path: a picker that fails renders empty sections, not
+     * a 500.
+     */
     public FrontPage getFrontPage() {
         if (frontPage == null) {
-            FrontPageSelection selection = weblogger.getDiscoveryManager().selectFrontPage();
+            FrontPageSelection selection;
+            try {
+                selection = weblogger.getDiscoveryManager().selectFrontPage();
+            } catch (RuntimeException e) {
+                log.error("Discovery could not select the front page; rendering it empty", e);
+                selection = FrontPageSelection.empty();
+            }
             List<Card> cards = new ArrayList<>();
             for (BlogCard card : selection.blogs()) {
                 cards.add(new Card(wrap(card.weblog()), wrapEntries(card.topEntries())));
@@ -104,7 +115,7 @@ public class DiscoveryModel implements Model {
                 allBlogs.add(wrap(weblog));
             }
             frontPage = new FrontPage(
-                    selection.headline() == null ? null : wrap(selection.headline()),
+                    selection.headline() == null ? null : wrap(selection.headline()), selection.headlineRanked(),
                     wrapEntries(selection.popular()), cards, wrapEntries(selection.different()), allBlogs);
         }
         return frontPage;
@@ -114,14 +125,21 @@ public class DiscoveryModel implements Model {
      * Up to three posts from weblogs other than {@code current}, for its
      * "more from the site" block. Empty -- so the block renders nothing --
      * on the site space, on a weblog that has turned the block off, with no
-     * weblog, and when nothing else is eligible.
+     * weblog, and when nothing else is eligible. Display path: a picker that
+     * fails leaves the block out rather than 500ing the page from its footer.
      */
     public List<WeblogEntryWrapper> moreFromSite(WeblogWrapper current) {
         if (current == null || current.isSiteSpace() || !current.getShowMoreFromSite()) {
             return List.of();
         }
-        return wrapEntries(weblogger.getDiscoveryManager()
-                .selectMoreFromSite(current.getPojo(), MORE_FROM_SITE_POSTS));
+        try {
+            return wrapEntries(weblogger.getDiscoveryManager()
+                    .selectMoreFromSite(current.getPojo(), MORE_FROM_SITE_POSTS));
+        } catch (RuntimeException e) {
+            log.error("Discovery could not select more from the site for {}; leaving the block out",
+                    current.getHandle(), e);
+            return List.of();
+        }
     }
 
     /**

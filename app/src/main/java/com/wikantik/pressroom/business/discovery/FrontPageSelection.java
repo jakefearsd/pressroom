@@ -28,13 +28,16 @@ import java.util.List;
  *
  * @param headline the top-ranked post (the newest with no scores); null only
  *                 when nothing is eligible
+ * @param headlineRanked whether the headline has views of its own, so the
+ *                 page may call it "most read"; false when it is merely the
+ *                 newest post
  * @param popular "popular right now"
  * @param blogs "explore the blogs", in blog-score order
  * @param different "something different", all random
  * @param allBlogs every eligible weblog, by name ignoring case
  */
-public record FrontPageSelection(WeblogEntry headline, List<WeblogEntry> popular, List<BlogCard> blogs,
-        List<WeblogEntry> different, List<Weblog> allBlogs) {
+public record FrontPageSelection(WeblogEntry headline, boolean headlineRanked, List<WeblogEntry> popular,
+        List<BlogCard> blogs, List<WeblogEntry> different, List<Weblog> allBlogs) {
 
     public FrontPageSelection {
         popular = List.copyOf(popular);
@@ -45,6 +48,6 @@ public record FrontPageSelection(WeblogEntry headline, List<WeblogEntry> popular
 
     /** Nothing to show. */
     public static FrontPageSelection empty() {
-        return new FrontPageSelection(null, List.of(), List.of(), List.of(), List.of());
+        return new FrontPageSelection(null, false, List.of(), List.of(), List.of(), List.of());
     }
 }

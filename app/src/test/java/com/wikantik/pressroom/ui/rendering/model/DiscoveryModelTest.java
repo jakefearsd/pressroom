@@ -40,6 +40,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -132,12 +133,13 @@ class DiscoveryModelTest {
         WeblogEntry pop = entry(b, "pop");
         WeblogEntry top = entry(b, "top");
         WeblogEntry odd = entry(a, "odd");
-        when(discovery.selectFrontPage()).thenReturn(new FrontPageSelection(lead, List.of(pop),
+        when(discovery.selectFrontPage()).thenReturn(new FrontPageSelection(lead, true, List.of(pop),
                 List.of(new BlogCard(b, List.of(top))), List.of(odd), List.of(a, b)));
 
         DiscoveryModel.FrontPage page = model().getFrontPage();
 
         assertSame(lead, page.headline().getPojo());
+        assertTrue(page.headlineRanked(), "whether the headline was ranked passes through");
         assertSame(pop, page.popular().get(0).getPojo());
         assertSame(b, page.blogs().get(0).weblog().getPojo());
         assertSame(top, page.blogs().get(0).topEntries().get(0).getPojo());
@@ -160,6 +162,7 @@ class DiscoveryModelTest {
         assertSame(page, model.getFrontPage(), "asked once per render");
         verify(discovery, times(1)).selectFrontPage();
         assertNull(page.headline());
+        assertFalse(page.headlineRanked());
         assertTrue(page.popular().isEmpty() && page.blogs().isEmpty() && page.different().isEmpty()
                 && page.allBlogs().isEmpty());
     }
@@ -188,6 +191,31 @@ class DiscoveryModelTest {
         assertTrue(model.moreFromSite(WeblogWrapper.wrap(optedOut, urls, weblogger)).isEmpty());
         assertTrue(model.moreFromSite(null).isEmpty());
         verify(discovery, never()).selectMoreFromSite(any(), anyInt());
+    }
+
+    /**
+     * The picker is asked from the footer of every blog page and for the
+     * whole of {@code /}: a failure there is a display problem, so the block
+     * or the sections render empty instead of 500ing the page.
+     */
+    @Test
+    void aPickerFailureLeavesTheFrontPageEmpty() throws Exception {
+        when(discovery.selectFrontPage()).thenThrow(new IllegalStateException("picker broke"));
+
+        DiscoveryModel.FrontPage page = model().getFrontPage();
+
+        assertNull(page.headline());
+        assertFalse(page.headlineRanked());
+        assertTrue(page.popular().isEmpty() && page.blogs().isEmpty() && page.different().isEmpty()
+                && page.allBlogs().isEmpty());
+    }
+
+    @Test
+    void aPickerFailureLeavesMoreFromSiteEmpty() throws Exception {
+        Weblog current = weblog("cur", "Current");
+        when(discovery.selectMoreFromSite(any(), anyInt())).thenThrow(new IllegalStateException("picker broke"));
+
+        assertTrue(model().moreFromSite(WeblogWrapper.wrap(current, urls, weblogger)).isEmpty());
     }
 
     @Test

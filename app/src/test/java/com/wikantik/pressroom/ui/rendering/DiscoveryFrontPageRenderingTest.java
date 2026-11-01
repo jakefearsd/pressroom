@@ -182,13 +182,22 @@ class DiscoveryFrontPageRenderingTest {
                 assertTrue(all.contains(">" + blog.getName() + "</a>"), theme + ": all blogs lists "
                         + blog.getName() + ":\n" + all);
             }
-            for (String key : List.of("Most read lately", "Popular right now", "Explore the blogs",
+            for (String key : List.of("Popular right now", "Explore the blogs",
                     "Something different", "All blogs")) {
                 assertTrue(body.contains(key), theme + ": the heading " + key);
             }
+            // no Umami in the test tier, so nothing is ranked: the newest post
+            // leads, and the label must not claim it is the most read
+            String lead = section(body, "fd-discovery-headline");
+            assertTrue(lead.contains(">Newest</h2>"), theme + ": an unranked headline is labelled Newest:\n" + lead);
+            assertFalse(body.contains("Most read lately"), theme + ": no traffic, so nothing is \"most read\"");
             assertTrue(body.contains("class=\"places-been\" hidden data-places"),
                     theme + ": the places list's container, hidden until the reader's own list fills it:\n"
                             + body);
+            assertTrue(body.contains(">Places you've been</h2>"), theme + ": the places list's heading:\n" + body);
+            assertEquals(1, count(body, "<h1"), theme + ": one h1:\n" + body);
+            assertTrue(Pattern.compile("<h1[^>]*><a href=\"[^\"]*\">" + Pattern.quote(SITE_NAME) + "</a></h1>")
+                    .matcher(body).find(), theme + ": the site name is the page's h1 (a list page):\n" + body);
             assertFalse(body.contains("$discovery") || body.contains("$text") || body.contains("#show"),
                     theme + ": literal Velocity:\n" + body);
         }

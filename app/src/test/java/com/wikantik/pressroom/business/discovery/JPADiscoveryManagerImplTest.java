@@ -119,6 +119,7 @@ class JPADiscoveryManagerImplTest {
 
         assertNotNull(page.headline());
         assertEquals(f.newest.getId(), page.headline().getId(), "with no scores the headline is the newest post");
+        assertFalse(page.headlineRanked(), "the newest post is not \"most read\"");
         assertEquals(4, page.popular().size());
         assertEquals(3, page.blogs().size());
         for (BlogCard card : page.blogs()) {
@@ -146,6 +147,7 @@ class JPADiscoveryManagerImplTest {
         FrontPageSelection page = manager.selectFrontPage();
 
         assertEquals(f.entries[0][2].getId(), page.headline().getId());
+        assertTrue(page.headlineRanked(), "a scored headline is ranked");
     }
 
     @Test

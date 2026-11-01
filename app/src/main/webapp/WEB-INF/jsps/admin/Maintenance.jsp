@@ -146,6 +146,7 @@
                 <dd><rc:date value="${discoveryLastSuccess}"/></dd>
             </c:if>
             <c:if test="${discoveryStatus.state == 'OK' || discoveryStatus.state == 'FAILED'}">
+                <dt><spring:message code="maintenance.discovery.countsLabel"/></dt>
                 <dd><spring:message code="maintenance.discovery.counts" arguments="${fn:escapeXml(discoveryStatus.scoredEntries)},${fn:escapeXml(discoveryStatus.candidates)}"/></dd>
             </c:if>
             <c:if test="${not empty discoveryStatus.lastError}">
@@ -154,7 +155,7 @@
             </c:if>
         </dl>
         <button type="submit" class="btn btn-secondary"
-                data-busy-label="<spring:message code='maintenance.regenerateRenditions.building'/>"><spring:message code="maintenance.discovery.refresh"/></button>
+                data-busy-label="<spring:message code='maintenance.discovery.refreshing'/>"><spring:message code="maintenance.discovery.refresh"/></button>
     </div>
 </form>
 </c:if>

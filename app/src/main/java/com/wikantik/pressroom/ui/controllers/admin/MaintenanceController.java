@@ -143,7 +143,9 @@ public class MaintenanceController extends BaseController {
                 String reason = StringEscapeUtils.escapeHtml4(String.valueOf(status.lastError()));
                 addError(model, "maintenance.discovery.refreshFailed", reason, request);
             }
-            default -> addError(model, "maintenance.discovery.state." + status.state().name(), request);
+            // the refresh ran: Umami unconnected (or not yet read) is a
+            // state to report, not an error
+            default -> addMessage(model, "maintenance.discovery.state." + status.state().name(), request);
         }
         return ".Maintenance";
     }

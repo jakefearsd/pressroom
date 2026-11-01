@@ -34,7 +34,8 @@ import com.wikantik.pressroom.util.cache.CachedContent;
  * <p>The {@code lastModified} argument to {@link #get} is discarded: the
  * servlets never had a timestamp to give this side, and site-wide content is
  * dropped wholesale through {@code CacheManager}, never expired against one
- * weblog. The one exception is the discovery generation: an entry cached
+ * weblog. The one exception is the discovery generation, for the pages side
+ * only ({@code followsDiscovery}; feeds carry no picks): an entry cached
  * before it is a miss, and {@link #lastModified} is never earlier than it, so
  * a browser holding a page from before a reshuffle is not answered 304.
  */
@@ -42,10 +43,12 @@ final class SiteWideRenderCache<R> implements RenderCache<R> {
 
     private final SiteWideCache cache;
     private final Function<R, String> keyFunction;
+    private final boolean followsDiscovery;
 
-    SiteWideRenderCache(SiteWideCache cache, Function<R, String> keyFunction) {
+    SiteWideRenderCache(SiteWideCache cache, Function<R, String> keyFunction, boolean followsDiscovery) {
         this.cache = cache;
         this.keyFunction = keyFunction;
+        this.followsDiscovery = followsDiscovery;
     }
 
     @Override
@@ -58,7 +61,7 @@ final class SiteWideRenderCache<R> implements RenderCache<R> {
         CachedContent cached = (CachedContent) cache.get(key);
         // The business tier cannot clear this cache when the discovery
         // snapshot rebuilds, so an entry older than the generation is a miss.
-        if (cached != null && cached.getCreatedAt() < DiscoveryGeneration.current()) {
+        if (followsDiscovery && cached != null && cached.getCreatedAt() < DiscoveryGeneration.current()) {
             return null;
         }
         return cached;
@@ -71,7 +74,8 @@ final class SiteWideRenderCache<R> implements RenderCache<R> {
 
     @Override
     public long lastModified(Weblog weblog) {
-        return Math.max(cache.getLastModified().getTime(), DiscoveryGeneration.current());
+        long own = cache.getLastModified().getTime();
+        return followsDiscovery ? Math.max(own, DiscoveryGeneration.current()) : own;
     }
 
     @Override

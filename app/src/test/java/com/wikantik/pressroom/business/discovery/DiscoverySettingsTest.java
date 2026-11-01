@@ -74,6 +74,19 @@ class DiscoverySettingsTest {
         assertEquals(3600, DiscoverySettings.refreshSeconds());
     }
 
+    /**
+     * Global Config shows the interval the scheduler will actually use, and
+     * PopularityRefreshTask rounds a seconds value up to whole minutes: 90 s
+     * runs every 2 minutes, so the form must not say 1.
+     */
+    @Test
+    void refreshMinutesRoundUpLikeTheScheduler() {
+        assertEquals(2, DiscoverySettings.refreshMinutesFrom("90"));
+        assertEquals(2, DiscoverySettings.refreshMinutesFrom("61"));
+        assertEquals(1, DiscoverySettings.refreshMinutesFrom("60"));
+        assertEquals(60, DiscoverySettings.refreshMinutesFrom("3600"));
+    }
+
     @Test
     void rangeErrorBounds() {
         assertTrue(DiscoverySettings.rangeError(DiscoverySettings.WINDOW_DAYS, 0).isPresent());

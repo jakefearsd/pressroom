@@ -180,6 +180,27 @@ class MaintenanceJspTest {
         assertEquals(2, count(source, "<sec:csrfInput/>"));
     }
 
+    /** "Refresh now" refreshes; it reuses no other operation's busy label. */
+    @Test
+    void refreshButtonHasItsOwnBusyLabel() throws IOException {
+        String source = Files.readString(JSP, StandardCharsets.UTF_8);
+        int form = source.indexOf("maintenance!refreshDiscovery.rol");
+        String refreshForm = source.substring(form, source.indexOf("</form>", form));
+        assertTrue(refreshForm.contains("data-busy-label=\"<spring:message code='maintenance.discovery.refreshing'/>\""),
+                refreshForm);
+        assertFalse(refreshForm.contains("maintenance.regenerateRenditions.building"), refreshForm);
+    }
+
+    /** Every value in the status list has its term: a dd without a dt is no description list. */
+    @Test
+    void theCountsHaveALabel() throws IOException {
+        String source = Files.readString(JSP, StandardCharsets.UTF_8);
+        int form = source.indexOf("maintenance!refreshDiscovery.rol");
+        String list = source.substring(source.indexOf("<dl>", form), source.indexOf("</dl>", form));
+        assertEquals(count(list, "<dd>"), count(list, "<dt>"), list);
+        assertTrue(list.contains("<dt><spring:message code=\"maintenance.discovery.countsLabel\"/></dt>"), list);
+    }
+
     @Test
     void lastErrorIsEscaped() throws IOException {
         String source = Files.readString(JSP, StandardCharsets.UTF_8);
