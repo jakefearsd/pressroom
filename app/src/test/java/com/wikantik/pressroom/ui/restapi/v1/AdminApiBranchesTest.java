@@ -205,6 +205,32 @@ class AdminApiBranchesTest {
         verify(weblogger.getPropertiesManager(), never()).saveProperties(any());
     }
 
+    @Test
+    void patchRejectsShareOutOfRange() throws Exception {
+        String body = patchConfigRefused("{\"site.discovery.sharePercent\":\"101\"}");
+        assertEquals("site.discovery.sharePercent", firstErrorField(body));
+    }
+
+    @Test
+    void patchRejectsRefreshSecondsBelowAMinute() throws Exception {
+        String body = patchConfigRefused("{\"site.discovery.refreshSeconds\":\"30\"}");
+        assertEquals("site.discovery.refreshSeconds", firstErrorField(body));
+    }
+
+    @Test
+    void patchAcceptsRefreshSeconds() throws Exception {
+        Weblogger weblogger = weblogger();
+
+        mvc(weblogger).perform(patch("/v1/admin/config").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"site.discovery.refreshSeconds\":\"120\"}"))
+                .andExpect(status().isOk());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, RuntimeConfigProperty>> saved = ArgumentCaptor.forClass(Map.class);
+        verify(weblogger.getPropertiesManager()).saveProperties(saved.capture());
+        assertEquals("120", saved.getValue().get("site.discovery.refreshSeconds").getValue());
+    }
+
     /** The field named by the first {@code errors} entry of a problem body. */
     private static String firstErrorField(String body) {
         return new tools.jackson.databind.ObjectMapper().readTree(body)

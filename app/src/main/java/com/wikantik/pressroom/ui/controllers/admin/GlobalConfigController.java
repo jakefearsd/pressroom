@@ -28,6 +28,7 @@ import org.apache.commons.text.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.discovery.DiscoverySettings;
 import com.wikantik.pressroom.business.PageReference;
 import com.wikantik.pressroom.business.PropertiesManager;
 import com.wikantik.pressroom.business.WeblogManager;
@@ -60,6 +61,11 @@ public class GlobalConfigController extends BaseController {
     private static final String FRONTPAGE_WEBLOG_HANDLE = "site.frontpage.weblog.handle";
     /** The front door's site page; the front-door select writes it (see {@link #applyFrontDoorChoice}). */
     private static final String FRONTPAGE_PAGE = "site.frontpage.page";
+    private static final String REFRESH_MINUTES_ATTR = "discoveryRefreshMinutes";
+    private static final int MINUTES_MIN =
+            DiscoverySettings.min(DiscoverySettings.REFRESH_SECONDS) / DiscoverySettings.SECONDS_PER_MINUTE;
+    private static final int MINUTES_MAX =
+            DiscoverySettings.max(DiscoverySettings.REFRESH_SECONDS) / DiscoverySettings.SECONDS_PER_MINUTE;
     private static final String PRIVACY_PAGE = "site.privacy.page";
     private static final String ABSOLUTE_URL = "site.absoluteurl";
     /** The front-door select's value prefix for a site page; a blog's option is its bare handle. */
@@ -116,8 +122,54 @@ public class GlobalConfigController extends BaseController {
         List<WeblogPage> sitePages = loadSitePages();
         model.addAttribute("sitePages", sitePages);
         model.addAttribute("staleFrontDoorPage", staleFrontDoorPage(properties, sitePages));
+        showRefreshMinutes(model, storedValue(properties));
 
         return ".GlobalConfig";
+    }
+
+    private static String storedValue(Map<String, RuntimeConfigProperty> properties) {
+        RuntimeConfigProperty stored = properties.get(DiscoverySettings.REFRESH_SECONDS);
+        return stored == null ? null : stored.getValue();
+    }
+
+    /** Shows the interval in minutes unless a typed (refused) value is already being echoed. */
+    private static void showRefreshMinutes(Model model, String storedSeconds) {
+        if (model.getAttribute(REFRESH_MINUTES_ATTR) == null) {
+            model.addAttribute(REFRESH_MINUTES_ATTR, Integer.toString(DiscoverySettings.refreshMinutesFrom(storedSeconds)));
+        }
+    }
+
+    /**
+     * Reads the refresh interval from its minutes field and, when valid,
+     * records it in seconds. A bad value adds an error and records nothing.
+     */
+    private void acceptRefreshMinutes(HttpServletRequest request, PropertyDef propertyDef,
+            Map<String, String> accepted, Model model) {
+        String minutes = request.getParameter(DiscoverySettings.REFRESH_MINUTES_FIELD);
+        if (minutes == null) {
+            return;
+        }
+        try {
+            int parsed = Integer.parseInt(minutes.trim());
+            if (parsed < MINUTES_MIN || parsed > MINUTES_MAX) {
+                addRangeError(model, propertyDef, MINUTES_MIN, MINUTES_MAX, request);
+            } else {
+                accepted.put(DiscoverySettings.REFRESH_SECONDS, Integer.toString(parsed * DiscoverySettings.SECONDS_PER_MINUTE));
+            }
+        } catch (NumberFormatException nfe) {
+            String propDesc = bundle.getString(propertyDef.getKey());
+            addError(model, "ConfigForm.invalidIntegerProperty",
+                    new Object[]{propDesc, StringEscapeUtils.escapeHtml4(minutes)}, request);
+        }
+        // Echo what was typed so a refused form shows it back as typed.
+        model.addAttribute(REFRESH_MINUTES_ATTR, minutes);
+    }
+
+    private void addRangeError(Model model, PropertyDef propertyDef, int min, int max,
+            HttpServletRequest request) {
+        addError(model, DiscoverySettings.RANGE_ERROR_KEY,
+                new Object[]{bundle.getString(propertyDef.getKey()), Integer.toString(min), Integer.toString(max)},
+                request);
     }
 
     /**
@@ -154,13 +206,22 @@ public class GlobalConfigController extends BaseController {
                 continue;
             }
 
-            if ("boolean".equals(propertyDef.getType())) {
+            if (DiscoverySettings.REFRESH_SECONDS.equals(propName)) {
+                // Edited in minutes, stored in seconds: the form never posts
+                // the seconds property itself. Absent leaves it as it is.
+                acceptRefreshMinutes(request, propertyDef, accepted, model);
+
+            } else if ("boolean".equals(propertyDef.getType())) {
                 // an unticked checkbox submits nothing, so absent means false
                 accepted.put(propName, Boolean.toString(Boolean.parseBoolean(incomingProp)));
 
             } else if (incomingProp != null && "integer".equals(propertyDef.getType())) {
                 try {
-                    Integer.parseInt(incomingProp);
+                    int parsed = Integer.parseInt(incomingProp);
+                    if (DiscoverySettings.rangeError(propName, parsed).isPresent()) {
+                        addRangeError(model, propertyDef, DiscoverySettings.min(propName),
+                                DiscoverySettings.max(propName), request);
+                    }
                 } catch (NumberFormatException nfe) {
                     String propDesc = bundle.getString(propertyDef.getKey());
                     addError(model, "ConfigForm.invalidIntegerProperty", new Object[]{propDesc, StringEscapeUtils.escapeHtml4(incomingProp)}, request);
@@ -189,6 +250,7 @@ public class GlobalConfigController extends BaseController {
         }
 
         applyFrontDoorChoice(accepted, properties, model, request);
+        showRefreshMinutes(model, accepted.getOrDefault(DiscoverySettings.REFRESH_SECONDS, storedValue(properties)));
 
         // Only a change to the reference is validated, so a privacy page that
         // was later unpublished never blocks an unrelated save: Global Config
