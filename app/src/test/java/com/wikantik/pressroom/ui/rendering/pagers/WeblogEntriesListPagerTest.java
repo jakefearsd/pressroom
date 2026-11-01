@@ -226,8 +226,11 @@ class WeblogEntriesListPagerTest {
         assertNotNull(criteria.getValue().getStartDate(), "sinceDays=30 must set a floor");
         // Checking only "before now" would pass for a floor of one second ago
         // or one century ago -- either silently changes the listing contents.
+        // Calendar days in the server's zone, as the code counts them: a fixed
+        // 24 h per day is an hour off whenever the window crosses a DST change.
+        long thirtyDaysAgo = java.time.ZonedDateTime.now().minusDays(30).toInstant().toEpochMilli();
         long millisAgo = System.currentTimeMillis() - criteria.getValue().getStartDate().getTime();
-        assertTrue(Math.abs(millisAgo - 30 * 86_400_000L) < 60_000L,
+        assertTrue(Math.abs(criteria.getValue().getStartDate().getTime() - thirtyDaysAgo) < 60_000L,
                 "Expected a floor about 30 days ago, but it was "
                         + (millisAgo / 86_400_000.0) + " days ago");
     }

@@ -190,8 +190,11 @@ class WeblogsPagerTest {
         assertNotNull(startDate.getValue(), "sinceDays=7 must produce a start date");
         // Checking only "before now" would pass for a floor of one second ago
         // or one century ago -- either silently changes the directory contents.
+        // Calendar days in the server's zone, as the code counts them: a fixed
+        // 24 h per day is an hour off whenever the window crosses a DST change.
+        long sevenDaysAgo = java.time.ZonedDateTime.now().minusDays(7).toInstant().toEpochMilli();
         long millisAgo = System.currentTimeMillis() - startDate.getValue().getTime();
-        assertTrue(Math.abs(millisAgo - 7 * 86_400_000L) < 60_000L,
+        assertTrue(Math.abs(startDate.getValue().getTime() - sevenDaysAgo) < 60_000L,
                 "Expected a floor about 7 days ago, but it was "
                         + (millisAgo / 86_400_000.0) + " days ago");
     }

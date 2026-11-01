@@ -181,7 +181,9 @@ class WeblogWrapperDelegationTest {
                 "-1 days means 'all time', which has to reach the query as a null start "
                         + "date rather than a date 1 day in the past");
         assertNull(starts.get(1), "0 days means 'all time' too");
-        long thirtyDaysAgo = System.currentTimeMillis() - java.util.concurrent.TimeUnit.DAYS.toMillis(30);
+        // Calendar days in the server's zone, as the code counts them: a fixed
+        // 24 h per day is an hour off whenever the window crosses a DST change.
+        long thirtyDaysAgo = java.time.ZonedDateTime.now().minusDays(30).toInstant().toEpochMilli();
         assertTrue(Math.abs(starts.get(2).getTime() - thirtyDaysAgo)
                         < java.util.concurrent.TimeUnit.MINUTES.toMillis(5),
                 "A 30 day window must start 30 days ago, not 30 days in the future: " + starts.get(2));
