@@ -960,10 +960,11 @@ per-account comment rate limit). Replies are for the weblog's members: a global
 admin whose token reaches a weblog they are not a member of gets `BAD_REPLY`.
 
 **Settings.** A weblog's `commentsEnabled` and `commentNotify` (email the
-weblog's admins when a comment is held) are fields of the weblog view and
+weblog's admins when a comment is held) and `showMoreFromSite` (default true;
+false hides the more-from-the-site block on that blog only) are fields of the weblog view and
 `PATCH /api/v1/weblogs/{handle}` (ADMIN token), and an entry's
 `commentsClosed` is a field of the entry view and of entry create and update.
-All three are booleans and cannot be cleared.
+All four are booleans and cannot be cleared.
 
 ## Audits
 

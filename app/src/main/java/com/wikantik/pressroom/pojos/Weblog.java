@@ -60,6 +60,7 @@ public class Weblog implements Serializable {
     private Boolean active           = Boolean.TRUE;
     private Boolean commentsEnabled  = Boolean.FALSE;
     private Boolean commentNotify    = Boolean.TRUE;
+    private Boolean showMoreFromSite = Boolean.TRUE;
     private Date    dateCreated      = new Date();
     private int     entryDisplayCount = 15;
     private Date    lastModified     = new Date();
@@ -292,6 +293,7 @@ public class Weblog implements Serializable {
         this.setActive(other.getActive());
         this.setCommentsEnabled(other.getCommentsEnabled());
         this.setCommentNotify(other.getCommentNotify());
+        this.setShowMoreFromSite(other.getShowMoreFromSite());
         this.setLastModified(other.getLastModified());
         this.setWeblogCategories(other.getWeblogCategories());
     }
@@ -367,6 +369,15 @@ public class Weblog implements Serializable {
 
     public void setCommentNotify(Boolean commentNotify) {
         this.commentNotify = commentNotify;
+    }
+
+    /** Whether this blog shows the "more from the site" block; null reads as true everywhere. */
+    public Boolean getShowMoreFromSite() {
+        return showMoreFromSite;
+    }
+
+    public void setShowMoreFromSite(Boolean showMoreFromSite) {
+        this.showMoreFromSite = showMoreFromSite;
     }
     
     /**

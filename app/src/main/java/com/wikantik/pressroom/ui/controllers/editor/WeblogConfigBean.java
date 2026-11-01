@@ -44,6 +44,7 @@ public class WeblogConfigBean {
     private boolean active = false;
     private boolean commentsEnabled = false;
     private boolean commentNotify = false;
+    private boolean showMoreFromSite = false;
     private String icon = null;
     private String about = null;
 
@@ -158,6 +159,14 @@ public class WeblogConfigBean {
 
     public void setCommentNotify(boolean commentNotify) {
         this.commentNotify = commentNotify;
+    }
+
+    public boolean getShowMoreFromSite() {
+        return showMoreFromSite;
+    }
+
+    public void setShowMoreFromSite(boolean showMoreFromSite) {
+        this.showMoreFromSite = showMoreFromSite;
     }
 
     public boolean getActive() {
@@ -277,6 +286,7 @@ public class WeblogConfigBean {
         setActive(dataHolder.getActive());
         setCommentsEnabled(Boolean.TRUE.equals(dataHolder.getCommentsEnabled()));
         setCommentNotify(!Boolean.FALSE.equals(dataHolder.getCommentNotify()));
+        setShowMoreFromSite(!Boolean.FALSE.equals(dataHolder.getShowMoreFromSite()));
         this.analyticsSiteId = dataHolder.getAnalyticsSiteId();
         this.analyticsShareUrl = dataHolder.getAnalyticsShareUrl();
         this.newsletterListUuid = dataHolder.getNewsletterListUuid();
@@ -305,6 +315,7 @@ public class WeblogConfigBean {
         dataHolder.setActive(this.getActive());
         dataHolder.setCommentsEnabled(this.getCommentsEnabled());
         dataHolder.setCommentNotify(this.getCommentNotify());
+        dataHolder.setShowMoreFromSite(this.getShowMoreFromSite());
         dataHolder.setIconPath(getIcon());
         dataHolder.setAbout(getAbout());
         dataHolder.setAnalyticsSiteId(StringUtils.trimToNull(this.analyticsSiteId));

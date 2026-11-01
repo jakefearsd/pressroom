@@ -81,4 +81,12 @@ class WeblogConfigBusinessJspTest {
         assertTrue(jsp.contains("code=\"weblogSettings.commentsEnabled\""));
         assertTrue(jsp.contains("code=\"weblogSettings.commentNotify\""));
     }
+
+    @Test
+    void checkboxNamedAndLabelled() throws IOException {
+        String jsp = read();
+        assertTrue(jsp.contains("name=\"bean.showMoreFromSite\""), "showMoreFromSite checkbox");
+        assertTrue(jsp.contains("code=\"weblogSettings.showMoreFromSite\""));
+        assertTrue(jsp.contains("code=\"weblogSettings.showMoreFromSite.help\""));
+    }
 }

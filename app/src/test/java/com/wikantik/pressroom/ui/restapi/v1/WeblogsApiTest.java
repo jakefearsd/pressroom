@@ -239,6 +239,27 @@ class WeblogsApiTest {
     }
 
     @Test
+    void patchShowMoreFromSiteFalse() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        var result = doPatch(weblogger, weblog, "{\"showMoreFromSite\":false}").andExpect(status().isOk());
+        assertEquals(Boolean.FALSE, weblog.getShowMoreFromSite());
+        assertFalse(json(result).get("showMoreFromSite").asBoolean());
+
+        doPatch(weblogger, weblog, "{\"name\":\"Other\"}").andExpect(status().isOk());
+        assertEquals(Boolean.FALSE, weblog.getShowMoreFromSite());
+    }
+
+    @Test
+    void viewIncludesShowMoreFromSite() throws Exception {
+        Weblog weblog = aWeblog("myblog");
+        assertTrue(com.wikantik.pressroom.ui.restapi.dto.AdminDtos.toView(weblog).showMoreFromSite());
+        weblog.setShowMoreFromSite(null);
+        assertTrue(com.wikantik.pressroom.ui.restapi.dto.AdminDtos.toView(weblog).showMoreFromSite());
+    }
+
+    @Test
     void patchSetsTheNewSettingsAndGetShowsThem() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");
@@ -288,7 +309,7 @@ class WeblogsApiTest {
     @Test
     void aNonFiniteCoordinateIsRefused() {
         AdminDtos.WeblogPatch patch = new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null, null);
 
         ApiException e = assertThrows(ApiException.class,
                 () -> AdminDtos.applyPatch(new WeblogConfigBean(), patch, java.util.Set.of()));
@@ -713,7 +734,7 @@ class WeblogsApiTest {
     @Test
     void aNonFiniteCoordinateNamesTheCoordinateField() {
         AdminDtos.WeblogPatch patch = new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null, null);
 
         ApiException e = assertThrows(ApiException.class,
                 () -> AdminDtos.applyPatch(new WeblogConfigBean(), patch, java.util.Set.of()));

@@ -55,7 +55,8 @@ public final class AdminDtos {
     public record WeblogView(String id, String handle, String name, String tagline, String copyright,
                               String emailAddress, String locale, String timeZone,
                               int entryDisplayCount, boolean active, boolean commentsEnabled, boolean commentNotify,
-                              String editorTheme,
+                              @Schema(description = "Show the more-from-the-site block on this blog. Default true.")
+                              boolean showMoreFromSite, String editorTheme,
                               String creatorUserName, String customDomain, String icon, String about,
                               String analyticsSiteId, String analyticsShareUrl, String newsletterListUuid,
                               String businessId, String placeType, String placeLocality, String placeRegion,
@@ -113,6 +114,8 @@ public final class AdminDtos {
                                Boolean commentsEnabled,
                                @Schema(description = "Email the owners when a comment needs approval. Not clearable.")
                                Boolean commentNotify,
+                               @Schema(description = "Show popular posts from the site's other blogs on this blog. Not clearable.")
+                               Boolean showMoreFromSite,
                                @Schema(description = "Fields to remove: tagline, copyright, customDomain, icon, about, "
                                        + "analyticsSiteId, analyticsShareUrl, newsletterListUuid, businessId, "
                                        + "placeType, placeLocality, placeRegion, placeCountry, placeLat with "
@@ -136,7 +139,8 @@ public final class AdminDtos {
                 weblog.getTimeZone(), weblog.getEntryDisplayCount(),
                 Boolean.TRUE.equals(weblog.getActive()),
                 Boolean.TRUE.equals(weblog.getCommentsEnabled()),
-                !Boolean.FALSE.equals(weblog.getCommentNotify()), weblog.getEditorTheme(),
+                !Boolean.FALSE.equals(weblog.getCommentNotify()),
+                !Boolean.FALSE.equals(weblog.getShowMoreFromSite()), weblog.getEditorTheme(),
                 weblog.getCreatorUserName(), weblog.getCustomDomain(), weblog.getIconPath(),
                 weblog.getAbout(), weblog.getAnalyticsSiteId(), weblog.getAnalyticsShareUrl(),
                 weblog.getNewsletterListUuid(),
@@ -197,6 +201,9 @@ public final class AdminDtos {
         }
         if (patch.commentNotify() != null) {
             bean.setCommentNotify(patch.commentNotify());
+        }
+        if (patch.showMoreFromSite() != null) {
+            bean.setShowMoreFromSite(patch.showMoreFromSite());
         }
         setIfPresent(patch.customDomain(), bean::setCustomDomain);
         setIfPresent(patch.icon(), bean::setIcon);

@@ -138,6 +138,15 @@
         </div>
     </div>
 
+    <div class="row mb-3">
+        <div class="offset-sm-3 col-sm-9">
+            <div class="form-check">
+                <label class="form-check-label"><input type="checkbox" class="form-check-input" name="bean.showMoreFromSite" value="true" ${bean.showMoreFromSite ? 'checked' : ''}/> <spring:message code="weblogSettings.showMoreFromSite"/></label>
+            </div>
+            <div class="form-text"><spring:message code="weblogSettings.showMoreFromSite.help"/></div>
+        </div>
+    </div>
+
     <%-- ***** Language/i18n settings ***** --%>
 
     <h2 class="section-head" id="settings-language"><spring:message code="websiteSettings.languageSettings"/></h2>
