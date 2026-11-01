@@ -211,6 +211,30 @@ class PortfolioThemeRenderingTest {
     }
 
     /**
+     * A card carries its date and opening too, hidden while it is one picture
+     * among others: a run of ONE picture post between rows of writing (the
+     * first wikantik post with a featured image, 2026-10-31) shows them, since
+     * a lone tile whose title appears only on hover said nothing about it.
+     */
+    @Test
+    void aPictureCardCarriesItsDateAndOpeningForWhenItStandsAlone() throws Exception {
+        MediaFile image = TestUtils.setupImageMediaFile(weblog, "lone-image");
+        String imageId = image.getId();
+        TestUtils.endSession(true);
+        entryWithFeaturedImage("lone-entry", imageId);
+
+        String body = render("/" + HANDLE);
+
+        assertTrue(CARD_DATE.matcher(body).find(), "the card carries a machine-readable date:\n" + body);
+        assertTrue(body.contains("<p class=\"pf-card-sum\">blah blah entry</p>"),
+                "the card carries the post's opening:\n" + body);
+    }
+
+    private static final Pattern CARD_DATE = Pattern.compile(
+            "<p class=\"pf-card-meta\"><time datetime=\"\\d{4}-\\d{2}-\\d{2}\">"
+                    + "[A-Za-z]+ \\d{1,2}, \\d{4}</time>");
+
+    /**
      * A post with no featured image is writing, not a picture, and gets a
      * list row -- title, date, category and a line of its prose -- rather
      * than an empty tile. Before this the wikantik weblog's front page was a
@@ -590,6 +614,28 @@ class PortfolioThemeRenderingTest {
         assertTrue(rule(body, ".pf-row-title a:hover {").contains("var(--pf-accent)"),
                 "the title's hover takes the accent:\n" + body);
         assertFalse(body.contains(".pf-card-text"), "the old text-tile rules are gone:\n" + body);
+    }
+
+    /**
+     * The stylesheet half of the lone card: a grid holding one card takes
+     * the list's reading measure, shows the title under the picture rather
+     * than over it on hover, and shows the date and opening a card in a run
+     * of pictures keeps hidden.
+     */
+    @Test
+    void aLonePictureCardIsStyledAsAReadingRow() throws Exception {
+        String body = render("/" + HANDLE + "/page/portfolio-custom.css");
+
+        assertTrue(rule(body, ".pf-card-meta,\n.pf-card-sum {").contains("display: none;"),
+                "in a run of pictures a card shows only its picture and title:\n" + body);
+        String lone = ".pf-grid:has(> .pf-card:only-child)";
+        assertTrue(rule(body, lone + " {").contains("max-width: 46rem;"),
+                "a lone card takes the reading measure:\n" + body);
+        String title = rule(body, lone + " .pf-card-title {");
+        assertTrue(title.contains("position: static;") && title.contains("opacity: 1;"),
+                "a lone card's title sits under the picture, always shown:\n" + body);
+        assertTrue(rule(body, lone + " .pf-card-meta,\n" + lone + " .pf-card-sum {").contains("display: block;"),
+                "a lone card shows its date and opening:\n" + body);
     }
 
     // ---------------------------------------------------------------- search

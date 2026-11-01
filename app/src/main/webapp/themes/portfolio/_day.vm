@@ -5,7 +5,8 @@
 ## stretch of entries with a featured image is one justified .pf-grid of
 ## cards, each stretch without one is one .pf-list of rows (title, date,
 ## category and a line of the post's prose) -- writing is not a picture,
-## and a tile holding nothing but a title said nothing about it. The pager
+## and a tile holding nothing but a title said nothing about it (a run of
+## one picture is styled as a row too, see the lone-card rules). The pager
 ## macro parses this fragment once per day with no wrapper of its own, so
 ## the run that is open is carried across days in $pfRun ("grid", "list"
 ## or ""); the enclosing template empties it before the pager and closes
@@ -71,6 +72,15 @@
             #showResponsiveImage($entry.featuredImage $cardAlt "(max-width: 640px) 100vw, 40vw" "pf-card-img")
             <h2 class="pf-card-title">$entry.title</h2>
         </a>
+        ## Date, category and opening: hidden in a run of pictures, shown by
+        ## the stylesheet when the card is the only one in its run, where it
+        ## stands between rows of writing and reads as one of them. Outside
+        ## the link, so they never become part of its accessible name.
+        <p class="pf-card-meta"><time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time> &middot; $utils.escapeHTML($entry.category.name)</p>
+        #set($excerpt = $entry.excerpt)
+        #if($utils.isNotEmpty($excerpt))
+        <p class="pf-card-sum">$utils.escapeHTML($excerpt)</p>
+        #end
     </figure>
         #else
             #if($pfRun != "list")

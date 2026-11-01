@@ -212,6 +212,54 @@ body.pf a:hover {
     opacity: 1;
 }
 
+.pf-card-meta,
+.pf-card-sum {
+    display: none;
+}
+
+/* A run of ONE picture post between rows of writing: a lone justified tile
+   sat at the left edge with its title showing only on hover, so it said
+   nothing about the post (the first wikantik post with a featured image,
+   2026-10-31). It reads as a row instead -- the reading measure, the
+   picture, then the title, date and opening -- while a run of two or more
+   stays a grid of pictures. */
+.pf-grid:has(> .pf-card:only-child) {
+    display: block;
+    width: 100%;
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: 0 1.25rem;
+}
+
+.pf-grid:has(> .pf-card:only-child) .pf-card {
+    background: none;
+    overflow: visible;
+}
+
+.pf-grid:has(> .pf-card:only-child) .pf-card-title {
+    position: static;
+    opacity: 1;
+    margin-top: 1rem;
+    padding: 0;
+    background: none;
+    color: var(--pf-fg);
+    font-size: 1.25rem;
+    line-height: 1.3;
+    letter-spacing: 0.01em;
+    text-transform: none;
+    overflow-wrap: anywhere;
+}
+
+.pf-grid:has(> .pf-card:only-child) .pf-card-link:hover .pf-card-title,
+.pf-grid:has(> .pf-card:only-child) .pf-card-link:focus-visible .pf-card-title {
+    color: var(--pf-accent);
+}
+
+.pf-grid:has(> .pf-card:only-child) .pf-card-meta,
+.pf-grid:has(> .pf-card:only-child) .pf-card-sum {
+    display: block;
+}
+
 /* Entries without a featured image are writing, not pictures: they list
    as rows in the permalink's reading measure, between the grid runs, rather
    than as tiles that could only hold a title. _day.vm groups each stretch of
@@ -264,7 +312,8 @@ body.pf a:hover {
 /* Mono face for the row's date and category, quiet under the title --
    system monospace only: the theme CSP has no font-src, so no webfont can
    load here (see the file header). */
-.pf-row-meta {
+.pf-row-meta,
+.pf-grid:has(> .pf-card:only-child) .pf-card-meta {
     margin: 0.35rem 0 0;
     font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
     font-size: .75rem;
@@ -272,7 +321,8 @@ body.pf a:hover {
     color: var(--pf-muted);
 }
 
-.pf-row-sum {
+.pf-row-sum,
+.pf-grid:has(> .pf-card:only-child) .pf-card-sum {
     margin: 0.6rem 0 0;
     font-size: 1rem;
     line-height: 1.6;
