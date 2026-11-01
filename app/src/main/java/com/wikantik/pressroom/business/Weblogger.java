@@ -19,6 +19,7 @@
 package com.wikantik.pressroom.business;
 
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.discovery.DiscoveryManager;
 import com.wikantik.pressroom.business.plugins.PluginManager;
 import com.wikantik.pressroom.business.runnable.ThreadManager;
 import com.wikantik.pressroom.business.search.IndexManager;
@@ -151,6 +152,12 @@ public interface Weblogger {
      * through.
      */
     EntryRenderer getEntryRenderer();
+
+    /**
+     * The discovery picker behind the front page and each blog's "more from
+     * the site" block.
+     */
+    DiscoveryManager getDiscoveryManager();
     
     /**
      * Flush object states.

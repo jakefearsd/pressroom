@@ -56,7 +56,7 @@ class WebloggerImplLifecycleTest {
 
     private WebloggerImpl weblogger(IndexManager indexManager, ThreadManager threadManager) throws Exception {
         return new WebloggerImpl(indexManager, media, files, null, null, null, null, null, null, null, null,
-                plugins, properties, themes, threadManager, users, weblogs, null, null, null, null) {
+                plugins, properties, themes, threadManager, users, weblogs, null, null, null, null, null) {
             @Override
             public void flush() throws WebloggerException {
                 if (flushFailure != null) {

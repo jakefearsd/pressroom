@@ -21,6 +21,7 @@ package com.wikantik.pressroom.business;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.discovery.DiscoveryManager;
 import com.wikantik.pressroom.business.plugins.PluginManager;
 import com.wikantik.pressroom.business.runnable.ThreadManager;
 import com.wikantik.pressroom.business.search.IndexManager;
@@ -65,6 +66,7 @@ public abstract class WebloggerImpl implements Weblogger {
     private final URLStrategy          urlStrategy;
     private final VirtualHostRegistry  virtualHostRegistry;
     private final EntryRenderer        entryRenderer;
+    private final DiscoveryManager     discoveryManager;
     
     // some simple attributes
     private final String version;
@@ -94,7 +96,8 @@ public abstract class WebloggerImpl implements Weblogger {
         WeblogEntryManager   weblogEntryManager,
         URLStrategy          urlStrategy,
         VirtualHostRegistry  virtualHostRegistry,
-        EntryRenderer        entryRenderer) throws WebloggerException {
+        EntryRenderer        entryRenderer,
+        DiscoveryManager     discoveryManager) throws WebloggerException {
 
         this.indexManager        = indexManager;
         this.mediaFileManager    = mediaFileManager;
@@ -117,6 +120,7 @@ public abstract class WebloggerImpl implements Weblogger {
         this.urlStrategy         = urlStrategy;
         this.virtualHostRegistry = virtualHostRegistry;
         this.entryRenderer       = entryRenderer;
+        this.discoveryManager    = discoveryManager;
 
         Properties props = new Properties();
         // WebloggerImpl.class, not getClass(): this class is abstract and
@@ -337,6 +341,11 @@ public abstract class WebloggerImpl implements Weblogger {
     @Override
     public EntryRenderer getEntryRenderer() {
         return entryRenderer;
+    }
+
+    @Override
+    public DiscoveryManager getDiscoveryManager() {
+        return discoveryManager;
     }
 	
     /**

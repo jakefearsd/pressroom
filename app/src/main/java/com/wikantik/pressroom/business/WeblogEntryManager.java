@@ -22,6 +22,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.discovery.DiscoveryCandidate;
 import com.wikantik.pressroom.pojos.TagStat;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -153,6 +154,13 @@ public interface WeblogEntryManager {
      */
     List<SitemapEntry> getSitemapEntries(Weblog weblog, int maxResults)
             throws WebloggerException;
+
+    /**
+     * Every entry eligible for discovery, site-wide, in one query without
+     * building any entity: PUBLISHED, not {@code noindex}, on a visible,
+     * active weblog that is not the site space.
+     */
+    List<DiscoveryCandidate> getDiscoveryCandidates() throws WebloggerException;
 
     /**
      * Get Weblog Entries grouped by day.

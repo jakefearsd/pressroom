@@ -44,6 +44,7 @@ import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.PressroomEvent;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.business.SitemapEntry;
+import com.wikantik.pressroom.business.discovery.DiscoveryCandidate;
 import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria;
 import com.wikantik.pressroom.pojos.TagStat;
 import com.wikantik.pressroom.pojos.TagStatComparator;
@@ -816,6 +817,38 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
                     (String) columns[5]));
         }
         return entries;
+    }
+
+    /**
+     * The discovery candidates: the four columns the picker needs, never an
+     * entity. The weblog conditions repeat {@code getWeblogs(TRUE, TRUE, ...)}
+     * (visible, active, not the site space) so one query answers for the
+     * whole site.
+     */
+    private static final String DISCOVERY_CANDIDATES =
+            "SELECT e.id, e.website.id, e.anchor, e.pubTime FROM WeblogEntry e"
+            + " WHERE e.status = ?1 AND (e.noindex IS NULL OR e.noindex = ?2)"
+            + " AND e.website.visible = ?3 AND e.website.active = ?3 AND e.website.siteSpace = ?2";
+
+    /**
+     * @inheritDoc
+     */
+    @Override
+    public List<DiscoveryCandidate> getDiscoveryCandidates() throws WebloggerException {
+        List<Object[]> rows = strategy.getDynamicQuery(DISCOVERY_CANDIDATES, Object[].class)
+                .setParameter(1, PubStatus.PUBLISHED)
+                .setParameter(2, Boolean.FALSE)
+                .setParameter(3, Boolean.TRUE)
+                .getResultList();
+        List<DiscoveryCandidate> candidates = new ArrayList<>(rows.size());
+        for (Object[] columns : rows) {
+            candidates.add(new DiscoveryCandidate(
+                    (String) columns[0],
+                    (String) columns[1],
+                    (String) columns[2],
+                    instant(columns[3])));
+        }
+        return candidates;
     }
 
     private static java.time.Instant instant(Object timestamp) {

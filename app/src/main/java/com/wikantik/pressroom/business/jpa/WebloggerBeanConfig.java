@@ -40,6 +40,10 @@ import com.wikantik.pressroom.business.WeblogRedirectManager;
 import com.wikantik.pressroom.business.BusinessManager;
 import com.wikantik.pressroom.business.CommentManager;
 import com.wikantik.pressroom.business.Weblogger;
+import com.wikantik.pressroom.business.discovery.DiscoveryManager;
+import com.wikantik.pressroom.business.discovery.JPADiscoveryManagerImpl;
+import com.wikantik.pressroom.business.discovery.TrafficSource;
+import com.wikantik.pressroom.business.discovery.UmamiTrafficSource;
 import com.wikantik.pressroom.business.plugins.PluginManager;
 import com.wikantik.pressroom.business.plugins.PluginManagerImpl;
 import com.wikantik.pressroom.business.runnable.ThreadManager;
@@ -212,6 +216,17 @@ public class WebloggerBeanConfig {
         return new ThemeManagerImpl(weblogger);
     }
 
+    /** Umami's traffic view, or an unconfigured source when no analytics database is set. */
+    @Bean
+    public TrafficSource trafficSource() {
+        return UmamiTrafficSource.fromConfig();
+    }
+
+    @Bean
+    public DiscoveryManager discoveryManager(@Lazy Weblogger weblogger, TrafficSource trafficSource) {
+        return new JPADiscoveryManagerImpl(weblogger, trafficSource);
+    }
+
     @Bean
     public URLStrategy urlStrategy() {
         return new MultiWeblogURLStrategy();
@@ -240,7 +255,8 @@ public class WebloggerBeanConfig {
             WeblogEntryManager weblogEntryManager,
             URLStrategy urlStrategy,
             VirtualHostRegistry virtualHostRegistry,
-            EntryRenderer entryRenderer) throws WebloggerException {
+            EntryRenderer entryRenderer,
+            DiscoveryManager discoveryManager) throws WebloggerException {
         return new JPAWebloggerImpl(
                 strategy,
                 indexManager,
@@ -263,6 +279,7 @@ public class WebloggerBeanConfig {
                 weblogEntryManager,
                 urlStrategy,
                 virtualHostRegistry,
-                entryRenderer);
+                entryRenderer,
+                discoveryManager);
     }
 }
