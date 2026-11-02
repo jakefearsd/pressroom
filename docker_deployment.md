@@ -604,6 +604,10 @@ Traffic pages need neither.
   only when the blog is unregistered or its name or domain changed. Deleting
   a blog never touches Umami. Each change of registration state advances the
   blog's last-modified time, so cached pages re-render with the tracker tag.
+  Do not move a Pressroom-registered website to another user or a team in
+  Umami's dashboard: Pressroom's reads of it then answer 401, so it treats
+  the website as missing and cannot re-create it, and the blog loses its
+  tracker until the website is handed back to the `pressroom` account.
 - **Reading traffic.** Every 15 minutes (`tasks.AnalyticsSyncTask.interval`)
   Pressroom batch-reads Umami into its own tables, for 24 hours, 7, 30 and 90
   days and the front-page discovery window. Day boundaries follow the site
@@ -1253,9 +1257,10 @@ settings, so read this before you deploy:
    history the first night's run deletes the most; it works in committed
    batches and reports how many rows it removed from each table.
 9. **The privacy page.** Analytics is now on for every blog, so the published
-   privacy policy's analytics paragraph needs the new wording
-   (`docs/legal/blog-privacy-policy.md` holds a draft awaiting the owner's
-   approval).
+   privacy policy's analytics paragraph needs the new wording. The approved
+   text is in `docs/legal/blog-privacy-policy.md` (the Analytics paragraph and
+   the third bullet of "The short version"); copy it into the page that
+   `site.privacy.page` names.
 
 ### In one command
 

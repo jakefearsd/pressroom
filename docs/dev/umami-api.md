@@ -32,7 +32,7 @@ Spec: `docs/superpowers/specs/2026-11-01-analytics-without-admin-steps-design.md
 |---|---|
 | Is a supplied website `id` honoured? | **Yes.** `POST /api/websites {"id": "<uuid>", ...}` creates the website with that ID, and `GET /api/websites/{id}` returns it. So **Umami website ID = weblog ID**. |
 | Registering an ID that already exists | **HTTP 500, empty body** (unhandled primary-key violation). Not 409. A reconciler checks with `GET /api/websites/{id}` first. |
-| Website that does not exist | `GET /api/websites/{id}` answers **401**, the same as a website the caller may not see. A 401 to a stale token means nothing (log in again); a 401 to a token from a fresh login does: `UmamiClient` returns a 401 only then, and Pressroom takes it as the website missing (ruling R24; next section). |
+| Website that does not exist | `GET /api/websites/{id}` answers **401**, the same as a website the caller may not see. A 401 to a stale token means nothing (log in again); a 401 to a token from a fresh login does: `UmamiClient` returns a 401 only then, and Pressroom takes it as the website missing (ruling R24; next section). So a Pressroom-registered website must not be moved to another user or a team in Umami's dashboard: Pressroom's reads then answer 401, it treats the website as missing and cannot re-create it, and the blog loses its tracker until the website is handed back to the `pressroom` account. |
 | `localhost` / `localhost:8083` as a domain | **Both accepted** (200). |
 | Other host:port, IP addresses, upper case | **Rejected** (400). See the domain regex below. |
 | Performance attribute | `data-performance="true"`, exactly the string `true`. |
