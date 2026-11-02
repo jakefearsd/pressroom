@@ -24,6 +24,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -231,9 +232,18 @@ public final class UmamiAnalyticsService implements AnalyticsService {
         }
         List<SeriesPoint> points = new ArrayList<>();
         if (hourly) {
+            // Wall-clock hours in the site zone: the repeated fall-back hour is one bucket, the
+            // skipped spring-forward hour has none, and an end exactly on the hour adds no empty bucket.
             LocalDateTime t = start.atZone(zone).toLocalDateTime().truncatedTo(ChronoUnit.HOURS);
-            LocalDateTime last = end.atZone(zone).toLocalDateTime().truncatedTo(ChronoUnit.HOURS);
+            LocalDateTime endLocal = end.atZone(zone).toLocalDateTime();
+            LocalDateTime last = endLocal.truncatedTo(ChronoUnit.HOURS);
+            if (last.equals(endLocal)) {
+                last = last.minusHours(1);
+            }
             for (; !t.isAfter(last); t = t.plusHours(1)) {
+                if (!ZonedDateTime.ofLocal(t, zone, null).toLocalDateTime().equals(t)) {
+                    continue;
+                }
                 long[] v = seen.getOrDefault(t, new long[2]);
                 points.add(new SeriesPoint(t.toLocalDate(), t.getHour(), v[0], v[1]));
             }

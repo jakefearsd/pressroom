@@ -74,6 +74,7 @@ final class UmamiClient {
     private final Duration connectTimeout;
     private final Duration requestTimeout;
     private final HttpClient http;
+    private final boolean urlValid;
     private volatile String token;
     private int logins;
 
@@ -86,6 +87,7 @@ final class UmamiClient {
         this.baseUrl = StringUtils.stripEnd(baseUrl, "/");
         this.username = username;
         this.password = password;
+        this.urlValid = validUrl(this.baseUrl);
         this.connectTimeout = connectTimeout;
         this.requestTimeout = requestTimeout;
         this.http = HttpClient.newBuilder()
@@ -155,7 +157,19 @@ final class UmamiClient {
         token = node.asString();
     }
 
+    private static boolean validUrl(String url) {
+        try {
+            URI uri = URI.create(url);
+            return ("http".equals(uri.getScheme()) || "https".equals(uri.getScheme())) && uri.getHost() != null;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
     private Reply exchange(String method, String path, String body, String bearer) throws AnalyticsException {
+        if (!urlValid) {
+            throw new AnalyticsException("analytics.umami.apiUrl is not a valid http(s) URL");
+        }
         HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(baseUrl + path))
                 .timeout(requestTimeout)
                 .header("Accept", "application/json");

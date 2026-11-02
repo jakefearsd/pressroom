@@ -472,21 +472,66 @@ class UmamiClientTest {
         assertEquals(List.of(), service().read(SITE, Period.of("30d"), LA).breakdowns().get("speed"));
     }
 
-    @Test
-    void aDayPeriodIsZeroFilledHourlyFor24h() throws Exception {
+    private List<AnalyticsReport.SeriesPoint> hourly(Instant now, ZoneId zone) throws Exception {
         route = r -> r.path().endsWith("/pageviews")
                 ? new Resp(200, "{\"pageviews\":[{\"x\":\"2026-11-02 09:00:00\",\"y\":5}],"
                         + "\"sessions\":[{\"x\":\"2026-11-02 09:00:00\",\"y\":3}]}")
                 : readRoute(r);
+        return UmamiAnalyticsService.of(client(), Clock.fixed(now, ZoneOffset.UTC))
+                .read(SITE, Period.of("24h"), zone).series();
+    }
 
-        List<AnalyticsReport.SeriesPoint> series = service().read(SITE, Period.of("24h"), LA).series();
-
-        // Local hours 13:00 on Nov 1 through 12:00 on Nov 2, both partial, inclusive. The clocks went back in between;
-        // buckets are local wall-clock hours (as Umami labels them), so the repeated 01:00 is one bucket.
-        assertEquals(25, series.size());
+    /**
+     * Hour buckets are wall-clock hours in the site zone: the repeated
+     * fall-back hour is one bucket, the skipped spring-forward hour has none,
+     * and when the window ends exactly on the hour there is no empty trailing
+     * bucket.
+     */
+    @Test
+    void hourlyBucketsAreWallClockHoursEndingBeforeAnOnTheHourEnd() throws Exception {
+        // Ends 12:00 PST exactly: 12:00 Nov 1 .. 11:00 Nov 2, 24 buckets, none for 12:00 Nov 2.
+        List<AnalyticsReport.SeriesPoint> series = hourly(NOW, LA);
+        assertEquals(24, series.size());
+        assertEquals(new AnalyticsReport.SeriesPoint(LocalDate.of(2026, 11, 1), 12, 0, 0), series.get(0));
+        assertEquals(new AnalyticsReport.SeriesPoint(LocalDate.of(2026, 11, 2), 11, 0, 0), series.get(23));
         assertEquals(new AnalyticsReport.SeriesPoint(LocalDate.of(2026, 11, 2), 9, 3, 5),
                 series.stream().filter(p -> p.day().equals(LocalDate.of(2026, 11, 2)) && p.hour() == 9)
                         .findFirst().orElseThrow());
         assertTrue(seen.stream().anyMatch(r -> r.query() != null && r.query().contains("unit=hour")));
+    }
+
+    @Test
+    void aWindowAcrossFallBackHasOneBucketForTheRepeatedHour() throws Exception {
+        // 12:30 PST on 2026-11-01; the window starts 13:30 PDT on 10-31 and spans the 02:00 -> 01:00 change.
+        List<AnalyticsReport.SeriesPoint> series = hourly(Instant.parse("2026-11-01T20:30:00Z"), LA);
+
+        assertEquals(24, series.size(), "13:00 Oct 31 .. 12:00 Nov 1, with 01:00 once");
+        assertEquals(1, series.stream()
+                .filter(p -> p.day().equals(LocalDate.of(2026, 11, 1)) && p.hour() == 1).count());
+        assertEquals(new AnalyticsReport.SeriesPoint(LocalDate.of(2026, 10, 31), 13, 0, 0), series.get(0));
+        assertEquals(new AnalyticsReport.SeriesPoint(LocalDate.of(2026, 11, 1), 12, 0, 0), series.get(23));
+    }
+
+    @Test
+    void aWindowAcrossSpringForwardHasNoBucketForTheSkippedHour() throws Exception {
+        // 13:30 PDT on 2026-03-08; the window starts 12:30 PST on 03-07; 02:00 on 03-08 never happened.
+        List<AnalyticsReport.SeriesPoint> series = hourly(Instant.parse("2026-03-08T20:30:00Z"), LA);
+
+        assertEquals(25, series.size(), "12:00 Mar 7 .. 13:00 Mar 8 is 26 labels less the skipped 02:00");
+        assertTrue(series.stream().noneMatch(p -> p.day().equals(LocalDate.of(2026, 3, 8)) && p.hour() == 2));
+        assertEquals(new AnalyticsReport.SeriesPoint(LocalDate.of(2026, 3, 8), 13, 0, 0), series.get(24));
+    }
+
+    @Test
+    void malformedApiUrlIsReportedNotThrown() {
+        for (String bad : new String[] {"umami:3000", "not a url", "ftp://umami:3000", "http://"}) {
+            UmamiAnalyticsService svc = UmamiAnalyticsService.of(
+                    new UmamiClient(bad, "pressroom", PASSWORD), Clock.fixed(NOW, ZoneOffset.UTC));
+            assertFalse(svc.ping(), bad);
+            AnalyticsException e1 = assertThrows(AnalyticsException.class,
+                    () -> svc.ensureSite(new SiteSpec(SITE, "n", "example.com")), bad);
+            assertThrows(AnalyticsException.class, () -> svc.read(SITE, Period.of("7d"), LA), bad);
+            assertFalse(e1.getMessage().contains(PASSWORD));
+        }
     }
 }
