@@ -128,7 +128,7 @@ public record TrafficView(String period, List<String> periods, String tab, List<
             "traffic.tab.speed");
 
     /** An em dash: "no figure", never NaN or an infinite change. */
-    static final String DASH = "—";
+    public static final String DASH = "—";
 
     private static final int CHART_WIDTH = 600;
     private static final int CHART_HEIGHT = 140;
@@ -183,7 +183,7 @@ public record TrafficView(String period, List<String> periods, String tab, List<
     }
 
     /** The accepted period for a request value, else 30d. */
-    static String periodOf(String requested) {
+    public static String periodOf(String requested) {
         return requested != null && PERIODS.contains(requested) ? requested : "30d";
     }
 
@@ -214,13 +214,28 @@ public record TrafficView(String period, List<String> periods, String tab, List<
     }
 
     private static String noticeKey(TrafficState state, Summary current) {
+        return noticeKey(state, current != null && current.visitors() == 0 && current.visits() == 0
+                && current.views() == 0, "traffic.state.zero");
+    }
+
+    /** The state message's bundle key, or empty when the numbers speak for themselves; {@code zeroKey} is the all-zero text. */
+    public static String noticeKey(TrafficState state, boolean allZero, String zeroKey) {
         return switch (state) {
             case NOT_CONFIGURED -> "traffic.state.notConfigured";
             case NO_DATA -> "traffic.state.noData";
             case STALE -> "traffic.state.stale";
-            case OK -> current != null && current.visitors() == 0 && current.visits() == 0 && current.views() == 0
-                    ? "traffic.state.zero" : "";
+            case OK -> allZero ? zeroKey : "";
         };
+    }
+
+    /** A fraction change (0.25 is a quarter more) as "+25%", or an em dash when it is not a number. */
+    public static String changeText(double fraction) {
+        return Double.isNaN(fraction) || Double.isInfinite(fraction) ? DASH : signed(Math.round(fraction * 100)) + "%";
+    }
+
+    /** "up", "dn" or empty for a fraction change; empty when it is not a number. */
+    public static String changeClass(double fraction) {
+        return Double.isNaN(fraction) || Double.isInfinite(fraction) ? "" : trend(Math.round(fraction * 100));
     }
 
     // ------------------------------------------------------------- headlines
@@ -273,7 +288,8 @@ public record TrafficView(String period, List<String> periods, String tab, List<
         return (seconds / 60) + ":" + (seconds % 60 < 10 ? "0" : "") + (seconds % 60);
     }
 
-    private static String number(long value, Locale locale) {
+    /** A count in the reader's locale. */
+    public static String number(long value, Locale locale) {
         return java.text.NumberFormat.getIntegerInstance(locale).format(value);
     }
 
@@ -315,7 +331,8 @@ public record TrafficView(String period, List<String> periods, String tab, List<
     private record Merged(PostRow best, long views, long visitors) {
     }
 
-    private static List<PostLine> posts(List<PostRow> rows, String sort) {
+    /** Rows merged by entry (views summed, visitors the larger) and sorted by {@code sort}. */
+    public static List<PostLine> posts(List<PostRow> rows, String sort) {
         List<Merged> merged = new ArrayList<>();
         Map<String, Integer> byEntry = new LinkedHashMap<>();
         for (PostRow row : rows) {
@@ -352,15 +369,14 @@ public record TrafficView(String period, List<String> periods, String tab, List<
     private static PostLine line(Merged m) {
         PostRow best = m.best();
         double trend = best.trend();
-        boolean known = !Double.isNaN(trend) && !Double.isInfinite(trend);
-        long pct = known ? Math.round(trend * 100) : 0;
         return new PostLine(best.entryId(), best.title(), best.path(), m.views(), m.visitors(),
-                known ? signed(pct) + "%" : DASH, known ? trend(pct) : "");
+                changeText(trend), changeClass(trend));
     }
 
     // ------------------------------------------------------------ breakdowns
 
-    private static List<Row> rows(String tab, List<KeyCount> breakdown, Locale locale) {
+    /** One tab's breakdown as rows. */
+    public static List<Row> rows(String tab, List<KeyCount> breakdown, Locale locale) {
         Set<String> groups = GROUPS.getOrDefault(tab, Set.of());
         List<Row> rows = new ArrayList<>();
         for (KeyCount kc : breakdown) {

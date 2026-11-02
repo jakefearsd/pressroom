@@ -74,7 +74,7 @@ class MenuDefinitionTest {
         ParsedTab weblogTab = tab("editor", "tabbedmenu.weblog");
 
         assertEquals(List.of("entryAdd", "entries", "trash", "submissions", "comments", "categories", "pages",
-                        "mediaFileView"),
+                        "mediaFileView", "traffic"),
                 actions(weblogTab),
                 "These are the actions the Weblog tab offers, in order. The first of them is "
                         + "also the tab's own link, so the order is user-visible.");
@@ -172,7 +172,7 @@ class MenuDefinitionTest {
         assertEquals(List.of("admin"), adminMenu.getTabs().get(0).getGlobalPermissionActions(),
                 "The whole admin menu hangs off the global admin permission. If this is lost, "
                         + "every logged-in user gets the server administration menu.");
-        assertEquals(List.of("globalConfig", "userAdmin", "businesses", "apiTokens", "maintenance"),
+        assertEquals(List.of("globalConfig", "userAdmin", "businesses", "apiTokens", "siteTraffic", "maintenance"),
                 actions(adminMenu.getTabs().get(0)),
                 "The admin tab's screens come from admin-menu.xml. Maintenance joined it in "
                         + "W2 Task 7, moved off the blog-author tabs.");

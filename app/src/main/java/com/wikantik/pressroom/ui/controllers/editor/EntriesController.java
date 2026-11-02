@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,6 +35,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.WeblogEntryManager;
+import com.wikantik.pressroom.business.analytics.AnalyticsManager;
+import com.wikantik.pressroom.business.analytics.TrafficState;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
@@ -91,6 +94,31 @@ public class EntriesController extends BaseController {
         return "weblogEntryQuery.title";
     }
 
+    /**
+     * The "Views (30d)" column: read from the local snapshot, one call per
+     * render, and only when analytics is configured. An entry with no recorded
+     * views is a real zero once the blog has a snapshot; before that it is an
+     * em dash, since nothing has been counted yet.
+     */
+    private void addViews(Model model, List<WeblogEntry> entries, String weblogId,
+                          Locale locale) {
+        AnalyticsManager analytics = weblogger.getAnalyticsManager();
+        boolean column = analytics.getStatus().configured();
+        model.addAttribute("viewsColumn", column);
+        if (!column || entries == null) {
+            return;
+        }
+        Map<String, Long> views = analytics.entryViews(weblogId, "30d");
+        boolean snapshot = !views.isEmpty()
+                || analytics.getBlogTraffic(weblogId, "30d").state() != TrafficState.NO_DATA;
+        Map<String, String> cells = new HashMap<>();
+        for (WeblogEntry entry : entries) {
+            cells.put(entry.getId(), views.containsKey(entry.getId())
+                    ? TrafficView.number(views.get(entry.getId()), locale) : snapshot ? "0" : TrafficView.DASH);
+        }
+        model.addAttribute("entryViews", cells);
+    }
+
     @GetMapping("/entries.rol")
     public String execute(HttpServletRequest request, Model model,
                           @ModelAttribute("bean") EntriesBean bean) {
@@ -138,6 +166,7 @@ public class EntriesController extends BaseController {
         String baseUrl = buildBaseUrl(request, bean);
         model.addAttribute("pager", new EntriesPager(baseUrl, bean.getPage(), entries, hasMore));
         model.addAttribute("entryTitles", plainTitles(entries));
+        addViews(model, entries, getActionWeblog(request).getId(), request.getLocale());
         model.addAttribute("filtered", isFiltered(bean));
         model.addAttribute("categories", getCategories(request));
         model.addAttribute("sortByOptions", getSortByOptions(request));

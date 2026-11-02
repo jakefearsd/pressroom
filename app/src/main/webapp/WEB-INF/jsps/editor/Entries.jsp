@@ -192,6 +192,11 @@
     <th scope="col" class="pressroomtable" width="15%">
         <spring:message code="weblogEntryQuery.category"/>
     </th>
+    <c:if test="${viewsColumn}">
+    <th scope="col" class="pressroomtable n" width="7%">
+        <spring:message code="entries.views30"/>
+    </th>
+    </c:if>
     <th scope="col" class="pressroomtable" width="3%"> </th>
     <th scope="col" class="pressroomtable" width="3%"> </th>
 </tr>
@@ -266,6 +271,10 @@
     <td>
         ${fn:escapeXml(post.category.name)}
     </td>
+
+    <c:if test="${viewsColumn}">
+    <td class="n">${fn:escapeXml(entryViews[post.id])}</td>
+    </c:if>
 
     <td>
         <%-- A POST, not a link: duplicating writes a new draft, so it needs
