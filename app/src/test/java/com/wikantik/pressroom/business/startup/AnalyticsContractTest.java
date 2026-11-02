@@ -45,7 +45,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * hostname but no Umami id yet, which is exactly the {@code OR} in that
  * view's {@code WHERE} clause exists to cover (see the class-level "Task 9
  * fix round 1" notes in the wave's task report for why this needed its own
- * test: every other test here inserts weblogs with {@code analytics_site_id}
+ * test: every other test here seeds weblogs with an {@code analytics_site} row
  * set, so nothing previously exercised the {@code custom_domain}-only path
  * the {@code OR} adds).
  *
@@ -107,9 +107,9 @@ public class AnalyticsContractTest {
      * A weblog with a hostname but no Umami id yet is exactly the state a
      * weblog is in the moment it is given a custom domain -- precisely when
      * the SEO tooling needs to find it via {@code analytics_weblog_sites}.
-     * The view's {@code WHERE analytics_site_id IS NOT NULL OR custom_domain
+     * The view's {@code WHERE s.website_id IS NOT NULL OR w.custom_domain
      * IS NOT NULL} is what keeps this row visible; a regression back to a
-     * plain {@code AND}-style single condition on {@code analytics_site_id}
+     * plain {@code AND}-style single condition on {@code website_id}
      * would drop it silently.
      */
     @Test
@@ -122,10 +122,10 @@ public class AnalyticsContractTest {
             insertWeblog(con, weblogId, handle, null, customDomain);
 
             AnalyticsSite site = analyticsSite(con, handle);
-            assertNotNull(site, "a weblog with only a custom_domain (no analytics_site_id) must "
+            assertNotNull(site, "a weblog with only a custom_domain (no analytics_site row) must "
                     + "still be selectable from analytics_weblog_sites");
             assertEquals(customDomain, site.customDomain());
-            assertNull(site.websiteId(), "no analytics_site_id was set for this weblog");
+            assertNull(site.websiteId(), "no analytics_site row was seeded for this weblog");
         } finally {
             dropDatabase(dbName);
         }
@@ -133,11 +133,11 @@ public class AnalyticsContractTest {
 
     /**
      * The other half of the same coverage gap: custom_domain must round-trip
-     * through the view even when analytics_site_id is ALSO set, so a future
+     * through the view even when an analytics_site row is ALSO set, so a future
      * change to the SELECT list (not just the WHERE clause) is caught too.
      */
     @Test
-    public void analyticsWeblogSitesRoundTripsCustomDomainAlongsideTheAnalyticsSiteId() throws Exception {
+    public void analyticsWeblogSitesRoundTripsCustomDomainAlongsideTheWebsiteId() throws Exception {
         String dbName = "analyticscontracttest_domain_and_site";
         try (Connection con = freshDatabase(dbName)) {
             String weblogId = UUID.randomUUID().toString();
@@ -195,16 +195,23 @@ public class AnalyticsContractTest {
             String analyticsSiteId, String customDomain) throws Exception {
         try (var ps = con.prepareStatement("""
                 INSERT INTO weblog (id, name, handle, emailaddress, datecreated,
-                                     analytics_site_id, custom_domain)
-                VALUES (?, ?, ?, ?, now(), ?, ?)
+                                     custom_domain)
+                VALUES (?, ?, ?, ?, now(), ?)
                 """)) {
             ps.setString(1, id);
             ps.setString(2, "Test Weblog " + handle);
             ps.setString(3, handle);
             ps.setString(4, "test@example.com");
-            ps.setString(5, analyticsSiteId);
-            ps.setString(6, customDomain);
+            ps.setString(5, customDomain);
             ps.executeUpdate();
+        }
+        if (analyticsSiteId != null) {
+            try (var ps = con.prepareStatement(
+                    "INSERT INTO analytics_site (weblog_id, website_id) VALUES (?, ?)")) {
+                ps.setString(1, id);
+                ps.setString(2, analyticsSiteId);
+                ps.executeUpdate();
+            }
         }
     }
 
