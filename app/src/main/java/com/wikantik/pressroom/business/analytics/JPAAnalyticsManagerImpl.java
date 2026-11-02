@@ -493,11 +493,14 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
         for (String key : keys) {
             try {
                 reports.put(key, service.read(websiteId, Period.of(key), zone));
+            } catch (WebsiteMissingException e) {
+                error = describe(e);
+                run.missing.add(weblog.getId());
+                log.warn("Analytics could not read weblog {} for {}: its website is missing", weblog.getHandle(),
+                        key, e);
+                break;
             } catch (AnalyticsException e) {
                 error = describe(e);
-                if (e instanceof WebsiteMissingException) {
-                    run.missing.add(weblog.getId());
-                }
                 log.warn("Analytics could not read weblog {} for {}", weblog.getHandle(), key, e);
                 break;
             } catch (RuntimeException e) {
