@@ -144,8 +144,9 @@ services:
       # Pressroom registers blogs and reads their numbers through Umami's
       # API, over this network, as its own non-admin account `pressroom`
       # (created by analytics-views). The password is generated into .env by
-      # deploy.sh; empty, analytics registration is off.
-      PRESSROOM_ANALYTICS_UMAMI_APIURL: ${PRESSROOM_ANALYTICS_UMAMI_APIURL:-http://umami:3000}
+      # deploy.sh. `-`, not `:-`: unset, the URL defaults to Umami on this
+      # network; set BLANK in .env, it stays blank, and analytics is off.
+      PRESSROOM_ANALYTICS_UMAMI_APIURL: ${PRESSROOM_ANALYTICS_UMAMI_APIURL-http://umami:3000}
       PRESSROOM_ANALYTICS_UMAMI_PASSWORD: ${UMAMI_PRESSROOM_PASSWORD:-}
     volumes:
       - pressroom-mediafiles:/data/mediafiles

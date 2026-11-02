@@ -347,7 +347,7 @@ class ProductionComposeTest {
     @SuppressWarnings("unchecked")
     void theAppReachesUmamiThroughItsApiAsThePressroomAccount() throws IOException {
         Map<String, Object> app = (Map<String, Object>) service("app").get("environment");
-        assertEquals("${PRESSROOM_ANALYTICS_UMAMI_APIURL:-http://umami:3000}",
+        assertEquals("${PRESSROOM_ANALYTICS_UMAMI_APIURL-http://umami:3000}",
                 app.get("PRESSROOM_ANALYTICS_UMAMI_APIURL"));
         assertEquals("${UMAMI_PRESSROOM_PASSWORD:-}", app.get("PRESSROOM_ANALYTICS_UMAMI_PASSWORD"));
         Map<String, Object> views = (Map<String, Object>) service("analytics-views").get("environment");
@@ -363,6 +363,29 @@ class ProductionComposeTest {
             assertFalse(Files.readString(file, StandardCharsets.UTF_8).contains("PRESSROOM_ANALYTICS_JDBC"),
                     file + " still names the removed PRESSROOM_ANALYTICS_JDBC_* settings");
         }
+    }
+
+    /**
+     * A blank {@code analytics.umami.apiUrl} means analytics is off (spec), so
+     * production must be able to reach a blank value. Compose's {@code :-}
+     * substitutes the default for an empty variable as well as an unset one,
+     * which would make {@code PRESSROOM_ANALYTICS_UMAMI_APIURL=} in .env turn
+     * analytics straight back on; a bare {@code -} substitutes only when it is
+     * unset. .env.example must name that blank line as the off switch.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void aBlankApiUrlInEnvSwitchesAnalyticsOff() throws IOException {
+        String apiUrl = String.valueOf(((Map<String, Object>) service("app").get("environment"))
+                .get("PRESSROOM_ANALYTICS_UMAMI_APIURL"));
+        Matcher m = Pattern.compile("^\\$\\{PRESSROOM_ANALYTICS_UMAMI_APIURL(:?)-([^}]*)}$").matcher(apiUrl);
+        assertTrue(m.matches(), "the API URL must come from .env with a default: " + apiUrl);
+        assertEquals("", m.group(1),
+                "${VAR:-default} turns a blank .env value back into the default; use ${VAR-default}");
+        assertEquals("http://umami:3000", m.group(2), "unset, the app reaches Umami over the compose network");
+        String envExample = Files.readString(Paths.get("../deploy/.env.example"), StandardCharsets.UTF_8);
+        assertTrue(Pattern.compile("(?m)^#\\s*PRESSROOM_ANALYTICS_UMAMI_APIURL=$").matcher(envExample).find(),
+                "deploy/.env.example must show the blank PRESSROOM_ANALYTICS_UMAMI_APIURL= off switch");
     }
 
     /** The account step's SQL must be in the image, where analytics-views.sh looks for it. */
