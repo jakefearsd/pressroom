@@ -18,14 +18,20 @@
 package com.wikantik.pressroom.ui.controllers.admin;
 
 import java.time.Clock;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.analytics.SiteTraffic;
 import com.wikantik.pressroom.pojos.GlobalPermission;
+import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.ui.controllers.editor.TrafficView;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,7 +47,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 @RequestMapping("/pressroom-ui/admin")
 public class SiteTrafficController extends BaseController {
 
-    private Clock clock = Clock.systemDefaultZone();
+    private static final Logger log = LoggerFactory.getLogger(SiteTrafficController.class);
+
+    private Clock clock = Clock.systemUTC();
 
     @Override
     public boolean isWeblogRequired() {
@@ -68,9 +76,22 @@ public class SiteTrafficController extends BaseController {
         return "siteTraffic.title";
     }
 
-    /** For tests: the clock (and so the zone) the age and the as-of time are shown in. */
+    /** For tests: the clock the age of a stale snapshot is measured against. */
     void setClock(Clock clock) {
         this.clock = clock;
+    }
+
+    /** The site space's time zone, as the rest of the feature reads it; UTC when it has none. */
+    private ZoneId siteZone() {
+        try {
+            Weblog siteSpace = weblogger.getWeblogManager().getWeblogByHandle(Weblog.SITE_SPACE_HANDLE);
+            if (siteSpace != null && siteSpace.getTimeZone() != null) {
+                return siteSpace.getTimeZoneInstance().toZoneId();
+            }
+        } catch (WebloggerException ex) {
+            log.warn("Could not read the site space's time zone; showing UTC", ex);
+        }
+        return ZoneOffset.UTC;
     }
 
     @GetMapping("/siteTraffic.rol")
@@ -80,7 +101,7 @@ public class SiteTrafficController extends BaseController {
         String shown = TrafficView.periodOf(period);
         SiteTraffic site = weblogger.getAnalyticsManager().getSiteTraffic(shown);
         model.addAttribute("traffic", SiteTrafficView.of(site, shown, request.getLocale(),
-                clock.getZone(), clock.instant()));
+                siteZone(), clock.instant()));
         return ".SiteTraffic";
     }
 }

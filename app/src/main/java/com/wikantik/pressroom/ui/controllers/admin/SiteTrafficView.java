@@ -60,7 +60,7 @@ public record SiteTrafficView(String period, List<String> periods, String notice
      * {@code topPostTitle} is stored escaped and goes out bare.
      */
     public record BlogLine(String handle, String name, boolean siteSpace, String visitors, String views,
-                           String change, String changeClass, String topPostTitle) {
+                           String visits, String change, String changeClass, String topPostTitle) {
     }
 
     /** Builds the view for an already accepted {@code period}. */
@@ -77,6 +77,7 @@ public record SiteTrafficView(String period, List<String> periods, String notice
                 ? site.blogs().stream().map(b -> new BlogLine(b.handle(), b.name(),
                         Weblog.SITE_SPACE_HANDLE.equals(b.handle()),
                         TrafficView.number(b.visitors(), locale), TrafficView.number(b.views(), locale),
+                        TrafficView.number(b.visits(), locale),
                         TrafficView.changeText(b.change()), TrafficView.changeClass(b.change()),
                         b.topPostTitle())).toList()
                 : List.of();

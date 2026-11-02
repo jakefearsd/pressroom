@@ -83,7 +83,7 @@ class SiteTrafficControllerTest {
     }
 
     private static BlogRow blog(String id, String handle, String name, long visitors, long views, double change) {
-        return new BlogRow(id, handle, name, visitors, views, change, "Top &amp; best");
+        return new BlogRow(id, handle, name, visitors, views, views / 2, change, "Top &amp; best");
     }
 
     private SiteTrafficView view(String period) {
@@ -118,6 +118,7 @@ class SiteTrafficControllerTest {
         assertEquals("Alpha <b>", first.name(), "raw; the JSP escapes it");
         assertEquals("1,200", first.visitors());
         assertEquals("3,000", first.views());
+        assertEquals("1,500", first.visits());
         assertEquals("+25%", first.change());
         assertEquals("up", first.changeClass());
         assertEquals("Top &amp; best", first.topPostTitle(), "stored escaped; emitted bare");
@@ -136,6 +137,18 @@ class SiteTrafficControllerTest {
 
         assertTrue(line.siteSpace());
         assertEquals("0%", line.change());
+    }
+
+    @Test
+    void theAsOfTimeIsShownInTheSiteSpacesZone() throws Exception {
+        Weblog siteSpace = new Weblog();
+        siteSpace.setHandle(Weblog.SITE_SPACE_HANDLE);
+        siteSpace.setTimeZone("America/Los_Angeles");
+        when(weblogger.weblogManager().getWeblogByHandle(Weblog.SITE_SPACE_HANDLE)).thenReturn(siteSpace);
+        when(analytics.getSiteTraffic("30d")).thenReturn(site(TrafficState.OK,
+                List.of(blog("w1", "a", "A", 1, 1, 0.0)), 1, 1, List.of(), List.of()));
+
+        assertEquals("11:05", view("30d").asOfText());
     }
 
     @Test

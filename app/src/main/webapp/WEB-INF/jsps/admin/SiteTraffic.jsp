@@ -40,6 +40,7 @@
             <th scope="col" class="pressroomtable n"
                 title="<spring:message code="siteTraffic.visitors.why"/>"><spring:message code="traffic.column.visitors"/></th>
             <th scope="col" class="pressroomtable n"><spring:message code="traffic.column.views"/></th>
+            <th scope="col" class="pressroomtable n"><spring:message code="traffic.tile.visits"/></th>
             <th scope="col" class="pressroomtable n"><spring:message code="siteTraffic.column.change"/></th>
             <th scope="col" class="pressroomtable"><spring:message code="siteTraffic.column.topPost"/></th>
         </tr>
@@ -59,6 +60,7 @@
             </td>
             <td class="n">${fn:escapeXml(line.visitors)}</td>
             <td class="n">${fn:escapeXml(line.views)}</td>
+            <td class="n">${fn:escapeXml(line.visits)}</td>
             <td class="n ${line.changeClass}">${fn:escapeXml(line.change)}</td>
             <td>${line.topPostTitle}</td>
         </tr>
@@ -67,8 +69,9 @@
             <th scope="row" class="pressroomtable"><spring:message code="siteTraffic.total"/></th>
             <td class="n"><span title="<spring:message code="siteTraffic.visitors.why"/>">&mdash;</span></td>
             <td class="n">${fn:escapeXml(traffic.totalViews)}</td>
+            <td class="n">${fn:escapeXml(traffic.totalVisits)}</td>
             <td class="n"></td>
-            <td><spring:message code="siteTraffic.totalVisits" arguments="${[fn:escapeXml(traffic.totalVisits)]}"/></td>
+            <td></td>
         </tr>
     </table>
     </div>
@@ -87,8 +90,8 @@
         <tr>
             <td>
                 <c:choose>
-                <c:when test="${not empty post.title}">${top.title}</c:when>
-                <c:otherwise><span class="data">${fn:escapeXml(post.path)}</span></c:otherwise>
+                <c:when test="${not empty top.title}">${top.title}</c:when>
+                <c:otherwise><span class="data">${fn:escapeXml(top.path)}</span></c:otherwise>
                 </c:choose>
             </td>
             <td class="n"><fmt:formatNumber value="${top.views}"/></td>
