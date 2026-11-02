@@ -74,6 +74,11 @@ Each menu or menu item is governed by four attributes:
                    weblogPerms="post"
                    subactions="mediaFileAdd,mediaFileSearch" />
 
+        <!-- globalPerms="login": blog admins only, the numbers are the blog's whole audience -->
+        <menu-item action="traffic"
+                   name="tabbedmenu.weblog.traffic"
+                   weblogPerms="admin"/>
+
     </menu>
     
     <!--  if we already have checked weblogPerms="admin" globalPerms="login" we should -->

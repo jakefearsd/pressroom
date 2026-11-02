@@ -452,6 +452,14 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
                         "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
                 ));
 
+        // A blog's Traffic page: the same minimal tabbed shape as .Submissions.
+        addExtendedDefinition(".Traffic", ".tiles-tabbedpage",
+                Map.of(
+                        "head",    "/WEB-INF/jsps/tiles/head.jsp",
+                        "content", "/WEB-INF/jsps/editor/Traffic.jsp",
+                        "styles",  "/WEB-INF/jsps/tiles/empty.jsp"
+                ));
+
         // Reader-comment moderation: the same minimal tabbed shape as .Submissions.
         addExtendedDefinition(".Comments", ".tiles-tabbedpage",
                 Map.of(

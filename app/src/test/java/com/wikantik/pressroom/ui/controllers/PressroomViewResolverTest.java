@@ -151,6 +151,17 @@ class PressroomViewResolverTest {
     }
 
     @Test
+    void trafficRendersThroughTheTabbedLayout() throws Exception {
+        resolver.init();
+
+        MockHttpServletRequest request = renderAndCapture(".Traffic");
+
+        assertEquals("/WEB-INF/jsps/editor/Traffic.jsp", request.getAttribute("tile_content"));
+        assertEquals("/WEB-INF/jsps/tiles/empty.jsp", request.getAttribute("tile_menu"));
+        assertEquals("/WEB-INF/jsps/tiles/head.jsp", request.getAttribute("tile_head"));
+    }
+
+    @Test
     void commentsRendersThroughTheTabbedLayout() throws Exception {
         resolver.init();
 
@@ -227,7 +238,7 @@ class PressroomViewResolverTest {
 
     private static String expectedLayout(String viewName) {
         return switch (viewName) {
-            case ".Comments", ".Submissions", ".Agent", ".AgentCreate", ".ApiTokens" -> "/WEB-INF/jsps/tiles/tiles-tabbedpage.jsp";
+            case ".Comments", ".Submissions", ".Traffic", ".Agent", ".AgentCreate", ".ApiTokens" -> "/WEB-INF/jsps/tiles/tiles-tabbedpage.jsp";
             case ".Profile", ".ProfileTokens", ".TokenReveal" -> "/WEB-INF/jsps/tiles/tiles-mainmenupage.jsp";
             case ".CreateDatabase", ".UpgradeDatabase", ".DatabaseError", ".Bootstrap" -> "/WEB-INF/jsps/tiles/tiles-installpage.jsp";
             case ".Account" -> "/WEB-INF/jsps/tiles/tiles-simplepage.jsp";

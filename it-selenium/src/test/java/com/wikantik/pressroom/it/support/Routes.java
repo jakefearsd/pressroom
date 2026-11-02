@@ -321,6 +321,10 @@ public final class Routes {
             new Route("/pressroom-ui/authoring/submissions.rol", Role.EDITOR, WEBLOG,
                     "#submissionsDeleteForm"),
 
+            // The page root is emitted whatever the state (not configured, no data
+            // yet, or numbers), so the marker is the page's own wrapper.
+            new Route("/pressroom-ui/authoring/traffic.rol", Role.EDITOR, WEBLOG, "#trafficPage"),
+
             // The moderation form is emitted unconditionally, empty list or not.
             new Route("/pressroom-ui/authoring/comments.rol", Role.EDITOR, WEBLOG,
                     "#commentsModerationForm"),
