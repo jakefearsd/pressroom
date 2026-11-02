@@ -237,6 +237,10 @@ public final class Routes {
             new Route("/pressroom-ui/admin/maintenance.rol", Role.ADMIN, "",
                     "form[action$='/pressroom-ui/admin/maintenance.rol']"),
 
+            // Global Traffic: every blog's numbers from the local cache. Reachable
+            // with no parameters; the marker is the page's root div.
+            new Route("/pressroom-ui/admin/siteTraffic.rol", Role.ADMIN, "", "#siteTrafficPage"),
+
             // UserEdit.jsp posts to a runtime-chosen ${saveAction}, so the form
             // action is not a stable selector; the username input is.
             // Anchored on the username input by NAME. It used to anchor on

@@ -28,6 +28,10 @@ See comments in editor-menu.xml for info about attributes.
         <menu-item action="apiTokens"
                    name="tabbedmenu.admin.apiTokens" />
 
+        <!-- globalPerms="admin"; every blog's traffic from the local cache -->
+        <menu-item action="siteTraffic"
+                   name="tabbedmenu.admin.siteTraffic" />
+
         <!-- globalPerms="admin" -->
         <menu-item action="maintenance"
                    name="tabbedmenu.admin.maintenance" />

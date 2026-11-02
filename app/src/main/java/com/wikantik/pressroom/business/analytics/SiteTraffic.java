@@ -57,11 +57,13 @@ public record SiteTraffic(TrafficState state, Instant asOf, List<BlogRow> blogs,
      * @param name         its name
      * @param visitors     that blog's distinct visitors in the period
      * @param views        that blog's views in the period
+     * @param visits       that blog's visits in the period
      * @param change       views against the previous period, as a fraction (0.25 is a quarter more);
      *                     {@link Double#NaN} when the previous period had no views
      * @param topPostTitle the title, as stored, of the blog's most viewed entry, or null
      */
-    public record BlogRow(String weblogId, String handle, String name, long visitors, long views, double change,
+    public record BlogRow(String weblogId, String handle, String name, long visitors, long views, long visits,
+                          double change,
                           String topPostTitle) {
     }
 }

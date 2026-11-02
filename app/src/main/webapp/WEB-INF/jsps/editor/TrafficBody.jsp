@@ -26,24 +26,11 @@
      stored escaped and go out bare; every other text is escaped. --%>
 <c:set var="trafficPath" value="${empty trafficAction ? '/pressroom-ui/authoring/traffic.rol' : trafficAction}"/>
 
-<nav class="traffic-period" aria-label="<spring:message code='traffic.period.label'/>">
-    <c:forEach items="${traffic.periods}" var="p">
-        <c:url var="periodUrl" value="${trafficPath}">
-            <c:if test="${not empty actionWeblog}"><c:param name="weblog" value="${actionWeblog.handle}"/></c:if>
-            <c:param name="period" value="${p}"/>
-            <c:param name="tab" value="${traffic.tab}"/>
-            <c:param name="sort" value="${traffic.sort}"/>
-        </c:url>
-        <a href="${periodUrl}" class="traffic-period-link${p eq traffic.period ? ' on' : ''}"
-           <c:if test="${p eq traffic.period}">aria-current="true"</c:if>><spring:message code="traffic.period.${p}"/></a>
-    </c:forEach>
-</nav>
-
-<c:if test="${not empty traffic.noticeKey}">
-    <p class="traffic-notice traffic-notice-${fn:substringAfter(traffic.noticeKey, 'traffic.state.')}" role="status">
-        <spring:message code="${traffic.noticeKey}" arguments="${[traffic.ageMinutes]}"/>
-    </p>
-</c:if>
+<jsp:include page="/WEB-INF/jsps/editor/TrafficHeader.jsp">
+    <jsp:param name="path" value="${trafficPath}"/>
+    <jsp:param name="tab" value="${traffic.tab}"/>
+    <jsp:param name="sort" value="${traffic.sort}"/>
+</jsp:include>
 
 <c:if test="${traffic.showBody}">
 

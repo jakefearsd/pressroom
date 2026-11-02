@@ -49,6 +49,7 @@ class TrafficJspTest {
     private static final Path JSPS = Path.of("src/main/webapp/WEB-INF/jsps/editor");
     private static final Path PAGE = JSPS.resolve("Traffic.jsp");
     private static final Path BODY = JSPS.resolve("TrafficBody.jsp");
+    private static final Path HEADER = JSPS.resolve("TrafficHeader.jsp");
     private static final Path BUNDLE = Path.of("src/main/resources/ApplicationResources.properties");
 
     /** The JSP without its {@code <%-- --%>} comments, which describe things by name. */
@@ -65,7 +66,7 @@ class TrafficJspTest {
 
     @Test
     void noScriptNoHandlersNoInlineStyle() throws IOException {
-        for (Path jsp : List.of(PAGE, BODY)) {
+        for (Path jsp : List.of(PAGE, BODY, HEADER)) {
             String src = read(jsp);
             assertFalse(src.contains("<script"), jsp + " carries a script");
             assertFalse(src.toLowerCase(java.util.Locale.ROOT).contains("onclick"), jsp + " has a handler");
@@ -120,7 +121,7 @@ class TrafficJspTest {
 
     @Test
     void everyStateHasItsOwnNoticeAndTheNoticeIsPickedFromTheModel() throws IOException {
-        String src = read(BODY);
+        String src = read(HEADER);
         assertTrue(src.contains("code=\"${traffic.noticeKey}\""));
         Properties bundle = bundle();
         for (String key : List.of("traffic.state.notConfigured", "traffic.state.noData",
@@ -162,7 +163,7 @@ class TrafficJspTest {
 
     @Test
     void tabAndPeriodLinksAreBuiltWithCUrlSoNoContextPathIsAssumed() throws IOException {
-        String src = read(BODY);
+        String src = read(BODY) + read(HEADER);
         assertTrue(src.contains("<c:url var=\"tabUrl\""));
         assertTrue(src.contains("<c:url var=\"periodUrl\""));
         assertTrue(src.contains("<c:url var=\"sortUrl\""));
@@ -173,7 +174,7 @@ class TrafficJspTest {
     void everyMessageCodeTheJspsNameIsInTheBundle() throws IOException {
         Properties bundle = bundle();
         List<String> missing = new ArrayList<>();
-        for (Path jsp : List.of(PAGE, BODY)) {
+        for (Path jsp : List.of(PAGE, BODY, HEADER)) {
             Matcher m = Pattern.compile("code=\"([a-zA-Z0-9_.]+)\"").matcher(read(jsp));
             while (m.find()) {
                 if (!bundle.containsKey(m.group(1))) {

@@ -88,6 +88,8 @@ class PressroomViewResolverTest {
                 ".tiles-tabbedpage should be registered");
         assertNotNull(resolver.resolveViewName(".Maintenance", Locale.getDefault()),
                 ".Maintenance should be registered");
+        assertNotNull(resolver.resolveViewName(".SiteTraffic", Locale.getDefault()),
+                ".SiteTraffic should be registered");
         assertNotNull(resolver.resolveViewName(".MediaFileImageChooser", Locale.getDefault()),
                 ".MediaFileImageChooser should be registered");
     }
@@ -238,7 +240,7 @@ class PressroomViewResolverTest {
 
     private static String expectedLayout(String viewName) {
         return switch (viewName) {
-            case ".Comments", ".Submissions", ".Traffic", ".Agent", ".AgentCreate", ".ApiTokens" -> "/WEB-INF/jsps/tiles/tiles-tabbedpage.jsp";
+            case ".Comments", ".Submissions", ".Traffic", ".SiteTraffic", ".Agent", ".AgentCreate", ".ApiTokens" -> "/WEB-INF/jsps/tiles/tiles-tabbedpage.jsp";
             case ".Profile", ".ProfileTokens", ".TokenReveal" -> "/WEB-INF/jsps/tiles/tiles-mainmenupage.jsp";
             case ".CreateDatabase", ".UpgradeDatabase", ".DatabaseError", ".Bootstrap" -> "/WEB-INF/jsps/tiles/tiles-installpage.jsp";
             case ".Account" -> "/WEB-INF/jsps/tiles/tiles-simplepage.jsp";

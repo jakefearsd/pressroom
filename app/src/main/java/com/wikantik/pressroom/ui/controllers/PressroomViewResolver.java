@@ -300,6 +300,9 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
         addExtendedDefinition(".Maintenance", ".tiles-tabbedpage",
                 Map.of("content", "/WEB-INF/jsps/admin/Maintenance.jsp"));
 
+        addExtendedDefinition(".SiteTraffic", ".tiles-tabbedpage",
+                Map.of("content", "/WEB-INF/jsps/admin/SiteTraffic.jsp"));
+
         // ---- weblog editor pages ----
 
         addExtendedDefinition(".MediaFileAdd", ".tiles-tabbedpage",

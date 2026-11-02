@@ -289,7 +289,7 @@ final class TrafficCache {
         Instant asOf = null;
         for (AnalyticsSummary s : summaries) {
             String[] name = names.getOrDefault(s.getWeblogId(), new String[2]);
-            blogs.add(new BlogRow(s.getWeblogId(), name[0], name[1], s.getVisitors(), s.getViews(),
+            blogs.add(new BlogRow(s.getWeblogId(), name[0], name[1], s.getVisitors(), s.getViews(), s.getVisits(),
                     change(s.getViews(), s.getPrevViews()), topTitle.get(s.getWeblogId())));
             views += s.getViews();
             visits += s.getVisits();

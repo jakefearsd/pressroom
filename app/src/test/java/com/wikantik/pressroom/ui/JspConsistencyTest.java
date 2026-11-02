@@ -1332,7 +1332,11 @@ class JspConsistencyTest {
             "bar.x + bar.width / 2", "traffic.chart.width", "traffic.chart.height",
             "traffic.chart.height - 6", "traffic.chart.plotHeight",
             "line.views", "line.visitors", "line.trendClass", "tile.trend",
-            "fn:substringAfter(traffic.noticeKey, 'traffic.state.')", "line.title");
+            "fn:substringAfter(traffic.noticeKey, 'traffic.state.')", "line.title",
+            // The Global Traffic page (SiteTrafficView): the same fixed class
+            // words and whole numbers; the top-post and per-blog titles are
+            // stored escaped (EntryFieldRules.escapeTitle), so they go out bare.
+            "line.changeClass", "line.topPostTitle", "top.title", "top.views", "top.visitors");
 
     /**
      * Printed raw and not yet fixed: {@code "path  expression"}, the path
