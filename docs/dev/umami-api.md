@@ -103,7 +103,20 @@ pressroom user, `teamId` null). No team is needed for admin to see them.
 
 So: lower-case DNS names (punycode for IDNs), or `localhost` with an optional
 port. No port on any other host, no IP addresses, no upper case: lower-case a
-host before sending it. A validation failure answers 400 with the reason under
+host before sending it.
+
+**What Pressroom sends** (`JPAAnalyticsManagerImpl.domainFor`, ruling R6): the
+blog's custom domain, else the host of the site's absolute URL, lower-cased,
+trailing dot and port stripped. `localhost` goes as it is. A host the rule
+would reject (an IP literal such as `127.0.0.1`, any dotted-numeric host, an
+IPv6 host, no site URL at all) registers under the placeholder
+`<handle>.localhost.invalid` instead (`.invalid` is reserved, RFC 2606), so a
+dev or IP-only copy still registers. Umami's domain is only the website's
+label: the tracker filters on the page's real `location.hostname` through
+`data-domains`, never on this value. Pinned by
+`JPAAnalyticsManagerImplTest.devHostStillRegisters`.
+
+A validation failure answers 400 with the reason under
 `error.properties.<field>.errors`:
 
 ```json

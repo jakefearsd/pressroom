@@ -36,6 +36,7 @@ import com.wikantik.pressroom.business.WeblogRedirectManager;
 import com.wikantik.pressroom.business.BusinessManager;
 import com.wikantik.pressroom.business.CommentManager;
 import com.wikantik.pressroom.business.WebloggerImpl;
+import com.wikantik.pressroom.business.analytics.AnalyticsManager;
 import com.wikantik.pressroom.business.discovery.DiscoveryManager;
 import com.wikantik.pressroom.business.plugins.PluginManager;
 import com.wikantik.pressroom.business.runnable.ThreadManager;
@@ -78,7 +79,8 @@ public class JPAWebloggerImpl extends WebloggerImpl {
         URLStrategy          urlStrategy,
         VirtualHostRegistry  virtualHostRegistry,
         EntryRenderer        entryRenderer,
-        DiscoveryManager     discoveryManager) throws WebloggerException {
+        DiscoveryManager     discoveryManager,
+        AnalyticsManager     analyticsManager) throws WebloggerException {
 
         super(
             indexManager,
@@ -102,7 +104,8 @@ public class JPAWebloggerImpl extends WebloggerImpl {
             urlStrategy,
             virtualHostRegistry,
             entryRenderer,
-            discoveryManager);
+            discoveryManager,
+            analyticsManager);
         
         this.strategy = strategy;
     }

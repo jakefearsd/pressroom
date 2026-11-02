@@ -140,8 +140,20 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         // actually committed.
         virtualHosts.invalidate();
         strategy.runAfterCommit(virtualHosts::invalidate);
+
+        // A changed name or domain re-registers the blog with analytics. Only
+        // once committed: the sync runs on another thread with its own
+        // EntityManager, so asked any earlier it could read the old row.
+        strategy.runAfterCommit(this::requestAnalyticsSync);
     }
 
+    /** Never waits: the analytics manager coalesces and runs it in the background. */
+    private void requestAnalyticsSync() {
+        pressroom.getAnalyticsManager().requestSync();
+    }
+
+    // Deleting a blog deliberately asks analytics for nothing: its website and
+    // events stay in Umami (spec AC 5).
     @Override
     public void removeWeblog(Weblog weblog) throws WebloggerException {
 
@@ -348,6 +360,9 @@ public class JPAWeblogManagerImpl implements WeblogManager {
     public void addWeblog(Weblog newWeblog) throws WebloggerException {
         this.strategy.store(newWeblog);
         this.strategy.flush();
+        // the new blog registers with analytics; queued for after the commit
+        // that addWeblogContents' flush makes, so the sync can see the blog
+        this.strategy.runAfterCommit(this::requestAnalyticsSync);
         this.addWeblogContents(newWeblog, true);
     }
 

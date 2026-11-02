@@ -21,6 +21,7 @@ package com.wikantik.pressroom.business;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.analytics.AnalyticsManager;
 import com.wikantik.pressroom.business.discovery.DiscoveryManager;
 import com.wikantik.pressroom.business.plugins.PluginManager;
 import com.wikantik.pressroom.business.runnable.ThreadManager;
@@ -67,6 +68,7 @@ public abstract class WebloggerImpl implements Weblogger {
     private final VirtualHostRegistry  virtualHostRegistry;
     private final EntryRenderer        entryRenderer;
     private final DiscoveryManager     discoveryManager;
+    private final AnalyticsManager     analyticsManager;
     
     // some simple attributes
     private final String version;
@@ -97,7 +99,8 @@ public abstract class WebloggerImpl implements Weblogger {
         URLStrategy          urlStrategy,
         VirtualHostRegistry  virtualHostRegistry,
         EntryRenderer        entryRenderer,
-        DiscoveryManager     discoveryManager) throws WebloggerException {
+        DiscoveryManager     discoveryManager,
+        AnalyticsManager     analyticsManager) throws WebloggerException {
 
         this.indexManager        = indexManager;
         this.mediaFileManager    = mediaFileManager;
@@ -121,6 +124,7 @@ public abstract class WebloggerImpl implements Weblogger {
         this.virtualHostRegistry = virtualHostRegistry;
         this.entryRenderer       = entryRenderer;
         this.discoveryManager    = discoveryManager;
+        this.analyticsManager    = analyticsManager;
 
         Properties props = new Properties();
         // WebloggerImpl.class, not getClass(): this class is abstract and
@@ -347,6 +351,11 @@ public abstract class WebloggerImpl implements Weblogger {
     public DiscoveryManager getDiscoveryManager() {
         return discoveryManager;
     }
+
+    @Override
+    public AnalyticsManager getAnalyticsManager() {
+        return analyticsManager;
+    }
 	
     /**
      * @inheritDoc
@@ -381,6 +390,8 @@ public abstract class WebloggerImpl implements Weblogger {
         getThreadManager().initialize();
         getIndexManager().initialize();
         getMediaFileManager().initialize();
+        // last: loads the registrations, then schedules the backfill sync on the pool
+        getAnalyticsManager().initialize();
 
         // we always need to do a flush after initialization because it's
         // possible that some changes need to be persisted

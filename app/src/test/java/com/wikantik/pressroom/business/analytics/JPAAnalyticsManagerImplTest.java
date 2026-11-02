@@ -1,0 +1,245 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  The ASF licenses this file to You
+ * under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.  For additional information regarding
+ * copyright in this work, please see the NOTICE file in the top level
+ * directory of this distribution.
+ */
+package com.wikantik.pressroom.business.analytics;
+
+import com.wikantik.pressroom.TestUtils;
+import com.wikantik.pressroom.pojos.User;
+import com.wikantik.pressroom.pojos.Weblog;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.time.Clock;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * The analytics manager against the real database and a fake service:
+ * the backfill, what is (not) re-sent, coalescing, the render-cache bump
+ * and the dev-host domain.
+ *
+ * <p>The suite shares one database, so other classes' weblogs are active
+ * too and get registered with the fake as well; assertions name this
+ * class's own weblogs, or count calls made after everything was registered.
+ */
+class JPAAnalyticsManagerImplTest {
+
+    private AnalyticsTier tier;
+    private User user;
+
+    @BeforeEach
+    void setUp() throws Exception {
+        tier = new AnalyticsTier();
+        user = TestUtils.setupUser("analyticsmgr");
+        TestUtils.endSession(true);
+    }
+
+    @AfterEach
+    void tearDown() throws Exception {
+        tier.tearDown();
+        TestUtils.teardownUser(user.getUserName());
+        TestUtils.endSession(true);
+    }
+
+    @Test
+    void backfillRegistersEveryExistingBlog() throws Exception {
+        List<Weblog> existing = new ArrayList<>();
+        for (String handle : List.of("backfilla", "backfillb", "backfillc")) {
+            existing.add(tier.addWeblogUnseen(handle, user));
+        }
+        assertEquals(0, tier.service.calls.get(), "nothing reached the fake before startup");
+
+        tier.manager.initialize();
+        tier.awaitQuiet();
+
+        for (Weblog weblog : existing) {
+            assertEquals(new SiteSpec(weblog.getId(), weblog.getName(), "blogs.example.com"),
+                    tier.service.sites.get(weblog.getId()), weblog.getHandle());
+            assertTrue(tier.manager.isRegistered(weblog.getId()), weblog.getHandle());
+            assertEquals(weblog.getId(), tier.manager.websiteIdFor(weblog.getId()));
+        }
+        AnalyticsStatus status = tier.manager.getStatus();
+        assertTrue(status.configured());
+        assertEquals(Boolean.TRUE, status.reachable());
+        assertTrue(status.registered() >= 3, "registered: " + status);
+        assertEquals(status.total(), status.registered(), "every active blog: " + status);
+        assertTrue(status.failures().isEmpty(), status.failures().toString());
+    }
+
+    @Test
+    void unchangedBlogsAreNotResent() throws Exception {
+        Weblog weblog = tier.addWeblogUnseen("unchanged", user);
+        tier.manager.sync();
+        TestUtils.endSession(false);
+        assertTrue(tier.service.sites.containsKey(weblog.getId()));
+        tier.service.ensured.clear();
+
+        tier.manager.sync();
+        TestUtils.endSession(false);
+
+        assertTrue(tier.service.ensured.isEmpty(), "nothing changed, nothing sent: " + tier.service.ensured);
+        assertTrue(tier.manager.isRegistered(weblog.getId()));
+    }
+
+    @Test
+    void concurrentRequestsCoalesceIntoOneRun() throws Exception {
+        tier.addWeblogUnseen("coalesce", user);
+        tier.service.hang = new CountDownLatch(1);
+        tier.manager.requestSync();
+        awaitPings(1);
+
+        ExecutorService callers = Executors.newFixedThreadPool(8);
+        try {
+            for (int i = 0; i < 40; i++) {
+                callers.execute(tier.manager::requestSync);
+            }
+        } finally {
+            callers.shutdown();
+            assertTrue(callers.awaitTermination(10, TimeUnit.SECONDS));
+        }
+        tier.service.release();
+        tier.awaitQuiet();
+
+        assertEquals(2, tier.service.pings.get(), "the run in flight, then exactly one queued behind it");
+        assertEquals(1, tier.background.submitted.get(), "the queued run rides on the same background task");
+    }
+
+    @Test
+    void registrationExpiresTheBlogsRenderedPages() throws Exception {
+        Weblog weblog = tier.addWeblogUnseen("expires", user);
+        Date before = tier.committed(weblog.getId()).getLastModified();
+
+        tier.manager.sync();
+        Date registered = tier.committed(weblog.getId()).getLastModified();
+        assertTrue(registered.after(before), "the flip to registered moves lastModified: " + before
+                + " -> " + registered);
+        assertEquals(0, tier.background.submitted.get(),
+                "the bump's own save must not ask for another sync (R1)");
+
+        tier.manager.sync();
+        assertEquals(registered, tier.committed(weblog.getId()).getLastModified(),
+                "no flip, no bump");
+    }
+
+    @Test
+    void devHostStillRegisters() throws Exception {
+        Weblog weblog = tier.addWeblogUnseen("devhost", user);
+        tier.siteUrl = "http://LOCALHOST:8083";
+        tier.manager.sync();
+        TestUtils.endSession(false);
+        assertEquals("localhost", tier.service.sites.get(weblog.getId()).domain(),
+                "Umami accepts localhost; case and port are dropped");
+        assertTrue(tier.manager.isRegistered(weblog.getId()));
+
+        tier.siteUrl = "http://127.0.0.1:8083";
+        tier.manager.sync();
+        TestUtils.endSession(false);
+        assertEquals("devhost.localhost.invalid", tier.service.sites.get(weblog.getId()).domain(),
+                "Umami rejects an IP literal, so the blog registers under a placeholder");
+    }
+
+    @Test
+    void unconfiguredManagerNeverCallsTheService() throws Exception {
+        Weblog weblog = tier.addWeblogUnseen("unconfigured", user);
+        tier.service.configured = false;
+
+        tier.manager.initialize();
+        tier.manager.requestSync();
+        tier.manager.sync();
+        tier.manager.reconcile();
+        TestUtils.endSession(false);
+        tier.awaitQuiet();
+
+        assertEquals(0, tier.service.calls.get(), "an unconfigured service is never called");
+        assertEquals(0, tier.background.submitted.get(), "nor is anything scheduled");
+        assertFalse(tier.manager.isRegistered(weblog.getId()));
+        assertNull(tier.manager.websiteIdFor(weblog.getId()));
+        assertFalse(tier.manager.getStatus().configured());
+    }
+
+    @Test
+    void requestSyncNeverRunsOnTheCallingThread() throws Exception {
+        tier.addWeblogUnseen("offthread", user);
+        tier.service.hang = new CountDownLatch(1);
+
+        long start = System.nanoTime();
+        tier.manager.requestSync();
+        long tookMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+        awaitPings(1);
+        tier.service.release();
+        tier.awaitQuiet();
+
+        assertTrue(tookMillis < 1000, "requestSync returned while the service hung: " + tookMillis + " ms");
+        assertFalse(tier.service.callers.isEmpty(), "the sync ran");
+        assertFalse(tier.service.callers.contains(Thread.currentThread()),
+                "and never on the calling thread");
+    }
+
+    @Test
+    void domainForEveryHostShape() {
+        Weblog weblog = AnalyticsTier.newWeblog("Dev_Blog.1", user);
+        assertEquals("blogs.example.com", JPAAnalyticsManagerImpl.domainFor(weblog, "https://Blogs.Example.com:8443/"));
+        assertEquals("blogs.example.com", JPAAnalyticsManagerImpl.domainFor(weblog, "https://blogs.example.com./x"));
+        assertEquals("dev_blog-1.localhost.invalid", JPAAnalyticsManagerImpl.domainFor(weblog, "http://10.0.0.25"),
+                "every IP literal, even one Umami's pattern lets through, gets the placeholder");
+        assertEquals("dev_blog-1.localhost.invalid", JPAAnalyticsManagerImpl.domainFor(weblog, "http://[::1]:8083"));
+        assertEquals("dev_blog-1.localhost.invalid", JPAAnalyticsManagerImpl.domainFor(weblog, null),
+                "no site URL latched yet");
+        assertEquals("dev_blog-1.localhost.invalid", JPAAnalyticsManagerImpl.domainFor(weblog, "not a url"));
+
+        weblog.setCustomDomain("Shop.Example.org:443");
+        assertEquals("shop.example.org", JPAAnalyticsManagerImpl.domainFor(weblog, "http://127.0.0.1"),
+                "the custom domain wins over the site URL");
+    }
+
+    @Test
+    void aSyncThatCannotBeScheduledLeavesTheNextRequestFree() {
+        AtomicInteger attempts = new AtomicInteger();
+        JPAAnalyticsManagerImpl rejecting = new JPAAnalyticsManagerImpl(tier.weblogger, tier.strategy, tier.service,
+                task -> {
+                    attempts.incrementAndGet();
+                    throw new RejectedExecutionException("pool shut down");
+                }, Clock.systemUTC(), () -> AnalyticsTier.SITE_URL);
+
+        rejecting.requestSync();
+        rejecting.requestSync();
+
+        assertEquals(2, attempts.get(), "a rejected schedule must not leave a run marked in flight");
+        assertEquals(0, tier.service.calls.get());
+    }
+
+    private void awaitPings(int n) throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        while (tier.service.pings.get() < n) {
+            assertTrue(System.nanoTime() < deadline, "no sync reached the service");
+            Thread.sleep(10);
+        }
+    }
+}

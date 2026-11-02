@@ -18,6 +18,7 @@
 package com.wikantik.pressroom.business;
 
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.analytics.AnalyticsManager;
 import com.wikantik.pressroom.business.plugins.PluginManager;
 import com.wikantik.pressroom.business.runnable.ThreadManager;
 import com.wikantik.pressroom.business.search.IndexManager;
@@ -51,12 +52,13 @@ class WebloggerImplLifecycleTest {
     private final ThreadManager threads = mock(ThreadManager.class);
     private final UserManager users = mock(UserManager.class);
     private final WeblogManager weblogs = mock(WeblogManager.class);
+    private final AnalyticsManager analytics = mock(AnalyticsManager.class);
 
     private WebloggerException flushFailure;
 
     private WebloggerImpl weblogger(IndexManager indexManager, ThreadManager threadManager) throws Exception {
         return new WebloggerImpl(indexManager, media, files, null, null, null, null, null, null, null, null,
-                plugins, properties, themes, threadManager, users, weblogs, null, null, null, null, null) {
+                plugins, properties, themes, threadManager, users, weblogs, null, null, null, null, null, analytics) {
             @Override
             public void flush() throws WebloggerException {
                 if (flushFailure != null) {
@@ -70,12 +72,14 @@ class WebloggerImplLifecycleTest {
     void initializeStartsTheManagersInDependencyOrderThenFlushes() throws Exception {
         weblogger(index, threads).initialize();
 
-        InOrder order = inOrder(properties, themes, threads, index, media);
+        InOrder order = inOrder(properties, themes, threads, index, media, analytics);
         order.verify(properties).initialize();
         order.verify(themes).initialize();
         order.verify(threads).initialize();
         order.verify(index).initialize();
         order.verify(media).initialize();
+        // last: it loads registrations and schedules the backfill on the thread pool
+        order.verify(analytics).initialize();
     }
 
     @Test

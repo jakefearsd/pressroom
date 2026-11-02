@@ -40,6 +40,10 @@ import com.wikantik.pressroom.business.WeblogRedirectManager;
 import com.wikantik.pressroom.business.BusinessManager;
 import com.wikantik.pressroom.business.CommentManager;
 import com.wikantik.pressroom.business.Weblogger;
+import com.wikantik.pressroom.business.analytics.AnalyticsManager;
+import com.wikantik.pressroom.business.analytics.AnalyticsService;
+import com.wikantik.pressroom.business.analytics.JPAAnalyticsManagerImpl;
+import com.wikantik.pressroom.business.analytics.UmamiAnalyticsService;
 import com.wikantik.pressroom.business.discovery.DiscoveryManager;
 import com.wikantik.pressroom.business.discovery.JPADiscoveryManagerImpl;
 import com.wikantik.pressroom.business.discovery.TrafficSource;
@@ -227,6 +231,18 @@ public class WebloggerBeanConfig {
         return new JPADiscoveryManagerImpl(weblogger, trafficSource);
     }
 
+    /** Umami's API, or an inert service when {@code analytics.umami.apiUrl} is blank. */
+    @Bean
+    public AnalyticsService analyticsService() {
+        return UmamiAnalyticsService.fromConfig();
+    }
+
+    @Bean
+    public AnalyticsManager analyticsManager(@Lazy Weblogger weblogger, JPAPersistenceStrategy strategy,
+                                             AnalyticsService analyticsService) {
+        return new JPAAnalyticsManagerImpl(weblogger, strategy, analyticsService);
+    }
+
     @Bean
     public URLStrategy urlStrategy() {
         return new MultiWeblogURLStrategy();
@@ -256,7 +272,8 @@ public class WebloggerBeanConfig {
             URLStrategy urlStrategy,
             VirtualHostRegistry virtualHostRegistry,
             EntryRenderer entryRenderer,
-            DiscoveryManager discoveryManager) throws WebloggerException {
+            DiscoveryManager discoveryManager,
+            AnalyticsManager analyticsManager) throws WebloggerException {
         return new JPAWebloggerImpl(
                 strategy,
                 indexManager,
@@ -280,6 +297,7 @@ public class WebloggerBeanConfig {
                 urlStrategy,
                 virtualHostRegistry,
                 entryRenderer,
-                discoveryManager);
+                discoveryManager,
+                analyticsManager);
     }
 }

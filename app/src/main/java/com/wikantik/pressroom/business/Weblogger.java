@@ -19,6 +19,7 @@
 package com.wikantik.pressroom.business;
 
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.analytics.AnalyticsManager;
 import com.wikantik.pressroom.business.discovery.DiscoveryManager;
 import com.wikantik.pressroom.business.plugins.PluginManager;
 import com.wikantik.pressroom.business.runnable.ThreadManager;
@@ -158,6 +159,12 @@ public interface Weblogger {
      * the site" block.
      */
     DiscoveryManager getDiscoveryManager();
+
+    /**
+     * Registration with the analytics service, and which blogs are
+     * registered; background sync, answered from memory.
+     */
+    AnalyticsManager getAnalyticsManager();
     
     /**
      * Flush object states.
