@@ -68,7 +68,7 @@ public interface UISecurityEnforced {
      * Does this action work on the site space, the hidden weblog that owns
      * the site's pages ({@link com.wikantik.pressroom.pojos.Weblog#isSiteSpace()})?
      *
-     * <p>Only the Pages, Media and Theme screens say yes. For every other
+     * <p>Only the Pages, Media, Theme and Traffic screens say yes. For every other
      * action {@code PressroomHandlerInterceptor} withholds the site space as if
      * its handle named no weblog, and it does so for every API handler and
      * every caller who is not a global admin whatever this answers.

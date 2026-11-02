@@ -45,7 +45,8 @@ import org.springframework.web.bind.annotation.RequestParam;
  *
  * <p>Only blog admins may open it: {@link #requiredWeblogPermissionActions()}
  * is what {@code PressroomHandlerInterceptor} enforces, so a member who can
- * post but not administer is refused before this method runs.
+ * post but not administer is refused before this method runs. The site
+ * space's page is a global admin's alone ({@link #allowsSiteSpace()}).
  */
 @Controller
 @RequestMapping("/pressroom-ui/authoring")
@@ -54,6 +55,17 @@ public class TrafficController extends BaseController {
     private static final String DASHBOARD_URL_KEY = "analytics.umami.dashboardUrl";
 
     private Clock clock = Clock.systemUTC();
+
+    /**
+     * The site pages' traffic opens here too, for a global admin only (ruling
+     * R25): Global › Traffic links its "Site pages" row to this page.
+     * {@code PressroomHandlerInterceptor} offers the site space to a global
+     * admin alone, and withholds it from everyone else as an unknown weblog.
+     */
+    @Override
+    public boolean allowsSiteSpace() {
+        return true;
+    }
 
     @Override
     public List<String> requiredWeblogPermissionActions() {

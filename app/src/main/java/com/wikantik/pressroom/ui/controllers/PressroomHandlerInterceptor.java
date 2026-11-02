@@ -253,7 +253,7 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
      * Whether this request may act on the site space, the hidden weblog that
      * owns the site's pages: only a global admin, only through a JSP handler
      * that {@linkplain UISecurityEnforced#allowsSiteSpace offers it} (Pages,
-     * Media, Theme), never through the API.
+     * Media, Theme, Traffic), never through the API.
      *
      * <p>When the answer is no, preHandle withholds the site space as though
      * its handle named no weblog: the action weblog stays unset, so a handler

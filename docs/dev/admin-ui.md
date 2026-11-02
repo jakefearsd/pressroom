@@ -172,7 +172,9 @@ resolves through the index at the end of `CLAUDE.md`.
   for everyone else) shows a Site row with Pages, Media and Theme, the only
   three screens that accept the site space. `UISecurityEnforced.allowsSiteSpace()`
   is false by default and true on the Pages, PageEdit, ThemeEdit and media
-  controllers; `PressroomHandlerInterceptor.siteSpaceOffered` clears the action
+  controllers, and on `TrafficController` (ruling R25: Global › Traffic links
+  its "Site pages" row there; the rail does not offer it on the site space);
+  `PressroomHandlerInterceptor.siteSpaceOffered` clears the action
   weblog for any other request (and for a non-admin, an anonymous caller or any
   API/MCP request), so a refusal looks exactly like an unknown handle (redirect
   to access-denied; API 404). `MenuHelper` shows only those three tabs on the

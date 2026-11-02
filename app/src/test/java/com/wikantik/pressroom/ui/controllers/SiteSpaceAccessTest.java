@@ -49,6 +49,7 @@ import com.wikantik.pressroom.ui.controllers.editor.MembersController;
 import com.wikantik.pressroom.ui.controllers.editor.PageEditController;
 import com.wikantik.pressroom.ui.controllers.editor.PagesController;
 import com.wikantik.pressroom.ui.controllers.editor.ThemeEditController;
+import com.wikantik.pressroom.ui.controllers.editor.TrafficController;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogConfigController;
 import com.wikantik.pressroom.ui.controllers.editor.WeblogRemoveController;
 import com.wikantik.pressroom.ui.restapi.ApiExceptionHandler;
@@ -84,8 +85,9 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppC
 
 /**
  * The site space's access boundary (spec AC7, AC13, Review Focus 4): only a
- * global admin reaches it, only through the Pages, Media and Theme screens,
- * and never through the automation API.
+ * global admin reaches it, only through the Pages, Media, Theme and Traffic
+ * screens (Traffic by ruling R25: Global › Traffic links the site pages' row
+ * there), and never through the automation API.
  *
  * <p>Dispatched through a real {@code DispatcherServlet} built from the
  * production {@link WebMvcConfig}, so {@link PressroomHandlerInterceptor} runs
@@ -166,6 +168,12 @@ class SiteSpaceAccessTest {
         @Bean
         ThemeEditController themeEditController() {
             return new ThemeEditController();
+        }
+
+        /** Ruling R25: the site pages' traffic, which Global › Traffic links to. */
+        @Bean
+        TrafficController trafficController() {
+            return new TrafficController();
         }
 
         @Bean
@@ -297,7 +305,7 @@ class SiteSpaceAccessTest {
         signIn(admin);
 
         for (String screen : List.of("pages.rol", "pageEdit.rol", "themeEdit.rol", "mediaFileView.rol",
-                "mediaFileAdd.rol", "mediaFileEdit.rol", "overlay/mediaFileImageChooser.rol")) {
+                "mediaFileAdd.rol", "mediaFileEdit.rol", "overlay/mediaFileImageChooser.rol", "traffic.rol")) {
             MvcResult result = perform(get(AUTHORING + screen).param("weblog", SITE));
             assertEquals(200, result.getResponse().getStatus(), screen + " is offered on the site space");
             Weblog acting = (Weblog) result.getRequest().getAttribute("actionWeblog");
@@ -340,7 +348,8 @@ class SiteSpaceAccessTest {
         siteSpace();
         signIn(author);
 
-        for (String screen : List.of("pages.rol", "pageEdit.rol", "themeEdit.rol", "mediaFileView.rol")) {
+        for (String screen : List.of("pages.rol", "pageEdit.rol", "themeEdit.rol", "mediaFileView.rol",
+                "traffic.rol")) {
             MvcResult result = perform(get(AUTHORING + screen).param("weblog", SITE));
             assertEquals(302, result.getResponse().getStatus(), screen);
             assertEquals("/pressroom-ui/access-denied.rol", result.getResponse().getRedirectedUrl(), screen);
