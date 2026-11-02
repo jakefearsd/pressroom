@@ -310,6 +310,51 @@ class AnalyticsReadTest {
                 "a source two blogs share shows the larger blog's visitors, never their sum");
     }
 
+    /**
+     * AC 10: Global › Traffic lists every blog. One with no snapshot is listed
+     * as not read yet, or as not registered when its registration failed, and
+     * neither counts toward the totals.
+     */
+    @Test
+    void siteTrafficListsEveryBlogTheOnesWithoutASnapshotIncluded() throws Exception {
+        Weblog read = tier.addWeblogUnseen("everyread", user);
+        Weblog unread = tier.addWeblogUnseen("everyunread", user);
+        Weblog refused = tier.addWeblogUnseen("everyrefused", user);
+        tier.service.failIds.add(refused.getId());
+
+        tier.manager.reconcile();
+        TestUtils.endSession(false);
+        SiteTraffic before = tier.manager.getSiteTraffic("7d");
+        assertEquals(TrafficState.NO_DATA, before.state(), "nothing read yet");
+        assertEquals(BlogRow.Standing.NO_DATA, rowOf(before, read).standing(),
+                "a blog with no snapshot is listed even before the first read");
+        assertEquals(BlogRow.Standing.NOT_REGISTERED, rowOf(before, refused).standing());
+
+        tier.service.reports.put(read.getId(), report(10, List.of(), List.of()));
+        tier.service.readFailIds.add(unread.getId());
+        sync();
+        SiteTraffic site = tier.manager.getSiteTraffic("7d");
+
+        BlogRow readRow = rowOf(site, read);
+        assertEquals(BlogRow.Standing.READ, readRow.standing());
+        assertEquals(10, readRow.views());
+        BlogRow unreadRow = rowOf(site, unread);
+        assertEquals(BlogRow.Standing.NO_DATA, unreadRow.standing(), "registered, but no snapshot");
+        assertEquals("everyunread", unreadRow.handle());
+        assertEquals(unread.getName(), unreadRow.name());
+        BlogRow refusedRow = rowOf(site, refused);
+        assertEquals(BlogRow.Standing.NOT_REGISTERED, refusedRow.standing(), "its registration failed");
+        assertEquals(10, site.totalViews(), "only blogs with a snapshot count (the suite's others read zero)");
+        assertEquals(5, site.totalVisits());
+        assertTrue(site.blogs().indexOf(readRow) < site.blogs().indexOf(unreadRow),
+                "blogs with numbers come first");
+    }
+
+    private static BlogRow rowOf(SiteTraffic site, Weblog weblog) {
+        return site.blogs().stream().filter(r -> weblog.getId().equals(r.weblogId())).findFirst()
+                .orElseThrow(() -> new AssertionError(weblog.getHandle() + " is not listed: " + site.blogs()));
+    }
+
     @Test
     void siteTrafficListsTopPostsAndEachBlogsTopPost() throws Exception {
         Weblog a = tier.addWeblogUnseen("topa", user);

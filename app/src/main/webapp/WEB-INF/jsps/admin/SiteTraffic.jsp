@@ -19,7 +19,9 @@
 
 <%-- Admin -> Traffic: every blog's numbers from the local snapshots, a total
      for views and visits only (a visitor total would count a reader of two
-     blogs twice), and the site's top posts and sources. Blog names are author
+     blogs twice), and the site's top posts and sources. Every blog is listed:
+     one with no numbers yet says so (or that it is not registered) in place
+     of its top post, and counts toward no total. Blog names are author
      text and are escaped; entry titles are stored escaped and go out bare.
      RouteSweepIT finds this page by #siteTrafficPage. --%>
 <div id="siteTrafficPage">
@@ -62,7 +64,13 @@
             <td class="n">${fn:escapeXml(line.views)}</td>
             <td class="n">${fn:escapeXml(line.visits)}</td>
             <td class="n ${line.changeClass}">${fn:escapeXml(line.change)}</td>
-            <td>${line.topPostTitle}</td>
+            <td>
+                <c:choose>
+                <c:when test="${line.standing eq 'NOT_REGISTERED'}"><span class="traffic-empty"><spring:message code="siteTraffic.standing.notRegistered"/></span></c:when>
+                <c:when test="${line.standing eq 'NO_DATA'}"><span class="traffic-empty"><spring:message code="siteTraffic.standing.noData"/></span></c:when>
+                <c:otherwise>${line.topPostTitle}</c:otherwise>
+                </c:choose>
+            </td>
         </tr>
         </c:forEach>
         <tr class="traffic-total">

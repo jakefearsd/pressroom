@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Locale;
 
 import com.wikantik.pressroom.business.analytics.SiteTraffic;
+import com.wikantik.pressroom.business.analytics.SiteTraffic.BlogRow;
 import com.wikantik.pressroom.business.analytics.TrafficState;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.controllers.editor.TrafficView;
@@ -47,7 +48,7 @@ import com.wikantik.pressroom.ui.controllers.editor.TrafficView.Row;
  * @param showBody    whether there are numbers to show
  * @param totalViews  views across the blogs, formatted
  * @param totalVisits visits across the blogs, formatted
- * @param blogs       one line per blog with a snapshot
+ * @param blogs       one line per blog, those without a snapshot included
  * @param posts       the site's top posts, merged by entry
  * @param sources     the site's top sources
  */
@@ -57,29 +58,39 @@ public record SiteTrafficView(String period, List<String> periods, String notice
 
     /**
      * One blog. {@code name} is author text and raw (the JSP escapes it);
-     * {@code topPostTitle} is stored escaped and goes out bare.
+     * {@code topPostTitle} is stored escaped and goes out bare. A blog whose
+     * {@code standing} is not READ has dashes for its numbers and says why.
      */
     public record BlogLine(String handle, String name, boolean siteSpace, String visitors, String views,
-                           String visits, String change, String changeClass, String topPostTitle) {
+                           String visits, String change, String changeClass, String topPostTitle,
+                           BlogRow.Standing standing) {
+    }
+
+    /** One blog's line; a blog with no snapshot has dashes, never zeros, and no change. */
+    private static BlogLine line(BlogRow b, Locale locale) {
+        boolean siteSpace = Weblog.SITE_SPACE_HANDLE.equals(b.handle());
+        if (b.standing() != BlogRow.Standing.READ) {
+            return new BlogLine(b.handle(), b.name(), siteSpace, TrafficView.DASH, TrafficView.DASH,
+                    TrafficView.DASH, "", "", null, b.standing());
+        }
+        return new BlogLine(b.handle(), b.name(), siteSpace, TrafficView.number(b.visitors(), locale),
+                TrafficView.number(b.views(), locale), TrafficView.number(b.visits(), locale),
+                TrafficView.changeText(b.change()), TrafficView.changeClass(b.change()), b.topPostTitle(),
+                b.standing());
     }
 
     /** Builds the view for an already accepted {@code period}. */
     static SiteTrafficView of(SiteTraffic site, String period, Locale locale, ZoneId zone, Instant now) {
         TrafficState state = site.state();
-        boolean showBody = state != TrafficState.NO_DATA && state != TrafficState.NOT_CONFIGURED
-                && !site.blogs().isEmpty();
+        // every blog is listed, so a page with blogs but no snapshot yet still shows them (AC 10)
+        boolean showBody = state != TrafficState.NOT_CONFIGURED && !site.blogs().isEmpty();
         Instant asOf = site.asOf();
         long age = state == TrafficState.STALE && asOf != null
                 ? Math.max(0, Duration.between(asOf, now).toMinutes()) : 0;
         boolean allZero = site.totalViews() == 0 && site.totalVisits() == 0
                 && site.blogs().stream().allMatch(b -> b.visitors() == 0);
         List<BlogLine> blogs = showBody
-                ? site.blogs().stream().map(b -> new BlogLine(b.handle(), b.name(),
-                        Weblog.SITE_SPACE_HANDLE.equals(b.handle()),
-                        TrafficView.number(b.visitors(), locale), TrafficView.number(b.views(), locale),
-                        TrafficView.number(b.visits(), locale),
-                        TrafficView.changeText(b.change()), TrafficView.changeClass(b.change()),
-                        b.topPostTitle())).toList()
+                ? site.blogs().stream().map(b -> line(b, locale)).toList()
                 : List.of();
         return new SiteTrafficView(period, TrafficView.PERIODS,
                 TrafficView.noticeKey(state, allZero, "traffic.state.siteZero"), age,

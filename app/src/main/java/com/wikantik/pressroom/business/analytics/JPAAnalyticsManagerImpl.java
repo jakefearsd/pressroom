@@ -20,6 +20,7 @@ package com.wikantik.pressroom.business.analytics;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.Weblogger;
+import com.wikantik.pressroom.business.analytics.SiteTraffic.BlogRow;
 import com.wikantik.pressroom.business.discovery.DiscoverySettings;
 import com.wikantik.pressroom.business.jpa.JPAPersistenceStrategy;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
@@ -38,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -865,12 +867,43 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
             return new SiteTraffic(TrafficState.NOT_CONFIGURED, null, null, 0, 0, null, null);
         }
         List<AnalyticsSummary> summaries = cache.summaries(period.key());
+        List<BlogRow> unread = unreadRows(summaries);
         if (summaries.isEmpty()) {
-            return new SiteTraffic(TrafficState.NO_DATA, null, null, 0, 0, null, null);
+            return new SiteTraffic(TrafficState.NO_DATA, null, unread, 0, 0, null, null);
         }
         Map<String, String> failures = readFailures;
-        return cache.siteTraffic(summaries, period, longerThan(period), (Collection<String> ids) ->
+        return cache.siteTraffic(summaries, unread, period, longerThan(period), (Collection<String> ids) ->
                 ids.stream().anyMatch(failures::containsKey) ? TrafficState.STALE : TrafficState.OK);
+    }
+
+    /**
+     * A line for every blog (the site space included) with no snapshot among
+     * {@code summaries}, by handle (AC 10): NOT_REGISTERED when its
+     * registration failed, else NO_DATA. From memory and one query of the
+     * blogs; display path: blogs that cannot be listed leave only those with
+     * a snapshot, and the log says so.
+     */
+    private List<BlogRow> unreadRows(List<AnalyticsSummary> summaries) {
+        Set<String> read = new HashSet<>();
+        summaries.forEach(s -> read.add(s.getWeblogId()));
+        Set<String> refused = new HashSet<>();
+        status.failures().forEach(f -> refused.add(f.handle()));
+        Map<String, Registration> confirmed = registered;
+        List<BlogRow> rows = new ArrayList<>();
+        try {
+            for (Weblog weblog : allWeblogs()) {
+                if (!read.contains(weblog.getId())) {
+                    boolean notRegistered = !confirmed.containsKey(weblog.getId())
+                            && refused.contains(weblog.getHandle());
+                    rows.add(BlogRow.unread(weblog.getId(), weblog.getHandle(), weblog.getName(),
+                            notRegistered ? BlogRow.Standing.NOT_REGISTERED : BlogRow.Standing.NO_DATA));
+                }
+            }
+        } catch (WebloggerException | RuntimeException e) {
+            log.warn("Could not list the blogs without traffic numbers; only those with numbers are shown", e);
+        }
+        rows.sort(Comparator.comparing(BlogRow::handle, Comparator.nullsLast(Comparator.naturalOrder())));
+        return rows;
     }
 
     @Override

@@ -33,7 +33,8 @@ import java.util.List;
  * @param state       NOT_CONFIGURED, NO_DATA when no blog has a snapshot, STALE when any blog's last read
  *                    failed, otherwise OK
  * @param asOf        the oldest snapshot's read time, or null when there is none
- * @param blogs       one row per blog with a snapshot, most viewed first
+ * @param blogs       one row per blog, the site space included: those with a snapshot first, most
+ *                    viewed first, then those without one ({@link BlogRow.Standing}), by handle
  * @param totalViews  views summed across the blogs
  * @param totalVisits visits summed across the blogs
  * @param topPosts    the most viewed entries across the blogs, most viewed first
@@ -61,9 +62,34 @@ public record SiteTraffic(TrafficState state, Instant asOf, List<BlogRow> blogs,
      * @param change       views against the previous period, as a fraction (0.25 is a quarter more);
      *                     {@link Double#NaN} when the previous period had no views
      * @param topPostTitle the title, as stored, of the blog's most viewed entry, or null
+     * @param standing     whether the blog has numbers for the period, and if not, why not
      */
     public record BlogRow(String weblogId, String handle, String name, long visitors, long views, long visits,
-                          double change,
-                          String topPostTitle) {
+                          double change, String topPostTitle, Standing standing) {
+
+        /** Whether a blog's line has numbers, and if not, why not. */
+        public enum Standing {
+            /** The blog has a snapshot for the period. */
+            READ,
+            /** No snapshot yet: registered (or not yet tried), and not read for this period. */
+            NO_DATA,
+            /** No snapshot, and the blog's registration with the service failed. */
+            NOT_REGISTERED
+        }
+
+        public BlogRow {
+            standing = standing == null ? Standing.READ : standing;
+        }
+
+        /** A blog with a snapshot for the period. */
+        public BlogRow(String weblogId, String handle, String name, long visitors, long views, long visits,
+                       double change, String topPostTitle) {
+            this(weblogId, handle, name, visitors, views, visits, change, topPostTitle, Standing.READ);
+        }
+
+        /** A blog with no snapshot for the period: no numbers, and never counted in a total. */
+        public static BlogRow unread(String weblogId, String handle, String name, Standing standing) {
+            return new BlogRow(weblogId, handle, name, 0, 0, 0, Double.NaN, null, standing);
+        }
     }
 }

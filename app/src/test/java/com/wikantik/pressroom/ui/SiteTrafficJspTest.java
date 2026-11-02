@@ -102,6 +102,16 @@ class SiteTrafficJspTest {
         }
     }
 
+    /** AC 10: a blog with no snapshot says why it has no numbers, in place of its top post. */
+    @Test
+    void aBlogWithoutNumbersSaysWhy() throws IOException {
+        String page = read(PAGE);
+        assertTrue(page.contains("<c:when test=\"${line.standing eq 'NOT_REGISTERED'}\">"), page);
+        assertTrue(page.contains("code=\"siteTraffic.standing.notRegistered\""));
+        assertTrue(page.contains("<c:when test=\"${line.standing eq 'NO_DATA'}\">"));
+        assertTrue(page.contains("code=\"siteTraffic.standing.noData\""));
+    }
+
     @Test
     void rowsLinkToEachBlogsTrafficPage() throws IOException {
         String page = read(PAGE);

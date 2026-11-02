@@ -261,8 +261,13 @@ final class TrafficCache {
         return postRows(rows, period, longer, List.of(weblogId));
     }
 
-    /** One blog's line per summary, the site's top posts and sources, for one period. */
-    SiteTraffic siteTraffic(List<AnalyticsSummary> summaries, Period period, Period longer, TrafficStateOf stateOf) {
+    /**
+     * One blog's line per summary, then {@code unread} (the blogs with no
+     * snapshot, which count toward no total), and the site's top posts and
+     * sources, for one period.
+     */
+    SiteTraffic siteTraffic(List<AnalyticsSummary> summaries, List<BlogRow> unread, Period period, Period longer,
+                            TrafficStateOf stateOf) {
         List<String> weblogIds = summaries.stream().map(AnalyticsSummary::getWeblogId).toList();
         Map<String, String[]> names = names(weblogIds);
         List<AnalyticsPathViews> entryRows = strategy.getEntityManager(false).createQuery(
@@ -297,6 +302,7 @@ final class TrafficCache {
         }
         blogs.sort(Comparator.comparingLong(BlogRow::views).reversed()
                 .thenComparing(BlogRow::handle, Comparator.nullsLast(Comparator.naturalOrder())));
+        blogs.addAll(unread);
         return new SiteTraffic(stateOf.of(weblogIds), asOf, blogs, views, visits, topPosts,
                 topSources(weblogIds, period.key()));
     }

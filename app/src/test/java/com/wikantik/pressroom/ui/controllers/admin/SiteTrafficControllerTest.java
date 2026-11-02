@@ -207,6 +207,42 @@ class SiteTrafficControllerTest {
         assertEquals("traffic.state.siteZero", view("30d").noticeKey());
     }
 
+    /** AC 10: a blog without a snapshot is a line of its own, with no numbers and a plain reason. */
+    @Test
+    void aBlogWithoutASnapshotIsListedWithDashesAndItsStanding() {
+        when(analytics.getSiteTraffic("30d")).thenReturn(site(TrafficState.OK,
+                List.of(blog("w1", "alpha", "Alpha", 3, 9, 0.5),
+                        BlogRow.unread("w2", "beta", "Beta", BlogRow.Standing.NO_DATA),
+                        BlogRow.unread("w3", "gamma", "Gamma", BlogRow.Standing.NOT_REGISTERED)),
+                9, 4, List.of(), List.of()));
+
+        SiteTrafficView v = view("30d");
+
+        assertEquals(3, v.blogs().size());
+        assertEquals(BlogRow.Standing.READ, v.blogs().get(0).standing());
+        SiteTrafficView.BlogLine beta = v.blogs().get(1);
+        assertEquals(BlogRow.Standing.NO_DATA, beta.standing());
+        assertEquals("—", beta.visitors(), "no snapshot is no number, never a zero");
+        assertEquals("—", beta.views());
+        assertEquals("—", beta.visits());
+        assertEquals("", beta.change());
+        assertEquals("", beta.changeClass());
+        assertEquals(BlogRow.Standing.NOT_REGISTERED, v.blogs().get(2).standing());
+        assertEquals("9", v.totalViews(), "the totals are the manager's, over the blogs with numbers");
+    }
+
+    @Test
+    void beforeAnyReadEveryBlogIsStillListed() {
+        when(analytics.getSiteTraffic("30d")).thenReturn(new SiteTraffic(TrafficState.NO_DATA, null,
+                List.of(BlogRow.unread("w2", "beta", "Beta", BlogRow.Standing.NO_DATA)), 0, 0, List.of(), List.of()));
+
+        SiteTrafficView v = view("30d");
+
+        assertEquals("traffic.state.noData", v.noticeKey());
+        assertTrue(v.showBody(), "the blog table lists every blog, even with nothing read");
+        assertEquals(List.of("beta"), v.blogs().stream().map(SiteTrafficView.BlogLine::handle).toList());
+    }
+
     @Test
     void neitherPageCallsAnalyticsServiceOnlyTheLocalSnapshot() {
         when(analytics.getSiteTraffic("30d")).thenReturn(site(TrafficState.OK, List.of(), 0, 0, List.of(), List.of()));
