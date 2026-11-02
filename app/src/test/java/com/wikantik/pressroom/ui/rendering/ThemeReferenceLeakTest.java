@@ -198,7 +198,9 @@ class ThemeReferenceLeakTest {
             "weblog.vm: $utils.businessJsonLd()", // returns null when the weblog has no business profile; the result is tested with #if($seoBusinessJson)
             "weblog.vm: $utils.businessPublisherJson()", // returns null when the weblog has no business profile; the result is tested with #if($seoPublisher)
             "weblog.vm: $utils.travelJsonLd()", // returns null for an entry that is not a travel entry; the result is tested with #if($seoTypedJson)
-            "weblog.vm: $weblog.analyticsSiteId", // null unless analytics is configured; tested with $utils.isNotEmpty
+            "weblog.vm: $analytics.websiteId()", // null unless the weblog is registered with Umami; tested with $utils.isNotEmpty
+            "weblog.vm: $trackerSiteId", // #set of a null website id; tested with $utils.isNotEmpty
+            "weblog.vm: trackerSiteId", // #set of a null website id; tested with $utils.isNotEmpty
             "weblog.vm: $weblog.newsletterListUuid", // null unless a newsletter list is configured; tested with #if
             "weblog.vm: responsiveObjectPosition", // #set of a null focal point; tested with #if
             "weblog.vm: seoBusinessJson", // #set of a null business JSON-LD; tested with #if

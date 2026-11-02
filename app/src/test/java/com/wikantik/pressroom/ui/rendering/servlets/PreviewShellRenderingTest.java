@@ -70,7 +70,9 @@ class PreviewShellRenderingTest {
             "weblog.vm: $model.weblogDate", // null when the view is not a date archive; tested with #if / negated in #set
             "weblog.vm: $seoBusinessJson", // null when the weblog has no business profile; tested with #if
             "weblog.vm: $utils.businessJsonLd()", // returns null when the weblog has no business profile; the result is tested with #if($seoBusinessJson)
-            "weblog.vm: $weblog.analyticsSiteId", // null unless analytics is configured; tested with $utils.isNotEmpty
+            "weblog.vm: $analytics", // a preview loads no $analytics model, so the lookup is null; tested with $utils.isNotEmpty
+            "weblog.vm: $trackerSiteId", // #set of a null website id; tested with $utils.isNotEmpty
+            "weblog.vm: trackerSiteId", // #set of a null website id; tested with $utils.isNotEmpty
             "weblog.vm: $weblog.newsletterListUuid", // null unless a newsletter list is configured; tested with #if
             "weblog.vm: seoBusinessJson" // #set of a null business JSON-LD; tested with #if
     );

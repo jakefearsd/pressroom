@@ -446,15 +446,21 @@ will be created.
 #end
 
 #**
-Analytics for a weblog. A validated Umami website id plus startup config
-builds the script tag HERE, so no admin-typed markup ever reaches the head --
-which is what lets per-weblog analytics coexist with weblogAdminsUntrusted.
-Same-origin via Caddy's /analytics handle, so the pinned theme CSPs are
-untouched. This is the only analytics path; there is no free-text fallback.
+Analytics for a weblog. Every weblog registered with Umami carries the
+tracker automatically: the $analytics model answers from memory with the
+website id (empty when the weblog is unregistered or analytics is not
+configured, in which case nothing at all is emitted) and the weblog's real
+hostname for data-domains, and the tag is built HERE from startup config, so no
+admin-typed markup ever reaches the head. Same-origin via Caddy's /analytics
+handle, so the pinned theme CSPs are untouched. Replay and heatmaps stay off.
 *#
 #macro(showAnalyticsTrackingCode $weblog)
-    #if ($utils.isNotEmpty($weblog.analyticsSiteId))
-<script defer src="$config.analyticsBasePath/$config.analyticsScriptName" data-website-id="$utils.escapeHTML($weblog.analyticsSiteId)" data-host-url="$config.analyticsBasePath"></script>
+    #set ($trackerSiteId = "")
+    #set ($trackerHost = "")
+    #set ($trackerSiteId = $analytics.websiteId($weblog))
+    #if ($utils.isNotEmpty($trackerSiteId))
+        #set ($trackerHost = $analytics.trackedHost($weblog))
+<script defer src="$config.analyticsBasePath/$config.analyticsScriptName" data-website-id="$utils.escapeHTML($trackerSiteId)" data-host-url="$config.analyticsBasePath"#if ($utils.isNotEmpty($trackerHost)) data-domains="$utils.escapeHTML($trackerHost)"#end data-performance="true"></script>
     #end
 #end
 

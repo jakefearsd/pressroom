@@ -27,6 +27,7 @@ import com.wikantik.pressroom.pojos.RuntimeConfigProperty;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
+import com.wikantik.pressroom.ui.rendering.StubAnalytics;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -83,16 +84,14 @@ class FrontpageRenderingTest {
     private static final String ANALYTICS_SITE_ID = "11111111-2222-3333-4444-555555555555";
 
     /**
-     * What {@code #showAnalyticsTrackingCode} builds when analyticsSiteId is
-     * set -- same shape {@code AnalyticsInjectionRenderingTest} pins for the
-     * other three bundled themes' home pages. Frontpage's head never called
-     * the macro at all (pre-existing gap: front-door traffic was invisible to
-     * Umami), so this class is the only coverage for it.
+     * What the showAnalyticsTrackingCode macro builds for a registered blog:
+     * the front page is tracked under the site space like any other blog.
      */
     private static final String EXPECTED_ANALYTICS_SCRIPT_TAG =
             "<script defer src=\"/analytics/script.js\" "
                     + "data-website-id=\"" + ANALYTICS_SITE_ID + "\" "
-                    + "data-host-url=\"/analytics\"></script>";
+                    + "data-host-url=\"/analytics\" data-domains=\"localhost\" "
+                    + "data-performance=\"true\"></script>";
 
     /**
      * Frontpage self-hosts Plex Serif/Sans/Mono via webjar (fd-site/fd-post
@@ -436,27 +435,25 @@ class FrontpageRenderingTest {
     // ------------------------------------------------------------ analytics
 
     @Test
-    void theFrontDoorInjectsTheUmamiScriptTagWhenASiteIdIsSet() throws Exception {
-        Weblog managed = TestUtils.getManagedWebsite(siteWeblog);
-        managed.setAnalyticsSiteId(ANALYTICS_SITE_ID);
-        TestUtils.weblogger().getWeblogManager().saveWeblog(managed);
-        TestUtils.endSession(true);
-
-        String body = render("/" + SITE_HANDLE + "/");
+    void theFrontDoorCarriesTheTrackerWhenTheSiteSpaceIsRegistered() throws Exception {
+        String body;
+        try (StubAnalytics _ = StubAnalytics.configured().register(siteWeblog.getId(), ANALYTICS_SITE_ID)) {
+            body = render("/" + SITE_HANDLE + "/");
+        }
 
         assertTrue(body.contains(EXPECTED_ANALYTICS_SCRIPT_TAG),
                 "the front page must inject the Umami script tag for the front "
-                        + "weblog's analyticsSiteId:\n" + body);
+                        + "site space's registration:\n" + body);
         assertTrue(body.contains(CSP_FRONTPAGE),
                 "wiring analytics into the head must not touch the CSP:\n" + body);
     }
 
     @Test
-    void theFrontDoorInjectsNoAnalyticsScriptWithoutASiteId() throws Exception {
+    void theFrontDoorCarriesNoTrackerWhenTheSiteSpaceIsNotRegistered() throws Exception {
         String body = render("/" + SITE_HANDLE + "/");
 
         assertFalse(body.contains("/analytics/"),
-                "no site id means no Umami script must be injected:\n" + body);
+                "an unregistered site space means no Umami script must be injected:\n" + body);
     }
 
     // -------------------------------------------------- document shell (a11y)
