@@ -139,14 +139,4 @@ class WeblogSettingsRulesTest {
         bean.setBusinessId("b1");
         assertEquals(List.of(), fieldsOf(bean));
     }
-
-    @Test
-    void anAnalyticsShareUrlMustBeHttpAndFitItsColumn() {
-        WeblogConfigBean ftp = valid();
-        ftp.setAnalyticsShareUrl("ftp://x");
-        WeblogConfigBean longUrl = valid();
-        longUrl.setAnalyticsShareUrl("https://x/" + "a".repeat(250));
-        assertEquals(List.of("analyticsShareUrl"), fieldsOf(ftp));
-        assertEquals(List.of("analyticsShareUrl"), fieldsOf(longUrl));
-    }
 }

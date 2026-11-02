@@ -237,8 +237,8 @@ The clearable fields, per resource:
   `featuredImageId`, `ogImageId`, `jsonLdType`, `geoLatitude`, `geoLongitude`,
   `eventStart`, `eventEnd` and `eventLocation`. `geoLatitude` and `geoLongitude`
   clear together, as a pair.
-- **Weblog:** `tagline`, `copyright`, `customDomain`, `icon`, `about`, `analyticsSiteId`,
-  `analyticsShareUrl`, `newsletterListUuid`, `businessId`, `placeType`,
+- **Weblog:** `tagline`, `copyright`, `customDomain`, `icon`, `about`,
+  `newsletterListUuid`, `businessId`, `placeType`,
   `placeLocality`, `placeRegion`, `placeCountry`, `placeLat`, `placeLng` and
   `bookingUrl`. `placeLat` and `placeLng` clear together.
 - **Media:** `altText`, `focalX` and `focalY`. `focalX` and `focalY` clear together.
@@ -1082,16 +1082,16 @@ with the new weblog and a `Location` header.
 `null`, is unchanged. To remove a value, name its field in `clear`
 (`"clear": ["about", "bookingUrl"]`); `clear` applies only to updates. The
 clearable weblog fields are `tagline`, `copyright`, `customDomain`, `icon`, `about`,
-`analyticsSiteId`, `analyticsShareUrl`, `newsletterListUuid`, `businessId`,
+`newsletterListUuid`, `businessId`,
 `placeType`, `placeLocality`, `placeRegion`, `placeCountry`, `placeLat`,
 `placeLng` and `bookingUrl`; `placeLat` and `placeLng` clear together, as a
-pair. The weblog view shows all of the fields below. The thirteen settings
-added to `PATCH`, with the rules the settings form applies:
+pair. The weblog view shows all of the fields below. The eleven settings
+added to `PATCH`, with the rules the settings form applies (the old `analyticsSiteId` and
+`analyticsShareUrl` are gone: Pressroom registers every blog with Umami itself, so a body
+property of either name is ignored and naming one in `clear` is a 400 on `clear`):
 
 - `icon`: at most 255 characters.
 - `about`: at most 255 characters.
-- `analyticsSiteId`: a UUID.
-- `analyticsShareUrl`: an `http` or `https` URL, at most 255 characters.
 - `newsletterListUuid`: the newsletter list's UUID.
 - `businessId`: the id of an existing business profile; otherwise 400 `No such business.`
 - `placeType`: `LodgingBusiness`; needs a `placeLocality`.

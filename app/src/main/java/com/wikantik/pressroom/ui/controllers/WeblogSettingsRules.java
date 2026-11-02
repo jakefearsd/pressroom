@@ -48,14 +48,13 @@ public final class WeblogSettingsRules {
 
     private static final Logger log = LoggerFactory.getLogger(WeblogSettingsRules.class);
 
-    /** icon, about, analytics_share_url and booking_url are varchar(255). */
+    /** icon, about and booking_url are varchar(255). */
     public static final int MAX_TEXT = 255;
     /** place_locality and place_region are varchar(128). */
     public static final int MAX_PLACE_TEXT = 128;
 
     private static final Pattern UUID = Pattern.compile(
             "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
-    private static final Pattern HTTP_URL = Pattern.compile("(?i)^https?://.*");
     private static final Pattern COUNTRY = Pattern.compile("^[A-Za-z]{2}$");
     private static final BigDecimal MAX_LAT = new BigDecimal(90);
     private static final BigDecimal MAX_LNG = new BigDecimal(180);
@@ -116,14 +115,6 @@ public final class WeblogSettingsRules {
         tooLong("icon", "websiteSettings.icon", bean.getIcon(), MAX_TEXT, found);
         tooLong("about", "websiteSettings.about", bean.getAbout(), MAX_TEXT, found);
         mustBeUuid("newsletterListUuid", "websiteSettings.newsletterListUuid.invalid", bean.getNewsletterListUuid(), found);
-        mustBeUuid("analyticsSiteId", "websiteSettings.analyticsSiteId.invalid", bean.getAnalyticsSiteId(), found);
-        String shareUrl = StringUtils.trimToNull(bean.getAnalyticsShareUrl());
-        if (shareUrl != null && !HTTP_URL.matcher(shareUrl).matches()) {
-            found.add(simple("analyticsShareUrl", "websiteSettings.analyticsShareUrl.invalid",
-                    "analyticsShareUrl must be an http or https URL."));
-        } else {
-            tooLong("analyticsShareUrl", "websiteSettings.analyticsShareUrl", shareUrl, MAX_TEXT, found);
-        }
         checkBusiness(bean, context, found);
         checkPlace(bean, found);
         checkCustomDomain(bean, context, found);

@@ -48,8 +48,6 @@ public class WeblogConfigBean {
     private String icon = null;
     private String about = null;
 
-    private String analyticsSiteId = null;
-    private String analyticsShareUrl = null;
     private String newsletterListUuid = null;
     private String customDomain = null;
 
@@ -177,22 +175,6 @@ public class WeblogConfigBean {
         this.active = active;
     }
 
-    public String getAnalyticsSiteId() {
-        return analyticsSiteId;
-    }
-
-    public void setAnalyticsSiteId(String analyticsSiteId) {
-        this.analyticsSiteId = analyticsSiteId;
-    }
-
-    public String getAnalyticsShareUrl() {
-        return analyticsShareUrl;
-    }
-
-    public void setAnalyticsShareUrl(String analyticsShareUrl) {
-        this.analyticsShareUrl = analyticsShareUrl;
-    }
-
     public String getNewsletterListUuid() {
         return newsletterListUuid;
     }
@@ -287,8 +269,6 @@ public class WeblogConfigBean {
         setCommentsEnabled(Boolean.TRUE.equals(dataHolder.getCommentsEnabled()));
         setCommentNotify(!Boolean.FALSE.equals(dataHolder.getCommentNotify()));
         setShowMoreFromSite(!Boolean.FALSE.equals(dataHolder.getShowMoreFromSite()));
-        this.analyticsSiteId = dataHolder.getAnalyticsSiteId();
-        this.analyticsShareUrl = dataHolder.getAnalyticsShareUrl();
         this.newsletterListUuid = dataHolder.getNewsletterListUuid();
         this.customDomain = dataHolder.getCustomDomain();
         setIcon(dataHolder.getIconPath());
@@ -318,8 +298,6 @@ public class WeblogConfigBean {
         dataHolder.setShowMoreFromSite(this.getShowMoreFromSite());
         dataHolder.setIconPath(getIcon());
         dataHolder.setAbout(getAbout());
-        dataHolder.setAnalyticsSiteId(StringUtils.trimToNull(this.analyticsSiteId));
-        dataHolder.setAnalyticsShareUrl(StringUtils.trimToNull(this.analyticsShareUrl));
         dataHolder.setNewsletterListUuid(StringUtils.trimToNull(this.newsletterListUuid));
         dataHolder.setCustomDomain(StringUtils.trimToNull(this.customDomain));
         dataHolder.setPlaceType(StringUtils.trimToNull(this.placeType));

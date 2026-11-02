@@ -83,11 +83,13 @@ Per-weblog Umami tracking plus a read-only Grafana contract over two databases.
   well as the Grafana panels. Update both in one change.
 
 - **Structured injection is the only analytics path; no free-text fallback
-  (W2).** `Weblog.analyticsSiteId` is a validated UUID
-  (`WeblogConfigController.myValidate`). `#showAnalyticsTrackingCode`
+  (W2).** The per-blog `analyticsSiteId` and `analyticsShareUrl` settings are
+  gone (column drop `V044__drop_weblog_analytics_fields.sql`, form, API and
+  messages): blogs are registered with Umami automatically and the website ID
+  comes from `AnalyticsManager.websiteIdFor`. `#showAnalyticsTrackingCode`
   (`weblog.vm`) builds the
   `<script defer src="…" data-website-id="…" data-host-url="…">` tag from that
-  UUID plus `ConfigModel.getAnalyticsBasePath()`/`getAnalyticsScriptName()`
+  ID plus `ConfigModel.getAnalyticsBasePath()`/`getAnalyticsScriptName()`
   (`analytics.umami.basePath`/`analytics.umami.scriptName` in
   `pressroom.properties`). The legacy free-text `analyticsCode` textarea (gated on
   *Allow analytics code override* **and** `weblogAdminsUntrusted` off, so never

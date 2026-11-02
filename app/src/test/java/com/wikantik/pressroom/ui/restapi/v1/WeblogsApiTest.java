@@ -19,6 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
@@ -265,7 +266,6 @@ class WeblogsApiTest {
         Weblog weblog = aWeblog("myblog");
 
         var result = doPatch(weblogger, weblog, "{\"about\":\"A blog\",\"icon\":\"https://x/i.png\","
-                + "\"analyticsSiteId\":\"0b5d3f9e-1c2a-4e7b-9a6d-2f1e0c9b8a7d\","
                 + "\"placeType\":\"LodgingBusiness\",\"placeLocality\":\"Encinitas\",\"placeCountry\":\"us\","
                 + "\"placeLat\":33.04,\"placeLng\":-117.29,\"bookingUrl\":\"https://book.example.com\"}")
                 .andExpect(status().isOk());
@@ -273,7 +273,6 @@ class WeblogsApiTest {
         tools.jackson.databind.JsonNode json = json(result);
         assertEquals("A blog", json.get("about").asString());
         assertEquals("https://x/i.png", json.get("icon").asString());
-        assertEquals("0b5d3f9e-1c2a-4e7b-9a6d-2f1e0c9b8a7d", json.get("analyticsSiteId").asString());
         assertEquals("LodgingBusiness", json.get("placeType").asString());
         assertEquals("Encinitas", json.get("placeLocality").asString());
         assertEquals("US", json.get("placeCountry").asString());
@@ -283,7 +282,6 @@ class WeblogsApiTest {
 
         assertEquals("A blog", weblog.getAbout());
         assertEquals("https://x/i.png", weblog.getIconPath());
-        assertEquals("0b5d3f9e-1c2a-4e7b-9a6d-2f1e0c9b8a7d", weblog.getAnalyticsSiteId());
         assertEquals("LodgingBusiness", weblog.getPlaceType());
         assertEquals("Encinitas", weblog.getPlaceLocality());
         assertEquals("US", weblog.getPlaceCountry());
@@ -309,7 +307,7 @@ class WeblogsApiTest {
     @Test
     void aNonFiniteCoordinateIsRefused() {
         AdminDtos.WeblogPatch patch = new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null, null);
 
         ApiException e = assertThrows(ApiException.class,
                 () -> AdminDtos.applyPatch(new WeblogConfigBean(), patch, java.util.Set.of()));
@@ -348,7 +346,7 @@ class WeblogsApiTest {
     void aStoredValueThatBreaksARuleDoesNotBlockAnUnrelatedChange() throws Exception {
         Weblogger weblogger = mockedWeblogger();
         Weblog weblog = aWeblog("myblog");
-        weblog.setAnalyticsSiteId("legacy-not-a-uuid");
+        weblog.setNewsletterListUuid("legacy-not-a-uuid");
 
         doPatch(weblogger, weblog, "{\"tagline\":\"New\"}").andExpect(status().isOk());
 
@@ -444,8 +442,6 @@ class WeblogsApiTest {
             case "customDomain" -> w.setCustomDomain("mine.example.com");
             case "icon" -> w.setIconPath("https://x/i.png");
             case "about" -> w.setAbout("About");
-            case "analyticsSiteId" -> w.setAnalyticsSiteId("0b5d3f9e-1c2a-4e7b-9a6d-2f1e0c9b8a7d");
-            case "analyticsShareUrl" -> w.setAnalyticsShareUrl("https://share.example.com/x");
             case "newsletterListUuid" -> w.setNewsletterListUuid("0b5d3f9e-1c2a-4e7b-9a6d-2f1e0c9b8a7d");
             case "businessId" -> {
                 com.wikantik.pressroom.pojos.Business b = new com.wikantik.pressroom.pojos.Business();
@@ -475,8 +471,6 @@ class WeblogsApiTest {
             case "customDomain" -> w.getCustomDomain();
             case "icon" -> w.getIconPath();
             case "about" -> w.getAbout();
-            case "analyticsSiteId" -> w.getAnalyticsSiteId();
-            case "analyticsShareUrl" -> w.getAnalyticsShareUrl();
             case "newsletterListUuid" -> w.getNewsletterListUuid();
             case "businessId" -> w.getBusiness();
             case "placeType" -> w.getPlaceType();
@@ -734,7 +728,7 @@ class WeblogsApiTest {
     @Test
     void aNonFiniteCoordinateNamesTheCoordinateField() {
         AdminDtos.WeblogPatch patch = new AdminDtos.WeblogPatch(null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, Double.NaN, null, null, null, null, null, null);
 
         ApiException e = assertThrows(ApiException.class,
                 () -> AdminDtos.applyPatch(new WeblogConfigBean(), patch, java.util.Set.of()));
@@ -771,7 +765,7 @@ class WeblogsApiTest {
     @Test
     void everyWeblogSettingsRuleFieldIsAWeblogPatchComponent() {
         List<String> ruleFields = List.of("entryDisplayCount", "locale", "timeZone", "icon", "about", "copyright",
-                "analyticsShareUrl", "newsletterListUuid", "analyticsSiteId", "businessId", "placeType",
+                "newsletterListUuid", "businessId", "placeType",
                 "placeLocality", "placeRegion", "placeCountry", "placeLat", "placeLng", "bookingUrl",
                 "customDomain");
         Set<String> components = Arrays.stream(AdminDtos.WeblogPatch.class.getRecordComponents())
@@ -780,5 +774,47 @@ class WeblogsApiTest {
         for (String field : ruleFields) {
             assertTrue(components.contains(field), field + " is not a WeblogPatch component");
         }
+    }
+
+    @Test
+    void apiNoLongerReturnsAnalyticsFields() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        tools.jackson.databind.JsonNode view = json(doPatch(weblogger, weblog, "{\"name\":\"Other\"}")
+                .andExpect(status().isOk()));
+        assertFalse(view.has("analyticsSiteId"));
+        assertFalse(view.has("analyticsShareUrl"));
+        assertFalse(AdminDtos.WEBLOG_CLEARABLE.contains("analyticsSiteId"));
+        assertFalse(AdminDtos.WEBLOG_CLEARABLE.contains("analyticsShareUrl"));
+        Set<String> viewFields = Arrays.stream(AdminDtos.WeblogView.class.getRecordComponents())
+                .map(RecordComponent::getName).collect(Collectors.toSet());
+        assertFalse(viewFields.contains("analyticsSiteId"));
+        assertFalse(viewFields.contains("analyticsShareUrl"));
+    }
+
+    /**
+     * The API's existing rule for a name it does not know: a body property that is not a
+     * WeblogPatch component is ignored (never stored, never echoed), and a {@code clear} entry
+     * that is not clearable is a 400 on the field "clear". The analytics names are now unknown.
+     */
+    @Test
+    void apiPatchWithAnalyticsFieldIsRefused() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        Weblog weblog = aWeblog("myblog");
+
+        tools.jackson.databind.JsonNode view = json(doPatch(weblogger, weblog,
+                "{\"tagline\":\"New\",\"analyticsSiteId\":\"0b5d3f9e-1c2a-4e7b-9a6d-2f1e0c9b8a7d\","
+                        + "\"analyticsShareUrl\":\"https://share.example.com/x\"}")
+                .andExpect(status().isOk()));
+        assertFalse(view.has("analyticsSiteId"));
+        assertFalse(view.has("analyticsShareUrl"));
+
+        doPatch(weblogger, weblog, "{\"clear\":[\"analyticsSiteId\"]}")
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("clear"));
+        doPatch(weblogger, weblog, "{\"clear\":[\"analyticsShareUrl\"]}")
+                .andExpect(status().isBadRequest())
+                .andExpect(errorFieldIs("clear"));
     }
 }

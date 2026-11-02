@@ -17,8 +17,6 @@
  */
 package com.wikantik.pressroom.it;
 
-import java.util.UUID;
-
 import com.wikantik.pressroom.it.support.BrowserHealth;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.Test;
@@ -29,7 +27,6 @@ import com.codeborne.selenide.CollectionCondition;
 
 import static com.codeborne.selenide.Condition.exist;
 import static com.codeborne.selenide.Condition.text;
-import static com.codeborne.selenide.Condition.value;
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
 import static com.codeborne.selenide.Selenide.$$;
@@ -37,29 +34,24 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The Umami analytics tag: off by default, opt-in per weblog through the real
- * Settings form, validated as a UUID, and never reachable through a browser
- * visit in this stack.
+ * Analytics needs no per-blog setup: Pressroom registers every blog with Umami
+ * itself. The IT app has no Umami configured, so the Settings page offers no
+ * analytics fields and no blog page carries a tracker tag. The tagged case is
+ * covered by the rendering unit tests.
  *
- * <p>The tracker script ({@code /analytics/script.js}) is served by Umami
- * itself in production (see {@code deploy/analytics}); the IT stack has
- * nothing listening there. A browser navigation to a page that emits the tag
- * would 404 the script and trip {@link BrowserHealth}'s broken-resource
- * check for a 404 the test itself provoked -- the same reasoning
- * {@code PageIT} uses for a draft page's status code. So the tag is proved
- * with the same tool: a raw, cookie-less {@code HttpClient} GET
- * ({@link #getAnonymously}), never a browser navigation to a page that would
- * actually try to load the script.
+ * <p>The tag check uses a raw, cookie-less {@code HttpClient} GET
+ * ({@link #getAnonymously}) rather than a browser navigation, as before: were
+ * a tag ever emitted, a browser visit would 404 the script (the IT stack has
+ * nothing at {@code /analytics/}) and trip {@link BrowserHealth} on a failure
+ * the test itself provoked.
  *
- * <p>Every test owns its own weblog and touches no site-wide configuration,
- * the same discipline {@code WeblogConfigMatrixIT} uses -- this class drives
- * the identical Settings form to move {@code analyticsSiteId}.
+ * <p>Every test owns its own weblog and touches no site-wide configuration.
  */
 @ResourceLock(value = PressroomIT.GLOBAL_CONFIG, mode = ResourceAccessMode.READ)
 class AnalyticsInjectionIT extends PressroomIT {
 
     @Test
-    void withNoSiteIdTheHomePageCarriesNoAnalyticsScriptAndStaysClean() {
+    void theHomePageCarriesNoAnalyticsScriptAndStaysClean() {
         loginAsAdmin();
         String handle = createWeblog();
         logout();
@@ -72,53 +64,28 @@ class AnalyticsInjectionIT extends PressroomIT {
         BrowserHealth.current().assertNoFailedRequests();
     }
 
-    /**
-     * Sets a valid UUID through the real Settings form, then proves the tag
-     * lands in the rendered head via a raw fetch -- see the class comment for
-     * why this is not a browser visit.
-     */
     @Test
-    void aValidSiteIdSetThroughSettingsIsInjectedIntoTheRenderedHead() {
+    void theRenderedHeadHasNoTrackerTag() {
         loginAsAdmin();
         String handle = createWeblog();
-        String siteId = UUID.randomUUID().toString();
-
-        setAnalyticsSiteId(handle, siteId);
         logout();
 
         String home = getAnonymously(baseUrl() + "/" + handle + "/");
-        assertTrue(home.contains("src=\"/analytics/script.js\""),
-                "the rendered head must carry the tracker script src, got: " + snippet(home));
-        assertTrue(home.contains("data-website-id=\"" + siteId + "\""),
-                "the rendered head must carry the configured website id, got: " + snippet(home));
-        assertTrue(home.contains("data-host-url=\"/analytics\""),
-                "the rendered head must point the tracker at the self-hosted analytics path, "
-                        + "got: " + snippet(home));
+        assertFalse(home.contains("data-website-id"),
+                "with analytics unconfigured the head must carry no tracker tag, got: " + snippet(home));
+        assertFalse(home.contains("/analytics/script.js"),
+                "with analytics unconfigured the head must not load the tracker, got: " + snippet(home));
     }
 
-    /**
-     * An invalid site id is rejected by the same form, and rejecting it must
-     * not overwrite whatever was stored before -- the field error is not
-     * enough on its own; a validator that reports an error but still saves
-     * would pass a check that only looked at {@code #errors}.
-     */
     @Test
-    void anInvalidSiteIdRendersAFieldErrorAndLeavesTheStoredValueUnchanged() {
+    void theSettingsPageHasNoAnalyticsFields() {
         loginAsAdmin();
         String handle = createWeblog();
-        String validSiteId = UUID.randomUUID().toString();
-
-        setAnalyticsSiteId(handle, validSiteId);
 
         openSettings(handle);
-        $("input[name='bean.analyticsSiteId']").setValue("not-a-uuid");
-        $("button[type='submit'].btn-primary").should(visible).click();
-
-        $("#errors").should(exist);
-        $("#errors").shouldHave(text("not a website ID"));
-
-        openSettings(handle);
-        $("input[name='bean.analyticsSiteId']").shouldHave(value(validSiteId));
+        $("input[name='bean.analyticsSiteId']").shouldNot(exist);
+        $("input[name='bean.analyticsShareUrl']").shouldNot(exist);
+        $("#settings-analytics").shouldNot(exist);
         logout();
     }
 
@@ -154,20 +121,6 @@ class AnalyticsInjectionIT extends PressroomIT {
     }
 
     // ---------------------------------------------------------------- helpers
-
-    /** Sets {@code analyticsSiteId} through the real Settings form and confirms it stuck. */
-    private void setAnalyticsSiteId(String handle, String siteId) {
-        openSettings(handle);
-        $("input[name='bean.analyticsSiteId']").setValue(siteId);
-        $("button[type='submit'].btn-primary").should(visible).click();
-        $("#messages").should(exist);
-        assertTrue($$("#errors").isEmpty(),
-                "saving a valid analytics site id must not report an error");
-        BrowserHealth.current().settle();
-
-        openSettings(handle);
-        $("input[name='bean.analyticsSiteId']").shouldHave(value(siteId));
-    }
 
     private void openSettings(String handle) {
         openPath("/pressroom-ui/authoring/weblogConfig.rol?weblog=" + handle);

@@ -52,12 +52,6 @@
 			<basic name="copyright">
 				<column name="copyright" insertable="true" updatable="true" unique="false"/>
 			</basic>
-            <basic name="analyticsSiteId">
-                <column name="analytics_site_id" insertable="true" updatable="true" unique="false"/>
-            </basic>
-            <basic name="analyticsShareUrl">
-                <column name="analytics_share_url" insertable="true" updatable="true" unique="false"/>
-            </basic>
             <basic name="newsletterListUuid">
                 <column name="newsletter_list_uuid" insertable="true" updatable="true" unique="false"/>
             </basic>

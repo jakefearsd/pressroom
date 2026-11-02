@@ -490,21 +490,17 @@ class WeblogConfigControllerTest extends EditorControllerTestSupport {
 
     @Test
     void eachRefusedSettingOnThisFormNamesItsOwnField() throws Exception {
-        // Five independent checks in one myValidate pass: every one of them
+        // Three independent checks in one myValidate pass: every one of them
         // has to carry its own control's id, or the marker points at the
         // wrong box on the one screen where that is easiest to get wrong.
         bean.setEntryDisplayCount(500);
         bean.setNewsletterListUuid("not-a-uuid");
-        bean.setAnalyticsSiteId("not-a-uuid");
-        bean.setAnalyticsShareUrl("ftp://example.com/share");
         bean.setCustomDomain("not a hostname");
 
         controller.save(request, model, bean);
 
         assertEquals(List.of("weblog_bean_entryDisplayCount",
                         "weblog_bean_newsletterListUuid",
-                        "weblog_bean_analyticsSiteId",
-                        "weblog_bean_analyticsShareUrl",
                         "weblog_bean_customDomain"),
                 invalidFields(model));
     }
@@ -901,20 +897,6 @@ class WeblogConfigControllerTest extends EditorControllerTestSupport {
     void charNewsletterListUuidNamesItsField() throws Exception {
         bean.setNewsletterListUuid("not-a-uuid");
         assertFieldRefused("weblog_bean_newsletterListUuid");
-    }
-
-    /** Characterisation: written against the pre-extraction controller and expected to pass unchanged. */
-    @Test
-    void charAnalyticsSiteIdNamesItsField() throws Exception {
-        bean.setAnalyticsSiteId("nope");
-        assertFieldRefused("weblog_bean_analyticsSiteId");
-    }
-
-    /** Characterisation: written against the pre-extraction controller and expected to pass unchanged. */
-    @Test
-    void charAnalyticsShareUrlNamesItsField() throws Exception {
-        bean.setAnalyticsShareUrl("ftp://x");
-        assertFieldRefused("weblog_bean_analyticsShareUrl");
     }
 
     /** Characterisation: written against the pre-extraction controller and expected to pass unchanged. */
