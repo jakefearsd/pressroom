@@ -3,8 +3,10 @@
 # No cron daemon in the app image this service now runs (it used to be the
 # postgres:16 base image, back when the scripts were bind-mounted in), so
 # this is the whole scheduler: wake up once an hour, and if it's BACKUP_HOUR
-# (UTC) and backup.sh hasn't already run today, run it. Equivalent to a
-# `0 <BACKUP_HOUR> * * *` crontab entry, without needing cron installed.
+# (UTC) and backup.sh hasn't already run today, run it, and after it
+# succeeds, umami-retention.sh (analytics older than UMAMI_RETENTION_DAYS).
+# Equivalent to a `0 <BACKUP_HOUR> * * *` crontab entry, without needing cron
+# installed.
 set -euo pipefail
 
 BACKUP_HOUR="${BACKUP_HOUR:-3}"
@@ -36,6 +38,13 @@ while true; do
         # of drift impossible to reintroduce.
         if "$(dirname "$0")/backup.sh"; then
             last_run_day="${current_day}"
+            # Analytics retention (umami-retention.sh), only after a backup
+            # that succeeded, so the dump just taken still holds every row it
+            # deletes. Its failure is logged and never stops this loop or
+            # re-runs the day's backup; tomorrow's run picks up the rest.
+            if ! "$(dirname "$0")/umami-retention.sh"; then
+                echo "[$(date -u +%FT%TZ)] Umami retention failed; will retry after tomorrow's backup." >&2
+            fi
         else
             echo "[$(date -u +%FT%TZ)] Backup failed; will retry at ${BACKUP_HOUR}:00 UTC tomorrow." >&2
         fi

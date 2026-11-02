@@ -356,6 +356,39 @@ event, 5 performance), `event_name`, `tag`, `utm_source`, `utm_medium`,
 or date value), e.g. the `dest` URL of a `cta-click`. Session replay
 (`session_replay`) stays empty unless a website enables `recorder_enabled`.
 
+## Retention (what the nightly job deletes)
+
+The privacy policy promises "Analytics: two years, then deleted".
+`deploy/analytics/umami-retention.sql` keeps that promise. The backup loop
+runs it once a day, after a successful backup, through
+`deploy/backup/umami-retention.sh`, as `POSTGRES_USER`. The window is
+`UMAMI_RETENTION_DAYS`, default 730 days; the default lives only in the SQL,
+and 0 switches the job off. It runs in the deploy stack, not in Pressroom,
+which has no dependency on Umami's database.
+
+Umami 3.3.0's schema has **no foreign keys** (Prisma relation mode), so
+nothing cascades. The SQL trims each table itself, children before parents,
+and only rows with `created_at` older than the cutoff:
+
+| Table | Deleted when |
+|---|---|
+| `event_data` | older than the cutoff (a `website_event`'s properties) |
+| `revenue` | older than the cutoff (a `website_event`'s revenue) |
+| `website_event` | older than the cutoff |
+| `heatmap_event`, `session_replay` | older than the cutoff (per-visit recordings; empty unless enabled) |
+| `session` | older than the cutoff **and** no `website_event` left for it, so an old session with a recent event stays |
+| `session_data`, `session_link` | older than the cutoff **and** their session is gone |
+
+It never touches `website`, `"user"`, `team`, `report` or the other settings
+tables, `session_replay_saved` (an operator's bookmark, holding no visit data)
+or `_prisma_migrations`. Each table is deleted in committed batches of 5000
+(`batch_size`), with `lock_timeout` 1 min and `statement_timeout` 15 min, so a
+large first run holds no long lock and cannot hang the backup loop. It logs
+one count per table and never a row. A table a later Umami drops is skipped.
+Pinned by `UmamiRetentionScriptTest` against the real schema, and by
+`BackupLoopTest` for the order (after a successful backup) and for a failing
+run leaving the loop running.
+
 ## Testing notes
 
 - `UmamiContainer.get()` is one instance per JVM; test classes share it, so use

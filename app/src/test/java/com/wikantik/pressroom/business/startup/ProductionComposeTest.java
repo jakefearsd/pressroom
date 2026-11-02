@@ -388,6 +388,38 @@ class ProductionComposeTest {
                 "deploy/.env.example must show the blank PRESSROOM_ANALYTICS_UMAMI_APIURL= off switch");
     }
 
+    /**
+     * The nightly Umami retention job ships the way the analytics SQL does:
+     * baked into the image (nothing is bind-mounted), the SQL beside the
+     * other analytics files at /app, where umami-retention.sh looks for it,
+     * and the script beside loop.sh, which calls it after the backup
+     * ({@link BackupLoopTest} runs that order). The window comes from .env
+     * with no default in the compose file, so the SQL's 730 is the one
+     * default.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void theUmamiRetentionJobIsBakedAndConfigured() throws IOException {
+        String dockerfile = Files.readString(Paths.get("../Dockerfile"), StandardCharsets.UTF_8);
+        assertTrue(dockerfile.contains("COPY deploy/analytics/umami-retention.sql /app/umami-retention.sql"),
+                "the root Dockerfile must bake the retention SQL at /app/umami-retention.sql");
+        assertTrue(dockerfile.contains("COPY deploy/backup/umami-retention.sh /app/backup/umami-retention.sh"),
+                "the root Dockerfile must bake the retention script beside loop.sh");
+        assertTrue(Pattern.compile("chmod 755[^\\n]*/app/backup/umami-retention\\.sh").matcher(dockerfile).find(),
+                "the retention script must be executable");
+        String script = Files.readString(Paths.get("../deploy/backup/umami-retention.sh"), StandardCharsets.UTF_8);
+        assertTrue(script.contains("umami-retention.sql"), "umami-retention.sh must apply the retention SQL");
+        String loop = Files.readString(Paths.get("../deploy/backup/loop.sh"), StandardCharsets.UTF_8);
+        assertTrue(loop.contains("\"$(dirname \"$0\")/umami-retention.sh\""),
+                "loop.sh must call the retention script relative to itself, as it does backup.sh");
+
+        Map<String, Object> backup = (Map<String, Object>) service("backup").get("environment");
+        assertEquals("${UMAMI_RETENTION_DAYS:-}", backup.get("UMAMI_RETENTION_DAYS"));
+        String envExample = Files.readString(Paths.get("../deploy/.env.example"), StandardCharsets.UTF_8);
+        assertTrue(Pattern.compile("(?m)^#?UMAMI_RETENTION_DAYS=730$").matcher(envExample).find(),
+                "deploy/.env.example must document UMAMI_RETENTION_DAYS and its default");
+    }
+
     /** The account step's SQL must be in the image, where analytics-views.sh looks for it. */
     @Test
     void theAccountSqlIsBakedBesideTheViews() throws IOException {

@@ -617,6 +617,10 @@ Traffic pages need neither.
   popularity](#front-page-popularity)).
 - **The tracker.** Registered blogs carry the tag automatically, served from
   the blog's own origin (next section).
+- **Retention.** Analytics data older than `UMAMI_RETENTION_DAYS` (default
+  730 days, two years, as the privacy policy promises) is deleted nightly,
+  straight after the backup (see [Backup and restore](#backup-and-restore)).
+  `UMAMI_RETENTION_DAYS=0` keeps everything.
 
 ### Why the tracker is served from your blog's own domain
 
@@ -999,6 +1003,20 @@ orphaned `.tmp` file instead, which rotation also cleans up once it ages
 past the retention window. Backups land in the `pressroom-backups` named
 volume.
 
+After a cycle that succeeded, the loop runs `/app/backup/umami-retention.sh`
+(`deploy/backup/umami-retention.sh`, applying the baked-in
+`deploy/analytics/umami-retention.sql`): it deletes Umami analytics data older
+than `UMAMI_RETENTION_DAYS` (default 730, two years) from Umami's database, so
+the dump taken minutes earlier still holds every row it removes. It deletes in
+committed batches, logs one row count per table and never a row, and
+`UMAMI_RETENTION_DAYS=0` switches it off. A failed run is logged ("Umami
+retention failed") and the loop carries on; the next night's run deletes what
+it missed. A failed backup skips it for that day. Run one pass by hand:
+
+```bash
+docker compose -f docker-compose.prod.yml exec backup /app/backup/umami-retention.sh
+```
+
 These dumps contain the full database, including user password hashes —
 treat them as sensitive. Copy nightly dumps off-host regularly (e.g. an
 `rclone`/`rsync` cron job to remote storage) and restrict filesystem access
@@ -1228,7 +1246,13 @@ settings, so read this before you deploy:
    n blogs registered (8 of 8 on a host with seven blogs: seven blogs plus the
    site pages). Press **Sync now**
    if it does not, and read the app log for the reason.
-8. **The privacy page.** Analytics is now on for every blog, so the published
+8. **Analytics retention starts.** From 0.7.0 the backup service deletes Umami
+   analytics data older than `UMAMI_RETENTION_DAYS` (default 730, two years)
+   every night, after the backup. Set `UMAMI_RETENTION_DAYS=0` in `.env`
+   before deploying if you want to keep everything. On a host with years of
+   history the first night's run deletes the most; it works in committed
+   batches and reports how many rows it removed from each table.
+9. **The privacy page.** Analytics is now on for every blog, so the published
    privacy policy's analytics paragraph needs the new wording
    (`docs/legal/blog-privacy-policy.md` holds a draft awaiting the owner's
    approval).

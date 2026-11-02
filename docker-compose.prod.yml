@@ -328,6 +328,10 @@ services:
       LISTMONK_DB: ${LISTMONK_DB:-listmonk}
       BACKUP_HOUR: ${BACKUP_HOUR:-3}
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      # Umami analytics older than this many days are deleted after each
+      # night's backup (deploy/backup/umami-retention.sh); 0 = never. Unset
+      # means the SQL's own default, 730 (two years).
+      UMAMI_RETENTION_DAYS: ${UMAMI_RETENTION_DAYS:-}
     volumes:
       - pressroom-backups:/backups
       - pressroom-mediafiles:/data/mediafiles:ro
