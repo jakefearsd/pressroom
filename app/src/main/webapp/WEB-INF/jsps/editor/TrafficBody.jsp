@@ -41,7 +41,7 @@
 
 <c:if test="${not empty traffic.noticeKey}">
     <p class="traffic-notice traffic-notice-${fn:substringAfter(traffic.noticeKey, 'traffic.state.')}" role="status">
-        <spring:message code="${traffic.noticeKey}" arguments="${[fn:escapeXml(traffic.ageMinutes)]}"/>
+        <spring:message code="${traffic.noticeKey}" arguments="${[traffic.ageMinutes]}"/>
     </p>
 </c:if>
 
@@ -149,7 +149,7 @@
         </tr>
         <c:set var="lastGroup" value=""/>
         <c:forEach items="${traffic.rows}" var="row">
-        <c:if test="${row.group ne lastGroup}">
+        <c:if test="${not empty row.group and row.group ne lastGroup}">
         <tr class="traffic-group"><th scope="rowgroup" colspan="2"><spring:message code="traffic.group.${row.group}"/></th></tr>
         <c:set var="lastGroup" value="${row.group}"/>
         </c:if>

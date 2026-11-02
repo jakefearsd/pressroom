@@ -133,6 +133,27 @@ class TrafficJspTest {
     }
 
     @Test
+    void eventsAreCountedInVisitorsAsUmamiReportsThem() throws IOException {
+        assertEquals("Visitors", bundle().getProperty("traffic.column.value.events"));
+    }
+
+    @Test
+    void aGroupHeaderIsOnlyDrawnForARowThatHasAGroup() throws IOException {
+        String src = read(BODY);
+        int at = src.indexOf("code=\"traffic.group.${row.group}\"");
+        String before = src.substring(0, at);
+        String guard = before.substring(before.lastIndexOf("<c:if"));
+        assertTrue(guard.contains("not empty row.group"), guard);
+    }
+
+    @Test
+    void theStaleAgeAgreesWithItsNumber() throws IOException {
+        String msg = bundle().getProperty("traffic.state.stale");
+        assertTrue(java.text.MessageFormat.format(msg, 1L).contains("1 minute ago"), msg);
+        assertTrue(java.text.MessageFormat.format(msg, 30L).contains("30 minutes ago"), msg);
+    }
+
+    @Test
     void theFreshnessLineGivesTheTimeAndTheRefreshInterval() throws IOException {
         String line = bundle().getProperty("traffic.asOf");
         assertTrue(line.contains("{0}") && line.contains("15 minutes"), line);

@@ -205,6 +205,13 @@ class BaseControllerTest {
     }
 
     @Test
+    void switcherActionKeepsTheTrafficTab() {
+        assertTrue(BaseController.SWITCHER_ACTIONS.contains(
+                new com.wikantik.pressroom.ui.controllers.editor.TrafficController().getActionName()),
+                "Traffic is one of the rail's tabs");
+    }
+
+    @Test
     void switcherActionFallsBackToEntriesOffTheRail() throws WebloggerException {
         controller.weblogger = MockWeblogger.create().weblogger();
         controller.setActionName("stylesheetEdit");

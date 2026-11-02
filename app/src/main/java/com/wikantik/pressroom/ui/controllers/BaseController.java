@@ -588,7 +588,7 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
      */
     protected static final Set<String> SWITCHER_ACTIONS = Set.of(
             "entries", "trash", "submissions", "comments", "categories", "pages",
-            "mediaFileView", "themeEdit", "weblogConfig", "members");
+            "mediaFileView", "themeEdit", "weblogConfig", "members", "traffic");
 
     /**
      * Populate common model attributes used across all pages:

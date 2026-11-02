@@ -168,7 +168,7 @@ public record TrafficView(String period, List<String> periods, String tab, List<
                           Locale locale, ZoneId zone, Instant now) {
         TrafficState state = traffic.state();
         Summary current = traffic.current();
-        boolean showBody = current != null;
+        boolean showBody = current != null && state != TrafficState.NO_DATA;
         Instant asOf = traffic.asOf();
         long age = state == TrafficState.STALE && asOf != null
                 ? Math.max(0, Duration.between(asOf, now).toMinutes()) : 0;

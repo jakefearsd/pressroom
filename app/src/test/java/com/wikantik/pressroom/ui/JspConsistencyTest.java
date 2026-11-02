@@ -1328,7 +1328,7 @@ class JspConsistencyTest {
             // whole units, fixed class words ("up", "dn" or empty), a message key
             // from TrafficView.noticeKey, and an entry title that is stored
             // escaped (EntryFieldRules.escapeTitle), so it goes out bare.
-            "bar.x", "bar.y", "bar.width", "bar.height",
+            "traffic.ageMinutes", "bar.x", "bar.y", "bar.width", "bar.height",
             "bar.x + bar.width / 2", "traffic.chart.width", "traffic.chart.height",
             "traffic.chart.height - 6", "traffic.chart.plotHeight",
             "line.views", "line.visitors", "line.trendClass", "tile.trend",

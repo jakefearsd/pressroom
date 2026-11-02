@@ -358,6 +358,17 @@ class TrafficControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
+    void noDataWithAZeroSummaryStillShowsNoNumbers() {
+        serve("30d", new BlogTraffic(TrafficState.NO_DATA, AS_OF, new Summary(0, 0, 0, 0, 0),
+                new Summary(0, 0, 0, 0, 0), List.of(), List.of(), breakdowns(), null));
+        TrafficView v = view("30d", "posts");
+        assertEquals("traffic.state.noData", v.noticeKey());
+        assertTrue(v.tiles().isEmpty());
+        assertFalse(v.showBody());
+        assertTrue(v.chart().bars().isEmpty());
+    }
+
+    @Test
     void aGenuineZeroStillShowsZeroTiles() {
         serve("30d", data(TrafficState.OK, new Summary(0, 0, 0, 0, 0), new Summary(0, 0, 0, 0, 0),
                 List.of(), breakdowns()));
