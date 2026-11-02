@@ -34,6 +34,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -47,6 +48,8 @@ class RenderingNeverCallsAnalyticsServiceTest {
 
     private static final String PAGE_SERVLET = "/pressroom-ui/rendering/page";
     private static final Duration NORMAL = Duration.ofSeconds(5);
+    /** A render that waits on the hanging service is abandoned (its thread interrupted) after this. */
+    private static final Duration HARD_LIMIT = Duration.ofSeconds(10);
 
     private AnalyticsTier tier;
     private User user;
@@ -97,8 +100,10 @@ class RenderingNeverCallsAnalyticsServiceTest {
     void aBlogPageRendersWithoutAskingTheServiceEvenWhileItHangs() throws Exception {
         try (StubAnalytics _ = StubAnalytics.installing(tier.manager)) {
             long start = System.nanoTime();
-            MockHttpServletResponse response = RenderingTestSupport.execute(RenderingTestSupport.pageServlet(),
-                    RenderingTestSupport.anonymousGet(PAGE_SERVLET, "/" + blog.getHandle()));
+            MockHttpServletResponse response = assertTimeoutPreemptively(HARD_LIMIT,
+                    () -> RenderingTestSupport.execute(RenderingTestSupport.pageServlet(),
+                            RenderingTestSupport.anonymousGet(PAGE_SERVLET, "/" + blog.getHandle())),
+                    "the blog page render waited on the hanging Umami service");
             Duration took = Duration.ofNanos(System.nanoTime() - start);
 
             assertEquals(200, response.getStatus());
@@ -120,7 +125,9 @@ class RenderingNeverCallsAnalyticsServiceTest {
             request.setDispatcherType(DispatcherType.FORWARD);
 
             long start = System.nanoTime();
-            MockHttpServletResponse response = RenderingTestSupport.execute(RenderingTestSupport.pageServlet(), request);
+            MockHttpServletResponse response = assertTimeoutPreemptively(HARD_LIMIT,
+                    () -> RenderingTestSupport.execute(RenderingTestSupport.pageServlet(), request),
+                    "the front page render waited on the hanging Umami service");
             Duration took = Duration.ofNanos(System.nanoTime() - start);
             TestUtils.endSession(true);
 
