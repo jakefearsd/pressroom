@@ -34,6 +34,8 @@ import com.wikantik.pressroom.ui.core.PressroomContext;
 import com.wikantik.pressroom.ui.rendering.servlets.RenderingTestSupport;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockServletContext;
 
@@ -56,6 +58,19 @@ import static org.mockito.Mockito.when;
  * engine would poison every rendering test that runs after it.
  */
 class PressroomVelocityTest {
+
+    /** Whatever PressroomContext held before this test; put back afterwards. */
+    private ServletContext previousContext;
+
+    @BeforeEach
+    void rememberTheHeldContext() {
+        previousContext = PressroomContext.getServletContext();
+    }
+
+    @AfterEach
+    void restoreTheHeldContext() {
+        PressroomContext.hold(previousContext);
+    }
 
     /**
      * The end-to-end contract: an engine built by {@code PressroomVelocity} lets
@@ -133,8 +148,11 @@ class PressroomVelocityTest {
      * A ServletContext over src/main/webapp, held in PressroomContext too because
      * the (unchanged) WebappResourceLoader still reads it from there during
      * engine init -- the macro libraries in velocity.properties load through
-     * it. Same root the rendering suite installs, so holding it is harmless
-     * whichever runs first.
+     * it. Always held, never only-if-empty: other tests in this JVM (the boot
+     * and install tests) leave PressroomContext pointing at an empty context,
+     * and an engine built over that cannot find weblog.vm. That passed or
+     * failed by test order -- it failed the 0.7.0 release run in CI. The
+     * previous holder is restored after each test.
      */
     private static ServletContext webappContext() {
         Path candidate = Path.of("src", "main", "webapp");
@@ -142,9 +160,7 @@ class PressroomVelocityTest {
             candidate = Path.of("app", "src", "main", "webapp");
         }
         MockServletContext context = new MockServletContext(candidate.toAbsolutePath().toUri().toString());
-        if (PressroomContext.getServletContext() == null) {
-            PressroomContext.hold(context);
-        }
+        PressroomContext.hold(context);
         return context;
     }
 }
