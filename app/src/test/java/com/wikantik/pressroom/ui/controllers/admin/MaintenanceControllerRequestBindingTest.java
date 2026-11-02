@@ -156,6 +156,24 @@ class MaintenanceControllerRequestBindingTest {
                 .contains(com.wikantik.pressroom.pojos.GlobalPermission.ADMIN));
     }
 
+    @Test
+    void syncNowIsPostOnlyAdminOnlyAndDoesNotWait() throws Exception {
+        mockMvc.perform(get("/pressroom-ui/admin/maintenance!syncAnalytics.rol")
+                        .requestAttr("authenticatedUser", new User()))
+                .andExpect(status().isMethodNotAllowed());
+        verify(weblogger.analyticsManager(), never()).requestSync();
+
+        mockMvc.perform(post("/pressroom-ui/admin/maintenance!syncAnalytics.rol")
+                        .requestAttr("authenticatedUser", new User()))
+                .andExpect(status().isOk());
+        verify(weblogger.analyticsManager()).requestSync();
+        verify(weblogger.analyticsManager(), never()).sync();
+        verify(weblogger.analyticsManager(), never()).reconcile();
+
+        assertTrue(new MaintenanceController().requiredGlobalPermissionActions()
+                .contains(com.wikantik.pressroom.pojos.GlobalPermission.ADMIN));
+    }
+
     @SuppressWarnings("unchecked")
     private static void assertNoSuchWeblogErrorInModel(MvcResult result) {
         var modelMap = result.getModelAndView().getModel();

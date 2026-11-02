@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.MaintenanceService;
+import com.wikantik.pressroom.business.analytics.AnalyticsStatus;
 import com.wikantik.pressroom.business.discovery.DiscoveryStatus;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -117,6 +118,7 @@ public class MaintenanceController extends BaseController {
         }
         model.addAttribute("selectedWeblog", weblog);
         addDiscoveryStatus(model);
+        addAnalyticsStatus(model);
 
         return ".Maintenance";
     }
@@ -159,6 +161,39 @@ public class MaintenanceController extends BaseController {
         model.addAttribute("discoveryLastSuccess",
                 status.lastSuccess() == null ? null : Date.from(status.lastSuccess()));
         return status;
+    }
+
+    /** One blog that failed to register, with its time as a {@code Date} for {@code rc:date}. */
+    public record AnalyticsFailureRow(String handle, String error, Date at) {
+    }
+
+    /**
+     * Asks for an analytics sync and returns at once. The sync runs on the
+     * manager's background executor; this page never waits for it or calls
+     * Umami.
+     */
+    @PostMapping("/maintenance!syncAnalytics.rol")
+    public String syncAnalytics(HttpServletRequest request, Model model) {
+        populateCommonModel(request, model);
+        model.addAttribute("weblogs", loadWeblogs());
+        model.addAttribute("selectedWeblog", null);
+
+        weblogger.getAnalyticsManager().requestSync();
+        addAnalyticsStatus(model);
+        addMessage(model, "maintenance.analytics.syncRequested", request);
+        return ".Maintenance";
+    }
+
+    /** Registration and read status from the manager's memory; no Umami call. */
+    private void addAnalyticsStatus(Model model) {
+        AnalyticsStatus status = weblogger.getAnalyticsManager().getStatus();
+        model.addAttribute("analyticsStatus", status);
+        model.addAttribute("analyticsLastRead",
+                status.lastRead() == null ? null : Date.from(status.lastRead()));
+        model.addAttribute("analyticsFailures", status.failures().stream()
+                .map(f -> new AnalyticsFailureRow(f.handle(), f.error(),
+                        f.at() == null ? null : Date.from(f.at())))
+                .toList());
     }
 
     @PostMapping("/maintenance!flushCache.rol")

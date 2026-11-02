@@ -24,6 +24,8 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.MockWeblogger;
+import com.wikantik.pressroom.business.analytics.AnalyticsStatus;
+import com.wikantik.pressroom.business.analytics.AnalyticsStatus.SiteFailure;
 import com.wikantik.pressroom.business.discovery.DiscoveryStatus;
 import com.wikantik.pressroom.business.discovery.DiscoveryStatus.State;
 import com.wikantik.pressroom.pojos.GlobalPermission;
@@ -36,6 +38,7 @@ import org.springframework.ui.ExtendedModelMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -395,6 +398,82 @@ class MaintenanceControllerTest {
         assertTrue(ControllerTestFixture.messages(model).contains("maintenance.discovery.state.NEVER"),
                 String.valueOf(ControllerTestFixture.messages(model)));
         assertTrue(ControllerTestFixture.errors(model).isEmpty(), String.valueOf(ControllerTestFixture.errors(model)));
+    }
+
+    // --- analytics ---
+
+    private static final Instant READ_AT = Instant.parse("2026-11-02T08:00:00Z");
+
+    @Test
+    void showsRegisteredCountAndNamesFailures() {
+        when(weblogger.analyticsManager().getStatus()).thenReturn(new AnalyticsStatus(true, true, 2, 3,
+                List.of(new SiteFailure("bad<b>", "HTTP 500 <script>", READ_AT)), READ_AT, null));
+
+        controller.execute(request(), model, null);
+
+        AnalyticsStatus status = (AnalyticsStatus) model.getAttribute("analyticsStatus");
+        assertEquals(2, status.registered());
+        assertEquals(3, status.total());
+        @SuppressWarnings("unchecked")
+        List<MaintenanceController.AnalyticsFailureRow> rows =
+                (List<MaintenanceController.AnalyticsFailureRow>) model.getAttribute("analyticsFailures");
+        assertEquals(1, rows.size());
+        assertEquals("bad<b>", rows.get(0).handle());
+        assertEquals("HTTP 500 <script>", rows.get(0).error());
+        assertEquals(java.util.Date.from(READ_AT), rows.get(0).at());
+    }
+
+    @Test
+    void showsLastReadAndReachability() {
+        when(weblogger.analyticsManager().getStatus()).thenReturn(
+                new AnalyticsStatus(true, false, 3, 3, List.of(), READ_AT, "Umami unreachable"));
+
+        controller.execute(request(), model, null);
+
+        assertEquals(java.util.Date.from(READ_AT), model.getAttribute("analyticsLastRead"));
+        AnalyticsStatus status = (AnalyticsStatus) model.getAttribute("analyticsStatus");
+        assertEquals(Boolean.FALSE, status.reachable());
+        assertEquals("Umami unreachable", status.lastReadError());
+    }
+
+    @Test
+    void notConfiguredExplainsItself() {
+        controller.execute(request(), model, null);
+
+        AnalyticsStatus status = (AnalyticsStatus) model.getAttribute("analyticsStatus");
+        assertFalse(status.configured());
+        assertNull(model.getAttribute("analyticsLastRead"));
+    }
+
+    @Test
+    void pageNeverTouchesUmamiOnlyReadsMemoryStatus() {
+        when(weblogger.analyticsManager().getStatus()).thenReturn(
+                new AnalyticsStatus(true, true, 1, 1, List.of(), READ_AT, null));
+
+        controller.execute(request(), model, null);
+        controller.syncAnalytics(request(), model);
+
+        // the manager is the only door to the service: status read and the
+        // sync request are the whole conversation; no sync(), reconcile()
+        // or traffic read ran on this thread.
+        verify(weblogger.analyticsManager(), org.mockito.Mockito.atLeastOnce()).getStatus();
+        verify(weblogger.analyticsManager()).requestSync();
+        org.mockito.Mockito.verifyNoMoreInteractions(weblogger.analyticsManager());
+    }
+
+    @Test
+    void syncNowRequestsAndReportsAtOnce() {
+        when(weblogger.analyticsManager().getStatus()).thenReturn(
+                new AnalyticsStatus(true, true, 1, 1, List.of(), READ_AT, null));
+
+        String view = controller.syncAnalytics(request(), model);
+
+        assertEquals(".Maintenance", view);
+        verify(weblogger.analyticsManager()).requestSync();
+        assertTrue(ControllerTestFixture.messages(model).contains("maintenance.analytics.syncRequested"),
+                String.valueOf(ControllerTestFixture.messages(model)));
+        assertTrue(ControllerTestFixture.errors(model).isEmpty());
+        assertNotNull(model.getAttribute("analyticsStatus"));
     }
 
     // --- helpers ---
