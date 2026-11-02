@@ -68,7 +68,40 @@ already allows the fetch.
   invited to double-mail.
 
 ## Analytics
-Per-weblog Umami tracking plus a read-only Grafana contract over two databases.
+Automatic per-weblog Umami tracking, a local cache of its numbers, and a
+read-only Grafana contract over two databases. Spec:
+`docs/superpowers/specs/2026-11-01-analytics-without-admin-steps-design.md`.
+
+- **The seam is `AnalyticsService`** (`business/analytics`): `isConfigured`,
+  `ensureSite`, `read` and `ping`. `UmamiAnalyticsService` (over `UmamiClient`)
+  is the only implementation, so Umami's location is configuration only
+  (`analytics.umami.apiUrl`, `.username`, `.password`, `.dashboardUrl`; env
+  `PRESSROOM_ANALYTICS_UMAMI_*`). A blank `apiUrl` makes `isConfigured` false
+  and everything else inert: no tracker, no calls, "not configured" pages.
+  Nothing outside the manager and the sync task depends on Umami's wire format.
+- **Three channels, kept apart.** (1) *Reconcile*: `AnalyticsManager` registers
+  every weblog (inactive and the site space too) through `ensureSite`, website
+  ID = weblog ID. It runs at startup (backfill) and after a blog save only when
+  the blog is unregistered or its name or domain changed; deleting a blog never
+  touches Umami. (2) *Browser collection*: the tracker tag
+  (`#showAnalyticsTrackingCode`) posts to Umami through Caddy's two allowed
+  `/analytics/` paths; Pressroom is not in that path. (3) *The batch read*:
+  `AnalyticsSyncTask` (`tasks.AnalyticsSyncTask.interval`, 15 min; also
+  Maintenance "Sync now") calls `read` per site and period and replaces the
+  local tables `analytics_site`, `analytics_summary`, `analytics_path_views`
+  and `analytics_breakdown` (V043). No request path calls Umami; admin pages,
+  the entries-list Views (30d) column and discovery read the cache only.
+- **Snapshots are selected, never summed.** Each period (24h, 7d, 30d, 90d,
+  plus the discovery window) is its own snapshot, replaced whole. Visitors
+  are unique counts per period, so adding two periods or two days double
+  counts them; a view that needs another range reads that period's snapshot.
+  Day boundaries follow the site space's time zone. A failed read keeps the old
+  snapshot and marks it stale (shown, not hidden).
+- **Cache expiry rides `weblog.lastModified`.** Whether a blog carries the
+  tracker tag is part of its rendered pages, so each registration-state change
+  advances `lastModified` (`JPAAnalyticsManagerImpl`; the new answer is
+  published to memory first, then `lastModified` is bumped), the one hook that
+  expires `WeblogPageCache`/`WeblogFeedCache`.
 
 - **Umami's HTTP API, as the pinned 3.3.0 image really behaves, is in
   [`umami-api.md`](umami-api.md)**: the dedicated `pressroom` account
@@ -77,10 +110,10 @@ Per-weblog Umami tracking plus a read-only Grafana contract over two databases.
   stores. `UmamiApiContractTest` pins every claim there against the real image
   (`UmamiContainer`); an image bump that breaks it means re-checking that doc.
 
-- **`analytics_traffic` has a second reader: the front page.** `UmamiTrafficSource`
-  (see `discovery.md`) queries it read-only to score posts, so changing that
-  view's columns or semantics changes `/` and the "more from the site" block as
-  well as the Grafana panels. Update both in one change.
+- **`analytics_traffic` is for Grafana only now.** The front page no longer
+  reads it: `CachedTrafficSource` (see `discovery.md`) scores posts from the
+  local cache (`UmamiTrafficSource` and `analytics.jdbc.*` are gone), so the
+  view can change without touching `/`.
 
 - **Structured injection is the only analytics path; no free-text fallback
   (W2).** The per-blog `analyticsSiteId` and `analyticsShareUrl` settings are

@@ -198,12 +198,12 @@ reachable from the public internet to complete the ACME HTTP-01 challenge;
 if DNS isn't live yet, certificate issuance fails and Caddy retries with
 backoff until it is.
 
-If you want the analytics dashboard (see [Analytics](#analytics)) or the
-newsletter (see [Newsletter](#newsletter)), point a second and third name —
-`analytics.example.com` and `newsletter.example.com`, say — at the same IP and
-set `UMAMI_DOMAIN` / `LISTMONK_DOMAIN` to them. Caddy obtains a certificate for it the same way. Leave
-it unset and the dashboard is simply unreachable; the blog still works and
-still collects nothing.
+If you want the newsletter (see [Newsletter](#newsletter)), point a second
+name, `newsletter.example.com` say, at the same IP and set `LISTMONK_DOMAIN`
+to it. Caddy obtains a certificate for it the same way. Leave it unset and
+the newsletter admin is simply unreachable. The analytics dashboard needs no
+public name: it is reached through zero-trust (see
+[Analytics](#reaching-the-dashboard)).
 
 If you don't have a domain (LAN deployment, quick local test of the
 production stack), set `SITE_DOMAIN=:80` in `.env` instead — Caddy then
@@ -264,11 +264,16 @@ it reads `CF-Connecting-IP` first, which Caddy passes through.
 
 ## First run
 
-With `.env` filled in:
+With `.env` filled in, deploy with the script, not a bare `up -d`:
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d
+./deploy.sh
 ```
+
+(`deploy.sh` generates `UMAMI_PRESSROOM_PASSWORD`, the password of Pressroom's
+own Umami account, the first time it finds none in `.env`. A bare
+`docker compose up -d` skips that, and Pressroom then has no password for its
+Umami account until the next `./deploy.sh`.)
 
 There is no separate migration step and no ordering to get right: compose
 runs the one-shot `provision` service first (creates the `umami`/`listmonk`
@@ -471,8 +476,8 @@ Five steps, in order:
 block still parses and Caddy still starts — `SITE_DOMAIN` and everything else
 keep working exactly as before. Only `SITE_DOMAIN`'s own certificate is real
 in that configuration; the placeholder wildcard simply fails to obtain a
-certificate in the background, forever, the same harmless way `UMAMI_DOMAIN`/
-`LISTMONK_DOMAIN` already do when left at their own defaults (see
+certificate in the background, forever, the same harmless way `LISTMONK_DOMAIN`
+already does when left at their own defaults (see
 [DNS](#dns)).
 
 **Not verified by this repo's automated tests**: actually obtaining a
@@ -578,120 +583,126 @@ docker compose -f docker-compose.prod.yml logs --no-color app > app-$(date +%F-%
 
 ## Analytics
 
-The stack ships [Umami](https://umami.is): self-hosted, cookie-free page
-analytics. It stores nothing on the reader's device, which is why no consent
-banner is needed and why it is worth having at all.
+The stack ships [Umami](https://umami.is): self-hosted page analytics that
+sets no cookie and writes nothing to the reader's device. Analytics is
+automatic. There is nothing to switch on per blog and no website to create in
+Umami: Pressroom registers every blog itself, in the background.
+
+What an operator does: deploy with `./deploy.sh` (it generates the one
+password this needs), and, when you want to look at Umami's own dashboard,
+set up [zero-trust access to it](#reaching-the-dashboard). Pressroom's own
+Traffic pages need neither.
+
+### How it works
+
+- **Registration.** Every weblog, inactive ones and the site space included,
+  is registered with Umami through its HTTP API, as a dedicated non-admin
+  account named `pressroom`. The blog's website ID in Umami is its weblog ID.
+  The password is `UMAMI_PRESSROOM_PASSWORD` in `.env`: `deploy.sh` generates
+  it the first time it finds none, and the `analytics-views` one-shot creates
+  the account. Startup registers every blog; afterwards a blog save syncs
+  only when the blog is unregistered or its name or domain changed. Deleting
+  a blog never touches Umami. Each change of registration state advances the
+  blog's last-modified time, so cached pages re-render with the tracker tag.
+- **Reading traffic.** Every 15 minutes (`tasks.AnalyticsSyncTask.interval`)
+  Pressroom batch-reads Umami into its own tables, for 24 hours, 7, 30 and 90
+  days and the front-page discovery window. Day boundaries follow the site
+  space's time zone. A failed read keeps the previous snapshot and marks it
+  stale.
+- **Where the numbers show.** Blog, Traffic; Global, Traffic; a Views (30d)
+  column on the entries list; and Maintenance, Analytics (with **Sync now**).
+  They all read the local copy; no page request ever calls Umami, so a slow
+  or stopped Umami costs nothing but fresh numbers. The front page's
+  popularity ranking reads the same copy (see [Front page
+  popularity](#front-page-popularity)).
+- **The tracker.** Registered blogs carry the tag automatically, served from
+  the blog's own origin (next section).
 
 ### Why the tracker is served from your blog's own domain
 
 Every bundled theme sends a Content-Security-Policy of `default-src 'none'`
 with `script-src 'self'` and `connect-src 'self'`. A tracker loaded from
 another hostname is therefore blocked by the reader's browser, and its beacon
-never sends — you would see an empty dashboard and no error anywhere.
+never sends: you would see an empty dashboard and no error anywhere.
 
-So Caddy serves the two pieces the policy governs from the blog's own origin:
+So Caddy serves the two pieces the policy governs from the blog's own origin,
+and nothing else:
 
 | URL | What it is |
 | --- | --- |
 | `https://<your blog>/analytics/script.js` | the tracker |
-| `https://<your blog>/analytics/api/send` | where it reports |
+| `POST https://<your blog>/analytics/api/send` | where it reports |
 
-The dashboard is a separate hostname (`UMAMI_DOMAIN`), because Umami's UI
-assumes it lives at a domain root — its `BASE_PATH` is set when the image is
-built, and the prebuilt image does not carry one. No theme CSP applies to the
-dashboard, so this costs nothing.
+Every other path under `/analytics/` answers 404 from Caddy, so Umami's login
+page and API are not public. The tag Pressroom emits is
+`<script defer src="/analytics/script.js" data-website-id="…" data-host-url="…"
+data-domains="<the blog's real hostname>" data-performance="true">`; it is
+built from the registered ID and two startup properties
+(`analytics.umami.basePath`, default `/analytics`, and
+`analytics.umami.scriptName`, default `script.js`), never from anything an
+author types. If you set `UMAMI_SCRIPT_NAME` to something other than
+`script.js` (the cheapest defence against content blockers that match the
+default path), also set `PRESSROOM_ANALYTICS_UMAMI_SCRIPTNAME` to the same
+value in `.env`, or the tag points at a script Caddy never serves. Session
+replay and heatmaps are off; the Caddyfile has commented-out lines for them.
 
-### Turning it on
+### Reaching the dashboard
 
-1. Set `UMAMI_APP_SECRET` (`openssl rand -hex 32`) and, if you want the
-   dashboard, `UMAMI_DOMAIN` in `.env`.
-2. Run `./deploy.sh` (or `docker compose -f docker-compose.prod.yml up -d`).
-   The `provision` service creates the `umami` database inside the existing
-   Postgres instance if it is missing, and the nightly backup starts dumping
-   it alongside the blog's own.
-3. Open the dashboard and sign in with `admin` / `umami`. **Change that
-   password immediately** — it is the documented default and the dashboard is
-   on the public internet.
-4. Add a website in Umami for each weblog and copy its website ID.
+Umami's own dashboard (the same data, sliced Umami's way) is not public. Caddy
+serves it on a fixed `:8081` site, which the stack publishes on
+`${UMAMI_CONSOLE_BIND:-127.0.0.1}`: loopback by default, so on the host
+itself it is at `http://localhost:8081`. To reach it from elsewhere through
+zero-trust:
 
-### Pointing a weblog at it
+1. Set `UMAMI_CONSOLE_BIND` in `.env` to the host's LAN address (never
+   `0.0.0.0` on a host with a public interface).
+2. Add a Cloudflare Access hostname (or your zero-trust equivalent) whose
+   connector points at `http://<LAN address>:8081`.
+3. Set `PRESSROOM_ANALYTICS_UMAMI_DASHBOARDURL` to that hostname, so the
+   Traffic pages show an "Open in Umami" link. Pressroom never calls it.
+4. Umami's first login is `admin` / `umami`. **Change that password before
+   you expose the dashboard.**
 
-Analytics are per-weblog and opt-in, through a field dedicated to it —
-**not** the free-text "Analytics tracking code" textarea that has always
-lived on the same Settings page. That textarea only renders when *Server
-Administration → Configuration → Allow analytics code override* is on **and**
-`weblogAdminsUntrusted` is off — and this fork keeps `weblogAdminsUntrusted`
-on everywhere (`docs/dev/configuration.md`), so the textarea has never actually been
-reachable. If an earlier revision of this document told you to paste a
-`<script>` snippet into it, that procedure never worked; disregard it.
+Move the host port with `UMAMI_CONSOLE_PORT` if something already uses 8081.
 
-The real steps, once [Turning it on](#turning-it-on) above has a website
-registered in Umami:
+### Switching analytics off
 
-1. In Umami, open the website and copy its **Website ID** — the bare UUID
-   Umami shows under the website's settings, not the `<script>` snippet
-   Umami also offers on the same screen (that snippet is the impossible
-   textarea path above; ignore it).
-2. In Pressroom, as the weblog's owner or a site admin: *Settings → Weblog
-   Settings → Analytics website ID*, paste the UUID, save. Pressroom validates
-   it as a UUID and rejects anything else.
-3. Optionally also set *Analytics share URL* to Umami's public share link
-   for the site. This is display-only — a convenience link shown back to the
-   editor on the Settings page — and plays no part in tracking.
+Set `PRESSROOM_ANALYTICS_UMAMI_APIURL` to a **blank** value in `.env`. The
+compose file reads it as `${PRESSROOM_ANALYTICS_UMAMI_APIURL-http://umami:3000}`,
+so unset means "the bundled Umami" and blank means "off": no tracker on any
+blog, no calls to Umami, and the Traffic pages say analytics is not
+configured. (Blanking `UMAMI_PRESSROOM_PASSWORD` is not the switch:
+`deploy.sh` fills in a blank one.)
 
-`#showAnalyticsTrackingCode` (called from every bundled theme's `<head>`)
-builds the `<script defer src="…" data-website-id="…" data-host-url="…">`
-tag itself from the validated UUID plus two startup properties
-(`analytics.umami.basePath`, default `/analytics`; `analytics.umami.scriptName`,
-default `script.js`) — nothing an operator or weblog admin types is ever
-emitted as raw HTML into the page head. That is precisely what lets this
-coexist with `weblogAdminsUntrusted` staying on: there is no admin-authored
-markup anywhere in the path. If you
-set `UMAMI_SCRIPT_NAME` to something other than `script.js` when deploying
-(the cheapest defence against content blockers that match the default
-path), also set `PRESSROOM_ANALYTICS_UMAMI_SCRIPTNAME` to the same value in
-`.env` or the tag will
-point at a script Caddy never serves.
+### Checking that it works
 
-Nothing is emitted for a weblog whose Analytics website ID is blank, so this
-stays opt-in per blog and off until an admin sets it.
+Open Global Config, then Maintenance, and read the Analytics block: it shows
+how many blogs are registered (for example, 7 of 7), when the last read ran
+and whether it failed. **Sync now** runs a registration and read at once.
+View a blog page's source: a registered blog carries the `/analytics/script.js`
+tag. A blog that is not registered yet carries none, so a freshly created blog
+may show the tag only after the next sync.
 
-### Front page popularity (Umami)
+Configuration keys, for reference: `analytics.umami.apiUrl`, `.username`,
+`.password` and `.dashboardUrl`, each overridable as
+`PRESSROOM_ANALYTICS_UMAMI_<KEY>` in the environment. The compose file wires
+the first two and the password for you; the developer notes are in
+`docs/dev/audience-and-analytics.md` and `docs/dev/umami-api.md`.
+
+### Front page popularity
 
 The front page (`/`) and the "more from the site" block on every blog mix
-popular posts with random ones. Popularity comes from Umami's
-`analytics_traffic` view, which Pressroom reads itself, read-only, with three
-variables in `.env`:
+popular posts with random ones. Popularity comes from the same local copy of
+Umami's numbers that the Traffic pages read (the discovery window), so it
+needs no setting of its own. With analytics off, or before the first read,
+nothing is scored and the front page is built from the newest and random
+posts, with no error. To verify, open Global Config, then Maintenance, and
+read "Front page discovery": it shows whether scores are being read, when the
+last refresh ran and whether it failed. "Refresh now" rebuilds at once;
+otherwise it rebuilds hourly (Global Config, "Front page discovery", also
+sets the window, the share of random slots and the refresh interval).
 
-- `PRESSROOM_ANALYTICS_JDBC_CONNECTIONURL`, normally
-  `jdbc:postgresql://postgres:5432/umami` (the `${UMAMI_DB:-umami}` database
-  on the same server);
-- `PRESSROOM_ANALYTICS_JDBC_USERNAME` and `PRESSROOM_ANALYTICS_JDBC_PASSWORD`:
-  preferably `grafana_ro`, once its LOGIN is enabled (see
-  [The Grafana contract](#the-grafana-contract)): it can `SELECT` the
-  `analytics_traffic` view and nothing else. The fallback is the app's own
-  `PRESSROOM_DATABASE_JDBC_USERNAME` / `PRESSROOM_DATABASE_JDBC_PASSWORD`; in
-  this stack that is the same role as `POSTGRES_USER`, the server's superuser,
-  which can read every database. The connection is opened read-only either
-  way (`readOnlyMode=always`, with connect and query time limits), but that is
-  a driver setting, not a privilege, so prefer `grafana_ro`.
-
-**Blank means random-only**: with the URL blank nothing connects, nothing is
-logged as an error, and the front page is built from the newest and random
-posts. To verify, open Global Config, then Maintenance, and read "Front page
-discovery": it shows whether scores are being read, when the last refresh ran
-and whether it failed. "Refresh now" rebuilds at once; otherwise it rebuilds
-hourly (Global Config, "Front page discovery", also sets the window, the share
-of random slots and the refresh interval, and saving a changed value there
-rebuilds at once too). A slow or unreachable Umami keeps the previous scores
-and never delays a page: after a restart the first page is built from
-candidates only and the scores follow from a background refresh.
-
-For accurate ranking give each blog its own Umami website: traffic is
-credited by website id and entry anchor, so blogs sharing a website id credit
-each other's posts that share an anchor. Each refresh scans Umami's
-`website_event` table (the view's day filter cannot use an index); that is
-fine at today's volume, and the 15-second query timeout is the ceiling.
+Each blog is its own Umami website, so traffic is credited to the right blog.
 
 ### The Grafana contract
 
@@ -1077,10 +1088,10 @@ override to that one command, so `up -d` would fall back to whatever
 `IMAGE_VERSION` is already in `.env`, silently defeating the point of this
 snippet.)
 
-with a local `.env` carrying `SITE_DOMAIN=:80`, `UMAMI_DOMAIN=:8081`,
+with a local `.env` carrying `SITE_DOMAIN=:80`,
 `LISTMONK_DOMAIN=:8082`, `LISTMONK_ROOT_URL=http://localhost:8082` and
-throwaway secrets. The blog is at `http://localhost/`, the analytics
-console at `http://localhost:8081`, the newsletter admin at
+throwaway secrets. The blog is at `http://localhost/`, the Umami
+dashboard at `http://localhost:8081`, the newsletter admin at
 `http://localhost:8082`.
 
 This pulls the exact images the server will pull, so it is the only form of
@@ -1160,6 +1171,43 @@ rather than leaving the stack in a half-upgraded state without telling you.
 
 Always have a recent, verified backup before upgrading across a schema
 change (see [Backup and restore](#backup-and-restore)).
+
+### Upgrading to 0.7.0: analytics without admin steps
+
+0.7.0 changes the schema (V043 adds the analytics cache tables, V044 drops the
+per-blog `analyticsSiteId` and `analyticsShareUrl` fields) and removes
+settings, so read this before you deploy:
+
+1. **Remove `PRESSROOM_ANALYTICS_JDBC_CONNECTIONURL`, `_USERNAME` and
+   `_PASSWORD` from `.env`.** Nothing reads them any more; front page
+   popularity now comes from the local analytics copy. (Leaving them does no
+   harm, but they hold a database credential for nothing.)
+2. **`UMAMI_DOMAIN` is gone and inert.** The dashboard has no public hostname.
+   Delete the line, and the DNS name and certificate you gave it.
+3. **The Umami password is generated on the first deploy.** Re-download
+   `deploy.sh` and the compose file, then run `./deploy.sh`: it appends
+   `UMAMI_PRESSROOM_PASSWORD` to `.env` and the `analytics-views` step creates
+   the `pressroom` account. Do not use a bare `docker compose up -d` for this
+   first deploy.
+4. **Blogs already in Umami.** Each blog's website ID in Umami is now its
+   weblog ID, so Pressroom registers every blog under a new website at
+   startup. Websites you created by hand stay in Umami's database with their
+   history, but Pressroom no longer reads them, so the Traffic pages count
+   from registration onward.
+5. **When you are ready for the dashboard**, set `UMAMI_CONSOLE_BIND` to the
+   host's LAN address, add the Cloudflare Access hostname, and set
+   `PRESSROOM_ANALYTICS_UMAMI_DASHBOARDURL` (see [Reaching the
+   dashboard](#reaching-the-dashboard)). Until then the dashboard is on
+   `localhost:8081` only. Change Umami's default `admin` / `umami` login first.
+6. **A blank `PRESSROOM_ANALYTICS_UMAMI_APIURL` is the off switch.** Unset
+   means on.
+7. **Check Maintenance, then Analytics**, after the deploy: it should read n of
+   n blogs registered (7 of 7 on a host with seven blogs). Press **Sync now**
+   if it does not, and read the app log for the reason.
+8. **The privacy page.** Analytics is now on for every blog, so the published
+   privacy policy's analytics paragraph needs the new wording
+   (`docs/legal/blog-privacy-policy.md` holds a draft awaiting the owner's
+   approval).
 
 ### In one command
 
@@ -1289,11 +1337,13 @@ Only 80 and 443 need to be open to the internet, or the ports
 host](#behind-a-tunnel-or-a-proxy-on-another-host)) nothing needs to be open
 to the internet; only the connector's host needs to reach `SITE_HTTP_PORT`.
 Caddy also publishes
-`127.0.0.1:8081` and `127.0.0.1:8082` (the local-testing path to the Umami
-and listmonk consoles — see [Test a release locally before deploying
+`${UMAMI_CONSOLE_BIND:-127.0.0.1}:8081` and `127.0.0.1:8082` (the Umami
+dashboard, loopback unless you set `UMAMI_CONSOLE_BIND` for a zero-trust
+connector, and the local-testing path to the listmonk console — see [Test a release locally before deploying
 it](#test-a-release-locally-before-deploying-it)), but those are
-loopback-bound, unreachable from outside the host by construction, and need
-no firewall rule either way. Their host side moves with `UMAMI_CONSOLE_PORT` /
+loopback-bound by default, unreachable from outside the host by construction,
+and need no firewall rule either way. If you set `UMAMI_CONSOLE_BIND` to a LAN
+address, keep the firewall closed to that port from outside the LAN. Their host side moves with `UMAMI_CONSOLE_PORT` /
 `LISTMONK_CONSOLE_PORT` in `.env` when a host already uses either port (see
 [Troubleshooting](#troubleshooting)). Nothing else in `docker-compose.prod.yml`
 publishes a host port by default (`postgres` and the app's `8080`/`8090` are
@@ -1371,16 +1421,15 @@ pointed at the host yet, or port 80 isn't reachable from the internet):
 docker compose -f docker-compose.prod.yml logs caddy
 ```
 
-**Caddy's logs are full of certificate errors for `analytics.invalid` /
-`newsletter.invalid`**
+**Caddy's logs are full of certificate errors for `newsletter.invalid`**
 
-Harmless if you never set `UMAMI_DOMAIN`/`LISTMONK_DOMAIN` — those are the
-`.invalid` defaults (deliberately unresolvable, so the consoles are
+Harmless if you never set `LISTMONK_DOMAIN` — that is the
+`.invalid` default (deliberately unresolvable, so the consoles are
 unreachable rather than accidentally published on your blog's domain; see
-[Analytics](#analytics)/[Newsletter](#newsletter)), and Caddy still attempts
-and fails ACME issuance for each site block on every retry interval, forever,
+[Newsletter](#newsletter)), and Caddy still attempts
+and fails ACME issuance for that site block on every retry interval, forever,
 which fills the log with certificate errors that read like a
-misconfiguration. It is not one — set the corresponding `*_DOMAIN` variable
+misconfiguration. It is not one — set `LISTMONK_DOMAIN`
 (and point DNS at it) if you actually want that console reachable, or ignore
 the log noise if you don't.
 

@@ -13,7 +13,7 @@ rounded up to whole minutes, as Global Config also shows it), on Maintenance
 "Refresh now", and when a Global Config save or `PATCH /v1/admin/config`
 changes a `site.discovery.*` value.
 
-A page request never waits on Umami. After a restart the snapshot is empty
+A page request never waits on Umami (it never calls it). After a restart the snapshot is empty
 and the scheduled refresh may be an interval away (`TaskLock.lastRun`), so the
 first selection builds one on the request thread from candidates only (one
 local query, no scores, status unchanged) and hands a full refresh to the
@@ -21,7 +21,7 @@ local query, no scores, status unchanged) and hands a full refresh to the
 requests share the one build. The first build never takes the refresh lock,
 so it does not queue behind a scheduled or admin refresh that is already
 waiting on Umami; whichever swaps second loses only if it is the first build
-(a refresh's snapshot is newer and scored, so it always stands). A failed Umami read keeps the last scores but
+(a refresh's snapshot is newer and scored, so it always stands). A failed read of the traffic cache keeps the last scores but
 still builds a new snapshot (new candidates, so new posts appear, and the
 random picks reshuffle); the failure is logged and shown in Maintenance.
 
@@ -76,19 +76,18 @@ to the front page.
 
 ## Popularity source
 
-Blank `analytics.jdbc.connectionURL` means all-random, no error. Otherwise
-`UmamiTrafficSource` reads `analytics_traffic` read-only (readOnlyMode=always,
-connect 5 s, socket 20 s, query 15 s). That view is shared with Grafana; see
-`audience-and-analytics.md`. Credentials: `grafana_ro` preferred (it can
-read only the contract views), the app's own user as the fallback.
+`CachedTrafficSource` asks `AnalyticsManager.entryViewsAllBlogs(windowDays)`
+for views per entry from the analytics cache (filled by `AnalyticsSyncTask`;
+see `audience-and-analytics.md`): one local database read, never Umami. It
+replaced `UmamiTrafficSource` and the `analytics.jdbc.*` settings, so there is
+no connection, credential or query timeout to configure. `isConfigured` is the
+analytics status's `configured` flag: with analytics off (blank
+`analytics.umami.apiUrl`) the front page is all-random, no error.
 
-Give each blog its own Umami website for accurate ranking: a row is credited
-through every weblog whose analytics site id matches its website id, then by
-anchor, so blogs sharing a website id credit each other's posts with equal
-anchors. Each refresh scans `website_event` (the view's day filter is on a
-computed day and cannot use an index); fine at today's volume, and the 15 s
-query timeout is the ceiling. Deploy notes: `docker_deployment.md`, "Front
-page popularity (Umami)".
+Each blog is its own Umami website (website ID = weblog ID), so blogs no
+longer share an ID and cannot credit each other's posts. Scores are as fresh
+as the sync (15 minutes) plus the discovery refresh (hourly by default).
+Deploy notes: `docker_deployment.md`, "Front page popularity".
 
 ## The promotion seam
 
@@ -117,7 +116,7 @@ preview is not a reader's visit); `DiscoveryModel` is not in
 
 `DiscoveryIT` (read lock on `GLOBAL_CONFIG`: `/` is the discovery page only
 while no site page or blog is the front door). It was written after the
-behaviour; the Umami source is not configured in the IT stack, so no
+behaviour; analytics is not configured in the IT stack, so no
 assertion depends on a score. `frontPageShowsSections` and
 `blogPageLinksHome` do depend on the seeded `it_weblog` entry being an
 eligible post (the headline link; the block's posts from other blogs).
