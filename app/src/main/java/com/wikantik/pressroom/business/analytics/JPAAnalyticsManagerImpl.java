@@ -141,6 +141,12 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
     /** Recorded against each pending blog when the service does not answer the run's ping. */
     static final String UNREACHABLE = "the analytics service did not answer, or refused Pressroom's account";
 
+    /**
+     * Recorded against a blog whose website the service no longer has (ruling
+     * R24): its registration is cleared, and the next sync registers it again.
+     */
+    static final String MISSING = "the website was missing from Umami; it is registered again on the next sync";
+
     /** Recorded as the read error when the local snapshot tables could not be written. */
     static final String CACHE_FAILED = "the local traffic cache could not be written; the read stopped";
 
@@ -432,6 +438,8 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
                     }
                 }
             }
+            current = null;
+            forgetMissing(run.missing, weblogs);
         } catch (WebloggerException | RuntimeException e) {
             rollback();
             log.error("Analytics read stopped: the local traffic cache could not be read or written", e);
@@ -465,6 +473,9 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
                 reports.put(key, service.read(websiteId, Period.of(key), zone));
             } catch (AnalyticsException e) {
                 error = describe(e);
+                if (e instanceof WebsiteMissingException) {
+                    run.missing.add(weblog.getId());
+                }
                 log.warn("Analytics could not read weblog {} for {}", weblog.getHandle(), key, e);
                 break;
             } catch (RuntimeException e) {
@@ -496,6 +507,36 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
         return error;
     }
 
+    /**
+     * Clears the registration of each blog whose website the service no
+     * longer has (ruling R24), in the table and then in memory, so the next
+     * reconcile calls {@link AnalyticsService#ensureSite} for it again; that
+     * call is idempotent, and re-creates the website under the same ID. The
+     * blog keeps its snapshots (STALE) and is untagged until then; the
+     * re-registration flips it back and expires its pages.
+     */
+    private void forgetMissing(Set<String> missing, List<Weblog> weblogs) throws WebloggerException {
+        if (missing.isEmpty()) {
+            return;
+        }
+        for (String id : missing) {
+            AnalyticsSite row = cache.site(id);
+            if (row != null) {
+                row.setRegisteredAt(null);
+                row.setLastError(MISSING);
+                row.setLastAttempt(clock.instant());
+                strategy.store(row);
+            }
+        }
+        strategy.flush();
+        for (String id : missing) {
+            publish(id, null);
+            log.warn("Analytics: Umami no longer has weblog {}'s website; it is registered again on the next sync",
+                    id);
+        }
+        status = statusOf(loadRows(), weblogs);
+    }
+
     /** One run's tally of reads. */
     private static final class ReadRun {
         /** Whether the service answered any read this run. */
@@ -504,6 +545,8 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
         Boolean up;
         /** Whether further blogs are attempted; false once a ping found the service down. */
         boolean open = true;
+        /** Weblog IDs whose website the service no longer has. */
+        final Set<String> missing = new LinkedHashSet<>();
         int succeeded;
         int failed;
         String firstFailure;

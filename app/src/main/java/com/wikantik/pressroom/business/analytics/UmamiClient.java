@@ -47,6 +47,14 @@ import tools.jackson.databind.json.JsonMapper;
  */
 final class UmamiClient {
 
+    /**
+     * HTTP 401. A reply with this status from {@link #get} or {@link #post}
+     * was answered to a token fetched by a login made for that very call (see
+     * {@link #send}), so it is never a stale token's: Umami means the caller
+     * may not see what it asked for, which for a website is that it is missing.
+     */
+    static final int UNAUTHORIZED = 401;
+
     static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
     static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(20);
 
@@ -125,7 +133,8 @@ final class UmamiClient {
     /**
      * Sends with the bearer token. A 401 on a token that was held from before
      * this call triggers one fresh login and one retry; a 401 on a token that
-     * was fetched for this very call is returned as is.
+     * was fetched for this very call is returned as is. So every 401 this
+     * returns came after a fresh, successful login ({@link #UNAUTHORIZED}).
      */
     private Reply send(String method, String path, String body) throws AnalyticsException {
         boolean freshlyLoggedIn = false;
@@ -134,7 +143,7 @@ final class UmamiClient {
             freshlyLoggedIn = true;
         }
         Reply reply = exchange(method, path, body, token);
-        if (reply.status() == 401 && !freshlyLoggedIn) {
+        if (reply.status() == UNAUTHORIZED && !freshlyLoggedIn) {
             login();
             reply = exchange(method, path, body, token);
         }

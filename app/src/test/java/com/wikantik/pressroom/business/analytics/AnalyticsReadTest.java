@@ -164,6 +164,7 @@ class AnalyticsReadTest {
         BlogTraffic other = tier.manager.getBlogTraffic(fine.getId(), "7d");
         assertEquals(TrafficState.OK, other.state(), "one blog's failure does not stop the others");
         assertEquals(25, other.current().views());
+        assertTrue(tier.manager.isRegistered(failing.getId()), "any other read failure keeps the registration");
         AnalyticsStatus status = tier.manager.getStatus();
         assertTrue(status.lastReadError() != null && status.lastReadError().contains("HTTP 503"), status.toString());
         assertEquals(Boolean.TRUE, status.reachable(), "the service answered the other reads");
@@ -177,6 +178,52 @@ class AnalyticsReadTest {
         assertNull(recovered.lastError());
         assertNull(tier.manager.getStatus().lastReadError(), "a clean read clears it");
         assertNotNull(tier.manager.getStatus().lastRead());
+    }
+
+    /**
+     * Ruling R24: Umami lost a website (a lost volume, an older backup, a fresh
+     * instance). Its read answers 401 after a fresh login, so the blog's
+     * registration is cleared, and the next sync registers it again
+     * (ensureSite is idempotent) and reads it, with no admin step.
+     */
+    @Test
+    void aWebsiteMissingFromUmamiIsRegisteredAgainOnTheNextSync() throws Exception {
+        Weblog blog = tier.addWeblogUnseen("readmissing", user);
+        tier.service.reports.put(blog.getId(), report(10, List.of(new PathCount("/readmissing/", 10, 6)), List.of()));
+        sync();
+        assertTrue(tier.manager.isRegistered(blog.getId()));
+        long ensuredBefore = ensuredCount(blog);
+
+        tier.service.missingIds.add(blog.getId());
+        sync();
+
+        assertFalse(tier.manager.isRegistered(blog.getId()), "a missing website is no registration");
+        assertNull(tier.manager.websiteIdFor(blog.getId()));
+        assertNull(registeredAtOf(blog.getId()), "the next reconcile sees it unregistered");
+        BlogTraffic kept = tier.manager.getBlogTraffic(blog.getId(), "7d");
+        assertEquals(TrafficState.STALE, kept.state());
+        assertEquals(10, kept.current().views(), "its numbers are kept");
+        assertTrue(kept.lastError().contains("401"), kept.lastError());
+        assertTrue(tier.manager.getStatus().failures().stream().anyMatch(f -> "readmissing".equals(f.handle())),
+                "Maintenance lists it");
+        assertEquals(ensuredBefore, ensuredCount(blog), "nothing is registered from inside the read");
+
+        sync();
+
+        assertEquals(ensuredBefore + 1, ensuredCount(blog), "registered again, once");
+        assertTrue(tier.manager.isRegistered(blog.getId()));
+        assertNotNull(registeredAtOf(blog.getId()));
+        assertEquals(TrafficState.OK, tier.manager.getBlogTraffic(blog.getId(), "7d").state(), "and read again");
+        assertTrue(tier.manager.getStatus().failures().stream().noneMatch(f -> "readmissing".equals(f.handle())));
+    }
+
+    private long ensuredCount(Weblog blog) {
+        return tier.service.ensured.stream().filter(s -> blog.getId().equals(s.websiteId())).count();
+    }
+
+    private Instant registeredAtOf(String weblogId) throws Exception {
+        TestUtils.endSession(false);
+        return tier.strategy.getEntityManager(false).find(AnalyticsSite.class, weblogId).getRegisteredAt();
     }
 
     @Test

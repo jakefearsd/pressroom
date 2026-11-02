@@ -683,6 +683,28 @@ View a blog page's source: a registered blog carries the `/analytics/script.js`
 tag. A blog that is not registered yet carries none, so a freshly created blog
 may show the tag only after the next sync.
 
+### If Umami loses its websites
+
+Restoring Umami's database from an older backup, losing its volume, or
+pointing Pressroom at a fresh Umami leaves blogs registered in Pressroom whose
+websites Umami no longer has. Pressroom heals this itself: Umami answers a
+read of a website it does not have with HTTP 401, even after Pressroom logs in
+afresh, and Pressroom takes that as "the website is missing". It clears that
+blog's registration (Maintenance lists the blog with "the website was missing
+from Umami; it is registered again on the next sync", and its Traffic page
+keeps the last numbers, marked stale), and the next sync registers the
+website again under the same ID and reads it. So the recovery is: wait for
+the next scheduled sync (15 minutes), or press **Sync now** once the first
+sync has reported the blogs missing. Nothing needs SQL. Traffic recorded while
+the website was missing is lost: Umami drops beacons for a website it does not
+have.
+
+This assumes Pressroom's own Umami account survived. If Umami's database was
+replaced wholesale, that account is gone too, and every read fails with
+"Umami login failed" instead (no blog is cleared, since that is not a missing
+website): run `./deploy.sh`, whose `analytics-views` step creates the account
+again, and the next sync then re-registers each blog as above.
+
 Configuration keys, for reference: `analytics.umami.apiUrl`, `.username`,
 `.password` and `.dashboardUrl`, each overridable as
 `PRESSROOM_ANALYTICS_UMAMI_<KEY>` in the environment. The compose file wires

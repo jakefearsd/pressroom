@@ -150,7 +150,7 @@ public final class UmamiAnalyticsService implements AnalyticsService {
             }
             return id;
         }
-        if (found.status() == 401 || found.status() == 404) {
+        if (found.status() == UmamiClient.UNAUTHORIZED || found.status() == 404) {
             // Umami answers 401 for a website that does not exist, and the client
             // has already logged in afresh if the token was stale: so this is "missing".
             return create(c, id, name, domain, path);
@@ -338,7 +338,16 @@ public final class UmamiAnalyticsService implements AnalyticsService {
         return reply.json();
     }
 
+    /**
+     * A 401 here is the website missing (ruling R24): the client returns a 401
+     * only once a token from a login made for that very call is refused, and
+     * Umami answers 401 for a website it does not have.
+     */
     private static void requireOk(UmamiClient.Reply reply, String step) throws AnalyticsException {
+        if (reply.status() == UmamiClient.UNAUTHORIZED) {
+            throw new WebsiteMissingException("Umami answered HTTP 401 after a fresh login while " + step
+                    + ": the website is missing");
+        }
         if (!reply.ok()) {
             throw new AnalyticsException("Umami answered HTTP " + reply.status() + " while " + step);
         }

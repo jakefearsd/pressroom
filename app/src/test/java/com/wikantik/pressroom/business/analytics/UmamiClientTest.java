@@ -177,6 +177,34 @@ class UmamiClientTest {
         assertEquals(2, count("POST", "/api/auth/login"), "one re-login, no more");
     }
 
+    /**
+     * Ruling R24: the client returns a 401 only once a login made for that
+     * very call has been refused too (a held token's 401 is retried with a
+     * fresh one), and Umami answers 401 for a website it does not have. So a
+     * read's 401 is reported as the website missing, distinguishably, with
+     * neither password nor token in it; any other failure is not.
+     */
+    @Test
+    void aReadRefusedAfterAFreshLoginIsAMissingWebsite() throws Exception {
+        UmamiAnalyticsService svc = service();
+        route = r -> new Resp(200, statsBody());
+        svc.ping();
+        route = r -> new Resp(401, "{\"error\":{\"message\":\"Unauthorized\"}}");
+
+        WebsiteMissingException e = assertThrows(WebsiteMissingException.class,
+                () -> svc.read(SITE, Period.of("7d"), LA));
+
+        assertEquals(2, count("POST", "/api/auth/login"), "the held token was replaced before the verdict");
+        assertTrue(e.getMessage().contains("401"), e.getMessage());
+        assertFalse(e.getMessage().contains(PASSWORD), e.getMessage());
+        assertFalse(e.getMessage().contains("tok"), e.getMessage());
+
+        route = r -> new Resp(503, "{}");
+        AnalyticsException other = assertThrows(AnalyticsException.class,
+                () -> svc.read(SITE, Period.of("7d"), LA));
+        assertFalse(other instanceof WebsiteMissingException, "a 503 is not a missing website");
+    }
+
     @Test
     void aFailedLoginThrowsWithoutThePassword() {
         server.removeContext("/");

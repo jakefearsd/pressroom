@@ -52,6 +52,12 @@ final class FakeAnalyticsService implements AnalyticsService {
     final AtomicInteger calls = new AtomicInteger();
     /** Website IDs whose read fails while the service otherwise answers. */
     final Set<String> readFailIds = ConcurrentHashMap.newKeySet();
+    /**
+     * Website IDs Umami no longer has: a read answers as a 401 after a fresh
+     * login does ({@link WebsiteMissingException}), and ensureSite creates the
+     * website again, which takes it off this set.
+     */
+    final Set<String> missingIds = ConcurrentHashMap.newKeySet();
     /** What a read of a website answers, for every period; absent means an empty report. */
     final Map<String, AnalyticsReport> reports = new ConcurrentHashMap<>();
     /** Every read made, in order. */
@@ -94,6 +100,7 @@ final class FakeAnalyticsService implements AnalyticsService {
             throw new AnalyticsException("Umami answered HTTP 400 creating the website");
         }
         sites.put(spec.websiteId(), spec);
+        missingIds.remove(spec.websiteId());
         return spec.websiteId();
     }
 
@@ -103,6 +110,9 @@ final class FakeAnalyticsService implements AnalyticsService {
         reads.add(new Read(websiteId, period.key(), zone));
         if (down) {
             throw new AnalyticsException("Umami answered HTTP 502 while reading stats");
+        }
+        if (missingIds.contains(websiteId)) {
+            throw new WebsiteMissingException("Umami answered HTTP 401 while reading stats");
         }
         if (readFailIds.contains(websiteId)) {
             throw new AnalyticsException("Umami answered HTTP 503 while reading stats");

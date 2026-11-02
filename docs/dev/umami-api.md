@@ -32,7 +32,7 @@ Spec: `docs/superpowers/specs/2026-11-01-analytics-without-admin-steps-design.md
 |---|---|
 | Is a supplied website `id` honoured? | **Yes.** `POST /api/websites {"id": "<uuid>", ...}` creates the website with that ID, and `GET /api/websites/{id}` returns it. So **Umami website ID = weblog ID**. |
 | Registering an ID that already exists | **HTTP 500, empty body** (unhandled primary-key violation). Not 409. A reconciler checks with `GET /api/websites/{id}` first. |
-| Website that does not exist | `GET /api/websites/{id}` answers **401**, the same as a website the caller may not see. 401 alone never means "missing, register it". |
+| Website that does not exist | `GET /api/websites/{id}` answers **401**, the same as a website the caller may not see. A 401 to a stale token means nothing (log in again); a 401 to a token from a fresh login does: `UmamiClient` returns a 401 only then, and Pressroom takes it as the website missing (ruling R24; next section). |
 | `localhost` / `localhost:8083` as a domain | **Both accepted** (200). |
 | Other host:port, IP addresses, upper case | **Rejected** (400). See the domain regex below. |
 | Performance attribute | `data-performance="true"`, exactly the string `true`. |
@@ -279,6 +279,17 @@ marks the blog STALE (in memory, so a restart clears it until the next read).
 The first failure of a run before any answer costs one ping; if that fails the
 rest of the run is skipped as unreachable. Every page reads the snapshots
 only; nothing on a request path calls Umami.
+
+**A website Umami no longer has** (ruling R24): every read of it answers 401,
+and the client returns a 401 only after a fresh login, so
+`UmamiAnalyticsService` throws `WebsiteMissingException` (status and step
+only). The manager clears that blog's `registered_at` and its in-memory
+registration and records `MISSING` as its `last_error`; the next reconcile
+then calls `ensureSite`, which re-creates the website under the same ID
+(idempotent), and reads it. Any other read failure keeps the registration
+and marks the blog STALE. A refused login (wrong password, account gone) is
+a login failure, never a missing website. Recovery for an operator:
+`docker_deployment.md`, "If Umami loses its websites".
 
 Paths become entries through `EntryPaths`: the shapes are whatever
 `URLStrategy.getWeblogEntryURL` builds for the blog (with its custom domain,
