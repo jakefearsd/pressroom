@@ -461,6 +461,34 @@ class UmamiClientTest {
         assertFalse(queries.contains("type=url") || queries.contains("type=utm_"), queries);
     }
 
+    /** {@code [{"name":"/p<i>",...}, ...]}: {@code rows} paths, one view each. */
+    private static String pathRows(int rows) {
+        StringBuilder out = new StringBuilder("[");
+        for (int i = 0; i < rows; i++) {
+            out.append(i == 0 ? "" : ",").append("{\"name\":\"/p").append(i)
+                    .append("\",\"pageviews\":\"1\",\"visitors\":1,\"visits\":1,\"bounces\":0,\"totaltime\":\"0\"}");
+        }
+        return out.append(']').toString();
+    }
+
+    /**
+     * Ruling R23: paths are asked for 1000 at a time, and an answer that fills
+     * the page is marked as capped there (more paths may exist); a shorter one
+     * is the whole list.
+     */
+    @Test
+    void aFullPageOfPathsIsMarkedCappedAndAShorterOneIsComplete() throws Exception {
+        route = r -> r.path().endsWith("/metrics/expanded") ? new Resp(200, pathRows(1000)) : readRoute(r);
+        AnalyticsReport full = service().read(SITE, Period.of("30d"), LA);
+        assertEquals(1000, full.paths().size());
+        assertEquals(1000, full.pathsCappedAt(), "a full page: more paths may exist");
+        Req asked = seen.stream().filter(r -> r.path().endsWith("/metrics/expanded")).findFirst().orElseThrow();
+        assertTrue(asked.query().contains("limit=1000"), asked.query());
+
+        route = r -> r.path().endsWith("/metrics/expanded") ? new Resp(200, pathRows(999)) : readRoute(r);
+        assertEquals(0, service().read(SITE, Period.of("30d"), LA).pathsCappedAt(), "a short page is complete");
+    }
+
     @Test
     void speedIsEmptyWhenNothingWasMeasured() throws Exception {
         route = r -> r.path().equals("/api/reports/performance")

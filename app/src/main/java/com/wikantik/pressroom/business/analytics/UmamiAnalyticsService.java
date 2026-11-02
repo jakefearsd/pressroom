@@ -74,7 +74,13 @@ public final class UmamiAnalyticsService implements AnalyticsService {
     public static final int CLS_SCALE = 1000;
 
     private static final int NAME_MAX = 100;
-    private static final int PATH_LIMIT = 100;
+    /**
+     * Paths asked for per (website, period), most viewed first (ruling R23).
+     * An answer this long fills the page, so more paths may exist: the report
+     * says so ({@link AnalyticsReport#pathsCappedAt()}) and an entry missing
+     * from it is unknown, not zero.
+     */
+    static final int PATH_LIMIT = 1000;
     private static final int METRIC_LIMIT = 50;
     private static final String[] SPEED_KEYS = {"lcp", "inp", "fcp", "ttfb", "cls"};
     private static final String[] UTM_KEYS = {"utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"};
@@ -212,7 +218,8 @@ public final class UmamiAnalyticsService implements AnalyticsService {
         breakdowns.put("events", metric(c, base, window, "event", ""));
         breakdowns.put("campaigns", campaigns(report(c, websiteId, "utm", start, end, zone)));
         breakdowns.put("speed", speed(report(c, websiteId, "performance", start, end, zone)));
-        return new AnalyticsReport(end, current, previous, series, paths, breakdowns);
+        return new AnalyticsReport(end, current, previous, series, paths, breakdowns,
+                expanded.size() >= PATH_LIMIT ? PATH_LIMIT : 0);
     }
 
     private static Summary summary(JsonNode node) {

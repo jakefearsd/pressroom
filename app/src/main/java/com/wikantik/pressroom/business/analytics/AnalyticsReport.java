@@ -28,11 +28,19 @@ import java.util.Map;
  *
  * <p>{@code breakdowns} always has exactly the keys {@code sources, places,
  * devices, events, campaigns, speed}; a tab with nothing to show maps to an
- * empty list.
+ * empty list. {@code pathsCappedAt} is 0 when {@code paths} is every path the
+ * period had, else the page size the service cut them at: the paths are then
+ * the top ones only, and a path not among them is unknown, not zero.
  */
 public record AnalyticsReport(Instant asOf, Summary current, Summary previous,
                               List<SeriesPoint> series, List<PathCount> paths,
-                              Map<String, List<KeyCount>> breakdowns) {
+                              Map<String, List<KeyCount>> breakdowns, int pathsCappedAt) {
+
+    /** A report whose {@code paths} are every path the period had. */
+    public AnalyticsReport(Instant asOf, Summary current, Summary previous, List<SeriesPoint> series,
+                           List<PathCount> paths, Map<String, List<KeyCount>> breakdowns) {
+        this(asOf, current, previous, series, paths, breakdowns, 0);
+    }
 
     /** The headline numbers; visitors are distinct sessions and are never summed across anything. */
     public record Summary(long visitors, long visits, long views, long bounces, long totalTimeSeconds) {

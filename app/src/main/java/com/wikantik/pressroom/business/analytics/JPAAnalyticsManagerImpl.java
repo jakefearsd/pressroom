@@ -857,7 +857,8 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
         }
         return new BlogTraffic(state, summary.getAsOf(), TrafficCache.current(summary),
                 TrafficCache.previous(summary), cache.series(weblogId, period.key()),
-                cache.posts(weblogId, period, longerThan(period)), cache.breakdowns(weblogId, period.key()), error);
+                cache.posts(weblogId, period, longerThan(period)), cache.breakdowns(weblogId, period.key()), error,
+                cache.pathsCappedAt(weblogId, period.key()));
     }
 
     @Override
@@ -913,6 +914,15 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
             return Map.of();
         }
         return cache.entryViews(weblogId, period.key());
+    }
+
+    @Override
+    public int pathsCappedAt(String weblogId, String periodKey) {
+        Period period = Period.of(periodKey);
+        if (!service.isConfigured() || weblogId == null) {
+            return 0;
+        }
+        return cache.pathsCappedAt(weblogId, period.key());
     }
 
     @Override

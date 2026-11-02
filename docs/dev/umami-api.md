@@ -13,7 +13,8 @@ rule; the status codes and field names/types of `stats` (incl. `comparison`),
 `pageviews` (local-midnight buckets, omitted empty days, `sessions.y` =
 visitors, `&compare=prev`), `metrics` (every type listed, `y` = visitors, the
 three rejected types), `metrics/expanded`, `events/stats`, `events/series`,
-`reports/performance`, `reports/utm` (POST only, `filters` required); `/api/me`
+`reports/performance`, `reports/utm` (POST only, `filters` required); the
+`limit` on `metrics/expanded` (honoured; 1000 accepted); `/api/me`
 returning a token; and from `script.js`: `data-performance="true"`,
 `data-domains` against the port-less hostname, and no `setItem`/cookie.
 **Observed by hand, not pinned:** the literal sample bodies themselves (values
@@ -204,6 +205,21 @@ the other `utm_*`). UTM comes from `reports/utm`.
 This is the Posts tab's source: **per-path visitors are supported** here.
 Note the types: `pageviews` and `totaltime` are **JSON strings** (bigint
 serialisation), `visitors`/`visits`/`bounces` are numbers. Parse both.
+
+**The page size is `limit`**, most viewed first. It is honoured (`limit=2`
+cuts three paths to two) and `limit=1000` is accepted and returns every path
+when there are fewer (both pinned, `expandedPathsHonourTheLimitAndAcceptAThousand`).
+**Unverified:** whether the image silently caps a page below 1000 rows on
+its own; that would take a thousand seeded paths to show, so it was not tried.
+Pressroom asks for `UmamiAnalyticsService.PATH_LIMIT` = **1000** paths per
+(website, period) (ruling R23). Home, tag, category and paging paths share
+those rows with entries. An answer of exactly 1000 rows fills the page, so
+the report is marked capped (`AnalyticsReport.pathsCappedAt`), kept as an
+`analytics_breakdown` row of kind `paths_truncated` (payload: the count) for
+that (blog, period) and removed by the next complete read. While it is
+there, the entries list's Views (30d) shows an em dash, not 0, for an entry
+outside the snapshot, and the Posts tab says it shows the top 1000 paths.
+Discovery treats an entry outside the snapshot as unread, as before.
 
 ### Events
 

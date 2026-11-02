@@ -350,6 +350,35 @@ class AnalyticsReadTest {
                 "blogs with numbers come first");
     }
 
+    /**
+     * Ruling R23: a read whose paths filled the service's page is kept with a
+     * marker, so a missing entry reads as "not in the top N", never as zero;
+     * the next complete read removes it. The marker is no tab and no source.
+     */
+    @Test
+    void aCappedPathListIsMarkedUntilACompleteReadReplacesIt() throws Exception {
+        Weblog blog = tier.addWeblogUnseen("readcapped", user);
+        AnalyticsReport capped = report(10, List.of(new PathCount("/readcapped/", 10, 6)),
+                List.of(new KeyCount("google.com", 3)));
+        tier.service.reports.put(blog.getId(), new AnalyticsReport(capped.asOf(), capped.current(),
+                capped.previous(), capped.series(), capped.paths(), capped.breakdowns(), 1000));
+        sync();
+
+        BlogTraffic traffic = tier.manager.getBlogTraffic(blog.getId(), "30d");
+        assertEquals(1000, traffic.pathsCappedAt());
+        assertEquals(1000, tier.manager.pathsCappedAt(blog.getId(), "30d"));
+        assertEquals(List.of("sources", "places", "devices", "events", "campaigns", "speed"),
+                List.copyOf(traffic.breakdowns().keySet()), "the marker is not a tab");
+        assertEquals(List.of(new KeyCount("google.com", 3)), tier.manager.getSiteTraffic("30d").topSources());
+        assertEquals(0, tier.manager.pathsCappedAt("no-such-blog", "30d"), "no snapshot, no marker");
+
+        tier.service.reports.put(blog.getId(), capped);
+        sync();
+        assertEquals(0, tier.manager.getBlogTraffic(blog.getId(), "30d").pathsCappedAt(),
+                "a complete read clears it");
+        assertEquals(0, tier.manager.pathsCappedAt(blog.getId(), "30d"));
+    }
+
     private static BlogRow rowOf(SiteTraffic site, Weblog weblog) {
         return site.blogs().stream().filter(r -> weblog.getId().equals(r.weblogId())).findFirst()
                 .orElseThrow(() -> new AssertionError(weblog.getHandle() + " is not listed: " + site.blogs()));

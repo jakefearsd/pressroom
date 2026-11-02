@@ -473,6 +473,30 @@ class UmamiApiContractTest {
         assertEquals(2, next.get("comparison").get("visitors").asInt(), next.toString());
     }
 
+    /**
+     * Ruling R23: the read asks {@code metrics/expanded} for 1000 paths. The
+     * limit is honoured (a smaller one cuts the list) and 1000 is accepted.
+     * Whether the image caps a page below 1000 rows on its own is not tested
+     * here (it would take a thousand seeded paths); docs/dev/umami-api.md says so.
+     */
+    @Test
+    void expandedPathsHonourTheLimitAndAcceptAThousand() throws Exception {
+        String id = registerFreshWebsite("contract-limit", "limit.example.com");
+        for (String path : List.of("/blog/entry/one", "/blog/entry/two", "/blog/entry/three")) {
+            assertEquals(200, send(BROWSER_UA, "event", Map.of("website", id, "hostname", "limit.example.com",
+                    "url", path, "title", "T", "screen", "1920x1080", "language", "en-US")));
+        }
+        String window = window();
+
+        Answer two = get(site(id, "metrics/expanded", window + "&type=path&limit=2"), token);
+        assertEquals(200, two.status(), two.raw());
+        assertEquals(2, two.body().size(), "the limit cuts the list: " + two.raw());
+        Answer thousand = get(site(id, "metrics/expanded", window + "&type=path&limit="
+                + UmamiAnalyticsService.PATH_LIMIT), token);
+        assertEquals(200, thousand.status(), thousand.raw());
+        assertEquals(3, thousand.body().size(), "1000 is accepted and returns every path: " + thousand.raw());
+    }
+
     @Test
     void trackerPerformanceAttribute() throws Exception {
         String js = trackerScript();

@@ -97,8 +97,9 @@ public class EntriesController extends BaseController {
     /**
      * The "Views (30d)" column: read from the local snapshot, one call per
      * render, and only when analytics is configured. An entry with no recorded
-     * views is a real zero once the blog has a snapshot; before that it is an
-     * em dash, since nothing has been counted yet.
+     * views is a real zero once the blog has a complete snapshot; before that,
+     * or when the snapshot holds only the top paths (ruling R23), it is an em
+     * dash, since its views are not known.
      */
     private void addViews(Model model, List<WeblogEntry> entries, String weblogId,
                           Locale locale) {
@@ -111,10 +112,11 @@ public class EntriesController extends BaseController {
         Map<String, Long> views = analytics.entryViews(weblogId, "30d");
         boolean snapshot = !views.isEmpty()
                 || analytics.getBlogTraffic(weblogId, "30d").state() != TrafficState.NO_DATA;
+        boolean zeroIsKnown = snapshot && analytics.pathsCappedAt(weblogId, "30d") == 0;
         Map<String, String> cells = new HashMap<>();
         for (WeblogEntry entry : entries) {
             cells.put(entry.getId(), views.containsKey(entry.getId())
-                    ? TrafficView.number(views.get(entry.getId()), locale) : snapshot ? "0" : TrafficView.DASH);
+                    ? TrafficView.number(views.get(entry.getId()), locale) : zeroIsKnown ? "0" : TrafficView.DASH);
         }
         model.addAttribute("entryViews", cells);
     }

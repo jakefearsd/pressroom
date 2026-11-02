@@ -65,6 +65,14 @@ final class TrafficCache {
     /** The breakdown kind the series is kept under. */
     static final String SERIES = "series";
 
+    /**
+     * The breakdown kind that marks a snapshot whose paths are only the top
+     * ones (ruling R23); its payload is the count they were cut at. Absent
+     * when the paths are complete. Fits {@code analytics_breakdown.kind}
+     * (varchar 16).
+     */
+    static final String PATHS_TRUNCATED = "paths_truncated";
+
     /** {@code analytics_path_views.path}'s width; a longer path is not kept (the totals still count it). */
     private static final int MAX_PATH = 1024;
 
@@ -136,6 +144,10 @@ final class TrafficCache {
             payloads.put(tab, rowsJson(breakdowns.getOrDefault(tab, List.of())));
         }
         payloads.put(SERIES, seriesJson(report.series()));
+        if (report.pathsCappedAt() > 0) {
+            // absent from the payloads, an old marker is removed with the rest
+            payloads.put(PATHS_TRUNCATED, Integer.toString(report.pathsCappedAt()));
+        }
         replaceBreakdowns(em, weblogId, period, payloads);
 
         strategy.flush();
@@ -240,6 +252,14 @@ final class TrafficCache {
             }
         }
         return tabs;
+    }
+
+    /** The count one snapshot's paths were cut at, or 0 when they are complete or there is no snapshot. */
+    int pathsCappedAt(String weblogId, String period) {
+        AnalyticsBreakdown row = strategy.getEntityManager(false).find(AnalyticsBreakdown.class,
+                new AnalyticsBreakdown.Key(weblogId, period, PATHS_TRUNCATED));
+        // the payload is only ever written by replace(), as a whole number
+        return row == null ? 0 : Integer.parseInt(row.getPayload().trim());
     }
 
     List<SeriesPoint> series(String weblogId, String period) {

@@ -246,6 +246,19 @@ class TrafficControllerTest extends EditorControllerTestSupport {
         assertEquals("—", posts.get(1).trendText(), "NaN is a dash, never the word");
     }
 
+    /** Ruling R23: a snapshot that holds only the top N paths says so on the Posts tab. */
+    @Test
+    void aCappedPathListIsNotedOnThePostsTab() {
+        BlogTraffic full = ok();
+        serve("30d", new BlogTraffic(full.state(), full.asOf(), full.current(), full.previous(), full.series(),
+                full.posts(), full.breakdowns(), full.lastError(), 1000));
+
+        assertEquals(1000, view("30d", "posts").pathsCappedAt());
+
+        serve("30d", ok());
+        assertEquals(0, view("30d", "posts").pathsCappedAt(), "a complete list has no note");
+    }
+
     @Test
     void rowsForOneEntryUnderTwoPathSpellingsMergeWithoutSummingVisitors() {
         serve("30d", data(TrafficState.OK, new Summary(5, 5, 50, 1, 10), new Summary(5, 5, 50, 1, 10),

@@ -122,6 +122,16 @@ public interface AnalyticsManager {
     Map<String, Long> entryViews(String weblogId, String periodKey);
 
     /**
+     * Whether one blog's snapshot for one period holds only the top paths
+     * (ruling R23): the read filled the service's page, so an entry missing
+     * from {@link #entryViews} is not known to have no views. From the local
+     * snapshot.
+     *
+     * @return the number of paths the snapshot was cut at, or 0 when it holds every path (or there is none)
+     */
+    int pathsCappedAt(String weblogId, String periodKey);
+
+    /**
      * Views per entry across every blog over the discovery window, from the
      * {@code <windowDays>d} snapshots. Views add; visitors would not.
      *

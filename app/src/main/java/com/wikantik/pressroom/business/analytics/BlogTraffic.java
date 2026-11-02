@@ -44,10 +44,19 @@ import java.util.Map;
  * @param posts      one row per recorded path, most viewed first
  * @param breakdowns the tabs' rows, by tab
  * @param lastError  why this blog's last read (or registration) failed, or null
+ * @param pathsCappedAt 0 when {@code posts} is every recorded path, else the number of top paths it was
+ *                   cut at (ruling R23)
  */
 public record BlogTraffic(TrafficState state, Instant asOf, Summary current, Summary previous,
                           List<SeriesPoint> series, List<PostRow> posts, Map<String, List<KeyCount>> breakdowns,
-                          String lastError) {
+                          String lastError, int pathsCappedAt) {
+
+    /** A snapshot whose {@code posts} are every path the period had (or no snapshot). */
+    public BlogTraffic(TrafficState state, Instant asOf, Summary current, Summary previous,
+                       List<SeriesPoint> series, List<PostRow> posts, Map<String, List<KeyCount>> breakdowns,
+                       String lastError) {
+        this(state, asOf, current, previous, series, posts, breakdowns, lastError, 0);
+    }
 
     public BlogTraffic {
         series = series == null ? List.of() : List.copyOf(series);

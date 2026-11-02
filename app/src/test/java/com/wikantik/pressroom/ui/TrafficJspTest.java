@@ -94,6 +94,14 @@ class TrafficJspTest {
         assertTrue(src.contains("name=\"bean.id\""));
     }
 
+    /** Ruling R23: the Posts tab says when it shows only the top N paths. */
+    @Test
+    void aCappedPathListIsNoted() throws IOException {
+        String src = read(BODY);
+        assertTrue(src.contains("<c:if test=\"${traffic.pathsCappedAt gt 0}\">"), src);
+        assertTrue(src.contains("code=\"traffic.posts.capped\" arguments=\"${[traffic.pathsCappedAt]}\""));
+    }
+
     @Test
     void theBlogNameIsEscapedAndEveryAuthorValueGoesThroughEscapeXml() throws IOException {
         String all = read(PAGE) + read(BODY);

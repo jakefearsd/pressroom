@@ -119,6 +119,9 @@
         </c:forEach>
     </table>
     </div>
+    <c:if test="${traffic.pathsCappedAt gt 0}">
+    <p class="traffic-empty"><spring:message code="traffic.posts.capped" arguments="${[traffic.pathsCappedAt]}"/></p>
+    </c:if>
     </c:when>
     <c:otherwise>
     <p class="traffic-empty"><spring:message code="traffic.empty.posts"/></p>

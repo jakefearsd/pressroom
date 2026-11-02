@@ -65,10 +65,12 @@ import com.wikantik.pressroom.business.analytics.UmamiAnalyticsService;
  * @param posts      the Posts tab's rows
  * @param rows       the selected breakdown tab's rows
  * @param umamiUrl   where "Open in Umami" goes, or null
+ * @param pathsCappedAt 0 when the Posts tab lists every recorded path, else how many top paths it shows
  */
 public record TrafficView(String period, List<String> periods, String tab, List<String> tabs, String sort,
                           String noticeKey, long ageMinutes, String asOfText, boolean showBody,
-                          List<Tile> tiles, Chart chart, List<PostLine> posts, List<Row> rows, String umamiUrl) {
+                          List<Tile> tiles, Chart chart, List<PostLine> posts, List<Row> rows, String umamiUrl,
+                          int pathsCappedAt) {
 
     /** The periods the switch offers; the discovery window is read but not offered. */
     public static final List<String> PERIODS = List.of("24h", "7d", "30d", "90d");
@@ -179,7 +181,7 @@ public record TrafficView(String period, List<String> periods, String tab, List<
                 asOf == null ? null : DateTimeFormatter.ofPattern("HH:mm").withZone(zone).format(asOf),
                 showBody, tiles, chart,
                 "posts".equals(tab) ? posts(traffic.posts(), sort) : List.of(),
-                "posts".equals(tab) ? List.of() : rows(tab, breakdown, locale), umamiUrl);
+                "posts".equals(tab) ? List.of() : rows(tab, breakdown, locale), umamiUrl, traffic.pathsCappedAt());
     }
 
     /** The accepted period for a request value, else 30d. */

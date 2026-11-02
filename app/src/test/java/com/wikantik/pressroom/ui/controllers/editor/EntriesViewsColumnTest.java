@@ -97,6 +97,18 @@ class EntriesViewsColumnTest extends EditorControllerTestSupport {
         verify(analytics, times(1)).entryViews("weblog-1", "30d");
     }
 
+    /** Ruling R23: when the snapshot holds only the top N paths, an entry outside them is unknown, not zero. */
+    @Test
+    void anEntryOutsideACappedSnapshotShowsADashNotAZero() {
+        when(analytics.getStatus()).thenReturn(configured());
+        when(analytics.entryViews("weblog-1", "30d")).thenReturn(Map.of("e1", 7L));
+        when(analytics.pathsCappedAt("weblog-1", "30d")).thenReturn(1000);
+
+        listing("e1", "e2");
+
+        assertEquals(Map.of("e1", "7", "e2", DASH), model.getAttribute("entryViews"));
+    }
+
     @Test
     void anEntryWithNoViewsBeforeAnySnapshotShowsADash() {
         when(analytics.getStatus()).thenReturn(configured());
