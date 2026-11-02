@@ -19,15 +19,18 @@ package com.wikantik.pressroom.business.discovery;
 
 import com.wikantik.pressroom.WebloggerException;
 
-import java.time.LocalDate;
-import java.util.List;
+import java.util.Map;
 
 /** Where popularity data comes from; optional. */
 public interface TrafficSource {
 
-    /** False when no traffic database is configured. */
+    /** False when analytics is not configured. */
     boolean isConfigured();
 
-    /** Entry views from {@code firstDay} (inclusive) on; empty when unconfigured. */
-    List<TrafficRow> viewsSince(LocalDate firstDay) throws WebloggerException;
+    /**
+     * Views per entry over the last {@code windowDays} days, summed across blogs.
+     *
+     * @return entry ID to views; empty when nothing has been read yet
+     */
+    Map<String, Long> viewsByEntry(int windowDays) throws WebloggerException;
 }

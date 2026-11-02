@@ -17,9 +17,29 @@
  */
 package com.wikantik.pressroom.business.discovery;
 
+import com.wikantik.pressroom.business.Weblogger;
+
+import java.util.Map;
+
 /**
- * Views of one entry (identified by its anchor) on one Umami website over a
- * window. {@code websiteId} is Umami's website UUID rendered as text.
+ * Popularity from the analytics manager's local snapshots. A database read of
+ * the cache only: it never calls Umami.
  */
-public record TrafficRow(String websiteId, String entryAnchor, long views) {
+public class CachedTrafficSource implements TrafficSource {
+
+    private final Weblogger weblogger;
+
+    public CachedTrafficSource(Weblogger weblogger) {
+        this.weblogger = weblogger;
+    }
+
+    @Override
+    public boolean isConfigured() {
+        return weblogger.getAnalyticsManager().getStatus().configured();
+    }
+
+    @Override
+    public Map<String, Long> viewsByEntry(int windowDays) {
+        return weblogger.getAnalyticsManager().entryViewsAllBlogs(windowDays);
+    }
 }

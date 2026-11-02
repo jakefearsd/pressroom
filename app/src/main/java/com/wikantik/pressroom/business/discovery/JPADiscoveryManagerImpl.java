@@ -30,14 +30,11 @@ import org.slf4j.LoggerFactory;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -179,10 +176,8 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
             scores = Map.of();
             state = null;
         } else if (trafficSource.isConfigured()) {
-            LocalDate firstDay = LocalDate.ofInstant(now, ZoneOffset.UTC)
-                    .minusDays(DiscoverySettings.windowDays() - 1L);
             try {
-                scores = score(trafficSource.viewsSince(firstDay), candidates, weblogs);
+                scores = score(trafficSource.viewsByEntry(DiscoverySettings.windowDays()), candidates);
                 state = DiscoveryStatus.State.OK;
                 succeeded = true;
             } catch (WebloggerException | RuntimeException e) {
@@ -256,38 +251,13 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
         return e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
     }
 
-    /**
-     * Views per candidate entry id. A row maps through the weblog whose
-     * analytics site id matches its website id (ignoring case) and the entry
-     * with that anchor in that weblog; a row that maps to nothing is ignored.
-     */
-    private static Map<String, Long> score(List<TrafficRow> rows, List<DiscoveryCandidate> candidates,
-            List<Weblog> weblogs) {
-        Map<String, List<String>> weblogsBySite = new HashMap<>();
-        for (Weblog weblog : weblogs) {
-            String siteId = weblog.getAnalyticsSiteId();
-            if (siteId != null && !siteId.isBlank()) {
-                weblogsBySite.computeIfAbsent(siteId.trim().toLowerCase(Locale.ROOT), k -> new ArrayList<>())
-                        .add(weblog.getId());
-            }
-        }
-        Map<String, Map<String, String>> entryByAnchor = new HashMap<>();
-        for (DiscoveryCandidate c : candidates) {
-            if (c.anchor() != null) {
-                entryByAnchor.computeIfAbsent(c.weblogId(), k -> new HashMap<>()).put(c.anchor(), c.entryId());
-            }
-        }
+    /** Views per candidate entry id; a view count for anything else is ignored. */
+    private static Map<String, Long> score(Map<String, Long> views, List<DiscoveryCandidate> candidates) {
         Map<String, Long> scores = new HashMap<>();
-        for (TrafficRow row : rows) {
-            if (row.websiteId() == null || row.entryAnchor() == null || row.views() <= 0) {
-                continue;
-            }
-            for (String weblogId : weblogsBySite.getOrDefault(
-                    row.websiteId().trim().toLowerCase(Locale.ROOT), List.of())) {
-                String entryId = entryByAnchor.getOrDefault(weblogId, Map.of()).get(row.entryAnchor());
-                if (entryId != null) {
-                    scores.merge(entryId, row.views(), Long::sum);
-                }
+        for (DiscoveryCandidate c : candidates) {
+            Long count = views.get(c.entryId());
+            if (count != null && count > 0) {
+                scores.put(c.entryId(), count);
             }
         }
         return Map.copyOf(scores);

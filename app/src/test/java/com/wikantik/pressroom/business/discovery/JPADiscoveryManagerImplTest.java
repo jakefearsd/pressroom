@@ -35,14 +35,13 @@ import org.junit.jupiter.api.Test;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -130,6 +129,23 @@ class JPADiscoveryManagerImplTest {
         assertEquals(DiscoveryStatus.State.DISABLED, manager.getStatus().state());
     }
 
+    /** AC 14: unconfigured analytics ranks randomly, reads nothing and reports no error. */
+    @Test
+    void unconfiguredAnalyticsMeansRandomOnly() throws Exception {
+        threeBlogsOfSix();
+        source.configured = false;
+        source.rows = List.of(Map.entry("ignored", 99L));
+        JPADiscoveryManagerImpl manager = manager();
+
+        manager.refresh();
+        manager.selectFrontPage();
+
+        assertEquals(0, source.calls.get(), "an unconfigured source is never read");
+        assertEquals(DiscoveryStatus.State.DISABLED, manager.getStatus().state());
+        assertNull(manager.getStatus().lastError());
+        assertEquals(0, manager.getStatus().scoredEntries());
+    }
+
     // ---------------------------------------------------------------- AC 2
 
     @Test
@@ -199,30 +215,13 @@ class JPADiscoveryManagerImplTest {
     }
 
     @Test
-    void websiteIdMatchesIgnoringCase() throws Exception {
-        Fixture f = threeBlogsOfSix();
-        setShare("0");
-        source.configured = true;
-        source.rows = List.of(new TrafficRow(f.blogs[1].getAnalyticsSiteId().toUpperCase(Locale.ROOT),
-                f.entries[1][3].getAnchor(), 10));
-
-        JPADiscoveryManagerImpl manager = manager();
-        manager.refresh();
-        FrontPageSelection page = manager.selectFrontPage();
-
-        assertEquals(f.entries[1][3].getId(), page.headline().getId());
-        assertEquals(1, manager.getStatus().scoredEntries());
-    }
-
-    @Test
-    void refreshAsksForTheWindow() throws Exception {
+    void windowMatchesDiscoverySetting() throws Exception {
         threeBlogsOfSix();
         source.configured = true;
 
         manager().refresh();
 
-        // default window 30 days, today included: 2026-10-03 .. 2026-11-01
-        assertEquals(LocalDate.of(2026, 10, 3), source.lastFirstDay);
+        assertEquals(DiscoverySettings.windowDays(), source.lastWindowDays);
     }
 
     @Test
@@ -350,17 +349,9 @@ class JPADiscoveryManagerImplTest {
         // so if one leaked into the candidates it would take the headline
         setShare("0");
         source.configured = true;
-        List<TrafficRow> rows = new ArrayList<>();
+        List<Map.Entry<String, Long>> rows = new ArrayList<>();
         for (WeblogEntry entry : ineligible) {
-            Weblog owner = weblogs().getWeblog(entry.getWebsite().getId());
-            String siteId = owner.getAnalyticsSiteId();
-            if (siteId == null) {
-                siteId = UUID.randomUUID().toString();
-                owner.setAnalyticsSiteId(siteId);
-                weblogs().saveWeblog(owner);
-                TestUtils.weblogger().flush();
-            }
-            rows.add(new TrafficRow(siteId, entry.getAnchor(), 1_000_000));
+            rows.add(Map.entry(entry.getId(), 1_000_000L));
         }
         rows.add(row(f, 0, 0, 1));
         source.rows = rows;
@@ -489,9 +480,9 @@ class JPADiscoveryManagerImplTest {
         Fixture f = threeBlogsOfSix();
         source.configured = true;
         source.rows = List.of(
-                new TrafficRow(UUID.randomUUID().toString(), f.entries[0][0].getAnchor(), 500),
-                new TrafficRow(f.blogs[0].getAnalyticsSiteId(), "no-such-anchor", 400),
-                new TrafficRow(null, null, 300));
+                Map.entry("no-such-entry", 500L),
+                Map.entry("also-not-an-entry", 400L),
+                Map.entry(f.entries[0][0].getId(), 0L));
         JPADiscoveryManagerImpl manager = manager();
         manager.refresh();
 
@@ -590,7 +581,6 @@ class JPADiscoveryManagerImplTest {
         Weblog created = TestUtils.setupWeblog(handle, user);
         blogs.add(created);
         Weblog managed = weblogs().getWeblog(created.getId());
-        managed.setAnalyticsSiteId(UUID.randomUUID().toString());
         weblogs().saveWeblog(managed);
         TestUtils.weblogger().flush();
         return weblogs().getWeblog(created.getId());
@@ -618,8 +608,8 @@ class JPADiscoveryManagerImplTest {
         return createdSiteSpace;
     }
 
-    private static TrafficRow row(Fixture f, int blog, int entry, long views) {
-        return new TrafficRow(f.blogs[blog].getAnalyticsSiteId(), f.entries[blog][entry].getAnchor(), views);
+    private static Map.Entry<String, Long> row(Fixture f, int blog, int entry, long views) {
+        return Map.entry(f.entries[blog][entry].getId(), views);
     }
 
     /**
@@ -680,9 +670,9 @@ class JPADiscoveryManagerImplTest {
     /** Traffic on demand: unconfigured until told, then the given rows or the given failure. */
     private static final class FakeSource implements TrafficSource {
         volatile boolean configured;
-        volatile List<TrafficRow> rows = List.of();
+        volatile List<Map.Entry<String, Long>> rows = List.of();
         volatile WebloggerException failure;
-        volatile LocalDate lastFirstDay;
+        volatile int lastWindowDays;
         final AtomicInteger calls = new AtomicInteger();
 
         @Override
@@ -691,13 +681,15 @@ class JPADiscoveryManagerImplTest {
         }
 
         @Override
-        public List<TrafficRow> viewsSince(LocalDate firstDay) throws WebloggerException {
+        public Map<String, Long> viewsByEntry(int windowDays) throws WebloggerException {
             calls.incrementAndGet();
-            lastFirstDay = firstDay;
+            lastWindowDays = windowDays;
             if (failure != null) {
                 throw failure;
             }
-            return rows;
+            Map<String, Long> views = new HashMap<>();
+            rows.forEach(r -> views.merge(r.getKey(), r.getValue(), Long::sum));
+            return views;
         }
     }
 }

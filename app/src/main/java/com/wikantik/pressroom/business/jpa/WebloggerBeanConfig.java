@@ -44,10 +44,10 @@ import com.wikantik.pressroom.business.analytics.AnalyticsManager;
 import com.wikantik.pressroom.business.analytics.AnalyticsService;
 import com.wikantik.pressroom.business.analytics.JPAAnalyticsManagerImpl;
 import com.wikantik.pressroom.business.analytics.UmamiAnalyticsService;
+import com.wikantik.pressroom.business.discovery.CachedTrafficSource;
 import com.wikantik.pressroom.business.discovery.DiscoveryManager;
 import com.wikantik.pressroom.business.discovery.JPADiscoveryManagerImpl;
 import com.wikantik.pressroom.business.discovery.TrafficSource;
-import com.wikantik.pressroom.business.discovery.UmamiTrafficSource;
 import com.wikantik.pressroom.business.plugins.PluginManager;
 import com.wikantik.pressroom.business.plugins.PluginManagerImpl;
 import com.wikantik.pressroom.business.runnable.ThreadManager;
@@ -220,10 +220,10 @@ public class WebloggerBeanConfig {
         return new ThemeManagerImpl(weblogger);
     }
 
-    /** Umami's traffic view, or an unconfigured source when no analytics database is set. */
+    /** Popularity from the analytics manager's local snapshots; never calls Umami. */
     @Bean
-    public TrafficSource trafficSource() {
-        return UmamiTrafficSource.fromConfig();
+    public TrafficSource trafficSource(@Lazy Weblogger weblogger) {
+        return new CachedTrafficSource(weblogger);
     }
 
     @Bean
