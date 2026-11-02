@@ -70,6 +70,13 @@ already allows the fetch.
 ## Analytics
 Per-weblog Umami tracking plus a read-only Grafana contract over two databases.
 
+- **Umami's HTTP API, as the pinned 3.3.0 image really behaves, is in
+  [`umami-api.md`](umami-api.md)**: the dedicated `pressroom` account
+  (`deploy/analytics/umami-pressroom-account.sql`), registration with a
+  supplied website ID, the read endpoints with sample bodies, and what a visit
+  stores. `UmamiApiContractTest` pins every claim there against the real image
+  (`UmamiContainer`); an image bump that breaks it means re-checking that doc.
+
 - **`analytics_traffic` has a second reader: the front page.** `UmamiTrafficSource`
   (see `discovery.md`) queries it read-only to score posts, so changing that
   view's columns or semantics changes `/` and the "more from the site" block as
