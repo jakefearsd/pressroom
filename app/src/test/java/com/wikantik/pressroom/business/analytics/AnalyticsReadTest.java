@@ -404,6 +404,43 @@ class AnalyticsReadTest {
         assertEquals(Map.of(entryA.getId(), 5L, entryB.getId(), 4L), tier.manager.entryViewsAllBlogs(30));
     }
 
+    /**
+     * Discovery's popularity read is the local cache and nothing else: once a
+     * sync has filled the snapshots, the real manager answers the discovery
+     * source and a whole discovery refresh without one further call to the
+     * service (the fake counts every call but {@code isConfigured}).
+     */
+    @Test
+    void refreshNeverCallsAnalyticsService() throws Exception {
+        Weblog blog = tier.addWeblogUnseen("discocache", user);
+        WeblogEntry entry = entry("cached-post", blog);
+        tier.service.reports.put(blog.getId(), report(7,
+                List.of(new PathCount("/discocache/entry/cached-post", 7, 4)), List.of()));
+        sync();
+        int callsAfterSync = tier.service.calls.get();
+        int pingsAfterSync = tier.service.pings.get();
+        int readsAfterSync = tier.service.reads.size();
+        int ensuredAfterSync = tier.service.ensured.size();
+        com.wikantik.pressroom.business.discovery.CachedTrafficSource source =
+                new com.wikantik.pressroom.business.discovery.CachedTrafficSource(tier.weblogger);
+
+        assertTrue(source.isConfigured());
+        assertEquals(7L, source.viewsByEntry(30).get(entry.getId()));
+
+        com.wikantik.pressroom.business.discovery.JPADiscoveryManagerImpl discovery =
+                new com.wikantik.pressroom.business.discovery.JPADiscoveryManagerImpl(tier.weblogger, source);
+        discovery.refresh();
+        TestUtils.endSession(false);
+
+        assertEquals(com.wikantik.pressroom.business.discovery.DiscoveryStatus.State.OK,
+                discovery.getStatus().state());
+        assertTrue(discovery.getStatus().scoredEntries() >= 1, "the cached views scored at least this entry");
+        assertEquals(callsAfterSync, tier.service.calls.get(), "no service call after the sync");
+        assertEquals(pingsAfterSync, tier.service.pings.get());
+        assertEquals(readsAfterSync, tier.service.reads.size());
+        assertEquals(ensuredAfterSync, tier.service.ensured.size());
+    }
+
     // ------------------------------------------------------------ helpers
 
     private void sync() throws Exception {

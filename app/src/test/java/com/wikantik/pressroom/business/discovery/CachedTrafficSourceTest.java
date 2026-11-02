@@ -88,14 +88,4 @@ class CachedTrafficSourceTest {
         assertFalse(new CachedTrafficSource(tierWith(readOnlyManager(false, Map.of(), new ArrayList<>())))
                 .isConfigured());
     }
-
-    @Test
-    void readingNeverCallsTheAnalyticsService() throws WebloggerException {
-        // any call but the two reads fails inside readOnlyManager
-        CachedTrafficSource source = new CachedTrafficSource(
-                tierWith(readOnlyManager(true, Map.of("e", 1L), new ArrayList<>())));
-
-        source.isConfigured();
-        source.viewsByEntry(30);
-    }
 }

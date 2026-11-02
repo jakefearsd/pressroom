@@ -580,9 +580,6 @@ class JPADiscoveryManagerImplTest {
     private Weblog blog(String handle) throws Exception {
         Weblog created = TestUtils.setupWeblog(handle, user);
         blogs.add(created);
-        Weblog managed = weblogs().getWeblog(created.getId());
-        weblogs().saveWeblog(managed);
-        TestUtils.weblogger().flush();
         return weblogs().getWeblog(created.getId());
     }
 
