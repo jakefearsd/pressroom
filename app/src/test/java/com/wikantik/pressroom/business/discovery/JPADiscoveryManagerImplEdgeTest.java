@@ -31,7 +31,6 @@ import org.junit.jupiter.api.Test;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -169,12 +168,12 @@ class JPADiscoveryManagerImplEdgeTest {
         MovableClock clock = new MovableClock(Instant.now().minusSeconds(3600));
         AtomicLong afterRead = new AtomicLong();
         JPADiscoveryManagerImpl manager = new JPADiscoveryManagerImpl(tier.weblogger(),
-                new Configured(firstDay -> {
+                new Configured(days -> {
                     // the read takes "an hour": the clock moves on while it runs
                     Instant later = Instant.now();
                     clock.set(later);
                     afterRead.set(later.toEpochMilli());
-                    return List.of();
+                    return Map.of();
                 }), clock, background::add);
 
         manager.refresh();
@@ -193,8 +192,7 @@ class JPADiscoveryManagerImplEdgeTest {
     @Test
     void theFirstFrontPageNeverReadsTrafficOnTheCallingThread() throws Exception {
         candidates(3);
-        blog.setAnalyticsSiteId("site-1");
-        Configured source = new Configured(firstDay -> List.of(new TrafficRow("site-1", "post-2", 10)));
+        Configured source = new Configured(days -> Map.of("entry-2", 10L));
         JPADiscoveryManagerImpl manager = manager(source);
 
         FrontPageSelection first = manager.selectFrontPage();
@@ -219,7 +217,7 @@ class JPADiscoveryManagerImplEdgeTest {
     @Test
     void theFirstMoreFromSiteNeverReadsTrafficOnTheCallingThread() throws Exception {
         candidates(3);
-        Configured source = new Configured(firstDay -> List.of());
+        Configured source = new Configured(days -> Map.of());
         JPADiscoveryManagerImpl manager = manager(source);
 
         assertEquals(3, manager.selectMoreFromSite(weblog("other"), 3).size());
@@ -238,13 +236,12 @@ class JPADiscoveryManagerImplEdgeTest {
     @Test
     void theFirstPageNeverWaitsOnARefreshThatIsReadingTraffic() throws Exception {
         candidates(3);
-        blog.setAnalyticsSiteId("site-1");
         CountDownLatch reading = new CountDownLatch(1);
         CountDownLatch umamiAnswers = new CountDownLatch(1);
-        Configured source = new Configured(firstDay -> {
+        Configured source = new Configured(days -> {
             reading.countDown();
             awaitQuietly(umamiAnswers);
-            return List.of(new TrafficRow("site-1", "post-2", 10));
+            return Map.of("entry-2", 10L);
         });
         JPADiscoveryManagerImpl manager = manager(source);
         Thread refresher = new Thread(manager::refresh, "discovery-refresh");
@@ -276,9 +273,8 @@ class JPADiscoveryManagerImplEdgeTest {
     @Test
     void aRefreshThatLandsDuringTheFirstBuildIsKept() throws Exception {
         List<DiscoveryCandidate> list = candidates(3);
-        blog.setAnalyticsSiteId("site-1");
         JPADiscoveryManagerImpl manager = manager(
-                new Configured(firstDay -> List.of(new TrafficRow("site-1", "post-2", 10))));
+                new Configured(days -> Map.of("entry-2", 10L)));
         AtomicBoolean firstRead = new AtomicBoolean(true);
         AtomicBoolean refreshed = new AtomicBoolean();
         when(tier.weblogEntryManager().getDiscoveryCandidates()).thenAnswer(call -> {
@@ -325,7 +321,7 @@ class JPADiscoveryManagerImplEdgeTest {
     void theTierPoolRunsTheFirstScoredRefresh() throws Exception {
         candidates(3);
         JPADiscoveryManagerImpl manager = new JPADiscoveryManagerImpl(tier.weblogger(),
-                new Configured(firstDay -> List.of()));
+                new Configured(days -> Map.of()));
 
         assertNotNull(manager.selectFrontPage().headline());
 
@@ -337,7 +333,7 @@ class JPADiscoveryManagerImplEdgeTest {
         candidates(3);
         doThrow(new InterruptedException()).when(tier.threadManager()).executeInBackground(any(Runnable.class));
         JPADiscoveryManagerImpl manager = new JPADiscoveryManagerImpl(tier.weblogger(),
-                new Configured(firstDay -> List.of()));
+                new Configured(days -> Map.of()));
 
         FrontPageSelection page = manager.selectFrontPage();
 
@@ -385,7 +381,7 @@ class JPADiscoveryManagerImplEdgeTest {
             }
 
             @Override
-            public List<TrafficRow> viewsSince(LocalDate firstDay) {
+            public Map<String, Long> viewsByEntry(int windowDays) {
                 throw new IllegalStateException("driver blew up");
             }
         });
@@ -454,12 +450,9 @@ class JPADiscoveryManagerImplEdgeTest {
     @Test
     void aDroppedHeadlineFallsToTheBestRankedPostNotOnThePage() throws Exception {
         candidates(30);
-        blog.setAnalyticsSiteId("site-1");
         when(tier.propertiesManager().getProperty(DiscoverySettings.SHARE_PERCENT))
                 .thenReturn(new RuntimeConfigProperty(DiscoverySettings.SHARE_PERCENT, "100"));
-        List<TrafficRow> rows = List.of(new TrafficRow("site-1", "post-5", 100),
-                new TrafficRow("site-1", "post-7", 50), new TrafficRow("site-1", "post-8", 40),
-                new TrafficRow("site-1", "post-9", 30));
+        Map<String, Long> rows = Map.of("entry-5", 100L, "entry-7", 50L, "entry-8", 40L, "entry-9", 30L);
         JPADiscoveryManagerImpl manager = manager(new TrafficSource() {
             @Override
             public boolean isConfigured() {
@@ -467,7 +460,7 @@ class JPADiscoveryManagerImplEdgeTest {
             }
 
             @Override
-            public List<TrafficRow> viewsSince(LocalDate firstDay) {
+            public Map<String, Long> viewsByEntry(int windowDays) {
                 return rows;
             }
         });
@@ -542,15 +535,15 @@ class JPADiscoveryManagerImplEdgeTest {
         }
 
         @Override
-        public List<TrafficRow> viewsSince(LocalDate firstDay) {
-            return List.of();
+        public Map<String, Long> viewsByEntry(int windowDays) {
+            return Map.of();
         }
     }
 
     /** What a configured source answers. */
     @FunctionalInterface
     private interface Reads {
-        List<TrafficRow> viewsSince(LocalDate firstDay);
+        Map<String, Long> viewsByEntry(int windowDays);
     }
 
     /** A configured source that records the thread of every read. */
@@ -568,9 +561,9 @@ class JPADiscoveryManagerImplEdgeTest {
         }
 
         @Override
-        public List<TrafficRow> viewsSince(LocalDate firstDay) {
+        public Map<String, Long> viewsByEntry(int windowDays) {
             callers.add(Thread.currentThread().getName());
-            return reads.viewsSince(firstDay);
+            return reads.viewsByEntry(windowDays);
         }
     }
 
