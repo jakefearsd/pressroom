@@ -46,7 +46,8 @@ import static org.mockito.Mockito.when;
 
 /**
  * {@link AnalyticsSyncTask}: the scheduled read, under the cluster lease,
- * serialised with the manager's own background syncs.
+ * serialised with the manager's own background syncs, and skipped when one is
+ * already running.
  */
 class AnalyticsSyncTaskTest {
 
@@ -74,16 +75,25 @@ class AnalyticsSyncTaskTest {
 
         InOrder order = inOrder(weblogger.getThreadManager(), analytics, weblogger);
         order.verify(weblogger.getThreadManager()).registerLease(any());
-        order.verify(analytics).sync();
+        order.verify(analytics).trySync();
         order.verify(weblogger).release();
         order.verify(weblogger.getThreadManager()).unregisterLease(any());
+        verify(analytics, never()).sync();
 
         AnalyticsManager refused = mock(AnalyticsManager.class);
         task(leasing(refused, false)).run();
+        verify(refused, never()).trySync();
         verify(refused, never()).sync();
+    }
 
-        // and against the real manager: a sync the executor is running holds the
-        // task's back, so two writers never fill one snapshot at once
+    /**
+     * A slow Umami can make a sync outlast the lease. A tick that finds a sync
+     * already running skips rather than parking another pool thread behind it
+     * (each such thread would wait for the lock and pile up); the requested
+     * sync's change is not lost, since that sync is the one running.
+     */
+    @Test
+    void aTickWhileASyncRunsSkipsInsteadOfWaiting() throws Exception {
         AnalyticsTier tier = new AnalyticsTier();
         User user = TestUtils.setupUser("analyticstask");
         TestUtils.endSession(true);
@@ -101,15 +111,48 @@ class AnalyticsSyncTaskTest {
                 }
             }, "analytics-task-test");
             scheduled.start();
-            awaitBlocked(scheduled);
-            assertEquals(1, tier.service.maxInFlight.get(), "the task waits outside while the requested sync runs");
+            scheduled.join(TimeUnit.SECONDS.toMillis(5));
+
+            assertFalse(scheduled.isAlive(), "the tick returned at once: " + scheduled.getState());
+            assertFalse(tier.service.callers.contains(scheduled), "the skipped tick asked the service nothing");
+            assertFalse(tier.manager.trySync(), "while a sync runs, trySync declines");
 
             tier.service.release();
-            scheduled.join(TimeUnit.SECONDS.toMillis(30));
-            assertFalse(scheduled.isAlive(), "the task ran once the requested sync was done");
             tier.awaitQuiet();
-            assertEquals(1, tier.service.maxInFlight.get(), "the two syncs never overlapped");
-            assertTrue(tier.service.callers.contains(scheduled), "the task's sync did run");
+            assertEquals(1, tier.service.maxInFlight.get(), "never two syncs at once");
+            assertTrue(tier.manager.trySync(), "with none running, it runs");
+            TestUtils.endSession(false);
+        } finally {
+            tier.tearDown();
+            TestUtils.teardownUser(user.getUserName());
+            TestUtils.endSession(true);
+        }
+    }
+
+    /** The requested-sync path still queues behind a running sync rather than skipping. */
+    @Test
+    void aRequestedSyncWaitsForTheRunningOneInsteadOfSkipping() throws Exception {
+        AnalyticsTier tier = new AnalyticsTier();
+        User user = TestUtils.setupUser("analyticsqueue");
+        TestUtils.endSession(true);
+        try {
+            String blog = tier.addWeblogUnseen("taskqueue", user).getId();
+            tier.service.hang = new CountDownLatch(1);
+            Thread running = new Thread(() -> {
+                tier.manager.sync();
+                tier.weblogger.release();
+            }, "analytics-running-sync");
+            running.start();
+            awaitCalls(tier, 1);
+
+            tier.manager.requestSync();
+            tier.service.release();
+            running.join(TimeUnit.SECONDS.toMillis(30));
+            tier.awaitQuiet();
+
+            long reads = tier.service.reads.stream().filter(r -> blog.equals(r.websiteId())).count();
+            assertEquals(2L * tier.manager.periodKeys().size(), reads,
+                    "the running sync read the blog, then the requested one did again");
         } finally {
             tier.tearDown();
             TestUtils.teardownUser(user.getUserName());
@@ -120,7 +163,7 @@ class AnalyticsSyncTaskTest {
     @Test
     void aFailingSyncStillReleasesAndDoesNotPropagate() throws Exception {
         AnalyticsManager analytics = mock(AnalyticsManager.class);
-        doThrow(new IllegalStateException("boom")).when(analytics).sync();
+        doThrow(new IllegalStateException("boom")).when(analytics).trySync();
         Weblogger weblogger = leasing(analytics, true);
 
         assertDoesNotThrow(() -> task(weblogger).runTask());
@@ -159,14 +202,6 @@ class AnalyticsSyncTaskTest {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
         while (tier.service.calls.get() < n) {
             assertTrue(System.nanoTime() < deadline, "no sync reached the service");
-            Thread.sleep(10);
-        }
-    }
-
-    private static void awaitBlocked(Thread thread) throws InterruptedException {
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
-        while (thread.getState() != Thread.State.BLOCKED) {
-            assertTrue(System.nanoTime() < deadline, "the task never waited: " + thread.getState());
             Thread.sleep(10);
         }
     }

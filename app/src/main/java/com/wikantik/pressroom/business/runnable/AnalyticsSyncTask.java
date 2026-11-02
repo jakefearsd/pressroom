@@ -29,12 +29,14 @@ import com.wikantik.pressroom.business.Weblogger;
  * interval ({@code tasks.AnalyticsSyncTask.interval}, 15 minutes), under the
  * cluster lease so one node does it per interval.
  *
- * <p>It calls {@code AnalyticsManager.sync()} directly, which reconciles
- * first and then reads. That call takes the same lock as the manager's own
- * background syncs (the ones a blog save or "Sync now" requests), so a
- * scheduled run and a requested one never write one snapshot at once: one
- * waits for the other. With no analytics service configured the sync returns
- * at once.
+ * <p>It calls {@code AnalyticsManager.trySync()}, which reconciles first and
+ * then reads, under the same lock as the manager's own background syncs (the
+ * ones a blog save or "Sync now" requests), so a scheduled run and a
+ * requested one never write one snapshot at once. When a sync is already
+ * running (a slow Umami can make one outlast the interval) the tick is
+ * skipped rather than parking another pool thread on the lock; the running
+ * sync is doing the work. With no analytics service configured it returns at
+ * once.
  */
 public class AnalyticsSyncTask extends PressroomTaskWithLeasing {
     private static final Logger log = LoggerFactory.getLogger(AnalyticsSyncTask.class);
@@ -108,7 +110,9 @@ public class AnalyticsSyncTask extends PressroomTaskWithLeasing {
     public void runTask() {
         log.debug("task started");
         try {
-            weblogger().getAnalyticsManager().sync();
+            if (!weblogger().getAnalyticsManager().trySync()) {
+                log.debug("an analytics sync is already running; tick skipped");
+            }
         } catch (RuntimeException e) {
             log.error("Unexpected exception running the analytics sync", e);
         } finally {

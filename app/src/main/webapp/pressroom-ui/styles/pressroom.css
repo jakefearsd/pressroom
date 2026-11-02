@@ -1969,7 +1969,7 @@ span.button {
 .traffic-period-link:last-child { border-right: 0; }
 .traffic-period-link.on { background: var(--ink); color: var(--surface); }
 .traffic-notice { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; font-size: 13px; margin-bottom: 12px; background: var(--accent-quiet); }
-.traffic-notice-stale { border-color: var(--warn); }
+.traffic-notice-stale, .traffic-notice-notRegistered { border-color: var(--warn); }
 .traffic-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; list-style: none; padding: 0; margin: 0 0 12px; }
 .traffic-tile { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; display: flex; flex-direction: column; background: var(--surface); }
 .traffic-tile-label { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--ink-soft); }

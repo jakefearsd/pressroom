@@ -132,7 +132,10 @@ row adding `"user":{"username","id"}` and `"team"`.
 ## Reading numbers
 
 All per-website reads are `GET /api/websites/{id}/<endpoint>` with
-`startAt`/`endAt` as **epoch milliseconds**. An empty website answers 200 with
+`startAt`/`endAt` as **epoch milliseconds**. Pressroom's windows roll: each
+period is exactly N×24 h (24 h for `24h`) ending at the moment of the read,
+not aligned to local days, so the 7-day series has eight day buckets, the
+first and last partial. An empty website answers 200 with
 zeros or empty arrays everywhere (never 404). An unknown `timezone` is a 400
 (`{"properties":{"timezone":{"errors":["Invalid timezone"]}}}`), not a silent UTC.
 
@@ -248,7 +251,9 @@ empty** (omitting it is a 400). Dates are ISO-8601 strings. `GET` answers 405.
 ```
 
 With no data the percentiles are **0, not null**, and `summary.count` is 0:
-check `count` before showing a speed number.
+check `count` before showing a speed number. Pressroom also leaves out any
+one metric whose `p75` is null or absent (not measured), rather than showing
+0 for it; the spec says drop a column rather than estimate it.
 
 ```json
 {"chart":[],"summary":{"lcp":{"p50":0,"p75":0,"p95":0},"inp":{"p50":0,"p75":0,"p95":0},"cls":{"p50":0,"p75":0,"p95":0},"fcp":{"p50":0,"p75":0,"p95":0},"ttfb":{"p50":0,"p75":0,"p95":0},"count":0},"pages":[],"pageTitles":[],"devices":[],"browsers":[]}

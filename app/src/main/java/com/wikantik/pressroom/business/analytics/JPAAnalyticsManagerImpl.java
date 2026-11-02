@@ -50,6 +50,7 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -168,8 +169,12 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
     /** IDLE, RUNNING (a sync in flight) or QUEUED (in flight, and one more to follow). */
     private final AtomicInteger runState = new AtomicInteger(IDLE);
 
-    /** Serialises syncs: the request-sync executor's and the scheduled task's. */
-    private final Object syncLock = new Object();
+    /**
+     * Serialises syncs: the request-sync executor's, which waits for it, and
+     * the scheduled task's, which skips its tick when it is held
+     * ({@link #trySync()}).
+     */
+    private final ReentrantLock syncLock = new ReentrantLock();
 
     /** The thread inside a sync right now; a request it makes is its own bump's echo, and dropped. */
     private volatile Thread syncing;
@@ -241,16 +246,16 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
         if (!service.isConfigured()) {
             return;
         }
-        synchronized (syncLock) {
-            try {
-                Map<String, AnalyticsSite> rows = loadRows();
-                List<Weblog> weblogs = allWeblogs();
-                registered = registrationsIn(rows);
-                status = statusOf(rows, weblogs);
-            } catch (WebloggerException | RuntimeException e) {
-                log.error("Analytics could not load its registrations; blogs render untagged until the first sync",
-                        e);
-            }
+        syncLock.lock();
+        try {
+            Map<String, AnalyticsSite> rows = loadRows();
+            List<Weblog> weblogs = allWeblogs();
+            registered = registrationsIn(rows);
+            status = statusOf(rows, weblogs);
+        } catch (WebloggerException | RuntimeException e) {
+            log.error("Analytics could not load its registrations; blogs render untagged until the first sync", e);
+        } finally {
+            syncLock.unlock();
         }
         requestSync();
     }
@@ -365,6 +370,20 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
     }
 
     @Override
+    public boolean trySync() {
+        if (!syncLock.tryLock()) {
+            log.debug("Analytics sync already running; this tick is skipped");
+            return false;
+        }
+        try {
+            sync();
+        } finally {
+            syncLock.unlock();
+        }
+        return true;
+    }
+
+    @Override
     public void reconcile() {
         guarded(this::reconcileNow);
     }
@@ -377,7 +396,8 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
         if (!service.isConfigured()) {
             return;
         }
-        synchronized (syncLock) {
+        syncLock.lock();
+        try {
             Thread previous = syncing;
             syncing = Thread.currentThread();
             try {
@@ -385,6 +405,8 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
             } finally {
                 syncing = previous;
             }
+        } finally {
+            syncLock.unlock();
         }
     }
 
@@ -721,9 +743,13 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
                     row.setRegisteredAt(now);
                 }
                 row.setLastError(null);
-            } catch (AnalyticsException | RuntimeException e) {
+            } catch (AnalyticsException e) {
                 // recorded, not swallowed: the blog stays unconfirmed and is retried
                 row.setLastError(describe(e));
+                log.warn("Analytics could not register weblog {}", handle, e);
+            } catch (RuntimeException e) {
+                // as in readOne: the message of an unexpected exception is not ours to show
+                row.setLastError(e.getClass().getSimpleName());
                 log.warn("Analytics could not register weblog {}", handle, e);
             }
         } else {

@@ -32,6 +32,10 @@
     <jsp:param name="sort" value="${traffic.sort}"/>
 </jsp:include>
 
+<c:if test="${not empty traffic.notRegisteredError}">
+    <p class="traffic-notice traffic-notice-notRegistered" role="status"><spring:message code="traffic.state.notRegistered" arguments="${[fn:escapeXml(traffic.notRegisteredError)]}"/></p>
+</c:if>
+
 <c:if test="${traffic.showBody}">
 
 <ul class="traffic-tiles" aria-label="<spring:message code='traffic.tile.changeNote'/>">

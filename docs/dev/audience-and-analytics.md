@@ -97,6 +97,26 @@ read-only Grafana contract over two databases. Spec:
   counts them; a view that needs another range reads that period's snapshot.
   Day boundaries follow the site space's time zone. A failed read keeps the old
   snapshot and marks it stale (shown, not hidden).
+- **What the pages say when there is no number.** Global › Traffic lists
+  every weblog, the site space included: one with no snapshot says "No
+  numbers yet", or "Not registered with Umami yet" when its registration
+  failed, and counts toward no total. A blog's Traffic page says "Not
+  registered with Umami yet: <reason>" in that case. Paths are read 1000 per
+  (blog, period); a read that fills the page is marked `paths_truncated`, and
+  then the entries list's Views (30d) shows an em dash, not 0, for an entry
+  outside it (ruling R23; `umami-api.md`). The site pages' row opens the
+  Traffic page on the site space, for a global admin only (R25).
+- **A website Umami lost is registered again.** A read answered 401 after a
+  fresh login means Umami has no such website (`WebsiteMissingException`):
+  the blog's registration is cleared and the next sync re-creates it under
+  the same ID (R24; operator view in `docker_deployment.md`, "If Umami loses
+  its websites").
+- **The scheduled sync skips a tick while a sync runs** (`trySync`, a
+  `ReentrantLock.tryLock`), so a slow Umami cannot pile pool threads up on
+  the lock; requested syncs ("Sync now", a blog save) still queue behind the
+  running one. AC 8 is proven with the real manager on a hanging service for
+  page renders (`RenderingNeverCallsAnalyticsServiceTest`) and for the admin
+  pages, Sync now and a blog save (`AdminPagesNeverCallAnalyticsServiceTest`).
 - **Cache expiry rides `weblog.lastModified`.** Whether a blog carries the
   tracker tag is part of its rendered pages, so each registration-state change
   advances `lastModified` (`JPAAnalyticsManagerImpl`; the new answer is
@@ -107,8 +127,10 @@ read-only Grafana contract over two databases. Spec:
   [`umami-api.md`](umami-api.md)**: the dedicated `pressroom` account
   (`deploy/analytics/umami-pressroom-account.sql`), registration with a
   supplied website ID, the read endpoints with sample bodies, and what a visit
-  stores. `UmamiApiContractTest` pins every claim there against the real image
-  (`UmamiContainer`); an image bump that breaks it means re-checking that doc.
+  stores. `UmamiApiContractTest` pins part of it against the real image
+  (`UmamiContainer`), and the rest was observed by hand: the opening paragraph
+  of `umami-api.md` lists what is pinned and what is only observed. An image
+  bump that breaks the contract test means re-checking that whole doc.
 
 - **`analytics_traffic` is for Grafana only now.** The front page no longer
   reads it: `CachedTrafficSource` (see `discovery.md`) scores posts from the

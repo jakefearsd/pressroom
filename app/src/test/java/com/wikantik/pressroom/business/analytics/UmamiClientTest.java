@@ -17,6 +17,8 @@
  */
 package com.wikantik.pressroom.business.analytics;
 
+import com.wikantik.pressroom.config.StaticConfigOverride;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -45,6 +47,7 @@ import org.apache.logging.log4j.core.config.Property;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import com.wikantik.pressroom.business.analytics.AnalyticsReport.KeyCount;
 
@@ -205,6 +208,14 @@ class UmamiClientTest {
         assertFalse(other instanceof WebsiteMissingException, "a 503 is not a missing website");
     }
 
+    /** A login reply's body is the bearer token: a reply prints its status and length, never its body. */
+    @Test
+    void aReplyNeverPrintsItsBody() {
+        String printed = new UmamiClient.Reply(200, "{\"token\":\"secret-bearer-token\"}").toString();
+        assertFalse(printed.contains("secret-bearer-token"), printed);
+        assertTrue(printed.contains("200"), printed);
+    }
+
     @Test
     void aFailedLoginThrowsWithoutThePassword() {
         server.removeContext("/");
@@ -313,6 +324,7 @@ class UmamiClientTest {
     }
 
     @Test
+    @Timeout(value = 10, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void hangingServerTimesOut() {
         server.removeContext("/");
         server.createContext("/", exchange -> {
@@ -368,7 +380,11 @@ class UmamiClientTest {
 
     @Test
     void unconfiguredServiceIsInert() throws Exception {
-        AnalyticsService svc = UmamiAnalyticsService.fromConfig();
+        AnalyticsService svc;
+        // blank here whatever the developer's PRESSROOM_ANALYTICS_UMAMI_APIURL says
+        try (var _ = StaticConfigOverride.set("analytics.umami.apiUrl", "")) {
+            svc = UmamiAnalyticsService.fromConfig();
+        }
         assertFalse(svc.isConfigured());
         assertFalse(svc.ping());
         AnalyticsException e1 = assertThrows(AnalyticsException.class,
@@ -515,6 +531,20 @@ class UmamiClientTest {
 
         route = r -> r.path().endsWith("/metrics/expanded") ? new Resp(200, pathRows(999)) : readRoute(r);
         assertEquals(0, service().read(SITE, Period.of("30d"), LA).pathsCappedAt(), "a short page is complete");
+    }
+
+    /** A metric with no p75 was not measured (no reader interacted, say): it is left out, never shown as 0. */
+    @Test
+    void aSpeedMetricWithNoPercentileIsLeftOutNotZero() throws Exception {
+        route = r -> r.path().equals("/api/reports/performance")
+                ? new Resp(200, "{\"chart\":[],\"summary\":{\"lcp\":{\"p50\":1617.25,\"p75\":1808.625,\"p95\":1961.725},"
+                        + "\"inp\":{\"p50\":null,\"p75\":null,\"p95\":null},\"cls\":{\"p75\":0.125},"
+                        + "\"ttfb\":{\"p50\":210,\"p95\":291},\"count\":2}}")
+                : readRoute(r);
+
+        assertEquals(List.of(new KeyCount("lcp", 1809), new KeyCount("cls", 125)),
+                service().read(SITE, Period.of("30d"), LA).breakdowns().get("speed"),
+                "inp's p75 is null, fcp is absent, ttfb has no p75");
     }
 
     @Test

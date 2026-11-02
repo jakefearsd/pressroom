@@ -70,6 +70,15 @@ public interface AnalyticsManager {
     void sync();
 
     /**
+     * {@link #sync()}, unless a sync is already running, in which case it
+     * returns at once without one: the scheduled task's tick, which must not
+     * park a pool thread behind a slow sync. Background threads only.
+     *
+     * @return whether a sync ran
+     */
+    boolean trySync();
+
+    /**
      * Registers every blog (and the site space) that is not yet registered, and updates any
      * whose name or domain changed since it was last confirmed. Background
      * threads only.

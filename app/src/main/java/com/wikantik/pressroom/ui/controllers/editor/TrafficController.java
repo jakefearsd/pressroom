@@ -106,10 +106,11 @@ public class TrafficController extends BaseController {
         if (traffic == null) {
             traffic = new BlogTraffic(TrafficState.NO_DATA, null, null, null, null, null, null, null);
         }
-        String umami = TrafficView.umamiUrl(WebloggerConfig.getProperty(DASHBOARD_URL_KEY),
-                analytics.websiteIdFor(weblog.getId()));
+        // from memory: a blog has a website ID exactly when it is registered
+        String websiteId = analytics.websiteIdFor(weblog.getId());
+        String umami = TrafficView.umamiUrl(WebloggerConfig.getProperty(DASHBOARD_URL_KEY), websiteId);
         model.addAttribute("traffic", TrafficView.of(traffic, shownPeriod, TrafficView.tabOf(tab),
-                TrafficView.sortOf(sort), umami, request.getLocale(),
+                TrafficView.sortOf(sort), umami, websiteId != null, request.getLocale(),
                 weblog.getTimeZoneInstance().toZoneId(), clock.instant()));
         return ".Traffic";
     }

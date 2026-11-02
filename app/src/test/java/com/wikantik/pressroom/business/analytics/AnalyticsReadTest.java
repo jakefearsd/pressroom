@@ -141,6 +141,36 @@ class AnalyticsReadTest {
         assertEquals(Map.of(entry.getId(), 9L), tier.manager.entryViews(blog.getId(), "7d"));
     }
 
+    /**
+     * Every headline column of a snapshot survives the database round trip
+     * under its own name, previous period included, and so do a path's
+     * visitors: distinct values throughout, so a swapped setter or column
+     * cannot pass. A characterisation test of TrafficCache: it passed at once
+     * and was proven by a one-run mutation (prev bounces and prev total time
+     * swapped in TrafficCache.replace).
+     */
+    @Test
+    void aSnapshotKeepsEveryHeadlineColumnAndPathVisitorsThroughTheDatabase() throws Exception {
+        Weblog blog = tier.addWeblogUnseen("readcolumns", user);
+        Summary current = new Summary(11, 12, 13, 14, 15);
+        Summary previous = new Summary(21, 22, 23, 24, 25);
+        tier.service.reports.put(blog.getId(), new AnalyticsReport(Instant.now(), current, previous, List.of(),
+                List.of(new PathCount("/readcolumns/", 13, 9)), breakdowns(List.of())));
+        sync();
+
+        AnalyticsSummary row = tier.strategy.getEntityManager(false)
+                .find(AnalyticsSummary.class, new AnalyticsSummary.Key(blog.getId(), "7d"));
+        assertEquals(List.of(11L, 12L, 13L, 14L, 15L), List.of(row.getVisitors(), row.getVisits(), row.getViews(),
+                row.getBounces(), row.getTotalTime()), "current, as stored");
+        assertEquals(List.of(21L, 22L, 23L, 24L, 25L), List.of(row.getPrevVisitors(), row.getPrevVisits(),
+                row.getPrevViews(), row.getPrevBounces(), row.getPrevTotalTime()), "previous, as stored");
+        BlogTraffic traffic = tier.manager.getBlogTraffic(blog.getId(), "7d");
+        assertEquals(current, traffic.current());
+        assertEquals(previous, traffic.previous());
+        assertEquals(9, traffic.posts().get(0).visitors(), "a path's own visitors");
+        assertEquals(13, traffic.posts().get(0).views());
+    }
+
     @Test
     void failedReadKeepsPreviousSnapshotAndMarksStale() throws Exception {
         Weblog failing = tier.addWeblogUnseen("readstale", user);

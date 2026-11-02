@@ -36,6 +36,12 @@ public record AnalyticsReport(Instant asOf, Summary current, Summary previous,
                               List<SeriesPoint> series, List<PathCount> paths,
                               Map<String, List<KeyCount>> breakdowns, int pathsCappedAt) {
 
+    /**
+     * The {@code speed} breakdown's {@code cls} is a small fraction (0.1);
+     * it is kept times this, so that a whole number can hold it.
+     */
+    public static final int CLS_SCALE = 1000;
+
     /** A report whose {@code paths} are every path the period had. */
     public AnalyticsReport(Instant asOf, Summary current, Summary previous, List<SeriesPoint> series,
                            List<PathCount> paths, Map<String, List<KeyCount>> breakdowns) {

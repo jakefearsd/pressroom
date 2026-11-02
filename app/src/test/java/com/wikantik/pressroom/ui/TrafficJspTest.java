@@ -94,6 +94,15 @@ class TrafficJspTest {
         assertTrue(src.contains("name=\"bean.id\""));
     }
 
+    /** A blog whose registration failed says so, with the (escaped) reason. */
+    @Test
+    void aFailedRegistrationIsSaidPlainlyAndEscaped() throws IOException {
+        String src = read(BODY);
+        assertTrue(src.contains("<c:if test=\"${not empty traffic.notRegisteredError}\">"), src);
+        assertTrue(src.contains("code=\"traffic.state.notRegistered\" "
+                + "arguments=\"${[fn:escapeXml(traffic.notRegisteredError)]}\""));
+    }
+
     /** Ruling R23: the Posts tab says when it shows only the top N paths. */
     @Test
     void aCappedPathListIsNoted() throws IOException {

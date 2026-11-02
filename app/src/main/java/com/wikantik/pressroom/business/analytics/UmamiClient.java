@@ -74,6 +74,12 @@ final class UmamiClient {
                 throw new AnalyticsException("Umami sent an unparseable response", e);
             }
         }
+
+        /** The status and the body's length only: a login reply's body is the bearer token. */
+        @Override
+        public String toString() {
+            return "Reply[status=" + status + ", body=" + (body == null ? 0 : body.length()) + " chars]";
+        }
     }
 
     private final String baseUrl;

@@ -486,10 +486,36 @@ class TrafficControllerTest extends EditorControllerTestSupport {
 
     @Test
     void theControllerReachesNoUmamiClass() throws Exception {
-        String source = java.nio.file.Files.readString(java.nio.file.Path.of(
-                "src/main/java/com/wikantik/pressroom/ui/controllers/editor/TrafficController.java"));
-        assertFalse(source.contains("UmamiAnalyticsService"));
-        assertFalse(source.contains("java.net.http"));
+        for (String file : List.of("TrafficController.java", "TrafficView.java")) {
+            String source = java.nio.file.Files.readString(java.nio.file.Path.of(
+                    "src/main/java/com/wikantik/pressroom/ui/controllers/editor/" + file));
+            assertFalse(source.contains("UmamiAnalyticsService"), file + " goes through the seam only");
+            assertFalse(source.contains("java.net.http"), file);
+        }
+        assertEquals(1000, com.wikantik.pressroom.business.analytics.AnalyticsReport.CLS_SCALE,
+                "the seam owns the CLS scale");
+    }
+
+    /** A blog whose registration failed says so, with the reason, instead of "new blogs take a while". */
+    @Test
+    void aBlogWhoseRegistrationFailedSaysSoPlainly() {
+        serve("30d", new BlogTraffic(TrafficState.NO_DATA, null, null, null, null, null, null,
+                "Umami answered HTTP 400 creating the website <b>"));
+
+        TrafficView refused = view("30d", "posts");
+
+        assertEquals("Umami answered HTTP 400 creating the website <b>", refused.notRegisteredError(),
+                "raw; the JSP escapes it");
+        assertEquals("", refused.noticeKey(), "the not-registered line replaces the no-data notice");
+
+        when(analytics.websiteIdFor("weblog-1")).thenReturn("weblog-1");
+        TrafficView registered = view("30d", "posts");
+        assertNull(registered.notRegisteredError(), "a registered blog with no data yet is just new");
+        assertEquals("traffic.state.noData", registered.noticeKey());
+
+        when(analytics.websiteIdFor("weblog-1")).thenReturn(null);
+        serve("30d", new BlogTraffic(TrafficState.NO_DATA, null, null, null, null, null, null, null));
+        assertNull(view("30d", "posts").notRegisteredError(), "not tried yet: nothing failed");
     }
 
     // ------------------------------------------------------------ escaping

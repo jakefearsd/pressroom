@@ -286,7 +286,8 @@ the release checklist.
    with analytics unconfigured. The blog shows as unregistered with the error
    on Maintenance, and is registered automatically once Umami returns.
 3. On first start after the upgrade, every existing blog is registered
-   (docker1: all 7), with no manual step.
+   (docker1: all 8, the seven blogs plus the site pages, ruling R9), with no
+   manual step.
 4. Renaming a blog, or changing its custom domain, updates the Umami website
    within one reconcile interval.
 5. Deleting a blog leaves its Umami website and events in place.

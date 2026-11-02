@@ -45,6 +45,10 @@ final class FakeAnalyticsService implements AnalyticsService {
 
     /** Website IDs whose ensureSite fails while the service otherwise answers. */
     final Set<String> failIds = ConcurrentHashMap.newKeySet();
+    /** Website IDs whose ensureSite throws an unexpected RuntimeException, whose message names a secret. */
+    final Set<String> crashIds = ConcurrentHashMap.newKeySet();
+    /** What a crash's message carries; it must never reach a page. */
+    static final String CRASH_SECRET = "password=hunter2";
     final Map<String, SiteSpec> sites = new ConcurrentHashMap<>();
     final List<SiteSpec> ensured = new CopyOnWriteArrayList<>();
     final List<Thread> callers = new CopyOnWriteArrayList<>();
@@ -95,6 +99,9 @@ final class FakeAnalyticsService implements AnalyticsService {
         ensured.add(spec);
         if (down) {
             throw new AnalyticsException("Umami answered HTTP 502 looking up the website");
+        }
+        if (crashIds.contains(spec.websiteId())) {
+            throw new IllegalStateException("connection refused, " + CRASH_SECRET);
         }
         if (failIds.contains(spec.websiteId())) {
             throw new AnalyticsException("Umami answered HTTP 400 creating the website");

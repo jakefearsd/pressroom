@@ -64,14 +64,12 @@ import tools.jackson.databind.JsonNode;
  *     visitor counts);</li>
  * <li>speed: the {@code reports/performance} p75 per metric, keys {@code lcp,
  *     inp, fcp, ttfb} in milliseconds and {@code cls} multiplied by
- *     {@value #CLS_SCALE} so it fits a whole number. Empty when the report's
- *     sample count is zero.</li>
+ *     {@link AnalyticsReport#CLS_SCALE} so it fits a whole number. Empty when
+ *     the report's sample count is zero; a metric with no p75 (null or
+ *     absent: not measured) is left out rather than shown as 0.</li>
  * </ul>
  */
 public final class UmamiAnalyticsService implements AnalyticsService {
-
-    /** {@code cls} is a small fraction (0.1); it is reported times this so a long can hold it. */
-    public static final int CLS_SCALE = 1000;
 
     private static final int NAME_MAX = 100;
     /**
@@ -317,8 +315,13 @@ public final class UmamiAnalyticsService implements AnalyticsService {
             return out;
         }
         for (String key : SPEED_KEYS) {
-            double p75 = summary.path(key).path("p75").asDouble();
-            out.add(new KeyCount(key, Math.round("cls".equals(key) ? p75 * CLS_SCALE : p75)));
+            JsonNode p75 = summary.path(key).path("p75");
+            if (!p75.isNumber()) {
+                // null or absent: Umami did not measure it, and a 0 would be an estimate
+                continue;
+            }
+            double value = p75.asDouble();
+            out.add(new KeyCount(key, Math.round("cls".equals(key) ? value * AnalyticsReport.CLS_SCALE : value)));
         }
         return out;
     }

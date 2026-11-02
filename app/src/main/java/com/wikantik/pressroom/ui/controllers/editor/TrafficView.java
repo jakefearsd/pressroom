@@ -32,13 +32,13 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+import com.wikantik.pressroom.business.analytics.AnalyticsReport;
 import com.wikantik.pressroom.business.analytics.AnalyticsReport.KeyCount;
 import com.wikantik.pressroom.business.analytics.AnalyticsReport.SeriesPoint;
 import com.wikantik.pressroom.business.analytics.AnalyticsReport.Summary;
 import com.wikantik.pressroom.business.analytics.BlogTraffic;
 import com.wikantik.pressroom.business.analytics.BlogTraffic.PostRow;
 import com.wikantik.pressroom.business.analytics.TrafficState;
-import com.wikantik.pressroom.business.analytics.UmamiAnalyticsService;
 
 /**
  * Everything the Traffic page shows, worked out from one {@link BlogTraffic}
@@ -66,11 +66,13 @@ import com.wikantik.pressroom.business.analytics.UmamiAnalyticsService;
  * @param rows       the selected breakdown tab's rows
  * @param umamiUrl   where "Open in Umami" goes, or null
  * @param pathsCappedAt 0 when the Posts tab lists every recorded path, else how many top paths it shows
+ * @param notRegisteredError why the blog could not be registered, raw (the JSP escapes it), when that is why
+ *                   there are no numbers; else null
  */
 public record TrafficView(String period, List<String> periods, String tab, List<String> tabs, String sort,
                           String noticeKey, long ageMinutes, String asOfText, boolean showBody,
                           List<Tile> tiles, Chart chart, List<PostLine> posts, List<Row> rows, String umamiUrl,
-                          int pathsCappedAt) {
+                          int pathsCappedAt, String notRegisteredError) {
 
     /** The periods the switch offers; the discovery window is read but not offered. */
     public static final List<String> PERIODS = List.of("24h", "7d", "30d", "90d");
@@ -165,9 +167,12 @@ public record TrafficView(String period, List<String> periods, String tab, List<
     public record Row(String group, String label, String value) {
     }
 
-    /** Builds the view; {@code umamiUrl} is decided by the caller. */
+    /**
+     * Builds the view; {@code umamiUrl} is decided by the caller, and
+     * {@code registered} is whether the blog is registered with the service.
+     */
     static TrafficView of(BlogTraffic traffic, String period, String tab, String sort, String umamiUrl,
-                          Locale locale, ZoneId zone, Instant now) {
+                          boolean registered, Locale locale, ZoneId zone, Instant now) {
         TrafficState state = traffic.state();
         Summary current = traffic.current();
         boolean showBody = current != null && state != TrafficState.NO_DATA;
@@ -177,11 +182,14 @@ public record TrafficView(String period, List<String> periods, String tab, List<
         List<Tile> tiles = showBody ? tiles(current, traffic.previous(), locale) : List.of();
         Chart chart = showBody ? chart(traffic.series(), locale) : new Chart(CHART_WIDTH, CHART_HEIGHT, PLOT_HEIGHT, List.of());
         List<KeyCount> breakdown = traffic.breakdowns().getOrDefault(tab, List.of());
-        return new TrafficView(period, PERIODS, tab, TABS, sort, noticeKey(state, current), age,
+        // nothing read because the registration failed: say that, not "new blogs take a while"
+        String notRegistered = state == TrafficState.NO_DATA && !registered ? traffic.lastError() : null;
+        return new TrafficView(period, PERIODS, tab, TABS, sort,
+                notRegistered == null ? noticeKey(state, current) : "", age,
                 asOf == null ? null : DateTimeFormatter.ofPattern("HH:mm").withZone(zone).format(asOf),
                 showBody, tiles, chart,
                 "posts".equals(tab) ? posts(traffic.posts(), sort) : List.of(),
-                "posts".equals(tab) ? List.of() : rows(tab, breakdown, locale), umamiUrl, traffic.pathsCappedAt());
+                "posts".equals(tab) ? List.of() : rows(tab, breakdown, locale), umamiUrl, traffic.pathsCappedAt(), notRegistered);
     }
 
     /** The accepted period for a request value, else 30d. */
@@ -400,7 +408,7 @@ public record TrafficView(String period, List<String> periods, String tab, List<
 
     private static String speed(String metric, long value) {
         if ("cls".equals(metric)) {
-            return String.format(Locale.ROOT, "%.2f", value / (double) UmamiAnalyticsService.CLS_SCALE);
+            return String.format(Locale.ROOT, "%.2f", value / (double) AnalyticsReport.CLS_SCALE);
         }
         if (MILLISECOND_METRICS.contains(metric) && value >= 1000) {
             return String.format(Locale.ROOT, "%.1f s", value / 1000.0);

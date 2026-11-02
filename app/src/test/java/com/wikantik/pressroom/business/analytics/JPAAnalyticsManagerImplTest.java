@@ -123,6 +123,24 @@ class JPAAnalyticsManagerImplTest {
         assertTrue(tier.manager.isRegistered(failing.getId()), "and it is retried on the next run");
     }
 
+    /**
+     * An unexpected exception's message is not ours to show (AC 15, defence
+     * in depth): Maintenance gets its class name only, as a failed read does.
+     */
+    @Test
+    void anUnexpectedRegistrationFailureRecordsOnlyItsClassName() throws Exception {
+        Weblog crashing = tier.addWeblogUnseen("crashes", user);
+        tier.service.crashIds.add(crashing.getId());
+
+        tier.manager.sync();
+        TestUtils.endSession(false);
+
+        AnalyticsStatus.SiteFailure failure = tier.manager.getStatus().failures().stream()
+                .filter(f -> "crashes".equals(f.handle())).findFirst().orElseThrow();
+        assertEquals("IllegalStateException", failure.error());
+        assertFalse(failure.error().contains(FakeAnalyticsService.CRASH_SECRET));
+    }
+
     @Test
     void everyWeblogRegistersIncludingInactiveOnesAndTheSiteSpace() throws Exception {
         Weblog inactive = tier.addWeblogUnseen("inactiveblog", user);
