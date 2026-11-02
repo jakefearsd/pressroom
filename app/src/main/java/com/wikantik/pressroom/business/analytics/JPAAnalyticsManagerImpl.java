@@ -47,13 +47,16 @@ import java.util.regex.Pattern;
  * registered.
  *
  * <p><b>Registration.</b> {@link #reconcile()} builds a {@link SiteSpec} for
- * every active weblog (website ID = the stored one, else the weblog ID; name
- * = the blog's name; domain = {@link #domainFor}) and calls
+ * every weblog, inactive ones included since they are still served, and for
+ * the site space, whose website carries the front page and site pages
+ * (ruling R9): website ID = the stored one, else the weblog ID; name = the
+ * blog's name; domain = {@link #domainFor}. It calls
  * {@link AnalyticsService#ensureSite} only for a blog that is not registered
  * yet or whose name or domain differs from what was last confirmed. Each
  * outcome is recorded in {@code analytics_site}, one commit per blog, so a
- * failure costs only that blog and is retried on the next run. Deleted blogs
- * are never sent anywhere.
+ * failure costs only that blog and is retried on the next run. A run with
+ * nothing to send does not contact the service at all, not even to ping it.
+ * Deleted blogs are never sent anywhere.
  *
  * <p><b>Rendered pages.</b> Whether a blog is registered decides whether its
  * pages carry the tracker, and rendered pages expire only through
@@ -67,9 +70,11 @@ import java.util.regex.Pattern;
  * <p><b>Triggering.</b> {@link #requestSync()} hands the work to the tier's
  * background pool and returns: at most one sync is in flight and one more
  * queued behind it; further requests while one is queued are dropped, since
- * the queued run has not started and will see their change. The weblog
- * manager requests a sync after a blog is created or saved, once that commit
- * has happened; {@link #initialize()} requests the first one, which is the
+ * the queued run has not started and will see their change. Once a blog's
+ * creation or save has committed, the weblog manager calls
+ * {@link #weblogSaved}, which requests a sync only when that blog is
+ * unregistered or its name or domain moved; {@link #initialize()} requests
+ * the first one, which is the
  * backfill. When the service is not configured nothing is scheduled and
  * nothing is called.
  *
@@ -132,8 +137,18 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
     /** The thread inside a sync right now; a request it makes is its own bump's echo, and dropped. */
     private volatile Thread syncing;
 
-    /** Weblog ID to website ID, for registered blogs only. Immutable; replaced whole. */
-    private volatile Map<String, String> registered = Map.of();
+    /**
+     * What Umami last confirmed for each registered blog. Immutable; replaced whole.
+     *
+     * @param websiteId the website the blog is registered under
+     * @param name      the name last sent
+     * @param domain    the domain last sent
+     */
+    private record Registration(String websiteId, String name, String domain) {
+    }
+
+    /** Weblog ID to its registration, for registered blogs only. Immutable; replaced whole. */
+    private volatile Map<String, Registration> registered = Map.of();
 
     private volatile Boolean reachable;
     private volatile AnalyticsStatus status = new AnalyticsStatus(true, null, 0, 0, List.of(), null, null);
@@ -181,7 +196,7 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
         synchronized (syncLock) {
             try {
                 Map<String, AnalyticsSite> rows = loadRows();
-                List<Weblog> weblogs = activeWeblogs();
+                List<Weblog> weblogs = allWeblogs();
                 registered = registrationsIn(rows);
                 status = statusOf(rows, weblogs);
             } catch (WebloggerException | RuntimeException e) {
@@ -193,6 +208,25 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
     }
 
     // ------------------------------------------------------------ triggering
+
+    /**
+     * Requests a sync only when the saved blog is unregistered, or its name or
+     * derived domain differs from what Umami last confirmed (ruling R10):
+     * most saves (an entry, a comment's expiry, a template) change neither,
+     * and must not cost a sync. Answered from memory, with no query.
+     */
+    @Override
+    public void weblogSaved(Weblog weblog) {
+        if (!service.isConfigured() || weblog == null || weblog.getId() == null) {
+            return;
+        }
+        Registration registration = registered.get(weblog.getId());
+        if (registration == null
+                || !Objects.equals(registration.name(), nameOf(weblog))
+                || !Objects.equals(registration.domain(), domainFor(weblog, siteUrl.get()))) {
+            requestSync();
+        }
+    }
 
     @Override
     public void requestSync() {
@@ -229,7 +263,12 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
         }
     }
 
-    /** Runs syncs until no request is queued; only this leaves QUEUED, so the state machine is exact. */
+    /**
+     * Runs syncs until no request is queued. Only this leaves QUEUED. A sync
+     * that throws an Error ends the drain with the state reset to IDLE, which
+     * drops a request queued behind it; the next request or the scheduled
+     * sync picks its change up.
+     */
     private void drain() {
         boolean drained = false;
         try {
@@ -322,14 +361,18 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
         List<Weblog> weblogs;
         try {
             rows = loadRows();
-            weblogs = activeWeblogs();
+            weblogs = allWeblogs();
         } catch (WebloggerException | RuntimeException e) {
             log.error("Analytics reconcile could not read the blogs; nothing was sent", e);
             return;
         }
-        boolean answered = service.ping();
-        reachable = answered;
         String site = siteUrl.get();
+        // Umami is asked anything, a ping included, only when a blog needs a call (R10)
+        boolean answered = false;
+        if (anyPending(weblogs, rows, site)) {
+            answered = service.ping();
+            reachable = answered;
+        }
         try {
             for (Weblog weblog : weblogs) {
                 reconcileOne(weblog, rows, answered, site);
@@ -340,6 +383,16 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
         }
         registered = registrationsIn(rows);
         status = statusOf(rows, weblogs);
+    }
+
+    private static boolean anyPending(List<Weblog> weblogs, Map<String, AnalyticsSite> rows, String site) {
+        for (Weblog weblog : weblogs) {
+            AnalyticsSite row = rows.get(weblog.getId());
+            if (needsCall(row, specFor(weblog, row, site))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void reconcileOne(Weblog weblog, Map<String, AnalyticsSite> rows, boolean answered, String site)
@@ -353,13 +406,15 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
             row = attempt(row, id, weblog.getHandle(), spec, answered);
             rows.put(id, row);
         }
-        String websiteId = isRegistered(row) ? row.getWebsiteId() : null;
-        boolean flipped = wasRegistered != (websiteId != null)
-                || !Objects.equals(registered.get(id), websiteId);
+        Registration now = registrationOf(row);
+        Registration before = registered.get(id);
+        String websiteId = now == null ? null : now.websiteId();
+        boolean flipped = wasRegistered != (now != null)
+                || !Objects.equals(before == null ? null : before.websiteId(), websiteId);
         if (flipped) {
             // memory first, then the bump: a page rendered between them is
             // dated before the bump, so the bump expires it
-            publish(id, websiteId);
+            publish(id, now);
             weblogger.getWeblogManager().saveWeblog(weblog);
         }
         if (attempted || flipped) {
@@ -411,8 +466,11 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
 
     private static SiteSpec specFor(Weblog weblog, AnalyticsSite row, String siteUrl) {
         String websiteId = row == null ? weblog.getId() : row.getWebsiteId();
-        String name = StringUtils.defaultIfBlank(weblog.getName(), weblog.getHandle());
-        return new SiteSpec(websiteId, name, domainFor(weblog, siteUrl));
+        return new SiteSpec(websiteId, nameOf(weblog), domainFor(weblog, siteUrl));
+    }
+
+    private static String nameOf(Weblog weblog) {
+        return StringUtils.defaultIfBlank(weblog.getName(), weblog.getHandle());
     }
 
     /**
@@ -484,26 +542,43 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
         return rows;
     }
 
-    private List<Weblog> activeWeblogs() throws WebloggerException {
-        return weblogger.getWeblogManager().getWeblogs(null, Boolean.TRUE, null, null, 0, -1);
+    /**
+     * Every weblog, active or not (an inactive blog is still served), plus the
+     * site space, under whose website the front page and site pages are
+     * tracked (ruling R9).
+     */
+    private List<Weblog> allWeblogs() throws WebloggerException {
+        List<Weblog> all = new ArrayList<>(weblogger.getWeblogManager().getWeblogs(null, null, null, null, 0, -1));
+        Weblog siteSpace = weblogger.getWeblogManager().getSiteSpace();
+        if (siteSpace != null) {
+            all.add(siteSpace);
+        }
+        return all;
     }
 
-    private static Map<String, String> registrationsIn(Map<String, AnalyticsSite> rows) {
-        Map<String, String> found = new HashMap<>();
+    private static Registration registrationOf(AnalyticsSite row) {
+        return isRegistered(row)
+                ? new Registration(row.getWebsiteId(), row.getSyncedName(), row.getSyncedDomain())
+                : null;
+    }
+
+    private static Map<String, Registration> registrationsIn(Map<String, AnalyticsSite> rows) {
+        Map<String, Registration> found = new HashMap<>();
         for (AnalyticsSite row : rows.values()) {
-            if (isRegistered(row)) {
-                found.put(row.getWeblogId(), row.getWebsiteId());
+            Registration registration = registrationOf(row);
+            if (registration != null) {
+                found.put(row.getWeblogId(), registration);
             }
         }
         return Map.copyOf(found);
     }
 
-    private void publish(String weblogId, String websiteId) {
-        Map<String, String> next = new HashMap<>(registered);
-        if (websiteId == null) {
+    private void publish(String weblogId, Registration registration) {
+        Map<String, Registration> next = new HashMap<>(registered);
+        if (registration == null) {
             next.remove(weblogId);
         } else {
-            next.put(weblogId, websiteId);
+            next.put(weblogId, registration);
         }
         registered = Map.copyOf(next);
     }
@@ -534,7 +609,8 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
 
     @Override
     public String websiteIdFor(String weblogId) {
-        return weblogId == null ? null : registered.get(weblogId);
+        Registration registration = weblogId == null ? null : registered.get(weblogId);
+        return registration == null ? null : registration.websiteId();
     }
 
     @Override

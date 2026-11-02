@@ -20,6 +20,7 @@ package com.wikantik.pressroom.business.analytics;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -29,7 +30,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * An analytics service held in memory: websites by ID, every call counted.
  * It can be told to be unconfigured, to be down (ping false, ensureSite
- * throws), or to hang until released.
+ * throws), to refuse chosen websites while answering everything else, or to
+ * hang until released.
  */
 final class FakeAnalyticsService implements AnalyticsService {
 
@@ -38,6 +40,8 @@ final class FakeAnalyticsService implements AnalyticsService {
     /** While set, ping and ensureSite wait for it (bounded) before answering. */
     volatile CountDownLatch hang;
 
+    /** Website IDs whose ensureSite fails while the service otherwise answers. */
+    final Set<String> failIds = ConcurrentHashMap.newKeySet();
     final Map<String, SiteSpec> sites = new ConcurrentHashMap<>();
     final List<SiteSpec> ensured = new CopyOnWriteArrayList<>();
     final List<Thread> callers = new CopyOnWriteArrayList<>();
@@ -55,6 +59,9 @@ final class FakeAnalyticsService implements AnalyticsService {
         ensured.add(spec);
         if (down) {
             throw new AnalyticsException("Umami answered HTTP 502 looking up the website");
+        }
+        if (failIds.contains(spec.websiteId())) {
+            throw new AnalyticsException("Umami answered HTTP 400 creating the website");
         }
         sites.put(spec.websiteId(), spec);
         return spec.websiteId();

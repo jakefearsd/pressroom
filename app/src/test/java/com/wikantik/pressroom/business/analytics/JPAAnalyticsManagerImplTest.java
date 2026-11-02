@@ -23,6 +23,7 @@ import com.wikantik.pressroom.pojos.Weblog;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.time.Clock;
 import java.util.ArrayList;
@@ -53,6 +54,7 @@ class JPAAnalyticsManagerImplTest {
 
     private AnalyticsTier tier;
     private User user;
+    private String createdSiteSpace;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -64,6 +66,9 @@ class JPAAnalyticsManagerImplTest {
     @AfterEach
     void tearDown() throws Exception {
         tier.tearDown();
+        if (createdSiteSpace != null) {
+            TestUtils.teardownWeblog(createdSiteSpace);
+        }
         TestUtils.teardownUser(user.getUserName());
         TestUtils.endSession(true);
     }
@@ -91,6 +96,65 @@ class JPAAnalyticsManagerImplTest {
         assertTrue(status.registered() >= 3, "registered: " + status);
         assertEquals(status.total(), status.registered(), "every active blog: " + status);
         assertTrue(status.failures().isEmpty(), status.failures().toString());
+    }
+
+    @Test
+    void oneBlogFailingDoesNotRegisterItOrStopTheOthers() throws Exception {
+        Weblog failing = tier.addWeblogUnseen("failsalone", user);
+        Weblog before = tier.addWeblogUnseen("failsbefore", user);
+        Weblog after = tier.addWeblogUnseen("failsafter", user);
+        tier.service.failIds.add(failing.getId());
+
+        tier.manager.sync();
+        TestUtils.endSession(false);
+
+        assertFalse(tier.manager.isRegistered(failing.getId()), "a refused blog is not recorded as registered");
+        assertNull(tier.manager.websiteIdFor(failing.getId()));
+        assertTrue(tier.manager.getStatus().failures().stream().anyMatch(f -> "failsalone".equals(f.handle())
+                        && f.error().contains("HTTP 400")),
+                "its failure is on Maintenance: " + tier.manager.getStatus().failures());
+        assertEquals(Boolean.TRUE, tier.manager.getStatus().reachable(), "the service itself answered");
+        assertTrue(tier.manager.isRegistered(before.getId()), "the others in the same run still register");
+        assertTrue(tier.manager.isRegistered(after.getId()));
+
+        tier.service.failIds.clear();
+        tier.manager.sync();
+        TestUtils.endSession(false);
+        assertTrue(tier.manager.isRegistered(failing.getId()), "and it is retried on the next run");
+    }
+
+    @Test
+    void everyWeblogRegistersIncludingInactiveOnesAndTheSiteSpace() throws Exception {
+        Weblog inactive = tier.addWeblogUnseen("inactiveblog", user);
+        Weblog managed = TestUtils.weblogger().getWeblogManager().getWeblog(inactive.getId());
+        managed.setActive(Boolean.FALSE);
+        managed.setVisible(Boolean.FALSE);
+        TestUtils.weblogger().getWeblogManager().saveWeblog(managed);
+        TestUtils.endSession(true);
+        Weblog site = siteSpace();
+
+        tier.manager.sync();
+        TestUtils.endSession(false);
+
+        assertTrue(tier.manager.isRegistered(inactive.getId()), "inactive blogs are still served (R9)");
+        assertTrue(tier.manager.isRegistered(site.getId()), "the site space carries the front page's traffic");
+        assertEquals(new SiteSpec(site.getId(), site.getName(), "blogs.example.com"),
+                tier.service.sites.get(site.getId()));
+    }
+
+    @Test
+    void aRunWithNothingToSendMakesNoPing() throws Exception {
+        tier.addWeblogUnseen("nothingtosend", user);
+        tier.manager.sync();
+        TestUtils.endSession(false);
+        tier.service.pings.set(0);
+        tier.service.calls.set(0);
+
+        tier.manager.sync();
+        TestUtils.endSession(false);
+
+        assertEquals(0, tier.service.pings.get(), "every blog is as last confirmed: Umami is not asked (R10)");
+        assertEquals(0, tier.service.calls.get());
     }
 
     @Test
@@ -127,7 +191,7 @@ class JPAAnalyticsManagerImplTest {
         tier.service.release();
         tier.awaitQuiet();
 
-        assertEquals(2, tier.service.pings.get(), "the run in flight, then exactly one queued behind it");
+        assertEquals(2, backgroundRuns(), "the run in flight, then exactly one queued behind it");
         assertEquals(1, tier.background.submitted.get(), "the queued run rides on the same background task");
     }
 
@@ -233,6 +297,24 @@ class JPAAnalyticsManagerImplTest {
 
         assertEquals(2, attempts.get(), "a rejected schedule must not leave a run marked in flight");
         assertEquals(0, tier.service.calls.get());
+    }
+
+    /** Background syncs run so far: the drain releases the unit of work once after each. */
+    private long backgroundRuns() {
+        return Mockito.mockingDetails(tier.weblogger).getInvocations().stream()
+                .filter(i -> "release".equals(i.getMethod().getName()))
+                .count();
+    }
+
+    /** The site space, created here (and removed afterwards) if the suite has none yet. */
+    private Weblog siteSpace() throws Exception {
+        Weblog found = TestUtils.weblogger().getWeblogManager().getSiteSpace();
+        if (found == null) {
+            found = TestUtils.weblogger().getWeblogManager().getOrCreateSiteSpace(user);
+            TestUtils.endSession(true);
+            createdSiteSpace = found.getId();
+        }
+        return found;
     }
 
     private void awaitPings(int n) throws InterruptedException {

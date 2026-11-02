@@ -25,8 +25,8 @@ import java.util.List;
  *
  * @param configured    whether an analytics service is configured at all
  * @param reachable     whether it answered the last sync; null before the first
- * @param registered    active blogs confirmed registered
- * @param total         active blogs
+ * @param registered    blogs (site space included) confirmed registered
+ * @param total         blogs, site space included
  * @param failures      blogs whose last registration attempt failed
  * @param lastRead      when traffic was last read successfully, or null
  * @param lastReadError why the last read failed, or null

@@ -17,8 +17,10 @@
  */
 package com.wikantik.pressroom.business.analytics;
 
+import com.wikantik.pressroom.pojos.Weblog;
+
 /**
- * Pressroom's side of analytics: registers every active blog with the
+ * Pressroom's side of analytics: registers every blog with the
  * analytics service in the background and answers, from memory, which blogs
  * are registered and under which website ID.
  *
@@ -46,13 +48,21 @@ public interface AnalyticsManager {
     void requestSync();
 
     /**
+     * Called after a blog's creation or save has committed. Requests a sync
+     * only when the blog is not registered, or its name or domain differs from
+     * what was last confirmed; otherwise does nothing. Never blocks, never
+     * queries.
+     */
+    void weblogSaved(Weblog weblog);
+
+    /**
      * Reconciles, then reads traffic. Background threads only; the caller
      * releases the unit of work afterwards.
      */
     void sync();
 
     /**
-     * Registers every active blog that is not yet registered, and updates any
+     * Registers every blog (and the site space) that is not yet registered, and updates any
      * whose name or domain changed since it was last confirmed. Background
      * threads only.
      */

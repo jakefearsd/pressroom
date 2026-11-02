@@ -144,12 +144,15 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         // A changed name or domain re-registers the blog with analytics. Only
         // once committed: the sync runs on another thread with its own
         // EntityManager, so asked any earlier it could read the old row.
-        strategy.runAfterCommit(this::requestAnalyticsSync);
+        strategy.runAfterCommit(() -> analyticsSaw(weblog));
     }
 
-    /** Never waits: the analytics manager coalesces and runs it in the background. */
-    private void requestAnalyticsSync() {
-        pressroom.getAnalyticsManager().requestSync();
+    /**
+     * Never waits, never queries: the analytics manager asks for a background
+     * sync only if this blog is unregistered or its name or domain moved.
+     */
+    private void analyticsSaw(Weblog weblog) {
+        pressroom.getAnalyticsManager().weblogSaved(weblog);
     }
 
     // Deleting a blog deliberately asks analytics for nothing: its website and
@@ -362,7 +365,7 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         this.strategy.flush();
         // the new blog registers with analytics; queued for after the commit
         // that addWeblogContents' flush makes, so the sync can see the blog
-        this.strategy.runAfterCommit(this::requestAnalyticsSync);
+        this.strategy.runAfterCommit(() -> analyticsSaw(newWeblog));
         this.addWeblogContents(newWeblog, true);
     }
 
@@ -448,6 +451,8 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         // after the absence is forgotten below
         this.strategy.flush();
         siteSpaceExists();
+        // registers with analytics like any blog, after addWeblogContents' commit
+        this.strategy.runAfterCommit(() -> analyticsSaw(site));
         // system-owned: no permission row for the creator
         this.addWeblogContents(site, false);
         return site;

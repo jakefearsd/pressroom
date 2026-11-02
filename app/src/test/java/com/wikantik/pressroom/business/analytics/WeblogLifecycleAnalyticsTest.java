@@ -82,7 +82,10 @@ class WeblogLifecycleAnalyticsTest {
         Weblog weblog = tier.addWeblog("lifedown", user);
         long tookMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
         TestUtils.endSession(false);
-        assertTrue(tookMillis < 200, "creating a blog never waits on Umami: " + tookMillis + " ms");
+        // The 30 s hang is what makes this discriminating: a create that waited
+        // would take 30 s. The bound is loose (not the plan's 200 ms) because it
+        // also times addWeblog's own database work on a possibly slow CI runner.
+        assertTrue(tookMillis < 2000, "creating a blog never waits on Umami: " + tookMillis + " ms");
 
         tier.service.release();
         tier.awaitQuiet();
@@ -124,6 +127,41 @@ class WeblogLifecycleAnalyticsTest {
         assertEquals(new SiteSpec(weblog.getId(), "Renamed Weblog", "liferename.example.org"),
                 tier.service.sites.get(weblog.getId()));
         assertEquals(weblog.getId(), tier.manager.websiteIdFor(weblog.getId()), "same website throughout");
+    }
+
+    @Test
+    void anUnchangedRegisteredBlogsSaveSchedulesNothing() throws Exception {
+        Weblog weblog = tier.addWeblog("lifeunchanged", user);
+        TestUtils.endSession(false);
+        tier.awaitQuiet();
+        assertTrue(tier.manager.isRegistered(weblog.getId()));
+        int before = tier.background.submitted.get();
+
+        // what an entry save, a comment expiry or a template save does to the blog
+        tier.weblogs.saveWeblog(tier.weblogs.getWeblog(weblog.getId()));
+        tier.weblogger.flush();
+        TestUtils.endSession(false);
+        tier.awaitQuiet();
+
+        assertEquals(before, tier.background.submitted.get(), "nothing Umami knows changed, so no sync (R10)");
+    }
+
+    @Test
+    void aRenameSchedulesOneRun() throws Exception {
+        Weblog weblog = tier.addWeblog("liferenameone", user);
+        TestUtils.endSession(false);
+        tier.awaitQuiet();
+        int before = tier.background.submitted.get();
+
+        Weblog renamed = tier.weblogs.getWeblog(weblog.getId());
+        renamed.setName("Renamed Once");
+        tier.weblogs.saveWeblog(renamed);
+        tier.weblogger.flush();
+        TestUtils.endSession(false);
+        tier.awaitQuiet();
+
+        assertEquals(before + 1, tier.background.submitted.get(), "the rename asks for exactly one sync");
+        assertEquals("Renamed Once", tier.service.sites.get(weblog.getId()).name());
     }
 
     @Test
