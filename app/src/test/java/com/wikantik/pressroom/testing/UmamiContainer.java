@@ -32,11 +32,13 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import org.testcontainers.containers.Container;
+import org.testcontainers.containers.ExecConfig;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -236,5 +238,46 @@ public final class UmamiContainer {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("interrupted running " + script, e);
         }
+    }
+
+    /**
+     * Runs a deploy script with {@code bash} inside Umami's database container
+     * (it has {@code psql}, as the app image the one-shots run from does),
+     * from a fresh directory holding {@code script} and {@code files}, which
+     * is also the working directory. The environment is what compose hands a
+     * one-shot ({@code POSTGRES_USER}, {@code POSTGRES_PASSWORD},
+     * {@code UMAMI_DB}, with {@code PGHOST} this container), overlaid with
+     * {@code env}; values travel in the exec's environment, never its command
+     * line. Returns the result whatever the exit code.
+     */
+    public Container.ExecResult runDeployScript(Path script, Map<String, String> env, Path... files) {
+        String dir = "/tmp/" + UUID.randomUUID();
+        List<Path> all = new ArrayList<>(List.of(script));
+        all.addAll(List.of(files));
+        for (Path file : all) {
+            database.copyFileToContainer(MountableFile.forHostPath(file), dir + "/" + file.getFileName());
+        }
+        Map<String, String> environment = new HashMap<>(Map.of(
+                "PGHOST", "localhost", "POSTGRES_USER", DB_USER, "POSTGRES_PASSWORD", DB_PASSWORD,
+                "UMAMI_DB", DB_NAME));
+        environment.putAll(env);
+        try {
+            return database.execInContainer(ExecConfig.builder()
+                    .command(new String[] {"bash", dir + "/" + script.getFileName()})
+                    .workDir(dir)
+                    .envVars(environment)
+                    .build());
+        } catch (IOException e) {
+            throw new IllegalStateException("could not run " + script, e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted running " + script, e);
+        }
+    }
+
+    /** A new connection to another database in Umami's PostgreSQL; the caller closes it. */
+    public Connection jdbc(String databaseName) throws SQLException {
+        return DriverManager.getConnection("jdbc:postgresql://" + database.getHost() + ":"
+                + database.getMappedPort(5432) + "/" + databaseName, DB_USER, DB_PASSWORD);
     }
 }

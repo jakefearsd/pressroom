@@ -33,9 +33,11 @@
 #
 # Only caddy publishes off-host ports: its 80 and 443, on host ports 80/443
 # unless SITE_HTTP_PORT/SITE_HTTPS_PORT move them (a host behind a tunnel
-# connector on another machine). 8081/8082 are loopback-bound and inert in
-# production -- they exist so the same file serves a local run where
-# UMAMI_DOMAIN/LISTMONK_DOMAIN are bare ports instead of hostnames.
+# connector on another machine). 8081 is the Umami dashboard, loopback-bound
+# unless UMAMI_CONSOLE_BIND names the host's LAN address for a zero-trust
+# connector to reach. 8082 is loopback-bound and inert in production -- it
+# exists so the same file serves a local run where LISTMONK_DOMAIN is a bare
+# port instead of a hostname.
 
 # Container-log rotation, shared by every service. Docker's default json-file
 # driver never rotates, and the app writes its whole log to stdout, so without
@@ -139,6 +141,12 @@ services:
     env_file: .env
     environment:
       JAVA_OPTS: ${JAVA_OPTS:-}
+      # Pressroom registers blogs and reads their numbers through Umami's
+      # API, over this network, as its own non-admin account `pressroom`
+      # (created by analytics-views). The password is generated into .env by
+      # deploy.sh; empty, analytics registration is off.
+      PRESSROOM_ANALYTICS_UMAMI_APIURL: ${PRESSROOM_ANALYTICS_UMAMI_APIURL:-http://umami:3000}
+      PRESSROOM_ANALYTICS_UMAMI_PASSWORD: ${UMAMI_PRESSROOM_PASSWORD:-}
     volumes:
       - pressroom-mediafiles:/data/mediafiles
       - pressroom-search-index:/data/search-index
@@ -165,23 +173,28 @@ services:
       # host side moves: Caddy still listens on 80 and 443 in the container.
       - "${SITE_HTTP_PORT:-80}:80"
       - "${SITE_HTTPS_PORT:-443}:443"
-      # Inert in production: with real hostnames in UMAMI_DOMAIN/LISTMONK_DOMAIN
-      # Caddy serves those sites on 443 and nothing listens here. Locally those
-      # variables are ":8081"/":8082" and these are how you reach the consoles.
-      # Loopback-bound either way, so the 80/443-only rule still holds. The
-      # HOST side is movable from .env: a host that already has 8081/8082
-      # bound -- on any address -- otherwise stops caddy, and with it the blog.
-      - "127.0.0.1:${UMAMI_CONSOLE_PORT:-8081}:8081"
+      # The Umami dashboard and API (the Caddyfile's :8081 site), internal
+      # only. Loopback unless UMAMI_CONSOLE_BIND names this host's LAN
+      # address, which is how a zero-trust connector on another machine
+      # reaches it; never a public interface (spec AC 19).
+      # 8082 is inert in production: with a real hostname in LISTMONK_DOMAIN
+      # Caddy serves that site on 443 and nothing listens here. Locally it is
+      # ":8082" and this is how you reach the console. The HOST ports are
+      # movable from .env: a host that already has 8081/8082 bound -- on any
+      # address -- otherwise stops caddy, and with it the blog.
+      - "${UMAMI_CONSOLE_BIND:-127.0.0.1}:${UMAMI_CONSOLE_PORT:-8081}:8081"
       - "127.0.0.1:${LISTMONK_CONSOLE_PORT:-8082}:8082"
     environment:
       SITE_DOMAIN: ${SITE_DOMAIN:?SITE_DOMAIN must be set in .env (a real domain, or :80 for LAN/testing)}
-      UMAMI_DOMAIN: ${UMAMI_DOMAIN:-analytics.invalid}
       LISTMONK_DOMAIN: ${LISTMONK_DOMAIN:-newsletter.invalid}
+      # The tracker file name the Caddyfile lets through, the same one umami
+      # serves (TRACKER_SCRIPT_NAME below).
+      UMAMI_SCRIPT_NAME: ${UMAMI_SCRIPT_NAME:-script.js}
       # The proxy whose X-Forwarded-* headers Caddy keeps (see the Caddyfile's
       # global block). Empty trusts none, which a public host needs.
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
-      # Per-weblog custom domains (virtual hosting): unlike UMAMI_DOMAIN/
-      # LISTMONK_DOMAIN above, VHOST_ZONE unset can't just default to a
+      # Per-weblog custom domains (virtual hosting): unlike LISTMONK_DOMAIN
+      # above, VHOST_ZONE unset can't just default to a
       # do-nothing hostname on its own -- the Caddyfile's wildcard block
       # carries `tls { dns cloudflare {$VHOST_DNS_API_TOKEN} }`, and an
       # EMPTY token fails to adapt the Caddyfile at all ("missing API
@@ -192,7 +205,7 @@ services:
       # matching a real Cloudflare API token's length, purely to stop the
       # length itself looking like the significant part; the actual failure
       # mode this default exists to avoid is EMPTINESS, and ${VAR:-default}
-      # already covers both unset and empty. VHOST_ZONE's default mirrors UMAMI_DOMAIN/
+      # already covers both unset and empty. VHOST_ZONE's default mirrors
       # LISTMONK_DOMAIN's ".invalid" pattern so the resulting wildcard cert
       # request fails the same harmless, already-proven-safe way theirs do
       # (rejected by Let's Encrypt as not a public suffix, logged, retried
@@ -227,14 +240,16 @@ services:
     networks:
       - internal
 
-  # Installs the Grafana analytics contract's traffic view. Separate from
+  # Installs the Grafana analytics contract's traffic view, then Pressroom's
+  # own Umami account from UMAMI_PRESSROOM_PASSWORD. Separate from
   # `provision` because analytics_traffic is defined over `website_event`, a
   # table umami creates on its OWN first boot -- and provision runs before
   # umami is allowed to start. Applying it there deadlocks a fresh install.
   #
   # Nothing declares depends_on against this service, deliberately: if it fails
-  # or times out, the blog is still up and only the Grafana traffic view is
-  # missing. ProductionComposeTest pins that nothing gates on it.
+  # or times out, the blog is still up; only the Grafana traffic view, or the
+  # account analytics registration signs in with, is missing until a re-run.
+  # ProductionComposeTest pins that nothing gates on it.
   analytics-views:
     image: ghcr.io/jakefearsd/pressroom:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
     logging: *logging
@@ -250,6 +265,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
       UMAMI_DB: ${UMAMI_DB:-umami}
       ANALYTICS_VIEWS_WAIT_SECONDS: ${ANALYTICS_VIEWS_WAIT_SECONDS:-180}
+      UMAMI_PRESSROOM_PASSWORD: ${UMAMI_PRESSROOM_PASSWORD:-}
     networks:
       - internal
 

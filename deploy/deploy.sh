@@ -23,6 +23,11 @@
 #              here (the cutover rehearsal), which no registry holds
 #
 # Run from the directory holding docker-compose.prod.yml and .env.
+#
+# The one thing it writes: when .env has no UMAMI_PRESSROOM_PASSWORD (or an
+# empty one), it appends a generated one before starting the stack, so the
+# analytics-views one-shot can create Pressroom's Umami account and the app
+# can sign in as it. Never printed; .env keeps its mode and its other lines.
 set -euo pipefail
 
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
@@ -49,6 +54,31 @@ for required in "${COMPOSE_FILE}" .env; do
         exit 1
     fi
 done
+
+# Appends UMAMI_PRESSROOM_PASSWORD=<openssl rand -hex 24> to the env file
+# ($1, default .env) unless it already holds a non-empty one. Appending keeps
+# the file's mode and owner as the operator set them, and an interrupted
+# write cannot lose the rest of the file. Only an empty assignment
+# (env.example's shape, uncommented) makes it rewrite the file in place
+# (`>`, same inode, same mode), so compose never sees two. printf is a
+# builtin: the value goes from openssl into the file and is on no command
+# line and in no output.
+ensure_umami_pressroom_password() {
+    local env_file="${1:-.env}" kept password
+    if grep -Eq '^UMAMI_PRESSROOM_PASSWORD=.+' "${env_file}"; then
+        return 0
+    fi
+    password=$(openssl rand -hex 24)
+    if grep -q '^UMAMI_PRESSROOM_PASSWORD=' "${env_file}"; then
+        kept=$(grep -v '^UMAMI_PRESSROOM_PASSWORD=' "${env_file}" || true)
+        printf '%s\n' "${kept}" > "${env_file}"
+    elif [[ -s "${env_file}" && -n "$(tail -c 1 "${env_file}")" ]]; then
+        printf '\n' >> "${env_file}"
+    fi
+    printf 'UMAMI_PRESSROOM_PASSWORD=%s\n' "${password}" >> "${env_file}"
+    echo "==> Generated UMAMI_PRESSROOM_PASSWORD in ${env_file} (Pressroom's Umami account; not shown)."
+}
+ensure_umami_pressroom_password .env
 
 if [[ "${PULL}" -eq 1 ]]; then
     echo "==> Pulling images..."

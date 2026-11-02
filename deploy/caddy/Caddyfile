@@ -44,16 +44,34 @@
 	# same-origin, which is what lets analytics ship without touching a policy
 	# that three rendering tests pin byte-for-byte.
 	#
-	# handle_path strips the /analytics prefix, so Umami still sees the paths
-	# it expects at its own root: /analytics/script.js -> /script.js and
-	# /analytics/api/send -> /api/send.
-	#
-	# Only those two paths matter here. The dashboard is NOT usable through
-	# this prefix -- Umami's BASE_PATH is a build-time setting the prebuilt
-	# image does not carry, so its UI assumes it lives at the root. That is
-	# what {$UMAMI_DOMAIN} below is for.
-	handle_path /analytics/* {
+	# An ALLOWLIST, not a prefix: only the tracker script (TRACKER_SCRIPT_NAME,
+	# from UMAMI_SCRIPT_NAME) and POST /api/send reach Umami, each with the
+	# /analytics prefix stripped so Umami sees the paths it serves at its own
+	# root. Everything else under /analytics/ -- the login page, the whole
+	# API -- answers 404 from Caddy and never reaches Umami. Umami's dashboard
+	# and API are internal: the :8081 site below. ProductionComposeTest pins
+	# these lines, and that this block and the custom-domain block match.
+	@tracker path /analytics/{$UMAMI_SCRIPT_NAME:script.js}
+	handle @tracker {
+		uri strip_prefix /analytics
 		reverse_proxy umami:3000
+	}
+	@send {
+		path /analytics/api/send
+		method POST
+	}
+	handle @send {
+		uri strip_prefix /analytics
+		reverse_proxy umami:3000
+	}
+	# Session replay and heatmaps are off; to switch them on, uncomment these and enable recording per website (docs/dev/umami-api.md).
+	# @replay path /analytics/recorder.js /analytics/api/record /analytics/api/websites/*/recorder
+	# handle @replay {
+	# 	uri strip_prefix /analytics
+	# 	reverse_proxy umami:3000
+	# }
+	handle /analytics/* {
+		respond 404
 	}
 
 	# /newsletter/subscribe is served by the app itself (throttle + events); do not re-add a rewrite here.
@@ -77,7 +95,7 @@
 # .env, docker-compose.prod.yml substitutes a placeholder zone/token pair so
 # this block still parses and Caddy still starts -- see the `caddy:` service
 # environment there for why an empty token cannot be tolerated here the way
-# an empty UMAMI_DOMAIN/LISTMONK_DOMAIN can be below. The placeholder zone
+# an empty LISTMONK_DOMAIN can be below. The placeholder zone
 # resolves nowhere and its wildcard certificate request simply fails forever
 # in the background, the same harmless way theirs do; a deployment that
 # doesn't use custom domains otherwise pays nothing for this block.
@@ -87,9 +105,9 @@
 # block proxies to the identical upstream and carries no weblog-specific
 # routing of its own.
 #
-# It also needs the SAME handle_path /analytics/* block {$SITE_DOMAIN} has,
-# and for the identical reason (see the comment on that block above):
-# #showAnalyticsTrackingCode emits a root-relative /analytics/script.js and
+# It also needs the SAME /analytics allowlist {$SITE_DOMAIN} has, and for
+# the identical reason (see the comment on that block above): the tracking
+# code emits a root-relative /analytics/script.js and
 # posts its beacon to /analytics/api/send regardless of which hostname served
 # the page, so without this here too, every custom-domain weblog's analytics
 # silently 404 at the app (same-origin, so no CSP error; same-server, so no
@@ -101,8 +119,27 @@
 		dns cloudflare {$VHOST_DNS_API_TOKEN}
 	}
 
-	handle_path /analytics/* {
+	@tracker path /analytics/{$UMAMI_SCRIPT_NAME:script.js}
+	handle @tracker {
+		uri strip_prefix /analytics
 		reverse_proxy umami:3000
+	}
+	@send {
+		path /analytics/api/send
+		method POST
+	}
+	handle @send {
+		uri strip_prefix /analytics
+		reverse_proxy umami:3000
+	}
+	# Session replay and heatmaps are off; to switch them on, uncomment these and enable recording per website (docs/dev/umami-api.md).
+	# @replay path /analytics/recorder.js /analytics/api/record /analytics/api/websites/*/recorder
+	# handle @replay {
+	# 	uri strip_prefix /analytics
+	# 	reverse_proxy umami:3000
+	# }
+	handle /analytics/* {
+		respond 404
 	}
 
 	handle {
@@ -110,20 +147,22 @@
 	}
 }
 
-# The Umami dashboard, on its own hostname.
+# The Umami dashboard and its API: internal only, never a public hostname.
 #
-# No theme CSP applies to it, so a separate origin costs nothing here, and it
-# keeps the analytics console off the blog's domain. Leave UMAMI_DOMAIN unset
-# and this defaults to a hostname that cannot resolve publicly (see
-# docker-compose.prod.yml), so Caddy serves a site nobody can reach rather
-# than exposing the console by accident.
-{$UMAMI_DOMAIN} {
+# A fixed port, not a hostname. docker-compose.prod.yml publishes it on
+# UMAMI_CONSOLE_BIND (loopback unless .env names the host's LAN address),
+# and the owner reaches it through a Cloudflare zero-trust (Access) hostname
+# whose connector, on another machine, points at that LAN address. Pressroom
+# itself calls Umami's API over the compose network (http://umami:3000) and
+# never through Caddy. Plain HTTP: a bare port is not a certificate-able
+# name, and zero-trust terminates TLS.
+:8081 {
 	reverse_proxy umami:3000
 }
 
 # The newsletter admin, and the opt-in / unsubscribe pages subscribers reach
-# from their email. On its own hostname for the same reason the analytics
-# dashboard is: listmonk assumes it owns a domain root. Unset, LISTMONK_DOMAIN
+# from their email. On its own hostname: listmonk assumes it owns a domain
+# root. Unset, LISTMONK_DOMAIN
 # defaults to a name that cannot resolve.
 {$LISTMONK_DOMAIN} {
 	reverse_proxy listmonk:9000

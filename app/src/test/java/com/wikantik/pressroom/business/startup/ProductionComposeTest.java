@@ -27,7 +27,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -176,9 +178,9 @@ class ProductionComposeTest {
             for (Object port : portList) {
                 String spec = String.valueOf(port);
                 boolean publicPort = spec.endsWith(":80") || spec.endsWith(":443");
-                assertTrue(publicPort || spec.startsWith("127.0.0.1:"),
-                        "only caddy's 80 and 443 may be reachable off-host; " + spec
-                                + " is neither those nor loopback-bound");
+                assertTrue(publicPort || loopbackByDefault(spec),
+                        "only caddy's 80 and 443 may be reachable off-host by default; " + spec
+                                + " is neither those nor loopback-bound unless .env says otherwise");
             }
         }
     }
@@ -199,7 +201,7 @@ class ProductionComposeTest {
         List<String> published = new ArrayList<>();
         for (Object port : (List<?>) service("caddy").get("ports")) {
             String spec = String.valueOf(port);
-            if (spec.startsWith("127.0.0.1:")) {
+            if (loopbackByDefault(spec)) {
                 continue;
             }
             published.add(spec);
@@ -264,13 +266,14 @@ class ProductionComposeTest {
     @Test
     void everyLoopbackHostPortIsOverridableFromEnv() throws IOException {
         Pattern overridable = Pattern.compile(
-                "127\\.0\\.0\\.1:\\$\\{([A-Z][A-Z0-9_]*):-\\d+}:\\d+");
+                "(?:127\\.0\\.0\\.1|\\$\\{[A-Z][A-Z0-9_]*:-127\\.0\\.0\\.1}):"
+                        + "\\$\\{([A-Z][A-Z0-9_]*):-\\d+}:\\d+");
         String envExample = Files.readString(Paths.get("../deploy/.env.example"),
                 StandardCharsets.UTF_8);
         List<String> loopback = new ArrayList<>();
         for (Object port : (List<?>) service("caddy").get("ports")) {
             String spec = String.valueOf(port);
-            if (!spec.startsWith("127.0.0.1:")) {
+            if (!loopbackByDefault(spec)) {
                 continue;
             }
             loopback.add(spec);
@@ -282,6 +285,204 @@ class ProductionComposeTest {
                     m.group(1) + " moves " + spec + " but deploy/.env.example never names it");
         }
         assertFalse(loopback.isEmpty(), "expected caddy's loopback console ports; did they move?");
+    }
+
+    /**
+     * A port whose host address is loopback, written either literally or as a
+     * {@code ${VAR:-127.0.0.1}} that .env may point at a LAN address.
+     */
+    private static boolean loopbackByDefault(String spec) {
+        return spec.startsWith("127.0.0.1:")
+                || Pattern.compile("^\\$\\{[A-Z][A-Z0-9_]*:-127\\.0\\.0\\.1}:").matcher(spec).find();
+    }
+
+    /**
+     * The Umami dashboard and its API are internal (spec AC 19). cloudflared
+     * runs on another machine and cannot reach docker1's loopback, so the
+     * owner publishes the console on the LAN address, which Cloudflare
+     * zero-trust fronts; the file's own default stays loopback, so a host that
+     * never sets UMAMI_CONSOLE_BIND exposes nothing.
+     */
+    @Test
+    void dashboardBindDefaultsToLoopback() throws IOException {
+        assertTrue(((List<?>) service("caddy").get("ports"))
+                        .contains("${UMAMI_CONSOLE_BIND:-127.0.0.1}:${UMAMI_CONSOLE_PORT:-8081}:8081"),
+                "the dashboard port must be bindable to the LAN from .env and default to loopback: "
+                        + service("caddy").get("ports"));
+        String envExample = Files.readString(Paths.get("../deploy/.env.example"),
+                StandardCharsets.UTF_8);
+        assertTrue(Pattern.compile("(?m)^#?UMAMI_CONSOLE_BIND=").matcher(envExample).find(),
+                "deploy/.env.example must name UMAMI_CONSOLE_BIND, or nobody finds the LAN bind");
+        assertTrue(Pattern.compile("(?ms)^:8081 \\{\\s*reverse_proxy umami:3000\\s*}")
+                        .matcher(caddyDirectives()).find(),
+                "the dashboard is a fixed :8081 site in the Caddyfile, not a hostname");
+    }
+
+    /**
+     * The public-hostname mode put Umami's whole dashboard and API on the
+     * internet (spec AC 19). It is gone from every file the host receives.
+     */
+    @Test
+    void noUmamiDomainAnywhere() throws IOException {
+        List<String> offenders = new ArrayList<>();
+        List<Path> shipped = new ArrayList<>(List.of(COMPOSE));
+        try (var walk = Files.walk(Paths.get("../deploy"))) {
+            walk.filter(Files::isRegularFile).forEach(shipped::add);
+        }
+        for (Path file : shipped) {
+            if (Files.readString(file, StandardCharsets.UTF_8).contains("UMAMI_DOMAIN")) {
+                offenders.add(file.toString());
+            }
+        }
+        assertEquals(List.of(), offenders, "UMAMI_DOMAIN is removed; these still name it");
+    }
+
+    /**
+     * Pressroom registers its blogs through Umami's API over the compose
+     * network, as its own non-admin account. The password is generated into
+     * .env by deploy.sh; analytics-views creates the account with it and the
+     * app signs in with it. The removed JDBC route to Umami's tables is gone.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void theAppReachesUmamiThroughItsApiAsThePressroomAccount() throws IOException {
+        Map<String, Object> app = (Map<String, Object>) service("app").get("environment");
+        assertEquals("${PRESSROOM_ANALYTICS_UMAMI_APIURL:-http://umami:3000}",
+                app.get("PRESSROOM_ANALYTICS_UMAMI_APIURL"));
+        assertEquals("${UMAMI_PRESSROOM_PASSWORD:-}", app.get("PRESSROOM_ANALYTICS_UMAMI_PASSWORD"));
+        Map<String, Object> views = (Map<String, Object>) service("analytics-views").get("environment");
+        assertEquals("${UMAMI_PRESSROOM_PASSWORD:-}", views.get("UMAMI_PRESSROOM_PASSWORD"),
+                "analytics-views creates the account the app signs in as");
+        String envExample = Files.readString(Paths.get("../deploy/.env.example"),
+                StandardCharsets.UTF_8);
+        for (String key : List.of("UMAMI_PRESSROOM_PASSWORD", "PRESSROOM_ANALYTICS_UMAMI_DASHBOARDURL")) {
+            assertTrue(Pattern.compile("(?m)^#?" + key + "=").matcher(envExample).find(),
+                    "deploy/.env.example must document " + key);
+        }
+        for (Path file : List.of(COMPOSE, Paths.get("../deploy/.env.example"))) {
+            assertFalse(Files.readString(file, StandardCharsets.UTF_8).contains("PRESSROOM_ANALYTICS_JDBC"),
+                    file + " still names the removed PRESSROOM_ANALYTICS_JDBC_* settings");
+        }
+    }
+
+    /** The account step's SQL must be in the image, where analytics-views.sh looks for it. */
+    @Test
+    void theAccountSqlIsBakedBesideTheViews() throws IOException {
+        String dockerfile = Files.readString(Paths.get("../Dockerfile"), StandardCharsets.UTF_8);
+        assertTrue(dockerfile.contains(
+                        "COPY deploy/analytics/umami-pressroom-account.sql /app/umami-pressroom-account.sql"),
+                "the root Dockerfile must bake the account SQL at /app/umami-pressroom-account.sql");
+        String script = Files.readString(Paths.get("../deploy/analytics-views.sh"), StandardCharsets.UTF_8);
+        assertTrue(script.contains("umami-pressroom-account.sql"),
+                "analytics-views.sh must apply the account SQL");
+    }
+
+    /**
+     * Umami's public face is the tracker and nothing else (spec AC 7): on every
+     * site block that serves blogs, {@code /analytics/<script>} and
+     * {@code POST /analytics/api/send} reach Umami with the prefix stripped,
+     * and every other {@code /analytics/} path answers 404 from Caddy. Before
+     * this, {@code /analytics/*} forwarded all of Umami, so its login page and
+     * API were public on every blog hostname. Session replay's three paths sit
+     * in each block commented out, so switching it on later is visible.
+     *
+     * <p>The blocks are compared with each other as well as with the expected
+     * lines: the custom-domain block once had no analytics routing at all
+     * (C1), and two copies that drift apart are how that recurs.
+     */
+    @Test
+    void caddyAllowsOnlyTrackerPaths() throws IOException {
+        String raw = Files.readString(Paths.get("../deploy/caddy/Caddyfile"), StandardCharsets.UTF_8);
+        List<String> expected = List.of(
+                "@tracker path /analytics/{$UMAMI_SCRIPT_NAME:script.js}",
+                "handle @tracker {",
+                "uri strip_prefix /analytics",
+                "reverse_proxy umami:3000",
+                "}",
+                "@send {",
+                "path /analytics/api/send",
+                "method POST",
+                "}",
+                "handle @send {",
+                "uri strip_prefix /analytics",
+                "reverse_proxy umami:3000",
+                "}",
+                "handle /analytics/* {",
+                "respond 404",
+                "}");
+
+        List<String> siteBlocks = new ArrayList<>();
+        List<List<String>> allowlists = new ArrayList<>();
+        for (String block : topLevelCaddyBlocks(raw)) {
+            String directives = stripComments(block);
+            if (!directives.contains("reverse_proxy app:8080")) {
+                assertFalse(directives.contains("/analytics"), "only blog sites route /analytics");
+                continue;
+            }
+            siteBlocks.add(firstNonBlankLine(directives));
+            List<String> analyticsLines = new ArrayList<>();
+            boolean inAnalytics = false;
+            int depth = 0;
+            for (String line : directives.split("\n")) {
+                String t = line.strip();
+                if (t.isEmpty()) {
+                    continue;
+                }
+                if (!inAnalytics && (t.startsWith("@tracker") || t.startsWith("@send")
+                        || t.startsWith("handle @") || t.startsWith("handle /analytics"))) {
+                    inAnalytics = true;
+                }
+                if (inAnalytics) {
+                    analyticsLines.add(t);
+                    depth += t.endsWith("{") ? 1 : 0;
+                    depth -= "}".equals(t) ? 1 : 0;
+                    if (depth == 0 && "}".equals(t) && analyticsLines.contains("respond 404")) {
+                        inAnalytics = false;
+                    }
+                }
+            }
+            allowlists.add(analyticsLines);
+            assertEquals(List.of("handle @tracker {", "handle @send {"), umamiProxyParents(directives),
+                    "in " + firstNonBlankLine(directives) + ", reverse_proxy umami may appear only "
+                            + "inside the tracker and send handles");
+            for (String path : List.of("/analytics/recorder.js", "/analytics/api/record",
+                    "/analytics/api/websites/*/recorder")) {
+                assertTrue(Pattern.compile("(?m)^\\s*#.*" + Pattern.quote(path)).matcher(block).find(),
+                        firstNonBlankLine(directives) + " must list replay's " + path + ", commented");
+                assertFalse(directives.contains(path), "replay stays off: " + path + " is live");
+            }
+        }
+        assertEquals(2, siteBlocks.size(), "expected the site and custom-domain blocks: " + siteBlocks);
+        for (List<String> allowlist : allowlists) {
+            assertEquals(expected, allowlist, "the /analytics allowlist of a blog site block");
+        }
+        assertFalse(caddyDirectives().contains("handle_path /analytics"),
+                "handle_path /analytics/* forwards every Umami path; use the allowlist");
+    }
+
+    /** The header of the block enclosing each {@code reverse_proxy umami:3000}, in order. */
+    private static List<String> umamiProxyParents(String directives) {
+        List<String> parents = new ArrayList<>();
+        Deque<String> open = new ArrayDeque<>();
+        for (String line : directives.split("\n")) {
+            String t = line.strip();
+            if (t.endsWith("{")) {
+                open.push(t);
+            } else if ("}".equals(t)) {
+                open.poll();
+            } else if (t.startsWith("reverse_proxy umami")) {
+                parents.add(open.isEmpty() ? "(top level)" : open.peek());
+            }
+        }
+        return parents;
+    }
+
+    private static String caddyDirectives() throws IOException {
+        return stripComments(Files.readString(Paths.get("../deploy/caddy/Caddyfile"), StandardCharsets.UTF_8));
+    }
+
+    private static String stripComments(String text) {
+        return text.replaceAll("(?m)#.*$", "");
     }
 
     /**
@@ -481,13 +682,14 @@ class ProductionComposeTest {
 
         List<String> offenders = new ArrayList<>();
         for (String block : topLevelCaddyBlocks(text)) {
-            if (block.contains("reverse_proxy app:8080") && !block.contains("handle_path /analytics/*")) {
-                offenders.add(firstNonBlankLine(block));
+            String directives = stripComments(block);
+            if (directives.contains("reverse_proxy app:8080") && !directives.contains("@tracker path /analytics/")) {
+                offenders.add(firstNonBlankLine(directives));
             }
         }
         assertTrue(offenders.isEmpty(),
                 "every Caddyfile site block that reverse-proxies to app:8080 must also carry "
-                        + "the handle_path /analytics/* block placed before it, or Umami "
+                        + "the /analytics tracker allowlist (caddyAllowsOnlyTrackerPaths), or Umami "
                         + "collection silently 404s for every request on that host -- "
                         + "offending block(s) starting near: " + offenders);
     }
@@ -501,24 +703,39 @@ class ProductionComposeTest {
      * count and either merge blocks together or split one apart.
      */
     private static List<String> topLevelCaddyBlocks(String text) {
-        String withoutPlaceholders = Pattern.compile("\\{\\$[^}]*}").matcher(text).replaceAll("");
+        // Blanked to spaces rather than removed, so positions still index the
+        // original text: each block comes back verbatim, placeholders and
+        // comments included. Comments are blanked for counting too -- a
+        // commented-out directive may carry a brace.
+        String blanked = blank(blank(text, Pattern.compile("#[^\\n]*")), Pattern.compile("\\{\\$[^}]*}"));
 
         List<String> blocks = new ArrayList<>();
         int depth = 0;
         int start = 0;
-        for (int i = 0; i < withoutPlaceholders.length(); i++) {
-            char c = withoutPlaceholders.charAt(i);
+        for (int i = 0; i < blanked.length(); i++) {
+            char c = blanked.charAt(i);
             if (c == '{') {
                 depth++;
             } else if (c == '}') {
                 depth--;
                 if (depth == 0) {
-                    blocks.add(withoutPlaceholders.substring(start, i + 1));
+                    blocks.add(text.substring(start, i + 1));
                     start = i + 1;
                 }
             }
         }
         return blocks;
+    }
+
+    private static String blank(String text, Pattern pattern) {
+        Matcher m = pattern.matcher(text);
+        StringBuilder out = new StringBuilder(text);
+        while (m.find()) {
+            for (int i = m.start(); i < m.end(); i++) {
+                out.setCharAt(i, ' ');
+            }
+        }
+        return out.toString();
     }
 
     private static String firstNonBlankLine(String block) {

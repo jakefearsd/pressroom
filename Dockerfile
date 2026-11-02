@@ -113,6 +113,7 @@ COPY deploy/provision.sh /app/provision.sh
 COPY deploy/admin-account.sh /app/admin-account.sh
 COPY deploy/analytics-views.sh /app/analytics-views.sh
 COPY deploy/analytics/umami-views.sql /app/umami-views.sql
+COPY deploy/analytics/umami-pressroom-account.sql /app/umami-pressroom-account.sql
 COPY deploy/backup/backup.sh /app/backup/backup.sh
 COPY deploy/backup/loop.sh /app/backup/loop.sh
 COPY bin/pressroom-api /app/pressroom-api

@@ -24,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -54,12 +55,15 @@ class DeployScriptTest {
                 echo "$*" >> "$STUB_LOG"
                 case "$*" in
                   *" run --rm -T admin status"*) echo "STATUS-OUTPUT-LINE"; exit "$STUB_STATUS_RC" ;;
+                  *" up -d"*) echo "env-at-up: $(grep -c '^UMAMI_PRESSROOM_PASSWORD=.' .env)" >> "$STUB_LOG" ;;
                 esac
                 exit 0
                 """);
         stub.toFile().setExecutable(true);
         Files.writeString(dir.resolve("docker-compose.prod.yml"), "");
-        Files.writeString(dir.resolve(".env"), "");
+        if (!Files.exists(dir.resolve(".env"))) {
+            Files.writeString(dir.resolve(".env"), "");
+        }
         ProcessBuilder pb = new ProcessBuilder(command(args)).directory(dir.toFile())
                 .redirectErrorStream(true);
         pb.environment().put("PATH", bin + ":" + System.getenv("PATH"));
@@ -75,6 +79,41 @@ class DeployScriptTest {
         List<String> command = new ArrayList<>(List.of("bash", DEPLOY.toString()));
         command.addAll(List.of(args));
         return command;
+    }
+
+    /**
+     * Pressroom's Umami account password is generated, not chosen: the first
+     * deploy that finds none in .env appends one, before {@code up -d} so
+     * compose hands it to analytics-views and the app on that same run. Later
+     * deploys keep it. It is a secret, so it is never printed, and .env keeps
+     * its mode (the file holds every secret in the stack).
+     */
+    @Test
+    void deployGeneratesPasswordOnceAndNeverPrints() throws Exception {
+        Path env = dir.resolve(".env");
+        Files.writeString(env, "IMAGE_VERSION=0.6.1\nUMAMI_PRESSROOM_PASSWORD=\nSITE_DOMAIN=:80");
+        Files.setPosixFilePermissions(env, PosixFilePermissions.fromString("rw-------"));
+
+        Result first = deploy(0);
+        assertEquals(0, first.exit(), first.out());
+        List<String> lines = Files.readAllLines(env, StandardCharsets.UTF_8);
+        List<String> passwords = lines.stream().filter(l -> l.startsWith("UMAMI_PRESSROOM_PASSWORD=")).toList();
+        assertEquals(1, passwords.size(), "one password line, the blank one replaced: " + lines.size() + " lines");
+        String password = passwords.get(0).substring("UMAMI_PRESSROOM_PASSWORD=".length());
+        assertTrue(password.matches("[0-9a-f]{48}"), "openssl rand -hex 24 gives 48 hex digits");
+        assertEquals(List.of("IMAGE_VERSION=0.6.1", "SITE_DOMAIN=:80"),
+                lines.stream().filter(l -> !l.startsWith("UMAMI_PRESSROOM_PASSWORD=")).toList(),
+                "every other line kept, in order");
+        assertEquals("rw-------", PosixFilePermissions.toString(Files.getPosixFilePermissions(env)));
+        assertTrue(first.calls().contains("env-at-up: 1"), "generated before up -d: " + first.calls());
+        assertFalse(first.out().contains(password), "the password must never be printed");
+        assertFalse(first.calls().contains(password), "nor handed to docker on a command line");
+        assertTrue(first.out().contains("UMAMI_PRESSROOM_PASSWORD"), "the operator is told it was generated");
+
+        Result second = deploy(0);
+        assertEquals(0, second.exit(), second.out());
+        assertEquals(lines, Files.readAllLines(env, StandardCharsets.UTF_8), "a second deploy keeps it");
+        assertFalse(second.out().contains(password), second.out());
     }
 
     @Test
