@@ -173,35 +173,6 @@
         </div>
     </div>
 
-    <%-- ***** Analytics settings ***** --%>
-
-    <h2 class="section-head" id="settings-analytics"><spring:message code="websiteSettings.analyticsSettings"/></h2>
-
-    <div class="row mb-3">
-        <label class="col-sm-3 col-form-label" for="weblog_bean_analyticsSiteId"><spring:message code="websiteSettings.analyticsSiteId"/></label>
-        <div class="col-sm-9">
-            <input id="weblog_bean_analyticsSiteId" type="text" name="bean.analyticsSiteId" value="${fn:escapeXml(bean.analyticsSiteId)}" size="40" maxlength="64" class="form-control"/>
-            <div class="form-text"><spring:message code="websiteSettings.analyticsSiteId.tip"/></div>
-        </div>
-    </div>
-
-    <div class="row mb-3">
-        <label class="col-sm-3 col-form-label" for="weblog_bean_analyticsShareUrl"><spring:message code="websiteSettings.analyticsShareUrl"/></label>
-        <div class="col-sm-9">
-            <input id="weblog_bean_analyticsShareUrl" type="text" name="bean.analyticsShareUrl" value="${fn:escapeXml(bean.analyticsShareUrl)}" size="40" maxlength="255" class="form-control"/>
-            <div class="form-text"><spring:message code="websiteSettings.analyticsShareUrl.tip"/></div>
-            <%-- A rejected save re-renders this page with the raw submitted bean, so
-                 "not empty" alone would echo an unvalidated value (e.g. javascript:...)
-                 as a live link. The prefix check below is the scheme allowlist for the
-                 echoed link, case-insensitively mirroring myValidate's own check; "not
-                 empty" short-circuits first so fn:toLowerCase never sees a null value. --%>
-            <c:if test="${not empty bean.analyticsShareUrl
-                    and (fn:startsWith(fn:toLowerCase(bean.analyticsShareUrl), 'https://')
-                    or fn:startsWith(fn:toLowerCase(bean.analyticsShareUrl), 'http://'))}">
-                <div class="form-text"><a href="${fn:escapeXml(bean.analyticsShareUrl)}" target="_blank" rel="noopener">${fn:escapeXml(bean.analyticsShareUrl)}</a></div>
-            </c:if>
-        </div>
-    </div>
 
     <%-- ***** Newsletter settings ***** --%>
 
@@ -334,7 +305,6 @@
              aria-label="<spring:message code="websiteSettings.sections"/>">
             <a href="#settings-general" class="is-current"><spring:message code="websiteSettings.generalSettings"/></a>
             <a href="#settings-language"><spring:message code="websiteSettings.languageSettings"/></a>
-            <a href="#settings-analytics"><spring:message code="websiteSettings.analyticsSettings"/></a>
             <a href="#settings-newsletter"><spring:message code="websiteSettings.newsletterSettings"/></a>
             <a href="#settings-business"><spring:message code="websiteSettings.businessSettings"/></a>
             <a href="#settings-customdomain"><spring:message code="websiteSettings.customDomainSettings"/></a>

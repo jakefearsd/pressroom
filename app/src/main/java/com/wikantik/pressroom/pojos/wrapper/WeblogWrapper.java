@@ -161,22 +161,6 @@ public final class WeblogWrapper {
     }
 
     /**
-     * The Umami website UUID the theme macro builds this weblog's tracker
-     * tag from, or null if analytics is disabled for this weblog.
-     */
-    public String getAnalyticsSiteId() {
-        return this.pojo.getAnalyticsSiteId();
-    }
-
-    /**
-     * The operator's saved link to the Umami share dashboard for this
-     * weblog's site, or null if none is set.
-     */
-    public String getAnalyticsShareUrl() {
-        return this.pojo.getAnalyticsShareUrl();
-    }
-
-    /**
      * The Listmonk list UUID this weblog's subscribe form feeds, or null if
      * the subscribe form is disabled for this weblog.
      */

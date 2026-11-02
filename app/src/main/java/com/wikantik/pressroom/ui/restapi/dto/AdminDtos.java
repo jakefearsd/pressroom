@@ -58,7 +58,7 @@ public final class AdminDtos {
                               @Schema(description = "Show the more-from-the-site block on this blog. Default true.")
                               boolean showMoreFromSite, String editorTheme,
                               String creatorUserName, String customDomain, String icon, String about,
-                              String analyticsSiteId, String analyticsShareUrl, String newsletterListUuid,
+                              String newsletterListUuid,
                               String businessId, String placeType, String placeLocality, String placeRegion,
                               String placeCountry, Double placeLat, Double placeLng, String bookingUrl) {
     }
@@ -100,7 +100,7 @@ public final class AdminDtos {
     public record WeblogPatch(String name, String tagline, String copyright, String emailAddress, String locale,
                                String timeZone, Integer entryDisplayCount, Boolean active,
                                String customDomain, String icon, String about,
-                               String analyticsSiteId, String analyticsShareUrl, String newsletterListUuid,
+                               String newsletterListUuid,
                                @Schema(description = "Id of an existing business profile") String businessId,
                                @Schema(description = "LodgingBusiness, or omit; needs placeLocality") String placeType,
                                String placeLocality, String placeRegion,
@@ -117,14 +117,14 @@ public final class AdminDtos {
                                @Schema(description = "Show popular posts from the site's other blogs on this blog. Not clearable.")
                                Boolean showMoreFromSite,
                                @Schema(description = "Fields to remove: tagline, copyright, customDomain, icon, about, "
-                                       + "analyticsSiteId, analyticsShareUrl, newsletterListUuid, businessId, "
+                                       + "newsletterListUuid, businessId, "
                                        + "placeType, placeLocality, placeRegion, placeCountry, placeLat with "
                                        + "placeLng, bookingUrl. Null never removes anything.")
                                List<String> clear) {
     }
 
     public static final List<String> WEBLOG_CLEARABLE = List.of("tagline", "copyright", "customDomain", "icon", "about",
-            "analyticsSiteId", "analyticsShareUrl", "newsletterListUuid", "businessId", "placeType",
+            "newsletterListUuid", "businessId", "placeType",
             "placeLocality", "placeRegion", "placeCountry", "placeLat", "placeLng", "bookingUrl");
     public static final List<List<String>> WEBLOG_PAIRS = List.of(List.of("placeLat", "placeLng"));
 
@@ -142,8 +142,7 @@ public final class AdminDtos {
                 !Boolean.FALSE.equals(weblog.getCommentNotify()),
                 !Boolean.FALSE.equals(weblog.getShowMoreFromSite()), weblog.getEditorTheme(),
                 weblog.getCreatorUserName(), weblog.getCustomDomain(), weblog.getIconPath(),
-                weblog.getAbout(), weblog.getAnalyticsSiteId(), weblog.getAnalyticsShareUrl(),
-                weblog.getNewsletterListUuid(),
+                weblog.getAbout(), weblog.getNewsletterListUuid(),
                 weblog.getBusiness() == null ? null : weblog.getBusiness().getId(),
                 weblog.getPlaceType(), weblog.getPlaceLocality(), weblog.getPlaceRegion(),
                 weblog.getPlaceCountry(),
@@ -208,8 +207,6 @@ public final class AdminDtos {
         setIfPresent(patch.customDomain(), bean::setCustomDomain);
         setIfPresent(patch.icon(), bean::setIcon);
         setIfPresent(patch.about(), bean::setAbout);
-        setIfPresent(patch.analyticsSiteId(), bean::setAnalyticsSiteId);
-        setIfPresent(patch.analyticsShareUrl(), bean::setAnalyticsShareUrl);
         setIfPresent(patch.newsletterListUuid(), bean::setNewsletterListUuid);
         setIfPresent(patch.businessId(), bean::setBusinessId);
         setIfPresent(patch.placeType(), bean::setPlaceType);
@@ -252,8 +249,6 @@ public final class AdminDtos {
             case "customDomain" -> bean.setCustomDomain(null);
             case "icon" -> bean.setIcon(null);
             case "about" -> bean.setAbout(null);
-            case "analyticsSiteId" -> bean.setAnalyticsSiteId(null);
-            case "analyticsShareUrl" -> bean.setAnalyticsShareUrl(null);
             case "newsletterListUuid" -> bean.setNewsletterListUuid(null);
             case "businessId" -> bean.setBusinessId(null);
             case "placeType" -> bean.setPlaceType(null);
