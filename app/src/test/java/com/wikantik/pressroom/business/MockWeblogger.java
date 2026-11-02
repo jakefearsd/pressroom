@@ -73,6 +73,8 @@ public final class MockWeblogger {
     private final ThreadManager threadManager = mock(ThreadManager.class);
     private final IndexManager indexManager = mock(IndexManager.class);
     private final DiscoveryManager discoveryManager = mock(DiscoveryManager.class);
+    private final com.wikantik.pressroom.business.analytics.AnalyticsManager analyticsManager =
+            mock(com.wikantik.pressroom.business.analytics.AnalyticsManager.class);
     private final ThemeManager themeManager = mock(ThemeManager.class);
     private final PluginManager pluginManager = mock(PluginManager.class);
     private final MediaFileManager mediaFileManager = mock(MediaFileManager.class);
@@ -107,6 +109,9 @@ public final class MockWeblogger {
         when(weblogger.getDiscoveryManager()).thenReturn(discoveryManager);
         when(discoveryManager.getStatus()).thenReturn(new com.wikantik.pressroom.business.discovery.DiscoveryStatus(
                 com.wikantik.pressroom.business.discovery.DiscoveryStatus.State.NEVER, null, null, 0, 0, null));
+        when(weblogger.getAnalyticsManager()).thenReturn(analyticsManager);
+        when(analyticsManager.getStatus())
+                .thenReturn(com.wikantik.pressroom.business.analytics.AnalyticsStatus.notConfigured());
         when(weblogger.getThemeManager()).thenReturn(themeManager);
         when(weblogger.getPluginManager()).thenReturn(pluginManager);
         when(weblogger.getMediaFileManager()).thenReturn(mediaFileManager);
@@ -285,6 +290,10 @@ public final class MockWeblogger {
 
     public ThreadManager threadManager() {
         return threadManager;
+    }
+
+    public com.wikantik.pressroom.business.analytics.AnalyticsManager analyticsManager() {
+        return analyticsManager;
     }
 
     public DiscoveryManager discoveryManager() {

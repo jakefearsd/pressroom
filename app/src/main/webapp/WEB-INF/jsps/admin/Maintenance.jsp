@@ -160,6 +160,56 @@
 </form>
 </c:if>
 
+<%-- Analytics: registration and read status from the manager's memory (the
+     page never calls Umami). Its own form for the same reason as discovery. --%>
+<c:if test="${not empty analyticsStatus}">
+<form action="${pageContext.request.contextPath}/pressroom-ui/admin/maintenance!syncAnalytics.rol" method="post" class="form-stacked guard-submit">
+<sec:csrfInput/>
+    <div class="maintenance-op maintenance-analytics">
+        <h2 class="section-head"><spring:message code="maintenance.analytics.title"/></h2>
+        <c:choose>
+            <c:when test="${not analyticsStatus.configured}">
+                <p><spring:message code="maintenance.analytics.off"/></p>
+            </c:when>
+            <c:otherwise>
+                <p><spring:message code="maintenance.analytics.registered" arguments="${fn:escapeXml(analyticsStatus.registered)},${fn:escapeXml(analyticsStatus.total)}"/></p>
+                <dl>
+                    <dt><spring:message code="maintenance.analytics.reachable"/></dt>
+                    <dd>
+                        <c:choose>
+                            <c:when test="${analyticsStatus.reachable == true}"><spring:message code="maintenance.analytics.reachable.yes"/></c:when>
+                            <c:when test="${analyticsStatus.reachable == false}"><spring:message code="maintenance.analytics.reachable.no"/></c:when>
+                            <c:otherwise><spring:message code="maintenance.analytics.reachable.unknown"/></c:otherwise>
+                        </c:choose>
+                    </dd>
+                    <dt><spring:message code="maintenance.analytics.lastRead"/></dt>
+                    <dd>
+                        <c:choose>
+                            <c:when test="${not empty analyticsLastRead}"><rc:date value="${analyticsLastRead}"/></c:when>
+                            <c:otherwise><spring:message code="maintenance.analytics.neverRead"/></c:otherwise>
+                        </c:choose>
+                    </dd>
+                    <c:if test="${not empty analyticsStatus.lastReadError}">
+                        <dt><spring:message code="maintenance.analytics.lastReadError"/></dt>
+                        <dd>${fn:escapeXml(analyticsStatus.lastReadError)}</dd>
+                    </c:if>
+                </dl>
+                <c:if test="${not empty analyticsFailures}">
+                    <h3><spring:message code="maintenance.analytics.failures"/></h3>
+                    <ul>
+                        <c:forEach var="f" items="${analyticsFailures}">
+                            <li>${fn:escapeXml(f.handle)}: ${fn:escapeXml(f.error)} (<rc:date value="${f.at}"/>)</li>
+                        </c:forEach>
+                    </ul>
+                </c:if>
+                <button type="submit" class="btn btn-secondary"
+                        data-busy-label="<spring:message code='maintenance.analytics.syncing'/>"><spring:message code="maintenance.analytics.sync"/></button>
+            </c:otherwise>
+        </c:choose>
+    </div>
+</form>
+</c:if>
+
 <script>
     // Rewrites each long operation's prompt so it names the weblog the
     // select currently holds (see the comment above the first operation),

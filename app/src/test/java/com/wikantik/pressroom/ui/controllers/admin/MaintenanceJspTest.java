@@ -180,7 +180,7 @@ class MaintenanceJspTest {
         // marker form until a weblog is chosen) does not disable it.
         assertEquals(1, count(source,
                 "action=\"${pageContext.request.contextPath}/pressroom-ui/admin/maintenance.rol\""));
-        assertEquals(2, count(source, "<sec:csrfInput/>"));
+        assertEquals(3, count(source, "<sec:csrfInput/>"));
     }
 
     /** "Refresh now" refreshes; it reuses no other operation's busy label. */
@@ -209,6 +209,26 @@ class MaintenanceJspTest {
         String source = Files.readString(JSP, StandardCharsets.UTF_8);
         assertTrue(source.contains("${fn:escapeXml(discoveryStatus.lastError)}"));
         assertFalse(source.contains("${discoveryStatus.lastError}"));
+    }
+
+    @Test
+    void analyticsBlockShowsStatusEscapedAndHidesSyncWhenOff() throws IOException {
+        String source = Files.readString(JSP, StandardCharsets.UTF_8);
+        int form = source.indexOf("maintenance!syncAnalytics.rol");
+        assertTrue(form > 0, "a sync form");
+        String block = source.substring(source.lastIndexOf("<c:if", form), source.indexOf("</c:if>", form));
+        assertTrue(source.contains("<h2 class=\"section-head\"><spring:message code=\"maintenance.analytics.title\"/></h2>"));
+        assertTrue(source.contains("code=\"maintenance.analytics.off\""), "off sentence");
+        assertTrue(source.contains("code=\"maintenance.analytics.registered\""));
+        assertTrue(source.contains("${fn:escapeXml(f.handle)}"));
+        assertTrue(source.contains("${fn:escapeXml(f.error)}"));
+        assertTrue(source.contains("${fn:escapeXml(analyticsStatus.lastReadError)}"));
+        assertTrue(source.contains("<rc:date value=\"${analyticsLastRead}\"/>"));
+        assertTrue(source.contains("<rc:date value=\"${f.at}\"/>"));
+        assertFalse(source.contains("${f.error}") || source.contains("${f.handle}"));
+        assertTrue(block.contains("<sec:csrfInput/>"), block);
+        assertTrue(block.contains("analyticsStatus.configured"), "the button is hidden unless configured: " + block);
+        assertFalse(block.contains("onclick"), block);
     }
 
     private static int count(String haystack, String needle) {
