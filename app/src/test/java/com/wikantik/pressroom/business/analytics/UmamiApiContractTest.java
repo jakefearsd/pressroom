@@ -260,6 +260,11 @@ class UmamiApiContractTest {
         assertEquals(401, get("/api/websites/" + UUID.randomUUID(), token).status(),
                 "observed: Umami answers 401 for a website that does not exist, the same as for "
                         + "one the caller may not see, so 401 alone cannot mean 'register it'");
+        // Ruling R24 rests on the reads answering the same way, to a token that is good.
+        String missing = UUID.randomUUID().toString();
+        assertEquals(401, get(site(missing, "stats", window()), token).status(),
+                "a read of a website that does not exist is a 401 too");
+        assertEquals(200, post("/api/auth/verify", token, Map.of()).status(), "while the token itself is good");
     }
 
     @Test
