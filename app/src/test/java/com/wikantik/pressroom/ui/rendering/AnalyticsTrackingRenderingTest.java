@@ -23,6 +23,7 @@ import java.util.List;
 import com.wikantik.pressroom.TestUtils;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.ui.rendering.servlets.RenderingTestSupport;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -75,6 +76,7 @@ class AnalyticsTrackingRenderingTest {
 
     @AfterEach
     void tearDown() throws Exception {
+        TestUtils.weblogger().getWeblogPageManager().removePages(TestUtils.getManagedWebsite(weblog));
         TestUtils.endSession(true);
         TestUtils.teardownWeblog(weblog.getId());
         TestUtils.teardownUser(user.getUserName());
@@ -103,6 +105,49 @@ class AnalyticsTrackingRenderingTest {
                 .execute(RenderingTestSupport.pageServlet(), request);
         assertEquals(200, response.getStatus(), "home page must render");
         return response.getContentAsString();
+    }
+
+    private void savePage(String slug) throws Exception {
+        WeblogPage page = new WeblogPage();
+        page.setWeblog(TestUtils.getManagedWebsite(weblog));
+        page.setSlug(slug);
+        page.setTitle("About");
+        page.setContent("Body of " + slug);
+        page.setStatus(WeblogPage.PubStatus.PUBLISHED);
+        TestUtils.weblogger().getWeblogPageManager().savePage(page);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+        RenderingTestSupport.clearRenderCaches();
+    }
+
+    private String renderPage(String slug) throws Exception {
+        MockHttpServletRequest request = RenderingTestSupport
+                .anonymousGet("/pressroom-ui/rendering/page", "/" + HANDLE + "/" + slug);
+        MockHttpServletResponse response = RenderingTestSupport
+                .execute(RenderingTestSupport.pageServlet(), request);
+        assertEquals(200, response.getStatus(), "page view must render");
+        return response.getContentAsString();
+    }
+
+    @Test
+    void aPageViewCarriesTheTrackerToo() throws Exception {
+        edit("journal", null);
+        savePage("about");
+        try (StubAnalytics _ = StubAnalytics.configured().register(weblog.getId(), SITE_ID)) {
+            String body = renderPage("about");
+            assertTrue(body.contains(tag(SITE_ID, "localhost")),
+                    "journal's own _page override must carry the tracker:\n" + body);
+            assertTrue(body.contains(CSP_JOURNAL), "the page view's CSP must be byte-unchanged:\n" + body);
+        }
+    }
+
+    @Test
+    void anUnregisteredBlogsPageViewCarriesNone() throws Exception {
+        edit("journal", null);
+        savePage("about");
+        try (StubAnalytics _ = StubAnalytics.configured()) {
+            assertFalse(renderPage("about").contains("/analytics/"));
+        }
     }
 
     @Test
