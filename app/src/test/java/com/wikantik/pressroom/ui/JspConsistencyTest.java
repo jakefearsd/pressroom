@@ -1324,11 +1324,11 @@ class JspConsistencyTest {
             // tiles/messages.jsp: controllers escape every user-typed argument
             // (MessageArgumentEscapingTest), and the messages are bundle text.
             "msg", "error",
-            // The Traffic fragment (TrafficView): whole numbers, chart geometry in
+            // The Traffic fragment (TrafficView): whole numbers (pathsCappedAt is an int), chart geometry in
             // whole units, fixed class words ("up", "dn" or empty), a message key
             // from TrafficView.noticeKey, and an entry title that is stored
             // escaped (EntryFieldRules.escapeTitle), so it goes out bare.
-            "traffic.ageMinutes", "bar.x", "bar.y", "bar.width", "bar.height",
+            "traffic.ageMinutes", "traffic.pathsCappedAt", "bar.x", "bar.y", "bar.width", "bar.height",
             "bar.x + bar.width / 2", "traffic.chart.width", "traffic.chart.height",
             "traffic.chart.height - 6", "traffic.chart.plotHeight",
             "line.views", "line.visitors", "line.trendClass", "tile.trend",

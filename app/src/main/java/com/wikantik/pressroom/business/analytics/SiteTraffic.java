@@ -77,10 +77,6 @@ public record SiteTraffic(TrafficState state, Instant asOf, List<BlogRow> blogs,
             NOT_REGISTERED
         }
 
-        public BlogRow {
-            standing = standing == null ? Standing.READ : standing;
-        }
-
         /** A blog with a snapshot for the period. */
         public BlogRow(String weblogId, String handle, String name, long visitors, long views, long visits,
                        double change, String topPostTitle) {
