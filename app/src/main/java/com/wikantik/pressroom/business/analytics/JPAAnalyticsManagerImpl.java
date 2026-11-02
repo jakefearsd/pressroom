@@ -24,7 +24,6 @@ import com.wikantik.pressroom.business.discovery.DiscoverySettings;
 import com.wikantik.pressroom.business.jpa.JPAPersistenceStrategy;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.Weblog;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.persistence.EntityTransaction;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -716,43 +715,11 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
      * {@code localhost} as it is (docs/dev/umami-api.md).
      */
     static String domainFor(Weblog weblog, String siteUrl) {
-        String host = StringUtils.trimToNull(weblog.getCustomDomain());
-        if (host == null) {
-            host = hostOf(siteUrl);
-        }
-        host = normalise(host);
+        String host = AnalyticsHost.of(weblog.getCustomDomain(), siteUrl);
         if (host != null && UMAMI_DOMAIN.matcher(host).matches() && !IPV4_LITERAL.matcher(host).matches()) {
             return host;
         }
         return placeholderFor(weblog.getHandle());
-    }
-
-    private static String hostOf(String url) {
-        if (StringUtils.isBlank(url)) {
-            return null;
-        }
-        try {
-            return URI.create(url.trim()).getHost();
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
-    @SuppressFBWarnings(
-            value = "IMPROPER_UNICODE",
-            justification = "Lower-cases a blog's own host for Umami's lower-case-only domain rule; the result is "
-                    + "only Umami's label for the website, never used to decide access, and Umami validates it again.")
-    private static String normalise(String host) {
-        if (host == null) {
-            return null;
-        }
-        String lower = StringUtils.stripEnd(host.trim().toLowerCase(Locale.ROOT), ".");
-        if (lower.startsWith("[")) {
-            // an IPv6 literal: its colons are not a port, and Umami rejects it anyway
-            return lower;
-        }
-        int colon = lower.indexOf(':');
-        return colon < 0 ? lower : lower.substring(0, colon);
     }
 
     private static String placeholderFor(String handle) {

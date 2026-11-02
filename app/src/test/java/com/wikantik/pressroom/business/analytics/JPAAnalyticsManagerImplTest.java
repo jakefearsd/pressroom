@@ -281,6 +281,13 @@ class JPAAnalyticsManagerImplTest {
         weblog.setCustomDomain("Shop.Example.org:443");
         assertEquals("shop.example.org", JPAAnalyticsManagerImpl.domainFor(weblog, "http://127.0.0.1"),
                 "the custom domain wins over the site URL");
+
+        // degenerate custom domains: no host, so the placeholder here and no data-domains on the page
+        for (String degenerate : new String[] {":8080", ".", " . "}) {
+            weblog.setCustomDomain(degenerate);
+            assertEquals("dev_blog-1.localhost.invalid", JPAAnalyticsManagerImpl.domainFor(weblog, null), degenerate);
+            assertNull(AnalyticsHost.of(weblog.getCustomDomain(), null), degenerate);
+        }
     }
 
     @Test
