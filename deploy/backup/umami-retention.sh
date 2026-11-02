@@ -56,8 +56,14 @@ if [[ "${exists}" != "1" ]]; then
     echo "[$(stamp)] Umami retention: no Umami database (${UMAMI_DB}) on this stack; nothing to trim."
     exit 0
 fi
-if ! psql -d "${UMAMI_DB}" -X --quiet -tAc \
-        "SELECT to_regclass('public.website_event') IS NOT NULL" | grep -qx t; then
+# Captured, not piped into grep: a query that fails is a failed run, not an
+# Umami that has not booted yet.
+if ! has_tables="$(psql -d "${UMAMI_DB}" -X --quiet -tAc \
+        "SELECT to_regclass('public.website_event') IS NOT NULL")"; then
+    echo "[$(stamp)] Umami retention: could not check ${UMAMI_DB} for Umami's tables." >&2
+    exit 1
+fi
+if [[ "${has_tables}" != "t" ]]; then
     echo "[$(stamp)] Umami retention: Umami has not created its tables yet; nothing to trim."
     exit 0
 fi

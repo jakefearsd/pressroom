@@ -1253,9 +1253,11 @@ settings, so read this before you deploy:
 8. **Analytics retention starts.** From 0.7.0 the backup service deletes Umami
    analytics data older than `UMAMI_RETENTION_DAYS` (default 730, two years)
    every night, after the backup. Set `UMAMI_RETENTION_DAYS=0` in `.env`
-   before deploying if you want to keep everything. On a host with years of
-   history the first night's run deletes the most; it works in committed
-   batches and reports how many rows it removed from each table.
+   before deploying if you want to keep everything. It works in committed
+   batches and reports how many rows it removed from each table. The whole
+   run is capped at 15 minutes: on a host with years of history the first run
+   may log a timeout failure ("Umami retention failed"), keep what it deleted,
+   and finish over the following nights.
 9. **The privacy page.** Analytics is now on for every blog, so the published
    privacy policy's analytics paragraph needs the new wording. The approved
    text is in `docs/legal/blog-privacy-policy.md` (the Analytics paragraph and

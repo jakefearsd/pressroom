@@ -55,9 +55,12 @@
 \set batch_size 5000
 \endif
 
--- A batch waiting on a lock, or one that runs away, fails the night's run
--- instead of holding the backup loop, which runs nothing else until it
--- returns. The next night carries on where this one stopped.
+-- The backup loop runs nothing else until this returns, so the run is
+-- bounded. statement_timeout covers the whole DO block below, one top-level
+-- statement: the COMMIT after each batch does not reset it, so the whole run
+-- is capped at 15 min. A big first run may log a timeout failure; the batches
+-- it committed stay deleted, and it finishes over the following nights.
+-- lock_timeout fails the run if one batch waits a minute on a lock.
 SET lock_timeout = '1min';
 SET statement_timeout = '15min';
 

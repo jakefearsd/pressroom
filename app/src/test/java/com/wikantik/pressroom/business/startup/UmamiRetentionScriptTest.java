@@ -30,6 +30,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -56,6 +57,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * The instance is shared with other test classes, so every assertion is
  * scoped to this class's own websites, and every row seeded here is removed
  * afterwards.
+ *
+ * <p><strong>The deletes are not scoped.</strong> The job under test deletes
+ * every back-dated row in the shared Umami database, whatever website it
+ * belongs to, exactly as it does in production. Any other test class that
+ * seeds Umami rows with a {@code created_at} older than a window used here
+ * (30 days, 730 days) must expect them to vanish when this class runs, and
+ * must not assert on them across that boundary.
  */
 class UmamiRetentionScriptTest {
 
@@ -250,6 +258,39 @@ class UmamiRetentionScriptTest {
         Container.ExecResult result = run(Map.of("UMAMI_DB", "no_such_umami_db"));
         assertEquals(0, result.getExitCode(), output(result));
         assertTrue(output(result).contains("no Umami database"), output(result));
+    }
+
+    /**
+     * The table check is a query like any other: when it fails (here, a role
+     * refused a connection to the Umami database), the run has failed. It is
+     * not "Umami has not created its tables yet", which exits 0 and would let
+     * a broken retention job report success every night.
+     */
+    @Test
+    void aFailedTableCheckIsAFailure() throws Exception {
+        String locked = "retention_locked";
+        String role = "retention_noconnect";
+        String password = "noconnect-" + UUID.randomUUID();
+        try (Connection con = umami.jdbc(); Statement st = con.createStatement()) {
+            st.execute("DROP DATABASE IF EXISTS " + locked + " WITH (FORCE)");
+            st.execute("DROP ROLE IF EXISTS " + role);
+            st.execute("CREATE ROLE " + role + " LOGIN PASSWORD '" + password + "'");
+            st.execute("CREATE DATABASE " + locked);
+            st.execute("REVOKE CONNECT ON DATABASE " + locked + " FROM PUBLIC");
+        }
+        try {
+            Container.ExecResult result = run(Map.of("UMAMI_DB", locked,
+                    "POSTGRES_USER", role, "POSTGRES_PASSWORD", password));
+
+            assertEquals(1, result.getExitCode(), output(result));
+            assertTrue(result.getStderr().contains("Umami retention: could not check"), output(result));
+            assertFalse(output(result).contains("has not created its tables yet"), output(result));
+        } finally {
+            try (Connection con = umami.jdbc(); Statement st = con.createStatement()) {
+                st.execute("DROP DATABASE IF EXISTS " + locked + " WITH (FORCE)");
+                st.execute("DROP ROLE IF EXISTS " + role);
+            }
+        }
     }
 
     // ---------------------------------------------------------------------

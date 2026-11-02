@@ -382,8 +382,12 @@ and only rows with `created_at` older than the cutoff:
 It never touches `website`, `"user"`, `team`, `report` or the other settings
 tables, `session_replay_saved` (an operator's bookmark, holding no visit data)
 or `_prisma_migrations`. Each table is deleted in committed batches of 5000
-(`batch_size`), with `lock_timeout` 1 min and `statement_timeout` 15 min, so a
-large first run holds no long lock and cannot hang the backup loop. It logs
+(`batch_size`), so a large first run holds no long lock. `lock_timeout` is
+1 min. `statement_timeout` is 15 min and covers the whole run, because the
+run is one `DO` block and a `COMMIT` inside it does not reset the timer. A
+big first run may log a timeout failure; what it committed stays deleted, and
+it finishes over the following nights. A failed table check is a failed run
+(exit 1), not "no tables yet". It logs
 one count per table and never a row. A table a later Umami drops is skipped.
 Pinned by `UmamiRetentionScriptTest` against the real schema, and by
 `BackupLoopTest` for the order (after a successful backup) and for a failing
