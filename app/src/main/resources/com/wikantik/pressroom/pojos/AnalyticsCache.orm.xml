@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<entity-mappings version="3.0" xmlns="https://jakarta.ee/xml/ns/persistence/orm"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence/orm https://jakarta.ee/xml/ns/persistence/orm_3_0.xsd">
+    <package>com.wikantik.pressroom.business.analytics</package>
+    <entity metadata-complete="true" name="AnalyticsSite"
+            class="com.wikantik.pressroom.business.analytics.AnalyticsSite" access="PROPERTY">
+        <table name="analytics_site"/>
+        <attributes>
+            <id name="weblogId"><column name="weblog_id"/></id>
+            <basic name="websiteId"><column name="website_id" nullable="false"/></basic>
+            <basic name="syncedName"><column name="synced_name"/></basic>
+            <basic name="syncedDomain"><column name="synced_domain"/></basic>
+            <basic name="registeredAt"><column name="registered_at"/></basic>
+            <basic name="lastAttempt"><column name="last_attempt"/></basic>
+            <basic name="lastError"><column name="last_error"/></basic>
+        </attributes>
+    </entity>
+    <entity metadata-complete="true" name="AnalyticsSummary"
+            class="com.wikantik.pressroom.business.analytics.AnalyticsSummary" access="PROPERTY">
+        <id-class class="com.wikantik.pressroom.business.analytics.AnalyticsSummary$Key"/>
+        <table name="analytics_summary"/>
+        <attributes>
+            <id name="weblogId"><column name="weblog_id"/></id>
+            <id name="period"><column name="period"/></id>
+            <basic name="asOf"><column name="as_of" nullable="false"/></basic>
+            <basic name="visitors"><column name="visitors"/></basic>
+            <basic name="visits"><column name="visits"/></basic>
+            <basic name="views"><column name="views"/></basic>
+            <basic name="bounces"><column name="bounces"/></basic>
+            <basic name="totalTime"><column name="total_time"/></basic>
+            <basic name="prevVisitors"><column name="prev_visitors"/></basic>
+            <basic name="prevVisits"><column name="prev_visits"/></basic>
+            <basic name="prevViews"><column name="prev_views"/></basic>
+            <basic name="prevBounces"><column name="prev_bounces"/></basic>
+            <basic name="prevTotalTime"><column name="prev_total_time"/></basic>
+        </attributes>
+    </entity>
+    <entity metadata-complete="true" name="AnalyticsPathViews"
+            class="com.wikantik.pressroom.business.analytics.AnalyticsPathViews" access="PROPERTY">
+        <id-class class="com.wikantik.pressroom.business.analytics.AnalyticsPathViews$Key"/>
+        <table name="analytics_path_views"/>
+        <attributes>
+            <id name="weblogId"><column name="weblog_id"/></id>
+            <id name="period"><column name="period"/></id>
+            <id name="path"><column name="path"/></id>
+            <basic name="entryId"><column name="entry_id"/></basic>
+            <basic name="views"><column name="views"/></basic>
+            <basic name="visitors"><column name="visitors"/></basic>
+        </attributes>
+    </entity>
+    <entity metadata-complete="true" name="AnalyticsBreakdown"
+            class="com.wikantik.pressroom.business.analytics.AnalyticsBreakdown" access="PROPERTY">
+        <id-class class="com.wikantik.pressroom.business.analytics.AnalyticsBreakdown$Key"/>
+        <table name="analytics_breakdown"/>
+        <attributes>
+            <id name="weblogId"><column name="weblog_id"/></id>
+            <id name="period"><column name="period"/></id>
+            <id name="kind"><column name="kind"/></id>
+            <basic name="payload"><column name="payload"/></basic>
+        </attributes>
+    </entity>
+</entity-mappings>

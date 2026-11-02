@@ -37,5 +37,6 @@
     <mapping-file>com/wikantik/pressroom/pojos/FormSubmission.orm.xml</mapping-file>
     <mapping-file>com/wikantik/pressroom/pojos/UserToken.orm.xml</mapping-file>
     <mapping-file>com/wikantik/pressroom/pojos/ApiToken.orm.xml</mapping-file>
+    <mapping-file>com/wikantik/pressroom/pojos/AnalyticsCache.orm.xml</mapping-file>
   </persistence-unit>
 </persistence>
