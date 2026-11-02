@@ -17,7 +17,9 @@
  */
 package com.wikantik.pressroom.business.analytics;
 
+import java.time.Instant;
 import java.time.ZoneId;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,9 +31,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * An analytics service held in memory: websites by ID, every call counted.
- * It can be told to be unconfigured, to be down (ping false, ensureSite
- * throws), to refuse chosen websites while answering everything else, or to
- * hang until released.
+ * It can be told to be unconfigured, to be down (ping false, ensureSite and
+ * read throw), to refuse chosen websites while answering everything else, or
+ * to hang until released. A read answers the report set for that website, or
+ * an empty one; {@link #maxInFlight} records how many calls ever overlapped.
  */
 final class FakeAnalyticsService implements AnalyticsService {
 
@@ -47,6 +50,33 @@ final class FakeAnalyticsService implements AnalyticsService {
     final List<Thread> callers = new CopyOnWriteArrayList<>();
     final AtomicInteger pings = new AtomicInteger();
     final AtomicInteger calls = new AtomicInteger();
+    /** Website IDs whose read fails while the service otherwise answers. */
+    final Set<String> readFailIds = ConcurrentHashMap.newKeySet();
+    /** What a read of a website answers, for every period; absent means an empty report. */
+    final Map<String, AnalyticsReport> reports = new ConcurrentHashMap<>();
+    /** Every read made, in order. */
+    final List<Read> reads = new CopyOnWriteArrayList<>();
+    final AtomicInteger maxInFlight = new AtomicInteger();
+    private final AtomicInteger inFlight = new AtomicInteger();
+
+    /** One read: which website, which period, in which zone. */
+    record Read(String websiteId, String period, ZoneId zone) {
+    }
+
+    /** A report with these headline numbers and nothing else. */
+    static AnalyticsReport report(long visitors, long visits, long views) {
+        return new AnalyticsReport(Instant.now(), new AnalyticsReport.Summary(visitors, visits, views, 0, 0),
+                new AnalyticsReport.Summary(0, 0, 0, 0, 0), List.of(), List.of(), emptyBreakdowns());
+    }
+
+    /** Every breakdown key, each empty. */
+    static Map<String, List<AnalyticsReport.KeyCount>> emptyBreakdowns() {
+        Map<String, List<AnalyticsReport.KeyCount>> breakdowns = new LinkedHashMap<>();
+        for (String key : List.of("sources", "places", "devices", "events", "campaigns", "speed")) {
+            breakdowns.put(key, List.of());
+        }
+        return breakdowns;
+    }
 
     @Override
     public boolean isConfigured() {
@@ -70,7 +100,14 @@ final class FakeAnalyticsService implements AnalyticsService {
     @Override
     public AnalyticsReport read(String websiteId, Period period, ZoneId zone) throws AnalyticsException {
         called();
-        throw new AnalyticsException("not faked");
+        reads.add(new Read(websiteId, period.key(), zone));
+        if (down) {
+            throw new AnalyticsException("Umami answered HTTP 502 while reading stats");
+        }
+        if (readFailIds.contains(websiteId)) {
+            throw new AnalyticsException("Umami answered HTTP 503 while reading stats");
+        }
+        return reports.getOrDefault(websiteId, report(0, 0, 0));
     }
 
     @Override
@@ -92,13 +129,16 @@ final class FakeAnalyticsService implements AnalyticsService {
     private void called() {
         calls.incrementAndGet();
         callers.add(Thread.currentThread());
-        CountDownLatch h = hang;
-        if (h != null) {
-            try {
+        maxInFlight.accumulateAndGet(inFlight.incrementAndGet(), Math::max);
+        try {
+            CountDownLatch h = hang;
+            if (h != null) {
                 h.await(30, TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            inFlight.decrementAndGet();
         }
     }
 }

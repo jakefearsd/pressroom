@@ -59,6 +59,8 @@ final class AnalyticsTier {
     final JPAAnalyticsManagerImpl manager;
     final JPAPersistenceStrategy strategy;
     volatile String siteUrl = SITE_URL;
+    /** The discovery window the manager reads; the default is the setting's own. */
+    volatile int windowDays = 30;
     private final List<String> created = new ArrayList<>();
 
     AnalyticsTier() throws Exception {
@@ -68,7 +70,7 @@ final class AnalyticsTier {
         Weblogger wrapped = mock(Weblogger.class, delegatesTo(real));
         weblogs = new JPAWeblogManagerImpl(wrapped, strategy, real.getVirtualHostRegistry());
         manager = new JPAAnalyticsManagerImpl(wrapped, strategy, service, background, Clock.systemUTC(),
-                () -> siteUrl);
+                () -> siteUrl, () -> windowDays);
         doReturn(weblogs).when(wrapped).getWeblogManager();
         doReturn(manager).when(wrapped).getAnalyticsManager();
         weblogger = wrapped;
@@ -133,7 +135,9 @@ final class AnalyticsTier {
     }
 
     private void clearRegistrations() throws Exception {
-        strategy.getEntityManager(true).createQuery("DELETE FROM AnalyticsSite s").executeUpdate();
+        for (String entity : List.of("AnalyticsSummary", "AnalyticsPathViews", "AnalyticsBreakdown", "AnalyticsSite")) {
+            strategy.getEntityManager(true).createQuery("DELETE FROM " + entity + " x").executeUpdate();
+        }
         strategy.flush();
         strategy.release();
     }

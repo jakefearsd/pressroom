@@ -19,6 +19,9 @@ package com.wikantik.pressroom.business.analytics;
 
 import com.wikantik.pressroom.pojos.Weblog;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * Pressroom's side of analytics: registers every blog with the
  * analytics service in the background and answers, from memory, which blogs
@@ -27,7 +30,10 @@ import com.wikantik.pressroom.pojos.Weblog;
  * <p>Only {@link #sync()} and {@link #reconcile()} talk to the service, and
  * only background threads call them (the request-sync executor, the scheduled
  * task, the startup run). Everything a page asks ({@link #isRegistered},
- * {@link #websiteIdFor}, {@link #getStatus}) is answered from memory.
+ * {@link #websiteIdFor}, {@link #getStatus}) is answered from memory, and the
+ * traffic readers ({@link #getBlogTraffic}, {@link #getSiteTraffic},
+ * {@link #entryViews}, {@link #entryViewsAllBlogs}) from the local snapshots
+ * {@link #sync()} writes: no request path ever waits on the service.
  */
 public interface AnalyticsManager {
 
@@ -56,8 +62,10 @@ public interface AnalyticsManager {
     void weblogSaved(Weblog weblog);
 
     /**
-     * Reconciles, then reads traffic. Background threads only; the caller
-     * releases the unit of work afterwards.
+     * Reconciles, then reads every registered blog's traffic, for each of
+     * {@link #periodKeys()}, into the local snapshots. Background threads
+     * only; the caller releases the unit of work afterwards. Serialised with
+     * every other sync, whoever calls it.
      */
     void sync();
 
@@ -76,4 +84,49 @@ public interface AnalyticsManager {
 
     /** How registration (and reading) last went; from memory. */
     AnalyticsStatus getStatus();
+
+    /**
+     * The periods read and kept: {@code 24h, 7d, 30d, 90d}, then the discovery
+     * window's {@code <N>d} when it is not one of them.
+     *
+     * @return the period keys, in that order
+     */
+    List<String> periodKeys();
+
+    /**
+     * One blog's snapshot for one period, from the local tables.
+     *
+     * @param weblogId  the blog
+     * @param periodKey one of {@link #periodKeys()}
+     * @return the snapshot and its state; never null
+     * @throws IllegalArgumentException when the key is not a period
+     */
+    BlogTraffic getBlogTraffic(String weblogId, String periodKey);
+
+    /**
+     * Every blog's snapshot for one period, from the local tables.
+     *
+     * @param periodKey one of {@link #periodKeys()}
+     * @return the blogs, totals of views and visits, and the site's top posts and sources; never null
+     * @throws IllegalArgumentException when the key is not a period
+     */
+    SiteTraffic getSiteTraffic(String periodKey);
+
+    /**
+     * Views per entry of one blog in one period, from the local snapshot.
+     *
+     * @param weblogId  the blog
+     * @param periodKey one of {@link #periodKeys()}
+     * @return entry ID to views; entries with no recorded view are absent; empty when not configured
+     */
+    Map<String, Long> entryViews(String weblogId, String periodKey);
+
+    /**
+     * Views per entry across every blog over the discovery window, from the
+     * {@code <windowDays>d} snapshots. Views add; visitors would not.
+     *
+     * @param windowDays the window, 1 to 365 days
+     * @return entry ID to views; empty when not configured or not read yet
+     */
+    Map<String, Long> entryViewsAllBlogs(int windowDays);
 }

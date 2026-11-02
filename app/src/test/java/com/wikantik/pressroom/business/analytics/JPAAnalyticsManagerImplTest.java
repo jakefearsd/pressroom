@@ -148,13 +148,13 @@ class JPAAnalyticsManagerImplTest {
         tier.manager.sync();
         TestUtils.endSession(false);
         tier.service.pings.set(0);
-        tier.service.calls.set(0);
+        tier.service.ensured.clear();
 
         tier.manager.sync();
         TestUtils.endSession(false);
 
         assertEquals(0, tier.service.pings.get(), "every blog is as last confirmed: Umami is not asked (R10)");
-        assertEquals(0, tier.service.calls.get());
+        assertTrue(tier.service.ensured.isEmpty(), "nor sent anything; the run only reads");
     }
 
     @Test
@@ -290,7 +290,7 @@ class JPAAnalyticsManagerImplTest {
                 task -> {
                     attempts.incrementAndGet();
                     throw new RejectedExecutionException("pool shut down");
-                }, Clock.systemUTC(), () -> AnalyticsTier.SITE_URL);
+                }, Clock.systemUTC(), () -> AnalyticsTier.SITE_URL, () -> 30);
 
         rejecting.requestSync();
         rejecting.requestSync();

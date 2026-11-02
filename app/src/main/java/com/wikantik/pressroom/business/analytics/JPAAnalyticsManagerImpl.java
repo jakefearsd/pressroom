@@ -18,27 +18,38 @@
 package com.wikantik.pressroom.business.analytics;
 
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.Weblogger;
+import com.wikantik.pressroom.business.discovery.DiscoverySettings;
 import com.wikantik.pressroom.business.jpa.JPAPersistenceStrategy;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.Weblog;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import jakarta.persistence.EntityTransaction;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.time.Clock;
+import java.time.DateTimeException;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
@@ -81,6 +92,18 @@ import java.util.regex.Pattern;
  * <p><b>Answers.</b> The registrations are an immutable map, loaded at
  * startup and swapped by reference after each change, so a page asking
  * {@link #isRegistered} takes no lock and makes no query.
+ *
+ * <p><b>Reading.</b> After the reconcile, {@link #sync()} reads every
+ * registered blog for each of {@link #periodKeys()}, in the site time zone
+ * (the site space's, ruling R12), and replaces each (blog, period) snapshot
+ * whole, one transaction each ({@link TrafficCache}). A blog whose read fails
+ * keeps its previous snapshots and is STALE until a read succeeds; the others
+ * carry on. When the first failure of a run comes before any answer, one ping
+ * decides whether the service is down, and if it is the rest of the run is
+ * not attempted, so a hung service costs a few timeouts, not one per blog
+ * and period. A database failure stops the read (fail closed). The run's
+ * outcome is the status's {@code reachable}, {@code lastRead} and
+ * {@code lastReadError}. The readers answer from the snapshots alone.
  */
 public class JPAAnalyticsManagerImpl implements AnalyticsManager {
 
@@ -117,6 +140,12 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
     /** Recorded against each pending blog when the service does not answer the run's ping. */
     static final String UNREACHABLE = "the analytics service did not answer, or refused Pressroom's account";
 
+    /** Recorded as the read error when the local snapshot tables could not be written. */
+    static final String CACHE_FAILED = "the local traffic cache could not be written; the read stopped";
+
+    /** The periods every blog is read for; the discovery window joins them when it is not one. */
+    private static final List<String> STANDARD_PERIODS = List.of("24h", "7d", "30d", "90d");
+
     private static final int IDLE = 0;
     private static final int RUNNING = 1;
     private static final int QUEUED = 2;
@@ -127,6 +156,7 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
     private final Executor background;
     private final Clock clock;
     private final Supplier<String> siteUrl;
+    private final IntSupplier windowDays;
 
     /** IDLE, RUNNING (a sync in flight) or QUEUED (in flight, and one more to follow). */
     private final AtomicInteger runState = new AtomicInteger(IDLE);
@@ -153,19 +183,30 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
     private volatile Boolean reachable;
     private volatile AnalyticsStatus status = new AnalyticsStatus(true, null, 0, 0, List.of(), null, null);
 
+    /** When a read last succeeded for some blog, and why the last run's reads did not all succeed. */
+    private volatile Instant lastRead;
+    private volatile String lastReadError;
+
+    /** Weblog ID to why its last read failed; immutable, replaced whole. A blog in here is STALE. */
+    private volatile Map<String, String> readFailures = Map.of();
+
+    private final TrafficCache cache;
+
     public JPAAnalyticsManagerImpl(Weblogger weblogger, JPAPersistenceStrategy strategy, AnalyticsService service) {
         this(weblogger, strategy, service, inBackgroundOf(weblogger), Clock.systemUTC(),
-                WebloggerRuntimeConfig::getAbsoluteContextURL);
+                WebloggerRuntimeConfig::getAbsoluteContextURL, DiscoverySettings::windowDays);
     }
 
     JPAAnalyticsManagerImpl(Weblogger weblogger, JPAPersistenceStrategy strategy, AnalyticsService service,
-                            Executor background, Clock clock, Supplier<String> siteUrl) {
+                            Executor background, Clock clock, Supplier<String> siteUrl, IntSupplier windowDays) {
         this.weblogger = weblogger;
         this.strategy = strategy;
         this.service = service;
         this.background = background;
         this.clock = clock;
         this.siteUrl = siteUrl;
+        this.windowDays = windowDays;
+        this.cache = new TrafficCache(strategy);
     }
 
     /** The tier's background pool; a scheduling failure surfaces as a rejection. */
@@ -341,13 +382,181 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
     }
 
     /**
-     * Reads traffic into the local cache, after the reconcile so that only
-     * registered blogs are read. The batch read plugs in here; its outcome
-     * becomes the status's {@code lastRead} / {@code lastReadError}, which
-     * {@link #statusOf} passes as null until then.
+     * Reads every registered blog into the local snapshots, after the
+     * reconcile so that only registered blogs are read (see the class
+     * javadoc, "Reading"). Decision path: a blog is recorded as read only
+     * when its snapshot committed; a read or write that could not run leaves
+     * it failed, never fresh.
      */
     private void readTraffic() {
-        // the batch read (spec, "Numbers in") is not built yet
+        Map<String, Registration> toRead = registered;
+        if (toRead.isEmpty()) {
+            return;
+        }
+        Map<String, String> failures = new HashMap<>();
+        readFailures.forEach((id, error) -> {
+            if (toRead.containsKey(id)) {
+                failures.put(id, error);
+            }
+        });
+        ReadRun run = new ReadRun();
+        String current = null;
+        try {
+            List<Weblog> weblogs = allWeblogs();
+            ZoneId zone = siteZone(weblogs);
+            List<String> keys = periodKeys();
+            URLStrategy urls = weblogger.getUrlStrategy();
+            String context = WebloggerRuntimeConfig.getRelativeContextURL();
+            for (Weblog weblog : weblogs) {
+                Registration registration = toRead.get(weblog.getId());
+                if (registration == null) {
+                    continue;
+                }
+                current = weblog.getId();
+                String error = run.open
+                        ? readOne(weblog, registration.websiteId(), keys, zone, EntryPaths.forWeblog(weblog, urls,
+                        context), run)
+                        : UNREACHABLE;
+                run.record(weblog.getHandle(), error);
+                if (error == null) {
+                    failures.remove(current);
+                } else {
+                    failures.put(current, error);
+                    if (!run.answered && run.up == null) {
+                        // nothing has answered yet: is the service there at all?
+                        run.up = service.ping();
+                        run.open = run.up;
+                    }
+                }
+            }
+        } catch (WebloggerException | RuntimeException e) {
+            rollback();
+            log.error("Analytics read stopped: the local traffic cache could not be read or written", e);
+            if (current != null) {
+                failures.put(current, CACHE_FAILED);
+            }
+            readFailures = Map.copyOf(failures);
+            lastReadError = CACHE_FAILED;
+            publishRead(run.answered ? Boolean.TRUE : reachable);
+            return;
+        }
+        readFailures = Map.copyOf(failures);
+        if (run.succeeded > 0) {
+            lastRead = clock.instant();
+        }
+        lastReadError = run.failureSummary();
+        publishRead(run.answered ? Boolean.TRUE : run.up == null ? reachable : run.up);
+    }
+
+    /**
+     * Reads one blog for each period, stopping at its first failure, and
+     * writes each period read, one transaction each. Returns null when every
+     * period was read and written, else why the first one failed.
+     */
+    private String readOne(Weblog weblog, String websiteId, List<String> keys, ZoneId zone, EntryPaths paths,
+                           ReadRun run) throws WebloggerException {
+        Map<String, AnalyticsReport> reports = new LinkedHashMap<>();
+        String error = null;
+        for (String key : keys) {
+            try {
+                reports.put(key, service.read(websiteId, Period.of(key), zone));
+            } catch (AnalyticsException e) {
+                error = describe(e);
+                log.warn("Analytics could not read weblog {} for {}", weblog.getHandle(), key, e);
+                break;
+            } catch (RuntimeException e) {
+                // the message of an unexpected exception is not ours to show
+                error = e.getClass().getSimpleName();
+                log.warn("Analytics could not read weblog {} for {}", weblog.getHandle(), key, e);
+                break;
+            }
+        }
+        if (reports.isEmpty()) {
+            return error;
+        }
+        run.answered = true;
+        Set<String> recorded = new LinkedHashSet<>();
+        for (AnalyticsReport report : reports.values()) {
+            for (AnalyticsReport.PathCount path : report.paths() == null
+                    ? List.<AnalyticsReport.PathCount>of() : report.paths()) {
+                recorded.add(path.path());
+            }
+        }
+        recorded.remove(null);
+        Map<String, String> entryIds = paths.entryIds(recorded,
+                anchors -> cache.entryIdsByAnchor(weblog.getId(), anchors));
+        for (Map.Entry<String, AnalyticsReport> read : reports.entrySet()) {
+            AnalyticsReport report = read.getValue();
+            Instant asOf = report.asOf() == null ? clock.instant() : report.asOf();
+            cache.replace(weblog.getId(), read.getKey(), report, asOf, entryIds);
+        }
+        return error;
+    }
+
+    /** One run's tally of reads. */
+    private static final class ReadRun {
+        /** Whether the service answered any read this run. */
+        boolean answered;
+        /** The run's ping, when one was needed; null when not. */
+        Boolean up;
+        /** Whether further blogs are attempted; false once a ping found the service down. */
+        boolean open = true;
+        int succeeded;
+        int failed;
+        String firstFailure;
+
+        void record(String handle, String error) {
+            if (error == null) {
+                succeeded++;
+            } else {
+                failed++;
+                if (firstFailure == null) {
+                    firstFailure = handle + ": " + error;
+                }
+            }
+        }
+
+        /** Null when every blog was read; else the first failure, and how many more there were. */
+        String failureSummary() {
+            if (failed == 0) {
+                return null;
+            }
+            return failed == 1 ? firstFailure : firstFailure + " (and " + (failed - 1) + " more)";
+        }
+    }
+
+    /** Undoes whatever the failed snapshot left uncommitted. Display path: the caller has already stopped. */
+    private void rollback() {
+        try {
+            EntityTransaction transaction = strategy.getEntityManager(false).getTransaction();
+            if (transaction.isActive()) {
+                transaction.rollback();
+            }
+        } catch (RuntimeException e) {
+            log.warn("Analytics could not roll back a failed snapshot; the caller's release will", e);
+        }
+    }
+
+    /** The status as it stands, with this read's outcome. */
+    private void publishRead(Boolean nowReachable) {
+        reachable = nowReachable;
+        AnalyticsStatus was = status;
+        status = new AnalyticsStatus(was.configured(), nowReachable, was.registered(), was.total(), was.failures(),
+                lastRead, lastReadError);
+    }
+
+    /** The site time zone (R12): the site space's, else the system's. */
+    private static ZoneId siteZone(List<Weblog> weblogs) {
+        for (Weblog weblog : weblogs) {
+            if (weblog.isSiteSpace() && StringUtils.isNotBlank(weblog.getTimeZone())) {
+                try {
+                    return ZoneId.of(weblog.getTimeZone());
+                } catch (DateTimeException e) {
+                    log.warn("The site space's time zone {} is not one; reading in the system's", weblog.getTimeZone());
+                }
+            }
+        }
+        return ZoneId.systemDefault();
     }
 
     /**
@@ -596,8 +805,7 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
                         row.getLastAttempt()));
             }
         }
-        // lastRead and lastReadError: no batch read yet (see readTraffic)
-        return new AnalyticsStatus(true, reachable, confirmed, weblogs.size(), failures, null, null);
+        return new AnalyticsStatus(true, reachable, confirmed, weblogs.size(), failures, lastRead, lastReadError);
     }
 
     // ------------------------------------------------------------ answers
@@ -616,5 +824,86 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
     @Override
     public AnalyticsStatus getStatus() {
         return service.isConfigured() ? status : AnalyticsStatus.notConfigured();
+    }
+
+    // ------------------------------------------------------------ traffic, from the snapshots
+
+    @Override
+    public List<String> periodKeys() {
+        List<String> keys = new ArrayList<>(STANDARD_PERIODS);
+        String window = windowDays.getAsInt() + "d";
+        if (!keys.contains(window)) {
+            keys.add(window);
+        }
+        return List.copyOf(keys);
+    }
+
+    @Override
+    public BlogTraffic getBlogTraffic(String weblogId, String periodKey) {
+        Period period = Period.of(periodKey);
+        if (!service.isConfigured()) {
+            return new BlogTraffic(TrafficState.NOT_CONFIGURED, null, null, null, null, null, null, null);
+        }
+        String failure = readFailures.get(weblogId);
+        AnalyticsSite site = cache.site(weblogId);
+        String error = failure != null || site == null ? failure : site.getLastError();
+        AnalyticsSummary summary = cache.summary(weblogId, period.key());
+        if (summary == null) {
+            return new BlogTraffic(TrafficState.NO_DATA, null, null, null, null, null, null, error);
+        }
+        TrafficState state;
+        if (failure != null) {
+            state = TrafficState.STALE;
+        } else if (summary.getViews() == 0 && site != null && site.getRegisteredAt() != null
+                && site.getRegisteredAt().isAfter(clock.instant().minus(TrafficCache.NO_DATA_GRACE))) {
+            state = TrafficState.NO_DATA;
+        } else {
+            state = TrafficState.OK;
+        }
+        return new BlogTraffic(state, summary.getAsOf(), TrafficCache.current(summary),
+                TrafficCache.previous(summary), cache.series(weblogId, period.key()),
+                cache.posts(weblogId, period, longerThan(period)), cache.breakdowns(weblogId, period.key()), error);
+    }
+
+    @Override
+    public SiteTraffic getSiteTraffic(String periodKey) {
+        Period period = Period.of(periodKey);
+        if (!service.isConfigured()) {
+            return new SiteTraffic(TrafficState.NOT_CONFIGURED, null, null, 0, 0, null, null);
+        }
+        List<AnalyticsSummary> summaries = cache.summaries(period.key());
+        if (summaries.isEmpty()) {
+            return new SiteTraffic(TrafficState.NO_DATA, null, null, 0, 0, null, null);
+        }
+        Map<String, String> failures = readFailures;
+        return cache.siteTraffic(summaries, period, longerThan(period), (Collection<String> ids) ->
+                ids.stream().anyMatch(failures::containsKey) ? TrafficState.STALE : TrafficState.OK);
+    }
+
+    @Override
+    public Map<String, Long> entryViews(String weblogId, String periodKey) {
+        Period period = Period.of(periodKey);
+        if (!service.isConfigured() || weblogId == null) {
+            return Map.of();
+        }
+        return cache.entryViews(weblogId, period.key());
+    }
+
+    @Override
+    public Map<String, Long> entryViewsAllBlogs(int windowDays) {
+        Period period = Period.of(windowDays + "d");
+        if (!service.isConfigured()) {
+            return Map.of();
+        }
+        return cache.entryViews(null, period.key());
+    }
+
+    /** The shortest kept period longer than this one, for a post's trend; null when there is none. */
+    private Period longerThan(Period period) {
+        return periodKeys().stream()
+                .map(Period::of)
+                .filter(p -> p.length().compareTo(period.length()) > 0)
+                .min(Comparator.comparing(Period::length))
+                .orElse(null);
     }
 }

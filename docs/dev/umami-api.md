@@ -250,6 +250,32 @@ per campaign** in this report.
 Other report types the image accepts: `goal`, `funnel`, `journey`, `retention`,
 `revenue`, `attribution`, `breakdown`, `heatmap`.
 
+## What Pressroom keeps (the batch read)
+
+`JPAAnalyticsManagerImpl.sync()` reconciles, then reads every registered blog
+for `24h, 7d, 30d, 90d` plus the discovery window's `<N>d` when it is not one
+of them (`periodKeys()`), in the site space's time zone (R12), every 15 minutes
+(`AnalyticsSyncTask`, leased) and after any requested sync. Each (blog, period)
+snapshot (summary, paths, the six tabs and the series, kept as JSON in
+`analytics_breakdown` under kind `series`) is replaced whole in one
+transaction (`TrafficCache.replace`). A failed read keeps the old rows and
+marks the blog STALE (in memory, so a restart clears it until the next read).
+The first failure of a run before any answer costs one ping; if that fails the
+rest of the run is skipped as unreachable. Every page reads the snapshots
+only; nothing on a request path calls Umami.
+
+Paths become entries through `EntryPaths`: the shapes are whatever
+`URLStrategy.getWeblogEntryURL` builds for the blog (with its custom domain,
+plus the `/<handle>/entry/` site-host form for a custom-domain blog), the
+context path stripped, the query, fragment and trailing slashes dropped, and
+the anchor percent-decoded. Locale-prefixed entry URLs are not mapped. A path
+that maps to nothing keeps `entry_id` NULL and still counts in the totals.
+
+Visitors never add: not across days, periods or blogs. The Global page totals
+views and visits only; a source several blogs share shows the largest single
+blog's visitors. A post's `trend` is its daily view rate in the period against
+its rate over the next longer kept period, minus one (NaN when there is none).
+
 ## The tracker (`/script.js`)
 
 Attributes are read from the script tag as `data-<name>`:
