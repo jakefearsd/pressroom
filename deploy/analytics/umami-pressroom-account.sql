@@ -27,13 +27,30 @@
 -- soft-deleted it. Every NOT NULL column without a default is supplied
 -- (user_id, username, password, role); the rest default or stay NULL.
 --
--- Umami verifies with bcrypt; pgcrypto's crypt(.., gen_salt('bf')) writes
--- a $2a$ hash, which Umami 3.3.0 accepts (UmamiApiContractTest).
+-- Umami verifies with bcrypt; pgcrypto's crypt(.., gen_salt('bf', 10))
+-- writes a cost-10 $2a$ hash (pgcrypto's default cost is only 6), which
+-- Umami 3.3.0 accepts (UmamiApiContractTest).
+
+-- psql pastes :'pw' into the statement text before sending it, and
+-- PostgreSQL's default log_min_error_statement = error copies a failing
+-- statement, password and all, into the server log (in production, the
+-- shared postgres service's log). panic means no statement text is ever
+-- logged for this session; the error message itself still is. Needs a
+-- superuser, which the deploy's POSTGRES_USER is.
+SET log_min_error_statement = panic;
+
+-- Fail before the password is ever sent when Umami has not booted yet.
+DO $$
+BEGIN
+    IF to_regclass('public."user"') IS NULL THEN
+        RAISE EXCEPTION 'Umami has not created its "user" table yet; run this after Umami''s first boot';
+    END IF;
+END $$;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 INSERT INTO "user" (user_id, username, password, role)
-VALUES (gen_random_uuid(), :'username', crypt(:'pw', gen_salt('bf')), 'user')
+VALUES (gen_random_uuid(), :'username', crypt(:'pw', gen_salt('bf', 10)), 'user')
 ON CONFLICT (username) DO UPDATE
     SET password   = EXCLUDED.password,
         role       = 'user',

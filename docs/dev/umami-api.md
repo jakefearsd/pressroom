@@ -1,11 +1,27 @@
 # Umami 3.3.0 HTTP API, as observed
 
 What the digest-pinned Umami image in `docker-compose.prod.yml` (3.3.0) actually
-does, recorded 2026-11-02 by running it. `UmamiApiContractTest` pins every
-behavioural claim below against that image via `UmamiContainer` (same image,
-read from the compose file; scratch PostgreSQL 18 on a private network). The
-sample bodies are copied from real responses; later tasks build JSON fixtures
-from them. If an image bump breaks the contract test, re-check this file.
+does, recorded 2026-11-02 by running it. The sample bodies are copied from real
+responses; later tasks build JSON fixtures from them.
+
+**What is pinned and what was only observed.** `UmamiApiContractTest` runs
+against that image via `UmamiContainer` (same image, read from the compose
+file; scratch PostgreSQL 18 on a private network) and pins: everything in the
+decisions table; the account script (role, bcrypt cost, idempotence, password
+rotation, nothing in the server log on failure); registration and the domain
+rule; the status codes and field names/types of `stats` (incl. `comparison`),
+`pageviews` (local-midnight buckets, omitted empty days, `sessions.y` =
+visitors, `&compare=prev`), `metrics` (every type listed, `y` = visitors, the
+three rejected types), `metrics/expanded`, `events/stats`, `events/series`,
+`reports/performance`, `reports/utm` (POST only, `filters` required); `/api/me`
+returning a token; and from `script.js`: `data-performance="true"`,
+`data-domains` against the port-less hostname, and no `setItem`/cookie.
+**Observed by hand, not pinned:** the literal sample bodies themselves (values
+like `organicSearch` or `GB-ENG`), the column lists, the 400 error body layout,
+error `code` strings, the rest of the tracker attribute table and the beacon
+format, `/api/me/websites`, `/api/admin/websites?search=`, the `events` listing,
+the `metric` report parameter, and the other report types. If an image bump
+breaks the contract test, re-check this whole file.
 
 Spec: `docs/superpowers/specs/2026-11-01-analytics-without-admin-steps-design.md`.
 
@@ -21,7 +37,7 @@ Spec: `docs/superpowers/specs/2026-11-01-analytics-without-admin-steps-design.md
 | Performance attribute | `data-performance="true"`, exactly the string `true`. |
 | Does the account's password change invalidate old tokens? | **Yes.** A token issued before a re-run of the account SQL answers 401 afterwards. Log in again on 401. |
 | Can the owner's `admin` see Pressroom's websites? | **Yes**, in Settings › Websites (`GET /api/admin/websites`, owner named) and by ID. Not in admin's own `/api/websites` list, which shows only admin's websites. |
-| Can the `pressroom` account create users? | **No** (401). Nor read `/api/admin/*`. |
+| Can the `pressroom` account create users? | **No** (401). Nor read `/api/admin/websites` (401). |
 
 ## Authentication
 
@@ -42,12 +58,23 @@ password; Pressroom never uses `admin`.
 `deploy/analytics/umami-pressroom-account.sql`, run with psql variables
 `username` and `pw` against the **umami** database after Umami's first boot.
 It inserts into `"user"` with role `user` and a pgcrypto bcrypt hash
-(`crypt(:'pw', gen_salt('bf'))`, a `$2a$` hash Umami accepts). On conflict on
+(`crypt(:'pw', gen_salt('bf', 10))`, a cost-10 `$2a$` hash Umami accepts;
+pgcrypto's default cost is 6). On conflict on
 `username` (unique index `user_username_key`) it sets the new password, puts
 `role` back to `user`, clears `deleted_at` and stamps `updated_at`.
 
 `pgcrypto` is already present in Umami's database (Umami's own migrations
 create it); the script's `CREATE EXTENSION IF NOT EXISTS` is a no-op there.
+
+**The password never reaches the server log.** psql pastes `:'pw'` into the
+statement text before sending it, and PostgreSQL's default
+`log_min_error_statement = error` would copy a failing statement, password and
+all, into the server log (in production, the shared `postgres` service's log).
+So the script opens with `SET log_min_error_statement = panic` (superuser-only;
+the deploy's `POSTGRES_USER` is one), and a guard raises *"Umami has not created
+its "user" table yet"* before the password is sent when Umami has not booted.
+Pinned for both failure modes: no `"user"` table, and an unset `:username`
+(a syntax error). It relies on `log_statement` staying at its default `none`.
 
 `"user"` columns (3.3.0): `user_id uuid NOT NULL` (no default), `username
 varchar(255) NOT NULL` unique, `password varchar(60) NOT NULL`, `role

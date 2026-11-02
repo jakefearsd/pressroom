@@ -199,6 +199,14 @@ public final class UmamiContainer {
         }
     }
 
+    /**
+     * Everything Umami's PostgreSQL has written to stdout and stderr so far:
+     * its server log, which is where a failed statement's text lands.
+     */
+    public String databaseLogs() {
+        return database.getLogs();
+    }
+
     /** A new connection to Umami's own database; the caller closes it. */
     public Connection jdbc() throws SQLException {
         return DriverManager.getConnection(database.getJdbcUrl(), database.getUsername(), database.getPassword());
@@ -211,10 +219,15 @@ public final class UmamiContainer {
      * throws with psql's stderr, every variable's value redacted.
      */
     public void psql(Path script, Map<String, String> variables) {
+        psql(script, variables, DB_NAME);
+    }
+
+    /** {@link #psql(Path, Map)} against another database in Umami's PostgreSQL. */
+    public void psql(Path script, Map<String, String> variables, String databaseName) {
         String inContainer = "/tmp/" + UUID.randomUUID() + ".sql";
         database.copyFileToContainer(MountableFile.forHostPath(script), inContainer);
         List<String> command = new ArrayList<>(List.of(
-                "psql", "-q", "-X", "-v", "ON_ERROR_STOP=1", "-U", DB_USER, "-d", DB_NAME));
+                "psql", "-q", "-X", "-v", "ON_ERROR_STOP=1", "-U", DB_USER, "-d", databaseName));
         variables.forEach((name, value) -> {
             command.add("-v");
             command.add(name + "=" + value);

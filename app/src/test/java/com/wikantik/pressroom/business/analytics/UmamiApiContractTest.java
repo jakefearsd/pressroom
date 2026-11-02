@@ -29,6 +29,8 @@ import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Statement;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
@@ -49,6 +51,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -108,6 +111,10 @@ class UmamiApiContractTest {
         assertEquals(USERNAME, me.body().get("username").asString());
         assertEquals("user", me.body().get("role").asString());
         assertFalse(me.body().get("isAdmin").asBoolean());
+        Answer whoami = get("/api/me", token);
+        assertEquals(200, whoami.status());
+        assertFalse(whoami.body().get("token").asString().isBlank(),
+                "observed: /api/me's body carries a fresh token, so it must never be logged");
 
         Answer created = createWebsite(token, Map.of("name", "contract-create", "domain", "create.example.com"));
         assertEquals(200, created.status(), created.raw());
@@ -153,6 +160,57 @@ class UmamiApiContractTest {
         }
     }
 
+    /**
+     * psql substitutes {@code :'pw'} into the statement text before sending it,
+     * and PostgreSQL's default {@code log_min_error_statement = error} copies a
+     * failing statement into the server log, which in production is the shared
+     * postgres service's log. Run before Umami's first boot (no "user" table),
+     * the script must fail without the password reaching that log.
+     */
+    @Test
+    void accountSqlNeverLogsThePasswordWhenUmamiHasNotBooted() throws Exception {
+        String secret = "never-logged-" + UUID.randomUUID();
+        String unbooted = "umami_unbooted_" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        try (Connection con = umami.jdbc(); Statement st = con.createStatement()) {
+            st.execute("CREATE DATABASE " + unbooted);
+        }
+        try {
+            Pattern failure = Pattern.compile("ERROR:[^\\n]*\"user\"");
+            int before = count(failure, umami.databaseLogs());
+            assertThrows(IllegalStateException.class,
+                    () -> umami.psql(ACCOUNT_SQL, Map.of("username", USERNAME, "pw", secret), unbooted));
+            String logs = awaitLog(failure, before);
+            assertFalse(logs.contains(secret), "the password reached PostgreSQL's server log");
+        } finally {
+            try (Connection con = umami.jdbc(); Statement st = con.createStatement()) {
+                st.execute("DROP DATABASE IF EXISTS " + unbooted);
+            }
+        }
+    }
+
+    /** The same, for a statement that fails to parse: {@code :username} left unset. */
+    @Test
+    void accountSqlNeverLogsThePasswordWhenAVariableIsMissing() throws Exception {
+        String secret = "never-logged-" + UUID.randomUUID();
+        Pattern failure = Pattern.compile("ERROR:\\s+syntax error at or near \":\"");
+        int before = count(failure, umami.databaseLogs());
+        assertThrows(IllegalStateException.class, () -> umami.psql(ACCOUNT_SQL, Map.of("pw", secret)));
+        String logs = awaitLog(failure, before);
+        assertFalse(logs.contains(secret), "the password reached PostgreSQL's server log");
+    }
+
+    @Test
+    void accountSqlHashesAtBcryptCostTen() throws Exception {
+        try (Connection con = umami.jdbc();
+             PreparedStatement ps = con.prepareStatement("SELECT password FROM \"user\" WHERE username = ?")) {
+            ps.setString(1, USERNAME);
+            try (ResultSet rs = ps.executeQuery()) {
+                assertTrue(rs.next());
+                assertTrue(rs.getString(1).startsWith("$2a$10$"), "bcrypt cost 10, not pgcrypto's default 6");
+            }
+        }
+    }
+
     @Test
     void nonAdminCannotCreateUsers() throws Exception {
         Answer answer = post("/api/users", token,
@@ -193,6 +251,7 @@ class UmamiApiContractTest {
                 "observed: a duplicate id is an unhandled primary-key violation (500, empty body), "
                         + "so a reconciler must GET /api/websites/{id} first rather than read a conflict: "
                         + again.raw());
+        assertTrue(again.raw().isBlank(), "with an empty body: " + again.raw());
         assertEquals(200, get("/api/websites/" + id, token).status(), "the original is untouched");
     }
 
@@ -292,6 +351,9 @@ class UmamiApiContractTest {
             assertTrue(performance.body().get(list).isArray(), list);
         }
 
+        assertEquals(405, get("/api/reports/performance?websiteId=" + id + "&" + window, token).status(),
+                "reports are POST only");
+
         Answer utm = post("/api/reports/utm", token, report(id, "utm"));
         assertEquals(200, utm.status(), utm.raw());
         for (String key : List.of("utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content")) {
@@ -356,7 +418,9 @@ class UmamiApiContractTest {
         assertEquals("3", hello.get("pageviews").asString());
         assertTrue(hello.get("visitors").isNumber());
         assertEquals(2, hello.get("visitors").asInt());
+        assertTrue(hello.get("visits").isNumber(), hello.toString());
         assertEquals(3, hello.get("visits").asInt());
+        assertTrue(hello.get("bounces").isNumber(), hello.toString());
         assertTrue(hello.get("totaltime").isString(), "observed: totaltime is a JSON string too: " + hello);
 
         JsonNode referrers = get(site(id, "metrics", window + "&type=referrer"), token).body();
@@ -369,6 +433,27 @@ class UmamiApiContractTest {
         JsonNode daily = get(site(id, "pageviews", window + "&unit=day&timezone=" + TIMEZONE), token).body();
         assertTrue(Pattern.matches("\\d{4}-\\d{2}-\\d{2} 00:00:00", daily.get("pageviews").get(0).get("x").asString()),
                 "observed: day buckets are local midnights without an offset: " + daily);
+        Instant now = Instant.now();
+        String week = "startAt=" + now.minus(7, ChronoUnit.DAYS).toEpochMilli()
+                + "&endAt=" + now.plus(1, ChronoUnit.MINUTES).toEpochMilli();
+        JsonNode weekly = get(site(id, "pageviews", week + "&unit=day&timezone=" + TIMEZONE), token).body();
+        assertEquals(1, weekly.get("pageviews").size(),
+                "days with no traffic are omitted, not zero-filled: " + weekly);
+        assertEquals(3, weekly.get("pageviews").get(0).get("y").asInt());
+        assertEquals(2, weekly.get("sessions").get(0).get("y").asInt(),
+                "sessions.y is visitors (2), not visits (3): " + weekly);
+        JsonNode compared = get(site(id, "pageviews",
+                week + "&unit=day&timezone=" + TIMEZONE + "&compare=prev"), token).body();
+        assertTrue(compared.get("startDate").isString(), compared.toString());
+        assertTrue(compared.get("endDate").isString(), compared.toString());
+        assertTrue(compared.get("compare").get("pageviews").isArray(), compared.toString());
+        assertTrue(compared.get("compare").get("sessions").isArray(), compared.toString());
+        assertTrue(compared.get("compare").get("startDate").isString(), compared.toString());
+
+        JsonNode eventSeries = get(site(id, "events/series", window + "&unit=day&timezone=" + TIMEZONE), token).body();
+        assertEquals("cta-click", eventSeries.get(0).get("x").asString(), eventSeries.toString());
+        assertTrue(eventSeries.get(0).get("t").asString().endsWith(" 00:00:00"), eventSeries.toString());
+        assertEquals(1, eventSeries.get(0).get("y").asInt());
 
         JsonNode utm = post("/api/reports/utm", token, report(id, "utm")).body();
         assertEquals("newsletter", utm.get("utm_source").get(0).get("utm").asString());
@@ -390,23 +475,82 @@ class UmamiApiContractTest {
 
     @Test
     void trackerPerformanceAttribute() throws Exception {
-        HttpResponse<String> script = raw(HttpRequest.newBuilder(URI.create(umami.baseUrl() + "/script.js")).GET());
-        assertEquals(200, script.statusCode());
-        String js = script.body();
+        String js = trackerScript();
         assertTrue(js.contains("\"data-\""), "attributes are data- prefixed");
-        Matcher performance = Pattern.compile("\\w+\\(\"performance\"\\)===(\\w+)").matcher(js);
+        Matcher performance = Pattern.compile("[\\w$]+\\(\"performance\"\\)===([\\w$]+)").matcher(js);
         assertTrue(performance.find(), "the tracker reads a data-performance attribute");
-        assertTrue(js.contains(performance.group(1) + "=\"true\""),
+        assertTrue(Pattern.compile("[^\\w$]" + Pattern.quote(performance.group(1)) + "=\"true\"").matcher(js).find(),
                 "and turns collection on only for the exact value \"true\"");
         for (String attribute : List.of("website-id", "host-url", "domains", "do-not-track", "auto-track", "tag")) {
             assertTrue(js.contains("(\"" + attribute + "\")"), attribute);
         }
     }
 
+    /**
+     * Read from the pinned image's minified script, since no browser runs
+     * here: {@code data-domains} is split on commas and compared with
+     * {@code location.hostname}, which carries no port. So
+     * {@code localhost:8083} can never match; {@code localhost} does.
+     */
+    @Test
+    void trackerDomainsMatchTheHostnameWithoutPort() throws Exception {
+        String js = trackerScript();
+        Matcher location = Pattern.compile("location:([\\w$]+)").matcher(js);
+        assertTrue(location.find(), "the tracker destructures window.location");
+        Matcher hostname = Pattern.compile("\\{hostname:([\\w$]+)[^}]*\\}=" + Pattern.quote(location.group(1)) + "[^\\w$]")
+                .matcher(js);
+        assertTrue(hostname.find(), "and takes location.hostname from it");
+        Matcher domains = Pattern.compile("([\\w$]+)=[\\w$]+\\(\"domains\"\\)").matcher(js);
+        assertTrue(domains.find(), "the tracker reads data-domains");
+        Matcher list = Pattern.compile("([\\w$]+)=" + Pattern.quote(domains.group(1)) + "\\.split\\(\",\"\\)").matcher(js);
+        assertTrue(list.find(), "split on commas");
+        assertTrue(js.contains(domains.group(1) + "&&!" + list.group(1) + ".includes(" + hostname.group(1) + ")"),
+                "and beacons are dropped unless the list includes location.hostname exactly");
+    }
+
+    @Test
+    void trackerStoresNothingInTheBrowser() throws Exception {
+        String js = trackerScript();
+        assertFalse(js.contains("setItem"), "no localStorage/sessionStorage writes");
+        assertFalse(js.contains("cookie"), "no cookies");
+        assertTrue(js.contains("getItem(\"umami.disabled\")"), "it only reads the opt-out flag");
+    }
+
     // ------------------------------------------------------------ helpers
+
+    private static String trackerScript() throws Exception {
+        HttpResponse<String> script = raw(HttpRequest.newBuilder(URI.create(umami.baseUrl() + "/script.js")).GET());
+        assertEquals(200, script.statusCode());
+        return script.body();
+    }
 
     private static void applyAccountSql(String username, String password) {
         umami.psql(ACCOUNT_SQL, Map.of("username", username, "pw", password));
+    }
+
+    private static int count(Pattern pattern, String text) {
+        int n = 0;
+        Matcher m = pattern.matcher(text);
+        while (m.find()) {
+            n++;
+        }
+        return n;
+    }
+
+    /**
+     * Waits until the database log shows one more {@code marker} than
+     * {@code before} (proof the failure has been logged, so an absent
+     * password is absent and not merely not yet flushed), then a short
+     * settle for the lines PostgreSQL writes after it.
+     */
+    private static String awaitLog(Pattern marker, int before) throws InterruptedException {
+        long deadline = System.nanoTime() + Duration.ofSeconds(15).toNanos();
+        while (count(marker, umami.databaseLogs()) <= before) {
+            assertTrue(System.nanoTime() < deadline, "the failure never reached the database log");
+            Thread.sleep(100);
+        }
+        Thread.sleep(500);
+        return umami.databaseLogs();
     }
 
     private static int loginStatus(String username, String password) throws Exception {
