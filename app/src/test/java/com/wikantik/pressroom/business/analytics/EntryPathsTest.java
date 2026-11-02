@@ -97,6 +97,9 @@ class EntryPathsTest {
         EntryPaths unlatched = EntryPaths.forWeblog(weblog("sandiego", null), urls, null);
         assertEquals("tide-pools", unlatched.anchorOf("/sandiego/entry/tide-pools"),
                 "before the first request has latched a context path, the root's shapes still map");
+        EntryPaths unlatchedPrefix = EntryPaths.forWeblog(weblog("sandiego", null), urls, "/pressroom");
+        assertEquals("tide-pools", unlatchedPrefix.anchorOf("/pressroom/sandiego/entry/tide-pools"),
+                "unlatched, under a context path the caller derived from the site URL");
 
         List<Set<String>> lookups = new ArrayList<>();
         Map<String, String> ids = root.entryIds(List.of("/sandiego/entry/tide-pools", "/sandiego/entry/tide-pools/",

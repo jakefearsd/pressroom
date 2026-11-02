@@ -74,29 +74,33 @@ public final class EntryPaths {
      *
      * @param weblog      the blog
      * @param urls        the URL strategy pages link with
-     * @param contextPath the relative context URL the strategy prepends ({@code ""} at the root,
-     *                    {@code "/pressroom"} under a prefix); null before the first request latched one,
-     *                    which is read as the root
+     * @param contextPath the deployment's context path that recorded paths start with ({@code ""} or
+     *                    null at the root, {@code "/pressroom"} under a prefix)
      * @return the blog's shapes
      */
     public static EntryPaths forWeblog(Weblog weblog, URLStrategy urls, String contextPath) {
+        // What the strategy itself puts before every root-relative URL, asked
+        // of it rather than assumed: the site space's root is that prefix
+        // plus "/". Before the first request latches a relative context the
+        // strategy's prefix is not the deployment's, so the two are kept apart.
+        Weblog siteRoot = new Weblog();
+        siteRoot.setSiteSpace(true);
+        String prefix = StringUtils.defaultString(Strings.CS.removeEnd(urls.getWeblogURL(siteRoot, null, false), "/"));
         List<Shape> shapes = new ArrayList<>();
-        addShape(shapes, urls.getWeblogEntryURL(weblog, null, PROBE, false), contextPath);
+        addShape(shapes, urls.getWeblogEntryURL(weblog, null, PROBE, false), prefix);
         if (StringUtils.isNotBlank(weblog.getCustomDomain())) {
             Weblog siteHost = new Weblog();
             siteHost.setHandle(weblog.getHandle());
-            addShape(shapes, urls.getWeblogEntryURL(siteHost, null, PROBE, false), contextPath);
+            addShape(shapes, urls.getWeblogEntryURL(siteHost, null, PROBE, false), prefix);
         }
         return new EntryPaths(shapes, StringUtils.defaultString(contextPath));
     }
 
-    private static void addShape(List<Shape> shapes, String url, String contextPath) {
+    private static void addShape(List<Shape> shapes, String url, String strategyPrefix) {
         if (url == null) {
             return;
         }
-        // the strategy appends the relative context URL as it is, so before
-        // InitFilter latches one it writes "null"
-        String relative = Strings.CS.removeStart(url, String.valueOf(contextPath));
+        String relative = Strings.CS.removeStart(url, strategyPrefix);
         int at = relative.indexOf(PROBE);
         if (at >= 0) {
             shapes.add(new Shape(relative.substring(0, at), relative.substring(at + PROBE.length())));

@@ -399,6 +399,8 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
                 failures.put(id, error);
             }
         });
+        // a read starts from a clean transaction, whatever the reconcile left
+        rollback();
         ReadRun run = new ReadRun();
         String current = null;
         try {
@@ -406,7 +408,7 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
             ZoneId zone = siteZone(weblogs);
             List<String> keys = periodKeys();
             URLStrategy urls = weblogger.getUrlStrategy();
-            String context = WebloggerRuntimeConfig.getRelativeContextURL();
+            String context = contextPath(WebloggerRuntimeConfig.getRelativeContextURL(), siteUrl.get());
             for (Weblog weblog : weblogs) {
                 Registration registration = toRead.get(weblog.getId());
                 if (registration == null) {
@@ -545,6 +547,28 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
                 lastRead, lastReadError);
     }
 
+    /**
+     * The context path recorded paths start with: the one the first request
+     * latched, else the path of the configured site URL, which carries the
+     * context path by convention ({@code ""} for the root). Without the
+     * fallback, every read before the first request (the startup backfill,
+     * the immediate scheduled run) would map no entry under a prefix.
+     */
+    static String contextPath(String latched, String siteUrl) {
+        if (latched != null) {
+            return latched;
+        }
+        String path = null;
+        if (StringUtils.isNotBlank(siteUrl)) {
+            try {
+                path = URI.create(siteUrl.trim()).getPath();
+            } catch (IllegalArgumentException e) {
+                log.debug("The site URL {} is not a URI; reading paths as at the root", siteUrl, e);
+            }
+        }
+        return StringUtils.stripEnd(StringUtils.defaultString(path), "/");
+    }
+
     /** The site time zone (R12): the site space's, else the system's. */
     private static ZoneId siteZone(List<Weblog> weblogs) {
         for (Weblog weblog : weblogs) {
@@ -588,6 +612,8 @@ public class JPAAnalyticsManagerImpl implements AnalyticsManager {
             }
         } catch (WebloggerException | RuntimeException e) {
             log.error("Analytics reconcile stopped; what it committed stands and the rest is retried", e);
+            // what the failed blog left uncommitted must not ride on the read's first commit
+            rollback();
             return;
         }
         registered = registrationsIn(rows);

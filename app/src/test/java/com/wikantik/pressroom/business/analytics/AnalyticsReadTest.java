@@ -18,6 +18,8 @@
 package com.wikantik.pressroom.business.analytics;
 
 import com.wikantik.pressroom.TestUtils;
+import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.business.analytics.AnalyticsReport.KeyCount;
 import com.wikantik.pressroom.business.analytics.AnalyticsReport.PathCount;
 import com.wikantik.pressroom.business.analytics.AnalyticsReport.SeriesPoint;
@@ -50,6 +52,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.spy;
 
 /**
  * The batch read, against the real database and a fake service: what a sync
@@ -216,6 +222,54 @@ class AnalyticsReadTest {
     }
 
     @Test
+    void aReconcileThatStopsLeavesNothingForTheReadToCommit() throws Exception {
+        Weblog blog = tier.addWeblogUnseen("halfmade", user);
+        WeblogManager failing = spy(tier.weblogs);
+        doThrow(new WebloggerException("the bump could not be saved"))
+                .when(failing).saveWeblog(argThat(w -> w != null && blog.getId().equals(w.getId())));
+        doReturn(failing).when(tier.weblogger).getWeblogManager();
+        try {
+            sync();
+        } finally {
+            doReturn(tier.weblogs).when(tier.weblogger).getWeblogManager();
+        }
+
+        assertTrue(count("SELECT COUNT(s) FROM AnalyticsSummary s") > 0, "the read went on and committed snapshots");
+        assertEquals(0L, count("SELECT COUNT(s) FROM AnalyticsSite s WHERE s.weblogId = '" + blog.getId() + "'"),
+                "the stopped reconcile's half-made registration row was not committed along with them");
+    }
+
+    @Test
+    void entryPathsMapUnderAContextPathBeforeTheFirstRequest() throws Exception {
+        Weblog blog = tier.addWeblogUnseen("ctxblog", user);
+        WeblogEntry entry = entry("tide-pools", blog);
+        WebloggerRuntimeConfig.setRelativeContextURL(null);
+        tier.siteUrl = "http://host/pressroom/";
+        tier.service.reports.put(blog.getId(), report(5,
+                List.of(new PathCount("/pressroom/ctxblog/entry/tide-pools", 5, 3)), List.of()));
+
+        sync();
+
+        assertEquals(Map.of(entry.getId(), 5L), tier.manager.entryViews(blog.getId(), "7d"),
+                "the context path comes from the site URL until a request latches one");
+    }
+
+    @Test
+    void entryPathsMapAtTheRootBeforeTheFirstRequest() throws Exception {
+        Weblog blog = tier.addWeblogUnseen("ctxroot", user);
+        WeblogEntry entry = entry("tide-pools", blog);
+        WebloggerRuntimeConfig.setRelativeContextURL(null);
+        tier.siteUrl = "http://host/";
+        tier.service.reports.put(blog.getId(), report(4,
+                List.of(new PathCount("/ctxroot/entry/tide-pools", 4, 2)), List.of()));
+
+        sync();
+
+        assertEquals(Map.of(entry.getId(), 4L), tier.manager.entryViews(blog.getId(), "7d"),
+                "a site URL with no path is the root");
+    }
+
+    @Test
     void visitorsAreNeverSummed() throws Exception {
         Weblog a = tier.addWeblogUnseen("visitsa", user);
         Weblog b = tier.addWeblogUnseen("visitsb", user);
@@ -379,6 +433,10 @@ class AnalyticsReadTest {
                 .createQuery("SELECT COUNT(x) FROM " + entity + " x WHERE x.weblogId = :w AND x.period = :p",
                         Long.class)
                 .setParameter("w", weblogId).setParameter("p", period).getSingleResult();
+    }
+
+    private long count(String jpql) {
+        return tier.strategy.getEntityManager(false).createQuery(jpql, Long.class).getSingleResult();
     }
 
     private void registeredAt(String weblogId, Instant at) throws Exception {
