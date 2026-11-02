@@ -162,7 +162,10 @@ class MaintenanceJspTest {
     @Test
     void statusBlockRendersEachState() throws IOException {
         String source = Files.readString(JSP, StandardCharsets.UTF_8);
-        assertTrue(source.contains("code=\"maintenance.discovery.title\""));
+        // The admin's quiet section heading, not a bare h2 (browser-default
+        // size, twice anything else on the page; seen on docker1 in 0.6.0).
+        assertTrue(source.contains("<h2 class=\"section-head\"><spring:message code=\"maintenance.discovery.title\"/></h2>"),
+                "the discovery status is headed like every other admin section");
         for (String state : new String[] {"DISABLED", "NEVER", "OK", "FAILED"}) {
             assertTrue(source.contains("code=\"maintenance.discovery.state." + state + "\""),
                     "a literal key for state " + state);

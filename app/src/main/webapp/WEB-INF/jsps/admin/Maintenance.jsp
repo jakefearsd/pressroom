@@ -127,7 +127,7 @@
 <form action="${pageContext.request.contextPath}/pressroom-ui/admin/maintenance!refreshDiscovery.rol" method="post" class="form-stacked guard-submit">
 <sec:csrfInput/>
     <div class="maintenance-op maintenance-discovery">
-        <h2><spring:message code="maintenance.discovery.title"/></h2>
+        <h2 class="section-head"><spring:message code="maintenance.discovery.title"/></h2>
         <p>
             <c:choose>
                 <c:when test="${discoveryStatus.state == 'DISABLED'}"><spring:message code="maintenance.discovery.state.DISABLED"/></c:when>

@@ -123,9 +123,10 @@ public class DiscoveryModel implements Model {
 
     /**
      * Up to three posts from weblogs other than {@code current}, for its
-     * "more from the site" block. Empty -- so the block renders nothing --
-     * on the site space, on a weblog that has turned the block off, with no
-     * weblog, and when nothing else is eligible. Display path: a picker that
+     * "more from the site" block. Empty -- so the block shows only the
+     * places list and the link home -- on a weblog that has turned the
+     * block off and when nothing else is eligible; also on the site space
+     * and with no weblog, where the macro renders nothing anyway. Display path: a picker that
      * fails leaves the block out rather than 500ing the page from its footer.
      */
     public List<WeblogEntryWrapper> moreFromSite(WeblogWrapper current) {

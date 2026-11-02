@@ -166,9 +166,14 @@ class MoreFromSiteRenderingTest {
         }
     }
 
-    /** AC 9: the setting hides this blog's block only; the reader's visit is still recorded. */
+    /**
+     * AC 9: the setting hides the other blogs' posts only. Every blog keeps
+     * its way back to the front page and the reader's places (the owner:
+     * every blog gets navigation home; the opt-out "only stops showing other
+     * blogs"), and the visit is still recorded.
+     */
     @Test
-    void optedOutBlogRendersNoBlock() throws Exception {
+    void optedOutBlogKeepsTheWayHomeButShowsNoPosts() throws Exception {
         Weblog current = threeBlogsOfTwo();
         Weblog managed = TestUtils.getManagedWebsite(current);
         managed.setShowMoreFromSite(false);
@@ -179,7 +184,7 @@ class MoreFromSiteRenderingTest {
         for (String theme : THEMES) {
             useTheme(current, theme);
             String body = page("/" + current.getHandle() + "/");
-            assertFalse(body.contains("more-from-site"), theme + ": no block, no empty box:\n" + body);
+            assertHomeOnly(body, theme);
             assertTrue(RECORD.matcher(body).find(), theme + ": the visit is still recorded:\n" + body);
             assertTrue(body.contains("pressroom.places"), theme + ": the recording script:\n" + body);
         }
@@ -187,6 +192,17 @@ class MoreFromSiteRenderingTest {
         String other = block(page("/" + blogs.get(1).getHandle() + "/"), "blog B");
         assertTrue(other.contains(">Post A0</a>") || other.contains(">Post A1</a>"),
                 "the opted-out blog's posts still appear elsewhere:\n" + other);
+    }
+
+    /** The block with no posts: no heading, no list, but the places list and the link home. */
+    private static void assertHomeOnly(String body, String label) {
+        String block = block(body, label);
+        assertFalse(block.contains("more-from-site-title") || block.contains("more-from-site-post"),
+                label + ": no posts, and no heading over none:\n" + block);
+        assertTrue(block.contains("<nav class=\"places-been\" hidden data-places"),
+                label + ": the places list:\n" + block);
+        assertTrue(Pattern.compile("<p class=\"more-from-site-home\"><a href=\"[^\"]+\">").matcher(block).find(),
+                label + ": the link home:\n" + block);
     }
 
     @Test
@@ -203,7 +219,7 @@ class MoreFromSiteRenderingTest {
     }
 
     @Test
-    void noOtherBlogsRendersNothing() throws Exception {
+    void noOtherBlogsKeepsTheWayHome() throws Exception {
         Weblog only = blog("morefroma", "More Blog A");
         post(only, "morefrom-a-0", "Post A0", 1);
         post(only, "morefrom-a-1", "Post A1", 2);
@@ -215,7 +231,7 @@ class MoreFromSiteRenderingTest {
         for (String theme : THEMES) {
             useTheme(only, theme);
             String body = page("/" + only.getHandle() + "/");
-            assertFalse(body.contains("more-from-site"), theme + ": no empty box:\n" + body);
+            assertHomeOnly(body, theme);
             assertTrue(RECORD.matcher(body).find(), theme + ": still recorded:\n" + body);
         }
     }

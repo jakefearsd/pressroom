@@ -429,7 +429,9 @@ body.fd .fd-prose a:where(:not(.cta-card)) {
     font-weight: 600;
 }
 .fd-discovery-top { margin-top: .5rem; font-size: .90625rem; }
-.fd-discovery-top li + li { margin-top: .25rem; }
+/* Wrapped titles need more than a line's leading between them, or two
+   posts read as one (seen on docker1's cards in 0.6.0). */
+.fd-discovery-top li + li { margin-top: .625rem; }
 
 .fd-discovery-post a,
 .fd-discovery-card a { color: var(--fd-ink); text-decoration: none; }

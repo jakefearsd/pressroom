@@ -196,7 +196,10 @@ and a JSP.
   blog with a forked (database-stored) theme still gets it as long as its
   templates call that macro. A forked theme that has dropped the macro gets
   no block; that is accepted. A blog whose
-  setting is off renders nothing: no empty box.
+  setting is off shows no posts and no heading, but keeps the places list
+  and the link home (amended 2026-11-01 after the docker1 shakedown: the
+  owner asked that every blog link back to the front page, and that the
+  opt-out "only stops showing other blogs").
 - Never names or links the current blog's own posts.
 
 ## Places you've been
@@ -266,7 +269,8 @@ Each of these must be checkable by a test.
    and an error is logged.
 8. Drafts, scheduled, trashed, `noindex` and site-page content never
    appear.
-9. A blog with the setting off renders no block. Its posts still appear on
+9. A blog with the setting off shows no other blogs' posts, but keeps the
+   link home and the places list. Its posts still appear on
    `/` and in other blogs' blocks.
 10. A cached blog page shows a block no older than one snapshot period.
 11. "Places you've been" lists visited blogs most-recent-first, capped at 5,

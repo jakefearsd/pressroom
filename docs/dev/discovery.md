@@ -68,8 +68,11 @@ each time it is rendered, but a rendered page is cached: the re-check runs
 only on a cache miss. So a post unpublished between rebuilds drops out of
 whatever renders next, while a page already cached (another blog's block, or
 `/`) can still link it until that page is rendered again, at the latest after
-the next generation. `pinnedToMain` is ignored. A blog opts out of the block
-with `showMoreFromSite` (it stays in `/` and in other blogs' blocks).
+the next generation. `pinnedToMain` is ignored. A blog opts out of the other
+blogs' posts with `showMoreFromSite` (it stays in `/` and in other blogs'
+blocks); the block then keeps only the places list and the link home, as it
+does when no other blog has an eligible post, because every blog links back
+to the front page.
 
 ## Popularity source
 
