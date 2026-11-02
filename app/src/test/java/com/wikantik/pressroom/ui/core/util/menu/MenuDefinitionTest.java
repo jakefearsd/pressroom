@@ -74,7 +74,7 @@ class MenuDefinitionTest {
         ParsedTab weblogTab = tab("editor", "tabbedmenu.weblog");
 
         assertEquals(List.of("entryAdd", "entries", "trash", "submissions", "comments", "categories", "pages",
-                        "mediaFileView"),
+                        "mediaFileView", "traffic"),
                 actions(weblogTab),
                 "These are the actions the Weblog tab offers, in order. The first of them is "
                         + "also the tab's own link, so the order is user-visible.");
