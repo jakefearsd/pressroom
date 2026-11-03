@@ -20,6 +20,7 @@ package com.wikantik.pressroom.business.jpa;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -28,11 +29,13 @@ import java.util.Map;
 import javax.imageio.ImageIO;
 
 import com.wikantik.pressroom.TestUtils;
+import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.CwebpEncoder;
 import com.wikantik.pressroom.business.FileContentManager;
 import com.wikantik.pressroom.business.FileIOException;
 import com.wikantik.pressroom.business.FileNotFoundException;
 import com.wikantik.pressroom.business.MediaFileManager;
+import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.RuntimeConfigProperty;
 import com.wikantik.pressroom.pojos.User;
@@ -48,6 +51,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 
 /**
  * The media row and the files on disk must describe the same bytes: after a
@@ -230,5 +235,61 @@ class MediaFileContentConsistencyTest {
         assertNull(after.getBlurhash(), "a placeholder of the old picture must not stand in for a PDF");
         assertNull(after.getExifCamera(), "the old picture's EXIF does not describe the new file");
         assertNull(after.getExifTaken());
+    }
+
+    // ---------------------------------------------------------- new uploads
+
+    private MediaFile newFile(String name, String contentType, long length, InputStream in) throws Exception {
+        testWeblog = TestUtils.getManagedWebsite(testWeblog);
+        MediaFile mf = new MediaFile();
+        mf.setName(name);
+        mf.setDirectory(mfMgr.getDefaultMediaFileDirectory(testWeblog));
+        mf.setWeblog(testWeblog);
+        mf.setContentType(contentType);
+        mf.setLength(length);
+        mf.setInputStream(in);
+        return mf;
+    }
+
+    @Test
+    void anUploadWhoseBytesCannotBeWrittenLeavesNoRow() throws Exception {
+        InputStream broken = new InputStream() {
+            @Override
+            public int read() throws IOException {
+                throw new IOException("simulated broken upload");
+            }
+        };
+        MediaFile mf = newFile("broken.txt", "text/plain", 10, broken);
+        final Weblog weblog = testWeblog;
+        assertThrows(WebloggerException.class,
+                () -> mfMgr.createMediaFile(weblog, mf, new PressroomMessages()));
+        TestUtils.endSession(false);
+
+        assertNull(reloaded(mf.getId()), "a row for a file that never reached the disk must not be committed");
+    }
+
+    @Test
+    void anUploadWhoseRowCannotBeCommittedLeavesNoFile() throws Exception {
+        Weblogger real = TestUtils.weblogger();
+        Weblogger failing = mock(Weblogger.class, org.mockito.AdditionalAnswers.delegatesTo(real));
+        doThrow(new WebloggerException("simulated commit failure")).when(failing).flush();
+        MediaFileManager failingMgr = new JPAMediaFileManagerImpl(failing, liveStrategy(real));
+
+        MediaFile mf = newFile("orphan.txt", "text/plain", 5,
+                new ByteArrayInputStream("bytes".getBytes(StandardCharsets.UTF_8)));
+        final Weblog weblog = testWeblog;
+        assertThrows(WebloggerException.class,
+                () -> failingMgr.createMediaFile(weblog, mf, new PressroomMessages()));
+        TestUtils.endSession(false);
+
+        assertGone(mf.getId(), "bytes whose row never committed must not stay on disk, unreachable");
+        assertNull(reloaded(mf.getId()));
+    }
+
+    /** The bootstrapped tier's persistence strategy, so a test manager shares its EntityManager. */
+    private static JPAPersistenceStrategy liveStrategy(Weblogger real) throws ReflectiveOperationException {
+        java.lang.reflect.Field field = JPAWebloggerImpl.class.getDeclaredField("strategy");
+        field.setAccessible(true);
+        return (JPAPersistenceStrategy) field.get(real);
     }
 }

@@ -212,21 +212,31 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         persistNewMediaFile(weblog, mediaFile.getDirectory(), mediaFile, mediaFile.getInputStream());
     }
 
+    /**
+     * Bytes first, then the row: the id is assigned when the MediaFile is
+     * constructed, so the file can be written before anything is committed.
+     * A write that fails leaves no row describing a file that is not there,
+     * and a commit that fails takes the just-written file back off the disk,
+     * where nothing could ever reach it.
+     */
     private void persistNewMediaFile(Weblog weblog, MediaFileDirectory directory,
             MediaFile mediaFile, InputStream is) throws WebloggerException {
         FileContentManager cmgr = pressroom.getFileContentManager();
-        strategy.store(mediaFile);
-
-        // Refresh associated parent for changes
-        pressroom.flush();
-        strategy.refresh(directory);
 
         // The hash is taken from the bytes as they stream to disk, so an
         // upload of any size is hashed without being held in memory.
         MessageDigest sha256 = ContentHashes.sha256();
         cmgr.saveFileContent(weblog, mediaFile.getId(), new DigestInputStream(is, sha256));
         mediaFile.setContentHash(ContentHashes.hex(sha256.digest()));
-        strategy.store(mediaFile);
+        try {
+            strategy.store(mediaFile);
+            pressroom.flush();
+        } catch (WebloggerException | RuntimeException e) {
+            deleteFileQuietly(cmgr, weblog, mediaFile.getId());
+            throw e;
+        }
+        // Refresh associated parent for changes
+        strategy.refresh(directory);
 
         if (mediaFile.isImageFile()) {
             updateThumbnail(mediaFile);
