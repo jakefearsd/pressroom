@@ -68,7 +68,11 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   exists. So is a weblog the caller holds no role on:
   `PressroomHandlerInterceptor` answers an API caller who fails the weblog
   permission check 404 unless they hold at least `EDIT_DRAFT` there (a member
-  below the required level stays 403; `ApiSecurityRefusalTest`). `ApiScopeInterceptor.checkWeblogScope` and every `requireX` helper in
+  below the required level stays 403; `ApiSecurityRefusalTest`). A token pinned to another weblog
+  is "not a member" there whatever its owner's role, so it gets the 404 too: that check runs before
+  `ApiScopeInterceptor`'s pin check, so it reads the pin through `WeblogPinnedCredential`
+  (implemented by `ApiPrincipal`; an interface in `ui.controllers`, not a second import from
+  `ui.restapi`). `ApiScopeInterceptor.checkWeblogScope` and every `requireX` helper in
   `BaseApiController` follow this.
 - **The OpenAPI document is machine-readable, not a browser explorer.**
   `springdoc-openapi-starter-webmvc-api` serves `GET /api/v1/openapi.json`
