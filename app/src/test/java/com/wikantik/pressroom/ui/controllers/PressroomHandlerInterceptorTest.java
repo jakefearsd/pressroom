@@ -675,6 +675,48 @@ class PressroomHandlerInterceptorTest {
     }
 
     /**
+     * The newsletter mount is a prefix mapping too, so the container strips
+     * /newsletter before lookup, and /newsletter/pressroom-ui/setup!save.rol
+     * reached SetupController: the UI chain's admin-only rule matches the
+     * full path, missed it, and fell through to permitAll, and the controller
+     * asks for no user. Anyone could rewrite the front-page settings
+     * (code review, 2026-11-03). Only the newsletter controller lives there.
+     */
+    @Test
+    void aJspControllerReachedUnderTheNewsletterMountIsNotFound() throws Exception {
+        request.setServletPath("/newsletter");
+        request.setRequestURI(CONTEXT + "/newsletter/pressroom-ui/setup!save.rol");
+
+        assertFalse(interceptor.preHandle(request, response, handlerFor(new PlainController())));
+        assertEquals(404, response.getStatus());
+    }
+
+    @Test
+    void aLibraryHandlerUnderTheNewsletterMountIsNotFound() throws Exception {
+        request.setServletPath("/newsletter");
+        request.setRequestURI(CONTEXT + "/newsletter/v1/openapi.json");
+        org.springdoc.webmvc.api.OpenApiWebMvcResource openApi =
+                org.mockito.Mockito.mock(org.springdoc.webmvc.api.OpenApiWebMvcResource.class);
+        HandlerMethod handler = new HandlerMethod(openApi,
+                org.springdoc.webmvc.api.OpenApiWebMvcResource.class.getMethod("openapiJson",
+                        jakarta.servlet.http.HttpServletRequest.class, String.class, java.util.Locale.class));
+
+        assertFalse(interceptor.preHandle(request, response, handler));
+        assertEquals(404, response.getStatus());
+    }
+
+    @Test
+    void theNewsletterControllerProceedsUnderItsMount() throws Exception {
+        assertTrue(PressroomHandlerInterceptor.onItsOwnMount(false, true, true, "/newsletter"));
+        assertFalse(PressroomHandlerInterceptor.onItsOwnMount(false, true, false, "/newsletter"),
+                "any other of Pressroom's handlers");
+        assertFalse(PressroomHandlerInterceptor.onItsOwnMount(false, false, false, "/newsletter"),
+                "a library's");
+        assertFalse(PressroomHandlerInterceptor.onItsOwnMount(false, true, true, "/api"),
+                "nor under the API mount");
+    }
+
+    /**
      * Wraps a controller as the {@code HandlerMethod} Spring MVC would hand the
      * interceptor. The method itself is never invoked -- only
      * {@code getBean()} is read -- so any public method will do.

@@ -28,7 +28,11 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   `apiSecurityFilterChain` admits only `/api/v1/**` and `/api/mcp` and denies
   the rest, and `PressroomHandlerInterceptor` answers 404 for a non-API
   handler under the `/api` servlet path or an API handler under any other
-  (`SecurityConfigTest`, `PressroomHandlerInterceptorTest`). `api` and
+  (`SecurityConfigTest`, `PressroomHandlerInterceptorTest`). The newsletter
+  mount had the same hole: `/newsletter/pressroom-ui/setup!save.rol`
+  reached `SetupController` anonymously, since the UI chain's admin-only
+  rule matches the full path and the controller asks for no user. Under
+  `/newsletter` only `NewsletterController` proceeds. `api` and
   `newsletter` are reserved roots in
   `rendering.weblogMapper.pressroomProtectedUrls` so no weblog handle can shadow
   them.

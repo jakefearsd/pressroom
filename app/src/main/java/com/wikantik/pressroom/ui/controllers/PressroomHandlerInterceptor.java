@@ -30,6 +30,7 @@ import com.wikantik.pressroom.business.WebloggerProvider;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.ui.controllers.core.NewsletterController;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.core.security.sso.PressroomOidcUser;
 import com.wikantik.pressroom.ui.restapi.ApiException;
@@ -207,7 +208,9 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
         // /newsletter/v1/... an API one. Refused as not found, before bootstrap
         // is even asked: no installer page lives under the API mount.
         boolean apiHandler = isApiHandler(handlerMethod);
-        if (!onItsOwnMount(apiHandler, isPressroomHandler(handlerMethod), request.getServletPath())) {
+        if (!onItsOwnMount(apiHandler, isPressroomHandler(handlerMethod),
+                NewsletterController.class.isAssignableFrom(handlerMethod.getBeanType()),
+                request.getServletPath())) {
             log.debug("DENIED: {} reached under servlet path {}", handlerMethod.getBeanType().getSimpleName(),
                     request.getServletPath());
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
@@ -362,27 +365,38 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
     /** The servlet path of the automation API's prefix mapping ({@code /api/*}). */
     static final String API_SERVLET_PATH = "/api";
 
+    /** The servlet path of the newsletter's prefix mapping ({@code /newsletter/*}). */
+    static final String NEWSLETTER_SERVLET_PATH = "/newsletter";
+
     /** Every Pressroom handler lives under this package; a library's does not. */
     private static final String PRESSROOM_PACKAGE = "com.wikantik.pressroom";
 
     /**
-     * Whether a handler was reached under the mount that serves it: one of
-     * Pressroom's API handlers under {@value #API_SERVLET_PATH}, and one of its
-     * other (JSP) handlers anywhere but. A library's handler served under the
-     * API mount (springdoc's OpenAPI document at /api/v1/openapi.json) is
-     * neither, and proceeds. An empty servlet path is a request built without
-     * one (MockMvc); the container never dispatches this servlet with one,
-     * since every mapping it has is a prefix, an extension or an exact path.
+     * Whether a handler was reached under the mount that serves it. The two
+     * prefix mounts each serve their own handlers only, since the container
+     * strips the prefix before lookup and any handler would otherwise answer
+     * under either: {@value #API_SERVLET_PATH} serves Pressroom's API
+     * handlers and a library's (springdoc's OpenAPI document at
+     * /api/v1/openapi.json), and {@value #NEWSLETTER_SERVLET_PATH} the
+     * newsletter controller alone (/newsletter/pressroom-ui/setup!save.rol
+     * reached the admin-only SetupController anonymously; code review,
+     * 2026-11-03). Everywhere else, anything but an API handler. An empty
+     * servlet path is a request built without one (MockMvc); the container
+     * never dispatches this servlet with one, since every mapping it has is
+     * a prefix, an extension or an exact path.
      */
-    static boolean onItsOwnMount(boolean apiHandler, boolean pressroomHandler, String servletPath) {
+    static boolean onItsOwnMount(boolean apiHandler, boolean pressroomHandler, boolean newsletterHandler,
+            String servletPath) {
         if (servletPath == null || servletPath.isEmpty()) {
             return true;
         }
-        boolean apiMount = API_SERVLET_PATH.equals(servletPath);
-        if (apiHandler) {
-            return apiMount;
+        if (API_SERVLET_PATH.equals(servletPath)) {
+            return apiHandler || !pressroomHandler;
         }
-        return !pressroomHandler || !apiMount;
+        if (NEWSLETTER_SERVLET_PATH.equals(servletPath)) {
+            return newsletterHandler;
+        }
+        return !apiHandler;
     }
 
     /** Whether the handler is one of Pressroom's own, not a library's. */
