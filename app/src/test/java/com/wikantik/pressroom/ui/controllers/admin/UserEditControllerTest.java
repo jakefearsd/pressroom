@@ -515,7 +515,7 @@ class UserEditControllerTest {
         assertSame(jakesSession, PressroomLoginSessionManager.getInstance().get("jake"),
                 "precondition: jake is signed in when the admin edits him");
         CreateUserBean bean = beanForExisting("u1", "jake");
-        bean.setPassword("newpass");
+        bean.setPassword("newpass1");
         // Left enabled on purpose: the new password alone has to end the
         // session, without help from the account being disabled too.
         bean.setEnabled(Boolean.TRUE);
@@ -523,10 +523,30 @@ class UserEditControllerTest {
         controller.modifyUserSave(ControllerTestFixture.requestFor(user("admin", "a@example.com")), model, bean);
 
         assertTrue(new BCryptPasswordEncoder().matches(
-                        "newpass", stored.getPassword().substring("{bcrypt}".length())),
+                        "newpass1", stored.getPassword().substring("{bcrypt}".length())),
                 "the updated password should verify against the stored hash");
         assertNull(PressroomLoginSessionManager.getInstance().get("jake"),
                 "whoever is logged in with the old password must be forced to re-authenticate");
+    }
+
+    @Test
+    void aPasswordShorterThanTheSharedMinimumIsRefusedWhenEditingToo() throws Exception {
+        // Creating a person enforced the floor; editing one enforced nothing,
+        // so a one-character password went through here.
+        User stored = storedUser("jake");
+        stored.setPassword("{bcrypt}stored");
+        CreateUserBean bean = beanForExisting("u1", "jake");
+        bean.setPassword("x");
+        bean.setEnabled(Boolean.TRUE);
+
+        String view = controller.modifyUserSave(
+                ControllerTestFixture.requestFor(user("admin", "a@example.com")), model, bean);
+
+        assertEquals(".UserEdit", view);
+        assertEquals(List.of("personForm.error.passwordTooShort"), ControllerTestFixture.errors(model));
+        assertEquals(List.of("bean_password"), ControllerTestFixture.invalidFields(model));
+        verify(weblogger.userManager(), never()).saveUser(any());
+        assertEquals("{bcrypt}stored", stored.getPassword());
     }
 
     @Test
@@ -534,7 +554,7 @@ class UserEditControllerTest {
         User self = storedUser("jake");
         PressroomSession ownSession = registerSessionFor("jake");
         CreateUserBean bean = beanForExisting("u1", "jake");
-        bean.setPassword("newpass");
+        bean.setPassword("newpass1");
         bean.setEnabled(Boolean.TRUE);
 
         try {
@@ -928,7 +948,7 @@ class UserEditControllerTest {
     void savingAPasswordForABoundAccountIsRefused() throws Exception {
         User stored = storedBoundUser("reader-abc1234567");
         CreateUserBean bean = beanForExisting("u1", "reader-abc1234567");
-        bean.setPassword("newpass");
+        bean.setPassword("newpass1");
 
         String view = controller.modifyUserSave(
                 ControllerTestFixture.requestFor(user("admin", "a@example.com")), model, bean);

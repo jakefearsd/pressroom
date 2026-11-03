@@ -35,6 +35,7 @@ import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.UserToken;
 import com.wikantik.pressroom.ui.controllers.BaseController;
+import com.wikantik.pressroom.ui.controllers.PasswordRules;
 import com.wikantik.pressroom.ui.core.PressroomLoginSessionManager;
 import com.wikantik.pressroom.util.GenericThrottle;
 import org.springframework.stereotype.Controller;
@@ -82,13 +83,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class PasswordResetController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(PasswordResetController.class);
-
-    /**
-     * No existing validation in this codebase sets a password-length floor
-     * (see {@code ProfileController}, which only checks the confirmation
-     * matches); this is the rule for the reset flow specifically.
-     */
-    private static final int MIN_PASSWORD_LENGTH = 8;
 
     /**
      * Built lazily on first use rather than in a constructor, exactly as
@@ -208,7 +202,7 @@ public class PasswordResetController extends BaseController {
         if (!Strings.CS.equals(passwordText, passwordConfirm)) {
             addError(model, "resetPassword.mismatch", request);
         }
-        if (passwordText == null || passwordText.length() < MIN_PASSWORD_LENGTH) {
+        if (!PasswordRules.isLongEnough(passwordText)) {
             addError(model, "resetPassword.tooShort", request);
         }
         if (hasErrors(model)) {

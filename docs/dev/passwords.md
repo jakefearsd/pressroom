@@ -38,6 +38,21 @@ resolves through the index at the end of `CLAUDE.md`.
   `set -o pipefail` `head` exiting early SIGPIPEs `tr` and the script dies
   silently at 141.
 
+## One password rule
+
+- **`PasswordRules` (`ui/controllers`) is the only password floor** (8
+  characters), applied by every path that sets a chosen password: create and
+  edit in `UserEditController`, `ProfileController` and
+  `PasswordResetController` (2026-11). The edit and profile paths used to
+  enforce nothing, so a one-character password went through. The refusal
+  keys still say "8" in their text (`personForm.error.passwordTooShort`,
+  `resetPassword.tooShort`), so a change to the floor changes them too.
+- **The profile page asks for the current password** before it changes the
+  password (`yourProfile.error.currentPassword` on `#currentPassword`),
+  checked with the configured encoder; a stored hash the encoder cannot read
+  refuses rather than throws. Profile fields other than the password do not
+  need it.
+
 ## The admin account tool
 
 `deploy/admin-account.sh` (`create`, `reset-password`, `status`; compose
