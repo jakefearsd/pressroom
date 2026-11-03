@@ -93,7 +93,9 @@ image names in `docker-compose.prod.yml` to point at your fork's GHCR path.)
 `docker-compose.prod.yml` reads all of its configuration — infrastructure
 settings **and** the app's own runtime properties — from a `.env` file next
 to it (gitignored — it holds secrets). You already renamed the downloaded
-`env.example` to `.env` above; edit it in place.
+`env.example` to `.env` above; edit it in place. Every `changeme-...` value
+in it is a placeholder: `deploy.sh` refuses to start the stack while any
+setting still holds one, and names each.
 
 The `app` service loads `.env` wholesale via `env_file: .env`, not just the
 `PRESSROOM_*` keys `WebloggerConfig` actually reads — every variable in the
