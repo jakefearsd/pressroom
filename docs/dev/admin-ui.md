@@ -183,8 +183,12 @@ resolves through the index at the end of `CLAUDE.md`.
   site space, and `userWeblogs` grants refuse it, so it is never in a weblog
   list. `ThemeEditController.offered` gives the site space `journal`,
   `portfolio`, `travel` and `frontpage` and never a custom theme; other weblogs
-  get everything but `frontpage` (unless already on it). Covered by
-  `SiteSpaceAccessTest` and `SitePagesIT`.
+  get everything but `frontpage` (unless already on it). The custom-theme
+  import applies `offered` too, so a posted `frontpage` import is refused
+  like a posted `frontpage` switch. Re-importing the current theme keeps a
+  customised stylesheet; when that check cannot run, the import is refused
+  (`generic.error.check.logs`), never run as though nothing was customised.
+  Covered by `SiteSpaceAccessTest`, `ThemeEditControllerTest` and `SitePagesIT`.
 - **The top bar's weblog switcher appears only for a user on ≥ 2 weblogs.**
   `BaseController.populateCommonModel` resolves the caller's weblog
   permissions to `List<Weblog>` and adds `userWeblogs` only then.
