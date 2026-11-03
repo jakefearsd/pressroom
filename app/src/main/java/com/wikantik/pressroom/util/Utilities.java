@@ -11,7 +11,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -27,7 +26,6 @@ import jakarta.mail.internet.AddressException;
 import jakarta.mail.internet.InternetAddress;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
@@ -107,34 +105,6 @@ public final class Utilities {
         return url;
     }
 
-    // ------------------------------------------------------------------------
-    /**
-     * Escape, but do not replace HTML. The default behaviour is to escape
-     * ampersands.
-     */
-    public static String escapeHTML(String s) {
-        return escapeHTML(s, true);
-    }
-
-    // ------------------------------------------------------------------------
-    /**
-     * Escape, but do not replace HTML.
-     * 
-     * @param escapeAmpersand
-     *            Optionally escape ampersands (&amp;).
-     */
-    public static String escapeHTML(String s, boolean escapeAmpersand) {
-        // got to do amp's first so we don't double escape
-        if (escapeAmpersand) {
-            s = Strings.CS.replace(s, "&", "&amp;");
-        }
-        s = Strings.CS.replace(s, "&nbsp;", " ");
-        s = Strings.CS.replace(s, "\"", "&quot;");
-        s = Strings.CS.replace(s, "<", "&lt;");
-        s = Strings.CS.replace(s, ">", "&gt;");
-        return s;
-    }
-
     public static String unescapeHTML(String str) {
         return StringEscapeUtils.unescapeHtml4(str);
     }
@@ -195,22 +165,6 @@ public final class Utilities {
             ret.append(str.substring(endTag + 1));
         }
         return ret.toString().trim();
-    }
-
-    // ------------------------------------------------------------------------
-    /**
-     * Run both removeHTML and escapeHTML on a string.
-     * 
-     * @param s
-     *            String to be run through removeHTML and escapeHTML.
-     * @return String with HTML removed and HTML special characters escaped.
-     */
-    public static String removeAndEscapeHTML(String s) {
-        if (s == null) {
-            return "";
-        } else {
-            return escapeHTML(removeHTML(s));
-        }
     }
 
     // ------------------------------------------------------------------------
@@ -491,84 +445,6 @@ public final class Utilities {
         } catch (IOException ex) {
             throw new IOException("Closing file streams, " + ex.getMessage(), ex);
         }
-    }
-
-    /**
-     * Encode a string using algorithm specified in web.xml and return the
-     * resulting encrypted password. If exception, the plain credentials string
-     * is returned
-     * 
-     * @param password
-     *            Password or other credentials to use in authenticating this
-     *            username
-     * @param algorithm
-     *            Algorithm used to do the digest
-     * 
-     * @return encypted password based on the algorithm.
-     */
-    public static String encodePassword(String password, String algorithm) {
-        byte[] unencodedPassword = password.getBytes(StandardCharsets.UTF_8);
-
-        MessageDigest md;
-
-        try {
-            // first create an instance, given the provider
-            md = MessageDigest.getInstance(algorithm);
-        } catch (Exception e) {
-            log.error("Exception", e);
-            return password;
-        }
-
-        md.reset();
-
-        // call the update method one or more times
-        // (useful when you don't know the size of your data, eg. stream)
-        md.update(unencodedPassword);
-
-        // now calculate the hash
-        byte[] encodedPassword = md.digest();
-
-        StringBuilder buf = new StringBuilder();
-
-        for (byte b : encodedPassword) {
-            if ((b & 0xff) < 0x10) {
-                buf.append("0");
-            }
-
-            buf.append(Long.toString(b & 0xff, 16));
-        }
-
-        return buf.toString();
-    }
-
-    /**
-     * Encode a string using Base64 encoding. Used when storing passwords as
-     * cookies.
-     * 
-     * This is weak encoding in that anyone can use the decodeString routine to
-     * reverse the encoding.
-     * 
-     * @param str
-     *            String to encode
-     * @return String
-     * @throws IOException
-     */
-    public static String encodeString(String str) throws IOException {
-        String encodedStr = new String(Base64.encodeBase64(str.getBytes(StandardCharsets.UTF_8)),
-                StandardCharsets.UTF_8);
-        return encodedStr.trim();
-    }
-
-    /**
-     * Decode a string using Base64 encoding.
-     * 
-     * @param str
-     *            String to decode
-     * @return decoded string
-     * @throws IOException
-     */
-    public static String decodeString(String str) throws IOException {
-        return new String(Base64.decodeBase64(str.getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8);
     }
 
     /**
