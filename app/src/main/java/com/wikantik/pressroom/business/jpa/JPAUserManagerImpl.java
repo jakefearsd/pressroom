@@ -28,6 +28,7 @@ import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.business.Weblogger;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -50,6 +51,17 @@ import com.wikantik.pressroom.pojos.WeblogPermission;
 
 public class JPAUserManagerImpl implements UserManager {
     private static final Logger log = LoggerFactory.getLogger(JPAUserManagerImpl.class);
+
+    /** A role, unless the user already holds it; see {@link #grantRole}. */
+    private static final String INSERT_ROLE =
+            "INSERT INTO userrole (id, username, rolename) VALUES (?1, ?2, ?3) "
+            + "ON CONFLICT (username, rolename) DO NOTHING";
+
+    /** A weblog permission, unless the user already has one there; see {@link #grantWeblogPermission}. */
+    private static final String INSERT_PERMISSION =
+            "INSERT INTO pressroom_permission (id, username, actions, objectid, objecttype, datecreated) "
+            + "VALUES (?1, ?2, ?3, ?4, 'Weblog', ?5) "
+            + "ON CONFLICT (username, objectid, objecttype) DO NOTHING";
 
     private final Weblogger pressroom;
     private final JPAPersistenceStrategy strategy;
@@ -514,28 +526,40 @@ public class JPAUserManagerImpl implements UserManager {
         return GlobalPermission.impliedByRoles(user, getRoles(user));
     }
 
+    /**
+     * Adds {@code actions} to the user's permission on the weblog, creating
+     * it if there is none. A new permission is inserted at once with {@code
+     * ON CONFLICT DO NOTHING} on {@code perm_username_object_uq} (V045), not
+     * persisted for the commit: checking first and inserting at commit let
+     * two overlapping grants (a double-submitted form) both store a row, and
+     * every later lookup then failed on the pair. A grant that meets a row
+     * another transaction is inserting waits for it to commit, and then adds
+     * its actions to that row instead. One this transaction inserted earlier
+     * is found by the lookup, the insert having been written at once.
+     */
     @Override
     public void grantWeblogPermission(Weblog weblog, User user, List<String> actions) throws WebloggerException {
-
-        // first, see if user already has a permission for the specified object
-        TypedQuery<WeblogPermission> q = strategy.getNamedQuery("WeblogPermission.getByUserName&WeblogId",
-                WeblogPermission.class);
-        q.setParameter(1, user.getUserName());
-        q.setParameter(2, weblog.getHandle());
-        WeblogPermission existingPerm = null;
-        try {
-            existingPerm = q.getSingleResult();
-        } catch (NoResultException ignored) {}
-
-        // permission already exists, so add any actions specified in perm argument
-        if (existingPerm != null) {
-            existingPerm.addActions(actions);
-            this.strategy.store(existingPerm);
-        } else {
-            // it's a new permission, so store it
+        WeblogPermission existingPerm = getWeblogPermission(weblog.getHandle(), user);
+        if (existingPerm == null) {
             WeblogPermission perm = new WeblogPermission(weblog, user, actions);
-            this.strategy.store(perm);
+            int inserted = strategy.getNativeQuery(INSERT_PERMISSION)
+                    .setParameter(1, perm.getId())
+                    .setParameter(2, perm.getUserName())
+                    .setParameter(3, perm.getActions())
+                    .setParameter(4, perm.getObjectId())
+                    .setParameter(5, new Timestamp(perm.getDateCreated().getTime()))
+                    .executeUpdate();
+            if (inserted == 1) {
+                return;
+            }
+            existingPerm = getWeblogPermission(weblog.getHandle(), user);
+            if (existingPerm == null) {
+                throw new WebloggerException("Permission of " + user.getUserName() + " on "
+                        + weblog.getHandle() + " neither inserted nor found");
+            }
         }
+        existingPerm.addActions(actions);
+        this.strategy.store(existingPerm);
     }
 
 
@@ -630,10 +654,20 @@ public class JPAUserManagerImpl implements UserManager {
      */
     @Override
     public void grantRole(String roleName, User user) throws WebloggerException {
-        if (!hasRole(roleName, user)) {
-            UserRole role = new UserRole(user.getUserName(), roleName);
-            this.strategy.store(role);
-        }
+        // Inserted at once, ON CONFLICT DO NOTHING on ur_username_rolename_uq
+        // (V045): a role already held -- committed, inserted earlier in this
+        // transaction, or being inserted by an overlapping one, which this
+        // waits for -- is simply held. Checking first and persisting for the
+        // commit stored a second row whenever two grants overlapped, or one
+        // transaction granted the same role twice (the check cannot see an
+        // unwritten insert). The statement writes this transaction's pending
+        // changes first, so a role revoked earlier in it is gone by then and
+        // is granted again rather than skipped.
+        strategy.getNativeQuery(INSERT_ROLE)
+                .setParameter(1, new UserRole(user.getUserName(), roleName).getId())
+                .setParameter(2, user.getUserName())
+                .setParameter(3, roleName)
+                .executeUpdate();
     }
 
     

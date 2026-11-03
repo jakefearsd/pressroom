@@ -75,7 +75,10 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     /** Advisory-lock key prefix for a weblog's anchors; see claimAnchor. */
     private static final String ANCHOR_LOCK_PREFIX = "weblogentry.anchor:";
 
-    /** Startup property: the longest wait, in seconds, for a weblog's anchor lock. */
+    /** Advisory-lock key prefix for a weblog's category names; see claimCategoryName. */
+    private static final String CATEGORY_LOCK_PREFIX = "weblogcategory.name:";
+
+    /** Startup property: the longest wait, in seconds, for a weblog's anchor (or category name) lock. */
     private static final String ANCHOR_LOCK_TIMEOUT = "weblogentry.anchor.lockTimeoutSeconds";
 
     private static final int DEFAULT_ANCHOR_LOCK_TIMEOUT = 10;
@@ -109,8 +112,8 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     @Override
     public void saveWeblogCategory(WeblogCategory cat) throws WebloggerException {
         boolean exists = getWeblogCategory(cat.getId()) != null;
-        if (!exists && isDuplicateWeblogCategoryName(cat)) {
-            throw new WebloggerException("Duplicate category name, cannot save category");
+        if (!exists) {
+            claimCategoryName(cat);
         }
 
         // update weblog last modified date.  date updated by saveWebsite()
@@ -118,6 +121,29 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         this.strategy.store(cat);
     }
     
+    /**
+     * Refuses a new category whose name its weblog already has. The check
+     * runs under a lock on the weblog's category names, held until this
+     * transaction ends, because the INSERT happens only at commit: two
+     * overlapping creates of one name (a double-submitted form) both found
+     * it free and both stored a row, and every lookup of the name then failed
+     * on the pair. Now the second waits, and its check (a fresh READ
+     * COMMITTED snapshot) sees the first. {@code wc_weblog_name_uq} (V045) is
+     * the backstop for anything that bypasses this, a rename included. The
+     * wait is bounded like the anchor lock's (see claimAnchor).
+     */
+    private void claimCategoryName(WeblogCategory cat) throws WebloggerException {
+        Weblog weblog = cat.getWeblog();
+        int timeout = WebloggerConfig.getIntProperty(ANCHOR_LOCK_TIMEOUT, DEFAULT_ANCHOR_LOCK_TIMEOUT);
+        if (!strategy.lockUntilCommit(CATEGORY_LOCK_PREFIX + weblog.getId(), timeout)) {
+            throw new WebloggerException("Gave up after " + timeout
+                    + "s waiting for the category lock of weblog " + weblog.getHandle());
+        }
+        if (isDuplicateWeblogCategoryName(cat)) {
+            throw new WebloggerException("Duplicate category name, cannot save category");
+        }
+    }
+
     /**
      * @inheritDoc
      */

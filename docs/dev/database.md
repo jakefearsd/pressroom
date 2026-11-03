@@ -318,3 +318,35 @@ same-titled creates committed 8 entries with one anchor.
   free `<anchor>N`. No redirect was added:
   the old anchor serves the entry that kept it, and a rule fires only on a
   404.
+
+### Roles, permissions and category names are unique (V045)
+
+`userrole (username, rolename)`, `pressroom_permission (username, objectid,
+objecttype)` and `weblogcategory (websiteid, name)` carry unique indexes
+(`ur_username_rolename_uq`, `perm_username_object_uq`, `wc_weblog_name_uq`)
+since 2026-11-03. Before, the managers checked and then persisted for the
+commit, so two overlapping requests (a double-submitted form, a retried API
+call) both stored a row, and every later `getSingleResult` lookup failed on
+the pair with `NonUniqueResultException`: a 500 for that user or category,
+and a role `revokeRole` could never take away.
+
+- **`grantRole` and a new `grantWeblogPermission` insert at once** with
+  `INSERT ... ON CONFLICT DO NOTHING` (`getNativeQuery`, which writes the
+  unit of work's pending changes first, so a role revoked earlier in the
+  same transaction is gone and is granted again). An overlapping grant
+  waits for the other's commit; a permission grant that then finds the row
+  adds its actions to it. Granting twice in one transaction stores one row.
+  These calls therefore write mid-transaction, where they used to wait for
+  the commit.
+- **A new category's name is claimed under a lock**
+  (`JPAWeblogEntryManagerImpl.claimCategoryName`, advisory key
+  `weblogcategory.name:<weblog id>`, bounded by
+  `weblogentry.anchor.lockTimeoutSeconds`), as anchors are: the second of
+  two overlapping creates waits and is refused as a duplicate at its save.
+  Two creates of one name inside one transaction, or a rename onto a taken
+  name that skipped the controllers' check, fail at commit on the index.
+- **V045's repair of existing duplicates**: extra role rows dropped; a
+  permission's duplicates merged into the oldest row with the union of their
+  actions; a category's duplicates renamed `<name> 2`, `<name> 3`, ... (the
+  one with the most entries keeps the name), so no entry changes category
+  (`UniqueGrantsMigrationTest`, `UniqueGrantsTest`).
