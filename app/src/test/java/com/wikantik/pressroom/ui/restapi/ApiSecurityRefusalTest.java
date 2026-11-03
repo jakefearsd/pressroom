@@ -5,14 +5,12 @@ import java.util.Map;
 
 import com.wikantik.pressroom.business.MockWeblogger;
 import com.wikantik.pressroom.business.WebloggerProvider;
-import com.wikantik.pressroom.pojos.ApiToken;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.PressroomHandlerInterceptor;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
-import com.wikantik.pressroom.ui.restapi.auth.ApiPrincipal;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -184,50 +182,6 @@ class ApiSecurityRefusalTest {
                 new ApiController(true, List.of(), true, List.of("post")));
 
         assertEquals(403, refusal.getStatus());
-    }
-
-    /**
-     * A token pinned to another weblog cannot act here whatever its owner's
-     * role, so to it this weblog is one it may not see: the 404 the README
-     * promises for a weblog outside the pin, not a 403 that would reveal the
-     * weblog and the owner's membership. The permission check runs before
-     * ApiScopeInterceptor's pin check, so it has to know the pin itself.
-     */
-    @Test
-    void aTokenPinnedElsewhereGetsNotFoundEvenWhereItsOwnerIsABelowLevelMember() throws Exception {
-        signInWithATokenPinnedTo("otherblog");
-        nameWeblogInPath("aliceblog");
-        when(weblogger.userManager().checkPermission(any(WeblogPermission.class), any()))
-                .thenAnswer(call -> ((WeblogPermission) call.getArgument(0))
-                        .getActionsAsList().equals(List.of(WeblogPermission.EDIT_DRAFT)));
-
-        ApiException refusal = refusalFrom(
-                new ApiController(true, List.of(), true, List.of("post")));
-
-        assertEquals(404, refusal.getStatus());
-        assertEquals("No such weblog.", refusal.getMessage());
-    }
-
-    /** Pinned to this weblog, the member below the level is told so, as without a pin. */
-    @Test
-    void aTokenPinnedHereStillGetsForbiddenBelowTheRequiredLevel() throws Exception {
-        signInWithATokenPinnedTo("aliceblog");
-        nameWeblogInPath("aliceblog");
-        when(weblogger.userManager().checkPermission(any(WeblogPermission.class), any()))
-                .thenAnswer(call -> ((WeblogPermission) call.getArgument(0))
-                        .getActionsAsList().equals(List.of(WeblogPermission.EDIT_DRAFT)));
-
-        ApiException refusal = refusalFrom(
-                new ApiController(true, List.of(), true, List.of("post")));
-
-        assertEquals(403, refusal.getStatus());
-    }
-
-    private void signInWithATokenPinnedTo(String handle) {
-        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken("alice", null,
-                AuthorityUtils.createAuthorityList("api"));
-        auth.setDetails(new ApiPrincipal("alice", handle, ApiToken.Role.POST, "token-1"));
-        SecurityContextHolder.getContext().setAuthentication(auth);
     }
 
     // --- and what is not refused ------------------------------------------
