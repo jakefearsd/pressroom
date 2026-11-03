@@ -327,11 +327,16 @@ class JPADiscoveryManagerImplTest {
         Fixture f = threeBlogsOfSix();
         setShare("0");
         source.configured = true;
+        // six scored: the headline plus all five popular slots, so no slot is
+        // a random pick (those reshuffle with the generation, by design)
         source.rows = List.of(row(f, 0, 4, 100), row(f, 1, 3, 90), row(f, 2, 2, 80),
-                row(f, 0, 1, 70), row(f, 1, 0, 60));
+                row(f, 0, 1, 70), row(f, 1, 0, 60), row(f, 2, 1, 50));
         JPADiscoveryManagerImpl manager = manager();
         manager.refresh();
         FrontPageSelection before = manager.selectFrontPage();
+        assertEquals(List.of(f.entries[1][3].getId(), f.entries[2][2].getId(), f.entries[0][1].getId(),
+                        f.entries[1][0].getId(), f.entries[2][1].getId()), ids(before.popular()),
+                "every popular slot is a ranked pick");
         long generationBefore = DiscoveryGeneration.current();
 
         source.failure = new WebloggerException("umami is down");
@@ -341,7 +346,7 @@ class JPADiscoveryManagerImplTest {
         assertEquals(DiscoveryStatus.State.FAILED, status.state());
         assertTrue(status.lastError().contains("umami is down"), status.lastError());
         assertEquals(NOW, status.lastSuccess(), "the last success is still the earlier read");
-        assertEquals(5, status.scoredEntries(), "the earlier scores are kept");
+        assertEquals(6, status.scoredEntries(), "the earlier scores are kept");
         assertTrue(DiscoveryGeneration.current() > generationBefore, "picks still reshuffle while Umami is down");
         FrontPageSelection after = manager.selectFrontPage();
         assertEquals(before.headline().getId(), after.headline().getId());
