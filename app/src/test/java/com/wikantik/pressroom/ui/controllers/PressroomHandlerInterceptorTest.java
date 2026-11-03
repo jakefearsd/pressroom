@@ -644,6 +644,25 @@ class PressroomHandlerInterceptorTest {
         assertEquals(404, rol.getStatus());
     }
 
+    /**
+     * The mount rule keeps Pressroom's own JSP controllers out of /api; a
+     * library's handler served there, springdoc's OpenAPI document at
+     * /api/v1/openapi.json, is neither and proceeds (the browser suite's
+     * ApiIT and McpIT caught a first cut that refused it).
+     */
+    @Test
+    void aLibraryHandlerUnderTheApiMountProceeds() throws Exception {
+        request.setServletPath("/api");
+        org.springdoc.webmvc.api.OpenApiWebMvcResource openApi =
+                org.mockito.Mockito.mock(org.springdoc.webmvc.api.OpenApiWebMvcResource.class);
+        HandlerMethod handler = new HandlerMethod(openApi,
+                org.springdoc.webmvc.api.OpenApiWebMvcResource.class.getMethod("openapiJson",
+                        jakarta.servlet.http.HttpServletRequest.class, String.class, java.util.Locale.class));
+
+        assertTrue(interceptor.preHandle(request, response, handler));
+        assertEquals(200, response.getStatus());
+    }
+
     @Test
     void eachHandlerProceedsUnderItsOwnMount() throws Exception {
         request.setServletPath("/api");

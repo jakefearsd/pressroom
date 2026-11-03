@@ -207,7 +207,7 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
         // /newsletter/v1/... an API one. Refused as not found, before bootstrap
         // is even asked: no installer page lives under the API mount.
         boolean apiHandler = isApiHandler(handlerMethod);
-        if (!onItsOwnMount(apiHandler, request.getServletPath())) {
+        if (!onItsOwnMount(apiHandler, isPressroomHandler(handlerMethod), request.getServletPath())) {
             log.debug("DENIED: {} reached under servlet path {}", handlerMethod.getBeanType().getSimpleName(),
                     request.getServletPath());
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
@@ -362,18 +362,33 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
     /** The servlet path of the automation API's prefix mapping ({@code /api/*}). */
     static final String API_SERVLET_PATH = "/api";
 
+    /** Every Pressroom handler lives under this package; a library's does not. */
+    private static final String PRESSROOM_PACKAGE = "com.wikantik.pressroom";
+
     /**
-     * Whether a handler was reached under the mount that serves it: an API
-     * handler under {@value #API_SERVLET_PATH}, anything else anywhere but.
-     * An empty servlet path is a request built without one (MockMvc); the
-     * container never dispatches this servlet with one, since every mapping
-     * it has is a prefix, an extension or an exact path.
+     * Whether a handler was reached under the mount that serves it: one of
+     * Pressroom's API handlers under {@value #API_SERVLET_PATH}, and one of its
+     * other (JSP) handlers anywhere but. A library's handler served under the
+     * API mount (springdoc's OpenAPI document at /api/v1/openapi.json) is
+     * neither, and proceeds. An empty servlet path is a request built without
+     * one (MockMvc); the container never dispatches this servlet with one,
+     * since every mapping it has is a prefix, an extension or an exact path.
      */
-    static boolean onItsOwnMount(boolean apiHandler, String servletPath) {
+    static boolean onItsOwnMount(boolean apiHandler, boolean pressroomHandler, String servletPath) {
         if (servletPath == null || servletPath.isEmpty()) {
             return true;
         }
-        return apiHandler == API_SERVLET_PATH.equals(servletPath);
+        boolean apiMount = API_SERVLET_PATH.equals(servletPath);
+        if (apiHandler) {
+            return apiMount;
+        }
+        return !pressroomHandler || !apiMount;
+    }
+
+    /** Whether the handler is one of Pressroom's own, not a library's. */
+    private static boolean isPressroomHandler(HandlerMethod handlerMethod) {
+        String pkg = handlerMethod.getBeanType().getPackageName();
+        return PRESSROOM_PACKAGE.equals(pkg) || pkg.startsWith(PRESSROOM_PACKAGE + ".");
     }
 
     /**
