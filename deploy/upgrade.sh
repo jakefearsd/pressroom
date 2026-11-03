@@ -14,7 +14,8 @@
 #
 #   1. downloads the release's docker-compose.prod.yml, deploy.sh and
 #      env.example (a missing one stops here)
-#   2. takes a backup through the backup service (a failed one stops here)
+#   2. takes a backup through the backup service (a failed one stops here);
+#      the rollback recipe it prints restores that dump by name
 #   3. shows how the downloaded files differ from the ones in place
 #   4. keeps .env and the files it replaces as <name>.bak-<timestamp>
 #   5. moves the new files in and sets IMAGE_VERSION in .env
@@ -105,13 +106,16 @@ for f in "${FILES[@]}"; do
     fi
 done
 
+dump=""
 if [[ "${BACKUP}" -eq 1 ]]; then
     echo "==> Taking a backup first..."
     # stdin closed: over `ssh host 'bash -s'` it would be the rest of this script.
-    if ! "${COMPOSE[@]}" exec -T backup /app/backup/backup.sh </dev/null; then
+    # Shown as it runs and kept, for the name of the dump the rollback restores.
+    if ! "${COMPOSE[@]}" exec -T backup /app/backup/backup.sh </dev/null | tee "${staging}/backup.log"; then
         echo "The backup failed; nothing has changed. Fix it, or rerun with --no-backup." >&2
         exit 1
     fi
+    dump=$(sed -n 's/^  database -> //p' "${staging}/backup.log" | tail -n 1)
 fi
 
 echo "==> How the release files differ from the ones in place:"
@@ -137,7 +141,22 @@ done
 chmod +x deploy.sh
 sed -i.tmp "s/^IMAGE_VERSION=.*/IMAGE_VERSION=${VERSION}/" .env
 rm -f .env.tmp
+# The new release's migrations run when deploy.sh starts it, and one can drop
+# columns (V044), so putting the old files back is not a rollback on its own:
+# the old image would start on a schema it no longer matches. The database
+# goes back first, from the dump step 2 took.
 echo "==> The replaced files are kept as <name>.bak-${ts}. To roll back:"
+echo "    This release's migrations may already have changed the database, and the old"
+echo "    version needs it as it was. Restore the database FIRST, then the old files:"
+if [[ -n "${dump}" ]]; then
+    echo "      ${COMPOSE[*]} stop app"
+    echo "      ${COMPOSE[*]} exec -T backup bash -c 'PGUSER=\"\$POSTGRES_USER\" PGPASSWORD=\"\$POSTGRES_PASSWORD\"" \
+         "pg_restore -d \"\$POSTGRES_DB\" --clean --if-exists ${dump}'"
+else
+    echo "      (No dump was taken: --no-backup. Restore the newest pressroom-<timestamp>.dump"
+    echo "      taken before this upgrade with pg_restore, as docker_deployment.md, \"Restore\" shows.)"
+    echo "      ${COMPOSE[*]} stop app"
+fi
 echo "      for f in .env ${FILES[*]}; do cp -p \"\$f.bak-${ts}\" \"\$f\"; done; ./deploy.sh"
 # The cutover leaves its row counts in the directory it made.
 if [[ -f cutover-counts-before.txt ]]; then
