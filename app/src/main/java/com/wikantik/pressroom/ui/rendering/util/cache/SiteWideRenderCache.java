@@ -31,13 +31,15 @@ import com.wikantik.pressroom.util.cache.CachedContent;
  * itself has a {@code generateKey} overload for each; which one to call is
  * supplied as {@code keyFunction} rather than branched on here.
  *
- * <p>The {@code lastModified} argument to {@link #get} is discarded: the
- * servlets never had a timestamp to give this side, and site-wide content is
+ * <p>No weblog's {@code lastModified} reaches this side: site-wide content is
  * dropped wholesale through {@code CacheManager}, never expired against one
- * weblog. The one exception is the discovery generation, for the pages side
- * only ({@code followsDiscovery}; feeds carry no picks): an entry cached
- * before it is a miss, and {@link #lastModified} is never earlier than it, so
- * a browser holding a page from before a reshuffle is not answered 304.
+ * weblog, and a rendering is stored with the cache's invalidation version as
+ * the render read it, so a render that straddles a clear is not kept. The
+ * other part of the basis is the discovery generation, for the pages side
+ * only ({@code followsDiscovery}; feeds carry no picks): an entry rendered
+ * from an older one is a miss, and {@link #lastModified} is never earlier
+ * than it, so a browser holding a page from before a reshuffle is not
+ * answered 304.
  */
 final class SiteWideRenderCache<R> implements RenderCache<R> {
 
@@ -56,20 +58,26 @@ final class SiteWideRenderCache<R> implements RenderCache<R> {
         return keyFunction.apply(request);
     }
 
+    /**
+     * The cache's own invalidation version, never the weblog's, and the
+     * generation for a page (0 for a feed, which carries no picks).
+     */
     @Override
-    public CachedContent get(String key, long lastModified) {
-        CachedContent cached = (CachedContent) cache.get(key);
-        // The business tier cannot clear this cache when the discovery
-        // snapshot rebuilds, so an entry older than the generation is a miss.
-        if (followsDiscovery && cached != null && cached.getCreatedAt() < DiscoveryGeneration.current()) {
-            return null;
-        }
-        return cached;
+    public Basis basis(Weblog weblog) {
+        return new Basis(cache.version(), followsDiscovery ? DiscoveryGeneration.current() : 0L);
     }
 
     @Override
-    public void put(String key, CachedContent content) {
-        cache.put(key, content);
+    public CachedContent get(String key, Basis current) {
+        // the cache withholds an entry from before its last invalidation; the
+        // business tier cannot clear it when the discovery snapshot rebuilds,
+        // so an entry rendered from an older generation is a miss here
+        return RenderedPage.servable(cache.get(key), followsDiscovery ? current.generation() : 0L);
+    }
+
+    @Override
+    public void put(String key, CachedContent content, Basis basis) {
+        cache.put(key, new RenderedPage(content, basis.generation()), basis.modified());
     }
 
     @Override

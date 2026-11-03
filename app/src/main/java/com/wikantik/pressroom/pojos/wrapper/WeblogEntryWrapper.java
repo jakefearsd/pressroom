@@ -119,7 +119,7 @@ public final class WeblogEntryWrapper {
     
     
     public String getTitle() {
-        return HTMLSanitizer.conditionallySanitizeText(this.pojo.getTitle());
+        return HTMLSanitizer.conditionallyToPlainText(this.pojo.getTitle());
 	}
 
     
@@ -281,7 +281,7 @@ public final class WeblogEntryWrapper {
     }
 
 	public String getSearchDescription() {
-        return HTMLSanitizer.conditionallySanitizeText(this.pojo.getSearchDescription());
+        return HTMLSanitizer.conditionallyToPlainText(this.pojo.getSearchDescription());
 	}
 
     /**
@@ -343,7 +343,7 @@ public final class WeblogEntryWrapper {
     }
 
     public String getMetaTitle() {
-        return HTMLSanitizer.conditionallySanitizeText(this.pojo.getMetaTitle());
+        return HTMLSanitizer.conditionallyToPlainText(this.pojo.getMetaTitle());
     }
 
     public String getOgImageId() {
@@ -435,7 +435,7 @@ public final class WeblogEntryWrapper {
     }
 
     public String getEventLocation() {
-        return HTMLSanitizer.conditionallySanitizeText(this.pojo.getEventLocation());
+        return HTMLSanitizer.conditionallyToPlainText(this.pojo.getEventLocation());
     }
 
     private MediaFileWrapper resolveMediaFile(String mediaFileId) {

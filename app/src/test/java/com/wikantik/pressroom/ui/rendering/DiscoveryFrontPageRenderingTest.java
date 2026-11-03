@@ -33,12 +33,14 @@ import com.wikantik.pressroom.business.PropertiesManager;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.business.WebloggerProvider;
+import com.wikantik.pressroom.business.jpa.QueryRecorder;
 import com.wikantik.pressroom.pojos.RuntimeConfigProperty;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.ui.rendering.servlets.RenderingTestSupport;
 import com.wikantik.pressroom.ui.rendering.velocity.InvalidReferenceRecorder;
+import com.wikantik.pressroom.util.HTMLSanitizer;
 import org.apache.commons.text.StringEscapeUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -311,6 +313,76 @@ class DiscoveryFrontPageRenderingTest {
         }
     }
 
+    /**
+     * A blog's tagline is its owner's text on a page every reader of the site
+     * sees. The setter strips tags but keeps a '<' with no '>' after it, and
+     * the wrapper's plain-text reduction then decodes entities, so a stored
+     * "< &lt;img ...&gt;" came out as a live img tag with the sanitizer ON;
+     * with it off the wrapper returns the value untouched. Either way the
+     * result is text, not HTML (HTMLSanitizer.toPlainText), so the page escapes
+     * it, as every blog theme already does (code review, 2026-11-03).
+     */
+    @Test
+    void taglinesAreEscapedWhateverTheSanitizerSetting() throws Exception {
+        fiveBlogsOfFour();
+        // a leading '<' and no '>': Utilities.removeHTML keeps it unchanged
+        String hostile = "< &lt;img src=x onerror=alert(1)&gt;";
+        for (Weblog blog : blogs) {
+            Weblog managed = TestUtils.getManagedWebsite(blog);
+            managed.setTagline(hostile);
+            TestUtils.weblogger().getWeblogManager().saveWeblog(managed);
+            TestUtils.weblogger().flush();
+            TestUtils.endSession(true);
+        }
+        refresh();
+        String stored = TestUtils.getManagedWebsite(blogs.get(0)).getTagline();
+        TestUtils.endSession(true);
+        assertEquals(hostile, stored, "the setter keeps the unclosed '<'");
+        Boolean previous = HTMLSanitizer.xssEnabled;
+        try {
+            for (Boolean sanitizing : List.of(Boolean.TRUE, Boolean.FALSE)) {
+                HTMLSanitizer.xssEnabled = sanitizing;
+                String escaped = StringEscapeUtils.escapeHtml4(HTMLSanitizer.conditionallyToPlainText(stored));
+                for (String theme : THEMES) {
+                    String body = root(theme);
+                    String where = theme + ", sanitizing " + sanitizing;
+                    assertFalse(body.contains("<img src=x"), where + ": a tagline's markup is live:\n" + body);
+                    assertTrue(section(body, "fd-discovery-blogs").contains("<p class=\"fd-about\">" + escaped + "</p>"),
+                            where + ": the shelf shows the tagline as text:\n" + body);
+                    assertTrue(body.contains("<p class=\"fd-spot-about\">" + escaped + "</p>"),
+                            where + ": so does the house slot:\n" + body);
+                }
+            }
+        } finally {
+            HTMLSanitizer.xssEnabled = previous;
+        }
+    }
+
+    /**
+     * The page names a blog's post count in up to three places (the sidebar,
+     * its shelf, the all-blogs list), and each read was a COUNT query: 2N+3
+     * per render. Each blog is counted once per render.
+     */
+    @Test
+    void eachBlogIsCountedOncePerRender() throws Exception {
+        fiveBlogsOfFour();
+        useSiteTheme("journal");
+        renderRoot(); // cold: the snapshot and lookups are read here
+        TestUtils.endSession(false);
+
+        List<String> queries = QueryRecorder.during(() -> renderRoot());
+
+        List<String> counts = QueryRecorder.sqlOn(queries, "weblogentry").stream()
+                .filter(q -> q.toUpperCase(java.util.Locale.ROOT).contains("COUNT(")).toList();
+        assertEquals(blogs.size(), counts.size(), "one count per blog: " + counts);
+        String body = renderRoot();
+        for (String marker : List.of("fd-discovery-blogs", "fd-discovery-all")) {
+            assertTrue(section(body, marker).contains("4 posts"),
+                    marker + " still shows each blog's four posts:\n" + section(body, marker));
+        }
+        assertTrue(body.contains("<span class=\"fd-count\">4</span>"), "and so does the sidebar:\n" + body);
+    }
+
     @Test
     void entryTitlesNotDoubleEscaped() throws Exception {
         Weblog blog = blog("discfptitles", "Titles");
@@ -368,6 +440,12 @@ class DiscoveryFrontPageRenderingTest {
     /** {@code /} as index.jsp serves it: FrontDoor's choice, forwarded to the page servlet. */
     private String root(String theme) throws Exception {
         useSiteTheme(theme);
+        return renderRoot();
+    }
+
+    /** {@link #root} in whatever theme the site space has now. */
+    private String renderRoot() throws Exception {
+        String theme = TestUtils.weblogger().getWeblogManager().getSiteSpace().getEditorTheme();
         String path = FrontDoor.forwardPath(TestUtils.weblogger());
         assertEquals(DISCOVERY, path);
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(PAGE_SERVLET,

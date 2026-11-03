@@ -71,7 +71,7 @@ public class WeblogPageCacheTest {
     public void cachedPageIsServedUntilTheWeblogChanges() {
         String key = "cache.weblogpage:test-page";
 
-        cache.put(key, "rendered page");
+        cache.put(key, "rendered page", System.currentTimeMillis());
 
         assertEquals("rendered page", cache.get(key, 0L),
                 "A cached page must be served when the weblog has never been modified");
@@ -82,7 +82,7 @@ public class WeblogPageCacheTest {
     @Test
     public void cachedPageIsWithheldOnceTheWeblogHasChanged() {
         String key = "cache.weblogpage:test-page";
-        cache.put(key, "rendered page");
+        cache.put(key, "rendered page", System.currentTimeMillis());
 
         long afterCaching = System.currentTimeMillis() + 60_000L;
 
@@ -101,7 +101,7 @@ public class WeblogPageCacheTest {
     @Test
     public void removedPageIsNoLongerServed() {
         String key = "cache.weblogpage:test-page";
-        cache.put(key, "rendered page");
+        cache.put(key, "rendered page", System.currentTimeMillis());
 
         cache.remove(key);
 
@@ -110,8 +110,8 @@ public class WeblogPageCacheTest {
 
     @Test
     public void clearDropsEverything() {
-        cache.put("cache.weblogpage:one", "one");
-        cache.put("cache.weblogpage:two", "two");
+        cache.put("cache.weblogpage:one", "one", System.currentTimeMillis());
+        cache.put("cache.weblogpage:two", "two", System.currentTimeMillis());
 
         cache.clear();
 
@@ -203,7 +203,7 @@ public class WeblogPageCacheTest {
         // tested is the constructor reading the configuration
         WeblogPageCache configured = WeblogPageCache.newForTest(true);
         for (int i = 0; i < configuredSize; i++) {
-            configured.put("key" + i, "page " + i);
+            configured.put("key" + i, "page " + i, System.currentTimeMillis());
         }
 
         assertEquals("page 0", configured.get("key0", 0L),
@@ -212,7 +212,7 @@ public class WeblogPageCacheTest {
                         + "install silently falls back to the default size.");
 
         // key0 was just read, so key1 is the least recently used
-        configured.put("one-too-many", "page");
+        configured.put("one-too-many", "page", System.currentTimeMillis());
         assertNull(configured.get("key1", 0L),
                 "and no more than that, or the cache grows without limit");
     }
@@ -382,7 +382,7 @@ public class WeblogPageCacheTest {
         // cache.weblogpage.enabled off: the calls must all be no-ops
         WeblogPageCache disabled = WeblogPageCache.newForTest(false);
 
-        disabled.put("key", "rendered page");
+        disabled.put("key", "rendered page", System.currentTimeMillis());
 
         assertNull(disabled.get("key", 0L),
                 "A disabled cache must never serve content, or turning caching off would "
@@ -390,7 +390,7 @@ public class WeblogPageCacheTest {
         disabled.remove("key");
         disabled.clear();
 
-        cache.put("key", "rendered page");
+        cache.put("key", "rendered page", System.currentTimeMillis());
         assertEquals("rendered page", cache.get("key", 0L),
                 "while the configured instance, which is enabled, still caches");
     }

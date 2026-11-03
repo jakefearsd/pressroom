@@ -90,7 +90,7 @@ public class SiteWideCacheTest {
 
     @Test
     public void cachedContentComesBackOut() {
-        cache.put("key", "rendered page");
+        cache.put("key", "rendered page", cache.version());
 
         assertEquals("rendered page", cache.get("key"), "A cached page must be served");
         assertNull(cache.get("never-cached"),
@@ -99,7 +99,7 @@ public class SiteWideCacheTest {
 
     @Test
     public void removedContentIsNoLongerServed() {
-        cache.put("key", "rendered page");
+        cache.put("key", "rendered page", cache.version());
 
         cache.remove("key");
 
@@ -108,8 +108,8 @@ public class SiteWideCacheTest {
 
     @Test
     public void clearDropsEverything() {
-        cache.put("one", "one");
-        cache.put("two", "two");
+        cache.put("one", "one", cache.version());
+        cache.put("two", "two", cache.version());
 
         cache.clear();
 
@@ -128,7 +128,7 @@ public class SiteWideCacheTest {
         // tested is the constructor reading the configuration
         SiteWideCache configured = SiteWideCache.newForTest(true);
         for (int i = 0; i < configuredSize; i++) {
-            configured.put("key" + i, "page " + i);
+            configured.put("key" + i, "page " + i, configured.version());
         }
 
         assertEquals("page 0", configured.get("key0"),
@@ -137,7 +137,7 @@ public class SiteWideCacheTest {
                         + "install silently falls back to the default size.");
 
         // key0 was just read, so key1 is the least recently used
-        configured.put("one-too-many", "page");
+        configured.put("one-too-many", "page", configured.version());
         assertNull(configured.get("key1"),
                 "and no more than that, or the cache grows without limit");
     }
@@ -166,7 +166,7 @@ public class SiteWideCacheTest {
 
     @Test
     public void aChangedEntryDropsEverything() {
-        cache.put("key", "rendered page");
+        cache.put("key", "rendered page", cache.version());
         Date before = cache.getLastModified();
 
         cache.invalidate(new WeblogEntry());
@@ -179,7 +179,7 @@ public class SiteWideCacheTest {
 
     @Test
     public void aChangedWeblogDropsEverything() {
-        cache.put("key", "rendered page");
+        cache.put("key", "rendered page", cache.version());
 
         cache.invalidate(new Weblog());
 
@@ -189,7 +189,7 @@ public class SiteWideCacheTest {
 
     @Test
     public void aChangedUserChangesNothing() {
-        cache.put("key", "rendered page");
+        cache.put("key", "rendered page", cache.version());
 
         cache.invalidate(new User());
 
@@ -200,7 +200,7 @@ public class SiteWideCacheTest {
 
     @Test
     public void aCategoryOnTheFrontPageWeblogDropsTheCache() {
-        cache.put("key", "rendered page");
+        cache.put("key", "rendered page", cache.version());
 
         cache.invalidate(category(weblog(FRONT_PAGE)));
 
@@ -209,7 +209,7 @@ public class SiteWideCacheTest {
 
     @Test
     public void aCategoryOnAnyOtherWeblogLeavesTheCacheAlone() {
-        cache.put("key", "rendered page");
+        cache.put("key", "rendered page", cache.version());
 
         cache.invalidate(category(weblog("someone-else")));
 
@@ -219,7 +219,7 @@ public class SiteWideCacheTest {
 
     @Test
     public void aTemplateOnTheFrontPageWeblogDropsTheCache() {
-        cache.put("key", "rendered page");
+        cache.put("key", "rendered page", cache.version());
 
         cache.invalidate(template(weblog(FRONT_PAGE)));
 
@@ -229,7 +229,7 @@ public class SiteWideCacheTest {
 
     @Test
     public void aTemplateOnAnyOtherWeblogLeavesTheCacheAlone() {
-        cache.put("key", "rendered page");
+        cache.put("key", "rendered page", cache.version());
 
         cache.invalidate(template(weblog("someone-else")));
 
@@ -476,7 +476,7 @@ public class SiteWideCacheTest {
         SiteWideCache disabled = SiteWideCache.newForTest(false);
         disabled.setSiteWideWeblogCheck(FRONT_PAGE::equals);
 
-        disabled.put("key", "rendered page");
+        disabled.put("key", "rendered page", disabled.version());
 
         assertNull(disabled.get("key"),
                 "A disabled cache must never serve content, or turning caching off would "
@@ -493,7 +493,7 @@ public class SiteWideCacheTest {
 
         assertNull(disabled.get("key"), "and it still caches nothing afterwards");
 
-        cache.put("key", "rendered page");
+        cache.put("key", "rendered page", cache.version());
         assertEquals("rendered page", cache.get("key"),
                 "while the configured instance, which is enabled, still caches");
     }

@@ -31,6 +31,11 @@ footer (site pages, directory, colophon).
   search description that is only the post's opening cut mid-sentence
   (`Excerpts.isCutFrom`); the SEO audit reports those as
   `search_description_cut`, and meta titles cut mid-word as `meta_title_cut`.
+- **Post counts** (sidebar, shelves, all blogs) are
+  `DiscoveryModel.postCount`, counted once per blog per render, not
+  `$blog.entryCount` (a COUNT query per read, 2N+3 per render before
+  2026-11-03). **Taglines** are escaped (`$utils.escapeHTML`): a blog's owner
+  writes them, and every reader of the site sees this page.
 - **Reading time** is `getReadingMinutes()` (rendered words / 230, rounded
   up). Dates are absolute: the page is cached until the next generation.
 
@@ -62,8 +67,10 @@ while a slow rebuild reads is dated after the start, and a generation older
 than that page would leave it cached (and 304'd) a whole extra interval. The
 snapshot is swapped in before the generation is published.
 
-It is the cache hook: `RenderCaches.lastModifiedOfPage` and the pages-side
-`SiteWideRenderCache` floor a page's last-modified at the generation, so a
+It is the cache hook: a cached page carries the generation its render read
+(`RenderCache.Basis`) and is a miss once the current one is newer, and
+`RenderCaches.lastModifiedOfPage` and the pages-side `SiteWideRenderCache`
+floor a page's last-modified at the generation, so a
 rendered blog page, search page or the front page expires exactly when the
 selection reshuffles (and answers 304 until then). Rendered pages expire only
 through `lastModified`; do not try to invalidate them any other way. Feeds,

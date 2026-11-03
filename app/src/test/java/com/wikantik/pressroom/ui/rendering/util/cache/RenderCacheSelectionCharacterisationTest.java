@@ -95,7 +95,7 @@ public class RenderCacheSelectionCharacterisationTest {
     @Test
     public void siteWideContentIsNotExpiredByAWeblogHavingChanged() {
         String key = siteWide.generateKey(pageRequest());
-        siteWide.put(key, "rendered front page");
+        siteWide.put(key, "rendered front page", siteWide.version());
 
         // The servlet passes a lastModified to the per-weblog cache and cannot
         // pass one here -- get(String) has no such parameter. An adapter that
@@ -122,7 +122,7 @@ public class RenderCacheSelectionCharacterisationTest {
     @Test
     public void weblogPageContentIsServedUntilTheWeblogChanges() {
         String key = pageCache.generateKey(pageRequest());
-        pageCache.put(key, "rendered page");
+        pageCache.put(key, "rendered page", System.currentTimeMillis());
 
         assertEquals("rendered page", pageCache.get(key, 0L),
                 "A cached page is served while the weblog's last change predates it");
@@ -131,7 +131,7 @@ public class RenderCacheSelectionCharacterisationTest {
     @Test
     public void weblogPageContentIsWithheldOnceTheWeblogChanges() {
         String key = pageCache.generateKey(pageRequest());
-        pageCache.put(key, "rendered page");
+        pageCache.put(key, "rendered page", System.currentTimeMillis());
 
         long afterCaching = System.currentTimeMillis() + 60_000L;
 
@@ -143,7 +143,7 @@ public class RenderCacheSelectionCharacterisationTest {
     @Test
     public void weblogFeedContentExpiresTheSameLazyWayThePageCacheDoes() {
         String key = feedCache.generateKey(feedRequest());
-        feedCache.put(key, "rendered feed");
+        feedCache.put(key, "rendered feed", System.currentTimeMillis());
 
         assertEquals("rendered feed", feedCache.get(key, 0L),
                 "The feed cache serves a cached feed while the weblog is unchanged");

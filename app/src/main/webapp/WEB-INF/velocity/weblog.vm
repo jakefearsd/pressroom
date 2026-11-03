@@ -1396,10 +1396,19 @@ document.addEventListener('DOMContentLoaded', function () {
   // same-origin content could otherwise point data-endpoint at any
   // same-origin path and have this script build a real PII-bearing form
   // around it; requiring the exact suffix this slot may legitimately point
-  // to closes that residual without any fallback/guessing logic.
+  // to closes that residual without any fallback/guessing logic. The
+  // endpoint must also resolve to this page's own origin: an authored div
+  // may carry data-endpoint, and an absolute url on another host can end in
+  // the same suffix. Only a theme's connect-src 'self' stopped that before
+  // (AudienceEndpointScriptSourceTest).
   function endpointOk(endpoint, suffix) {
-    return !!endpoint && endpoint.length >= suffix.length
-        && endpoint.slice(-suffix.length) === suffix;
+    if (!endpoint || endpoint.length < suffix.length
+        || endpoint.slice(-suffix.length) !== suffix) { return false; }
+    try {
+      return new URL(endpoint, window.location.href).origin === window.location.origin;
+    } catch (e) {
+      return false;
+    }
   }
 
   Array.prototype.forEach.call(document.querySelectorAll('.contact-form-slot'), function (slot) {

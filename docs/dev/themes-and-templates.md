@@ -120,7 +120,12 @@ resolves through the index at the end of `CLAUDE.md`.
   style, and no section nests another (the tests read a marker up to its
   first `</section>`). Restyle through the inner `fd-*` classes, never by
   renaming a marker. Titles are emitted bare, names through the wrapper,
-  excerpts through `$utils.escapeHTML`, hrefs absolute and escaped. A hidden
+  excerpts and taglines through `$utils.escapeHTML`, hrefs absolute and
+  escaped. A tagline is plain text, never HTML (`HTMLSanitizer.toPlainText`
+  decodes entities, so a stored `< &lt;img ...&gt;` came out as a live tag on
+  everyone's front page until 2026-11-03). Post counts go through
+  `$discovery.postCount($blog)`, one COUNT per blog per render;
+  `$blog.entryCount` is a query on every read. A hidden
   `places-been` container marks where the places list goes. Spec:
   `docs/superpowers/specs/2026-11-03-front-page-redesign-design.md`.
 - **The `<title>` rule, every theme.** The separator is " — " (an em dash,
@@ -211,6 +216,17 @@ resolves through the index at the end of `CLAUDE.md`.
   `get`/`put`/`remove`/`clear`); each subclass keeps its `CACHE_ID`, singleton
   and `generateKey`. `SiteWideCache` is deliberately outside that hierarchy —
   its `get` takes no timestamp, having no per-weblog expiry.
+- **A rendering is cached against what it read, never when it was stored.**
+  The servlets take `RenderCache.basis(weblog)` before rendering (the
+  weblog's `lastModified` as read, floored at the server start, and the
+  discovery generation, compared separately; site-wide: the cache's
+  invalidation version, which every clear moves) and pass it to `put`; `get`
+  serves an entry only while its basis is still current. Until 2026-11-03
+  (code review) entries were stamped at the put, so a render that missed
+  before an author's save and was stored after it passed as fresh, and a
+  site-wide render could outlive the eager clear it straddled.
+  `RenderCacheTest` drives each interleaving. `CacheManager.clear()` empties
+  the backing caches without moving the site-wide version.
 - **A cache key holds every input the render reads.** The keys are built by
   hand from the parsed request, so a parameter that changes the output and is
   missing from the key lets an anonymous request cache one render over
@@ -221,6 +237,14 @@ resolves through the index at the end of `CLAUDE.md`.
   feed's `?page=N` (N > 0) is part of its key (an empty page 9999 had been
   cached over the feed). Adding a request parameter that a render reads means
   adding it to `generateKey` in all three.
+- **`?skipCache` is an author's, nobody else's.** `PageServlet` skips the
+  cache read for it only when the signed-in user may edit the weblog
+  (`WeblogEditors.userMayEdit`: global `login` plus EDIT_DRAFT); the fresh
+  render still repopulates the entry, under the author's own key. From any
+  other reader it is ignored: before 2026-11-03 (code review) anyone could
+  append it to any url for a full render that overwrote the shared entry.
+  Nothing in the product sends it; the `skipCache` request ATTRIBUTE (POSTs,
+  `RenderingTestSupport`) is unaffected and skips both read and write.
 - **A Global Config save expires nothing by itself**, so a setting that
   reaches rendered pages must touch weblogs. The footer's privacy link is
   built from `site.privacy.page` (a `PageReference`: `slug` is a site page,

@@ -20,6 +20,7 @@ package com.wikantik.pressroom.ui.rendering.util.cache;
 
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.rendering.util.WeblogPageRequest;
+import com.wikantik.pressroom.util.DiscoveryGeneration;
 import com.wikantik.pressroom.util.cache.CachedContent;
 
 /**
@@ -28,7 +29,8 @@ import com.wikantik.pressroom.util.cache.CachedContent;
  *
  * <p>This side does honour {@code lastModified}: the page cache registers no
  * CacheHandler, so nothing ever invalidates it eagerly and a cached page is
- * withheld only once the weblog's own {@code lastModified} moves past it.
+ * withheld only once the weblog's own {@code lastModified} moves past the one
+ * its render read, or the discovery generation moves past the one it read.
  * Saving a template or an entry bumps that field, and that is the entire
  * eviction mechanism.
  */
@@ -46,13 +48,18 @@ final class WeblogPageRenderCache implements RenderCache<WeblogPageRequest> {
     }
 
     @Override
-    public CachedContent get(String key, long lastModified) {
-        return (CachedContent) cache.get(key, lastModified);
+    public Basis basis(Weblog weblog) {
+        return new Basis(RenderCaches.lastModifiedOf(weblog), DiscoveryGeneration.current());
     }
 
     @Override
-    public void put(String key, CachedContent content) {
-        cache.put(key, content);
+    public CachedContent get(String key, Basis current) {
+        return RenderedPage.servable(cache.get(key, current.modified()), current.generation());
+    }
+
+    @Override
+    public void put(String key, CachedContent content, Basis basis) {
+        cache.put(key, new RenderedPage(content, basis.generation()), basis.modified());
     }
 
     @Override

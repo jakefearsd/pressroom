@@ -22,6 +22,7 @@ import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +40,7 @@ import com.wikantik.pressroom.util.cache.Cache;
 import com.wikantik.pressroom.util.cache.CacheHandler;
 import com.wikantik.pressroom.util.cache.CacheManager;
 import com.wikantik.pressroom.util.cache.ExpiringCacheEntry;
+import com.wikantik.pressroom.util.cache.LazyExpiringCacheEntry;
 
 
 /**
@@ -58,6 +60,15 @@ public final class SiteWideCache implements CacheHandler {
     
     // keep a cached version of last expired time
     private ExpiringCacheEntry lastUpdateTime = null;
+
+    /**
+     * Moves on every clear and invalidation. A render takes it before reading
+     * anything ({@link #version()}) and is stored with it, and an entry from
+     * an older version is never served: an author's save clears this cache
+     * eagerly, and a render that read the old data before the clear but was
+     * stored after it used to survive it (code review, 2026-11-03).
+     */
+    private final AtomicLong invalidations = new AtomicLong();
 
     /**
      * The real answer to "is this the site-wide weblog?", which needs a
@@ -139,7 +150,8 @@ public final class SiteWideCache implements CacheHandler {
             return null;
         }
         
-        Object entry = contentCache.get(key);
+        LazyExpiringCacheEntry stored = (LazyExpiringCacheEntry) contentCache.get(key);
+        Object entry = stored == null ? null : stored.getValue(invalidations.get());
         
         if(entry == null) {
             log.debug("MISS {}", key);
@@ -151,13 +163,18 @@ public final class SiteWideCache implements CacheHandler {
     }
     
     
-    public void put(String key, Object value) {
+    /**
+     * Stores {@code value}, rendered from this cache's {@link #version()} as
+     * the render read it before starting; an older one than current is never
+     * served.
+     */
+    public void put(String key, Object value, long renderedFrom) {
         
         if (!cacheEnabled) {
             return;
         }
         
-        contentCache.put(key, value);
+        contentCache.put(key, new LazyExpiringCacheEntry(value, renderedFrom));
         log.debug("PUT {}", key);
     }
 
@@ -179,12 +196,19 @@ public final class SiteWideCache implements CacheHandler {
             return;
         }
         
+        invalidations.incrementAndGet();
         contentCache.clear();
         this.lastUpdateTime = null;
         log.debug("CLEAR");
     }
     
     
+    /** The current invalidation version, for a render about to start. */
+    public long version() {
+        return invalidations.get();
+    }
+
+
     public Date getLastModified() {
         
         Date lastModified = null;
@@ -374,6 +398,7 @@ public final class SiteWideCache implements CacheHandler {
             return;
         }
         
+        invalidations.incrementAndGet();
         this.contentCache.clear();
         this.lastUpdateTime = null;
     }
@@ -389,6 +414,7 @@ public final class SiteWideCache implements CacheHandler {
             return;
         }
         
+        invalidations.incrementAndGet();
         this.contentCache.clear();
         this.lastUpdateTime = null;
     }
