@@ -843,9 +843,19 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
                     // image (90-degree orientations swap width and height).
                     img = RenditionSupport.applyOrientation(img,
                             ExifSupport.readOrientation(fc.getInputStream()));
-                    RenditionSupport.generate(cmgr, mf, img);
                     mf.setWidth(img.getWidth());
                     mf.setHeight(img.getHeight());
+                    // Everything derived goes, then is rebuilt: corrected
+                    // dimensions can drop a rung the old raster reached
+                    // (a sideways 3000x2000 had a 2400 rung its upright
+                    // 2000px self does not), and that rung would go on
+                    // serving the sideways pixels at its ?w= URL.
+                    deleteDerivedFilesQuietly(cmgr, weblog, mf.getId());
+                    // The admin thumbnail too: before it was rebuilt here a
+                    // sideways thumbnail stayed sideways, and the blurhash of
+                    // an image under 480px is encoded from it.
+                    writeAdminThumbnail(cmgr, mf, img);
+                    RenditionSupport.generate(cmgr, mf, img);
                     // Bump lastUpdated so MediaResourceServlet's Last-Modified/304
                     // check (keyed off this field) doesn't keep serving a 304 for
                     // stale renditions cached by a client from before the backfill.

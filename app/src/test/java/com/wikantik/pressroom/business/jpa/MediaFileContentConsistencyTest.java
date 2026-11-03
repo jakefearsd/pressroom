@@ -237,6 +237,34 @@ class MediaFileContentConsistencyTest {
         assertNull(after.getExifTaken());
     }
 
+    // ------------------------------------------------------------ regenerate
+
+    /**
+     * The Maintenance action is the remediation for images processed before
+     * a pipeline fix (orientation, for one): it must rebuild the {@code _sm}
+     * admin thumbnail along with the ladder, and drop a rung the corrected
+     * image no longer reaches -- a sideways 3000x2000 raster had a 2400 rung
+     * its upright 2000px-wide self does not.
+     */
+    @Test
+    void regeneratingRebuildsTheThumbnailAndDropsRungsTheImageNoLongerHas() throws Exception {
+        String id = upload("photo.jpg", "image/jpeg", jpeg(600, 300));
+        byte[] stale = "stale derived file".getBytes(StandardCharsets.UTF_8);
+        cmgr.saveFileContent(testWeblog, id + "_sm", new ByteArrayInputStream(stale));
+        cmgr.saveFileContent(testWeblog, id + "_2400", new ByteArrayInputStream(stale));
+
+        testWeblog = TestUtils.getManagedWebsite(testWeblog);
+        assertEquals(1, mfMgr.regenerateRenditions(testWeblog));
+        TestUtils.endSession(true);
+
+        BufferedImage thumbnail = ImageIO.read(new ByteArrayInputStream(stored(id + "_sm")));
+        assertNotNull(thumbnail, "the admin thumbnail must be rebuilt, not left as it was");
+        assertEquals(120, thumbnail.getWidth());
+        assertEquals(60, thumbnail.getHeight());
+        assertGone(id + "_2400", "a 600px image has no 2400 rung to serve");
+        assertTrue(stored(id + "_480").length > 0, "the rungs it does reach are rebuilt");
+    }
+
     // ---------------------------------------------------------- new uploads
 
     private MediaFile newFile(String name, String contentType, long length, InputStream in) throws Exception {
