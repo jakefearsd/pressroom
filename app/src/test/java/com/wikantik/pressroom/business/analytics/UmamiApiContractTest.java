@@ -373,6 +373,44 @@ class UmamiApiContractTest {
                 "an unknown time zone is rejected, not silently treated as UTC");
     }
 
+    /**
+     * Observed on the pinned image: a bucket's x is the wall time in the
+     * requested zone, written "yyyy-MM-dd HH:mm:ss" for every zone except
+     * exactly "UTC", for which it is an ISO instant with a Z, for hour and
+     * day buckets alike ("Etc/UTC" and "GMT" get the plain form). docker1's
+     * site zone is UTC, so its reads met the Z form (2026-11-03).
+     */
+    @Test
+    void bucketsAreWallTimeInTheZoneAndAnInstantForUtc() throws Exception {
+        String id = registerFreshWebsite("contract-hourly", "hourly.example.com");
+        assertEquals(200, send(BROWSER_UA, "event", Map.of("website", id, "hostname", "hourly.example.com",
+                "url", "/blog/entry/hourly", "title", "Hourly", "screen", "1920x1080", "language", "en-US")));
+        // 20:30 UTC on 2026-11-02 is 12:30 in Los Angeles (PST, after the fall-back)
+        Instant at = Instant.parse("2026-11-02T20:30:00Z");
+        try (Connection con = umami.jdbc();
+             PreparedStatement ps = con.prepareStatement(
+                     "UPDATE website_event SET created_at = ? WHERE website_id = ?::uuid")) {
+            ps.setTimestamp(1, java.sql.Timestamp.from(at));
+            ps.setString(2, id);
+            assertEquals(1, ps.executeUpdate());
+        }
+        String window = "startAt=" + at.minus(3, ChronoUnit.HOURS).toEpochMilli()
+                + "&endAt=" + at.plus(3, ChronoUnit.HOURS).toEpochMilli();
+
+        assertEquals("2026-11-02 12:00:00", bucket(id, window, "hour", TIMEZONE));
+        assertEquals("2026-11-02 00:00:00", bucket(id, window, "day", TIMEZONE));
+        assertEquals("2026-11-02 21:00:00", bucket(id, window, "hour", "Europe/Berlin"));
+        assertEquals("2026-11-02 20:00:00", bucket(id, window, "hour", "Etc/UTC"));
+        assertEquals("2026-11-02T20:00:00Z", bucket(id, window, "hour", "UTC"));
+        assertEquals("2026-11-02T00:00:00Z", bucket(id, window, "day", "UTC"));
+    }
+
+    private String bucket(String id, String window, String unit, String zone) throws Exception {
+        JsonNode body = get(site(id, "pageviews", window + "&unit=" + unit + "&timezone=" + zone), token).body();
+        assertEquals(1, body.get("pageviews").size(), body.toString());
+        return body.get("pageviews").get(0).get("x").asString();
+    }
+
     @Test
     void seededTrafficShapes() throws Exception {
         String id = registerFreshWebsite("contract-traffic", "traffic.example.com");

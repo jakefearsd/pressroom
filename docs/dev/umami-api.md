@@ -164,6 +164,13 @@ zeros or empty arrays everywhere (never 404). An unknown `timezone` is a 400
 
 - `x` is the bucket's **local** midnight in `timezone`, with no offset. Days with
   no traffic are **absent**, not zero-filled. `sessions.y` = visitors.
+- `unit=hour` buckets are local wall-clock hours, `"2026-11-02 12:00:00"`.
+- **Except for `timezone=UTC`**, spelled exactly so: every bucket, hour or day,
+  is then an ISO instant, `"2026-11-02T20:00:00Z"` (`Etc/UTC` and `GMT` get the
+  plain form). docker1's site zone is UTC, and the parser expected the plain
+  form, so every blog with a visit lost its Traffic reports (2026-11-03;
+  `UmamiAnalyticsService.bucket` takes both now; pinned by
+  `UmamiApiContractTest.bucketsAreWallTimeInTheZoneAndAnInstantForUtc`).
 - `&compare=prev` adds `startDate`, `endDate` and a `compare` object with the
   previous period's series.
 

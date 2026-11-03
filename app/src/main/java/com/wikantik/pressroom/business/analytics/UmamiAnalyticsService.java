@@ -23,9 +23,12 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -230,10 +233,10 @@ public final class UmamiAnalyticsService implements AnalyticsService {
                                             boolean hourly) {
         Map<LocalDateTime, long[]> seen = new HashMap<>();
         for (JsonNode p : pageviews.path("pageviews")) {
-            seen.computeIfAbsent(bucket(p.path("x").asString()), k -> new long[2])[1] = number(p.path("y"));
+            seen.computeIfAbsent(bucket(p.path("x").asString(), zone), k -> new long[2])[1] = number(p.path("y"));
         }
         for (JsonNode p : pageviews.path("sessions")) {
-            seen.computeIfAbsent(bucket(p.path("x").asString()), k -> new long[2])[0] = number(p.path("y"));
+            seen.computeIfAbsent(bucket(p.path("x").asString(), zone), k -> new long[2])[0] = number(p.path("y"));
         }
         List<SeriesPoint> points = new ArrayList<>();
         if (hourly) {
@@ -262,9 +265,19 @@ public final class UmamiAnalyticsService implements AnalyticsService {
         return points;
     }
 
-    /** {@code "2026-11-02 00:00:00"} to a local date-time (no offset). */
-    private static LocalDateTime bucket(String x) {
-        return LocalDateTime.parse(x.replace(' ', 'T'));
+    /**
+     * A bucket's start as wall time in the site zone. Umami writes it
+     * {@code "2026-11-02 00:00:00"}, already in the requested zone, except
+     * when that zone is exactly {@code UTC}: then it is an instant,
+     * {@code "2026-11-02T00:00:00Z"} (docs/dev/umami-api.md), which is moved
+     * into the zone, a no-op for UTC itself.
+     */
+    private static LocalDateTime bucket(String x, ZoneId zone) {
+        TemporalAccessor parsed = DateTimeFormatter.ISO_DATE_TIME.parseBest(x.replace(' ', 'T'),
+                OffsetDateTime::from, LocalDateTime::from);
+        return parsed instanceof OffsetDateTime instant
+                ? instant.atZoneSameInstant(zone).toLocalDateTime()
+                : (LocalDateTime) parsed;
     }
 
     private List<KeyCount> metric(UmamiClient c, String base, String window, String type, String prefix)

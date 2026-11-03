@@ -82,6 +82,42 @@ class UmamiAnalyticsServiceContractTest {
         assertEquals(1, report.series().stream().mapToLong(AnalyticsReport.SeriesPoint::views).sum());
     }
 
+    /**
+     * A site space in UTC (or a JVM defaulting to it, which the container's
+     * does) is asked for timezone=UTC, and for that zone alone Umami writes
+     * every bucket as an ISO instant, "2026-11-03T12:00:00Z", where every
+     * other zone gets "2026-11-03 12:00:00" (UmamiApiContractTest). The read
+     * threw on the Z: on docker1 each blog with a visit lost its Traffic
+     * reports (2026-11-03).
+     */
+    @Test
+    void readsInUtcWhereUmamiWritesInstants() throws Exception {
+        UmamiContainer umami = UmamiContainer.get();
+        String username = "svc-" + UUID.randomUUID().toString().substring(0, 8);
+        String password = "pw-" + UUID.randomUUID();
+        umami.psql(Paths.get("../deploy/analytics/umami-pressroom-account.sql"),
+                Map.of("username", username, "pw", password));
+        AnalyticsService service = UmamiAnalyticsService.of(
+                new UmamiClient(umami.baseUrl(), username, password), java.time.Clock.systemUTC());
+        String id = UUID.randomUUID().toString();
+        service.ensureSite(new SiteSpec(id, "svc-utc", "utc.example.com"));
+        beacon(umami, id);
+        java.time.ZonedDateTime now = java.time.ZonedDateTime.now(ZoneId.of("UTC"));
+
+        AnalyticsReport hourly = service.read(id, Period.of("24h"), ZoneId.of("UTC"));
+        AnalyticsReport daily = service.read(id, Period.of("7d"), ZoneId.of("UTC"));
+
+        AnalyticsReport.SeriesPoint hour = hourly.series().stream().filter(p -> p.views() > 0)
+                .findFirst().orElseThrow();
+        assertEquals(1, hourly.series().stream().mapToLong(AnalyticsReport.SeriesPoint::views).sum());
+        assertEquals(now.toLocalDate(), hour.day(), "in the hour it was seen: " + hourly.series());
+        assertEquals(now.getHour(), hour.hour(), "in the hour it was seen: " + hourly.series());
+        AnalyticsReport.SeriesPoint day = daily.series().stream().filter(p -> p.views() > 0)
+                .findFirst().orElseThrow();
+        assertEquals(1, daily.series().stream().mapToLong(AnalyticsReport.SeriesPoint::views).sum());
+        assertEquals(now.toLocalDate(), day.day(), daily.series().toString());
+    }
+
     private static void beacon(UmamiContainer umami, String websiteId) throws Exception {
         String body = JsonMapper.builder().build().writeValueAsString(Map.of("type", "event", "payload", Map.of(
                 "website", websiteId, "hostname", "contract.example.com", "screen", "1920x1080",
