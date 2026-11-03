@@ -183,6 +183,29 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     }
     
     /**
+     * {@inheritDoc}
+     *
+     * <p>The moved rows are written, not committed, before the removal:
+     * {@link #removeWeblogCategory(WeblogCategory)} refuses a category its
+     * query still finds entries in, and that query does not flush first.
+     */
+    @Override
+    public void removeWeblogCategory(WeblogCategory cat, WeblogCategory moveTo) throws WebloggerException {
+        moveWeblogCategoryContents(cat, moveTo);
+        strategy.getEntityManager(true).flush();
+        removeWeblogCategory(cat);
+    }
+
+    @Override
+    public long getLiveEntryCount(WeblogCategory cat) throws WebloggerException {
+        TypedQuery<Long> q = strategy.getDynamicQuery(
+                "SELECT COUNT(e) FROM WeblogEntry e WHERE e.category = ?1 AND e.status <> ?2", Long.class);
+        q.setParameter(1, cat);
+        q.setParameter(2, PubStatus.TRASHED);
+        return q.getSingleResult();
+    }
+
+    /**
      * @inheritDoc
      */
     // TODO: perhaps the createAnchor() and queuePings() items should go outside this method?

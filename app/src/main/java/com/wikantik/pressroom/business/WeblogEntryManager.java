@@ -224,6 +224,21 @@ public interface WeblogEntryManager {
      * Remove weblog category.
      */
     void removeWeblogCategory(WeblogCategory cat) throws WebloggerException;
+
+    /**
+     * Moves every entry of {@code cat} (trash included) to {@code moveTo}, of
+     * the same weblog, and removes {@code cat}: both in the current unit of
+     * work, so they commit together or not at all. Refused as {@link
+     * #moveWeblogCategoryContents} and {@link #removeWeblogCategory(WeblogCategory)}
+     * refuse.
+     */
+    void removeWeblogCategory(WeblogCategory cat, WeblogCategory moveTo) throws WebloggerException;
+
+    /**
+     * How many entries are filed under {@code cat}, every status but
+     * TRASHED: a count query, never the entries themselves.
+     */
+    long getLiveEntryCount(WeblogCategory cat) throws WebloggerException;
         
     /**
      * Get category by id.

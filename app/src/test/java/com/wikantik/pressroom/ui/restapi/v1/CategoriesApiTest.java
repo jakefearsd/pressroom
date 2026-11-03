@@ -129,9 +129,7 @@ class CategoriesApiTest {
         WeblogCategory category = aCategory(weblog, "Travel");
         when(weblogger.getWeblogEntryManager().getWeblogCategories(weblog))
                 .thenReturn(List.of(category));
-        when(weblogger.getWeblogEntryManager().getWeblogEntries(any(WeblogEntrySearchCriteria.class)))
-                .thenReturn(List.of(new com.wikantik.pressroom.pojos.WeblogEntry(),
-                        new com.wikantik.pressroom.pojos.WeblogEntry()));
+        when(weblogger.getWeblogEntryManager().getLiveEntryCount(category)).thenReturn(2L);
 
         String body = mockMvc(controllerFor(weblogger))
                 .perform(get("/v1/weblogs/myblog/categories").requestAttr("actionWeblog", weblog))
@@ -143,6 +141,8 @@ class CategoriesApiTest {
         assertEquals("Travel", json.get(0).get("name").asString());
         assertEquals("desc-Travel", json.get(0).get("description").asString());
         assertEquals(2, json.get(0).get("entryCount").asInt());
+        // counted, never loaded: every entry with its text, per category, on every list
+        verify(weblogger.getWeblogEntryManager(), never()).getWeblogEntries(any(WeblogEntrySearchCriteria.class));
     }
 
     @Test
@@ -345,13 +345,11 @@ class CategoriesApiTest {
                         .requestAttr("actionWeblog", weblog))
                 .andExpect(status().isNoContent());
 
-        verify(weblogger.getWeblogEntryManager()).moveWeblogCategoryContents(category, target);
-        verify(weblogger.getWeblogEntryManager()).removeWeblogCategory(category);
-        // Two flush()es in this path -- one after the move, one after the
-        // remove (see CategoriesApi.delete) -- so at least one call must be
-        // observed; verify(times(1)) would over-specify an implementation
-        // detail this test does not care about.
-        verify(weblogger, org.mockito.Mockito.atLeastOnce()).flush();
+        // One unit of work: the move and the removal commit together, so a
+        // removal that fails cannot leave the entries moved and the category there.
+        verify(weblogger.getWeblogEntryManager()).removeWeblogCategory(category, target);
+        verify(weblogger.getWeblogEntryManager(), never()).moveWeblogCategoryContents(any(), any());
+        verify(weblogger, org.mockito.Mockito.times(1)).flush();
     }
 
     /**
