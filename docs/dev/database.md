@@ -246,6 +246,11 @@ counting a deleted entry. Weblog deletion is one transaction (until
 a weblog without its media, or without its entries); its tag rows,
 aggregates, entries and categories go in the one commit, and its media
 files leave the disk only after it (`WeblogDeletionAtomicityTest`).
+Weblog creation (`addWeblog`, `getOrCreateSiteSpace`) is one transaction
+too since 2026-11-03: the weblog, its creator's permission, its categories
+and its media directory commit together (`WeblogCreationAtomicityTest`;
+before, the weblog row committed first, so a later failure left a weblog
+nobody could use).
 **The recount depends on READ COMMITTED** (a fresh
 snapshot per statement), which nothing pins; under REPEATABLE READ the lock
 statement would fail with serialization errors instead (fails closed).
