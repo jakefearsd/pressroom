@@ -119,6 +119,12 @@ templates).
 - **Engine**: Apache Lucene, background indexing; asynchronous
   add/remove/rebuild operations
 - **Scope**: full-text across entries with category and locale filtering
+- **A reader's query reaches only the searched fields** (title, content):
+  `SearchOperation.SearchedFieldsOnly` reads any other "field:" a reader
+  names as plain words, and the index holds no author login. Both since
+  2026-11-03 (code review): "username:a*" enumerated author logins on a
+  public page. An index built before then still holds the login until it is
+  rebuilt, but the parser no longer lets a query reach it.
 - **Index Location**: configurable work directory
 - **Searches never wait for writes** (`LuceneIndexManager`): searches share
   a Lucene `SearcherManager` and take no lock; index writes serialise on

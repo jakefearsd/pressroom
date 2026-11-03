@@ -286,7 +286,11 @@ resolves through the index at the end of `CLAUDE.md`.
   (`ShortcodeReads`, content-features.md, Shortcodes). **Previews never touch
   it**: the plain `transformedText`/`displayContent` methods (editor and API
   preview, newsletter) and a wrapper built with `PreviewURLStrategy` (the
-  preview servlet) always render. `CacheManager` does not reach it, by
+  preview servlet) always render. **Only the weblog's own editors preview
+  it** (`WeblogEditors.requesterMayEdit`, shared with private media): the
+  authoring path admits any editor of any weblog and `PreviewServlet` sits
+  outside `PressroomHandlerInterceptor`, so before 2026-11-03 (code review)
+  an editor of one blog could read another's drafts. `CacheManager` does not reach it, by
   design; a change that reaches entry output without moving `lastModified`
   is a stale-content bug for the page cache and this one alike (rendition
   regeneration was one; it now bumps). Off in `pressroom-boot-dev.properties`

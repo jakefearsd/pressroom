@@ -113,6 +113,15 @@ public class PreviewServlet extends HttpServlet {
             RenderingServletUtils.sendNotFound(response);
             return;
         }
+
+        // A preview shows the weblog's unpublished drafts; the authoring path
+        // admits any editor of any weblog and this servlet is outside
+        // PressroomHandlerInterceptor, so only this weblog's editors may look,
+        // and everyone else gets an unknown weblog's 404.
+        if (!WeblogEditors.requesterMayEdit(weblog, weblogger.getUserManager())) {
+            RenderingServletUtils.sendNotFound(response);
+            return;
+        }
         
 		Weblog tmpWebsite = weblog;
         

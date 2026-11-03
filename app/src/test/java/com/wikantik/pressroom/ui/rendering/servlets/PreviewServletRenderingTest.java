@@ -31,12 +31,14 @@ class PreviewServletRenderingTest {
         RenderingTestSupport.ensureRenderingRuntime();
         RenderingTestSupport.clearRenderCaches();
         user = TestUtils.setupUser("previewuser");
+        RenderingTestSupport.signInAs(user.getUserName());
         weblog = TestUtils.setupWeblog("previewblog", user);
         TestUtils.endSession(true);
     }
 
     @AfterEach
     void tearDown() throws Exception {
+        RenderingTestSupport.signOut();
         TestUtils.teardownWeblog(weblog.getId());
         TestUtils.teardownUser(user.getUserName());
         TestUtils.endSession(true);

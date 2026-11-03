@@ -396,8 +396,13 @@ class ContentAssetsRenderingTest {
         MockHttpServletRequest request =
                 RenderingTestSupport.anonymousGet(PREVIEW_SERVLET, "/" + HANDLE + "/");
         request.setParameter("shell", "true");
-        MockHttpServletResponse response =
-                RenderingTestSupport.execute(RenderingTestSupport.previewServlet(), request);
+        MockHttpServletResponse response;
+        RenderingTestSupport.signInAs(user.getUserName());
+        try {
+            response = RenderingTestSupport.execute(RenderingTestSupport.previewServlet(), request);
+        } finally {
+            RenderingTestSupport.signOut();
+        }
         assertEquals(200, response.getStatus(), "the preview shell must render");
         return response.getContentAsString();
     }

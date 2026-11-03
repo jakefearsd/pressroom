@@ -466,6 +466,86 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         assertEquals(List.of("entryEdit.entryIsTrashed"), flashErrors(redirect));
     }
 
+    /**
+     * A contributor (EDIT_DRAFT, no POST) submits for review and cannot
+     * publish, so they may change only their own entries that are still a
+     * draft or pending. Saving over someone else's post, or any published
+     * one, would rewrite it or demote it off the blog (code review,
+     * 2026-11-03). Refused like an unknown id.
+     */
+    @Test
+    void aContributorCannotSaveOverSomeoneElsesEntry() throws Exception {
+        userMayPost = false;
+        existingEntry(PubStatus.DRAFT).setCreatorUserName("someone-else");
+
+        assertEquals("redirect:/pressroom-ui/menu.rol", controller.entryEditSaveDraft(request, model, bean));
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+    }
+
+    @Test
+    void aContributorCannotSaveOverAPublishedEntryEvenTheirOwn() throws Exception {
+        userMayPost = false;
+        existingEntry(PubStatus.PUBLISHED);
+
+        assertEquals("redirect:/pressroom-ui/menu.rol", controller.entryEditSaveDraft(request, model, bean));
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+    }
+
+    @Test
+    void aContributorMayKeepEditingTheirOwnPendingEntry() throws Exception {
+        userMayPost = false;
+        existingEntry(PubStatus.PENDING);
+
+        controller.entryEditSaveDraft(request, model, bean);
+
+        assertEquals(PubStatus.DRAFT, captureSavedEntry().getStatus());
+    }
+
+    /**
+     * The editor open in one tab, the entry trashed from the list in another:
+     * Update must not bring it straight back to PUBLISHED with trashedAt still
+     * set, past restore's always-DRAFT rule (code review, 2026-11-03).
+     */
+    @Test
+    void savingATrashedEntryFromAStaleTabIsRefused() throws Exception {
+        existingEntry(PubStatus.TRASHED);
+
+        assertEquals("redirect:/pressroom-ui/menu.rol", controller.entryEditPublish(request, model, bean));
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+    }
+
+    @Test
+    void aContributorCannotRestoreARevisionOntoAPublishedEntry() throws Exception {
+        userMayPost = false;
+        WeblogEntry entry = existingEntry(PubStatus.PUBLISHED);
+        entry.setText("Live text");
+        WeblogEntryRevision revision = new WeblogEntryRevision();
+        revision.setId("revision-1");
+        revision.setWeblogEntry(entry);
+        revision.setText("Retracted text");
+        when(weblogger.getWeblogEntryManager().getRevision("revision-1")).thenReturn(revision);
+
+        RedirectAttributes redirect = newRedirectAttributes();
+        controller.entryEditRestoreRevision(request, "entry-1", "revision-1", redirect);
+
+        assertEquals("Live text", entry.getText());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+        assertEquals(java.util.List.of("weblogEntry.notFound"), flashErrors(redirect));
+    }
+
+    @Test
+    void aRevisionIsNotRestoredOntoATrashedEntry() throws Exception {
+        WeblogEntry entry = existingEntry(PubStatus.TRASHED);
+        WeblogEntryRevision revision = new WeblogEntryRevision();
+        revision.setId("revision-1");
+        revision.setWeblogEntry(entry);
+        when(weblogger.getWeblogEntryManager().getRevision("revision-1")).thenReturn(revision);
+
+        controller.entryEditRestoreRevision(request, "entry-1", "revision-1", newRedirectAttributes());
+
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+    }
+
     @Test
     void savingAnEntryFromAnotherWeblogIsRefused() throws Exception {
         WeblogEntry foreign = existingEntry(PubStatus.DRAFT);

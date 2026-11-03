@@ -392,6 +392,29 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
     }
 
     /**
+     * The entry with this id when the caller may change it (save over it,
+     * restore a revision onto it, trash it): of the action weblog, not
+     * trashed, and -- for a contributor, who holds EDIT_DRAFT but not POST
+     * on the weblog -- their own and still a draft or pending. A contributor
+     * submits work for review and cannot publish, so they cannot rewrite,
+     * demote or trash anyone else's post or any published one either (code
+     * review, 2026-11-03; the API already requires POST for every write).
+     * Null otherwise, which every caller answers exactly like an unknown id.
+     */
+    protected WeblogEntry lookupChangeableEntry(String id, HttpServletRequest request) {
+        WeblogEntry entry = lookupNonTrashedEntry(id, request);
+        if (entry == null || hasWeblogAction(getActionWeblog(request), getAuthenticatedUser(request),
+                WeblogPermission.POST)) {
+            return entry;
+        }
+        User user = getAuthenticatedUser(request);
+        boolean own = user != null && user.getUserName() != null
+                && user.getUserName().equals(entry.getCreatorUserName());
+        boolean unpublished = entry.getStatus() == PubStatus.DRAFT || entry.getStatus() == PubStatus.PENDING;
+        return own && unpublished ? entry : null;
+    }
+
+    /**
      * Moves an entry to the trash, taking it out of everything that indexes
      * or caches it. This is the authoring UI's single deletion seam -- the
      * entry list's bulk action and both entry-removal endpoints all call

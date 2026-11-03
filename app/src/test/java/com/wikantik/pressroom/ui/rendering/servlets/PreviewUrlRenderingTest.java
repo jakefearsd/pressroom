@@ -86,6 +86,7 @@ class PreviewUrlRenderingTest {
         RenderingTestSupport.clearRenderCaches();
         suffix = Long.toString(System.nanoTime(), 36);
         user = TestUtils.setupUser("prevurluser" + suffix);
+        RenderingTestSupport.signInAs(user.getUserName());
         weblog = TestUtils.setupWeblog("prevurl" + suffix, user);
         image = TestUtils.setupImageMediaFile(weblog, "prevurl-hawk.jpg");
         entry = TestUtils.setupWeblogEntry("prevurl-entry", weblog, user);
@@ -96,6 +97,7 @@ class PreviewUrlRenderingTest {
 
     @AfterEach
     void tearDown() throws Exception {
+        RenderingTestSupport.signOut();
         try {
             if (!originalProperties.isEmpty()) {
                 PropertiesManager pmgr = TestUtils.weblogger().getPropertiesManager();
@@ -162,6 +164,7 @@ class PreviewUrlRenderingTest {
         assertFalse(expectedPermalink.equals(productionPermalink),
                 "precondition: the preview strategy must shape entry urls differently");
 
+        RenderingTestSupport.signInAs(frontpageUser.getUserName());
         String body = preview("/" + frontpageWeblog.getHandle() + "/", "frontpage");
 
         assertTrue(body.contains(href(expectedPermalink)),

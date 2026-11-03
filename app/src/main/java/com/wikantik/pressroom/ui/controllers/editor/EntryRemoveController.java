@@ -97,7 +97,7 @@ public class EntryRemoveController extends BaseController {
         populateCommonModel(request, model);
         model.addAttribute("actionName", actionName);
 
-        WeblogEntry entry = lookupEntry(removeId, request);
+        WeblogEntry entry = lookupChangeableEntry(removeId, request);
         if (entry == null) {
             addFlashError(redirectAttributes, "weblogEntry.notFound", request);
             return "redirect:/pressroom-ui/menu.rol";

@@ -38,12 +38,14 @@ class PreviewServletDecisionTest {
         RenderingTestSupport.ensureRenderingRuntime();
         RenderingTestSupport.clearRenderCaches();
         user = TestUtils.setupUser("previewdecisionuser");
+        RenderingTestSupport.signInAs(user.getUserName());
         weblog = TestUtils.setupWeblog(handle, user);
         TestUtils.endSession(true);
     }
 
     @AfterEach
     void tearDown() throws Exception {
+        RenderingTestSupport.signOut();
         TestUtils.teardownWeblog(weblog.getId());
         TestUtils.teardownUser(user.getUserName());
         TestUtils.endSession(true);
@@ -56,6 +58,42 @@ class PreviewServletDecisionTest {
             request.setParameter(params[i], params[i + 1]);
         }
         return RenderingTestSupport.execute(RenderingTestSupport.previewServlet(), request);
+    }
+
+    // --- who may preview ----------------------------------------------------
+
+    /**
+     * Preview renders a weblog's unpublished drafts. The authoring path admits
+     * any editor of any weblog, and this raw servlet sits outside
+     * PressroomHandlerInterceptor, so it checks membership itself: only an
+     * editor of this weblog previews it, and everyone else gets the 404 an
+     * unknown weblog gets (code review, 2026-11-03).
+     */
+    @Test
+    void anEditorOfAnotherWeblogCannotPreviewThisOne() throws Exception {
+        User outsider = TestUtils.setupUser("previewoutsider");
+        TestUtils.endSession(true);
+        try {
+            RenderingTestSupport.signInAs(outsider.getUserName());
+
+            assertEquals(404, preview("/" + handle).getStatus());
+        } finally {
+            RenderingTestSupport.signOut();
+            TestUtils.teardownUser(outsider.getUserName());
+            TestUtils.endSession(true);
+        }
+    }
+
+    @Test
+    void nobodySignedInCannotPreview() throws Exception {
+        RenderingTestSupport.signOut();
+
+        assertEquals(404, preview("/" + handle).getStatus());
+    }
+
+    @Test
+    void anEditorOfThisWeblogPreviewsIt() throws Exception {
+        assertEquals(200, preview("/" + handle).getStatus());
     }
 
     // --- the template ladder ----------------------------------------------
