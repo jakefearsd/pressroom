@@ -21,7 +21,6 @@ package com.wikantik.pressroom.ui.rendering.servlets;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.List;
 
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.ServletConfig;
@@ -34,16 +33,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.util.PressroomConstants;
 import com.wikantik.pressroom.WebloggerException;
-import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.FileContentManager;
 import com.wikantik.pressroom.business.MediaFileManager;
 import com.wikantik.pressroom.business.RenditionSupport;
 import com.wikantik.pressroom.pojos.FileContent;
-import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.Weblog;
-import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.rendering.util.ModDateHeaderUtil;
 import com.wikantik.pressroom.ui.rendering.util.WeblogMediaResourceRequest;
 
@@ -153,7 +149,7 @@ public class MediaResourceServlet extends HttpServlet {
         // marked private. Those responses are marked private/no-store so no
         // shared cache can replay an editor's copy to an anonymous reader.
         if (mediaFile.getDirectory().isPrivate()) {
-            if (!requesterMayEditWeblog(weblog, weblogger.getUserManager())) {
+            if (!WeblogEditors.requesterMayEdit(weblog, weblogger.getUserManager())) {
                 log.debug("media file {} is in a private directory; not serving it on the base path",
                         resourceRequest.getResourceId());
                 response.sendError(HttpServletResponse.SC_NOT_FOUND);
@@ -230,7 +226,9 @@ public class MediaResourceServlet extends HttpServlet {
             servedContentType = mediaFile.getContentType();
             resourceStream = mediaFile.getInputStream();
         }
-        response.setContentType(servedContentType);
+        // The type is the uploader's claim: never sniffed, and anything that
+        // could run script on this origin is sandboxed (MediaResponseHeaders).
+        response.setContentType(MediaResponseHeaders.apply(response, servedContentType));
 
         // make sure stream to resource file is closed
         try (InputStream in = resourceStream) {
@@ -279,38 +277,6 @@ public class MediaResourceServlet extends HttpServlet {
     private static boolean acceptsWebp(HttpServletRequest request) {
         String accept = request.getHeader("Accept");
         return accept != null && accept.contains("image/webp");
-    }
-
-    /**
-     * True when the current request carries an authenticated session whose
-     * user holds at least the weakest permission ({@code EDIT_DRAFT}) on the
-     * weblog -- i.e. one of the weblog's own editors -- and the global
-     * {@code login} action. Anonymous requests and users of other weblogs are
-     * false; any lookup failure fails closed.
-     *
-     * <p>The global check matters because a weblog permission ignores global
-     * roles: a reader once given "Can write" and then demoted keeps its weblog
-     * membership but holds {@code reader} only, which grants no action.
-     */
-    private static boolean requesterMayEditWeblog(Weblog weblog, UserManager umgr) {
-        try {
-            org.springframework.security.core.Authentication authentication =
-                    org.springframework.security.core.context.SecurityContextHolder
-                            .getContext().getAuthentication();
-            if (authentication == null || !authentication.isAuthenticated()
-                    || authentication instanceof
-                            org.springframework.security.authentication.AnonymousAuthenticationToken) {
-                return false;
-            }
-            com.wikantik.pressroom.pojos.User user =
-                    umgr.getUserByUserName(authentication.getName());
-            return user != null
-                    && umgr.checkPermission(new GlobalPermission(List.of(GlobalPermission.LOGIN)), user)
-                    && umgr.checkPermission(new WeblogPermission(weblog, List.of(WeblogPermission.EDIT_DRAFT)), user);
-        } catch (Exception e) {
-            log.debug("could not resolve an editor session for private media", e);
-            return false;
-        }
     }
 
 }

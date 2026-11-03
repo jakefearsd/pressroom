@@ -344,7 +344,7 @@ public class EntryEditController extends BaseController {
                                            String id,
                                            @RequestParam(value = "revisionId", required = false) String revisionId,
                                            RedirectAttributes redirectAttributes) {
-        WeblogEntry entry = lookupEntry(id, request);
+        WeblogEntry entry = lookupChangeableEntry(id, request);
         WeblogEntryRevision revision = lookupRevision(revisionId, entry);
         if (revision == null) {
             addFlashError(redirectAttributes, "weblogEntry.notFound", request);
@@ -573,7 +573,7 @@ public class EntryEditController extends BaseController {
         model.addAttribute("actionName", "entryEdit");
         model.addAttribute("pageTitle", getText("weblogEdit.title.editEntry", request));
 
-        WeblogEntry entry = lookupEntry(bean.getId(), request);
+        WeblogEntry entry = lookupChangeableEntry(bean.getId(), request);
         if (entry == null) {
             return "redirect:/pressroom-ui/menu.rol";
         }

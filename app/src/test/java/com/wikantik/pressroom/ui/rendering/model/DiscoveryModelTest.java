@@ -133,8 +133,9 @@ class DiscoveryModelTest {
         WeblogEntry pop = entry(b, "pop");
         WeblogEntry top = entry(b, "top");
         WeblogEntry odd = entry(a, "odd");
+        WeblogEntry fresh = entry(b, "fresh");
         when(discovery.selectFrontPage()).thenReturn(new FrontPageSelection(lead, true, List.of(pop),
-                List.of(new BlogCard(b, List.of(top))), List.of(odd), List.of(a, b)));
+                List.of(new BlogCard(b, List.of(top))), List.of(odd), List.of(a, b), List.of(fresh)));
 
         DiscoveryModel.FrontPage page = model().getFrontPage();
 
@@ -144,11 +145,34 @@ class DiscoveryModelTest {
         assertSame(b, page.blogs().get(0).weblog().getPojo());
         assertSame(top, page.blogs().get(0).topEntries().get(0).getPojo());
         assertSame(odd, page.different().get(0).getPojo());
+        assertSame(fresh, page.latest().get(0).getPojo());
         assertEquals(List.of("Alpha &amp; Co", "Beta"),
                 page.allBlogs().stream().map(WeblogWrapper::getName).toList(),
                 "the wrapper escapes weblog names");
         assertEquals("http://localhost:8080/pressroom/b/entry/pop", page.popular().get(0).getPermalink(),
                 "wrapped with the strategy the renderer gave");
+    }
+
+    /**
+     * A blog's mark on the front page: the first letter of its first two
+     * words, a leading "The" or "A" skipped, letters and digits only, so the
+     * mark needs no escaping whatever the name holds.
+     */
+    @Test
+    void initialsAreTheFirstLettersOfTheFirstTwoWords() throws Exception {
+        DiscoveryModel model = model();
+        assertEquals("EB", model.initials(wrap(weblog("eb", "Exploring Berlin!"))));
+        assertEquals("CF", model.initials(wrap(weblog("cf", "The California Foothills"))));
+        assertEquals("SD", model.initials(wrap(weblog("sd", "San Diego Local Wiki"))));
+        assertEquals("W", model.initials(wrap(weblog("w", "Wikantik"))));
+        assertEquals("SC", model.initials(wrap(weblog("x", "<script>x</script>\" & co"))),
+                "markup and punctuation give no letter of their own");
+        assertEquals("", model.initials(wrap(weblog("n", "!!"))));
+        assertEquals("", model.initials(null));
+    }
+
+    private WeblogWrapper wrap(Weblog weblog) {
+        return WeblogWrapper.wrap(weblog, urls, weblogger);
     }
 
     @Test
@@ -164,7 +188,7 @@ class DiscoveryModelTest {
         assertNull(page.headline());
         assertFalse(page.headlineRanked());
         assertTrue(page.popular().isEmpty() && page.blogs().isEmpty() && page.different().isEmpty()
-                && page.allBlogs().isEmpty());
+                && page.allBlogs().isEmpty() && page.latest().isEmpty());
     }
 
     @Test

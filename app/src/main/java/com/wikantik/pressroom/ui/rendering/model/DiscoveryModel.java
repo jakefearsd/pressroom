@@ -19,7 +19,9 @@ package com.wikantik.pressroom.ui.rendering.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.URLStrategy;
@@ -53,19 +55,24 @@ public class DiscoveryModel implements Model {
     /** Posts in a blog's "more from the site" block: a fixed number, not a setting (spec). */
     static final int MORE_FROM_SITE_POSTS = 3;
 
+    /** Leading words a blog's mark skips. */
+    private static final Set<String> ARTICLES = Set.of("the", "a", "an");
+
     /**
      * The front page's sections, wrapped: {@link FrontPageSelection} section
      * for section. {@code headline} is null only when nothing is eligible;
      * {@code headlineRanked} says whether it may be labelled "most read".
      */
     public record FrontPage(WeblogEntryWrapper headline, boolean headlineRanked, List<WeblogEntryWrapper> popular,
-            List<Card> blogs, List<WeblogEntryWrapper> different, List<WeblogWrapper> allBlogs) {
+            List<Card> blogs, List<WeblogEntryWrapper> different, List<WeblogWrapper> allBlogs,
+            List<WeblogEntryWrapper> latest) {
 
         public FrontPage {
             popular = List.copyOf(popular);
             blogs = List.copyOf(blogs);
             different = List.copyOf(different);
             allBlogs = List.copyOf(allBlogs);
+            latest = List.copyOf(latest);
         }
     }
 
@@ -116,7 +123,8 @@ public class DiscoveryModel implements Model {
             }
             frontPage = new FrontPage(
                     selection.headline() == null ? null : wrap(selection.headline()), selection.headlineRanked(),
-                    wrapEntries(selection.popular()), cards, wrapEntries(selection.different()), allBlogs);
+                    wrapEntries(selection.popular()), cards, wrapEntries(selection.different()), allBlogs,
+                    wrapEntries(selection.latest()));
         }
         return frontPage;
     }
@@ -159,6 +167,28 @@ public class DiscoveryModel implements Model {
         }
         return site != null ? urlStrategy.getWeblogURL(site, null, true)
                 : WebloggerRuntimeConfig.getAbsoluteContextURL() + "/";
+    }
+
+    /**
+     * A blog's mark on the front page: the first letter or digit of each of
+     * its first two words that have one, upper-cased, a leading article
+     * skipped ("The California Foothills" is CF). Letters and digits only, so
+     * the mark needs no escaping; empty when the name has none.
+     */
+    public String initials(WeblogWrapper weblog) {
+        if (weblog == null || weblog.getPojo().getName() == null) {
+            return "";
+        }
+        StringBuilder mark = new StringBuilder();
+        String[] words = weblog.getPojo().getName().trim().split("\\s+");
+        for (int i = 0; i < words.length && mark.length() < 2; i++) {
+            if (i == 0 && words.length > 1 && ARTICLES.contains(words[i].toLowerCase(Locale.ROOT))) {
+                continue;
+            }
+            words[i].codePoints().filter(Character::isLetterOrDigit).findFirst()
+                    .ifPresent(c -> mark.appendCodePoint(Character.toUpperCase(c)));
+        }
+        return mark.toString();
     }
 
     private WeblogWrapper wrap(Weblog weblog) {

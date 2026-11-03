@@ -118,6 +118,12 @@ public final class WeblogPageCache extends LazyExpiringRenderCache {
         if(pageRequest.getWeblogAnchor() != null) {
             // may contain spaces or other bad chars
             key.append("/entry/").append(CacheKeys.encode(pageRequest.getWeblogAnchor()));
+            if(pageRequest.getWeblogPageName() != null) {
+                // /page/<name>?entry=x renders the named template, not the
+                // permalink: without this the theme's stylesheet could be
+                // cached over a post (code review, 2026-11-03)
+                key.append("/page/").append(CacheKeys.encode(pageRequest.getWeblogPageName()));
+            }
         } else {
 
             if(pageRequest.getPageSlug() != null) {

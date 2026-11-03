@@ -75,6 +75,49 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
         entry.setCategory(category);
         entry.setStatus(PubStatus.PUBLISHED);
         when(weblogger.getWeblogEntryManager().getWeblogEntry("entry-1")).thenReturn(entry);
+        // a member who may post, unless a test says otherwise
+        when(weblogger.getUserManager().checkPermission(any(), any())).thenAnswer(invocation -> mayPost);
+    }
+
+    /** Whether the caller holds POST on the weblog (EDIT_DRAFT alone otherwise). */
+    private boolean mayPost = true;
+
+    /**
+     * A contributor (EDIT_DRAFT, no POST) submits work for review and cannot
+     * publish, so they may not take other people's posts, or any published
+     * post, off the blog either: published entry ids are in every page's
+     * source (code review, 2026-11-03). Refused like an unknown id.
+     */
+    @Test
+    void aContributorCannotTrashSomeoneElsesEntry() throws Exception {
+        mayPost = false;
+        entry.setStatus(PubStatus.DRAFT);
+        entry.setCreatorUserName("someone-else");
+
+        assertEquals("redirect:/pressroom-ui/menu.rol",
+                controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes));
+        verify(weblogger.getWeblogEntryManager(), never()).trashWeblogEntry(any());
+    }
+
+    @Test
+    void aContributorCannotTrashAPublishedEntryEvenTheirOwn() throws Exception {
+        mayPost = false;
+        entry.setCreatorUserName(USER_NAME);
+
+        assertEquals("redirect:/pressroom-ui/menu.rol",
+                controller.remove(request, model, "entry-1", redirectAttributes));
+        verify(weblogger.getWeblogEntryManager(), never()).trashWeblogEntry(any());
+    }
+
+    @Test
+    void aContributorMayTrashTheirOwnDraft() throws Exception {
+        mayPost = false;
+        entry.setStatus(PubStatus.DRAFT);
+        entry.setCreatorUserName(USER_NAME);
+
+        assertEquals(ENTRIES_REDIRECT,
+                controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes));
+        verify(weblogger.getWeblogEntryManager()).trashWeblogEntry(entry);
     }
 
     @Test

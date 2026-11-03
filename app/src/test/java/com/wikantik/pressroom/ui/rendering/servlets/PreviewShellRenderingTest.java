@@ -129,12 +129,14 @@ class PreviewShellRenderingTest {
         RenderingTestSupport.ensureRenderingRuntime();
         RenderingTestSupport.clearRenderCaches();
         user = TestUtils.setupUser("previewshelluser");
+        RenderingTestSupport.signInAs(user.getUserName());
         weblog = TestUtils.setupWeblog(HANDLE, user);
         TestUtils.endSession(true);
     }
 
     @AfterEach
     void tearDown() throws Exception {
+        RenderingTestSupport.signOut();
         TestUtils.teardownWeblog(weblog.getId());
         TestUtils.teardownUser(user.getUserName());
         TestUtils.endSession(true);

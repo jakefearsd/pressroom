@@ -129,6 +129,48 @@ class EntrySeoChecksTest {
         assertEquals(SeoLimits.DESCRIPTION_MIN, found.limit());
     }
 
+    /**
+     * A description that is the post's own opening cut off mid-sentence reads
+     * as broken in a search result; the audit says so, so an agent or the
+     * author can write one that stands on its own.
+     */
+    @Test
+    void aDescriptionCutFromTheOpeningMidSentenceIsAWarning() {
+        WeblogEntry entry = clean("e1", "Harbour walk");
+        entry.setText("The harbour wall was built in 1850 to shelter the fishing fleet from winter storms. "
+                + "It still does.");
+        entry.setSearchDescription("The harbour wall was built in 1850 to shelter the fishing fleet from.");
+
+        Finding found = only(EntrySeoChecks.fields(entry, weblog()), "search_description_cut");
+        assertEquals(EntrySeoChecks.WARNING, found.severity());
+
+        entry.setSearchDescription("The harbour wall was built in 1850 to shelter the fishing fleet from winter "
+                + "storms.");
+        assertEquals(List.of(), EntrySeoChecks.fields(entry, weblog()), "a whole sentence is fine");
+    }
+
+    /**
+     * A meta title that is the entry title cut off mid-word (seen on
+     * blog.wikantik.com: "...Pasture-Raised Meats and Placer Citr") shows in
+     * the browser tab and the search result as a broken word.
+     */
+    @Test
+    void aMetaTitleCutFromTheTitleMidWordIsAWarning() {
+        WeblogEntry entry = clean("e1", "Newcastle Produce and Placer Citrus");
+        entry.setMetaTitle("Newcastle Produce and Placer Citr");
+
+        Finding found = only(EntrySeoChecks.fields(entry, weblog()), "meta_title_cut");
+        assertEquals(EntrySeoChecks.WARNING, found.severity());
+
+        entry.setMetaTitle("Newcastle Produce and Placer");
+        assertEquals(List.of(), codes(EntrySeoChecks.fields(entry, weblog())).stream()
+                .filter("meta_title_cut"::equals).toList(), "cut at a word is a shorter title, not a broken one");
+        entry.setTitle("Newcastle Produce &amp; Placer Citrus");
+        entry.setMetaTitle("Newcastle Produce & Placer Cit");
+        assertEquals(1, codes(EntrySeoChecks.fields(entry, weblog())).stream()
+                .filter("meta_title_cut"::equals).count(), "compared with the title as readers see it");
+    }
+
     @Test
     void aDescriptionAtTheMinimumIsNotShort() {
         WeblogEntry entry = clean("e1", "Harbour walk");

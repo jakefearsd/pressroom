@@ -26,6 +26,15 @@ pre-wave index until the entry's document is replaced (Maintenance rebuild or
 incidental re-save) — minor PII residue worth clearing.
 
 ## Entry editing
+- **Who may change an entry** (`BaseController.lookupChangeableEntry`):
+  saving over it, restoring a revision onto it and trashing it need an entry
+  of the action weblog that is not trashed; a contributor (EDIT_DRAFT, no
+  POST) additionally may change only their own entries that are still DRAFT
+  or PENDING. Anything else answers like an unknown id. Before 2026-11-03
+  (code review) a contributor could trash any post by id (ids are in page
+  source), restore old revisions onto live posts, and demote other people's
+  posts by saving them, and a save from a stale tab republished a trashed
+  entry. The API already required POST for every write.
 - **Layout**: `EntryEdit.jsp` (approved card:
   `docs/design/editor/editor-writing-surface.html`) is a writing surface plus
   a 252px publish rail. Main column: title (large serif, borderless —

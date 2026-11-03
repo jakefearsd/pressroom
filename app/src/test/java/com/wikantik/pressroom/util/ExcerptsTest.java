@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -155,5 +156,36 @@ class ExcerptsTest {
         assertEquals("Just a taste of it. Then And more…", Excerpts.plainText(html));
         assertNull(Excerpts.plainText("  "));
         assertNull(Excerpts.plainText(null));
+    }
+
+    /** The post's text, as plain text, that the descriptions below are measured against. */
+    private static final String MARKTHALLE = "Opened in October 1891, Markthalle Neun was one of fourteen municipal "
+            + "covered market halls commissioned by the City of Berlin to bring hygienic, centralized food "
+            + "distribution to the working-class neighborhoods. Most of them were lost in the war.";
+
+    /**
+     * A description that is the post's own opening cut off mid-sentence, with
+     * a full stop stuck on (the case seen on blog.wikantik.com, 2026-11-03:
+     * "...to bring hygienic,."), is recognised; a whole sentence of the post,
+     * an ellipsis, or words the post does not contain are not.
+     */
+    @Test
+    void aDescriptionCutFromThePostsOwnTextIsRecognised() {
+        assertTrue(Excerpts.isCutFrom("Opened in October 1891, Markthalle Neun was one of fourteen municipal covered "
+                + "market halls commissioned by the City of Berlin to bring hygienic,.", MARKTHALLE));
+        assertTrue(Excerpts.isCutFrom("Opened in October 1891, Markthalle Neun was one of fourteen municipal "
+                + "covered market halls.", MARKTHALLE), "cut at a word, a full stop added");
+
+        assertFalse(Excerpts.isCutFrom("Opened in October 1891, Markthalle Neun was one of fourteen municipal "
+                + "covered market halls commissioned by the City of Berlin to bring hygienic, centralized food "
+                + "distribution to the working-class neighborhoods.", MARKTHALLE), "a whole sentence of the post");
+        assertFalse(Excerpts.isCutFrom("Most of them were lost in the war.", MARKTHALLE), "the post's last sentence");
+        assertFalse(Excerpts.isCutFrom("Opened in October 1891, Markthalle Neun was one of fourteen municipal "
+                + "covered market halls…", MARKTHALLE), "an ellipsis says it is cut, honestly");
+        assertFalse(Excerpts.isCutFrom("A Kreuzberg market hall with street food every Thursday.", MARKTHALLE),
+                "written for search, not copied");
+        assertFalse(Excerpts.isCutFrom("Opened in.", MARKTHALLE), "too short to be sure");
+        assertFalse(Excerpts.isCutFrom(null, MARKTHALLE));
+        assertFalse(Excerpts.isCutFrom("Opened in October 1891, Markthalle Neun was.", null));
     }
 }

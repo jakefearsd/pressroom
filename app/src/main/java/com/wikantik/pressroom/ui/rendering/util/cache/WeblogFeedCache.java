@@ -99,6 +99,12 @@ public final class WeblogFeedCache extends LazyExpiringRenderCache {
 
         key.append('/').append(feedRequest.getType());
         key.append('/').append(feedRequest.getFormat());
+        if(feedRequest.getPage() > 0) {
+            // ?page=N is a different list of entries (FeedModel pages by it);
+            // without it an anonymous ?page=9999 cached an empty feed over the
+            // real one (code review, 2026-11-03)
+            key.append("/page=").append(feedRequest.getPage());
+        }
 
         if (feedRequest.getTerm() != null) {
             // arbitrary text straight off the query string

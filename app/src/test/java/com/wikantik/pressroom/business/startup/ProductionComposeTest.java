@@ -220,6 +220,29 @@ class ProductionComposeTest {
     }
 
     /**
+     * Caddy rewrites X-Forwarded-For and X-Forwarded-Proto but passes an RFC
+     * 7239 {@code Forwarded} header through as the visitor wrote it. The app
+     * no longer reads it (server.forward-headers-strategy=native; see
+     * RemoteIpValveConfigTest), and every proxy to the app also drops it, so
+     * no later change on either side can make a visitor's own "for=" or
+     * "host=" count again (code review, 2026-11-03).
+     */
+    @Test
+    void everyProxyToTheAppDropsTheForwardedHeader() throws IOException {
+        Matcher block = Pattern.compile("reverse_proxy app:8080\\s*\\{([^}]*)}").matcher(caddyDirectives());
+        int proxies = 0;
+        while (block.find()) {
+            proxies++;
+            assertTrue(Pattern.compile("(?m)^\\s*header_up -Forwarded\\s*$").matcher(block.group(1)).find(),
+                    "a reverse_proxy to the app without header_up -Forwarded:\n" + block.group());
+        }
+        long bare = Pattern.compile("reverse_proxy app:8080\\s*$", Pattern.MULTILINE).matcher(caddyDirectives())
+                .results().count();
+        assertEquals(0, bare, "every reverse_proxy to the app needs a block that drops Forwarded");
+        assertEquals(2, proxies, "the site and the custom-domain zone");
+    }
+
+    /**
      * Behind a proxy on another machine (a tunnel connector such as
      * cloudflared), that machine is Caddy's peer, and an untrusted peer's
      * X-Forwarded-For is replaced with its own address and its

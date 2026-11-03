@@ -31,7 +31,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.web.filter.ForwardedHeaderFilter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -151,23 +150,21 @@ public class InitFilterTest  {
     // ------------------------------------------------- forwarded-proto chain
     //
     // Production terminates TLS at Caddy and proxies to the app over plain
-    // HTTP, signalling the original scheme in X-Forwarded-Proto.
-    // server.forward-headers-strategy=framework (application.properties)
-    // registers Spring's ForwardedHeaderFilter at highest precedence for
-    // every URL pattern, so by the time InitFilter captures the absolute
-    // context URL the request already reports https. These tests run the
-    // exact same two-filter chain against a mock request.
+    // HTTP, signalling the original scheme in X-Forwarded-Proto. With
+    // server.forward-headers-strategy=native (application.properties)
+    // Tomcat's RemoteIpValve reads it before any filter runs, so by the time
+    // InitFilter captures the absolute context URL the request already
+    // reports https on port 443 (RemoteIpValveConfigTest drives the valve
+    // itself). These tests hand InitFilter a request in that state.
 
     @Test
     public void forwardedProtoHttpsYieldsAnHttpsAbsoluteContextUrl() throws Exception {
         String priorAbsolute = WebloggerRuntimeConfig.getAbsoluteContextURL();
         String priorRelative = WebloggerRuntimeConfig.getRelativeContextURL();
         try {
-            MockHttpServletRequest request = proxiedRequest();
-            request.addHeader("X-Forwarded-Proto", "https");
+            MockHttpServletRequest request = asTheValveHandsItOn(proxiedRequest(), "https");
 
-            new ForwardedHeaderFilter().doFilter(request, new MockHttpServletResponse(),
-                    new MockFilterChain(new HttpServlet() { }, plainFilter()));
+            plainFilter().doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
 
             assertEquals("https://photos.example.com/pressroom",
                     WebloggerRuntimeConfig.getAbsoluteContextURL(),
@@ -184,8 +181,7 @@ public class InitFilterTest  {
         String priorAbsolute = WebloggerRuntimeConfig.getAbsoluteContextURL();
         String priorRelative = WebloggerRuntimeConfig.getRelativeContextURL();
         try {
-            new ForwardedHeaderFilter().doFilter(proxiedRequest(), new MockHttpServletResponse(),
-                    new MockFilterChain(new HttpServlet() { }, plainFilter()));
+            plainFilter().doFilter(proxiedRequest(), new MockHttpServletResponse(), new MockFilterChain());
 
             assertEquals("http://photos.example.com/pressroom",
                     WebloggerRuntimeConfig.getAbsoluteContextURL(),
@@ -253,8 +249,7 @@ public class InitFilterTest  {
         String priorAbsolute = WebloggerRuntimeConfig.getAbsoluteContextURL();
         String priorRelative = WebloggerRuntimeConfig.getRelativeContextURL();
         try {
-            new ForwardedHeaderFilter().doFilter(proxiedRequest(""), new MockHttpServletResponse(),
-                    new MockFilterChain(new HttpServlet() { }, plainFilter()));
+            plainFilter().doFilter(proxiedRequest(""), new MockHttpServletResponse(), new MockFilterChain());
 
             assertEquals("", WebloggerRuntimeConfig.getRelativeContextURL());
             assertEquals("http://photos.example.com",
@@ -266,26 +261,26 @@ public class InitFilterTest  {
     }
 
     /**
-     * The proxy owns the public hostname, not just the scheme. Caddy sends
-     * X-Forwarded-Host along with X-Forwarded-Proto; without honouring it the
-     * absolute context url would be built from the container-internal name the
-     * app was actually reached by, and every canonical/og:url/sitemap loc would
-     * name a host that does not resolve on the internet.
+     * The proxy owns the public hostname, not just the scheme: Caddy passes
+     * the reader's own Host through, which is what the request reports, so
+     * the absolute context url names the public host. An X-Forwarded-Host
+     * header decides nothing: the valve is configured not to read one (a
+     * visitor could send it through the trusted tunnel; code review,
+     * 2026-11-03), and InitFilter never reads headers itself.
      */
     @Test
-    public void theForwardedHostDecidesTheAbsoluteUrlAtTheRootContext() throws Exception {
+    public void thePassedThroughHostDecidesTheAbsoluteUrlAtTheRootContext() throws Exception {
         String priorAbsolute = WebloggerRuntimeConfig.getAbsoluteContextURL();
         String priorRelative = WebloggerRuntimeConfig.getRelativeContextURL();
         try {
             MockHttpServletRequest request = new MockHttpServletRequest("GET", "/");
-            request.setServerName("app");
-            request.setServerPort(8080);
+            request.setServerName("maiiavorobiova.com");
+            request.setServerPort(80);
             request.setContextPath("");
-            request.addHeader("X-Forwarded-Proto", "https");
-            request.addHeader("X-Forwarded-Host", "maiiavorobiova.com");
+            request.addHeader("X-Forwarded-Host", "evil.example");
 
-            new ForwardedHeaderFilter().doFilter(request, new MockHttpServletResponse(),
-                    new MockFilterChain(new HttpServlet() { }, plainFilter()));
+            plainFilter().doFilter(asTheValveHandsItOn(request, "https"), new MockHttpServletResponse(),
+                    new MockFilterChain());
 
             assertEquals("https://maiiavorobiova.com",
                     WebloggerRuntimeConfig.getAbsoluteContextURL());
@@ -294,6 +289,18 @@ public class InitFilterTest  {
             WebloggerRuntimeConfig.setAbsoluteContextURL(priorAbsolute);
             WebloggerRuntimeConfig.setRelativeContextURL(priorRelative);
         }
+    }
+
+    /**
+     * What Tomcat's RemoteIpValve hands on for a request Caddy forwarded with
+     * {@code X-Forwarded-Proto: https}: the scheme, isSecure() and the default
+     * port for it. (The valve itself is driven in RemoteIpValveConfigTest.)
+     */
+    static MockHttpServletRequest asTheValveHandsItOn(MockHttpServletRequest request, String proto) {
+        request.setScheme(proto);
+        request.setSecure("https".equals(proto));
+        request.setServerPort("https".equals(proto) ? 443 : 80);
+        return request;
     }
 
     /**

@@ -32,7 +32,6 @@ public final class FieldConstants {
     public static final String ANCHOR = "anchor";
     public static final String UPDATED = "updated";
     public static final String ID = "id";
-    public static final String USERNAME = "username";
     public static final String CATEGORY = "cat";
     public static final String TITLE = "title";
     public static final String PUBLISHED = "published";

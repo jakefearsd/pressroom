@@ -248,6 +248,12 @@ public final class SiteWideCache implements CacheHandler {
         if(pageRequest.getWeblogAnchor() != null) {
             // may contain spaces or other bad chars
             key.append("/entry/").append(CacheKeys.encode(pageRequest.getWeblogAnchor()));
+            if(pageRequest.getWeblogPageName() != null) {
+                // /page/<name>?entry=x renders the named template, not the
+                // permalink: without this the theme's stylesheet could be
+                // cached over a post (code review, 2026-11-03)
+                key.append("/page/").append(CacheKeys.encode(pageRequest.getWeblogPageName()));
+            }
         } else {
 
             if(pageRequest.getPageSlug() != null) {
@@ -326,6 +332,12 @@ public final class SiteWideCache implements CacheHandler {
         
         key.append('/').append(feedRequest.getType());
         key.append('/').append(feedRequest.getFormat());
+        if(feedRequest.getPage() > 0) {
+            // ?page=N is a different list of entries (FeedModel pages by it);
+            // without it an anonymous ?page=9999 cached an empty feed over the
+            // real one (code review, 2026-11-03)
+            key.append("/page=").append(feedRequest.getPage());
+        }
 
         if (feedRequest.getTerm() != null) {
             // arbitrary text straight off the query string

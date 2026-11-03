@@ -107,6 +107,62 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
         this.term = term;
     }
 
+    /**
+     * The reader's query, confined to {@link #SEARCH_FIELDS}. The classic
+     * parser honours "field:" syntax for any field in the index, so a reader
+     * could query fields search is not for ("username:a*" enumerated author
+     * logins; code review, 2026-11-03). A field outside the searched ones is
+     * read as no field at all, which searches its words across them all.
+     */
+    static final class SearchedFieldsOnly extends MultiFieldQueryParser {
+
+        private static final java.util.Set<String> SEARCHED = java.util.Set.of(SEARCH_FIELDS);
+
+        SearchedFieldsOnly(String[] fields, org.apache.lucene.analysis.Analyzer analyzer) {
+            super(fields, analyzer);
+        }
+
+        private static String confine(String field) {
+            return field != null && SEARCHED.contains(field) ? field : null;
+        }
+
+        @Override
+        protected Query getFieldQuery(String field, String queryText, int slop) throws ParseException {
+            return super.getFieldQuery(confine(field), queryText, slop);
+        }
+
+        @Override
+        protected Query getFieldQuery(String field, String queryText, boolean quoted) throws ParseException {
+            return super.getFieldQuery(confine(field), queryText, quoted);
+        }
+
+        @Override
+        protected Query getFuzzyQuery(String field, String termStr, float minSimilarity) throws ParseException {
+            return super.getFuzzyQuery(confine(field), termStr, minSimilarity);
+        }
+
+        @Override
+        protected Query getPrefixQuery(String field, String termStr) throws ParseException {
+            return super.getPrefixQuery(confine(field), termStr);
+        }
+
+        @Override
+        protected Query getWildcardQuery(String field, String termStr) throws ParseException {
+            return super.getWildcardQuery(confine(field), termStr);
+        }
+
+        @Override
+        protected Query getRegexpQuery(String field, String termStr) throws ParseException {
+            return super.getRegexpQuery(confine(field), termStr);
+        }
+
+        @Override
+        protected Query getRangeQuery(String field, String part1, String part2, boolean startInclusive,
+                boolean endInclusive) throws ParseException {
+            return super.getRangeQuery(confine(field), part1, part2, startInclusive, endInclusive);
+        }
+    }
+
     /*
      * (non-Javadoc)
      * 
@@ -127,7 +183,7 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
                 return;
             }
 
-            MultiFieldQueryParser multiParser = new MultiFieldQueryParser(
+            MultiFieldQueryParser multiParser = new SearchedFieldsOnly(
                     SEARCH_FIELDS, LuceneIndexManager.getAnalyzer());
 
             // Make it an AND by default. Comment this out for an or (default)

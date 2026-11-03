@@ -1,14 +1,87 @@
 #**
-The discovery front page at the site root, for a site space whose theme has
-no template named discovery (journal, travel, portfolio, or a forked theme):
-FrontDoor forwards / to the site space's page/discovery and PageServlet falls
-back to this. Plain markup, like the shared page.vm; the theme's stylesheet is
-linked for its base type.
+The discovery front page at the site root: what / shows when no site page or
+weblog is the front door. FrontDoor forwards / to the site space's
+page/discovery, and PageServlet serves this template for it whatever theme
+the site space uses (a theme may still ship its own template named
+discovery; none of the bundled themes does). One page, so the front door
+looks the same on every install.
 
-The section classes (fd-discovery-headline, -popular, -blogs, -different,
--all) are the same stable markers the frontpage theme's discovery.vm carries;
-the rendering tests and the browser suite pin them.
+Design: docs/superpowers/specs/2026-11-03-front-page-redesign-design.md;
+visual source of truth docs/superpowers/specs/2026-11-03-front-page-redesign-mockup.html.
+
+Data: $discovery.frontPage (DiscoveryModel). Entry titles are stored escaped
+and emitted bare; weblog names come escaped from the wrapper; excerpts are
+plain text and go through $utils.escapeHTML once; every href is escaped here.
+
+The section classes (fd-discovery-headline, -popular, -latest, -blogs,
+-different, -all) are stable markers the rendering tests and the browser
+suite pin. Each sits alone in its class attribute and carries no style:
+restyle through the inner classes, never by renaming a marker. No section
+nests another section, because the tests read a marker up to its first
+closing section tag.
+
+The three house slots (data-slot a, b, c) are where ads will go once AdSense
+is approved; until then each spotlights a blog the shelves do not show.
+
+Velocity hazards (CLAUDE.md): the macros below take arguments, and no
+comment names one with its hash, so nothing here is invoked by accident.
 *#
+## ------------------------------------------------------------ macros
+## A post's picture: its featured image, else a tile in its blog's hue with
+## the blog's initials. Hidden from assistive tech: the title link that
+## follows is the accessible one.
+#macro(fdMedia $fdPost $fdSizes)
+#set($fdImg = false)
+#set($fdImg = $fdPost.featuredImage)
+#if($fdImg)
+<a class="fd-media" href="$utils.escapeHTML($fdPost.permalink)" tabindex="-1" aria-hidden="true">#showResponsiveImage($fdImg "" $fdSizes "")</a>
+#else
+<a class="fd-media fd-tile" href="$utils.escapeHTML($fdPost.permalink)" tabindex="-1" aria-hidden="true">$discovery.initials($fdPost.website)</a>
+#end
+#end
+## The blog a post comes from, in its hue.
+#macro(fdKicker $fdPost)<a class="fd-kicker" href="$utils.escapeHTML($fdPost.website.absoluteURL)">$fdPost.website.name</a>#end
+## Date and reading time. Absolute dates: the page is cached until the next
+## discovery generation, so "2 hours ago" would go stale.
+#macro(fdMeta $fdPost)<p class="fd-meta"><time datetime="$fdPost.formatPubTime('yyyy-MM-dd')">$fdPost.formatPubTime('MMM d')</time><span>$text.get("discovery.readingTime", [$fdPost.readingMinutes])</span></p>#end
+## A post's plain-text excerpt, when it has one.
+#macro(fdExcerpt $fdPost $fdClass)
+#set($fdEx = false)
+#set($fdEx = $fdPost.excerpt)
+#if($fdEx)<p class="$fdClass">$utils.escapeHTML($fdEx)</p>#end
+#end
+## A blog's hue, 1 to 6, by its place in the all-blogs list.
+#macro(fdHue $fdBlog)#set($fdB = $fdHandles.indexOf($fdBlog.handle) % 6 + 1)#end
+## One house slot: a blog the shelves do not show.
+#macro(fdSpot $fdBlog $fdSlot)
+#fdHue($fdBlog)
+<aside class="fd-slot fd-slot-$fdSlot" data-slot="$fdSlot" aria-label="$text.get('discovery.spotlight')">
+    <div class="fd-spot" data-b="$fdB">
+        <span class="fd-mark" aria-hidden="true">$discovery.initials($fdBlog)</span>
+        <div class="fd-spot-text">
+            <p class="fd-label">$text.get("discovery.spotlight")</p>
+            <a class="fd-spot-name" href="$utils.escapeHTML($fdBlog.absoluteURL)">$fdBlog.name</a>
+            #if($utils.isNotEmpty($fdBlog.tagline))<p class="fd-spot-about">$fdBlog.tagline</p>#end
+        </div>
+        <a class="fd-spot-go" href="$utils.escapeHTML($fdBlog.absoluteURL)" aria-hidden="true" tabindex="-1">$text.get("discovery.visit", [$fdBlog.name]) &#8594;</a>
+    </div>
+</aside>
+#end
+## The newsletter form: the site space's own list (Weblog Settings), built
+## in the browser by the subscribe script in the showAudienceAssets macro.
+#macro(fdSubscribe)<div class="subscribe-form-slot" data-list-uuid="$utils.escapeHTML($fdList)" data-endpoint="$utils.escapeHTML($url.site)/newsletter/subscribe"></div>#end
+## ------------------------------------------------------------ data
+#set($dFront = $discovery.frontPage)
+#set($fdList = "")
+#if($utils.isNotEmpty($model.weblog.newsletterListUuid))#set($fdList = $model.weblog.newsletterListUuid)#end
+#set($fdHandles = [])
+#foreach($fdBlog in $dFront.allBlogs)#set($fdAdded = $fdHandles.add($fdBlog.handle))#end
+## the house slots' blogs: those no shelf shows, else every blog
+#set($fdShelved = [])
+#foreach($dCard in $dFront.blogs)#set($fdAdded = $fdShelved.add($dCard.weblog.handle))#end
+#set($fdSpots = [])
+#foreach($fdBlog in $dFront.allBlogs)#if(!$fdShelved.contains($fdBlog.handle))#set($fdAdded = $fdSpots.add($fdBlog))#end#end
+#if($fdSpots.isEmpty())#set($fdSpots = $dFront.allBlogs)#end
 <!DOCTYPE html>
 ## lang: WeblogWrapper#getLanguageTag, as page.vm explains.
 <html lang="$model.weblog.getLanguageTag()">
@@ -22,90 +95,445 @@ the rendering tests and the browser suite pin them.
     ## The site space has no posts, so no feed autodiscovery.
     #showSeoHead()
     #showAnalyticsTrackingCode($model.weblog)
-    #if($model.weblog.stylesheet)<link rel="stylesheet" href="$model.weblog.stylesheet">#end
+    #showAudienceAssets()
+    <style>
+/* Quiet Instrument tokens (docs/design/design-system.md), plus six blog hues.
+   Plex is self-hosted (webjars), so the policy's font-src 'self' covers it. */
+@font-face { font-family: "IBM Plex Serif"; font-style: normal; font-weight: 600; font-display: swap;
+    src: url("$url.site/webjars/ibm__plex-serif/2.0.0/fonts/complete/woff2/IBMPlexSerif-SemiBold.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 400; font-display: swap;
+    src: url("$url.site/webjars/ibm__plex-sans/1.1.0/fonts/complete/woff2/IBMPlexSans-Regular.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 600; font-display: swap;
+    src: url("$url.site/webjars/ibm__plex-sans/1.1.0/fonts/complete/woff2/IBMPlexSans-SemiBold.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap;
+    src: url("$url.site/webjars/ibm__plex-mono/2.5.0/fonts/complete/woff2/IBMPlexMono-Regular.woff2") format("woff2"); }
+:root {
+    color-scheme: light dark;
+    --paper: #F7F9F9; --surface: #FFFFFF; --ink: #17262A; --ink-soft: #5A6E72; --line: #DCE4E4;
+    --accent: #0F6E68; --accent-quiet: #E3F0EE; --focus: #2AA198; --on-accent: #FFFFFF;
+    --b1: #0F6E68; --b2: #9A6A1F; --b3: #3F5F8A; --b4: #2F7D4F; --b5: #7A4F7A; --b6: #A33B2E;
+    --serif: "IBM Plex Serif", Georgia, serif; --sans: "IBM Plex Sans", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, monospace;
+    --t-label: .75rem; --t-body: .90625rem; --t-read: 1rem; --t-head: 1.25rem; --t-site: 1.75rem;
+    --t-lead: clamp(1.75rem, 3.4vw, 2.5rem);
+    --r: 6px; --wrap: 75rem; --gutter: max(16px, env(safe-area-inset-left, 0px));
+}
+@media (prefers-color-scheme: dark) {
+    :root {
+        --paper: #131C1C; --surface: #1A2626; --ink: #DCE7E5; --ink-soft: #8FA5A2; --line: #2A3838;
+        --accent: #4FB3AA; --accent-quiet: #1E3230; --on-accent: #0E1616;
+        --b1: #4FB3AA; --b2: #D0A45C; --b3: #8AA8D6; --b4: #6FBF8F; --b5: #C496C4; --b6: #D0705F;
+    }
+}
+[data-b="1"] { --hue: var(--b1); } [data-b="2"] { --hue: var(--b2); } [data-b="3"] { --hue: var(--b3); }
+[data-b="4"] { --hue: var(--b4); } [data-b="5"] { --hue: var(--b5); } [data-b="6"] { --hue: var(--b6); }
+body.fd-front * { box-sizing: border-box; }
+body.fd-front { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans);
+    font-size: var(--t-body); line-height: 1.55; }
+body.fd-front a { color: inherit; text-decoration: none; }
+body.fd-front a:hover { color: var(--accent); }
+body.fd-front :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+body.fd-front h1, body.fd-front h2, body.fd-front h3, body.fd-front p { margin: 0; }
+body.fd-front ul, body.fd-front ol { list-style: none; margin: 0; padding: 0; }
+body.fd-front img { max-width: 100%; }
+.fd-wrap { max-width: var(--wrap); margin: 0 auto; padding-left: var(--gutter);
+    padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.fd-skip { position: absolute; left: -9999px; top: 0; z-index: 10; padding: .5rem .75rem;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+.fd-skip:focus { left: .75rem; top: .75rem; }
+.fd-label { font-size: var(--t-label); font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--ink-soft); }
+.fd-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-family: var(--mono); font-size: var(--t-label);
+    color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.fd-meta > * + *::before { content: "\00b7"; margin-right: 12px; color: var(--line); }
+.fd-kicker { display: inline-flex; gap: 6px; align-items: center; font-size: var(--t-label); font-weight: 600;
+    letter-spacing: .06em; text-transform: uppercase; color: var(--hue, var(--accent)) !important; }
+.fd-kicker::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: currentColor; }
+.fd-btn, .fd-front .newsletter-subscribe button { display: inline-flex; align-items: center; justify-content: center;
+    height: 40px; padding: 0 18px; border-radius: 99px; border: 0; background: var(--accent);
+    color: var(--on-accent) !important; font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.fd-mark { display: grid; place-items: center; width: 28px; height: 28px; flex: none; border-radius: 6px;
+    background: var(--hue, var(--accent)); color: var(--surface); font-family: var(--serif);
+    font-size: var(--t-label); font-weight: 600; }
+
+/* masthead and blog nav */
+.fd-mast .fd-wrap { display: flex; flex-wrap: wrap; gap: 16px 32px; align-items: flex-end;
+    justify-content: space-between; padding-block: 24px 16px; }
+.fd-brand { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.fd-brand .fd-mark { width: 40px; height: 40px; border-radius: 8px; font-size: var(--t-head); }
+.fd-site a { font-family: var(--serif); font-size: var(--t-site); font-weight: 600; letter-spacing: -.01em;
+    line-height: 1.1; }
+.fd-tag { color: var(--ink-soft); margin-top: 4px !important; max-width: 60ch; }
+.fd-sections { border-block: 1px solid var(--line); background: var(--surface); }
+.fd-sections ul { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding-block: 6px; }
+.fd-sections a { display: inline-flex; gap: 8px; align-items: center; padding: 6px 12px; border-radius: 99px;
+    white-space: nowrap; font-weight: 600; color: var(--ink-soft); }
+.fd-sections a:hover, .fd-sections a[aria-current] { background: var(--accent-quiet); color: var(--ink); }
+.fd-dot { width: 8px; height: 8px; border-radius: 99px; background: var(--hue, var(--accent)); }
+
+/* media: the featured image cropped to its slot, or the blog's tile */
+.fd-media { display: block; aspect-ratio: 16 / 10; border-radius: var(--r); overflow: hidden;
+    background: var(--line); max-width: 100%; }
+.fd-media picture, .fd-media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.fd-tile { display: grid; place-items: center; color: rgba(255, 255, 255, .92) !important;
+    font-family: var(--serif); font-weight: 600; font-size: var(--t-site);
+    background: linear-gradient(150deg, var(--hue, var(--accent)), color-mix(in oklab, var(--hue, var(--accent)) 60%, #0b1414)); }
+
+/* lead and the popular rail */
+.fd-top { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 32px; padding-block: 32px; }
+.fd-lead { display: grid; gap: 14px; align-content: start; }
+.fd-lead .fd-media { aspect-ratio: 16 / 9; }
+.fd-eyebrow { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; }
+.fd-lead-title { font-family: var(--serif); font-size: var(--t-lead); font-weight: 600; line-height: 1.12;
+    letter-spacing: -.015em; text-wrap: balance; overflow-wrap: anywhere; }
+.fd-dek { font-size: var(--t-read); color: var(--ink-soft); max-width: 62ch; }
+.fd-rail { display: grid; gap: 24px; align-content: start; }
+.fd-rank { counter-reset: fd-rank; margin-top: 8px !important; }
+.fd-rank li { counter-increment: fd-rank; display: grid; grid-template-columns: 32px minmax(0, 1fr);
+    gap: 4px 8px; padding-block: 12px; border-top: 1px solid var(--line); }
+.fd-rank li::before { content: counter(fd-rank); grid-row: span 2; font-family: var(--serif);
+    font-size: var(--t-head); color: var(--accent); line-height: 1.2; }
+.fd-rank .fd-t { font-weight: 600; font-size: var(--t-read); line-height: 1.35; overflow-wrap: anywhere; }
+.fd-card-signup { border-radius: var(--r); background: var(--accent-quiet); padding: 20px; display: grid; gap: 10px; }
+.fd-card-signup h2, .fd-band h2 { font-family: var(--serif); font-weight: 600; line-height: 1.2; text-wrap: balance; }
+.fd-card-signup h2 { font-size: var(--t-head); }
+.fd-card-signup p, .fd-band p { color: var(--ink-soft); }
+
+/* the newsletter form the subscribe script builds */
+.fd-front .newsletter-subscribe { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.fd-front .newsletter-subscribe label { flex: 1 1 12rem; margin: 0; font-size: var(--t-label); color: var(--ink-soft); }
+.fd-front .newsletter-subscribe input[type=email] { display: block; width: 100%; max-width: none; height: 40px;
+    margin-top: 4px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface);
+    color: var(--ink); font: inherit; }
+.fd-front .newsletter-subscribe button { margin: 0; }
+
+/* house slots: a blog spotlight until the ad slot is filled */
+.fd-slot { display: block; }
+.fd-spot { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px 16px; align-items: center;
+    padding: 16px 20px; border-radius: var(--r); border: 1px solid var(--line); background: var(--surface);
+    border-left: 4px solid var(--hue, var(--accent)); }
+.fd-spot .fd-mark { width: 44px; height: 44px; font-size: var(--t-read); }
+.fd-spot-name { font-family: var(--serif); font-size: var(--t-head); font-weight: 600; }
+.fd-spot-about { color: var(--ink-soft); }
+.fd-spot-go { font-weight: 600; color: var(--hue, var(--accent)) !important; white-space: nowrap; }
+.fd-slot-a { padding-block: 0 24px; }
+.fd-slot-b .fd-spot { grid-template-columns: minmax(0, 1fr); align-content: start; padding: 24px; }
+.fd-slot-c { padding-block: 8px 24px; }
+
+/* sections */
+.fd-sec { padding-block: 32px; }
+.fd-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 16px;
+    padding-bottom: 10px; border-bottom: 2px solid var(--ink); }
+.fd-head h2 { font-family: var(--serif); font-size: var(--t-head); font-weight: 600; }
+.fd-head a { font-weight: 600; color: var(--accent); white-space: nowrap; }
+.fd-body { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 32px; }
+.fd-latest li { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 20px; padding-block: 20px;
+    border-bottom: 1px solid var(--line); }
+.fd-latest li:first-child { padding-top: 4px; }
+.fd-latest .fd-media { aspect-ratio: 4 / 3; }
+.fd-txt { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.fd-txt h3, .fd-diff h3 { font-family: var(--serif); font-size: var(--t-head); font-weight: 600; line-height: 1.25;
+    text-wrap: balance; overflow-wrap: anywhere; }
+.fd-ex { color: var(--ink-soft); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; }
+.fd-side { display: grid; gap: 24px; align-content: start; }
+.fd-side-in { position: sticky; top: 16px; display: grid; gap: 24px; }
+.fd-browse li a { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center;
+    padding-block: 10px; border-top: 1px solid var(--line); }
+.fd-browse .fd-n { font-weight: 600; }
+.fd-count { font-family: var(--mono); font-size: var(--t-label); color: var(--ink-soft); }
+.fd-shelves { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.fd-shelf { border: 1px solid var(--line); border-top: 4px solid var(--hue, var(--accent)); border-radius: var(--r);
+    background: var(--surface); padding: 20px; display: grid; gap: 14px; align-content: start; }
+.fd-shelf-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; align-items: center; }
+.fd-shelf-head .fd-mark { width: 40px; height: 40px; font-size: var(--t-read); grid-row: span 2; }
+.fd-shelf-name { font-family: var(--serif); font-size: var(--t-head); font-weight: 600; line-height: 1.2; }
+.fd-shelf .fd-about { color: var(--ink-soft); }
+.fd-shelf .fd-media { aspect-ratio: 16 / 9; }
+.fd-shelf ol { display: grid; gap: 10px; }
+.fd-shelf ol a { display: block; font-weight: 600; font-size: var(--t-read); line-height: 1.35; overflow-wrap: anywhere; }
+.fd-visit { font-weight: 600; color: var(--hue, var(--accent)) !important; }
+.fd-band { background: var(--accent-quiet); }
+.fd-band .fd-wrap { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 24px 48px;
+    align-items: center; padding-block: 40px; }
+.fd-band h2 { font-size: var(--t-site); }
+.fd-band p { font-size: var(--t-read); margin-top: 8px; max-width: 48ch; }
+.fd-diff { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.fd-diff li { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.fd-places .places-been-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.fd-places .places-been-list a { display: inline-flex; padding: 6px 12px; border-radius: 99px;
+    border: 1px solid var(--line); background: var(--surface); font-weight: 600; }
+.fd-dir { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.fd-dir li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 12px; align-items: center;
+    padding: 14px; border-radius: var(--r); border: 1px solid var(--line); background: var(--surface); }
+.fd-dir .fd-mark { grid-row: span 2; width: 36px; height: 36px; }
+.fd-dir a { font-weight: 600; }
+.fd-dir p { color: var(--ink-soft); font-size: var(--t-label); }
+.fd-empty { padding-block: 48px; color: var(--ink-soft); }
+.fd-foot { border-top: 1px solid var(--line); margin-top: 32px; background: var(--surface); }
+.fd-foot .fd-wrap { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; padding-block: 32px; }
+.fd-foot nav li + li { margin-top: 6px; }
+.fd-foot .fd-about { color: var(--ink-soft); max-width: 48ch; margin-top: 8px; }
+.fd-foot .colophon { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 16px;
+    font-size: var(--t-label); color: var(--ink-soft); }
+.fd-foot .colophon p { margin: 0 0 4px; }
+.fd-foot .colophon a { text-decoration: underline; }
+.fd-foot .colophon-meta span + span::before { content: "\00b7"; margin: 0 .5em; }
+
+@media (max-width: 1020px) {
+    .fd-top, .fd-body { grid-template-columns: minmax(0, 1fr); }
+    .fd-rail, .fd-side-in { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); position: static; }
+    .fd-shelves, .fd-diff { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .fd-dir { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+    .fd-top { padding-top: 16px; gap: 24px; }
+    .fd-lead .fd-media { margin-inline: calc(-1 * var(--gutter)); border-radius: 0; max-width: none; }
+    .fd-rail, .fd-side-in, .fd-diff, .fd-dir, .fd-band .fd-wrap, .fd-foot .fd-wrap { grid-template-columns: minmax(0, 1fr); }
+    .fd-latest li { grid-template-columns: minmax(0, 1fr) 96px; gap: 14px; }
+    .fd-latest li .fd-media { grid-column: 2; grid-row: 1; aspect-ratio: 1; font-size: var(--t-head); }
+    .fd-latest li .fd-txt { grid-column: 1; grid-row: 1; }
+    .fd-latest h3 { font-size: var(--t-read); }
+    .fd-latest .fd-ex { display: none; }
+    .fd-shelves { grid-auto-flow: column; grid-auto-columns: 85%; grid-template-columns: none; overflow-x: auto;
+        scroll-snap-type: x mandatory; padding-bottom: 8px; }
+    .fd-shelf { scroll-snap-align: start; }
+    .fd-spot { grid-template-columns: auto minmax(0, 1fr); }
+    .fd-spot-go { grid-column: 2; }
+    .fd-band h2 { font-size: var(--t-head); }
+}
+@media (prefers-reduced-motion: no-preference) {
+    .fd-media img { transition: transform .4s ease; }
+    .fd-media:hover img { transform: scale(1.015); }
+}
+    </style>
 </head>
-<body class="discovery">
-<header>
-    ## a list page: the site name is its h1 (docs/dev/themes-and-templates.md,
-    ## the heading rule)
-    <h1><a href="$url.home">$model.weblog.name</a></h1>
-    ## the page-links macro emits bare list items, so the list is ours
-    <nav><ul class="page-nav">#showPageLinks($model.weblog)</ul></nav>
+<body class="fd-front">
+<a class="fd-skip" href="#main">$text.get("discovery.skip")</a>
+
+<header class="fd-mast">
+    <div class="fd-wrap">
+        <div class="fd-brand">
+            #if($utils.isNotEmpty($config.siteName))<span class="fd-mark" aria-hidden="true">$utils.escapeHTML($config.siteName.substring(0, 1))</span>#end
+            <div>
+                ## a list page: the site name is its h1 (docs/dev/themes-and-templates.md, the heading rule)
+                <h1 class="fd-site"><a href="$url.home">$utils.escapeHTML($config.siteName)</a></h1>
+                #if($utils.isNotEmpty($config.siteDescription))<p class="fd-tag">$utils.escapeHTML($config.siteDescription)</p>#end
+            </div>
+        </div>
+        #if($fdList != "")<a class="fd-btn" href="#fd-newsletter">$text.get("discovery.newsletter.button")</a>#end
+    </div>
 </header>
-<main>
-## $discovery.frontPage: entry titles are stored escaped (emitted bare),
-## weblog names are escaped by the wrapper, every href is escaped here.
-#set($dFront = $discovery.frontPage)
+
+#if(!$dFront.allBlogs.isEmpty())
+<nav class="fd-sections" aria-label="$text.get('discovery.blogsNav')">
+    <div class="fd-wrap">
+        <ul>
+            <li><a href="$url.home" aria-current="page">$text.get("discovery.frontPage")</a></li>
+            #foreach($fdBlog in $dFront.allBlogs)
+            #fdHue($fdBlog)
+            <li><a href="$utils.escapeHTML($fdBlog.absoluteURL)" data-b="$fdB"><span class="fd-dot" aria-hidden="true"></span>$fdBlog.name</a></li>
+            #end
+        </ul>
+    </div>
+</nav>
+#end
+
+<main id="main">
 #if($dFront.allBlogs.isEmpty())
-    <p>$text.get("siteDirectory.empty")</p>
+    <p class="fd-wrap fd-empty">$text.get("siteDirectory.empty")</p>
 #else
+<div class="fd-wrap">
+    <div class="fd-top">
 #if($dFront.headline)
 #set($dLead = $dFront.headline)
-    <section class="fd-discovery-headline">
-        ## "most read" only when it was ranked by traffic; otherwise it is the newest post
-        <h2>#if($dFront.headlineRanked)$text.get("discovery.headline")#else$text.get("discovery.headline.newest")#end</h2>
-        <article class="fd-discovery-post">
-            <p><a href="$utils.escapeHTML($dLead.website.absoluteURL)">$dLead.website.name</a></p>
-            <h3><a href="$utils.escapeHTML($dLead.permalink)">$dLead.title</a></h3>
-        </article>
-    </section>
+#fdHue($dLead.website)
+        <section class="fd-discovery-headline" aria-labelledby="fd-headline-label">
+            <article class="fd-discovery-post fd-lead" data-b="$fdB">
+                #fdMedia($dLead "(max-width: 1020px) 100vw, 66vw")
+                <div class="fd-eyebrow">
+                    ## "most read" only when it was ranked by traffic; otherwise it is the newest post
+                    <h2 class="fd-label" id="fd-headline-label">#if($dFront.headlineRanked)$text.get("discovery.headline")#else$text.get("discovery.headline.newest")#end</h2>
+                    #fdKicker($dLead)
+                </div>
+                <h3 class="fd-lead-title"><a href="$utils.escapeHTML($dLead.permalink)">$dLead.title</a></h3>
+                #fdExcerpt($dLead "fd-dek")
+                #fdMeta($dLead)
+            </article>
+        </section>
 #end
+        <div class="fd-rail">
 #if(!$dFront.popular.isEmpty())
-    <section class="fd-discovery-popular">
-        <h2>$text.get("discovery.popular")</h2>
-        <ul>
-        #foreach($dPost in $dFront.popular)
-            <li class="fd-discovery-post"><a href="$utils.escapeHTML($dPost.permalink)">$dPost.title</a>
-                (<a href="$utils.escapeHTML($dPost.website.absoluteURL)">$dPost.website.name</a>)</li>
-        #end
-        </ul>
-    </section>
-#end
-#if(!$dFront.blogs.isEmpty())
-    <section class="fd-discovery-blogs">
-        <h2>$text.get("discovery.blogs")</h2>
-        <ul>
-        #foreach($dCard in $dFront.blogs)
-            <li class="fd-discovery-card"><a href="$utils.escapeHTML($dCard.weblog.absoluteURL)">$dCard.weblog.name</a>
-                <ul>
-                #foreach($dPost in $dCard.topEntries)
-                    <li><a href="$utils.escapeHTML($dPost.permalink)">$dPost.title</a></li>
+            <section class="fd-discovery-popular" aria-labelledby="fd-popular-label">
+                <h2 class="fd-label" id="fd-popular-label">$text.get("discovery.popular")</h2>
+                <ol class="fd-rank">
+                #foreach($dPost in $dFront.popular)
+                #fdHue($dPost.website)
+                    <li class="fd-discovery-post" data-b="$fdB"><a class="fd-t" href="$utils.escapeHTML($dPost.permalink)">$dPost.title</a>#fdKicker($dPost)</li>
                 #end
-                </ul>
-            </li>
-        #end
-        </ul>
-    </section>
+                </ol>
+            </section>
 #end
+#if($fdList != "")
+            <div class="fd-card-signup">
+                <h2>$text.get("discovery.newsletter.card")</h2>
+                <p>$text.get("discovery.newsletter.text")</p>
+                #fdSubscribe()
+            </div>
+#end
+        </div>
+    </div>
+</div>
+
+<div class="fd-wrap">#fdSpot($fdSpots.get(0) "a")</div>
+
+<div class="fd-wrap">
+    <div class="fd-body">
+#if(!$dFront.latest.isEmpty())
+        <section class="fd-discovery-latest" aria-labelledby="fd-latest-label">
+            <div class="fd-head"><h2 id="fd-latest-label">$text.get("discovery.latest")</h2></div>
+            <ul class="fd-latest">
+            #foreach($dPost in $dFront.latest)
+            #fdHue($dPost.website)
+                <li class="fd-discovery-post" data-b="$fdB">
+                    #fdMedia($dPost "(max-width: 640px) 96px, 220px")
+                    <div class="fd-txt">
+                        #fdKicker($dPost)
+                        <h3><a href="$utils.escapeHTML($dPost.permalink)">$dPost.title</a></h3>
+                        #fdExcerpt($dPost "fd-ex")
+                        #fdMeta($dPost)
+                    </div>
+                </li>
+            #end
+            </ul>
+        </section>
+#else
+        <div></div>
+#end
+        <div class="fd-side">
+            <div class="fd-side-in">
+                #set($fdSpotB = $fdSpots.size())
+                #fdSpot($fdSpots.get(1 % $fdSpotB) "b")
+                <nav class="fd-browse" aria-labelledby="fd-browse-label">
+                    <h2 class="fd-label" id="fd-browse-label">$text.get("discovery.blogsNav")</h2>
+                    <ul>
+                    #foreach($fdBlog in $dFront.allBlogs)
+                    #fdHue($fdBlog)
+                        <li data-b="$fdB"><a href="$utils.escapeHTML($fdBlog.absoluteURL)"><span class="fd-mark" aria-hidden="true">$discovery.initials($fdBlog)</span><span class="fd-n">$fdBlog.name</span><span class="fd-count">$fdBlog.entryCount</span></a></li>
+                    #end
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+#if(!$dFront.blogs.isEmpty())
+<div class="fd-wrap">
+    <section class="fd-discovery-blogs" aria-labelledby="fd-blogs-label">
+        <div class="fd-sec">
+            <div class="fd-head"><h2 id="fd-blogs-label">$text.get("discovery.blogs")</h2></div>
+            <div class="fd-shelves">
+            #foreach($dCard in $dFront.blogs)
+            #fdHue($dCard.weblog)
+                <article class="fd-discovery-card fd-shelf" data-b="$fdB">
+                    <div class="fd-shelf-head">
+                        <span class="fd-mark" aria-hidden="true">$discovery.initials($dCard.weblog)</span>
+                        <h3 class="fd-shelf-name"><a href="$utils.escapeHTML($dCard.weblog.absoluteURL)">$dCard.weblog.name</a></h3>
+                        <span class="fd-count">$text.get("discovery.posts", [$dCard.weblog.entryCount])</span>
+                    </div>
+                    #if($utils.isNotEmpty($dCard.weblog.tagline))<p class="fd-about">$dCard.weblog.tagline</p>#end
+                    #if(!$dCard.topEntries.isEmpty())#fdMedia($dCard.topEntries.get(0) "(max-width: 640px) 85vw, 33vw")#end
+                    <ol>
+                    #foreach($dPost in $dCard.topEntries)
+                        <li><a href="$utils.escapeHTML($dPost.permalink)">$dPost.title</a></li>
+                    #end
+                    </ol>
+                    <a class="fd-visit" href="$utils.escapeHTML($dCard.weblog.absoluteURL)" aria-hidden="true" tabindex="-1">$text.get("discovery.visit", [$dCard.weblog.name]) &#8594;</a>
+                </article>
+            #end
+            </div>
+        </div>
+    </section>
+</div>
+#end
+
+#if($fdList != "")
+<div class="fd-band" id="fd-newsletter">
+    <div class="fd-wrap">
+        <div>
+            <h2>$text.get("discovery.newsletter.title")</h2>
+            <p>$text.get("discovery.newsletter.text")</p>
+        </div>
+        #fdSubscribe()
+    </div>
+</div>
+#end
+
+<div class="fd-wrap">
 #if(!$dFront.different.isEmpty())
-    <section class="fd-discovery-different">
-        <h2>$text.get("discovery.different")</h2>
-        <ul>
-        #foreach($dPost in $dFront.different)
-            <li class="fd-discovery-post"><a href="$utils.escapeHTML($dPost.permalink)">$dPost.title</a>
-                (<a href="$utils.escapeHTML($dPost.website.absoluteURL)">$dPost.website.name</a>)</li>
-        #end
-        </ul>
+    <section class="fd-discovery-different" aria-labelledby="fd-different-label">
+        <div class="fd-sec">
+            <div class="fd-head"><h2 id="fd-different-label">$text.get("discovery.different")</h2></div>
+            <ul class="fd-diff">
+            #foreach($dPost in $dFront.different)
+            #fdHue($dPost.website)
+                <li class="fd-discovery-post" data-b="$fdB">
+                    #fdMedia($dPost "(max-width: 640px) 100vw, 33vw")
+                    #fdKicker($dPost)
+                    <h3><a href="$utils.escapeHTML($dPost.permalink)">$dPost.title</a></h3>
+                    #fdExcerpt($dPost "fd-ex")
+                </li>
+            #end
+            </ul>
+        </div>
     </section>
 #end
-    ## Places you've been: hidden and empty until the showPlacesYouveBeen
-    ## macro (the "more from the site" work) fills it from the reader's own
-    ## browser storage; without storage or JavaScript nothing shows.
-    <nav class="places-been" hidden data-places aria-labelledby="discovery-places-label">
-        <h2 id="discovery-places-label">$text.get("discovery.placesBeen")</h2>
-    </nav>
-    <section class="fd-discovery-all">
-        <h2>$text.get("discovery.allBlogs")</h2>
-        <ul>
-        #foreach($dBlog in $dFront.allBlogs)
-            <li><a href="$utils.escapeHTML($dBlog.absoluteURL)">$dBlog.name</a></li>
-        #end
-        </ul>
+
+    #fdSpot($fdSpots.get(2 % $fdSpotB) "c")
+
+    ## Places you've been: the reader's own recent blogs, from their browser's
+    ## storage only. Hidden and empty until the showPlacesYouveBeen macro
+    ## (called by the colophon) fills it; with no storage or no JavaScript
+    ## nothing ever shows.
+    <div class="fd-sec fd-places">
+        <nav class="places-been" hidden data-places aria-labelledby="fd-places-label">
+            <div class="fd-head"><h2 id="fd-places-label">$text.get("discovery.placesBeen")</h2></div>
+        </nav>
+    </div>
+
+    <section class="fd-discovery-all" aria-labelledby="fd-all-label">
+        <div class="fd-sec">
+            <div class="fd-head"><h2 id="fd-all-label">$text.get("discovery.allBlogs")</h2></div>
+            <ul class="fd-dir">
+            #foreach($fdBlog in $dFront.allBlogs)
+            #fdHue($fdBlog)
+                <li data-b="$fdB"><span class="fd-mark" aria-hidden="true">$discovery.initials($fdBlog)</span><a href="$utils.escapeHTML($fdBlog.absoluteURL)">$fdBlog.name</a><p>$text.get("discovery.posts", [$fdBlog.entryCount])</p></li>
+            #end
+            </ul>
+        </div>
     </section>
+</div>
 #end
 </main>
-<footer>
-    #showColophon($model.weblog)
+
+<footer class="fd-foot">
+    <div class="fd-wrap">
+        <div>
+            <p class="fd-label">$utils.escapeHTML($config.siteName)</p>
+            #if($utils.isNotEmpty($config.siteDescription))<p class="fd-about">$utils.escapeHTML($config.siteDescription)</p>#end
+        </div>
+        <nav aria-labelledby="fd-sitenav-label">
+            <p class="fd-label" id="fd-sitenav-label">$text.get("discovery.siteNav")</p>
+            <ul>
+            #foreach($navPage in $model.getNavPages($model.weblog))
+                <li><a href="$url.staticPage($navPage.slug)">$utils.escapeHTML($navPage.title)</a></li>
+            #end
+                <li><a href="$url.site/pressroom-ui/siteDirectory.rol">$text.get("discovery.directory")</a></li>
+            </ul>
+        </nav>
+        #showColophon($model.weblog)
+    </div>
 </footer>
 </body>
 </html>

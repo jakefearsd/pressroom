@@ -105,17 +105,24 @@ resolves through the index at the end of `CLAUDE.md`.
   its stylesheet.** Under the handle, `PageServlet.selectTemplate` answers
   the `page` context with the stylesheet's link only (`isStylesheetLink`) --
   except `discovery`, which resolves to the site theme's template of that
-  name when it has one (frontpage's `discovery.vm`, declared hidden so a
-  blog on frontpage does not serve it by name; `rejectionReason` exempts it
-  in the site space only) and else to the shared
-  `WEB-INF/velocity/templates/weblog/discovery.vm` (journal, travel,
-  portfolio, a forked theme). Both read `$discovery.frontPage`
-  (`DiscoveryModel`, in `rendering.pageModels`) and carry the same stable
-  section classes, `fd-discovery-headline`/`-popular`/`-blogs`/`-different`/
-  `-all`, which `DiscoveryFrontPageRenderingTest` and the browser suite pin:
-  restyle through the item classes, never by renaming those. Titles are
-  emitted bare, names through the wrapper, hrefs absolute and escaped. A
-  hidden `places-been` container marks where the places list goes.
+  name when it has one (a forked theme; declared hidden so a blog on that
+  theme does not serve it by name; `rejectionReason` exempts it in the site
+  space only) and else to the shared
+  `WEB-INF/velocity/templates/weblog/discovery.vm`. **No bundled theme ships
+  one** since the 2026-11-03 redesign (frontpage's was removed), so `/` is
+  one page on every install: a standalone document with its own inline
+  stylesheet (Quiet Instrument tokens plus six blog hues, Plex from the
+  webjars), not the site theme's chrome. It reads `$discovery.frontPage`
+  (`DiscoveryModel`, in `rendering.pageModels`) and carries the stable
+  section classes `fd-discovery-headline`/`-popular`/`-latest`/`-blogs`/
+  `-different`/`-all`, which `DiscoveryFrontPageRenderingTest` and the
+  browser suite pin: each sits alone in its class attribute, carries no
+  style, and no section nests another (the tests read a marker up to its
+  first `</section>`). Restyle through the inner `fd-*` classes, never by
+  renaming a marker. Titles are emitted bare, names through the wrapper,
+  excerpts through `$utils.escapeHTML`, hrefs absolute and escaped. A hidden
+  `places-been` container marks where the places list goes. Spec:
+  `docs/superpowers/specs/2026-11-03-front-page-redesign-design.md`.
 - **The `<title>` rule, every theme.** The separator is " — " (an em dash,
   the one the admin layouts use): "Entry — Weblog", "Page — Weblog",
   "Search: q — Site". On a permalink or a page, a meta title set in the
@@ -204,6 +211,16 @@ resolves through the index at the end of `CLAUDE.md`.
   `get`/`put`/`remove`/`clear`); each subclass keeps its `CACHE_ID`, singleton
   and `generateKey`. `SiteWideCache` is deliberately outside that hierarchy —
   its `get` takes no timestamp, having no per-weblog expiry.
+- **A cache key holds every input the render reads.** The keys are built by
+  hand from the parsed request, so a parameter that changes the output and is
+  missing from the key lets an anonymous request cache one render over
+  another. Two such holes, closed 2026-11-03 (code review), with key tests in
+  `WeblogPageCacheTest`/`WeblogFeedCacheTest`/`SiteWideCacheTest`: a named
+  page with `?entry=x` now keys on `/entry/x/page/<name>` (it had shared the
+  permalink's key, so a theme stylesheet could be cached over a post), and a
+  feed's `?page=N` (N > 0) is part of its key (an empty page 9999 had been
+  cached over the feed). Adding a request parameter that a render reads means
+  adding it to `generateKey` in all three.
 - **A Global Config save expires nothing by itself**, so a setting that
   reaches rendered pages must touch weblogs. The footer's privacy link is
   built from `site.privacy.page` (a `PageReference`: `slug` is a site page,
@@ -269,7 +286,11 @@ resolves through the index at the end of `CLAUDE.md`.
   (`ShortcodeReads`, content-features.md, Shortcodes). **Previews never touch
   it**: the plain `transformedText`/`displayContent` methods (editor and API
   preview, newsletter) and a wrapper built with `PreviewURLStrategy` (the
-  preview servlet) always render. `CacheManager` does not reach it, by
+  preview servlet) always render. **Only the weblog's own editors preview
+  it** (`WeblogEditors.requesterMayEdit`, shared with private media): the
+  authoring path admits any editor of any weblog and `PreviewServlet` sits
+  outside `PressroomHandlerInterceptor`, so before 2026-11-03 (code review)
+  an editor of one blog could read another's drafts. `CacheManager` does not reach it, by
   design; a change that reaches entry output without moving `lastModified`
   is a stale-content bug for the page cache and this one alike (rendition
   regeneration was one; it now bumps). Off in `pressroom-boot-dev.properties`

@@ -194,6 +194,21 @@ public final class RenderingTestSupport {
         return servlet;
     }
 
+    /**
+     * Signs {@code userName} in for the servlets that read the security
+     * context themselves (preview, private media). Undo with {@link #signOut}.
+     */
+    public static void signInAs(String userName) {
+        org.springframework.security.authentication.TestingAuthenticationToken token =
+                new org.springframework.security.authentication.TestingAuthenticationToken(userName, "n/a", "editor");
+        token.setAuthenticated(true);
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(token);
+    }
+
+    public static void signOut() {
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+    }
+
     public static MockHttpServletRequest anonymousGet(String servletPath, String pathInfo) {
         return anonymousRequest("GET", servletPath, pathInfo);
     }

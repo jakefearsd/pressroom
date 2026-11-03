@@ -1001,6 +1001,8 @@ entry route. The checks report findings, never a score:
 | `noindex` | The entry asks search engines not to list it. | warning |
 | `search_description_long` | Over 160 characters: a search result cuts it off. | warning |
 | `search_description_short` | Under 50 characters: search engines tend to replace it. | info |
+| `search_description_cut` | The description is the post's own opening cut off mid-sentence with a full stop added ("...to bring hygienic,."). A search result, and the front page's excerpt, would show a broken sentence; the front page uses the post's opening instead. | warning |
+| `meta_title_cut` | The meta title is the start of the entry title ending inside a word ("...Placer Citr"), so the browser tab and a search result show a broken word. | warning |
 | `title_long` | The page title is over 60 characters. The page title is the meta title, or without one the entry title, " — " and the weblog's name. | warning |
 | `title_duplicate`, `search_description_duplicate` | Another published entry of the weblog has the same page title or search description (case and spacing aside); the message names it by anchor. A draft is compared with the published entries. | warning |
 | `body_h1` | An `h1` in the body; the theme already prints the entry title as the page's `h1`. | warning |

@@ -14,6 +14,17 @@ resolves through the index at the end of `CLAUDE.md`.
 - Upload extracts EXIF (`ExifSupport`) and a BlurHash placeholder onto
   `MediaFile`; `uploads.exif.stripGps` (default on) nulls GPS coordinates
   before persist. The original file on disk is never modified.
+- **Decoding is bounded** (`ImageDecoding.read`): the header's width and
+  height are read first and an image over 64 megapixels is refused before
+  any pixel is decoded (a 1.5 MB PNG can declare 20000x20000, 1.6 GB of
+  raster). Such a file is stored and served; it gets no thumbnail,
+  renditions or crop, and a WARN says why. Every decode goes through it
+  (`ImageDecodingTest` fails on a plain `ImageIO.read(...)` in main code).
+- **Serving** (`MediaResponseHeaders`): a stored content type is the
+  uploader's claim, so every response is `nosniff`; raster images, audio,
+  video, PDF and plain text are inline; SVG is inline under a script-free
+  `sandbox` CSP; anything else (HTML, XML, JS, unknown) is an `attachment`
+  under `sandbox`, so an uploaded page can never run on the site's origin.
 - Backfill for pre-pipeline uploads: Maintenance page →
   `MediaFileManager.regenerateRenditions(weblog)`.
 - Crop (Stage 2 Wave 2): `MediaFileManager.cropMediaFile` destructively

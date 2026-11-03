@@ -57,6 +57,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 /**
@@ -181,29 +184,21 @@ class IndexWriteOperationFailureTest {
     }
 
     /**
-     * An author who cannot be looked up does not keep the entry out of the
-     * index: it is indexed without an author field. The control entry, whose
-     * author resolves, carries the lower-cased user name.
+     * The index holds no author login: public search could once enumerate
+     * logins through "username:a*" (code review, 2026-11-03), and nothing
+     * ever searched by author. So indexing does not look the author up at all,
+     * and an author who could not be looked up cannot keep an entry out.
      */
     @Test
-    void anEntryWhoseAuthorLookupFailsIsStillIndexedWithoutAnAuthor() throws Exception {
-        User author = new User();
-        author.setUserName("KnownAuthor");
-        when(users.getUserByUserName("KnownAuthor")).thenReturn(author);
-        when(users.getUserByUserName("LostAuthor")).thenThrow(new WebloggerException("database down"));
+    void noEntryCarriesItsAuthorsLogin() throws Exception {
+        WeblogEntry entry = entry("author-known");
+        entry.setCreatorUserName("KnownAuthor");
+        index(entry);
 
-        WeblogEntry known = entry("author-known");
-        known.setCreatorUserName("KnownAuthor");
-        index(known);
-        WeblogEntry lost = entry("author-lost");
-        lost.setCreatorUserName("LostAuthor");
-        index(lost);
-
-        Map<String, Document> docs = indexedDocs();
-        assertEquals("knownauthor", docs.get("author-known").get(FieldConstants.USERNAME));
-        assertTrue(docs.containsKey("author-lost"), "the entry must be indexed anyway");
-        assertNull(docs.get("author-lost").get(FieldConstants.USERNAME));
-        assertEquals("Title of author-lost", docs.get("author-lost").get(FieldConstants.TITLE));
+        Document doc = indexedDocs().get("author-known");
+        assertNull(doc.get("username"), "the login must not be indexed");
+        assertEquals("Title of author-known", doc.get(FieldConstants.TITLE));
+        verify(users, never()).getUserByUserName(anyString());
     }
 
     /**

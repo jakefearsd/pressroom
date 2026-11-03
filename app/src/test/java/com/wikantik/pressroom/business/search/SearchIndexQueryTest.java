@@ -104,6 +104,23 @@ class SearchIndexQueryTest {
     }
 
     /**
+     * A reader's search reaches the fields search is for, nothing else. The
+     * classic parser honours "field:" syntax, and the creator's login name was
+     * indexed, so "username:s*" enumerated author logins letter by letter on
+     * a public page (code review, 2026-11-03). A field outside the searched
+     * ones is read as plain words; title and content still work by name.
+     */
+    @Test
+    void aReaderCannotSearchOtherFieldsSuchAsTheAuthorsLogin() throws Exception {
+        String login = user.getUserName().toLowerCase(java.util.Locale.ROOT);
+
+        assertTrue(titlesOf(search("username:" + login, blog.getHandle())).isEmpty());
+        assertTrue(titlesOf(search("username:" + login.substring(0, 3) + "*", blog.getHandle())).isEmpty());
+        assertTrue(titlesOf(search("title:hiking", blog.getHandle())).contains("Hiking in Spain"),
+                "a searched field may still be named");
+    }
+
+    /**
      * The scoping that matters. Both weblogs contain the search term; a search
      * scoped to one must return only its own.
      */

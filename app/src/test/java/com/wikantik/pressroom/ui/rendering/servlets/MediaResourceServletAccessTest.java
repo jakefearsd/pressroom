@@ -65,6 +65,41 @@ class MediaResourceServletAccessTest {
                 "/pressroom-ui/rendering/media-resources", "/mediaaccessblog/" + image.getId());
     }
 
+    /**
+     * The servlet sends a stored file with the uploader's claimed type; one
+     * claiming text/html must reach a browser as a sandboxed download, never
+     * as a page on the site's origin (MediaResponseHeadersTest has the rules).
+     */
+    @Test
+    void anUploadClaimingToBeAPageIsASandboxedDownload() throws Exception {
+        MediaFile file = TestUtils.setupImageMediaFile(weblog, "page.html");
+        MediaFile managed = TestUtils.weblogger().getMediaFileManager().getMediaFile(file.getId());
+        managed.setContentType("text/html");
+        TestUtils.weblogger().getMediaFileManager().updateMediaFile(TestUtils.getManagedWebsite(weblog), managed);
+        TestUtils.endSession(true);
+
+        MockHttpServletResponse response = RenderingTestSupport.execute(
+                RenderingTestSupport.mediaResourceServlet(), requestFor(file));
+
+        assertEquals(200, response.getStatus());
+        assertEquals("nosniff", response.getHeader("X-Content-Type-Options"));
+        assertEquals("sandbox", response.getHeader("Content-Security-Policy"));
+        assertNotNull(response.getHeader("Content-Disposition"));
+    }
+
+    @Test
+    void anImageIsServedInlineAndNeverSniffed() throws Exception {
+        MediaFile image = TestUtils.setupImageMediaFile(weblog, "inline.jpg");
+        TestUtils.endSession(true);
+
+        MockHttpServletResponse response = RenderingTestSupport.execute(
+                RenderingTestSupport.mediaResourceServlet(), requestFor(image));
+
+        assertEquals(200, response.getStatus());
+        assertEquals("nosniff", response.getHeader("X-Content-Type-Options"));
+        assertEquals(null, response.getHeader("Content-Disposition"));
+    }
+
     @Test
     void aFileNotModifiedSinceTheReadersCopyAnswers304WithNoBody() throws Exception {
         MediaFile image = TestUtils.setupImageMediaFile(weblog, "cached.jpg");

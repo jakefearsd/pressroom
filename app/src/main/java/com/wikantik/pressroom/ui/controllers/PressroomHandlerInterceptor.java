@@ -200,6 +200,20 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
             return true;
         }
 
+        // --- 0. Each handler only under its own mount ---
+        // One DispatcherServlet serves *.rol, /api/* and the newsletter and SEO
+        // prefixes, and the container strips a prefix before lookup, so without
+        // this /api/pressroom-ui/... reaches a JSP controller and
+        // /newsletter/v1/... an API one. Refused as not found, before bootstrap
+        // is even asked: no installer page lives under the API mount.
+        boolean apiHandler = isApiHandler(handlerMethod);
+        if (!onItsOwnMount(apiHandler, isPressroomHandler(handlerMethod), request.getServletPath())) {
+            log.debug("DENIED: {} reached under servlet path {}", handlerMethod.getBeanType().getSimpleName(),
+                    request.getServletPath());
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return false;
+        }
+
         Object controller = handlerMethod.getBean();
 
         // Skip all checks if the application hasn't been bootstrapped yet
@@ -215,7 +229,6 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
         }
 
         // --- 2. Resolve weblog from URI template (API) or request parameter (JSP) ---
-        boolean apiHandler = isApiHandler(handlerMethod);
         String weblogHandle = resolveWeblogHandle(request, apiHandler);
         Weblog actionWeblog = null;
         if (weblogHandle != null && !weblogHandle.isBlank()) {
@@ -345,6 +358,38 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
 
     /** The package every REST API controller lives under. */
     private static final String API_PACKAGE_PREFIX = ApiExceptionHandler.class.getPackageName();
+
+    /** The servlet path of the automation API's prefix mapping ({@code /api/*}). */
+    static final String API_SERVLET_PATH = "/api";
+
+    /** Every Pressroom handler lives under this package; a library's does not. */
+    private static final String PRESSROOM_PACKAGE = "com.wikantik.pressroom";
+
+    /**
+     * Whether a handler was reached under the mount that serves it: one of
+     * Pressroom's API handlers under {@value #API_SERVLET_PATH}, and one of its
+     * other (JSP) handlers anywhere but. A library's handler served under the
+     * API mount (springdoc's OpenAPI document at /api/v1/openapi.json) is
+     * neither, and proceeds. An empty servlet path is a request built without
+     * one (MockMvc); the container never dispatches this servlet with one,
+     * since every mapping it has is a prefix, an extension or an exact path.
+     */
+    static boolean onItsOwnMount(boolean apiHandler, boolean pressroomHandler, String servletPath) {
+        if (servletPath == null || servletPath.isEmpty()) {
+            return true;
+        }
+        boolean apiMount = API_SERVLET_PATH.equals(servletPath);
+        if (apiHandler) {
+            return apiMount;
+        }
+        return !pressroomHandler || !apiMount;
+    }
+
+    /** Whether the handler is one of Pressroom's own, not a library's. */
+    private static boolean isPressroomHandler(HandlerMethod handlerMethod) {
+        String pkg = handlerMethod.getBeanType().getPackageName();
+        return PRESSROOM_PACKAGE.equals(pkg) || pkg.startsWith(PRESSROOM_PACKAGE + ".");
+    }
 
     /**
      * True when a permission failure on this request must be answered as

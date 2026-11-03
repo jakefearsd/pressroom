@@ -37,7 +37,6 @@ import org.apache.lucene.util.BytesRef;
 import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;
-import com.wikantik.pressroom.pojos.User;
 
 /**
  * This is the base class for all index operation. These operations include:<br>
@@ -68,23 +67,6 @@ public abstract class IndexOperation implements Runnable {
         this.manager = manager;
     }
 
-    /**
-     * The entry's author, resolved by name through the tier; null (logged)
-     * when the name no longer resolves, which is how a deleted author's
-     * entries stay indexed under no user. This used to be
-     * {@code WeblogEntry.getCreator()}.
-     */
-    private User resolveCreator(WeblogEntry data) {
-        try {
-            return manager.weblogger().getUserManager().getUserByUserName(data.getCreatorUserName());
-        } catch (Exception e) {
-            // Index the entry without an author rather than not at all: a search that misses a post is worse
-            // than one that cannot filter it by creator.
-            log.error("ERROR fetching user object for username: {}", data.getCreatorUserName(), e);
-            return null;
-        }
-    }
-
     // ~ Methods
     // ================================================================
     protected Document getDocument(WeblogEntry data) {
@@ -99,12 +81,9 @@ public abstract class IndexOperation implements Runnable {
         doc.add(new StringField(FieldConstants.WEBSITE_HANDLE, data
                 .getWebsite().getHandle(), Field.Store.YES));
 
-        // text, don't index deleted/disabled users of a group blog
-        User creator = resolveCreator(data);
-        if (creator != null) {
-            doc.add(new TextField(FieldConstants.USERNAME, creator
-                    .getUserName().toLowerCase(Locale.ROOT), Field.Store.YES));
-        }
+        // No author login: nothing searches by author, and public search
+        // could enumerate logins through "username:a*" (code review,
+        // 2026-11-03).
 
         // text
         doc.add(new TextField(FieldConstants.TITLE, data.getTitle(),

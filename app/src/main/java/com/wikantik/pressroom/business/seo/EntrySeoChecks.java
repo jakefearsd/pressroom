@@ -25,6 +25,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import com.wikantik.pressroom.util.Excerpts;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -57,14 +58,16 @@ public final class EntrySeoChecks {
     public static final String NOINDEX = "noindex";
     public static final String SEARCH_DESCRIPTION_LONG = "search_description_long";
     public static final String SEARCH_DESCRIPTION_SHORT = "search_description_short";
+    public static final String SEARCH_DESCRIPTION_CUT = "search_description_cut";
+    public static final String META_TITLE_CUT = "meta_title_cut";
     public static final String TITLE_LONG = "title_long";
     public static final String TITLE_DUPLICATE = "title_duplicate";
     public static final String SEARCH_DESCRIPTION_DUPLICATE = "search_description_duplicate";
 
     /** Every code the weblog-wide audit reports (no body checks), in the order it reports them. */
     public static final List<String> AUDIT_CODES = List.of(MISSING_SEARCH_DESCRIPTION, MISSING_META_TITLE,
-            MISSING_FEATURED_IMAGE, NOINDEX, SEARCH_DESCRIPTION_LONG, SEARCH_DESCRIPTION_SHORT, TITLE_LONG,
-            TITLE_DUPLICATE, SEARCH_DESCRIPTION_DUPLICATE);
+            MISSING_FEATURED_IMAGE, NOINDEX, SEARCH_DESCRIPTION_LONG, SEARCH_DESCRIPTION_SHORT,
+            SEARCH_DESCRIPTION_CUT, META_TITLE_CUT, TITLE_LONG, TITLE_DUPLICATE, SEARCH_DESCRIPTION_DUPLICATE);
 
     /** What a theme prints between the entry title and the weblog name when there is no meta title. */
     static final String TITLE_SEPARATOR = " — ";
@@ -134,6 +137,16 @@ public final class EntrySeoChecks {
                         + length + " characters; under " + SeoLimits.DESCRIPTION_MIN + ", search engines "
                         + "tend to replace it with text from the page.", length, SeoLimits.DESCRIPTION_MIN));
             }
+            if (Excerpts.isCutFrom(description, entry.getText())) {
+                findings.add(Finding.of(SEARCH_DESCRIPTION_CUT, WARNING, "The search description is the post's "
+                        + "opening cut off mid-sentence, so a search result and the front page show a broken "
+                        + "sentence. Write one or two whole sentences that say what the reader will find."));
+            }
+        }
+        if (isCutFromTitle(entry.getMetaTitle(), entry.getTitle())) {
+            findings.add(Finding.of(META_TITLE_CUT, WARNING, "The meta title is the entry title cut off "
+                    + "mid-word, so the browser tab and a search result show a broken word. Shorten it at a "
+                    + "word, or write a shorter title."));
         }
         String title = pageTitle(entry, weblog);
         int length = title == null ? 0 : length(title);
@@ -186,6 +199,21 @@ public final class EntrySeoChecks {
         String joined = String.join(", ", shown);
         int rest = names.size() - shown.size();
         return rest > 0 ? joined + " and " + rest + " more" : joined;
+    }
+
+    /**
+     * Whether {@code metaTitle} is the start of the entry's title (as readers
+     * see it, unescaped) ending inside a word: "...Placer Citr" of "...Placer Citrus".
+     */
+    static boolean isCutFromTitle(String metaTitle, String storedTitle) {
+        if (StringUtils.isAnyBlank(metaTitle, storedTitle)) {
+            return false;
+        }
+        String meta = metaTitle.strip();
+        String title = StringEscapeUtils.unescapeHtml4(storedTitle).strip();
+        return title.length() > meta.length() && title.startsWith(meta)
+                && Character.isLetterOrDigit(meta.charAt(meta.length() - 1))
+                && Character.isLetterOrDigit(title.charAt(meta.length()));
     }
 
     /** The published entries of a weblog, indexed by their page title and search description. */

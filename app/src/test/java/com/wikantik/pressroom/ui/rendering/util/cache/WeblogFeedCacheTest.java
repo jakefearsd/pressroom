@@ -332,4 +332,20 @@ public class WeblogFeedCacheTest {
         request.setFormat("rss");
         return request;
     }
+
+    /**
+     * A feed's ?page=N is a different list of entries; without it in the key
+     * an anonymous ?page=9999 cached an empty feed over the real one for
+     * every subscriber (code review, 2026-11-03). Page 0 is the feed itself.
+     */
+    @Test
+    public void aLaterPageOfAFeedIsNotTheFeed() {
+        WeblogFeedRequest later = feedRequest();
+        later.setPage(9999);
+        WeblogFeedRequest first = feedRequest();
+        first.setPage(0);
+
+        assertNotEquals(cache.generateKey(feedRequest()), cache.generateKey(later));
+        assertEquals(cache.generateKey(feedRequest()), cache.generateKey(first));
+    }
 }

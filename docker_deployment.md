@@ -509,7 +509,10 @@ state lives in the `caddy-data` named volume, so it survives
 `docker compose down` (but not `down -v`).
 
 The app honors `X-Forwarded-Proto`/`X-Forwarded-For` from the reverse proxy
-(`server.forward-headers-strategy=framework` in `application.properties`), so
+(`server.forward-headers-strategy=native` in `application.properties`:
+Tomcat's RemoteIpValve, which trusts only internal-proxy hops, reads
+`X-Forwarded-For` from the right, and never takes the host or the client
+address from an RFC 7239 `Forwarded` header, which Caddy also strips), so
 absolute URLs the app generates — redirects, sitemap entries — use `https://`
 even though Caddy talks plain HTTP to the container. Caddy
 sets these headers automatically for proxied requests; there is nothing to

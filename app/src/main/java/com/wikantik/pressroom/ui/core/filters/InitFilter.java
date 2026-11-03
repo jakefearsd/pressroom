@@ -148,11 +148,11 @@ public class InitFilter implements Filter {
 
         String url;
 
-        // Trust the container's own request URL, which is proxy-aware when
-        // server.forward-headers-strategy=framework is set (Spring's
-        // ForwardedHeaderFilter rewrites getScheme()/isSecure()/
-        // getRequestURL() from X-Forwarded-Proto before this filter runs --
-        // the production Caddy topology). The only correction needed is a
+        // Trust the container's own request URL, which is proxy-aware with
+        // server.forward-headers-strategy=native (Tomcat's RemoteIpValve
+        // rewrites getScheme()/isSecure()/the port from X-Forwarded-Proto
+        // before any filter runs -- the production Caddy topology; the host is
+        // the Host Caddy passes through). The only correction needed is a
         // request that reports secure while its URL still says http, e.g. a
         // connector that sets the secure flag without rewriting the scheme.
         String fullUrl = requestURL;

@@ -23,7 +23,6 @@ import java.util.List;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 
-import jakarta.servlet.http.HttpServlet;
 
 import com.wikantik.pressroom.TestUtils;
 import com.wikantik.pressroom.WebloggerException;
@@ -50,7 +49,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.web.filter.ForwardedHeaderFilter;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
@@ -166,18 +164,18 @@ class SeoControllerTest {
     void sitemapLocsAreHttpsWhenTlsIsTerminatedUpstream() throws Exception {
         try {
             // The production topology: Caddy terminates TLS and proxies over
-            // plain http with X-Forwarded-Proto: https. Run the real filter
-            // chain -- ForwardedHeaderFilter (registered by
-            // server.forward-headers-strategy=framework) in front of
-            // InitFilter -- and let it capture the absolute context URL,
+            // plain http with X-Forwarded-Proto: https, which Tomcat's
+            // RemoteIpValve (server.forward-headers-strategy=native) turns into
+            // an https request on port 443 before any filter runs. Let InitFilter
+            // capture the absolute context URL from a request in that state,
             // exactly as the first proxied request in production would.
             MockHttpServletRequest first = new MockHttpServletRequest("GET", "/pressroom/");
             first.setServerName("photos.example.com");
-            first.setServerPort(80);
+            first.setScheme("https");
+            first.setSecure(true);
+            first.setServerPort(443);
             first.setContextPath("/pressroom");
-            first.addHeader("X-Forwarded-Proto", "https");
-            new ForwardedHeaderFilter().doFilter(first, new MockHttpServletResponse(),
-                    new MockFilterChain(new HttpServlet() { }, initFilterOverTheRealTier()));
+            initFilterOverTheRealTier().doFilter(first, new MockHttpServletResponse(), new MockFilterChain());
 
             ResponseEntity<String> response = controller.sitemapIndex(new MockHttpServletRequest());
 

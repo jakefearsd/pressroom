@@ -53,6 +53,12 @@ public final class Excerpts {
 
     private static final String ELLIPSIS = "…";
 
+    /** Shorter than this, a description found in the post proves nothing about where it was cut. */
+    static final int CUT_MIN_CHARS = 20;
+
+    /** What may follow a whole sentence of the post: its own end, or a closing quote or bracket. */
+    private static final String SENTENCE_END = ".!?…\"'\u201D\u2019)";
+
     private static final Pattern WHITESPACE = Pattern.compile("[\\s\\u00A0]+");
 
     /**
@@ -131,6 +137,35 @@ public final class Excerpts {
         }
         String text = squash(String.join("", collect(html).all));
         return text.isEmpty() ? null : text;
+    }
+
+    /**
+     * Whether {@code description} is the post's own text cut off mid-sentence
+     * with a full stop stuck on ("...to bring hygienic,."): a run of the post's
+     * words that ends with ". " where the post itself carries on. Shown as an
+     * excerpt or a search snippet it reads as a broken sentence. A whole
+     * sentence of the post, an honest ellipsis, or words the post does not
+     * contain are not a cut. Whitespace is compared squashed.
+     *
+     * @param text the post's text, as plain text or as Markdown source; a run
+     *             with inline markup in it simply does not match
+     */
+    public static boolean isCutFrom(String description, String text) {
+        if (StringUtils.isAnyBlank(description, text)) {
+            return false;
+        }
+        String squashed = squash(description);
+        if (!squashed.endsWith(".") || squashed.endsWith("..")) {
+            return false;
+        }
+        String run = squashed.substring(0, squashed.length() - 1);
+        if (run.length() < CUT_MIN_CHARS) {
+            return false;
+        }
+        String body = squash(text);
+        int at = body.indexOf(run);
+        int after = at + run.length();
+        return at >= 0 && after < body.length() && SENTENCE_END.indexOf(body.charAt(after)) < 0;
     }
 
     private static Collector collect(String html) {

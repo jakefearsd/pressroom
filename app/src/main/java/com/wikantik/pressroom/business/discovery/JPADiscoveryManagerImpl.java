@@ -66,10 +66,12 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
     private static final Logger log = LoggerFactory.getLogger(JPADiscoveryManagerImpl.class);
 
     /** Section sizes: fixed numbers, not settings (spec, "Front page"). */
-    static final int POPULAR_SLOTS = 4;
+    static final int POPULAR_SLOTS = 5;
     static final int BLOG_CARDS = 3;
     static final int CARD_ENTRIES = 3;
     static final int DIFFERENT_SLOTS = 3;
+    /** The front page's Latest (spec 2026-11-03-front-page-redesign-design.md). */
+    static final int LATEST_SLOTS = 8;
 
     /** "Something different" is all random. */
     private static final int ALL_RANDOM = 100;
@@ -343,8 +345,20 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
         List<DiscoveryCandidate> different = DiscoverySlots.fill(List.of(), s.pool, DIFFERENT_SLOTS, ALL_RANDOM,
                 taken, s.random(SALT_DIFFERENT), s::weight);
 
+        // Latest last: the newest posts nothing above took, so it never
+        // changes what the other sections show; on a small site it may be empty.
+        List<DiscoveryCandidate> latest = new ArrayList<>();
+        for (DiscoveryCandidate c : s.newestFirst) {
+            if (latest.size() == LATEST_SLOTS) {
+                break;
+            }
+            if (!taken.contains(c)) {
+                latest.add(c);
+            }
+        }
+
         return new FrontPageIds(headline == null ? null : headline.entryId(), entryIds(popular), cards,
-                entryIds(different), s.weblogIds);
+                entryIds(different), s.weblogIds, entryIds(latest));
     }
 
     /** The weblogs among {@code weblogIds} that still have an entry no section has taken. */
@@ -365,6 +379,7 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
         WeblogEntry headline = ids.headline() == null ? null : entry(ids.headline());
         List<WeblogEntry> popular = new ArrayList<>(entries(ids.popular()));
         List<WeblogEntry> different = new ArrayList<>(entries(ids.different()));
+        List<WeblogEntry> latest = new ArrayList<>(entries(ids.latest()));
         List<Weblog> cardWeblogs = new ArrayList<>();
         List<List<WeblogEntry>> cardEntries = new ArrayList<>();
         for (CardIds card : ids.cards()) {
@@ -375,7 +390,7 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
             }
         }
         if (headline == null) {
-            headline = replacementHeadline(s, ids.headline(), popular, different, cardEntries);
+            headline = replacementHeadline(s, ids.headline(), popular, different, cardEntries, latest);
         }
         List<BlogCard> cards = new ArrayList<>();
         for (int i = 0; i < cardWeblogs.size(); i++) {
@@ -394,7 +409,7 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
         // ranked only when the headline has views of its own: the newest post,
         // or a replacement taken from the newest, is not "most read"
         boolean ranked = headline != null && s.scores.containsKey(headline.getId());
-        return new FrontPageSelection(headline, ranked, popular, cards, different, allBlogs);
+        return new FrontPageSelection(headline, ranked, popular, cards, different, allBlogs, latest);
     }
 
     /**
@@ -405,11 +420,12 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
      * when no candidate survives at all.
      */
     private WeblogEntry replacementHeadline(Snapshot s, String dropped, List<WeblogEntry> popular,
-            List<WeblogEntry> different, List<List<WeblogEntry>> cardEntries) {
+            List<WeblogEntry> different, List<List<WeblogEntry>> cardEntries, List<WeblogEntry> latest) {
         List<List<WeblogEntry>> sections = new ArrayList<>();
         sections.add(popular);
         sections.addAll(cardEntries);
         sections.add(different);
+        sections.add(latest);
         Map<String, List<WeblogEntry>> shownIn = new HashMap<>();
         for (List<WeblogEntry> section : sections) {
             for (WeblogEntry entry : section) {
@@ -549,7 +565,7 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
     }
 
     private record FrontPageIds(String headline, List<String> popular, List<CardIds> cards,
-            List<String> different, List<String> allBlogs) {
+            List<String> different, List<String> allBlogs, List<String> latest) {
     }
 
     /**

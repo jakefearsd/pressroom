@@ -42,7 +42,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * this redirects to {@code <Absolute URL>/pressroom-ui/sso/start?return=<the
  * sanitised return>} before touching the session, and the start runs again
  * there. The request's scheme, host and port are what the trusted proxy
- * reported ({@code server.forward-headers-strategy=framework}); behind a proxy
+ * reported ({@code server.forward-headers-strategy=native}: Tomcat's
+ * RemoteIpValve reads {@code X-Forwarded-Proto}, the host is the passed-through
+ * {@code Host}); behind a proxy
  * that does not send {@code X-Forwarded-Proto}, the public host looks like
  * another host to itself. An Absolute URL with no scheme or host cannot be
  * compared, and answers unavailable.
