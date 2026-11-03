@@ -1149,8 +1149,9 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     throws WebloggerException {
         TypedQuery<WeblogEntry> q = strategy.getNamedQuery("WeblogEntry.getByCategory", WeblogEntry.class);
         q.setParameter(1, cat);
-        int entryCount = q.getResultList().size();
-        return entryCount > 0;
+        // one row answers it; this used to read every entry of the category
+        q.setMaxResults(1);
+        return !q.getResultList().isEmpty();
     }
     
     /**
@@ -1410,18 +1411,21 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         if (tags == null || tags.isEmpty()) {
             return false;
         }
+        // Compared below with the distinct names found, so a tag named twice
+        // (/tags/a+a) is counted once here too.
+        List<String> names = new ArrayList<>(new LinkedHashSet<>(tags));
         
         StringBuilder queryString = new StringBuilder();
         queryString.append("SELECT DISTINCT w.name ");
         queryString.append("FROM WeblogEntryTagAggregate w WHERE w.name IN (");
         // Append tags as parameter markers to avoid potential escaping issues
         // The IN clause would be of form (?1, ?2, ?3, ..)
-        List<Object> params = new ArrayList<>(tags.size() + 1);
+        List<Object> params = new ArrayList<>(names.size() + 1);
         final String paramSeparator = ", ";
         int i;
-        for (i=0; i < tags.size(); i++) {
+        for (i=0; i < names.size(); i++) {
             queryString.append('?').append(i+1).append(paramSeparator);
-            params.add(tags.get(i));
+            params.add(names.get(i));
         }
         
         // Remove the trailing paramSeparator
@@ -1442,9 +1446,9 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         List<String> results = q.getResultList();
         
         //TODO: DatamapperPort: Since we are only interested in knowing whether
-        //results.size() == tags.size(). This query can be optimized to just fetch COUNT
+        //results.size() == names.size(). This query can be optimized to just fetch COUNT
         //instead of objects as done currently
-        return results != null && results.size() == tags.size();
+        return results != null && results.size() == names.size();
     }
 
     private static void setFirstMax( Query query, int offset, int length )  {

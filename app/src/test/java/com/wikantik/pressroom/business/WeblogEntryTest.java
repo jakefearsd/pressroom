@@ -513,7 +513,11 @@ public class WeblogEntryTest  {
         // test site-wide
         assertTrue(mgr.getTagComboExists(tags2, null));
         assertFalse(mgr.getTagComboExists(tags1, null));
-        
+        // a tag named twice (/tags/blahtag+blahtag) is still a tag that exists:
+        // the distinct names found were compared with the list's length
+        assertTrue(mgr.getTagComboExists(List.of("blahtag", "blahtag"), null));
+        assertTrue(mgr.getTagComboExists(List.of("blahtag", "footag", "blahtag"), testWeblog));
+
         // test weblog specific
         testWeblog = TestUtils.getManagedWebsite(testWeblog);
         weblog = TestUtils.getManagedWebsite(weblog);
