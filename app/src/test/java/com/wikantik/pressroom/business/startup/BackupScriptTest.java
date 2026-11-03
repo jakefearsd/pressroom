@@ -53,7 +53,7 @@ class BackupScriptTest {
         backups = Files.createDirectories(dir.resolve("backups"));
         Path bin = dir.resolve("bin");
         ScriptRun.stub(bin, "pg_dump", """
-                echo "pg_dump $*" >> "$STUB_LOG"
+                echo "pg_dump host=$PGHOST $*" >> "$STUB_LOG"
                 while [[ $# -gt 0 ]]; do
                   if [[ "$1" == "-f" ]]; then echo DUMP > "$2"; fi
                   shift
@@ -83,6 +83,7 @@ class BackupScriptTest {
         env.put("POSTGRES_USER", "pressroom");
         env.put("POSTGRES_PASSWORD", "secret");
         env.put("POSTGRES_DB", "pressroom");
+        env.put("UMAMI_DB_PASSWORD", "secret2");
     }
 
     private Path log() {
@@ -111,6 +112,15 @@ class BackupScriptTest {
         assertTrue(names.stream().anyMatch(n -> n.matches("listmonk-\\d{8}T\\d{6}Z\\.dump")), names.toString());
         assertTrue(names.stream().anyMatch(n -> n.matches("volumes-\\d{8}T\\d{6}Z\\.tar\\.gz")), names.toString());
         assertTrue(r.out().contains("Backup complete"), r.out());
+        // Umami's database has a server of its own (0.7.2) and goes last, so a
+        // fault there costs the analytics dump only
+        List<String> calls = ScriptRun.log(log()).lines()
+                .filter(l -> l.startsWith("pg_dump ") || l.startsWith("tar ")).toList();
+        assertEquals(4, calls.size(), calls.toString());
+        assertTrue(calls.get(3).startsWith("pg_dump host=umami-db ") && calls.get(3).contains(" -d umami "),
+                "umami last, from umami-db: " + calls);
+        assertTrue(calls.get(0).startsWith("pg_dump host=postgres ") && calls.get(1).startsWith("pg_dump host=postgres "),
+                "pressroom and listmonk from Pressroom's server: " + calls);
     }
 
     /**
@@ -181,7 +191,9 @@ class BackupScriptTest {
         ScriptRun.Result r = backup();
 
         assertEquals(0, r.exit(), r.out());
-        assertTrue(r.out().contains("umami -> none (no such database on this stack)"), r.out());
+        assertTrue(r.out().contains("listmonk -> none (no such database on this stack)"), r.out());
+        assertTrue(r.out().contains("umami -> none (no such database on umami-db)"), r.out());
+        assertFalse(published().stream().anyMatch(n -> n.startsWith("listmonk-")), published().toString());
         assertFalse(published().stream().anyMatch(n -> n.startsWith("umami-")), published().toString());
     }
 
