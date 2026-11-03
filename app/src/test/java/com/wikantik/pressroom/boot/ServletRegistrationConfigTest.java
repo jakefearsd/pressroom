@@ -30,7 +30,6 @@ import jakarta.servlet.ServletRegistration;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.WebloggerProvider;
 import com.wikantik.pressroom.ui.controllers.ajax.ThemeDataServlet;
-import com.wikantik.pressroom.ui.controllers.ajax.UserDataServlet;
 import com.wikantik.pressroom.ui.core.PressroomSession;
 import com.wikantik.pressroom.ui.core.filters.BootstrapFilter;
 import com.wikantik.pressroom.ui.core.filters.CharEncodingFilter;
@@ -128,15 +127,28 @@ class ServletRegistrationConfigTest {
     }
 
     @Test
-    void ajaxServletsCarryTheirWebXmlPatternAndTheDefaultLoadOrder() throws Exception {
-        // No <load-on-startup> element in web.xml for these two -- left at
+    void theAjaxServletCarriesItsWebXmlPatternAndTheDefaultLoadOrder() throws Exception {
+        // No <load-on-startup> element in web.xml for it -- left at
         // ServletRegistrationBean's own constructor default, -1 (verified via
         // javap against spring-boot-4.1.0.jar: the no-arg and (T, String...)
         // constructors both set loadOnStartup = -1).
-        assertServlet(config.userDataServletRegistration(config.userDataServlet(weblogger)), UserDataServlet.class,
-                "/pressroom-ui/authoring/userdata/*", -1);
         assertServlet(config.themeDataServletRegistration(config.themeDataServlet(weblogger)), ThemeDataServlet.class,
                 "/pressroom-ui/authoring/themedata/*", -1);
+    }
+
+    /**
+     * The account-listing servlet ({@code /pressroom-ui/authoring/userdata/*})
+     * lost its last page consumer with the Users search box, yet any admin or
+     * editor could still call it: {@code length=-1} listed every account,
+     * {@code enabled=false} included disabled ones and {@code startsWith}
+     * matched email prefixes. Nothing may register it again.
+     */
+    @Test
+    void theAccountListingServletIsGone() {
+        assertTrue(java.util.Arrays.stream(ServletRegistrationConfig.class.getDeclaredMethods())
+                        .map(m -> m.getName().toLowerCase(java.util.Locale.ROOT))
+                        .noneMatch(name -> name.contains("userdata")),
+                "no bean method may build or register the userdata servlet");
     }
 
     /**
@@ -155,7 +167,6 @@ class ServletRegistrationConfigTest {
         patterns.addAll(config.searchServletRegistration(config.searchServlet(weblogger)).getUrlMappings());
         patterns.addAll(config.previewServletRegistration(config.previewServlet(weblogger)).getUrlMappings());
         patterns.addAll(config.previewResourceServletRegistration(config.previewResourceServlet(weblogger)).getUrlMappings());
-        patterns.addAll(config.userDataServletRegistration(config.userDataServlet(weblogger)).getUrlMappings());
         patterns.addAll(config.themeDataServletRegistration(config.themeDataServlet(weblogger)).getUrlMappings());
         return patterns;
     }

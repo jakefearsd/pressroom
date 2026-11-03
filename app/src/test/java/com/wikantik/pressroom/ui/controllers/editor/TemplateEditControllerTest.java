@@ -456,6 +456,35 @@ class TemplateEditControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
+    void aPostedActionNeverChangesWhatAnExistingTemplateIs() throws Exception {
+        // The action field is read-only only in the browser: a crafted POST
+        // turned a custom template into a second WEBLOG (or STYLESHEET) one.
+        givenRendition("markup");
+        bean.setId("tmpl-1");
+        bean.setName("Sidebar");
+        bean.setLink("sidebar");
+        bean.setAction(ComponentType.WEBLOG);
+        bean.setContentsStandard("markup");
+
+        controller.save(request, model, bean);
+
+        assertEquals(ComponentType.CUSTOM, template.getAction());
+        verify(weblogger.getWeblogManager()).saveTemplate(template);
+    }
+
+    @Test
+    void theTemplateLanguageChoiceIsGoneFromTheEditor() throws Exception {
+        // It was never filled from the template nor saved: a dead control.
+        controller.execute(request, model, bean);
+
+        assertFalse(model.containsAttribute("templateLanguages"));
+        String jsp = java.nio.file.Files.readString(
+                java.nio.file.Path.of("src/main/webapp/WEB-INF/jsps/editor/TemplateEdit.jsp"));
+        assertFalse(jsp.contains("templateLanguage"), "TemplateEdit.jsp still offers a template language");
+        assertFalse(jsp.contains("name=\"bean.action\""), "the read-only action is shown, never posted");
+    }
+
+    @Test
     void beanCopyFromShowsAnEmptyEditorForATemplateWithNoRendition() throws Exception {
         bean.copyFrom(template);
 

@@ -55,6 +55,18 @@ incidental re-save) — minor PII residue worth clearing.
   The `#entry` form is `display:contents`
   so the newsletter/revisions boxes' own `<form>`s (own CSRF token and POST
   target) sit in the rail's grid column without nesting.
+- **A picked featured/social image is validated at save** (2026-11):
+  `bean.featuredImageId`/`bean.ogImageId` (and the page editor's
+  `bean.ogImageId`) must name an image of the action weblog outside every
+  private directory — `WeblogOwnership.publicImage`, the same rule
+  `EntriesWriteApi` applies, through `BaseController.checkPickedImage`. The
+  renderers (`WeblogEntryWrapper.resolveMediaFile`, `PageModel.getPageOgImage`)
+  resolve the id globally, so a crafted POST used to make one blog's page
+  print another blog's (or a private directory's) media metadata. A blank id
+  (cleared) and the value already stored are accepted, so a deleted image
+  never blocks an unrelated save; a lookup that throws refuses. The editors'
+  thumbnail previews use `BaseController.pickedImageThumbnailURL`
+  (`WeblogOwnership.mediaFile`).
 - **The Summary drawer** (under the writing surface, `bean.summary`) is the
   line under the title in entry lists and the Atom `<summary>`: its tip
   (`weblogEdit.summary.tip`) says so and that, left empty, lists show the

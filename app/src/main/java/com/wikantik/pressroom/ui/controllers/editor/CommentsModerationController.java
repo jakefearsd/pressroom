@@ -36,6 +36,7 @@ import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.BaseController;
+import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
@@ -193,24 +194,24 @@ public class CommentsModerationController extends BaseController {
         return ".Comments";
     }
 
-    /** The ids that name a comment on the action weblog, in order; the rest are skipped. */
-    private List<ReaderComment> owned(String[] ids, HttpServletRequest request) throws WebloggerException {
+    /**
+     * The ids that name a comment on the action weblog, in order; the rest
+     * (foreign, unknown, or a lookup that failed) are skipped, never acted on
+     * ({@code WeblogOwnership.comment}, which logs the weblog and never the id).
+     */
+    private List<ReaderComment> owned(String[] ids, HttpServletRequest request) {
         List<ReaderComment> found = new java.util.ArrayList<>();
         if (ids == null) {
             return found;
         }
         Weblog actionWeblog = getActionWeblog(request);
-        CommentManager mgr = weblogger.getCommentManager();
         for (String id : ids) {
-            ReaderComment c = mgr.getComment(id);
-            if (c != null && c.getEntry() != null && actionWeblog.equals(c.getEntry().getWebsite())) {
+            ReaderComment c = WeblogOwnership.comment(weblogger, id, actionWeblog);
+            if (c != null) {
                 found.add(c);
-            } else if (c != null) {
-                // A stored comment's id, not the raw parameter.
-                log.warn("Refusing comment {}: not on weblog {}", c.getId(), actionWeblog.getHandle());
             } else {
                 // The raw parameter is never logged: a CR/LF in it could forge a line.
-                log.warn("Refusing an unknown comment id on weblog {}", actionWeblog.getHandle());
+                log.warn("Refusing a comment id that is not on weblog {}", actionWeblog.getHandle());
             }
         }
         return found;
@@ -252,13 +253,10 @@ public class CommentsModerationController extends BaseController {
         model.addAttribute("page", page);
         model.addAttribute("pageSize", COUNT);
         try {
-            WeblogEntry entry = null;
-            if (entryId != null && !entryId.isEmpty()) {
-                WeblogEntry found = weblogger.getWeblogEntryManager().getWeblogEntry(entryId);
-                if (found != null && actionWeblog.equals(found.getWebsite())) {
-                    entry = found;
-                    model.addAttribute("entryFilter", entryId);
-                }
+            // A foreign, unknown or unreadable entry filter is ignored, not an error.
+            WeblogEntry entry = WeblogOwnership.entry(weblogger, entryId, actionWeblog);
+            if (entry != null) {
+                model.addAttribute("entryFilter", entryId);
             }
             CommentManager mgr = weblogger.getCommentManager();
             List<ReaderComment> shown = mgr.getComments(actionWeblog, status, entry, page * COUNT, COUNT);

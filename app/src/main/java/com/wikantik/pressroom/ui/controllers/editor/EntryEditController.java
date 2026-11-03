@@ -41,7 +41,6 @@ import com.wikantik.pressroom.business.seo.SeoLimits;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.search.IndexManager;
 import com.wikantik.pressroom.pojos.GlobalPermission;
-import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.ReaderComment;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogCategory;
@@ -674,6 +673,11 @@ public class EntryEditController extends BaseController {
                 && !EntryFieldRules.isValidCanonicalUrl(bean.getCanonicalUrl())) {
             addError(model, "entryEdit.canonicalUrlInvalid", request);
         }
+        // Checked against the stored values before copyTo overwrites them.
+        checkPickedImage(model, "weblogEdit.error.featuredImageUnusable",
+                bean.getFeaturedImageId(), entry.getFeaturedImageId(), request);
+        checkPickedImage(model, "weblogEdit.error.ogImageUnusable",
+                bean.getOgImageId(), entry.getOgImageId(), request);
         if (!hasErrors(model)) {
             try {
                 WeblogEntryManager weblogEntryManager = weblogger.getWeblogEntryManager();
@@ -858,25 +862,15 @@ public class EntryEditController extends BaseController {
 
     /**
      * Adds the thumbnail URL for a referenced media file, if it still exists
-     * and belongs to this weblog. A dangling id (image deleted after being
-     * picked) simply renders no preview rather than a broken editor page, and
-     * an id belonging to another weblog is treated exactly the same way --
-     * {@code getMediaFile} is a global by-id lookup and these ids come off the
-     * submitted form.
+     * and belongs to this weblog ({@code BaseController.pickedImageThumbnailURL}).
+     * A dangling id simply renders no preview rather than a broken editor
+     * page, and an id belonging to another weblog is treated the same way.
      */
     private void addImagePreviewAttribute(HttpServletRequest request, Model model,
                                           String attributeName, String mediaFileId) {
-        if (StringUtils.isEmpty(mediaFileId)) {
-            return;
-        }
-        try {
-            MediaFile mediaFile = weblogger.getMediaFileManager().getMediaFile(mediaFileId);
-            if (mediaFile != null && getActionWeblog(request).equals(mediaFile.getWeblog())) {
-                model.addAttribute(attributeName, weblogger.getUrlStrategy()
-                        .getMediaFileThumbnailURL(mediaFile.getWeblog(), mediaFile.getId(), true));
-            }
-        } catch (WebloggerException ex) {
-            log.error("Error looking up media file - {}", mediaFileId, ex);
+        String url = pickedImageThumbnailURL(mediaFileId, request);
+        if (url != null) {
+            model.addAttribute(attributeName, url);
         }
     }
 

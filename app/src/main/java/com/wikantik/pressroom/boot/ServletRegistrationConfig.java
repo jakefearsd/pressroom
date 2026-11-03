@@ -26,7 +26,6 @@ import jakarta.servlet.ServletRegistration;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.WebloggerProvider;
 import com.wikantik.pressroom.ui.controllers.ajax.ThemeDataServlet;
-import com.wikantik.pressroom.ui.controllers.ajax.UserDataServlet;
 import com.wikantik.pressroom.ui.core.PressroomSession;
 import com.wikantik.pressroom.ui.core.filters.BootstrapFilter;
 import com.wikantik.pressroom.ui.core.filters.CharEncodingFilter;
@@ -69,7 +68,7 @@ public class ServletRegistrationConfig {
     // ------------------------------------------------------------------
     // Rendering / AJAX servlets (com.wikantik.pressroom.ui.rendering.servlets
     // unless noted). loadOnStartup values transcribed verbatim from web.xml;
-    // the three ajax servlets had no <load-on-startup> element, so
+    // the ajax servlets had no <load-on-startup> element, so
     // setLoadOnStartup is simply never called for them, leaving
     // ServletRegistrationBean's own default of -1 (lazy init on first
     // request) in effect -- the closest equivalent to "element absent" and
@@ -120,11 +119,6 @@ public class ServletRegistrationConfig {
     @Bean
     public PreviewResourceServlet previewResourceServlet(@Lazy Weblogger weblogger) {
         return new PreviewResourceServlet(weblogger);
-    }
-
-    @Bean
-    public UserDataServlet userDataServlet(@Lazy Weblogger weblogger) {
-        return new UserDataServlet(weblogger);
     }
 
     @Bean
@@ -186,11 +180,6 @@ public class ServletRegistrationConfig {
                 new ServletRegistrationBean<>(previewResourceServlet, "/pressroom-ui/authoring/previewresource/*");
         registration.setLoadOnStartup(9);
         return registration;
-    }
-
-    @Bean
-    public ServletRegistrationBean<UserDataServlet> userDataServletRegistration(UserDataServlet userDataServlet) {
-        return new ServletRegistrationBean<>(userDataServlet, "/pressroom-ui/authoring/userdata/*");
     }
 
     @Bean

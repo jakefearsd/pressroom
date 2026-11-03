@@ -191,6 +191,11 @@ resolves through the index at the end of `CLAUDE.md`.
 - Add/edit/remove live in `TemplatesController` and `TemplateEditController`;
   both resolve client ids through `BaseController.lookupTemplate` (pinned by
   their `*ControllerTest`s).
+- **An existing template's action is fixed.** `TemplateEditBean.copyTo` never
+  applies `bean.action` (read-only only in the browser, so a crafted POST once
+  turned a custom template into a second WEBLOG/STYLESHEET one); the editor
+  shows the action without posting it. The template-language select, never
+  filled nor saved, is gone with `pageForm.templateLanguage` (2026-11).
 - A CUSTOM template gets `link = name` and is served publicly at
   `/<handle>/page/<link>` — including on a weblog running a *shared* theme,
   via `WeblogSharedTheme.getTemplateByLink`'s fallback to the weblog's own

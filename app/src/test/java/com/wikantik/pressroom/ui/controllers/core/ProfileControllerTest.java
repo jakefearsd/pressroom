@@ -159,7 +159,9 @@ class ProfileControllerTest {
         // The confirmation field exists precisely to catch a typo; accepting the
         // mismatch would lock the user out of their own account.
         User user = user("jake");
+        user.setPassword(TestUtils.TEST_PASSWORD_HASH);
         ProfileBean bean = new ProfileBean();
+        bean.setCurrentPassword(TestUtils.TEST_PASSWORD);
         bean.setPasswordText("newpassword");
         bean.setPasswordConfirm("newpasswrod");
 
@@ -179,6 +181,7 @@ class ProfileControllerTest {
         User user = user("jake");
         user.setPassword(TestUtils.TEST_PASSWORD_HASH);
         ProfileBean bean = new ProfileBean();
+        bean.setCurrentPassword(TestUtils.TEST_PASSWORD);
         bean.setPasswordText("newpassword");
         bean.setPasswordConfirm("newpassword");
 
@@ -189,6 +192,78 @@ class ProfileControllerTest {
                         "newpassword", user.getPassword().substring("{bcrypt}".length())),
                 "the new password should verify against the stored hash");
         verify(weblogger.userManager()).saveUser(user);
+    }
+
+    @Test
+    void aPasswordShorterThanTheSharedMinimumIsRefused() throws Exception {
+        // The create and reset paths enforced eight characters; this one
+        // enforced nothing, so a one-character password went through.
+        User user = user("jake");
+        user.setPassword(TestUtils.TEST_PASSWORD_HASH);
+        ProfileBean bean = new ProfileBean();
+        bean.setCurrentPassword(TestUtils.TEST_PASSWORD);
+        bean.setPasswordText("x");
+        bean.setPasswordConfirm("x");
+
+        String view = controller.save(ControllerTestFixture.requestFor(user), model, bean, redirectAttributes);
+
+        assertEquals(".Profile", view);
+        assertEquals(List.of("personForm.error.passwordTooShort"), ControllerTestFixture.errors(model));
+        assertEquals(List.of("passwordText"), ControllerTestFixture.invalidFields(model));
+        assertEquals(TestUtils.TEST_PASSWORD_HASH, user.getPassword());
+        verify(weblogger.userManager(), never()).saveUser(any());
+    }
+
+    @Test
+    void changingThePasswordNeedsTheCurrentOne() throws Exception {
+        // Without it, anyone holding a signed-in session (a borrowed laptop,
+        // a stolen cookie) could take the account over for good.
+        User user = user("jake");
+        user.setPassword(TestUtils.TEST_PASSWORD_HASH);
+        ProfileBean bean = new ProfileBean();
+        bean.setPasswordText("newpassword");
+        bean.setPasswordConfirm("newpassword");
+
+        String view = controller.save(ControllerTestFixture.requestFor(user), model, bean, redirectAttributes);
+
+        assertEquals(".Profile", view);
+        assertEquals(List.of("yourProfile.error.currentPassword"), ControllerTestFixture.errors(model));
+        assertEquals(List.of("currentPassword"), ControllerTestFixture.invalidFields(model));
+        assertEquals(TestUtils.TEST_PASSWORD_HASH, user.getPassword());
+        verify(weblogger.userManager(), never()).saveUser(any());
+    }
+
+    @Test
+    void aWrongCurrentPasswordIsRefused() throws Exception {
+        User user = user("jake");
+        user.setPassword(TestUtils.TEST_PASSWORD_HASH);
+        ProfileBean bean = new ProfileBean();
+        bean.setCurrentPassword("not-the-password");
+        bean.setPasswordText("newpassword");
+        bean.setPasswordConfirm("newpassword");
+
+        controller.save(ControllerTestFixture.requestFor(user), model, bean, redirectAttributes);
+
+        assertEquals(List.of("yourProfile.error.currentPassword"), ControllerTestFixture.errors(model));
+        assertEquals(TestUtils.TEST_PASSWORD_HASH, user.getPassword());
+        verify(weblogger.userManager(), never()).saveUser(any());
+    }
+
+    @Test
+    void aStoredPasswordTheEncoderCannotReadRefusesRatherThanThrows() throws Exception {
+        // DelegatingPasswordEncoder throws on an unknown {id}; a check that
+        // could not run is not a check that passed.
+        User user = user("jake");
+        user.setPassword("{nosuchalgorithm}abc");
+        ProfileBean bean = new ProfileBean();
+        bean.setCurrentPassword("anything");
+        bean.setPasswordText("newpassword");
+        bean.setPasswordConfirm("newpassword");
+
+        controller.save(ControllerTestFixture.requestFor(user), model, bean, redirectAttributes);
+
+        assertEquals(List.of("yourProfile.error.currentPassword"), ControllerTestFixture.errors(model));
+        verify(weblogger.userManager(), never()).saveUser(any());
     }
 
     @Test
@@ -295,7 +370,9 @@ class ProfileControllerTest {
         // The typo is in the confirmation box by definition -- the first
         // password is whatever the user meant to type.
         User user = user("jake");
+        user.setPassword(TestUtils.TEST_PASSWORD_HASH);
         ProfileBean bean = new ProfileBean();
+        bean.setCurrentPassword(TestUtils.TEST_PASSWORD);
         bean.setPasswordText("newpassword");
         bean.setPasswordConfirm("newpasswrod");
 

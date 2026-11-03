@@ -60,17 +60,6 @@ public class EntryRemoveController extends BaseController {
     }
 
 
-    @PostMapping("/entryRemove!remove.rol")
-    public String remove(HttpServletRequest request, Model model,
-                         @RequestParam(value = "removeId", required = false) String removeId,
-                         RedirectAttributes redirectAttributes) {
-        // Orphaned in the UI -- nothing posts here directly any more -- but it
-        // still has to behave like its sibling below rather than rot into a
-        // different answer.
-        return removeEntry(request, model, removeId, redirectAttributes, "entryRemove");
-    }
-
-
     @PostMapping("/entryRemoveViaList!remove.rol")
     public String entryRemoveViaListRemove(HttpServletRequest request, Model model,
                                            @RequestParam(value = "removeId", required = false)
@@ -81,15 +70,9 @@ public class EntryRemoveController extends BaseController {
 
 
     /**
-     * Trashes one entry and sends the author back to the entry list.
-     *
-     * <p>The two endpoints above differed in nothing but their mapping and the
-     * actionName they report, and were otherwise the same thirty lines written
-     * twice -- including the recovery paths, which are the part that would
-     * quietly diverge.
-     *
-     * @param actionName what the view calls this action; the only thing the two
-     *                   callers disagree about
+     * Trashes one entry and sends the author back to the entry list. The
+     * orphaned {@code entryRemove!remove.rol} twin, which nothing posted to,
+     * is gone.
      */
     private String removeEntry(HttpServletRequest request, Model model, String removeId,
                                RedirectAttributes redirectAttributes, String actionName) {

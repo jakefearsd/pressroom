@@ -37,6 +37,7 @@ import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.UserToken;
 import com.wikantik.pressroom.ui.controllers.AdminLog;
 import com.wikantik.pressroom.ui.controllers.BaseController;
+import com.wikantik.pressroom.ui.controllers.PasswordRules;
 import com.wikantik.pressroom.ui.controllers.core.PasswordLinkMailer;
 import com.wikantik.pressroom.ui.core.PressroomLoginSessionManager;
 import com.wikantik.pressroom.ui.controllers.util.UIUtils;
@@ -60,8 +61,6 @@ import org.apache.commons.text.StringEscapeUtils;
 public class UserEditController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(UserEditController.class);
-
-    private static final int MIN_PASSWORD_LENGTH = 8;
 
     private final CommentService comments;
 
@@ -255,6 +254,7 @@ public class UserEditController extends BaseController {
 
         // validate for modify
         myValidate(bean, user, false, model, request);
+        refuseSelfLockout(bean, user, getAuthenticatedUser(request), model, request);
 
         if (!hasErrors(model)) {
             String screenNameBefore = user.getScreenName();
@@ -307,17 +307,12 @@ public class UserEditController extends BaseController {
                 if (mgr.checkPermission(adminPerm, user)) {
                     hasAdmin = true;
                 }
-                // grant/revoke admin role if needed
-                boolean userEditingSelf = user.equals(authUser);
+                // grant/revoke admin role if needed (refuseSelfLockout has
+                // already refused an admin unticking their own role)
                 String roleEvent = null;
                 if (hasAdmin && !bean.isAdministrator()) {
-                    if (!userEditingSelf) {
-                        // revoke role
-                        mgr.revokeRole("admin", user);
-                        roleEvent = "siteAdmin.removed";
-                    } else {
-                        addError(model, "userAdmin.cantChangeOwnRole", request);
-                    }
+                    mgr.revokeRole("admin", user);
+                    roleEvent = "siteAdmin.removed";
                 } else if (!hasAdmin && bean.isAdministrator()) {
                     mgr.grantRole("admin", user);
                     roleEvent = "siteAdmin.granted";
@@ -465,7 +460,7 @@ public class UserEditController extends BaseController {
             if (!sendsSetPasswordLink(bean)) {
                 if (StringUtils.isEmpty(bean.getPassword())) {
                     addFieldError(model, "bean_password", "error.add.user.missingPassword", request);
-                } else if (bean.getPassword().length() < MIN_PASSWORD_LENGTH) {
+                } else if (!PasswordRules.isLongEnough(bean.getPassword())) {
                     addFieldError(model, "bean_password", "personForm.error.passwordTooShort", request);
                 }
             }
@@ -475,6 +470,39 @@ public class UserEditController extends BaseController {
             }
             if (user.isSsoBound() && !StringUtils.isEmpty(bean.getPassword())) {
                 addFieldError(model, "bean_password", "userAdmin.error.ssoPassword", request);
+            } else if (!StringUtils.isEmpty(bean.getPassword()) && !PasswordRules.isLongEnough(bean.getPassword())) {
+                addFieldError(model, "bean_password", "personForm.error.passwordTooShort", request);
+            }
+        }
+    }
+
+    /**
+     * An admin editing their own account may neither untick their admin role
+     * nor disable the account: either locks them out, and since only an
+     * enabled admin reaches this page, refusing it for oneself is also what
+     * keeps the site from losing its last enabled admin. Checked before
+     * anything on the form is applied, so a refused save changes nothing --
+     * the role check used to run after {@code saveUser}, so the form's other
+     * fields committed and "saved" showed beside the error. A role lookup
+     * that fails refuses too.
+     */
+    private void refuseSelfLockout(CreateUserBean bean, User user, User actor,
+                                   Model model, HttpServletRequest request) {
+        if (actor == null || user.getUserName() == null || !user.getUserName().equals(actor.getUserName())) {
+            return;
+        }
+        if (!Boolean.TRUE.equals(bean.getEnabled())) {
+            addError(model, "userAdmin.error.cantDisableSelf", request);
+        }
+        if (!bean.isAdministrator()) {
+            try {
+                if (weblogger.getUserManager().checkPermission(
+                        new GlobalPermission(Collections.singletonList(GlobalPermission.ADMIN)), user)) {
+                    addError(model, "userAdmin.cantChangeOwnRole", request);
+                }
+            } catch (WebloggerException ex) {
+                log.error("Could not check the admin role of {}", user.getUserName(), ex);
+                addError(model, "generic.error.check.logs", request);
             }
         }
     }

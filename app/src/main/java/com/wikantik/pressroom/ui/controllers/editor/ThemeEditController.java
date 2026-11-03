@@ -32,7 +32,6 @@ import com.wikantik.pressroom.business.themes.SharedTheme;
 import com.wikantik.pressroom.business.themes.ThemeManager;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.Theme;
-import com.wikantik.pressroom.pojos.ThemeTemplate;
 import com.wikantik.pressroom.pojos.ThemeTemplate.ComponentType;
 import com.wikantik.pressroom.pojos.WeblogTheme;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -102,7 +101,6 @@ public class ThemeEditController extends BaseController {
                        @RequestParam(value = "importTheme", required = false, defaultValue = "false") boolean importTheme) {
         populateCommonModel(request, model);
 
-        boolean sharedThemeCustomStylesheet = isSharedThemeCustomStylesheet(request);
         Weblog weblog = getActionWeblog(request);
 
         if (WeblogTheme.CUSTOM.equals(themeType)) {
@@ -110,13 +108,22 @@ public class ThemeEditController extends BaseController {
                 addError(model, "themeEditor.error.notOffered", request);
             } else if (!customThemeAllowed(request)) {
                 addError(model, "themeEditor.error.customThemeNotAllowed", request);
+            } else if (importTheme && !StringUtils.isEmpty(selectedThemeId)
+                    && !offered(weblog, selectedThemeId, currentThemeId(request))) {
+                // The same rule as the shared branch: the picker leaves frontpage
+                // out, and this stops a form posted without the picker.
+                addError(model, "themeEditor.error.notOffered", request);
             } else if (importTheme) {
                 try {
                     ThemeManager themeMgr = weblogger.getThemeManager();
                     if (!StringUtils.isEmpty(selectedThemeId)) {
                         SharedTheme t = themeMgr.getTheme(selectedThemeId);
-                        boolean skipStylesheet = sharedThemeCustomStylesheet
-                                && selectedThemeId.equals(weblog.getEditorTheme());
+                        // Re-importing the current theme keeps a customised
+                        // stylesheet. The check throws rather than answering
+                        // "not customised" when it cannot run, so the catch
+                        // below refuses instead of overwriting the stylesheet.
+                        boolean skipStylesheet = selectedThemeId.equals(weblog.getEditorTheme())
+                                && hasCustomisedSharedStylesheet(weblog);
                         themeMgr.importTheme(getActionWeblog(request), t, skipStylesheet);
                         addMessage(model, "themeEditor.setCustomTheme.success", t.getName(), request);
                     }
@@ -318,20 +325,32 @@ public class ThemeEditController extends BaseController {
         }
     }
 
+    /**
+     * Whether the page should say the shared theme's stylesheet was
+     * customised. A display path: a lookup that fails reads as "no", and the
+     * import itself asks {@link #hasCustomisedSharedStylesheet} again.
+     */
     private boolean isSharedThemeCustomStylesheet(HttpServletRequest request) {
         try {
-            WeblogTheme theme = currentTheme(request);
-            if (!WeblogTheme.CUSTOM.equals(getActionWeblog(request).getEditorTheme())
-                    && theme != null && theme.getStylesheet() != null) {
-                ThemeTemplate override = weblogger.getWeblogManager()
-                        .getTemplateByLink(getActionWeblog(request), theme.getStylesheet().getLink());
-                if (override != null) {
-                    return true;
-                }
-            }
+            return hasCustomisedSharedStylesheet(getActionWeblog(request));
         } catch (WebloggerException ex) {
             log.error("Error looking up stylesheet on weblog - {}", getActionWeblog(request).getHandle(), ex);
+            return false;
         }
-        return false;
+    }
+
+    /**
+     * Whether {@code weblog}, on a shared theme, holds its own copy of that
+     * theme's stylesheet. Throws when the theme or the template cannot be
+     * looked up: the import decides from this whether to overwrite the
+     * stylesheet, so a lookup that could not run must not read as "no".
+     */
+    private boolean hasCustomisedSharedStylesheet(Weblog weblog) throws WebloggerException {
+        if (WeblogTheme.CUSTOM.equals(weblog.getEditorTheme())) {
+            return false;
+        }
+        WeblogTheme theme = weblogger.getThemeManager().getTheme(weblog);
+        return theme != null && theme.getStylesheet() != null
+                && weblogger.getWeblogManager().getTemplateByLink(weblog, theme.getStylesheet().getLink()) != null;
     }
 }

@@ -149,6 +149,35 @@ class FormSubmissionsControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
+    void aSubmissionLookupThatThrowsIsSkippedAndTheRestAreStillDeleted() throws Exception {
+        // WeblogOwnership's rule: a lookup that could not run reads as
+        // absent. It used to abort the whole selection with nothing counted.
+        FormSubmission mine = submissionOn(weblogA);
+        when(submissionManager.get("boom")).thenThrow(new WebloggerException("database down"));
+        registerMessage("submissions.deleted", "Deleted {0} submission(s).");
+
+        controller.delete(new String[] { "boom", mine.getId() }, requestFor(weblogA), model);
+
+        verify(submissionManager).remove(mine);
+        assertTrue(messages(model).contains("Deleted 1 submission(s)."), "Got: " + messages(model));
+    }
+
+    @Test
+    void aForgedSubmissionIdNeverReachesTheLog() throws Exception {
+        // A raw request parameter in a log line could forge a line of its own.
+        String forged = "x\r\n2026-11-03 ERROR FORGEDLINE";
+        List<String> lines;
+        try (com.wikantik.pressroom.ui.core.security.sso.SsoLogCapture capture =
+                     com.wikantik.pressroom.ui.core.security.sso.SsoLogCapture.everyLogger()) {
+            controller.delete(new String[] { forged }, requestFor(weblogA), model);
+            lines = capture.everything();
+        }
+        for (String line : lines) {
+            org.junit.jupiter.api.Assertions.assertFalse(line.contains("FORGED"), "a raw id was logged: " + line);
+        }
+    }
+
+    @Test
     void deleteReportsOnlyTheSubmissionsActuallyRemoved() throws Exception {
         FormSubmission mine = submissionOn(weblogA);
         FormSubmission foreign = submissionOn(weblogB);

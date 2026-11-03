@@ -19,8 +19,6 @@
 package com.wikantik.pressroom.ui.controllers.editor;
 
 import java.util.Date;
-import java.util.EnumMap;
-import java.util.Map;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -29,7 +27,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.pojos.TemplateRendition.RenditionType;
-import com.wikantik.pressroom.pojos.TemplateRendition.TemplateLanguage;
 import com.wikantik.pressroom.pojos.WeblogTemplate;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.util.cache.CacheManager;
@@ -69,7 +66,6 @@ public class TemplateEditController extends BaseController {
     public String execute(HttpServletRequest request, Model model,
                           @ModelAttribute("bean") TemplateEditBean bean) {
         populateCommonModel(request, model);
-        addTemplateLanguages(model);
 
         WeblogTemplate template = lookupTemplate(bean.getId(), request);
         if (template == null) {
@@ -99,7 +95,6 @@ public class TemplateEditController extends BaseController {
     public String save(HttpServletRequest request, Model model,
                        @ModelAttribute("bean") TemplateEditBean bean) {
         populateCommonModel(request, model);
-        addTemplateLanguages(model);
 
         WeblogTemplate template = lookupTemplate(bean.getId(), request);
         if (template == null) {
@@ -176,14 +171,6 @@ public class TemplateEditController extends BaseController {
                 addError(model, "generic.error.check.logs", request);
             }
         }
-    }
-
-    private void addTemplateLanguages(Model model) {
-        Map<TemplateLanguage, String> langMap = new EnumMap<>(TemplateLanguage.class);
-        for (TemplateLanguage lang : TemplateLanguage.values()) {
-            langMap.put(lang, lang.getReadableName());
-        }
-        model.addAttribute("templateLanguages", langMap);
     }
 
     @ModelAttribute("bean")

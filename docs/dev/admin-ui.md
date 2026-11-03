@@ -80,11 +80,20 @@ resolves through the index at the end of `CLAUDE.md`.
 - **Admin → Users is a list, not a search box** (2026-10-13): every account,
   All / People / Agents tabs and a `q` filter the server applies
   (`UserManager.getAccounts`, case-insensitive over username, names and email).
-  `ajax-user.js` went with the search box; `UserDataServlet` has no page
-  consumer left. Every controller that lands on `.UserAdmin` builds the rows
+  `ajax-user.js` went with the search box, and `UserDataServlet`
+  (`/pressroom-ui/authoring/userdata/*`) with it (2026-11): unused, it still
+  let any admin or editor list every account, disabled ones and email
+  prefixes included (`ServletRegistrationConfigTest.theAccountListingServletIsGone`). Every controller that lands on `.UserAdmin` builds the rows
   through `AccountRows.showList`, or the page renders with none.
 - Enabling/disabling an account: the checkbox persists whatever happens, so
   only disable-then-sign-in proves it — `UserAdminIT`.
+- **An admin cannot lock themselves out** (2026-11): on their own account the person
+  editor refuses unticking Administrator (`userAdmin.cantChangeOwnRole`) and unticking
+  Enabled (`userAdmin.error.cantDisableSelf`), checked in
+  `UserEditController.refuseSelfLockout` *before* anything on the form is applied (the
+  role check once ran after `saveUser`, so the other fields committed beside the
+  error). Only an enabled admin reaches this page, so refusing it for oneself is also
+  what keeps the last enabled admin.
 - **One status pill for every entry/page publication state.**
   `WEB-INF/jsps/editor/StatusPill.jsp` is a `<jsp:include>`; callers set
   `pillStatus` (a `PubStatus` name) and optionally `pillWhen` (a `Date`, for
@@ -181,8 +190,12 @@ resolves through the index at the end of `CLAUDE.md`.
   site space, and `userWeblogs` grants refuse it, so it is never in a weblog
   list. `ThemeEditController.offered` gives the site space `journal`,
   `portfolio`, `travel` and `frontpage` and never a custom theme; other weblogs
-  get everything but `frontpage` (unless already on it). Covered by
-  `SiteSpaceAccessTest` and `SitePagesIT`.
+  get everything but `frontpage` (unless already on it). The custom-theme
+  import applies `offered` too, so a posted `frontpage` import is refused
+  like a posted `frontpage` switch. Re-importing the current theme keeps a
+  customised stylesheet; when that check cannot run, the import is refused
+  (`generic.error.check.logs`), never run as though nothing was customised.
+  Covered by `SiteSpaceAccessTest`, `ThemeEditControllerTest` and `SitePagesIT`.
 - **The top bar's weblog switcher appears only for a user on ≥ 2 weblogs.**
   `BaseController.populateCommonModel` resolves the caller's weblog
   permissions to `List<Weblog>` and adds `userWeblogs` only then.
@@ -268,6 +281,13 @@ resolves through the index at the end of `CLAUDE.md`.
   a global by-id lookup lets any editor rewrite any weblog's data. All four
   treat a blank id as absent. Both `removeId` and `targetCategoryId` need it
   — a foreign move target re-files entries into someone else's blog.
+  No controller compares owners by hand (2026-11): comment moderation,
+  the entry filter, form-submission deletes and the editors' image
+  previews go through `WeblogOwnership.comment`/`entry`/`formSubmission`/
+  `mediaFile` (a file's weblog is its directory's; the previews compared
+  `MediaFile.weblog` and could disagree). A lookup that throws reads as
+  absent: the id is skipped and counted out, never acted on, and the raw
+  id is never logged. `MediaFileBase`/`MediaUploads` still check by hand.
 - **Modal JS binds by control NAME, not id.** Struts-generated ids
   (`#categoryEditForm_bean_name`) never survived the JSP migration, so
   add/edit/delete silently did nothing; names are what the server binds.
@@ -293,6 +313,13 @@ Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`; 
   while `groupblogging.enabled` is off (the section says so), a reader is never granted. Its weblog
   field is `handle` and the token form's is `pin`: a field named `weblog` is read by
   `PressroomHandlerInterceptor` as the action weblog.
+- **Both membership screens share `Memberships`** (2026-11): the weblog's Members page
+  (`MembersController`) accepts only `Memberships.LEVELS` (Admin, Author, Limited; `-1`
+  removes) from `perm-<id>` and `permissionString`, refusing the whole save otherwise
+  (`userWeblogs.error.level`), and records `membership.granted|changed|removed` through
+  `AdminLog` exactly as `UserWeblogsController` does. A permission row whose account no
+  longer resolves (deleted or disabled; the page shows it no control) is skipped, not an
+  NPE that failed every other change in the submission.
 - **The token form, reveal and revoke live in `TokenFormController`**, the abstract base of
   `ProfileTokensController`, `AgentController` and `AdminTokensController`. The secret reaches
   `profileTokens!reveal.rol` only as a one-read flash attribute (`REVEALED_TOKEN`), never in a URL;

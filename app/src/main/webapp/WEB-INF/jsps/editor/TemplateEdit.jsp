@@ -56,7 +56,8 @@
     <div class="row mb-3">
         <label class="col-sm-3 col-form-label" for="template_bean_action"><spring:message code="pageForm.action"/></label>
         <div class="col-sm-9">
-            <input id="template_bean_action" type="text" name="bean.action" value="${fn:escapeXml(bean.action)}" size="50" readonly class="form-control"/>
+            <%-- Shown, never posted: an existing template's action is fixed. --%>
+            <input id="template_bean_action" type="text" value="${fn:escapeXml(bean.action)}" size="50" readonly class="form-control"/>
         </div>
     </div>
 
@@ -149,17 +150,6 @@
 
             <div id="collapseAdvanced" class="collapse">
                 <div class="card-body">
-
-                    <div class="row mb-3">
-                        <label class="col-sm-3 col-form-label" for="template_bean_templateLanguage"><spring:message code="pageForm.templateLanguage"/></label>
-                        <div class="col-sm-9">
-                            <select id="template_bean_templateLanguage" name="bean.templateLanguage" class="form-select" size="1">
-                                <c:forEach items="${templateLanguages}" var="opt">
-                                    <option value="${opt.key}" ${opt.key == bean.templateLanguage ? 'selected' : ''}>${opt.value}</option>
-                                </c:forEach>
-                            </select>
-                        </div>
-                    </div>
 
                     <div class="row mb-3">
                         <div class="offset-sm-3 col-sm-9">
