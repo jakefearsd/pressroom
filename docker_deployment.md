@@ -685,8 +685,8 @@ configured. (Blanking `UMAMI_PRESSROOM_PASSWORD` is not the switch:
 ### Checking that it works
 
 Open Global Config, then Maintenance, and read the Analytics block: it shows
-how many blogs are registered (for example, 8 of 8 on a host with seven blogs:
-the site pages count as one more), when the last read ran
+how many blogs are registered: one more than the number of blogs, because the
+site pages count as one (a host with six blogs shows 7 of 7), when the last read ran
 and whether it failed. **Sync now** runs a registration and read at once.
 View a blog page's source: a registered blog carries the `/analytics/script.js`
 tag. A blog that is not registered yet carries none, so a freshly created blog
@@ -1247,8 +1247,8 @@ settings, so read this before you deploy:
 6. **A blank `PRESSROOM_ANALYTICS_UMAMI_APIURL` is the off switch.** Unset
    means on.
 7. **Check Maintenance, then Analytics**, after the deploy: it should read n of
-   n blogs registered (8 of 8 on a host with seven blogs: seven blogs plus the
-   site pages). Press **Sync now**
+   n blogs registered, where n is one more than the number of blogs because the
+   site pages count as one (a host with six blogs shows 7 of 7). Press **Sync now**
    if it does not, and read the app log for the reason.
 8. **Analytics retention starts.** From 0.7.0 the backup service deletes Umami
    analytics data older than `UMAMI_RETENTION_DAYS` (default 730, two years)
