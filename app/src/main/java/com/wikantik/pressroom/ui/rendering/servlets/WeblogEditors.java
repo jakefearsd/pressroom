@@ -33,8 +33,9 @@ import java.util.List;
 /**
  * Whether the request comes from an editor of a weblog, for the raw rendering
  * servlets that sit outside PressroomHandlerInterceptor and so check for
- * themselves: private media (MediaResourceServlet) and the authoring preview
- * of unpublished drafts (PreviewServlet; code review, 2026-11-03).
+ * themselves: private media (MediaResourceServlet), the authoring preview
+ * of unpublished drafts (PreviewServlet; code review, 2026-11-03) and the
+ * page cache's {@code ?skipCache} (PageServlet).
  */
 final class WeblogEditors {
 
@@ -59,12 +60,25 @@ final class WeblogEditors {
                     || authentication instanceof AnonymousAuthenticationToken) {
                 return false;
             }
-            User user = umgr.getUserByUserName(authentication.getName());
+            return userMayEdit(weblog, umgr.getUserByUserName(authentication.getName()), umgr);
+        } catch (Exception e) {
+            log.debug("could not resolve an editor session for weblog {}", weblog.getHandle(), e);
+            return false;
+        }
+    }
+
+    /**
+     * {@link #requesterMayEdit} for a user already resolved from the request
+     * (a parsed rendering request's principal). Null, and any lookup failure,
+     * is false.
+     */
+    static boolean userMayEdit(Weblog weblog, User user, UserManager umgr) {
+        try {
             return user != null
                     && umgr.checkPermission(new GlobalPermission(List.of(GlobalPermission.LOGIN)), user)
                     && umgr.checkPermission(new WeblogPermission(weblog, List.of(WeblogPermission.EDIT_DRAFT)), user);
         } catch (Exception e) {
-            log.debug("could not resolve an editor session for weblog {}", weblog.getHandle(), e);
+            log.debug("could not check whether a user may edit weblog {}", weblog.getHandle(), e);
             return false;
         }
     }

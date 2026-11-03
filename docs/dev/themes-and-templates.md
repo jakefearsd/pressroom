@@ -226,6 +226,14 @@ resolves through the index at the end of `CLAUDE.md`.
   feed's `?page=N` (N > 0) is part of its key (an empty page 9999 had been
   cached over the feed). Adding a request parameter that a render reads means
   adding it to `generateKey` in all three.
+- **`?skipCache` is an author's, nobody else's.** `PageServlet` skips the
+  cache read for it only when the signed-in user may edit the weblog
+  (`WeblogEditors.userMayEdit`: global `login` plus EDIT_DRAFT); the fresh
+  render still repopulates the entry, under the author's own key. From any
+  other reader it is ignored: before 2026-11-03 (code review) anyone could
+  append it to any url for a full render that overwrote the shared entry.
+  Nothing in the product sends it; the `skipCache` request ATTRIBUTE (POSTs,
+  `RenderingTestSupport`) is unaffected and skips both read and write.
 - **A Global Config save expires nothing by itself**, so a setting that
   reaches rendered pages must touch weblogs. The footer's privacy link is
   built from `site.privacy.page` (a `PageReference`: `slug` is a site page,

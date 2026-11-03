@@ -204,14 +204,14 @@ class PageServletCachingTest {
     }
 
     /**
-     * {@code skipCache} is the escape hatch the preview and the editor rely on
-     * to see their own unsaved work rather than yesterday's render.
+     * {@code skipCache} lets an author of the weblog see a fresh render rather
+     * than a cached one.
      */
     @Test
     void skipCacheBypassesTheCacheEntirely() throws Exception {
-        get(null);
+        get(null, user.getUserName());
 
-        MockHttpServletRequest request = pageRequest(null, null);
+        MockHttpServletRequest request = pageRequest(null, user.getUserName());
         request.setParameter("skipCache", "true");
         MockHttpServletResponse response = RenderingTestSupport.execute(
                 RenderingTestSupport.pageServlet(), request);
@@ -311,11 +311,16 @@ class PageServletCachingTest {
         assertNotEquals(SENTINEL, get(null, user.getUserName()).getContentAsString());
     }
 
+    /**
+     * The parameter forces a fresh render for an author of the weblog (their
+     * own preview of a published change), and that render replaces the entry
+     * under their own key.
+     */
     @Test
-    void theSkipCacheParameterIgnoresAnExistingEntryButStillRepopulatesIt() throws Exception {
-        String key = keyFor(pageRequest(null, null));
+    void theSkipCacheParameterLetsAnAuthorIgnoreAnExistingEntryAndRepopulateIt() throws Exception {
+        String key = keyFor(pageRequest(null, user.getUserName()));
         RenderCaches.forPage(false).put(key, sentinel());
-        MockHttpServletRequest request = pageRequest(null, null);
+        MockHttpServletRequest request = pageRequest(null, user.getUserName());
         request.setParameter("skipCache", "true");
 
         MockHttpServletResponse response = RenderingTestSupport.execute(
@@ -325,6 +330,48 @@ class PageServletCachingTest {
         assertEquals(response.getContentAsString(),
                 RenderCaches.forPage(false).get(key, 0L).getContentAsString(),
                 "a parameter suppresses the read only; the fresh render replaces the entry");
+    }
+
+    /**
+     * Anyone could add {@code ?skipCache} to any url: every such request was a
+     * full render that then overwrote the shared entry, a free way to make the
+     * server render on every hit (code review, 2026-11-03). An anonymous
+     * reader's parameter is ignored.
+     */
+    @Test
+    void anAnonymousSkipCacheParameterIsAnsweredFromTheCache() throws Exception {
+        String key = keyFor(pageRequest(null, null));
+        RenderCaches.forPage(false).put(key, sentinel());
+        MockHttpServletRequest request = pageRequest(null, null);
+        request.setParameter("skipCache", "true");
+
+        MockHttpServletResponse response = RenderingTestSupport.execute(
+                RenderingTestSupport.pageServlet(), request);
+
+        assertEquals(SENTINEL, response.getContentAsString(), "the cached page is served");
+        assertEquals(SENTINEL, RenderCaches.forPage(false).get(key, 0L).getContentAsString(),
+                "and left in place");
+    }
+
+    /** A signed-in reader who cannot write to this weblog is no author of it. */
+    @Test
+    void aSignedInNonAuthorsSkipCacheParameterIsAnsweredFromTheCache() throws Exception {
+        User reader = TestUtils.setupUser("pagecachereader");
+        TestUtils.endSession(true);
+        try {
+            String key = keyFor(pageRequest(null, reader.getUserName()));
+            RenderCaches.forPage(false).put(key, sentinel());
+            MockHttpServletRequest request = pageRequest(null, reader.getUserName());
+            request.setParameter("skipCache", "true");
+
+            MockHttpServletResponse response = RenderingTestSupport.execute(
+                    RenderingTestSupport.pageServlet(), request);
+
+            assertEquals(SENTINEL, response.getContentAsString());
+        } finally {
+            TestUtils.teardownUser(reader.getUserName());
+            TestUtils.endSession(true);
+        }
     }
 
     @Test
