@@ -862,7 +862,9 @@ two fields share a shape because they occupy the same conceptual slot.
 
 `PATCH` updates `altText` (an explicit empty string `""` *is* a real value —
 "decorative image", set on purpose — distinct from omitting the field
-entirely), `focalX`/`focalY`, `name` (present-but-blank is rejected, not
+entirely), `focalX`/`focalY` (each a fraction of the image from 0 to 1,
+anything else a 400; a file has both or neither, so one coordinate moves an
+existing focal point and is a 400 on a file that has none), `name` (present-but-blank is rejected, not
 stored — unlike `altText`, there is no legitimate "deliberately unnamed"
 file), and `directoryId` (moves the file; a foreign or unknown directory id
 is a 404, checked before anything else in the request is applied).
