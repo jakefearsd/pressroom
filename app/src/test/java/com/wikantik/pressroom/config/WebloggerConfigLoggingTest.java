@@ -59,11 +59,11 @@ class WebloggerConfigLoggingTest {
         List<String> lines;
         String value;
         try (SsoLogCapture capture = SsoLogCapture.everyLogger()) {
-            value = WebloggerConfig.getProperty("site.discovery.missing.key", "plain-default");
+            value = WebloggerConfig.getProperty("site.discovery.missing.setting", "plain-default");
             lines = capture.lines(Level.DEBUG);
         }
         assertTrue("plain-default".equals(value));
-        assertTrue(lines.stream().anyMatch(line -> line.contains("site.discovery.missing.key")
+        assertTrue(lines.stream().anyMatch(line -> line.contains("site.discovery.missing.setting")
                 && line.contains("plain-default")), "a non-secret read is logged as it was: " + lines);
     }
 }
