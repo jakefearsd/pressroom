@@ -327,8 +327,47 @@ class MediaFileEditControllerTest extends EditorControllerTestSupport {
         assertEquals("photo.jpg", target.getName());
         assertEquals("A photo", target.getDescription());
         assertEquals("(c) me", target.getCopyrightText());
-        assertEquals("/orig/photo.jpg", target.getOriginalPath());
         assertEquals("A red kite riding the thermal", target.getAltText());
+    }
+
+    /**
+     * The original path is how a custom theme's {@code /resource/...} URLs
+     * find the files its import stored (ResourceServlet), and the edit form
+     * renders the field only under {@code mediafile.originalPathEdit.enabled}
+     * (default off). Copied regardless, saving a theme image's alt text
+     * nulled the path the form never showed -- the theme's URL went 404 --
+     * and a hand-posted value rewrote a path the UI does not offer to edit.
+     */
+    @Test
+    void beanCopyToLeavesTheOriginalPathAloneWhileItsEditingIsOff() throws Exception {
+        MediaFileBean posted = new MediaFileBean();
+        posted.setName("logo.png");
+        MediaFile target = new MediaFile();
+        target.setOriginalPath("/images/logo.png");
+
+        posted.copyTo(target, weblogger.mediaFileManager());
+        assertEquals("/images/logo.png", target.getOriginalPath(), "a form without the field must not null it");
+
+        posted.setOriginalPath("/images/elsewhere.png");
+        posted.copyTo(target, weblogger.mediaFileManager());
+        assertEquals("/images/logo.png", target.getOriginalPath(), "nor may a posted value the form never offered");
+    }
+
+    @Test
+    void beanCopyToTakesTheOriginalPathWhenItsEditingIsOn() throws Exception {
+        MediaFileBean posted = new MediaFileBean();
+        posted.setOriginalPath("/images/renamed.png");
+        MediaFile target = new MediaFile();
+        target.setOriginalPath("/images/logo.png");
+
+        try (org.mockito.MockedStatic<com.wikantik.pressroom.config.WebloggerRuntimeConfig> runtime =
+                org.mockito.Mockito.mockStatic(com.wikantik.pressroom.config.WebloggerRuntimeConfig.class)) {
+            runtime.when(() -> com.wikantik.pressroom.config.WebloggerRuntimeConfig
+                    .getBooleanProperty("mediafile.originalPathEdit.enabled")).thenReturn(true);
+            posted.copyTo(target, weblogger.mediaFileManager());
+        }
+
+        assertEquals("/images/renamed.png", target.getOriginalPath());
     }
 
     @Test
