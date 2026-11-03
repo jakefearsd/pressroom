@@ -502,6 +502,86 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         verify(weblogger.getWeblogPageManager()).savePage(any());
     }
 
+    // --- the social image: this weblog's, an image, outside private directories ---
+
+    @Test
+    void aSocialImageOfAnotherWeblogIsRefusedAndNothingIsSaved() throws Exception {
+        imageOn(weblogB, "media-foreign", false);
+        PageBean bean = new PageBean();
+        bean.setSlug("about");
+        bean.setTitle("About");
+        bean.setOgImageId("media-foreign");
+
+        String view = controller.save(requestFor(weblogA), model, bean);
+
+        assertEquals(".PageEdit", view);
+        assertTrue(errors(model).contains("weblogEdit.error.ogImageUnusable"),
+                "Expected the social image to be refused, got: " + errors(model));
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+    }
+
+    @Test
+    void aSocialImageInAPrivateDirectoryIsRefusedOnAnExistingPage() throws Exception {
+        WeblogPage page = pageOn(weblogA, "about");
+        imageOn(weblogA, "media-private", true);
+        PageBean bean = new PageBean();
+        bean.setId(page.getId());
+        bean.setSlug("about");
+        bean.setTitle("About");
+        bean.setOgImageId("media-private");
+
+        controller.save(requestFor(weblogA), model, bean);
+
+        assertTrue(errors(model).contains("weblogEdit.error.ogImageUnusable"), errors(model).toString());
+        assertNull(page.getOgImageId(), "a refused save must leave the page as it was");
+        assertEquals(page, model.getAttribute("page"), "the refused form still shows the page it edits");
+        verify(weblogger.getWeblogPageManager(), never()).savePage(any());
+    }
+
+    @Test
+    void aPublicImageOfThisWeblogIsSaved() throws Exception {
+        imageOn(weblogA, "media-own", false);
+        PageBean bean = new PageBean();
+        bean.setSlug("about");
+        bean.setTitle("About");
+        bean.setOgImageId("media-own");
+
+        controller.save(requestFor(weblogA), model, bean);
+
+        assertTrue(errors(model).isEmpty(), "Expected no error, got: " + errors(model));
+        verify(weblogger.getWeblogPageManager()).savePage(any());
+    }
+
+    @Test
+    void anUnchangedStoredSocialImageIsNotRechecked() throws Exception {
+        WeblogPage page = pageOn(weblogA, "about");
+        page.setOgImageId("media-deleted");
+        PageBean bean = new PageBean();
+        bean.setId(page.getId());
+        bean.setSlug("about");
+        bean.setTitle("About");
+        bean.setOgImageId("media-deleted");
+
+        controller.save(requestFor(weblogA), model, bean);
+
+        assertTrue(errors(model).isEmpty(), "Expected no error, got: " + errors(model));
+        verify(weblogger.getWeblogPageManager()).savePage(any());
+    }
+
+    /** An image in a (private or public) directory of {@code owner}. */
+    private void imageOn(Weblog owner, String id, boolean privateDirectory) throws WebloggerException {
+        com.wikantik.pressroom.pojos.MediaFileDirectory directory =
+                new com.wikantik.pressroom.pojos.MediaFileDirectory();
+        directory.setWeblog(owner);
+        directory.setPrivate(privateDirectory);
+        com.wikantik.pressroom.pojos.MediaFile image = new com.wikantik.pressroom.pojos.MediaFile();
+        image.setId(id);
+        image.setDirectory(directory);
+        image.setWeblog(owner);
+        image.setContentType("image/png");
+        when(weblogger.getMediaFileManager().getMediaFile(id)).thenReturn(image);
+    }
+
     // --- SEO card's social-image thumbnail preview ---
 
     @Test
@@ -510,6 +590,7 @@ class PageEditControllerTest extends EditorControllerTestSupport {
                 new com.wikantik.pressroom.pojos.MediaFile();
         mediaFile.setId("media-1");
         mediaFile.setWeblog(weblogA);
+        mediaFile.setContentType("image/jpeg");
         when(weblogger.getMediaFileManager().getMediaFile("media-1")).thenReturn(mediaFile);
         when(weblogger.getUrlStrategy().getMediaFileThumbnailURL(weblogA, "media-1", true))
                 .thenReturn("https://example.com/thumb.jpg");

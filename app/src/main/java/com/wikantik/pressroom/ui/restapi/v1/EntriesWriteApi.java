@@ -19,7 +19,6 @@ import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.AnchorTakenException;
 import com.wikantik.pressroom.business.fetch.RemoteImageFetcher;
-import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogCategory;
@@ -502,7 +501,8 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
 
     /**
      * featuredImageId and ogImageId must name an image readers can load: a
-     * media file of this weblog, an image, outside every private directory.
+     * media file of this weblog, an image, outside every private directory
+     * ({@link WeblogOwnership#publicImage}, the JSP editors' rule too).
      * They were only length-checked, so a typo or a foreign id was stored and
      * the post silently had no featured image. A value equal to the stored
      * one is not re-checked, so an entry sent back exactly as it was read
@@ -512,9 +512,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         if (id == null || id.equals(stored)) {
             return;
         }
-        MediaFile file = WeblogOwnership.mediaFile(weblogger, id, weblog);
-        boolean hidden = file != null && file.getDirectory() != null && file.getDirectory().isPrivate();
-        if (file == null || !file.isImageFile() || hidden) {
+        if (WeblogOwnership.publicImage(weblogger, id, weblog) == null) {
             errors.add(field, field + " must be the id of an image in this weblog's media, "
                     + "outside any private directory.");
         }

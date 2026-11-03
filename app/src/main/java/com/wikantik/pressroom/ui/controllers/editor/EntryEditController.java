@@ -685,6 +685,11 @@ public class EntryEditController extends BaseController {
                 && !CANONICAL_URL_VALIDATOR.isValid(bean.getCanonicalUrl())) {
             addError(model, "entryEdit.canonicalUrlInvalid", request);
         }
+        // Checked against the stored values before copyTo overwrites them.
+        checkPickedImage(model, "weblogEdit.error.featuredImageUnusable",
+                bean.getFeaturedImageId(), entry.getFeaturedImageId(), request);
+        checkPickedImage(model, "weblogEdit.error.ogImageUnusable",
+                bean.getOgImageId(), entry.getOgImageId(), request);
         if (!hasErrors(model)) {
             try {
                 WeblogEntryManager weblogEntryManager = weblogger.getWeblogEntryManager();

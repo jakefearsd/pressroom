@@ -515,6 +515,25 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
     }
 
     /**
+     * Refuses a picked featured or social image that is not an image readers
+     * of the action weblog can load ({@link WeblogOwnership#publicImage}),
+     * adding {@code errorKey} so the caller's {@code hasErrors} gate blocks
+     * the save. A blank id (the picker cleared) is accepted, and so is the
+     * value already stored: a form sent back as it was loaded must save even
+     * when its image has been deleted or made private since, the same
+     * allowance the API makes. A lookup that fails reads as refused.
+     */
+    protected void checkPickedImage(Model model, String errorKey, String posted, String stored,
+                                    HttpServletRequest request) {
+        if (StringUtils.isBlank(posted) || posted.equals(stored)) {
+            return;
+        }
+        if (WeblogOwnership.publicImage(weblogger, posted, getActionWeblog(request)) == null) {
+            addError(model, errorKey, request);
+        }
+    }
+
+    /**
      * Where the editor's split/preview panes point their iframe: the weblog's
      * own theme with one empty article for the rendered fragment to land in
      * ({@code PreviewServlet}'s {@code ?shell=true} branch).

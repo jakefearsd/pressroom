@@ -1,6 +1,8 @@
 package com.wikantik.pressroom.ui.controllers;
 
 import com.wikantik.pressroom.business.MockWeblogger;
+import com.wikantik.pressroom.pojos.MediaFile;
+import com.wikantik.pressroom.pojos.MediaFileDirectory;
 import com.wikantik.pressroom.pojos.ReaderComment;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogCategory;
@@ -40,6 +42,67 @@ class WeblogOwnershipRefusalsTest {
         mine.setHandle("mine");
         theirs = new Weblog();
         theirs.setHandle("theirs");
+        mine.setId("w-mine");
+        theirs.setId("w-theirs");
+    }
+
+    // ---- a picked image (featured, social): this weblog's, an image, not private
+
+    /** A media file in a directory of {@code weblog}, resolvable by {@code id}. */
+    private MediaFile mediaFileOn(Weblog weblog, String id, String contentType, boolean privateDirectory)
+            throws Exception {
+        MediaFileDirectory directory = new MediaFileDirectory();
+        directory.setWeblog(weblog);
+        directory.setPrivate(privateDirectory);
+        MediaFile file = new MediaFile();
+        file.setId(id);
+        file.setDirectory(directory);
+        file.setWeblog(weblog);
+        file.setContentType(contentType);
+        when(mock.weblogger().getMediaFileManager().getMediaFile(id)).thenReturn(file);
+        return file;
+    }
+
+    @Test
+    void aPublicImageOfTheActionWeblogIsFound() throws Exception {
+        MediaFile file = mediaFileOn(mine, "m1", "image/jpeg", false);
+
+        assertSame(file, WeblogOwnership.publicImage(mock.weblogger(), "m1", mine));
+    }
+
+    @Test
+    void anImageOfAnotherWeblogIsNotAPublicImageOfThisOne() throws Exception {
+        mediaFileOn(theirs, "m1", "image/jpeg", false);
+
+        assertNull(WeblogOwnership.publicImage(mock.weblogger(), "m1", mine));
+    }
+
+    @Test
+    void aFileThatIsNotAnImageIsNoPublicImage() throws Exception {
+        mediaFileOn(mine, "m1", "application/pdf", false);
+
+        assertNull(WeblogOwnership.publicImage(mock.weblogger(), "m1", mine));
+    }
+
+    @Test
+    void anImageInAPrivateDirectoryIsNoPublicImage() throws Exception {
+        // A private directory's files are never served to readers, so naming
+        // one as a featured or social image would publish its metadata (and a
+        // broken image) on a public page.
+        mediaFileOn(mine, "m1", "image/png", true);
+
+        assertNull(WeblogOwnership.publicImage(mock.weblogger(), "m1", mine));
+    }
+
+    @Test
+    void anUnknownBlankOrUnreadableImageIdIsAbsent() throws Exception {
+        when(mock.weblogger().getMediaFileManager().getMediaFile("boom"))
+                .thenThrow(new com.wikantik.pressroom.WebloggerException("store down"));
+
+        assertNull(WeblogOwnership.publicImage(mock.weblogger(), "nope", mine));
+        assertNull(WeblogOwnership.publicImage(mock.weblogger(), " ", mine));
+        assertNull(WeblogOwnership.publicImage(mock.weblogger(), null, mine));
+        assertNull(WeblogOwnership.publicImage(mock.weblogger(), "boom", mine));
     }
 
     // ---- category

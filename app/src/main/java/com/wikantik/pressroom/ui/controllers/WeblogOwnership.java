@@ -35,8 +35,9 @@ import com.wikantik.pressroom.pojos.WeblogTemplate;
 
 /**
  * By-id ownership lookups for {@code WeblogEntry}, {@code WeblogCategory},
- * {@code WeblogTemplate}, {@code WeblogPage}, {@code MediaFile} and an
- * entry's {@code WeblogEntryRevision}, extracted from
+ * {@code WeblogTemplate}, {@code WeblogPage}, {@code MediaFile} (and a
+ * picked image, {@link #publicImage}) and an entry's
+ * {@code WeblogEntryRevision}, extracted from
  * {@link BaseController}'s four {@code lookupX} methods (Task 7).
  *
  * <p>{@code getWeblogEntry}/{@code getWeblogCategory}/{@code getTemplate}/
@@ -244,6 +245,24 @@ public final class WeblogOwnership {
             log.error("Error looking up a media file for weblog {}", handleOf(weblog), ex);
         }
         return null;
+    }
+
+    /**
+     * The media file with this id, but only when it is an image readers can
+     * load: a file of {@code weblog} (by {@link #mediaFile}'s rule), an image,
+     * and outside every private directory. This is the rule for an id a
+     * writer picks as a featured or social (Open Graph) image, shared by the
+     * JSP editors and {@code /api/v1}: the renderers resolve those ids with a
+     * global lookup, so a foreign or private id stored on an entry or page
+     * would publish that file's metadata on this weblog's pages.
+     */
+    public static MediaFile publicImage(Weblogger weblogger, String id, Weblog weblog) {
+        MediaFile file = mediaFile(weblogger, id, weblog);
+        if (file == null || !file.isImageFile()
+                || (file.getDirectory() != null && file.getDirectory().isPrivate())) {
+            return null;
+        }
+        return file;
     }
 
     /**

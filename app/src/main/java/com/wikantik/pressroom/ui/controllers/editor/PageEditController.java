@@ -162,6 +162,13 @@ public class PageEditController extends BaseController {
         if (StringUtils.isNotBlank(bean.getCanonicalUrl())
                 && !CANONICAL_URL_VALIDATOR.isValid(bean.getCanonicalUrl())) {
             addFieldError(model, "seo_canonicalUrl", "entryEdit.canonicalUrlInvalid", request);
+        }
+        // The renderer resolves ogImageId with a global lookup, so it must name
+        // an image of this weblog that readers can load (the entry editor's and
+        // the API's rule), checked against the stored value before copyTo.
+        checkPickedImage(model, "weblogEdit.error.ogImageUnusable", bean.getOgImageId(),
+                page.getOgImageId(), request);
+        if (hasErrors(model)) {
             if (!isNew) {
                 model.addAttribute("page", page);
             }

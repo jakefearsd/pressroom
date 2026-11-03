@@ -1025,6 +1025,8 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         bean.setSearchDescription("A meta description");
         bean.setFeaturedImageId("mf-featured");
         bean.setOgImageId("mf-og");
+        givenImage("mf-featured", weblog, false);
+        givenImage("mf-og", weblog, false);
         bean.setCanonicalUrl("https://example.com/the-original");
         bean.setNoindex(true);
 
@@ -1037,6 +1039,81 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         assertEquals("mf-og", saved.getOgImageId());
         assertEquals("https://example.com/the-original", saved.getCanonicalUrl());
         assertEquals(Boolean.TRUE, saved.getNoindex());
+    }
+
+    // --- the picked images: this weblog's, an image, outside private directories ---
+    //
+    // The renderers resolve featuredImageId/ogImageId with a global by-id
+    // lookup, so a crafted POST naming another weblog's file (or a file in a
+    // private directory) would have this weblog's pages publish that file's
+    // metadata. The API refuses the same ids (WeblogOwnership.publicImage).
+
+    @Test
+    void aFeaturedImageOfAnotherWeblogIsRefusedAndNothingIsSaved() throws Exception {
+        com.wikantik.pressroom.pojos.Weblog other = new com.wikantik.pressroom.pojos.Weblog();
+        other.setId("weblog-2");
+        other.setHandle("otherblog");
+        givenImage("mf-foreign", other, false);
+        bean.setFeaturedImageId("mf-foreign");
+
+        String view = controller.entryAddSaveDraft(request, model, bean);
+
+        assertEquals(".EntryEdit", view);
+        assertTrue(errors(model).contains("weblogEdit.error.featuredImageUnusable"),
+                "Expected the featured image to be refused, got: " + errors(model));
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+    }
+
+    @Test
+    void aSocialImageInAPrivateDirectoryIsRefusedOnAnExistingEntry() throws Exception {
+        existingEntry(PubStatus.DRAFT);
+        givenImage("mf-private", weblog, true);
+        bean.setOgImageId("mf-private");
+
+        controller.entryEditSaveDraft(request, model, bean);
+
+        assertTrue(errors(model).contains("weblogEdit.error.ogImageUnusable"),
+                "Expected the social image to be refused, got: " + errors(model));
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+    }
+
+    @Test
+    void anImageIdThatCannotBeCheckedIsRefusedRatherThanStored() throws Exception {
+        // A check that could not run is not a check that passed.
+        when(weblogger.getMediaFileManager().getMediaFile("mf-down"))
+                .thenThrow(new WebloggerException("database down"));
+        bean.setFeaturedImageId("mf-down");
+
+        controller.entryAddSaveDraft(request, model, bean);
+
+        assertTrue(errors(model).contains("weblogEdit.error.featuredImageUnusable"), errors(model).toString());
+        verify(weblogger.getWeblogEntryManager(), never()).saveWeblogEntry(any(), any());
+    }
+
+    @Test
+    void anUnchangedStoredImageIsNotRecheckedSoADeletedFileNeverBlocksASave() throws Exception {
+        // The same allowance as the API: an entry sent back as it was read
+        // must save even though its image was deleted (or made private) since.
+        WeblogEntry existing = existingEntry(PubStatus.DRAFT);
+        existing.setFeaturedImageId("mf-deleted");
+        bean.setFeaturedImageId("mf-deleted");
+
+        controller.entryEditSaveDraft(request, model, bean);
+
+        assertTrue(errors(model).isEmpty(), "Expected no error, got: " + errors(model));
+        assertEquals("mf-deleted", captureSavedEntry().getFeaturedImageId());
+    }
+
+    @Test
+    void aClearedImageIsAccepted() throws Exception {
+        WeblogEntry existing = existingEntry(PubStatus.DRAFT);
+        existing.setOgImageId("mf-og");
+        bean.setOgImageId("");
+
+        controller.entryEditSaveDraft(request, model, bean);
+
+        assertTrue(errors(model).isEmpty(), "Expected no error, got: " + errors(model));
+        verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(any(), any());
     }
 
     @Test
@@ -1141,6 +1218,21 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
     }
 
     // --- helpers ---
+
+    /** Stub an image in a (private or public) directory of {@code owner}. */
+    private void givenImage(String id, com.wikantik.pressroom.pojos.Weblog owner, boolean privateDirectory)
+            throws WebloggerException {
+        com.wikantik.pressroom.pojos.MediaFileDirectory directory =
+                new com.wikantik.pressroom.pojos.MediaFileDirectory();
+        directory.setWeblog(owner);
+        directory.setPrivate(privateDirectory);
+        com.wikantik.pressroom.pojos.MediaFile image = new com.wikantik.pressroom.pojos.MediaFile();
+        image.setId(id);
+        image.setDirectory(directory);
+        image.setWeblog(owner);
+        image.setContentType("image/jpeg");
+        when(weblogger.getMediaFileManager().getMediaFile(id)).thenReturn(image);
+    }
 
     /** Stub a media file whose thumbnail resolves to {@code http://media/<id>?t=true}. */
     private void givenMediaFile(String id) throws WebloggerException {
