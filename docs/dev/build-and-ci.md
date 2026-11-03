@@ -14,7 +14,7 @@ there, so blame reaches the real authors instead of the move commit.
 ## Frontend build
 
 - Maven builds the editor's CodeMirror bundle: `frontend-maven-plugin`
-  fetches a pinned Node `v24.22.0` into `app/frontend/node/`, then `npm ci`
+  fetches a pinned Node `v24.22.1` into `app/frontend/node/`, then `npm ci`
   + esbuild at `generate-resources` (before every compile); never run `npm`
   by hand.
 - Both bundle URLs carry `?v=<application version>` (head.jsp via `Colophon`;

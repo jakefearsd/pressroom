@@ -186,6 +186,33 @@ class ProductionComposeTest {
     }
 
     /**
+     * The dev compose file's database has the password "pressroom", in this
+     * repository. Published as a bare port it listens on every interface, so
+     * anyone on the same café or office network can sign in to it; the app
+     * and the scripts reach it as localhost anyway.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void theDevComposeFilePublishesNothingBeyondLoopback() throws IOException {
+        Map<String, Object> dev;
+        try (InputStream in = Files.newInputStream(Paths.get("../docker-compose.yml"))) {
+            dev = (Map<String, Object>) new Yaml().load(in);
+        }
+        List<String> published = new ArrayList<>();
+        for (Map.Entry<String, Object> entry : ((Map<String, Object>) dev.get("services")).entrySet()) {
+            Object ports = ((Map<String, Object>) entry.getValue()).get("ports");
+            if (ports instanceof List<?> list) {
+                list.forEach(p -> published.add(entry.getKey() + " " + p));
+            }
+        }
+        assertFalse(published.isEmpty(), "the dev database is published for ./pressroom dev; did it move?");
+        for (String spec : published) {
+            assertTrue(loopbackByDefault(spec.substring(spec.indexOf(' ') + 1)),
+                    spec + " is reachable from the network; bind it to 127.0.0.1");
+        }
+    }
+
+    /**
      * The off-host ports default to 80 and 443, which is what a public host
      * serving its own domain needs. A host behind a tunnel connector or a
      * reverse proxy on another machine is different: 80 and 443 there may

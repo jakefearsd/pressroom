@@ -34,6 +34,11 @@ class EditorBundlePomTest {
         Matcher node = Pattern.compile("<nodeVersion>v(\\d+)\\.(\\d+)\\.(\\d+)</nodeVersion>").matcher(parent);
         assertTrue(node.find(), "nodeVersion must be pinned to an exact vX.Y.Z");
         assertEquals("24", node.group(1), "Node 24 LTS");
+        String pinned = "v" + node.group(1) + "." + node.group(2) + "." + node.group(3);
+        assertTrue(Files.readString(Path.of("..", "docs", "dev", "build-and-ci.md"))
+                        .contains("fetches a pinned Node `" + pinned + "`"),
+                "docs/dev/build-and-ci.md must name the Node the pom pins, " + pinned
+                        + ": its rm -rf app/frontend/node advice is about exactly that bump");
 
         String app = Files.readString(APP_POM);
         int install = app.indexOf("<goal>install-node-and-npm</goal>");
