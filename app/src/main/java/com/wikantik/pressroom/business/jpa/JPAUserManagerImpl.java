@@ -28,7 +28,6 @@ import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.business.Weblogger;
 
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;

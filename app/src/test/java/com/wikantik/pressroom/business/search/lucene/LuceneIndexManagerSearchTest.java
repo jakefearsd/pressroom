@@ -265,6 +265,32 @@ class LuceneIndexManagerSearchTest {
         assertEquals(1, results.getTotalHits(), "the total must not count what the page dropped");
     }
 
+    /**
+     * A reader's query Lucene cannot run -- a regular expression too complex
+     * to turn into an automaton, or more clauses than a search may hold --
+     * is the reader's mistake, answered like any unparsable query. Only
+     * ParseException was caught, so these runtime exceptions reached
+     * ReadFromIndexOperation, which logged each anonymous request at ERROR
+     * with a stack trace, and the operation recorded no parse error.
+     */
+    @Test
+    void aQueryTooComplexToRunIsAParseError() throws Exception {
+        manager.initialize();
+        index(entry("complex-1", weblog("complexblog"), "General", "Complex"));
+        String tooManyWords = String.join(" ",
+                java.util.stream.IntStream.range(0, 1100).mapToObj(i -> "w" + i).toList());
+
+        for (String term : List.of("/(a|b)*a(a|b){24}/", tooManyWords)) {
+            String label = term.substring(0, Math.min(20, term.length()));
+            try (SearchOperation op = new SearchOperation(manager)) {
+                op.setTerm(term);
+                op.run();
+                assertEquals(-1, op.getResultsCount(), label);
+                assertNotNull(op.getParseError(), "kept as the query's error: " + label);
+            }
+        }
+    }
+
     private void index(WeblogEntry entry) throws Exception {
         when(entries.getWeblogEntry(entry.getId())).thenReturn(entry);
         manager.addEntryIndexOperation(entry);

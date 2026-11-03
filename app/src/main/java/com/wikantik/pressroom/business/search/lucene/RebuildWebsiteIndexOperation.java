@@ -132,9 +132,10 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
                 if (tWebsite != null) {
                     writer.deleteDocuments(tWebsite);
                 } else {
-                    Term all = IndexUtil.getTerm(FieldConstants.CONSTANT,
-                            FieldConstants.CONSTANT_V);
-                    writer.deleteDocuments(all);
+                    // A site-wide rebuild replaces everything. It deleted by
+                    // the "constant" field, which no document carries, so it
+                    // deleted nothing and every entry was indexed twice.
+                    writer.deleteAll();
                 }
 
                 // Add Doc

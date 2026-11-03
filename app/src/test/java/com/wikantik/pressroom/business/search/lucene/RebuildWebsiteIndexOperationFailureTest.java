@@ -21,6 +21,8 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +48,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -198,7 +201,41 @@ class RebuildWebsiteIndexOperationFailureTest {
         assertTrue(indexedDocs().containsKey("r3"), "the next write must go through");
     }
 
+    /**
+     * A site-wide rebuild replaces the whole index. It deleted by a
+     * "constant" field no document carries, so it deleted nothing: every
+     * entry indexed before it was then indexed twice, and an entry gone from
+     * the database stayed searchable.
+     */
+    @Test
+    void aSiteWideRebuildReplacesEveryDocument() throws Exception {
+        index(entry("r1"));
+        index(entry("gone"));
+        when(entries.getWeblogEntries(any())).thenReturn(List.of(entry("r1")));
+
+        manager.rebuildWeblogIndex();
+
+        assertEquals(List.of("r1"), indexedIds());
+    }
+
     // ---------------------------------------------------------------- helpers
+
+    /** The entry id of every live document, one per document, sorted. */
+    private List<String> indexedIds() throws Exception {
+        List<String> ids = new ArrayList<>();
+        try (FSDirectory dir = FSDirectory.open(indexDir);
+             DirectoryReader reader = DirectoryReader.open(dir)) {
+            StoredFields stored = reader.storedFields();
+            Bits live = MultiBits.getLiveDocs(reader);
+            for (int i = 0; i < reader.maxDoc(); i++) {
+                if (live == null || live.get(i)) {
+                    ids.add(stored.document(i).get(FieldConstants.ID));
+                }
+            }
+        }
+        Collections.sort(ids);
+        return ids;
+    }
 
     private void index(WeblogEntry entry) throws Exception {
         when(entries.getWeblogEntry(entry.getId())).thenReturn(entry);
