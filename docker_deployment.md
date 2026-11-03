@@ -201,9 +201,9 @@ backoff until it is.
 If you want the newsletter (see [Newsletter](#newsletter)), point a second
 name, `newsletter.example.com` say, at the same IP and set `LISTMONK_DOMAIN`
 to it. Caddy obtains a certificate for it the same way. Leave it unset and
-the newsletter admin is simply unreachable. The analytics dashboard needs no
-public name: it is reached through zero-trust (see
-[Analytics](#reaching-the-dashboard)).
+the newsletter admin is simply unreachable. The analytics dashboard is never
+served under the blog's name; give it a name of its own only if you want it
+(see [Reaching the dashboard](#reaching-the-dashboard)).
 
 If you don't have a domain (LAN deployment, quick local test of the
 production stack), set `SITE_DOMAIN=:80` in `.env` instead — Caddy then
@@ -590,7 +590,7 @@ Umami: Pressroom registers every blog itself, in the background.
 
 What an operator does: deploy with `./deploy.sh` (it generates the one
 password this needs), and, when you want to look at Umami's own dashboard,
-set up [zero-trust access to it](#reaching-the-dashboard). Pressroom's own
+give it a hostname (see [Reaching the dashboard](#reaching-the-dashboard)). Pressroom's own
 Traffic pages need neither.
 
 ### How it works
@@ -656,20 +656,40 @@ replay and heatmaps are off; the Caddyfile has commented-out lines for them.
 
 ### Reaching the dashboard
 
-Umami's own dashboard (the same data, sliced Umami's way) is not public. Caddy
-serves it on a fixed `:8081` site, which the stack publishes on
-`${UMAMI_CONSOLE_BIND:-127.0.0.1}`: loopback by default, so on the host
-itself it is at `http://localhost:8081`. To reach it from elsewhere through
-zero-trust:
+Umami's own dashboard (the same data, sliced Umami's way) is not served under
+the blog's name. Caddy serves it on a fixed `:8081` site, which the stack
+publishes on `${UMAMI_CONSOLE_BIND:-127.0.0.1}`: loopback by default, so on
+the host itself it is at `http://localhost:8081`. Pressroom never goes through
+it (it calls Umami over the compose network), so the Traffic pages work
+whatever you choose here. To reach the dashboard from elsewhere:
 
-1. Set `UMAMI_CONSOLE_BIND` in `.env` to the host's LAN address (never
-   `0.0.0.0` on a host with a public interface).
-2. Add a Cloudflare Access hostname (or your zero-trust equivalent) whose
-   connector points at `http://<LAN address>:8081`.
-3. Set `PRESSROOM_ANALYTICS_UMAMI_DASHBOARDURL` to that hostname, so the
-   Traffic pages show an "Open in Umami" link. Pressroom never calls it.
-4. Umami's first login is `admin` / `umami`. **Change that password before
-   you expose the dashboard.**
+1. Umami's first login is `admin` / `umami`. **Change that password first**,
+   on `http://localhost:8081` (an SSH tunnel to the host will do).
+2. Set `UMAMI_CONSOLE_BIND` in `.env` to the host's LAN address, so a tunnel
+   connector or reverse proxy on another machine can reach it. Never
+   `0.0.0.0` on a host with a public interface: the `:8081` site is plain
+   HTTP, so that would put Umami's login on the internet unencrypted.
+3. Give it a hostname of its own, `umami.example.com` say, whose tunnel route
+   or proxy points at `http://<LAN address>:8081` and terminates TLS. Its own
+   name, not a path under the blog: Umami's UI assumes a domain root.
+4. Set `PRESSROOM_ANALYTICS_UMAMI_DASHBOARDURL` to that `https://` URL, so the
+   Traffic pages show an "Open in Umami" link, and run `docker compose up -d
+   app`. Pressroom never calls it.
+
+Umami is built to face the internet: it has its own login, only an admin can
+create accounts, and there is no sign-up page. A public hostname behind
+Umami's login is therefore a reasonable setup, provided you keep the
+passwords strong and the Umami image current. Two optional layers:
+
+- **A login rate limit.** Umami does not lock an account after failed
+  logins. A Cloudflare rate-limiting rule (or your proxy's equivalent) on
+  `POST /api/auth/login` for the dashboard's hostname, a handful of requests
+  per minute per IP, takes password guessing off the table.
+- **Zero-trust in front.** A Cloudflare Access application (or equivalent)
+  on the hostname, allowing only your own account, means nothing on the
+  internet reaches Umami until you have signed in, which also shields it
+  from a vulnerability in Umami that a release has not fixed yet. It costs
+  one extra sign-in.
 
 Move the host port with `UMAMI_CONSOLE_PORT` if something already uses 8081.
 
@@ -1227,8 +1247,10 @@ settings, so read this before you deploy:
    `_PASSWORD` from `.env`.** Nothing reads them any more; front page
    popularity now comes from the local analytics copy. (Leaving them does no
    harm, but they hold a database credential for nothing.)
-2. **`UMAMI_DOMAIN` is gone and inert.** The dashboard has no public hostname.
-   Delete the line, and the DNS name and certificate you gave it.
+2. **`UMAMI_DOMAIN` is gone and inert.** Caddy no longer serves the dashboard
+   under a domain or obtains a certificate for it. Delete the line, and the
+   DNS name you gave it (or repoint that name at the `:8081` port, see
+   [Reaching the dashboard](#reaching-the-dashboard)).
 3. **The Umami password is generated on the first deploy.** Re-download
    `deploy.sh` and the compose file, then run `./deploy.sh`: it appends
    `UMAMI_PRESSROOM_PASSWORD` to `.env` and the `analytics-views` step creates
@@ -1239,11 +1261,12 @@ settings, so read this before you deploy:
    startup. Websites you created by hand stay in Umami's database with their
    history, but Pressroom no longer reads them, so the Traffic pages count
    from registration onward.
-5. **When you are ready for the dashboard**, set `UMAMI_CONSOLE_BIND` to the
-   host's LAN address, add the Cloudflare Access hostname, and set
+5. **When you are ready for the dashboard**, change Umami's default `admin` /
+   `umami` login, set `UMAMI_CONSOLE_BIND` to the host's LAN address, give the
+   dashboard a hostname of its own, and set
    `PRESSROOM_ANALYTICS_UMAMI_DASHBOARDURL` (see [Reaching the
-   dashboard](#reaching-the-dashboard)). Until then the dashboard is on
-   `localhost:8081` only. Change Umami's default `admin` / `umami` login first.
+   dashboard](#reaching-the-dashboard); zero-trust in front is optional).
+   Until then the dashboard is on `localhost:8081` only.
 6. **A blank `PRESSROOM_ANALYTICS_UMAMI_APIURL` is the off switch.** Unset
    means on.
 7. **Check Maintenance, then Analytics**, after the deploy: it should read n of
@@ -1393,8 +1416,8 @@ host](#behind-a-tunnel-or-a-proxy-on-another-host)) nothing needs to be open
 to the internet; only the connector's host needs to reach `SITE_HTTP_PORT`.
 Caddy also publishes
 `${UMAMI_CONSOLE_BIND:-127.0.0.1}:8081` and `127.0.0.1:8082` (the Umami
-dashboard, loopback unless you set `UMAMI_CONSOLE_BIND` for a zero-trust
-connector, and the local-testing path to the listmonk console — see [Test a release locally before deploying
+dashboard, loopback unless you set `UMAMI_CONSOLE_BIND` for a tunnel
+connector or proxy on another machine, and the local-testing path to the listmonk console — see [Test a release locally before deploying
 it](#test-a-release-locally-before-deploying-it)), but those are
 loopback-bound by default, unreachable from outside the host by construction,
 and need no firewall rule either way. If you set `UMAMI_CONSOLE_BIND` to a LAN

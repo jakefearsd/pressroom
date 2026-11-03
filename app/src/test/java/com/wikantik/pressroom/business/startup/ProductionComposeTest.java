@@ -299,8 +299,8 @@ class ProductionComposeTest {
     /**
      * The Umami dashboard and its API are internal (spec AC 19). cloudflared
      * runs on another machine and cannot reach docker1's loopback, so the
-     * owner publishes the console on the LAN address, which Cloudflare
-     * zero-trust fronts; the file's own default stays loopback, so a host that
+     * owner publishes the console on the LAN address for the tunnel route
+     * to reach; the file's own default stays loopback, so a host that
      * never sets UMAMI_CONSOLE_BIND exposes nothing.
      */
     @Test

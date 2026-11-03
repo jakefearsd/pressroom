@@ -37,8 +37,8 @@
 # Only caddy publishes off-host ports: its 80 and 443, on host ports 80/443
 # unless SITE_HTTP_PORT/SITE_HTTPS_PORT move them (a host behind a tunnel
 # connector on another machine). 8081 is the Umami dashboard, loopback-bound
-# unless UMAMI_CONSOLE_BIND names the host's LAN address for a zero-trust
-# connector to reach. 8082 is loopback-bound and inert in production -- it
+# unless UMAMI_CONSOLE_BIND names the host's LAN address for a tunnel
+# connector or proxy to reach. 8082 is loopback-bound and inert in production -- it
 # exists so the same file serves a local run where LISTMONK_DOMAIN is a bare
 # port instead of a hostname.
 
@@ -179,7 +179,7 @@ services:
       - "${SITE_HTTPS_PORT:-443}:443"
       # The Umami dashboard and API (the Caddyfile's :8081 site), internal
       # only. Loopback unless UMAMI_CONSOLE_BIND names this host's LAN
-      # address, which is how a zero-trust connector on another machine
+      # address, which is how a tunnel connector on another machine
       # reaches it; never a public interface (spec AC 19).
       # 8082 is inert in production: with a real hostname in LISTMONK_DOMAIN
       # Caddy serves that site on 443 and nothing listens here. Locally it is

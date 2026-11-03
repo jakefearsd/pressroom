@@ -147,15 +147,15 @@
 	}
 }
 
-# The Umami dashboard and its API: internal only, never a public hostname.
+# The Umami dashboard and its API: never under the blog's name.
 #
 # A fixed port, not a hostname. docker-compose.prod.yml publishes it on
 # UMAMI_CONSOLE_BIND (loopback unless .env names the host's LAN address),
-# and the owner reaches it through a Cloudflare zero-trust (Access) hostname
-# whose connector, on another machine, points at that LAN address. Pressroom
+# and the owner reaches it through a hostname of its own whose tunnel
+# connector or proxy, on another machine, points at that LAN address. Pressroom
 # itself calls Umami's API over the compose network (http://umami:3000) and
 # never through Caddy. Plain HTTP: a bare port is not a certificate-able
-# name, and zero-trust terminates TLS.
+# name, and the tunnel or proxy terminates TLS.
 :8081 {
 	reverse_proxy umami:3000
 }
