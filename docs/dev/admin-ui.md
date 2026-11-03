@@ -306,6 +306,13 @@ Spec `docs/superpowers/specs/2026-10-13-agent-accounts-and-token-ui-design.md`; 
   while `groupblogging.enabled` is off (the section says so), a reader is never granted. Its weblog
   field is `handle` and the token form's is `pin`: a field named `weblog` is read by
   `PressroomHandlerInterceptor` as the action weblog.
+- **Both membership screens share `Memberships`** (2026-11): the weblog's Members page
+  (`MembersController`) accepts only `Memberships.LEVELS` (Admin, Author, Limited; `-1`
+  removes) from `perm-<id>` and `permissionString`, refusing the whole save otherwise
+  (`userWeblogs.error.level`), and records `membership.granted|changed|removed` through
+  `AdminLog` exactly as `UserWeblogsController` does. A permission row whose account no
+  longer resolves (deleted or disabled; the page shows it no control) is skipped, not an
+  NPE that failed every other change in the submission.
 - **The token form, reveal and revoke live in `TokenFormController`**, the abstract base of
   `ProfileTokensController`, `AgentController` and `AdminTokensController`. The secret reaches
   `profileTokens!reveal.rol` only as a one-read flash attribute (`REVEALED_TOKEN`), never in a URL;
