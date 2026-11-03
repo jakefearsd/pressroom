@@ -37,6 +37,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 import jakarta.persistence.NoResultException;
+import jakarta.persistence.PersistenceException;
 import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 import com.wikantik.pressroom.config.WebloggerConfig;
@@ -543,13 +544,12 @@ public class JPAUserManagerImpl implements UserManager {
         WeblogPermission existingPerm = getWeblogPermission(weblog.getHandle(), user);
         if (existingPerm == null) {
             WeblogPermission perm = new WeblogPermission(weblog, user, actions);
-            int inserted = strategy.getNativeQuery(INSERT_PERMISSION)
+            int inserted = insertNow(strategy.getNativeQuery(INSERT_PERMISSION)
                     .setParameter(1, perm.getId())
                     .setParameter(2, perm.getUserName())
                     .setParameter(3, perm.getActions())
                     .setParameter(4, perm.getObjectId())
-                    .setParameter(5, new Timestamp(perm.getDateCreated().getTime()))
-                    .executeUpdate();
+                    .setParameter(5, new Timestamp(perm.getDateCreated().getTime())));
             if (inserted == 1) {
                 return;
             }
@@ -664,11 +664,25 @@ public class JPAUserManagerImpl implements UserManager {
         // unwritten insert). The statement writes this transaction's pending
         // changes first, so a role revoked earlier in it is gone by then and
         // is granted again rather than skipped.
-        strategy.getNativeQuery(INSERT_ROLE)
+        insertNow(strategy.getNativeQuery(INSERT_ROLE)
                 .setParameter(1, new UserRole(user.getUserName(), roleName).getId())
                 .setParameter(2, user.getUserName())
-                .setParameter(3, roleName)
-                .executeUpdate();
+                .setParameter(3, roleName));
+    }
+
+    /**
+     * Runs a grant's insert, which first writes the transaction's pending
+     * changes. A failure among those (a concurrent first sign-in's duplicate
+     * reader, say) is reported as {@link WebloggerException}, as the commit
+     * would have reported it: callers such as ReaderAccounts decide a race on
+     * that exception, and an unchecked PersistenceException escaped them.
+     */
+    private static int insertNow(Query insert) throws WebloggerException {
+        try {
+            return insert.executeUpdate();
+        } catch (PersistenceException e) {
+            throw new WebloggerException(e);
+        }
     }
 
     
