@@ -20,6 +20,7 @@ package com.wikantik.pressroom.business.runnable;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -180,6 +181,54 @@ class TaskSchedulerTest {
         passWithSentinel(at(0, 1), daily);
 
         assertTrue(daily.launched());
+    }
+
+    // ------------------------------------------------- daily tasks across DST
+
+    private static final TimeZone NEW_YORK = TimeZone.getTimeZone("America/New_York");
+
+    private static Date newYork(int month, int day, int hour, int minute) {
+        Calendar cal = Calendar.getInstance(NEW_YORK);
+        cal.clear();
+        cal.set(2026, month, day, hour, minute, 0);
+        return cal.getTime();
+    }
+
+    /** One pass of a scheduler following New York's days over a daily task that last ran at {@code lastRun}. */
+    private CountingTask dailyPassInNewYork(Date lastRun, Date now) throws Exception {
+        CountingTask daily = new CountingTask(weblogger, "dstDaily", "startOfDay", 1440);
+        when(threadManager.getTaskLockByName("dstDaily")).thenReturn(lockLastRun("dstDaily", lastRun));
+        CountingTask sentinel = new CountingTask(weblogger, "sentinel", "immediate", 1);
+        when(threadManager.getTaskLockByName("sentinel")).thenReturn(lockLastRun("sentinel", null));
+        new TaskScheduler(weblogger, List.of(daily, sentinel), NEW_YORK).runTasks(now);
+        assertTrue(sentinel.launched(), "the sentinel after the task under test must run");
+        return daily;
+    }
+
+    /**
+     * The day clocks go back is 25 hours long. The next run was the last one
+     * plus 1440 minutes, which on that day is 23:00, while the run it records
+     * is still that day's midnight -- so the task ran again every minute
+     * until the real midnight.
+     */
+    @Test
+    void onTheDayClocksGoBackADailyTaskWaitsForMidnight() throws Exception {
+        Date lastRun = newYork(Calendar.NOVEMBER, 1, 0, 0);
+
+        CountingTask atEleven = dailyPassInNewYork(lastRun, newYork(Calendar.NOVEMBER, 1, 23, 0));
+        assertFalse(atEleven.ran.await(250, TimeUnit.MILLISECONDS), "not at 23:00 on the 25-hour day");
+
+        assertTrue(dailyPassInNewYork(lastRun, newYork(Calendar.NOVEMBER, 2, 0, 0)).launched(),
+                "at the next midnight");
+    }
+
+    /** The day clocks go forward is 23 hours long; the next run is still the next midnight, not 01:00. */
+    @Test
+    void afterTheDayClocksGoForwardADailyTaskRunsAtMidnight() throws Exception {
+        Date lastRun = newYork(Calendar.MARCH, 8, 0, 0);
+
+        assertTrue(dailyPassInNewYork(lastRun, newYork(Calendar.MARCH, 9, 0, 0)).launched(),
+                "at midnight after the 23-hour day");
     }
 
     @Test
