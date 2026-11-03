@@ -730,6 +730,12 @@ class ProductionComposeTest {
         assertTrue(text.matches("(?s).*--with\\s+github\\.com/caddy-dns/\\S+.*"),
                 "the xcaddy build must name a github.com/caddy-dns/<provider> module, "
                         + "or DNS-01 has nothing to authenticate against the zone with");
+        // Without @version xcaddy fetches whatever the module's latest tag is
+        // at build time, so two builds of one release tag could hold
+        // different code in the binary that holds the Cloudflare API token.
+        assertTrue(text.matches("(?s).*--with\\s+github\\.com/caddy-dns/[^\\s@]+@v\\d+\\.\\d+\\.\\d+\\s.*"),
+                "the DNS provider module must be pinned to a release (--with "
+                        + "github.com/caddy-dns/<provider>@vX.Y.Z), like the two base images");
         assertTrue(text.contains("AS builder") && text.contains("COPY --from=builder"),
                 "the xcaddy-built binary must be copied into a separate runtime stage -- "
                         + "shipping the builder stage itself would ship Go toolchain and "
