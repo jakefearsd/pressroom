@@ -125,6 +125,13 @@ templates).
   2026-11-03 (code review): "username:a*" enumerated author logins on a
   public page. An index built before then still holds the login until it is
   rebuilt, but the parser no longer lets a query reach it.
+- **A query Lucene cannot run is the reader's error**: a regular expression
+  too complex to determinize or more clauses than a search may hold is
+  recorded as the query's parse error and logged at DEBUG (until
+  2026-11-03 each such anonymous request logged ERROR with a stack trace).
+- **A site-wide rebuild replaces every document** (`writer.deleteAll()`;
+  until 2026-11-03 it deleted by a "constant" field no document carried, so
+  every entry indexed before it was then indexed twice).
 - **Index Location**: configurable work directory
 - **Searches never wait for writes** (`LuceneIndexManager`): searches share
   a Lucene `SearcherManager` and take no lock; index writes serialise on

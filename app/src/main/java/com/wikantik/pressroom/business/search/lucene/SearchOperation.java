@@ -35,6 +35,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopFieldDocs;
+import org.apache.lucene.util.automaton.TooComplexToDeterminizeException;
 import org.apache.lucene.util.BytesRef;
 import com.wikantik.pressroom.business.search.IndexManager;
 
@@ -235,6 +236,15 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
 
         } catch (ParseException e) {
             // who cares?
+            parseError = e.getMessage();
+
+        } catch (TooComplexToDeterminizeException | IndexSearcher.TooManyClauses e) {
+            // The reader's query, not the index: a regular expression or
+            // wildcard too complex to run, or more clauses than a search may
+            // hold. Answered like an unparsable query; it used to reach
+            // ReadFromIndexOperation and log ERROR with a stack trace for
+            // every such anonymous request.
+            log.debug("Search query too complex to run: {}", e.getMessage());
             parseError = e.getMessage();
         }
         // the searcher stays acquired: close() lets go of it, after the

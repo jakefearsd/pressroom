@@ -18,6 +18,7 @@
 
 package com.wikantik.pressroom.business.runnable;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Properties;
@@ -137,7 +138,14 @@ public class ScheduledEntriesTask extends PressroomTaskWithLeasing {
 
 
     /**
-     * Execute the task.
+     * Execute the task: promote each due entry in its own transaction.
+     *
+     * <p>Until 2026-11-03 every due entry was saved and then committed once,
+     * so one entry failing at commit (a constraint, a trigger, a row another
+     * writer holds) rolled back the whole sweep -- on every run, so nothing
+     * scheduled published again until that entry was fixed by hand. Now a
+     * failing entry is logged, its transaction released, and the next one
+     * goes ahead; the failing one stays SCHEDULED and is retried next run.
      */
     @Override
     public void runTask() {
@@ -157,24 +165,15 @@ public class ScheduledEntriesTask extends PressroomTaskWithLeasing {
             WeblogEntrySearchCriteria wesc = new WeblogEntrySearchCriteria();
             wesc.setEndDate(now);
             wesc.setStatus(PubStatus.SCHEDULED);
-            List<WeblogEntry> scheduledEntries = wMgr.getWeblogEntries(wesc);
-            log.debug("promoting {} entries to PUBLISHED state", scheduledEntries.size());
-
-            for (WeblogEntry entry : scheduledEntries) {
-                entry.setStatus(PubStatus.PUBLISHED);
-                wMgr.saveWeblogEntry(entry);
+            List<String> dueIds = new ArrayList<>();
+            for (WeblogEntry entry : wMgr.getWeblogEntries(wesc)) {
+                dueIds.add(entry.getId());
             }
+            weblogger().release();
+            log.debug("promoting {} entries to PUBLISHED state", dueIds.size());
 
-            // commit the changes
-            weblogger().flush();
-
-            // take a second pass to trigger reindexing and cache invalidations
-            // this is because we need the updated entries flushed first
-            for (WeblogEntry entry : scheduledEntries) {
-                // trigger a cache invalidation
-                CacheManager.invalidate(entry);
-                // trigger search index on entry
-                searchMgr.addEntryReIndexOperation(entry);
+            for (String id : dueIds) {
+                promote(id, wMgr, searchMgr);
             }
 
         } catch (WebloggerException e) {
@@ -188,6 +187,30 @@ public class ScheduledEntriesTask extends PressroomTaskWithLeasing {
 
         log.debug("task completed");
 
+    }
+
+    /**
+     * Publishes one entry and commits, then expires its cached pages and
+     * reindexes it (both need the committed row). Re-read first: it is
+     * skipped if it is gone or no longer SCHEDULED by now.
+     */
+    private void promote(String id, WeblogEntryManager wMgr, IndexManager searchMgr) {
+        try {
+            WeblogEntry entry = wMgr.getWeblogEntry(id);
+            if (entry == null || entry.getStatus() != PubStatus.SCHEDULED) {
+                return;
+            }
+            entry.setStatus(PubStatus.PUBLISHED);
+            wMgr.saveWeblogEntry(entry);
+            weblogger().flush();
+
+            CacheManager.invalidate(entry);
+            searchMgr.addEntryReIndexOperation(entry);
+        } catch (WebloggerException | RuntimeException e) {
+            log.error("Could not publish scheduled entry {}; it stays scheduled and is retried next run", id, e);
+        } finally {
+            weblogger().release();
+        }
     }
 
 

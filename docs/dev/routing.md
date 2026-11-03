@@ -146,7 +146,11 @@ A weblog with `weblog.custom_domain` set is served at that hostname's root:
 - **Resolution is host-first in `WeblogRequestMapper`, and the forward url
   still carries the handle**, so `PageServlet`, `WeblogPageRequest`, pagers,
   models and caches never learn vhosts exist. `VirtualHostRegistry` holds the
-  hostname→handle map in memory (invalidated in `saveWeblog`/`removeWeblog`),
+  hostname→handle map in memory (invalidated in `saveWeblog`/`removeWeblog`
+  and again after their commit; since 2026-11-03 a build that an
+  invalidation overtook, or one made inside a unit of work with uncommitted
+  changes, answers its own read and is not kept, so a reader that started
+  before a commit can no longer reinstall the old map),
   so it works before `PersistenceSessionFilter` and `ControlPlaneHostFilter`
   can sit at filter order **35**, ahead of Spring Security (40), whose login
   302 would otherwise mint a session and CSRF token on the custom domain.

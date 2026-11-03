@@ -21,6 +21,7 @@ package com.wikantik.pressroom.business;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.TestUtils;
+import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.pojos.User;
 import org.junit.jupiter.api.AfterEach;
@@ -164,6 +165,44 @@ public class UserTest  {
     }
     
     
+    /**
+     * A disabled account still holds its name. addUser looked only among
+     * enabled accounts, so a second "bob" passed the check and failed at
+     * commit on the unique constraint, and "Bob" was stored beside the
+     * disabled "bob" -- which addAgent and addReader both refuse.
+     */
+    @Test
+    public void aDisabledAccountsNameIsInUse() throws Exception {
+        UserManager mgr = TestUtils.weblogger().getUserManager();
+        User disabled = TestUtils.setupUser("disabledname");
+        disabled.setEnabled(Boolean.FALSE);
+        mgr.saveUser(disabled);
+        TestUtils.endSession(true);
+        String name = disabled.getUserName();
+        try {
+            for (String candidate : List.of(name, name.toUpperCase(java.util.Locale.ROOT))) {
+                User again = new User();
+                again.setUserName(candidate);
+                again.setScreenName("Again");
+                again.setFullName("Again");
+                again.setEmailAddress("again@dev.null");
+                again.setLocale("en_US");
+                again.setTimeZone("America/Los_Angeles");
+                again.setDateCreated(new java.util.Date());
+                again.setEnabled(Boolean.TRUE);
+
+                WebloggerException refused = assertThrows(WebloggerException.class, () -> mgr.addUser(again),
+                        candidate + " is refused at the add, not at the commit");
+                assertEquals("error.add.user.userNameInUse", refused.getMessage());
+                TestUtils.endSession(false);
+            }
+        } finally {
+            TestUtils.endSession(false);
+            TestUtils.teardownUser(name);
+            TestUtils.endSession(true);
+        }
+    }
+
     /**
      * Test basic user role persistence ... Add, Remove
      */

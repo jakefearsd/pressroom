@@ -178,9 +178,10 @@ public class TrashPurgeTask extends PressroomTaskWithLeasing {
      * <p>One weblog's purge failing must not stop the others', and must not
      * take the task runner down -- this runs unattended off the scheduler,
      * with nobody watching to retry it. Failures are therefore caught and
-     * logged per weblog, the same granularity {@link ScheduledEntriesTask}
-     * uses for the sweep as a whole; a single misbehaving weblog costs that
-     * weblog's purge for this sweep, not every other weblog's.
+     * logged per weblog, and each weblog's purge is committed (or rolled
+     * back) on its own; a single misbehaving weblog costs that weblog's purge
+     * for this sweep, not every other weblog's. Until 2026-11-03 the sweep
+     * committed once at the end, so a commit-time failure undid them all.
      */
     @Override
     public void runTask() {
@@ -201,6 +202,9 @@ public class TrashPurgeTask extends PressroomTaskWithLeasing {
             for (Weblog weblog : weblogs) {
                 try {
                     int purged = wemgr.purgeTrash(weblog, retentionDays);
+                    // committed per weblog: one commit for the whole sweep let
+                    // a single weblog failing at commit undo every other's
+                    weblogger().flush();
                     if (purged > 0) {
                         log.info("purged {} trashed entries from weblog {}",
                                 purged, weblog.getHandle());
@@ -210,11 +214,11 @@ public class TrashPurgeTask extends PressroomTaskWithLeasing {
                 } catch (Exception e) {
                     log.error("Unexpected exception purging trash for weblog {}",
                             weblog.getHandle(), e);
+                } finally {
+                    // a failed purge or commit must not leak into the next weblog's
+                    weblogger().release();
                 }
             }
-
-            // commit the changes
-            weblogger().flush();
 
         } catch (WebloggerException e) {
             log.error("Error running trash purge task", e);

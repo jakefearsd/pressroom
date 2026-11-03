@@ -129,8 +129,9 @@ public class WebloggerBeanConfig {
      * the first request rather than from the first save.
      */
     @Bean
-    public VirtualHostRegistry virtualHostRegistry(@Lazy WeblogManager weblogManager) {
-        return new VirtualHostRegistry(weblogManager);
+    public VirtualHostRegistry virtualHostRegistry(@Lazy WeblogManager weblogManager,
+                                                   JPAPersistenceStrategy strategy) {
+        return new VirtualHostRegistry(weblogManager, strategy::hasUncommittedWork);
     }
 
     @Bean

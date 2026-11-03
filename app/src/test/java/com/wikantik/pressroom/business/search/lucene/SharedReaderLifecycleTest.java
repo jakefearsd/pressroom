@@ -395,7 +395,11 @@ class SharedReaderLifecycleTest {
     @Test
     void initializingAgainRetiresTheReaderAlreadyHeld() throws Exception {
         manager = initialized(new LuceneIndexManager(pressroom));
-        index(entry("first"));
+        WeblogEntry first = entry("first");
+        index(first);
+        // the database holds it too: initialize() may rebuild the index from
+        // there, and a site-wide rebuild replaces every document
+        when(entries.getWeblogEntries(any())).thenReturn(List.of(first));
         IndexReader held = currentReader();
         // a clean previous run: no in-use marker, so the index is reopened
         // as it stands rather than discarded and rebuilt

@@ -78,7 +78,10 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     /** Locks one entry's row until commit and reads its committed text. */
     private static final String LOCK_ENTRY_TEXT = "SELECT text FROM weblogentry WHERE id = ?1 FOR UPDATE";
 
-    /** Startup property: the longest wait, in seconds, for a weblog's anchor lock. */
+    /** Advisory-lock key prefix for a weblog's category names; see claimCategoryName. */
+    private static final String CATEGORY_LOCK_PREFIX = "weblogcategory.name:";
+
+    /** Startup property: the longest wait, in seconds, for a weblog's anchor (or category name) lock. */
     private static final String ANCHOR_LOCK_TIMEOUT = "weblogentry.anchor.lockTimeoutSeconds";
 
     private static final int DEFAULT_ANCHOR_LOCK_TIMEOUT = 10;
@@ -112,8 +115,8 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     @Override
     public void saveWeblogCategory(WeblogCategory cat) throws WebloggerException {
         boolean exists = getWeblogCategory(cat.getId()) != null;
-        if (!exists && isDuplicateWeblogCategoryName(cat)) {
-            throw new WebloggerException("Duplicate category name, cannot save category");
+        if (!exists) {
+            claimCategoryName(cat);
         }
 
         // update weblog last modified date.  date updated by saveWebsite()
@@ -121,6 +124,29 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         this.strategy.store(cat);
     }
     
+    /**
+     * Refuses a new category whose name its weblog already has. The check
+     * runs under a lock on the weblog's category names, held until this
+     * transaction ends, because the INSERT happens only at commit: two
+     * overlapping creates of one name (a double-submitted form) both found
+     * it free and both stored a row, and every lookup of the name then failed
+     * on the pair. Now the second waits, and its check (a fresh READ
+     * COMMITTED snapshot) sees the first. {@code wc_weblog_name_uq} (V045) is
+     * the backstop for anything that bypasses this, a rename included. The
+     * wait is bounded like the anchor lock's (see claimAnchor).
+     */
+    private void claimCategoryName(WeblogCategory cat) throws WebloggerException {
+        Weblog weblog = cat.getWeblog();
+        int timeout = WebloggerConfig.getIntProperty(ANCHOR_LOCK_TIMEOUT, DEFAULT_ANCHOR_LOCK_TIMEOUT);
+        if (!strategy.lockUntilCommit(CATEGORY_LOCK_PREFIX + weblog.getId(), timeout)) {
+            throw new WebloggerException("Gave up after " + timeout
+                    + "s waiting for the category lock of weblog " + weblog.getHandle());
+        }
+        if (isDuplicateWeblogCategoryName(cat)) {
+            throw new WebloggerException("Duplicate category name, cannot save category");
+        }
+    }
+
     /**
      * @inheritDoc
      */
@@ -678,11 +704,13 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         int size = 0;
         StringBuilder queryString = new StringBuilder();
         
-        if (wesc.getTags() == null || wesc.getTags().isEmpty()) {
-            queryString.append("SELECT e FROM WeblogEntry e WHERE ");
-        } else {
-            queryString.append("SELECT e FROM WeblogEntry e JOIN e.tags t WHERE ");
-            queryString.append("(");
+        queryString.append("SELECT e FROM WeblogEntry e WHERE ");
+        if (wesc.getTags() != null && !wesc.getTags().isEmpty()) {
+            // EXISTS, not a join on e.tags: a join yields one row per matching
+            // tag, so an entry carrying two of the tags was listed twice and
+            // the duplicates counted against maxResults (short pages).
+            queryString.append("EXISTS (SELECT t FROM WeblogEntryTag t")
+                    .append(" WHERE t.weblogEntry = e AND (");
             for (int i = 0; i < wesc.getTags().size(); i++) {
                 if (i != 0) {
                     queryString.append(" OR ");
@@ -690,9 +718,9 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
                 params.add(size++, wesc.getTags().get(i));
                 queryString.append(" t.name = ?").append(size);                
             }
-            queryString.append(") AND ");
+            queryString.append(")) AND ");
         }
-        
+
         if (wesc.getWeblog() != null) {
             params.add(size++, wesc.getWeblog().getId());
             queryString.append("e.website.id = ?").append(size);
@@ -781,8 +809,10 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         }
         // A page (a feed, an API list, a theme's list): read its entries'
         // tags in one IN query instead of one per entry. EclipseLink's shared
-        // cache keeps only ~100 entries, so a page's entries are often rebuilt
-        // with their tags unloaded, and the feed and the API show every one.
+        // cache holds a bounded number of entries (eclipselink.cache.size.
+        // WeblogEntry, 5000 by default; docs/dev/database.md), so a page's
+        // entries may have been rebuilt with their tags unloaded, and the feed
+        // and the API show every one.
         // Loaded here, at once: an untouched batch holder keeps the whole
         // query and every row it read (text included) alive in the cache.
         // Unbounded lists (a reindex reads every entry) are left lazy, so a
@@ -1145,8 +1175,9 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     throws WebloggerException {
         TypedQuery<WeblogEntry> q = strategy.getNamedQuery("WeblogEntry.getByCategory", WeblogEntry.class);
         q.setParameter(1, cat);
-        int entryCount = q.getResultList().size();
-        return entryCount > 0;
+        // one row answers it; this used to read every entry of the category
+        q.setMaxResults(1);
+        return !q.getResultList().isEmpty();
     }
     
     /**
@@ -1406,18 +1437,21 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         if (tags == null || tags.isEmpty()) {
             return false;
         }
+        // Compared below with the distinct names found, so a tag named twice
+        // (/tags/a+a) is counted once here too.
+        List<String> names = new ArrayList<>(new LinkedHashSet<>(tags));
         
         StringBuilder queryString = new StringBuilder();
         queryString.append("SELECT DISTINCT w.name ");
         queryString.append("FROM WeblogEntryTagAggregate w WHERE w.name IN (");
         // Append tags as parameter markers to avoid potential escaping issues
         // The IN clause would be of form (?1, ?2, ?3, ..)
-        List<Object> params = new ArrayList<>(tags.size() + 1);
+        List<Object> params = new ArrayList<>(names.size() + 1);
         final String paramSeparator = ", ";
         int i;
-        for (i=0; i < tags.size(); i++) {
+        for (i=0; i < names.size(); i++) {
             queryString.append('?').append(i+1).append(paramSeparator);
-            params.add(tags.get(i));
+            params.add(names.get(i));
         }
         
         // Remove the trailing paramSeparator
@@ -1438,9 +1472,9 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         List<String> results = q.getResultList();
         
         //TODO: DatamapperPort: Since we are only interested in knowing whether
-        //results.size() == tags.size(). This query can be optimized to just fetch COUNT
+        //results.size() == names.size(). This query can be optimized to just fetch COUNT
         //instead of objects as done currently
-        return results != null && results.size() == tags.size();
+        return results != null && results.size() == names.size();
     }
 
     private static void setFirstMax( Query query, int offset, int length )  {

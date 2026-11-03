@@ -21,6 +21,7 @@ package com.wikantik.pressroom.business.runnable;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -50,13 +51,27 @@ import static com.wikantik.pressroom.util.PressroomConstants.GRACEFUL_SHUTDOWN_W
 public class TaskScheduler implements Runnable {
     
     private static final Logger log = LoggerFactory.getLogger(TaskScheduler.class);
+
+    /** Minutes in a calendar day with no clock change. */
+    private static final int MINUTES_PER_DAY = 1440;
+
     private final ExecutorService pool;
     private final Weblogger weblogger;
     private final List<PressroomTask> tasks;
+    private final TimeZone zone;
     
     
     public TaskScheduler(Weblogger weblogger, List<PressroomTask> webloggerTasks) {
-        
+        this(weblogger, webloggerTasks, null);
+    }
+
+    /**
+     * @param zone the zone whose days a daily task follows; null for the
+     *        JVM's default, which is what {@code JPAThreadManagerImpl.registerLease}
+     *        records a daily run's start of day in
+     */
+    TaskScheduler(Weblogger weblogger, List<PressroomTask> webloggerTasks, TimeZone zone) {
+        this.zone = zone;
         this.weblogger = weblogger;
         // store list of tasks available to run
         tasks = webloggerTasks;
@@ -134,6 +149,30 @@ public class TaskScheduler implements Runnable {
     }
     
     
+    private Calendar calendar() {
+        return zone == null ? Calendar.getInstance() : Calendar.getInstance(zone);
+    }
+
+    /**
+     * When a task may next run. An interval of whole days is counted in
+     * calendar days, not minutes: a daily task's last run is recorded as the
+     * start of its day ({@code JPAThreadManagerImpl.registerLease}), and on
+     * the day clocks go back (25 hours) that start plus 1440 minutes is 23:00
+     * of the same day, which registerLease records as the same start of day
+     * again -- so the task ran every minute until midnight. On the day clocks
+     * go forward it ran at 01:00. Any other interval is counted in minutes.
+     */
+    private Date nextAllowedRun(TaskLock lock, int interval) {
+        Date lastRun = lock.getLastRun();
+        if (lastRun == null || interval <= 0 || interval % MINUTES_PER_DAY != 0) {
+            return lock.getNextAllowedRun(interval);
+        }
+        Calendar cal = calendar();
+        cal.setTime(lastRun);
+        cal.add(Calendar.DAY_OF_MONTH, interval / MINUTES_PER_DAY);
+        return cal.getTime();
+    }
+
     /**
      * Run the necessary tasks given a specific currentTime to work from.
      * Package-private so TaskSchedulerTest can drive the launch decision with
@@ -158,7 +197,7 @@ public class TaskScheduler implements Runnable {
                 
                 // first, calculate the next allowed run time for the task
                 // based on when the task was last run
-                Date nextRunTime = tasklock.getNextAllowedRun(task.getInterval());
+                Date nextRunTime = nextAllowedRun(tasklock, task.getInterval());
                 log.debug("{}: next allowed run time = {}", task.getName(), nextRunTime);
                 
                 // if we missed the last scheduled run time then see when the
@@ -171,7 +210,7 @@ public class TaskScheduler implements Runnable {
                     if ("startOfDay".equals(task.getStartTimeDesc())) {
                         // for daily tasks we only run during the first 
                         // couple minutes of the day
-                        Date startOfDay = DateUtil.getStartOfDay(currentTime);
+                        Date startOfDay = DateUtil.getStartOfDay(currentTime, calendar());
                         if(currentTime.getTime() > startOfDay.getTime() + (2 * PressroomConstants.MIN_IN_MS)) {
                             needToWait = true;
                             log.debug("WAITING for next reasonable run time");
