@@ -44,8 +44,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
  */
 public final class PressroomPostgresContainer {
 
-    /** Pinned to match docker-compose.yml. Package-visible so {@link UmamiContainer} runs the same engine. */
-    static final String IMAGE = "postgres:18";
+    /** Pinned to match docker-compose.yml. Public so {@link UmamiContainer} and the script tests run the same engine. */
+    public static final String IMAGE = "postgres:18";
 
     private static volatile PostgreSQLContainer container;
 

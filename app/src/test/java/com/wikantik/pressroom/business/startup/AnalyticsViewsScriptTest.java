@@ -17,10 +17,14 @@
  */
 package com.wikantik.pressroom.business.startup;
 
+import com.wikantik.pressroom.testing.PressroomPostgresContainer;
 import com.wikantik.pressroom.testing.UmamiContainer;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.Container;
+import org.testcontainers.containers.ExecConfig;
+import org.testcontainers.postgresql.PostgreSQLContainer;
+import org.testcontainers.utility.MountableFile;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -31,6 +35,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -61,17 +66,10 @@ class AnalyticsViewsScriptTest {
     private static UmamiContainer umami;
 
     @BeforeAll
-    static void start() throws Exception {
+    static void start() {
+        // The script creates grafana_ro itself (umami-db is not Pressroom's
+        // server, where V017 creates it); see theRoleIsCreatedOnAServerThatHasNone.
         umami = UmamiContainer.get();
-        // provision.sh creates grafana_ro in production; the view grants to it.
-        try (Connection con = umami.jdbc(); Statement st = con.createStatement()) {
-            st.execute("""
-                    DO $$ BEGIN
-                        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'grafana_ro') THEN
-                            CREATE ROLE grafana_ro NOLOGIN;
-                        END IF;
-                    END $$""");
-        }
     }
 
     private static Container.ExecResult run(Map<String, String> env) {
@@ -168,6 +166,64 @@ class AnalyticsViewsScriptTest {
             try (Connection con = umami.jdbc(); Statement st = con.createStatement()) {
                 st.execute("DROP DATABASE IF EXISTS " + scratch + " WITH (FORCE)");
             }
+        }
+    }
+
+    /**
+     * {@code umami-db} is a server of its own (spec 2026-11-03, AC 9): the
+     * {@code grafana_ro} role that V017 creates on Pressroom's server does not
+     * exist there, and the views' grants to it would fail. A brand-new
+     * PostgreSQL with only a {@code website_event} table (the views' input)
+     * stands in for a fresh {@code umami-db}; with no account password the
+     * script stops after the views, so Umami's other tables are not needed.
+     */
+    @Test
+    void theRoleIsCreatedOnAServerThatHasNone() throws Exception {
+        try (PostgreSQLContainer fresh = new PostgreSQLContainer(PressroomPostgresContainer.IMAGE)
+                .withDatabaseName("umami").withUsername("umami").withPassword("fresh-umami-db")) {
+            fresh.start();
+            try (Connection con = fresh.createConnection(""); Statement st = con.createStatement()) {
+                st.execute("CREATE TABLE website_event (website_id uuid, session_id uuid, created_at timestamptz,"
+                        + " url_path varchar(500), event_type integer)");
+            }
+            String dir = "/tmp/views-" + UUID.randomUUID();
+            for (Path file : List.of(SCRIPT, VIEWS_SQL, ACCOUNT_SQL)) {
+                fresh.copyFileToContainer(MountableFile.forHostPath(file), dir + "/" + file.getFileName());
+            }
+            Container.ExecResult result = fresh.execInContainer(ExecConfig.builder()
+                    .command(new String[] {"bash", dir + "/" + SCRIPT.getFileName()})
+                    .workDir(dir)
+                    .envVars(Map.of("UMAMI_PGHOST", "localhost", "UMAMI_DB_USER", "umami",
+                            "UMAMI_DB_PASSWORD", "fresh-umami-db", "UMAMI_DB", "umami",
+                            "UMAMI_PRESSROOM_PASSWORD", "", "ANALYTICS_SQL_DIR", ".",
+                            "ANALYTICS_VIEWS_WAIT_SECONDS", "10"))
+                    .build());
+
+            assertEquals(0, result.getExitCode(), output(result));
+            try (Connection con = fresh.createConnection(""); Statement st = con.createStatement();
+                 ResultSet rs = st.executeQuery("SELECT rolcanlogin,"
+                         + " has_database_privilege('grafana_ro', 'umami', 'CONNECT'),"
+                         + " has_table_privilege('grafana_ro', 'analytics_traffic', 'SELECT'),"
+                         + " has_table_privilege('grafana_ro', 'website_event', 'SELECT')"
+                         + " FROM pg_roles WHERE rolname = 'grafana_ro'")) {
+                assertTrue(rs.next(), "the script creates grafana_ro: " + output(result));
+                assertFalse(rs.getBoolean(1), "NOLOGIN: a password is the operator's, set out of band");
+                assertTrue(rs.getBoolean(2), "it may connect to the Umami database");
+                assertTrue(rs.getBoolean(3), "and read the contract view");
+                assertFalse(rs.getBoolean(4), "and nothing else");
+            }
+
+            Container.ExecResult again = fresh.execInContainer(ExecConfig.builder()
+                    .command(new String[] {"bash", dir + "/" + SCRIPT.getFileName()})
+                    .workDir(dir)
+                    .envVars(Map.of("UMAMI_PGHOST", "localhost", "UMAMI_DB_USER", "umami",
+                            "UMAMI_DB_PASSWORD", "fresh-umami-db", "UMAMI_DB", "umami",
+                            "UMAMI_PRESSROOM_PASSWORD", "", "ANALYTICS_SQL_DIR", ".",
+                            "ANALYTICS_VIEWS_WAIT_SECONDS", "10"))
+                    .build());
+            assertEquals(0, again.getExitCode(), "a re-run finds the role and carries on: " + output(again));
+            assertFalse((output(result) + output(again)).contains("fresh-umami-db"),
+                    "the password is never printed");
         }
     }
 

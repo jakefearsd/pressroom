@@ -41,12 +41,12 @@
 -- GRANT CONNECT ON DATABASE is deliberately NOT in this file. A migration
 -- (or a plain script like this one) cannot portably state its own
 -- database's name -- current_database() would need dynamic SQL to use
--- inside a GRANT -- so provision.sh issues
--- `GRANT CONNECT ON DATABASE ... TO grafana_ro` for BOTH pressroom and
--- umami already, earlier in the same `docker compose up -d`, where the real
--- database names are already known as env vars (see provision.sh's grant
--- step and V017's header for the same decision, restated on that side of
--- the split). This file's grants stay schema/table-level, which is all it
+-- inside a GRANT -- so the scripts that know the names issue
+-- `GRANT CONNECT ON DATABASE ... TO grafana_ro`: provision.sh for pressroom,
+-- and analytics-views.sh for this database on umami-db (0.7.2+), just
+-- before it applies this file, where it also creates grafana_ro (V017 does
+-- that on Pressroom's server only; see V017's header for the same decision,
+-- restated on that side of the split). This file's grants stay schema/table-level, which is all it
 -- can state without knowing its own database's name.
 
 CREATE OR REPLACE VIEW analytics_traffic AS

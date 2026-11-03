@@ -210,5 +210,8 @@ read-only Grafana contract over two databases. Spec:
   views, never the tables. Enable with
   `ALTER ROLE grafana_ro LOGIN PASSWORD '...'` over
   `docker compose exec postgres psql` (`docker_deployment.md`); `provision.sh`
-  grants it `CONNECT` on both databases for both Grafana datasources. No
+  grants it `CONNECT` on `pressroom`. Umami's database is on its own server,
+  `umami-db` (0.7.2+), where `analytics-views.sh` creates `grafana_ro`
+  `NOLOGIN` and grants `CONNECT` and the view; its password is set there
+  separately. No
   compose file publishes a Postgres host port — tunnel-only.

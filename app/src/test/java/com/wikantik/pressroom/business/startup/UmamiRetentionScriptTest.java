@@ -280,7 +280,7 @@ class UmamiRetentionScriptTest {
         }
         try {
             Container.ExecResult result = run(Map.of("UMAMI_DB", locked,
-                    "POSTGRES_USER", role, "POSTGRES_PASSWORD", password));
+                    "UMAMI_DB_USER", role, "UMAMI_DB_PASSWORD", password));
 
             assertEquals(1, result.getExitCode(), output(result));
             assertTrue(result.getStderr().contains("Umami retention: could not check"), output(result));

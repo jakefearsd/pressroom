@@ -23,17 +23,24 @@
 # analytics registration is off. The password is never echoed and never on a
 # command line: psql reads it from this environment itself (\getenv), so
 # `ps` on the host shows nothing. The account SQL needs a superuser (it
-# sets log_min_error_statement for its session); POSTGRES_USER is one.
+# sets log_min_error_statement for its session); UMAMI_DB_USER is one.
+#
+# Since 0.7.2 Umami's database is on its own server, umami-db
+# (UMAMI_PGHOST, UMAMI_DB_USER, UMAMI_DB_PASSWORD), not on Pressroom's. The
+# grafana_ro role the views grant to is created on Pressroom's server by
+# migration V017; this server has never seen it, so this script creates it
+# NOLOGIN (a password is the operator's, set out of band) and grants it
+# CONNECT before the views' own grants.
 #
 # ANALYTICS_SQL_DIR (default /app, where the image bakes both SQL files) and
 # UMAMI_PRESSROOM_USERNAME (default pressroom, the app's
 # analytics.umami.username) exist for the tests.
 set -euo pipefail
 
-export PGHOST="${PGHOST:-postgres}"
-export PGPORT="${PGPORT:-5432}"
-export PGUSER="${POSTGRES_USER:?POSTGRES_USER must be set}"
-export PGPASSWORD="${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}"
+export PGHOST="${UMAMI_PGHOST:-umami-db}"
+export PGPORT="${UMAMI_PGPORT:-5432}"
+export PGUSER="${UMAMI_DB_USER:-umami}"
+export PGPASSWORD="${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD must be set}"
 
 UMAMI_DB="${UMAMI_DB:-umami}"
 WAIT_SECONDS="${ANALYTICS_VIEWS_WAIT_SECONDS:-180}"
@@ -56,6 +63,15 @@ until psql -d "${UMAMI_DB}" --no-psqlrc --quiet -tAc \
 done
 echo "    website_event present."
 
+echo "==> Ensuring grafana_ro exists on ${PGHOST} and may connect to ${UMAMI_DB}..."
+psql -d "${UMAMI_DB}" -X --quiet -v ON_ERROR_STOP=1 <<SQL
+DO \$\$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'grafana_ro') THEN
+        CREATE ROLE grafana_ro NOLOGIN;
+    END IF;
+END \$\$;
+GRANT CONNECT ON DATABASE "${UMAMI_DB}" TO grafana_ro;
+SQL
 echo "==> Applying analytics views to ${UMAMI_DB}..."
 psql -d "${UMAMI_DB}" --single-transaction -v ON_ERROR_STOP=1 -f "${SQL_DIR}/umami-views.sql"
 echo "==> Analytics views installed."

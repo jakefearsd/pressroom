@@ -38,6 +38,18 @@
 #
 #   docker compose -f docker-compose.prod.yml start app
 #
+#   Umami's dump (umami-<timestamp>.dump) restores the same way into its
+#   own server, as its own login (Umami stopped meanwhile):
+#
+#   docker compose -f docker-compose.prod.yml stop umami
+#   docker compose -f docker-compose.prod.yml exec -T umami-db bash -c '
+#     set -euo pipefail
+#     export PGHOST=localhost PGUSER="${POSTGRES_USER}" PGPASSWORD="${POSTGRES_PASSWORD}"
+#     pg_restore -d "${POSTGRES_DB}" --clean --if-exists --no-owner --no-acl
+#   ' < /path/on/host/to/umami-<timestamp>.dump
+#   docker compose -f docker-compose.prod.yml start umami
+#   docker compose -f docker-compose.prod.yml up -d analytics-views   # re-grants grafana_ro
+#
 #   (The dump lives in the pressroom-backups volume, at
 #   /backups/pressroom-<timestamp>.dump inside the backup container --
 #   `docker compose cp backup:/backups/pressroom-<timestamp>.dump .` to get it
@@ -73,6 +85,15 @@ export PGPORT="${PGPORT:-5432}"
 export PGUSER="${POSTGRES_USER:?POSTGRES_USER must be set}"
 export PGPASSWORD="${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}"
 DB_NAME="${POSTGRES_DB:?POSTGRES_DB must be set}"
+# Umami's own server since 0.7.2 (umami-db), with its own login. Required:
+# a backup that silently left analytics out would be found missing only on
+# the day it was needed.
+UMAMI_DB_PASSWORD="${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD must be set}"
+umami_pg() {
+    PGHOST="${UMAMI_PGHOST:-umami-db}" PGPORT="${UMAMI_PGPORT:-5432}" \
+        PGUSER="${UMAMI_DB_USER:-umami}" PGPASSWORD="${UMAMI_DB_PASSWORD}" \
+        PGCONNECT_TIMEOUT="${PGCONNECT_TIMEOUT:-30}" "$@"
+}
 
 mkdir -p "${BACKUP_DIR}"
 
@@ -83,13 +104,11 @@ pg_dump -Fc -d "${DB_NAME}" -f "${DUMP_FILE}.tmp"
 mv "${DUMP_FILE}.tmp" "${DUMP_FILE}"
 echo "  database -> ${DUMP_FILE}"
 
-# The service databases (analytics, newsletter), if this stack runs them.
-# Dumped separately rather than with pg_dumpall so each restores on its own:
-# losing analytics history should never be a reason to hesitate over restoring
-# the blog. Missing is not an error -- a stack deployed before these services
-# existed simply has no such database, and a backup run must not start failing
+# The newsletter's database, on Pressroom's server, if this stack runs it.
+# Missing is not an error -- a stack deployed before the service existed
+# simply has no such database, and a backup run must not start failing
 # because of it.
-SERVICE_DBS="${UMAMI_DB:-umami} ${LISTMONK_DB:-listmonk}"
+SERVICE_DBS="${LISTMONK_DB:-listmonk}"
 for service_db in ${SERVICE_DBS}; do
     if psql -d "${DB_NAME}" -tAc \
             "SELECT 1 FROM pg_database WHERE datname = ${service_db@Q}" | grep -q 1; then
@@ -107,10 +126,41 @@ tar czf "${VOLUMES_FILE}.tmp" -C / data/mediafiles data/search-index data/upload
 mv "${VOLUMES_FILE}.tmp" "${VOLUMES_FILE}"
 echo "  volumes  -> ${VOLUMES_FILE}"
 
+# Umami's database, from its own server, LAST: it is on another server with
+# another login, and a fault there must cost the analytics dump only, never
+# the blog's media or the newsletter above. Dumped separately rather than
+# with pg_dumpall so each restores on its own: losing analytics history
+# should never be a reason to hesitate over restoring the blog. A failure is
+# remembered and fails the run after rotation (loop.sh then logs it and
+# skips retention); a missing database is reported, as for the newsletter.
+UMAMI_DB_NAME="${UMAMI_DB:-umami}"
+UMAMI_SERVER="${UMAMI_PGHOST:-umami-db}"
+umami_failed=0
+if ! umami_exists="$(umami_pg psql -d postgres -X -tAc \
+        "SELECT 1 FROM pg_database WHERE datname = ${UMAMI_DB_NAME@Q}")"; then
+    echo "  ${UMAMI_DB_NAME} -> FAILED: cannot reach ${UMAMI_SERVER}" >&2
+    umami_failed=1
+elif [[ "${umami_exists}" == 1 ]]; then
+    UMAMI_DUMP="${BACKUP_DIR}/${UMAMI_DB_NAME}-${TIMESTAMP}.dump"
+    if umami_pg pg_dump -Fc -d "${UMAMI_DB_NAME}" -f "${UMAMI_DUMP}.tmp"; then
+        mv "${UMAMI_DUMP}.tmp" "${UMAMI_DUMP}"
+        echo "  ${UMAMI_DB_NAME} -> ${UMAMI_DUMP} (from ${UMAMI_SERVER})"
+    else
+        echo "  ${UMAMI_DB_NAME} -> FAILED: pg_dump from ${UMAMI_SERVER}" >&2
+        umami_failed=1
+    fi
+else
+    echo "  ${UMAMI_DB_NAME} -> none (no such database on ${UMAMI_SERVER})"
+fi
+
 echo "Rotating backups older than ${RETENTION_DAYS} day(s)..."
 find "${BACKUP_DIR}" -maxdepth 1 -type f \
     \( -name 'pressroom-*.dump' -o -name '*-[0-9]*T[0-9]*Z.dump' \
        -o -name 'volumes-*.tar.gz' -o -name '*.tmp' \) \
     -mtime "+${RETENTION_DAYS}" -print -delete
 
+if [[ "${umami_failed}" -ne 0 ]]; then
+    echo "[$(date -u +%FT%TZ)] Backup INCOMPLETE: everything but ${UMAMI_DB_NAME} was written." >&2
+    exit 1
+fi
 echo "[$(date -u +%FT%TZ)] Backup complete."

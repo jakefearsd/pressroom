@@ -45,6 +45,9 @@ class DeployScriptTest {
 
     @TempDir Path dir;
 
+    /** What the stub's `docker volume ls` prints: an existing umami-db volume, or nothing. */
+    private String umamiVolume = "";
+
     private record Result(int exit, String out, String calls) {}
 
     private Result deploy(int statusRc, String... args) throws Exception {
@@ -54,8 +57,10 @@ class DeployScriptTest {
                 #!/bin/bash
                 echo "$*" >> "$STUB_LOG"
                 case "$*" in
+                  "volume ls"*) [ -n "$STUB_UMAMI_VOLUME" ] && echo "$STUB_UMAMI_VOLUME"; exit 0 ;;
                   *" run --rm -T admin status"*) echo "STATUS-OUTPUT-LINE"; exit "$STUB_STATUS_RC" ;;
-                  *" up -d"*) echo "env-at-up: $(grep -c '^UMAMI_PRESSROOM_PASSWORD=.' .env)" >> "$STUB_LOG" ;;
+                  *" up -d"*) echo "env-at-up: $(grep -c '^UMAMI_PRESSROOM_PASSWORD=.' .env)" >> "$STUB_LOG"
+                              echo "db-env-at-up: $(grep -c '^UMAMI_DB_PASSWORD=.' .env)" >> "$STUB_LOG" ;;
                 esac
                 exit 0
                 """);
@@ -69,6 +74,7 @@ class DeployScriptTest {
         pb.environment().put("PATH", bin + ":" + System.getenv("PATH"));
         pb.environment().put("STUB_LOG", dir.resolve("calls.log").toString());
         pb.environment().put("STUB_STATUS_RC", String.valueOf(statusRc));
+        pb.environment().put("STUB_UMAMI_VOLUME", umamiVolume);
         Process p = pb.start();
         String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         assertTrue(p.waitFor(60, TimeUnit.SECONDS), "deploy.sh hung");
@@ -102,7 +108,8 @@ class DeployScriptTest {
         String password = passwords.get(0).substring("UMAMI_PRESSROOM_PASSWORD=".length());
         assertTrue(password.matches("[0-9a-f]{48}"), "openssl rand -hex 24 gives 48 hex digits");
         assertEquals(List.of("IMAGE_VERSION=0.6.1", "SITE_DOMAIN=:80"),
-                lines.stream().filter(l -> !l.startsWith("UMAMI_PRESSROOM_PASSWORD=")).toList(),
+                lines.stream().filter(l -> !l.startsWith("UMAMI_PRESSROOM_PASSWORD="))
+                        .filter(l -> !l.startsWith("UMAMI_DB_PASSWORD=")).toList(),
                 "every other line kept, in order");
         assertEquals("rw-------", PosixFilePermissions.toString(Files.getPosixFilePermissions(env)));
         assertTrue(first.calls().contains("env-at-up: 1"), "generated before up -d: " + first.calls());
@@ -114,6 +121,60 @@ class DeployScriptTest {
         assertEquals(0, second.exit(), second.out());
         assertEquals(lines, Files.readAllLines(env, StandardCharsets.UTF_8), "a second deploy keeps it");
         assertFalse(second.out().contains(password), second.out());
+    }
+
+    /**
+     * Umami's own database server takes a generated password too (spec
+     * 2026-11-03, AC 8), on the same terms: once, before {@code up -d},
+     * never printed, distinct from the account password, and kept by later
+     * deploys. Compose refuses to start without it ({@code :?}).
+     */
+    @Test
+    void deployGeneratesTheUmamiDatabasePasswordOnceAndNeverPrints() throws Exception {
+        Path env = dir.resolve(".env");
+        Files.writeString(env, "IMAGE_VERSION=0.7.1\nUMAMI_PRESSROOM_PASSWORD=" + "a".repeat(48) + "\n");
+        Files.setPosixFilePermissions(env, PosixFilePermissions.fromString("rw-------"));
+
+        Result first = deploy(0);
+        assertEquals(0, first.exit(), first.out());
+        List<String> lines = Files.readAllLines(env, StandardCharsets.UTF_8);
+        List<String> db = lines.stream().filter(l -> l.startsWith("UMAMI_DB_PASSWORD=")).toList();
+        assertEquals(1, db.size(), String.valueOf(lines.size()));
+        String password = db.get(0).substring("UMAMI_DB_PASSWORD=".length());
+        assertTrue(password.matches("[0-9a-f]{48}"), "openssl rand -hex 24 gives 48 hex digits");
+        assertTrue(lines.contains("UMAMI_PRESSROOM_PASSWORD=" + "a".repeat(48)), "the account password is kept");
+        assertEquals("rw-------", PosixFilePermissions.toString(Files.getPosixFilePermissions(env)));
+        assertTrue(first.calls().contains("db-env-at-up: 1"), "generated before up -d: " + first.calls());
+        assertFalse(first.out().contains(password), "never printed");
+        assertFalse(first.calls().contains(password), "nor handed to docker on a command line");
+        assertTrue(first.out().contains("UMAMI_DB_PASSWORD"), "the operator is told it was generated");
+
+        Result second = deploy(0);
+        assertEquals(0, second.exit(), second.out());
+        assertEquals(lines, Files.readAllLines(env, StandardCharsets.UTF_8), "a second deploy keeps it");
+    }
+
+    /**
+     * umami-db keeps the password it was first started with. A .env without
+     * the line beside an existing umami-db volume (an old .env restored on a
+     * rollback) must stop the deploy before anything starts: a freshly
+     * generated password would lock the move and Umami out of their server.
+     */
+    @Test
+    void anExistingUmamiDbWithoutItsPasswordStopsTheDeploy() throws Exception {
+        Path env = dir.resolve(".env");
+        String before = "IMAGE_VERSION=0.7.2\nUMAMI_PRESSROOM_PASSWORD=" + "a".repeat(48) + "\n";
+        Files.writeString(env, before);
+        umamiVolume = "pressroom_pressroom-umami-pgdata";
+
+        Result r = deploy(0);
+
+        assertEquals(1, r.exit(), r.out());
+        assertEquals(before, Files.readString(env), ".env is left exactly as it was");
+        assertTrue(r.out().contains("UMAMI_DB_PASSWORD"), r.out());
+        assertTrue(r.out().contains("pressroom_pressroom-umami-pgdata"), "names the volume: " + r.out());
+        assertFalse(r.calls().contains(" up -d"), "nothing is started: " + r.calls());
+        assertFalse(r.calls().contains(" pull"), r.calls());
     }
 
     @Test

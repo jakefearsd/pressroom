@@ -179,10 +179,11 @@ environment-variable-configured container.
     [Newsletter](#newsletter).
 - **Postgres credentials, backup schedule, Analytics and Newsletter
   settings** — `POSTGRES_DB`/`POSTGRES_USER`/`POSTGRES_PASSWORD` (shared by
-  `postgres`, `provision`, `admin`, and `backup` — generate a real password with
-  `openssl rand -base64 33 | tr '+/' '-_'`: 44 characters, no padding, only
-  URL-safe ones, because the compose file splices `POSTGRES_PASSWORD` into
-  Umami's `DATABASE_URL` and a `/` from plain base64 breaks that URL),
+  `postgres`, `provision`, `admin`, `umami-move` and `backup` — generate a real
+  password with `openssl rand -base64 33 | tr '+/' '-_'`: 44 characters, no
+  padding, only URL-safe ones), `UMAMI_DB_PASSWORD` (Umami's own database
+  server, `umami-db`; `deploy.sh` generates it, hex, so it is safe inside
+  Umami's `DATABASE_URL`),
   `BACKUP_HOUR`/`BACKUP_RETENTION_DAYS`
   (defaults `3`, `14` are reasonable starting points), `JAVA_OPTS` (optional
   extra JVM flags, e.g. `-Xmx1g`), and the `UMAMI_*`/`LISTMONK_*` variables
@@ -276,11 +277,16 @@ own Umami account, the first time it finds none in `.env`. A bare
 Umami account until the next `./deploy.sh`.)
 
 There is no separate migration step and no ordering to get right: compose
-runs the one-shot `provision` service first (creates the `umami`/`listmonk`
-databases, applies the migration chain via `migrate.sh`, grants
-`grafana_ro` — see `deploy/provision.sh`), and `app`, `umami` and `listmonk`
-all declare `depends_on: { provision: { condition: service_completed_successfully } }`,
-so none of them starts until provisioning has exited successfully. `deploy.sh`
+runs the one-shot `provision` service first (creates the `listmonk`
+database, applies the migration chain via `migrate.sh`, grants
+`grafana_ro` — see `deploy/provision.sh`), and `app` and `listmonk`
+declare `depends_on: { provision: { condition: service_completed_successfully } }`,
+so neither starts until provisioning has exited successfully. Umami has a
+PostgreSQL server of its own, `umami-db` (since 0.7.2), whose image creates
+its database; `umami` waits for it and for the one-shot `umami-move`, which on
+an older host copies Umami's data over from Pressroom's server once (see
+[Upgrading to 0.7.2](#upgrading-to-072-umami-gets-its-own-database-server)) and
+on a fresh one finds nothing to move. `deploy.sh`
 (see [Upgrades](#upgrades)) wraps this same `up -d` with a health-check wait
 and is safe to use for first run too, but the plain compose command above is
 equally correct.
@@ -761,10 +767,11 @@ Pressroom and Umami both expose their data to Grafana as small, versioned SQL
 **views** — never raw tables, and Grafana is never granted anything beyond
 `SELECT` on those views.
 
-**Two databases, two view halves, and why.** `pressroom` and Umami's own
-database (`${UMAMI_DB:-umami}`) both live inside the one shared Postgres
-instance, but PostgreSQL has no cross-database queries, so the contract is
-split down that seam — each half lives with the data it reads:
+**Two databases, two view halves, and why.** `pressroom` lives on
+Pressroom's server (`postgres`) and Umami's database (`${UMAMI_DB:-umami}`) on
+Umami's own (`umami-db`, since 0.7.2); no query spans two databases, let alone
+two servers, so the contract is split down that seam — each half lives with
+the data it reads:
 
 | View | Lives in | Ships via | What it holds |
 | --- | --- | --- | --- |
@@ -792,16 +799,25 @@ docker compose -f docker-compose.prod.yml exec postgres \
     -c "ALTER ROLE grafana_ro LOGIN PASSWORD 'choose-a-strong-password-here';"
 ```
 
-The `provision` service already grants `grafana_ro` `CONNECT` on both
-databases (see `deploy/provision.sh`), so the one role/password pair you set
-above works for both Grafana datasources — just point one at `pressroom` and
-the other at `${UMAMI_DB:-umami}`, same credentials.
+That is Pressroom's server. `umami-db` is a separate server with roles of
+its own: `analytics-views` creates `grafana_ro` there, `NOLOGIN`, and grants
+it `CONNECT` on `${UMAMI_DB:-umami}` and `SELECT` on `analytics_traffic`. To
+enable it, set its password on that server too (the same one or another):
+
+```bash
+docker compose -f docker-compose.prod.yml exec umami-db \
+    psql -U "${UMAMI_DB_USER:-umami}" -d "${UMAMI_DB:-umami}" \
+    -c "ALTER ROLE grafana_ro LOGIN PASSWORD 'choose-a-strong-password-here';"
+```
+
+Then point one Grafana datasource at `pressroom` on `postgres` and the other
+at `${UMAMI_DB:-umami}` on `umami-db`.
 
 **Access is tunnel-only.** Postgres never gets a published host port in this
 stack (see [Firewall](#firewall) — port 5432 is reachable only on the
-internal Docker network). Point Grafana's datasources at an SSH tunnel or a
+stack's Docker networks). Point Grafana's datasources at an SSH tunnel or a
 bastion into the host, never at a directly exposed port; do not add a host
-port mapping for `postgres` to make this easier.
+port mapping for `postgres` or `umami-db` to make this easier.
 
 **Two labels on `analytics_events` are untrusted display text, not
 metadata.** `page_slug` and `entry_anchor` on `FORM_SUBMITTED` rows are
@@ -1087,6 +1103,27 @@ docker compose -f docker-compose.prod.yml start app
 `docker compose -f docker-compose.prod.yml cp backup:/backups/pressroom-<timestamp>.dump .`
 if restoring from a different machine than the one that made it.)
 
+**Umami's database** is backed up from its own server, `umami-db` (since
+0.7.2), as `umami-<timestamp>.dump`, and restores there the same way, with
+Umami stopped. `--no-owner --no-acl` because the dump may come from before
+0.7.2, when Pressroom's server held it under Pressroom's role; re-running
+`analytics-views` puts `grafana_ro`'s grants back:
+
+```bash
+docker compose -f docker-compose.prod.yml stop umami
+
+docker compose -f docker-compose.prod.yml exec -T umami-db bash -c '
+    set -euo pipefail
+    export PGHOST=localhost
+    export PGUSER="${POSTGRES_USER}"
+    export PGPASSWORD="${POSTGRES_PASSWORD}"
+    pg_restore -d "${POSTGRES_DB}" --clean --if-exists --no-owner --no-acl
+' < /path/on/host/to/umami-<timestamp>.dump
+
+docker compose -f docker-compose.prod.yml start umami
+docker compose -f docker-compose.prod.yml up -d analytics-views
+```
+
 **The client that restores must be at least as new as the client that
 dumped.** `pg_restore` refuses an archive written by a newer `pg_dump`, with
 `unsupported version (1.16) in file header` and nothing else. The command
@@ -1236,6 +1273,78 @@ rather than leaving the stack in a half-upgraded state without telling you.
 
 Always have a recent, verified backup before upgrading across a schema
 change (see [Backup and restore](#backup-and-restore)).
+
+### Upgrading to 0.7.2: Umami gets its own database server
+
+0.7.2 moves Umami's data off Pressroom's PostgreSQL onto a server of its own,
+`umami-db`, with its own volume (`pressroom-umami-pgdata`) and login
+(`UMAMI_DB_USER`, default `umami`; `UMAMI_DB_PASSWORD`). It is the first step
+of moving Umami out of this stack. Pressroom itself is unchanged: it talks to
+Umami through its API, and is not even on `umami-db`'s network.
+
+1. **Deploy with `./deploy.sh`** (or `bin/deploy-host.sh`, which runs it). It
+   generates `UMAMI_DB_PASSWORD` into `.env`; compose refuses to start
+   without one, so a bare `docker compose up -d` stops with that message.
+2. **The data moves by itself.** The one-shot `umami-move` copies the `umami`
+   database from `postgres` to the empty `umami-db` in one transaction and
+   prints the `website`, `session` and `website_event` counts (`docker compose
+   -f docker-compose.prod.yml logs umami-move`). Only then does the new `umami`
+   container start. The old container keeps recording until it is replaced,
+   so visits in those seconds stay in the old copy: expect to lose up to a
+   minute of visits (the rehearsal lost about 25 seconds, the usual restart
+   window of a deploy). If the move fails, `deploy.sh` fails and Umami stays
+   stopped (no visits are recorded) while the blogs keep serving; fix the
+   cause it names and run `./deploy.sh` again. The old database is untouched
+   either way.
+3. **Check it.** Maintenance › Analytics should still read n of n blogs
+   registered, and the next sync should report no error; the Umami dashboard
+   shows the same websites.
+4. **The old copy stays as it was** on `postgres`, untouched: it is the
+   rollback point. To roll back, restore the `.bak-<timestamp>` files
+   `upgrade.sh` kept and run `./deploy.sh`; 0.7.1's compose file points Umami
+   straight back at the old copy (visits recorded on `umami-db` meanwhile
+   stay there, and visits recorded during the rollback stay in the old copy).
+   **Keep the `UMAMI_DB_PASSWORD` line** when you restore the old `.env`
+   (copy it from the current `.env` first; no `.env.bak-*` holds it, since
+   the line is generated after the upgrade's backup): `umami-db` keeps the
+   password it was first started with. Without it the next deploy stops and
+   says so (see [If umami-db's password is
+   lost](#if-umami-dbs-password-is-lost)). Once you are satisfied, drop the old copy (two weeks is plenty):
+
+   ```bash
+   docker compose -f docker-compose.prod.yml exec postgres \
+       psql -U "${POSTGRES_USER:-pressroom}" -d "${POSTGRES_DB:-pressroom}" \
+       -c 'DROP DATABASE umami;'
+   ```
+
+   Nothing in 0.7.2 reads it, and `provision` no longer names it, so dropping
+   it breaks nothing. Until then it still holds analytics data, so do drop it.
+5. **Grafana:** if you enabled `grafana_ro`, set its password on `umami-db`
+   too (see [The Grafana contract](#the-grafana-contract)) and point
+   the Umami datasource there.
+
+### If umami-db's password is lost
+
+`umami-db` keeps the `UMAMI_DB_PASSWORD` it was first started with; changing
+the line in `.env` later changes nothing on the server. If `.env` has lost the
+line (an older `.env` restored on a rollback), `deploy.sh` stops and says so
+rather than generating a new one. Put the original line back if you have it.
+If not, give the server a new password from inside its container, where it
+trusts local connections, so the old one is not needed:
+
+```bash
+printf 'UMAMI_DB_PASSWORD=%s\n' "$(openssl rand -hex 24)" >> .env
+docker compose -f docker-compose.prod.yml up -d umami-db
+printf "ALTER ROLE \"%s\" PASSWORD '%s';\n" \
+    "$(sed -n 's/^UMAMI_DB_USER=//p' .env | tail -n 1 | grep . || echo umami)" \
+    "$(sed -n 's/^UMAMI_DB_PASSWORD=//p' .env | tail -n 1)" |
+    docker compose -f docker-compose.prod.yml exec -T umami-db \
+        sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -q'
+./deploy.sh
+```
+
+(`printf` is a shell builtin, so the password travels through the pipe and is
+on no command line.)
 
 ### Upgrading to 0.7.0: analytics without admin steps
 

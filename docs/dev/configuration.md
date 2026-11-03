@@ -44,10 +44,13 @@ resolves through the index at the end of `CLAUDE.md`.
   `provision.sh`, `analytics-views.sh`, `umami-views.sql`, `migrate.sh`, backup
   scripts, a PostgreSQL client) and `ghcr.io/jakefearsd/pressroom-caddy`
   (Caddy, Caddyfile baked in). A one-shot `provision` service creates the
-  umami and listmonk databases, applies the migration chain, and grants
-  `grafana_ro`; `app`, `umami` and `listmonk` declare
+  listmonk database, applies the migration chain, and grants `grafana_ro`;
+  `app` and `listmonk` declare
   `depends_on: { provision: { condition: service_completed_successfully } }`,
-  so ordering is compose's job, not a bash script's.
+  so ordering is compose's job, not a bash script's. Umami's database is on
+  its own server, `umami-db` (0.7.2+, own volume and login, on an `analytics`
+  network the app is not on); the one-shot `umami-move` (`umami-move.sh`)
+  copies an older host's data there once, before `umami` starts.
   `analytics_traffic` is installed by a separate one-shot, `analytics-views`
   (`analytics-views.sh`), after `umami` starts — see Analytics for why it
   cannot live in `provision`. `deploy/deploy.sh` is just pull/up/wait.

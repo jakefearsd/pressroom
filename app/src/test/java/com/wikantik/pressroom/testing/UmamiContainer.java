@@ -258,10 +258,18 @@ public final class UmamiContainer {
      * (it has {@code psql}, as the app image the one-shots run from does),
      * from a fresh directory holding {@code script} and {@code files}, which
      * is also the working directory. The environment is what compose hands a
-     * one-shot ({@code POSTGRES_USER}, {@code POSTGRES_PASSWORD},
-     * {@code UMAMI_DB}, with {@code PGHOST} this container), overlaid with
+     * one-shot ({@code UMAMI_PGHOST} this container, {@code UMAMI_DB_USER},
+     * {@code UMAMI_DB_PASSWORD}, {@code UMAMI_DB}), overlaid with
      * {@code env}; values travel in the exec's environment, never its command
      * line. Returns the result whatever the exit code.
+     *
+     * <p>Since 0.7.2 Umami has its own server ({@code umami-db}) and the
+     * scripts reach it through {@code UMAMI_PGHOST}, {@code UMAMI_DB_USER}
+     * and {@code UMAMI_DB_PASSWORD}. Pressroom's own server settings
+     * ({@code PGHOST}, {@code POSTGRES_USER}, {@code POSTGRES_PASSWORD}) are
+     * set to decoys that cannot connect, as the backup service hands them
+     * over pointing at the other server: a script that still reads them for
+     * Umami fails here instead of passing against the wrong database.
      */
     public Container.ExecResult runDeployScript(Path script, Map<String, String> env, Path... files) {
         String dir = "/tmp/" + UUID.randomUUID();
@@ -271,8 +279,10 @@ public final class UmamiContainer {
             database.copyFileToContainer(MountableFile.forHostPath(file), dir + "/" + file.getFileName());
         }
         Map<String, String> environment = new HashMap<>(Map.of(
-                "PGHOST", "localhost", "POSTGRES_USER", DB_USER, "POSTGRES_PASSWORD", DB_PASSWORD,
-                "UMAMI_DB", DB_NAME));
+                "UMAMI_PGHOST", "localhost", "UMAMI_DB_USER", DB_USER, "UMAMI_DB_PASSWORD", DB_PASSWORD,
+                "UMAMI_DB", DB_NAME,
+                "PGHOST", "pressroom-server.invalid", "POSTGRES_USER", "not-umami",
+                "POSTGRES_PASSWORD", "not-umami"));
         environment.putAll(env);
         try {
             return database.execInContainer(ExecConfig.builder()

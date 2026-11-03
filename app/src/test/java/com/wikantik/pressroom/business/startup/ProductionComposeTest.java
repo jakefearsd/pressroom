@@ -33,6 +33,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -141,7 +142,8 @@ class ProductionComposeTest {
         assertEquals("no", String.valueOf(service("provision").get("restart")),
                 "provision is a one-shot job, not a restarting service");
 
-        for (String dependent : List.of("app", "umami", "listmonk")) {
+        // umami's database is on umami-db (spec 2026-11-03), not provision's server.
+        for (String dependent : List.of("app", "listmonk")) {
             Object dependsOnRaw = service(dependent).get("depends_on");
             assertNotNull(dependsOnRaw, dependent + " must declare depends_on");
             if (!(dependsOnRaw instanceof Map<?, ?> dependsOn)) {
@@ -574,14 +576,16 @@ class ProductionComposeTest {
                 assertTrue(image.startsWith(expected + "${IMAGE_VERSION"), name + ": " + image);
             }
         });
-        assertEquals(Set.of("provision", "admin", "app", "caddy", "analytics-views", "backup"), Set.copyOf(ours));
+        assertEquals(Set.of("provision", "admin", "app", "caddy", "analytics-views", "umami-move", "backup"),
+                Set.copyOf(ours));
     }
 
     /** The volume names the cutover copies into; caddy's keep their names, under the new project. */
     @Test
     void theVolumesArePressroomVolumes() {
-        assertEquals(Set.of("pressroom-pgdata", "pressroom-mediafiles", "pressroom-search-index",
-                        "pressroom-uploads", "pressroom-backups", "caddy-data", "caddy-config"),
+        assertEquals(Set.of("pressroom-pgdata", "pressroom-umami-pgdata", "pressroom-mediafiles",
+                        "pressroom-search-index", "pressroom-uploads", "pressroom-backups", "caddy-data",
+                        "caddy-config"),
                 ((Map<?, ?>) compose.get("volumes")).keySet());
         Map<String, Object> pg = service("postgres");
         assertEquals("${POSTGRES_DB:-pressroom}", String.valueOf(((Map<?, ?>) pg.get("environment")).get("POSTGRES_DB")));
@@ -822,5 +826,138 @@ class ProductionComposeTest {
         assertEquals(Set.of("POSTGRES_DB", "POSTGRES_USER", "POSTGRES_PASSWORD"), env.keySet());
         Map<String, Object> deps = (Map<String, Object>) admin.get("depends_on");
         assertEquals(Map.of("condition", "service_healthy"), deps.get("postgres"));
+    }
+
+    // ------------------------------------------------ Umami's own database server
+    // Spec docs/superpowers/specs/2026-11-03-umami-database-server-design.md.
+
+    /** AC 1. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void umamiHasADatabaseServerOfItsOwn() {
+        Map<String, Object> db = service("umami-db");
+        assertEquals(service("postgres").get("image"), db.get("image"),
+                "the same digest-pinned engine as Pressroom's server (PostgresMajorPinTest pins that one)");
+        assertEquals(List.of("pressroom-umami-pgdata:/var/lib/postgresql"), db.get("volumes"));
+        Map<String, Object> env = (Map<String, Object>) db.get("environment");
+        assertEquals("${UMAMI_DB:-umami}", env.get("POSTGRES_DB"));
+        assertEquals("${UMAMI_DB_USER:-umami}", env.get("POSTGRES_USER"));
+        assertTrue(String.valueOf(env.get("POSTGRES_PASSWORD")).startsWith("${UMAMI_DB_PASSWORD:?"),
+                "its own password, required: " + env.get("POSTGRES_PASSWORD"));
+        // Over TCP, not the socket: on a first start the image's init server
+        // listens on the socket only, and umami-move connects over TCP.
+        String health = String.valueOf(((Map<String, Object>) db.get("healthcheck")).get("test"));
+        assertTrue(health.contains("pg_isready -h 127.0.0.1 "), health);
+        assertNull(db.get("ports"), "umami-db publishes nothing");
+        assertEquals(List.of("analytics"), db.get("networks"));
+        assertEquals("unless-stopped", db.get("restart"));
+    }
+
+    /** AC 2: never Pressroom's server or its password. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void umamiConnectsToItsOwnServerAfterTheMove() {
+        Map<String, Object> umami = service("umami");
+        String url = String.valueOf(((Map<String, Object>) umami.get("environment")).get("DATABASE_URL"));
+        assertTrue(url.startsWith("postgresql://${UMAMI_DB_USER:-umami}:${UMAMI_DB_PASSWORD:?"), url);
+        assertTrue(url.endsWith("@umami-db:5432/${UMAMI_DB:-umami}"), url);
+        assertFalse(url.contains("POSTGRES_"), url);
+        Map<String, Object> deps = (Map<String, Object>) umami.get("depends_on");
+        assertEquals(Map.of("condition", "service_healthy"), deps.get("umami-db"));
+        assertEquals(Map.of("condition", "service_completed_successfully"), deps.get("umami-move"),
+                "an Umami started on an empty umami-db would migrate it, and the move would then never run");
+        assertNull(deps.get("provision"), "provision no longer touches Umami's database");
+    }
+
+    /**
+     * AC 7: a failed move must cost analytics, never the blog. Caddy is the
+     * blog's only way in; were it to wait for umami, an Umami that cannot
+     * start (umami-move failed, on an upgrade that has already replaced the
+     * old umami container) would leave caddy created but never started, and
+     * every blog down. The 0.7.2 rehearsal did exactly that. Caddy dials
+     * umami:3000 per request, so starting first only means the tracker
+     * paths answer 502 until Umami is up.
+     */
+    @Test
+    void theBlogNeverWaitsForAnalytics() {
+        Object deps = service("caddy").get("depends_on");
+        String names = deps instanceof Map<?, ?> map ? map.keySet().toString() : String.valueOf(deps);
+        assertFalse(names.contains("umami"), "caddy must not depend on umami: " + names);
+        assertTrue(names.contains("app"), names);
+    }
+
+    /** AC 3: the app is not on the network umami-db is on. */
+    @Test
+    void onlyTheAnalyticsServicesReachUmamisDatabase() {
+        assertTrue(((Map<?, ?>) compose.get("networks")).containsKey("analytics"));
+        Set<String> onAnalytics = new TreeSet<>();
+        services().forEach((name, svc) -> {
+            Object networks = ((Map<?, ?>) svc).get("networks");
+            if (networks instanceof List<?> list && list.contains("analytics")) {
+                onAnalytics.add(name);
+            }
+        });
+        assertEquals(new TreeSet<>(Set.of("umami-db", "umami", "umami-move", "analytics-views",
+                "backup")), onAnalytics);
+    }
+
+    /** AC 5-7: a one-shot from the app image, between both servers, before umami. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void theMoveIsAOneShotBetweenTheTwoServers() throws IOException {
+        Map<String, Object> move = service("umami-move");
+        assertEquals(service("app").get("image"), move.get("image"));
+        assertEquals(List.of("/app/umami-move.sh"), move.get("entrypoint"));
+        assertEquals("no", String.valueOf(move.get("restart")));
+        assertNull(move.get("env_file"), "it needs two servers' logins, not every secret in .env");
+        assertNull(move.get("ports"));
+        assertEquals(List.of("internal", "analytics"), move.get("networks"));
+        Map<String, Object> deps = (Map<String, Object>) move.get("depends_on");
+        assertEquals(Map.of("condition", "service_healthy"), deps.get("postgres"));
+        assertEquals(Map.of("condition", "service_healthy"), deps.get("umami-db"));
+        Map<String, Object> env = (Map<String, Object>) move.get("environment");
+        assertEquals("umami-db", env.get("UMAMI_PGHOST"));
+        assertEquals("${UMAMI_DB_USER:-umami}", env.get("UMAMI_DB_USER"));
+        assertTrue(String.valueOf(env.get("UMAMI_DB_PASSWORD")).startsWith("${UMAMI_DB_PASSWORD:?"));
+        assertTrue(String.valueOf(env.get("POSTGRES_PASSWORD")).startsWith("${POSTGRES_PASSWORD:?"));
+        assertEquals("${UMAMI_DB:-umami}", env.get("UMAMI_DB"));
+    }
+
+    /** AC 9-11: the one-shot and the backup reach Umami on umami-db with its own login. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void theAnalyticsJobsUseUmamisServer() {
+        for (String name : List.of("analytics-views", "backup")) {
+            Map<String, Object> env = (Map<String, Object>) service(name).get("environment");
+            assertEquals("umami-db", env.get("UMAMI_PGHOST"), name);
+            assertEquals("${UMAMI_DB_USER:-umami}", env.get("UMAMI_DB_USER"), name);
+            assertTrue(String.valueOf(env.get("UMAMI_DB_PASSWORD")).startsWith("${UMAMI_DB_PASSWORD:?"), name);
+        }
+        Map<String, Object> views = (Map<String, Object>) service("analytics-views").get("environment");
+        assertNull(views.get("POSTGRES_PASSWORD"), "analytics-views never needs Pressroom's server");
+        assertEquals(List.of("analytics"), service("analytics-views").get("networks"));
+    }
+
+    /** AC 4: a grant on the old umami database would fail every deploy once it is dropped. */
+    @Test
+    void provisionNoLongerTouchesUmamisDatabase() throws IOException {
+        assertFalse(((Map<?, ?>) service("provision").get("environment")).containsKey("UMAMI_DB"));
+        String provision = Files.readString(Paths.get("../deploy/provision.sh"), StandardCharsets.UTF_8);
+        assertFalse(stripShellComments(provision).contains("UMAMI_DB"),
+                "provision.sh must not create or grant on Umami's database");
+    }
+
+    /** AC 12 (the part a test can see): .env.example names both new settings. */
+    @Test
+    void theEnvExampleDocumentsUmamisServerLogin() throws IOException {
+        String envExample = Files.readString(Paths.get("../deploy/.env.example"), StandardCharsets.UTF_8);
+        for (String key : List.of("UMAMI_DB_USER", "UMAMI_DB_PASSWORD")) {
+            assertTrue(Pattern.compile("(?m)^#?" + key + "=").matcher(envExample).find(),
+                    "deploy/.env.example must document " + key);
+        }
+    }
+
+    private static String stripShellComments(String script) {
+        return script.lines().filter(l -> !l.strip().startsWith("#")).reduce("", (a, b) -> a + b + "\n");
     }
 }

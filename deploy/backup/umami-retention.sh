@@ -12,8 +12,10 @@
 #
 #   docker compose -f docker-compose.prod.yml exec backup /app/backup/umami-retention.sh
 #
-# It connects as POSTGRES_USER, the same role the analytics-views one-shot
-# uses. It prints a count per table and never a row. Exits non-zero on
+# It connects to Umami's own server (UMAMI_PGHOST, default umami-db, since
+# 0.7.2) as UMAMI_DB_USER, the same login the analytics-views one-shot uses;
+# the backup service's PGHOST/POSTGRES_* are Pressroom's server and are not
+# read. It prints a count per table and never a row. Exits non-zero on
 # failure; loop.sh logs that and carries on, and tomorrow's run deletes what
 # today's did not. UMAMI_RETENTION_DAYS=0 switches it off. A stack with no
 # Umami database, or one whose Umami has not booted yet, has nothing to trim
@@ -22,10 +24,10 @@
 # ANALYTICS_SQL_DIR (default /app) exists for the tests.
 set -euo pipefail
 
-export PGHOST="${PGHOST:-postgres}"
-export PGPORT="${PGPORT:-5432}"
-export PGUSER="${POSTGRES_USER:?POSTGRES_USER must be set}"
-export PGPASSWORD="${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}"
+export PGHOST="${UMAMI_PGHOST:-umami-db}"
+export PGPORT="${UMAMI_PGPORT:-5432}"
+export PGUSER="${UMAMI_DB_USER:-umami}"
+export PGPASSWORD="${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD must be set}"
 # An unreachable server fails the night's run instead of hanging the loop.
 export PGCONNECT_TIMEOUT="${PGCONNECT_TIMEOUT:-30}"
 

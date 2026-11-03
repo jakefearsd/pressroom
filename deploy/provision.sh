@@ -2,11 +2,18 @@
 # One-shot database provisioning for the production stack.
 #
 # Runs as the `provision` service in docker-compose.prod.yml, from the app
-# image, after postgres reports healthy and before app/umami/listmonk start
+# image, after postgres reports healthy and before app/listmonk start
 # (compose enforces both with depends_on conditions). Three steps: create the
-# umami/listmonk databases, apply the pressroom migration chain, and grant
-# grafana_ro CONNECT on both databases. Every step is idempotent, so it runs
-# on every `docker compose up -d` and is a no-op once the stack is current.
+# listmonk database, apply the pressroom migration chain, and grant
+# grafana_ro CONNECT on the pressroom database. Every step is idempotent, so
+# it runs on every `docker compose up -d` and is a no-op once the stack is
+# current.
+#
+# Umami's database is not here since 0.7.2: it lives on Umami's own server,
+# umami-db, whose image creates it, and analytics-views grants on it there.
+# An old host's former umami database on this server is the move's rollback
+# point and is dropped by hand; nothing here may name it, or a GRANT on it
+# would fail every deploy after the drop.
 #
 # This replaces the equivalent steps that used to live in deploy/deploy.sh and
 # needed a git checkout on the host to copy migrate.sh and the migrations into
@@ -35,15 +42,13 @@ export PGUSER="${POSTGRES_USER:?POSTGRES_USER must be set}"
 export PGPASSWORD="${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}"
 
 PRESSROOM_DB="${POSTGRES_DB:-pressroom}"
-UMAMI_DB="${UMAMI_DB:-umami}"
 LISTMONK_DB="${LISTMONK_DB:-listmonk}"
 
 echo "==> Ensuring the service databases exist..."
-# The analytics and newsletter services create their own tables but not their
-# own databases, and postgres only runs initdb scripts on a first-ever start --
+# The newsletter service creates its own tables but not its own database, and postgres only runs initdb scripts on a first-ever start --
 # so on an already-deployed stack there is nobody to create them. `createdb` on
 # an existing database is an error, so ask first.
-for db in "${UMAMI_DB}" "${LISTMONK_DB}"; do
+for db in "${LISTMONK_DB}"; do
     exists="$(psql -d "${PRESSROOM_DB}" -tAc "SELECT 1 FROM pg_database WHERE datname = ${db@Q}")"
     if [[ -z "${exists}" ]]; then
         createdb "${db}"
@@ -60,7 +65,7 @@ echo "==> Applying ${PRESSROOM_DB} migrations..."
 # at /app/migrate.sh beside /app/migrations.
 DB_NAME="${PRESSROOM_DB}" DB_APP_USER="${PGUSER}" bash /app/migrate.sh
 
-echo "==> Granting grafana_ro CONNECT on both databases..."
+echo "==> Granting grafana_ro CONNECT on ${PRESSROOM_DB}..."
 # Issued here rather than inside a migration or umami-views.sql because neither
 # can portably learn its own database's name (current_database() needs dynamic
 # SQL to use inside a GRANT), but the real names are known here. Double quotes,
@@ -68,7 +73,5 @@ echo "==> Granting grafana_ro CONNECT on both databases..."
 # IDENTIFIER, which takes double quotes, and @Q emits a shell-style literal.
 psql -d "${PRESSROOM_DB}" -v ON_ERROR_STOP=1 -c \
     "GRANT CONNECT ON DATABASE \"${PRESSROOM_DB}\" TO grafana_ro;"
-psql -d "${PRESSROOM_DB}" -v ON_ERROR_STOP=1 -c \
-    "GRANT CONNECT ON DATABASE \"${UMAMI_DB}\" TO grafana_ro;"
 
 echo "==> Provisioning complete."
