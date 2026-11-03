@@ -314,12 +314,41 @@ class WeblogEntryWrapperTest {
         assertEquals("For search engines & readers.", wrapper.getExcerpt(),
                 "nor is one with no words in it");
 
+        entry.setSearchDescription("The opening sentence of the post, written to be long enough to.");
+        assertEquals("The opening sentence of the post, written to be long enough to stand alone. "
+                + "Its second sentence follows on.", wrapper.getExcerpt(),
+                "a description that is the post's opening cut mid-sentence is passed over for the opening");
+
         entry.setSearchDescription(null);
         assertEquals("The opening sentence of the post, written to be long enough to stand alone. "
                 + "Its second sentence follows on.", wrapper.getExcerpt(), "never the heading, and two sentences");
 
         entry.setText("");
         assertNull(wrapper.getExcerpt(), "nothing to show is null, not an empty line");
+    }
+
+    /**
+     * "N min read" on the front page: the words of the rendered post at 230 a
+     * minute, rounded up, never under one.
+     */
+    @Test
+    void readingMinutesAreTheWordsAtTwoHundredThirtyAMinuteRoundedUp() {
+        com.wikantik.pressroom.business.plugins.PluginManager plugins =
+                mock(com.wikantik.pressroom.business.plugins.PluginManager.class);
+        when(plugins.getWeblogEntryPlugins(weblog)).thenReturn(java.util.Map.of());
+        when(weblogger.getEntryRenderer()).thenReturn(new com.wikantik.pressroom.business.EntryRenderer(
+                com.wikantik.pressroom.business.shortcodes.ShortcodeExpander.builtIn(
+                        weblogger, mock(com.wikantik.pressroom.business.MediaFileManager.class)),
+                plugins));
+
+        entry.setText("## A heading\n\n" + "word ".repeat(228));
+        assertEquals(1, wrapper.getReadingMinutes(), "230 words, the heading's two included, is one minute");
+
+        entry.setText("word ".repeat(231));
+        assertEquals(2, wrapper.getReadingMinutes(), "one word over a minute rounds up");
+
+        entry.setText("");
+        assertEquals(1, wrapper.getReadingMinutes(), "never under one");
     }
 
     @Test

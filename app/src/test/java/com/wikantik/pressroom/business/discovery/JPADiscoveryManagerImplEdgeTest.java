@@ -421,8 +421,8 @@ class JPADiscoveryManagerImplEdgeTest {
 
     @Test
     void whenEverySurvivorIsOnThePageTheNewestOneLeads() throws Exception {
-        // 9 on one blog, newest first: headline 1, popular 4, the one card 3, different 1
-        candidates(9);
+        // 10 on one blog, newest first: headline 1, popular 5, the one card 3, different 1, latest none
+        candidates(10);
         JPADiscoveryManagerImpl manager = manager(new Unconfigured());
         FrontPageSelection before = manager.selectFrontPage();
         assertEquals(1, before.different().size());
@@ -431,7 +431,7 @@ class JPADiscoveryManagerImplEdgeTest {
             entry.setStatus(PubStatus.DRAFT);
         }
         String newestSurvivor = null;
-        for (int i = 0; i < 9 && newestSurvivor == null; i++) {
+        for (int i = 0; i < 10 && newestSurvivor == null; i++) {
             if (entries.get("entry-" + i).getStatus() == PubStatus.PUBLISHED) {
                 newestSurvivor = "entry-" + i;
             }
@@ -525,6 +525,7 @@ class JPADiscoveryManagerImplEdgeTest {
             all.addAll(ids(card.topEntries()));
         }
         all.addAll(ids(page.different()));
+        all.addAll(ids(page.latest()));
         return all;
     }
 

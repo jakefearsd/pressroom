@@ -22,8 +22,9 @@ forwards to that weblog's rendering. Both empty, it forwards to the
 discovery front page, `/pressroom-ui/rendering/page/site-space/page/discovery`
 (`FrontDoor.DISCOVERY`): the site space's `discovery` template, fed by
 `$discovery` (`DiscoveryModel`, the picker's selection wrapped), in the
-site's own theme -- frontpage ships one in its fd chrome, every other theme
-gets the shared `templates/weblog/discovery.vm` (themes-and-templates.md).
+shared `templates/weblog/discovery.vm`, the same page whatever the site's
+theme (a forked theme may still ship its own `discovery`; no bundled theme
+does since the 2026-11-03 redesign; themes-and-templates.md).
 Its canonical is the site root (`PageModel.getCanonicalUrl`), and with no
 eligible weblog it shows the directory's empty message (`siteDirectory.empty`).
 

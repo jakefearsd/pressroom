@@ -35,19 +35,21 @@ import java.util.List;
  * @param blogs "explore the blogs", in blog-score order
  * @param different "something different", all random
  * @param allBlogs every eligible weblog, by name ignoring case
+ * @param latest the newest posts no other section shows, newest first
  */
 public record FrontPageSelection(WeblogEntry headline, boolean headlineRanked, List<WeblogEntry> popular,
-        List<BlogCard> blogs, List<WeblogEntry> different, List<Weblog> allBlogs) {
+        List<BlogCard> blogs, List<WeblogEntry> different, List<Weblog> allBlogs, List<WeblogEntry> latest) {
 
     public FrontPageSelection {
         popular = List.copyOf(popular);
         blogs = List.copyOf(blogs);
         different = List.copyOf(different);
         allBlogs = List.copyOf(allBlogs);
+        latest = List.copyOf(latest);
     }
 
     /** Nothing to show. */
     public static FrontPageSelection empty() {
-        return new FrontPageSelection(null, false, List.of(), List.of(), List.of(), List.of());
+        return new FrontPageSelection(null, false, List.of(), List.of(), List.of(), List.of(), List.of());
     }
 }

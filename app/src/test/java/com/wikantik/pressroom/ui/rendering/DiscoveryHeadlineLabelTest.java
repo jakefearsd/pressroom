@@ -50,8 +50,7 @@ class DiscoveryHeadlineLabelTest {
     private static final String NEWEST = "Newest";
 
     @ParameterizedTest
-    @ValueSource(strings = {"src/main/webapp/themes/frontpage/discovery.vm",
-            "src/main/webapp/WEB-INF/velocity/templates/weblog/discovery.vm"})
+    @ValueSource(strings = {"src/main/webapp/WEB-INF/velocity/templates/weblog/discovery.vm"})
     void aRankedHeadlineIsMostRead(String template) throws Exception {
         String lead = headlineSection(render(template, true));
 
@@ -60,8 +59,7 @@ class DiscoveryHeadlineLabelTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"src/main/webapp/themes/frontpage/discovery.vm",
-            "src/main/webapp/WEB-INF/velocity/templates/weblog/discovery.vm"})
+    @ValueSource(strings = {"src/main/webapp/WEB-INF/velocity/templates/weblog/discovery.vm"})
     void anUnrankedHeadlineIsNewest(String template) throws Exception {
         String lead = headlineSection(render(template, false));
 

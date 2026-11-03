@@ -286,8 +286,10 @@ public final class WeblogEntryWrapper {
 
     /**
      * The line of prose an entry list shows under this entry's title: the
-     * author's own summary when there is one, else the search description,
-     * else the opening sentences of the post (see {@link Excerpts#opening}).
+     * author's own summary when there is one, else the search description
+     * (unless it is only the post's opening cut mid-sentence, see
+     * {@link Excerpts#isCutFrom}), else the opening sentences of the post
+     * (see {@link Excerpts#opening}).
      * Plain text, NOT escaped -- emit it through {@code $utils.escapeHTML},
      * the same as {@link #getSearchDescription()}.
      *
@@ -302,11 +304,28 @@ public final class WeblogEntryWrapper {
                 return text;
             }
         }
+        String text = getTransformedText();
         String description = getSearchDescription();
-        if (description != null && !description.isBlank()) {
+        // A description that is merely the opening cut mid-sentence ("...to
+        // bring hygienic,.") is passed over: the opening, cut at a sentence, says it better.
+        if (description != null && !description.isBlank()
+                && !Excerpts.isCutFrom(description, Excerpts.plainText(text))) {
             return description;
         }
-        return Excerpts.opening(getTransformedText(), this.pojo.getWebsite().getLocaleInstance());
+        return Excerpts.opening(text, this.pojo.getWebsite().getLocaleInstance());
+    }
+
+    /** Words a reader reads in a minute, for {@link #getReadingMinutes()}. */
+    static final int WORDS_PER_MINUTE = 230;
+
+    /**
+     * How long the post takes to read, for a "N min read" line: the words of
+     * the rendered post at {@link #WORDS_PER_MINUTE}, rounded up, never under one.
+     */
+    public int getReadingMinutes() {
+        String text = Excerpts.plainText(getTransformedText());
+        int words = text == null ? 0 : text.split(" ").length;
+        return Math.max(1, (words + WORDS_PER_MINUTE - 1) / WORDS_PER_MINUTE);
     }
 
     public String getFeaturedImageId() {

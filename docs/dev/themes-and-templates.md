@@ -105,17 +105,24 @@ resolves through the index at the end of `CLAUDE.md`.
   its stylesheet.** Under the handle, `PageServlet.selectTemplate` answers
   the `page` context with the stylesheet's link only (`isStylesheetLink`) --
   except `discovery`, which resolves to the site theme's template of that
-  name when it has one (frontpage's `discovery.vm`, declared hidden so a
-  blog on frontpage does not serve it by name; `rejectionReason` exempts it
-  in the site space only) and else to the shared
-  `WEB-INF/velocity/templates/weblog/discovery.vm` (journal, travel,
-  portfolio, a forked theme). Both read `$discovery.frontPage`
-  (`DiscoveryModel`, in `rendering.pageModels`) and carry the same stable
-  section classes, `fd-discovery-headline`/`-popular`/`-blogs`/`-different`/
-  `-all`, which `DiscoveryFrontPageRenderingTest` and the browser suite pin:
-  restyle through the item classes, never by renaming those. Titles are
-  emitted bare, names through the wrapper, hrefs absolute and escaped. A
-  hidden `places-been` container marks where the places list goes.
+  name when it has one (a forked theme; declared hidden so a blog on that
+  theme does not serve it by name; `rejectionReason` exempts it in the site
+  space only) and else to the shared
+  `WEB-INF/velocity/templates/weblog/discovery.vm`. **No bundled theme ships
+  one** since the 2026-11-03 redesign (frontpage's was removed), so `/` is
+  one page on every install: a standalone document with its own inline
+  stylesheet (Quiet Instrument tokens plus six blog hues, Plex from the
+  webjars), not the site theme's chrome. It reads `$discovery.frontPage`
+  (`DiscoveryModel`, in `rendering.pageModels`) and carries the stable
+  section classes `fd-discovery-headline`/`-popular`/`-latest`/`-blogs`/
+  `-different`/`-all`, which `DiscoveryFrontPageRenderingTest` and the
+  browser suite pin: each sits alone in its class attribute, carries no
+  style, and no section nests another (the tests read a marker up to its
+  first `</section>`). Restyle through the inner `fd-*` classes, never by
+  renaming a marker. Titles are emitted bare, names through the wrapper,
+  excerpts through `$utils.escapeHTML`, hrefs absolute and escaped. A hidden
+  `places-been` container marks where the places list goes. Spec:
+  `docs/superpowers/specs/2026-11-03-front-page-redesign-design.md`.
 - **The `<title>` rule, every theme.** The separator is " — " (an em dash,
   the one the admin layouts use): "Entry — Weblog", "Page — Weblog",
   "Search: q — Site". On a permalink or a page, a meta title set in the

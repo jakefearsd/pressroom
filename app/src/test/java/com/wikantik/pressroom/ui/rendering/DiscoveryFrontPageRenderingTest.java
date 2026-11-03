@@ -74,16 +74,17 @@ class DiscoveryFrontPageRenderingTest {
     private static final String ABSOLUTE_HOST = "http://localhost:8080";
     private static final Pattern HREF = Pattern.compile("href=\"([^\"]*)\"");
     private static final List<String> SECTIONS = List.of("fd-discovery-headline", "fd-discovery-popular",
-            "fd-discovery-blogs", "fd-discovery-different", "fd-discovery-all");
+            "fd-discovery-latest", "fd-discovery-blogs", "fd-discovery-different", "fd-discovery-all");
 
     /**
      * What the two templates and the macros they call leave unresolved on
      * these renders, each with its reason.
      */
     private static final Set<String> EXPECTED_REFERENCES = Set.of(
-            "frontpage:_header|standard: $fdMetaTitle", // null unless a static page has a meta title; tested with #if in frontpage _header.vm
-            "frontpage:_header|standard: $fdPageTitle", // unset on the discovery page, which keeps the bare site name; tested with #elseif in frontpage _header.vm
-            "frontpage:_header|standard: $fdReading", // unset except on a page whose title is the h1; tested with #if in frontpage _header.vm
+            "templates/weblog/discovery.vm|standard: $fdPost.featuredImage", // null for a post with no featured image; #set after a false default, so $fdImg stays false
+            "templates/weblog/discovery.vm|standard: $fdImg", // that #set of a null featured image; tested with #if($fdImg)
+            "templates/weblog/discovery.vm|standard: fdImg", // the same #set, as the recorder names its target
+            "templates/weblog/discovery.vm|standard: $model.weblog.newsletterListUuid", // null unless the site space names a newsletter list; tested with $utils.isNotEmpty
             "weblog.vm: $colophonFacts.copyrightText", // null unless the weblog sets copyright text; tested with $utils.isNotEmpty
             "weblog.vm: $colophonFacts.privacyUrl", // null unless a privacy URL is configured; tested with $utils.isNotEmpty
             "weblog.vm: $model.page", // null when the view is not a static page; tested with #if / negated in #set
@@ -173,8 +174,23 @@ class DiscoveryFrontPageRenderingTest {
             }
             assertEquals(1, count(section(body, "fd-discovery-headline"), "class=\"fd-discovery-post"),
                     theme + ": one headline:\n" + body);
-            assertEquals(4, count(section(body, "fd-discovery-popular"), "class=\"fd-discovery-post"),
-                    theme + ": four popular posts:\n" + body);
+            assertEquals(5, count(section(body, "fd-discovery-popular"), "class=\"fd-discovery-post"),
+                    theme + ": five popular posts:\n" + body);
+            // twenty posts, fewer than the page holds: Latest lists every post the
+            // other sections leave out, so each of the twenty is shown exactly once
+            int shown = count(section(body, "fd-discovery-headline"), "class=\"fd-discovery-post")
+                    + count(section(body, "fd-discovery-popular"), "class=\"fd-discovery-post")
+                    + count(section(body, "fd-discovery-different"), "class=\"fd-discovery-post")
+                    + count(section(body, "fd-discovery-blogs"), "<li><a href=");
+            assertEquals(20 - shown, count(section(body, "fd-discovery-latest"), "class=\"fd-discovery-post"),
+                    theme + ": latest lists what no other section shows:\n" + body);
+            Matcher title = Pattern.compile(">(Post \\d\\.\\d)</a>").matcher(body);
+            List<String> titles = new ArrayList<>();
+            while (title.find()) {
+                titles.add(title.group(1));
+            }
+            assertEquals(20, titles.size(), theme + ": every post once: " + titles);
+            assertEquals(20, new java.util.HashSet<>(titles).size(), theme + ": no post twice: " + titles);
             assertEquals(3, count(section(body, "fd-discovery-blogs"), "class=\"fd-discovery-card"),
                     theme + ": three blog cards:\n" + body);
             assertEquals(3, count(section(body, "fd-discovery-different"), "class=\"fd-discovery-post"),
@@ -184,7 +200,7 @@ class DiscoveryFrontPageRenderingTest {
                 assertTrue(all.contains(">" + blog.getName() + "</a>"), theme + ": all blogs lists "
                         + blog.getName() + ":\n" + all);
             }
-            for (String key : List.of("Popular right now", "Explore the blogs",
+            for (String key : List.of("Popular right now", "Latest", "Explore the blogs",
                     "Something different", "All blogs")) {
                 assertTrue(body.contains(key), theme + ": the heading " + key);
             }
@@ -200,10 +216,63 @@ class DiscoveryFrontPageRenderingTest {
             assertEquals(1, count(body, "<h1"), theme + ": one h1:\n" + body);
             assertTrue(Pattern.compile("<h1[^>]*><a href=\"[^\"]*\">" + Pattern.quote(SITE_NAME) + "</a></h1>")
                     .matcher(body).find(), theme + ": the site name is the page's h1 (a list page):\n" + body);
-            assertFalse(body.contains("$discovery") || body.contains("$text") || body.contains("#show"),
-                    theme + ": literal Velocity:\n" + body);
+            assertFalse(body.contains("$discovery") || body.contains("$text") || body.contains("#show")
+                    || body.contains("$fd") || body.contains("$d"), theme + ": literal Velocity:\n" + body);
+            assertTrue(body.contains("<body class=\"fd-front\">"),
+                    theme + ": one front page, whatever the site's theme:\n" + body);
+
+            // every post shows its blog, a machine-readable date and a reading time
+            String latest = section(body, "fd-discovery-latest");
+            assertTrue(Pattern.compile("<time datetime=\"\\d{4}-\\d{2}-\\d{2}\">").matcher(latest).find(),
+                    theme + ": a dated post:\n" + latest);
+            assertTrue(latest.contains("1 min read"), theme + ": a reading time:\n" + latest);
+            // no featured images in this fixture: each post gets its blog's tile instead of an <img>
+            assertFalse(latest.contains("<img"), theme + ":\n" + latest);
+            assertTrue(latest.contains("class=\"fd-media fd-tile\""), theme + ": the hue tile:\n" + latest);
+
+            // three house slots hold the ad positions until AdSense is approved; no ad code yet
+            for (String slot : List.of("a", "b", "c")) {
+                assertEquals(1, count(body, "data-slot=\"" + slot + "\""), theme + ": slot " + slot + ":\n" + body);
+            }
+            assertFalse(body.contains("adsbygoogle") || body.contains("googlesyndication"),
+                    theme + ": no ad code until ads are configured:\n" + body);
+            // the house slots spotlight blogs the shelves do not show
+            String shelves = section(body, "fd-discovery-blogs");
+            Matcher spot = Pattern.compile("data-slot=\"[abc]\"[\\s\\S]*?<a class=\"fd-spot-name\" href=\"[^\"]*\">([^<]*)</a>")
+                    .matcher(body);
+            int spots = 0;
+            while (spot.find()) {
+                spots++;
+                assertFalse(shelves.contains(">" + spot.group(1) + "</a>"),
+                        theme + ": a spotlight repeats a shelf: " + spot.group(1));
+            }
+            assertEquals(3, spots, theme + ": three spotlights:\n" + body);
         }
-        assertTrue(root("frontpage").contains("<body class=\"fd\">"), "frontpage's own template, fd chrome");
+    }
+
+    /**
+     * The newsletter sign-up (rail card and band) is the site space's own
+     * list: shown when Weblog Settings names one, absent when it does not,
+     * since there is nothing to subscribe to.
+     */
+    @Test
+    void theNewsletterSignupFollowsTheSiteList() throws Exception {
+        fiveBlogsOfFour();
+        String without = root("frontpage");
+        assertFalse(without.contains("class=\"subscribe-form-slot\""), "no list, no form:\n" + without);
+
+        WeblogManager weblogs = TestUtils.weblogger().getWeblogManager();
+        Weblog site = weblogs.getSiteSpace();
+        site.setNewsletterListUuid("6f1c2c1e-0000-4000-8000-000000000001");
+        weblogs.saveWeblog(site);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+        RenderingTestSupport.clearRenderCaches();
+
+        String with = root("frontpage");
+        assertEquals(2, count(with, "class=\"subscribe-form-slot\" data-list-uuid=\"6f1c2c1e-0000-4000-8000-000000000001\""),
+                "the rail card and the band:\n" + with);
+        assertTrue(with.contains("id=\"fd-newsletter\""), "the band the masthead's Subscribe button jumps to");
     }
 
     @Test

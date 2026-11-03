@@ -1,8 +1,38 @@
 # Front page discovery
 
 What `/` shows when no site page or blog is the front door, the "more from
-the site" block on every blog page, and "places you've been". Spec:
-`docs/superpowers/specs/2026-11-01-front-page-discovery-design.md`.
+the site" block on every blog page, and "places you've been". Specs:
+`docs/superpowers/specs/2026-11-01-front-page-discovery-design.md` (the
+picker) and `2026-11-03-front-page-redesign-design.md` (the page).
+
+## The page (2026-11-03 redesign)
+
+One template, `WEB-INF/velocity/templates/weblog/discovery.vm`, whatever
+the site space's theme (themes-and-templates.md). Top to bottom: masthead
+(site name is the one `h1`), blog pills, lead story with image beside the
+numbered popular rail and a newsletter card, house slot A, Latest beside a
+sticky sidebar (house slot B, every blog with its post count), shelves,
+newsletter band, something different, house slot C, places, all blogs,
+footer (site pages, directory, colophon).
+
+- **Section sizes** (`JPADiscoveryManagerImpl`): headline 1, popular 5,
+  three cards of 3, different 3, latest 8. **Latest is picked last**, from
+  the newest posts no other section took, so it never changes the others;
+  on a small site it can be short or empty (the template hides it).
+- **Blog hues**: six, assigned by a blog's position in `allBlogs` (by name),
+  `data-b="1".."6"`; the mark is `DiscoveryModel.initials`.
+- **House slots** `data-slot="a|b|c"` hold the future ad positions. Until
+  AdSense is wired (phase 2 of the spec) each spotlights a blog the shelves
+  do not show (else any blog). No ad code renders.
+- **Newsletter**: the rail card and the band render only when the site
+  space has a `newsletterListUuid` (Weblog Settings of the site's pages);
+  the form is the subscribe slot the audience script builds.
+- **Excerpts** are `WeblogEntryWrapper.getExcerpt`, which passes over a
+  search description that is only the post's opening cut mid-sentence
+  (`Excerpts.isCutFrom`); the SEO audit reports those as
+  `search_description_cut`, and meta titles cut mid-word as `meta_title_cut`.
+- **Reading time** is `getReadingMinutes()` (rendered words / 230, rounded
+  up). Dates are absolute: the page is cached until the next generation.
 
 ## Snapshot and generation
 

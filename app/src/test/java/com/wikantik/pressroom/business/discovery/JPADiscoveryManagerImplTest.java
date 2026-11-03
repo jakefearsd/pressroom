@@ -119,7 +119,7 @@ class JPADiscoveryManagerImplTest {
         assertNotNull(page.headline());
         assertEquals(f.newest.getId(), page.headline().getId(), "with no scores the headline is the newest post");
         assertFalse(page.headlineRanked(), "the newest post is not \"most read\"");
-        assertEquals(4, page.popular().size());
+        assertEquals(5, page.popular().size());
         assertEquals(3, page.blogs().size());
         for (BlogCard card : page.blogs()) {
             assertFalse(card.topEntries().isEmpty(), "every card lists entries: " + card.weblog().getHandle());
@@ -127,6 +127,49 @@ class JPADiscoveryManagerImplTest {
         assertEquals(3, page.different().size());
         assertTrue(handles(page.allBlogs()).containsAll(List.of("discoa", "discob", "discoc")));
         assertEquals(DiscoveryStatus.State.DISABLED, manager.getStatus().state());
+    }
+
+    /**
+     * The front page redesign's Latest: the newest eligible posts, newest
+     * first, that no other section took -- picked last, so it never changes
+     * what the other sections show. Membership is checked against this class's
+     * own fixture only (the suite shares a database).
+     */
+    @Test
+    void latestIsTheNewestPostsNoOtherSectionShows() throws Exception {
+        Fixture f = threeBlogsOfSix();
+        List<WeblogEntry> more = new ArrayList<>();
+        for (int i = 0; i < 12; i++) {
+            more.add(entry(f.blogs[i % 3], "disco-more" + i, 200 + i * 5));
+        }
+        TestUtils.endSession(true);
+
+        FrontPageSelection page = manager().selectFrontPage();
+
+        List<WeblogEntry> latest = page.latest();
+        assertEquals(8, latest.size(), "eight when enough posts remain");
+        for (int i = 1; i < latest.size(); i++) {
+            assertFalse(latest.get(i).getPubTime().after(latest.get(i - 1).getPubTime()), "newest first");
+        }
+        Set<String> elsewhere = new HashSet<>();
+        elsewhere.add(page.headline().getId());
+        elsewhere.addAll(ids(page.popular()));
+        elsewhere.addAll(ids(page.different()));
+        page.blogs().forEach(card -> elsewhere.addAll(ids(card.topEntries())));
+        for (String id : ids(latest)) {
+            assertFalse(elsewhere.contains(id), "latest repeats nothing the page already shows: " + id);
+        }
+        Timestamp oldestShown = latest.get(latest.size() - 1).getPubTime();
+        List<WeblogEntry> fixture = new ArrayList<>(more);
+        for (WeblogEntry[] blog : f.entries) {
+            fixture.addAll(List.of(blog));
+        }
+        for (WeblogEntry e : fixture) {
+            if (!elsewhere.contains(e.getId()) && !ids(latest).contains(e.getId())) {
+                assertTrue(e.getPubTime().before(oldestShown) || e.getPubTime().equals(oldestShown),
+                        "a fixture post left out of latest is no newer than its last: " + e.getAnchor());
+            }
+        }
     }
 
     /** AC 14: unconfigured analytics ranks randomly, reads nothing and reports no error. */
@@ -185,7 +228,7 @@ class JPADiscoveryManagerImplTest {
 
         assertEquals(f.entries[0][0].getId(), page.headline().getId());
         assertEquals(List.of(f.entries[1][1].getId(), f.entries[2][2].getId(),
-                        f.entries[0][3].getId(), f.entries[1][4].getId()),
+                        f.entries[0][3].getId(), f.entries[1][4].getId(), f.entries[2][0].getId()),
                 ids(page.popular()));
     }
 
@@ -380,6 +423,11 @@ class JPADiscoveryManagerImplTest {
     @Test
     void selectionDropsEntriesNoLongerEligible() throws Exception {
         Fixture f = threeBlogsOfSix();
+        // more than the page holds (Latest takes eight), so some posts stay off it
+        for (int i = 0; i < 10; i++) {
+            entry(f.blogs[i % 3], "disco-older" + i, 300 + i * 5);
+        }
+        TestUtils.endSession(true);
         setShare("0");
         source.configured = true;
         source.rows = List.of(row(f, 0, 0, 100), row(f, 1, 1, 90), row(f, 2, 2, 80),
@@ -405,7 +453,7 @@ class JPADiscoveryManagerImplTest {
         assertFalse(shown.contains(popular), "a noindexed entry is dropped");
         assertNotNull(after.headline(), "the headline is never empty while anything is eligible");
         assertEquals(shown.size(), new HashSet<>(shown).size(), "no duplicate: " + shown);
-        assertEquals(ids(before.popular()).subList(1, 4), ids(after.popular()),
+        assertEquals(ids(before.popular()).subList(1, 5), ids(after.popular()),
                 "the surviving popular picks keep their places");
         // every ranked survivor is already on the page, so the newest post
         // not already shown leads; never a pick taken from another section
@@ -655,6 +703,7 @@ class JPADiscoveryManagerImplTest {
             all.addAll(ids(card.topEntries()));
         }
         all.addAll(ids(page.different()));
+        all.addAll(ids(page.latest()));
         return all;
     }
 

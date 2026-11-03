@@ -337,7 +337,7 @@ class AuditApiTest {
 
         assertEquals(List.of("search_description_long"), gapsOf(audit.get("entries").get(0)));
         assertEquals(List.of("missing_search_description", "missing_meta_title", "missing_featured_image",
-                "noindex", "search_description_long", "search_description_short", "title_long",
+                "noindex", "search_description_long", "search_description_short", "search_description_cut", "meta_title_cut", "title_long",
                 "title_duplicate", "search_description_duplicate"),
                 List.copyOf(audit.get("counts").propertyNames()));
         verify(weblogger, never()).getEntryRenderer();
