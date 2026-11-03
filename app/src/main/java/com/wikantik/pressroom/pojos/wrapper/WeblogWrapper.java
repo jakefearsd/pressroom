@@ -134,10 +134,10 @@ public final class WeblogWrapper {
     
     public String getTagline() {
         if (this.pojo.isSiteSpace()) {
-            return HTMLSanitizer.conditionallySanitizeText(
+            return HTMLSanitizer.conditionallyToPlainText(
                     WebloggerRuntimeConfig.getProperty("site.description"));
         }
-        return HTMLSanitizer.conditionallySanitizeText(this.pojo.getTagline());
+        return HTMLSanitizer.conditionallyToPlainText(this.pojo.getTagline());
     }
 
     /** True for the hidden site space weblog that owns the site's own pages. */
@@ -308,7 +308,7 @@ public final class WeblogWrapper {
     
     
     public String getAbout() {
-        return HTMLSanitizer.conditionallySanitizeText(this.pojo.getAbout());
+        return HTMLSanitizer.conditionallyToPlainText(this.pojo.getAbout());
     }
     
     

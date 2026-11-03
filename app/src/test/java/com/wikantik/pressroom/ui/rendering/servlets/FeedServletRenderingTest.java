@@ -166,7 +166,7 @@ class FeedServletRenderingTest {
 
     /**
      * {@code UserWrapper#getScreenName} sanitizes tags but does not
-     * entity-escape ({@code HTMLSanitizer.conditionallySanitizeText}), so a
+     * entity-escape ({@code HTMLSanitizer.conditionallyToPlainText}), so a
      * screen name reaches {@code feeds.vm} carrying live {@code &} and
      * {@code <} characters. {@code <author><name>} is an Atom text
      * construct, not {@code type="html"} like the title beside it: a bare

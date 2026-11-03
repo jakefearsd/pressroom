@@ -59,12 +59,12 @@ public final class UserWrapper {
     
     
     public String getScreenName() {
-        return HTMLSanitizer.conditionallySanitizeText(this.pojo.getScreenName());
+        return HTMLSanitizer.conditionallyToPlainText(this.pojo.getScreenName());
     }
     
     
     public String getFullName() {
-        return HTMLSanitizer.conditionallySanitizeText(this.pojo.getFullName());
+        return HTMLSanitizer.conditionallyToPlainText(this.pojo.getFullName());
     }
     
     

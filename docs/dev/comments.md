@@ -284,7 +284,7 @@ Display name (the screen name), one rule in `business/comments/DisplayNames`
 shared with a reader's first sign-in (ruling R8): judged in exactly the form
 `User.setScreenName` stores (`storedForm` repeats normalising and the setter's
 markup stripping until the setter keeps the name unchanged, since
-`HTMLSanitizer.sanitizeText` is not idempotent); 1 to 50 code points after
+`HTMLSanitizer.toPlainText` is not idempotent); 1 to 50 code points after
 stripping control and format characters and collapsing whitespace; refused if
 it equals the screen name of any weblog member once both are NFKC-normalised
 and fully case-folded, so fullwidth or mathematical-bold letters, and `ß`
