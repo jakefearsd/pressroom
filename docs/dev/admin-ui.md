@@ -87,6 +87,13 @@ resolves through the index at the end of `CLAUDE.md`.
   through `AccountRows.showList`, or the page renders with none.
 - Enabling/disabling an account: the checkbox persists whatever happens, so
   only disable-then-sign-in proves it — `UserAdminIT`.
+- **An admin cannot lock themselves out** (2026-11): on their own account the person
+  editor refuses unticking Administrator (`userAdmin.cantChangeOwnRole`) and unticking
+  Enabled (`userAdmin.error.cantDisableSelf`), checked in
+  `UserEditController.refuseSelfLockout` *before* anything on the form is applied (the
+  role check once ran after `saveUser`, so the other fields committed beside the
+  error). Only an enabled admin reaches this page, so refusing it for oneself is also
+  what keeps the last enabled admin.
 - **One status pill for every entry/page publication state.**
   `WEB-INF/jsps/editor/StatusPill.jsp` is a `<jsp:include>`; callers set
   `pillStatus` (a `PubStatus` name) and optionally `pillWhen` (a `Date`, for

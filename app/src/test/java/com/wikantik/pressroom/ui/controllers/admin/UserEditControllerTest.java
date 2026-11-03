@@ -258,6 +258,7 @@ class UserEditControllerTest {
         User stored = storedUser("jake");
         CreateUserBean edit = beanForExisting("u1", "jake");
         edit.setEmailAddress(" new@example.com ");
+        edit.setEnabled(Boolean.TRUE);
 
         controller.modifyUserSave(ControllerTestFixture.requestFor(stored), new ExtendedModelMap(), edit);
 
@@ -466,6 +467,8 @@ class UserEditControllerTest {
         CreateUserBean bean = beanForExisting("u1", "jake");
         bean.setScreenName("Jake Renamed");
         bean.setEmailAddress("new@example.com");
+        // Editing one's own account, which must stay enabled.
+        bean.setEnabled(Boolean.TRUE);
 
         String view = controller.modifyUserSave(ControllerTestFixture.requestFor(stored), model, bean);
 
@@ -626,6 +629,47 @@ class UserEditControllerTest {
 
         verify(weblogger.userManager(), never()).revokeRole(eq("admin"), any());
         assertEquals(List.of("userAdmin.cantChangeOwnRole"), ControllerTestFixture.errors(model));
+    }
+
+    @Test
+    void aRefusedSelfDemotionSavesNoneOfTheFormsOtherChanges() throws Exception {
+        // The refusal was added after saveUser had run, so the rest of the
+        // form committed and "saved" was shown beside the error.
+        User self = storedUser("jake");
+        self.setScreenName("Jake");
+        when(weblogger.userManager().checkPermission(any(GlobalPermission.class), eq(self))).thenReturn(true);
+        CreateUserBean bean = beanForExisting("u1", "jake");
+        bean.setAdministrator(false);
+        bean.setEnabled(Boolean.TRUE);
+        bean.setScreenName("Renamed");
+
+        String view = controller.modifyUserSave(ControllerTestFixture.requestFor(self), model, bean);
+
+        assertEquals(".UserEdit", view);
+        assertEquals(List.of("userAdmin.cantChangeOwnRole"), ControllerTestFixture.errors(model));
+        assertEquals("Jake", self.getScreenName(), "nothing on the form may be applied");
+        verify(weblogger.userManager(), never()).saveUser(any());
+        verify(weblogger.weblogger(), never()).flush();
+        assertFalse(ControllerTestFixture.messages(model).contains("userAdmin.userSaved"));
+    }
+
+    @Test
+    void anAdminCannotDisableTheirOwnAccount() throws Exception {
+        // A lockout: the only admin who could re-enable it is the one signing
+        // out of it. Every other admin is, by being here, an enabled admin,
+        // so this is also what keeps one enabled admin on the site.
+        User self = storedUser("jake");
+        when(weblogger.userManager().checkPermission(any(GlobalPermission.class), eq(self))).thenReturn(true);
+        CreateUserBean bean = beanForExisting("u1", "jake");
+        bean.setAdministrator(true);
+        bean.setEnabled(Boolean.FALSE);
+
+        String view = controller.modifyUserSave(ControllerTestFixture.requestFor(self), model, bean);
+
+        assertEquals(".UserEdit", view);
+        assertEquals(List.of("userAdmin.error.cantDisableSelf"), ControllerTestFixture.errors(model));
+        assertEquals(Boolean.TRUE, self.getEnabled());
+        verify(weblogger.userManager(), never()).saveUser(any());
     }
 
     @Test
