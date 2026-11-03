@@ -216,6 +216,17 @@ resolves through the index at the end of `CLAUDE.md`.
   `get`/`put`/`remove`/`clear`); each subclass keeps its `CACHE_ID`, singleton
   and `generateKey`. `SiteWideCache` is deliberately outside that hierarchy —
   its `get` takes no timestamp, having no per-weblog expiry.
+- **A rendering is cached against what it read, never when it was stored.**
+  The servlets take `RenderCache.basis(weblog)` before rendering (the
+  weblog's `lastModified` as read, floored at the server start, and the
+  discovery generation, compared separately; site-wide: the cache's
+  invalidation version, which every clear moves) and pass it to `put`; `get`
+  serves an entry only while its basis is still current. Until 2026-11-03
+  (code review) entries were stamped at the put, so a render that missed
+  before an author's save and was stored after it passed as fresh, and a
+  site-wide render could outlive the eager clear it straddled.
+  `RenderCacheTest` drives each interleaving. `CacheManager.clear()` empties
+  the backing caches without moving the site-wide version.
 - **A cache key holds every input the render reads.** The keys are built by
   hand from the parsed request, so a parameter that changes the output and is
   missing from the key lets an anonymous request cache one render over

@@ -53,22 +53,44 @@ public interface RenderCache<R> {
     String generateKey(R request);
 
     /**
-     * The cached rendering for {@code key}, or null when there is none to
-     * serve.
+     * What a rendering is built from, read once per request BEFORE the render
+     * reads anything, and stored with the rendering. A cached rendering is
+     * served only while the basis it was built from is still current.
      *
-     * @param lastModified when the weblog last changed. The per-weblog caches
-     *                     expire an entry against this; the site-wide cache
-     *                     has no such notion and ignores it, because it is
-     *                     dropped wholesale through {@code CacheManager}
-     *                     instead. Passing it on both sides keeps the caller
-     *                     free of that distinction, which is the point --
-     *                     it does not give the site-wide cache an expiry it
-     *                     does not have.
+     * <p>Stamping an entry with the time it was stored (what the caches did
+     * until 2026-11-03, code review) let a render that missed at T0, read the
+     * old data, and was stored at T2 after an author's save at T1 pass as
+     * fresh, because T2 is later than T1: the stale page was served until the
+     * next change or the timeout. Comparing what the render read with what is
+     * current has no such window, and no same-millisecond ambiguity.
+     *
+     * @param modified   per-weblog caches: the weblog's last change (or this
+     *                   server's start, if later), as the request read it;
+     *                   site-wide: the cache's invalidation version
+     * @param generation the {@link com.wikantik.pressroom.util.DiscoveryGeneration}
+     *                   a page render read; 0 for a feed, which carries no picks
      */
-    CachedContent get(String key, long lastModified);
+    record Basis(long modified, long generation) {
+    }
 
-    /** Stores a rendering under {@code key}. */
-    void put(String key, CachedContent content);
+    /** The basis of a render of this weblog starting now. */
+    Basis basis(Weblog weblog);
+
+    /**
+     * The cached rendering for {@code key}, or null when there is none to
+     * serve: nothing was cached under it, or what was is older than
+     * {@code current}.
+     *
+     * @param current this request's {@link #basis}. The per-weblog caches
+     *                compare both parts; the site-wide cache has no per-weblog
+     *                expiry and compares its own invalidation version and the
+     *                generation only, so a weblog's change never evicts it --
+     *                it is dropped wholesale through {@code CacheManager}.
+     */
+    CachedContent get(String key, Basis current);
+
+    /** Stores a rendering under {@code key}, with the basis it was built from. */
+    void put(String key, CachedContent content, Basis basis);
 
     /**
      * When the content behind this request last changed, for the

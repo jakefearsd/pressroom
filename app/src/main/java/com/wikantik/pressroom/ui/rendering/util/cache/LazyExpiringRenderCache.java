@@ -103,8 +103,8 @@ abstract class LazyExpiringRenderCache {
 
     /**
      * The cached rendering for {@code key}, or null when there is none to
-     * serve -- either because nothing was cached under it, or because the
-     * weblog has changed since it was.
+     * serve -- either because nothing was cached under it, or because it was
+     * rendered from an older {@code lastModified} than the one current now.
      */
     public Object get(String key, long lastModified) {
 
@@ -131,13 +131,17 @@ abstract class LazyExpiringRenderCache {
         return entry;
     }
 
-    public void put(String key, Object value) {
+    /**
+     * Stores {@code value}, rendered from the weblog as of {@code basis}: its
+     * {@code lastModified} as the request read it, before rendering.
+     */
+    public void put(String key, Object value, long basis) {
 
         if (!cacheEnabled) {
             return;
         }
 
-        contentCache.put(key, new LazyExpiringCacheEntry(value));
+        contentCache.put(key, new LazyExpiringCacheEntry(value, basis));
         log.debug("PUT {}", key);
     }
 

@@ -22,66 +22,62 @@ import java.io.Serializable;
 
 
 /**
- * A cache entry that is meant to expire in a lazy fashion.
+ * A cache entry that expires lazily: it is stored with the basis it was built
+ * from -- a monotonic stamp such as the weblog's {@code lastModified} as the
+ * render read it -- and each read passes the stamp that is current now. An
+ * entry whose basis is older than that is not served.
  *
- * The way to use this class is to wrap the object you want to cache in an
- * instance of this class and store that in your cache.  Then when you want
- * to retrieve this entry you must input a last-expired time which can be
- * compared against the time this entry was cached to determine if the cached
- * entry is "fresh".  If the object is not fresh then we don't return it.
+ * <p>Nothing has to hunt through the cache for the entries of a weblog that
+ * changed; they are passed over as they are asked for.
  *
- * This essentially allows us to track when an object is cached and then before
- * we can retrieve that cached object we must compare it with it's last known
- * invalidation time to make sure it hasn't expired.  This is useful because
- * instead of actively purging lots of cached objects from the cache at 
- * invalidation time, we can now be lazy and just invalidate them when we
- * actually try to retrieve the cached object.
- *
- * This is useful for Pressroom because we will no longer have to iterate through
- * the list of cached objects and inspect the keys to figure out what items to
- * invalidate.  Instead we can just sit back and let the items be invalidated as
- * we try to use them.
+ * <p>The basis is what the work READ, never when it finished: an entry
+ * stamped at its put let a render that read old data before an author's save,
+ * and was stored after it, pass as fresh (code review, 2026-11-03).
  */
 public class LazyExpiringCacheEntry implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
     private final transient Object value;
-    private final long timeCached;
-    
-    
-    public LazyExpiringCacheEntry(Object item) {
-        this.value = item;
-        this.timeCached = System.currentTimeMillis();
-    }
-    
-    
+    private final long basis;
+
+
     /**
-     * Retrieve the value of this cache entry if it is still "fresh".
-     *
-     * If the value has expired then we return null.
+     * @param item  what to cache
+     * @param basis the stamp the item was built from, taken before building
+     *              it read anything
      */
-    public Object getValue(long lastInvalidated) {
-        if(this.isInvalid(lastInvalidated)) {
+    public LazyExpiringCacheEntry(Object item, long basis) {
+        this.value = item;
+        this.basis = basis;
+    }
+
+
+    /**
+     * The value, or null when it was built from a basis older than
+     * {@code current}.
+     */
+    public Object getValue(long current) {
+        if(this.isInvalid(current)) {
             return null;
         } else {
             return this.value;
         }
     }
-    
-    
+
+
     /**
-     * Determine if this cache entry has expired.
+     * Whether the entry was built from a basis older than {@code current}.
+     * Equal is current: the stamps say what the build read, so there is no
+     * same-millisecond ambiguity to resolve.
      */
-    public boolean isInvalid(long lastInvalidated) {
-        // <=, not <: within one millisecond the order of render and change is
-        // unknowable, so a same-millisecond change counts as newer.
-        return this.timeCached <= lastInvalidated;
+    public boolean isInvalid(long current) {
+        return this.basis < current;
     }
 
-    
-    public long getTimeCached() {
-        return timeCached;
+
+    public long getBasis() {
+        return basis;
     }
-    
+
 }

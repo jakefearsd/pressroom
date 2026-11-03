@@ -181,6 +181,9 @@ public class PageServlet extends HttpServlet {
 
         // determine the lastModified date for this content
         long lastModified = renderCache.lastModified(weblog);
+        // what this render is built from, read before it reads anything: a
+        // rendering is cached against this, never against when it finished
+        RenderCache.Basis basis = renderCache.basis(weblog);
 
         // 304 Not Modified handling.
         // We skip this for logged in users to avoid the scenerio where a user
@@ -209,7 +212,7 @@ public class PageServlet extends HttpServlet {
         }
 
         if (servedFromCache(request, response, pageRequest, renderCache,
-                cacheKey, lastModified)) {
+                cacheKey, basis)) {
             return;
         }
 
@@ -272,7 +275,7 @@ public class PageServlet extends HttpServlet {
             return;
         }
 
-        cacheRendered(request, pageRequest, renderCache, cacheKey, rendererOutput);
+        cacheRendered(request, pageRequest, renderCache, cacheKey, rendererOutput, basis);
 
         log.debug("Exiting");
     }
@@ -345,13 +348,13 @@ public class PageServlet extends HttpServlet {
     private boolean servedFromCache(HttpServletRequest request, HttpServletResponse response,
                                     WeblogPageRequest pageRequest,
                                     RenderCache<WeblogPageRequest> renderCache,
-                                    String cacheKey, long lastModified) throws IOException {
+                                    String cacheKey, RenderCache.Basis basis) throws IOException {
 
         if (!cacheReadable(request, pageRequest)) {
             return false;
         }
 
-        CachedContent cachedContent = renderCache.get(cacheKey, lastModified);
+        CachedContent cachedContent = renderCache.get(cacheKey, basis);
         if (cachedContent == null) {
             log.debug("MISS {}", cacheKey);
             return false;
@@ -379,12 +382,13 @@ public class PageServlet extends HttpServlet {
      */
     private void cacheRendered(HttpServletRequest request, WeblogPageRequest pageRequest,
                                RenderCache<WeblogPageRequest> renderCache,
-                               String cacheKey, CachedContent rendererOutput) {
+                               String cacheKey, CachedContent rendererOutput,
+                               RenderCache.Basis basis) {
 
         if ((!this.excludeOwnerPages || !pageRequest.isLoggedIn())
                 && request.getAttribute("skipCache") == null) {
             log.debug("PUT {}", cacheKey);
-            renderCache.put(cacheKey, rendererOutput);
+            renderCache.put(cacheKey, rendererOutput, basis);
         } else {
             log.debug("SKIPPED {}", cacheKey);
         }
