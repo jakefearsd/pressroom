@@ -49,7 +49,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * {@link JPAMediaFileManagerImpl}'s moves, path lookups, theme-file creation,
+ * {@link JPAMediaFileManagerImpl}'s moves, directory lookups, theme-file creation,
  * content loading, tag replacement, multi-tag / "others" search and the
  * replacement-upload refusal, exercised against the real tier and the real
  * uploads directory.
@@ -131,7 +131,7 @@ class MediaFileLookupMoveAndTagsTest {
     }
 
     @Test
-    void movingOneFileRehomesItsRowAndPathLookupsFollowIt() throws Exception {
+    void movingOneFileRehomesItsRowAndDirectoryLookupsFollowIt() throws Exception {
         MediaFileDirectory root = defaultDirectory();
         mfMgr.createMediaFileDirectory(testWeblog, "trips");
         TestUtils.endSession(true);
@@ -146,16 +146,14 @@ class MediaFileLookupMoveAndTagsTest {
 
         testWeblog = TestUtils.getManagedWebsite(testWeblog);
         assertEquals("trips", mfMgr.getMediaFile(movedId).getDirectory().getName());
-        assertEquals(movedId, mfMgr.getMediaFileByPath(testWeblog, "trips/itinerary.txt").getId());
-        assertEquals(movedId, mfMgr.getMediaFileByPath(testWeblog, "/trips/itinerary.txt").getId(),
-                "a leading slash on the directory part is ignored");
-        assertNull(mfMgr.getMediaFileByPath(testWeblog, "itinerary.txt"),
+        assertEquals(movedId, mfMgr.getMediaFileDirectoryByName(testWeblog, "trips")
+                .getMediaFile("itinerary.txt").getId());
+        assertEquals(movedId, mfMgr.getMediaFileDirectoryByName(testWeblog, "/trips")
+                .getMediaFile("itinerary.txt").getId(),
+                "a leading slash on the directory name is ignored");
+        assertNull(mfMgr.getDefaultMediaFileDirectory(testWeblog).getMediaFile("itinerary.txt"),
                 "the default directory must no longer list the moved file");
-
-        // A bare name, and a name with only a leading slash, both resolve in
-        // the default directory.
-        assertEquals(stayingId, mfMgr.getMediaFileByPath(testWeblog, "readme.txt").getId());
-        assertEquals(stayingId, mfMgr.getMediaFileByPath(testWeblog, "/readme.txt").getId());
+        assertEquals(stayingId, mfMgr.getDefaultMediaFileDirectory(testWeblog).getMediaFile("readme.txt").getId());
         assertEquals(root.getId(), mfMgr.getMediaFile(stayingId).getDirectory().getId());
 
         // Storage is keyed by id, not path: the moved file's bytes are untouched.
@@ -198,9 +196,9 @@ class MediaFileLookupMoveAndTagsTest {
         String id = themeFile.getId();
         assertNotNull(id);
         testWeblog = TestUtils.getManagedWebsite(testWeblog);
-        assertEquals(id, mfMgr.getMediaFileByPath(testWeblog, "theme.css").getId());
+        assertEquals(id, mfMgr.getDefaultMediaFileDirectory(testWeblog).getMediaFile("theme.css").getId());
         assertNull(mfMgr.getMediaFile(refused.getId()), "a refused upload persists nothing");
-        assertNull(mfMgr.getMediaFileByPath(testWeblog, "refused.txt"));
+        assertNull(mfMgr.getDefaultMediaFileDirectory(testWeblog).getMediaFile("refused.txt"));
         FileContentManager cmgr = TestUtils.weblogger().getFileContentManager();
         assertEquals("body{}", new String(readAll(cmgr.getFileContent(testWeblog, id).getInputStream()),
                 StandardCharsets.UTF_8));
