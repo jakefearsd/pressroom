@@ -173,7 +173,7 @@ public final class MediaDtos {
      * would leave half a point, and is a 400 too. Checked before anything is
      * applied, so a refused patch changes nothing.
      */
-    private static void checkFocalPoint(MediaFile file, MediaPatch patch, Set<String> cleared) {
+    private static void checkFocalPoint(MediaFile file, MediaPatch patch) {
         requireFraction("focalX", patch.focalX());
         requireFraction("focalY", patch.focalY());
         if (patch.focalX() == null && patch.focalY() == null) {
@@ -207,7 +207,7 @@ public final class MediaDtos {
      * silently broken one.
      */
     public static void applyPatch(MediaFile file, MediaPatch patch, Set<String> cleared) {
-        checkFocalPoint(file, patch, cleared);
+        checkFocalPoint(file, patch);
         if (patch.altText() != null) {
             ColumnLimits.requireMaxLength("altText", patch.altText(), ColumnLimits.MEDIA_ALT_TEXT);
             file.setAltText(patch.altText());
