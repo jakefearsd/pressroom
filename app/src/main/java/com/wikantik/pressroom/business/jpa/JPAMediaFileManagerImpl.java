@@ -408,28 +408,62 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
 
     /**
      * {@inheritDoc}
+     *
+     * <p>Checked, then written, then described: the upload checks run before
+     * anything is written or committed, so a refusal leaves the row and the
+     * bytes as they were (the caller's unflushed changes to the entity roll
+     * back with the request). The entity is stored once the new bytes are on
+     * disk, and everything derived from the old ones -- the {@code _sm}
+     * thumbnail, the rendition ladder, dimensions, blurhash, EXIF -- is
+     * dropped first, then rebuilt from the new content if it is an image.
+     * The commit is the caller's flush (or {@code updateThumbnail}'s).
      */
     @Override
     public void updateMediaFile(Weblog weblog, MediaFile mediaFile,
             InputStream is) throws WebloggerException {
-        // New content is no longer the image an earlier import matched by hash.
-        mediaFile.setContentHash(null);
-        updateMediaFile(weblog, mediaFile);
-
         FileContentManager cmgr = pressroom.getFileContentManager();
         PressroomMessages msgs = new PressroomMessages();
-        if (!cmgr.canSave(weblog, mediaFile.getName(),
+        if (!cmgr.canReplace(weblog, mediaFile.getId(), mediaFile.getName(),
                 mediaFile.getContentType(), mediaFile.getLength(), msgs)) {
             throw new FileIOException(msgs.toString());
         }
         cmgr.saveFileContent(weblog, mediaFile.getId(), is);
 
+        // A sibling left behind keeps serving the OLD pixels: ?w=1600 on a
+        // replaced photo would still show what the author replaced, and a
+        // replacement narrower than a rung never overwrites that rung.
+        deleteDerivedFilesQuietly(cmgr, weblog, mediaFile.getId());
+        clearDerivedMetadata(mediaFile);
+        // New content is no longer the image an earlier import matched by hash.
+        mediaFile.setContentHash(null);
+        mediaFile.setLastUpdated(new Timestamp(System.currentTimeMillis()));
+        strategy.store(mediaFile);
+
         if (mediaFile.isImageFile()) {
             updateThumbnail(mediaFile);
         }
-        // updateMediaFile above already moved the stamp, before the content
-        // was even written; move it again past the derived data.
         touchAfterDerivedData(weblog);
+    }
+
+    /**
+     * Forgets what was read from the pixels and metadata of content that has
+     * been replaced. An image's values are rebuilt by {@code updateThumbnail};
+     * anything else (or an image that cannot be decoded) keeps none, rather
+     * than the old picture's size, placeholder, camera and location.
+     */
+    private static void clearDerivedMetadata(MediaFile mediaFile) {
+        mediaFile.setWidth(0);
+        mediaFile.setHeight(0);
+        mediaFile.setBlurhash(null);
+        mediaFile.setExifCamera(null);
+        mediaFile.setExifLens(null);
+        mediaFile.setExifExposure(null);
+        mediaFile.setExifAperture(null);
+        mediaFile.setExifIso(null);
+        mediaFile.setExifFocalLength(null);
+        mediaFile.setExifTaken(null);
+        mediaFile.setGpsLatitude(null);
+        mediaFile.setGpsLongitude(null);
     }
 
     /**
@@ -604,6 +638,17 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
      */
     static void deleteContentQuietly(FileContentManager cmgr, Weblog weblog, String mediaFileId) {
         deleteFileQuietly(cmgr, weblog, mediaFileId);
+        deleteDerivedFilesQuietly(cmgr, weblog, mediaFileId);
+    }
+
+    /**
+     * Deletes everything derived from a media file's pixels -- the admin
+     * thumbnail ({@code _sm}) and every rendition sibling, WebP included --
+     * leaving the original. Used wherever the original changes: a sibling of
+     * the old content would otherwise go on serving the old pixels.
+     */
+    private static void deleteDerivedFilesQuietly(FileContentManager cmgr, Weblog weblog,
+            String mediaFileId) {
         deleteFileQuietly(cmgr, weblog, mediaFileId + "_sm");
         for (String renditionId : RenditionSupport.renditionFileIds(mediaFileId)) {
             deleteFileQuietly(cmgr, weblog, renditionId);
@@ -890,10 +935,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
             // shrink the image below rungs it used to clear (e.g. 3000px
             // cropped to 800px), and a leftover <id>_1600 would keep serving
             // the UNCROPPED pixels at that ?w= URL forever.
-            deleteFileQuietly(cmgr, weblog, mediaFile.getId() + "_sm");
-            for (String renditionId : RenditionSupport.renditionFileIds(mediaFile.getId())) {
-                deleteFileQuietly(cmgr, weblog, renditionId);
-            }
+            deleteDerivedFilesQuietly(cmgr, weblog, mediaFile.getId());
 
             // A focal point marks a spot on the photo, not on the frame:
             // remap it through the crop so it keeps pointing at the same

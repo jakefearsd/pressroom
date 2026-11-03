@@ -243,14 +243,23 @@ public final class MediaUploads {
      * file's input stream, not after.
      */
     private static String effectiveContentType(Source upload, String fileName) {
-        String contentType = upload.contentType();
-        if (contentType == null || contentType.endsWith("/octet-stream")) {
+        return effectiveContentType(upload.contentType(), fileName);
+    }
+
+    /**
+     * {@code claimed}, the type a browser or client sent, unless it is
+     * missing or the generic {@code octet-stream}: then the type the file
+     * name implies, when it implies one. Shared by every upload path, the
+     * edit form's content replacement included.
+     */
+    public static String effectiveContentType(String claimed, String fileName) {
+        if (claimed == null || claimed.endsWith("/octet-stream")) {
             String detected = Utilities.getContentTypeFromFileName(fileName);
             if (detected != null) {
-                contentType = detected;
+                return detected;
             }
         }
-        return contentType;
+        return claimed;
     }
 
     private static MediaFile buildMediaFile(Source upload, Weblog weblog, MediaFileDirectory directory,

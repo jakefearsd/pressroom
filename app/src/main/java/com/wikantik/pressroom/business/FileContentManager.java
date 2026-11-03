@@ -98,6 +98,26 @@ public interface FileContentManager {
             PressroomMessages messages);
 
     /**
+     * {@link #canSave} for new content replacing the stored file {@code
+     * fileId}: the same checks, except that the quota does not count the
+     * bytes about to be replaced, which would otherwise be counted twice.
+     *
+     * @param weblog The weblog we are working on.
+     * @param fileId the stored file the new content replaces
+     * @param fileName name of the file to be saved
+     * @param contentType content type of the new content
+     * @param size size of the new content in bytes.
+     * @param messages output parameter for adding messages.
+     * @return true if the content can be saved, false otherwise.
+     */
+    boolean canReplace(Weblog weblog,
+            String fileId,
+            String fileName,
+            String contentType,
+            long size,
+            PressroomMessages messages);
+
+    /**
      * Release all resources associated with Pressroom session.
      */
     void release();

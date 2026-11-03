@@ -187,6 +187,27 @@ class MediaFileEditControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
+    void aReplacementSentAsOctetStreamTakesItsTypeFromTheFileName() throws Exception {
+        // The add path's fallback: a browser that does not know the type sends
+        // application/octet-stream, and storing that would serve an image as
+        // a download (MediaResponseHeaders treats it as opaque).
+        MultipartFile replacement = mock(MultipartFile.class);
+        when(replacement.isEmpty()).thenReturn(false);
+        when(replacement.getSize()).thenReturn(4L);
+        when(replacement.getContentType()).thenReturn("application/octet-stream");
+        when(replacement.getInputStream())
+                .thenReturn(new ByteArrayInputStream("data".getBytes(StandardCharsets.UTF_8)));
+
+        bean.setId("file-1");
+        bean.setName("photo.png");
+        bean.setDirectoryId("dir-1");
+
+        controller.save(request, model, bean, "file-1", replacement);
+
+        assertEquals("image/png", mediaFile.getContentType());
+    }
+
+    @Test
     void savingWithNoReplacementFileDoesNotRewriteTheContents() throws Exception {
         bean.setId("file-1");
         bean.setName("photo.jpg");

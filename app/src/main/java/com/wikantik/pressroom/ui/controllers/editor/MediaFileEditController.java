@@ -27,6 +27,7 @@ import com.wikantik.pressroom.business.FileIOException;
 import com.wikantik.pressroom.business.MediaFileManager;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.MediaFileDirectory;
+import com.wikantik.pressroom.ui.controllers.MediaUploads;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -147,7 +148,8 @@ public class MediaFileEditController extends MediaFileBase {
 
                 if (uploadedFile != null && !uploadedFile.isEmpty()) {
                     mediaFile.setLength(uploadedFile.getSize());
-                    mediaFile.setContentType(uploadedFile.getContentType());
+                    mediaFile.setContentType(MediaUploads.effectiveContentType(
+                            uploadedFile.getContentType(), mediaFile.getName()));
                     manager.updateMediaFile(getActionWeblog(request), mediaFile, uploadedFile.getInputStream());
                 } else {
                     manager.updateMediaFile(getActionWeblog(request), mediaFile);
