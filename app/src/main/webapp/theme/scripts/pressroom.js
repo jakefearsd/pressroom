@@ -388,3 +388,36 @@ document.addEventListener('DOMContentLoaded', function () {
     // in.
     if (first) { first.focus({ preventScroll: false }); }
 });
+
+/*
+ * Signing out clears this browser's autosaved drafts (pressroom-draft.js,
+ * keys "pressroom.draft.v1:..."). localStorage belongs to the browser, not
+ * to the account, and keeps a draft for 30 days: on a shared machine the
+ * next person to sign in should not find the last one's unsaved entries in
+ * storage. The keys also carry the user's id, so a session that simply
+ * expired never offers one member another's draft; this is the clean-up for
+ * the sign-out that is deliberate. Everything else in storage is kept.
+ *
+ * Delegated, like data-confirm above: the Logout link (bannerStatus.jsp) is
+ * on every admin page, and this file is the one every admin page loads. A
+ * matrix ";jsessionid=..." that c:url adds without cookies still matches.
+ */
+document.addEventListener('click', function (event) {
+    var link = event.target && event.target.closest ? event.target.closest('a[href]') : null;
+    if (!link || !/\/pressroom-ui\/logout\.rol(?:[;?#]|$)/.test(link.getAttribute('href') || '')) {
+        return;
+    }
+    try {
+        var store = window.localStorage;
+        var doomed = [];
+        for (var i = 0; i < store.length; i++) {
+            var key = store.key(i);
+            if (key && key.indexOf('pressroom.draft.v1:') === 0) {
+                doomed.push(key);
+            }
+        }
+        doomed.forEach(function (key) { store.removeItem(key); });
+    } catch (e) {
+        /* storage blocked: then nothing was ever stored either */
+    }
+});

@@ -152,9 +152,18 @@ incidental re-save) — minor PII residue worth clearing.
   - **Restore re-saves rather than dropping**, so recovered text keeps a
     backup; it never auto-restores (an unreviewed snapshot must not overwrite
     the server's copy).
+  - **A key names the user**:
+    `pressroom.draft.v1:<context path>:<user id>:<handle>:<action>:<id>`
+    (`EditorAutosaveWiringTest`). `localStorage` belongs to the browser, so a
+    key without the user offered the next member on a shared machine the last
+    one's draft. The Logout link also clears every `pressroom.draft.v1:` key
+    (a delegated click handler in `pressroom.js`, which every admin page
+    loads); a session that just expires keeps them, for its owner only.
   Known limits (in the spec): two tabs on the same *new* entry share the one
-  `…:new` slot (later debounce wins); a draft outlives logout, up to 30 days
-  in that browser profile, so on a shared machine the next author sees it.
+  `…:new` slot (later debounce wins); a draft outlives a session that expires
+  without a logout, up to 30 days in that browser profile (offered only to
+  the same user); drafts written under the older user-less keys are never
+  offered again and age out through the 30-day sweep.
   The leave-warning is bound **once** against a dirty flag under the
   `beforeunload.pressroomLeaveWarning` namespace (not a fresh `beforeunload`
   *and* `submit` handler per CodeMirror `change`, as before), and stays

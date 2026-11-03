@@ -103,6 +103,29 @@ class EditorAutosaveWiringTest {
                         + "share one snapshot and hand an author someone else's text");
     }
 
+    /**
+     * localStorage belongs to the browser, not the account. A key with no
+     * user in it hands the next member to sign in on a shared machine the
+     * previous member's unsaved entry, for up to 30 days. Every draft key,
+     * the current one and the stale new-entry one, carries the user's id.
+     */
+    @Test
+    void everyDraftKeyIsScopedToTheSignedInUser() throws IOException {
+        for (Path jsp : new Path[] {ENTRY_EDIT, PAGE_EDIT}) {
+            Matcher keys = Pattern.compile("var=\"(draftKey|draftNewKey)\"[^>]*value=\"([^\"]*)\"")
+                    .matcher(read(jsp));
+            int found = 0;
+            while (keys.find()) {
+                found++;
+                assertTrue(keys.group(2).startsWith(
+                                "pressroom.draft.v1:${pageContext.request.contextPath}:${authenticatedUser.id}:"),
+                        jsp.getFileName() + " " + keys.group(1) + " must name the user right after the "
+                                + "context path: " + keys.group(2));
+            }
+            assertTrue(found == 2, jsp.getFileName() + " must set both draftKey and draftNewKey, found " + found);
+        }
+    }
+
     @Test
     void theDraftKeysAreSetInRequestScopeSoTheIncludedEditorCanSeeThem() throws IOException {
         // EntryEditor.jsp arrives via jsp:include and reads ${draftKey}. A

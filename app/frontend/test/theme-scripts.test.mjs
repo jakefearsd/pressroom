@@ -38,6 +38,17 @@ function load(storage) {
   return context;
 }
 
+/* A link's click event as the delegated handler sees it: closest() walks to the anchor. */
+function clickOn(href) {
+  const anchor = { getAttribute: (name) => (name === 'href' ? href : null) };
+  anchor.closest = (selector) => (selector === 'a[href]' ? anchor : null);
+  return {
+    target: anchor,
+    preventDefault() {},
+    stopPropagation() {}
+  };
+}
+
 test('isValidUrl accepts any http(s) URL a browser can load', () => {
   const { isValidUrl } = load(memoryStorage({}));
   for (const url of [
@@ -77,4 +88,27 @@ test('the dead helpers are gone: isblank looped forever, toggleControl clobbered
   assert.equal(typeof context.isblank, 'undefined');
   assert.equal(typeof context.toggleControl, 'undefined');
   assert.equal(typeof context.toggle, 'function');
+});
+
+test('signing out clears every autosaved draft and nothing else', () => {
+  const storage = memoryStorage({
+    'pressroom.draft.v1::u1:blog:entryEdit:e1': '{}',
+    'pressroom.draft.v1::u2:blog:pageEdit:new': '{}',
+    'pressroom.lastCategory.v1::blog': 'c1',
+    'unrelated': 'x'
+  });
+  const context = load(storage);
+
+  context.fire('click', clickOn('/pressroom-ui/menu.rol'));
+  assert.equal(storage.length, 4, 'another link clears nothing');
+
+  context.fire('click', clickOn('/blog/pressroom-ui/logout.rol;jsessionid=ABC'));
+  assert.deepEqual(storage.keys(), ['pressroom.lastCategory.v1::blog', 'unrelated']);
+});
+
+test('signing out still works when storage is blocked', () => {
+  const blocked = {};
+  Object.defineProperty(blocked, 'length', { get() { throw new Error('SecurityError'); } });
+  const context = load(blocked);
+  assert.doesNotThrow(() => context.fire('click', clickOn('/pressroom-ui/logout.rol')));
 });
