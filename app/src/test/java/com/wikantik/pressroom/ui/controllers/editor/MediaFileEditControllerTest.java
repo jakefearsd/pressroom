@@ -646,6 +646,58 @@ class MediaFileEditControllerTest extends EditorControllerTestSupport {
                 "Expected the save to be refused, got: " + errors(model));
     }
 
+    /**
+     * The duplicate-name check runs against the looked-up directory: a lookup
+     * that could not run is not a check that passed.
+     */
+    @Test
+    void aDirectoryLookupThatFailsRefusesTheSave() throws Exception {
+        when(weblogger.getMediaFileManager().getMediaFileDirectory("dir-1"))
+                .thenThrow(new WebloggerException("database unavailable"));
+
+        bean.setId("file-1");
+        bean.setName("photo.jpg");
+        bean.setDirectoryId("dir-1");
+
+        String view = controller.save(request, model, bean, "file-1", null);
+
+        assertEquals(".MediaFileEdit", view);
+        assertTrue(errors(model).contains("generic.error.check.logs"),
+                "Expected the save to be refused, got: " + errors(model));
+        verify(weblogger.getMediaFileManager(), never()).updateMediaFile(any(), any());
+    }
+
+    /**
+     * The form always posts a folder; a save without one is refused before
+     * anything is written, not after new bytes have replaced the old ones.
+     */
+    @Test
+    void aSaveWithoutAFolderIsRefusedBeforeAnyWrite() throws Exception {
+        MultipartFile replacement = mock(MultipartFile.class);
+        when(replacement.isEmpty()).thenReturn(false);
+        when(replacement.getSize()).thenReturn(4L);
+        when(replacement.getContentType()).thenReturn("image/jpeg");
+        when(replacement.getInputStream())
+                .thenReturn(new ByteArrayInputStream("data".getBytes(StandardCharsets.UTF_8)));
+
+        for (String blank : new String[] {null, "", "  "}) {
+            MediaFileBean posted = new MediaFileBean();
+            posted.setId("file-1");
+            posted.setName("photo.jpg");
+            posted.setDirectoryId(blank);
+            Model result = newModel();
+
+            String view = controller.save(request, result, posted, "file-1", replacement);
+
+            assertEquals(".MediaFileEdit", view);
+            assertTrue(errors(result).contains("MediaFile.error.view"),
+                    "Expected the save to be refused, got: " + errors(result));
+        }
+        verify(weblogger.getMediaFileManager(), never())
+                .updateMediaFile(any(), any(), any(java.io.InputStream.class));
+        verify(weblogger.getMediaFileManager(), never()).updateMediaFile(any(), any());
+    }
+
     private com.wikantik.pressroom.pojos.Weblog otherWeblog() {
         com.wikantik.pressroom.pojos.Weblog other =
                 new com.wikantik.pressroom.pojos.Weblog();
