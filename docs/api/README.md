@@ -519,6 +519,11 @@ eventStart.`). `EntryView` returns both as instants (`2026-08-02T17:30:00Z` for
 19:30 in Berlin in summer), and the permalink's `Event` block carries the same
 instant. All three can be removed with `clear`.
 
+**`canonicalUrl`** overrides the permalink in `<link rel="canonical">`,
+`og:url` and the JSON-LD `mainEntityOfPage`, so it must be an absolute
+`http` or `https` URL; anything else (`javascript:`, `data:`, a relative
+path) is a 400 on `canonicalUrl`, the rule the admin UI's editor applies.
+
 **The four writable statuses are `DRAFT`, `PUBLISHED`, `PENDING` and
 `SCHEDULED`. `TRASHED` is not among them — a PATCH or create body carrying
 `"status": "TRASHED"` is a 400** (`Use DELETE to trash an entry and POST

@@ -146,4 +146,23 @@ class EntryFieldRulesTest {
         assertFalse(EntryFieldRules.isValidAnchor("a".repeat(256)));
         assertFalse(EntryFieldRules.isValidAnchor(null));
     }
+
+    /**
+     * The canonical-URL override is emitted into {@code <link rel="canonical">},
+     * {@code og:url} and JSON-LD, so only an absolute http(s) URL is one. The
+     * editor and the API share this rule: the API once stored
+     * {@code javascript:} values the editor then refused on every save.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"https://example.com/a/b", "http://example.com/"})
+    void anAbsoluteHttpUrlIsACanonicalUrl(String url) {
+        assertTrue(EntryFieldRules.isValidCanonicalUrl(url), url);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"javascript:alert(1)", "data:text/html,x", "file:///etc/passwd", "ftp://example.com/",
+            "/relative/path", "example.com", " "})
+    void anythingElseIsNotACanonicalUrl(String url) {
+        assertFalse(EntryFieldRules.isValidCanonicalUrl(url), url);
+    }
 }
