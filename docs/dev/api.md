@@ -78,7 +78,10 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   depth. It sits behind `apiSecurityFilterChain` like all of `/api/**` (Basic
   or Bearer), not exempted like `GET /api/v1/ping`. `OpenApiDocumentTest` pins
   two `docs/api/README.md` claims the document cannot convey — v1 is unstable,
-  and `pressroom-api auth login` is the bootstrap path.
+  and `pressroom-api auth login` is the bootstrap path. springdoc's controller is outside `ApiExceptionHandler`'s
+  package, so a refusal of it cannot be thrown to the advice (it escaped as the container's 500
+  HTML page for a pinned token): `ApiScopeInterceptor` writes a refusal of any handler outside
+  `ui.restapi` itself, through `ApiProblemWriter` (`OpenApiPinnedTokenDispatchTest`).
 - **`PressroomHandlerInterceptor`'s `import ...ui.restapi.ApiException` is the ONE
   permitted import from `ui.restapi` into `ui.controllers`, and must stay the
   only one.** A second interceptor for `/api/**` would be exactly the parallel
@@ -154,6 +157,14 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   extension member `ApiProblem` has (null, so omitted, on every other problem). `contentHash` is
   `EntryDtos.contentHash`: SHA-256 of the UTF-8 text, lower-case hex, Wikantik's scheme; keep the two
   stacks on one.
+- **...and checked again under the row lock, immediately before the save.** The first check is
+  unlocked and the import step after it commits and can take a minute, so two agents sending one
+  hash both passed it and the second save silently discarded the first (code review, 2026-11-03).
+  `requireUnchangedUnderLock` calls `WeblogEntryManager.lockEntryText` (`SELECT text ... FOR
+  UPDATE`, held until commit; a concurrent save is waited for and its committed text returned) and
+  compares with the text the write was checked or computed against. Taken only by a write that
+  names the text it read (a hash, or `edits`); restore too. `EntryRowLockTest` pins the lock against
+  PostgreSQL; nothing after the lock may commit before the save, or the lock is gone.
 - **`edits` become text before any check.** `EntryEdits.resolve` applies them to the stored text and
   `EntryWrite.withText` puts the result where a sent `text` would be, so validation, the import plan
   (which scans `body.text()`) and the one save treat it as sent text with no edits-specific branch.

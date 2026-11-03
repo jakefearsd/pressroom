@@ -9,6 +9,7 @@ import com.wikantik.pressroom.business.search.IndexManager;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogCategory;
+import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.ui.restapi.ApiExceptionHandler;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -18,6 +19,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -47,6 +49,8 @@ final class EntriesWriteApiFixture {
         when(entries.getWeblogCategories(weblog)).thenReturn(List.of(
                 new WeblogCategory(weblog, "Food", null, null),
                 new WeblogCategory(weblog, "Travel", null, null)));
+        // A row lock finds the text as read unless a test says another save got there first.
+        when(entries.lockEntryText(any())).thenAnswer(inv -> inv.<WeblogEntry>getArgument(0).getText());
         controller.weblogger = weblogger;
     }
 

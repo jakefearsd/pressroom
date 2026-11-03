@@ -356,7 +356,8 @@ is every taken name: a category or directory `name`, a page `slug`, a user's
 | 405 | The path exists but not for this HTTP verb (e.g. `DELETE` on a collection endpoint that only supports `GET`/`POST`). Plain `application/json` from Boot's own `/error`, not a problem body — see the note above. |
 | 409 | The request conflicts with the resource's current state: trashing an already-trashed entry, restoring one that isn't trashed, PATCHing a trashed entry (restore it first), a duplicate category/directory/page-slug name, deleting a weblog's last category, publishing a comment its author deleted, an `anchor` another entry of the weblog holds (a trashed one included), an entry update whose `expectedContentHash` is not the stored text's (`entry-changed`, see [Changing part of the text](#changing-part-of-the-text)). |
 | 413 | A multipart request body larger than `spring.servlet.multipart.max-request-size` (1GB). Plain `application/json` from Boot's own `/error`, not a problem body — see the note above. Distinct from the per-file media-quota refusal below, which is never a whole-request 413. |
-| 415 | `POST .../media` without a `multipart/form-data` body. Plain `application/json`, not a problem body — see the note above. |
+| 406 | An `Accept` the API cannot answer (`text/html`, say). A problem body (`type` ending in `/not-acceptable`), written as `application/problem+json` regardless. |
+| 415 | A JSON route sent a body in another media type (`application/x-www-form-urlencoded`, `text/plain`): a problem body whose `type` ends in `/unsupported-media-type`. `POST .../media` without a `multipart/form-data` body is also 415, but that one is plain `application/json`, not a problem body — see the note above. |
 | 429 | Throttled — see below. |
 | 503 | Busy: the request collided with other work in progress and should be retried. Today only an entry save that claims an anchor: a create (REST or MCP) that waited longer than `weblogentry.anchor.lockTimeoutSeconds` (default 10) for another save of the same weblog to finish claiming its anchor. Clients should retry. The problem's `type` ends in `/busy`, its `detail` is `Another save of this weblog is in progress; retry shortly.`, and the REST response carries `Retry-After` set to that timeout in seconds. Nothing was saved, so retrying the same request is safe. No other failure is a 503. |
 | 500 | Unexpected server error. The response body never carries exception detail (message, stack trace, class name) — those are logged server-side only. |
@@ -520,6 +521,11 @@ eventStart.`). `EntryView` returns both as instants (`2026-08-02T17:30:00Z` for
 19:30 in Berlin in summer), and the permalink's `Event` block carries the same
 instant. All three can be removed with `clear`.
 
+**`canonicalUrl`** overrides the permalink in `<link rel="canonical">`,
+`og:url` and the JSON-LD `mainEntityOfPage`, so it must be an absolute
+`http` or `https` URL; anything else (`javascript:`, `data:`, a relative
+path) is a 400 on `canonicalUrl`, the rule the admin UI's editor applies.
+
 **The four writable statuses are `DRAFT`, `PUBLISHED`, `PENDING` and
 `SCHEDULED`. `TRASHED` is not among them — a PATCH or create body carrying
 `"status": "TRASHED"` is a 400** (`Use DELETE to trash an entry and POST
@@ -634,6 +640,15 @@ digits is a 400 on `expectedContentHash`, and on a create the field is a 400.
 Without it an update overwrites whatever is stored, as before. It guards the
 text only: an update that sends no `text` or `edits` still changes only the
 fields it sends.
+
+The check holds against concurrent writers too. It runs again immediately
+before the save, under a lock on the entry's row held until the save
+commits, so of two updates sent with the same `expectedContentHash` one
+saves and the other is the 409 above, however long the import step took in
+between. `edits` are held to the text they were applied to in the same way,
+with or without a hash: if another save changed the text meanwhile, the
+update is the same 409 rather than edits laid over text the caller never
+saw. An entry deleted forever in between is a 404.
 
 ```json
 {
@@ -849,7 +864,9 @@ two fields share a shape because they occupy the same conceptual slot.
 
 `PATCH` updates `altText` (an explicit empty string `""` *is* a real value —
 "decorative image", set on purpose — distinct from omitting the field
-entirely), `focalX`/`focalY`, `name` (present-but-blank is rejected, not
+entirely), `focalX`/`focalY` (each a fraction of the image from 0 to 1,
+anything else a 400; a file has both or neither, so one coordinate moves an
+existing focal point and is a 400 on a file that has none), `name` (present-but-blank is rejected, not
 stored — unlike `altText`, there is no legitimate "deliberately unnamed"
 file), and `directoryId` (moves the file; a foreign or unknown directory id
 is a 404, checked before anything else in the request is applied).
@@ -1258,7 +1275,9 @@ there is no anonymous browser UI for it (`springdoc-openapi`'s Swagger UI is
 deliberately not installed; see `application.properties`), and it is not
 exempt from the site-wide `/api/**` security chain the way `GET
 /api/v1/ping` is. If you want to browse it visually, fetch it with `curl`
-and open it in any external OpenAPI viewer/editor.
+and open it in any external OpenAPI viewer/editor. It is not part of one weblog, so a
+token pinned to a weblog is refused with the 404 problem every such route
+gives it ([Token scopes](#token-scopes)); fetch it with an unpinned token.
 
 ## `bin/pressroom-api`
 

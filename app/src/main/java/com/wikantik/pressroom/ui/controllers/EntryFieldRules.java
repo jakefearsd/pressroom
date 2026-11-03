@@ -27,6 +27,7 @@ import java.util.Locale;
 import java.util.TimeZone;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
+import org.apache.commons.validator.routines.UrlValidator;
 
 /**
  * The rules that turn an author's raw entry input into stored values.
@@ -52,6 +53,25 @@ public final class EntryFieldRules {
 
     private EntryFieldRules() {
         // static rules only
+    }
+
+    /**
+     * Same allowlist as {@code CtaShortcode}'s href check: an entry's
+     * canonical-URL override is emitted straight into
+     * {@code <link rel="canonical">}, {@code og:url} and JSON-LD
+     * {@code mainEntityOfPage}, so it must be an absolute http(s) URL --
+     * never a {@code javascript:}/{@code data:}/{@code file:} value.
+     */
+    private static final UrlValidator CANONICAL_URL_VALIDATOR = new UrlValidator(new String[] {"http", "https"});
+
+    /**
+     * Whether {@code url} may be stored as an entry's canonical URL: an
+     * absolute http or https URL. Blank means "none" to both callers, which
+     * check that before asking. The editor and the API share it, so neither
+     * stores a value the other then refuses on every save.
+     */
+    public static boolean isValidCanonicalUrl(String url) {
+        return CANONICAL_URL_VALIDATOR.isValid(url);
     }
 
     /** {@code weblogentry.anchor} is varchar(255) (V002__baseline_schema.sql). */

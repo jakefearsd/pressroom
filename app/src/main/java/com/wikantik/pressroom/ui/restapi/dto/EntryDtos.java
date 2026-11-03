@@ -364,6 +364,10 @@ public final class EntryDtos {
             errors.check("canonicalUrl", () -> {
                 String value = StringUtils.trimToNull(write.canonicalUrl());
                 ColumnLimits.requireMaxLength("canonicalUrl", value, ColumnLimits.CANONICAL_URL);
+                if (value != null && !EntryFieldRules.isValidCanonicalUrl(value)) {
+                    throw ApiException.invalidField("canonicalUrl",
+                            "canonicalUrl must be an absolute http or https URL.");
+                }
                 entry.setCanonicalUrl(value);
             });
         }

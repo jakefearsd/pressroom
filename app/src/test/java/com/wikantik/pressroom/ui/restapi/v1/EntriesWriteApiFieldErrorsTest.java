@@ -55,6 +55,17 @@ class EntriesWriteApiFieldErrorsTest {
         assertEquals(List.of("status"), EntriesWriteApiFixture.fields(problem));
     }
 
+    /** The editor's rule: an API-stored javascript: URL made every later editor save fail. */
+    @Test
+    void aCanonicalUrlThatIsNotAnAbsoluteHttpUrlIsA400() throws Exception {
+        JsonNode problem = fx.refused(post("/v1/weblogs/myblog/entries").content(
+                "{\"title\":\"t\",\"text\":\"x\",\"canonicalUrl\":\"javascript:alert(1)\"}"));
+
+        assertEquals(List.of("canonicalUrl"), EntriesWriteApiFixture.fields(problem));
+        assertEquals("canonicalUrl must be an absolute http or https URL.", problem.get("detail").asString());
+        verify(fx.entries, never()).saveWeblogEntry(any());
+    }
+
     @Test
     void aCreateMissingTitleAndTextNamesBoth() throws Exception {
         JsonNode problem = fx.refused(post("/v1/weblogs/myblog/entries").content("{}"));

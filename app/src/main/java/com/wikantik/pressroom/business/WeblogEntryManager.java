@@ -224,6 +224,21 @@ public interface WeblogEntryManager {
      * Remove weblog category.
      */
     void removeWeblogCategory(WeblogCategory cat) throws WebloggerException;
+
+    /**
+     * Moves every entry of {@code cat} (trash included) to {@code moveTo}, of
+     * the same weblog, and removes {@code cat}: both in the current unit of
+     * work, so they commit together or not at all. Refused as {@link
+     * #moveWeblogCategoryContents} and {@link #removeWeblogCategory(WeblogCategory)}
+     * refuse.
+     */
+    void removeWeblogCategory(WeblogCategory cat, WeblogCategory moveTo) throws WebloggerException;
+
+    /**
+     * How many entries are filed under {@code cat}, every status but
+     * TRASHED: a count query, never the entries themselves.
+     */
+    long getLiveEntryCount(WeblogCategory cat) throws WebloggerException;
         
     /**
      * Get category by id.
@@ -323,6 +338,19 @@ public interface WeblogEntryManager {
      * Get weblog entry count 
      */    
     long getEntryCount(Weblog websiteData) throws WebloggerException;
+
+    /**
+     * Locks an entry's row until the current unit of work commits or rolls
+     * back, and returns its text as last committed. A save of the entry in
+     * flight in another transaction is waited for, and its text is what this
+     * returns; a save started after this waits for this unit of work. For a
+     * write that must not overwrite a change its caller has not seen (the
+     * API's {@code expectedContentHash} and {@code edits}): call it after
+     * anything that commits, immediately before the save, and compare.
+     *
+     * @return the committed text, or null when the entry has no row
+     */
+    String lockEntryText(WeblogEntry entry) throws WebloggerException;
 
     /**
      * True when any entry, in any status (the trash included), names this

@@ -144,6 +144,20 @@ class EntriesWriteApiRevisionsTest {
         assertEquals("The text then.", stored.getText());
     }
 
+    /** Another save committed between the early check and the row lock: refused under the lock. */
+    @Test
+    void aRestoreWhoseEntryChangedBeforeTheRowLockIs409AndSavesNothing() throws Exception {
+        when(fx.entries.lockEntryText(stored)).thenReturn("Someone else's text.");
+
+        JsonNode problem = json(fx.send(post(RESTORE).content(
+                "{\"expectedContentHash\":\"" + EntryDtos.contentHash("The text now.") + "\"}"))
+                .andExpect(status().isConflict()));
+
+        assertEquals(EntryDtos.contentHash("Someone else's text."), problem.get("currentContentHash").asString());
+        assertEquals("The text now.", stored.getText());
+        nothingSaved();
+    }
+
     @Test
     void aRestoreHonoursFields() throws Exception {
         JsonNode view = json(fx.send(post(RESTORE + "?fields=title")).andExpect(status().isOk()));

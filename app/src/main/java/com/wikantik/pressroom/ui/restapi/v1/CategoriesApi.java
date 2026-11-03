@@ -8,7 +8,6 @@ import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.pojos.TagStat;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogCategory;
-import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
@@ -161,14 +160,14 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
             if (target == null) {
                 throw ApiException.notFound("No such category to move entries to.");
             }
-            wmgr.moveWeblogCategoryContents(category, target);
-            weblogger.flush();
+            // One unit of work: a removal that fails rolls the move back too.
+            wmgr.removeWeblogCategory(category, target);
         } else if (wmgr.isWeblogCategoryInUse(category)) {
             throw ApiException.conflict(
                     "Category has entries; pass moveTo to move them to another category first.");
+        } else {
+            wmgr.removeWeblogCategory(category);
         }
-
-        wmgr.removeWeblogCategory(category);
         weblogger.flush();
         return ResponseEntity.noContent().build();
     }
@@ -186,16 +185,12 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
     }
 
     /**
-     * Not a stored column -- counted per request from the same {@code
-     * WeblogEntrySearchCriteria} path every other filtered read in this API
-     * uses, so it inherits that path's default trash exclusion rather than
-     * counting entries a reader could never see.
+     * Not a stored column -- counted per request, trash excluded as every
+     * filtered read in this API excludes it by default. A count query: this
+     * once loaded every entry of the category, text included, on every list.
      */
     private int entryCount(WeblogCategory category) throws WebloggerException {
-        WeblogEntrySearchCriteria criteria = new WeblogEntrySearchCriteria();
-        criteria.setWeblog(category.getWeblog());
-        criteria.setCatName(category.getName());
-        return weblogger.getWeblogEntryManager().getWeblogEntries(criteria).size();
+        return Math.toIntExact(weblogger.getWeblogEntryManager().getLiveEntryCount(category));
     }
 
     @Override
