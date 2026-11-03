@@ -136,6 +136,18 @@ public class ApiException extends RuntimeException {
         return new ApiException(503, TYPE_BASE + "busy", "Busy", detail);
     }
 
+    /** A request body in a media type the route does not read: the API reads JSON. */
+    public static ApiException unsupportedMediaType() {
+        return new ApiException(415, TYPE_BASE + "unsupported-media-type", "Unsupported media type",
+                "Send the body as application/json.");
+    }
+
+    /** An {@code Accept} the API cannot answer: it writes JSON (problems as problem+json). */
+    public static ApiException notAcceptable() {
+        return new ApiException(406, TYPE_BASE + "not-acceptable", "Not acceptable",
+                "The API answers application/json; accept it.");
+    }
+
     public static ApiException throttled(String detail) {
         return new ApiException(429, TYPE_BASE + "throttled", "Too many requests", detail);
     }

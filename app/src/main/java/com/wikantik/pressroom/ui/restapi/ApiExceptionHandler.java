@@ -6,6 +6,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -102,6 +104,35 @@ public class ApiExceptionHandler {
                 .contentType(MediaType.APPLICATION_PROBLEM_JSON)
                 .body(ApiException.busy("Another save of this weblog is in progress; retry shortly.")
                         .toProblem(request.getRequestURI()));
+    }
+
+    /**
+     * A body the route cannot read for its media type ({@code
+     * application/x-www-form-urlencoded}, {@code text/plain}), raised while
+     * reading the {@code @RequestBody}, so inside the handler and here. A
+     * client mistake: 415, logged at INFO, never the opaque 500. (A route
+     * whose mapping declares {@code consumes}, the media upload, refuses
+     * before any handler is chosen, so Spring answers that one itself.)
+     */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiProblem> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException ex,
+                                                                  HttpServletRequest request) {
+        log.info("Unsupported request Content-Type at {}", request.getRequestURI());
+        return handleApiException(ApiException.unsupportedMediaType(), request);
+    }
+
+    /**
+     * An {@code Accept} no converter can write the result in ({@code
+     * text/html}), raised while writing the return value. 406, logged at
+     * INFO. The problem is still written as problem+json: a response whose
+     * Content-Type is set is written in it whatever {@code Accept} says, and a
+     * client that cannot read it can still read the status.
+     */
+    @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
+    public ResponseEntity<ApiProblem> handleNotAcceptable(HttpMediaTypeNotAcceptableException ex,
+                                                           HttpServletRequest request) {
+        log.info("Unanswerable Accept at {}", request.getRequestURI());
+        return handleApiException(ApiException.notAcceptable(), request);
     }
 
     /**
