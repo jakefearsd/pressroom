@@ -229,7 +229,7 @@ test). The weblog recount narrows on the tag row's own `websiteid`
 (`wet_weblog_name_entry_idx`, V036).
 Locks are taken once per transaction, by tag name (weblog rows, then the
 site-wide row), after all the transaction's other writes are flushed, so
-multi-entry transactions (ScheduledEntriesTask, bulk publish) cannot
+multi-entry transactions (bulk publish) cannot
 deadlock against single saves on these rows. **Weblog deletion**
 (`JPAWeblogManagerImpl.removeWeblogContents`) recounts, in the same hook,
 every tag whose tag rows it removes (named from those rows, so a draft

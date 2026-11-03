@@ -34,6 +34,7 @@ import com.wikantik.pressroom.pojos.Weblog;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -42,7 +43,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -206,6 +209,31 @@ class TrashPurgeTaskTest {
     }
 
     /**
+     * Each weblog's purge is its own transaction: committed before the next
+     * weblog is purged, and a commit that fails is released (rolled back)
+     * before the next weblog starts. The sweep used to commit once at the
+     * end, so one weblog's purge failing at commit rolled back every other
+     * weblog's, on every run.
+     */
+    @Test
+    void eachWeblogsPurgeIsCommittedOnItsOwn() throws Exception {
+        Weblog failing = weblog("failingblog");
+        Weblog other = weblog("otherblog");
+        givenWeblogs(failing, other);
+        givenRetention(30);
+        doThrow(new WebloggerException("commit refused")).doNothing().when(weblogger).flush();
+
+        task().runTask();
+
+        InOrder order = inOrder(entryManager, weblogger);
+        order.verify(entryManager).purgeTrash(failing, 30);
+        order.verify(weblogger).flush();
+        order.verify(weblogger).release();
+        order.verify(entryManager).purgeTrash(other, 30);
+        order.verify(weblogger).flush();
+    }
+
+    /**
      * The lease/release contract every {@code PressroomTaskWithLeasing} subclass
      * must keep: {@code weblogger().release()} always
      * runs, even when a purge blew up.
@@ -220,7 +248,8 @@ class TrashPurgeTaskTest {
 
         task().runTask();
 
-        verify(weblogger).release();
+        // released after the failing weblog's purge, and again at the end
+        verify(weblogger, atLeastOnce()).release();
     }
 
     /**

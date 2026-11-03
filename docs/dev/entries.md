@@ -281,7 +281,15 @@ the new dimension from spreading.
 - **`entry.trash.retention.days`** — runtime property, default **30**, `-1`
   keeps forever. Swept by `TrashPurgeTask` beside `ScheduledEntriesTask`;
   re-read per sweep, not latched in `init()` (the third Configuration-scope
-  trap); per-weblog try/catch.
+  trap); per-weblog try/catch, and since 2026-11-03 one transaction per
+  weblog (it committed once at the end, so a commit-time failure in one
+  weblog undid every other's purge, every day). `ScheduledEntriesTask`
+  likewise promotes each due entry in its own transaction; a failing entry
+  stays SCHEDULED and is retried next minute. Both sweeps skip weblogs with
+  `visible = false` (nothing in the UI sets it today) and the trash sweep
+  skips the site space (which has no entries screens); whether a hidden
+  weblog's schedule and trash should keep running is an open product
+  question.
 - **Pages and media files are deliberately NOT in the trash**: a soft-deleted
   media file still occupies disk, counts against `uploads.dir.maxsize`, keeps
   its renditions and stays reachable at its media URL unless every such path
