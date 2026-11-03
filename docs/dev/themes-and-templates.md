@@ -211,6 +211,16 @@ resolves through the index at the end of `CLAUDE.md`.
   `get`/`put`/`remove`/`clear`); each subclass keeps its `CACHE_ID`, singleton
   and `generateKey`. `SiteWideCache` is deliberately outside that hierarchy —
   its `get` takes no timestamp, having no per-weblog expiry.
+- **A cache key holds every input the render reads.** The keys are built by
+  hand from the parsed request, so a parameter that changes the output and is
+  missing from the key lets an anonymous request cache one render over
+  another. Two such holes, closed 2026-11-03 (code review), with key tests in
+  `WeblogPageCacheTest`/`WeblogFeedCacheTest`/`SiteWideCacheTest`: a named
+  page with `?entry=x` now keys on `/entry/x/page/<name>` (it had shared the
+  permalink's key, so a theme stylesheet could be cached over a post), and a
+  feed's `?page=N` (N > 0) is part of its key (an empty page 9999 had been
+  cached over the feed). Adding a request parameter that a render reads means
+  adding it to `generateKey` in all three.
 - **A Global Config save expires nothing by itself**, so a setting that
   reaches rendered pages must touch weblogs. The footer's privacy link is
   built from `site.privacy.page` (a `PageReference`: `slug` is a site page,

@@ -185,8 +185,8 @@ provider. Sign-in changes the session id.
   all threads.
 - **The start filter compares the request's own scheme, host and port** with
   the Absolute URL's. Behind a proxy those are what
-  `server.forward-headers-strategy=framework` makes of `X-Forwarded-Proto`
-  and `Host`; a proxy that sends no `X-Forwarded-Proto` makes the public host
+  `server.forward-headers-strategy=native` (Tomcat's RemoteIpValve) makes of
+  `X-Forwarded-Proto`, and the `Host` the proxy passes through; a proxy that sends no `X-Forwarded-Proto` makes the public host
   look like another host to itself, and the start redirects to itself until
   the browser gives up ("too many redirects"). Caddy and cloudflared both
   send it.

@@ -77,7 +77,13 @@
 	# /newsletter/subscribe is served by the app itself (throttle + events); do not re-add a rewrite here.
 
 	handle {
-		reverse_proxy app:8080
+		reverse_proxy app:8080 {
+			# Caddy rewrites X-Forwarded-For/-Proto but passes an RFC 7239
+			# Forwarded header through as the visitor wrote it; the app reads
+			# only the X-Forwarded-* pair (Tomcat's RemoteIpValve), and this
+			# keeps a visitor's own "for=" or "host=" from ever counting.
+			header_up -Forwarded
+		}
 	}
 }
 
@@ -143,7 +149,13 @@
 	}
 
 	handle {
-		reverse_proxy app:8080
+		reverse_proxy app:8080 {
+			# Caddy rewrites X-Forwarded-For/-Proto but passes an RFC 7239
+			# Forwarded header through as the visitor wrote it; the app reads
+			# only the X-Forwarded-* pair (Tomcat's RemoteIpValve), and this
+			# keeps a visitor's own "for=" or "host=" from ever counting.
+			header_up -Forwarded
+		}
 	}
 }
 

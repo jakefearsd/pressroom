@@ -46,6 +46,7 @@ import com.wikantik.pressroom.business.BlurHash;
 import com.wikantik.pressroom.business.ContentHashes;
 import com.wikantik.pressroom.business.ExifSupport;
 import com.wikantik.pressroom.business.FileContentManager;
+import com.wikantik.pressroom.business.ImageDecoding;
 import com.wikantik.pressroom.business.FileIOException;
 import com.wikantik.pressroom.business.MediaFileManager;
 import com.wikantik.pressroom.business.RenditionSupport;
@@ -255,7 +256,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
                     mediaFile.getId());
             BufferedImage img;
 
-            img = ImageIO.read(fc.getInputStream());
+            img = ImageDecoding.read(fc.getInputStream());
 
             // EXIF Orientation: a portrait phone/camera shot is stored as a
             // landscape raster plus a rotation tag, and ImageIO.read() hands
@@ -289,6 +290,9 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
             // failure affect the thumbnail/rendition work above.
             extractExifAndBlurhash(cmgr, mediaFile, fc);
 
+        } catch (ImageDecoding.TooLarge e) {
+            // stored and served as it is; only the derived images are skipped
+            log.warn("No thumbnail or renditions for media file {}: {}", mediaFile.getId(), e.getMessage());
         } catch (Exception e) {
             log.debug("ERROR creating thumbnail", e);
         }
@@ -374,7 +378,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         for (String candidateId : List.of(mediaFile.getId() + "_480", mediaFile.getId() + "_sm")) {
             try {
                 FileContent candidate = cmgr.getFileContent(mediaFile.getWeblog(), candidateId);
-                BufferedImage image = ImageIO.read(candidate.getInputStream());
+                BufferedImage image = ImageDecoding.read(candidate.getInputStream());
                 if (image != null) {
                     return BlurHash.encode(image);
                 }
@@ -793,7 +797,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
                 }
                 try {
                     FileContent fc = cmgr.getFileContent(weblog, mf.getId());
-                    BufferedImage img = ImageIO.read(fc.getInputStream());
+                    BufferedImage img = ImageDecoding.read(fc.getInputStream());
                     if (img == null) {
                         log.warn("Skipping rendition regeneration for media file {}: not a readable image",
                                 mf.getId());
@@ -879,7 +883,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         FileContentManager cmgr = pressroom.getFileContentManager();
         try {
             FileContent fc = cmgr.getFileContent(weblog, mediaFile.getId());
-            BufferedImage img = ImageIO.read(fc.getInputStream());
+            BufferedImage img = ImageDecoding.read(fc.getInputStream());
             if (img == null) {
                 throw new WebloggerException("Media file " + mediaFile.getId()
                         + " is not a readable image");

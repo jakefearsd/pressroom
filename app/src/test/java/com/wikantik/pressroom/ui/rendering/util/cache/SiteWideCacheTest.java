@@ -529,4 +529,37 @@ public class SiteWideCacheTest {
         request.setFormat("rss");
         return request;
     }
+
+    /**
+     * /<h>/page/<name>?entry=x renders the named template (the theme's
+     * stylesheet, say), not the permalink, so it must never share the
+     * permalink's key: an anonymous request could otherwise cache the
+     * stylesheet over a post for every reader (code review, 2026-11-03).
+     */
+    @Test
+    public void aNamedPageWithAnEntryParameterIsNotThePermalink() {
+        WeblogPageRequest permalink = pageRequest();
+        permalink.setWeblogAnchor("foo");
+        WeblogPageRequest named = pageRequest();
+        named.setWeblogAnchor("foo");
+        named.setWeblogPageName("journal-custom.css");
+
+        assertNotEquals(cache.generateKey(permalink), cache.generateKey(named));
+    }
+
+    /**
+     * A feed's ?page=N is a different list of entries; without it in the key
+     * an anonymous ?page=9999 cached an empty feed over the real one for
+     * every subscriber (code review, 2026-11-03). Page 0 is the feed itself.
+     */
+    @Test
+    public void aLaterPageOfAFeedIsNotTheFeed() {
+        WeblogFeedRequest later = feedRequest();
+        later.setPage(9999);
+        WeblogFeedRequest first = feedRequest();
+        first.setPage(0);
+
+        assertNotEquals(cache.generateKey(feedRequest()), cache.generateKey(later));
+        assertEquals(cache.generateKey(feedRequest()), cache.generateKey(first));
+    }
 }

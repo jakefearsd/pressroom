@@ -607,6 +607,54 @@ class PressroomHandlerInterceptorTest {
                         AuthorityUtils.createAuthorityList("ROLE_USER")));
     }
 
+    // ---------------------------------------------------- mount isolation
+
+    /**
+     * One DispatcherServlet serves both the admin UI (*.rol) and the API
+     * (/api/*), and the container strips the /api prefix before lookup, so
+     * /api/pressroom-ui/... resolves to a JSP controller. Behind the API's
+     * security chain (Bearer or Basic, no CSRF, and no token-scope check off
+     * /v1/**) that let a READ token pinned to one weblog mint an unpinned
+     * ADMIN token through profileTokens!create.rol (code review, 2026-11-03).
+     * A JSP controller reached under the API mount is not found.
+     */
+    @Test
+    void aJspControllerReachedUnderTheApiMountIsNotFound() throws Exception {
+        request.setServletPath("/api");
+        request.setRequestURI(CONTEXT + "/api/pressroom-ui/profileTokens!create.rol");
+
+        assertFalse(interceptor.preHandle(request, response, handlerFor(new PlainController())));
+        assertEquals(404, response.getStatus());
+    }
+
+    /** The reverse alias: /newsletter/v1/... reached the API controllers outside the API's own chain. */
+    @Test
+    void anApiControllerReachedOutsideTheApiMountIsNotFound() throws Exception {
+        request.setServletPath("/newsletter");
+        request.setRequestURI(CONTEXT + "/newsletter/v1/weblogs");
+
+        assertFalse(interceptor.preHandle(request, response,
+                handlerFor(new com.wikantik.pressroom.ui.restapi.MountProbeApi())));
+        assertEquals(404, response.getStatus());
+
+        MockHttpServletResponse rol = new MockHttpServletResponse();
+        request.setServletPath("/pressroom-ui/menu.rol");
+        assertFalse(interceptor.preHandle(request, rol,
+                handlerFor(new com.wikantik.pressroom.ui.restapi.MountProbeApi())), "nor under *.rol");
+        assertEquals(404, rol.getStatus());
+    }
+
+    @Test
+    void eachHandlerProceedsUnderItsOwnMount() throws Exception {
+        request.setServletPath("/api");
+        assertTrue(interceptor.preHandle(request, response,
+                handlerFor(new com.wikantik.pressroom.ui.restapi.MountProbeApi())), "the API under /api");
+
+        request.setServletPath("/pressroom-ui/menu.rol");
+        assertTrue(interceptor.preHandle(request, new MockHttpServletResponse(), handlerFor(new PlainController())),
+                "a JSP controller under *.rol");
+    }
+
     /**
      * Wraps a controller as the {@code HandlerMethod} Spring MVC would hand the
      * interceptor. The method itself is never invoked -- only

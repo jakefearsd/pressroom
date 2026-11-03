@@ -356,10 +356,17 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session ->
                     session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // Only the API itself: /api/* is a prefix mapping on the same
+            // DispatcherServlet as *.rol, so /api/pressroom-ui/... would reach
+            // the JSP controllers with an API credential, no CSRF check and no
+            // token-scope check (a READ token minted an ADMIN token that way;
+            // code review 2026-11-03). PressroomHandlerInterceptor refuses a
+            // handler outside its own mount too.
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.POST, "/api/v1/tokens").authenticated()
                 .requestMatchers("/api/v1/ping").permitAll()
-                .anyRequest().authenticated())
+                .requestMatchers("/api/v1/**", McpServerConfig.ENDPOINT).authenticated()
+                .anyRequest().denyAll())
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint(apiAuthenticationEntryPoint)
                 .accessDeniedHandler(apiAccessDeniedHandler))

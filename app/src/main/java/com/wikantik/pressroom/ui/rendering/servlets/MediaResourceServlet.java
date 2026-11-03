@@ -230,7 +230,9 @@ public class MediaResourceServlet extends HttpServlet {
             servedContentType = mediaFile.getContentType();
             resourceStream = mediaFile.getInputStream();
         }
-        response.setContentType(servedContentType);
+        // The type is the uploader's claim: never sniffed, and anything that
+        // could run script on this origin is sandboxed (MediaResponseHeaders).
+        response.setContentType(MediaResponseHeaders.apply(response, servedContentType));
 
         // make sure stream to resource file is closed
         try (InputStream in = resourceStream) {

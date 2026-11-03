@@ -158,6 +158,10 @@ class SecurityConfigTest {
                 "/pressroom-ui/admin/globalConfig.rol",
                 "/pressroom-ui/setup.rol",
                 "/rewrite-status",
+                "/api/v1/probe",
+                "/api/mcp",
+                "/api/pressroom-ui/admin/globalConfig.rol",
+                "/api/pressroom-ui/menu.rol",
         })
         @ResponseBody
         String ok() {
@@ -346,6 +350,29 @@ class SecurityConfigTest {
     void editorAuthorityIsForbiddenOnAdminOnlySurfaces(String path) throws Exception {
         mockMvc.perform(get(path).with(user("editorUser").authorities(new SimpleGrantedAuthority("editor"))))
                 .andExpect(status().isForbidden());
+    }
+
+    // ------------------------------------------------------- the API mount
+
+    /**
+     * The API chain (Bearer or Basic, CSRF off) covers /api/**, but only
+     * /api/v1/** and /api/mcp are the API: the container strips /api before
+     * lookup, so anything else under it is a UI route reached with an API
+     * credential and no CSRF check. Refused before any controller runs, even
+     * for a site admin (code review, 2026-11-03).
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/pressroom-ui/admin/globalConfig.rol", "/api/pressroom-ui/menu.rol"})
+    void theApiMountServesOnlyTheApi(String path) throws Exception {
+        mockMvc.perform(get(path).with(user("adminUser").authorities(new SimpleGrantedAuthority("admin"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/probe", "/api/mcp"})
+    void theApiItselfStillAdmitsAnAuthenticatedCaller(String path) throws Exception {
+        mockMvc.perform(get(path).with(user("adminUser").authorities(new SimpleGrantedAuthority("admin"))))
+                .andExpect(status().isOk());
     }
 
     // -------------------------------------------------------- admin access

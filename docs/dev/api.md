@@ -19,7 +19,16 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   controllers under `ui.restapi.v1` are written relative to `/v1/...`
   (`TokensApi` is `@RequestMapping("/v1/tokens")`, not `/api/v1/tokens`;
   `NewsletterController` likewise `/newsletter`, not `/newsletter/subscribe`).
-  Getting it wrong compiles and 404s; no test catches it. `api` and
+  Getting it wrong compiles and 404s; no test catches it.
+- **Each mount serves only its own handlers.** Because the prefix is
+  stripped, `/api/pressroom-ui/...` once resolved to a JSP controller behind
+  the API's chain (Bearer or Basic, no CSRF, no token-scope check off
+  `/v1/**`): a READ token pinned to one weblog minted an unpinned ADMIN token
+  through `profileTokens!create.rol` (code review, 2026-11-03). Now
+  `apiSecurityFilterChain` admits only `/api/v1/**` and `/api/mcp` and denies
+  the rest, and `PressroomHandlerInterceptor` answers 404 for a non-API
+  handler under the `/api` servlet path or an API handler under any other
+  (`SecurityConfigTest`, `PressroomHandlerInterceptorTest`). `api` and
   `newsletter` are reserved roots in
   `rendering.weblogMapper.pressroomProtectedUrls` so no weblog handle can shadow
   them.
