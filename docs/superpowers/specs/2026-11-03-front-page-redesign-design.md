@@ -2,7 +2,7 @@
 
 Date: 2026-11-03. Status: **built** (decisions D1–D6 taken, see the end;
 ads are phase 2).
-Mockup (visual source of truth): `docs/design/journal/frontpage-landing.html`,
+Mockup (visual source of truth): `docs/superpowers/specs/2026-11-03-front-page-redesign-mockup.html`,
 built from the real posts and photos on blog.wikantik.com that day.
 Scope: the discovery front page at `/` only, now one template,
 `WEB-INF/velocity/templates/weblog/discovery.vm`, whatever the site space's

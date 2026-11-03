@@ -7,7 +7,7 @@ discovery; none of the bundled themes does). One page, so the front door
 looks the same on every install.
 
 Design: docs/superpowers/specs/2026-11-03-front-page-redesign-design.md;
-visual source of truth docs/design/journal/frontpage-landing.html.
+visual source of truth docs/superpowers/specs/2026-11-03-front-page-redesign-mockup.html.
 
 Data: $discovery.frontPage (DiscoveryModel). Entry titles are stored escaped
 and emitted bare; weblog names come escaped from the wrapper; excerpts are
