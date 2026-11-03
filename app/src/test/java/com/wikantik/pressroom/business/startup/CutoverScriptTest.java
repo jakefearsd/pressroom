@@ -884,10 +884,10 @@ class CutoverScriptTest {
      * there cannot be left behind (passed when written; proven to bite by
      * dropping caddy-config from CADDY_VOLUMES).
      *
-     * <p>Except volumes the Roller stack never had: {@code pressroom-umami-pgdata}
+     * <p>Except volumes the pre-rename stack never had: {@code pressroom-umami-pgdata}
      * (0.7.2, Umami's own server) starts empty on a cutover host, and the
      * {@code umami-move} one-shot fills it from the {@code umami} database
-     * that came across inside {@code pgdata}. There is no Roller volume to
+     * that came across inside {@code pgdata}. There is no old volume to
      * copy it from.
      */
     @Test
