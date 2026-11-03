@@ -79,11 +79,19 @@ load_credentials() {
 # --fail-with-body means an API error body (a problem+json document) is
 # printed rather than swallowed -- a CLI that prints nothing on a 400 is
 # useless for debugging.
+#
+# The token is a bearer credential, as good as the password that minted it,
+# so it gets the same care as the password in cmd_auth_login: never an argv
+# entry. `-H "Authorization: Bearer $TOKEN"` put it on curl's command line,
+# readable by any local user via `ps -ef` or /proc/<pid>/cmdline for the life
+# of every request. curl reads `-H @file` as header lines instead, and the
+# "file" is a process substitution: a pipe that printf (a builtin, so no argv
+# either) writes and curl reads once. Nothing touches the disk.
 api() {
     local method="$1" path="$2"; shift 2
     curl -sS --fail-with-body \
         -X "$method" \
-        -H "Authorization: Bearer ${PRESSROOM_API_TOKEN:-}" \
+        -H @<(printf 'Authorization: Bearer %s\n' "${PRESSROOM_API_TOKEN:-}") \
         -H "Content-Type: application/json" \
         "$@" \
         "${PRESSROOM_API_URL}/api/v1${path}"
@@ -95,7 +103,7 @@ api_raw() {
     local method="$1" path="$2"; shift 2
     curl -sS --fail-with-body \
         -X "$method" \
-        -H "Authorization: Bearer ${PRESSROOM_API_TOKEN:-}" \
+        -H @<(printf 'Authorization: Bearer %s\n' "${PRESSROOM_API_TOKEN:-}") \
         "$@" \
         "${PRESSROOM_API_URL}/api/v1${path}"
 }
@@ -118,16 +126,24 @@ read_text_file() {
 # ------------------------------------------------------------------- auth
 
 cmd_auth_login() {
-    local url="" user="" password_stdin=0
+    local url="" user="" password_stdin=0 role="ADMIN"
     while [ $# -gt 0 ]; do
         case "$1" in
             --url)  need_arg "$@"; url="$2";  shift 2 ;;
             --user) need_arg "$@"; user="$2"; shift 2 ;;
+            --role) need_arg "$@"; role="$(printf '%s' "$2" | tr '[:lower:]' '[:upper:]')"; shift 2 ;;
             --password-stdin) password_stdin=1; shift ;;
             *) die "Unknown option: $1" ;;
         esac
     done
     [ -n "$url" ] || die "--url is required."
+    # ADMIN stays the default, so an existing script keeps the token it got;
+    # a token that only drafts or reads is a --role away, and is the safer
+    # thing to leave in ~/.pressroom/credentials (docs/api/README.md, Token scopes).
+    case "$role" in
+        READ|POST|ADMIN) ;;
+        *) die "--role must be READ, POST or ADMIN." ;;
+    esac
     [ -n "$user" ] || { printf 'Username: '; read -r user; }
 
     # The password is read once, sent once, and never stored. Only the returned
@@ -186,7 +202,7 @@ cmd_auth_login() {
         --netrc-file "$netrc_file" \
         -H "Content-Type: application/json" \
         -X POST "${url}/api/v1/tokens" \
-        -d "$(jq -n --arg label "pressroom-api cli" '{label: $label, role: "ADMIN"}')")"; then
+        -d "$(jq -n --arg label "pressroom-api cli" --arg role "$role" '{label: $label, role: $role}')")"; then
         rm -f "$netrc_file"
         local detail
         detail="$(printf '%s' "$login_response" | jq -r '.detail // empty' 2>/dev/null || true)"
@@ -985,7 +1001,7 @@ admin_weblogs_patch() {
 
 usage_auth() {
     cat <<'EOF'
-  auth login --url URL [--user NAME] [--password-stdin]
+  auth login --url URL [--user NAME] [--password-stdin] [--role READ|POST|ADMIN]
   auth status
 EOF
 }
@@ -1000,7 +1016,7 @@ pressroom-api -- Pressroom automation API client
       ~/.pressroom/credentials. Lets a one-off call reach a second instance
       without touching the environment or the stored credentials file.
 
-  auth login --url URL [--user NAME] [--password-stdin]
+  auth login --url URL [--user NAME] [--password-stdin] [--role READ|POST|ADMIN]
                                        mint and store a token; --password-stdin
                                        reads the password from stdin instead of
                                        prompting, for scripts and CI

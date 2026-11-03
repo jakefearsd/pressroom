@@ -189,7 +189,7 @@ class RenderErrorStatusTest {
         RenderCache<WeblogPageRequest> cache = RenderCaches.forPage(false);
         WeblogPageRequest pageRequest = new WeblogPageRequest(TestUtils.weblogger(), request);
         Weblog current = TestUtils.weblogger().getWeblogManager().getWeblogByHandle(HANDLE);
-        return cache.get(cache.generateKey(pageRequest), cache.lastModified(current));
+        return cache.get(cache.generateKey(pageRequest), cache.basis(current));
     }
 
     private void saveCustomTemplate(String name, String contents) throws Exception {

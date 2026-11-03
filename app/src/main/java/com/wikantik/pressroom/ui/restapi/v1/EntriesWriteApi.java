@@ -19,7 +19,6 @@ import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.AnchorTakenException;
 import com.wikantik.pressroom.business.fetch.RemoteImageFetcher;
-import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogCategory;
@@ -160,6 +159,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         // Before every other check, and so before the import step can fetch:
         // a caller whose view of the text is stale learns that first.
         requireUnchanged(entry, sent.expectedContentHash());
+        String read = entry.getText();
 
         FieldErrors errors = new FieldErrors();
         EntryFields shown = EntryFields.of(fields, errors);
@@ -185,7 +185,11 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
 
         // The import step commits each image it stores; nothing has been
         // applied to the managed entry yet, so nothing of the write goes with it.
-        apply(entry, weblog, imports.run(importPlan, weblog, body), cleared);
+        EntryDtos.EntryWrite effective = imports.run(importPlan, weblog, body);
+        if (sent.expectedContentHash() != null || EntryEdits.sent(sent.edits())) {
+            requireUnchangedUnderLock(entry, read);
+        }
+        apply(entry, weblog, effective, cleared);
         // The token's user made this save, so a revision it leaves names them,
         // and carries the note when one was sent.
         weblogger.getWeblogEntryManager().saveWeblogEntry(entry, requireAuthenticatedUser(request), revisionNote);
@@ -215,8 +219,12 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
             @RequestParam(value = "fields", required = false) List<String> fields) throws WebloggerException {
         WeblogEntry entry = requireLiveEntry(request, id);
         WeblogEntryRevision revision = requireRevision(entry, revisionId);
-        requireUnchanged(entry, body == null ? null : body.expectedContentHash());
+        String expected = body == null ? null : body.expectedContentHash();
+        requireUnchanged(entry, expected);
         EntryFields shown = EntryFields.of(fields);
+        if (expected != null) {
+            requireUnchangedUnderLock(entry, entry.getText());
+        }
 
         entry.setTitle(revision.getTitle());
         entry.setText(revision.getText());
@@ -341,6 +349,28 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         String current = EntryDtos.contentHash(entry.getText());
         if (!expected.equalsIgnoreCase(current)) {
             throw ApiException.entryChanged(current);
+        }
+    }
+
+    /**
+     * {@link #requireUnchanged} again, under the entry's row lock, immediately
+     * before the save: the first check is unlocked, and the import step
+     * between it and the save commits and can take a minute. Two agents
+     * sending the same hash both passed it, and the second save discarded
+     * the first unseen. Now the second waits for the first's commit, finds
+     * the text it read gone, and is the 409 {@code entry-changed}. Taken only
+     * by a write that names the text it read (a hash, or edits resolved
+     * against it); any other write is last-writer-wins, as documented.
+     *
+     * @param read the stored text the write was checked or computed against
+     */
+    private void requireUnchangedUnderLock(WeblogEntry entry, String read) throws WebloggerException {
+        String committed = weblogger.getWeblogEntryManager().lockEntryText(entry);
+        if (committed == null) {
+            throw ApiException.notFound("No such entry.");
+        }
+        if (!committed.equals(read)) {
+            throw ApiException.entryChanged(EntryDtos.contentHash(committed));
         }
     }
 
@@ -502,7 +532,8 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
 
     /**
      * featuredImageId and ogImageId must name an image readers can load: a
-     * media file of this weblog, an image, outside every private directory.
+     * media file of this weblog, an image, outside every private directory
+     * ({@link WeblogOwnership#publicImage}, the JSP editors' rule too).
      * They were only length-checked, so a typo or a foreign id was stored and
      * the post silently had no featured image. A value equal to the stored
      * one is not re-checked, so an entry sent back exactly as it was read
@@ -512,9 +543,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         if (id == null || id.equals(stored)) {
             return;
         }
-        MediaFile file = WeblogOwnership.mediaFile(weblogger, id, weblog);
-        boolean hidden = file != null && file.getDirectory() != null && file.getDirectory().isPrivate();
-        if (file == null || !file.isImageFile() || hidden) {
+        if (WeblogOwnership.publicImage(weblogger, id, weblog) == null) {
             errors.add(field, field + " must be the id of an image in this weblog's media, "
                     + "outside any private directory.");
         }

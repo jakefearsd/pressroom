@@ -47,13 +47,18 @@ final class WeblogFeedRenderCache implements RenderCache<WeblogFeedRequest> {
     }
 
     @Override
-    public CachedContent get(String key, long lastModified) {
-        return (CachedContent) cache.get(key, lastModified);
+    public Basis basis(Weblog weblog) {
+        return new Basis(RenderCaches.lastModifiedOf(weblog), 0L);
     }
 
     @Override
-    public void put(String key, CachedContent content) {
-        cache.put(key, content);
+    public CachedContent get(String key, Basis current) {
+        return (CachedContent) cache.get(key, current.modified());
+    }
+
+    @Override
+    public void put(String key, CachedContent content, Basis basis) {
+        cache.put(key, content, basis.modified());
     }
 
     @Override

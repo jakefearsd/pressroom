@@ -66,7 +66,7 @@ public class WeblogFeedCacheTest {
     public void cachedFeedIsServedUntilTheWeblogChanges() {
         String key = "cache.weblogfeed:test-feed";
 
-        cache.put(key, "rendered feed");
+        cache.put(key, "rendered feed", System.currentTimeMillis());
 
         assertEquals("rendered feed", cache.get(key, 0L),
                 "A cached feed must be served while it is newer than the weblog's last change");
@@ -84,7 +84,7 @@ public class WeblogFeedCacheTest {
     @Test
     public void removedFeedIsNoLongerServed() {
         String key = "cache.weblogfeed:test-feed";
-        cache.put(key, "rendered feed");
+        cache.put(key, "rendered feed", System.currentTimeMillis());
 
         cache.remove(key);
 
@@ -93,8 +93,8 @@ public class WeblogFeedCacheTest {
 
     @Test
     public void clearDropsEverything() {
-        cache.put("cache.weblogfeed:one", "one");
-        cache.put("cache.weblogfeed:two", "two");
+        cache.put("cache.weblogfeed:one", "one", System.currentTimeMillis());
+        cache.put("cache.weblogfeed:two", "two", System.currentTimeMillis());
 
         cache.clear();
 
@@ -175,7 +175,7 @@ public class WeblogFeedCacheTest {
         // tested is the constructor reading the configuration
         WeblogFeedCache configured = WeblogFeedCache.newForTest(true);
         for (int i = 0; i < configuredSize; i++) {
-            configured.put("key" + i, "feed " + i);
+            configured.put("key" + i, "feed " + i, System.currentTimeMillis());
         }
 
         assertEquals("feed 0", configured.get("key0", 0L),
@@ -184,7 +184,7 @@ public class WeblogFeedCacheTest {
                         + "install silently falls back to the default size.");
 
         // key0 was just read, so key1 is the least recently used
-        configured.put("one-too-many", "feed");
+        configured.put("one-too-many", "feed", System.currentTimeMillis());
         assertNull(configured.get("key1", 0L),
                 "and no more than that, or the cache grows without limit");
     }
@@ -312,7 +312,7 @@ public class WeblogFeedCacheTest {
         // cache.weblogfeed.enabled off: the calls must all be no-ops
         WeblogFeedCache disabled = WeblogFeedCache.newForTest(false);
 
-        disabled.put("key", "rendered feed");
+        disabled.put("key", "rendered feed", System.currentTimeMillis());
 
         assertNull(disabled.get("key", 0L),
                 "A disabled cache must never serve content, or turning caching off would "
@@ -320,7 +320,7 @@ public class WeblogFeedCacheTest {
         disabled.remove("key");
         disabled.clear();
 
-        cache.put("key", "rendered feed");
+        cache.put("key", "rendered feed", System.currentTimeMillis());
         assertEquals("rendered feed", cache.get("key", 0L),
                 "while the configured instance, which is enabled, still caches");
     }

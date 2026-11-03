@@ -209,6 +209,54 @@ class EntriesWriteApiEditsTest {
         verify(fx.entries, times(1)).saveWeblogEntry(eq(stored), argThat(u -> "maiia".equals(u.getUserName())), any());
     }
 
+    /**
+     * The hash matched when the request arrived, but another save of the
+     * entry committed before this one took the row lock (the import step can
+     * take a minute in between). Saving would discard that save unseen, so
+     * the re-check under the lock refuses it as the early check would have.
+     */
+    @Test
+    void aSaveCommittedBeforeTheRowLockIsA409EntryChangedAndNothingIsSaved() throws Exception {
+        when(fx.entries.lockEntryText(stored)).thenReturn("Another agent's text.");
+
+        JsonNode problem = json(patchEntry("{\"title\":\"New\",\"expectedContentHash\":\""
+                + sha256Hex(STORED) + "\"}").andExpect(status().isConflict()));
+
+        assertTrue(problem.get("type").asString().endsWith("/entry-changed"), problem.toString());
+        assertEquals(sha256Hex("Another agent's text."), problem.get("currentContentHash").asString());
+        nothingSaved();
+    }
+
+    /** Edits were resolved against the text read first; applied over a newer text they would discard it. */
+    @Test
+    void editsResolvedAgainstTextThatChangedBeforeTheRowLockAreA409() throws Exception {
+        when(fx.entries.lockEntryText(stored)).thenReturn("The pier. The dunes.");
+
+        JsonNode problem = json(patchEntry("{" + edits("The pier.", "The jetty.") + "}")
+                .andExpect(status().isConflict()));
+
+        assertEquals(sha256Hex("The pier. The dunes."), problem.get("currentContentHash").asString());
+        nothingSaved();
+    }
+
+    /** Deleted forever by another request in between: what any other missing entry answers. */
+    @Test
+    void anEntryGoneBeforeTheRowLockIsA404() throws Exception {
+        when(fx.entries.lockEntryText(stored)).thenReturn(null);
+
+        patchEntry("{\"title\":\"New\",\"expectedContentHash\":\"" + sha256Hex(STORED) + "\"}")
+                .andExpect(status().isNotFound());
+        nothingSaved();
+    }
+
+    /** A write that names no text it read keeps last-writer-wins, and takes no lock. */
+    @Test
+    void aWriteNamingNoTextItReadTakesNoLock() throws Exception {
+        patchEntry("{\"title\":\"New\"}").andExpect(status().isOk());
+
+        verify(fx.entries, never()).lockEntryText(any());
+    }
+
     @Test
     void expectedContentHashOnCreateIsA400() throws Exception {
         JsonNode problem = fx.refused(post("/v1/weblogs/myblog/entries").content(

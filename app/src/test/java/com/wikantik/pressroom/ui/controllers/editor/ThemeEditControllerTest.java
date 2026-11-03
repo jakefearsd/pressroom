@@ -68,10 +68,9 @@ class ThemeEditControllerTest extends EditorControllerTestSupport {
         givenRuntimeProperty("themes.customtheme.allowed", "true");
 
         // The controller resolves the current theme through its injected
-        // facade's ThemeManager. save() does so unconditionally via
-        // isSharedThemeCustomStylesheet() before even branching on themeType, so
-        // every test needs a non-null default here or it NPEs before the
-        // behaviour under test ever runs. Tests that care about the current
+        // facade's ThemeManager. save() does so on every path (re-rendering
+        // the form through loadThemeData), so every test needs a non-null
+        // default here. Tests that care about the current
         // theme's id, name or stylesheet override this with their own stub.
         WeblogTheme defaultCurrentTheme = mock(WeblogTheme.class);
         when(weblogger.getThemeManager().getTheme(weblog)).thenReturn(defaultCurrentTheme);
@@ -499,6 +498,79 @@ class ThemeEditControllerTest extends EditorControllerTestSupport {
         controller.save(request, model, WeblogTheme.CUSTOM, "shared-1", true);
 
         verify(weblogger.getThemeManager()).importTheme(weblog, sourceTheme, true);
+    }
+
+    @Test
+    void aStylesheetCheckThatFailsRefusesTheImportRatherThanOverwritingACustomisedStylesheet() throws Exception {
+        // Whether the current theme's stylesheet was customised decides
+        // skipStylesheet. A check that could not run is not a check that
+        // passed: answering "not customised" let the import overwrite it.
+        weblog.setEditorTheme("shared-1");
+        ThemeTemplate stylesheetTemplate = mock(ThemeTemplate.class);
+        when(stylesheetTemplate.getLink()).thenReturn("style.css");
+        WeblogTheme currentTheme = mock(WeblogTheme.class);
+        when(currentTheme.getStylesheet()).thenReturn(stylesheetTemplate);
+        when(weblogger.getThemeManager().getTheme(weblog)).thenReturn(currentTheme);
+        when(weblogger.getWeblogManager().getTemplateByLink(weblog, "style.css"))
+                .thenThrow(new WebloggerException("database down"));
+        when(weblogger.getThemeManager().getTheme("shared-1")).thenReturn(mock(SharedTheme.class));
+
+        String view = controller.save(request, model, WeblogTheme.CUSTOM, "shared-1", true);
+
+        assertEquals(".ThemeEdit", view);
+        assertTrue(errors(model).contains("generic.error.check.logs"), "Got: " + errors(model));
+        verify(weblogger.getThemeManager(), never())
+                .importTheme(any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
+        assertEquals("shared-1", weblog.getEditorTheme());
+        verify(weblogger.getWeblogManager(), never()).saveWeblog(any());
+    }
+
+    @Test
+    void aCurrentThemeThatCannotBeResolvedRefusesReimportingItRatherThanGuessing() throws Exception {
+        weblog.setEditorTheme("shared-1");
+        when(weblogger.getThemeManager().getTheme(weblog)).thenThrow(new WebloggerException("theme gone"));
+        when(weblogger.getThemeManager().getTheme("shared-1")).thenReturn(mock(SharedTheme.class));
+
+        controller.save(request, model, WeblogTheme.CUSTOM, "shared-1", true);
+
+        assertTrue(errors(model).contains("generic.error.check.logs"), "Got: " + errors(model));
+        verify(weblogger.getThemeManager(), never())
+                .importTheme(any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
+        verify(weblogger.getWeblogManager(), never()).saveWeblog(any());
+    }
+
+    @Test
+    void importingTheSitewideOnlyFrontpageThemeIntoAnOrdinaryWeblogIsRefused() throws Exception {
+        // The picker does not offer frontpage to an ordinary weblog; the
+        // custom-import path must apply the same rule as the shared one.
+        weblog.setEditorTheme("journal");
+        WeblogTheme journal = mock(WeblogTheme.class);
+        when(journal.getId()).thenReturn("journal");
+        when(weblogger.getThemeManager().getTheme(weblog)).thenReturn(journal);
+        givenEnabledThemes("journal", "frontpage");
+
+        controller.save(request, model, WeblogTheme.CUSTOM, "frontpage", true);
+
+        assertEquals(List.of("themeEditor.error.notOffered"), errors(model));
+        verify(weblogger.getThemeManager(), never())
+                .importTheme(any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
+        assertEquals("journal", weblog.getEditorTheme());
+        verify(weblogger.getWeblogManager(), never()).saveWeblog(any());
+    }
+
+    @Test
+    void aWeblogAlreadyOnFrontpageMayStillCustomiseIt() throws Exception {
+        weblog.setEditorTheme("frontpage");
+        WeblogTheme frontpage = mock(WeblogTheme.class);
+        when(frontpage.getId()).thenReturn("frontpage");
+        when(weblogger.getThemeManager().getTheme(weblog)).thenReturn(frontpage);
+        givenEnabledThemes("journal", "frontpage");
+
+        controller.save(request, model, WeblogTheme.CUSTOM, "frontpage", true);
+
+        assertTrue(errors(model).isEmpty(), "Got: " + errors(model));
+        verify(weblogger.getThemeManager()).importTheme(any(), any(), org.mockito.ArgumentMatchers.eq(false));
+        assertEquals(WeblogTheme.CUSTOM, weblog.getEditorTheme());
     }
 
     @Test

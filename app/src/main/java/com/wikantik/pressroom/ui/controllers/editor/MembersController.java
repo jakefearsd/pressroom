@@ -33,8 +33,9 @@ import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.WeblogPermission;
+import com.wikantik.pressroom.ui.controllers.AdminLog;
 import com.wikantik.pressroom.ui.controllers.BaseController;
-import com.wikantik.pressroom.util.Utilities;
+import com.wikantik.pressroom.ui.controllers.Memberships;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -79,61 +80,85 @@ public class MembersController extends BaseController {
         return ".Members";
     }
 
+    /** The value a member's row posts to remove them. */
+    private static final String REMOVE = "-1";
+
+    /** A member the page can show (its account resolves) and what the form posted for them. */
+    private record Submitted(WeblogPermission permission, User member, String value) {
+    }
+
     @PostMapping("/members!save.rol")
     public String save(HttpServletRequest request, Model model) {
         populateCommonModel(request, model);
 
-        int numAdmins = 0;
         int removed = 0;
         int changed = 0;
-        List<WeblogPermission> permsList = new ArrayList<>();
 
         try {
             UserManager userMgr = weblogger.getUserManager();
-            List<WeblogPermission> permsFromDB = userMgr.getWeblogPermissions(getActionWeblog(request));
+            Weblog weblog = getActionWeblog(request);
+            User user = getAuthenticatedUser(request);
 
-            for (WeblogPermission perm : permsFromDB) {
-                permsList.add(perm);
+            List<Submitted> rows = new ArrayList<>();
+            for (WeblogPermission perms : userMgr.getWeblogPermissions(weblog)) {
+                User permUser = userMgr.getUserByUserName(perms.getUserName());
+                if (permUser == null) {
+                    // The page shows no control for an account that no longer
+                    // resolves (deleted or disabled), so nothing was posted for
+                    // it; one such row used to abort every other change.
+                    log.warn("Skipping the membership of {} on weblog {}: the account does not resolve",
+                            perms.getUserName(), weblog.getHandle());
+                    continue;
+                }
+                rows.add(new Submitted(perms, permUser, request.getParameter("perm-" + permUser.getId())));
             }
 
-            User user = getAuthenticatedUser(request);
-            Weblog weblog = getActionWeblog(request);
             boolean error = false;
-            for (WeblogPermission perms : permsList) {
-                User permUser = userMgr.getUserByUserName(perms.getUserName());
-                String sval = request.getParameter("perm-" + permUser.getId());
-                if (sval != null) {
-                    if (WeblogPermission.ADMIN.equals(sval)) {
-                        numAdmins++;
-                    }
-                    if (perms.getUserName().equals(user.getUserName())
-                            && !WeblogPermission.ADMIN.equals(sval)) {
-                        error = true;
-                        addError(model, "memberPermissions.noSelfModifications", request);
-                    }
+            boolean badLevel = false;
+            int numAdmins = 0;
+            for (Submitted row : rows) {
+                String sval = row.value();
+                if (sval == null) {
+                    continue;
                 }
+                if (!REMOVE.equals(sval) && !Memberships.LEVELS.contains(sval)) {
+                    // One of the three levels or removal, as the person page
+                    // allows (UserWeblogsController), never an action list.
+                    badLevel = true;
+                }
+                if (WeblogPermission.ADMIN.equals(sval)) {
+                    numAdmins++;
+                }
+                if (row.permission().getUserName().equals(user.getUserName())
+                        && !WeblogPermission.ADMIN.equals(sval)) {
+                    error = true;
+                    addError(model, "memberPermissions.noSelfModifications", request);
+                }
+            }
+            if (badLevel) {
+                addError(model, "userWeblogs.error.level", request);
+                error = true;
             }
             if (numAdmins == 0) {
                 addError(model, "memberPermissions.oneAdminRequired", request);
                 error = true;
             }
 
-            for (WeblogPermission perms : permsList) {
-                User permUser = userMgr.getUserByUserName(perms.getUserName());
-                String sval = request.getParameter("perm-" + permUser.getId());
-                if (sval != null && !error && !perms.hasAction(sval)) {
-                    if ("-1".equals(sval)) {
-                        userMgr.revokeWeblogPermission(
-                                weblog, permUser, WeblogPermission.ALL_ACTIONS);
-                        removed++;
-                    } else {
-                        userMgr.revokeWeblogPermission(
-                                weblog, permUser, WeblogPermission.ALL_ACTIONS);
-                        userMgr.grantWeblogPermission(
-                                weblog, permUser,
-                                Utilities.stringToStringList(sval, ","));
-                        changed++;
-                    }
+            for (Submitted row : rows) {
+                String sval = row.value();
+                if (sval == null || error || row.permission().hasAction(sval)) {
+                    continue;
+                }
+                User permUser = row.member();
+                userMgr.revokeWeblogPermission(weblog, permUser, WeblogPermission.ALL_ACTIONS);
+                if (REMOVE.equals(sval)) {
+                    AdminLog.record("membership.removed", user, Memberships.details(permUser, weblog));
+                    removed++;
+                } else {
+                    userMgr.grantWeblogPermission(weblog, permUser, List.of(sval));
+                    AdminLog.record("membership.changed", user,
+                            Memberships.details(permUser, weblog) + " level=" + sval);
+                    changed++;
                 }
             }
 
@@ -212,27 +237,29 @@ public class MembersController extends BaseController {
                     addFieldError(model, "grantUserName", "inviteMember.error.readerAccount", request);
                 }
             } catch (WebloggerException ex) {
-                log.error("Error looking up user by name - {}", userName, ex);
+                // userName is a raw request parameter: never logged (a CR/LF could forge a line).
+                log.error("Error looking up a user to add to weblog {}", getActionWeblog(request).getHandle(), ex);
                 addError(model, "memberPermissions.saveError", request);
             }
         }
 
-        // The form's <select> always submits a value, so a blank
-        // permissionString only happens via a hand-crafted POST. Reject it
-        // here, the same way a blank userName is rejected above, rather than
-        // letting it fall into Utilities.stringToStringList(null, ",") --
-        // that NPEs, and while the catch below surfaces it as a normal field
-        // error, it also logs a full stack trace at ERROR for what is really
-        // just malformed input.
+        // The form's <select> always submits one of the three levels, so a
+        // blank or other permissionString only happens via a hand-crafted
+        // POST. Refused here as malformed input, never granted as posted.
         if (StringUtils.isBlank(permissionString)) {
             addError(model, "memberPermissions.saveError", request);
+        } else if (!Memberships.LEVELS.contains(permissionString)) {
+            // One level, as the select offers and the person page allows, never
+            // a comma-separated action list.
+            addError(model, "userWeblogs.error.level", request);
         }
 
         if (!hasErrors(model)) {
             try {
-                userMgr.grantWeblogPermission(getActionWeblog(request), user,
-                        Utilities.stringToStringList(permissionString, ","));
+                userMgr.grantWeblogPermission(getActionWeblog(request), user, List.of(permissionString));
                 weblogger.flush();
+                AdminLog.record("membership.granted", getAuthenticatedUser(request),
+                        Memberships.details(user, getActionWeblog(request)) + " level=" + permissionString);
                 addMessage(model, "memberPermissions.memberChanged", StringEscapeUtils.escapeHtml4(user.getUserName()), request);
             } catch (Exception ex) {
                 log.error("Error granting permission on weblog - {}", getActionWeblog(request).getHandle(), ex);

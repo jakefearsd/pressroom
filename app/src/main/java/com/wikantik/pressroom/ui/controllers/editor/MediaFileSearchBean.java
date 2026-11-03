@@ -19,7 +19,7 @@ package com.wikantik.pressroom.ui.controllers.editor;
 
 import java.util.Arrays;
 
-import java.util.ResourceBundle;
+import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.util.PressroomConstants;
 import com.wikantik.pressroom.pojos.MediaFileFilter;
@@ -31,8 +31,12 @@ import com.wikantik.pressroom.pojos.MediaFileFilter.SizeFilterType;
  * Bean for holding media file search criteria.
  */
 public class MediaFileSearchBean {
-    private transient ResourceBundle bundle =
-            ResourceBundle.getBundle("ApplicationResources");
+    /**
+     * Display labels of the form's option keys, in the request's language,
+     * handed over by the controller. Deliberately not a bean property, so no
+     * posted parameter can bind to it.
+     */
+    private transient Map<String, String> labels = Map.of();
 
     public static final int PAGE_SIZE = 10;
 
@@ -73,7 +77,7 @@ public class MediaFileSearchBean {
     }
 
     public String getTypeLabel() {
-        return this.bundle.getString(type);
+        return label(type);
     }
 
     public void setType(String type) {
@@ -89,7 +93,7 @@ public class MediaFileSearchBean {
     }
 
     public String getSizeFilterTypeLabel() {
-        return this.bundle.getString(sizeFilterType);
+        return label(sizeFilterType);
     }
 
     public long getSize() {
@@ -105,7 +109,7 @@ public class MediaFileSearchBean {
     }
 
     public String getSizeUnitLabel() {
-        return this.bundle.getString(sizeUnit);
+        return label(sizeUnit);
     }
 
     public void setSizeUnit(String sizeUnit) {
@@ -134,6 +138,24 @@ public class MediaFileSearchBean {
 
     public void setSortOption(int sortOption) {
         this.sortOption = sortOption;
+    }
+
+    /**
+     * Uses {@code optionLabels} (option key to display label) for the label
+     * getters, which the search results print through an unescaped
+     * {@code <spring:message arguments>}.
+     */
+    public void useLabels(Map<String, String> optionLabels) {
+        this.labels = Map.copyOf(optionLabels);
+    }
+
+    /**
+     * The label of an option the form offers; empty for anything else, so a
+     * posted value the form never offered neither fails the page nor is
+     * echoed into it.
+     */
+    private String label(String key) {
+        return key == null ? "" : labels.getOrDefault(key, "");
     }
 
     /**

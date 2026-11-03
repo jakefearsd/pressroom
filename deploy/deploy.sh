@@ -57,6 +57,24 @@ for required in "${COMPOSE_FILE}" .env; do
     fi
 done
 
+# env.example ships every secret as a changeme-... placeholder, and those
+# satisfy compose's ${VAR:?} checks: a .env copied without editing would
+# start a stack whose passwords are printed in a public repository. Refused
+# here, before anything is pulled, started or written. Names only, never
+# values. A commented-out line is not a setting and is not checked.
+refuse_placeholder_secrets() {
+    local env_file="${1:-.env}" placeholders
+    placeholders=$(sed -n -E "s/^[[:space:]]*(export[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*)=[\"']?changeme.*/\2/p" \
+        "${env_file}")
+    if [[ -n "${placeholders}" ]]; then
+        echo "Refusing to deploy: ${env_file} still holds env.example's changeme placeholder for:" >&2
+        sed 's/^/    /' <<<"${placeholders}" >&2
+        echo "Set a real value for each (openssl rand -hex 32 makes one) and run this again." >&2
+        exit 1
+    fi
+}
+refuse_placeholder_secrets .env
+
 # Appends NAME=<openssl rand -hex 24> to the env file ($3, default .env)
 # unless it already holds a non-empty NAME ($1); $2 says what it is for. Appending keeps
 # the file's mode and owner as the operator set them, and an interrupted

@@ -164,6 +164,50 @@ class VirtualHostRegistryTest {
                         + "default log level");
     }
 
+    /**
+     * A build an invalidation overtook -- it read the weblogs before a save
+     * committed and finished after that commit's invalidate() -- answers the
+     * read that ran it, but is not kept: it wrote the cache after the
+     * invalidation and so reinstalled the old map, with nothing left to
+     * invalidate it again.
+     */
+    @Test
+    void aBuildOvertakenByAnInvalidationIsNotKept() throws WebloggerException {
+        WeblogManager manager = mock(WeblogManager.class);
+        VirtualHostRegistry registry = new VirtualHostRegistry(manager);
+        when(manager.getWeblogs(null, null, null, null, 0, -1))
+                .thenAnswer(read -> {
+                    registry.invalidate();   // the save commits while this build is under way
+                    return List.of(weblogWithDomain("b", "old.example.com"));
+                })
+                .thenReturn(List.of(weblogWithDomain("b", "new.example.com")));
+
+        assertEquals("b", registry.handleFor("old.example.com"));
+
+        assertEquals("new.example.com", registry.hostFor("b"), "the next read rebuilds");
+    }
+
+    /**
+     * Inside a unit of work with uncommitted changes the weblogs read may be
+     * ones that never commit, so a map built there answers that read and is
+     * not kept for everyone else.
+     */
+    @Test
+    void aMapBuiltInsideUncommittedWorkIsNotKept() throws WebloggerException {
+        WeblogManager manager = managerWith(weblogWithDomain("b", "b.example.com"));
+        boolean[] uncommitted = {true};
+        VirtualHostRegistry registry = new VirtualHostRegistry(manager, () -> uncommitted[0]);
+
+        assertEquals("b", registry.handleFor("b.example.com"));
+        assertEquals("b", registry.handleFor("b.example.com"));
+        verify(manager, times(2)).getWeblogs(null, null, null, null, 0, -1);
+
+        uncommitted[0] = false;
+        registry.handleFor("b.example.com");
+        registry.handleFor("b.example.com");
+        verify(manager, times(3)).getWeblogs(null, null, null, null, 0, -1);
+    }
+
     /** A failed build is not cached: the next read tries the manager again. */
     @Test
     void aFailedBuildIsNotCached() throws WebloggerException {

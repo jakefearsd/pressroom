@@ -93,7 +93,9 @@ image names in `docker-compose.prod.yml` to point at your fork's GHCR path.)
 `docker-compose.prod.yml` reads all of its configuration — infrastructure
 settings **and** the app's own runtime properties — from a `.env` file next
 to it (gitignored — it holds secrets). You already renamed the downloaded
-`env.example` to `.env` above; edit it in place.
+`env.example` to `.env` above; edit it in place. Every `changeme-...` value
+in it is a placeholder: `deploy.sh` refuses to start the stack while any
+setting still holds one, and names each.
 
 The `app` service loads `.env` wholesale via `env_file: .env`, not just the
 `PRESSROOM_*` keys `WebloggerConfig` actually reads — every variable in the
@@ -1033,9 +1035,15 @@ scheduler that wakes hourly and, once a day at `BACKUP_HOUR` (UTC), runs
 the `pressroom-backups` volume is root-owned, and the image's unprivileged
 `pressroom` user cannot write into it. Each cycle:
 
-1. `pg_dump -Fc` the database to `/backups/pressroom-<timestamp>.dump`.
-2. `tar czf` the `mediafiles`/`search-index`/`uploads` volumes to
-   `/backups/volumes-<timestamp>.tar.gz`.
+1. `pg_dump -Fc` the database to `/backups/pressroom-<timestamp>.dump` (and
+   the Umami and listmonk databases beside it, when the stack has them).
+   Each dump is read back with `pg_restore -l` before it is published; one
+   that cannot be listed fails the backup.
+2. `tar` the `mediafiles`/`uploads` volumes to
+   `/backups/volumes-<timestamp>.tar.gz`. The volumes are live, so a file
+   that changes while tar reads it is expected and does not fail the run
+   (tar's exit 1); a real tar failure (exit 2) does. The search index is not
+   archived: the app rebuilds it from the database whenever it finds none.
 3. Deletes anything in `/backups` older than `BACKUP_RETENTION_DAYS`.
 
 Both artifacts are written atomically: each is built under a `.tmp` suffix
@@ -1061,9 +1069,19 @@ docker compose -f docker-compose.prod.yml exec backup /app/backup/umami-retentio
 ```
 
 These dumps contain the full database, including user password hashes —
-treat them as sensitive. Copy nightly dumps off-host regularly (e.g. an
-`rclone`/`rsync` cron job to remote storage) and restrict filesystem access
-to wherever they land, both on this host and off it.
+treat them as sensitive. **The `pressroom-backups` volume is on the same
+disk as the database it protects**: a lost disk or host takes both. Copy the
+backups off the host every day, after `BACKUP_HOUR`, for example from the
+host's crontab:
+
+```bash
+# 04:30 UTC, an hour after the default BACKUP_HOUR=3
+30 4 * * * cd /opt/pressroom && docker compose -f docker-compose.prod.yml cp backup:/backups/. /srv/pressroom-backups/ && rclone sync /srv/pressroom-backups remote:pressroom-backups
+```
+
+(any `rsync`/`rclone` target will do), and restrict filesystem access to
+wherever they land, both on this host and off it. Rotation deletes only
+inside the volume, so the off-host copy keeps its own history.
 
 Run a backup by hand at any time:
 
@@ -1151,8 +1169,11 @@ docker compose -f docker-compose.prod.yml run --rm --entrypoint bash backup -c '
 (`PG_CLIENT_MIN_MAJOR` in the `Dockerfile`) at or above the server major the
 compose file runs, so the ordinary path stays the one above.
 
-**Media/search-index/uploads volumes** (stack must be fully down — the
-archive extracts to `/data/...` paths matching the volume mount points):
+**Media/uploads volumes** (stack must be fully down — the archive extracts
+to `/data/...` paths matching the volume mount points). The search index is
+not in the archive: remove its volume, and the app rebuilds the index from
+the restored database when it starts (an index kept from before the restore
+would answer for entries the database no longer has):
 
 The volume names below are Compose's default PROJECT-PREFIXED names, not
 the bare names declared in `docker-compose.prod.yml` — the project name is
@@ -1164,9 +1185,9 @@ exact names on your host and substitute them below if they differ:
 
 ```bash
 docker compose -f docker-compose.prod.yml down
+docker volume rm pressroom_pressroom-search-index
 docker run --rm \
     -v pressroom_pressroom-mediafiles:/data/mediafiles \
-    -v pressroom_pressroom-search-index:/data/search-index \
     -v pressroom_pressroom-uploads:/data/uploads \
     -v pressroom_pressroom-backups:/backups \
     postgres:18@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280 \

@@ -297,6 +297,47 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
         }
     }
 
+    /**
+     * Characterisation test, written before {@code owned} was routed through
+     * {@code WeblogOwnership.comment}: a comment whose entry records no weblog
+     * is skipped like a foreign one, before and after.
+     */
+    @Test
+    void aCommentWhoseEntryHasNoWeblogIsSkipped() throws Exception {
+        ReaderComment orphan = comment("o", null, Status.PENDING, "x");
+
+        controller.approve(new String[] {"o"}, "PENDING", null, 0, request, model);
+
+        verify(service, never()).setStatus(orphan, Status.PUBLISHED, user);
+        assertTrue(messages(model).contains("0 approved."), "Got: " + messages(model));
+    }
+
+    @Test
+    void aCommentLookupThatThrowsIsNeverActedOn() throws Exception {
+        // WeblogOwnership's rule: a lookup that could not run reads as
+        // absent, so the id is skipped and counted out, never moderated.
+        ReaderComment a = comment("a", weblog, Status.PENDING, "x");
+        when(manager.getComment("boom")).thenThrow(new WebloggerException("down"));
+
+        controller.approve(new String[] {"boom", "a"}, "PENDING", null, 0, request, model);
+
+        verify(service).setStatus(a, Status.PUBLISHED, user);
+        assertTrue(messages(model).contains("1 approved."), "Got: " + messages(model));
+    }
+
+    @Test
+    void anEntryFilterLookupThatThrowsStillListsTheWeblogsComments() throws Exception {
+        // The filter is a display choice: an unreadable one is ignored like a
+        // foreign one, rather than emptying the whole page.
+        when(weblogger.weblogger().getWeblogEntryManager().getWeblogEntry("e9"))
+                .thenThrow(new WebloggerException("down"));
+
+        controller.execute("PENDING", 0, "e9", request, model);
+
+        verify(manager).getComments(weblog, Status.PENDING, null, 0, 30);
+        assertEquals(null, model.getAttribute("entryFilter"));
+    }
+
     @Test
     void aForeignCommentTakesNoReply() throws Exception {
         comment("f", other, Status.PUBLISHED, "q");

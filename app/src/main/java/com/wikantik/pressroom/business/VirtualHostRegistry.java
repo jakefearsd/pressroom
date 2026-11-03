@@ -4,6 +4,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BooleanSupplier;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
@@ -33,11 +35,28 @@ public final class VirtualHostRegistry {
 
     private static final Logger log = LoggerFactory.getLogger(VirtualHostRegistry.class);
 
-    private final WeblogManager weblogManager;
-    private volatile Map<String, String> hostToHandle;
+    /** A built map and the generation its build began in. */
+    private record Snapshot(long generation, Map<String, String> hostToHandle) {
+    }
 
+    private final WeblogManager weblogManager;
+    private final BooleanSupplier uncommittedWork;
+    private final AtomicLong generation = new AtomicLong();
+    private volatile Snapshot current;
+
+    /** For callers with no unit of work to ask about; every build may be kept. */
     public VirtualHostRegistry(WeblogManager weblogManager) {
+        this(weblogManager, () -> false);
+    }
+
+    /**
+     * @param uncommittedWork whether the calling thread's unit of work holds
+     *        uncommitted changes ({@code JPAPersistenceStrategy.hasUncommittedWork});
+     *        a map built while it does answers that read and is not kept
+     */
+    public VirtualHostRegistry(WeblogManager weblogManager, BooleanSupplier uncommittedWork) {
         this.weblogManager = weblogManager;
+        this.uncommittedWork = uncommittedWork;
     }
 
     /**
@@ -89,15 +108,32 @@ public final class VirtualHostRegistry {
         return null;
     }
 
-    /** Drops the cached map; the next read rebuilds it. */
+    /**
+     * Drops the cached map; the next read rebuilds it. Also starts a new
+     * generation, so a build already under way -- it may have read the rows
+     * the invalidating save replaced -- is not kept when it finishes.
+     */
     public void invalidate() {
-        hostToHandle = null;
+        generation.incrementAndGet();
+        current = null;
     }
 
+    /**
+     * The cached map, or a fresh build. Each build is tagged with the
+     * generation it began in and is served again only while that generation
+     * is current: a reader that started before a commit and finished after
+     * its after-commit {@link #invalidate()} would otherwise reinstall the old
+     * map, with nothing left to invalidate it (RuntimeConfigSnapshot does the
+     * same). A build inside a unit of work with uncommitted changes is not
+     * kept at all (WeblogStampedCache's rule): what it read may never commit.
+     * Lock-free: a stale build may overwrite a current one, which costs one
+     * extra build, never a stale answer.
+     */
     private Map<String, String> map() {
-        Map<String, String> cached = hostToHandle;
-        if (cached != null) {
-            return cached;
+        long now = generation.get();
+        Snapshot held = current;
+        if (held != null && held.generation() == now) {
+            return held.hostToHandle();
         }
         Map<String, String> built = new HashMap<>();
         try {
@@ -117,7 +153,9 @@ public final class VirtualHostRegistry {
             return Collections.emptyMap();
         }
         Map<String, String> immutable = Collections.unmodifiableMap(built);
-        hostToHandle = immutable;
+        if (!uncommittedWork.getAsBoolean()) {
+            current = new Snapshot(now, immutable);
+        }
         return immutable;
     }
 }

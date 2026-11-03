@@ -528,6 +528,12 @@ class RenditionSupportTest {
         }
 
         @Override
+        public boolean canReplace(Weblog weblog, String fileId, String fileName, String contentType,
+                long size, com.wikantik.pressroom.util.PressroomMessages messages) {
+            return true;
+        }
+
+        @Override
         public void release() {
         }
     }

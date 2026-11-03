@@ -24,6 +24,7 @@ import java.util.Map;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.MultiWeblogURLStrategy;
 import com.wikantik.pressroom.business.PropertiesManager;
+import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.discovery.BlogCard;
@@ -173,6 +174,26 @@ class DiscoveryModelTest {
 
     private WeblogWrapper wrap(Weblog weblog) {
         return WeblogWrapper.wrap(weblog, urls, weblogger);
+    }
+
+    /** Each blog is counted once per render, however many places name its count. */
+    @Test
+    void aPostCountIsAskedForOncePerBlogPerRender() throws Exception {
+        WeblogEntryManager entries = mock(WeblogEntryManager.class);
+        when(weblogger.getWeblogEntryManager()).thenReturn(entries);
+        Weblog one = weblog("one", "One");
+        Weblog two = weblog("two", "Two");
+        when(entries.getEntryCount(one)).thenReturn(4L);
+        when(entries.getEntryCount(two)).thenReturn(7L);
+        DiscoveryModel model = model();
+
+        assertEquals(4L, model.postCount(wrap(one)));
+        assertEquals(4L, model.postCount(wrap(one)), "a second wrapper of the same blog");
+        assertEquals(7L, model.postCount(wrap(two)));
+        assertEquals(0L, model.postCount(null));
+
+        verify(entries, times(1)).getEntryCount(one);
+        verify(entries, times(1)).getEntryCount(two);
     }
 
     @Test

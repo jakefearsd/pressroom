@@ -26,7 +26,34 @@ resolves through the index at the end of `CLAUDE.md`.
   `sandbox` CSP; anything else (HTML, XML, JS, unknown) is an `attachment`
   under `sandbox`, so an uploaded page can never run on the site's origin.
 - Backfill for pre-pipeline uploads: Maintenance page →
-  `MediaFileManager.regenerateRenditions(weblog)`.
+  `MediaFileManager.regenerateRenditions(weblog)`. It rebuilds the `_sm`
+  admin thumbnail as well as the ladder, and deletes every derived sibling
+  first (once the original has decoded): orientation correction can drop a
+  rung the old raster reached, and a leftover rung serves the old pixels.
+- **The row and the disk describe the same bytes.**
+  - A new upload (`persistNewMediaFile`) writes the file *before* the row
+    commits (the id is assigned at construction); a failed write commits no
+    row, and a failed commit deletes the just-written file.
+  - Replacing content (`updateMediaFile(…, InputStream)`, the edit form's
+    file input) checks first (`FileContentManager.canReplace`: the file being
+    replaced is not counted against the quota twice), then writes, then
+    stores the entity; a refusal commits nothing. It deletes the old `_sm`,
+    ladder and WebP siblings (`deleteDerivedFilesQuietly`, shared with crop)
+    and clears dimensions, blurhash, EXIF and GPS, which an image then gets
+    back from its new bytes. The focal point is author-set and kept. The
+    edit form's content type falls back to the file name's for a missing or
+    `octet-stream` type, as uploads do (`MediaUploads.effectiveContentType`).
+  - Deriving (`updateThumbnail`): an image that cannot be read or decoded
+    gets a WARN naming the file and no derived data; a store or commit
+    failure propagates to the caller rather than passing as a thumbnail
+    problem.
+  - `ExifSupport.extract`/`readOrientation` close the stream they are given,
+    as `ImageDecoding.read` does (`FileContent.getInputStream()` opens a new
+    file descriptor on every call).
+- **`MediaFile.originalPath`** is how a custom theme's `/resource/...` URLs
+  find the files theme import stored (`ResourceServlet`). The edit form shows
+  it, and `MediaFileBean.copyTo` copies it, only under
+  `mediafile.originalPathEdit.enabled` (default off).
 - Crop (Stage 2 Wave 2): `MediaFileManager.cropMediaFile` destructively
   re-encodes the original (orientation composed first, atomic temp+move
   write) and regenerates the whole ladder + thumbnail + blurhash; stored

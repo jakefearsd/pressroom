@@ -338,6 +338,49 @@ class WeblogEntryManagerQueryTest {
     }
 
     /**
+     * Deleting a category with moveTo is one unit of work: the move and the
+     * removal commit together or not at all. They used to commit separately,
+     * so a removal that failed left the entries moved and the category there.
+     */
+    @Test
+    void movingAndRemovingACategoryIsOneUnitOfWork() throws Exception {
+        WeblogCategory doomed = TestUtils.setupWeblogCategory(TestUtils.getManagedWebsite(blog), "Doomed");
+        TestUtils.endSession(true);
+        WeblogEntry created = TestUtils.setupWeblogEntry("doomed-post", doomed, PubStatus.DRAFT, blog, user);
+        TestUtils.endSession(true);
+
+        entries().removeWeblogCategory(TestUtils.getManagedWeblogCategory(doomed),
+                TestUtils.getManagedWeblogCategory(travel));
+        TestUtils.endSession(false);
+
+        assertEquals(doomed.getId(), entries().getWeblogEntry(created.getId()).getCategory().getId(),
+                "rolled back, so not even the move happened");
+        TestUtils.endSession(false);
+
+        entries().removeWeblogCategory(TestUtils.getManagedWeblogCategory(doomed),
+                TestUtils.getManagedWeblogCategory(travel));
+        TestUtils.endSession(true);
+
+        assertEquals(travel.getId(), entries().getWeblogEntry(created.getId()).getCategory().getId());
+        assertNull(entries().getWeblogCategory(doomed.getId()));
+    }
+
+    /** What GET .../categories reports as entryCount: every entry filed there but the trash, counted not loaded. */
+    @Test
+    void aCategorysLiveEntryCountLeavesOutTheTrash() throws Exception {
+        WeblogEntry draft = TestUtils.setupWeblogEntry("draft-post", travel, PubStatus.DRAFT, blog, user);
+        WeblogEntry binned = TestUtils.setupWeblogEntry("binned-post", travel, PubStatus.PUBLISHED, blog, user);
+        TestUtils.endSession(true);
+        WeblogEntry managed = entries().getWeblogEntry(binned.getId());
+        managed.setStatus(PubStatus.TRASHED);
+        entries().saveWeblogEntry(managed);
+        TestUtils.endSession(true);
+
+        assertEquals(3, entries().getLiveEntryCount(TestUtils.getManagedWeblogCategory(travel)),
+                "popular, quiet and the draft " + draft.getId());
+    }
+
+    /**
      * Trashing an entry does not free its anchor. If it did, a new entry
      * could take the same anchor and collide with the trashed one the moment
      * it is restored.

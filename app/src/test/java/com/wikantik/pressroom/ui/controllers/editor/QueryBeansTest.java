@@ -74,6 +74,24 @@ class QueryBeansTest {
                             + "clearing it");
         }
 
+        /**
+         * The labels are rendered from posted values: a value the form never
+         * offers must render as nothing, not throw MissingResourceException
+         * out of the JSP (a 500), and never echo the posted text, which
+         * {@code <spring:message arguments>} would print unescaped.
+         */
+        @Test
+        void aValueTheFormNeverOffersHasAnEmptyLabel() {
+            MediaFileSearchBean bean = new MediaFileSearchBean();
+            bean.setType("<script>x</script>");
+            bean.setSizeFilterType("mediaFileView.nonsense");
+            bean.setSizeUnit(null);
+
+            assertEquals("", bean.getTypeLabel());
+            assertEquals("", bean.getSizeFilterTypeLabel());
+            assertEquals("", bean.getSizeUnitLabel());
+        }
+
         @Test
         void eachSizeComparisonMapsToItsFilterType() {
             assertEquals(SizeFilterType.GT, sizeFilterFor("mediaFileView.gt"));

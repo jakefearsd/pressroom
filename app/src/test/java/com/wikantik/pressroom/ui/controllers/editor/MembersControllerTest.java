@@ -322,6 +322,80 @@ class MembersControllerTest extends EditorControllerTestSupport {
                 "A failed permission change must be reported: " + errors(model));
     }
 
+    // --- the Members page follows the person page's rules (UserWeblogsController) ---
+
+    @Test
+    void aPostedPermissionOutsideTheThreeLevelsIsRefusedAndNothingChanges() throws Exception {
+        // perm-<id> took any comma-separated action string as posted.
+        givenMember(user, WeblogPermission.ADMIN);
+        User bob = otherUser("bob");
+        givenMember(bob, WeblogPermission.EDIT_DRAFT);
+        submit(user, WeblogPermission.ADMIN);
+        submit(bob, "post,admin");
+
+        controller.save(request, model);
+
+        assertEquals(List.of("userWeblogs.error.level"), errors(model));
+        verify(weblogger.getUserManager(), never()).grantWeblogPermission(any(), any(), any());
+        verify(weblogger.getUserManager(), never()).revokeWeblogPermission(any(), any(), any());
+    }
+
+    @Test
+    void grantingAPermissionOutsideTheThreeLevelsIsRefused() throws Exception {
+        otherUser("bob");
+
+        controller.grant(request, model, "bob", "admin,login");
+
+        assertEquals(List.of("userWeblogs.error.level"), errors(model));
+        verify(weblogger.getUserManager(), never()).grantWeblogPermission(any(), any(), any());
+    }
+
+    @Test
+    void everyMembershipChangeIsRecordedInTheAdminLog() throws Exception {
+        givenMember(user, WeblogPermission.ADMIN);
+        User bob = otherUser("bob");
+        givenMember(bob, WeblogPermission.EDIT_DRAFT);
+        User carol = otherUser("carol");
+        givenMember(carol, WeblogPermission.POST);
+        otherUser("dave");
+        submit(user, WeblogPermission.ADMIN);
+        submit(bob, WeblogPermission.POST);
+        submit(carol, "-1");
+
+        try (com.wikantik.pressroom.testing.AdminLogCapture log =
+                     com.wikantik.pressroom.testing.AdminLogCapture.start()) {
+            controller.save(request, model);
+            controller.grant(request, newModel(), "dave", WeblogPermission.EDIT_DRAFT);
+
+            assertEquals(List.of(
+                    "membership.changed account=bob weblog=" + WEBLOG_HANDLE + " level=post by=" + USER_NAME,
+                    "membership.removed account=carol weblog=" + WEBLOG_HANDLE + " by=" + USER_NAME,
+                    "membership.granted account=dave weblog=" + WEBLOG_HANDLE + " level=edit_draft by=" + USER_NAME),
+                    log.lines());
+        }
+    }
+
+    @Test
+    void aPermissionWhoseAccountNoLongerResolvesIsSkippedNotASaveError() throws Exception {
+        // permUser.getId() on a missing account threw, and the catch-all
+        // turned every other change in the submission into a save error.
+        givenMember(user, WeblogPermission.ADMIN);
+        User ghost = new User();
+        ghost.setId("user-ghost");
+        ghost.setUserName("ghost");
+        givenMember(ghost, WeblogPermission.POST);
+        User bob = otherUser("bob");
+        givenMember(bob, WeblogPermission.EDIT_DRAFT);
+        submit(user, WeblogPermission.ADMIN);
+        submit(bob, WeblogPermission.POST);
+
+        controller.save(request, model);
+
+        assertTrue(errors(model).isEmpty(), "Got: " + errors(model));
+        verify(weblogger.getUserManager())
+                .grantWeblogPermission(eq(weblog), eq(bob), eq(List.of(WeblogPermission.POST)));
+    }
+
     // --- grant() : adding a brand-new member by username, no ceremony ---
 
     @Test

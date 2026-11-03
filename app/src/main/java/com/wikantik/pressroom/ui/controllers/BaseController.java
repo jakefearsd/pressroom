@@ -32,6 +32,7 @@ import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.GlobalPermission;
+import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
@@ -512,6 +513,38 @@ public abstract class BaseController implements UISecurityEnforced, UIActionPrep
      */
     public WeblogPage lookupPage(String id, HttpServletRequest request) {
         return WeblogOwnership.page(weblogger, id, getActionWeblog(request));
+    }
+
+    /**
+     * Refuses a picked featured or social image that is not an image readers
+     * of the action weblog can load ({@link WeblogOwnership#publicImage}),
+     * adding {@code errorKey} so the caller's {@code hasErrors} gate blocks
+     * the save. A blank id (the picker cleared) is accepted, and so is the
+     * value already stored: a form sent back as it was loaded must save even
+     * when its image has been deleted or made private since, the same
+     * allowance the API makes. A lookup that fails reads as refused.
+     */
+    protected void checkPickedImage(Model model, String errorKey, String posted, String stored,
+                                    HttpServletRequest request) {
+        if (StringUtils.isBlank(posted) || posted.equals(stored)) {
+            return;
+        }
+        if (WeblogOwnership.publicImage(weblogger, posted, getActionWeblog(request)) == null) {
+            addError(model, errorKey, request);
+        }
+    }
+
+    /**
+     * The thumbnail URL the editors show for a picked image, or null when the
+     * id is blank, unknown, not the action weblog's ({@link
+     * WeblogOwnership#mediaFile}: a file's weblog is its directory's) or could
+     * not be looked up. A display path: a dangling id renders no preview
+     * rather than a broken editor.
+     */
+    protected String pickedImageThumbnailURL(String mediaFileId, HttpServletRequest request) {
+        Weblog weblog = getActionWeblog(request);
+        MediaFile file = WeblogOwnership.mediaFile(weblogger, mediaFileId, weblog);
+        return file == null ? null : weblogger.getUrlStrategy().getMediaFileThumbnailURL(weblog, file.getId(), true);
     }
 
     /**

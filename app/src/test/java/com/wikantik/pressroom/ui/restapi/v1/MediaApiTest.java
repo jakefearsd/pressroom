@@ -30,6 +30,8 @@ import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.ApiExceptionHandler;
 import com.wikantik.pressroom.ui.restapi.dto.MediaDtos;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -795,11 +797,18 @@ class MediaApiTest {
 
     private MediaFile patchedFile(Weblogger weblogger, Weblog weblog, String json, int expectedStatus)
             throws Exception {
+        return patchedFile(weblogger, weblog, json, expectedStatus, true);
+    }
+
+    private MediaFile patchedFile(Weblogger weblogger, Weblog weblog, String json, int expectedStatus,
+                                  boolean withFocalPoint) throws Exception {
         MediaFileDirectory dir = aDirectory(weblog, "default");
         MediaFile file = aMediaFile(dir, "dog.jpg");
         file.setAltText("a");
-        file.setFocalX(0.2);
-        file.setFocalY(0.8);
+        if (withFocalPoint) {
+            file.setFocalX(0.2);
+            file.setFocalY(0.8);
+        }
         when(weblogger.getMediaFileManager().getMediaFile("file-1")).thenReturn(file);
         int actual = mockMvc(controllerFor(weblogger))
                 .perform(patch("/v1/weblogs/myblog/media/{id}", "file-1")
@@ -830,6 +839,53 @@ class MediaApiTest {
 
         assertEquals(0.2, file.getFocalX());
         verify(weblogger.getMediaFileManager(), never()).updateMediaFile(any(), any());
+    }
+
+    /**
+     * The admin UI's rule (MediaFileBean): a coordinate is a fraction of the
+     * image, 0 to 1. The UI clamps a dragged marker; the API refuses, as it
+     * refuses an out-of-range latitude, and changes nothing.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"{\"altText\":\"b\",\"focalX\":1.5}", "{\"altText\":\"b\",\"focalY\":-0.1}"})
+    void aFocalCoordinateOutsideZeroToOneIsA400AndChangesNothing(String json) throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        MediaFile file = patchedFile(weblogger, aWeblog("myblog"), json, 400);
+
+        assertEquals("a", file.getAltText());
+        assertEquals(0.2, file.getFocalX());
+        assertEquals(0.8, file.getFocalY());
+        verify(weblogger.getMediaFileManager(), never()).updateMediaFile(any(), any());
+    }
+
+    /** Both or neither: one coordinate cannot position anything. */
+    @ParameterizedTest
+    @ValueSource(strings = {"{\"focalX\":0.5}", "{\"focalY\":0.5}"})
+    void oneCoordinateOnAFileWithNoFocalPointIsA400(String json) throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        MediaFile file = patchedFile(weblogger, aWeblog("myblog"), json, 400, false);
+
+        assertNull(file.getFocalX());
+        assertNull(file.getFocalY());
+        verify(weblogger.getMediaFileManager(), never()).updateMediaFile(any(), any());
+    }
+
+    @Test
+    void oneCoordinateMovesAnExistingFocalPoint() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        MediaFile file = patchedFile(weblogger, aWeblog("myblog"), "{\"focalX\":0.5}", 200);
+
+        assertEquals(0.5, file.getFocalX());
+        assertEquals(0.8, file.getFocalY());
+    }
+
+    @Test
+    void bothCoordinatesSetAFocalPointOnAFileWithNone() throws Exception {
+        Weblogger weblogger = mockedWeblogger();
+        MediaFile file = patchedFile(weblogger, aWeblog("myblog"), "{\"focalX\":0,\"focalY\":1}", 200, false);
+
+        assertEquals(0.0, file.getFocalX());
+        assertEquals(1.0, file.getFocalY());
     }
 
     // -----------------------------------------------------------------

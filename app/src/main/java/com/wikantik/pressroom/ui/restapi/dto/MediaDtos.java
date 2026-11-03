@@ -165,6 +165,37 @@ public final class MediaDtos {
     }
 
     /**
+     * The admin UI's focal-point rule ({@code MediaFileBean.copyTo}): each
+     * coordinate is a fraction of the image, 0 to 1, and a file has both or
+     * neither. The UI clamps a dragged marker; a caller sending a number out
+     * of range has made a mistake, so it is a 400, as an out-of-range latitude
+     * is. One coordinate moves an existing point; on a file with none it
+     * would leave half a point, and is a 400 too. Checked before anything is
+     * applied, so a refused patch changes nothing.
+     */
+    private static void checkFocalPoint(MediaFile file, MediaPatch patch) {
+        requireFraction("focalX", patch.focalX());
+        requireFraction("focalY", patch.focalY());
+        if (patch.focalX() == null && patch.focalY() == null) {
+            return;
+        }
+        // a value both sent and cleared is ClearFields' 400, already refused
+        boolean hasX = patch.focalX() != null || file.getFocalX() != null;
+        boolean hasY = patch.focalY() != null || file.getFocalY() != null;
+        if (hasX != hasY) {
+            String field = patch.focalX() != null ? "focalX" : "focalY";
+            throw ApiException.invalidField(field,
+                    "focalX and focalY are set together; this file has no focal point yet.");
+        }
+    }
+
+    private static void requireFraction(String field, Double value) {
+        if (value != null && !(value >= 0.0 && value <= 1.0)) {
+            throw ApiException.invalidField(field, field + " must be between 0 and 1.");
+        }
+    }
+
+    /**
      * Applies every field {@code patch} actually carries onto {@code file}.
      * {@code altText}, {@code focalX} and {@code focalY} are plain field
      * assignments; {@code directoryId} is deliberately left untouched here --
@@ -176,6 +207,7 @@ public final class MediaDtos {
      * silently broken one.
      */
     public static void applyPatch(MediaFile file, MediaPatch patch, Set<String> cleared) {
+        checkFocalPoint(file, patch);
         if (patch.altText() != null) {
             ColumnLimits.requireMaxLength("altText", patch.altText(), ColumnLimits.MEDIA_ALT_TEXT);
             file.setAltText(patch.altText());

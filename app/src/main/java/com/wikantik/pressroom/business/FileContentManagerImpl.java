@@ -252,6 +252,32 @@ public class FileContentManagerImpl implements FileContentManager {
     @Override
     public boolean canSave(Weblog weblog, String fileName, String contentType,
             long size, PressroomMessages messages) {
+        return canStore(weblog, fileName, contentType, size, 0L, messages);
+    }
+
+    /**
+     * @see com.wikantik.pressroom.business.FileContentManager#canReplace(Weblog,
+     *      String, String, String, long, PressroomMessages)
+     */
+    @Override
+    public boolean canReplace(Weblog weblog, String fileId, String fileName,
+            String contentType, long size, PressroomMessages messages) {
+        long replaced;
+        try {
+            replaced = getRealFile(weblog, fileId).length();
+        } catch (FileNotFoundException | FilePathException ex) {
+            // nothing on disk to replace: counted like a new file
+            replaced = 0L;
+        }
+        return canStore(weblog, fileName, contentType, size, replaced, messages);
+    }
+
+    /**
+     * The upload checks, with {@code reclaimed} bytes already in the weblog's
+     * directory left out of the quota (the file a replacement overwrites).
+     */
+    private boolean canStore(Weblog weblog, String fileName, String contentType,
+            long size, long reclaimed, PressroomMessages messages) {
 
         // first check, is uploading enabled?
         if (!WebloggerRuntimeConfig.getBooleanProperty("uploads.enabled")) {
@@ -280,7 +306,7 @@ public class FileContentManagerImpl implements FileContentManager {
         try {
             File storageDirectory = this.getRealFile(weblog, null);
             long userDirSize = getDirSize(storageDirectory, true);
-            if (userDirSize + size > maxDirBytes) {
+            if (userDirSize - reclaimed + size > maxDirBytes) {
                 messages.addError("error.upload.dirmax", maxDirMB.toString());
                 return false;
             }

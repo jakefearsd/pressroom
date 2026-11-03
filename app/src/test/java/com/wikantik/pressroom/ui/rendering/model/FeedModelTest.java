@@ -184,7 +184,7 @@ class FeedModelTest {
     @Test
     void initWithoutAUrlStrategyIsRefused() {
         // Used to fall back to the static locator's strategy; the only caller
-        // that relied on that (WeblogCacheWarmupJob) now passes one.
+        // that relied on that (WeblogCacheWarmupJob, since deleted) passed one.
         Map<String, Object> initData = new HashMap<>();
         initData.put("parsedRequest", feedRequest("entries", "rss"));
         initData.put("weblogger", weblogger);

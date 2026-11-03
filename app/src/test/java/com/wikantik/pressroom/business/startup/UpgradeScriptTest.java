@@ -73,7 +73,10 @@ class UpgradeScriptTest {
         ScriptRun.stub(dir.resolve("bin"), "docker", """
                 echo "docker $*" >> "$STUB_LOG"
                 case "$*" in
-                  *"exec -T backup /app/backup/backup.sh"*) exit "${STUB_BACKUP_RC:-0}" ;;
+                  *"exec -T backup /app/backup/backup.sh"*)
+                    echo "  database -> /backups/pressroom-20261103T030000Z.dump"
+                    echo "  umami -> /backups/umami-20261103T030000Z.dump"
+                    exit "${STUB_BACKUP_RC:-0}" ;;
                   *" ps "*) echo "ghcr.io/jakefearsd/pressroom:${STUB_APP_VERSION}" ;;
                 esac
                 exit 0
@@ -278,6 +281,38 @@ class UpgradeScriptTest {
 
         assertEquals(0, r.exit(), r.out());
         assertFalse(r.out().contains("rollback-pressroom.sh"), r.out());
+    }
+
+    /**
+     * The new release's migrations have run by the time anyone reads the
+     * rollback recipe, and one can drop columns (V044), so putting the old
+     * files back and redeploying starts the old image on a schema it no
+     * longer matches. The recipe restores the dump step 2 took, by name,
+     * BEFORE the files go back.
+     */
+    @Test
+    void theRollbackRecipeRestoresTheDumpTakenBeforeTheUpgrade() throws Exception {
+        ScriptRun.Result r = upgrade("0.2.2");
+
+        assertEquals(0, r.exit(), r.out());
+        String recipe = r.out().substring(r.out().indexOf("To roll back"));
+        int restore = recipe.indexOf("pg_restore");
+        assertTrue(restore > 0, recipe);
+        assertTrue(recipe.contains("/backups/pressroom-20261103T030000Z.dump"), "names this run's dump: " + recipe);
+        assertFalse(recipe.contains("umami-20261103T030000Z.dump"), "the blog's dump, not a service's: " + recipe);
+        assertTrue(recipe.contains("stop app"), "the app is stopped before the restore: " + recipe);
+        assertTrue(restore < recipe.indexOf(".bak-"), "the database goes back before the files: " + recipe);
+    }
+
+    @Test
+    void withNoBackupTheRecipeSaysThereIsNoDumpFromThisRun() throws Exception {
+        ScriptRun.Result r = upgrade("0.2.2", "--no-backup");
+
+        assertEquals(0, r.exit(), r.out());
+        String recipe = r.out().substring(r.out().indexOf("To roll back"));
+        assertTrue(recipe.contains("--no-backup"), recipe);
+        assertTrue(recipe.contains("pg_restore"), "still says the database must go back: " + recipe);
+        assertFalse(recipe.contains("20261103T030000Z"), recipe);
     }
 
     @Test

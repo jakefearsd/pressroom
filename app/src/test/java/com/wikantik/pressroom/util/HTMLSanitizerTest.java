@@ -352,6 +352,47 @@ class HTMLSanitizerTest {
         }
     }
 
+    /**
+     * {@code toPlainText} reduces a value to TEXT, not to safe HTML: it strips
+     * tags and then decodes entities, so escaped markup in its input comes out
+     * as live markup. Its old name, {@code sanitizeText}, invited printing the
+     * result bare (code review, 2026-11-03); every caller must escape at the
+     * output boundary, as the bundled themes do.
+     */
+    @Nested
+    class PlainText {
+
+        @Test
+        void theOutputIsTextAndNotHtmlSafe() {
+            assertEquals("<script>", HTMLSanitizer.toPlainText("<b>&lt;script&gt;</b>"),
+                    "an escaped tag inside markup comes back as a real tag: never emit this bare");
+        }
+
+        @Test
+        void entitiesAreDecodedAndTextWithoutATagIsUntouched() {
+            assertEquals("Tom & Jerry", HTMLSanitizer.toPlainText("<i>Tom &amp; Jerry</i>"));
+            assertEquals("jake@example.com", HTMLSanitizer.toPlainText("jake@example.com"));
+            assertEquals("a &amp; b", HTMLSanitizer.toPlainText("a &amp; b"),
+                    "no '<', nothing to strip: stored-escaped values pass byte for byte");
+            assertNull(HTMLSanitizer.toPlainText(null));
+        }
+
+        @Test
+        void theSwitchDecidesWhetherAnythingHappens() {
+            Boolean previous = HTMLSanitizer.xssEnabled;
+            try {
+                HTMLSanitizer.xssEnabled = Boolean.TRUE;
+                assertEquals("text", HTMLSanitizer.conditionallyToPlainText("<b>text</b>"));
+
+                HTMLSanitizer.xssEnabled = Boolean.FALSE;
+                assertEquals("<b>text</b>", HTMLSanitizer.conditionallyToPlainText("<b>text</b>"),
+                        "disabled: the value passes through, markup and all");
+            } finally {
+                HTMLSanitizer.xssEnabled = previous;
+            }
+        }
+    }
+
     @Nested
     class Escaping {
 

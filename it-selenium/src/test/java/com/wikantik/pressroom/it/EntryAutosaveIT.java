@@ -300,10 +300,24 @@ class EntryAutosaveIT extends PressroomIT {
                 .until(d -> storageHasKey(key));
     }
 
-    /** Whether a storage key currently holds anything. */
+    /**
+     * Whether the draft named by {@code key} (its part after the user id, see
+     * {@link #entryDraftKey}) is in storage under some signed-in user's id.
+     * The id is a database UUID this harness does not know; that the key
+     * carries a non-empty one is checked here rather than assumed.
+     */
     private boolean storageHasKey(String key) {
         return Boolean.TRUE.equals(executeJavaScript(
-                "return window.localStorage.getItem(arguments[0]) !== null;", key));
+                "var head = arguments[0], tail = ':' + arguments[1];"
+                + "for (var i = 0; i < window.localStorage.length; i++) {"
+                + "  var k = window.localStorage.key(i);"
+                + "  if (!k || k.indexOf(head) !== 0 || k.length <= head.length + tail.length"
+                + "      || k.slice(-tail.length) !== tail) { continue; }"
+                + "  var user = k.substring(head.length, k.length - tail.length);"
+                + "  if (user.indexOf(':') < 0) { return window.localStorage.getItem(k) !== null; }"
+                + "}"
+                + "return false;",
+                DRAFT_PREFIX + contextPath + ":", key));
     }
 
     private void clearStoredDrafts() {
@@ -318,12 +332,16 @@ class EntryAutosaveIT extends PressroomIT {
                 DRAFT_PREFIX);
     }
 
+    /**
+     * The part of a draft key after {@code pressroom.draft.v1:<context path>:<user id>:};
+     * {@link #storageHasKey} supplies the rest.
+     */
     private String entryDraftKey(String action, String id) {
-        return DRAFT_PREFIX + contextPath + ":" + WEBLOG_HANDLE + ":" + action + ":" + id;
+        return WEBLOG_HANDLE + ":" + action + ":" + id;
     }
 
     private String pageDraftKey(String id) {
-        return DRAFT_PREFIX + contextPath + ":" + WEBLOG_HANDLE + ":pageEdit:" + id;
+        return WEBLOG_HANDLE + ":pageEdit:" + id;
     }
 
     private static String nonce() {

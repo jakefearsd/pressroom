@@ -37,6 +37,8 @@ public class ProfileBean {
 
     private String passwordText = null;
     private String passwordConfirm = null;
+    /** Asked only when the password changes; never filled from the stored user. */
+    private String currentPassword = null;
 
 
     // CPD-OFF -- A pojo and its form bean necessarily name the same fields, and
@@ -126,6 +128,14 @@ public class ProfileBean {
 
     public void setPasswordConfirm(String passwordConfirm) {
         this.passwordConfirm = passwordConfirm;
+    }
+
+    public String getCurrentPassword() {
+        return currentPassword;
+    }
+
+    public void setCurrentPassword(String currentPassword) {
+        this.currentPassword = currentPassword;
     }
 
 

@@ -22,6 +22,11 @@ already allows the fetch.
   `WebloggerRuntimeConfig.getRelativeContextURL()` / `$url.site`, not a
   client-guessed `/newsletter/subscribe` — a client heuristic (a `<link>`
   containing `/pressroom-ui/`) posted to the site root under a context path.
+  The script builds a form only around an endpoint that ends in its exact
+  suffix AND resolves to the page's own origin (`endpointOk`): an author may
+  write `data-endpoint` on a div, and a suffix check alone passed
+  `https://evil.example/pressroom-ui/rendering/contact.rol`, held back only
+  by a theme's `connect-src 'self'` (`AudienceEndpointScriptSourceTest`).
 - **Persist-first, then notify.** `ContactController` writes the
   `pressroom_form_submission` row before any notification email, so the lead
   survives an SMTP outage. Defences in order: per-IP throttle (429); unknown

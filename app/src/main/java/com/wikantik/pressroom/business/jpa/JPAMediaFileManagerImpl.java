@@ -23,6 +23,7 @@ import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
@@ -212,21 +213,31 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         persistNewMediaFile(weblog, mediaFile.getDirectory(), mediaFile, mediaFile.getInputStream());
     }
 
+    /**
+     * Bytes first, then the row: the id is assigned when the MediaFile is
+     * constructed, so the file can be written before anything is committed.
+     * A write that fails leaves no row describing a file that is not there,
+     * and a commit that fails takes the just-written file back off the disk,
+     * where nothing could ever reach it.
+     */
     private void persistNewMediaFile(Weblog weblog, MediaFileDirectory directory,
             MediaFile mediaFile, InputStream is) throws WebloggerException {
         FileContentManager cmgr = pressroom.getFileContentManager();
-        strategy.store(mediaFile);
-
-        // Refresh associated parent for changes
-        pressroom.flush();
-        strategy.refresh(directory);
 
         // The hash is taken from the bytes as they stream to disk, so an
         // upload of any size is hashed without being held in memory.
         MessageDigest sha256 = ContentHashes.sha256();
         cmgr.saveFileContent(weblog, mediaFile.getId(), new DigestInputStream(is, sha256));
         mediaFile.setContentHash(ContentHashes.hex(sha256.digest()));
-        strategy.store(mediaFile);
+        try {
+            strategy.store(mediaFile);
+            pressroom.flush();
+        } catch (WebloggerException | RuntimeException e) {
+            deleteFileQuietly(cmgr, weblog, mediaFile.getId());
+            throw e;
+        }
+        // Refresh associated parent for changes
+        strategy.refresh(directory);
 
         if (mediaFile.isImageFile()) {
             updateThumbnail(mediaFile);
@@ -249,53 +260,70 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         pressroom.getWeblogManager().saveWeblog(weblog);
     }
 
-    private void updateThumbnail(MediaFile mediaFile) {
+    /**
+     * Derives dimensions, the admin thumbnail, the rendition ladder, EXIF and
+     * the blurhash from a stored image. An image that cannot be read or
+     * decoded gets none of them and a WARN naming the file; a failure to
+     * store or commit the entity is not an image problem and propagates.
+     */
+    private void updateThumbnail(MediaFile mediaFile) throws WebloggerException {
+        FileContentManager cmgr = pressroom.getFileContentManager();
+        FileContent fc;
+        BufferedImage img;
         try {
-            FileContentManager cmgr = pressroom.getFileContentManager();
-            FileContent fc = cmgr.getFileContent(mediaFile.getWeblog(),
-                    mediaFile.getId());
-            BufferedImage img;
-
+            fc = cmgr.getFileContent(mediaFile.getWeblog(), mediaFile.getId());
             img = ImageDecoding.read(fc.getInputStream());
-
-            // EXIF Orientation: a portrait phone/camera shot is stored as a
-            // landscape raster plus a rotation tag, and ImageIO.read() hands
-            // back the raw raster. Correct it here, once, so EVERYTHING
-            // derived below -- stored dimensions, the _sm thumbnail, the
-            // ladder renditions, the blurhash -- is built from the upright
-            // image. (The original file on disk is never rewritten; browsers
-            // rotate it themselves from its EXIF.)
-            img = RenditionSupport.applyOrientation(img,
-                    ExifSupport.readOrientation(fc.getInputStream()));
-
-            // determine and save width and height
-            mediaFile.setWidth(img.getWidth());
-            mediaFile.setHeight(img.getHeight());
-            strategy.store(mediaFile);
-
-            writeAdminThumbnail(cmgr, mediaFile, img);
-
-            pressroom.flush();
-            // Refresh associated parent for changes
-            strategy.refresh(mediaFile.getDirectory());
-
-            // Responsive-image width ladder (independent of the admin thumbnail
-            // above). RenditionSupport never throws -- per-rendition failures are
-            // logged at WARN with the media file id and do not reach this catch.
-            RenditionSupport.generate(cmgr, mediaFile, img);
-
-            // EXIF/GPS/blurhash: reads from the file already saved to disk
-            // (fc, re-opened) rather than the original upload stream, which
-            // saveFileContent() already consumed. Never lets a metadata
-            // failure affect the thumbnail/rendition work above.
-            extractExifAndBlurhash(cmgr, mediaFile, fc);
-
         } catch (ImageDecoding.TooLarge e) {
             // stored and served as it is; only the derived images are skipped
             log.warn("No thumbnail or renditions for media file {}: {}", mediaFile.getId(), e.getMessage());
-        } catch (Exception e) {
-            log.debug("ERROR creating thumbnail", e);
+            return;
+        } catch (IOException | WebloggerException e) {
+            log.warn("No thumbnail or renditions for media file {}: its content could not be read",
+                    mediaFile.getId(), e);
+            return;
         }
+        if (img == null) {
+            log.warn("No thumbnail or renditions for media file {}: not an image any installed reader decodes",
+                    mediaFile.getId());
+            return;
+        }
+
+        // EXIF Orientation: a portrait phone/camera shot is stored as a
+        // landscape raster plus a rotation tag, and ImageIO.read() hands
+        // back the raw raster. Correct it here, once, so EVERYTHING
+        // derived below -- stored dimensions, the _sm thumbnail, the
+        // ladder renditions, the blurhash -- is built from the upright
+        // image. (The original file on disk is never rewritten; browsers
+        // rotate it themselves from its EXIF.)
+        img = RenditionSupport.applyOrientation(img,
+                ExifSupport.readOrientation(fc.getInputStream()));
+
+        // determine and save width and height
+        mediaFile.setWidth(img.getWidth());
+        mediaFile.setHeight(img.getHeight());
+        strategy.store(mediaFile);
+
+        try {
+            writeAdminThumbnail(cmgr, mediaFile, img);
+        } catch (Exception e) {
+            // the admin list falls back to the full image; the rest still runs
+            log.warn("Could not write the admin thumbnail for media file {}", mediaFile.getId(), e);
+        }
+
+        pressroom.flush();
+        // Refresh associated parent for changes
+        strategy.refresh(mediaFile.getDirectory());
+
+        // Responsive-image width ladder (independent of the admin thumbnail
+        // above). RenditionSupport never throws -- per-rendition failures are
+        // logged at WARN with the media file id.
+        RenditionSupport.generate(cmgr, mediaFile, img);
+
+        // EXIF/GPS/blurhash: reads from the file already saved to disk
+        // (fc, re-opened) rather than the original upload stream, which
+        // saveFileContent() already consumed. Never lets a metadata
+        // failure affect the thumbnail/rendition work above.
+        extractExifAndBlurhash(cmgr, mediaFile, fc);
     }
 
     /**
@@ -334,9 +362,8 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
      * touched either way. Metadata extraction and blurhash encoding never
      * throw: each is independent, and a failure in one (unreadable EXIF,
      * blurhash decode failure) does not prevent the other from being stored.
-     * Only the final {@code strategy.store()} can throw, same as the rest of
-     * this class -- callers already handle it the same way they handle every
-     * other step of thumbnail/rendition generation.
+     * Only the final {@code strategy.store()} can throw, and that propagates
+     * to the caller like any other failure to persist.
      */
     private void extractExifAndBlurhash(FileContentManager cmgr, MediaFile mediaFile, FileContent fc)
             throws WebloggerException {
@@ -408,28 +435,62 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
 
     /**
      * {@inheritDoc}
+     *
+     * <p>Checked, then written, then described: the upload checks run before
+     * anything is written or committed, so a refusal leaves the row and the
+     * bytes as they were (the caller's unflushed changes to the entity roll
+     * back with the request). The entity is stored once the new bytes are on
+     * disk, and everything derived from the old ones -- the {@code _sm}
+     * thumbnail, the rendition ladder, dimensions, blurhash, EXIF -- is
+     * dropped first, then rebuilt from the new content if it is an image.
+     * The commit is the caller's flush (or {@code updateThumbnail}'s).
      */
     @Override
     public void updateMediaFile(Weblog weblog, MediaFile mediaFile,
             InputStream is) throws WebloggerException {
-        // New content is no longer the image an earlier import matched by hash.
-        mediaFile.setContentHash(null);
-        updateMediaFile(weblog, mediaFile);
-
         FileContentManager cmgr = pressroom.getFileContentManager();
         PressroomMessages msgs = new PressroomMessages();
-        if (!cmgr.canSave(weblog, mediaFile.getName(),
+        if (!cmgr.canReplace(weblog, mediaFile.getId(), mediaFile.getName(),
                 mediaFile.getContentType(), mediaFile.getLength(), msgs)) {
             throw new FileIOException(msgs.toString());
         }
         cmgr.saveFileContent(weblog, mediaFile.getId(), is);
 
+        // A sibling left behind keeps serving the OLD pixels: ?w=1600 on a
+        // replaced photo would still show what the author replaced, and a
+        // replacement narrower than a rung never overwrites that rung.
+        deleteDerivedFilesQuietly(cmgr, weblog, mediaFile.getId());
+        clearDerivedMetadata(mediaFile);
+        // New content is no longer the image an earlier import matched by hash.
+        mediaFile.setContentHash(null);
+        mediaFile.setLastUpdated(new Timestamp(System.currentTimeMillis()));
+        strategy.store(mediaFile);
+
         if (mediaFile.isImageFile()) {
             updateThumbnail(mediaFile);
         }
-        // updateMediaFile above already moved the stamp, before the content
-        // was even written; move it again past the derived data.
         touchAfterDerivedData(weblog);
+    }
+
+    /**
+     * Forgets what was read from the pixels and metadata of content that has
+     * been replaced. An image's values are rebuilt by {@code updateThumbnail};
+     * anything else (or an image that cannot be decoded) keeps none, rather
+     * than the old picture's size, placeholder, camera and location.
+     */
+    private static void clearDerivedMetadata(MediaFile mediaFile) {
+        mediaFile.setWidth(0);
+        mediaFile.setHeight(0);
+        mediaFile.setBlurhash(null);
+        mediaFile.setExifCamera(null);
+        mediaFile.setExifLens(null);
+        mediaFile.setExifExposure(null);
+        mediaFile.setExifAperture(null);
+        mediaFile.setExifIso(null);
+        mediaFile.setExifFocalLength(null);
+        mediaFile.setExifTaken(null);
+        mediaFile.setGpsLatitude(null);
+        mediaFile.setGpsLongitude(null);
     }
 
     /**
@@ -491,28 +552,6 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         } catch (NoResultException e) {
             return null;
         }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public MediaFile getMediaFileByPath(Weblog weblog, String path)
-            throws WebloggerException {
-
-        // get directory
-        String fileName = path;
-        MediaFileDirectory mdir;
-        int slash = path.lastIndexOf('/');
-        if (slash > 0) {
-            mdir = getMediaFileDirectoryByName(weblog, path.substring(0, slash));
-        } else {
-            mdir = getDefaultMediaFileDirectory(weblog);
-        }
-        if (slash != -1) {
-            fileName = fileName.substring(slash + 1);
-        }
-        return mdir.getMediaFile(fileName);
     }
 
     /**
@@ -626,6 +665,17 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
      */
     static void deleteContentQuietly(FileContentManager cmgr, Weblog weblog, String mediaFileId) {
         deleteFileQuietly(cmgr, weblog, mediaFileId);
+        deleteDerivedFilesQuietly(cmgr, weblog, mediaFileId);
+    }
+
+    /**
+     * Deletes everything derived from a media file's pixels -- the admin
+     * thumbnail ({@code _sm}) and every rendition sibling, WebP included --
+     * leaving the original. Used wherever the original changes: a sibling of
+     * the old content would otherwise go on serving the old pixels.
+     */
+    private static void deleteDerivedFilesQuietly(FileContentManager cmgr, Weblog weblog,
+            String mediaFileId) {
         deleteFileQuietly(cmgr, weblog, mediaFileId + "_sm");
         for (String renditionId : RenditionSupport.renditionFileIds(mediaFileId)) {
             deleteFileQuietly(cmgr, weblog, renditionId);
@@ -810,9 +860,19 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
                     // image (90-degree orientations swap width and height).
                     img = RenditionSupport.applyOrientation(img,
                             ExifSupport.readOrientation(fc.getInputStream()));
-                    RenditionSupport.generate(cmgr, mf, img);
                     mf.setWidth(img.getWidth());
                     mf.setHeight(img.getHeight());
+                    // Everything derived goes, then is rebuilt: corrected
+                    // dimensions can drop a rung the old raster reached
+                    // (a sideways 3000x2000 had a 2400 rung its upright
+                    // 2000px self does not), and that rung would go on
+                    // serving the sideways pixels at its ?w= URL.
+                    deleteDerivedFilesQuietly(cmgr, weblog, mf.getId());
+                    // The admin thumbnail too: before it was rebuilt here a
+                    // sideways thumbnail stayed sideways, and the blurhash of
+                    // an image under 480px is encoded from it.
+                    writeAdminThumbnail(cmgr, mf, img);
+                    RenditionSupport.generate(cmgr, mf, img);
                     // Bump lastUpdated so MediaResourceServlet's Last-Modified/304
                     // check (keyed off this field) doesn't keep serving a 304 for
                     // stale renditions cached by a client from before the backfill.
@@ -912,10 +972,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
             // shrink the image below rungs it used to clear (e.g. 3000px
             // cropped to 800px), and a leftover <id>_1600 would keep serving
             // the UNCROPPED pixels at that ?w= URL forever.
-            deleteFileQuietly(cmgr, weblog, mediaFile.getId() + "_sm");
-            for (String renditionId : RenditionSupport.renditionFileIds(mediaFile.getId())) {
-                deleteFileQuietly(cmgr, weblog, renditionId);
-            }
+            deleteDerivedFilesQuietly(cmgr, weblog, mediaFile.getId());
 
             // A focal point marks a spot on the photo, not on the frame:
             // remap it through the crop so it keeps pointing at the same

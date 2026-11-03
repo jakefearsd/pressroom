@@ -19,6 +19,8 @@
 #   PGUSER           postgres    superuser that runs the bootstrap
 #   PGPASSWORD                   optional (or rely on peer/trust auth)
 #
+# Needs psql 15 or later (\getenv).
+#
 # This script MUST be run by a PostgreSQL superuser because it creates the
 # database and the application role. Once bootstrapped, routine schema
 # updates only need migrate.sh, which can run as the application role.
@@ -69,34 +71,55 @@ if ! psql "${psql_super[@]}" -c 'SELECT 1;' >/dev/null 2>&1; then
     exit 1
 fi
 
+# Every name and the password reach psql as psql variables and enter the SQL
+# only quoted -- :'name' as a literal, format('%I') as an identifier,
+# format('%L') as a literal -- so a quote in either neither breaks a statement
+# nor runs one. The SQL arrives on stdin (quoted heredocs: the shell expands
+# nothing in them), and the password is not even a -v argument: psql reads it
+# from its own environment with \getenv (psql 15+), so it is never on a
+# command line, where `ps` shows it to every local user. The same idiom as
+# deploy/admin-account.sh.
+
 # --- application role -------------------------------------------------------
-role_exists=$(psql "${psql_super[@]}" -c \
-    "SELECT 1 FROM pg_roles WHERE rolname = '${DB_APP_USER}';")
+role_exists=$(psql "${psql_super[@]}" -v role="${DB_APP_USER}" <<'SQL'
+SELECT 1 FROM pg_roles WHERE rolname = :'role';
+SQL
+)
 if [[ "${role_exists// /}" == "1" ]]; then
     print_warn "Role ${DB_APP_USER} already exists — leaving its password unchanged"
 else
-    psql "${psql_super[@]}" -c \
-        "CREATE ROLE ${DB_APP_USER} LOGIN PASSWORD '${DB_APP_PASSWORD}';"
+    DB_APP_PASSWORD="${DB_APP_PASSWORD}" psql "${psql_super[@]}" -v role="${DB_APP_USER}" <<'SQL'
+\getenv pw DB_APP_PASSWORD
+SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'role', :'pw') \gexec
+SQL
     print_ok "Created role ${DB_APP_USER}"
 fi
 
 # --- database ---------------------------------------------------------------
-db_exists=$(psql "${psql_super[@]}" -c \
-    "SELECT 1 FROM pg_database WHERE datname = '${DB_NAME}';")
+db_exists=$(psql "${psql_super[@]}" -v db="${DB_NAME}" <<'SQL'
+SELECT 1 FROM pg_database WHERE datname = :'db';
+SQL
+)
 if [[ "${db_exists// /}" == "1" ]]; then
     print_warn "Database ${DB_NAME} already exists — skipping creation"
 else
-    # CREATE DATABASE cannot run inside a transaction block.
-    psql "${psql_super[@]}" -c "CREATE DATABASE ${DB_NAME} OWNER ${DB_APP_USER};"
+    # CREATE DATABASE cannot run inside a transaction block; \gexec runs it
+    # on its own, outside one.
+    psql "${psql_super[@]}" -v db="${DB_NAME}" -v role="${DB_APP_USER}" <<'SQL'
+SELECT format('CREATE DATABASE %I OWNER %I', :'db', :'role') \gexec
+SQL
     print_ok "Created database ${DB_NAME}"
 fi
 
-psql "${psql_super[@]}" -c \
-    "GRANT ALL PRIVILEGES ON DATABASE ${DB_NAME} TO ${DB_APP_USER};"
+psql "${psql_super[@]}" -v db="${DB_NAME}" -v role="${DB_APP_USER}" <<'SQL'
+SELECT format('GRANT ALL PRIVILEGES ON DATABASE %I TO %I', :'db', :'role') \gexec
+SQL
 
 # The app role needs CREATE on schema public to let migrate.sh run as itself.
-psql --no-psqlrc --quiet --tuples-only --no-align -v ON_ERROR_STOP=1 -d "${DB_NAME}" -c \
-    "GRANT CREATE, USAGE ON SCHEMA public TO ${DB_APP_USER};"
+psql --no-psqlrc --quiet --tuples-only --no-align -v ON_ERROR_STOP=1 -d "${DB_NAME}" \
+    -v role="${DB_APP_USER}" <<'SQL'
+SELECT format('GRANT CREATE, USAGE ON SCHEMA public TO %I', :'role') \gexec
+SQL
 
 print_ok "Database and role ready — applying migrations"
 

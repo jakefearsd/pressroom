@@ -127,9 +127,9 @@
 <%-- Request scope, not page scope: EntryEditor.jsp arrives via jsp:include
      and cannot see page-scoped variables set here. --%>
 <c:set var="draftKey" scope="request"
-       value="pressroom.draft.v1:${pageContext.request.contextPath}:${actionWeblog.handle}:${actionName}:${empty bean.id ? 'new' : bean.id}"/>
+       value="pressroom.draft.v1:${pageContext.request.contextPath}:${authenticatedUser.id}:${actionWeblog.handle}:${actionName}:${empty bean.id ? 'new' : bean.id}"/>
 <c:set var="draftNewKey" scope="request"
-       value="pressroom.draft.v1:${pageContext.request.contextPath}:${actionWeblog.handle}:entryAdd:new"/>
+       value="pressroom.draft.v1:${pageContext.request.contextPath}:${authenticatedUser.id}:${actionWeblog.handle}:entryAdd:new"/>
 
 <div class="editor-grid">
 

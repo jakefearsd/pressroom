@@ -63,7 +63,7 @@ public final class ModelLoader {
      * {@link WebloggerException} naming the key. There is deliberately no
      * fallback to the application's default strategy: the preview servlet
      * installs its own, and the one caller that used to pass none
-     * ({@code WeblogCacheWarmupJob}) now passes one.
+     * ({@code WeblogCacheWarmupJob}, since deleted) passed one.
      */
     static URLStrategy requireUrlStrategy(Map<String, Object> initData) throws WebloggerException {
         Object value = initData == null ? null : initData.get(URL_STRATEGY);

@@ -177,8 +177,15 @@ public final class HTMLSanitizer {
      * {@code Tom &amp; Jerry} comes back as {@code Tom & Jerry}. Escaping for
      * output is the caller's job and happens at the template or attribute
      * boundary, as it did before.
+     *
+     * <p><b>The result is NOT safe to print as HTML.</b> Stripping and then
+     * decoding can create markup that was not in the input:
+     * {@code <b>&lt;script&gt;</b>} comes back as {@code <script>}. A template
+     * emits it through {@code $utils.escapeHTML}, every time. It was called
+     * {@code sanitizeText} until 2026-11-03 (code review), a name that invited
+     * printing it bare; {@code HTMLSanitizerTest.PlainText} pins the contract.
      */
-    public static String sanitizeText(String text) {
+    public static String toPlainText(String text) {
         if (text == null || text.indexOf('<') < 0) {
             // Nothing that could open a tag, so there is nothing to strip --
             // and returning the value untouched is what makes this safe for
@@ -195,9 +202,12 @@ public final class HTMLSanitizer {
         return StringEscapeUtils.unescapeHtml4(TEXT_ONLY.sanitize(text));
     }
 
-    /** {@link #sanitizeText} when {@link #xssEnabled} is on. */
-    public static String conditionallySanitizeText(String text) {
-        return Boolean.TRUE.equals(xssEnabled) ? sanitizeText(text) : text;
+    /**
+     * {@link #toPlainText} when {@link #xssEnabled} is on, else the value
+     * untouched, markup and all. Either way the result is not HTML-safe.
+     */
+    public static String conditionallyToPlainText(String text) {
+        return Boolean.TRUE.equals(xssEnabled) ? toPlainText(text) : text;
     }
 
     // ---------------------------------------------------------------- escaping

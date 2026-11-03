@@ -18,7 +18,9 @@
 package com.wikantik.pressroom.ui.controllers.editor;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -257,6 +259,7 @@ public class MediaFileViewController extends MediaFileBase {
         model.addAttribute("allDirectories", refreshAllDirectories(request));
         loadDropdowns(request, model);
         loadDirectory(request, model, directoryId, null, sortBy);
+        bean.useLabels(optionLabels(request));
 
         if (StringUtils.isEmpty(bean.getName()) && StringUtils.isEmpty(bean.getTags())
                 && StringUtils.isEmpty(bean.getType()) && bean.getSize() == 0) {
@@ -345,6 +348,21 @@ public class MediaFileViewController extends MediaFileBase {
         model.addAttribute("sizeFilterTypes", getSizeFilterTypes(request));
         model.addAttribute("sizeUnits", getSizeUnits(request));
         model.addAttribute("sortOptions", getSortOptions(request));
+    }
+
+    /**
+     * The search form's option keys with their labels in the request's
+     * language, for the criteria the results page repeats back.
+     */
+    private Map<String, String> optionLabels(HttpServletRequest request) {
+        Map<String, String> labels = new HashMap<>();
+        for (List<KeyValueObject> options : List.of(getFileTypes(request),
+                getSizeFilterTypes(request), getSizeUnits(request))) {
+            for (KeyValueObject option : options) {
+                labels.put((String) option.getKey(), (String) option.getValue());
+            }
+        }
+        return labels;
     }
 
     private List<KeyValueObject> getFileTypes(HttpServletRequest request) {

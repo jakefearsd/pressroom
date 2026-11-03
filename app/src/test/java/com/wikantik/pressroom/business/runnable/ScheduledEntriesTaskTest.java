@@ -18,6 +18,9 @@
 package com.wikantik.pressroom.business.runnable;
 
 import java.lang.reflect.Field;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.Date;
 import java.util.Properties;
@@ -31,6 +34,7 @@ import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
+import com.wikantik.pressroom.testing.PressroomPostgresContainer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -134,6 +138,35 @@ class ScheduledEntriesTaskTest {
                 "promotion must bump weblog.lastModified (before " + before + ", after " + after + ")");
     }
 
+    /**
+     * Each entry is promoted in its own transaction. The sweep used to save
+     * every due entry and commit once, so one entry failing at commit rolled
+     * back all of them, on every run, and nothing scheduled published again
+     * until that entry was fixed by hand. Here a trigger refuses one entry's
+     * promotion; the other must still publish.
+     */
+    @Test
+    void oneEntryFailingToCommitDoesNotHoldBackTheOthers() throws Exception {
+        Date past = new Date(System.currentTimeMillis() - HOUR_MS);
+        String refused = scheduledEntry("refused-entry", past);
+        String fine = scheduledEntry("fine-entry", past);
+        sql("CREATE OR REPLACE FUNCTION sched_task_test_refuse() RETURNS trigger LANGUAGE plpgsql AS $$ "
+                + "BEGIN IF NEW.id = '" + refused + "' AND NEW.status = 'PUBLISHED' THEN "
+                + "RAISE EXCEPTION 'refused by ScheduledEntriesTaskTest'; END IF; RETURN NEW; END $$");
+        sql("CREATE TRIGGER sched_task_test_refuse BEFORE UPDATE ON weblogentry "
+                + "FOR EACH ROW EXECUTE FUNCTION sched_task_test_refuse()");
+        try {
+            runTask();
+        } finally {
+            sql("DROP TRIGGER IF EXISTS sched_task_test_refuse ON weblogentry");
+            sql("DROP FUNCTION IF EXISTS sched_task_test_refuse()");
+        }
+
+        assertEquals(PubStatus.PUBLISHED, entries().getWeblogEntry(fine).getStatus());
+        assertEquals(PubStatus.SCHEDULED, entries().getWeblogEntry(refused).getStatus());
+        TestUtils.endSession(false);
+    }
+
     // ------------------------------------------------------ failure contract
 
     /**
@@ -213,6 +246,14 @@ class ScheduledEntriesTaskTest {
     }
 
     // ---------------------------------------------------------------- helpers
+
+    private static void sql(String statement) throws Exception {
+        try (Connection con = DriverManager.getConnection(PressroomPostgresContainer.getJdbcUrl(),
+                PressroomPostgresContainer.getUsername(), PressroomPostgresContainer.getPassword());
+             Statement st = con.createStatement()) {
+            st.execute(statement);
+        }
+    }
 
     private static WeblogEntryManager entries() {
         return TestUtils.weblogger().getWeblogEntryManager();

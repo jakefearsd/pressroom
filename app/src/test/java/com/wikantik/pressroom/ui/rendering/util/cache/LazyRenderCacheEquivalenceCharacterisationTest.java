@@ -67,12 +67,12 @@ public class LazyRenderCacheEquivalenceCharacterisationTest {
 
     private static Probe page(WeblogPageCache c) {
         return new Probe(WeblogPageCache.CACHE_ID,
-                k -> c.put(k, "content"), c::get, c::remove, c::clear);
+                k -> c.put(k, "content", System.currentTimeMillis()), c::get, c::remove, c::clear);
     }
 
     private static Probe feed(WeblogFeedCache c) {
         return new Probe(WeblogFeedCache.CACHE_ID,
-                k -> c.put(k, "content"), c::get, c::remove, c::clear);
+                k -> c.put(k, "content", System.currentTimeMillis()), c::get, c::remove, c::clear);
     }
 
     private static List<Probe> enabledCaches() {

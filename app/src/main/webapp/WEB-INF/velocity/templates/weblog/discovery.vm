@@ -61,7 +61,7 @@ comment names one with its hash, so nothing here is invoked by accident.
         <div class="fd-spot-text">
             <p class="fd-label">$text.get("discovery.spotlight")</p>
             <a class="fd-spot-name" href="$utils.escapeHTML($fdBlog.absoluteURL)">$fdBlog.name</a>
-            #if($utils.isNotEmpty($fdBlog.tagline))<p class="fd-spot-about">$fdBlog.tagline</p>#end
+            #if($utils.isNotEmpty($fdBlog.tagline))<p class="fd-spot-about">$utils.escapeHTML($fdBlog.tagline)</p>#end
         </div>
         <a class="fd-spot-go" href="$utils.escapeHTML($fdBlog.absoluteURL)" aria-hidden="true" tabindex="-1">$text.get("discovery.visit", [$fdBlog.name]) &#8594;</a>
     </div>
@@ -419,7 +419,7 @@ body.fd-front img { max-width: 100%; }
                     <ul>
                     #foreach($fdBlog in $dFront.allBlogs)
                     #fdHue($fdBlog)
-                        <li data-b="$fdB"><a href="$utils.escapeHTML($fdBlog.absoluteURL)"><span class="fd-mark" aria-hidden="true">$discovery.initials($fdBlog)</span><span class="fd-n">$fdBlog.name</span><span class="fd-count">$fdBlog.entryCount</span></a></li>
+                        <li data-b="$fdB"><a href="$utils.escapeHTML($fdBlog.absoluteURL)"><span class="fd-mark" aria-hidden="true">$discovery.initials($fdBlog)</span><span class="fd-n">$fdBlog.name</span><span class="fd-count">$discovery.postCount($fdBlog)</span></a></li>
                     #end
                     </ul>
                 </nav>
@@ -440,9 +440,9 @@ body.fd-front img { max-width: 100%; }
                     <div class="fd-shelf-head">
                         <span class="fd-mark" aria-hidden="true">$discovery.initials($dCard.weblog)</span>
                         <h3 class="fd-shelf-name"><a href="$utils.escapeHTML($dCard.weblog.absoluteURL)">$dCard.weblog.name</a></h3>
-                        <span class="fd-count">$text.get("discovery.posts", [$dCard.weblog.entryCount])</span>
+                        <span class="fd-count">$text.get("discovery.posts", [$discovery.postCount($dCard.weblog)])</span>
                     </div>
-                    #if($utils.isNotEmpty($dCard.weblog.tagline))<p class="fd-about">$dCard.weblog.tagline</p>#end
+                    #if($utils.isNotEmpty($dCard.weblog.tagline))<p class="fd-about">$utils.escapeHTML($dCard.weblog.tagline)</p>#end
                     #if(!$dCard.topEntries.isEmpty())#fdMedia($dCard.topEntries.get(0) "(max-width: 640px) 85vw, 33vw")#end
                     <ol>
                     #foreach($dPost in $dCard.topEntries)
@@ -508,7 +508,7 @@ body.fd-front img { max-width: 100%; }
             <ul class="fd-dir">
             #foreach($fdBlog in $dFront.allBlogs)
             #fdHue($fdBlog)
-                <li data-b="$fdB"><span class="fd-mark" aria-hidden="true">$discovery.initials($fdBlog)</span><a href="$utils.escapeHTML($fdBlog.absoluteURL)">$fdBlog.name</a><p>$text.get("discovery.posts", [$fdBlog.entryCount])</p></li>
+                <li data-b="$fdB"><span class="fd-mark" aria-hidden="true">$discovery.initials($fdBlog)</span><a href="$utils.escapeHTML($fdBlog.absoluteURL)">$fdBlog.name</a><p>$text.get("discovery.posts", [$discovery.postCount($fdBlog)])</p></li>
             #end
             </ul>
         </div>

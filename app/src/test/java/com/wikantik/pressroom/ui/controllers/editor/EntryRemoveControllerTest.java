@@ -83,6 +83,22 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
     private boolean mayPost = true;
 
     /**
+     * {@code entryRemove!remove.rol} was orphaned: nothing in a JSP, script or
+     * browser test posted to it, yet it trashed entries like its sibling. The
+     * list's own endpoint is the one way in.
+     */
+    @Test
+    void theOrphanedRemoveEndpointIsGone() {
+        java.util.List<String> mappings = java.util.Arrays.stream(EntryRemoveController.class.getDeclaredMethods())
+                .map(m -> m.getAnnotation(org.springframework.web.bind.annotation.PostMapping.class))
+                .filter(java.util.Objects::nonNull)
+                .flatMap(a -> java.util.Arrays.stream(a.value()))
+                .toList();
+
+        assertEquals(java.util.List.of("/entryRemoveViaList!remove.rol"), mappings);
+    }
+
+    /**
      * A contributor (EDIT_DRAFT, no POST) submits work for review and cannot
      * publish, so they may not take other people's posts, or any published
      * post, off the blog either: published entry ids are in every page's
@@ -105,7 +121,7 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
         entry.setCreatorUserName(USER_NAME);
 
         assertEquals("redirect:/pressroom-ui/menu.rol",
-                controller.remove(request, model, "entry-1", redirectAttributes));
+                controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes));
         verify(weblogger.getWeblogEntryManager(), never()).trashWeblogEntry(any());
     }
 
@@ -122,11 +138,8 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
 
     @Test
     void removingAnEntrySendsTheAuthorBackToTheList() throws Exception {
-        // This endpoint is orphaned in the UI (nothing posts to it directly
-        // any more), but it must still behave like its sibling
-        // entryRemoveViaList rather than dropping the author onto a blank
-        // entryAdd form.
-        String view = controller.remove(request, model, "entry-1", redirectAttributes);
+        // Back to the list, never onto a blank entryAdd form.
+        String view = controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes);
 
         assertEquals(ENTRIES_REDIRECT, view);
         verify(weblogger.getWeblogEntryManager()).trashWeblogEntry(entry);
@@ -144,7 +157,7 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
         entry.setWebsite(other);
 
         assertEquals("redirect:/pressroom-ui/menu.rol",
-                controller.remove(request, model, "entry-1", redirectAttributes),
+                controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes),
                 "a foreign entryId must bounce, exactly like an unknown one");
         assertEquals("redirect:/pressroom-ui/menu.rol",
                 controller.entryRemoveViaListRemove(request, model, "entry-1", newRedirectAttributes()));
@@ -164,7 +177,7 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
     void aPublishedEntryIsTakenOutOfTheSearchIndexBeforeItIsDeleted() throws Exception {
         // Once the row is gone the index entry can no longer be resolved, so
         // the de-index has to happen first.
-        controller.remove(request, model, "entry-1", redirectAttributes);
+        controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes);
 
         InOrder order = inOrder(weblogger.getIndexManager(), weblogger.getWeblogEntryManager());
         order.verify(weblogger.getIndexManager()).removeEntryIndexOperation(entry);
@@ -179,7 +192,7 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
         // right in every caller.
         entry.setStatus(PubStatus.DRAFT);
 
-        controller.remove(request, model, "entry-1", redirectAttributes);
+        controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes);
 
         verify(weblogger.getIndexManager()).removeEntryIndexOperation(entry);
         verify(weblogger.getWeblogEntryManager()).trashWeblogEntry(entry);
@@ -190,7 +203,7 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
         // De-indexing used to flip the entry to DRAFT to trigger a re-index
         // job, then flip it back. That trick is gone -- the de-index call
         // asks the index directly and never touches the entry's own status.
-        controller.remove(request, model, "entry-1", redirectAttributes);
+        controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes);
 
         assertEquals(PubStatus.PUBLISHED, entry.getStatus(),
                 "De-indexing must not mutate the entry's own status field");
@@ -201,7 +214,7 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
     void aSuccessfulRemovalNamesTheEntryInTheFlashMessage() throws Exception {
         registerMessage("weblogEdit.entryRemoved", "removed:{0}");
 
-        controller.remove(request, model, "entry-1", redirectAttributes);
+        controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes);
 
         assertEquals(java.util.List.of("removed:Doomed post"), flashMessages(redirectAttributes));
     }
@@ -210,7 +223,7 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
     void removingAnEntryThatNoLongerExistsBouncesToTheMenu() throws Exception {
         when(weblogger.getWeblogEntryManager().getWeblogEntry("gone")).thenReturn(null);
 
-        String view = controller.remove(request, model, "gone", redirectAttributes);
+        String view = controller.entryRemoveViaListRemove(request, model, "gone", redirectAttributes);
 
         assertEquals("redirect:/pressroom-ui/menu.rol", view);
         assertTrue(flashErrors(redirectAttributes).contains("weblogEntry.notFound"),
@@ -220,7 +233,7 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
 
     @Test
     void removingWithNoIdBouncesToTheMenu() throws Exception {
-        String view = controller.remove(request, model, null, redirectAttributes);
+        String view = controller.entryRemoveViaListRemove(request, model, null, redirectAttributes);
 
         assertEquals("redirect:/pressroom-ui/menu.rol", view);
         verify(weblogger.getWeblogEntryManager(), never()).trashWeblogEntry(any());
@@ -236,9 +249,6 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
 
     @Test
     void theListVariantAlsoDeIndexesAPublishedEntry() throws Exception {
-        // remove() and entryRemoveViaListRemove() are near-identical copies of
-        // the same logic. Testing only one lets the other drift and quietly
-        // stop cleaning up the search index.
         controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes);
 
         InOrder order = inOrder(weblogger.getIndexManager(), weblogger.getWeblogEntryManager());
@@ -285,7 +295,7 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
     void aSuccessfulDeletionIsCommitted() throws Exception {
         // An uncommitted delete leaves the entry in the database while the page
         // reports it gone.
-        controller.remove(request, model, "entry-1", redirectAttributes);
+        controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes);
 
         assertEquals(1, weblogger.flushCount(), "The deletion must be committed");
     }
@@ -297,7 +307,7 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
         org.mockito.Mockito.doThrow(new WebloggerException("index locked"))
                 .when(weblogger.getIndexManager()).removeEntryIndexOperation(any(WeblogEntry.class));
 
-        String view = controller.remove(request, model, "entry-1", redirectAttributes);
+        String view = controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes);
 
         assertEquals(ENTRIES_REDIRECT, view);
         verify(weblogger.getWeblogEntryManager()).trashWeblogEntry(entry);
@@ -308,7 +318,7 @@ class EntryRemoveControllerTest extends EditorControllerTestSupport {
         org.mockito.Mockito.doThrow(new WebloggerException("constraint violation"))
                 .when(weblogger.getWeblogEntryManager()).trashWeblogEntry(any());
 
-        String view = controller.remove(request, model, "entry-1", redirectAttributes);
+        String view = controller.entryRemoveViaListRemove(request, model, "entry-1", redirectAttributes);
 
         assertEquals(ENTRIES_REDIRECT, view,
                 "A failed delete must not send the author to a fresh entry form as if it worked");

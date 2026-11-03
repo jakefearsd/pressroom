@@ -76,11 +76,11 @@ public final class MediaFileWrapper {
     }
 
     public String getName() {
-        return HTMLSanitizer.conditionallySanitizeText(this.pojo.getName());
+        return HTMLSanitizer.conditionallyToPlainText(this.pojo.getName());
     }
 
     public String getDescription() {
-        return HTMLSanitizer.conditionallySanitizeText(this.pojo.getDescription());
+        return HTMLSanitizer.conditionallyToPlainText(this.pojo.getDescription());
     }
 
     /**
@@ -92,7 +92,7 @@ public final class MediaFileWrapper {
      * sensible fallback is depends on where the image is being rendered.
      */
     public String getAltText() {
-        return HTMLSanitizer.conditionallySanitizeText(this.pojo.getAltText());
+        return HTMLSanitizer.conditionallyToPlainText(this.pojo.getAltText());
     }
 
     public String getContentType() {
@@ -248,19 +248,19 @@ public final class MediaFileWrapper {
     // ---------------------------------------------------------- EXIF display
 
     public String getExifCamera() {
-        return HTMLSanitizer.conditionallySanitizeText(this.pojo.getExifCamera());
+        return HTMLSanitizer.conditionallyToPlainText(this.pojo.getExifCamera());
     }
 
     public String getExifLens() {
-        return HTMLSanitizer.conditionallySanitizeText(this.pojo.getExifLens());
+        return HTMLSanitizer.conditionallyToPlainText(this.pojo.getExifLens());
     }
 
     public String getExifExposure() {
-        return HTMLSanitizer.conditionallySanitizeText(this.pojo.getExifExposure());
+        return HTMLSanitizer.conditionallyToPlainText(this.pojo.getExifExposure());
     }
 
     public String getExifAperture() {
-        return HTMLSanitizer.conditionallySanitizeText(this.pojo.getExifAperture());
+        return HTMLSanitizer.conditionallyToPlainText(this.pojo.getExifAperture());
     }
 
     public Integer getExifIso() {
@@ -268,7 +268,7 @@ public final class MediaFileWrapper {
     }
 
     public String getExifFocalLength() {
-        return HTMLSanitizer.conditionallySanitizeText(this.pojo.getExifFocalLength());
+        return HTMLSanitizer.conditionallyToPlainText(this.pojo.getExifFocalLength());
     }
 
     public Timestamp getExifTaken() {

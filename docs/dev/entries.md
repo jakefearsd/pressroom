@@ -55,6 +55,18 @@ incidental re-save) — minor PII residue worth clearing.
   The `#entry` form is `display:contents`
   so the newsletter/revisions boxes' own `<form>`s (own CSRF token and POST
   target) sit in the rail's grid column without nesting.
+- **A picked featured/social image is validated at save** (2026-11):
+  `bean.featuredImageId`/`bean.ogImageId` (and the page editor's
+  `bean.ogImageId`) must name an image of the action weblog outside every
+  private directory — `WeblogOwnership.publicImage`, the same rule
+  `EntriesWriteApi` applies, through `BaseController.checkPickedImage`. The
+  renderers (`WeblogEntryWrapper.resolveMediaFile`, `PageModel.getPageOgImage`)
+  resolve the id globally, so a crafted POST used to make one blog's page
+  print another blog's (or a private directory's) media metadata. A blank id
+  (cleared) and the value already stored are accepted, so a deleted image
+  never blocks an unrelated save; a lookup that throws refuses. The editors'
+  thumbnail previews use `BaseController.pickedImageThumbnailURL`
+  (`WeblogOwnership.mediaFile`).
 - **The Summary drawer** (under the writing surface, `bean.summary`) is the
   line under the title in entry lists and the Atom `<summary>`: its tip
   (`weblogEdit.summary.tip`) says so and that, left empty, lists show the
@@ -152,9 +164,18 @@ incidental re-save) — minor PII residue worth clearing.
   - **Restore re-saves rather than dropping**, so recovered text keeps a
     backup; it never auto-restores (an unreviewed snapshot must not overwrite
     the server's copy).
+  - **A key names the user**:
+    `pressroom.draft.v1:<context path>:<user id>:<handle>:<action>:<id>`
+    (`EditorAutosaveWiringTest`). `localStorage` belongs to the browser, so a
+    key without the user offered the next member on a shared machine the last
+    one's draft. The Logout link also clears every `pressroom.draft.v1:` key
+    (a delegated click handler in `pressroom.js`, which every admin page
+    loads); a session that just expires keeps them, for its owner only.
   Known limits (in the spec): two tabs on the same *new* entry share the one
-  `…:new` slot (later debounce wins); a draft outlives logout, up to 30 days
-  in that browser profile, so on a shared machine the next author sees it.
+  `…:new` slot (later debounce wins); a draft outlives a session that expires
+  without a logout, up to 30 days in that browser profile (offered only to
+  the same user); drafts written under the older user-less keys are never
+  offered again and age out through the 30-day sweep.
   The leave-warning is bound **once** against a dirty flag under the
   `beforeunload.pressroomLeaveWarning` namespace (not a fresh `beforeunload`
   *and* `submit` handler per CodeMirror `change`, as before), and stays
@@ -281,7 +302,15 @@ the new dimension from spreading.
 - **`entry.trash.retention.days`** — runtime property, default **30**, `-1`
   keeps forever. Swept by `TrashPurgeTask` beside `ScheduledEntriesTask`;
   re-read per sweep, not latched in `init()` (the third Configuration-scope
-  trap); per-weblog try/catch.
+  trap); per-weblog try/catch, and since 2026-11-03 one transaction per
+  weblog (it committed once at the end, so a commit-time failure in one
+  weblog undid every other's purge, every day). `ScheduledEntriesTask`
+  likewise promotes each due entry in its own transaction; a failing entry
+  stays SCHEDULED and is retried next minute. Both sweeps skip weblogs with
+  `visible = false` (nothing in the UI sets it today) and the trash sweep
+  skips the site space (which has no entries screens); whether a hidden
+  weblog's schedule and trash should keep running is an open product
+  question.
 - **Pages and media files are deliberately NOT in the trash**: a soft-deleted
   media file still occupies disk, counts against `uploads.dir.maxsize`, keeps
   its renditions and stays reachable at its media URL unless every such path

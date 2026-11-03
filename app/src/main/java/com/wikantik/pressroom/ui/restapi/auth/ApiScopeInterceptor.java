@@ -2,15 +2,19 @@ package com.wikantik.pressroom.ui.restapi.auth;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.Map;
 import com.wikantik.pressroom.pojos.ApiToken;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.restapi.ApiException;
+import com.wikantik.pressroom.ui.restapi.ApiExceptionHandler;
+import com.wikantik.pressroom.ui.restapi.ApiProblemWriter;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.HandlerMapping;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Applies the token's ceiling on top of the permission checks
@@ -43,9 +47,42 @@ import org.springframework.web.servlet.HandlerMapping;
  */
 public class ApiScopeInterceptor implements HandlerInterceptor {
 
+    /** The package {@code ApiExceptionHandler} advises: a refusal of its handlers is thrown to it. */
+    private static final String ADVISED_PACKAGE = ApiExceptionHandler.class.getPackageName();
+
+    /** Writes a refusal of any other handler; the problem is a plain record, so any mapper writes it alike. */
+    private static final ApiProblemWriter PROBLEMS = new ApiProblemWriter(new ObjectMapper());
+
+    /**
+     * A refusal of one of Pressroom's API handlers is thrown, for {@code
+     * ApiExceptionHandler} to answer. A library's handler under the API mount
+     * (springdoc's OpenAPI document) is outside that advice's package, so a
+     * thrown refusal escaped the dispatcher as the container's 500 HTML page;
+     * it is written here instead, the same problem+json.
+     */
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response,
-                             Object handler) {
+                             Object handler) throws IOException {
+        try {
+            return check(request, handler);
+        } catch (ApiException refused) {
+            if (isAdvised(handler)) {
+                throw refused;
+            }
+            PROBLEMS.write(response, refused.toProblem(request.getRequestURI()));
+            return false;
+        }
+    }
+
+    private static boolean isAdvised(Object handler) {
+        if (!(handler instanceof HandlerMethod handlerMethod)) {
+            return false;
+        }
+        String pkg = handlerMethod.getBeanType().getPackageName();
+        return pkg.equals(ADVISED_PACKAGE) || pkg.startsWith(ADVISED_PACKAGE + ".");
+    }
+
+    private static boolean check(HttpServletRequest request, Object handler) {
         ApiPrincipal principal = currentPrincipal();
         if (principal == null) {
             return true;

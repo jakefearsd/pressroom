@@ -168,8 +168,8 @@ class PageModelTest {
     @Test
     void initWithoutAUrlStrategyIsRefused() {
         // The model used to fall back to the static locator's strategy here. The
-        // only caller that ever relied on that was WeblogCacheWarmupJob, which
-        // now passes one; a missing strategy is a caller bug, and failing at
+        // only caller that ever relied on that was WeblogCacheWarmupJob (since
+        // deleted), which passed one; a missing strategy is a caller bug, and failing at
         // init beats a null link on every page.
         Map<String, Object> initData = new HashMap<>();
         initData.put("parsedRequest", pageRequest());

@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.Weblogger;
+import com.wikantik.pressroom.pojos.FormSubmission;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.ReaderComment;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -35,8 +36,10 @@ import com.wikantik.pressroom.pojos.WeblogTemplate;
 
 /**
  * By-id ownership lookups for {@code WeblogEntry}, {@code WeblogCategory},
- * {@code WeblogTemplate}, {@code WeblogPage}, {@code MediaFile} and an
- * entry's {@code WeblogEntryRevision}, extracted from
+ * {@code WeblogTemplate}, {@code WeblogPage}, {@code MediaFile} (and a
+ * picked image, {@link #publicImage}), {@code ReaderComment},
+ * {@code FormSubmission}, {@code WeblogRedirect} and an entry's
+ * {@code WeblogEntryRevision}, extracted from
  * {@link BaseController}'s four {@code lookupX} methods (Task 7).
  *
  * <p>{@code getWeblogEntry}/{@code getWeblogCategory}/{@code getTemplate}/
@@ -196,6 +199,27 @@ public final class WeblogOwnership {
     }
 
     /**
+     * The contact-form submission with this id, but only when it was sent to
+     * {@code weblog}.
+     */
+    public static FormSubmission formSubmission(Weblogger weblogger, String id, Weblog weblog) {
+        if (StringUtils.isBlank(id)) {
+            return null;
+        }
+        try {
+            FormSubmission submission = weblogger.getFormSubmissionManager().get(id);
+            if (submission == null || submission.getWeblog() == null
+                    || !submission.getWeblog().equals(weblog)) {
+                return null;
+            }
+            return submission;
+        } catch (WebloggerException ex) {
+            log.error("Error looking up a form submission for weblog {}", handleOf(weblog), ex);
+        }
+        return null;
+    }
+
+    /**
      * The revision with this id, but only when it is a revision of {@code
      * entry} -- an entry the caller has already looked up through {@link
      * #entry}, so the revision is as reachable as its entry and no more. A
@@ -244,6 +268,24 @@ public final class WeblogOwnership {
             log.error("Error looking up a media file for weblog {}", handleOf(weblog), ex);
         }
         return null;
+    }
+
+    /**
+     * The media file with this id, but only when it is an image readers can
+     * load: a file of {@code weblog} (by {@link #mediaFile}'s rule), an image,
+     * and outside every private directory. This is the rule for an id a
+     * writer picks as a featured or social (Open Graph) image, shared by the
+     * JSP editors and {@code /api/v1}: the renderers resolve those ids with a
+     * global lookup, so a foreign or private id stored on an entry or page
+     * would publish that file's metadata on this weblog's pages.
+     */
+    public static MediaFile publicImage(Weblogger weblogger, String id, Weblog weblog) {
+        MediaFile file = mediaFile(weblogger, id, weblog);
+        if (file == null || !file.isImageFile()
+                || (file.getDirectory() != null && file.getDirectory().isPrivate())) {
+            return null;
+        }
+        return file;
     }
 
     /**

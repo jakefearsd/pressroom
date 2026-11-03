@@ -63,6 +63,16 @@
 
         <c:if test="${not ssoBound}">
         <div class="row mb-3">
+            <spring:message code="yourProfile.currentPassword" var="currentPasswordLabel"/>
+            <label class="col-sm-3 col-form-label" for="currentPassword">${currentPasswordLabel}</label>
+            <div class="col-sm-9">
+                <form:password path="currentPassword" id="currentPassword" autocomplete="current-password"
+                               cssClass="form-control" size="20" aria-describedby="currentPasswordTip"/>
+                <div class="form-text" id="currentPasswordTip"><spring:message code="yourProfile.currentPassword.tip"/></div>
+            </div>
+        </div>
+
+        <div class="row mb-3">
             <spring:message code="userSettings.password" var="passwordLabel"/>
             <label class="col-sm-3 col-form-label" for="passwordText">${passwordLabel}</label>
             <div class="col-sm-9">

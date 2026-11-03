@@ -258,6 +258,7 @@ class UserEditControllerTest {
         User stored = storedUser("jake");
         CreateUserBean edit = beanForExisting("u1", "jake");
         edit.setEmailAddress(" new@example.com ");
+        edit.setEnabled(Boolean.TRUE);
 
         controller.modifyUserSave(ControllerTestFixture.requestFor(stored), new ExtendedModelMap(), edit);
 
@@ -466,6 +467,8 @@ class UserEditControllerTest {
         CreateUserBean bean = beanForExisting("u1", "jake");
         bean.setScreenName("Jake Renamed");
         bean.setEmailAddress("new@example.com");
+        // Editing one's own account, which must stay enabled.
+        bean.setEnabled(Boolean.TRUE);
 
         String view = controller.modifyUserSave(ControllerTestFixture.requestFor(stored), model, bean);
 
@@ -515,7 +518,7 @@ class UserEditControllerTest {
         assertSame(jakesSession, PressroomLoginSessionManager.getInstance().get("jake"),
                 "precondition: jake is signed in when the admin edits him");
         CreateUserBean bean = beanForExisting("u1", "jake");
-        bean.setPassword("newpass");
+        bean.setPassword("newpass1");
         // Left enabled on purpose: the new password alone has to end the
         // session, without help from the account being disabled too.
         bean.setEnabled(Boolean.TRUE);
@@ -523,10 +526,30 @@ class UserEditControllerTest {
         controller.modifyUserSave(ControllerTestFixture.requestFor(user("admin", "a@example.com")), model, bean);
 
         assertTrue(new BCryptPasswordEncoder().matches(
-                        "newpass", stored.getPassword().substring("{bcrypt}".length())),
+                        "newpass1", stored.getPassword().substring("{bcrypt}".length())),
                 "the updated password should verify against the stored hash");
         assertNull(PressroomLoginSessionManager.getInstance().get("jake"),
                 "whoever is logged in with the old password must be forced to re-authenticate");
+    }
+
+    @Test
+    void aPasswordShorterThanTheSharedMinimumIsRefusedWhenEditingToo() throws Exception {
+        // Creating a person enforced the floor; editing one enforced nothing,
+        // so a one-character password went through here.
+        User stored = storedUser("jake");
+        stored.setPassword("{bcrypt}stored");
+        CreateUserBean bean = beanForExisting("u1", "jake");
+        bean.setPassword("x");
+        bean.setEnabled(Boolean.TRUE);
+
+        String view = controller.modifyUserSave(
+                ControllerTestFixture.requestFor(user("admin", "a@example.com")), model, bean);
+
+        assertEquals(".UserEdit", view);
+        assertEquals(List.of("personForm.error.passwordTooShort"), ControllerTestFixture.errors(model));
+        assertEquals(List.of("bean_password"), ControllerTestFixture.invalidFields(model));
+        verify(weblogger.userManager(), never()).saveUser(any());
+        assertEquals("{bcrypt}stored", stored.getPassword());
     }
 
     @Test
@@ -534,7 +557,7 @@ class UserEditControllerTest {
         User self = storedUser("jake");
         PressroomSession ownSession = registerSessionFor("jake");
         CreateUserBean bean = beanForExisting("u1", "jake");
-        bean.setPassword("newpass");
+        bean.setPassword("newpass1");
         bean.setEnabled(Boolean.TRUE);
 
         try {
@@ -606,6 +629,47 @@ class UserEditControllerTest {
 
         verify(weblogger.userManager(), never()).revokeRole(eq("admin"), any());
         assertEquals(List.of("userAdmin.cantChangeOwnRole"), ControllerTestFixture.errors(model));
+    }
+
+    @Test
+    void aRefusedSelfDemotionSavesNoneOfTheFormsOtherChanges() throws Exception {
+        // The refusal was added after saveUser had run, so the rest of the
+        // form committed and "saved" was shown beside the error.
+        User self = storedUser("jake");
+        self.setScreenName("Jake");
+        when(weblogger.userManager().checkPermission(any(GlobalPermission.class), eq(self))).thenReturn(true);
+        CreateUserBean bean = beanForExisting("u1", "jake");
+        bean.setAdministrator(false);
+        bean.setEnabled(Boolean.TRUE);
+        bean.setScreenName("Renamed");
+
+        String view = controller.modifyUserSave(ControllerTestFixture.requestFor(self), model, bean);
+
+        assertEquals(".UserEdit", view);
+        assertEquals(List.of("userAdmin.cantChangeOwnRole"), ControllerTestFixture.errors(model));
+        assertEquals("Jake", self.getScreenName(), "nothing on the form may be applied");
+        verify(weblogger.userManager(), never()).saveUser(any());
+        verify(weblogger.weblogger(), never()).flush();
+        assertFalse(ControllerTestFixture.messages(model).contains("userAdmin.userSaved"));
+    }
+
+    @Test
+    void anAdminCannotDisableTheirOwnAccount() throws Exception {
+        // A lockout: the only admin who could re-enable it is the one signing
+        // out of it. Every other admin is, by being here, an enabled admin,
+        // so this is also what keeps one enabled admin on the site.
+        User self = storedUser("jake");
+        when(weblogger.userManager().checkPermission(any(GlobalPermission.class), eq(self))).thenReturn(true);
+        CreateUserBean bean = beanForExisting("u1", "jake");
+        bean.setAdministrator(true);
+        bean.setEnabled(Boolean.FALSE);
+
+        String view = controller.modifyUserSave(ControllerTestFixture.requestFor(self), model, bean);
+
+        assertEquals(".UserEdit", view);
+        assertEquals(List.of("userAdmin.error.cantDisableSelf"), ControllerTestFixture.errors(model));
+        assertEquals(Boolean.TRUE, self.getEnabled());
+        verify(weblogger.userManager(), never()).saveUser(any());
     }
 
     @Test
@@ -928,7 +992,7 @@ class UserEditControllerTest {
     void savingAPasswordForABoundAccountIsRefused() throws Exception {
         User stored = storedBoundUser("reader-abc1234567");
         CreateUserBean bean = beanForExisting("u1", "reader-abc1234567");
-        bean.setPassword("newpass");
+        bean.setPassword("newpass1");
 
         String view = controller.modifyUserSave(
                 ControllerTestFixture.requestFor(user("admin", "a@example.com")), model, bean);

@@ -125,12 +125,6 @@ public interface MediaFileManager {
             String name) throws WebloggerException;
 
     /**
-     * Get media file by directory path (single folder + file name).
-     */
-    MediaFile getMediaFileByPath(Weblog weblog, String path)
-            throws WebloggerException;
-
-    /**
      * Get media file by the original path by which it was stored. Required for
      * support of old upload file URLs and for theme resources. {@inheritDoc}
      */

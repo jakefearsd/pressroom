@@ -33,7 +33,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.commons.text.StringEscapeUtils;
-import org.apache.commons.validator.routines.UrlValidator;
 import com.wikantik.pressroom.util.DateUtil;
 import com.wikantik.pressroom.util.PressroomConstants;
 import com.wikantik.pressroom.WebloggerException;
@@ -42,7 +41,6 @@ import com.wikantik.pressroom.business.seo.SeoLimits;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.search.IndexManager;
 import com.wikantik.pressroom.pojos.GlobalPermission;
-import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.ReaderComment;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogCategory;
@@ -77,16 +75,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class EntryEditController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(EntryEditController.class);
-
-    /**
-     * Same allowlist as {@code CtaShortcode}'s href check: the SEO card's
-     * canonical-URL override is emitted straight into
-     * {@code <link rel="canonical">}, {@code og:url} and JSON-LD
-     * {@code mainEntityOfPage}, so it must be an absolute http(s) URL or
-     * blank -- never a {@code javascript:}/{@code data:}/{@code file:} value.
-     */
-    private static final UrlValidator CANONICAL_URL_VALIDATOR =
-            new UrlValidator(new String[] {"http", "https"});
 
     /**
      * The Listmonk client used by {@link #entryEditSendNewsletter}, built
@@ -682,9 +670,14 @@ public class EntryEditController extends BaseController {
     private String doSave(HttpServletRequest request, Model model, EntryBean bean,
                           WeblogEntry entry, String actionName, Timestamp pubTime) {
         if (StringUtils.isNotBlank(bean.getCanonicalUrl())
-                && !CANONICAL_URL_VALIDATOR.isValid(bean.getCanonicalUrl())) {
+                && !EntryFieldRules.isValidCanonicalUrl(bean.getCanonicalUrl())) {
             addError(model, "entryEdit.canonicalUrlInvalid", request);
         }
+        // Checked against the stored values before copyTo overwrites them.
+        checkPickedImage(model, "weblogEdit.error.featuredImageUnusable",
+                bean.getFeaturedImageId(), entry.getFeaturedImageId(), request);
+        checkPickedImage(model, "weblogEdit.error.ogImageUnusable",
+                bean.getOgImageId(), entry.getOgImageId(), request);
         if (!hasErrors(model)) {
             try {
                 WeblogEntryManager weblogEntryManager = weblogger.getWeblogEntryManager();
@@ -869,25 +862,15 @@ public class EntryEditController extends BaseController {
 
     /**
      * Adds the thumbnail URL for a referenced media file, if it still exists
-     * and belongs to this weblog. A dangling id (image deleted after being
-     * picked) simply renders no preview rather than a broken editor page, and
-     * an id belonging to another weblog is treated exactly the same way --
-     * {@code getMediaFile} is a global by-id lookup and these ids come off the
-     * submitted form.
+     * and belongs to this weblog ({@code BaseController.pickedImageThumbnailURL}).
+     * A dangling id simply renders no preview rather than a broken editor
+     * page, and an id belonging to another weblog is treated the same way.
      */
     private void addImagePreviewAttribute(HttpServletRequest request, Model model,
                                           String attributeName, String mediaFileId) {
-        if (StringUtils.isEmpty(mediaFileId)) {
-            return;
-        }
-        try {
-            MediaFile mediaFile = weblogger.getMediaFileManager().getMediaFile(mediaFileId);
-            if (mediaFile != null && getActionWeblog(request).equals(mediaFile.getWeblog())) {
-                model.addAttribute(attributeName, weblogger.getUrlStrategy()
-                        .getMediaFileThumbnailURL(mediaFile.getWeblog(), mediaFile.getId(), true));
-            }
-        } catch (WebloggerException ex) {
-            log.error("Error looking up media file - {}", mediaFileId, ex);
+        String url = pickedImageThumbnailURL(mediaFileId, request);
+        if (url != null) {
+            model.addAttribute(attributeName, url);
         }
     }
 

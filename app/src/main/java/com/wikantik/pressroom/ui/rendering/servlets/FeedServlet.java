@@ -133,6 +133,8 @@ public class FeedServlet extends HttpServlet {
 
         // determine the lastModified date for this content
         long lastModified = renderCache.lastModified(weblog);
+        // what this render is built from, read before it reads anything
+        RenderCache.Basis basis = renderCache.basis(weblog);
 
         // Respond with 304 Not Modified if it is not modified.
         if (ModDateHeaderUtil.respondIfNotModified(request, response,
@@ -151,7 +153,7 @@ public class FeedServlet extends HttpServlet {
         // generate cache key
         String cacheKey = renderCache.generateKey(feedRequest);
 
-        if (servedFromCache(response, renderCache, cacheKey, lastModified)) {
+        if (servedFromCache(response, renderCache, cacheKey, basis)) {
             return;
         }
 
@@ -196,7 +198,7 @@ public class FeedServlet extends HttpServlet {
 
         // cache rendered content. only cache if user is not logged in?
         log.debug("PUT {}", cacheKey);
-        renderCache.put(cacheKey, rendererOutput);
+        renderCache.put(cacheKey, rendererOutput, basis);
 
         log.debug("Exiting");
     }
@@ -241,9 +243,9 @@ public class FeedServlet extends HttpServlet {
     @SuppressWarnings("PMD.CloseResource")
     private boolean servedFromCache(HttpServletResponse response,
                                     RenderCache<WeblogFeedRequest> renderCache,
-                                    String cacheKey, long lastModified) throws IOException {
+                                    String cacheKey, RenderCache.Basis basis) throws IOException {
 
-        CachedContent cachedContent = renderCache.get(cacheKey, lastModified);
+        CachedContent cachedContent = renderCache.get(cacheKey, basis);
         if (cachedContent == null) {
             log.debug("MISS {}", cacheKey);
             return false;

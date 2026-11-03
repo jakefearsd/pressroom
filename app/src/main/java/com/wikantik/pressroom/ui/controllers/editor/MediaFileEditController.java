@@ -27,6 +27,7 @@ import com.wikantik.pressroom.business.FileIOException;
 import com.wikantik.pressroom.business.MediaFileManager;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.MediaFileDirectory;
+import com.wikantik.pressroom.ui.controllers.MediaUploads;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -108,20 +109,29 @@ public class MediaFileEditController extends MediaFileBase {
         model.addAttribute("allDirectories", refreshAllDirectories(request));
         model.addAttribute("mediaFileId", mediaFileId);
 
+        // The form always posts the file's folder; without one there is
+        // nothing to check the name against, and nowhere to keep the file.
+        if (StringUtils.isBlank(bean.getDirectoryId())) {
+            log.warn("Refusing to save media file {}: no folder posted", mediaFileId);
+            addError(model, "MediaFile.error.view", request);
+            return ".MediaFileEdit";
+        }
+
         // resolve directory for validation -- ownership-checked, because the
         // posted directoryId is what the file would be moved into
         MediaFileDirectory directory = null;
         try {
-            if (!StringUtils.isEmpty(bean.getDirectoryId())) {
-                directory = ownedDirectory(bean.getDirectoryId(), request);
-                if (directory == null) {
-                    log.warn("Refusing to save into directory {}: not owned by weblog {}",
-                            bean.getDirectoryId(), getActionWeblog(request).getHandle());
-                    addError(model, "MediaFile.error.view", request);
-                }
+            directory = ownedDirectory(bean.getDirectoryId(), request);
+            if (directory == null) {
+                log.warn("Refusing to save into directory {}: not owned by weblog {}",
+                        bean.getDirectoryId(), getActionWeblog(request).getHandle());
+                addError(model, "MediaFile.error.view", request);
             }
         } catch (WebloggerException ex) {
+            // the duplicate-name check below needs the directory: a check
+            // that could not run is not a check that passed
             log.error("Error looking up media file directory", ex);
+            addError(model, "generic.error.check.logs", request);
         }
 
         // validate
@@ -147,7 +157,8 @@ public class MediaFileEditController extends MediaFileBase {
 
                 if (uploadedFile != null && !uploadedFile.isEmpty()) {
                     mediaFile.setLength(uploadedFile.getSize());
-                    mediaFile.setContentType(uploadedFile.getContentType());
+                    mediaFile.setContentType(MediaUploads.effectiveContentType(
+                            uploadedFile.getContentType(), mediaFile.getName()));
                     manager.updateMediaFile(getActionWeblog(request), mediaFile, uploadedFile.getInputStream());
                 } else {
                     manager.updateMediaFile(getActionWeblog(request), mediaFile);

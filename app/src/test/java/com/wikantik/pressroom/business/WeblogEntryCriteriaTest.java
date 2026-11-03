@@ -406,6 +406,47 @@ class WeblogEntryCriteriaTest {
         assertTrue(anchors.containsAll(List.of("old-travel", "recent-food")));
     }
 
+    /**
+     * An entry carrying more than one of the asked-for tags is still one
+     * entry. A join on the tags listed it once per matching tag, so
+     * {@code /tags/a+b}, the tag feeds and the API's {@code tags=a&tags=b}
+     * showed it twice.
+     */
+    @Test
+    void anEntryCarryingSeveralOfTheTagsIsListedOnce() throws Exception {
+        tag(oldTravelPost, "spain");
+        tag(oldTravelPost, "portugal");
+        tag(recentFoodPost, "portugal");
+        TestUtils.endSession(true);
+
+        List<String> anchors = anchorsOf(criteria(c -> {
+            c.setWeblog(managed(blog));
+            c.setTags(List.of("spain", "portugal"));
+        }));
+
+        assertEquals(List.of("recent-food", "old-travel"), anchors);
+    }
+
+    /**
+     * The duplicates also ate the page: a two-entry page came back as one
+     * entry twice, so the pager stopped short and the second entry was lost.
+     */
+    @Test
+    void aPageOfSeveralTagsIsNotShortenedByDuplicates() throws Exception {
+        tag(recentFoodPost, "spain");
+        tag(recentFoodPost, "portugal");
+        tag(oldTravelPost, "portugal");
+        TestUtils.endSession(true);
+
+        List<String> anchors = anchorsOf(criteria(c -> {
+            c.setWeblog(managed(blog));
+            c.setTags(List.of("spain", "portugal"));
+            c.setMaxResults(2);
+        }));
+
+        assertEquals(List.of("recent-food", "old-travel"), anchors);
+    }
+
     // -------------------------------------------------------------- ordering
 
     @Test

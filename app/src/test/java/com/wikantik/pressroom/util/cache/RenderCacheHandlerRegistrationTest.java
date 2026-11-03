@@ -100,9 +100,9 @@ public class RenderCacheHandlerRegistrationTest {
         WeblogPageCache pageCache = WeblogPageCache.getInstance();
         WeblogFeedCache feedCache = WeblogFeedCache.getInstance();
 
-        siteWide.put("cache.sitewide:probe", "site-wide content");
-        pageCache.put("cache.weblogpage:probe", "page content");
-        feedCache.put("cache.weblogfeed:probe", "feed content");
+        siteWide.put("cache.sitewide:probe", "site-wide content", siteWide.version());
+        pageCache.put("cache.weblogpage:probe", "page content", System.currentTimeMillis());
+        feedCache.put("cache.weblogfeed:probe", "feed content", System.currentTimeMillis());
 
         CacheManager.invalidate(weblog());
 
@@ -122,8 +122,8 @@ public class RenderCacheHandlerRegistrationTest {
         WeblogPageCache pageCache = WeblogPageCache.getInstance();
         WeblogFeedCache feedCache = WeblogFeedCache.getInstance();
 
-        pageCache.put("cache.weblogpage:probe", "page content");
-        feedCache.put("cache.weblogfeed:probe", "feed content");
+        pageCache.put("cache.weblogpage:probe", "page content", System.currentTimeMillis());
+        feedCache.put("cache.weblogfeed:probe", "feed content", System.currentTimeMillis());
 
         long afterCaching = System.currentTimeMillis() + 60_000L;
 
@@ -143,8 +143,8 @@ public class RenderCacheHandlerRegistrationTest {
         // the claim under test is "identical contract", so assert it as one:
         // for the same lastModified, both caches make the same call
         for (long lastModified : new long[]{0L, 1L, System.currentTimeMillis() + 60_000L}) {
-            pageCache.put("cache.weblogpage:probe", "content");
-            feedCache.put("cache.weblogfeed:probe", "content");
+            pageCache.put("cache.weblogpage:probe", "content", System.currentTimeMillis());
+            feedCache.put("cache.weblogfeed:probe", "content", System.currentTimeMillis());
 
             boolean pageServed = pageCache.get("cache.weblogpage:probe", lastModified) != null;
             boolean feedServed = feedCache.get("cache.weblogfeed:probe", lastModified) != null;

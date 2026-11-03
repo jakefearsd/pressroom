@@ -359,12 +359,18 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         pressroom.getWeblogManager().saveWeblog(template.getWeblog());
     }
     
+    /**
+     * Stores the weblog with its creator's ADMIN permission, its categories
+     * and its default media directory in one commit. Until 2026-11-03 the
+     * weblog row was committed first and the rest a second time, so a failure
+     * in between left a weblog nobody held a permission on and with no
+     * category; deletion was made one transaction the same way on 2026-10-22.
+     */
     @Override
     public void addWeblog(Weblog newWeblog) throws WebloggerException {
         this.strategy.store(newWeblog);
-        this.strategy.flush();
-        // the new blog registers with analytics; queued for after the commit
-        // that addWeblogContents' flush makes, so the sync can see the blog
+        // the new blog registers with analytics once it is committed, so the
+        // sync (another thread, another EntityManager) can see it
         this.strategy.runAfterCommit(() -> analyticsSaw(newWeblog));
         this.addWeblogContents(newWeblog, true);
     }
@@ -447,11 +453,11 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         site.setSiteSpace(true);
         site.setDateCreated(new Date());
         this.strategy.store(site);
-        // flush() commits, so the row is visible to every lookup that starts
-        // after the absence is forgotten below
-        this.strategy.flush();
-        siteSpaceExists();
-        // registers with analytics like any blog, after addWeblogContents' commit
+        // The absence is forgotten only once the row is committed, so it is
+        // visible to every lookup that starts after that; one commit with
+        // the contents, as addWeblog does.
+        this.strategy.runAfterCommit(this::siteSpaceExists);
+        // registers with analytics like any blog, after the commit
         this.strategy.runAfterCommit(() -> analyticsSaw(site));
         // system-owned: no permission row for the creator
         this.addWeblogContents(site, false);

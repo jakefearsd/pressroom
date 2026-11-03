@@ -83,9 +83,9 @@
 <%-- Request scope, not page scope: EditorSurface.jsp arrives via jsp:include
      and cannot see page-scoped variables set here. --%>
 <c:set var="draftKey" scope="request"
-       value="pressroom.draft.v1:${pageContext.request.contextPath}:${actionWeblog.handle}:pageEdit:${empty bean.id ? 'new' : bean.id}"/>
+       value="pressroom.draft.v1:${pageContext.request.contextPath}:${authenticatedUser.id}:${actionWeblog.handle}:pageEdit:${empty bean.id ? 'new' : bean.id}"/>
 <c:set var="draftNewKey" scope="request"
-       value="pressroom.draft.v1:${pageContext.request.contextPath}:${actionWeblog.handle}:pageEdit:new"/>
+       value="pressroom.draft.v1:${pageContext.request.contextPath}:${authenticatedUser.id}:${actionWeblog.handle}:pageEdit:new"/>
 
 <%-- The same writing surface plus publish rail the entry editor runs (the
      approved card is docs/design/editor/editor-writing-surface.html): the main

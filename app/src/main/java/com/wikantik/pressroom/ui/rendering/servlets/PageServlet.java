@@ -181,6 +181,9 @@ public class PageServlet extends HttpServlet {
 
         // determine the lastModified date for this content
         long lastModified = renderCache.lastModified(weblog);
+        // what this render is built from, read before it reads anything: a
+        // rendering is cached against this, never against when it finished
+        RenderCache.Basis basis = renderCache.basis(weblog);
 
         // 304 Not Modified handling.
         // We skip this for logged in users to avoid the scenerio where a user
@@ -209,7 +212,7 @@ public class PageServlet extends HttpServlet {
         }
 
         if (servedFromCache(request, response, pageRequest, renderCache,
-                cacheKey, lastModified)) {
+                cacheKey, basis)) {
             return;
         }
 
@@ -272,7 +275,7 @@ public class PageServlet extends HttpServlet {
             return;
         }
 
-        cacheRendered(request, pageRequest, renderCache, cacheKey, rendererOutput);
+        cacheRendered(request, pageRequest, renderCache, cacheKey, rendererOutput, basis);
 
         log.debug("Exiting");
     }
@@ -333,7 +336,7 @@ public class PageServlet extends HttpServlet {
      * optimisation: an owner viewing their own weblog must not be served a copy
      * rendered for anonymous readers (it would be missing their edit links),
      * and either "skipCache" is an explicit request for freshly rendered
-     * output.
+     * output -- the parameter only from an author of the weblog.
      *
      * @return true when the response has been completed from cache and the
      *         caller must return; false when the request has to be rendered
@@ -345,13 +348,13 @@ public class PageServlet extends HttpServlet {
     private boolean servedFromCache(HttpServletRequest request, HttpServletResponse response,
                                     WeblogPageRequest pageRequest,
                                     RenderCache<WeblogPageRequest> renderCache,
-                                    String cacheKey, long lastModified) throws IOException {
+                                    String cacheKey, RenderCache.Basis basis) throws IOException {
 
         if (!cacheReadable(request, pageRequest)) {
             return false;
         }
 
-        CachedContent cachedContent = renderCache.get(cacheKey, lastModified);
+        CachedContent cachedContent = renderCache.get(cacheKey, basis);
         if (cachedContent == null) {
             log.debug("MISS {}", cacheKey);
             return false;
@@ -372,19 +375,20 @@ public class PageServlet extends HttpServlet {
      * Stores this rendering, unless the caching policy says not to.
      *
      * <p>Note the asymmetry with the read side: a "skipCache" query PARAMETER
-     * suppresses the read but not the write, so a reader can force a fresh
-     * render and have the result repopulate the cache for everyone behind them.
+     * suppresses the read but not the write, so an author can force a fresh
+     * render and have the result repopulate the cache under their own key.
      * Only the request ATTRIBUTE -- set internally, for content that must never
      * be cached -- suppresses both.
      */
     private void cacheRendered(HttpServletRequest request, WeblogPageRequest pageRequest,
                                RenderCache<WeblogPageRequest> renderCache,
-                               String cacheKey, CachedContent rendererOutput) {
+                               String cacheKey, CachedContent rendererOutput,
+                               RenderCache.Basis basis) {
 
         if ((!this.excludeOwnerPages || !pageRequest.isLoggedIn())
                 && request.getAttribute("skipCache") == null) {
             log.debug("PUT {}", cacheKey);
-            renderCache.put(cacheKey, rendererOutput);
+            renderCache.put(cacheKey, rendererOutput, basis);
         } else {
             log.debug("SKIPPED {}", cacheKey);
         }
@@ -399,7 +403,21 @@ public class PageServlet extends HttpServlet {
     private boolean cacheReadable(HttpServletRequest request, WeblogPageRequest pageRequest) {
         return (!this.excludeOwnerPages || !pageRequest.isLoggedIn())
                 && request.getAttribute("skipCache") == null
-                && request.getParameter("skipCache") == null;
+                && !forcesFreshRender(request, pageRequest);
+    }
+
+    /**
+     * A "skipCache" query parameter from an author of the weblog. From anyone
+     * else it is ignored: any reader could add it to any url, and each such
+     * request was a full render that then overwrote the shared entry, a free
+     * way to make the server render on every hit (code review, 2026-11-03).
+     * The permission is asked only when the parameter is present.
+     */
+    private boolean forcesFreshRender(HttpServletRequest request, WeblogPageRequest pageRequest) {
+        return request.getParameter("skipCache") != null
+                && pageRequest.isLoggedIn()
+                && WeblogEditors.userMayEdit(pageRequest.getWeblog(), pageRequest.getUser(),
+                        weblogger.getUserManager());
     }
 
 

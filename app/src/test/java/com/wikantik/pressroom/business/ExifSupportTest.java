@@ -18,6 +18,8 @@
 package com.wikantik.pressroom.business;
 
 import java.io.ByteArrayInputStream;
+import java.io.FilterInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -25,6 +27,7 @@ import java.util.Date;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -156,5 +159,49 @@ class ExifSupportTest {
     void readOrientationNeverThrowsOnGarbage() {
         assertEquals(1, ExifSupport.readOrientation(
                 new ByteArrayInputStream("not an image".getBytes())));
+    }
+
+    // ------------------------------------------------------------ streams
+
+    /**
+     * Both readers close the stream they are handed, as {@link ImageDecoding#read}
+     * does. The media manager hands them {@code FileContent.getInputStream()},
+     * a fresh {@code FileInputStream} on every call, and never closed it: one
+     * leaked file descriptor per upload, replace, crop and regenerated image.
+     */
+    @Test
+    void extractClosesTheStreamItIsHanded() throws Exception {
+        CloseTracking in = new CloseTracking(getClass().getResourceAsStream("/hawk-exif.jpg"));
+        ExifSupport.extract(in);
+        assertTrue(in.closed, "extract must close its stream");
+    }
+
+    @Test
+    void readOrientationClosesTheStreamItIsHanded() throws Exception {
+        CloseTracking in = new CloseTracking(getClass().getResourceAsStream("/portrait-exif.jpg"));
+        ExifSupport.readOrientation(in);
+        assertTrue(in.closed, "readOrientation must close its stream");
+    }
+
+    @Test
+    void theStreamIsClosedEvenWhenItHoldsNoImage() {
+        CloseTracking in = new CloseTracking(new ByteArrayInputStream("not an image".getBytes()));
+        assertFalse(in.closed);
+        ExifSupport.readOrientation(in);
+        assertTrue(in.closed, "a failed read must still close its stream");
+    }
+
+    private static final class CloseTracking extends FilterInputStream {
+        boolean closed;
+
+        CloseTracking(InputStream in) {
+            super(in);
+        }
+
+        @Override
+        public void close() throws IOException {
+            closed = true;
+            super.close();
+        }
     }
 }

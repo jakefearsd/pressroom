@@ -157,7 +157,7 @@ public final class MailUtil {
             sendTextMessage(
                     from, to, cc, bcc, subject, content);
         } catch (MessagingException e) {
-            log.error("ERROR: Problem sending pending entry notification email.");
+            log.error("ERROR: Problem sending pending entry notification email.", e);
         }
     }
     

@@ -32,6 +32,7 @@ import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.AdminLog;
 import com.wikantik.pressroom.ui.controllers.BaseController;
+import com.wikantik.pressroom.ui.controllers.Memberships;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
@@ -55,10 +56,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class UserWeblogsController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(UserWeblogsController.class);
-
-    /** The levels, as the Members page offers them: Admin, Author, Limited. */
-    static final List<String> LEVELS =
-            List.of(WeblogPermission.ADMIN, WeblogPermission.POST, WeblogPermission.EDIT_DRAFT);
 
     @Override
     public boolean isWeblogRequired() {
@@ -96,7 +93,7 @@ public class UserWeblogsController extends BaseController {
                 addFlashError(redirectAttributes, "userWeblogs.groupBloggingOff", request);
             } else if (weblog == null) {
                 addFlashError(redirectAttributes, "userWeblogs.error.noSuchWeblog", request);
-            } else if (!LEVELS.contains(level)) {
+            } else if (!Memberships.LEVELS.contains(level)) {
                 addFlashError(redirectAttributes, "userWeblogs.error.level", request);
             } else if (!users.checkPermission(new GlobalPermission(List.of(GlobalPermission.LOGIN)), account)) {
                 // A reader holds no login action: a weblog permission would be
@@ -106,7 +103,7 @@ public class UserWeblogsController extends BaseController {
                 users.grantWeblogPermission(weblog, account, List.of(level));
                 weblogger.flush();
                 AdminLog.record("membership.granted", getAuthenticatedUser(request),
-                        details(account, weblog) + " level=" + level);
+                        Memberships.details(account, weblog) + " level=" + level);
                 addFlashMessage(redirectAttributes, "userWeblogs.granted",
                         StringEscapeUtils.escapeHtml4(weblog.getHandle()), request);
             }
@@ -126,7 +123,7 @@ public class UserWeblogsController extends BaseController {
         if (account == null) {
             return accountNotFound(request, redirectAttributes);
         }
-        if (!LEVELS.contains(level)) {
+        if (!Memberships.LEVELS.contains(level)) {
             addFlashError(redirectAttributes, "userWeblogs.error.level", request);
             return backTo(account, redirectAttributes);
         }
@@ -147,7 +144,7 @@ public class UserWeblogsController extends BaseController {
                 users.grantWeblogPermission(weblog, account, List.of(level));
                 weblogger.flush();
                 AdminLog.record("membership.changed", getAuthenticatedUser(request),
-                        details(account, weblog) + " level=" + level);
+                        Memberships.details(account, weblog) + " level=" + level);
                 addFlashMessage(redirectAttributes, "userWeblogs.changed",
                         StringEscapeUtils.escapeHtml4(weblog.getHandle()), request);
             }
@@ -181,7 +178,7 @@ public class UserWeblogsController extends BaseController {
             } else {
                 users.revokeWeblogPermission(weblog, account, WeblogPermission.ALL_ACTIONS);
                 weblogger.flush();
-                AdminLog.record("membership.removed", getAuthenticatedUser(request), details(account, weblog));
+                AdminLog.record("membership.removed", getAuthenticatedUser(request), Memberships.details(account, weblog));
                 addFlashMessage(redirectAttributes, "userWeblogs.removed",
                         StringEscapeUtils.escapeHtml4(weblog.getHandle()), request);
             }
@@ -205,10 +202,6 @@ public class UserWeblogsController extends BaseController {
             }
         }
         return admins <= 1;
-    }
-
-    private static String details(User account, Weblog weblog) {
-        return "account=" + account.getUserName() + " weblog=" + weblog.getHandle();
     }
 
     /**

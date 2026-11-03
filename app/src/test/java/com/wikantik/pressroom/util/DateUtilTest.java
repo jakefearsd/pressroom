@@ -210,13 +210,6 @@ public class DateUtilTest {
             assertThrows(ParseException.class, () -> DateUtil.parse("not a date", fmt));
         }
 
-        @Test
-        public void parseIso8601ReadsAFeedTimestamp() throws Exception {
-            // Delegates to ISO8601DateParser; this is the entry point the rest
-            // of Pressroom calls, so it needs its own coverage.
-            assertEquals("2004-06-14 19:20:30.000", isoUtc(DateUtil.parseIso8601("2004-06-14T19:20:30Z")));
-        }
-
         private Date assertParsedOrNull(String value, SimpleDateFormat fmt) {
             try {
                 return DateUtil.parse(value, fmt);
@@ -362,45 +355,6 @@ public class DateUtilTest {
             assertNotSame(DateUtil.minimalDateFormat(), DateUtil.minimalDateFormat(), why);
             assertNotSame(DateUtil.fullDateFormat(), DateUtil.fullDateFormat(), why);
             assertNotSame(DateUtil.defaultDateFormat(), DateUtil.defaultDateFormat(), why);
-        }
-    }
-
-    @Nested
-    class WeblogUrlDates {
-
-        @Test
-        public void anEightCharacterStampParsesToThatDay() {
-            // The stamp is parsed with the server's own calendar, so it is
-            // read back with an ordinary default-zone formatter.
-            Date parsed = DateUtil.parseWeblogURLDateString("20040614", UTC, Locale.US);
-            assertEquals("2004-06-14", new SimpleDateFormat("yyyy-MM-dd").format(parsed));
-        }
-
-        @Test
-        public void aSixCharacterStampParsesToTheFirstOfThatMonth() {
-            Date parsed = DateUtil.parseWeblogURLDateString("200406", UTC, Locale.US);
-            SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd");
-            assertEquals("2004-06-01", fmt.format(parsed));
-        }
-
-        @Test
-        public void aDateInTheFutureIsClampedToNow() {
-            // /date/29990101 must not return an empty page dated in the year
-            // 2999; it collapses to today so the archive still renders.
-            Date parsed = DateUtil.parseWeblogURLDateString("29990101", UTC, Locale.US);
-            assertTrue(parsed.getTime() <= System.currentTimeMillis() + 1000,
-                    "A future date in the URL must be clamped to now, got " + parsed);
-        }
-
-        @Test
-        public void anythingThatIsNotSixOrEightDigitsFallsBackToNow() {
-            long before = System.currentTimeMillis() - 1000;
-            for (String bad : new String[]{null, "", "2004-06", "2004", "200406140", "20040a14"}) {
-                Date parsed = DateUtil.parseWeblogURLDateString(bad, UTC, Locale.US);
-                assertTrue(parsed.getTime() >= before,
-                        "Malformed URL date '" + bad + "' should fall back to the current "
-                                + "date, not to the epoch; got " + parsed);
-            }
         }
     }
 

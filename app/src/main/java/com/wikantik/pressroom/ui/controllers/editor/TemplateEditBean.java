@@ -39,7 +39,6 @@ public class TemplateEditBean {
     private String description = null;
     private String link = null;
     private String contentsStandard = null;
-    private String templateLanguage = null;
     private boolean navbar= false;
     private boolean hidden = false;
     private Boolean autoContentType = Boolean.FALSE;
@@ -98,14 +97,6 @@ public class TemplateEditBean {
         this.contentsStandard = contents;
     }
 
-    public String getTemplateLanguage() {
-        return this.templateLanguage;
-    }
-    
-    public void setTemplateLanguage( String templateLanguage ) {
-        this.templateLanguage = templateLanguage;
-    }
-    
     public boolean isNavbar() {
         return this.navbar;
     }
@@ -165,10 +156,12 @@ public class TemplateEditBean {
         }
 
         // the rest of the template properties can be modified only when
-        // dealing with a CUSTOM weblog template
+        // dealing with a CUSTOM weblog template. Never its action: what a
+        // template is (WEBLOG, STYLESHEET, CUSTOM) is fixed once it exists,
+        // and a posted bean.action would make a second WEBLOG or STYLESHEET
+        // template out of a custom one. The bean's action is for display.
         if (dataHolder.isCustom()) {
             dataHolder.setName(getName());
-            dataHolder.setAction(getAction());
             dataHolder.setDescription(getDescription());
             dataHolder.setLink(getLink());
             dataHolder.setNavbar(isNavbar());
