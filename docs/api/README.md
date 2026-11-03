@@ -1273,7 +1273,9 @@ there is no anonymous browser UI for it (`springdoc-openapi`'s Swagger UI is
 deliberately not installed; see `application.properties`), and it is not
 exempt from the site-wide `/api/**` security chain the way `GET
 /api/v1/ping` is. If you want to browse it visually, fetch it with `curl`
-and open it in any external OpenAPI viewer/editor.
+and open it in any external OpenAPI viewer/editor. It is not part of one weblog, so a
+token pinned to a weblog is refused with the 404 problem every such route
+gives it ([Token scopes](#token-scopes)); fetch it with an unpinned token.
 
 ## `bin/pressroom-api`
 

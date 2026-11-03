@@ -82,7 +82,10 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   depth. It sits behind `apiSecurityFilterChain` like all of `/api/**` (Basic
   or Bearer), not exempted like `GET /api/v1/ping`. `OpenApiDocumentTest` pins
   two `docs/api/README.md` claims the document cannot convey — v1 is unstable,
-  and `pressroom-api auth login` is the bootstrap path.
+  and `pressroom-api auth login` is the bootstrap path. springdoc's controller is outside `ApiExceptionHandler`'s
+  package, so a refusal of it cannot be thrown to the advice (it escaped as the container's 500
+  HTML page for a pinned token): `ApiScopeInterceptor` writes a refusal of any handler outside
+  `ui.restapi` itself, through `ApiProblemWriter` (`OpenApiPinnedTokenDispatchTest`).
 - **`PressroomHandlerInterceptor`'s `import ...ui.restapi.ApiException` is the ONE
   permitted import from `ui.restapi` into `ui.controllers`, and must stay the
   only one.** A second interceptor for `/api/**` would be exactly the parallel
