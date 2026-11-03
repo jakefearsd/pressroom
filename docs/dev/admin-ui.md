@@ -80,8 +80,10 @@ resolves through the index at the end of `CLAUDE.md`.
 - **Admin → Users is a list, not a search box** (2026-10-13): every account,
   All / People / Agents tabs and a `q` filter the server applies
   (`UserManager.getAccounts`, case-insensitive over username, names and email).
-  `ajax-user.js` went with the search box; `UserDataServlet` has no page
-  consumer left. Every controller that lands on `.UserAdmin` builds the rows
+  `ajax-user.js` went with the search box, and `UserDataServlet`
+  (`/pressroom-ui/authoring/userdata/*`) with it (2026-11): unused, it still
+  let any admin or editor list every account, disabled ones and email
+  prefixes included (`ServletRegistrationConfigTest.theAccountListingServletIsGone`). Every controller that lands on `.UserAdmin` builds the rows
   through `AccountRows.showList`, or the page renders with none.
 - Enabling/disabling an account: the checkbox persists whatever happens, so
   only disable-then-sign-in proves it — `UserAdminIT`.

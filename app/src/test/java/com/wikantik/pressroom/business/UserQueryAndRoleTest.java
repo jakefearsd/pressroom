@@ -304,9 +304,7 @@ class UserQueryAndRoleTest {
      * is what falls through to {@code User.getAll} when both {@code startsWith}
      * and {@code enabled} are null (see {@code JPAUserManagerImpl}), and
      * {@code User.getAll} is the one named query in {@code User.orm.xml} with
-     * no {@code ORDER BY} at all. This is also a real, reachable path: it is
-     * what {@code UserDataServlet} (the collaborator picker) calls when
-     * loaded with no filter typed in yet.
+     * no {@code ORDER BY} at all.
      *
      * <p>With no {@code ORDER BY}, two same-{@code dateCreated} rows have no
      * defined relative order and a {@code LIMIT 1 OFFSET n} walk can hand
