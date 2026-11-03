@@ -626,6 +626,28 @@ class PageEditControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
+    void thePreviewFollowsTheFilesDirectoryOwnerLikeEveryOtherOwnershipCheck() throws Exception {
+        // WeblogOwnership.mediaFile: a file's weblog is its directory's.
+        com.wikantik.pressroom.pojos.MediaFileDirectory theirs =
+                new com.wikantik.pressroom.pojos.MediaFileDirectory();
+        theirs.setWeblog(weblogB);
+        com.wikantik.pressroom.pojos.MediaFile file = new com.wikantik.pressroom.pojos.MediaFile();
+        file.setId("media-4");
+        file.setDirectory(theirs);
+        file.setWeblog(weblogA);
+        when(weblogger.getMediaFileManager().getMediaFile("media-4")).thenReturn(file);
+        when(weblogger.getUrlStrategy().getMediaFileThumbnailURL(weblogA, "media-4", true))
+                .thenReturn("https://example.com/thumb.jpg");
+        WeblogPage page = pageOn(weblogA, "about");
+        page.setOgImageId("media-4");
+
+        controller.edit(page.getId(), requestFor(weblogA), model);
+
+        assertNull(model.getAttribute("ogImageThumbnailUrl"),
+                "a file in another weblog's directory gets no preview");
+    }
+
+    @Test
     void aFailedOgImageLookupSkipsThePreviewRatherThanFailingTheWholePage() throws Exception {
         when(weblogger.getMediaFileManager().getMediaFile("media-3"))
                 .thenThrow(new WebloggerException("database down"));

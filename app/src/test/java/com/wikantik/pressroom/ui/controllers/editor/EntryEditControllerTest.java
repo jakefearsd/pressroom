@@ -1189,6 +1189,30 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
+    void thePreviewFollowsTheFilesDirectoryOwnerLikeEveryOtherOwnershipCheck() throws Exception {
+        // WeblogOwnership.mediaFile: a file's weblog is its directory's. The
+        // preview compared MediaFile.weblog instead, so the two disagreed.
+        WeblogEntry existing = existingEntry(PubStatus.PUBLISHED);
+        existing.setFeaturedImageId("mf-theirs");
+        existing.setOgImageId("mf-mine");
+        com.wikantik.pressroom.pojos.Weblog other = new com.wikantik.pressroom.pojos.Weblog();
+        other.setId("weblog-2");
+        other.setHandle("otherblog");
+        givenFileInDirectoryOf("mf-theirs", other, weblog);
+        givenFileInDirectoryOf("mf-mine", weblog, null);
+        when(weblogger.getUrlStrategy().getMediaFileThumbnailURL(weblog, "mf-mine", true))
+                .thenReturn("http://media/mf-mine?t=true");
+        when(weblogger.getUrlStrategy().getMediaFileThumbnailURL(weblog, "mf-theirs", true))
+                .thenReturn("http://media/mf-theirs?t=true");
+
+        controller.entryEditExecute(request, model, bean, newRedirectAttributes());
+
+        assertNull(model.getAttribute("featuredImageThumbnailUrl"),
+                "a file in another weblog's directory gets no preview");
+        assertEquals("http://media/mf-mine?t=true", model.getAttribute("ogImageThumbnailUrl"));
+    }
+
+    @Test
     void aDanglingImageIdRendersNoPreviewRatherThanBreakingTheEditor() throws Exception {
         // The picked image can be deleted from the media library afterwards;
         // the editor must still open, just without a preview.
@@ -1218,6 +1242,19 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
     }
 
     // --- helpers ---
+
+    /** Stub a file in a directory of {@code directoryOwner}, its own weblog field set to {@code fileWeblog}. */
+    private void givenFileInDirectoryOf(String id, com.wikantik.pressroom.pojos.Weblog directoryOwner,
+                                        com.wikantik.pressroom.pojos.Weblog fileWeblog) throws WebloggerException {
+        com.wikantik.pressroom.pojos.MediaFileDirectory directory =
+                new com.wikantik.pressroom.pojos.MediaFileDirectory();
+        directory.setWeblog(directoryOwner);
+        com.wikantik.pressroom.pojos.MediaFile file = new com.wikantik.pressroom.pojos.MediaFile();
+        file.setId(id);
+        file.setDirectory(directory);
+        file.setWeblog(fileWeblog);
+        when(weblogger.getMediaFileManager().getMediaFile(id)).thenReturn(file);
+    }
 
     /** Stub an image in a (private or public) directory of {@code owner}. */
     private void givenImage(String id, com.wikantik.pressroom.pojos.Weblog owner, boolean privateDirectory)

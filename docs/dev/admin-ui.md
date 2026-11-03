@@ -274,6 +274,13 @@ resolves through the index at the end of `CLAUDE.md`.
   a global by-id lookup lets any editor rewrite any weblog's data. All four
   treat a blank id as absent. Both `removeId` and `targetCategoryId` need it
   — a foreign move target re-files entries into someone else's blog.
+  No controller compares owners by hand (2026-11): comment moderation,
+  the entry filter, form-submission deletes and the editors' image
+  previews go through `WeblogOwnership.comment`/`entry`/`formSubmission`/
+  `mediaFile` (a file's weblog is its directory's; the previews compared
+  `MediaFile.weblog` and could disagree). A lookup that throws reads as
+  absent: the id is skipped and counted out, never acted on, and the raw
+  id is never logged. `MediaFileBase`/`MediaUploads` still check by hand.
 - **Modal JS binds by control NAME, not id.** Struts-generated ids
   (`#categoryEditForm_bean_name`) never survived the JSP migration, so
   add/edit/delete silently did nothing; names are what the server binds.

@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.Weblogger;
+import com.wikantik.pressroom.pojos.FormSubmission;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.ReaderComment;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -36,7 +37,8 @@ import com.wikantik.pressroom.pojos.WeblogTemplate;
 /**
  * By-id ownership lookups for {@code WeblogEntry}, {@code WeblogCategory},
  * {@code WeblogTemplate}, {@code WeblogPage}, {@code MediaFile} (and a
- * picked image, {@link #publicImage}) and an entry's
+ * picked image, {@link #publicImage}), {@code ReaderComment},
+ * {@code FormSubmission}, {@code WeblogRedirect} and an entry's
  * {@code WeblogEntryRevision}, extracted from
  * {@link BaseController}'s four {@code lookupX} methods (Task 7).
  *
@@ -192,6 +194,27 @@ public final class WeblogOwnership {
             return comment;
         } catch (WebloggerException ex) {
             log.error("Error looking up a comment for weblog {}", handleOf(weblog), ex);
+        }
+        return null;
+    }
+
+    /**
+     * The contact-form submission with this id, but only when it was sent to
+     * {@code weblog}.
+     */
+    public static FormSubmission formSubmission(Weblogger weblogger, String id, Weblog weblog) {
+        if (StringUtils.isBlank(id)) {
+            return null;
+        }
+        try {
+            FormSubmission submission = weblogger.getFormSubmissionManager().get(id);
+            if (submission == null || submission.getWeblog() == null
+                    || !submission.getWeblog().equals(weblog)) {
+                return null;
+            }
+            return submission;
+        } catch (WebloggerException ex) {
+            log.error("Error looking up a form submission for weblog {}", handleOf(weblog), ex);
         }
         return null;
     }

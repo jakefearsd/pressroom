@@ -31,6 +31,7 @@ import com.wikantik.pressroom.pojos.FormSubmission;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.BaseController;
+import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -106,13 +107,13 @@ public class FormSubmissionsController extends BaseController {
 
             if (deleteIds != null) {
                 for (String id : deleteIds) {
-                    FormSubmission submission = mgr.get(id);
-                    if (submission != null && actionWeblog.equals(submission.getWeblog())) {
+                    FormSubmission submission = WeblogOwnership.formSubmission(weblogger, id, actionWeblog);
+                    if (submission != null) {
                         mgr.remove(submission);
                         deletedCount++;
                     } else {
-                        log.warn("Refusing to delete submission {}: not owned by weblog {}",
-                                id, actionWeblog.getHandle());
+                        // The raw id is never logged: a CR/LF in it could forge a line.
+                        log.warn("Refusing to delete a submission not owned by weblog {}", actionWeblog.getHandle());
                     }
                 }
             }

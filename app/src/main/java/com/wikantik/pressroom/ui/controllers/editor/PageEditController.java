@@ -31,7 +31,6 @@ import org.apache.commons.validator.routines.UrlValidator;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.SiteSlugClashException;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
-import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.WeblogPermission;
@@ -305,20 +304,9 @@ public class PageEditController extends BaseController {
         // Thumbnail preview for the SEO panel's social-image picker. Read off
         // the bean rather than the page so a save that failed validation
         // still shows the image the author picked in the form.
-        if (!StringUtils.isEmpty(bean.getOgImageId())) {
-            try {
-                MediaFile mediaFile = weblogger.getMediaFileManager().getMediaFile(bean.getOgImageId());
-                // A dangling id (image deleted after being picked) or one
-                // belonging to another weblog -- getMediaFile is a global
-                // by-id lookup, and this id comes off the submitted form --
-                // simply renders no preview rather than a broken page.
-                if (mediaFile != null && getActionWeblog(request).equals(mediaFile.getWeblog())) {
-                    model.addAttribute("ogImageThumbnailUrl", weblogger.getUrlStrategy()
-                            .getMediaFileThumbnailURL(mediaFile.getWeblog(), mediaFile.getId(), true));
-                }
-            } catch (WebloggerException ex) {
-                log.error("Error looking up media file - {}", bean.getOgImageId(), ex);
-            }
+        String ogImageThumbnailUrl = pickedImageThumbnailURL(bean.getOgImageId(), request);
+        if (ogImageThumbnailUrl != null) {
+            model.addAttribute("ogImageThumbnailUrl", ogImageThumbnailUrl);
         }
     }
 

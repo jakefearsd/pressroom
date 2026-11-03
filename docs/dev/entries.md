@@ -64,7 +64,9 @@ incidental re-save) — minor PII residue worth clearing.
   resolve the id globally, so a crafted POST used to make one blog's page
   print another blog's (or a private directory's) media metadata. A blank id
   (cleared) and the value already stored are accepted, so a deleted image
-  never blocks an unrelated save; a lookup that throws refuses.
+  never blocks an unrelated save; a lookup that throws refuses. The editors'
+  thumbnail previews use `BaseController.pickedImageThumbnailURL`
+  (`WeblogOwnership.mediaFile`).
 - **The Summary drawer** (under the writing surface, `bean.summary`) is the
   line under the title in entry lists and the Atom `<summary>`: its tip
   (`weblogEdit.summary.tip`) says so and that, left empty, lists show the
