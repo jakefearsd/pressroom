@@ -18,6 +18,7 @@
 package com.wikantik.pressroom.ui.rendering.model;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -87,6 +88,8 @@ public class DiscoveryModel implements Model {
     private Weblogger weblogger;
     private URLStrategy urlStrategy;
     private FrontPage frontPage;
+    /** {@link #postCount} answers this render has already counted, by weblog id. */
+    private final Map<String, Long> postCounts = new HashMap<>();
 
     @Override
     public String getModelName() {
@@ -167,6 +170,20 @@ public class DiscoveryModel implements Model {
         }
         return site != null ? urlStrategy.getWeblogURL(site, null, true)
                 : WebloggerRuntimeConfig.getAbsoluteContextURL() + "/";
+    }
+
+    /**
+     * A blog's published post count, counted once per render. The front page
+     * names one blog's count in up to three places (the sidebar, its shelf,
+     * the all-blogs list), and {@code $blog.entryCount} is a COUNT query on
+     * every read: 2N+3 per render (code review, 2026-11-03). The count is as
+     * fresh as the render, like everything else on the cached page.
+     */
+    public long postCount(WeblogWrapper weblog) {
+        if (weblog == null) {
+            return 0L;
+        }
+        return postCounts.computeIfAbsent(weblog.getPojo().getId(), id -> weblog.getEntryCount());
     }
 
     /**

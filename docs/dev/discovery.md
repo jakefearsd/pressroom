@@ -31,6 +31,11 @@ footer (site pages, directory, colophon).
   search description that is only the post's opening cut mid-sentence
   (`Excerpts.isCutFrom`); the SEO audit reports those as
   `search_description_cut`, and meta titles cut mid-word as `meta_title_cut`.
+- **Post counts** (sidebar, shelves, all blogs) are
+  `DiscoveryModel.postCount`, counted once per blog per render, not
+  `$blog.entryCount` (a COUNT query per read, 2N+3 per render before
+  2026-11-03). **Taglines** are escaped (`$utils.escapeHTML`): a blog's owner
+  writes them, and every reader of the site sees this page.
 - **Reading time** is `getReadingMinutes()` (rendered words / 230, rounded
   up). Dates are absolute: the page is cached until the next generation.
 

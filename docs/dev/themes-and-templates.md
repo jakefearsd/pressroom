@@ -120,7 +120,12 @@ resolves through the index at the end of `CLAUDE.md`.
   style, and no section nests another (the tests read a marker up to its
   first `</section>`). Restyle through the inner `fd-*` classes, never by
   renaming a marker. Titles are emitted bare, names through the wrapper,
-  excerpts through `$utils.escapeHTML`, hrefs absolute and escaped. A hidden
+  excerpts and taglines through `$utils.escapeHTML`, hrefs absolute and
+  escaped. A tagline is plain text, never HTML (`HTMLSanitizer.toPlainText`
+  decodes entities, so a stored `< &lt;img ...&gt;` came out as a live tag on
+  everyone's front page until 2026-11-03). Post counts go through
+  `$discovery.postCount($blog)`, one COUNT per blog per render;
+  `$blog.entryCount` is a query on every read. A hidden
   `places-been` container marks where the places list goes. Spec:
   `docs/superpowers/specs/2026-11-03-front-page-redesign-design.md`.
 - **The `<title>` rule, every theme.** The separator is " — " (an em dash,
