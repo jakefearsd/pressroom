@@ -335,7 +335,8 @@ services:
     volumes:
       - pressroom-backups:/backups
       - pressroom-mediafiles:/data/mediafiles:ro
-      - pressroom-search-index:/data/search-index:ro
+      # No search index: backup.sh leaves it out, since the app rebuilds it
+      # from the database whenever it finds none.
       - pressroom-uploads:/data/uploads:ro
     restart: unless-stopped
     networks:

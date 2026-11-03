@@ -431,4 +431,99 @@ class PressroomApiCliTest {
                     name + ": " + r.out());
         }
     }
+
+    /**
+     * Runs bin/pressroom-api with a stub curl that records its own argv (what
+     * {@code ps} and /proc/PID/cmdline show any local user) and, separately,
+     * the contents of every {@code -H @file} it was handed, then answers
+     * {@code {"token":"prs_new"}}.
+     */
+    private static Run recordingRun(Path dir, String stdin, String... args) throws Exception {
+        Path bin = Files.createDirectories(dir.resolve("bin"));
+        Path curl = bin.resolve("curl");
+        Files.writeString(curl, """
+                #!/bin/bash
+                printf '%s\n' "$*" >> "$ARGV_LOG"
+                prev=""
+                for a in "$@"; do
+                  if [ "$prev" = "-H" ] && [ "${a#@}" != "$a" ]; then cat "${a#@}" >> "$HEADER_LOG"; fi
+                  if [ "$prev" = "-d" ]; then printf '%s\n' "$a" >> "$BODY_LOG"; fi
+                  prev="$a"
+                done
+                case "$*" in *"-w %{http_code}"*) printf 201; exit 0 ;; esac
+                printf '{"token":"prs_new"}'
+                """);
+        assertTrue(curl.toFile().setExecutable(true));
+        Path script = Path.of("..", "bin", "pressroom-api").toAbsolutePath();
+        java.util.List<String> command = new java.util.ArrayList<>(java.util.List.of("bash", script.toString()));
+        command.addAll(java.util.List.of(args));
+        ProcessBuilder pb = new ProcessBuilder(command);
+        pb.environment().put("PATH", bin + ":" + System.getenv("PATH"));
+        pb.environment().put("PRESSROOM_API_URL", "http://pressroom.invalid");
+        pb.environment().put("PRESSROOM_API_TOKEN", "prs_supersecret");
+        pb.environment().put("PRESSROOM_CREDENTIALS", dir.resolve("credentials").toString());
+        pb.environment().put("ARGV_LOG", dir.resolve("argv.log").toString());
+        pb.environment().put("HEADER_LOG", dir.resolve("header.log").toString());
+        pb.environment().put("BODY_LOG", dir.resolve("body.log").toString());
+        Path stderr = dir.resolve("stderr-" + System.nanoTime());
+        pb.redirectError(stderr.toFile());
+        Process p = pb.start();
+        p.getOutputStream().write(stdin.getBytes(StandardCharsets.UTF_8));
+        p.getOutputStream().close();
+        String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        assertTrue(p.waitFor(30, TimeUnit.SECONDS), "pressroom-api hung");
+        return new Run(p.exitValue(), out, Files.readString(stderr));
+    }
+
+    private static String logged(Path dir, String name) throws Exception {
+        Path log = dir.resolve(name);
+        return Files.exists(log) ? Files.readString(log) : "";
+    }
+
+    /**
+     * The API token is a bearer credential, as good as the password that
+     * minted it. On curl's command line it is readable by every local user
+     * for the life of each request, which is exactly why login keeps the
+     * password off argv; every request now hands curl the header through a
+     * file descriptor instead.
+     */
+    @Test
+    void theTokenNeverAppearsOnCurlsCommandLine(@TempDir Path dir) throws Exception {
+        Run json = recordingRun(dir, "", "admin", "rebuild-index", "--weblog", "w");
+        assertEquals(0, json.exit(), json.out() + json.err());
+        Path text = Files.writeString(dir.resolve("logo.png"), "png");
+        Run upload = recordingRun(dir, "", "media", "upload", "--weblog", "w", text.toString());
+        assertEquals(0, upload.exit(), upload.out() + upload.err());
+
+        String argv = logged(dir, "argv.log");
+        assertEquals(2, argv.lines().count(), argv);
+        assertFalse(argv.contains("prs_supersecret"), "the token is on curl's argv: " + argv);
+        assertEquals(2, logged(dir, "header.log").lines()
+                        .filter("Authorization: Bearer prs_supersecret"::equals).count(),
+                "both the JSON and the multipart paths send the header: " + logged(dir, "header.log"));
+    }
+
+    @Test
+    void loginMintsAnAdminTokenUnlessARoleIsNamed(@TempDir Path dir) throws Exception {
+        Run admin = recordingRun(dir, "pw\n", "auth", "login", "--url", "http://pressroom.invalid",
+                "--user", "u", "--password-stdin");
+        assertEquals(0, admin.exit(), admin.out() + admin.err());
+        assertTrue(logged(dir, "body.log").replaceAll("\\s", "").contains("\"role\":\"ADMIN\""), logged(dir, "body.log"));
+
+        Files.deleteIfExists(dir.resolve("body.log"));
+        Run post = recordingRun(dir, "pw\n", "auth", "login", "--url", "http://pressroom.invalid",
+                "--user", "u", "--password-stdin", "--role", "post");
+        assertEquals(0, post.exit(), post.out() + post.err());
+        assertTrue(logged(dir, "body.log").replaceAll("\\s", "").contains("\"role\":\"POST\""), logged(dir, "body.log"));
+        assertTrue(Files.readString(dir.resolve("credentials")).contains("PRESSROOM_API_TOKEN=prs_new"));
+    }
+
+    @Test
+    void loginRefusesARoleTheApiDoesNotHave(@TempDir Path dir) throws Exception {
+        Run r = recordingRun(dir, "pw\n", "auth", "login", "--url", "http://pressroom.invalid",
+                "--user", "u", "--password-stdin", "--role", "OWNER");
+        assertEquals(1, r.exit(), r.out() + r.err());
+        assertTrue(r.err().contains("--role must be READ, POST or ADMIN"), r.err());
+        assertEquals("", logged(dir, "argv.log"), "nothing was sent");
+    }
 }

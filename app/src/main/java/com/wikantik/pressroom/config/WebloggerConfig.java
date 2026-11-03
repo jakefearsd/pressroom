@@ -48,8 +48,22 @@ public final class WebloggerConfig {
 
     private static final String env_prefix = "PRESSROOM_";
 
-    private static final Pattern SECRET_KEY =
-            Pattern.compile("password|token|secret", Pattern.CASE_INSENSITIVE);
+    /**
+     * Keys whose whole value is a secret. {@code key} only as the last
+     * segment: {@code rememberme.key} signs every remember-me cookie, while
+     * {@code passwds.encryption.algorithm} or {@code rememberme.enabled} are
+     * worth seeing in a dump.
+     */
+    private static final Pattern SECRET_KEY = Pattern.compile(
+            "password|passphrase|token|secret|credential|apikey|(^|[._])key$", Pattern.CASE_INSENSITIVE);
+
+    /** The password of a URL's {@code user:password@} userinfo. */
+    private static final Pattern URL_USERINFO_PASSWORD = Pattern.compile("(://[^/?#@:\\s]*:)[^/?#@\\s]*@");
+
+    /** A credential passed as a URL parameter, the JDBC drivers' {@code password=...} included. */
+    private static final Pattern URL_SECRET_PARAMETER = Pattern.compile(
+            "([?&;](?:password|passwd|pwd|sslpassword|secret|token|access_token|apikey|api_key)=)[^&;#\\s]*",
+            Pattern.CASE_INSENSITIVE);
 
     private static final Properties config;
 
@@ -308,13 +322,19 @@ public final class WebloggerConfig {
      * Replace a secret's value with a fixed mask for logging. The debug dump
      * below prints every key and value, and the environment overlay makes
      * turning that on while diagnosing a configuration problem much more
-     * likely.
+     * likely. A value whose key names no secret can still carry one inside a
+     * URL ({@code database.jdbc.connectionURL} takes {@code password=...});
+     * only that part is masked, so the rest stays readable.
      */
     static String maskSecret(String key, String value) {
         if (value == null || value.isEmpty()) {
             return value;
         }
-        return SECRET_KEY.matcher(key).find() ? "********" : value;
+        if (SECRET_KEY.matcher(key).find()) {
+            return "********";
+        }
+        String masked = URL_USERINFO_PASSWORD.matcher(value).replaceAll("$1********@");
+        return URL_SECRET_PARAMETER.matcher(masked).replaceAll("$1********");
     }
 
     /**

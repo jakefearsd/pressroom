@@ -148,4 +148,41 @@ class WebloggerConfigEnvOverrideTest {
         assertEquals("smtp.example.com", WebloggerConfig.maskSecret("mail.hostname", "smtp.example.com"));
         assertEquals("", WebloggerConfig.maskSecret("database.jdbc.password", ""));
     }
+
+    /** rememberme.key signs every remember-me cookie: whoever reads it can forge one. */
+    @Test
+    void keyAndCredentialNamedValuesAreMasked() {
+        assertEquals("********", WebloggerConfig.maskSecret("rememberme.key", "springRocks"));
+        assertEquals("********", WebloggerConfig.maskSecret("some.service.apikey", "abc"));
+        assertEquals("********", WebloggerConfig.maskSecret("smtp.passphrase", "abc"));
+        assertEquals("********", WebloggerConfig.maskSecret("cloud.credentials", "abc"));
+        assertEquals("bcrypt", WebloggerConfig.maskSecret("passwds.encryption.algorithm", "bcrypt"));
+        assertEquals("true", WebloggerConfig.maskSecret("rememberme.enabled", "true"));
+    }
+
+    /**
+     * A credential can ride inside a value whose key names no secret: the
+     * JDBC driver takes password=... as a URL parameter, and any http(s) URL
+     * can carry user:password@. The secret is masked and the rest of the URL,
+     * which is what someone debugging a connection needs, survives.
+     */
+    @Test
+    void credentialsInsideAUrlAreMaskedAndTheRestOfTheUrlKept() {
+        assertEquals("jdbc:postgresql://db:5432/pressroom?user=app&password=********&ssl=true",
+                WebloggerConfig.maskSecret("database.jdbc.connectionURL",
+                        "jdbc:postgresql://db:5432/pressroom?user=app&password=hunter2&ssl=true"));
+        assertEquals("jdbc:postgresql://db/pressroom?PASSWORD=********",
+                WebloggerConfig.maskSecret("database.jdbc.connectionURL", "jdbc:postgresql://db/pressroom?PASSWORD=x"));
+        assertEquals("jdbc:sqlserver://db;user=app;password=********;encrypt=true",
+                WebloggerConfig.maskSecret("database.jdbc.connectionURL",
+                        "jdbc:sqlserver://db;user=app;password=hunter2;encrypt=true"));
+        assertEquals("https://admin:********@umami.example/api",
+                WebloggerConfig.maskSecret("analytics.umami.apiUrl", "https://admin:hunter2@umami.example/api"));
+        assertEquals("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                WebloggerConfig.maskSecret("travel.map.tileUrl", "https://tile.openstreetmap.org/{z}/{x}/{y}.png"));
+        assertEquals("jdbc:postgresql://db:5432/pressroom",
+                WebloggerConfig.maskSecret("database.jdbc.connectionURL", "jdbc:postgresql://db:5432/pressroom"));
+        assertEquals("https://user@example.com/x",
+                WebloggerConfig.maskSecret("site.url", "https://user@example.com/x"), "a user alone is no secret");
+    }
 }

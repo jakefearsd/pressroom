@@ -19,7 +19,6 @@
 package com.wikantik.pressroom.util;
 
 import java.text.ParseException;
-import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -509,50 +508,5 @@ public abstract class DateUtil {
     }
     
     
-    public static Date parseIso8601(String value) throws Exception {
-        return ISO8601DateParser.parse(value);
-    }
-    
-    
-    /**
-     * Parse data as either 6-char or 8-char format.
-     */
-    public static Date parseWeblogURLDateString(String dateString, TimeZone tz, Locale locale) {
-        
-        Date ret = new Date();
-        SimpleDateFormat char8DateFormat = get8charDateFormat();
-        SimpleDateFormat char6DateFormat = get6charDateFormat();
-        
-        if (dateString != null
-                && dateString.length()==8
-                && StringUtils.isNumeric(dateString) ) {
-            ParsePosition pos = new ParsePosition(0);
-            ret = char8DateFormat.parse(dateString, pos);
-            
-            // make sure the requested date is not in the future
-            Calendar todayCal = Calendar.getInstance(tz, locale);
-            todayCal.setTime(new Date());
-            Date today = todayCal.getTime();
-            if(ret.after(today)) {
-                ret = today;
-            }
-
-        } else if(dateString != null
-                && dateString.length()==6
-                && StringUtils.isNumeric(dateString)) {
-            ParsePosition pos = new ParsePosition(0);
-            ret = char6DateFormat.parse(dateString, pos);
-            
-            // make sure the requested date is not in the future
-            Calendar todayCal = Calendar.getInstance(tz, locale);
-            todayCal.setTime(new Date());
-            Date today = todayCal.getTime();
-            if(ret.after(today)) {
-                ret = today;
-            }
-        }
-        
-        return ret;
-    }
     
 }

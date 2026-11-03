@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.util;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -35,6 +36,13 @@ import com.wikantik.pressroom.business.startup.WebloggerStartup;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.appender.AbstractAppender;
+import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.logging.log4j.core.config.Property;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -142,6 +150,59 @@ class MailUtilFailureTest {
         assertEquals(List.of("allowed@example.invalid"), to,
                 "denied, unvettable and address-less reviewers must not be mailed");
         assertTrue(mail.onlyMessage().getContent().toString().contains("https://x.invalid/edit"));
+    }
+
+    /**
+     * A pending-entry notice that cannot be delivered is swallowed (the
+     * entry is saved either way), so the log line is the only trace of why:
+     * it must carry the exception, or "Problem sending" is all anyone sees.
+     */
+    @Test
+    void aPendingEntryNoticeThatCannotBeSentLogsTheCause() throws Exception {
+        MessagingException smtpDown = new MessagingException("smtp down");
+        MockMailProvider.installFailing(smtpDown);
+        MockWeblogger tier = MockWeblogger.create();
+        Weblog weblog = new Weblog();
+        weblog.setHandle("noticeblog");
+        weblog.setName("Notice Blog");
+        weblog.setLocale("en_US");
+        User reviewer = user("reviewer", "reviewer@example.invalid");
+        when(tier.weblogManager().getWeblogUsers(weblog, true)).thenReturn(List.of(reviewer));
+        when(tier.userManager().getUserByUserName("author")).thenReturn(user("author", "author@example.invalid"));
+        when(tier.userManager().checkPermission(any(), eq(reviewer))).thenReturn(true);
+        when(tier.urlStrategy().getEntryEditURL("noticeblog", "e-1", true)).thenReturn("https://x.invalid/edit");
+        WeblogEntry entry = new WeblogEntry();
+        entry.setId("e-1");
+        entry.setWebsite(weblog);
+        entry.setCreatorUserName("author");
+        Weblogger weblogger = tier.weblogger();
+        when(weblogger.getUrlStrategy()).thenReturn(tier.urlStrategy());
+
+        List<LogEvent> events = new ArrayList<>();
+        String loggerName = MailUtil.class.getName();
+        AbstractAppender appender = new AbstractAppender("mail-capture", null, null, true, Property.EMPTY_ARRAY) {
+            @Override
+            public void append(LogEvent event) {
+                events.add(event.toImmutable());
+            }
+        };
+        appender.start();
+        LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+        LoggerConfig lc = new LoggerConfig(loggerName, Level.ERROR, false);
+        lc.addAppender(appender, Level.ERROR, null);
+        ctx.getConfiguration().addLogger(loggerName, lc);
+        ctx.updateLoggers();
+        try {
+            MailUtil.sendPendingEntryNotice(weblogger, entry);
+        } finally {
+            ctx.getConfiguration().removeLogger(loggerName);
+            ctx.updateLoggers();
+            appender.stop();
+        }
+
+        List<LogEvent> errors = events.stream().filter(e -> e.getLevel() == Level.ERROR).toList();
+        assertEquals(1, errors.size(), events.toString());
+        assertSame(smtpDown, errors.get(0).getThrown(), "the failure is logged with its stack trace");
     }
 
     private static User user(String name, String email) {

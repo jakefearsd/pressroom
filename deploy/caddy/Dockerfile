@@ -37,7 +37,10 @@
 #      `caddy:2.11.7-alpine` image.
 FROM caddy:2.11.7-builder-alpine@sha256:bb53bc0dd94d5e93eca88bac50e435fd5f9dc6cc828fc6140086f282fb329e92 AS builder
 
-RUN xcaddy build --with github.com/caddy-dns/cloudflare
+# The module is pinned like the base images: without @version xcaddy takes
+# whatever its newest tag is on the day of the build, so one release tag could
+# ship different code in the binary that holds the Cloudflare API token.
+RUN xcaddy build --with github.com/caddy-dns/cloudflare@v0.2.4
 
 FROM caddy:2.11.7-alpine@sha256:24ec7b05bc532c7bb57f727030c5056e257ff7138b4b50460306819ff79362bd
 

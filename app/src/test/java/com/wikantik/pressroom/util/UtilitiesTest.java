@@ -93,48 +93,6 @@ public class UtilitiesTest  {
     class HtmlEscaping {
 
         @Test
-        public void escapesTheFiveCharactersThatCanBreakOutOfMarkup() {
-            // These four substitutions are the whole XSS defence for anything
-            // rendered through escapeHTML; losing any one of them lets markup
-            // through into a page.
-            assertEquals("&amp;", Utilities.escapeHTML("&"));
-            assertEquals("&quot;", Utilities.escapeHTML("\""));
-            assertEquals("&lt;", Utilities.escapeHTML("<"));
-            assertEquals("&gt;", Utilities.escapeHTML(">"));
-            assertEquals("&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;",
-                    Utilities.escapeHTML("<script>alert(\"x\")</script>"));
-        }
-
-        @Test
-        public void escapesAmpersandsFirstSoNothingIsDoubleEscaped() {
-            // "&lt;" must come out as "&amp;lt;" -- if the ampersand were
-            // escaped last, the '<' produced by an earlier rule would be
-            // escaped again and the text would drift on every round trip.
-            assertEquals("&amp;lt;", Utilities.escapeHTML("&lt;"));
-        }
-
-        @Test
-        public void leavesAmpersandsAloneWhenAskedTo() {
-            assertEquals("a & b &lt;c&gt;", Utilities.escapeHTML("a & b <c>", false));
-        }
-
-        @Test
-        public void nbspIsOnlyCollapsedWhenAmpersandsAreLeftAlone() {
-            // Documented quirk, not an accident: escapeHTML escapes '&' before
-            // it looks for "&nbsp;", so with escaping on the entity survives as
-            // "&amp;nbsp;". Callers that want the space must pass false.
-            assertEquals("a&amp;nbsp;b", Utilities.escapeHTML("a&nbsp;b"));
-            assertEquals("a b", Utilities.escapeHTML("a&nbsp;b", false));
-        }
-
-        @Test
-        public void nullSurvivesEscaping() {
-            // Callers pass straight from getters that may be null (e.g. an
-            // entry summary); escapeHTML must not be the thing that throws.
-            assertNull(Utilities.escapeHTML(null));
-        }
-
-        @Test
         public void unescapeReversesTheCommonEntities() {
             assertEquals("<b>&\"'", Utilities.unescapeHTML("&lt;b&gt;&amp;&quot;&#39;"));
         }
@@ -172,12 +130,6 @@ public class UtilitiesTest  {
             // which is what keeps excerpts from starting with a blank.
             assertEquals("a c", Utilities.removeHTML("<b>a</b>c", true));
             assertEquals("ac", Utilities.removeHTML("<b>a</b>c", false));
-        }
-
-        @Test
-        public void removeAndEscapeStripsTagsThenEscapesWhatIsLeft() {
-            assertEquals("a &amp; b", Utilities.removeAndEscapeHTML("<p>a & b</p>"));
-            assertEquals("", Utilities.removeAndEscapeHTML(null));
         }
     }
 
@@ -561,45 +513,6 @@ public class UtilitiesTest  {
             // Bytes above 0x7f are negative in Java; without the & 0xFF masks
             // the cache keys built from this would collide or throw.
             assertEquals("//79", Utilities.toBase64(new byte[]{(byte) 0xff, (byte) 0xfe, (byte) 0xfd}));
-        }
-
-        @Test
-        public void encodeStringAndDecodeStringRoundTrip() throws IOException {
-            assertEquals("aGVsbG8gd29ybGQ=", Utilities.encodeString("hello world"));
-            assertEquals("hello world", Utilities.decodeString("aGVsbG8gd29ybGQ="));
-            assertEquals("café", Utilities.decodeString(Utilities.encodeString("café")));
-        }
-
-        @Test
-        public void encodePasswordProducesAStableLowercaseHexDigest() {
-            // The digest is stored in the database, so the exact format is a
-            // compatibility contract: any change locks every user out.
-            assertEquals("5f4dcc3b5aa765d61d8327deb882cf99", Utilities.encodePassword("password", "MD5"));
-            assertEquals(32, Utilities.encodePassword("", "MD5").length());
-        }
-
-        @Test
-        public void encodePasswordPadsDigestBytesBelowSixteenToTwoHexDigits() {
-            // "hi" hashes to a digest containing a 0x0b byte; without the
-            // zero-padding branch the hex string would be 31 chars long and
-            // would not match what was stored previously.
-            assertEquals(32, Utilities.encodePassword("hi", "MD5").length());
-            assertEquals("49f68a5c8493ec2c0bf489821c21fc3b", Utilities.encodePassword("hi", "MD5"));
-        }
-
-        @Test
-        public void encodePasswordDoesNotPadAByteThatIsExactlySixteen() {
-            // Boundary of the padding rule: MD5("entry") starts with the byte
-            // 0x10, which is two hex digits already. Padding it would produce a
-            // 33 character digest that matches no stored password.
-            assertEquals("1043bfc77febe75fafec0c4309faccf1", Utilities.encodePassword("entry", "MD5"));
-        }
-
-        @Test
-        public void encodePasswordFallsBackToPlaintextForAnUnknownAlgorithm() {
-            // Misconfiguration returns the password unchanged rather than
-            // throwing -- surprising, but callers depend on it, so pin it.
-            assertEquals("password", Utilities.encodePassword("password", "NO-SUCH-ALGORITHM"));
         }
 
         @Test

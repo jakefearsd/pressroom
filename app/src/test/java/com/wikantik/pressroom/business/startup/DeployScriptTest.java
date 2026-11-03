@@ -72,7 +72,8 @@ class DeployScriptTest {
         Process p = pb.start();
         String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         assertTrue(p.waitFor(60, TimeUnit.SECONDS), "deploy.sh hung");
-        return new Result(p.exitValue(), out, Files.readString(dir.resolve("calls.log")));
+        Path calls = dir.resolve("calls.log");
+        return new Result(p.exitValue(), out, Files.exists(calls) ? Files.readString(calls) : "");
     }
 
     private static List<String> command(String... args) {
@@ -159,5 +160,42 @@ class DeployScriptTest {
         assertEquals(0, r.exit(), r.out());
         assertTrue(r.out().contains("warning: could not check for an admin account"), r.out());
         assertTrue(r.out().contains("STATUS-OUTPUT-LINE"), "the failure's output should be shown: " + r.out());
+    }
+
+    /**
+     * env.example ships {@code changeme-...} placeholders for every secret,
+     * and they satisfy compose's {@code ${VAR:?}} checks, so a .env copied
+     * without editing would start a stack whose database password is in the
+     * public repository. deploy.sh refuses before touching anything, names
+     * each offending variable, and never prints a value.
+     */
+    @Test
+    void aPlaceholderSecretIsRefusedBeforeAnythingRuns() throws Exception {
+        Path env = dir.resolve(".env");
+        String original = """
+                IMAGE_VERSION=0.6.1
+                # VHOST_DNS_API_TOKEN=changeme-cloudflare-api-token
+                POSTGRES_PASSWORD=changeme-generate-a-real-secret
+                UMAMI_APP_SECRET="changeme-openssl-rand-hex-32"
+                LISTMONK_ADMIN_PASSWORD=a-real-one
+                """;
+        Files.writeString(env, original);
+
+        Result r = deploy(0);
+        assertEquals(1, r.exit(), r.out());
+        assertTrue(r.out().contains("POSTGRES_PASSWORD"), r.out());
+        assertTrue(r.out().contains("UMAMI_APP_SECRET"), "a quoted placeholder too: " + r.out());
+        assertFalse(r.out().contains("VHOST_DNS_API_TOKEN"), "a commented-out line is not a setting: " + r.out());
+        assertFalse(r.out().contains("LISTMONK_ADMIN_PASSWORD"), r.out());
+        assertFalse(r.out().contains("generate-a-real-secret"), "values are never printed: " + r.out());
+        assertEquals("", r.calls(), "nothing pulled or started");
+        assertEquals(original, Files.readString(env), ".env untouched (no password generated)");
+    }
+
+    @Test
+    void aValueThatMerelyContainsChangemeIsAccepted() throws Exception {
+        Files.writeString(dir.resolve(".env"), "POSTGRES_PASSWORD=x-changeme-x\nUMAMI_PRESSROOM_PASSWORD=abc\n");
+        Result r = deploy(0);
+        assertEquals(0, r.exit(), r.out());
     }
 }

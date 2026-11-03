@@ -150,10 +150,12 @@ existing weblog); a foreign or unknown weblog is a 400 whose
 its `revokedAt`.
 
 `bin/pressroom-api auth login` wraps exactly this call (minting an `ADMIN`-role
-token under the label `pressroom-api cli`) and writes the URL and token to
+token under the label `pressroom-api cli`, or the role `--role READ|POST|ADMIN`
+names) and writes the URL and token to
 `~/.pressroom/credentials` (`chmod 600`). Every other `pressroom-api` subcommand
 reads that file, or `PRESSROOM_API_URL`/`PRESSROOM_API_TOKEN` if set, so it never
-asks for a password again.
+asks for a password again. It hands curl the `Authorization` header through a
+pipe (`-H @<(...)`), never as an argument, so the token is not visible in `ps`.
 
 ## Token scopes
 

@@ -1,12 +1,25 @@
 #!/usr/bin/env bash
 # Pressroom production backup -- single shot: pg_dump the database, tar the
-# mediafiles/search-index/uploads volumes, then rotate anything older than
+# mediafiles/uploads volumes, then rotate anything older than
 # BACKUP_RETENTION_DAYS. Both artifacts are written atomically: pg_dump/tar
 # target "<final-name>.tmp" and a same-filesystem `mv` publishes it under
 # its final name only once the write is complete, so a backup killed
 # mid-write (OOM, container restart, disk full) leaves an orphaned .tmp
 # file rather than a truncated file sitting under the name a restore would
-# trust. Runs inside the `backup` service of
+# trust. A dump is published only once `pg_restore -l` has read it back.
+#
+# The search index is NOT archived: the app rebuilds it from the database
+# whenever it finds none (LuceneIndexManager), and it is the volume whose
+# files Lucene merges and deletes while tar reads them.
+#
+# Everything here lives in the pressroom-backups volume, on the same disk as
+# the database it protects. Copy it OFF the host (docker_deployment.md,
+# "Backup and restore"), e.g. nightly from the host's crontab:
+#
+#   docker compose -f docker-compose.prod.yml cp backup:/backups/. /srv/pressroom-backups/
+#
+# then ship that directory elsewhere (rsync, rclone). The dumps hold password
+# hashes: keep the copy as private as the host. Runs inside the `backup` service of
 # docker-compose.prod.yml (the app image, which bakes in postgresql-client
 # for pg_dump/psql alongside tar from the base image, so all three are
 # already present); deploy/backup/loop.sh calls this once a day at
@@ -43,8 +56,11 @@
 #   `docker compose cp backup:/backups/pressroom-<timestamp>.dump .` to get it
 #   onto the host first if restoring from a different machine.)
 #
-# Media/search-index/uploads volumes (stack must be down -- the archive
-# extracts to /data/... paths, matching the volume mount points).
+# Media/uploads volumes (stack must be down -- the archive extracts to
+# /data/... paths, matching the volume mount points). The search index is
+# not in the archive: remove its volume so the app rebuilds it from the
+# restored database (an index left from before would answer for entries the
+# database no longer has).
 #
 # The volume names below are Compose's default PROJECT-PREFIXED names, not
 # the bare names declared in docker-compose.prod.yml -- the project name is
@@ -54,9 +70,9 @@
 # exact names on your host and substitute them below if they differ:
 #
 #   docker compose -f docker-compose.prod.yml down
+#   docker volume rm pressroom_pressroom-search-index
 #   docker run --rm \
 #     -v pressroom_pressroom-mediafiles:/data/mediafiles \
-#     -v pressroom_pressroom-search-index:/data/search-index \
 #     -v pressroom_pressroom-uploads:/data/uploads \
 #     -v pressroom_pressroom-backups:/backups \
 #     postgres:18@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280 \
@@ -78,9 +94,23 @@ mkdir -p "${BACKUP_DIR}"
 
 echo "[$(date -u +%FT%TZ)] Starting backup..."
 
+# Dumps database $1 to $2, published under that name only once the dump is
+# complete AND pg_restore can read its table of contents back: a dump that
+# cannot be listed cannot be restored, and must not sit under the name a
+# restore would trust.
+dump_database() {
+    local db="$1" file="$2"
+    pg_dump -Fc -d "${db}" -f "${file}.tmp"
+    if ! pg_restore -l "${file}.tmp" >/dev/null; then
+        echo "  ${db}: pg_restore cannot read the dump just written; not published." >&2
+        rm -f "${file}.tmp"
+        exit 1
+    fi
+    mv "${file}.tmp" "${file}"
+}
+
 DUMP_FILE="${BACKUP_DIR}/pressroom-${TIMESTAMP}.dump"
-pg_dump -Fc -d "${DB_NAME}" -f "${DUMP_FILE}.tmp"
-mv "${DUMP_FILE}.tmp" "${DUMP_FILE}"
+dump_database "${DB_NAME}" "${DUMP_FILE}"
 echo "  database -> ${DUMP_FILE}"
 
 # The service databases (analytics, newsletter), if this stack runs them.
@@ -88,22 +118,41 @@ echo "  database -> ${DUMP_FILE}"
 # losing analytics history should never be a reason to hesitate over restoring
 # the blog. Missing is not an error -- a stack deployed before these services
 # existed simply has no such database, and a backup run must not start failing
-# because of it.
+# because of it. A query that FAILS is an error, though: captured rather than
+# piped into grep, which read a psql failure as "no such database" and
+# skipped the dump with a cheerful line (umami-retention.sh, same fix).
 SERVICE_DBS="${UMAMI_DB:-umami} ${LISTMONK_DB:-listmonk}"
 for service_db in ${SERVICE_DBS}; do
-    if psql -d "${DB_NAME}" -tAc \
-            "SELECT 1 FROM pg_database WHERE datname = ${service_db@Q}" | grep -q 1; then
+    if ! exists="$(psql -d "${DB_NAME}" -X --quiet -tAc \
+            "SELECT 1 FROM pg_database WHERE datname = ${service_db@Q}")"; then
+        echo "  ${service_db}: could not ask PostgreSQL whether it exists; backup failed." >&2
+        exit 1
+    fi
+    if [[ "${exists}" == "1" ]]; then
         SERVICE_DUMP="${BACKUP_DIR}/${service_db}-${TIMESTAMP}.dump"
-        pg_dump -Fc -d "${service_db}" -f "${SERVICE_DUMP}.tmp"
-        mv "${SERVICE_DUMP}.tmp" "${SERVICE_DUMP}"
+        dump_database "${service_db}" "${SERVICE_DUMP}"
         echo "  ${service_db} -> ${SERVICE_DUMP}"
     else
         echo "  ${service_db} -> none (no such database on this stack)"
     fi
 done
 
+# The volumes are live: the app writes media while this reads them. GNU tar
+# exits 1 for "file changed as we read it" (the archive is written, that
+# file's copy may be torn) and 2 for a real failure. Under set -e the 1
+# used to end the run before the archive was published and before rotation,
+# and upgrade.sh then refused to run without --no-backup. Exit 1 is accepted,
+# and its warnings are quieted; anything above it fails the backup.
 VOLUMES_FILE="${BACKUP_DIR}/volumes-${TIMESTAMP}.tar.gz"
-tar czf "${VOLUMES_FILE}.tmp" -C / data/mediafiles data/search-index data/uploads
+tar_rc=0
+tar --create --gzip --file "${VOLUMES_FILE}.tmp" \
+    --warning=no-file-changed --warning=no-file-removed \
+    -C / data/mediafiles data/uploads || tar_rc=$?
+if (( tar_rc > 1 )); then
+    echo "  volumes: tar failed (exit ${tar_rc}); not published." >&2
+    rm -f "${VOLUMES_FILE}.tmp"
+    exit 1
+fi
 mv "${VOLUMES_FILE}.tmp" "${VOLUMES_FILE}"
 echo "  volumes  -> ${VOLUMES_FILE}"
 
