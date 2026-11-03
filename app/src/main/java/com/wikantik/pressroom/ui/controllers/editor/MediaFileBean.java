@@ -20,6 +20,7 @@ package com.wikantik.pressroom.ui.controllers.editor;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.RenditionSupport;
 import com.wikantik.pressroom.business.URLStrategy;
+import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.business.MediaFileManager;
 import com.wikantik.pressroom.util.Utilities;
@@ -28,6 +29,9 @@ import com.wikantik.pressroom.util.Utilities;
  * Bean for managing media file.
  */
 public class MediaFileBean {
+
+    /** The setting under which MediaFileEdit.jsp renders the original-path field. */
+    static final String ORIGINAL_PATH_EDIT_ENABLED = "mediafile.originalPathEdit.enabled";
 
     private String id;
     private String name;
@@ -122,7 +126,11 @@ public class MediaFileBean {
         } else {
             mediaFileManager.updateTags(dataHolder, Utilities.splitStringAsTags(this.tagsAsString));
         }
-        dataHolder.setOriginalPath(this.originalPath);
+        // Only when the form offers the field: a custom theme's resources are
+        // found by this path, and a form that never rendered it would null it.
+        if (WebloggerRuntimeConfig.getBooleanProperty(ORIGINAL_PATH_EDIT_ENABLED)) {
+            dataHolder.setOriginalPath(this.originalPath);
+        }
         // The focal point is both-or-neither: a lone coordinate cannot
         // position anything, so it degrades to "no focal point" rather than
         // persisting half a value.

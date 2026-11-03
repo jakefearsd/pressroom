@@ -108,11 +108,12 @@ public final class ExifSupport {
     /**
      * Extracts whatever EXIF/GPS fields are present in {@code is}. Never
      * throws: any exception (unreadable format, corrupt EXIF block, I/O
-     * error) is logged at DEBUG and produces {@link ExifData#EMPTY}.
+     * error) is logged at DEBUG and produces {@link ExifData#EMPTY}. The
+     * stream is closed either way, as {@link ImageDecoding#read} closes its own.
      */
     public static ExifData extract(InputStream is) {
-        try {
-            Metadata metadata = ImageMetadataReader.readMetadata(is);
+        try (InputStream stream = is) {
+            Metadata metadata = ImageMetadataReader.readMetadata(stream);
 
             String camera = null;
             String lens = null;
@@ -217,10 +218,12 @@ public final class ExifSupport {
      * renditions and blurhash), while {@link #extract} runs at the end, after
      * the renditions the blurhash is encoded from exist. One extra metadata
      * read is negligible next to four resizes.
+     *
+     * <p>The stream is closed either way.
      */
     public static int readOrientation(InputStream is) {
-        try {
-            Metadata metadata = ImageMetadataReader.readMetadata(is);
+        try (InputStream stream = is) {
+            Metadata metadata = ImageMetadataReader.readMetadata(stream);
             ExifIFD0Directory ifd0 = metadata.getFirstDirectoryOfType(ExifIFD0Directory.class);
             if (ifd0 != null && ifd0.containsTag(ExifDirectoryBase.TAG_ORIENTATION)) {
                 int orientation = ifd0.getInt(ExifDirectoryBase.TAG_ORIENTATION);

@@ -187,6 +187,27 @@ class MediaFileEditControllerTest extends EditorControllerTestSupport {
     }
 
     @Test
+    void aReplacementSentAsOctetStreamTakesItsTypeFromTheFileName() throws Exception {
+        // The add path's fallback: a browser that does not know the type sends
+        // application/octet-stream, and storing that would serve an image as
+        // a download (MediaResponseHeaders treats it as opaque).
+        MultipartFile replacement = mock(MultipartFile.class);
+        when(replacement.isEmpty()).thenReturn(false);
+        when(replacement.getSize()).thenReturn(4L);
+        when(replacement.getContentType()).thenReturn("application/octet-stream");
+        when(replacement.getInputStream())
+                .thenReturn(new ByteArrayInputStream("data".getBytes(StandardCharsets.UTF_8)));
+
+        bean.setId("file-1");
+        bean.setName("photo.png");
+        bean.setDirectoryId("dir-1");
+
+        controller.save(request, model, bean, "file-1", replacement);
+
+        assertEquals("image/png", mediaFile.getContentType());
+    }
+
+    @Test
     void savingWithNoReplacementFileDoesNotRewriteTheContents() throws Exception {
         bean.setId("file-1");
         bean.setName("photo.jpg");
@@ -306,8 +327,47 @@ class MediaFileEditControllerTest extends EditorControllerTestSupport {
         assertEquals("photo.jpg", target.getName());
         assertEquals("A photo", target.getDescription());
         assertEquals("(c) me", target.getCopyrightText());
-        assertEquals("/orig/photo.jpg", target.getOriginalPath());
         assertEquals("A red kite riding the thermal", target.getAltText());
+    }
+
+    /**
+     * The original path is how a custom theme's {@code /resource/...} URLs
+     * find the files its import stored (ResourceServlet), and the edit form
+     * renders the field only under {@code mediafile.originalPathEdit.enabled}
+     * (default off). Copied regardless, saving a theme image's alt text
+     * nulled the path the form never showed -- the theme's URL went 404 --
+     * and a hand-posted value rewrote a path the UI does not offer to edit.
+     */
+    @Test
+    void beanCopyToLeavesTheOriginalPathAloneWhileItsEditingIsOff() throws Exception {
+        MediaFileBean posted = new MediaFileBean();
+        posted.setName("logo.png");
+        MediaFile target = new MediaFile();
+        target.setOriginalPath("/images/logo.png");
+
+        posted.copyTo(target, weblogger.mediaFileManager());
+        assertEquals("/images/logo.png", target.getOriginalPath(), "a form without the field must not null it");
+
+        posted.setOriginalPath("/images/elsewhere.png");
+        posted.copyTo(target, weblogger.mediaFileManager());
+        assertEquals("/images/logo.png", target.getOriginalPath(), "nor may a posted value the form never offered");
+    }
+
+    @Test
+    void beanCopyToTakesTheOriginalPathWhenItsEditingIsOn() throws Exception {
+        MediaFileBean posted = new MediaFileBean();
+        posted.setOriginalPath("/images/renamed.png");
+        MediaFile target = new MediaFile();
+        target.setOriginalPath("/images/logo.png");
+
+        try (org.mockito.MockedStatic<com.wikantik.pressroom.config.WebloggerRuntimeConfig> runtime =
+                org.mockito.Mockito.mockStatic(com.wikantik.pressroom.config.WebloggerRuntimeConfig.class)) {
+            runtime.when(() -> com.wikantik.pressroom.config.WebloggerRuntimeConfig
+                    .getBooleanProperty("mediafile.originalPathEdit.enabled")).thenReturn(true);
+            posted.copyTo(target, weblogger.mediaFileManager());
+        }
+
+        assertEquals("/images/renamed.png", target.getOriginalPath());
     }
 
     @Test
@@ -584,6 +644,58 @@ class MediaFileEditControllerTest extends EditorControllerTestSupport {
         verify(weblogger.getMediaFileManager(), never()).updateMediaFile(any(), any());
         assertTrue(errors(model).contains("MediaFile.error.view"),
                 "Expected the save to be refused, got: " + errors(model));
+    }
+
+    /**
+     * The duplicate-name check runs against the looked-up directory: a lookup
+     * that could not run is not a check that passed.
+     */
+    @Test
+    void aDirectoryLookupThatFailsRefusesTheSave() throws Exception {
+        when(weblogger.getMediaFileManager().getMediaFileDirectory("dir-1"))
+                .thenThrow(new WebloggerException("database unavailable"));
+
+        bean.setId("file-1");
+        bean.setName("photo.jpg");
+        bean.setDirectoryId("dir-1");
+
+        String view = controller.save(request, model, bean, "file-1", null);
+
+        assertEquals(".MediaFileEdit", view);
+        assertTrue(errors(model).contains("generic.error.check.logs"),
+                "Expected the save to be refused, got: " + errors(model));
+        verify(weblogger.getMediaFileManager(), never()).updateMediaFile(any(), any());
+    }
+
+    /**
+     * The form always posts a folder; a save without one is refused before
+     * anything is written, not after new bytes have replaced the old ones.
+     */
+    @Test
+    void aSaveWithoutAFolderIsRefusedBeforeAnyWrite() throws Exception {
+        MultipartFile replacement = mock(MultipartFile.class);
+        when(replacement.isEmpty()).thenReturn(false);
+        when(replacement.getSize()).thenReturn(4L);
+        when(replacement.getContentType()).thenReturn("image/jpeg");
+        when(replacement.getInputStream())
+                .thenReturn(new ByteArrayInputStream("data".getBytes(StandardCharsets.UTF_8)));
+
+        for (String blank : new String[] {null, "", "  "}) {
+            MediaFileBean posted = new MediaFileBean();
+            posted.setId("file-1");
+            posted.setName("photo.jpg");
+            posted.setDirectoryId(blank);
+            Model result = newModel();
+
+            String view = controller.save(request, result, posted, "file-1", replacement);
+
+            assertEquals(".MediaFileEdit", view);
+            assertTrue(errors(result).contains("MediaFile.error.view"),
+                    "Expected the save to be refused, got: " + errors(result));
+        }
+        verify(weblogger.getMediaFileManager(), never())
+                .updateMediaFile(any(), any(), any(java.io.InputStream.class));
+        verify(weblogger.getMediaFileManager(), never()).updateMediaFile(any(), any());
     }
 
     private com.wikantik.pressroom.pojos.Weblog otherWeblog() {

@@ -427,6 +427,30 @@ public class FileContentManagerTest  {
                     "got: " + errorKeys(messages));
         }
 
+        /**
+         * {@code canReplace}: the file being replaced is not counted against
+         * the quota a second time, and an id with nothing on disk is counted
+         * like a new file. (The end-to-end case, written first, is in
+         * {@code MediaFileContentConsistencyTest}.)
+         */
+        @Test
+        void aReplacementIsMeasuredWithoutTheBytesItReplaces() throws Exception {
+            configure("true", "10.00", "0.001", "", "");
+            Weblog weblog = TestUtils.getManagedWebsite(testWeblog);
+            FileContentManager cmgr = TestUtils.weblogger().getFileContentManager();
+            cmgr.saveFileContent(weblog, "replaced-id", new ByteArrayInputStream(new byte[900]));
+
+            assertFalse(canSave("hawk.jpg", "image/jpeg", 900, new PressroomMessages()),
+                    "a second 900-byte file does not fit a ~1KB quota");
+            assertTrue(cmgr.canReplace(weblog, "replaced-id", "hawk.jpg", "image/jpeg", 900,
+                    new PressroomMessages()), "the same bytes replacing the first one do");
+
+            PressroomMessages messages = new PressroomMessages();
+            assertFalse(cmgr.canReplace(weblog, "no-such-id", "hawk.jpg", "image/jpeg", 900, messages),
+                    "nothing on disk to replace: counted like a new file");
+            assertTrue(errorKeys(messages).contains("error.upload.dirmax"), "got: " + errorKeys(messages));
+        }
+
         @Test
         void aForbiddenExtensionIsRefused() throws Exception {
             configure("true", "1.00", "30000", "", "gif");

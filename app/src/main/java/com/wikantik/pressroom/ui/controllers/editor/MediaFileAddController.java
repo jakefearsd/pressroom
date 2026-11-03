@@ -40,7 +40,6 @@ import com.wikantik.pressroom.ui.controllers.MediaUploads;
 import com.wikantik.pressroom.util.I18nMessages;
 import com.wikantik.pressroom.util.PressroomMessages;
 import com.wikantik.pressroom.util.PressroomMessages.PressroomMessage;
-import com.wikantik.pressroom.util.Utilities;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -143,14 +142,8 @@ public class MediaFileAddController extends MediaFileBase {
                     mediaFile.setLength(uploadedFile.getSize());
                     mediaFile.setInputStream(uploadedFile.getInputStream());
 
-                    String contentType = uploadedFile.getContentType();
-                    if (contentType == null || contentType.endsWith("/octet-stream")) {
-                        String ctype = Utilities.getContentTypeFromFileName(mediaFile.getName());
-                        if (ctype != null) {
-                            contentType = ctype;
-                        }
-                    }
-                    mediaFile.setContentType(contentType);
+                    mediaFile.setContentType(MediaUploads.effectiveContentType(
+                            uploadedFile.getContentType(), mediaFile.getName()));
 
                     // createMediaFile reports a validation refusal (quota, forbidden
                     // file type, ...) by adding to this shared collector and returning
