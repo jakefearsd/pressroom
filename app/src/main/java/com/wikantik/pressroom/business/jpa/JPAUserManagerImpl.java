@@ -146,8 +146,10 @@ public class JPAUserManagerImpl implements UserManager {
             newUser.setEnabled(Boolean.TRUE);
         }
 
-        if (getUserByUserName(newUser.getUserName()) != null ||
-                getUserByUserName(newUser.getUserName().toLowerCase(Locale.ROOT)) != null) {
+        // Any account, enabled or not, as addAgent and addReader ask: a
+        // disabled account still holds its name in the table.
+        if (getUserByUserName(newUser.getUserName(), null) != null
+                || getUserByUserName(newUser.getUserName().toLowerCase(Locale.ROOT), null) != null) {
             throw new WebloggerException("error.add.user.userNameInUse");
         }
 
