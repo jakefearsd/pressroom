@@ -79,7 +79,8 @@ class MediaJspEscapingTest {
             // KeyValueObject lists the controller builds: constant keys and
             // bundle-text values.
             "opt.key", "opt.value",
-            // ResourceBundle lookups on the search bean.
+            // Bundle text for the search form's own option keys; any other
+            // posted value labels as "" (MediaFileSearchBean.label).
             "bean.typeLabel", "bean.sizeFilterTypeLabel", "bean.sizeUnitLabel");
 
     /**

@@ -480,6 +480,30 @@ class MediaFileViewControllerTest extends EditorControllerTestSupport {
                 "The lookahead row must be trimmed off before display");
     }
 
+    /**
+     * The criteria list under the results names the chosen type, size
+     * comparison and unit in the request's language, the way every other
+     * message on the page is resolved -- not the JVM's default locale.
+     */
+    @Test
+    void theSearchCriteriaAreLabelledInTheRequestsLocale() throws Exception {
+        registerMessage("mediaFileView.image", "Bild");
+        registerMessage("mediaFileView.ge", "mindestens");
+        registerMessage("mediaFileView.kb", "Kilobyte");
+        MediaFileSearchBean bean = new MediaFileSearchBean();
+        bean.setType("mediaFileView.image");
+        bean.setSize(5);
+        bean.setSizeFilterType("mediaFileView.ge");
+        bean.setSizeUnit("mediaFileView.kb");
+        when(weblogger.getMediaFileManager().searchMediaFiles(any(), any())).thenReturn(List.of());
+
+        controller.search(request, model, bean, "dir-1", null);
+
+        assertEquals("Bild", bean.getTypeLabel());
+        assertEquals("mindestens", bean.getSizeFilterTypeLabel());
+        assertEquals("Kilobyte", bean.getSizeUnitLabel());
+    }
+
     @Test
     void aFailedSearchIsReported() throws Exception {
         MediaFileSearchBean bean = new MediaFileSearchBean();
