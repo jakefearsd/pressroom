@@ -133,36 +133,6 @@ function toggleNextRow(e) {
     }
 }
 
-function toggleControl(toggleId, targetId) {
-    var expanded;
-    if (document.getElementById) {
-        target = document.getElementById(targetId);
-        toggle = document.getElementById(toggleId);
-    	if (target.style.display === "none") {
-    		target.style.display = "";
-            expanded = true;
-
-    	} else {
-    		target.style.display = "none";
-            expanded = false;
-    	}
-        togglePlusMinus("i" + targetId);
-
-        // set a cookie to remember this preference
-        var expires = new Date();
-        expires.setTime(expires.getTime() + 24 * 365 * 60 * 60 * 1000); // sets it for approx 365 days.
-        setCookie("control_"+targetId,expanded,expires,"/");
-    }
-}
-
-function isblank(s) {
-   for (var i=0; i<s.length; s++) {
-      var c = s.charAt(i);
-      if ((c!==' ') && (c!=='\n') && (c!=='')) return false;
-   }
-    return true;
-}
-
 // Show the document's title on the status bar
 window.defaultStatus=document.title;
 
@@ -189,8 +159,27 @@ function toggleFunction(toggleValue,name) {
 	}
 }
 
+/*
+ * Whether url is an absolute http(s) URL a browser can load. Categories.jsp
+ * disables Save on a category image URL that fails this.
+ *
+ * The URL parser decides, not a pattern. The pattern this replaced wanted a
+ * 2-5 letter top-level domain, so https://cdn.site.photography/x.jpg, an
+ * address by IP and http://localhost:8083 all disabled Save with nothing to
+ * say why -- the bug the email check below once had. The scheme is checked
+ * on the text as typed because the parser forgives too much for a form
+ * check: it reads "http:example.com" as http://example.com/.
+ */
 function isValidUrl(url) {
-    return /^(http|https|ftp):\/\/[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$/i.test(url);
+    var text = String(url).trim();
+    if (!/^https?:\/\//i.test(text)) {
+        return false;
+    }
+    try {
+        return new URL(text).hostname !== "";
+    } catch (e) {
+        return false;
+    }
 }
 
 function validateEmail(email) {
