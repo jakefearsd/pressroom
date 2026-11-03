@@ -27,13 +27,16 @@ import org.junit.jupiter.api.Test;
  * <p>What it pins, and why each matters:
  *
  * <ul>
- *   <li><b>Third-party actions are pinned to a commit SHA.</b> A major-version
- *       tag like {@code @v3} is mutable: whoever owns it can move it, and the
- *       next workflow run executes whatever it points at then. First-party
- *       actions ({@code actions/}, {@code github/}, {@code docker/}) are
- *       exempt as a deliberate trust decision -- they are owned by the same
- *       parties that own the runner and the registry, so pinning them buys
- *       nothing that compromising GitHub itself would not already defeat.</li>
+ *   <li><b>Every action is pinned to a commit SHA</b>, first-party ones
+ *       included, with its release tag in a trailing {@code # vX.Y.Z}
+ *       comment. A version tag like {@code @v4} is mutable: whoever controls
+ *       it can move it, and the next run executes whatever it points at then.
+ *       Owning the runner does not make an owner's tags immutable, and the
+ *       release job hands {@code docker/login-action} a token holding
+ *       {@code packages: write} while {@code docker/} is not even GitHub. The
+ *       exemption this test once granted {@code actions/}, {@code github/}
+ *       and {@code docker/} is gone; the comment keeps a pin reviewable
+ *       (Dependabot and Renovate both update SHA-plus-comment pins).</li>
  *   <li><b>Every workflow declares {@code permissions}.</b> Omitting it inherits
  *       the repository default, which is a setting no reviewer of the file can
  *       see and which an administrator can change without touching this repo.
@@ -56,9 +59,11 @@ class WorkflowSecurityTest {
             Path.of(System.getProperty("user.dir")).getParent().resolve(".github/workflows");
 
     /**
-     * Action owners trusted without a SHA pin. Adding an entry here widens the
-     * set of parties that can change what CI runs without a commit to this
-     * repository, so it is a security decision rather than a convenience one.
+     * Action owners allowed in the release job, which holds
+     * {@code contents: write} and {@code packages: write}. Every action,
+     * these included, must still be pinned to a commit SHA. Adding an owner
+     * hands that position to another party, so it is a security decision
+     * rather than a convenience one.
      */
     private static final List<String> FIRST_PARTY_OWNERS = List.of("actions/", "github/", "docker/");
 
@@ -67,6 +72,9 @@ class WorkflowSecurityTest {
             Pattern.compile("^\\s*-?\\s*uses:\\s*[\"']?([^\"'@\\s]+)@([^\"'\\s]+)");
 
     private static final Pattern FORTY_HEX = Pattern.compile("[0-9a-f]{40}");
+
+    /** The trailing comment naming the release a SHA pin stands for. */
+    private static final Pattern VERSION_COMMENT = Pattern.compile("^\\s+#\\s*v\\d+(\\.\\d+)*\\s*$");
 
     private static List<Path> workflowFiles() throws IOException {
         assertTrue(Files.isDirectory(WORKFLOWS), "workflow dir moved? " + WORKFLOWS.toAbsolutePath());
@@ -78,8 +86,8 @@ class WorkflowSecurityTest {
     }
 
     @Test
-    @DisplayName("every third-party action is pinned to a commit SHA, not a mutable tag")
-    void thirdPartyActionsArePinnedToACommitSha() throws IOException {
+    @DisplayName("every action, first-party included, is pinned to a commit SHA with its tag in a comment")
+    void everyActionIsPinnedToACommitSha() throws IOException {
         List<String> unpinned = new ArrayList<>();
         for (Path workflow : workflowFiles()) {
             List<String> lines = Files.readAllLines(workflow);
@@ -95,15 +103,16 @@ class WorkflowSecurityTest {
                 if (action.startsWith("./")) {
                     continue;
                 }
-                boolean firstParty = FIRST_PARTY_OWNERS.stream().anyMatch(action::startsWith);
-                if (!firstParty && !FORTY_HEX.matcher(ref).matches()) {
+                boolean pinned = FORTY_HEX.matcher(ref).matches()
+                        && VERSION_COMMENT.matcher(lines.get(i).substring(m.end())).find();
+                if (!pinned) {
                     unpinned.add(workflow.getFileName() + ":" + (i + 1) + "  " + action + "@" + ref);
                 }
             }
         }
         assertTrue(unpinned.isEmpty(),
-                "Third-party action(s) pinned to a mutable ref. Pin to a 40-character commit SHA "
-                + "with a trailing '# vX.Y' comment, or drop the dependency:\n  "
+                "Action(s) not pinned to a commit SHA. Pin each to its 40-character commit SHA "
+                + "with a trailing '# vX.Y.Z' comment naming the release, or drop the dependency:\n  "
                 + String.join("\n  ", unpinned));
     }
 
