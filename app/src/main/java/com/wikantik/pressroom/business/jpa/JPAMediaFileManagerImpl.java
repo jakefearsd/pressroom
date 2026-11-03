@@ -23,6 +23,7 @@ import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
@@ -259,53 +260,70 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         pressroom.getWeblogManager().saveWeblog(weblog);
     }
 
-    private void updateThumbnail(MediaFile mediaFile) {
+    /**
+     * Derives dimensions, the admin thumbnail, the rendition ladder, EXIF and
+     * the blurhash from a stored image. An image that cannot be read or
+     * decoded gets none of them and a WARN naming the file; a failure to
+     * store or commit the entity is not an image problem and propagates.
+     */
+    private void updateThumbnail(MediaFile mediaFile) throws WebloggerException {
+        FileContentManager cmgr = pressroom.getFileContentManager();
+        FileContent fc;
+        BufferedImage img;
         try {
-            FileContentManager cmgr = pressroom.getFileContentManager();
-            FileContent fc = cmgr.getFileContent(mediaFile.getWeblog(),
-                    mediaFile.getId());
-            BufferedImage img;
-
+            fc = cmgr.getFileContent(mediaFile.getWeblog(), mediaFile.getId());
             img = ImageDecoding.read(fc.getInputStream());
-
-            // EXIF Orientation: a portrait phone/camera shot is stored as a
-            // landscape raster plus a rotation tag, and ImageIO.read() hands
-            // back the raw raster. Correct it here, once, so EVERYTHING
-            // derived below -- stored dimensions, the _sm thumbnail, the
-            // ladder renditions, the blurhash -- is built from the upright
-            // image. (The original file on disk is never rewritten; browsers
-            // rotate it themselves from its EXIF.)
-            img = RenditionSupport.applyOrientation(img,
-                    ExifSupport.readOrientation(fc.getInputStream()));
-
-            // determine and save width and height
-            mediaFile.setWidth(img.getWidth());
-            mediaFile.setHeight(img.getHeight());
-            strategy.store(mediaFile);
-
-            writeAdminThumbnail(cmgr, mediaFile, img);
-
-            pressroom.flush();
-            // Refresh associated parent for changes
-            strategy.refresh(mediaFile.getDirectory());
-
-            // Responsive-image width ladder (independent of the admin thumbnail
-            // above). RenditionSupport never throws -- per-rendition failures are
-            // logged at WARN with the media file id and do not reach this catch.
-            RenditionSupport.generate(cmgr, mediaFile, img);
-
-            // EXIF/GPS/blurhash: reads from the file already saved to disk
-            // (fc, re-opened) rather than the original upload stream, which
-            // saveFileContent() already consumed. Never lets a metadata
-            // failure affect the thumbnail/rendition work above.
-            extractExifAndBlurhash(cmgr, mediaFile, fc);
-
         } catch (ImageDecoding.TooLarge e) {
             // stored and served as it is; only the derived images are skipped
             log.warn("No thumbnail or renditions for media file {}: {}", mediaFile.getId(), e.getMessage());
-        } catch (Exception e) {
-            log.debug("ERROR creating thumbnail", e);
+            return;
+        } catch (IOException | WebloggerException e) {
+            log.warn("No thumbnail or renditions for media file {}: its content could not be read",
+                    mediaFile.getId(), e);
+            return;
         }
+        if (img == null) {
+            log.warn("No thumbnail or renditions for media file {}: not an image any installed reader decodes",
+                    mediaFile.getId());
+            return;
+        }
+
+        // EXIF Orientation: a portrait phone/camera shot is stored as a
+        // landscape raster plus a rotation tag, and ImageIO.read() hands
+        // back the raw raster. Correct it here, once, so EVERYTHING
+        // derived below -- stored dimensions, the _sm thumbnail, the
+        // ladder renditions, the blurhash -- is built from the upright
+        // image. (The original file on disk is never rewritten; browsers
+        // rotate it themselves from its EXIF.)
+        img = RenditionSupport.applyOrientation(img,
+                ExifSupport.readOrientation(fc.getInputStream()));
+
+        // determine and save width and height
+        mediaFile.setWidth(img.getWidth());
+        mediaFile.setHeight(img.getHeight());
+        strategy.store(mediaFile);
+
+        try {
+            writeAdminThumbnail(cmgr, mediaFile, img);
+        } catch (Exception e) {
+            // the admin list falls back to the full image; the rest still runs
+            log.warn("Could not write the admin thumbnail for media file {}", mediaFile.getId(), e);
+        }
+
+        pressroom.flush();
+        // Refresh associated parent for changes
+        strategy.refresh(mediaFile.getDirectory());
+
+        // Responsive-image width ladder (independent of the admin thumbnail
+        // above). RenditionSupport never throws -- per-rendition failures are
+        // logged at WARN with the media file id.
+        RenditionSupport.generate(cmgr, mediaFile, img);
+
+        // EXIF/GPS/blurhash: reads from the file already saved to disk
+        // (fc, re-opened) rather than the original upload stream, which
+        // saveFileContent() already consumed. Never lets a metadata
+        // failure affect the thumbnail/rendition work above.
+        extractExifAndBlurhash(cmgr, mediaFile, fc);
     }
 
     /**
@@ -344,9 +362,8 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
      * touched either way. Metadata extraction and blurhash encoding never
      * throw: each is independent, and a failure in one (unreadable EXIF,
      * blurhash decode failure) does not prevent the other from being stored.
-     * Only the final {@code strategy.store()} can throw, same as the rest of
-     * this class -- callers already handle it the same way they handle every
-     * other step of thumbnail/rendition generation.
+     * Only the final {@code strategy.store()} can throw, and that propagates
+     * to the caller like any other failure to persist.
      */
     private void extractExifAndBlurhash(FileContentManager cmgr, MediaFile mediaFile, FileContent fc)
             throws WebloggerException {

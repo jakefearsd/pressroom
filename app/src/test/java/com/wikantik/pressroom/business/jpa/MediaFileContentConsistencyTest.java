@@ -23,11 +23,20 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.imageio.ImageIO;
 
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.appender.AbstractAppender;
+import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.logging.log4j.core.config.Property;
 import com.wikantik.pressroom.TestUtils;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.CwebpEncoder;
@@ -51,6 +60,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 
@@ -312,6 +324,72 @@ class MediaFileContentConsistencyTest {
 
         assertGone(mf.getId(), "bytes whose row never committed must not stay on disk, unreachable");
         assertNull(reloaded(mf.getId()));
+    }
+
+    // ----------------------------------------------------- thumbnail failures
+
+    @Test
+    void anImageThatDoesNotDecodeIsReportedAtWarn() throws Exception {
+        List<LogEvent> events = new ArrayList<>();
+        AbstractAppender appender = new AbstractAppender("consistency-capture", null, null, false,
+                Property.EMPTY_ARRAY) {
+            @Override
+            public void append(LogEvent event) {
+                events.add(event.toImmutable());
+            }
+        };
+        appender.start();
+        LoggerConfig loggerConfig = LoggerContext.getContext(false).getConfiguration()
+                .getLoggerConfig(JPAMediaFileManagerImpl.class.getName());
+        loggerConfig.addAppender(appender, Level.WARN, null);
+        String id;
+        try {
+            id = upload("bogus.jpg", "image/jpeg", "not a jpeg at all".getBytes(StandardCharsets.UTF_8));
+        } finally {
+            loggerConfig.removeAppender("consistency-capture");
+            appender.stop();
+        }
+
+        final String fileId = id;
+        assertTrue(events.stream().anyMatch(e -> e.getLevel() == Level.WARN
+                        && e.getMessage().getFormattedMessage().contains(fileId)),
+                "an image upload that gets no thumbnail must say so where an operator looks");
+    }
+
+    /**
+     * A failed commit inside thumbnail generation is not a thumbnail problem:
+     * the caller must hear of it, not carry on as though the upload landed.
+     */
+    @Test
+    void aCommitFailureWhileDerivingAnImagePropagates() throws Exception {
+        Weblogger real = TestUtils.weblogger();
+        AtomicBoolean thumbnailWritten = new AtomicBoolean();
+        FileContentManager watching = mock(FileContentManager.class,
+                org.mockito.AdditionalAnswers.delegatesTo(cmgr));
+        doAnswer(inv -> {
+            if (inv.getArgument(1, String.class).endsWith("_sm")) {
+                thumbnailWritten.set(true);
+            }
+            cmgr.saveFileContent(inv.getArgument(0), inv.getArgument(1), inv.getArgument(2));
+            return null;
+        }).when(watching).saveFileContent(any(Weblog.class), any(String.class), any(InputStream.class));
+        Weblogger failing = mock(Weblogger.class, org.mockito.AdditionalAnswers.delegatesTo(real));
+        org.mockito.Mockito.doReturn(watching).when(failing).getFileContentManager();
+        doAnswer(inv -> {
+            if (thumbnailWritten.get()) {
+                throw new WebloggerException("simulated commit failure");
+            }
+            real.flush();
+            return null;
+        }).when(failing).flush();
+        MediaFileManager failingMgr = new JPAMediaFileManagerImpl(failing, liveStrategy(real));
+
+        MediaFile mf = newFile("photo.jpg", "image/jpeg", 0, new ByteArrayInputStream(jpeg(200, 100)));
+        final Weblog weblog = testWeblog;
+        WebloggerException thrown = assertThrows(WebloggerException.class,
+                () -> failingMgr.createMediaFile(weblog, mf, new PressroomMessages()));
+        assertEquals("simulated commit failure", thrown.getMessage());
+        TestUtils.endSession(false);
     }
 
     /** The bootstrapped tier's persistence strategy, so a test manager shares its EntityManager. */
