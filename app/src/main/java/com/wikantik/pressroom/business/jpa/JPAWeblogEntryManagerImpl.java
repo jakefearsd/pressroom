@@ -652,11 +652,13 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         int size = 0;
         StringBuilder queryString = new StringBuilder();
         
-        if (wesc.getTags() == null || wesc.getTags().isEmpty()) {
-            queryString.append("SELECT e FROM WeblogEntry e WHERE ");
-        } else {
-            queryString.append("SELECT e FROM WeblogEntry e JOIN e.tags t WHERE ");
-            queryString.append("(");
+        queryString.append("SELECT e FROM WeblogEntry e WHERE ");
+        if (wesc.getTags() != null && !wesc.getTags().isEmpty()) {
+            // EXISTS, not a join on e.tags: a join yields one row per matching
+            // tag, so an entry carrying two of the tags was listed twice and
+            // the duplicates counted against maxResults (short pages).
+            queryString.append("EXISTS (SELECT t FROM WeblogEntryTag t")
+                    .append(" WHERE t.weblogEntry = e AND (");
             for (int i = 0; i < wesc.getTags().size(); i++) {
                 if (i != 0) {
                     queryString.append(" OR ");
@@ -664,9 +666,9 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
                 params.add(size++, wesc.getTags().get(i));
                 queryString.append(" t.name = ?").append(size);                
             }
-            queryString.append(") AND ");
+            queryString.append(")) AND ");
         }
-        
+
         if (wesc.getWeblog() != null) {
             params.add(size++, wesc.getWeblog().getId());
             queryString.append("e.website.id = ?").append(size);
@@ -755,8 +757,10 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         }
         // A page (a feed, an API list, a theme's list): read its entries'
         // tags in one IN query instead of one per entry. EclipseLink's shared
-        // cache keeps only ~100 entries, so a page's entries are often rebuilt
-        // with their tags unloaded, and the feed and the API show every one.
+        // cache holds a bounded number of entries (eclipselink.cache.size.
+        // WeblogEntry, 5000 by default; docs/dev/database.md), so a page's
+        // entries may have been rebuilt with their tags unloaded, and the feed
+        // and the API show every one.
         // Loaded here, at once: an untouched batch holder keeps the whole
         // query and every row it read (text included) alive in the cache.
         // Unbounded lists (a reindex reads every entry) are left lazy, so a
