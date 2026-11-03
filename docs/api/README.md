@@ -633,6 +633,15 @@ Without it an update overwrites whatever is stored, as before. It guards the
 text only: an update that sends no `text` or `edits` still changes only the
 fields it sends.
 
+The check holds against concurrent writers too. It runs again immediately
+before the save, under a lock on the entry's row held until the save
+commits, so of two updates sent with the same `expectedContentHash` one
+saves and the other is the 409 above, however long the import step took in
+between. `edits` are held to the text they were applied to in the same way,
+with or without a hash: if another save changed the text meanwhile, the
+update is the same 409 rather than edits laid over text the caller never
+saw. An entry deleted forever in between is a 404.
+
 ```json
 {
   "type": "https://pressroom.invalid/problems/entry-changed",

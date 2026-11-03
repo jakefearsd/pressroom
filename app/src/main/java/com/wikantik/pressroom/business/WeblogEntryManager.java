@@ -325,6 +325,19 @@ public interface WeblogEntryManager {
     long getEntryCount(Weblog websiteData) throws WebloggerException;
 
     /**
+     * Locks an entry's row until the current unit of work commits or rolls
+     * back, and returns its text as last committed. A save of the entry in
+     * flight in another transaction is waited for, and its text is what this
+     * returns; a save started after this waits for this unit of work. For a
+     * write that must not overwrite a change its caller has not seen (the
+     * API's {@code expectedContentHash} and {@code edits}): call it after
+     * anything that commits, immediately before the save, and compare.
+     *
+     * @return the committed text, or null when the entry has no row
+     */
+    String lockEntryText(WeblogEntry entry) throws WebloggerException;
+
+    /**
      * True when any entry, in any status (the trash included), names this
      * account as its creator. Entries carry the creator's username with no
      * foreign key, so the account page refuses to delete a writer. A tag's

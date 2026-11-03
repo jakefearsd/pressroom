@@ -154,6 +154,14 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   extension member `ApiProblem` has (null, so omitted, on every other problem). `contentHash` is
   `EntryDtos.contentHash`: SHA-256 of the UTF-8 text, lower-case hex, Wikantik's scheme; keep the two
   stacks on one.
+- **...and checked again under the row lock, immediately before the save.** The first check is
+  unlocked and the import step after it commits and can take a minute, so two agents sending one
+  hash both passed it and the second save silently discarded the first (code review, 2026-11-03).
+  `requireUnchangedUnderLock` calls `WeblogEntryManager.lockEntryText` (`SELECT text ... FOR
+  UPDATE`, held until commit; a concurrent save is waited for and its committed text returned) and
+  compares with the text the write was checked or computed against. Taken only by a write that
+  names the text it read (a hash, or `edits`); restore too. `EntryRowLockTest` pins the lock against
+  PostgreSQL; nothing after the lock may commit before the save, or the lock is gone.
 - **`edits` become text before any check.** `EntryEdits.resolve` applies them to the stored text and
   `EntryWrite.withText` puts the result where a sent `text` would be, so validation, the import plan
   (which scans `body.text()`) and the one save treat it as sent text with no edits-specific branch.

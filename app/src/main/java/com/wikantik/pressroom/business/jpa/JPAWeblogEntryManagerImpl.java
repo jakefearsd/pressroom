@@ -75,6 +75,9 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     /** Advisory-lock key prefix for a weblog's anchors; see claimAnchor. */
     private static final String ANCHOR_LOCK_PREFIX = "weblogentry.anchor:";
 
+    /** Locks one entry's row until commit and reads its committed text. */
+    private static final String LOCK_ENTRY_TEXT = "SELECT text FROM weblogentry WHERE id = ?1 FOR UPDATE";
+
     /** Startup property: the longest wait, in seconds, for a weblog's anchor lock. */
     private static final String ANCHOR_LOCK_TIMEOUT = "weblogentry.anchor.lockTimeoutSeconds";
 
@@ -1470,6 +1473,24 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         q.setParameter(1, PubStatus.PUBLISHED);
         q.setParameter(2, website);
         return q.getResultList().get(0);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>{@code SELECT ... FOR UPDATE} under READ COMMITTED: a row another
+     * transaction has written waits for that transaction, then is read as it
+     * committed. Native, so the answer is the database's and never this
+     * persistence context's copy; flush mode COMMIT, so nothing pending is
+     * written (and row-locked) first.
+     */
+    @Override
+    public String lockEntryText(WeblogEntry entry) throws WebloggerException {
+        Query q = strategy.getNativeQuery(LOCK_ENTRY_TEXT);
+        q.setFlushMode(FlushModeType.COMMIT);
+        q.setParameter(1, entry.getId());
+        List<?> rows = q.getResultList();
+        return rows.isEmpty() ? null : (String) rows.get(0);
     }
 
 }
