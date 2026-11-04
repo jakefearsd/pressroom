@@ -31,6 +31,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import com.wikantik.pressroom.TestUtils;
+import com.wikantik.pressroom.business.DuplicateCategoryNameException;
 import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.User;
@@ -170,8 +171,8 @@ class UniqueGrantsTest {
         assertEquals(1, count("SELECT count(*) FROM weblogcategory WHERE websiteid = ? AND name = 'Twice'",
                 weblog.getId()));
         assertEquals(1, failures.size(), "the second create is refused: " + failures);
-        assertTrue(failures.get(0).getMessage().contains("Duplicate category name"),
-                "refused at the save, not by a failed commit: " + failures.get(0));
+        assertTrue(failures.get(0) instanceof DuplicateCategoryNameException,
+                "refused at the save as a duplicate name, not by a failed commit: " + failures.get(0));
     }
 
     // ------------------------------------------------------------- plumbing

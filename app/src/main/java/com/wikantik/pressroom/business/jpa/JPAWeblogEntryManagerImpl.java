@@ -40,6 +40,7 @@ import com.wikantik.pressroom.util.PressroomConstants;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.AnchorLockTimeoutException;
 import com.wikantik.pressroom.business.AnchorTakenException;
+import com.wikantik.pressroom.business.DuplicateCategoryNameException;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.PressroomEvent;
 import com.wikantik.pressroom.pojos.User;
@@ -143,7 +144,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
                     + "s waiting for the category lock of weblog " + weblog.getHandle());
         }
         if (isDuplicateWeblogCategoryName(cat)) {
-            throw new WebloggerException("Duplicate category name, cannot save category");
+            throw new DuplicateCategoryNameException(cat.getName());
         }
     }
 

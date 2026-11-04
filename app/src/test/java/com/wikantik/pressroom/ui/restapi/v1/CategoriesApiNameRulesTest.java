@@ -1,5 +1,6 @@
 package com.wikantik.pressroom.ui.restapi.v1;
 
+import com.wikantik.pressroom.business.DuplicateCategoryNameException;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -12,6 +13,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -44,6 +46,21 @@ class CategoriesApiNameRulesTest {
         category.setId(id);
         when(entries.getWeblogCategory(id)).thenReturn(category);
         return category;
+    }
+
+    /**
+     * Two overlapping creates of one name both pass the check here; the
+     * manager refuses the second under its lock. That refusal is a conflict
+     * on the name, not a server error.
+     */
+    @Test
+    void aCreateThatLosesTheRaceForANameIs409OnTheName() throws Exception {
+        doThrow(new DuplicateCategoryNameException("Twice")).when(entries).saveWeblogCategory(any());
+
+        mvc().perform(post("/v1/weblogs/catblog/categories").requestAttr("actionWeblog", weblog)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Twice\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(errorFieldIs("name"));
     }
 
     @Test
