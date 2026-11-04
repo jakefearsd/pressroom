@@ -118,6 +118,23 @@ class ExcerptsTest {
         assertTrue(opening.endsWith("abcdefghi…"), "cut after a whole word: " + opening);
     }
 
+    /**
+     * A sentence with no space to cut at (one long word, or a script written
+     * without spaces) is cut at a fixed length. An emoji is two Java chars;
+     * a cut between them left half a character, shown as "?" or a box.
+     */
+    @Test
+    void aCutWithNoSpaceNeverSplitsAnEmojiInTwo() {
+        // 298 letters, then emoji: the fixed cut at 299 falls inside the first one.
+        String html = "<p>" + "a".repeat(298) + "\uD83D\uDE00".repeat(10) + ".</p>";
+
+        String opening = Excerpts.opening(html, Locale.US);
+
+        assertTrue(opening.length() <= Excerpts.MAX_CHARS, opening);
+        assertTrue(opening.codePoints().noneMatch(cp -> Character.getType(cp) == Character.SURROGATE), "half an emoji: " + opening);
+        assertTrue(opening.endsWith("a…"), "cut before the emoji it could not fit whole: " + opening);
+    }
+
     @Test
     void entitiesComeBackAsTextAndWhitespaceCollapses() {
         // Plain text, not markup: the template escapes it, exactly once.
