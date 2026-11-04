@@ -26,6 +26,7 @@ import com.wikantik.pressroom.business.MockWeblogger;
 import com.wikantik.pressroom.business.WebloggerProvider;
 import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.pojos.User;
+import com.wikantik.pressroom.ui.core.security.CredentialStampFilter;
 import com.wikantik.pressroom.ui.core.security.PressroomUserDetailsService;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -43,6 +44,11 @@ import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.FilterChainProxy;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.rememberme.RememberMeAuthenticationFilter;
 import org.springframework.stereotype.Controller;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -211,6 +217,33 @@ class SecurityConfigTest {
         if (context != null) {
             context.close();
         }
+    }
+
+    /**
+     * The admin UI's chain ends a session whose password changed. It runs
+     * after remember-me, so a session that cookie restores is checked too,
+     * and before the anonymous filter, so a session it ends carries on as
+     * anonymous. The API chain is stateless and does not need it.
+     */
+    @Test
+    void theAdminUiChainChecksEachSessionsPasswordStampAfterRememberMe() {
+        List<SecurityFilterChain> chains = context.getBean(FilterChainProxy.class).getFilterChains();
+        List<jakarta.servlet.Filter> ui = chains.stream()
+                .filter(c -> c.getFilters().stream().anyMatch(UsernamePasswordAuthenticationFilter.class::isInstance))
+                .findFirst().orElseThrow().getFilters();
+
+        int stamp = indexOf(ui, CredentialStampFilter.class);
+        assertTrue(stamp > indexOf(ui, RememberMeAuthenticationFilter.class), "after remember-me: " + ui);
+        assertTrue(stamp < indexOf(ui, AnonymousAuthenticationFilter.class), "before anonymous: " + ui);
+    }
+
+    private static int indexOf(List<jakarta.servlet.Filter> filters, Class<?> type) {
+        for (int i = 0; i < filters.size(); i++) {
+            if (type.isInstance(filters.get(i))) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /**

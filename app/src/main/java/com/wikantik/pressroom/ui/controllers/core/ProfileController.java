@@ -37,6 +37,7 @@ import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.ui.controllers.PasswordRules;
 import com.wikantik.pressroom.ui.core.PressroomContext;
+import com.wikantik.pressroom.ui.core.security.CredentialStampFilter;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.WebDataBinder;
@@ -123,8 +124,9 @@ public class ProfileController extends BaseController {
             bean.copyTo(existingUser);
 
             // If user set both password and passwordConfirm then reset password
-            if (!StringUtils.isEmpty(bean.getPasswordText())
-                    && !StringUtils.isEmpty(bean.getPasswordConfirm())) {
+            boolean passwordChanged = !StringUtils.isEmpty(bean.getPasswordText())
+                    && !StringUtils.isEmpty(bean.getPasswordConfirm());
+            if (passwordChanged) {
                 existingUser.resetPassword(bean.getPasswordText());
             }
 
@@ -132,6 +134,11 @@ public class ProfileController extends BaseController {
                 UserManager mgr = weblogger.getUserManager();
                 mgr.saveUser(existingUser);
                 weblogger.flush();
+                if (passwordChanged) {
+                    // The account's other sessions end on their next request
+                    // (CredentialStampFilter); this one stays signed in.
+                    CredentialStampFilter.restamp(request, existingUser);
+                }
                 // The screen name signs this account's comments and replies, and
                 // rendered pages expire only through their weblog.
                 if (!Objects.equals(screenNameBefore, existingUser.getScreenName())) {

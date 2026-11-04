@@ -155,10 +155,11 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
                         authenticatedUser.getUserName(), required);
                 // An api caller holding no role on the weblog at all gets the 404 an
                 // unknown handle gets: a 403 would confirm the handle exists. A member
-                // below the required level already knows it does, so stays 403.
-                boolean member = !apiHandler || umgr.checkPermission(
+                // below the required level already knows it does, so stays 403 -- unless
+                // the token is pinned to another weblog, which may not see this one.
+                boolean member = !apiHandler || (withinTokenPin(actionWeblog) && umgr.checkPermission(
                         new WeblogPermission(actionWeblog, List.of(WeblogPermission.EDIT_DRAFT)),
-                        authenticatedUser);
+                        authenticatedUser));
                 return deny(apiHandler,
                         member ? PressroomHandlerInterceptor::forbidden : () -> ApiException.notFound("No such weblog."),
                         ACCESS_DENIED_URL, request, response);
@@ -166,6 +167,17 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
         }
 
         return true;
+    }
+
+    /**
+     * Whether the caller's credential may act on {@code weblog} at all: true
+     * unless it is a token pinned to another weblog. ApiScopeInterceptor
+     * refuses such a request with a 404 too, but runs after this check.
+     */
+    private static boolean withinTokenPin(Weblog weblog) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth == null || !(auth.getDetails() instanceof WeblogPinnedCredential pinned)
+                || pinned.scopeWeblog() == null || pinned.scopeWeblog().equals(weblog.getHandle());
     }
 
     /**

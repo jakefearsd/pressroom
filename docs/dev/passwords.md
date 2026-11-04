@@ -53,6 +53,36 @@ resolves through the index at the end of `CLAUDE.md`.
   refuses rather than throws. Profile fields other than the password do not
   need it.
 
+## A password change ends the account's other sessions
+
+`CredentialStampFilter` (`ui/core/security`, in the admin UI's security chain
+after remember-me and before the anonymous filter) stamps each signed-in
+session with a SHA-256 digest of the stored password hash, and the account it
+belongs to. A request whose account now has another hash has its session
+invalidated and its security context cleared, and carries on as anonymous
+(2026-11). It decides about the password only: a disabled or deleted account
+keeps its session here, because the checks downstream refuse it, and the
+comments endpoints answer it with "disabled" (`CommentsControllerTest`).
+
+- **It compares against the database**, so every way a password changes is
+  covered: profile, admin user editor, reset link, `AdminApi`, and the admin
+  account tool, which writes the row directly.
+- **The changing session stays signed in**: `ProfileController`, and
+  `UserEditController` when admins edit themselves, call
+  `CredentialStampFilter.restamp` after the save commits.
+- **A lookup that throws ends the session** (fail closed).
+- **A sign-in as someone else** in a session that never signed out keeps
+  the session's attributes (only its id changes); the stamp's owner differs,
+  so it is stamped afresh rather than ended.
+- **Remember-me cookies need nothing**: their signature covers the password
+  hash (`PressroomRememberMeServices`), so a change voids them.
+- **`PressroomLoginSessionManager.invalidate` signs no one out**; it drops a
+  cached `PressroomSession`, which the next request rebuilds from the
+  still-valid login. Before this filter, the "kick them out" calls in the
+  reset and admin-edit paths did nothing for an enabled account.
+- A session that signed in before this shipped is stamped on its first
+  request afterwards, so a change made before that request does not end it.
+
 ## The admin account tool
 
 `deploy/admin-account.sh` (`create`, `reset-password`, `status`; compose
