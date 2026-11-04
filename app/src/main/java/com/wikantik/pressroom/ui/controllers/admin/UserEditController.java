@@ -40,6 +40,7 @@ import com.wikantik.pressroom.ui.controllers.BaseController;
 import com.wikantik.pressroom.ui.controllers.PasswordRules;
 import com.wikantik.pressroom.ui.controllers.core.PasswordLinkMailer;
 import com.wikantik.pressroom.ui.core.PressroomLoginSessionManager;
+import com.wikantik.pressroom.ui.core.security.CredentialStampFilter;
 import com.wikantik.pressroom.ui.controllers.util.UIUtils;
 import com.wikantik.pressroom.util.TokenGenerator;
 import org.springframework.stereotype.Controller;
@@ -262,7 +263,8 @@ public class UserEditController extends BaseController {
             bean.copyTo(user);
 
             // reset password if set
-            if (!StringUtils.isEmpty(bean.getPassword())) {
+            boolean passwordChanged = !StringUtils.isEmpty(bean.getPassword());
+            if (passwordChanged) {
                 user.resetPassword(bean.getPassword());
 
                 // invalidate user's session if it's not user executing this action
@@ -318,6 +320,11 @@ public class UserEditController extends BaseController {
                     roleEvent = "siteAdmin.granted";
                 }
                 weblogger.flush();
+                if (passwordChanged && authUser != null && authUser.getUserName().equals(user.getUserName())) {
+                    // The account's other sessions end on their next request
+                    // (CredentialStampFilter); the admin's own stays signed in.
+                    CredentialStampFilter.restamp(request, user);
+                }
                 logEnabledChange(enabledBefore, user, authUser);
                 if (roleEvent != null) {
                     AdminLog.record(roleEvent, authUser, "account=" + user.getUserName());

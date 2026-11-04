@@ -32,6 +32,14 @@ import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.core.PressroomLoginSessionManager;
 import com.wikantik.pressroom.ui.core.PressroomSession;
+import com.wikantik.pressroom.ui.core.security.CredentialStampFilter;
+import com.wikantik.pressroom.business.WebloggerProvider;
+import org.springframework.mock.web.MockFilterChain;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import com.wikantik.pressroom.testing.AdminLogCapture;
 import com.wikantik.pressroom.TestUtils;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -568,6 +576,45 @@ class UserEditControllerTest {
         } finally {
             PressroomLoginSessionManager.getInstance().invalidate("jake");
         }
+    }
+
+    /**
+     * The password change ends jake's other sessions (CredentialStampFilter),
+     * but the admin making it to their own account keeps the session they
+     * made it from.
+     */
+    @Test
+    void changingYourOwnPasswordKeepsTheSessionYouChangedItFrom() throws Exception {
+        User self = storedUser("jake");
+        self.setPassword(TestUtils.TEST_PASSWORD_HASH);
+        when(weblogger.userManager().getUserByUserName("jake", null)).thenReturn(self);
+        MockHttpSession session = new MockHttpSession();
+        HttpServletRequest request = ControllerTestFixture.requestFor(self);
+        when(request.getSession(false)).thenReturn(session);
+        SecurityContextHolder.getContext().setAuthentication(
+                UsernamePasswordAuthenticationToken.authenticated("jake", null, List.of()));
+        try {
+            passThroughStampFilter(session);
+            CreateUserBean bean = beanForExisting("u1", "jake");
+            bean.setPassword("newpass1");
+            bean.setEnabled(Boolean.TRUE);
+
+            controller.modifyUserSave(request, model, bean);
+            passThroughStampFilter(session);
+
+            assertFalse(session.isInvalid(), "the admin's own session keeps its sign-in");
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    private void passThroughStampFilter(MockHttpSession session) throws Exception {
+        WebloggerProvider provider = org.mockito.Mockito.mock(WebloggerProvider.class);
+        when(provider.isBootstrapped()).thenReturn(true);
+        when(provider.getWeblogger()).thenReturn(weblogger.weblogger());
+        MockHttpServletRequest next = new MockHttpServletRequest("GET", "/pressroom-ui/menu.rol");
+        next.setSession(session);
+        new CredentialStampFilter(provider).doFilter(next, new MockHttpServletResponse(), new MockFilterChain());
     }
 
     @Test

@@ -24,6 +24,15 @@ import com.wikantik.pressroom.business.MockWeblogger;
 import com.wikantik.pressroom.business.comments.CommentService;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.TestUtils;
+import com.wikantik.pressroom.business.WebloggerProvider;
+import com.wikantik.pressroom.ui.core.security.CredentialStampFilter;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.mock.web.MockFilterChain;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,6 +49,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * Tests for {@link ProfileController}, the page where a signed-in user edits
@@ -264,6 +274,46 @@ class ProfileControllerTest {
 
         assertEquals(List.of("yourProfile.error.currentPassword"), ControllerTestFixture.errors(model));
         verify(weblogger.userManager(), never()).saveUser(any());
+    }
+
+    /**
+     * Changing the password ends the account's other sessions
+     * (CredentialStampFilter), but not the one that made the change: it is
+     * stamped with the new password and stays signed in.
+     */
+    @Test
+    void theSessionThatChangesThePasswordStaysSignedIn() throws Exception {
+        User user = user("jake");
+        user.setPassword(TestUtils.TEST_PASSWORD_HASH);
+        when(weblogger.userManager().getUserByUserName("jake", null)).thenReturn(user);
+        MockHttpSession session = new MockHttpSession();
+        HttpServletRequest request = ControllerTestFixture.requestFor(user);
+        when(request.getSession(false)).thenReturn(session);
+        SecurityContextHolder.getContext().setAuthentication(
+                UsernamePasswordAuthenticationToken.authenticated("jake", null, List.of()));
+        try {
+            passThroughStampFilter(session);
+            ProfileBean bean = new ProfileBean();
+            bean.setCurrentPassword(TestUtils.TEST_PASSWORD);
+            bean.setPasswordText("newpassword");
+            bean.setPasswordConfirm("newpassword");
+
+            controller.save(request, model, bean, redirectAttributes);
+            passThroughStampFilter(session);
+
+            assertFalse(session.isInvalid(), "the changing session keeps its sign-in");
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    private void passThroughStampFilter(MockHttpSession session) throws Exception {
+        WebloggerProvider provider = org.mockito.Mockito.mock(WebloggerProvider.class);
+        when(provider.isBootstrapped()).thenReturn(true);
+        when(provider.getWeblogger()).thenReturn(weblogger.weblogger());
+        MockHttpServletRequest next = new MockHttpServletRequest("GET", "/pressroom-ui/menu.rol");
+        next.setSession(session);
+        new CredentialStampFilter(provider).doFilter(next, new MockHttpServletResponse(), new MockFilterChain());
     }
 
     @Test

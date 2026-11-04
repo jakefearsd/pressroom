@@ -22,6 +22,7 @@ import java.util.List;
 import com.wikantik.pressroom.business.WebloggerProvider;
 import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.ui.core.PressroomContext;
+import com.wikantik.pressroom.ui.core.security.CredentialStampFilter;
 import com.wikantik.pressroom.ui.core.security.LastLoginRecorder;
 import com.wikantik.pressroom.ui.core.security.PressroomRememberMeAuthenticationProvider;
 import com.wikantik.pressroom.ui.core.security.PressroomRememberMeServices;
@@ -50,6 +51,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.rememberme.RememberMeAuthenticationFilter;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import tools.jackson.databind.ObjectMapper;
 
@@ -245,7 +247,8 @@ public class SecurityConfig {
     @Order(2)
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http, AuthenticationManager authenticationManager,
-            PressroomRememberMeServices rememberMeServices, ObjectProvider<SsoLogin> ssoLogin) throws Exception {
+            PressroomRememberMeServices rememberMeServices, ObjectProvider<SsoLogin> ssoLogin,
+            WebloggerProvider webloggerProvider) throws Exception {
 
         http
             .authenticationManager(authenticationManager)
@@ -299,6 +302,12 @@ public class SecurityConfig {
             // would appear and behave differently from the app's own.
             .logout(AbstractHttpConfigurer::disable)
             .rememberMe(remember -> remember.rememberMeServices(rememberMeServices))
+            // Ends a session whose password changed (CredentialStampFilter).
+            // After remember-me, so a session that cookie restores is checked
+            // too; before the anonymous filter, so an ended session carries on
+            // as anonymous. Built here, not as a @Bean, so Boot does not also
+            // register it on every request (see apiTokenAuthFilterRegistration).
+            .addFilterAfter(new CredentialStampFilter(webloggerProvider), RememberMeAuthenticationFilter.class)
             // Pressroom's media-file editor uses iframes.
             .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin));
 
