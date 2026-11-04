@@ -28,6 +28,7 @@ import com.wikantik.pressroom.ui.core.security.PressroomRememberMeAuthentication
 import com.wikantik.pressroom.ui.core.security.PressroomRememberMeServices;
 import com.wikantik.pressroom.ui.core.security.PressroomUserDetailsService;
 import com.wikantik.pressroom.ui.core.security.sso.SsoLogin;
+import com.wikantik.pressroom.ui.restapi.ApiBodyLimitFilter;
 import com.wikantik.pressroom.ui.restapi.ApiProblemWriter;
 import com.wikantik.pressroom.ui.restapi.auth.ApiAccessDeniedHandler;
 import com.wikantik.pressroom.ui.restapi.auth.ApiAuthenticationEntryPoint;
@@ -357,7 +358,8 @@ public class SecurityConfig {
             HttpSecurity http, ApiTokenAuthFilter apiTokenAuthFilter,
             ApiAuthenticationEntryPoint apiAuthenticationEntryPoint,
             ApiAccessDeniedHandler apiAccessDeniedHandler,
-            AuthenticationManager authenticationManager) throws Exception {
+            AuthenticationManager authenticationManager,
+            ApiProblemWriter apiProblemWriter) throws Exception {
 
         http
             .securityMatcher("/api/**")
@@ -381,6 +383,8 @@ public class SecurityConfig {
                 .accessDeniedHandler(apiAccessDeniedHandler))
             .httpBasic(basic -> { })
             .addFilterBefore(apiTokenAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            // An oversized body is refused before any credential work.
+            .addFilterBefore(new ApiBodyLimitFilter(apiProblemWriter), ApiTokenAuthFilter.class)
             .logout(AbstractHttpConfigurer::disable)
             .rememberMe(AbstractHttpConfigurer::disable);
 

@@ -29,20 +29,23 @@ import java.util.List;
  * sentence shows as that paragraph replaced rather than as a scatter of
  * character edits.
  *
- * <p>The algorithm is a plain longest-common-subsequence, which costs
+ * <p>Lines alike at the start and the end are matched first; what lies
+ * between is compared by a plain longest-common-subsequence, which costs
  * O(n x m) in time and memory. That is fine for blog entries and hopeless for
- * anything large, so inputs beyond {@link #MAX_LINES} are reported as a whole
- * replacement rather than being allowed to exhaust the heap while an author
- * waits.
+ * anything large, so a changed region over {@link #MAX_CELLS} is reported as a
+ * whole replacement rather than being allowed to exhaust the heap while an
+ * author waits.
  */
 public final class TextDiff {
 
     /**
-     * Above this many lines on either side, the diff degrades to "everything
-     * replaced". A 4000-line entry would otherwise allocate a 16-million-cell
-     * table to tell someone what they already know.
+     * The largest table the comparison builds, in cells (one per pair of
+     * changed lines, 4 bytes each, so 4 MB): past it, the changed region
+     * degrades to "everything replaced". The cap was 4000 lines a side,
+     * which still let one request allocate 16 million cells (code review,
+     * 2026-11-03).
      */
-    static final int MAX_LINES = 4000;
+    static final int MAX_CELLS = 1_000_000;
 
     /** Unchanged lines {@link #unified} shows either side of a change, as {@code diff -u} does. */
     static final int CONTEXT_LINES = 3;
@@ -80,13 +83,36 @@ public final class TextDiff {
         if (oldLines.equals(newLines)) {
             return Collections.emptyList();
         }
-        if (oldLines.size() > MAX_LINES || newLines.size() > MAX_LINES) {
-            return wholesaleReplacement(oldLines, newLines);
+        int prefix = 0;
+        int shorter = Math.min(oldLines.size(), newLines.size());
+        while (prefix < shorter && oldLines.get(prefix).equals(newLines.get(prefix))) {
+            prefix++;
+        }
+        int suffix = 0;
+        while (suffix < shorter - prefix && oldLines.get(oldLines.size() - 1 - suffix)
+                .equals(newLines.get(newLines.size() - 1 - suffix))) {
+            suffix++;
         }
 
-        int[][] lcs = longestCommonSubsequence(oldLines, newLines);
-
         List<Line> result = new ArrayList<>();
+        for (String line : oldLines.subList(0, prefix)) {
+            result.add(new Line(Kind.SAME, line));
+        }
+        changedRegion(result, oldLines.subList(prefix, oldLines.size() - suffix),
+                newLines.subList(prefix, newLines.size() - suffix));
+        for (String line : oldLines.subList(oldLines.size() - suffix, oldLines.size())) {
+            result.add(new Line(Kind.SAME, line));
+        }
+        return result;
+    }
+
+    /** Appends the diff of the lines between the matched start and end. */
+    private static void changedRegion(List<Line> result, List<String> oldLines, List<String> newLines) {
+        if ((long) oldLines.size() * newLines.size() > MAX_CELLS) {
+            wholesaleReplacement(result, oldLines, newLines);
+            return;
+        }
+        int[][] lcs = longestCommonSubsequence(oldLines, newLines);
         int i = 0;
         int j = 0;
         while (i < oldLines.size() && j < newLines.size()) {
@@ -108,7 +134,6 @@ public final class TextDiff {
         while (j < newLines.size()) {
             result.add(new Line(Kind.ADDED, newLines.get(j++)));
         }
-        return result;
     }
 
     /**
@@ -120,7 +145,7 @@ public final class TextDiff {
      * context apart share a hunk). Lines end in {@code \n} whatever the texts
      * used. Empty when the texts have the same lines.
      *
-     * <p>Beyond {@link #MAX_LINES} it is one hunk replacing everything, as
+     * <p>Past {@link #MAX_CELLS} the changed region is replaced wholesale, as
      * {@link #diff} degrades.
      */
     public static String unified(String before, String after, String fromLabel, String toLabel) {
@@ -205,15 +230,13 @@ public final class TextDiff {
         return lcs;
     }
 
-    private static List<Line> wholesaleReplacement(List<String> oldLines, List<String> newLines) {
-        List<Line> result = new ArrayList<>(oldLines.size() + newLines.size());
+    private static void wholesaleReplacement(List<Line> result, List<String> oldLines, List<String> newLines) {
         for (String line : oldLines) {
             result.add(new Line(Kind.REMOVED, line));
         }
         for (String line : newLines) {
             result.add(new Line(Kind.ADDED, line));
         }
-        return result;
     }
 
     /**

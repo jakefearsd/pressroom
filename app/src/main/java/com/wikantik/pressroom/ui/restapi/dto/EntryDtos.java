@@ -338,7 +338,10 @@ public final class EntryDtos {
             entry.setSummary(write.summary());
         }
         if (write.text() != null) {
-            entry.setText(write.text());
+            errors.check("text", () -> {
+                ColumnLimits.requireMaxLength("text", write.text(), ColumnLimits.ENTRY_TEXT);
+                entry.setText(write.text());
+            });
         }
         if (write.status() != null) {
             errors.check("status", () -> entry.setStatus(parseWritableStatus(write.status())));

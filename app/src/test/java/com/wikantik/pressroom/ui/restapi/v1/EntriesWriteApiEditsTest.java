@@ -8,6 +8,7 @@ import java.util.Locale;
 import com.wikantik.pressroom.business.EntryRenderer;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.ui.restapi.ApiExceptionHandler;
+import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import com.wikantik.pressroom.ui.restapi.dto.EntryDtos;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -120,6 +121,18 @@ class EntriesWriteApiEditsTest {
                 "{\"title\":\"t\",\"text\":\"x\"," + edits("x", "y") + "}"));
 
         assertEquals(List.of("edits"), fields(problem));
+        nothingSaved();
+    }
+
+    /** Each edit is small, but what it makes of the stored text is held to the same cap as text sent whole. */
+    @Test
+    void editsThatGrowTheTextPastTheCapAreA400() throws Exception {
+        stored.setText(STORED + " " + "x".repeat(ColumnLimits.ENTRY_TEXT - STORED.length() - 1));
+
+        JsonNode problem = fx.refused(patch("/v1/weblogs/myblog/entries/e1").content(
+                "{" + edits("The pier.", "The long pier.") + "}"));
+
+        assertEquals(List.of("text"), fields(problem));
         nothingSaved();
     }
 

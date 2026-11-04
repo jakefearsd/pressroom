@@ -38,6 +38,12 @@ public final class ColumnLimits {
 
     // weblogentry (V002__baseline_schema.sql, V006__media_metadata_and_entry_seo.sql)
     public static final int ENTRY_TITLE = 255;
+    /**
+     * Not a column limit (the text column is unbounded) but a cap: about a
+     * megabyte of Markdown, far beyond any post, so one request or a run of
+     * edits cannot store what every render, search and diff must then carry.
+     */
+    public static final int ENTRY_TEXT = 1_000_000;
     public static final int META_TITLE = 255;
     public static final int SEARCH_DESCRIPTION = 255;
     public static final int CANONICAL_URL = 255;
