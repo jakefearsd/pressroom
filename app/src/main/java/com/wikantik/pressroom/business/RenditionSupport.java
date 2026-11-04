@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -72,8 +73,9 @@ public final class RenditionSupport {
     /** The responsive width ladder, ascending. Widths >= the original image's width are skipped. */
     public static final List<Integer> LADDER_WIDTHS = List.of(480, 960, 1600, 2400);
 
+    /** Read-only: {@link #ladderWidths} hands it to every caller. */
     private static final Set<Integer> LADDER_WIDTHS_SET =
-            new LinkedHashSet<>(LADDER_WIDTHS);
+            Collections.unmodifiableSet(new LinkedHashSet<>(LADDER_WIDTHS));
 
     /** JPEG encode quality used for the JPEG ladder rendition. */
     // JPEG_QUALITY and WEBP_QUALITY are tuning values for photographs, trading file size against

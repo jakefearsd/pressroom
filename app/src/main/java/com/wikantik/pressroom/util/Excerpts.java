@@ -218,7 +218,12 @@ public final class Excerpts {
         private static String cut(String sentence, int room) {
             int limit = room - ELLIPSIS.length();
             int at = sentence.lastIndexOf(' ', limit);
-            String head = at > 0 ? sentence.substring(0, at) : sentence.substring(0, limit);
+            if (at <= 0) {
+                // No word to cut at: cut at the limit, but never between the
+                // two halves of a character such as an emoji.
+                at = Character.isHighSurrogate(sentence.charAt(limit - 1)) ? limit - 1 : limit;
+            }
+            String head = sentence.substring(0, at);
             return head.stripTrailing() + ELLIPSIS;
         }
     }

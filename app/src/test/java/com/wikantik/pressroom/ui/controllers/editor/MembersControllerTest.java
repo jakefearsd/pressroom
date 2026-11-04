@@ -322,6 +322,27 @@ class MembersControllerTest extends EditorControllerTestSupport {
                 "A failed permission change must be reported: " + errors(model));
     }
 
+    /**
+     * The changes are counted as they are made but only written by the flush
+     * at the end; a flush that fails saved none of them, so the page must not
+     * also say "1 member removed" beside the error.
+     */
+    @Test
+    void aSaveThatFailsToWriteReportsNoChangesBesideTheError() throws Exception {
+        givenMember(user, WeblogPermission.ADMIN);
+        User bob = otherUser("bob");
+        givenMember(bob, WeblogPermission.POST);
+        submit(user, WeblogPermission.ADMIN);
+        submit(bob, "-1");
+        org.mockito.Mockito.doThrow(new WebloggerException("database down")).when(weblogger.weblogger()).flush();
+
+        controller.save(request, model);
+
+        assertTrue(errors(model).contains("memberPermissions.saveError"), errors(model).toString());
+        assertFalse(messages(model).contains("memberPermissions.membersRemoved"),
+                "nothing was removed: " + messages(model));
+    }
+
     // --- the Members page follows the person page's rules (UserWeblogsController) ---
 
     @Test

@@ -169,6 +169,9 @@ public class MembersController extends BaseController {
         } catch (Exception ex) {
             log.error("Error saving permissions on weblog - {}", getActionWeblog(request).getHandle(), ex);
             addError(model, "memberPermissions.saveError", request);
+            // Counted as made, but only written by the flush: a failure saved none.
+            removed = 0;
+            changed = 0;
         }
 
         if (removed > 0) {

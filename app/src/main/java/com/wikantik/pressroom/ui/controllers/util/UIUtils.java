@@ -19,7 +19,6 @@
 package com.wikantik.pressroom.ui.controllers.util;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -44,12 +43,11 @@ public final class UIUtils {
     // load up the locales and time zones lists
     static {
         // build locales list
-        LOCALES = Arrays.asList(Locale.getAvailableLocales());
-        LOCALES.sort(new LocaleComparator());
+        // Read-only: shared by every settings page and every locale check.
+        LOCALES = Arrays.stream(Locale.getAvailableLocales()).sorted(new LocaleComparator()).toList();
 
         // build time zones list
-        TIME_ZONES = Arrays.asList(TimeZone.getAvailableIDs());
-        Collections.sort(TIME_ZONES);
+        TIME_ZONES = Arrays.stream(TimeZone.getAvailableIDs()).sorted().toList();
     }
 
 

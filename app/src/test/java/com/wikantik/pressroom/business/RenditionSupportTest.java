@@ -537,4 +537,11 @@ class RenditionSupportTest {
         public void release() {
         }
     }
+
+    /** The ladder is shared by every upload; a caller must not be able to change it for all of them. */
+    @Test
+    void theSharedLadderCannotBeChangedByACaller() {
+        assertThrows(UnsupportedOperationException.class, () -> RenditionSupport.ladderWidths().add(320));
+        assertEquals(List.of(480, 960, 1600, 2400), List.copyOf(RenditionSupport.ladderWidths()), "still ascending");
+    }
 }

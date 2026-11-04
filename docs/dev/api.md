@@ -90,12 +90,13 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   package, so a refusal of it cannot be thrown to the advice (it escaped as the container's 500
   HTML page for a pinned token): `ApiScopeInterceptor` writes a refusal of any handler outside
   `ui.restapi` itself, through `ApiProblemWriter` (`OpenApiPinnedTokenDispatchTest`).
-- **`PressroomHandlerInterceptor`'s `import ...ui.restapi.ApiException` is the ONE
-  permitted import from `ui.restapi` into `ui.controllers`, and must stay the
-  only one.** A second interceptor for `/api/**` would be exactly the parallel
-  authorization path avoided here.
+- **`PressroomHandlerInterceptor`'s imports of `ui.restapi.ApiException` and
+  `ui.restapi.ApiExceptionHandler` (only for its package name, to tell an API
+  handler from a JSP one) are the ONLY permitted imports from `ui.restapi`
+  into `ui.controllers`.** A second interceptor for `/api/**` would be exactly
+  the parallel authorization path avoided here.
   `grep -r "import com.wikantik.pressroom.ui.restapi" app/src/main/java/com/wikantik/pressroom/ui/controllers/`
-  must return exactly one line.
+  must return exactly those two lines, both in `PressroomHandlerInterceptor`.
 
 ## MCP endpoint
 `/api/mcp` (spec `docs/superpowers/specs/2026-10-11-mcp-endpoint-design.md`) is a facade over
