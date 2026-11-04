@@ -118,10 +118,24 @@ public class UtilitiesTest  {
 
         @Test
         public void unterminatedTagAtTheEndIsKeptVerbatim() {
-            // A '<' with no closing '>' cannot be a tag, so the remainder is
-            // appended as-is rather than silently swallowing the rest of the
-            // text.
-            assertEquals("a <b", Utilities.removeHTML("a<b", true));
+            // A '<' with no closing '>' cannot be a tag, so the text is kept
+            // as written: no tag was removed, so no space stands in for one.
+            assertEquals("a<b", Utilities.removeHTML("a<b", true));
+            assertEquals("I <3 tea", Utilities.removeHTML("I <3 tea", true));
+            assertEquals("x  a<b", Utilities.removeHTML("<b>x</b> a<b", true));
+        }
+
+        /**
+         * Weblog.setTagline cleans every value the database mapping loads, so
+         * a second pass that changed anything rewrote the stored tagline on
+         * the next save: one more space before a stray '<' per save.
+         */
+        @Test
+        public void cleaningTwiceChangesNothingTheFirstPassDidNot() {
+            for (String input : new String[] {"a<b", "Fish < Chips", "<i>x</i> y<z", "a<b>c</b>d", "<<b>"}) {
+                String once = Utilities.removeHTML(input, true);
+                assertEquals(once, Utilities.removeHTML(once, true), input);
+            }
         }
 
         @Test

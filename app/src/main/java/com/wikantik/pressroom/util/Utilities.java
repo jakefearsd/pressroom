@@ -139,26 +139,25 @@ public final class Utilities {
         }
 
         while (beginTag >= start) {
+            endTag = str.indexOf('>', beginTag);
+            if (endTag == -1) {
+                // A '<' never closed is not a tag: keep the rest as written,
+                // with no space standing in for a tag that was not removed.
+                // Adding one made a second pass add another (Weblog.setTagline
+                // cleans every value it loads, so a tagline grew per save).
+                ret.append(str, start, str.length());
+                break;
+            }
             if (beginTag > 0) {
-                ret.append(str.substring(start, beginTag));
+                ret.append(str, start, beginTag);
 
                 // replace each tag with a space (looks better)
                 if (addSpace) {
-                    ret.append(" ");
+                    ret.append(' ');
                 }
             }
-            endTag = str.indexOf('>', beginTag);
-
-            // if endTag found move "cursor" forward
-            if (endTag > -1) {
-                start = endTag + 1;
-                beginTag = str.indexOf('<', start);
-            }
-            // if no endTag found, get rest of str and break
-            else {
-                ret.append(str.substring(beginTag));
-                break;
-            }
+            start = endTag + 1;
+            beginTag = str.indexOf('<', start);
         }
         // append everything after the last endTag
         if (endTag > -1 && endTag + 1 < str.length()) {

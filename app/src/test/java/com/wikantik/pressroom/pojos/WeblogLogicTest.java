@@ -267,4 +267,24 @@ class WeblogLogicTest {
 
     // theme: Weblog.getTheme() moved off the entity (plan Task 17) -- callers
     // ask the ThemeManager they hold; see WeblogWrapperDelegationTest.
+
+    /**
+     * The database mapping loads the tagline through setTagline, so a value
+     * that setTagline changes is written back on the weblog's next save and
+     * changed again on the next load: a stray '<' gained a space per save.
+     */
+    @Test
+    void aTaglineSurvivesBeingLoadedAgain() {
+        Weblog weblog = new Weblog();
+        for (String written : new String[] {"Fish<Chips", "I <3 tea", "<em>Notes</em> from a<b"}) {
+            weblog.setTagline(written);
+            String stored = weblog.getTagline();
+
+            weblog.setTagline(stored);
+
+            assertEquals(stored, weblog.getTagline(), written);
+        }
+        weblog.setTagline("Fish<Chips");
+        assertEquals("Fish<Chips", weblog.getTagline(), "no tag in it, so nothing to take out");
+    }
 }
