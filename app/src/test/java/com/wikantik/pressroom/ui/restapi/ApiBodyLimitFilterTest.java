@@ -20,7 +20,10 @@ package com.wikantik.pressroom.ui.restapi;
 import java.io.IOException;
 import java.io.InputStream;
 
+import jakarta.servlet.ReadListener;
+import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -29,9 +32,14 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * /api/v1 read a JSON body of any size: Tomcat's form-size limit does not
@@ -75,9 +83,8 @@ class ApiBodyLimitFilterTest {
         assertEquals(200, response.getStatus());
     }
 
-    /** A chunked body declares no length; reading past the cap fails instead of buffering on. */
-    @Test
-    void aBodyOfUndeclaredLengthStopsBeingReadAtTheCap() throws Exception {
+    /** A chunked body: it declares no length. */
+    private static MockHttpServletRequest undeclared(int bytes) {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/weblogs/myblog/entries") {
             @Override
             public int getContentLength() {
@@ -90,12 +97,69 @@ class ApiBodyLimitFilterTest {
             }
         };
         request.setContentType("application/json");
-        request.setContent(new byte[MAX + 1]);
+        request.setContent(new byte[bytes]);
+        return request;
+    }
 
+    private ServletInputStream bodySeenDownstream(HttpServletRequest request) throws Exception {
         filter.doFilter(request, response, chain);
+        return ((HttpServletRequest) chain.getRequest()).getInputStream();
+    }
 
-        InputStream body = ((HttpServletRequest) chain.getRequest()).getInputStream();
+    /** With no length to refuse up front, reading past the cap fails instead of buffering on. */
+    @Test
+    void aBodyOfUndeclaredLengthStopsBeingReadAtTheCap() throws Exception {
+        InputStream body = bodySeenDownstream(undeclared(MAX + 1));
+
         assertThrows(IOException.class, body::readAllBytes);
+    }
+
+    /** A reader that takes one byte at a time is held to the same cap. */
+    @Test
+    void readingOneByteAtATimeAlsoStopsAtTheCap() throws Exception {
+        InputStream body = bodySeenDownstream(undeclared(MAX + 1));
+
+        assertThrows(IOException.class, () -> {
+            while (body.read() != -1) {
+                // drain
+            }
+        });
+    }
+
+    @Test
+    void aBodyUnderTheCapReadsToItsEndOneByteAtATime() throws Exception {
+        InputStream body = bodySeenDownstream(undeclared(3));
+
+        assertEquals(0, body.read());
+        assertEquals(0, body.read());
+        assertEquals(0, body.read());
+        assertEquals(-1, body.read());
+    }
+
+    /**
+     * An asynchronous reader asks the stream whether it is finished or ready
+     * and registers a listener; the capped stream answers from the real one,
+     * or a non-blocking read would never start or never end.
+     */
+    @Test
+    void anAsynchronousReaderSeesTheRealStreamsState() throws Exception {
+        ServletInputStream real = mock(ServletInputStream.class);
+        when(real.isFinished()).thenReturn(true);
+        when(real.isReady()).thenReturn(false);
+        MockHttpServletRequest request = undeclared(0);
+        ServletInputStream body = bodySeenDownstream(new HttpServletRequestWrapper(request) {
+            @Override
+            public ServletInputStream getInputStream() {
+                return real;
+            }
+        });
+        ReadListener listener = mock(ReadListener.class);
+
+        body.setReadListener(listener);
+
+        assertTrue(body.isFinished());
+        assertFalse(body.isReady());
+        verify(real).setReadListener(listener);
     }
 
     @Test
