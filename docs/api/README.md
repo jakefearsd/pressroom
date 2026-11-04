@@ -355,7 +355,7 @@ is every taken name: a category or directory `name`, a page `slug`, a user's
 | 404 | The resource does not exist, **or the caller may not see it.** A weblog outside a token's pin, a weblog the caller holds no role on, a foreign entry/category/page/media id, and a genuinely-missing id are all 404 — never 403, because a 403 there would confirm the resource exists under someone else's weblog. Also what an unmapped path under `/api/...` answers — see the note above on why that one is plain `application/json`, not a problem body. |
 | 405 | The path exists but not for this HTTP verb (e.g. `DELETE` on a collection endpoint that only supports `GET`/`POST`). Plain `application/json` from Boot's own `/error`, not a problem body — see the note above. |
 | 409 | The request conflicts with the resource's current state: trashing an already-trashed entry, restoring one that isn't trashed, PATCHing a trashed entry (restore it first), a duplicate category/directory/page-slug name, deleting a weblog's last category, publishing a comment its author deleted, an `anchor` another entry of the weblog holds (a trashed one included), an entry update whose `expectedContentHash` is not the stored text's (`entry-changed`, see [Changing part of the text](#changing-part-of-the-text)). |
-| 413 | A multipart request body larger than `spring.servlet.multipart.max-request-size` (1GB). Plain `application/json` from Boot's own `/error`, not a problem body — see the note above. Distinct from the per-file media-quota refusal below, which is never a whole-request 413. |
+| 413 | A JSON request body that declares a length over 2 MiB (2,097,152 bytes): a problem body whose `type` ends in `/too-large`, sent before anything reads the body. A body that declares no length (chunked) is read up to the same cap and then refused as an unreadable body (400). Uploads are not held to it. A multipart request body larger than `spring.servlet.multipart.max-request-size` (1GB) is also a 413, but plain `application/json` from Boot's own `/error`, not a problem body — see the note above. Distinct from the per-file media-quota refusal below, which is never a whole-request 413. |
 | 406 | An `Accept` the API cannot answer (`text/html`, say). A problem body (`type` ending in `/not-acceptable`), written as `application/problem+json` regardless. |
 | 415 | A JSON route sent a body in another media type (`application/x-www-form-urlencoded`, `text/plain`): a problem body whose `type` ends in `/unsupported-media-type`. `POST .../media` without a `multipart/form-data` body is also 415, but that one is plain `application/json`, not a problem body — see the note above. |
 | 429 | Throttled — see below. |
@@ -429,7 +429,9 @@ curl -sS -H "Authorization: Bearer $PRESSROOM_API_TOKEN" \
 ```
 
 `title` and `text` are required on create (they are `NOT NULL` columns; an
-entry with neither is not a resource this API will create). `status`
+entry with neither is not a resource this API will create). `text` is at
+most 1,000,000 characters, on create and on update alike (what `edits` make
+of the stored text included); over that it is a 400 on `text`. `status`
 defaults to whatever a brand-new `WeblogEntry` defaults to (`DRAFT`) when
 omitted; publishing with no `pubTime` supplied means "now", not an error.
 `category` names a category **by name**, not id — the same shape
@@ -757,7 +759,10 @@ would bring back.
 `diff`: a unified diff from this revision's text to the entry's current
 text, three lines of context, `+` lines being only in the current text.
 `?against={otherRevisionId}` diffs against that revision of the same entry
-instead. `diff` is empty when the two texts are the same.
+instead. `diff` is empty when the two texts are the same. Lines alike at the
+start and end are matched first; a changed region between them of more than
+a million line pairs (1,000 changed lines against 1,000, say) is one hunk
+that removes all of it and adds all of the other, rather than a finer diff.
 
 ```
 --- revision 6b1f...
