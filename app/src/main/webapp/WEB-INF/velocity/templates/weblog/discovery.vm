@@ -145,10 +145,11 @@ body.fd-front img { max-width: 100%; }
     color: var(--ink-soft); }
 .fd-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-family: var(--mono); font-size: var(--t-label);
     color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-.fd-meta > * + *::before { content: "\00b7"; margin-right: 12px; color: var(--line); }
+.fd-meta > * + *::before { content: "\00b7"; margin-right: 12px; color: var(--ink-soft); opacity: .6; }
 .fd-kicker { display: inline-flex; gap: 6px; align-items: center; font-size: var(--t-label); font-weight: 600;
     letter-spacing: .06em; text-transform: uppercase; color: var(--hue, var(--accent)) !important; }
-.fd-kicker::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: currentColor; }
+/* round, like the blog nav's dots: one marker for "this blog" everywhere */
+.fd-kicker::before { content: ""; width: 8px; height: 8px; border-radius: 99px; background: currentColor; }
 .fd-btn, .fd-front .newsletter-subscribe button { display: inline-flex; align-items: center; justify-content: center;
     height: 40px; padding: 0 18px; border-radius: 99px; border: 0; background: var(--accent);
     color: var(--on-accent) !important; font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
@@ -159,7 +160,8 @@ body.fd-front img { max-width: 100%; }
 /* masthead and blog nav */
 .fd-mast .fd-wrap { display: flex; flex-wrap: wrap; gap: 16px 32px; align-items: flex-end;
     justify-content: space-between; padding-block: 24px 16px; }
-.fd-brand { display: flex; gap: 12px; align-items: center; min-width: 0; }
+/* the mark sits beside the site name, not halfway down a long description */
+.fd-brand { display: flex; gap: 12px; align-items: flex-start; min-width: 0; }
 .fd-brand .fd-mark { width: 40px; height: 40px; border-radius: 8px; font-size: var(--t-head); }
 .fd-site a { font-family: var(--serif); font-size: var(--t-site); font-weight: 600; letter-spacing: -.01em;
     line-height: 1.1; }
@@ -243,8 +245,9 @@ body.fd-front img { max-width: 100%; }
 .fd-browse .fd-n { font-weight: 600; }
 .fd-count { font-family: var(--mono); font-size: var(--t-label); color: var(--ink-soft); }
 .fd-shelves { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+/* a column, so each card's "Visit" link sits on its bottom edge and the row lines up */
 .fd-shelf { border: 1px solid var(--line); border-top: 4px solid var(--hue, var(--accent)); border-radius: var(--r);
-    background: var(--surface); padding: 20px; display: grid; gap: 14px; align-content: start; }
+    background: var(--surface); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
 .fd-shelf-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; align-items: center; }
 .fd-shelf-head .fd-mark { width: 40px; height: 40px; font-size: var(--t-read); grid-row: span 2; }
 .fd-shelf-name { font-family: var(--serif); font-size: var(--t-head); font-weight: 600; line-height: 1.2; }
@@ -253,6 +256,7 @@ body.fd-front img { max-width: 100%; }
 .fd-shelf ol { display: grid; gap: 10px; }
 .fd-shelf ol a { display: block; font-weight: 600; font-size: var(--t-read); line-height: 1.35; overflow-wrap: anywhere; }
 .fd-visit { font-weight: 600; color: var(--hue, var(--accent)) !important; }
+.fd-shelf .fd-visit { margin-top: auto; }
 .fd-band { background: var(--accent-quiet); }
 .fd-band .fd-wrap { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 24px 48px;
     align-items: center; padding-block: 40px; }
@@ -264,8 +268,12 @@ body.fd-front img { max-width: 100%; }
 .fd-places .places-been-list a { display: inline-flex; padding: 6px 12px; border-radius: 99px;
     border: 1px solid var(--line); background: var(--surface); font-weight: 600; }
 .fd-dir { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.fd-dir li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 12px; align-items: center;
+.fd-dir li { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 12px; align-items: center;
     padding: 14px; border-radius: var(--r); border: 1px solid var(--line); background: var(--surface); }
+/* the whole tile is the blog's link, and lights up in its hue */
+.fd-dir a::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.fd-dir li:hover, .fd-dir li:focus-within { border-color: var(--hue, var(--accent)); }
+.fd-dir li:hover a { color: var(--hue, var(--accent)); }
 .fd-dir .fd-mark { grid-row: span 2; width: 36px; height: 36px; }
 .fd-dir a { font-weight: 600; }
 .fd-dir p { color: var(--ink-soft); font-size: var(--t-label); }
@@ -305,6 +313,7 @@ body.fd-front img { max-width: 100%; }
 @media (prefers-reduced-motion: no-preference) {
     .fd-media img { transition: transform .4s ease; }
     .fd-media:hover img { transform: scale(1.015); }
+    .fd-dir li { transition: border-color .15s ease; }
 }
     </style>
 </head>
