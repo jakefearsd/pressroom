@@ -27,6 +27,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.commons.text.StringEscapeUtils;
+import com.wikantik.pressroom.business.DuplicateCategoryNameException;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogPermission;
@@ -91,6 +92,10 @@ public class CategoryEditController extends BaseController {
 
                 return "redirect:/pressroom-ui/authoring/categories.rol?weblog="
                         + getActionWeblog(request).getHandle();
+            } catch (DuplicateCategoryNameException ex) {
+                // An overlapping add took the name after myValidate's check.
+                addFieldError(model, "category_bean_name", "categoryForm.error.duplicateName",
+                        new Object[]{bean.getName()}, request);
             } catch (Exception ex) {
                 log.error("Error saving category", ex);
                 addError(model, "generic.error.check.logs", request);

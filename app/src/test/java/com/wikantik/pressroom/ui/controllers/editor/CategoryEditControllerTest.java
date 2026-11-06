@@ -20,6 +20,7 @@ package com.wikantik.pressroom.ui.controllers.editor;
 import java.util.List;
 
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.DuplicateCategoryNameException;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import org.junit.jupiter.api.BeforeEach;
@@ -136,6 +137,20 @@ class CategoryEditControllerTest extends EditorControllerTestSupport {
         assertTrue(errors(model).contains("categoryForm.error.duplicateName"),
                 "Expected a duplicateName error, got: " + errors(model));
         verify(weblogger.getWeblogEntryManager(), never()).saveWeblogCategory(any());
+    }
+
+    /** The second of two overlapping adds of one name is refused under the manager's lock: the name's error, not "check the logs". */
+    @Test
+    void addThatLosesTheRaceForANameSaysTheNameIsTaken() throws Exception {
+        bean.setName("Travel");
+        doThrow(new DuplicateCategoryNameException("Travel"))
+                .when(weblogger.getWeblogEntryManager()).saveWeblogCategory(any());
+
+        controller.categoryAddSave(request, model, bean, redirectAttributes);
+
+        assertTrue(errors(model).contains("categoryForm.error.duplicateName"),
+                "Expected a duplicateName error, got: " + errors(model));
+        assertTrue(flashMessages(redirectAttributes).isEmpty(), "nothing was created");
     }
 
     @Test

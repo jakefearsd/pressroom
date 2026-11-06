@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.DuplicateCategoryNameException;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.pojos.TagStat;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -71,7 +72,12 @@ public class CategoriesApi extends BaseApiController implements UISecurityEnforc
         }
 
         WeblogCategory category = new WeblogCategory(weblog, name, body.description(), null);
-        weblogger.getWeblogEntryManager().saveWeblogCategory(category);
+        try {
+            weblogger.getWeblogEntryManager().saveWeblogCategory(category);
+        } catch (DuplicateCategoryNameException e) {
+            // An overlapping create took the name after the check above.
+            throw ApiException.conflictOnField("name", "A category named '" + name + "' already exists.", e);
+        }
         weblogger.flush();
 
         return ResponseEntity.status(HttpStatus.CREATED).body(CategoryDtos.toView(category, 0));

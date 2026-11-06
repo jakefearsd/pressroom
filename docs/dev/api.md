@@ -90,6 +90,16 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
   package, so a refusal of it cannot be thrown to the advice (it escaped as the container's 500
   HTML page for a pinned token): `ApiScopeInterceptor` writes a refusal of any handler outside
   `ui.restapi` itself, through `ApiProblemWriter` (`OpenApiPinnedTokenDispatchTest`).
+- **Request size (2026-11).** `ApiBodyLimitFilter` (built inline in the API
+  chain, before token sign-in) refuses a `/api/v1` body over 2 MiB with a 413
+  `too-large`, or fails the read past it when no length is declared; uploads
+  (`multipart/*`) and `/api/mcp` keep their own limits. `ColumnLimits.ENTRY_TEXT`
+  (1,000,000 characters) caps entry text in `EntryDtos.applyWrite`, so edits
+  cannot grow an entry past it a request at a time. `TextDiff` caps its table
+  at `MAX_CELLS` after matching the common start and end.
+- **A category name lost to an overlapping create** is a
+  `DuplicateCategoryNameException` from the manager's locked check: the API
+  answers 409 on `name`, the category screen its duplicate-name error.
 - **`PressroomHandlerInterceptor`'s imports of `ui.restapi.ApiException` and
   `ui.restapi.ApiExceptionHandler` (only for its package name, to tell an API
   handler from a JSP one) are the ONLY permitted imports from `ui.restapi`

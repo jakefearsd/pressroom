@@ -3,6 +3,7 @@ package com.wikantik.pressroom.ui.restapi.v1;
 import java.util.List;
 import java.util.Set;
 import com.wikantik.pressroom.pojos.WeblogEntry;
+import com.wikantik.pressroom.ui.restapi.ColumnLimits;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
@@ -34,6 +35,22 @@ class EntriesWriteApiFieldErrorsTest {
                 "{\"title\":\"t\",\"text\":\"x\",\"category\":\"Travle\",\"geoLatitude\":91}"));
 
         assertEquals(Set.of("category", "geoLatitude"), Set.copyOf(EntriesWriteApiFixture.fields(problem)));
+        verify(fx.entries, never()).saveWeblogEntry(any());
+    }
+
+    /**
+     * The text column is unbounded, so nothing capped what one request (or
+     * a run of edits, each growing the text) could store and every later
+     * render, search and diff then had to carry.
+     */
+    @Test
+    void aTextOverTheCapIsA400NamingTextAndSavesNothing() throws Exception {
+        String text = "x".repeat(ColumnLimits.ENTRY_TEXT + 1);
+
+        JsonNode problem = fx.refused(post("/v1/weblogs/myblog/entries").content(
+                "{\"title\":\"t\",\"text\":\"" + text + "\"}"));
+
+        assertEquals(List.of("text"), EntriesWriteApiFixture.fields(problem));
         verify(fx.entries, never()).saveWeblogEntry(any());
     }
 

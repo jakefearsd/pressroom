@@ -87,20 +87,53 @@ class TextDiffTest {
     }
 
     /**
-     * The guard that keeps a pathological entry from allocating an
-     * n-by-m table while its author waits: past the cap the diff degrades to
-     * "all of it went, all of this arrived", which is still true, just coarse.
+     * {@code prefix0..prefixN} with {@code shared} in the middle: two of these
+     * with different prefixes have one line in common, deep inside.
+     */
+    private static String around(String prefix, int lines, String shared) {
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < lines; i++) {
+            text.append(prefix).append(i).append('\n');
+            if (i == lines / 2) {
+                text.append(shared).append('\n');
+            }
+        }
+        return text.toString();
+    }
+
+    /**
+     * The guard that keeps a pathological entry from allocating an n-by-m
+     * table while its author waits. The table costs one cell per pair of
+     * changed lines; past MAX_CELLS the
+     * diff says "everything replaced" rather than allocate it. A 4000-line
+     * rewrite used to allocate 16 million cells (64 MB) per request.
      */
     @Test
-    void oversizedInputDegradesToAWholesaleReplacement() {
-        String big = "line\n".repeat(TextDiff.MAX_LINES + 1);
-        List<Line> diff = TextDiff.diff(big, "one line");
+    void aChangedRegionTooLargeToCompareDegradesToAWholesaleReplacement() {
+        int side = (int) Math.sqrt(TextDiff.MAX_CELLS) + 1;
+        List<Line> diff = TextDiff.diff(around("old ", side, "shared").stripTrailing(),
+                around("new ", side, "shared").stripTrailing());
 
-        assertTrue(diff.size() > TextDiff.MAX_LINES);
         assertTrue(diff.stream().noneMatch(line -> line.kind() == Kind.SAME),
-                "the degraded form makes no claim about which lines survived");
-        assertEquals("one line", diff.get(diff.size() - 1).text());
+                "the degraded form makes no claim about which lines survived, the shared one included");
         assertEquals(Kind.ADDED, diff.get(diff.size() - 1).kind());
+    }
+
+    /**
+     * Lines alike at the start and end are matched before the table is built,
+     * so a long post with one line changed is diffed exactly; it used to
+     * degrade to a wholesale replacement past 4000 lines.
+     */
+    @Test
+    void oneLineChangedInAVeryLongTextIsDiffedExactly() {
+        String before = around("line ", 5000, "the old sentence");
+        String after = around("line ", 5000, "the new sentence");
+
+        List<Line> changed = TextDiff.diff(before, after).stream()
+                .filter(line -> line.kind() != Kind.SAME).toList();
+
+        assertEquals(List.of(new Line(Kind.REMOVED, "the old sentence"), new Line(Kind.ADDED, "the new sentence")),
+                changed);
     }
 
     @Test
@@ -211,16 +244,17 @@ class TextDiffTest {
                 TextDiff.unified("a\r\nb\r\nc", "a\nB\r\nc", "x", "y"));
     }
 
-    /** Past MAX_LINES the unified form is still a well-formed diff: one hunk, everything replaced. */
+    /** Past MAX_CELLS the unified form is still a well-formed diff: one hunk, everything replaced. */
     @Test
     void oversizedInputIsOneWholesaleHunk() {
-        String big = "line\n".repeat(TextDiff.MAX_LINES + 1);
-
-        String unified = TextDiff.unified(big, "one line", "a", "b");
+        int side = (int) Math.sqrt(TextDiff.MAX_CELLS) + 1;
+        // side + 1 lines each (the shared one included), no final newline.
+        String unified = TextDiff.unified(around("old ", side, "shared").stripTrailing(),
+                around("new ", side, "shared").stripTrailing(), "a", "b");
 
         List<String> lines = unified.lines().toList();
-        assertEquals("@@ -1," + (TextDiff.MAX_LINES + 2) + " +1 @@", lines.get(2));
+        assertEquals("@@ -1," + (side + 1) + " +1," + (side + 1) + " @@", lines.get(2));
         assertTrue(lines.stream().skip(3).noneMatch(l -> l.startsWith(" ")), "no line is claimed unchanged");
-        assertEquals("+one line", lines.get(lines.size() - 1));
+        assertEquals("+new " + (side - 1), lines.get(lines.size() - 1));
     }
 }

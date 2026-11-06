@@ -136,6 +136,11 @@ public class ApiException extends RuntimeException {
         return new ApiException(503, TYPE_BASE + "busy", "Busy", detail);
     }
 
+    /** 413: the request body is over {@link ApiBodyLimitFilter#MAX_BODY_BYTES}. */
+    public static ApiException tooLarge(String detail) {
+        return new ApiException(413, TYPE_BASE + "too-large", "Content too large", detail);
+    }
+
     /** A request body in a media type the route does not read: the API reads JSON. */
     public static ApiException unsupportedMediaType() {
         return new ApiException(415, TYPE_BASE + "unsupported-media-type", "Unsupported media type",

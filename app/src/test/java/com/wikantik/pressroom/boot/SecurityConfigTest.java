@@ -28,6 +28,8 @@ import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.ui.core.security.CredentialStampFilter;
 import com.wikantik.pressroom.ui.core.security.PressroomUserDetailsService;
+import com.wikantik.pressroom.ui.restapi.ApiBodyLimitFilter;
+import com.wikantik.pressroom.ui.restapi.auth.ApiTokenAuthFilter;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -235,6 +237,18 @@ class SecurityConfigTest {
         int stamp = indexOf(ui, CredentialStampFilter.class);
         assertTrue(stamp > indexOf(ui, RememberMeAuthenticationFilter.class), "after remember-me: " + ui);
         assertTrue(stamp < indexOf(ui, AnonymousAuthenticationFilter.class), "before anonymous: " + ui);
+    }
+
+    /** Before token sign-in: an oversized body is refused before any credential work. */
+    @Test
+    void theApiChainCapsTheRequestBodyBeforeTokenSignIn() {
+        List<SecurityFilterChain> chains = context.getBean(FilterChainProxy.class).getFilterChains();
+        List<jakarta.servlet.Filter> api = chains.stream()
+                .filter(c -> c.getFilters().stream().anyMatch(ApiTokenAuthFilter.class::isInstance))
+                .findFirst().orElseThrow().getFilters();
+
+        int cap = indexOf(api, ApiBodyLimitFilter.class);
+        assertTrue(cap >= 0 && cap < indexOf(api, ApiTokenAuthFilter.class), "before token sign-in: " + api);
     }
 
     private static int indexOf(List<jakarta.servlet.Filter> filters, Class<?> type) {
