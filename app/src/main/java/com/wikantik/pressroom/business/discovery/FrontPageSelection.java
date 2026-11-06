@@ -36,9 +36,14 @@ import java.util.List;
  * @param different "something different", all random
  * @param allBlogs every eligible weblog, by name ignoring case
  * @param latest the newest posts no other section shows, newest first
+ * @param activeBlogs the sidebar's "recently updated": the weblogs with the
+ *                 newest posts, newest first, at most
+ *                 {@code JPADiscoveryManagerImpl.ACTIVE_BLOGS}; a weblog with
+ *                 no eligible post is never here
  */
 public record FrontPageSelection(WeblogEntry headline, boolean headlineRanked, List<WeblogEntry> popular,
-        List<BlogCard> blogs, List<WeblogEntry> different, List<Weblog> allBlogs, List<WeblogEntry> latest) {
+        List<BlogCard> blogs, List<WeblogEntry> different, List<Weblog> allBlogs, List<WeblogEntry> latest,
+        List<Weblog> activeBlogs) {
 
     public FrontPageSelection {
         popular = List.copyOf(popular);
@@ -46,10 +51,12 @@ public record FrontPageSelection(WeblogEntry headline, boolean headlineRanked, L
         different = List.copyOf(different);
         allBlogs = List.copyOf(allBlogs);
         latest = List.copyOf(latest);
+        activeBlogs = List.copyOf(activeBlogs);
     }
 
     /** Nothing to show. */
     public static FrontPageSelection empty() {
-        return new FrontPageSelection(null, false, List.of(), List.of(), List.of(), List.of(), List.of());
+        return new FrontPageSelection(null, false, List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of());
     }
 }

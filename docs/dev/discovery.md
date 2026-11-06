@@ -11,7 +11,7 @@ One template, `WEB-INF/velocity/templates/weblog/discovery.vm`, whatever
 the site space's theme (themes-and-templates.md). Top to bottom: masthead
 (site name is the one `h1`), blog pills, lead story with image beside the
 numbered popular rail and a newsletter card, house slot A, Latest beside a
-sticky sidebar (house slot B, every blog with its post count), shelves,
+sticky sidebar (house slot B, then "Recently updated"), shelves,
 newsletter band, something different, house slot C, places, all blogs,
 footer (site pages, directory, colophon).
 
@@ -19,6 +19,12 @@ footer (site pages, directory, colophon).
   three cards of 3, different 3, latest 8. **Latest is picked last**, from
   the newest posts no other section took, so it never changes the others;
   on a small site it can be short or empty (the template hides it).
+- **Three blog lists, three jobs.** The pills are navigation. The sidebar's
+  "Recently updated" is `activeBlogs`: at most `ACTIVE_BLOGS` (5), the blog
+  with the newest eligible post first, blogs with no post left out, so the
+  sticky sidebar never outgrows the screen; when it leaves blogs out it
+  links down to All blogs. All blogs is the one complete list, and shows
+  each blog's tagline (its post count when it has none).
 - **Blog hues**: six, assigned by a blog's position in `allBlogs` (by name),
   `data-b="1".."6"`; the mark is `DiscoveryModel.initials`.
 - **House slots** `data-slot="a|b|c"` hold the future ad positions. Until
@@ -31,7 +37,7 @@ footer (site pages, directory, colophon).
   search description that is only the post's opening cut mid-sentence
   (`Excerpts.isCutFrom`); the SEO audit reports those as
   `search_description_cut`, and meta titles cut mid-word as `meta_title_cut`.
-- **Post counts** (sidebar, shelves, all blogs) are
+- **Post counts** (sidebar, shelves, all blogs without a tagline) are
   `DiscoveryModel.postCount`, counted once per blog per render, not
   `$blog.entryCount` (a COUNT query per read, 2N+3 per render before
   2026-11-03). **Taglines** are escaped (`$utils.escapeHTML`): a blog's owner

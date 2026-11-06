@@ -136,7 +136,7 @@ class DiscoveryModelTest {
         WeblogEntry odd = entry(a, "odd");
         WeblogEntry fresh = entry(b, "fresh");
         when(discovery.selectFrontPage()).thenReturn(new FrontPageSelection(lead, true, List.of(pop),
-                List.of(new BlogCard(b, List.of(top))), List.of(odd), List.of(a, b), List.of(fresh)));
+                List.of(new BlogCard(b, List.of(top))), List.of(odd), List.of(a, b), List.of(fresh), List.of(b)));
 
         DiscoveryModel.FrontPage page = model().getFrontPage();
 
@@ -150,6 +150,8 @@ class DiscoveryModelTest {
         assertEquals(List.of("Alpha &amp; Co", "Beta"),
                 page.allBlogs().stream().map(WeblogWrapper::getName).toList(),
                 "the wrapper escapes weblog names");
+        assertEquals(List.of("Beta"), page.activeBlogs().stream().map(WeblogWrapper::getName).toList(),
+                "the recently updated blogs, in the picker's order");
         assertEquals("http://localhost:8080/pressroom/b/entry/pop", page.popular().get(0).getPermalink(),
                 "wrapped with the strategy the renderer gave");
     }

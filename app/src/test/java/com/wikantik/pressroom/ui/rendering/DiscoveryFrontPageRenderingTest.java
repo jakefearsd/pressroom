@@ -376,11 +376,64 @@ class DiscoveryFrontPageRenderingTest {
                 .filter(q -> q.toUpperCase(java.util.Locale.ROOT).contains("COUNT(")).toList();
         assertEquals(blogs.size(), counts.size(), "one count per blog: " + counts);
         String body = renderRoot();
-        for (String marker : List.of("fd-discovery-blogs", "fd-discovery-all")) {
-            assertTrue(section(body, marker).contains("4 posts"),
-                    marker + " still shows each blog's four posts:\n" + section(body, marker));
-        }
+        assertTrue(section(body, "fd-discovery-blogs").contains("4 posts"),
+                "the shelves still show each blog's four posts:\n" + section(body, "fd-discovery-blogs"));
         assertTrue(body.contains("<span class=\"fd-count\">4</span>"), "and so does the sidebar:\n" + body);
+    }
+
+    /**
+     * The blogs are listed three times (the nav pills, the sidebar, All
+     * blogs), so each list has its own job (spec items 6 and 12). The
+     * sticky sidebar is "Recently updated": at most five blogs, newest post
+     * first, so it stays shorter than the screen however many blogs the site
+     * has, with a link down to the full list when it leaves some out. All
+     * blogs is the one complete list, and says what each blog is about: its
+     * tagline, or its post count when it has none.
+     */
+    @Test
+    void theSidebarIsRecentlyUpdatedAndAllBlogsShowsTaglines() throws Exception {
+        fiveBlogsOfFour();
+        Weblog stale = blog("discfpstale", "Stale Blog");
+        post(stale, "discfp-stale-0", "Stale post", 10_000);
+        Weblog quiet = TestUtils.getManagedWebsite(blogs.get(4));
+        quiet.setTagline("");
+        TestUtils.weblogger().getWeblogManager().saveWeblog(quiet);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+        refresh();
+
+        String body = renderRoot();
+
+        String side = body.substring(body.indexOf("class=\"fd-browse\""));
+        side = side.substring(0, side.indexOf("</nav>"));
+        assertTrue(side.contains(">Recently updated</h2>"), "the sidebar's heading:\n" + side);
+        List<String> listed = new ArrayList<>();
+        Matcher name = Pattern.compile("<span class=\"fd-n\">([^<]*)</span>").matcher(side);
+        while (name.find()) {
+            listed.add(name.group(1));
+        }
+        assertEquals(List.of("Discovery Blog 0", "Discovery Blog 1", "Discovery Blog 2", "Discovery Blog 3",
+                "Discovery Blog 4"), listed, "five blogs, newest post first; the stale sixth left out");
+        assertTrue(side.contains("<a class=\"fd-browse-all\" href=\"#fd-all-label\">All 6 blogs"),
+                "a link down to the full list:\n" + side);
+
+        String all = section(body, "fd-discovery-all");
+        assertTrue(all.contains(">Stale Blog</a><p>Test Weblog</p>"), "a blog's tagline:\n" + all);
+        assertTrue(all.contains(">Discovery Blog 4</a><p>4 posts</p>"),
+                "no tagline: the post count instead:\n" + all);
+        assertEquals(6, count(all, "<li data-b="), "every blog, the stale one too:\n" + all);
+    }
+
+    /** With no more blogs than the sidebar holds, it lists them all and links nowhere. */
+    @Test
+    void aSmallSiteHasNoLinkToTheFullList() throws Exception {
+        fiveBlogsOfFour();
+
+        String body = renderRoot();
+
+        assertEquals(5, count(body.substring(body.indexOf("class=\"fd-browse\"")).split("</nav>", 2)[0],
+                "<span class=\"fd-n\">"), body);
+        assertFalse(body.contains("class=\"fd-browse-all\""), "nothing left out, so no link:\n" + body);
     }
 
     @Test

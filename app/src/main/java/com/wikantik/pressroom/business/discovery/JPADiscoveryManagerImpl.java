@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -72,6 +73,11 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
     static final int DIFFERENT_SLOTS = 3;
     /** The front page's Latest (spec 2026-11-03-front-page-redesign-design.md). */
     static final int LATEST_SLOTS = 8;
+    /**
+     * The sidebar's "Recently updated" blogs: few enough that the sticky
+     * sidebar stays shorter than the screen however many blogs the site has.
+     */
+    static final int ACTIVE_BLOGS = 5;
 
     /** "Something different" is all random. */
     private static final int ALL_RANDOM = 100;
@@ -358,7 +364,19 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
         }
 
         return new FrontPageIds(headline == null ? null : headline.entryId(), entryIds(popular), cards,
-                entryIds(different), s.weblogIds, entryIds(latest));
+                entryIds(different), s.weblogIds, entryIds(latest), activeWeblogs(s));
+    }
+
+    /** The weblogs with the newest posts, newest first: each one's newest post decides its place. */
+    private static List<String> activeWeblogs(Snapshot s) {
+        Set<String> active = new LinkedHashSet<>();
+        for (DiscoveryCandidate c : s.newestFirst) {
+            if (active.size() == ACTIVE_BLOGS) {
+                break;
+            }
+            active.add(c.weblogId());
+        }
+        return List.copyOf(active);
     }
 
     /** The weblogs among {@code weblogIds} that still have an entry no section has taken. */
@@ -398,18 +416,14 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
                 cards.add(new BlogCard(cardWeblogs.get(i), cardEntries.get(i)));
             }
         }
-        List<Weblog> allBlogs = new ArrayList<>();
-        for (String weblogId : ids.allBlogs()) {
-            Weblog weblog = weblog(weblogId);
-            if (weblog != null) {
-                allBlogs.add(weblog);
-            }
-        }
+        List<Weblog> allBlogs = weblogs(ids.allBlogs());
         allBlogs.sort(Comparator.comparing(JPADiscoveryManagerImpl::sortName, String.CASE_INSENSITIVE_ORDER));
+        List<Weblog> activeBlogs = weblogs(ids.activeBlogs());
         // ranked only when the headline has views of its own: the newest post,
         // or a replacement taken from the newest, is not "most read"
         boolean ranked = headline != null && s.scores.containsKey(headline.getId());
-        return new FrontPageSelection(headline, ranked, popular, cards, different, allBlogs, latest);
+        return new FrontPageSelection(headline, ranked, popular, cards, different, allBlogs, latest,
+                activeBlogs);
     }
 
     /**
@@ -529,6 +543,18 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
         }
     }
 
+    /** The weblogs named, in order, less any that cannot be loaded or are no longer eligible. */
+    private List<Weblog> weblogs(List<String> ids) {
+        List<Weblog> result = new ArrayList<>();
+        for (String id : ids) {
+            Weblog weblog = weblog(id);
+            if (weblog != null) {
+                result.add(weblog);
+            }
+        }
+        return result;
+    }
+
     /** The weblog, or null when it is gone or no longer eligible. */
     private Weblog weblog(String id) {
         try {
@@ -565,7 +591,7 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
     }
 
     private record FrontPageIds(String headline, List<String> popular, List<CardIds> cards,
-            List<String> different, List<String> allBlogs, List<String> latest) {
+            List<String> different, List<String> allBlogs, List<String> latest, List<String> activeBlogs) {
     }
 
     /**

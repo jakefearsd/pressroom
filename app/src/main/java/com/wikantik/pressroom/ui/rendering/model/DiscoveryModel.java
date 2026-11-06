@@ -66,7 +66,7 @@ public class DiscoveryModel implements Model {
      */
     public record FrontPage(WeblogEntryWrapper headline, boolean headlineRanked, List<WeblogEntryWrapper> popular,
             List<Card> blogs, List<WeblogEntryWrapper> different, List<WeblogWrapper> allBlogs,
-            List<WeblogEntryWrapper> latest) {
+            List<WeblogEntryWrapper> latest, List<WeblogWrapper> activeBlogs) {
 
         public FrontPage {
             popular = List.copyOf(popular);
@@ -74,6 +74,7 @@ public class DiscoveryModel implements Model {
             different = List.copyOf(different);
             allBlogs = List.copyOf(allBlogs);
             latest = List.copyOf(latest);
+            activeBlogs = List.copyOf(activeBlogs);
         }
     }
 
@@ -120,14 +121,11 @@ public class DiscoveryModel implements Model {
             for (BlogCard card : selection.blogs()) {
                 cards.add(new Card(wrap(card.weblog()), wrapEntries(card.topEntries())));
             }
-            List<WeblogWrapper> allBlogs = new ArrayList<>();
-            for (Weblog weblog : selection.allBlogs()) {
-                allBlogs.add(wrap(weblog));
-            }
+            List<WeblogWrapper> allBlogs = wrapWeblogs(selection.allBlogs());
             frontPage = new FrontPage(
                     selection.headline() == null ? null : wrap(selection.headline()), selection.headlineRanked(),
                     wrapEntries(selection.popular()), cards, wrapEntries(selection.different()), allBlogs,
-                    wrapEntries(selection.latest()));
+                    wrapEntries(selection.latest()), wrapWeblogs(selection.activeBlogs()));
         }
         return frontPage;
     }
@@ -214,6 +212,14 @@ public class DiscoveryModel implements Model {
 
     private WeblogEntryWrapper wrap(WeblogEntry entry) {
         return WeblogEntryWrapper.wrap(entry, urlStrategy, weblogger);
+    }
+
+    private List<WeblogWrapper> wrapWeblogs(List<Weblog> weblogs) {
+        List<WeblogWrapper> wrapped = new ArrayList<>(weblogs.size());
+        for (Weblog weblog : weblogs) {
+            wrapped.add(wrap(weblog));
+        }
+        return wrapped;
     }
 
     private List<WeblogEntryWrapper> wrapEntries(List<WeblogEntry> entries) {

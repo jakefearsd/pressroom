@@ -82,7 +82,11 @@ stacks the columns and shows the rail and sidebar as two-up rows. Phone
      title, two-line excerpt, date, reading time. "All recent posts" links to
      the existing site-wide recent list.
    - Sidebar (desktop; stacks after Latest on tablets and phones): sticky
-     slot B (future 300×600), then "Blogs" with each blog's post count. The
+     slot B (future 300×600), then "Recently updated": at most 5 blogs, the
+     one with the newest post first, each with its post count, and "All N
+     blogs ↓" down to item 12 when it leaves any out (amended 2026-11-06:
+     a list of every blog outgrew the sticky sidebar at 10+ blogs and
+     repeated item 12). The
      phone-only in-feed slot of the first draft is dropped: three slots, the
      same three at every width.
 7. **Explore the blogs** (`fd-discovery-blogs`): three shelves, each with
@@ -95,7 +99,8 @@ stacks the columns and shows the rail and sidebar as two-up rows. Phone
 10. **Slot C** (future responsive in-feed).
 11. **Places you've been:** unchanged contract (hidden until the browser
     has places), restyled as chips.
-12. **All blogs** (`fd-discovery-all`): a grid of marks, names and taglines.
+12. **All blogs** (`fd-discovery-all`): a grid of marks, names and taglines
+    (the post count for a blog with no tagline): the one complete list.
 13. **Footer:** site description, the site's own nav pages and the blog
     directory, then the existing colophon (privacy link, sign-in, version).
     Consent settings and the US opt-out link arrive with ads (phase 2).
