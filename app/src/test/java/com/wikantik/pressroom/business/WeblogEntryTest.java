@@ -339,6 +339,37 @@ public class WeblogEntryTest  {
         TestUtils.endSession(true);
     }
 
+    /**
+     * One query for every blog's published count, agreeing with the per-blog
+     * count it replaces on the front page: drafts are not counted, and a blog
+     * with no published entry is absent.
+     */
+    @Test
+    public void publishedEntryCountsAreEveryBlogsCountInOneMap() throws Exception {
+        WeblogEntryManager mgr = TestUtils.weblogger().getWeblogEntryManager();
+        testUser = TestUtils.getManagedUser(testUser);
+        Weblog second = TestUtils.setupWeblog("entryCountsSecond", testUser);
+        Weblog empty = TestUtils.setupWeblog("entryCountsEmpty", testUser);
+        testWeblog = TestUtils.getManagedWebsite(testWeblog);
+        TestUtils.setupWeblogEntry("published1", testWeblog, testUser);
+        TestUtils.setupWeblogEntry("published2", testWeblog, testUser);
+        TestUtils.setupWeblogEntry("draft", testWeblog, testUser, PubStatus.DRAFT);
+        TestUtils.setupWeblogEntry("otherPublished", second, testUser);
+        TestUtils.setupWeblogEntry("emptyDraft", empty, testUser, PubStatus.DRAFT);
+        TestUtils.endSession(true);
+        try {
+            Map<String, Long> counts = mgr.getPublishedEntryCounts();
+
+            assertEquals(Map.of(testWeblog.getId(), 2L, second.getId(), 1L), counts);
+            assertEquals(mgr.getEntryCount(TestUtils.getManagedWebsite(testWeblog)),
+                    counts.get(testWeblog.getId()), "the same count the per-blog query gives");
+        } finally {
+            TestUtils.teardownWeblog(second.getId());
+            TestUtils.teardownWeblog(empty.getId());
+            TestUtils.endSession(true);
+        }
+    }
+
     @Test
     public void testCreateAnEntryWithTagsShortcut() throws Exception {
         try {

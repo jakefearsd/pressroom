@@ -178,24 +178,42 @@ class DiscoveryModelTest {
         return WeblogWrapper.wrap(weblog, urls, weblogger);
     }
 
-    /** Each blog is counted once per render, however many places name its count. */
+    /**
+     * Every blog's count comes from one query per render, however many blogs
+     * and places name a count: a COUNT per blog was 20 of the 22 statements
+     * of a front-page render (profiling, 2026-11-06).
+     */
     @Test
-    void aPostCountIsAskedForOncePerBlogPerRender() throws Exception {
+    void postCountsAreOneQueryPerRender() throws Exception {
         WeblogEntryManager entries = mock(WeblogEntryManager.class);
         when(weblogger.getWeblogEntryManager()).thenReturn(entries);
         Weblog one = weblog("one", "One");
         Weblog two = weblog("two", "Two");
-        when(entries.getEntryCount(one)).thenReturn(4L);
-        when(entries.getEntryCount(two)).thenReturn(7L);
+        Weblog none = weblog("none", "None");
+        when(entries.getPublishedEntryCounts()).thenReturn(Map.of("one-id", 4L, "two-id", 7L));
         DiscoveryModel model = model();
 
         assertEquals(4L, model.postCount(wrap(one)));
         assertEquals(4L, model.postCount(wrap(one)), "a second wrapper of the same blog");
         assertEquals(7L, model.postCount(wrap(two)));
+        assertEquals(0L, model.postCount(wrap(none)), "no published post: absent from the counts");
         assertEquals(0L, model.postCount(null));
 
-        verify(entries, times(1)).getEntryCount(one);
-        verify(entries, times(1)).getEntryCount(two);
+        verify(entries, times(1)).getPublishedEntryCounts();
+        verify(entries, never()).getEntryCount(any(Weblog.class));
+    }
+
+    /** Display path: counts that cannot be read show as none, as a failed per-blog count did. */
+    @Test
+    void postCountsThatCannotBeReadAreZero() throws Exception {
+        WeblogEntryManager entries = mock(WeblogEntryManager.class);
+        when(weblogger.getWeblogEntryManager()).thenReturn(entries);
+        when(entries.getPublishedEntryCounts()).thenThrow(new WebloggerException("database down"));
+        DiscoveryModel model = model();
+
+        assertEquals(0L, model.postCount(wrap(weblog("one", "One"))));
+        assertEquals(0L, model.postCount(wrap(weblog("two", "Two"))));
+        verify(entries, times(1)).getPublishedEntryCounts();
     }
 
     @Test

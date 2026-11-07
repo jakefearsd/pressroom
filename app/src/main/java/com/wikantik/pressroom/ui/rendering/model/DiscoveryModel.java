@@ -18,7 +18,6 @@
 package com.wikantik.pressroom.ui.rendering.model;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -89,8 +88,8 @@ public class DiscoveryModel implements Model {
     private Weblogger weblogger;
     private URLStrategy urlStrategy;
     private FrontPage frontPage;
-    /** {@link #postCount} answers this render has already counted, by weblog id. */
-    private final Map<String, Long> postCounts = new HashMap<>();
+    /** Every blog's published count, by weblog id, read on this render's first {@link #postCount}. */
+    private Map<String, Long> postCounts;
 
     @Override
     public String getModelName() {
@@ -171,17 +170,28 @@ public class DiscoveryModel implements Model {
     }
 
     /**
-     * A blog's published post count, counted once per render. The front page
-     * names one blog's count in up to three places (the sidebar, its shelf,
-     * the all-blogs list), and {@code $blog.entryCount} is a COUNT query on
-     * every read: 2N+3 per render (code review, 2026-11-03). The count is as
-     * fresh as the render, like everything else on the cached page.
+     * A blog's published post count. The front page names one blog's count in
+     * up to three places (the sidebar, its shelf, the all-blogs list), and
+     * {@code $blog.entryCount} is a COUNT query on every read: 2N+3 per render
+     * (code review, 2026-11-03), then still one per blog (profiling,
+     * 2026-11-06). So every blog's count is read in one query, on the first
+     * call of a render. The count is as fresh as the render, like everything
+     * else on the cached page. Display path: counts that cannot be read show
+     * as none, as a failed {@code $blog.entryCount} did.
      */
     public long postCount(WeblogWrapper weblog) {
         if (weblog == null) {
             return 0L;
         }
-        return postCounts.computeIfAbsent(weblog.getPojo().getId(), id -> weblog.getEntryCount());
+        if (postCounts == null) {
+            try {
+                postCounts = weblogger.getWeblogEntryManager().getPublishedEntryCounts();
+            } catch (WebloggerException e) {
+                log.error("Could not count the blogs' posts; showing none", e);
+                postCounts = Map.of();
+            }
+        }
+        return postCounts.getOrDefault(weblog.getPojo().getId(), 0L);
     }
 
     /**

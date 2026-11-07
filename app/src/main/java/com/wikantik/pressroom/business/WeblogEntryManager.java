@@ -340,6 +340,14 @@ public interface WeblogEntryManager {
     long getEntryCount(Weblog websiteData) throws WebloggerException;
 
     /**
+     * Every weblog's {@link #getEntryCount(Weblog)} at once: published
+     * entries per weblog id, in one query. A weblog with no published entry
+     * is absent, not zero. For a page that names many blogs' counts (the
+     * front page), where a count per blog was a query per blog.
+     */
+    Map<String, Long> getPublishedEntryCounts() throws WebloggerException;
+
+    /**
      * Locks an entry's row until the current unit of work commits or rolls
      * back, and returns its text as last committed. A save of the entry in
      * flight in another transaction is waited for, and its text is what this

@@ -361,10 +361,11 @@ class DiscoveryFrontPageRenderingTest {
     /**
      * The page names a blog's post count in up to three places (the sidebar,
      * its shelf, the all-blogs list), and each read was a COUNT query: 2N+3
-     * per render. Each blog is counted once per render.
+     * per render, then one per blog. Every blog is counted in one query per
+     * render (profiling, 2026-11-06).
      */
     @Test
-    void eachBlogIsCountedOncePerRender() throws Exception {
+    void everyBlogIsCountedInOneQueryPerRender() throws Exception {
         fiveBlogsOfFour();
         useSiteTheme("journal");
         renderRoot(); // cold: the snapshot and lookups are read here
@@ -374,7 +375,7 @@ class DiscoveryFrontPageRenderingTest {
 
         List<String> counts = QueryRecorder.sqlOn(queries, "weblogentry").stream()
                 .filter(q -> q.toUpperCase(java.util.Locale.ROOT).contains("COUNT(")).toList();
-        assertEquals(blogs.size(), counts.size(), "one count per blog: " + counts);
+        assertEquals(1, counts.size(), "one count for all the blogs: " + counts);
         String body = renderRoot();
         assertTrue(section(body, "fd-discovery-blogs").contains("4 posts"),
                 "the shelves still show each blog's four posts:\n" + section(body, "fd-discovery-blogs"));

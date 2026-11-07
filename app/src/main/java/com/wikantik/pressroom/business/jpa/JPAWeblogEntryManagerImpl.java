@@ -1534,6 +1534,24 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     }
 
     /**
+     * @inheritDoc
+     */
+    @Override
+    public Map<String, Long> getPublishedEntryCounts() throws WebloggerException {
+        List<Object[]> rows = strategy.getDynamicQuery(PUBLISHED_ENTRY_COUNTS, Object[].class)
+                .setParameter(1, PubStatus.PUBLISHED)
+                .getResultList();
+        Map<String, Long> counts = new HashMap<>();
+        for (Object[] columns : rows) {
+            counts.put((String) columns[0], ((Number) columns[1]).longValue());
+        }
+        return counts;
+    }
+
+    private static final String PUBLISHED_ENTRY_COUNTS =
+            "SELECT e.website.id, COUNT(e) FROM WeblogEntry e WHERE e.status = ?1 GROUP BY e.website.id";
+
+    /**
      * {@inheritDoc}
      *
      * <p>{@code SELECT ... FOR UPDATE} under READ COMMITTED: a row another
