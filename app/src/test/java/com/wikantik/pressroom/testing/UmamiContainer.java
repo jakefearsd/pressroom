@@ -52,7 +52,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The real Umami, for contract tests: the <em>same digest-pinned image</em>
- * {@code docker-compose.prod.yml} runs (read from that file, so the two cannot
+ * {@code docker-compose.backoffice.yml} runs (read from that file, so the two cannot
  * drift), against its own scratch PostgreSQL on a private Docker network.
  *
  * <p>One instance per JVM, started on first use and never stopped by a test
@@ -71,7 +71,7 @@ import tools.jackson.databind.json.JsonMapper;
 public final class UmamiContainer {
 
     /** Relative to the app module, which is the working directory for tests. */
-    static final Path PROD_COMPOSE = Paths.get("../docker-compose.prod.yml");
+    static final Path BACKOFFICE_COMPOSE = Paths.get("../docker-compose.backoffice.yml");
 
     private static final String DB_ALIAS = "umami-db";
     private static final String DB_NAME = "umami";
@@ -146,19 +146,19 @@ public final class UmamiContainer {
         }
     }
 
-    /** The {@code umami} service's image reference in {@code docker-compose.prod.yml}, digest included. */
+    /** The {@code umami} service's image reference in {@code docker-compose.backoffice.yml}, digest included. */
     @SuppressWarnings("unchecked")
     public static String imageFromCompose() {
         Map<String, Object> parsed;
-        try (InputStream in = Files.newInputStream(PROD_COMPOSE)) {
+        try (InputStream in = Files.newInputStream(BACKOFFICE_COMPOSE)) {
             parsed = (Map<String, Object>) new Yaml().load(in);
         } catch (IOException e) {
-            throw new IllegalStateException("cannot read " + PROD_COMPOSE.toAbsolutePath(), e);
+            throw new IllegalStateException("cannot read " + BACKOFFICE_COMPOSE.toAbsolutePath(), e);
         }
         Map<String, Object> services = (Map<String, Object>) parsed.get("services");
         Map<String, Object> service = (Map<String, Object>) services.get("umami");
         if (service == null || !(service.get("image") instanceof String image) || !image.contains("@sha256:")) {
-            throw new IllegalStateException(PROD_COMPOSE + " has no digest-pinned umami image");
+            throw new IllegalStateException(BACKOFFICE_COMPOSE + " has no digest-pinned umami image");
         }
         return image;
     }

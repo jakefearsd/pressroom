@@ -21,7 +21,8 @@ name: Release
 # coverage gates, publishes the app and caddy production images to GHCR as
 # :<version>, :latest and :sha-<short>, and creates a GitHub Release with a
 # self-contained deploy bundle attached (the WAR extracted from the app
-# image, docker-compose.prod.yml, .env.example, deploy.sh).
+# image, docker-compose.prod.yml, docker-compose.backoffice.yml, .env.example,
+# deploy.sh).
 #
 # This is the ONLY thing that publishes an image. `docker-compose.prod.yml`
 # requires `IMAGE_VERSION` to be set in `.env` (`${IMAGE_VERSION:?...}`, no
@@ -189,6 +190,7 @@ jobs:
           docker cp "$cid:/app/pressroom.war" release-assets/pressroom.war
           docker rm "$cid"
           cp docker-compose.prod.yml release-assets/
+          cp docker-compose.backoffice.yml release-assets/
           # GitHub renames any release asset whose filename starts with a
           # dot, so ".env.example" would not download as itself -- copy it
           # to a dot-free name instead of shipping a runbook step that 404s.
@@ -228,6 +230,7 @@ jobs:
           assets=(
             release-assets/pressroom.war
             release-assets/docker-compose.prod.yml
+            release-assets/docker-compose.backoffice.yml
             release-assets/env.example
             release-assets/deploy.sh
             release-assets/upgrade.sh

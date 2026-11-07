@@ -10,7 +10,7 @@
 # the deploy stack, not in Pressroom's Java: Pressroom does not depend on
 # Umami's database. Run one pass by hand:
 #
-#   docker compose -f docker-compose.prod.yml exec backup /app/backup/umami-retention.sh
+#   docker compose exec backoffice-backup /app/backup/umami-retention.sh
 #
 # It connects to Umami's own server (UMAMI_PGHOST, default umami-db, since
 # 0.7.2) as UMAMI_DB_USER, the same login the analytics-views one-shot uses;

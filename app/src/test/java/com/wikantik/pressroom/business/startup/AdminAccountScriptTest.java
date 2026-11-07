@@ -282,7 +282,7 @@ class AdminAccountScriptTest {
         Run r = run(suiteDb(), "a brand new one\n", "reset-password", "--username", name, "--password-stdin");
         assertEquals(0, r.exit(), r.stderr());
         List<String> lines = r.stdout().strip().lines().toList();
-        assertEquals("  docker compose -f docker-compose.prod.yml restart app", lines.get(lines.size() - 1));
+        assertEquals("  docker compose restart app", lines.get(lines.size() - 1));
     }
 
     /**

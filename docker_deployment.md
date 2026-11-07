@@ -21,15 +21,16 @@ public IP.
    - [Mail and account recovery](#mail-and-account-recovery)
 6. [TLS](#tls)
 7. [Health monitoring](#health-monitoring)
-8. [Analytics](#analytics)
-9. [Newsletter](#newsletter)
-10. [Reader sign-in (Google)](#reader-sign-in-google)
-11. [Comments](#comments)
-12. [Backup and restore](#backup-and-restore)
-13. [Test a release locally before deploying it](#test-a-release-locally-before-deploying-it)
-14. [Upgrades](#upgrades)
-15. [Firewall](#firewall)
-16. [Troubleshooting](#troubleshooting)
+8. [The back-office services](#the-back-office-services)
+9. [Analytics](#analytics)
+10. [Newsletter](#newsletter)
+11. [Reader sign-in (Google)](#reader-sign-in-google)
+12. [Comments](#comments)
+13. [Backup and restore](#backup-and-restore)
+14. [Test a release locally before deploying it](#test-a-release-locally-before-deploying-it)
+15. [Upgrades](#upgrades)
+16. [Firewall](#firewall)
+17. [Troubleshooting](#troubleshooting)
 
 ## Prerequisites
 
@@ -65,15 +66,18 @@ public IP.
 There is no git checkout on the deploy host at all. Everything the stack
 needs lives in two published images (`ghcr.io/jakefearsd/pressroom` and
 `ghcr.io/jakefearsd/pressroom-caddy`) — nothing is bind-mounted from a working
-tree. The host needs exactly three files, all attached to the GitHub Release
-for the version you're deploying: `docker-compose.prod.yml`, `env.example`,
-and `deploy.sh`. Download them into one directory, e.g. `/opt/pressroom`. The
+tree. The host needs exactly four files, all attached to the GitHub Release
+for the version you're deploying: `docker-compose.prod.yml` (Pressroom),
+`docker-compose.backoffice.yml` (the back-office services it uses; see [The
+back-office services](#the-back-office-services)), `env.example` and
+`deploy.sh`. Download them into one directory, e.g. `/opt/pressroom`. The
 `latest` links below name the newest release; for a particular one, use
 `releases/download/v<version>/` instead, as [Upgrades](#upgrades) does:
 
 ```bash
 mkdir -p /opt/pressroom && cd /opt/pressroom
 curl -LO https://github.com/jakefearsd/pressroom/releases/latest/download/docker-compose.prod.yml
+curl -LO https://github.com/jakefearsd/pressroom/releases/latest/download/docker-compose.backoffice.yml
 curl -LO https://github.com/jakefearsd/pressroom/releases/latest/download/env.example
 curl -LO https://github.com/jakefearsd/pressroom/releases/latest/download/deploy.sh
 chmod +x deploy.sh
@@ -146,7 +150,7 @@ environment-variable-configured container.
     by then the `provision` service has already applied every pending one
     (see [First run](#first-run)). If one is still pending, the app does not
     start and every request, public pages included, lands on the install
-    wizard: check `docker compose -f docker-compose.prod.yml logs provision`.
+    wizard: check `docker compose logs provision`.
     (The other value, `manual`, the built-in default, applies pending
     migrations silently at startup. The names read backwards.)
   - `PRESSROOM_DATABASE_CONFIGURATIONTYPE`, `PRESSROOM_DATABASE_JDBC_DRIVERCLASS`,
@@ -238,7 +242,7 @@ over the LAN. For that layout:
    port 80 to HTTPS, and a connector that forwards to port 80 gets that
    redirect back for every request, which loops. (`http://blog.example.com`
    also works, if you want Caddy to answer only that name.)
-2. **Apply it** with `./deploy.sh`, or `docker compose -f docker-compose.prod.yml up -d`.
+2. **Apply it** with `./deploy.sh`, or `docker compose up -d`.
    The app takes its whole configuration from `.env`, so any `.env` change
    recreates the app as well as Caddy: expect a short restart.
 3. **Point the connector** at `http://<this host>:<SITE_HTTP_PORT>`, for
@@ -303,7 +307,7 @@ fresh install, since neither service could go first. `analytics-views` waits
 for `website_event` to appear, applies the view, and exits — if it fails or
 times out, the blog, Umami and Listmonk are all still up and serving; only
 the Grafana traffic view is missing, which is an operator dashboard concern,
-not an outage. Check `docker compose -f docker-compose.prod.yml logs
+not an outage. Check `docker compose logs
 analytics-views` if the Grafana dashboard's traffic panel comes up empty; the
 same `up -d analytics-views` re-run mentioned in its own log output is safe.
 
@@ -315,11 +319,11 @@ the first administrator is made from the host, in this order:
    is none, prints this command:
 
    ```bash
-   docker compose -f docker-compose.prod.yml run --rm admin create --username NAME --email ADDRESS
+   docker compose run --rm admin create --username NAME --email ADDRESS
    ```
 
    It prompts for the password twice. For a script, pipe one line in and use
-   `-T`: `docker compose -f docker-compose.prod.yml run --rm -T admin create
+   `-T`: `docker compose run --rm -T admin create
    --username NAME --email ADDRESS --password-stdin`. The username is ASCII
    letters and digits only; the email (at most 255 characters) must be a real address you read, because
    password-reset links are sent there; the password is at least 8
@@ -331,7 +335,7 @@ the first administrator is made from the host, in this order:
    **Site Administrator's email address** (`site.adminemail`). That address is the From address of every mail Pressroom sends, and
    password-reset mail cannot go out without it.
 3. **Set up mail**, next section: [Mail and account recovery](#mail-and-account-recovery).
-4. **Check it.** `docker compose -f docker-compose.prod.yml run --rm admin status`
+4. **Check it.** `docker compose run --rm admin status`
    lists the enabled admin accounts (people only; an agent never signs in) (and exits 3 with the create command if
    there are none).
 
@@ -363,10 +367,10 @@ is built from **Absolute URL to site (if required)** (`PRESSROOM_SITE_ABSOLUTEUR
 once, and goes to the email address on the account.
 
 **Applying changes.** A change to `.env` needs
-`docker compose -f docker-compose.prod.yml up -d --force-recreate app`
+`docker compose up -d --force-recreate app`
 (a plain `restart` does not re-read `.env`). Pressroom caches runtime settings
 and loaded accounts, so a setting or account changed directly in the database
-needs `docker compose -f docker-compose.prod.yml restart app`.
+needs `docker compose restart app`.
 
 **Recovering a lost password**, in order:
 
@@ -375,8 +379,8 @@ needs `docker compose -f docker-compose.prod.yml restart app`.
 2. Last resort, when mail is broken, from the host:
 
    ```bash
-   docker compose -f docker-compose.prod.yml run --rm admin reset-password --username NAME
-   docker compose -f docker-compose.prod.yml restart app
+   docker compose run --rm admin reset-password --username NAME
+   docker compose restart app
    ```
 
    The restart is required: the running app keeps the accounts it has loaded,
@@ -466,7 +470,7 @@ Five steps, in order:
    VHOST_DNS_API_TOKEN=<a Cloudflare API token scoped to Zone:DNS:Edit on example.org>
    ```
    See `deploy/.env.example` for how to scope the token narrowly. Restart
-   Caddy (`docker compose -f docker-compose.prod.yml up -d caddy`) after
+   Caddy (`docker compose up -d caddy`) after
    changing either value — Caddy reads them once, at startup.
 3. **Add a wildcard DNS record** at your registrar/DNS provider:
    `*.example.org` → the host's public IP (A/AAAA, same as `SITE_DOMAIN`'s
@@ -496,7 +500,7 @@ module linked in — that's what `ProductionComposeTest` pins — but the DNS-01
 handshake against a real Cloudflare zone can only be proven on a real deploy
 host. After step 3 above, confirm it actually worked with:
 ```bash
-docker compose -f docker-compose.prod.yml logs caddy | grep -i "vhost\|certificate obtained\|<your-domain>"
+docker compose logs caddy | grep -i "vhost\|certificate obtained\|<your-domain>"
 curl -vI https://blog.example.org/ 2>&1 | grep -i "SSL certificate\|subject"
 ```
 
@@ -555,15 +559,15 @@ To check health from the host:
 
 ```bash
 # Compose's own view (uses the same internal healthcheck):
-docker compose -f docker-compose.prod.yml ps
+docker compose ps
 
 # Or query the endpoint directly via exec:
-docker compose -f docker-compose.prod.yml exec app \
+docker compose exec app \
     curl -sf http://localhost:8090/actuator/health
 
 # Or inspect Docker's healthcheck state/history directly:
 docker inspect --format '{{json .State.Health}}' \
-    $(docker compose -f docker-compose.prod.yml ps -q app) | python3 -m json.tool
+    $(docker compose ps -q app) | python3 -m json.tool
 ```
 
 `docker compose ps` reporting `app` as `healthy` is normally enough for
@@ -574,10 +578,10 @@ monitoring, since that's the only thing actually exposed to the internet.
 Logs:
 
 ```bash
-docker compose -f docker-compose.prod.yml logs -f app
-docker compose -f docker-compose.prod.yml logs -f caddy
-docker compose -f docker-compose.prod.yml logs -f postgres
-docker compose -f docker-compose.prod.yml logs -f backup
+docker compose logs -f app
+docker compose logs -f caddy
+docker compose logs -f postgres
+docker compose logs -f backup
 ```
 
 Every Pressroom logger writes to the app container's standard output, which is
@@ -589,8 +593,50 @@ off a busy log. Both logs belong to the container, so a deploy, which
 recreates it, starts both afresh. Save what you need first:
 
 ```bash
-docker compose -f docker-compose.prod.yml logs --no-color app > app-$(date +%F-%H%M).log
+docker compose logs --no-color app > app-$(date +%F-%H%M).log
 ```
+
+## The back-office services
+
+Umami (analytics) and listmonk (newsletter) are services Pressroom *uses*,
+not parts of Pressroom (wiki SA-15). They run in their own compose file,
+`docker-compose.backoffice.yml`, beside `docker-compose.prod.yml`, each on a
+database server of its own (`umami-db`, `listmonk-db`) with its own login,
+backed up by its own `backoffice-backup` service. `.env` selects both files:
+
+```
+COMPOSE_FILE=docker-compose.prod.yml:docker-compose.backoffice.yml
+```
+
+Compose reads that line by itself, so every command in this runbook is a
+plain `docker compose ...`, with no `-f`. (`docker compose -f
+docker-compose.prod.yml ...` sees the core file alone, and no back-office
+service.) `deploy.sh` adds the line to a `.env` that lacks it.
+
+Pressroom reaches the services only through addresses in `.env`:
+
+| Setting | Unset, while the overlay runs them here | Used by |
+|---|---|---|
+| `PRESSROOM_ANALYTICS_UMAMI_APIURL` | `http://umami:3000` | the app, for Umami's API |
+| `PRESSROOM_ANALYTICS_UMAMI_PASSWORD` | `UMAMI_PRESSROOM_PASSWORD`, handed over by the overlay | the app's Umami account |
+| `PRESSROOM_NEWSLETTER_LISTMONK_BASEURL` | `http://listmonk:9000` | the app, for subscribe and send |
+| `ANALYTICS_UPSTREAM` | `umami:3000` | Caddy: the tracker paths and the dashboard port |
+| `NEWSLETTER_UPSTREAM` | `listmonk:9000` | Caddy: `LISTMONK_DOMAIN`'s site |
+
+Nothing in `docker-compose.prod.yml` waits for, networks with, or holds the
+credentials of a back-office service, so Pressroom starts and serves whether
+or not they are up.
+
+**When the services move to the back-office suite:** deploy them there,
+restore the latest `umami-*` and `listmonk-*` dumps from the
+`pressroom-backoffice-backups` volume into their new servers (the restore is
+in `/app/backup/backoffice-backup.sh`'s header), set the five settings above
+to the suite's **LAN** addresses (`http://192.168.x.y:3000`; not its public
+hostname: through the edge, Umami records the edge's address for every
+reader), set `PRESSROOM_ANALYTICS_UMAMI_PASSWORD` to the account's password,
+drop the overlay from `COMPOSE_FILE`, and run `./deploy.sh`. The old
+back-office containers are then orphans of this project; `docker compose up
+-d --remove-orphans` removes them (their volumes stay until you remove them).
 
 ## Analytics
 
@@ -799,7 +845,7 @@ exactly the contract views — never the underlying tables, never
 ships with no password and cannot log in until you set one:
 
 ```bash
-docker compose -f docker-compose.prod.yml exec postgres \
+docker compose exec postgres \
     psql -U "${POSTGRES_USER:-pressroom}" -d "${POSTGRES_DB:-pressroom}" \
     -c "ALTER ROLE grafana_ro LOGIN PASSWORD 'choose-a-strong-password-here';"
 ```
@@ -810,7 +856,7 @@ it `CONNECT` on `${UMAMI_DB:-umami}` and `SELECT` on `analytics_traffic`. To
 enable it, set its password on that server too (the same one or another):
 
 ```bash
-docker compose -f docker-compose.prod.yml exec umami-db \
+docker compose exec umami-db \
     psql -U "${UMAMI_DB_USER:-umami}" -d "${UMAMI_DB:-umami}" \
     -c "ALTER ROLE grafana_ro LOGIN PASSWORD 'choose-a-strong-password-here';"
 ```
@@ -848,7 +894,7 @@ what keeps consent and retention obligations out of the blog software.
    agree: listmonk builds its confirmation and unsubscribe links from
    `LISTMONK_ROOT_URL`, and those links are the only way a subscriber can
    confirm or leave.
-2. Run `./deploy.sh` (or `docker compose -f docker-compose.prod.yml up -d`).
+2. Run `./deploy.sh` (or `docker compose up -d`).
    The `provision` service creates the `listmonk` database, and listmonk
    creates its own schema on first start.
 3. Sign in at `https://<LISTMONK_DOMAIN>/admin` with `admin` and the password
@@ -982,7 +1028,7 @@ Developer notes: `docs/dev/sso.md`.
    log has the self-check's success line ("OIDC discovery reachable"):
 
    ```bash
-   docker compose -f docker-compose.prod.yml logs app | grep "OIDC discovery"
+   docker compose logs app | grep "OIDC discovery"
    ```
 
    Then test the sign-in itself at the public URL,
@@ -1035,9 +1081,8 @@ scheduler that wakes hourly and, once a day at `BACKUP_HOUR` (UTC), runs
 the `pressroom-backups` volume is root-owned, and the image's unprivileged
 `pressroom` user cannot write into it. Each cycle:
 
-1. `pg_dump -Fc` the database to `/backups/pressroom-<timestamp>.dump` (and
-   the Umami and listmonk databases beside it, when the stack has them).
-   Each dump is read back with `pg_restore -l` before it is published; one
+1. `pg_dump -Fc` the database to `/backups/pressroom-<timestamp>.dump`.
+   The dump is read back with `pg_restore -l` before it is published; one
    that cannot be listed fails the backup.
 2. `tar` the `mediafiles`/`uploads` volumes to
    `/backups/volumes-<timestamp>.tar.gz`. The volumes are live, so a file
@@ -1054,18 +1099,26 @@ orphaned `.tmp` file instead, which rotation also cleans up once it ages
 past the retention window. Backups land in the `pressroom-backups` named
 volume.
 
-After a cycle that succeeded, the loop runs `/app/backup/umami-retention.sh`
+The back-office databases have a backup service of their own,
+`backoffice-backup` (in `docker-compose.backoffice.yml`): the same loop runs
+`/app/backup/backoffice-backup.sh`, which dumps `umami` from `umami-db` and
+`listmonk` from `listmonk-db`, each with its own login, into the
+`pressroom-backoffice-backups` volume, read back and rotated the same way. A
+fault on one server costs that dump only, and fails the run. Its header
+holds the restore commands.
+
+After a back-office cycle that succeeded, the loop runs `/app/backup/umami-retention.sh`
 (`deploy/backup/umami-retention.sh`, applying the baked-in
 `deploy/analytics/umami-retention.sql`): it deletes Umami analytics data older
 than `UMAMI_RETENTION_DAYS` (default 730, two years) from Umami's database, so
 the dump taken minutes earlier still holds every row it removes. It deletes in
 committed batches, logs one row count per table and never a row, and
-`UMAMI_RETENTION_DAYS=0` switches it off. A failed run is logged ("Umami
-retention failed") and the loop carries on; the next night's run deletes what
+`UMAMI_RETENTION_DAYS=0` switches it off. A failed run is logged
+("umami-retention.sh failed") and the loop carries on; the next night's run deletes what
 it missed. A failed backup skips it for that day. Run one pass by hand:
 
 ```bash
-docker compose -f docker-compose.prod.yml exec backup /app/backup/umami-retention.sh
+docker compose exec backoffice-backup /app/backup/umami-retention.sh
 ```
 
 These dumps contain the full database, including user password hashes —
@@ -1076,7 +1129,7 @@ host's crontab:
 
 ```bash
 # 04:30 UTC, an hour after the default BACKUP_HOUR=3
-30 4 * * * cd /opt/pressroom && docker compose -f docker-compose.prod.yml cp backup:/backups/. /srv/pressroom-backups/ && rclone sync /srv/pressroom-backups remote:pressroom-backups
+30 4 * * * cd /opt/pressroom && docker compose cp backup:/backups/. /srv/pressroom-backups/ && docker compose cp backoffice-backup:/backups/. /srv/pressroom-backups/backoffice/ && rclone sync /srv/pressroom-backups remote:pressroom-backups
 ```
 
 (any `rsync`/`rclone` target will do), and restrict filesystem access to
@@ -1086,8 +1139,9 @@ inside the volume, so the off-host copy keeps its own history.
 Run a backup by hand at any time:
 
 ```bash
-docker compose -f docker-compose.prod.yml exec backup /app/backup/backup.sh
-docker compose -f docker-compose.prod.yml exec backup ls -la /backups
+docker compose exec backup /app/backup/backup.sh
+docker compose exec backup ls -la /backups
+docker compose exec backoffice-backup /app/backup/backoffice-backup.sh
 ```
 
 ### Restore
@@ -1107,9 +1161,9 @@ they're unset, and `pg_restore` would silently get empty values (this is
 the same in-container pattern `provision.sh` uses for migrations):
 
 ```bash
-docker compose -f docker-compose.prod.yml stop app
+docker compose stop app
 
-docker compose -f docker-compose.prod.yml exec -T postgres bash -c '
+docker compose exec -T postgres bash -c '
     set -euo pipefail
     export PGHOST=localhost
     export PGUSER="${POSTGRES_USER}"
@@ -1117,11 +1171,11 @@ docker compose -f docker-compose.prod.yml exec -T postgres bash -c '
     pg_restore -d "${POSTGRES_DB}" --clean --if-exists
 ' < /path/on/host/to/pressroom-<timestamp>.dump
 
-docker compose -f docker-compose.prod.yml start app
+docker compose start app
 ```
 
 (Get the dump onto the host first with
-`docker compose -f docker-compose.prod.yml cp backup:/backups/pressroom-<timestamp>.dump .`
+`docker compose cp backup:/backups/pressroom-<timestamp>.dump .`
 if restoring from a different machine than the one that made it.)
 
 **Umami's database** is backed up from its own server, `umami-db` (since
@@ -1131,9 +1185,9 @@ Umami stopped. `--no-owner --no-acl` because the dump may come from before
 `analytics-views` puts `grafana_ro`'s grants back:
 
 ```bash
-docker compose -f docker-compose.prod.yml stop umami
+docker compose stop umami
 
-docker compose -f docker-compose.prod.yml exec -T umami-db bash -c '
+docker compose exec -T umami-db bash -c '
     set -euo pipefail
     export PGHOST=localhost
     export PGUSER="${POSTGRES_USER}"
@@ -1141,8 +1195,8 @@ docker compose -f docker-compose.prod.yml exec -T umami-db bash -c '
     pg_restore -d "${POSTGRES_DB}" --clean --if-exists --no-owner --no-acl
 ' < /path/on/host/to/umami-<timestamp>.dump
 
-docker compose -f docker-compose.prod.yml start umami
-docker compose -f docker-compose.prod.yml up -d analytics-views
+docker compose start umami
+docker compose up -d analytics-views
 ```
 
 **The client that restores must be at least as new as the client that
@@ -1156,7 +1210,7 @@ base moved to Ubuntu 26.04 and took the client from 16 to 18), restore with
 the app image instead, which always has the client that wrote the file:
 
 ```bash
-docker compose -f docker-compose.prod.yml run --rm --entrypoint bash backup -c '
+docker compose run --rm --entrypoint bash backup -c '
     set -euo pipefail
     export PGHOST=postgres
     export PGUSER="${POSTGRES_USER}"
@@ -1184,7 +1238,7 @@ host](#get-the-deploy-files-onto-the-host)), giving e.g.
 exact names on your host and substitute them below if they differ:
 
 ```bash
-docker compose -f docker-compose.prod.yml down
+docker compose down
 docker volume rm pressroom_pressroom-search-index
 docker run --rm \
     -v pressroom_pressroom-mediafiles:/data/mediafiles \
@@ -1192,7 +1246,7 @@ docker run --rm \
     -v pressroom_pressroom-backups:/backups \
     postgres:18@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280 \
     tar xzf /backups/volumes-<timestamp>.tar.gz -C /
-docker compose -f docker-compose.prod.yml up -d
+docker compose up -d
 ```
 
 Test your restore procedure at least once before you need it for real —
@@ -1204,8 +1258,8 @@ The deploy files and images are the same in both places; only `.env` differs.
 On your workstation, in a directory holding the same two files:
 
 ```bash
-IMAGE_VERSION=0.1.1 docker compose -f docker-compose.prod.yml pull
-IMAGE_VERSION=0.1.1 docker compose -f docker-compose.prod.yml up -d
+IMAGE_VERSION=0.1.1 docker compose pull
+IMAGE_VERSION=0.1.1 docker compose up -d
 ```
 
 (The prefix has to be on **both** lines, or `export`ed first — an
@@ -1247,7 +1301,7 @@ that cost on every local `mvn` run.)
 > one untouched for a rollback. The checklist, the rollback and the cleanup
 > are in [docs/dev/pressroom-cutover.md](docs/dev/pressroom-cutover.md).
 
-Re-download `docker-compose.prod.yml` and `deploy.sh` from the new release
+Re-download both compose files and `deploy.sh` from the new release
 alongside bumping `IMAGE_VERSION` in `.env`. The compose file and the script
 are **not** guaranteed to be unchanged between releases, so always re-download
 both rather than bumping `IMAGE_VERSION` alone. Keeping an older `backup`
@@ -1256,6 +1310,7 @@ entrypoint at a path the new image does not carry:
 
 ```bash
 curl -LO https://github.com/jakefearsd/pressroom/releases/download/v<new-version>/docker-compose.prod.yml
+curl -LO https://github.com/jakefearsd/pressroom/releases/download/v<new-version>/docker-compose.backoffice.yml
 curl -LO https://github.com/jakefearsd/pressroom/releases/download/v<new-version>/deploy.sh
 chmod +x deploy.sh
 ```
@@ -1282,8 +1337,7 @@ Once the two files are in place:
 ./deploy.sh --prune   # the above, plus `docker image prune -f` after
 ```
 
-(equivalently, `docker compose -f docker-compose.prod.yml pull && docker
-compose -f docker-compose.prod.yml up -d`.) There is no `git pull` — the host
+(equivalently, `docker compose pull && docker compose up -d`.) There is no `git pull` — the host
 holds no checkout to update.
 
 This is the same script used for [first run](#first-run) — running it again
@@ -1297,6 +1351,38 @@ rather than leaving the stack in a half-upgraded state without telling you.
 
 Always have a recent, verified backup before upgrading across a schema
 change (see [Backup and restore](#backup-and-restore)).
+
+### Upgrading to 0.8.5: the back-office overlay, and listmonk's own server
+
+0.8.5 separates the back-office services from Pressroom (see [The back-office
+services](#the-back-office-services)): Umami and listmonk move into
+`docker-compose.backoffice.yml`, and listmonk moves off Pressroom's
+PostgreSQL onto a server of its own, `listmonk-db`, exactly as Umami did in
+0.7.2.
+
+1. **Deploy with `bin/deploy-host.sh` or `./upgrade.sh`.** `upgrade.sh`
+   downloads both compose files; `deploy.sh` adds `COMPOSE_FILE` to `.env`
+   and generates `LISTMONK_DB_PASSWORD`.
+2. **listmonk's data moves by itself.** The one-shot `listmonk-move` copies
+   the `listmonk` database from `postgres` to the empty `listmonk-db` and
+   prints the `subscribers`, `lists` and `campaigns` counts (`docker compose
+   logs listmonk-move`). Only then does listmonk start. A host whose listmonk
+   never ran has nothing to move.
+3. **Backups are two services now.** `backup` writes Pressroom's database and
+   media to `pressroom-backups`; `backoffice-backup` writes the `umami` and
+   `listmonk` dumps to `pressroom-backoffice-backups`. Copy both volumes off
+   the host.
+4. **The old listmonk copy stays as it was** on `postgres`: the rollback
+   point. To roll back, restore the `.bak-<timestamp>` files `upgrade.sh`
+   kept and run `./deploy.sh`; 0.8.x's compose file points listmonk back at
+   it. Keep the `LISTMONK_DB_PASSWORD` line when you restore an old `.env`,
+   as for `UMAMI_DB_PASSWORD` below. Once satisfied, drop it:
+
+   ```bash
+   docker compose exec postgres \
+       psql -U "${POSTGRES_USER:-pressroom}" -d "${POSTGRES_DB:-pressroom}" \
+       -c 'DROP DATABASE listmonk;'
+   ```
 
 ### Upgrading to 0.7.2: Umami gets its own database server
 
@@ -1312,7 +1398,7 @@ Umami through its API, and is not even on `umami-db`'s network.
 2. **The data moves by itself.** The one-shot `umami-move` copies the `umami`
    database from `postgres` to the empty `umami-db` in one transaction and
    prints the `website`, `session` and `website_event` counts (`docker compose
-   -f docker-compose.prod.yml logs umami-move`). Only then does the new `umami`
+   logs umami-move`). Only then does the new `umami`
    container start. The old container keeps recording until it is replaced,
    so visits in those seconds stay in the old copy: expect to lose up to a
    minute of visits (the rehearsal lost about 25 seconds, the usual restart
@@ -1332,11 +1418,11 @@ Umami through its API, and is not even on `umami-db`'s network.
    (copy it from the current `.env` first; no `.env.bak-*` holds it, since
    the line is generated after the upgrade's backup): `umami-db` keeps the
    password it was first started with. Without it the next deploy stops and
-   says so (see [If umami-db's password is
-   lost](#if-umami-dbs-password-is-lost)). Once you are satisfied, drop the old copy (two weeks is plenty):
+   says so (see [If a service database's password is
+   lost](#if-a-service-databases-password-is-lost)). Once you are satisfied, drop the old copy (two weeks is plenty):
 
    ```bash
-   docker compose -f docker-compose.prod.yml exec postgres \
+   docker compose exec postgres \
        psql -U "${POSTGRES_USER:-pressroom}" -d "${POSTGRES_DB:-pressroom}" \
        -c 'DROP DATABASE umami;'
    ```
@@ -1347,10 +1433,11 @@ Umami through its API, and is not even on `umami-db`'s network.
    too (see [The Grafana contract](#the-grafana-contract)) and point
    the Umami datasource there.
 
-### If umami-db's password is lost
+### If a service database's password is lost
 
-`umami-db` keeps the `UMAMI_DB_PASSWORD` it was first started with; changing
-the line in `.env` later changes nothing on the server. If `.env` has lost the
+`umami-db` keeps the `UMAMI_DB_PASSWORD` it was first started with, and
+`listmonk-db` the `LISTMONK_DB_PASSWORD`; changing the line in `.env` later
+changes nothing on the server. If `.env` has lost the
 line (an older `.env` restored on a rollback), `deploy.sh` stops and says so
 rather than generating a new one. Put the original line back if you have it.
 If not, give the server a new password from inside its container, where it
@@ -1358,17 +1445,18 @@ trusts local connections, so the old one is not needed:
 
 ```bash
 printf 'UMAMI_DB_PASSWORD=%s\n' "$(openssl rand -hex 24)" >> .env
-docker compose -f docker-compose.prod.yml up -d umami-db
+docker compose up -d umami-db
 printf "ALTER ROLE \"%s\" PASSWORD '%s';\n" \
     "$(sed -n 's/^UMAMI_DB_USER=//p' .env | tail -n 1 | grep . || echo umami)" \
     "$(sed -n 's/^UMAMI_DB_PASSWORD=//p' .env | tail -n 1)" |
-    docker compose -f docker-compose.prod.yml exec -T umami-db \
+    docker compose exec -T umami-db \
         sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -q'
 ./deploy.sh
 ```
 
 (`printf` is a shell builtin, so the password travels through the pipe and is
-on no command line.)
+on no command line.) For `listmonk-db`, the same with `LISTMONK_DB_PASSWORD`,
+`LISTMONK_DB_USER` (default `listmonk`) and `listmonk-db`.
 
 ### Upgrading to 0.7.0: analytics without admin steps
 
@@ -1591,15 +1679,15 @@ goes through without a restart.
 **The new password from `reset-password` doesn't work**
 
 The running app caches accounts it has loaded. Run
-`docker compose -f docker-compose.prod.yml restart app`, then log in again.
+`docker compose restart app`, then log in again.
 
 **A container won't start / keeps restarting**
 
 ```bash
-docker compose -f docker-compose.prod.yml ps
-docker compose -f docker-compose.prod.yml logs provision
-docker compose -f docker-compose.prod.yml logs app
-docker compose -f docker-compose.prod.yml logs postgres
+docker compose ps
+docker compose logs provision
+docker compose logs app
+docker compose logs postgres
 ```
 
 **Caddy won't start: `bind: address already in use`**
@@ -1629,7 +1717,7 @@ Check Caddy's own logs for ACME/certificate errors (common cause: DNS isn't
 pointed at the host yet, or port 80 isn't reachable from the internet):
 
 ```bash
-docker compose -f docker-compose.prod.yml logs caddy
+docker compose logs caddy
 ```
 
 **Caddy's logs are full of certificate errors for `newsletter.invalid`**
@@ -1649,7 +1737,7 @@ the log noise if you don't.
 The app needs a reachable, migrated Postgres to bootstrap
 (`WebloggerFactory.bootstrap()`), and it won't even start until the
 `provision` service has exited successfully — check
-`docker compose -f docker-compose.prod.yml logs provision` first. If
+`docker compose logs provision` first. If
 provisioning succeeded, confirm `.env`'s
 `PRESSROOM_DATABASE_JDBC_USERNAME`/`PRESSROOM_DATABASE_JDBC_PASSWORD` match
 `POSTGRES_USER`/`POSTGRES_PASSWORD` exactly — the two are not templated
@@ -1668,7 +1756,7 @@ in [Configure `.env`](#configure-env) does), then update `.env` to match:
 
 ```bash
 NEW='...'   # e.g. $(openssl rand -base64 33 | tr '+/' '-_')
-docker compose -f docker-compose.prod.yml exec postgres \
+docker compose exec postgres \
     psql -U pressroom -d pressroom -c "ALTER ROLE pressroom PASSWORD '$NEW'"
 # then set BOTH POSTGRES_PASSWORD and PRESSROOM_DATABASE_JDBC_PASSWORD in .env
 # to $NEW, and re-run ./deploy.sh (or docker compose up -d)
@@ -1691,7 +1779,7 @@ rotation cleans these up too, just on the same delay).
 
 **Starting over on this host**
 
-`docker compose -f docker-compose.prod.yml down -v` removes every named
+`docker compose down -v` removes every named
 volume (`pressroom-pgdata`, `pressroom-mediafiles`, `pressroom-search-index`,
 `pressroom-uploads`, `pressroom-backups`, `caddy-data`, `caddy-config`) —
 irreversible without a backup. Only use it when you actually intend to

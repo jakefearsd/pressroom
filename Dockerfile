@@ -112,11 +112,12 @@ COPY bin/db/migrate.sh /app/migrate.sh
 COPY deploy/provision.sh /app/provision.sh
 COPY deploy/admin-account.sh /app/admin-account.sh
 COPY deploy/analytics-views.sh /app/analytics-views.sh
-COPY deploy/umami-move.sh /app/umami-move.sh
+COPY deploy/db-move.sh /app/db-move.sh
 COPY deploy/analytics/umami-views.sql /app/umami-views.sql
 COPY deploy/analytics/umami-pressroom-account.sql /app/umami-pressroom-account.sql
 COPY deploy/analytics/umami-retention.sql /app/umami-retention.sql
 COPY deploy/backup/backup.sh /app/backup/backup.sh
+COPY deploy/backup/backoffice-backup.sh /app/backup/backoffice-backup.sh
 COPY deploy/backup/loop.sh /app/backup/loop.sh
 COPY deploy/backup/umami-retention.sh /app/backup/umami-retention.sh
 COPY bin/pressroom-api /app/pressroom-api
@@ -124,7 +125,7 @@ COPY bin/pressroom-api /app/pressroom-api
 # Runtime data: mediafiles, search index, uploads, all under /data per the
 # runtime contract. There is no /config any more -- configuration arrives as
 # PRESSROOM_* environment variables (see WebloggerConfig.applyEnvironmentOverrides).
-RUN chmod 755 /app/migrate.sh /app/provision.sh /app/admin-account.sh /app/analytics-views.sh /app/umami-move.sh /app/backup/backup.sh /app/backup/loop.sh /app/backup/umami-retention.sh \
+RUN chmod 755 /app/migrate.sh /app/provision.sh /app/admin-account.sh /app/analytics-views.sh /app/db-move.sh /app/backup/backup.sh /app/backup/backoffice-backup.sh /app/backup/loop.sh /app/backup/umami-retention.sh \
     && chmod +x /app/pressroom-api \
     && mkdir -p /data/mediafiles /data/search-index /data/uploads \
     && chown -R pressroom:pressroom /app /data

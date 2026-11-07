@@ -51,10 +51,15 @@
 	# API -- answers 404 from Caddy and never reaches Umami. Umami's dashboard
 	# and API are internal: the :8081 site below. ProductionComposeTest pins
 	# these lines, and that this block and the custom-domain block match.
+	#
+	# {$ANALYTICS_UPSTREAM} is where Umami listens: umami:3000 in this compose
+	# project by default, a LAN address (http://host:port) once it runs with
+	# the back-office services (SA-15). Not their public hostname: through
+	# the edge, Umami would count the edge's address instead of the reader's.
 	@tracker path /analytics/{$UMAMI_SCRIPT_NAME:script.js}
 	handle @tracker {
 		uri strip_prefix /analytics
-		reverse_proxy umami:3000
+		reverse_proxy {$ANALYTICS_UPSTREAM}
 	}
 	@send {
 		path /analytics/api/send
@@ -62,13 +67,13 @@
 	}
 	handle @send {
 		uri strip_prefix /analytics
-		reverse_proxy umami:3000
+		reverse_proxy {$ANALYTICS_UPSTREAM}
 	}
 	# Session replay and heatmaps are off; to switch them on, uncomment these and enable recording per website (docs/dev/umami-api.md).
 	# @replay path /analytics/recorder.js /analytics/api/record /analytics/api/websites/*/recorder
 	# handle @replay {
 	# 	uri strip_prefix /analytics
-	# 	reverse_proxy umami:3000
+	# 	reverse_proxy {$ANALYTICS_UPSTREAM}
 	# }
 	handle /analytics/* {
 		respond 404
@@ -128,7 +133,7 @@
 	@tracker path /analytics/{$UMAMI_SCRIPT_NAME:script.js}
 	handle @tracker {
 		uri strip_prefix /analytics
-		reverse_proxy umami:3000
+		reverse_proxy {$ANALYTICS_UPSTREAM}
 	}
 	@send {
 		path /analytics/api/send
@@ -136,13 +141,13 @@
 	}
 	handle @send {
 		uri strip_prefix /analytics
-		reverse_proxy umami:3000
+		reverse_proxy {$ANALYTICS_UPSTREAM}
 	}
 	# Session replay and heatmaps are off; to switch them on, uncomment these and enable recording per website (docs/dev/umami-api.md).
 	# @replay path /analytics/recorder.js /analytics/api/record /analytics/api/websites/*/recorder
 	# handle @replay {
 	# 	uri strip_prefix /analytics
-	# 	reverse_proxy umami:3000
+	# 	reverse_proxy {$ANALYTICS_UPSTREAM}
 	# }
 	handle /analytics/* {
 		respond 404
@@ -165,17 +170,18 @@
 # UMAMI_CONSOLE_BIND (loopback unless .env names the host's LAN address),
 # and the owner reaches it through a hostname of its own whose tunnel
 # connector or proxy, on another machine, points at that LAN address. Pressroom
-# itself calls Umami's API over the compose network (http://umami:3000) and
-# never through Caddy. Plain HTTP: a bare port is not a certificate-able
+# itself calls Umami's API directly (analytics.umami.apiUrl), never through
+# Caddy. Plain HTTP: a bare port is not a certificate-able
 # name, and the tunnel or proxy terminates TLS.
 :8081 {
-	reverse_proxy umami:3000
+	reverse_proxy {$ANALYTICS_UPSTREAM}
 }
 
 # The newsletter admin, and the opt-in / unsubscribe pages subscribers reach
 # from their email. On its own hostname: listmonk assumes it owns a domain
 # root. Unset, LISTMONK_DOMAIN
-# defaults to a name that cannot resolve.
+# defaults to a name that cannot resolve. {$NEWSLETTER_UPSTREAM} is where
+# listmonk listens: listmonk:9000 in this compose project by default.
 {$LISTMONK_DOMAIN} {
-	reverse_proxy listmonk:9000
+	reverse_proxy {$NEWSLETTER_UPSTREAM}
 }

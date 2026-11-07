@@ -114,7 +114,7 @@ recovers a lost password. Spec: `docs/superpowers/specs/2026-10-10-admin-bootstr
   backslashes survive.
 - **Restart caveat.** The running app caches loaded accounts, so after
   `reset-password` it keeps accepting the old password until
-  `docker compose -f docker-compose.prod.yml restart app`. The script prints
+  `docker compose restart app`. The script prints
   that command; `AdminAccountScriptTest.aRunningTierKeepsTheOldPasswordUntilRestart`
   pins the behaviour.
 - **Tests.** `AdminAccountScriptTest` runs the shipped script inside the

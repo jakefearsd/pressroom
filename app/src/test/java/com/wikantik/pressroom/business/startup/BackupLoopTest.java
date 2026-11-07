@@ -25,6 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -32,9 +33,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Runs the shipped {@code deploy/backup/loop.sh} with its two neighbours
- * ({@code backup.sh}, {@code umami-retention.sh}) replaced by stubs that log
- * their turn, and with {@code date} and {@code sleep} stubbed so the loop
+ * Runs the shipped {@code deploy/backup/loop.sh} with its neighbours
+ * ({@code backup.sh}, {@code backoffice-backup.sh}, {@code umami-retention.sh})
+ * replaced by stubs that log their turn, and with {@code date} and {@code sleep} stubbed so the loop
  * sees {@code BACKUP_HOUR} at once and is stopped on its second sleep. The
  * loop resolves both scripts relative to itself, as it does in the image at
  * {@code /app/backup/}.
@@ -46,11 +47,19 @@ class BackupLoopTest {
     @TempDir
     Path tmp;
 
+    /** The back-office backup service's loop (docker-compose.backoffice.yml). */
     private ScriptRun.Result runLoop(int backupExit, int retentionExit) throws IOException, InterruptedException {
+        return runLoop(backupExit, retentionExit,
+                Map.of("BACKUP_SCRIPT", "backoffice-backup.sh", "AFTER_BACKUP", "umami-retention.sh"));
+    }
+
+    private ScriptRun.Result runLoop(int backupExit, int retentionExit, Map<String, String> settings)
+            throws IOException, InterruptedException {
         Path dir = Files.createDirectories(tmp.resolve("backup"));
         Path loop = dir.resolve("loop.sh");
         Files.copy(LOOP, loop, StandardCopyOption.REPLACE_EXISTING);
-        ScriptRun.stub(dir, "backup.sh", "echo backup >> \"$LOG\"\nexit " + backupExit + "\n");
+        ScriptRun.stub(dir, "backup.sh", "echo core-backup >> \"$LOG\"\nexit " + backupExit + "\n");
+        ScriptRun.stub(dir, "backoffice-backup.sh", "echo backup >> \"$LOG\"\nexit " + backupExit + "\n");
         ScriptRun.stub(dir, "umami-retention.sh", "echo retention >> \"$LOG\"\nexit " + retentionExit + "\n");
 
         Path bin = tmp.resolve("bin");
@@ -66,7 +75,10 @@ class BackupLoopTest {
                 echo sleep >> "$LOG"
                 if [[ "$(grep -c sleep "$LOG")" -ge 2 ]]; then kill -TERM "$PPID"; fi
                 """);
-        return ScriptRun.run(tmp, bin, Map.of("LOG", log().toString(), "BACKUP_HOUR", "3"), loop);
+        Map<String, String> env = new HashMap<>(settings);
+        env.put("LOG", log().toString());
+        env.put("BACKUP_HOUR", "3");
+        return ScriptRun.run(tmp, bin, env, loop);
     }
 
     private Path log() {
@@ -86,8 +98,20 @@ class BackupLoopTest {
 
         assertEquals("backup\nretention\nsleep\nsleep\n", ScriptRun.log(log()),
                 "the loop sleeps and comes round again, and does not re-run the day's backup: " + result.out());
-        assertTrue(result.out().contains("Umami retention failed"), result.out());
+        assertTrue(result.out().contains("umami-retention.sh failed"), result.out());
         assertFalse(result.out().contains("Backup failed"), result.out());
+    }
+
+    /**
+     * The core backup service sets neither: the loop runs backup.sh and
+     * nothing after it, since Umami's retention belongs with Umami's backup
+     * (back-office decoupling, step 4).
+     */
+    @Test
+    void theCoreLoopRunsBackupShAndNothingAfter() throws Exception {
+        ScriptRun.Result result = runLoop(0, 0, Map.of());
+
+        assertEquals("core-backup\nsleep\nsleep\n", ScriptRun.log(log()), result.out());
     }
 
     /** No fresh backup holds the rows, so nothing is deleted that day. */

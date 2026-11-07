@@ -105,7 +105,7 @@ app. Two settings are optional and rarely needed:
    document once at startup and logs the result to the app's log:
 
    ```bash
-   docker compose -f docker-compose.prod.yml logs app | grep "OIDC discovery"
+   docker compose logs app | grep "OIDC discovery"
    ```
 
    Expect `OIDC discovery reachable`. The log belongs to the container, so a
@@ -159,7 +159,7 @@ app. Two settings are optional and rarely needed:
 ## When something goes wrong
 
 A failed sign-in lands on the login page with a message. Each attempt also
-writes one line to the app's log (`docker compose -f docker-compose.prod.yml
+writes one line to the app's log (`docker compose
 logs app`):
 - `Reader sign-in refused or failed: <code> (<reason>)` for a failure;
 - `Reader <name> signed in (new account|existing account)` for a success.
@@ -183,5 +183,5 @@ logs app`):
 | Scopes requested | `openid profile email` |
 | Account binding | Google's issuer plus subject (`sub`), stored in `pressroom_user.sso_issuer`/`sso_subject` (migration V030) |
 | Reader username | `reader-` plus 10 random characters |
-| Log | `docker compose -f docker-compose.prod.yml logs app`; also `/app/logs/pressroom.log` in the app container (logger `pressroom.sso`) |
+| Log | `docker compose logs app`; also `/app/logs/pressroom.log` in the app container (logger `pressroom.sso`) |
 | Released in | Pressroom 0.1.16 |

@@ -29,9 +29,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Deque;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
@@ -58,15 +61,69 @@ class ProductionComposeTest {
 
     private static final Path COMPOSE = Paths.get("../docker-compose.prod.yml");
 
+    /** The back-office services (wiki SA-15), merged over the core file by COMPOSE_FILE in .env. */
+    private static final Path OVERLAY = Paths.get("../docker-compose.backoffice.yml");
+
+    /** The two files the host deploys, as Compose merges them. */
     private static Map<String, Object> compose;
 
-    @SuppressWarnings("unchecked")
+    private static Map<String, Object> core;
+    private static Map<String, Object> overlay;
+
     @BeforeAll
     static void load() throws IOException {
-        assertTrue(Files.exists(COMPOSE), "missing " + COMPOSE.toAbsolutePath());
-        try (InputStream in = Files.newInputStream(COMPOSE)) {
-            compose = (Map<String, Object>) new Yaml().load(in);
+        core = yaml(COMPOSE);
+        overlay = yaml(OVERLAY);
+        compose = merge(core, overlay);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> yaml(Path file) throws IOException {
+        assertTrue(Files.exists(file), "missing " + file.toAbsolutePath());
+        try (InputStream in = Files.newInputStream(file)) {
+            return (Map<String, Object>) new Yaml().load(in);
         }
+    }
+
+    /**
+     * Compose's merge, as far as these two files use it: services, networks
+     * and volumes are unions, and a service in both files (only {@code app},
+     * which the overlay gives its back-office addresses) has its environment
+     * maps merged and every other key from the core.
+     */
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> merge(Map<String, Object> base, Map<String, Object> over) {
+        Map<String, Object> merged = new LinkedHashMap<>(base);
+        for (String section : List.of("services", "networks", "volumes")) {
+            Map<String, Object> union = new LinkedHashMap<>();
+            Map<String, Object> a = (Map<String, Object>) base.get(section);
+            Map<String, Object> b = (Map<String, Object>) over.get(section);
+            if (a != null) {
+                union.putAll(a);
+            }
+            if (b != null) {
+                b.forEach((name, value) -> union.merge(name, value == null ? new LinkedHashMap<>() : value,
+                        (x, y) -> "services".equals(section) ? mergeService((Map<String, Object>) x,
+                                (Map<String, Object>) y) : x));
+            }
+            merged.put(section, union);
+        }
+        return merged;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> mergeService(Map<String, Object> a, Map<String, Object> b) {
+        Map<String, Object> svc = new LinkedHashMap<>(a);
+        Map<String, Object> env = new LinkedHashMap<>();
+        Optional.ofNullable((Map<String, Object>) a.get("environment")).ifPresent(env::putAll);
+        Optional.ofNullable((Map<String, Object>) b.get("environment")).ifPresent(env::putAll);
+        svc.put("environment", env);
+        return svc;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> servicesOf(Map<String, Object> file) {
+        return (Map<String, Object>) file.get("services");
     }
 
     @SuppressWarnings("unchecked")
@@ -142,8 +199,9 @@ class ProductionComposeTest {
         assertEquals("no", String.valueOf(service("provision").get("restart")),
                 "provision is a one-shot job, not a restarting service");
 
-        // umami's database is on umami-db (spec 2026-11-03), not provision's server.
-        for (String dependent : List.of("app", "listmonk")) {
+        // umami's and listmonk's databases are on servers of their own
+        // (umami-db, listmonk-db), not provision's.
+        for (String dependent : List.of("app")) {
             Object dependsOnRaw = service(dependent).get("depends_on");
             assertNotNull(dependsOnRaw, dependent + " must declare depends_on");
             if (!(dependsOnRaw instanceof Map<?, ?> dependsOn)) {
@@ -365,7 +423,7 @@ class ProductionComposeTest {
                 StandardCharsets.UTF_8);
         assertTrue(Pattern.compile("(?m)^#?UMAMI_CONSOLE_BIND=").matcher(envExample).find(),
                 "deploy/.env.example must name UMAMI_CONSOLE_BIND, or nobody finds the LAN bind");
-        assertTrue(Pattern.compile("(?ms)^:8081 \\{\\s*reverse_proxy umami:3000\\s*}")
+        assertTrue(Pattern.compile("(?ms)^:8081 \\{\\s*reverse_proxy \\{\\$ANALYTICS_UPSTREAM}\\s*}")
                         .matcher(caddyDirectives()).find(),
                 "the dashboard is a fixed :8081 site in the Caddyfile, not a hostname");
     }
@@ -411,7 +469,7 @@ class ProductionComposeTest {
             assertTrue(Pattern.compile("(?m)^#?" + key + "=").matcher(envExample).find(),
                     "deploy/.env.example must document " + key);
         }
-        for (Path file : List.of(COMPOSE, Paths.get("../deploy/.env.example"))) {
+        for (Path file : List.of(COMPOSE, OVERLAY, Paths.get("../deploy/.env.example"))) {
             assertFalse(Files.readString(file, StandardCharsets.UTF_8).contains("PRESSROOM_ANALYTICS_JDBC"),
                     file + " still names the removed PRESSROOM_ANALYTICS_JDBC_* settings");
         }
@@ -462,10 +520,11 @@ class ProductionComposeTest {
         String script = Files.readString(Paths.get("../deploy/backup/umami-retention.sh"), StandardCharsets.UTF_8);
         assertTrue(script.contains("umami-retention.sql"), "umami-retention.sh must apply the retention SQL");
         String loop = Files.readString(Paths.get("../deploy/backup/loop.sh"), StandardCharsets.UTF_8);
-        assertTrue(loop.contains("\"$(dirname \"$0\")/umami-retention.sh\""),
-                "loop.sh must call the retention script relative to itself, as it does backup.sh");
+        assertTrue(loop.contains("\"$(dirname \"$0\")/${AFTER_BACKUP}\""),
+                "loop.sh must call the after-backup step relative to itself, as it does the backup");
 
-        Map<String, Object> backup = (Map<String, Object>) service("backup").get("environment");
+        Map<String, Object> backup = (Map<String, Object>) service("backoffice-backup").get("environment");
+        assertEquals("umami-retention.sh", backup.get("AFTER_BACKUP"), "retention follows the back-office backup");
         assertEquals("${UMAMI_RETENTION_DAYS:-}", backup.get("UMAMI_RETENTION_DAYS"));
         String envExample = Files.readString(Paths.get("../deploy/.env.example"), StandardCharsets.UTF_8);
         assertTrue(Pattern.compile("(?m)^#?UMAMI_RETENTION_DAYS=730$").matcher(envExample).find(),
@@ -504,7 +563,7 @@ class ProductionComposeTest {
                 "@tracker path /analytics/{$UMAMI_SCRIPT_NAME:script.js}",
                 "handle @tracker {",
                 "uri strip_prefix /analytics",
-                "reverse_proxy umami:3000",
+                "reverse_proxy {$ANALYTICS_UPSTREAM}",
                 "}",
                 "@send {",
                 "path /analytics/api/send",
@@ -512,7 +571,7 @@ class ProductionComposeTest {
                 "}",
                 "handle @send {",
                 "uri strip_prefix /analytics",
-                "reverse_proxy umami:3000",
+                "reverse_proxy {$ANALYTICS_UPSTREAM}",
                 "}",
                 "handle /analytics/* {",
                 "respond 404",
@@ -550,7 +609,7 @@ class ProductionComposeTest {
             }
             allowlists.add(analyticsLines);
             assertEquals(List.of("handle @tracker {", "handle @send {"), umamiProxyParents(directives),
-                    "in " + firstNonBlankLine(directives) + ", reverse_proxy umami may appear only "
+                    "in " + firstNonBlankLine(directives) + ", the analytics upstream may appear only "
                             + "inside the tracker and send handles");
             for (String path : List.of("/analytics/recorder.js", "/analytics/api/record",
                     "/analytics/api/websites/*/recorder")) {
@@ -567,7 +626,7 @@ class ProductionComposeTest {
                 "handle_path /analytics/* forwards every Umami path; use the allowlist");
     }
 
-    /** The header of the block enclosing each {@code reverse_proxy umami:3000}, in order. */
+    /** The header of the block enclosing each {@code reverse_proxy {$ANALYTICS_UPSTREAM}}, in order. */
     private static List<String> umamiProxyParents(String directives) {
         List<String> parents = new ArrayList<>();
         Deque<String> open = new ArrayDeque<>();
@@ -577,7 +636,7 @@ class ProductionComposeTest {
                 open.push(t);
             } else if ("}".equals(t)) {
                 open.poll();
-            } else if (t.startsWith("reverse_proxy umami")) {
+            } else if (t.startsWith("reverse_proxy {$ANALYTICS_UPSTREAM}")) {
                 parents.add(open.isEmpty() ? "(top level)" : open.peek());
             }
         }
@@ -626,14 +685,16 @@ class ProductionComposeTest {
                 assertTrue(image.startsWith(expected + "${IMAGE_VERSION"), name + ": " + image);
             }
         });
-        assertEquals(Set.of("provision", "admin", "app", "caddy", "analytics-views", "umami-move", "backup"),
+        assertEquals(Set.of("provision", "admin", "app", "caddy", "analytics-views", "umami-move", "listmonk-move",
+                        "backup", "backoffice-backup"),
                 Set.copyOf(ours));
     }
 
     /** The volume names the cutover copies into; caddy's keep their names, under the new project. */
     @Test
     void theVolumesArePressroomVolumes() {
-        assertEquals(Set.of("pressroom-pgdata", "pressroom-umami-pgdata", "pressroom-mediafiles",
+        assertEquals(Set.of("pressroom-pgdata", "pressroom-umami-pgdata", "pressroom-listmonk-pgdata",
+                        "pressroom-backoffice-backups", "pressroom-mediafiles",
                         "pressroom-search-index", "pressroom-uploads", "pressroom-backups", "caddy-data",
                         "caddy-config"),
                 ((Map<?, ?>) compose.get("volumes")).keySet());
@@ -646,7 +707,7 @@ class ProductionComposeTest {
     /** Machine names only: the prose word is Phase 3. */
     @Test
     void theFileNamesNoOldMachineName() throws IOException {
-        String text = Files.readString(COMPOSE, StandardCharsets.UTF_8);
+        String text = Files.readString(COMPOSE, StandardCharsets.UTF_8) + Files.readString(OVERLAY, StandardCharsets.UTF_8);
         Matcher m = Pattern.compile("(?<![A-Za-z])roller|ROLLER").matcher(text); // rebrand:keep
         List<String> found = new ArrayList<>();
         while (m.find()) {
@@ -931,15 +992,44 @@ class ProductionComposeTest {
      * start (umami-move failed, on an upgrade that has already replaced the
      * old umami container) would leave caddy created but never started, and
      * every blog down. The 0.7.2 rehearsal did exactly that. Caddy dials
-     * umami:3000 per request, so starting first only means the tracker
-     * paths answer 502 until Umami is up.
+     * the analytics upstream per request, so starting first only means the
+     * tracker paths answer 502 until Umami is up. The same holds for every
+     * back-office service (SA-15), listmonk included: caddy waits for the
+     * app and nothing else.
      */
     @Test
-    void theBlogNeverWaitsForAnalytics() {
+    void theBlogNeverWaitsForABackOfficeService() {
         Object deps = service("caddy").get("depends_on");
-        String names = deps instanceof Map<?, ?> map ? map.keySet().toString() : String.valueOf(deps);
-        assertFalse(names.contains("umami"), "caddy must not depend on umami: " + names);
-        assertTrue(names.contains("app"), names);
+        Object names = deps instanceof Map<?, ?> map ? List.copyOf(map.keySet()) : deps;
+        assertEquals(List.of("app"), names, "caddy waits for the app only");
+    }
+
+    /**
+     * Back-office decoupling, step 1 (spec 2026-11-06-back-office-decoupling-design.md):
+     * Caddy reaches Umami and listmonk at addresses .env can change, so the
+     * services can leave this compose project without a new Caddyfile. The
+     * compose defaults keep today's in-project names; neither may be empty,
+     * since Caddy cannot adapt a bare {@code reverse_proxy}.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void caddyReachesBackOfficeServicesOnlyThroughSettings() throws IOException {
+        String directives = caddyDirectives();
+        for (String literal : List.of("umami:", "listmonk:")) {
+            assertFalse(directives.contains(literal),
+                    "the Caddyfile names a back-office host outright (" + literal + "); use the upstream setting");
+        }
+        assertTrue(directives.contains("reverse_proxy {$NEWSLETTER_UPSTREAM}"), "the newsletter site's upstream");
+
+        Map<String, Object> env = (Map<String, Object>) service("caddy").get("environment");
+        assertEquals("${ANALYTICS_UPSTREAM:-umami:3000}", env.get("ANALYTICS_UPSTREAM"));
+        assertEquals("${NEWSLETTER_UPSTREAM:-listmonk:9000}", env.get("NEWSLETTER_UPSTREAM"));
+
+        String envExample = Files.readString(Paths.get("../deploy/.env.example"), StandardCharsets.UTF_8);
+        for (String key : List.of("ANALYTICS_UPSTREAM", "NEWSLETTER_UPSTREAM")) {
+            assertTrue(Pattern.compile("(?m)^#" + key + "=").matcher(envExample).find(),
+                    "deploy/.env.example must document " + key + ", commented out");
+        }
     }
 
     /** AC 3: the app is not on the network umami-db is on. */
@@ -954,36 +1044,102 @@ class ProductionComposeTest {
             }
         });
         assertEquals(new TreeSet<>(Set.of("umami-db", "umami", "umami-move", "analytics-views",
-                "backup")), onAnalytics);
+                "backoffice-backup")), onAnalytics);
     }
 
     /** AC 5-7: a one-shot from the app image, between both servers, before umami. */
     @Test
     @SuppressWarnings("unchecked")
-    void theMoveIsAOneShotBetweenTheTwoServers() throws IOException {
-        Map<String, Object> move = service("umami-move");
+    void theMoveIsAOneShotBetweenTheTwoServers() {
+        Map<String, Object> env = assertMoveOneShot("umami-move", "umami-db", "analytics");
+        assertEquals("${UMAMI_DB:-umami}", env.get("MOVE_DB"));
+        assertEquals("website_event", env.get("MOVE_MARKER_TABLE"));
+        assertEquals("${UMAMI_DB_USER:-umami}", env.get("MOVE_DB_USER"));
+        assertTrue(String.valueOf(env.get("MOVE_DB_PASSWORD")).startsWith("${UMAMI_DB_PASSWORD:?"));
+        assertEquals("UMAMI_DB_PASSWORD", env.get("MOVE_PASSWORD_SETTING"));
+    }
+
+    /**
+     * Back-office decoupling, step 2: listmonk leaves Pressroom's server for
+     * one of its own, as Umami did in 0.7.2. Its own login and network; the
+     * app reaches listmonk through its API alone, never its database.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void listmonkHasADatabaseServerOfItsOwn() {
+        Map<String, Object> db = service("listmonk-db");
+        assertEquals(service("postgres").get("image"), db.get("image"), "the same pinned engine as postgres");
+        Map<String, Object> dbEnv = (Map<String, Object>) db.get("environment");
+        assertEquals("${LISTMONK_DB:-listmonk}", dbEnv.get("POSTGRES_DB"));
+        assertEquals("${LISTMONK_DB_USER:-listmonk}", dbEnv.get("POSTGRES_USER"));
+        assertTrue(String.valueOf(dbEnv.get("POSTGRES_PASSWORD")).startsWith("${LISTMONK_DB_PASSWORD:?"));
+        assertEquals(List.of("pressroom-listmonk-pgdata:/var/lib/postgresql"), db.get("volumes"));
+        String health = String.valueOf(((Map<String, Object>) db.get("healthcheck")).get("test"));
+        assertTrue(health.contains("pg_isready -h 127.0.0.1 "), health);
+        assertNull(db.get("ports"), "listmonk-db publishes nothing");
+        assertEquals(List.of("newsletter"), db.get("networks"));
+
+        Map<String, Object> listmonk = service("listmonk");
+        Map<String, Object> env = (Map<String, Object>) listmonk.get("environment");
+        assertEquals("listmonk-db", env.get("LISTMONK_db__host"));
+        assertEquals("${LISTMONK_DB_USER:-listmonk}", env.get("LISTMONK_db__user"));
+        assertTrue(String.valueOf(env.get("LISTMONK_db__password")).startsWith("${LISTMONK_DB_PASSWORD:?"));
+        env.values().forEach(v -> assertFalse(String.valueOf(v).contains("POSTGRES_"),
+                "listmonk never uses Pressroom's server login: " + v));
+        Map<String, Object> deps = (Map<String, Object>) listmonk.get("depends_on");
+        assertEquals(Map.of("condition", "service_healthy"), deps.get("listmonk-db"));
+        assertEquals(Map.of("condition", "service_completed_successfully"), deps.get("listmonk-move"),
+                "a listmonk started on an empty listmonk-db would install into it, and the move would never run");
+        assertNull(deps.get("provision"), "provision no longer creates listmonk's database");
+        assertEquals(List.of("internal", "newsletter"), listmonk.get("networks"));
+
+        Set<String> onNewsletter = new TreeSet<>();
+        services().forEach((name, raw) -> {
+            Object networks = ((Map<String, Object>) raw).get("networks");
+            if (networks instanceof List<?> list && list.contains("newsletter")) {
+                onNewsletter.add(name);
+            }
+        });
+        assertEquals(new TreeSet<>(Set.of("listmonk-db", "listmonk", "listmonk-move", "backoffice-backup")),
+                onNewsletter, "only listmonk, its one-shot and the back-office backup reach listmonk-db");
+    }
+
+    /** The same move script as Umami's, told listmonk's database, server and marker table. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void listmonksMoveIsAOneShotBetweenTheTwoServers() {
+        Map<String, Object> env = assertMoveOneShot("listmonk-move", "listmonk-db", "newsletter");
+        assertEquals("${LISTMONK_DB:-listmonk}", env.get("MOVE_DB"));
+        assertEquals("subscribers", env.get("MOVE_MARKER_TABLE"));
+        assertEquals("${LISTMONK_DB_USER:-listmonk}", env.get("MOVE_DB_USER"));
+        assertTrue(String.valueOf(env.get("MOVE_DB_PASSWORD")).startsWith("${LISTMONK_DB_PASSWORD:?"));
+        assertEquals("LISTMONK_DB_PASSWORD", env.get("MOVE_PASSWORD_SETTING"));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> assertMoveOneShot(String name, String server, String network) {
+        Map<String, Object> move = service(name);
         assertEquals(service("app").get("image"), move.get("image"));
-        assertEquals(List.of("/app/umami-move.sh"), move.get("entrypoint"));
+        assertEquals(List.of("/app/db-move.sh"), move.get("entrypoint"));
         assertEquals("no", String.valueOf(move.get("restart")));
         assertNull(move.get("env_file"), "it needs two servers' logins, not every secret in .env");
         assertNull(move.get("ports"));
-        assertEquals(List.of("internal", "analytics"), move.get("networks"));
+        assertEquals(List.of("internal", network), move.get("networks"));
         Map<String, Object> deps = (Map<String, Object>) move.get("depends_on");
         assertEquals(Map.of("condition", "service_healthy"), deps.get("postgres"));
-        assertEquals(Map.of("condition", "service_healthy"), deps.get("umami-db"));
+        assertEquals(Map.of("condition", "service_healthy"), deps.get(server));
         Map<String, Object> env = (Map<String, Object>) move.get("environment");
-        assertEquals("umami-db", env.get("UMAMI_PGHOST"));
-        assertEquals("${UMAMI_DB_USER:-umami}", env.get("UMAMI_DB_USER"));
-        assertTrue(String.valueOf(env.get("UMAMI_DB_PASSWORD")).startsWith("${UMAMI_DB_PASSWORD:?"));
+        assertEquals(name, env.get("MOVE_NAME"));
+        assertEquals(server, env.get("MOVE_PGHOST"));
         assertTrue(String.valueOf(env.get("POSTGRES_PASSWORD")).startsWith("${POSTGRES_PASSWORD:?"));
-        assertEquals("${UMAMI_DB:-umami}", env.get("UMAMI_DB"));
+        return env;
     }
 
     /** AC 9-11: the one-shot and the backup reach Umami on umami-db with its own login. */
     @Test
     @SuppressWarnings("unchecked")
     void theAnalyticsJobsUseUmamisServer() {
-        for (String name : List.of("analytics-views", "backup")) {
+        for (String name : List.of("analytics-views", "backoffice-backup")) {
             Map<String, Object> env = (Map<String, Object>) service(name).get("environment");
             assertEquals("umami-db", env.get("UMAMI_PGHOST"), name);
             assertEquals("${UMAMI_DB_USER:-umami}", env.get("UMAMI_DB_USER"), name);
@@ -994,23 +1150,155 @@ class ProductionComposeTest {
         assertEquals(List.of("analytics"), service("analytics-views").get("networks"));
     }
 
-    /** AC 4: a grant on the old umami database would fail every deploy once it is dropped. */
+    /**
+     * AC 4: a grant on the old umami database would fail every deploy once it
+     * is dropped. Since 0.8.5 the same holds for listmonk's: provision.sh
+     * names no back-office database at all.
+     */
     @Test
-    void provisionNoLongerTouchesUmamisDatabase() throws IOException {
-        assertFalse(((Map<?, ?>) service("provision").get("environment")).containsKey("UMAMI_DB"));
-        String provision = Files.readString(Paths.get("../deploy/provision.sh"), StandardCharsets.UTF_8);
-        assertFalse(stripShellComments(provision).contains("UMAMI_DB"),
-                "provision.sh must not create or grant on Umami's database");
+    void provisionNoLongerTouchesABackOfficeDatabase() throws IOException {
+        Map<?, ?> env = (Map<?, ?>) service("provision").get("environment");
+        String provision = stripShellComments(
+                Files.readString(Paths.get("../deploy/provision.sh"), StandardCharsets.UTF_8));
+        for (String key : List.of("UMAMI_DB", "LISTMONK_DB")) {
+            assertFalse(env.containsKey(key), "provision gets no " + key);
+            assertFalse(provision.contains(key), "provision.sh must not create or grant on " + key);
+        }
     }
 
     /** AC 12 (the part a test can see): .env.example names both new settings. */
     @Test
     void theEnvExampleDocumentsUmamisServerLogin() throws IOException {
         String envExample = Files.readString(Paths.get("../deploy/.env.example"), StandardCharsets.UTF_8);
-        for (String key : List.of("UMAMI_DB_USER", "UMAMI_DB_PASSWORD")) {
+        for (String key : List.of("UMAMI_DB_USER", "UMAMI_DB_PASSWORD", "LISTMONK_DB_USER", "LISTMONK_DB_PASSWORD")) {
             assertTrue(Pattern.compile("(?m)^#?" + key + "=").matcher(envExample).find(),
                     "deploy/.env.example must document " + key);
         }
+    }
+
+    // ---------------------------------------------------------------------
+    // Back-office decoupling, steps 3 and 4 (spec 2026-11-06): the core file
+    // and the back-office overlay
+    // ---------------------------------------------------------------------
+
+    private static final Set<String> CORE_SERVICES = Set.of("postgres", "provision", "admin", "app", "caddy", "backup");
+
+    private static final Set<String> BACK_OFFICE_SERVICES = Set.of("umami", "umami-db", "umami-move",
+            "analytics-views", "listmonk", "listmonk-db", "listmonk-move", "backoffice-backup");
+
+    /**
+     * The core runs alone once the services leave: nothing in it waits for,
+     * networks with, or holds the credentials of a back-office service, so
+     * dropping the overlay from COMPOSE_FILE is the whole cut-over on this
+     * side.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void theCoreFileStandsAlone() {
+        assertEquals(CORE_SERVICES, servicesOf(core).keySet());
+        Set<String> coreNetworks = ((Map<String, Object>) core.get("networks")).keySet();
+        servicesOf(core).forEach((name, raw) -> {
+            Map<String, Object> svc = (Map<String, Object>) raw;
+            Object deps = svc.get("depends_on");
+            Collection<?> on = deps instanceof Map<?, ?> map ? map.keySet() : deps == null ? List.of() : (List<?>) deps;
+            on.forEach(dep -> assertTrue(CORE_SERVICES.contains(String.valueOf(dep)), name + " waits for " + dep));
+            Object networks = svc.get("networks");
+            if (networks instanceof List<?> list) {
+                list.forEach(n -> assertTrue(coreNetworks.contains(String.valueOf(n)), name + " joins " + n));
+            }
+            Object env = svc.get("environment");
+            if (env instanceof Map<?, ?> map) {
+                map.forEach((key, value) -> {
+                    String text = key + "=" + value;
+                    for (String marker : List.of("UMAMI", "LISTMONK")) {
+                        assertFalse(text.contains(marker) && !"caddy".equals(name),
+                                name + " carries back-office configuration: " + text);
+                    }
+                });
+            }
+        });
+    }
+
+    /**
+     * Every back-office service lives in the overlay, the seed of the
+     * suite's own repository; the overlay touches the core only to give the
+     * app the addresses of the services it holds.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void theOverlayHoldsEveryBackOfficeService() {
+        Set<String> expected = new TreeSet<>(BACK_OFFICE_SERVICES);
+        expected.add("app");
+        assertEquals(expected, new TreeSet<>(servicesOf(overlay).keySet()));
+        Map<String, Object> app = (Map<String, Object>) servicesOf(overlay).get("app");
+        assertEquals(Set.of("environment"), app.keySet(), "the overlay only adds the app's back-office addresses");
+        assertEquals(Map.of(
+                        "PRESSROOM_ANALYTICS_UMAMI_APIURL", "${PRESSROOM_ANALYTICS_UMAMI_APIURL-http://umami:3000}",
+                        "PRESSROOM_ANALYTICS_UMAMI_PASSWORD", "${UMAMI_PRESSROOM_PASSWORD:-}",
+                        "PRESSROOM_NEWSLETTER_LISTMONK_BASEURL",
+                        "${PRESSROOM_NEWSLETTER_LISTMONK_BASEURL-http://listmonk:9000}"),
+                app.get("environment"));
+        Map<String, Object> coreApp = (Map<String, Object>) servicesOf(core).get("app");
+        assertFalse(String.valueOf(coreApp.get("environment")).contains("PRESSROOM_"),
+                "the core app takes PRESSROOM_* from .env only: " + coreApp.get("environment"));
+        assertTrue(((Map<String, Object>) overlay.get("x-logging")).containsKey("driver"),
+                "anchors do not cross files: the overlay declares its own log rotation");
+    }
+
+    /** The host deploys both files through .env, which Compose reads natively. */
+    @Test
+    void theEnvExampleSelectsBothFiles() throws IOException {
+        String envExample = Files.readString(Paths.get("../deploy/.env.example"), StandardCharsets.UTF_8);
+        assertTrue(Pattern.compile("(?m)^COMPOSE_FILE=docker-compose\\.prod\\.yml:docker-compose\\.backoffice\\.yml$")
+                .matcher(envExample).find(), "deploy/.env.example must select the core file and the overlay");
+        assertFalse(Pattern.compile("(?m)^PRESSROOM_NEWSLETTER_LISTMONK_BASEURL=").matcher(envExample).find(),
+                "the overlay supplies listmonk's address; set in .env it would outlive the overlay");
+    }
+
+    /** upgrade.sh downloads the overlay from every release, so the release must attach it. */
+    @Test
+    void everyReleaseAttachesTheOverlay() throws IOException {
+        String workflow = Files.readString(Paths.get("../.github/workflows/release.yml"), StandardCharsets.UTF_8);
+        assertTrue(workflow.contains("cp docker-compose.backoffice.yml release-assets/"), "copied into the assets");
+        assertTrue(Pattern.compile("(?m)^\\s*release-assets/docker-compose\\.backoffice\\.yml$").matcher(workflow).find(),
+                "listed among the assets the release must carry");
+        String upgrade = Files.readString(Paths.get("../deploy/upgrade.sh"), StandardCharsets.UTF_8);
+        assertTrue(upgrade.contains("FILES=(docker-compose.prod.yml docker-compose.backoffice.yml deploy.sh env.example)"),
+                "upgrade.sh downloads it");
+    }
+
+    /**
+     * Step 4: the core backup is Pressroom's database and media; the
+     * back-office databases are backed up beside their services, each from
+     * its own server with its own login, into a volume of their own.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void theBackOfficeIsBackedUpBesideItsServices() throws IOException {
+        Map<String, Object> backup = service("backoffice-backup");
+        assertEquals(service("app").get("image"), backup.get("image"));
+        assertEquals(List.of("/app/backup/loop.sh"), backup.get("entrypoint"));
+        assertEquals("0:0", backup.get("user"), "the backups volume is created root-owned");
+        assertEquals(List.of("pressroom-backoffice-backups:/backups"), backup.get("volumes"));
+        assertEquals(List.of("analytics", "newsletter"), backup.get("networks"));
+        Map<String, Object> env = (Map<String, Object>) backup.get("environment");
+        assertEquals("backoffice-backup.sh", env.get("BACKUP_SCRIPT"));
+        assertEquals("listmonk-db", env.get("LISTMONK_PGHOST"));
+        assertEquals("${LISTMONK_DB_USER:-listmonk}", env.get("LISTMONK_DB_USER"));
+        assertTrue(String.valueOf(env.get("LISTMONK_DB_PASSWORD")).startsWith("${LISTMONK_DB_PASSWORD:?"));
+        env.values().forEach(v -> assertFalse(String.valueOf(v).contains("POSTGRES_"),
+                "the back-office backup never logs in to Pressroom's server: " + v));
+
+        Map<String, Object> coreBackup = (Map<String, Object>) service("backup").get("environment");
+        assertNull(coreBackup.get("BACKUP_SCRIPT"), "the core loop runs backup.sh, its default");
+        String script = stripShellComments(
+                Files.readString(Paths.get("../deploy/backup/backup.sh"), StandardCharsets.UTF_8));
+        for (String marker : List.of("UMAMI", "LISTMONK", "umami", "listmonk")) {
+            assertFalse(script.contains(marker), "backup.sh names a back-office database: " + marker);
+        }
+        String dockerfile = Files.readString(Paths.get("../Dockerfile"), StandardCharsets.UTF_8);
+        assertTrue(Pattern.compile("chmod 755[^\\n]*/app/backup/backoffice-backup\\.sh").matcher(dockerfile).find(),
+                "the back-office backup script must be baked and executable");
     }
 
     private static String stripShellComments(String script) {

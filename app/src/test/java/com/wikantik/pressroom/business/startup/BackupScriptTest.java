@@ -35,7 +35,9 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Runs the shipped deploy/backup/backup.sh with stub {@code pg_dump},
+ * Runs the shipped deploy/backup/backup.sh (Pressroom's database and media)
+ * and deploy/backup/backoffice-backup.sh (each back-office database from its
+ * own server, back-office decoupling step 4) with stub {@code pg_dump},
  * {@code psql}, {@code pg_restore} and {@code tar} first on PATH: each
  * records its arguments, the dumping ones write the file they were asked
  * for, and the test steers their exit codes with variables.
@@ -43,6 +45,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class BackupScriptTest {
 
     private static final Path BACKUP = Paths.get("../deploy/backup/backup.sh").toAbsolutePath();
+    private static final Path BACKOFFICE = Paths.get("../deploy/backup/backoffice-backup.sh").toAbsolutePath();
 
     @TempDir Path dir;
     private Path backups;
@@ -53,14 +56,15 @@ class BackupScriptTest {
         backups = Files.createDirectories(dir.resolve("backups"));
         Path bin = dir.resolve("bin");
         ScriptRun.stub(bin, "pg_dump", """
-                echo "pg_dump host=$PGHOST $*" >> "$STUB_LOG"
+                echo "pg_dump host=$PGHOST user=$PGUSER $*" >> "$STUB_LOG"
                 while [[ $# -gt 0 ]]; do
                   if [[ "$1" == "-f" ]]; then echo DUMP > "$2"; fi
                   shift
                 done
                 """);
         ScriptRun.stub(bin, "psql", """
-                echo "psql $*" >> "$STUB_LOG"
+                echo "psql host=$PGHOST user=$PGUSER $*" >> "$STUB_LOG"
+                [[ "$PGHOST" != "${STUB_DOWN_HOST:-}" ]] || exit 2
                 [[ "${STUB_PSQL_RC:-0}" -eq 0 ]] || exit "${STUB_PSQL_RC}"
                 echo "${STUB_PSQL_OUT-1}"
                 """);
@@ -83,7 +87,16 @@ class BackupScriptTest {
         env.put("POSTGRES_USER", "pressroom");
         env.put("POSTGRES_PASSWORD", "secret");
         env.put("POSTGRES_DB", "pressroom");
-        env.put("UMAMI_DB_PASSWORD", "secret2");
+    }
+
+    /** What compose hands the back-office backup: each server and its own login, nothing of Pressroom's. */
+    private ScriptRun.Result backOfficeBackup() throws Exception {
+        Map<String, String> backOffice = new HashMap<>(env);
+        backOffice.keySet().removeIf(k -> k.startsWith("POSTGRES_"));
+        backOffice.putAll(Map.of("UMAMI_PGHOST", "umami-db", "UMAMI_DB_USER", "umami", "UMAMI_DB_PASSWORD", "secret2",
+                "UMAMI_DB", "umami", "LISTMONK_PGHOST", "listmonk-db", "LISTMONK_DB_USER", "listmonk",
+                "LISTMONK_DB_PASSWORD", "secret3", "LISTMONK_DB", "listmonk"));
+        return ScriptRun.run(dir, dir.resolve("bin"), backOffice, BACKOFFICE);
     }
 
     private Path log() {
@@ -101,26 +114,85 @@ class BackupScriptTest {
     }
 
     @Test
-    void aGoodRunPublishesEveryDumpAndTheArchive() throws Exception {
+    void aGoodRunPublishesTheDatabaseAndTheArchive() throws Exception {
         ScriptRun.Result r = backup();
 
         assertEquals(0, r.exit(), r.out());
         List<String> names = published();
-        assertEquals(4, names.size(), names.toString());
+        assertEquals(2, names.size(), names.toString());
         assertTrue(names.stream().anyMatch(n -> n.matches("pressroom-\\d{8}T\\d{6}Z\\.dump")), names.toString());
-        assertTrue(names.stream().anyMatch(n -> n.matches("umami-\\d{8}T\\d{6}Z\\.dump")), names.toString());
-        assertTrue(names.stream().anyMatch(n -> n.matches("listmonk-\\d{8}T\\d{6}Z\\.dump")), names.toString());
         assertTrue(names.stream().anyMatch(n -> n.matches("volumes-\\d{8}T\\d{6}Z\\.tar\\.gz")), names.toString());
         assertTrue(r.out().contains("Backup complete"), r.out());
-        // Umami's database has a server of its own (0.7.2) and goes last, so a
-        // fault there costs the analytics dump only
         List<String> calls = ScriptRun.log(log()).lines()
                 .filter(l -> l.startsWith("pg_dump ") || l.startsWith("tar ")).toList();
-        assertEquals(4, calls.size(), calls.toString());
-        assertTrue(calls.get(3).startsWith("pg_dump host=umami-db ") && calls.get(3).contains(" -d umami "),
-                "umami last, from umami-db: " + calls);
-        assertTrue(calls.get(0).startsWith("pg_dump host=postgres ") && calls.get(1).startsWith("pg_dump host=postgres "),
-                "pressroom and listmonk from Pressroom's server: " + calls);
+        assertEquals(2, calls.size(), calls.toString());
+        assertTrue(calls.get(0).startsWith("pg_dump host=postgres user=pressroom "), calls.toString());
+        assertFalse(ScriptRun.log(log()).contains("psql"), "no service databases to look for any more");
+    }
+
+    // ---------------------------------------------------------------------
+    // The back-office backup
+    // ---------------------------------------------------------------------
+
+    @Test
+    void theBackOfficeBackupDumpsEachDatabaseFromItsOwnServer() throws Exception {
+        ScriptRun.Result r = backOfficeBackup();
+
+        assertEquals(0, r.exit(), r.out());
+        List<String> names = published();
+        assertEquals(2, names.size(), names.toString());
+        assertTrue(names.stream().anyMatch(n -> n.matches("umami-\\d{8}T\\d{6}Z\\.dump")), names.toString());
+        assertTrue(names.stream().anyMatch(n -> n.matches("listmonk-\\d{8}T\\d{6}Z\\.dump")), names.toString());
+        List<String> dumps = ScriptRun.log(log()).lines().filter(l -> l.startsWith("pg_dump ")).toList();
+        assertEquals(2, dumps.size(), dumps.toString());
+        assertTrue(dumps.get(0).startsWith("pg_dump host=umami-db user=umami ") && dumps.get(0).contains(" -d umami "),
+                dumps.toString());
+        assertTrue(dumps.get(1).startsWith("pg_dump host=listmonk-db user=listmonk ")
+                && dumps.get(1).contains(" -d listmonk "), dumps.toString());
+        assertFalse(ScriptRun.log(log()).contains("tar "), "media is the core backup's");
+        assertTrue(r.out().contains("Rotating"), r.out());
+        assertTrue(r.out().contains("Back-office backup complete"), r.out());
+        assertFalse(r.out().contains("secret"), "no password is printed: " + r.out());
+    }
+
+    /** A fault on one server costs that dump only; the run still fails, so the loop skips retention. */
+    @Test
+    void anUnreachableServerCostsItsOwnDumpOnly() throws Exception {
+        env.put("STUB_DOWN_HOST", "umami-db");
+
+        ScriptRun.Result r = backOfficeBackup();
+
+        assertNotEquals(0, r.exit(), r.out());
+        assertTrue(r.out().contains("umami -> FAILED: cannot reach umami-db"), r.out());
+        assertTrue(published().stream().anyMatch(n -> n.startsWith("listmonk-") && n.endsWith(".dump")),
+                published().toString());
+        assertFalse(published().stream().anyMatch(n -> n.startsWith("umami-")), published().toString());
+        assertTrue(r.out().contains("INCOMPLETE"), r.out());
+    }
+
+    @Test
+    void anAbsentServiceDatabaseIsSkipped() throws Exception {
+        env.put("STUB_PSQL_OUT", "");
+
+        ScriptRun.Result r = backOfficeBackup();
+
+        assertEquals(0, r.exit(), r.out());
+        assertTrue(r.out().contains("listmonk -> none (no such database on listmonk-db)"), r.out());
+        assertTrue(r.out().contains("umami -> none (no such database on umami-db)"), r.out());
+        assertEquals(List.of(), published());
+    }
+
+    /** A back-office dump pg_restore cannot list is not published, and fails the run. */
+    @Test
+    void aBackOfficeDumpPgRestoreCannotReadIsNotPublished() throws Exception {
+        env.put("STUB_RESTORE_RC", "1");
+
+        ScriptRun.Result r = backOfficeBackup();
+
+        assertNotEquals(0, r.exit(), r.out());
+        assertFalse(published().stream().anyMatch(n -> n.endsWith(".dump")), published().toString());
+        assertEquals(2, ScriptRun.log(log()).lines().filter(l -> l.startsWith("pg_dump ")).count(),
+                "the second database is still tried");
     }
 
     /**
@@ -174,27 +246,14 @@ class BackupScriptTest {
 
     /** A check that could not run is not a database that is absent. */
     @Test
-    void aFailedExistenceQueryFailsTheBackupRatherThanSkippingTheDump() throws Exception {
+    void aFailedExistenceQueryFailsTheBackOfficeBackupRatherThanSkippingTheDump() throws Exception {
         env.put("STUB_PSQL_RC", "2");
 
-        ScriptRun.Result r = backup();
+        ScriptRun.Result r = backOfficeBackup();
 
         assertNotEquals(0, r.exit(), r.out());
         assertFalse(r.out().contains("no such database"), r.out());
-        assertFalse(r.out().contains("Backup complete"), r.out());
-    }
-
-    @Test
-    void anAbsentServiceDatabaseIsSkipped() throws Exception {
-        env.put("STUB_PSQL_OUT", "");
-
-        ScriptRun.Result r = backup();
-
-        assertEquals(0, r.exit(), r.out());
-        assertTrue(r.out().contains("listmonk -> none (no such database on this stack)"), r.out());
-        assertTrue(r.out().contains("umami -> none (no such database on umami-db)"), r.out());
-        assertFalse(published().stream().anyMatch(n -> n.startsWith("listmonk-")), published().toString());
-        assertFalse(published().stream().anyMatch(n -> n.startsWith("umami-")), published().toString());
+        assertFalse(r.out().contains("backup complete"), r.out());
     }
 
     /** pg_restore -l reads the archive's table of contents: a dump it cannot list is no backup. */
@@ -204,7 +263,7 @@ class BackupScriptTest {
 
         assertEquals(0, r.exit(), r.out());
         List<String> listed = ScriptRun.log(log()).lines().filter(l -> l.startsWith("pg_restore -l ")).toList();
-        assertEquals(3, listed.size(), ScriptRun.log(log()));
+        assertEquals(1, listed.size(), ScriptRun.log(log()));
         assertTrue(listed.stream().allMatch(l -> l.endsWith(".dump.tmp")), "checked before the rename: " + listed);
     }
 

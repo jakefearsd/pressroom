@@ -1,0 +1,318 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  The ASF licenses this file to You
+# under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.  For additional information regarding
+# copyright in this work, please see the NOTICE file in the top level
+# directory of this distribution.
+# The back-office services this host runs for Pressroom (wiki SA-15): Umami
+# (analytics) and listmonk (newsletter), each on its own database server, with
+# their one-shots and their backup. Merged over docker-compose.prod.yml by
+# COMPOSE_FILE in .env (see that file's header); never run on its own.
+#
+# This file is the seed of the back-office suite's own repository. Moving the
+# services there is: deploy them from it, restore the two dumps
+# backoffice-backup writes, point ANALYTICS_UPSTREAM, NEWSLETTER_UPSTREAM,
+# PRESSROOM_ANALYTICS_UMAMI_APIURL and PRESSROOM_NEWSLETTER_LISTMONK_BASEURL in
+# .env at the suite's LAN addresses, and drop this file from COMPOSE_FILE.
+#
+# The one-shots and backoffice-backup still run from Pressroom's image, which
+# bakes their scripts (deploy/db-move.sh, deploy/analytics-views.sh,
+# deploy/backup/); the suite rebuilds them on images of its own.
+
+# Container-log rotation, shared by every service (anchors do not cross
+# files, so this repeats docker-compose.prod.yml's). Docker's default json-file
+# driver never rotates, and the app writes its whole log to stdout, so without
+# this the host's /var/lib/docker grows until the disk fills. 5 x 10 MB per
+# container; `docker compose logs` reads across the rotated files.
+# ProductionComposeTest pins it on every service.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+
+  # Only the app's back-office addresses: while the services run here, the
+  # app reaches them over the compose network. `-`, not `:-`: set BLANK in
+  # .env, a setting stays blank, which switches that feature off (analytics:
+  # no tracker and no calls to Umami; newsletter: the subscribe form 503s).
+  # Pressroom registers blogs and reads their numbers through Umami's API as
+  # its own non-admin account `pressroom` (created by analytics-views); the
+  # password is generated into .env by deploy.sh.
+  app:
+    environment:
+      PRESSROOM_ANALYTICS_UMAMI_APIURL: ${PRESSROOM_ANALYTICS_UMAMI_APIURL-http://umami:3000}
+      PRESSROOM_ANALYTICS_UMAMI_PASSWORD: ${UMAMI_PRESSROOM_PASSWORD:-}
+      PRESSROOM_NEWSLETTER_LISTMONK_BASEURL: ${PRESSROOM_NEWSLETTER_LISTMONK_BASEURL-http://listmonk:9000}
+
+  umami:
+    # Digest-pinned like postgres and caddy. deploy.sh pulls on every run, so a
+    # moved tag could otherwise swap umami out mid-deploy; postgresql-latest is
+    # a floating tag and this stack's other third-party images are all pinned.
+    image: docker.umami.is/umami-software/umami@sha256:87312d334d009ee67ee0d2fba8fed01435547cc468e452243aef5133a9984d48
+    logging: *logging
+    # Its database is on umami-db (0.7.2+), not Pressroom's server. It waits
+    # for umami-move: an Umami started on an empty umami-db would migrate it,
+    # and the move -- which copies only into an empty one -- would then never
+    # bring the old data across.
+    depends_on:
+      umami-db:
+        condition: service_healthy
+      umami-move:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql://${UMAMI_DB_USER:-umami}:${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD must be set in .env (deploy.sh generates it)}@umami-db:5432/${UMAMI_DB:-umami}
+      DATABASE_TYPE: postgresql
+      APP_SECRET: ${UMAMI_APP_SECRET:?UMAMI_APP_SECRET must be set in .env (openssl rand -hex 32)}
+      CLIENT_IP_HEADER: X-Forwarded-For
+      DISABLE_TELEMETRY: "1"
+      TRACKER_SCRIPT_NAME: ${UMAMI_SCRIPT_NAME:-script.js}
+    restart: unless-stopped
+    # internal: caddy and the app reach it there. analytics: its database.
+    networks:
+      - internal
+      - analytics
+
+  # Umami's own PostgreSQL (0.7.2+; spec
+  # docs/superpowers/specs/2026-11-03-umami-database-server-design.md), the
+  # first step of moving Umami out of this stack: its data, volume and login
+  # are its own, so what is left to move later is a container and an address.
+  # The same digest-pinned engine as `postgres`. Its own superuser,
+  # UMAMI_DB_USER / UMAMI_DB_PASSWORD (deploy.sh generates the password). Only
+  # the `analytics` network, which the app is not on: Pressroom reaches Umami
+  # through its API alone.
+  umami-db:
+    image: postgres:18@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280
+    logging: *logging
+    environment:
+      POSTGRES_DB: ${UMAMI_DB:-umami}
+      POSTGRES_USER: ${UMAMI_DB_USER:-umami}
+      POSTGRES_PASSWORD: ${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD must be set in .env (deploy.sh generates it)}
+    volumes:
+      # Mounted where 18 keeps its versioned data directories; see postgres.
+      - pressroom-umami-pgdata:/var/lib/postgresql
+    healthcheck:
+      # Over TCP: on a first start the image's init server listens on the
+      # socket only, and umami-move connects over the network.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${UMAMI_DB_USER:-umami} -d ${UMAMI_DB:-umami}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+    networks:
+      - analytics
+
+  # One-shot: copies an existing host's Umami data from Pressroom's server to
+  # umami-db, once (deploy/db-move.sh says how it decides). umami waits for
+  # it to exit 0. A failure leaves umami-db as it was and Umami stopped (the
+  # blog stays up: caddy does not wait for umami), deploy.sh fails, and the
+  # next deploy tries again. The old database is never changed (the rollback
+  # point; dropped by hand later).
+  umami-move:
+    image: ghcr.io/jakefearsd/pressroom:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
+    logging: *logging
+    entrypoint: ["/app/db-move.sh"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      umami-db:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pressroom}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      MOVE_NAME: umami-move
+      MOVE_DB: ${UMAMI_DB:-umami}
+      MOVE_MARKER_TABLE: website_event
+      MOVE_COUNT_TABLES: website session website_event
+      MOVE_PGHOST: umami-db
+      MOVE_DB_USER: ${UMAMI_DB_USER:-umami}
+      MOVE_DB_PASSWORD: ${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD must be set in .env (deploy.sh generates it)}
+      MOVE_PASSWORD_SETTING: UMAMI_DB_PASSWORD
+    networks:
+      - internal
+      - analytics
+
+  # Installs the Grafana analytics contract's traffic view, then Pressroom's
+  # own Umami account from UMAMI_PRESSROOM_PASSWORD. Separate from
+  # `provision` because analytics_traffic is defined over `website_event`, a
+  # table umami creates on its OWN first boot -- and provision runs before
+  # umami is allowed to start. Applying it there deadlocks a fresh install.
+  #
+  # Nothing declares depends_on against this service, deliberately: if it fails
+  # or times out, the blog is still up; only the Grafana traffic view, or the
+  # account analytics registration signs in with, is missing until a re-run.
+  # ProductionComposeTest pins that nothing gates on it.
+  analytics-views:
+    image: ghcr.io/jakefearsd/pressroom:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
+    logging: *logging
+    entrypoint: ["/app/analytics-views.sh"]
+    restart: "no"
+    depends_on:
+      umami:
+        condition: service_started
+    environment:
+      UMAMI_PGHOST: umami-db
+      UMAMI_DB_USER: ${UMAMI_DB_USER:-umami}
+      UMAMI_DB_PASSWORD: ${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD must be set in .env (deploy.sh generates it)}
+      UMAMI_DB: ${UMAMI_DB:-umami}
+      ANALYTICS_VIEWS_WAIT_SECONDS: ${ANALYTICS_VIEWS_WAIT_SECONDS:-180}
+      UMAMI_PRESSROOM_PASSWORD: ${UMAMI_PRESSROOM_PASSWORD:-}
+    # Umami's database only; it never needs Pressroom's server.
+    networks:
+      - analytics
+
+  listmonk:
+    # v6.2.0, digest-pinned. The previous value was `listmonk/listmonk:v3`,
+    # which DOES NOT EXIST on Docker Hub -- `docker compose pull` failed on it,
+    # so a fresh production deploy was already broken before this wave. The
+    # oldest tag still published is v6.0.0. The --install/--idempotent/
+    # --upgrade/--yes flags below are unchanged in v6.2.0 (verified against the
+    # image's own --help), so the command block needs no edit; listmonk runs
+    # its own schema upgrade on first boot.
+    image: listmonk/listmonk@sha256:f535d59e14991337a9f2d570273685378ae86b0d7698c3e00da444e3bc205286
+    logging: *logging
+    # Its database is on listmonk-db (0.8.5), not Pressroom's server, with a
+    # login of its own. It waits for listmonk-move: a listmonk started on an
+    # empty listmonk-db would install into it, and the move -- which copies
+    # only into an empty one -- would then never bring the old data across.
+    depends_on:
+      listmonk-db:
+        condition: service_healthy
+      listmonk-move:
+        condition: service_completed_successfully
+    command: >
+      sh -c "./listmonk --install --idempotent --yes --config ''
+      && ./listmonk --upgrade --yes --config ''
+      && ./listmonk --config ''"
+    environment:
+      LISTMONK_app__address: "0.0.0.0:9000"
+      LISTMONK_app__root_url: ${LISTMONK_ROOT_URL:-https://newsletter.invalid}
+      LISTMONK_db__host: listmonk-db
+      LISTMONK_db__port: "5432"
+      LISTMONK_db__user: ${LISTMONK_DB_USER:-listmonk}
+      LISTMONK_db__password: ${LISTMONK_DB_PASSWORD:?LISTMONK_DB_PASSWORD must be set in .env (deploy.sh generates it)}
+      LISTMONK_db__database: ${LISTMONK_DB:-listmonk}
+      LISTMONK_db__ssl_mode: disable
+      LISTMONK_ADMIN_USER: ${LISTMONK_ADMIN_USER:-admin}
+      LISTMONK_ADMIN_PASSWORD: ${LISTMONK_ADMIN_PASSWORD:?LISTMONK_ADMIN_PASSWORD must be set in .env}
+    restart: unless-stopped
+    # internal: caddy and the app reach it there. newsletter: its database.
+    networks:
+      - internal
+      - newsletter
+
+  # listmonk's own PostgreSQL (0.8.5, back-office decoupling step 2), as
+  # umami-db is Umami's: its data, volume and login are its own. Its own
+  # superuser, LISTMONK_DB_USER / LISTMONK_DB_PASSWORD (deploy.sh generates
+  # the password). Only the `newsletter` network, which the app is not on:
+  # Pressroom reaches listmonk through its API alone.
+  listmonk-db:
+    image: postgres:18@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280
+    logging: *logging
+    environment:
+      POSTGRES_DB: ${LISTMONK_DB:-listmonk}
+      POSTGRES_USER: ${LISTMONK_DB_USER:-listmonk}
+      POSTGRES_PASSWORD: ${LISTMONK_DB_PASSWORD:?LISTMONK_DB_PASSWORD must be set in .env (deploy.sh generates it)}
+    volumes:
+      # Mounted where 18 keeps its versioned data directories; see postgres.
+      - pressroom-listmonk-pgdata:/var/lib/postgresql
+    healthcheck:
+      # Over TCP, as umami-db's: listmonk-move connects over the network.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${LISTMONK_DB_USER:-listmonk} -d ${LISTMONK_DB:-listmonk}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+    networks:
+      - newsletter
+
+  # One-shot: copies an existing host's listmonk data from Pressroom's server
+  # to listmonk-db, once, exactly as umami-move does for Umami. The old
+  # database on postgres is never changed (the rollback point; dropped by
+  # hand later).
+  listmonk-move:
+    image: ghcr.io/jakefearsd/pressroom:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
+    logging: *logging
+    entrypoint: ["/app/db-move.sh"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      listmonk-db:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pressroom}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      MOVE_NAME: listmonk-move
+      MOVE_DB: ${LISTMONK_DB:-listmonk}
+      MOVE_MARKER_TABLE: subscribers
+      MOVE_COUNT_TABLES: subscribers lists campaigns
+      MOVE_PGHOST: listmonk-db
+      MOVE_DB_USER: ${LISTMONK_DB_USER:-listmonk}
+      MOVE_DB_PASSWORD: ${LISTMONK_DB_PASSWORD:?LISTMONK_DB_PASSWORD must be set in .env (deploy.sh generates it)}
+      MOVE_PASSWORD_SETTING: LISTMONK_DB_PASSWORD
+    networks:
+      - internal
+      - newsletter
+
+  # The back-office databases, nightly, each from its own server with its own
+  # login, into a volume of their own; then Umami's retention, after a backup
+  # that succeeded (deploy/backup/loop.sh). See
+  # /app/backup/backoffice-backup.sh for the RESTORE procedure.
+  backoffice-backup:
+    image: ghcr.io/jakefearsd/pressroom:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
+    logging: *logging
+    entrypoint: ["/app/backup/loop.sh"]
+    # Root, as `backup` runs: the volume is created root-owned.
+    user: "0:0"
+    depends_on:
+      umami-db:
+        condition: service_healthy
+      listmonk-db:
+        condition: service_healthy
+    environment:
+      BACKUP_SCRIPT: backoffice-backup.sh
+      AFTER_BACKUP: umami-retention.sh
+      UMAMI_PGHOST: umami-db
+      UMAMI_DB_USER: ${UMAMI_DB_USER:-umami}
+      UMAMI_DB_PASSWORD: ${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD must be set in .env (deploy.sh generates it)}
+      UMAMI_DB: ${UMAMI_DB:-umami}
+      LISTMONK_PGHOST: listmonk-db
+      LISTMONK_DB_USER: ${LISTMONK_DB_USER:-listmonk}
+      LISTMONK_DB_PASSWORD: ${LISTMONK_DB_PASSWORD:?LISTMONK_DB_PASSWORD must be set in .env (deploy.sh generates it)}
+      LISTMONK_DB: ${LISTMONK_DB:-listmonk}
+      BACKUP_HOUR: ${BACKUP_HOUR:-3}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      # Umami analytics older than this many days are deleted after each
+      # night's backup (deploy/backup/umami-retention.sh); 0 = never. Unset
+      # means the SQL's own default, 730 (two years).
+      UMAMI_RETENTION_DAYS: ${UMAMI_RETENTION_DAYS:-}
+    volumes:
+      - pressroom-backoffice-backups:/backups
+    restart: unless-stopped
+    networks:
+      - analytics
+      - newsletter
+
+# `internal` is docker-compose.prod.yml's, shared by the merged project.
+networks:
+  # umami-db's network: umami, umami-move, analytics-views and backoffice-backup.
+  analytics:
+  # listmonk-db's network: listmonk, listmonk-move and backoffice-backup.
+  newsletter:
+
+volumes:
+  pressroom-umami-pgdata:
+  pressroom-listmonk-pgdata:
+  pressroom-backoffice-backups:

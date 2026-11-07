@@ -3,17 +3,17 @@
 #
 # Runs as the `provision` service in docker-compose.prod.yml, from the app
 # image, after postgres reports healthy and before app/listmonk start
-# (compose enforces both with depends_on conditions). Three steps: create the
-# listmonk database, apply the pressroom migration chain, and grant
-# grafana_ro CONNECT on the pressroom database. Every step is idempotent, so
+# (compose enforces both with depends_on conditions). Two steps: apply the
+# pressroom migration chain, and grant grafana_ro CONNECT on the pressroom
+# database. Every step is idempotent, so
 # it runs on every `docker compose up -d` and is a no-op once the stack is
 # current.
 #
-# Umami's database is not here since 0.7.2: it lives on Umami's own server,
-# umami-db, whose image creates it, and analytics-views grants on it there.
-# An old host's former umami database on this server is the move's rollback
-# point and is dropped by hand; nothing here may name it, or a GRANT on it
-# would fail every deploy after the drop.
+# No back-office database is here: Umami's lives on umami-db since 0.7.2 and
+# listmonk's on listmonk-db since 0.8.5, each created by its server's image
+# (wiki SA-15). An old host's former copies on this server are the moves'
+# rollback points and are dropped by hand; nothing here may name them, or a
+# statement on one would fail every deploy after the drop.
 #
 # This replaces the equivalent steps that used to live in deploy/deploy.sh and
 # needed a git checkout on the host to copy migrate.sh and the migrations into
@@ -42,21 +42,6 @@ export PGUSER="${POSTGRES_USER:?POSTGRES_USER must be set}"
 export PGPASSWORD="${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}"
 
 PRESSROOM_DB="${POSTGRES_DB:-pressroom}"
-LISTMONK_DB="${LISTMONK_DB:-listmonk}"
-
-echo "==> Ensuring the service databases exist..."
-# The newsletter service creates its own tables but not its own database, and postgres only runs initdb scripts on a first-ever start --
-# so on an already-deployed stack there is nobody to create them. `createdb` on
-# an existing database is an error, so ask first.
-for db in "${LISTMONK_DB}"; do
-    exists="$(psql -d "${PRESSROOM_DB}" -tAc "SELECT 1 FROM pg_database WHERE datname = ${db@Q}")"
-    if [[ -z "${exists}" ]]; then
-        createdb "${db}"
-        echo "    created ${db}."
-    else
-        echo "    ${db} already exists."
-    fi
-done
 
 echo "==> Applying ${PRESSROOM_DB} migrations..."
 # migrate.sh unmodified, so a deploy's migration step and a manual run can

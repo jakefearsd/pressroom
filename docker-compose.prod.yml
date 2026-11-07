@@ -15,9 +15,21 @@
 # directory of this distribution.
 
 # Production stack for Pressroom: app + postgres + caddy (TLS-terminating reverse
-# proxy) + umami (analytics) on its own umami-db + listmonk (newsletter) + backup.
+# proxy) + backup. The back-office services the app uses -- umami (analytics)
+# and listmonk (newsletter), each on its own database server -- are in
+# docker-compose.backoffice.yml, merged over this file while they run on this
+# host and dropped once they run with the back-office suite (wiki SA-15).
+# .env selects the files:
 #
-# This file and .env are the ONLY things a production host needs. Nothing is
+#   COMPOSE_FILE=docker-compose.prod.yml:docker-compose.backoffice.yml
+#
+# which plain `docker compose` reads by itself, so every command in
+# docker_deployment.md is `docker compose ...`, with no -f. deploy.sh adds
+# that line to a .env from before 0.8.5. Nothing in this file waits for,
+# networks with, or holds the credentials of a back-office service
+# (ProductionComposeTest pins it), so it also runs alone.
+#
+# These files and .env are the ONLY things a production host needs. Nothing is
 # bind-mounted from a checkout: the Caddyfile lives in the pressroom-caddy image,
 # and provision.sh, migrate.sh, the migrations, umami-views.sql and the backup
 # scripts all live in the pressroom image. ProductionComposeTest fails the build
@@ -27,13 +39,14 @@
 #
 # First-time setup (see docker_deployment.md for the full runbook):
 #   curl -LO <release-url>/docker-compose.prod.yml
+#   curl -LO <release-url>/docker-compose.backoffice.yml
 #   curl -L  <release-url>/env.example -o .env   # GitHub strips the dot
 #   curl -LO <release-url>/deploy.sh && chmod +x deploy.sh
 #   # edit .env: real domain, real secrets, real SMTP
 #   ./deploy.sh
 # Use deploy.sh, not a bare `docker compose up -d`: it generates
-# UMAMI_PRESSROOM_PASSWORD (Pressroom's Umami account) and UMAMI_DB_PASSWORD
-# (Umami's database server) when .env has none.
+# UMAMI_PRESSROOM_PASSWORD (Pressroom's Umami account), UMAMI_DB_PASSWORD and
+# LISTMONK_DB_PASSWORD (the back-office database servers) when .env has none.
 #
 # Only caddy publishes off-host ports: its 80 and 443, on host ports 80/443
 # unless SITE_HTTP_PORT/SITE_HTTPS_PORT move them (a host behind a tunnel
@@ -81,10 +94,9 @@ services:
     networks:
       - internal
 
-  # One-shot: creates the listmonk database, applies the pressroom migration
-  # chain, and grants grafana_ro. Every step is idempotent, so this runs on
-  # every `up -d` and is a no-op once current. app/listmonk wait
-  # for it to EXIT SUCCESSFULLY, which is what replaced deploy.sh's hand-rolled
+  # One-shot: applies the pressroom migration chain and grants grafana_ro.
+  # Every step is idempotent, so this runs on every `up -d` and is a no-op
+  # once current. The app waits for it to EXIT SUCCESSFULLY, which is what replaced deploy.sh's hand-rolled
   # migrate-then-start ordering. The analytics views are a separate one-shot
   # (see `analytics-views` below) that runs after umami has started, because
   # the view they install depends on a table only umami itself creates.
@@ -100,14 +112,12 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-pressroom}
       POSTGRES_USER: ${POSTGRES_USER:-pressroom}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
-      LISTMONK_DB: ${LISTMONK_DB:-listmonk}
     networks:
       - internal
 
-
   # The installer's account tool: create the first admin, reset a lost
   # password, or check that an admin exists. Never started by `up` -- only
-  #   docker compose -f docker-compose.prod.yml run --rm admin create --username NAME --email ADDRESS
+  #   docker compose run --rm admin create --username NAME --email ADDRESS
   # Being able to run it at all means controlling this host, which is the
   # trust it relies on. It gets the database credentials and nothing else
   # from .env. See docker_deployment.md, "First run".
@@ -144,13 +154,9 @@ services:
     env_file: .env
     environment:
       JAVA_OPTS: ${JAVA_OPTS:-}
-      # Pressroom registers blogs and reads their numbers through Umami's
-      # API, over this network, as its own non-admin account `pressroom`
-      # (created by analytics-views). The password is generated into .env by
-      # deploy.sh. `-`, not `:-`: unset, the URL defaults to Umami on this
-      # network; set BLANK in .env, it stays blank, and analytics is off.
-      PRESSROOM_ANALYTICS_UMAMI_APIURL: ${PRESSROOM_ANALYTICS_UMAMI_APIURL-http://umami:3000}
-      PRESSROOM_ANALYTICS_UMAMI_PASSWORD: ${UMAMI_PRESSROOM_PASSWORD:-}
+      # The back-office addresses (Umami's API, listmonk's) are not here:
+      # docker-compose.backoffice.yml adds them while it runs those services,
+      # and .env's PRESSROOM_* settings name them once they run elsewhere.
     volumes:
       - pressroom-mediafiles:/data/mediafiles
       - pressroom-search-index:/data/search-index
@@ -168,14 +174,14 @@ services:
   caddy:
     image: ghcr.io/jakefearsd/pressroom-caddy:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
     logging: *logging
-    # Not umami: the blog must never wait for analytics. An Umami that cannot
-    # start (a failed umami-move) would otherwise leave caddy -- the blog's
-    # only way in -- created but never started. Caddy dials umami:3000 per
-    # request, so until Umami is up only the tracker paths answer 502.
-    # ProductionComposeTest pins this.
+    # The app only, never a back-office service (SA-15): the blog must never
+    # wait for analytics or the newsletter. An Umami that cannot start (a
+    # failed umami-move) would otherwise leave caddy -- the blog's only way
+    # in -- created but never started. Caddy dials ANALYTICS_UPSTREAM and
+    # NEWSLETTER_UPSTREAM per request, so until they are up only their own
+    # paths answer 502. ProductionComposeTest pins this.
     depends_on:
       - app
-      - listmonk
     ports:
       # Host side movable from .env; unset, these are 80 and 443. Only the
       # host side moves: Caddy still listens on 80 and 443 in the container.
@@ -195,6 +201,12 @@ services:
     environment:
       SITE_DOMAIN: ${SITE_DOMAIN:?SITE_DOMAIN must be set in .env (a real domain, or :80 for LAN/testing)}
       LISTMONK_DOMAIN: ${LISTMONK_DOMAIN:-newsletter.invalid}
+      # Where Caddy reaches Umami (the tracker paths and the :8081 dashboard)
+      # and listmonk (LISTMONK_DOMAIN's site). Unset, the services in this
+      # compose project; a LAN address once they run with the back-office
+      # services (SA-15). Never empty: Caddy cannot adapt a bare upstream.
+      ANALYTICS_UPSTREAM: ${ANALYTICS_UPSTREAM:-umami:3000}
+      NEWSLETTER_UPSTREAM: ${NEWSLETTER_UPSTREAM:-listmonk:9000}
       # The tracker file name the Caddyfile lets through, the same one umami
       # serves (TRACKER_SCRIPT_NAME below).
       UMAMI_SCRIPT_NAME: ${UMAMI_SCRIPT_NAME:-script.js}
@@ -228,151 +240,8 @@ services:
     networks:
       - internal
 
-  umami:
-    # Digest-pinned like postgres and caddy. deploy.sh pulls on every run, so a
-    # moved tag could otherwise swap umami out mid-deploy; postgresql-latest is
-    # a floating tag and this stack's other third-party images are all pinned.
-    image: docker.umami.is/umami-software/umami@sha256:87312d334d009ee67ee0d2fba8fed01435547cc468e452243aef5133a9984d48
-    logging: *logging
-    # Its database is on umami-db (0.7.2+), not Pressroom's server. It waits
-    # for umami-move: an Umami started on an empty umami-db would migrate it,
-    # and the move -- which copies only into an empty one -- would then never
-    # bring the old data across.
-    depends_on:
-      umami-db:
-        condition: service_healthy
-      umami-move:
-        condition: service_completed_successfully
-    environment:
-      DATABASE_URL: postgresql://${UMAMI_DB_USER:-umami}:${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD must be set in .env (deploy.sh generates it)}@umami-db:5432/${UMAMI_DB:-umami}
-      DATABASE_TYPE: postgresql
-      APP_SECRET: ${UMAMI_APP_SECRET:?UMAMI_APP_SECRET must be set in .env (openssl rand -hex 32)}
-      CLIENT_IP_HEADER: X-Forwarded-For
-      DISABLE_TELEMETRY: "1"
-      TRACKER_SCRIPT_NAME: ${UMAMI_SCRIPT_NAME:-script.js}
-    restart: unless-stopped
-    # internal: caddy and the app reach it there. analytics: its database.
-    networks:
-      - internal
-      - analytics
-
-  # Umami's own PostgreSQL (0.7.2+; spec
-  # docs/superpowers/specs/2026-11-03-umami-database-server-design.md), the
-  # first step of moving Umami out of this stack: its data, volume and login
-  # are its own, so what is left to move later is a container and an address.
-  # The same digest-pinned engine as `postgres`. Its own superuser,
-  # UMAMI_DB_USER / UMAMI_DB_PASSWORD (deploy.sh generates the password). Only
-  # the `analytics` network, which the app is not on: Pressroom reaches Umami
-  # through its API alone.
-  umami-db:
-    image: postgres:18@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280
-    logging: *logging
-    environment:
-      POSTGRES_DB: ${UMAMI_DB:-umami}
-      POSTGRES_USER: ${UMAMI_DB_USER:-umami}
-      POSTGRES_PASSWORD: ${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD must be set in .env (deploy.sh generates it)}
-    volumes:
-      # Mounted where 18 keeps its versioned data directories; see postgres.
-      - pressroom-umami-pgdata:/var/lib/postgresql
-    healthcheck:
-      # Over TCP: on a first start the image's init server listens on the
-      # socket only, and umami-move connects over the network.
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${UMAMI_DB_USER:-umami} -d ${UMAMI_DB:-umami}"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-    restart: unless-stopped
-    networks:
-      - analytics
-
-  # One-shot: copies an existing host's Umami data from Pressroom's server to
-  # umami-db, once (deploy/umami-move.sh says how it decides). umami waits for
-  # it to exit 0. A failure leaves umami-db as it was and Umami stopped (the
-  # blog stays up: caddy does not wait for umami), deploy.sh fails, and the
-  # next deploy tries again. The old database is never changed (the rollback
-  # point; dropped by hand later).
-  umami-move:
-    image: ghcr.io/jakefearsd/pressroom:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
-    logging: *logging
-    entrypoint: ["/app/umami-move.sh"]
-    restart: "no"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      umami-db:
-        condition: service_healthy
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-pressroom}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
-      UMAMI_DB: ${UMAMI_DB:-umami}
-      UMAMI_PGHOST: umami-db
-      UMAMI_DB_USER: ${UMAMI_DB_USER:-umami}
-      UMAMI_DB_PASSWORD: ${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD must be set in .env (deploy.sh generates it)}
-    networks:
-      - internal
-      - analytics
-
-  # Installs the Grafana analytics contract's traffic view, then Pressroom's
-  # own Umami account from UMAMI_PRESSROOM_PASSWORD. Separate from
-  # `provision` because analytics_traffic is defined over `website_event`, a
-  # table umami creates on its OWN first boot -- and provision runs before
-  # umami is allowed to start. Applying it there deadlocks a fresh install.
-  #
-  # Nothing declares depends_on against this service, deliberately: if it fails
-  # or times out, the blog is still up; only the Grafana traffic view, or the
-  # account analytics registration signs in with, is missing until a re-run.
-  # ProductionComposeTest pins that nothing gates on it.
-  analytics-views:
-    image: ghcr.io/jakefearsd/pressroom:${IMAGE_VERSION:?IMAGE_VERSION must be set in .env}
-    logging: *logging
-    entrypoint: ["/app/analytics-views.sh"]
-    restart: "no"
-    depends_on:
-      umami:
-        condition: service_started
-    environment:
-      UMAMI_PGHOST: umami-db
-      UMAMI_DB_USER: ${UMAMI_DB_USER:-umami}
-      UMAMI_DB_PASSWORD: ${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD must be set in .env (deploy.sh generates it)}
-      UMAMI_DB: ${UMAMI_DB:-umami}
-      ANALYTICS_VIEWS_WAIT_SECONDS: ${ANALYTICS_VIEWS_WAIT_SECONDS:-180}
-      UMAMI_PRESSROOM_PASSWORD: ${UMAMI_PRESSROOM_PASSWORD:-}
-    # Umami's database only; it never needs Pressroom's server.
-    networks:
-      - analytics
-
-  listmonk:
-    # v6.2.0, digest-pinned. The previous value was `listmonk/listmonk:v3`,
-    # which DOES NOT EXIST on Docker Hub -- `docker compose pull` failed on it,
-    # so a fresh production deploy was already broken before this wave. The
-    # oldest tag still published is v6.0.0. The --install/--idempotent/
-    # --upgrade/--yes flags below are unchanged in v6.2.0 (verified against the
-    # image's own --help), so the command block needs no edit; listmonk runs
-    # its own schema upgrade on first boot.
-    image: listmonk/listmonk@sha256:f535d59e14991337a9f2d570273685378ae86b0d7698c3e00da444e3bc205286
-    logging: *logging
-    depends_on:
-      provision:
-        condition: service_completed_successfully
-    command: >
-      sh -c "./listmonk --install --idempotent --yes --config ''
-      && ./listmonk --upgrade --yes --config ''
-      && ./listmonk --config ''"
-    environment:
-      LISTMONK_app__address: "0.0.0.0:9000"
-      LISTMONK_app__root_url: ${LISTMONK_ROOT_URL:-https://newsletter.invalid}
-      LISTMONK_db__host: postgres
-      LISTMONK_db__port: "5432"
-      LISTMONK_db__user: ${POSTGRES_USER:-pressroom}
-      LISTMONK_db__password: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
-      LISTMONK_db__database: ${LISTMONK_DB:-listmonk}
-      LISTMONK_db__ssl_mode: disable
-      LISTMONK_ADMIN_USER: ${LISTMONK_ADMIN_USER:-admin}
-      LISTMONK_ADMIN_PASSWORD: ${LISTMONK_ADMIN_PASSWORD:?LISTMONK_ADMIN_PASSWORD must be set in .env}
-    restart: unless-stopped
-    networks:
-      - internal
-
+  # Pressroom's database and media, nightly. The back-office databases are
+  # backed up beside their services (backoffice-backup, in the overlay).
   backup:
     # The app image, for pg_dump/psql plus the baked-in backup scripts. See
     # /app/backup/backup.sh for the RESTORE procedure.
@@ -392,18 +261,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-pressroom}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
       PGHOST: postgres
-      # Umami's dump and the retention job read umami-db, as its own login.
-      UMAMI_PGHOST: umami-db
-      UMAMI_DB_USER: ${UMAMI_DB_USER:-umami}
-      UMAMI_DB_PASSWORD: ${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD must be set in .env (deploy.sh generates it)}
-      UMAMI_DB: ${UMAMI_DB:-umami}
-      LISTMONK_DB: ${LISTMONK_DB:-listmonk}
       BACKUP_HOUR: ${BACKUP_HOUR:-3}
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
-      # Umami analytics older than this many days are deleted after each
-      # night's backup (deploy/backup/umami-retention.sh); 0 = never. Unset
-      # means the SQL's own default, 730 (two years).
-      UMAMI_RETENTION_DAYS: ${UMAMI_RETENTION_DAYS:-}
     volumes:
       - pressroom-backups:/backups
       - pressroom-mediafiles:/data/mediafiles:ro
@@ -413,16 +272,12 @@ services:
     restart: unless-stopped
     networks:
       - internal
-      - analytics
 
 networks:
   internal:
-  # umami-db's network: umami, umami-move, analytics-views and backup only.
-  analytics:
 
 volumes:
   pressroom-pgdata:
-  pressroom-umami-pgdata:
   pressroom-mediafiles:
   pressroom-search-index:
   pressroom-uploads:

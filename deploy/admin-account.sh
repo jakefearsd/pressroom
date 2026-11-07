@@ -2,7 +2,7 @@
 #
 # Pressroom admin accounts, for whoever controls the host:
 #
-#   C="docker compose -f docker-compose.prod.yml"
+#   C="docker compose"
 #   $C run --rm admin create --username NAME --email ADDRESS
 #   $C run --rm admin reset-password --username NAME
 #   $C run --rm admin status
@@ -156,7 +156,7 @@ SQL
     fi
     echo "password reset for ${USERNAME}."
     echo "The running app caches accounts it has loaded; restart it so the new password takes effect:"
-    echo "  docker compose -f docker-compose.prod.yml restart app"
+    echo "  docker compose restart app"
 }
 
 cmd_status() {
@@ -173,7 +173,7 @@ SQL
 ) || die "database error while listing admin accounts"
     if [[ -z "${admins}" ]]; then
         echo "no enabled admin account. Create one with:"
-        echo "  docker compose -f docker-compose.prod.yml run --rm admin create --username NAME --email ADDRESS"
+        echo "  docker compose run --rm admin create --username NAME --email ADDRESS"
         exit 3
     fi
     echo "enabled admin accounts:"

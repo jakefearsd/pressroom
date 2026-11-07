@@ -8,14 +8,16 @@
 #   --no-backup  skip the backup taken before anything changes
 #   --prune      handed to deploy.sh: prune dangling images afterwards
 #
-# Run from the directory holding docker-compose.prod.yml and .env. It does
+# Run from the directory holding the compose files and .env. It does
 # the Upgrades steps of docker_deployment.md, ordered so that nothing changes
 # until everything needed to finish is in hand:
 #
-#   1. downloads the release's docker-compose.prod.yml, deploy.sh and
-#      env.example (a missing one stops here)
-#   2. takes a backup through the backup service (a failed one stops here);
-#      the rollback recipe it prints restores that dump by name
+#   1. downloads the release's docker-compose.prod.yml,
+#      docker-compose.backoffice.yml, deploy.sh and env.example (a missing
+#      one stops here)
+#   2. takes a backup through the backup service, and through the
+#      backoffice-backup service when it runs (a failed one stops here); the
+#      rollback recipe it prints restores the core dump by name
 #   3. shows how the downloaded files differ from the ones in place
 #   4. keeps .env and the files it replaces as <name>.bak-<timestamp>
 #   5. moves the new files in and sets IMAGE_VERSION in .env
@@ -35,9 +37,8 @@ set -euo pipefail
 
 RELEASE_URL="${RELEASE_URL:-https://github.com/jakefearsd/pressroom/releases/download}"
 RELEASE_URL="${RELEASE_URL%/}"
-COMPOSE_FILE=docker-compose.prod.yml
-COMPOSE=(docker compose -f "${COMPOSE_FILE}")
-FILES=(docker-compose.prod.yml deploy.sh env.example)
+COMPOSE=(docker compose)
+FILES=(docker-compose.prod.yml docker-compose.backoffice.yml deploy.sh env.example)
 
 usage() { awk '/^#!/{next} !/^#/{exit} {sub(/^# ?/,""); print}' "$0"; }
 
@@ -59,7 +60,7 @@ if [[ ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     exit 2
 fi
 
-for required in "${COMPOSE_FILE}" .env; do
+for required in docker-compose.prod.yml .env; do
     if [[ ! -f "${required}" ]]; then
         echo "Missing ${required} in $(pwd). Run this from the deploy directory." >&2
         exit 1
@@ -70,6 +71,13 @@ if ! grep -q '^IMAGE_VERSION=' .env; then
     exit 1
 fi
 current=$(sed -n 's/^IMAGE_VERSION=//p' .env | tail -n 1)
+
+# The compose files this stack runs: COMPOSE_FILE in .env, or the core file
+# alone on a stack from before 0.8.5, whose one file held every service.
+# Exported, so every compose call below reads the running stack's files; the
+# new deploy.sh reads .env again for itself.
+COMPOSE_FILE="$(sed -n 's/^COMPOSE_FILE=//p' .env | tail -n 1)"
+export COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
 
 # True when version $1 predates the 0.5.0 rename (V041).
 before_rename() {
@@ -116,6 +124,14 @@ if [[ "${BACKUP}" -eq 1 ]]; then
         exit 1
     fi
     dump=$(sed -n 's/^  database -> //p' "${staging}/backup.log" | tail -n 1)
+    # The back-office databases, when their own backup service runs (0.8.5+;
+    # before that, the backup above dumped them too).
+    if [[ -n "$("${COMPOSE[@]}" ps -q backoffice-backup </dev/null 2>/dev/null)" ]]; then
+        if ! "${COMPOSE[@]}" exec -T backoffice-backup /app/backup/backoffice-backup.sh </dev/null; then
+            echo "The back-office backup failed; nothing has changed. Fix it, or rerun with --no-backup." >&2
+            exit 1
+        fi
+    fi
 fi
 
 echo "==> How the release files differ from the ones in place:"
@@ -130,9 +146,11 @@ for f in "${FILES[@]}"; do
 done
 
 ts=$(date -u +%Y%m%dT%H%M%SZ)  # the backup files' own stamp
+replaced=()  # what the rollback puts back: a file this release adds had no copy
 for f in .env "${FILES[@]}"; do
     if [[ -f "${f}" ]]; then
         cp -p "${f}" "${f}.bak-${ts}"
+        replaced+=("${f}")
     fi
 done
 for f in "${FILES[@]}"; do
@@ -157,7 +175,7 @@ else
     echo "      taken before this upgrade with pg_restore, as docker_deployment.md, \"Restore\" shows.)"
     echo "      ${COMPOSE[*]} stop app"
 fi
-echo "      for f in .env ${FILES[*]}; do cp -p \"\$f.bak-${ts}\" \"\$f\"; done; ./deploy.sh"
+echo "      for f in ${replaced[*]}; do cp -p \"\$f.bak-${ts}\" \"\$f\"; done; ./deploy.sh"
 # The cutover leaves its row counts in the directory it made.
 if [[ -f cutover-counts-before.txt ]]; then
     echo "    That reaches ${current}, no further back. To return to the stack this host ran before"
@@ -187,6 +205,9 @@ fi
 # deploy.sh's health check passes on whatever image came up. An
 # IMAGE_VERSION exported in this shell beats .env in compose, and would
 # leave the old version running, healthy.
+# deploy.sh may have added COMPOSE_FILE to .env: ask with what it deployed.
+COMPOSE_FILE="$(sed -n 's/^COMPOSE_FILE=//p' .env | tail -n 1)"
+export COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
 running=$("${COMPOSE[@]}" ps --format '{{.Image}}' app </dev/null)
 if [[ "${running}" != *":${VERSION}" ]]; then
     echo "The app is running ${running:-nothing}, not ${VERSION}." \

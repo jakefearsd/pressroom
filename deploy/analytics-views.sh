@@ -56,7 +56,7 @@ until psql -d "${UMAMI_DB}" --no-psqlrc --quiet -tAc \
         "SELECT to_regclass('public.website_event') IS NOT NULL" 2>/dev/null | grep -qx t; do
     if (( SECONDS >= deadline )); then
         echo "website_event did not appear within ${WAIT_SECONDS}s; analytics views NOT installed." >&2
-        echo "The rest of the stack is unaffected. Re-run: docker compose -f docker-compose.prod.yml up -d analytics-views" >&2
+        echo "The rest of the stack is unaffected. Re-run: docker compose up -d analytics-views" >&2
         exit 1
     fi
     sleep 3
@@ -99,7 +99,7 @@ if ! psql -d "${UMAMI_DB}" --no-psqlrc --quiet --single-transaction \
         -c '\getenv pw UMAMI_PRESSROOM_PASSWORD' \
         -f "${SQL_DIR}/umami-pressroom-account.sql"; then
     echo "The Umami account step failed; analytics registration will not work until it succeeds." >&2
-    echo "Re-run: docker compose -f docker-compose.prod.yml up -d analytics-views" >&2
+    echo "Re-run: docker compose up -d analytics-views" >&2
     exit 1
 fi
 echo "==> Umami account '${ACCOUNT}' ready."

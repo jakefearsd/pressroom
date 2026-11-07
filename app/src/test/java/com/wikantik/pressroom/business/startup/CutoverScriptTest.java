@@ -117,6 +117,7 @@ class CutoverScriptTest {
                   postgres:
                     image: postgres:18@sha256:feedface
                 """);
+        Files.writeString(release.resolve("docker-compose.backoffice.yml"), "services: {}\n");
         Files.writeString(release.resolve("deploy.sh"), """
                 #!/bin/bash
                 echo "deploy.sh $* project=${COMPOSE_PROJECT_NAME:-} $(grep ^IMAGE_VERSION= .env)" >> "$STUB_LOG"
@@ -884,11 +885,11 @@ class CutoverScriptTest {
      * there cannot be left behind (passed when written; proven to bite by
      * dropping caddy-config from CADDY_VOLUMES).
      *
-     * <p>Except volumes the pre-rename stack never had: {@code pressroom-umami-pgdata}
-     * (0.7.2, Umami's own server) starts empty on a cutover host, and the
-     * {@code umami-move} one-shot fills it from the {@code umami} database
-     * that came across inside {@code pgdata}. There is no old volume to
-     * copy it from.
+     * <p>The back-office volumes the pre-rename stack never had
+     * ({@code pressroom-umami-pgdata}, {@code pressroom-listmonk-pgdata}) start
+     * empty on a cutover host, and the move one-shots fill them from the
+     * databases that came across inside {@code pgdata}. They are declared in
+     * {@code docker-compose.backoffice.yml}, so this file names none of them.
      */
     @Test
     void copiesExactlyTheVolumesTheComposeFileDeclares() throws Exception {
@@ -909,7 +910,9 @@ class CutoverScriptTest {
         }
         copied.addAll(bashArray(script, "CADDY_VOLUMES"));
         assertFalse(declared.isEmpty(), "parsed the top-level volumes block");
-        assertTrue(declared.remove("pressroom-umami-pgdata"), "the exemption names a volume that exists");
+        // The back-office volumes (umami-db's, listmonk-db's) are declared in
+        // docker-compose.backoffice.yml since 0.8.5, not here, so none needs
+        // an exemption.
         assertEquals(declared, copied);
     }
 
