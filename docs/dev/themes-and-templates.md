@@ -448,6 +448,25 @@ map assets without this macro fails the build.
   12.1 or better, heading `#` at its hover opacity 5.4. Portfolio: content
   link 7.7, hover 10.3, captions and quotes (`--pf-muted`) 6.0. Journal
   links: 5.8 light, 6.9 dark.
+- **Author boxes** (inline-styled callouts in the post itself, 2026-11-07).
+  An inline style names one canvas, and the theme's scheme can pick the
+  other. Pale boxes with no text colour of their own went light on light in
+  journal's dark scheme and on portfolio, unreadable on phones in dark mode.
+  Text over a translucent tint with a colour chosen for a dark page went
+  light on white in a light scheme. Two rules, both `!important`, decide by
+  what the author's own style says:
+  - an inline background that is light (`#c`-`#f` hex, or `white`) and no inline
+    `color` keeps a dark ink, `#1a202c`, in every scheme, as do links (`#0a3d91`)
+    and quotes and captions (`#3d4451`) inside it;
+  - text over an `rgba()`/`hsla()` inline background follows the page's ink, on
+    the box and on any child that names a colour without painting a background.
+
+  Contrast on the palest (`#fff`) and darkest (`#c0c0c0`) light backgrounds:
+  ink 9.0 or better, link 5.5, quote 5.4. The selectors match the sanitizer's
+  serialisation (`property:value;…`, no spaces), which
+  `ContentAssetsRenderingTest` checks by running real markup through the
+  pipeline. Inline colours with no background at all (a grey caption written
+  for one canvas) are not touched.
 - **Script.** A classic bootstrap, shaped like the map assets. It injects
   `$url.site/pressroom-ui/scripts/pressroom-content.js` only after finding an
   unprocessed `pre > code` or content `h2`-`h4` with an id. Each call hands

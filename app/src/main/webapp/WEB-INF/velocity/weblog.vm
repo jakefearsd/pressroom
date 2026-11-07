@@ -1015,6 +1015,25 @@ specificity, so a theme's own rule for the same element still wins; the
 heading anchor is the exception, specific enough to beat a theme's content
 link colour, because a # in a link colour reads as part of the heading text.
 
+Author boxes. Authors and agents write callouts as inline styles, and an
+inline style names one canvas. A pale background with no text colour was
+written for the dark ink of a light page; on a dark canvas (journal and
+frontpage in a dark scheme, portfolio always) it inherited the theme's light
+ink, light on light, unreadable on phones in dark mode (2026-11-07). So an
+element whose inline background is light (a hex colour starting c to f, or
+white) and which names no text colour of its own keeps a dark ink in every
+scheme, as do the links, quotes and captions in it, which themes colour
+themselves. And text over a translucent inline background (rgba, hsla)
+follows the page's ink, whatever colour the author named, on the box and on
+its children: the page shows through, so a colour picked for one canvas fails
+on the other. A child that paints its own background (a dark code chip)
+keeps its own colour. These rules are !important because they decide against
+theme rules and, for the tint, against the inline colour itself; they fire
+only where the author's own styling chose the canvas. The selectors match the
+sanitizer's output (property:value, ; between, no spaces), which
+ContentAssetsRenderingTest checks through the real pipeline; the contrast
+ratios are there too.
+
 The script half is a classic bootstrap, the shape of #showMapAssets: it
 injects pressroom-content.js (highlight.js and the DOM work; built from
 app/frontend/src/content.js) only after finding an unprocessed code block or
@@ -1030,6 +1049,11 @@ covered by the img-src * data: every bundled head declares. Nothing else.
 *#
 #macro(showContentAssets)
 #set($pressroomContentScope = ".qj-prose, .tg-entry-content, .pf-entry-content, .pressroom-preview-prose, .pressroom-content")
+## Author boxes (single-quoted: a Velocity string literal is never parsed, so
+## the hex prefixes cannot be read as directives). See the comment above.
+#set($pressroomLightBox = ':is([style*="background-color:#c" i], [style*="background-color:#d" i], [style*="background-color:#e" i], [style*="background-color:#f" i], [style*="background:#c" i], [style*="background:#d" i], [style*="background:#e" i], [style*="background:#f" i], [style*="background-color:white" i], [style*="background:white" i])')
+#set($pressroomOwnInk = '[style^="color:" i], [style*=";color:" i]')
+#set($pressroomTint = ':is([style*="background-color:rgba(" i], [style*="background:rgba(" i], [style*="background-color:hsla(" i], [style*="background:hsla(" i])')
 <style>
 .markdown-alert {
   margin: 1.25em 0;
@@ -1100,6 +1124,12 @@ covered by the img-src * data: every bundled head declares. Nothing else.
   background-color: color-mix(in srgb, light-dark(#d1242f, #f85149) 8%, transparent);
 }
 .markdown-alert-caution .markdown-alert-title { color: inherit; color: light-dark(#a40e26, #f85149); }
+
+:where($pressroomContentScope) ${pressroomLightBox}:not($pressroomOwnInk) { color: #1a202c !important; }
+:where($pressroomContentScope) $pressroomLightBox a:not($pressroomOwnInk) { color: #0a3d91 !important; }
+:where($pressroomContentScope) $pressroomLightBox :is(blockquote, figcaption):not($pressroomOwnInk) { color: #3d4451 !important; }
+:where($pressroomContentScope) ${pressroomTint}:is($pressroomOwnInk),
+:where($pressroomContentScope) $pressroomTint :is($pressroomOwnInk):not([style*="background" i]) { color: inherit !important; }
 
 :where($pressroomContentScope) pre {
   margin: 1.25em 0;

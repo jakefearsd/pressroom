@@ -22,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -330,7 +331,199 @@ class ContentAssetsRenderingTest {
                 "line numbers must never be selectable:\n" + css);
     }
 
+    /**
+     * Authors (and agents) write boxes as inline styles: a pale background and
+     * no text colour of their own, written for the dark ink of a light page.
+     * In a dark scheme the box inherited the theme's light ink, light on
+     * light, which phones in dark mode could not read (2026-11-07: 115 such
+     * boxes across the journal blogs). Such a box keeps a dark ink in every
+     * scheme, and so do the links, quotes and captions in it, which themes
+     * colour themselves. A box that names its own text colour, or whose
+     * background is dark, is left alone.
+     *
+     * <p>The markup goes through the real pipeline, so the selectors are
+     * checked against the style attribute the sanitizer actually emits.
+     */
+    @Test
+    void anAuthorsLightBoxKeepsADarkInkInEveryScheme() throws Exception {
+        entryWithText("light-box", """
+                <div style="Background-Color: #F0F7FF; border-left: 4px solid #0066cc; padding: 14px 18px">
+                <p>Plan ahead: <a href="https://example.com/">book here</a>.</p></div>
+                <div style="background:#f8f9fa;border:1px solid #e9ecef"><p>Grey box.</p></div>
+                <div style="background-color:#f0f7ff;color:#1a202c"><p>Already inked.</p></div>
+                <div style="background:#161618;color:#4fb3aa"><p>Dark chip.</p></div>
+                """);
+        String body = render("/" + HANDLE + "/entry/light-box");
+        String css = contentStyleBlock(body);
+
+        String box = selectorOf(css, "color: #1a202c !important;");
+        assertTrue(matches(box, "", styleBefore(body, "Plan ahead")), box + " vs " + styleBefore(body, "Plan ahead"));
+        assertTrue(matches(box, "", styleBefore(body, "Grey box.")), box + " vs " + styleBefore(body, "Grey box."));
+        assertFalse(matches(box, "", styleBefore(body, "Already inked.")), "the author's own colour stands");
+        assertFalse(matches(box, "", styleBefore(body, "Dark chip.")), "a dark background keeps its own ink");
+
+        String link = selectorOf(css, "color: #0a3d91 !important;");
+        assertTrue(link.endsWith(" a:not([style^=\"color:\" i], [style*=\";color:\" i])"), link);
+        assertTrue(matches(link, styleBefore(body, "Plan ahead"), ""), link);
+        assertFalse(matches(link, styleBefore(body, "Plan ahead"), "color:#0066cc"), "a link's own colour stands");
+        String quiet = selectorOf(css, "color: #3d4451 !important;");
+        assertTrue(quiet.contains("blockquote") && quiet.contains("figcaption"), quiet);
+        assertTrue(matches(quiet, styleBefore(body, "Grey box."), ""), quiet);
+
+        // WCAG: AAA for text, AA at least for the rest, on the palest and the
+        // darkest backgrounds the selector counts as light.
+        for (String background : List.of("#ffffff", "#f0f7ff", "#f8f9fa", "#c0c0c0")) {
+            assertTrue(contrast("#1a202c", background) >= 7, "ink on " + background);
+            assertTrue(contrast("#0a3d91", background) >= 4.5, "link on " + background);
+            assertTrue(contrast("#3d4451", background) >= 4.5, "quote on " + background);
+        }
+    }
+
+    /**
+     * The other half of the same mistake: a translucent background shows the
+     * page through it, so a text colour the author chose for one canvas fails
+     * on the other (light ink over an 8% tint, written for a dark page, is
+     * light on white in a light scheme). Text over a translucent background
+     * follows the page's ink: the box's own colour, and a colour its children
+     * name (the live boxes colour their paragraph too), unless the child paints
+     * a background of its own, like a dark code chip.
+     */
+    @Test
+    void anAuthorsTranslucentBoxTakesThePagesInk() throws Exception {
+        entryWithText("tint-box", """
+                <div style="background-color: rgba(79, 179, 170, 0.08); border-left: 4px solid #4fb3aa; color: #e8e8e6">
+                <strong>Tinted note.</strong><p style="margin: 6px 0 0 0; color: #e8e8e6">Child ink.</p>
+                <code style="background:#161618;color:#4fb3aa">chip</code></div>
+                <div style="background-color:rgba(0,0,0,0.05)"><p>Plain tint.</p></div>
+                """);
+        String body = render("/" + HANDLE + "/entry/tint-box");
+        String css = contentStyleBlock(body);
+
+        String tint = selectorOf(css, "color: inherit !important;");
+        String box = styleBefore(body, "Tinted note.");
+        assertTrue(matches(tint, "", box), tint + " vs " + box);
+        assertFalse(matches(tint, "", styleBefore(body, "Plain tint.")), "no colour of its own: it already follows the page");
+        assertTrue(matches(tint, box, styleBefore(body, "Child ink.")), "a child's colour follows the page too");
+        assertFalse(matches(tint, box, styleBefore(body, "chip")), "a child with its own background keeps its ink");
+    }
+
     // ---------------------------------------------------------------- helpers
+
+    /** The selector of the one rule in the style block that carries {@code declaration}. */
+    private static String selectorOf(String css, String declaration) {
+        Matcher rule = Pattern.compile("([^{}]+)\\{([^{}]*)\\}").matcher(css);
+        List<String> found = new ArrayList<>();
+        while (rule.find()) {
+            if (rule.group(2).contains(declaration)) {
+                found.add(rule.group(1).trim());
+            }
+        }
+        assertEquals(1, found.size(), "one rule must declare " + declaration + ": " + found);
+        return found.get(0);
+    }
+
+    /** The style attribute of the last element opened before {@code text}, as the reader receives it. */
+    private static String styleBefore(String body, String text) {
+        int at = body.indexOf(text);
+        assertTrue(at > 0, "no " + text + " in the page");
+        int open = body.lastIndexOf("style=\"", at);
+        assertTrue(open > 0, "no inline style before " + text);
+        int start = open + "style=\"".length();
+        return body.substring(start, body.indexOf('"', start)).replace("&#39;", "'");
+    }
+
+    private static final Pattern STYLE_TEST = Pattern.compile("\\[style([*^])=\"([^\"]*)\" i]");
+
+    /**
+     * Whether a browser would apply the rule to an element with
+     * {@code subjectStyle} inside a box with {@code boxStyle}, as far as the
+     * {@code [style]} tests go. Each comma-separated selector is one
+     * alternative; in each, the compound after the last descendant space is
+     * tested against the subject and everything before it against the box.
+     * Every {@code :is(...)} group of {@code [style]} tests needs one that
+     * matches, no {@code :not(...)} group may match. Case-insensitive, as
+     * the {@code i} flag says.
+     */
+    private static boolean matches(String selector, String boxStyle, String subjectStyle) {
+        assertTrue(STYLE_TEST.matcher(selector).find(), "no [style] tests in " + selector);
+        for (String alternative : splitTopLevel(selector, ',')) {
+            String trimmed = alternative.trim();
+            List<String> parts = splitTopLevel(trimmed, ' ');
+            String subject = parts.get(parts.size() - 1);
+            String ancestors = String.join(" ", parts.subList(0, parts.size() - 1));
+            if (satisfies(ancestors, boxStyle) && satisfies(subject, subjectStyle)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean satisfies(String compound, String style) {
+        String lower = style.toLowerCase(Locale.ROOT);
+        Matcher group = Pattern.compile(":(is|not)\\((\\[style[^)]*)\\)").matcher(compound);
+        while (group.find()) {
+            boolean any = false;
+            Matcher test = STYLE_TEST.matcher(group.group(2));
+            while (test.find()) {
+                String needle = test.group(2).toLowerCase(Locale.ROOT);
+                any |= "^".equals(test.group(1)) ? lower.startsWith(needle) : lower.contains(needle);
+            }
+            if ("is".equals(group.group(1)) != any) {
+                return false;
+            }
+        }
+        Matcher bare = Pattern.compile("(^|[^(,\\s])(\\[style\\*=\"[^\"]*\" i])").matcher(compound);
+        while (bare.find()) {
+            Matcher test = STYLE_TEST.matcher(bare.group(2));
+            if (test.find() && !lower.contains(test.group(2).toLowerCase(Locale.ROOT))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** {@code text} split at {@code separator} outside parentheses and quotes. */
+    private static List<String> splitTopLevel(String text, char separator) {
+        List<String> parts = new ArrayList<>();
+        int depth = 0;
+        boolean quoted = false;
+        int start = 0;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '"') {
+                quoted = !quoted;
+            } else if (!quoted && c == '(') {
+                depth++;
+            } else if (!quoted && c == ')') {
+                depth--;
+            } else if (!quoted && depth == 0 && c == separator) {
+                if (i > start) {
+                    parts.add(text.substring(start, i));
+                }
+                start = i + 1;
+            }
+        }
+        parts.add(text.substring(start));
+        return parts;
+    }
+
+    /** WCAG 2 contrast ratio of two #rrggbb colours. */
+    private static double contrast(String a, String b) {
+        double la = luminance(a);
+        double lb = luminance(b);
+        return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+    }
+
+    private static double luminance(String hex) {
+        double[] weights = {0.2126, 0.7152, 0.0722};
+        double sum = 0;
+        for (int i = 0; i < 3; i++) {
+            double c = Integer.parseInt(hex.substring(1 + 2 * i, 3 + 2 * i), 16) / 255.0;
+            sum += weights[i] * (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+        }
+        return sum;
+    }
+
 
     private void assertEveryContentTemplate(String theme) throws Exception {
         assertAssetsExactlyOnce(render("/" + HANDLE), theme + " weblog.vm");
