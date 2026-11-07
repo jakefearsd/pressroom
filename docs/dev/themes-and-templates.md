@@ -305,7 +305,11 @@ resolves through the index at the end of `CLAUDE.md`.
   reads take no lock -- a cache-wide monitor convoyed every render under
   load -- and eviction is approximate LRU by one `tryLock` holder),
   so a page-cache miss no longer re-runs shortcodes + Markdown + sanitizer
-  for every entry on a list page. A slot is keyed by entry id, sanitizer
+  for every entry on a list page. The same slot keeps what entry lists read
+  out of the text (`cachedOpening`, `cachedPlainText`: the excerpt and the
+  reading time), and only while it holds that text; re-reading every listed
+  post's whole HTML for them was most of an uncached front page (profiling,
+  2026-11-06). A slot is keyed by entry id, sanitizer
   on/off, the weblog's absolute url (site url, captured address, custom
   domain) and the relative context url, and is valid only while the entry's
   text and summary (by value), `updateTime` and its weblog's `lastModified`

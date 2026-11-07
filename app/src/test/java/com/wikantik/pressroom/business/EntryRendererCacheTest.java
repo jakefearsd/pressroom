@@ -35,6 +35,8 @@ import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
+import com.wikantik.pressroom.business.EntryHtmlCache.Part;
+import com.wikantik.pressroom.util.Excerpts;
 import com.wikantik.pressroom.util.HTMLSanitizer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,7 +47,10 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -523,5 +528,85 @@ class EntryRendererCacheTest {
         photo.setWidth(1200);
         photo.setHeight(800);
         return photo;
+    }
+
+    // ------------------------------------------------------------- derived text
+
+    /** A renderer over a cache the test can watch. */
+    private EntryRenderer rendererOver(EntryHtmlCache cache) {
+        return new EntryRenderer(new ShortcodeExpander(List.of(probe)), pluginManager, urls, cache);
+    }
+
+    private static EntryHtmlCache watchedCache() {
+        return spy(new EntryHtmlCache(1024 * 1024, 64 * 1024, 3_600_000L, System::currentTimeMillis));
+    }
+
+    /**
+     * An entry list's excerpt and reading time come from the post's opening
+     * and its plain text, both read out of the whole rendered text: most of an
+     * uncached front page (profiling, 2026-11-06). Each is derived once and
+     * kept beside the text, and is exactly what deriving it afresh gives.
+     */
+    @Test
+    void theOpeningAndPlainTextAreDerivedOnceAndKept() {
+        EntryHtmlCache cache = watchedCache();
+        EntryRenderer kept = rendererOver(cache);
+        entry.setText("The first sentence of the post runs on for a while. [probe] Then a second one.\n\n"
+                + "## A heading\n\nAnd a last paragraph.");
+        String opening = kept.opening(entry);
+        String plain = kept.plainText(entry);
+
+        assertEquals(opening, kept.cachedOpening(entry));
+        assertEquals(plain, kept.cachedPlainText(entry));
+        assertEquals(opening, kept.cachedOpening(entry));
+        assertEquals(plain, kept.cachedPlainText(entry));
+
+        assertEquals(Excerpts.opening(kept.transformedText(entry), weblog.getLocaleInstance()), opening);
+        assertEquals(Excerpts.plainText(kept.transformedText(entry)), plain);
+        verify(cache, times(1)).put(anyString(), any(), eq(Part.OPENING), eq(opening));
+        verify(cache, times(1)).put(anyString(), any(), eq(Part.PLAIN), eq(plain));
+    }
+
+    @Test
+    void aChangedTextIsDerivedAfresh() {
+        assertEquals("Body one", renderer.cachedOpening(entry));
+        assertEquals("Body one", renderer.cachedPlainText(entry));
+
+        entry.setText("Changed [probe]");
+        entry.setUpdateTime(new Timestamp(600_000L));
+
+        assertEquals("Changed one", renderer.cachedOpening(entry));
+        assertEquals("Changed one", renderer.cachedPlainText(entry));
+    }
+
+    /**
+     * Derived text is kept only beside the text it came from: a render that
+     * read another weblog's data is not kept, so neither is what it says.
+     */
+    @Test
+    void derivedTextIsNotKeptWhenItsTextIsNot() {
+        EntryHtmlCache cache = watchedCache();
+        EntryRenderer kept = rendererOver(cache);
+        Weblog other = new Weblog();
+        other.setHandle("otherblog");
+        probeReadsFrom = other;
+
+        assertEquals("Body one", kept.cachedOpening(entry));
+        assertEquals("Body one", kept.cachedPlainText(entry));
+
+        verify(cache, never()).put(anyString(), any(), eq(Part.OPENING), any());
+        verify(cache, never()).put(anyString(), any(), eq(Part.PLAIN), any());
+    }
+
+    @Test
+    void aDraftsDerivedTextIsNeverKept() {
+        EntryHtmlCache cache = watchedCache();
+        EntryRenderer kept = rendererOver(cache);
+        entry.setStatus(PubStatus.DRAFT);
+
+        assertEquals("Body one", kept.cachedOpening(entry));
+        assertEquals("Body one", kept.cachedPlainText(entry));
+
+        verify(cache, never()).put(anyString(), any(), any(), any());
     }
 }

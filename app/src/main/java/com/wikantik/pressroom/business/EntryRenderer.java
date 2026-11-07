@@ -37,6 +37,7 @@ import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
 import com.wikantik.pressroom.pojos.WeblogPage;
+import com.wikantik.pressroom.util.Excerpts;
 import com.wikantik.pressroom.util.HTMLSanitizer;
 import com.wikantik.pressroom.util.I18nMessages;
 import org.slf4j.Logger;
@@ -145,6 +146,16 @@ public class EntryRenderer {
         return renderPart(entry, Part.SUMMARY, plugins(entry), ShortcodeReads.IGNORED);
     }
 
+    /** The opening sentences of the transformed text, as plain text ({@link Excerpts#opening}). Never cached. */
+    public String opening(WeblogEntry entry) {
+        return Excerpts.opening(transformedText(entry), entry.getWebsite().getLocaleInstance());
+    }
+
+    /** Every word of the transformed text, as plain text ({@link Excerpts#plainText}). Never cached. */
+    public String plainText(WeblogEntry entry) {
+        return Excerpts.plainText(transformedText(entry));
+    }
+
     /**
      * The right transformed display content depending on the situation.
      * Never cached.
@@ -171,6 +182,16 @@ public class EntryRenderer {
     /** {@link #transformedSummary}, kept for a published entry until its inputs change. */
     public String cachedTransformedSummary(WeblogEntry entry) {
         return cached(entry, Part.SUMMARY);
+    }
+
+    /** {@link #opening}, kept beside the text it is taken from. */
+    public String cachedOpening(WeblogEntry entry) {
+        return derived(entry, Part.OPENING, text -> Excerpts.opening(text, entry.getWebsite().getLocaleInstance()));
+    }
+
+    /** {@link #plainText}, kept beside the text it is taken from. */
+    public String cachedPlainText(WeblogEntry entry) {
+        return derived(entry, Part.PLAIN, Excerpts::plainText);
     }
 
     /**
@@ -231,6 +252,7 @@ public class EntryRenderer {
             case DISPLAY -> HTMLSanitizer.conditionallySanitize(StringUtils.isNotEmpty(entry.getText())
                     ? renderEntry(entry, entry.getText(), plugins, reads)
                     : renderEntry(entry, entry.getSummary(), plugins, reads));
+            case OPENING, PLAIN -> throw new IllegalArgumentException(part + " is derived, not rendered");
         };
     }
 
@@ -240,9 +262,7 @@ public class EntryRenderer {
         if (key == null) {
             return renderPart(entry, part, plugins, ShortcodeReads.IGNORED);
         }
-        Inputs inputs = new Inputs(entry.getWebsite().getLastModified().getTime(),
-                entry.getUpdateTime() == null ? 0L : entry.getUpdateTime().getTime(),
-                entry.getText(), entry.getSummary());
+        Inputs inputs = inputs(entry);
         String html = cache.get(key, inputs, part);
         if (html != null) {
             return html;
@@ -253,6 +273,37 @@ public class EntryRenderer {
             cache.put(key, inputs, part, html);
         }
         return html;
+    }
+
+    /**
+     * A part read out of the kept text -- an entry list's opening or plain
+     * text, which re-reading the whole rendered post for was most of an
+     * uncached front page (profiling, 2026-11-06) -- kept beside that text,
+     * and only while the text itself is held: a text that was not kept (it
+     * read another weblog's data) leaves nothing derived from it behind.
+     */
+    private String derived(WeblogEntry entry, Part part, Function<String, String> from) {
+        String key = slotKey(entry, plugins(entry));
+        if (key == null) {
+            return from.apply(cached(entry, Part.TEXT));
+        }
+        Inputs inputs = inputs(entry);
+        String held = cache.get(key, inputs, part);
+        if (held != null) {
+            return held;
+        }
+        String value = from.apply(cached(entry, Part.TEXT));
+        if (cache.get(key, inputs, Part.TEXT) != null) {
+            cache.put(key, inputs, part, value);
+        }
+        return value;
+    }
+
+    /** What a slot of this entry is valid for. */
+    private static Inputs inputs(WeblogEntry entry) {
+        return new Inputs(entry.getWebsite().getLastModified().getTime(),
+                entry.getUpdateTime() == null ? 0L : entry.getUpdateTime().getTime(),
+                entry.getText(), entry.getSummary());
     }
 
     /**

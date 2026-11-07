@@ -54,8 +54,9 @@ import com.wikantik.pressroom.config.WebloggerConfig;
  * <p>Why a slot validated by its inputs rather than a key that includes
  * them: an edited entry replaces its slot in place instead of leaving the old
  * version to age out, so the cache holds at most one version per entry and
- * host. The three parts an entry is shown as -- text, summary, display
- * content -- share the slot and fill it lazily; new inputs start it afresh.
+ * host. The parts an entry is shown as -- text, summary, display content,
+ * and the opening and plain text read out of the text -- share the slot and
+ * fill it lazily; new inputs start it afresh.
  *
  * <p>Bounds: the total weight of every slot ({@code cache.entryhtml.maxBytes},
  * approximately least recently read first out; once over it, an eviction
@@ -93,8 +94,9 @@ public final class EntryHtmlCache {
     static final String CACHE_ID = "cache.entryhtml";
 
     /**
-     * The default budget: some 4,500-7,000 typical entries (a ~500-char
-     * text, its two rendered parts and the key, at two bytes a char).
+     * The default budget: some 3,000-7,000 typical entries (a ~500-char
+     * text, its rendered parts, its plain text and opening where a list
+     * showed it, and the key, at two bytes a char).
      */
     static final long DEFAULT_MAX_BYTES = 16L * 1024 * 1024;
 
@@ -104,8 +106,12 @@ public final class EntryHtmlCache {
     /** One slot is at most this fraction of the budget. */
     private static final int SLOT_SHARE = 16;
 
-    /** The forms an entry is shown in, each cached on its own. */
-    public enum Part { TEXT, SUMMARY, DISPLAY }
+    /**
+     * The forms an entry is shown in, each cached on its own: three rendered,
+     * and two derived from the rendered text for entry lists (its opening
+     * sentences and its plain text, the excerpt and the reading time).
+     */
+    public enum Part { TEXT, SUMMARY, DISPLAY, OPENING, PLAIN }
 
     /**
      * Everything a slot is valid for besides its key.

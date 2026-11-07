@@ -304,15 +304,20 @@ public final class WeblogEntryWrapper {
                 return text;
             }
         }
-        String text = getTransformedText();
+        EntryRenderer renderer = weblogger.getEntryRenderer();
         String description = getSearchDescription();
         // A description that is merely the opening cut mid-sentence ("...to
         // bring hygienic,.") is passed over: the opening, cut at a sentence, says it better.
         if (description != null && !description.isBlank()
-                && !Excerpts.isCutFrom(description, Excerpts.plainText(text))) {
+                && !Excerpts.isCutFrom(description, plainText(renderer))) {
             return description;
         }
-        return Excerpts.opening(text, this.pojo.getWebsite().getLocaleInstance());
+        return isLive() ? renderer.cachedOpening(this.pojo) : renderer.opening(this.pojo);
+    }
+
+    /** The post's words as plain text, kept beside the cached text for a reader's render. */
+    private String plainText(EntryRenderer renderer) {
+        return isLive() ? renderer.cachedPlainText(this.pojo) : renderer.plainText(this.pojo);
     }
 
     /** Words a reader reads in a minute, for {@link #getReadingMinutes()}. */
@@ -323,7 +328,7 @@ public final class WeblogEntryWrapper {
      * the rendered post at {@link #WORDS_PER_MINUTE}, rounded up, never under one.
      */
     public int getReadingMinutes() {
-        String text = Excerpts.plainText(getTransformedText());
+        String text = plainText(weblogger.getEntryRenderer());
         int words = text == null ? 0 : text.split(" ").length;
         return Math.max(1, (words + WORDS_PER_MINUTE - 1) / WORDS_PER_MINUTE);
     }

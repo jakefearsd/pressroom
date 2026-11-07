@@ -44,6 +44,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -592,5 +593,47 @@ class WeblogEntryWrapperTest {
         verify(preview, never()).cachedTransformedText(any());
         verify(preview, never()).cachedTransformedSummary(any());
         verify(preview, never()).cachedDisplayContent(any(), any());
+    }
+
+    /**
+     * An entry list's excerpt and reading time come from the opening and the
+     * plain text the renderer keeps beside the cached text: re-reading the
+     * whole rendered post for them was most of an uncached front page
+     * (profiling, 2026-11-06). A preview derives them afresh, never from the
+     * cache.
+     */
+    @Test
+    void aLiveExcerptAndReadingTimeUseTheKeptDerivedTextAndAPreviewNeverDoes() {
+        entry.setSummary(null);
+        entry.setSearchDescription("Written for search, not copied from the post.");
+        EntryRenderer live = mock(EntryRenderer.class);
+        when(weblogger.getEntryRenderer()).thenReturn(live);
+        when(live.cachedPlainText(entry)).thenReturn("one two three");
+        when(live.cachedOpening(entry)).thenReturn("The opening.");
+
+        assertEquals("Written for search, not copied from the post.", wrapper.getExcerpt());
+        assertEquals(1, wrapper.getReadingMinutes());
+        entry.setSearchDescription(null);
+        assertEquals("The opening.", wrapper.getExcerpt());
+
+        verify(live, atLeastOnce()).cachedPlainText(entry);
+        verify(live).cachedOpening(entry);
+        verify(live, never()).cachedTransformedText(any());
+        verify(live, never()).transformedText(any());
+        verify(live, never()).plainText(any());
+        verify(live, never()).opening(any());
+
+        EntryRenderer preview = mock(EntryRenderer.class);
+        when(weblogger.getEntryRenderer()).thenReturn(preview);
+        when(preview.opening(entry)).thenReturn("The previewed opening.");
+        WeblogEntryWrapper previewed = WeblogEntryWrapper.wrap(entry, new PreviewURLStrategy("journal"), weblogger);
+
+        assertEquals("The previewed opening.", previewed.getExcerpt());
+        assertEquals(1, previewed.getReadingMinutes());
+
+        verify(preview).opening(entry);
+        verify(preview).plainText(entry);
+        verify(preview, never()).cachedOpening(any());
+        verify(preview, never()).cachedPlainText(any());
     }
 }
