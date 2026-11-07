@@ -31,7 +31,9 @@ something else (a message broker) later.
 4. jakemon accepts such notices on one general intake endpoint, built for any
    product and any future feed, answers at once, and acts later: IndexNow for
    Bing and the other IndexNow engines, a sitemap resubmit for Google.
-5. Pressroom serves the IndexNow key file on every host it serves.
+5. ~~Pressroom serves the IndexNow key file on every host it serves.~~
+   Amended 2026-11-07: the key file is served by a Cloudflare edge Worker, not
+   by Pressroom (see *The IndexNow key file*).
 
 ## Non-goals (deferred, each with the trigger that brings it back)
 
@@ -208,22 +210,50 @@ connect and request timeouts).
 
 ### The IndexNow key file
 
-- New runtime property `seo.indexnow.key` (settable with `admin config set`).
-  When set, `GET /<key>.txt` on every host Pressroom serves answers `200
-  text/plain` with the key as the body. Any other `.txt` path behaves exactly
-  as today. Unset, nothing is served.
-- One key serves every Pressroom host; IndexNow allows one key on many hosts.
-  The operator puts the same key in jakemon's key directory for each host. If
-  a domain jakemon already holds a key for (`jakefear.com`, say) later moves
-  to Pressroom, its key file is replaced with Pressroom's: the old site no
-  longer serves that domain.
-- IndexNow under a context path is out of scope. A key file at
-  `/pressroom/<key>.txt` would cover only URLs beneath it, and jakemon sends
-  `keyLocation` at the host root. Production runs at the root. Pressroom still
-  serves the file at `<context>/<key>.txt`, so nothing breaks, but jakemon's
-  submissions for such a deployment would be refused.
-- Like the sitemap paths, this must work on custom domains and under a context
-  path.
+**Amended 2026-11-07 (Jake): Pressroom does not serve the key file.** A
+Cloudflare Worker at the edge answers `GET /<key>.txt` on each host, before
+the request reaches the tunnel, so Pressroom has no `seo.indexnow.key`
+property, no `*.txt` route and no release for it.
+
+Why the edge and not Pressroom:
+
+- **The key is jakemon's.** jakemon generates one key per host
+  (`visibility/indexnow-keys/<host>.txt`), checks that it is hosted, and
+  submits with it. IndexNow is a third-party integration, which SA-16 puts
+  with the plane, not with products. With the file in Pressroom, one key
+  would have lived in two places owned by two projects, and changing it would
+  have needed an operator step on each.
+- **It covers every host the same way.** Pressroom's site host, a weblog's
+  custom domain later, and hosts Pressroom does not serve, through one Worker
+  and one map of host to key.
+- **No release, no route.** The Pressroom design needed `*.txt` routed to the
+  dispatcher, with every other `.txt` path kept as it was. That was a
+  servlet-mapping change for one static string.
+
+The Worker is a map of host to key. It answers only the exact path
+`/<key>.txt` for a host it knows, with `200 text/plain` and the key as the
+body, and passes anything else through. Its routes are exact
+(`<host>/<key>.txt`), so no other request runs it:
+
+```js
+const KEYS = { "blog.wikantik.com": "<key from jakemon>" };
+export default {
+  fetch(request) {
+    const url = new URL(request.url);
+    const key = KEYS[url.hostname];
+    if (key && url.pathname === `/${key}.txt`) {
+      return new Response(key, { headers: { "content-type": "text/plain; charset=utf-8" } });
+    }
+    return fetch(request);
+  },
+};
+```
+
+Adding a host means: a `sites.json` entry in jakemon, a dry run of
+`bin/visibility submit --site <host>` (which generates the key and prints
+where it must be hosted), the host and key in the Worker's map, and a route
+for `<host>/<key>.txt`. A custom domain that is not proxied by Cloudflare
+cannot be covered this way and would need its own answer.
 
 ## Part 3: The intake contract (between products and jakemon)
 
@@ -337,13 +367,15 @@ hand through `bin/visibility submit`. Keys live in `visibility/indexnow-keys/
 ## Production wiring (operator steps, done once, by Jake's leave)
 
 1. Deploy jakemon's intake; issue a token for `pressroom-prod`.
-2. Put the IndexNow key in jakemon's key directory as `blog.wikantik.com.txt`
-   (no `sites.json` change; the resolver finds `sc-domain:wikantik.com`).
+2. Add `blog.wikantik.com` to jakemon's `sites.json` and dry-run
+   `bin/visibility submit --site blog.wikantik.com`, which generates the
+   IndexNow key into jakemon's key directory; put that host and key in the
+   edge Worker's map and route it (amended 2026-11-07).
    Confirm the GSC token has the read-write `webmasters` scope and
    that Search Console accepts a sitemap on that host under the domain
    property. Confirm docker1's `site.absoluteurl` is
    `https://blog.wikantik.com`.
-3. On docker1: set `seo.indexnow.key`, and add `notices.jakemon.url`,
+3. On docker1: add `notices.jakemon.url`,
    `notices.jakemon.token` to `~/pressroom/.env`; deploy.
 4. Check: `/sitemap.xml` on blog.wikantik.com is an index of each blog's `/sitemap-<handle>.xml` and
    entries pages; `/<key>.txt` serves the key; jakemon's metrics show a
@@ -388,9 +420,9 @@ Pressroom notices:
 15. With nothing sent for 10 minutes, the next run sends an empty heartbeat.
 16. Sent rows older than 7 days are deleted; unsent rows are never deleted.
 17. The token never appears in a log line or error message.
-18. `/<key>.txt` serves the configured key as `text/plain` on the site host
-    and a custom domain, at `/` and under a context path; with the key unset,
-    or for any other `.txt` path, behaviour is unchanged.
+18. ~~`/<key>.txt` serves the configured key...~~ Withdrawn 2026-11-07: the
+    edge Worker serves it (see *The IndexNow key file*). Pressroom's only
+    obligation is not to answer `/<key>.txt` itself, which it does not (404).
 
 jakemon intake (standard-library `unittest`, run by `bin/validate.sh`):
 19. A valid envelope is stored and answered `202` with counts; resending it
@@ -423,7 +455,7 @@ jakemon intake (standard-library `unittest`, run by `bin/validate.sh`):
 ## Suggested order
 
 1. Pressroom sitemaps (Part 1). Ships on its own and is useful alone.
-2. Pressroom notices and key file (Part 2). Ships dark: nothing happens until
+2. Pressroom notices (Part 2). Ships dark: nothing happens until
    the URL is configured.
 3. jakemon intake (Part 4).
 4. Production wiring, then the wiki updates.
@@ -432,8 +464,8 @@ jakemon intake (standard-library `unittest`, run by `bin/validate.sh`):
 
 - How the index's per-page maxima are queried, and whether entries pages use
   `OFFSET` or keyset paging (results must match criteria 3 to 7).
-- Exactly how `/<key>.txt` and `/sitemaps/**` are routed to the controller, as
-  long as custom domains and context paths work and protected-URL lists stay
-  consistent.
+- Exactly how `/sitemaps/**` is routed to the controller, as long as custom
+  domains and context paths work and protected-URL lists stay consistent.
+  (`/<key>.txt` is the edge Worker's, amended 2026-11-07.)
 - The intake's port number, module layout, and SQLite schema details.
 - Log line wording, beyond `event.action=change_notice_failed`.
