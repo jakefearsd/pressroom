@@ -27,7 +27,7 @@ These are the documented macros in order defined in this file:
     #showPageTitle($page)
     #showMetaDescription()                          [custom-theme API]
     #showAnalyticsTrackingCode($weblog)
-    #showResponsiveImage($image $alt $sizes $imgClass)
+    #showResponsiveImage($image $alt $sizes $imgClass [$eager])
     #showGalleryGridStyles()
     #showGalleryAssets()
     #showMapAssets()
@@ -474,6 +474,10 @@ $alt      alt text, HTML-escaped on the way out
 $sizes    the sizes attribute value, e.g. "100vw" for a full-column hero
           or "240px" for a fixed-width card thumb
 $imgClass CSS class for the <img> (pass "" for none)
+$eager    optional, default false: true for the one picture above the fold
+          that is the page's likely Largest Contentful Paint (the front
+          page's lead story), loaded at once with fetchpriority="high";
+          every other picture is loading="lazy"
 
 srcset (and the webp <source>, negotiated via the Accept header on the same
 URLs) is only offered when the wrapper reports a srcset at all: for formats
@@ -483,7 +487,7 @@ file has a BlurHash, its average color is emitted as an inline background
 so the reserved box shows a plausible color while the pixels load --
 a dependency-free, JS-free blur-up.
 *#
-#macro(showResponsiveImage $image $alt $sizes $imgClass)
+#macro(showResponsiveImage $image $alt $sizes $imgClass $eager=false)
 #if ($image)
 #set($responsiveSrcset = false)
 #set($responsiveSrcset = $image.srcset)
@@ -499,7 +503,7 @@ a dependency-free, JS-free blur-up.
 #if ($responsiveSrcset)
 <source type="image/webp" srcset="$responsiveSrcset" sizes="$sizes">
 #end
-<img src="$image.permalink"#if ($responsiveSrcset) srcset="$responsiveSrcset" sizes="$sizes"#end#if ($image.width > 0 && $image.height > 0) width="$image.width" height="$image.height"#end alt="$utils.escapeHTML($alt)" loading="lazy" decoding="async"#if ($imgClass && $imgClass != "") class="$imgClass"#end#if ($utils.isNotEmpty($image.blurhash)) data-blurhash="$utils.escapeHTML($image.blurhash)"#end#if ($responsiveAvgColor && $responsiveObjectPosition) style="background-color:$responsiveAvgColor;object-position:$responsiveObjectPosition"#elseif ($responsiveAvgColor) style="background-color:$responsiveAvgColor"#elseif ($responsiveObjectPosition) style="object-position:$responsiveObjectPosition"#end>
+<img src="$image.permalink"#if ($responsiveSrcset) srcset="$responsiveSrcset" sizes="$sizes"#end#if ($image.width > 0 && $image.height > 0) width="$image.width" height="$image.height"#end alt="$utils.escapeHTML($alt)"#if ($eager) loading="eager" fetchpriority="high"#else loading="lazy"#end decoding="async"#if ($imgClass && $imgClass != "") class="$imgClass"#end#if ($utils.isNotEmpty($image.blurhash)) data-blurhash="$utils.escapeHTML($image.blurhash)"#end#if ($responsiveAvgColor && $responsiveObjectPosition) style="background-color:$responsiveAvgColor;object-position:$responsiveObjectPosition"#elseif ($responsiveAvgColor) style="background-color:$responsiveAvgColor"#elseif ($responsiveObjectPosition) style="object-position:$responsiveObjectPosition"#end>
 </picture>
 #end
 #end

@@ -43,6 +43,13 @@ footer (site pages, directory, colophon).
   not `$blog.entryCount` (a COUNT query per read: 2N+3 per render before
   2026-11-03, one per blog until 2026-11-06). **Taglines** are escaped (`$utils.escapeHTML`): a blog's owner
   writes them, and every reader of the site sees this page.
+- **The lead picture loads eagerly** (`#fdMedia(... true)` passes the
+  `showResponsiveImage` macro's optional `$eager`: `loading="eager"
+  fetchpriority="high"`): it is the page's likely Largest Contentful Paint.
+  Every other picture on the page, and every theme's, stays lazy.
+- **Excerpts and reading times** come from `EntryRenderer.cachedOpening` /
+  `cachedPlainText`, kept in the entry-HTML cache beside the text
+  (themes-and-templates.md), not re-read out of each post's HTML per render.
 - **Reading time** is `getReadingMinutes()` (rendered words / 230, rounded
   up). Dates are absolute: the page is cached until the next generation.
 

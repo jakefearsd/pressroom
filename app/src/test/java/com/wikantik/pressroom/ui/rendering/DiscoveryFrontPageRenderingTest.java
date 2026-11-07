@@ -17,6 +17,9 @@
  */
 package com.wikantik.pressroom.ui.rendering;
 
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -26,14 +29,18 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.imageio.ImageIO;
+
 import jakarta.servlet.DispatcherType;
 
 import com.wikantik.pressroom.TestUtils;
+import com.wikantik.pressroom.business.MediaFileManager;
 import com.wikantik.pressroom.business.PropertiesManager;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.business.WebloggerProvider;
 import com.wikantik.pressroom.business.jpa.QueryRecorder;
+import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.RuntimeConfigProperty;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
@@ -41,6 +48,7 @@ import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.ui.rendering.servlets.RenderingTestSupport;
 import com.wikantik.pressroom.ui.rendering.velocity.InvalidReferenceRecorder;
 import com.wikantik.pressroom.util.HTMLSanitizer;
+import com.wikantik.pressroom.util.PressroomMessages;
 import org.apache.commons.text.StringEscapeUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -97,7 +105,10 @@ class DiscoveryFrontPageRenderingTest {
             "weblog.vm: $analytics.websiteId()", // null unless the weblog is registered with Umami; tested with $utils.isNotEmpty
             "weblog.vm: $trackerSiteId", // #set of a null website id; tested with $utils.isNotEmpty
             "weblog.vm: trackerSiteId", // #set of a null website id; tested with $utils.isNotEmpty
-            "weblog.vm: seoBusinessJson" // #set of a null business JSON-LD; tested with #if
+            "weblog.vm: seoBusinessJson", // #set of a null business JSON-LD; tested with #if
+            "weblog.vm: $image.objectPosition", // null when the image has no focal point; assigned to $responsiveObjectPosition, which is tested with #if
+            "weblog.vm: $responsiveObjectPosition", // null when the image has no focal point; tested with #if
+            "weblog.vm: responsiveObjectPosition" // #set of a null focal point; tested with #if
     );
 
     @BeforeAll
@@ -489,7 +500,64 @@ class DiscoveryFrontPageRenderingTest {
         }
     }
 
+    /**
+     * The lead story's picture is the largest thing above the fold, the
+     * page's likely Largest Contentful Paint: it loads at once, ahead of the
+     * rest, while every picture below it waits until it is scrolled near.
+     */
+    @Test
+    void onlyTheLeadPictureLoadsEagerly() throws Exception {
+        setProperty("uploads.enabled", "true");
+        int minutes = 10;
+        for (int b = 0; b < 5; b++) {
+            Weblog blog = blog("discfpimg" + b, "Pictured Blog " + b);
+            String image = image(blog, "picture" + b + ".jpg");
+            for (int e = 0; e < 4; e++) {
+                post(blog, "discfpimg-" + b + "-" + e, "Pictured " + b + "." + e, minutes++);
+                feature("discfpimg-" + b + "-" + e, blog, image);
+            }
+        }
+        refresh();
+
+        for (String theme : THEMES) {
+            String body = root(theme);
+            String lead = section(body, "fd-discovery-headline");
+            assertTrue(lead.contains(" loading=\"eager\" fetchpriority=\"high\""), theme + ": " + lead);
+            assertEquals(1, count(body, "fetchpriority="), theme + ": the lead alone is prioritised:\n" + body);
+            assertEquals(count(body, "<img ") - 1, count(body, " loading=\"lazy\""),
+                    theme + ": every other picture is lazy:\n" + body);
+            assertTrue(count(body, "<img ") > 1, theme + ": the page shows other pictures too");
+        }
+    }
+
     // ------------------------------------------------------------- helpers
+
+    /** A generated JPEG in the blog's default media directory; its id. */
+    private String image(Weblog blog, String name) throws Exception {
+        MediaFileManager media = TestUtils.weblogger().getMediaFileManager();
+        Weblog managed = TestUtils.getManagedWebsite(blog);
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        assertTrue(ImageIO.write(new BufferedImage(1600, 1000, BufferedImage.TYPE_INT_RGB), "jpeg", bytes));
+        MediaFile file = new MediaFile();
+        file.setName(name);
+        file.setDirectory(media.getDefaultMediaFileDirectory(managed));
+        file.setWeblog(managed);
+        file.setContentType("image/jpeg");
+        file.setInputStream(new ByteArrayInputStream(bytes.toByteArray()));
+        media.createMediaFile(managed, file, new PressroomMessages());
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+        return file.getId();
+    }
+
+    private static void feature(String anchor, Weblog blog, String imageId) throws Exception {
+        WeblogEntryManager entries = TestUtils.weblogger().getWeblogEntryManager();
+        WeblogEntry entry = entries.getWeblogEntryByAnchor(TestUtils.getManagedWebsite(blog), anchor);
+        entry.setFeaturedImageId(imageId);
+        entries.saveWeblogEntry(entry);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+    }
 
     /** {@code /} as index.jsp serves it: FrontDoor's choice, forwarded to the page servlet. */
     private String root(String theme) throws Exception {

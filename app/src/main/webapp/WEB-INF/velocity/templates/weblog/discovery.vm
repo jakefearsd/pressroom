@@ -29,12 +29,13 @@ comment names one with its hash, so nothing here is invoked by accident.
 ## ------------------------------------------------------------ macros
 ## A post's picture: its featured image, else a tile in its blog's hue with
 ## the blog's initials. Hidden from assistive tech: the title link that
-## follows is the accessible one.
-#macro(fdMedia $fdPost $fdSizes)
+## follows is the accessible one. $fdEager is true for the lead story's
+## picture only, the page's likely Largest Contentful Paint.
+#macro(fdMedia $fdPost $fdSizes $fdEager=false)
 #set($fdImg = false)
 #set($fdImg = $fdPost.featuredImage)
 #if($fdImg)
-<a class="fd-media" href="$utils.escapeHTML($fdPost.permalink)" tabindex="-1" aria-hidden="true">#showResponsiveImage($fdImg "" $fdSizes "")</a>
+<a class="fd-media" href="$utils.escapeHTML($fdPost.permalink)" tabindex="-1" aria-hidden="true">#showResponsiveImage($fdImg "" $fdSizes "" $fdEager)</a>
 #else
 <a class="fd-media fd-tile" href="$utils.escapeHTML($fdPost.permalink)" tabindex="-1" aria-hidden="true">$discovery.initials($fdPost.website)</a>
 #end
@@ -363,7 +364,7 @@ body.fd-front img { max-width: 100%; }
 #fdHue($dLead.website)
         <section class="fd-discovery-headline" aria-labelledby="fd-headline-label">
             <article class="fd-discovery-post fd-lead" data-b="$fdB">
-                #fdMedia($dLead "(max-width: 1020px) 100vw, 66vw")
+                #fdMedia($dLead "(max-width: 1020px) 100vw, 66vw" true)
                 <div class="fd-eyebrow">
                     ## "most read" only when it was ranked by traffic; otherwise it is the newest post
                     <h2 class="fd-label" id="fd-headline-label">#if($dFront.headlineRanked)$text.get("discovery.headline")#else$text.get("discovery.headline.newest")#end</h2>
