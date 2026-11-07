@@ -20,6 +20,8 @@ package com.wikantik.pressroom.util;
 import org.junit.jupiter.api.Test;
 
 import java.util.Locale;
+import java.util.Random;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -204,5 +206,33 @@ class ExcerptsTest {
         assertFalse(Excerpts.isCutFrom("Opened in.", MARKTHALLE), "too short to be sure");
         assertFalse(Excerpts.isCutFrom(null, MARKTHALLE));
         assertFalse(Excerpts.isCutFrom("Opened in October 1891, Markthalle Neun was.", null));
+    }
+
+    /**
+     * Characterisation test, written before {@code squash} lost its regular
+     * expression and seen to pass against it: the profiling run of 2026-11-06
+     * found {@code [\\s\\u00A0]+} the hottest code in a front-page render.
+     * The loop must collapse exactly what the pattern did -- Java's {@code \\s}
+     * is the six ASCII spaces, not {@link Character#isWhitespace} -- and trim
+     * exactly as {@link String#trim} does.
+     */
+    @Test
+    void squashCollapsesExactlyWhatTheOldPatternDid() {
+        Pattern old = Pattern.compile("[\\s\\u00A0]+");
+        String alphabet = "ab. \t\n\u000B\f\r\u00A0\u2003\u2028\u001C\u0000\u0007\u3000\uD83D\uDE00";
+        Random random = new Random(20261106L);
+        for (int i = 0; i < 20_000; i++) {
+            StringBuilder text = new StringBuilder();
+            for (int n = random.nextInt(24); n > 0; n--) {
+                text.append(alphabet.charAt(random.nextInt(alphabet.length())));
+            }
+            String input = text.toString();
+            assertEquals(old.matcher(input).replaceAll(" ").trim(), Excerpts.squash(input),
+                    () -> "squash of " + input.chars().mapToObj(c -> String.format("\\u%04X", c)).toList());
+        }
+        assertEquals("", Excerpts.squash(""));
+        assertEquals("a b", Excerpts.squash("\u00A0 a\u00A0\t\nb \r"));
+        assertEquals("a\u2003b", Excerpts.squash("a\u2003b"), "an em space is not \\s: it stays");
+        assertEquals("\u2003a", Excerpts.squash("\u2003a"), "and trim keeps it too");
     }
 }

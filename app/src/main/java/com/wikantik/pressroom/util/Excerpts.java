@@ -27,7 +27,6 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 /**
  * Plain-text excerpts of rendered entry HTML, for the line of prose an entry
@@ -58,8 +57,6 @@ public final class Excerpts {
 
     /** What may follow a whole sentence of the post: its own end, or a closing quote or bracket. */
     private static final String SENTENCE_END = ".!?…\"'\u201D\u2019)";
-
-    private static final Pattern WHITESPACE = Pattern.compile("[\\s\\u00A0]+");
 
     /**
      * Containers whose paragraphs are someone else's words, or an aside to the
@@ -174,8 +171,36 @@ public final class Excerpts {
         return collector;
     }
 
-    private static String squash(CharSequence text) {
-        return WHITESPACE.matcher(text).replaceAll(" ").trim();
+    /**
+     * Every run of whitespace as one space, trimmed. A loop, not a regular
+     * expression: a front page squashes every listed post's whole text, and
+     * {@code [\s\u00A0]+} was the hottest code in its render (profiling,
+     * 2026-11-06). {@link #isSpace} is exactly that class.
+     */
+    static String squash(CharSequence text) {
+        StringBuilder out = new StringBuilder(text.length());
+        boolean inRun = false;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (isSpace(c)) {
+                inRun = true;
+            } else {
+                if (inRun) {
+                    out.append(' ');
+                    inRun = false;
+                }
+                out.append(c);
+            }
+        }
+        if (inRun) {
+            out.append(' ');
+        }
+        return out.toString().trim();
+    }
+
+    /** Java's {@code \s} (the six ASCII spaces, not {@link Character#isWhitespace}) or a no-break space. */
+    private static boolean isSpace(char c) {
+        return c == ' ' || c == '\t' || c == '\n' || c == '\u000B' || c == '\f' || c == '\r' || c == '\u00A0';
     }
 
     /** Sentences accumulated until the opening says enough, or the next one would overrun it. */
