@@ -2,6 +2,7 @@ package com.wikantik.pressroom.ui.restapi.v1;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.BusinessManager;
 import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.business.Weblogger;
@@ -122,6 +123,24 @@ class WeblogsApiThemeTest {
         patchTheme("{\"theme\":\"travel\"}");
 
         verify(weblogs).removeTemplate(copy);
+    }
+
+    /**
+     * A blog whose theme can no longer be resolved (disabled or removed) is
+     * exactly the one that needs a switch: like the theme page, the switch
+     * goes ahead and, with no current theme to compare, keeps the
+     * stylesheet copy rather than guessing.
+     */
+    @Test
+    void aBlogWhoseThemeCannotBeResolvedCanStillSwitch() throws Exception {
+        when(themes.getTheme(weblog)).thenThrow(new WebloggerException("theme gone"));
+
+        JsonNode view = patchTheme("{\"theme\":\"travel\"}");
+
+        assertEquals("travel", view.path("theme").asString(), view.toString());
+        assertEquals("travel", weblog.getEditorTheme());
+        verify(weblogs).saveWeblog(weblog);
+        verify(weblogs, never()).removeTemplate(any());
     }
 
     @Test

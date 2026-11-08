@@ -242,12 +242,7 @@ public class ThemeEditController extends BaseController {
      * form. Resolved through the injected facade, never located.
      */
     private WeblogTheme currentTheme(HttpServletRequest request) {
-        try {
-            return weblogger.getThemeManager().getTheme(getActionWeblog(request));
-        } catch (WebloggerException ex) {
-            log.error("Error getting theme for weblog - {}", getActionWeblog(request).getHandle(), ex);
-            return null;
-        }
+        return SharedThemeRules.currentTheme(weblogger.getThemeManager(), getActionWeblog(request));
     }
 
     /** The current theme's id; null when it cannot be resolved, like {@link #currentThemeName}. */

@@ -10,6 +10,8 @@ import com.wikantik.pressroom.pojos.ThemeTemplate.ComponentType;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogTemplate;
 import com.wikantik.pressroom.pojos.WeblogTheme;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Which shared themes a weblog may switch to, and the switch itself: one home
@@ -18,6 +20,8 @@ import com.wikantik.pressroom.pojos.WeblogTheme;
  * switch differently.
  */
 public final class SharedThemeRules {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SharedThemeRules.class);
 
     /**
      * Themes not meant to be picked from this page: {@code frontpage} is the
@@ -61,6 +65,21 @@ public final class SharedThemeRules {
         return themes.getEnabledThemesList().stream()
                 .filter(t -> offered(weblog, t.getId(), currentThemeId))
                 .toList();
+    }
+
+    /**
+     * The theme {@code weblog} renders with now, or null when it cannot be
+     * resolved (a theme since disabled or removed). Null is the safe answer
+     * for {@link #switchTo}, which then keeps the stylesheet copy, and a blog
+     * in that state is exactly one that needs a switch, so it is not refused.
+     */
+    public static WeblogTheme currentTheme(ThemeManager themes, Weblog weblog) {
+        try {
+            return themes.getTheme(weblog);
+        } catch (WebloggerException ex) {
+            LOG.error("Error getting theme for weblog - {}", weblog.getHandle(), ex);
+            return null;
+        }
     }
 
     /**

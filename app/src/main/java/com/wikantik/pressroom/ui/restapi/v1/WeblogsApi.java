@@ -125,7 +125,7 @@ public class WeblogsApi extends BaseApiController implements UISecurityEnforced 
         bean.copyTo(weblog, weblogger.getBusinessManager());
         if (body.theme() != null) {
             SharedThemeRules.switchTo(weblogger.getWeblogManager(), weblog, body.theme(),
-                    weblogger.getThemeManager().getTheme(weblog));
+                    SharedThemeRules.currentTheme(weblogger.getThemeManager(), weblog));
         }
         weblogger.getWeblogManager().saveWeblog(weblog);
         weblogger.flush();
