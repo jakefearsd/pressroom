@@ -161,7 +161,7 @@ body.fd :focus-visible { outline: 2px solid var(--fd-focus); outline-offset: 2px
     text-decoration: none;
     color: var(--fd-ink);
 }
-.fd-tag { margin: .25rem 0 0; color: var(--fd-ink-soft); font-size: .90625rem; max-width: 46ch; }
+.fd-tag { margin: .25rem 0 0; color: var(--fd-ink-soft); font-size: .90625rem; text-wrap: pretty; }
 
 .fd-tabs {
     display: flex;

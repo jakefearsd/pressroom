@@ -159,14 +159,14 @@ body.fd-front img { max-width: 100%; }
     font-size: var(--t-label); font-weight: 600; }
 
 /* masthead and blog nav */
-.fd-mast .fd-wrap { display: flex; flex-wrap: wrap; gap: 16px 32px; align-items: flex-end;
+.fd-mast .fd-wrap { display: flex; flex-wrap: wrap; gap: 12px 32px; align-items: center;
     justify-content: space-between; padding-block: 24px 16px; }
-/* the mark sits beside the site name, not halfway down a long description */
-.fd-brand { display: flex; gap: 12px; align-items: flex-start; min-width: 0; }
+/* the mark sits beside the site name; the description is the next row */
+.fd-brand { display: flex; gap: 12px; align-items: center; min-width: 0; }
 .fd-brand .fd-mark { width: 40px; height: 40px; border-radius: 8px; font-size: var(--t-head); }
 .fd-site a { font-family: var(--serif); font-size: var(--t-site); font-weight: 600; letter-spacing: -.01em;
     line-height: 1.1; }
-.fd-tag { color: var(--ink-soft); margin-top: 4px !important; max-width: 60ch; }
+.fd-tag { flex: 1 0 100%; color: var(--ink-soft); text-wrap: pretty; }
 .fd-sections { border-block: 1px solid var(--line); background: var(--surface); }
 .fd-sections ul { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding-block: 6px; }
 .fd-sections a { display: inline-flex; gap: 8px; align-items: center; padding: 6px 12px; border-radius: 99px;
@@ -329,13 +329,12 @@ body.fd-front img { max-width: 100%; }
     <div class="fd-wrap">
         <div class="fd-brand">
             #if($utils.isNotEmpty($config.siteName))<span class="fd-mark" aria-hidden="true">$utils.escapeHTML($config.siteName.substring(0, 1))</span>#end
-            <div>
-                ## a list page: the site name is its h1 (docs/dev/themes-and-templates.md, the heading rule)
-                <h1 class="fd-site"><a href="$url.home">$utils.escapeHTML($config.siteName)</a></h1>
-                #if($utils.isNotEmpty($config.siteDescription))<p class="fd-tag">$utils.escapeHTML($config.siteDescription)</p>#end
-            </div>
+            ## a list page: the site name is its h1 (docs/dev/themes-and-templates.md, the heading rule)
+            <h1 class="fd-site"><a href="$url.home">$utils.escapeHTML($config.siteName)</a></h1>
         </div>
         #if($fdList != "")<a class="fd-btn" href="#fd-newsletter">$text.get("discovery.newsletter.button")</a>#end
+        ## its own row, as wide as the page below: not indented under the mark
+        #if($utils.isNotEmpty($config.siteDescription))<p class="fd-tag">$utils.escapeHTML($config.siteDescription)</p>#end
     </div>
 </header>
 

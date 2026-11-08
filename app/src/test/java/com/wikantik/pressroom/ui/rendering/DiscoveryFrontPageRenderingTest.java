@@ -288,6 +288,30 @@ class DiscoveryFrontPageRenderingTest {
         assertTrue(with.contains("id=\"fd-newsletter\""), "the band the masthead's Subscribe button jumps to");
     }
 
+    /**
+     * The site description is a full-width row of the masthead, as wide as
+     * the page below it: the brand block closes right after the site name,
+     * so the mark sits beside the name and the description is not indented
+     * under it or held to a narrow column inside the brand.
+     */
+    @Test
+    void theSiteDescriptionIsAFullWidthMastheadRow() throws Exception {
+        fiveBlogsOfFour();
+        setProperty("site.description", "A long description of the whole site.");
+        RenderingTestSupport.clearRenderCaches();
+        String body = root("frontpage");
+
+        Matcher mast = Pattern.compile("<header class=\"fd-mast\">(.*?)</header>", Pattern.DOTALL).matcher(body);
+        assertTrue(mast.find(), "the masthead:\n" + body);
+        String header = mast.group(1);
+        Matcher brand = Pattern.compile("<div class=\"fd-brand\">((?:(?!</div>).)*?</h1>)\\s*</div>", Pattern.DOTALL)
+                .matcher(header);
+        assertTrue(brand.find(), "the brand block closes after the site name:\n" + header);
+        assertFalse(brand.group(1).contains("fd-tag"), "the description is not inside the brand:\n" + header);
+        assertTrue(header.indexOf("<p class=\"fd-tag\">A long description of the whole site.</p>") > brand.end(),
+                "the description follows the brand block, in the masthead:\n" + header);
+    }
+
     @Test
     void emptySiteRendersWithoutError() throws Exception {
         TestUtils.weblogger().getDiscoveryManager().refresh();
