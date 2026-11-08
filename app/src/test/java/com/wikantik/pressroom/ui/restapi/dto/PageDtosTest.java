@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.ui.restapi.dto;
 
+import java.util.Set;
 import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import org.junit.jupiter.api.Test;
@@ -26,22 +27,33 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Tests for {@link PageDtos#applyWrite}, focused on an unknown {@code
- * status} value: the {@link ApiException} it raises used to discard the
+ * Tests for {@link PageDtos}, focused on an unknown {@code status} value:
+ * the {@link ApiException} it raises used to discard the
  * {@link IllegalArgumentException} that caused it (see CLAUDE.md's
- * PreserveStackTrace note).
+ * PreserveStackTrace note). {@code applyWrite} now collects every field's
+ * problem into one 400 (spec 2026-11-08 agent API parity, P4), so the cause is
+ * checked where it is thrown, and the write's refusal by the field it names.
  */
 class PageDtosTest {
 
     @Test
     void anUnknownStatusIsRejectedWithItsCauseAttached() {
-        WeblogPage page = new WeblogPage();
-        PageDtos.PageWrite write = new PageDtos.PageWrite(null, null, null, "bogus", null);
-
-        ApiException thrown = assertThrows(ApiException.class, () -> PageDtos.applyWrite(page, write));
+        ApiException thrown = assertThrows(ApiException.class, () -> PageDtos.parseStatus("bogus"));
 
         assertEquals(400, thrown.getStatus());
         assertNotNull(thrown.getCause(),
                 "the IllegalArgumentException that caused this must survive as the cause");
+    }
+
+    @Test
+    void aWriteWithAnUnknownStatusIsRefusedOnTheStatusField() {
+        WeblogPage page = new WeblogPage();
+        PageDtos.PageWrite write = new PageDtos.PageWrite(null, null, null, "bogus", null,
+                null, null, null, null, null, null, null);
+
+        ApiException thrown = assertThrows(ApiException.class, () -> PageDtos.applyWrite(page, write, Set.of()));
+
+        assertEquals(400, thrown.getStatus());
+        assertEquals("status", thrown.getFieldErrors().get(0).field());
     }
 }

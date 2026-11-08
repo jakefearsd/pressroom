@@ -22,6 +22,15 @@ import com.wikantik.pressroom.ui.restapi.ColumnLimits;
  */
 public final class AdminDtos {
 
+    /**
+     * The one text for {@code theme}, which create and update both take: the
+     * MCP weblogs tool has one property per argument name and keeps the first
+     * description it meets (docs/dev/api.md, MCP endpoint).
+     */
+    public static final String THEME_DESCRIPTION = "A shared theme id, for example journal: required on create; "
+            + "on update it switches the blog to that theme. A wrong one answers with the ones offered. Custom "
+            + "themes are managed in the admin UI. Not clearable.";
+
     private AdminDtos() {
     }
 
@@ -56,7 +65,13 @@ public final class AdminDtos {
                               String emailAddress, String locale, String timeZone,
                               int entryDisplayCount, boolean active, boolean commentsEnabled, boolean commentNotify,
                               @Schema(description = "Show the more-from-the-site block on this blog. Default true.")
-                              boolean showMoreFromSite, String editorTheme,
+                              boolean showMoreFromSite,
+                              @Schema(description = "The same value as theme, under its older name.",
+                                      deprecated = true)
+                              String editorTheme,
+                              @Schema(description = "The blog's theme: a shared theme id such as journal, or "
+                                      + "custom for a customised theme.")
+                              String theme,
                               String creatorUserName, String customDomain, String icon, String about,
                               String newsletterListUuid,
                               String businessId, String placeType, String placeLocality, String placeRegion,
@@ -67,7 +82,7 @@ public final class AdminDtos {
     public record WeblogCreate(
             @Schema(description = "The weblog's handle: its URL path. Letters and digits.") String handle,
             @Schema(description = "The weblog's name.") String name,
-            @Schema(description = "An enabled theme id, for example journal; a wrong one answers with the list.")
+            @Schema(description = THEME_DESCRIPTION)
             String theme,
             String tagline,
             @Schema(description = "The footer's copyright notice, plain text, at most 255 characters.")
@@ -116,6 +131,8 @@ public final class AdminDtos {
                                Boolean commentNotify,
                                @Schema(description = "Show popular posts from the site's other blogs on this blog. Not clearable.")
                                Boolean showMoreFromSite,
+                               @Schema(description = THEME_DESCRIPTION)
+                               String theme,
                                @Schema(description = "Fields to remove: tagline, copyright, customDomain, icon, about, "
                                        + "newsletterListUuid, businessId, "
                                        + "placeType, placeLocality, placeRegion, placeCountry, placeLat with "
@@ -141,7 +158,7 @@ public final class AdminDtos {
                 Boolean.TRUE.equals(weblog.getCommentsEnabled()),
                 !Boolean.FALSE.equals(weblog.getCommentNotify()),
                 !Boolean.FALSE.equals(weblog.getShowMoreFromSite()), weblog.getEditorTheme(),
-                weblog.getCreatorUserName(), weblog.getCustomDomain(), weblog.getIconPath(),
+                weblog.getEditorTheme(), weblog.getCreatorUserName(), weblog.getCustomDomain(), weblog.getIconPath(),
                 weblog.getAbout(), weblog.getNewsletterListUuid(),
                 weblog.getBusiness() == null ? null : weblog.getBusiness().getId(),
                 weblog.getPlaceType(), weblog.getPlaceLocality(), weblog.getPlaceRegion(),

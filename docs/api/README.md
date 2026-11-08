@@ -243,6 +243,7 @@ The clearable fields, per resource:
   `newsletterListUuid`, `businessId`, `placeType`,
   `placeLocality`, `placeRegion`, `placeCountry`, `placeLat`, `placeLng` and
   `bookingUrl`. `placeLat` and `placeLng` clear together.
+- **Page:** `metaTitle`, `searchDescription`, `canonicalUrl` and `ogImageId`.
 - **Media:** `altText`, `focalX` and `focalY`. `focalX` and `focalY` clear together.
 
 An empty `clear` changes nothing, and a repeated name or one with surrounding
@@ -914,6 +915,27 @@ every bundled theme's page template escapes it at render time instead (the
 `EntryView.title` and `PageView.title` in the same client: the first is
 entity-escaped, the second raw).
 
+A page carries the page editor's navigation and SEO fields too, in every
+response (`list`, `get`, `create`, `update`; a field with no value is
+omitted), and create and `PATCH` accept them:
+
+| Field | Meaning |
+|---|---|
+| `showInNav` | List the page in the blog's navigation. |
+| `navOrder` | Its position there, lowest first; pages with the same number sort by title. |
+| `metaTitle` | Replaces the whole `<title>` and `og:title`. Trimmed; at most 255 characters. |
+| `searchDescription` | The meta description search engines and share previews show. Trimmed; at most 255 characters. |
+| `canonicalUrl` | An absolute `http`/`https` URL the page canonicalises to, by the validator the page and entry editors use; anything else is a 400 on `canonicalUrl`. |
+| `noindex` | `true` asks search engines not to index the page. Not clearable. |
+| `ogImageId` | The share image: the id of an image in this weblog's media, outside any private directory, the rule entry writes apply. Another weblog's media id, a non-image or an unknown id is a 400 on `ogImageId`; sending back the stored id is not re-checked. |
+
+These follow the entry fields' rules, and as on an entry write a refused page
+write lists every bad field in `errors` and changes nothing. A `PATCH` that
+omits a field leaves it alone; `clear` removes `metaTitle`,
+`searchDescription`, `canonicalUrl` or `ogImageId` (see [Removing a
+value](#removing-a-value)), and `clear` on a create is a 400. A duplicate
+slug is still a 409, reported once every field has passed.
+
 ## Redirects
 
 ```
@@ -1143,6 +1165,17 @@ property of either name is ignored and naming one in `clear` is a 400 on `clear`
 
 The rules judge the weblog as it will be after the change, so setting only
 `placeType` on a weblog with no `placeLocality` is a 400.
+
+**`theme` switches the blog's shared theme**, by the rule the Theme page
+applies: an enabled theme, never `frontpage` (the site-wide aggregator
+theme) unless the blog is already on it. A theme that is not offered is a
+400 on `theme` whose message lists the offered ids, as `POST
+/api/v1/weblogs` answers a wrong theme; `custom` is a 400 `Custom themes
+are managed in the admin UI.` Switching saves the blog and expires its
+rendered pages; like the Theme page, it drops the blog's own copy of the old
+theme's stylesheet, and re-sending the current theme keeps it. The weblog
+view reports the current theme as `theme` (a shared theme id, or `custom`);
+`editorTheme` carries the same value under its older name and is deprecated.
 
 **`POST /api/v1/admin/users` never accepts a password.** The account is
 created disabled, with a random password nobody is ever told, and a

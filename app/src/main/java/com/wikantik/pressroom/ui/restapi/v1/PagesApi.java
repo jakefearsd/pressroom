@@ -2,7 +2,9 @@ package com.wikantik.pressroom.ui.restapi.v1;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPage;
@@ -10,6 +12,8 @@ import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
 import com.wikantik.pressroom.ui.restapi.ApiException;
+import com.wikantik.pressroom.ui.restapi.FieldErrors;
+import com.wikantik.pressroom.ui.restapi.dto.ClearFields;
 import com.wikantik.pressroom.ui.restapi.dto.PageDtos;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -61,21 +65,32 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
             HttpServletRequest request, @RequestBody PageDtos.PageWrite body) throws WebloggerException {
         Weblog weblog = requireActionWeblog(request);
 
-        // title is not a NOT NULL column the way an entry's is, but a page
-        // with no title at all is not a resource an API caller meant to
-        // create -- same reasoning as EntriesWriteApi.requireTitleAndText,
-        // applied on create only; a PATCH omitting title leaves the stored
-        // one alone per applyWrite's "null means absent" contract.
+        // Every field problem is collected and answered in one 400, as an
+        // entry write's are. title is not a NOT NULL column the way an
+        // entry's is, but a page with no title at all is not a resource an
+        // API caller meant to create -- same reasoning as
+        // EntriesWriteApi.requireTitleAndText, applied on create only; a PATCH
+        // omitting title leaves the stored one alone per applyWrite's "null
+        // means absent" contract. clear is refused on create, as on entries.
+        FieldErrors errors = new FieldErrors();
         if (body.title() == null || body.title().isBlank()) {
-            throw ApiException.invalidField("title", "title is required.");
+            errors.add("title", "title is required.");
         }
-        String slug = PageDtos.requireUsableSlug(body.slug());
-        requireSlugAvailable(weblog, slug, null);
+        if (body.clear() != null && !body.clear().isEmpty()) {
+            errors.add("clear", "clear applies only to updates.");
+        }
+        String[] slug = new String[1];
+        errors.check("slug", () -> slug[0] = PageDtos.requireUsableSlug(body.slug()));
+        checkWrite(errors, weblog, body, Set.of(), null);
+        errors.throwIfAny();
+        // A clash with stored state, not a field format problem: a 409,
+        // reported only once every field passed (as an entry's anchor is).
+        requireSlugAvailable(weblog, slug[0], null);
 
         WeblogPage page = new WeblogPage();
         page.setWeblog(weblog);
-        page.setSlug(slug);
-        PageDtos.applyWrite(page, body);
+        PageDtos.applyWrite(page, body, Set.of());
+        page.setSlug(slug[0]);
 
         weblogger.getWeblogPageManager().savePage(page);
         weblogger.flush();
@@ -93,20 +108,44 @@ public class PagesApi extends BaseApiController implements UISecurityEnforced {
             @RequestBody PageDtos.PageWrite body) throws WebloggerException {
         WeblogPage page = requirePage(request, id);
 
+        FieldErrors errors = new FieldErrors();
         if (body.title() != null && body.title().isBlank()) {
-            throw ApiException.invalidField("title", "title cannot be blank.");
+            errors.add("title", "title cannot be blank.");
         }
+        String[] slug = new String[1];
         if (body.slug() != null) {
-            String slug = PageDtos.requireUsableSlug(body.slug());
-            requireSlugAvailable(page.getWeblog(), slug, page.getId());
+            errors.check("slug", () -> slug[0] = PageDtos.requireUsableSlug(body.slug()));
+        }
+        Set<String> cleared = new HashSet<>();
+        errors.check("clear", () -> cleared.addAll(
+                ClearFields.validate(body.clear(), body, PageDtos.PAGE_CLEARABLE, List.of())));
+        checkWrite(errors, page.getWeblog(), body, cleared, page.getOgImageId());
+        errors.throwIfAny();
+        if (slug[0] != null) {
+            requireSlugAvailable(page.getWeblog(), slug[0], page.getId());
         }
 
-        PageDtos.applyWrite(page, body);
+        PageDtos.applyWrite(page, body, cleared);
+        if (slug[0] != null) {
+            page.setSlug(slug[0]);
+        }
 
         weblogger.getWeblogPageManager().savePage(page);
         weblogger.flush();
 
         return PageDtos.toView(page);
+    }
+
+    /**
+     * Every field check of a write, before anything is applied: the mapper's
+     * own checks run on a scratch page, so a refused write leaves the managed
+     * page exactly as it was, and {@code ogImageId} must name a public image
+     * of this weblog (the entry API's rule, and the page editor's).
+     */
+    private void checkWrite(FieldErrors errors, Weblog weblog, PageDtos.PageWrite body, Set<String> cleared,
+                            String storedOgImageId) {
+        errors.check(() -> PageDtos.applyWrite(new WeblogPage(), body, cleared));
+        checkImageId(errors, weblog, "ogImageId", body.ogImageId(), storedOgImageId);
     }
 
     @DeleteMapping("/{id}")

@@ -36,7 +36,8 @@ class PagesApiTest {
     @Test
     void thePageTitleIsStoredRaw() {
         WeblogPage page = new WeblogPage();
-        PageDtos.applyWrite(page, new PageDtos.PageWrite(null, "Cats & Dogs", null, null, null));
+        PageDtos.applyWrite(page, new PageDtos.PageWrite(null, "Cats & Dogs", null, null, null,
+                null, null, null, null, null, null, null), java.util.Set.of());
         assertEquals("Cats & Dogs", page.getTitle());
     }
 

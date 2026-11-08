@@ -1,14 +1,18 @@
 package com.wikantik.pressroom.ui.restapi.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import com.wikantik.pressroom.pojos.ReservedSlugs;
 import com.wikantik.pressroom.ui.rendering.util.LocaleSegment;
 import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.ui.restapi.ApiException;
 import com.wikantik.pressroom.ui.restapi.ColumnLimits;
+import com.wikantik.pressroom.ui.restapi.FieldErrors;
 
 /**
  * Views of a weblog static page for the automation API.
@@ -24,20 +28,51 @@ import com.wikantik.pressroom.ui.restapi.ColumnLimits;
  */
 public final class PageDtos {
 
+    /** The fields {@code clear} may name on a page. */
+    public static final List<String> PAGE_CLEARABLE = List.of("metaTitle", "searchDescription", "canonicalUrl",
+            "ogImageId");
+
     private PageDtos() {
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record PageView(String id, String slug, String title, String text,
-                            String status, boolean showInNav, Instant updateTime) {
+                            String status, boolean showInNav, int navOrder,
+                            String metaTitle, String searchDescription, String canonicalUrl,
+                            boolean noindex, String ogImageId, Instant updateTime) {
     }
 
     /**
      * A create or partial update. Every component is nullable and null means
      * ABSENT, not "clear this" -- same "null means absent" PATCH convention
-     * {@code EntryDtos.EntryWrite} uses.
+     * {@code EntryDtos.EntryWrite} uses; removing a value is {@code clear}.
+     * The SEO card's fields follow the entry's rules ({@link SeoFields}).
      */
-    public record PageWrite(String slug, String title, String text, String status, Boolean showInNav) {
+    public record PageWrite(
+            String slug, String title, String text,
+            @Schema(description = "DRAFT or PUBLISHED; a new page without one is a DRAFT.")
+            String status,
+            @Schema(description = "List the page in the blog's navigation.")
+            Boolean showInNav,
+            @Schema(description = "Position in the navigation, lowest first; pages with the same number "
+                    + "sort by title.")
+            Integer navOrder,
+            @Schema(description = "Replaces the whole <title> and og:title; at most 255 characters.")
+            String metaTitle,
+            @Schema(description = "The meta description search engines and share previews show; at most "
+                    + "255 characters.")
+            String searchDescription,
+            @Schema(description = "An absolute http(s) URL this page canonicalises to, when it was first "
+                    + "published elsewhere.")
+            String canonicalUrl,
+            @Schema(description = "True asks search engines not to index the page. Not clearable.")
+            Boolean noindex,
+            @Schema(description = "Id of an image in this weblog's media, outside any private directory, "
+                    + "used as the share image.")
+            String ogImageId,
+            @Schema(description = "On update, fields to remove: metaTitle, searchDescription, canonicalUrl, "
+                    + "ogImageId. Null never removes anything.")
+            List<String> clear) {
     }
 
     public static PageView toView(WeblogPage page) {
@@ -48,6 +83,12 @@ public final class PageDtos {
                 page.getContent(),
                 page.getStatus() == null ? null : page.getStatus().name(),
                 page.getShowInNav() != null && page.getShowInNav(),
+                page.getNavOrder(),
+                page.getMetaTitle(),
+                page.getSearchDescription(),
+                page.getCanonicalUrl(),
+                Boolean.TRUE.equals(page.getNoindex()),
+                page.getOgImageId(),
                 instant(page.getUpdated()));
     }
 
@@ -56,37 +97,75 @@ public final class PageDtos {
     }
 
     /**
-     * Applies every field {@code write} actually carries onto {@code page}.
-     * The title is copied through with NO escaping -- see this class's
-     * header comment for why; {@code PageBean.copyTo} (the JSP editor's own
-     * form-to-entity mapper) does the exact same unescaped copy.
+     * Applies every field {@code write} actually carries onto {@code page},
+     * then removes the {@code cleared} ones (already validated by {@code
+     * ClearFields}). Every field's problem is collected; the one 400 thrown at
+     * the end names them all, as an entry write's does. The title is copied
+     * through with NO escaping -- see this class's header comment for why;
+     * {@code PageBean.copyTo} (the JSP editor's own form-to-entity mapper)
+     * does the exact same unescaped copy.
      *
      * <p>{@code slug} is copied through verbatim too, not trimmed or
      * validated here -- the controller calls {@link #requireUsableSlug}
-     * itself before this method runs, exactly once per write, since a PATCH
-     * that omits {@code slug} must not re-validate the page's existing,
-     * already-valid one.
+     * itself, exactly once per write, since a PATCH that omits {@code slug}
+     * must not re-validate the page's existing, already-valid one.
      */
-    public static void applyWrite(WeblogPage page, PageWrite write) {
+    public static void applyWrite(WeblogPage page, PageWrite write, Set<String> cleared) {
+        FieldErrors errors = new FieldErrors();
         if (write.slug() != null) {
             page.setSlug(write.slug());
         }
         if (write.title() != null) {
-            ColumnLimits.requireMaxLength("title", write.title(), ColumnLimits.PAGE_TITLE);
-            page.setTitle(write.title());
+            errors.check("title", () -> {
+                ColumnLimits.requireMaxLength("title", write.title(), ColumnLimits.PAGE_TITLE);
+                page.setTitle(write.title());
+            });
         }
         if (write.text() != null) {
             page.setContent(write.text());
         }
         if (write.status() != null) {
-            page.setStatus(parseStatus(write.status()));
+            errors.check("status", () -> page.setStatus(parseStatus(write.status())));
         }
         if (write.showInNav() != null) {
             page.setShowInNav(write.showInNav());
         }
+        if (write.navOrder() != null) {
+            page.setNavOrder(write.navOrder());
+        }
+        if (write.metaTitle() != null) {
+            errors.check("metaTitle", () -> page.setMetaTitle(SeoFields.metaTitle(write.metaTitle())));
+        }
+        if (write.searchDescription() != null) {
+            errors.check("searchDescription",
+                    () -> page.setSearchDescription(SeoFields.searchDescription(write.searchDescription())));
+        }
+        if (write.canonicalUrl() != null) {
+            errors.check("canonicalUrl", () -> page.setCanonicalUrl(SeoFields.canonicalUrl(write.canonicalUrl())));
+        }
+        if (write.noindex() != null) {
+            page.setNoindex(write.noindex());
+        }
+        if (write.ogImageId() != null) {
+            errors.check("ogImageId", () -> page.setOgImageId(SeoFields.ogImageId(write.ogImageId())));
+        }
+        for (String name : cleared) {
+            clearField(page, name);
+        }
+        errors.throwIfAny();
     }
 
-    private static WeblogPage.PubStatus parseStatus(String raw) {
+    private static void clearField(WeblogPage page, String name) {
+        switch (name) {
+            case "metaTitle" -> page.setMetaTitle(null);
+            case "searchDescription" -> page.setSearchDescription(null);
+            case "canonicalUrl" -> page.setCanonicalUrl(null);
+            case "ogImageId" -> page.setOgImageId(null);
+            default -> throw new IllegalArgumentException("Not clearable: " + name);
+        }
+    }
+
+    static WeblogPage.PubStatus parseStatus(String raw) {
         try {
             return WeblogPage.PubStatus.valueOf(raw.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {

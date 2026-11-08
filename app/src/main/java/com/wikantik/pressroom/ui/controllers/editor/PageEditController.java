@@ -27,7 +27,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.commons.text.StringEscapeUtils;
-import org.apache.commons.validator.routines.UrlValidator;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.SiteSlugClashException;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
@@ -35,6 +34,7 @@ import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPage;
 import com.wikantik.pressroom.pojos.WeblogPermission;
 import com.wikantik.pressroom.ui.controllers.BaseController;
+import com.wikantik.pressroom.ui.controllers.EntryFieldRules;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -65,17 +65,6 @@ public class PageEditController extends BaseController {
     public boolean allowsSiteSpace() {
         return true;
     }
-
-    /**
-     * Same allowlist as {@code CtaShortcode}'s href check and
-     * {@code EntryEditController}'s: the SEO card's canonical-URL override is
-     * emitted straight into {@code <link rel="canonical">}, {@code og:url}
-     * and JSON-LD {@code mainEntityOfPage}, so it must be an absolute http(s)
-     * URL or blank -- never a {@code javascript:}/{@code data:}/{@code file:}
-     * value.
-     */
-    private static final UrlValidator CANONICAL_URL_VALIDATOR =
-            new UrlValidator(new String[] {"http", "https"});
 
     @Override
     public List<String> requiredWeblogPermissionActions() {
@@ -153,13 +142,14 @@ public class PageEditController extends BaseController {
             }
         }
 
-        // Same allowlist as EntryEditController#doSave / CtaShortcode: the SEO
-        // card's canonical-URL override is emitted straight into the rendered
-        // head, so it must be checked before anything is persisted -- a field
-        // error the author can fix, not a 500 and not a silently-stored
-        // javascript:/data:/file: value.
+        // The validator EntryEditController#doSave and the API use: the SEO
+        // card's canonical-URL override is emitted straight into
+        // <link rel="canonical">, og:url and JSON-LD mainEntityOfPage, so it
+        // must be an absolute http(s) URL, checked before anything is
+        // persisted -- a field error the author can fix, not a 500 and not a
+        // silently-stored javascript:/data:/file: value.
         if (StringUtils.isNotBlank(bean.getCanonicalUrl())
-                && !CANONICAL_URL_VALIDATOR.isValid(bean.getCanonicalUrl())) {
+                && !EntryFieldRules.isValidCanonicalUrl(bean.getCanonicalUrl())) {
             addFieldError(model, "seo_canonicalUrl", "entryEdit.canonicalUrlInvalid", request);
         }
         // The renderer resolves ogImageId with a global lookup, so it must name

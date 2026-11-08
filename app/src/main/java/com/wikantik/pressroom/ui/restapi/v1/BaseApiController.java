@@ -9,6 +9,7 @@ import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntryRevision;
 import com.wikantik.pressroom.ui.controllers.WeblogOwnership;
 import com.wikantik.pressroom.ui.restapi.ApiException;
+import com.wikantik.pressroom.ui.restapi.FieldErrors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
@@ -59,6 +60,26 @@ public abstract class BaseApiController {
                     + " and names a different value; send " + name + " only.");
         }
         return value;
+    }
+
+    /**
+     * An image id field (an entry's featuredImageId and ogImageId, a page's
+     * ogImageId) must name an image readers can load: a media file of this
+     * weblog, an image, outside every private directory
+     * ({@link WeblogOwnership#publicImage}, the JSP editors' rule too).
+     * They were only length-checked, so a typo or a foreign id was stored and
+     * the post silently had no featured image. A value equal to the stored
+     * one is not re-checked, so a resource sent back exactly as it was read
+     * never fails on a file deleted since.
+     */
+    protected void checkImageId(FieldErrors errors, Weblog weblog, String field, String id, String stored) {
+        if (id == null || id.equals(stored)) {
+            return;
+        }
+        if (WeblogOwnership.publicImage(weblogger, id, weblog) == null) {
+            errors.add(field, field + " must be the id of an image in this weblog's media, "
+                    + "outside any private directory.");
+        }
     }
 
     /** The signed-in user the handler interceptor stored, or a 401. */

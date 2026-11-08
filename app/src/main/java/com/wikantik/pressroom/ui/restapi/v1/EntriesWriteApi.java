@@ -540,25 +540,6 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
     }
 
     /**
-     * featuredImageId and ogImageId must name an image readers can load: a
-     * media file of this weblog, an image, outside every private directory
-     * ({@link WeblogOwnership#publicImage}, the JSP editors' rule too).
-     * They were only length-checked, so a typo or a foreign id was stored and
-     * the post silently had no featured image. A value equal to the stored
-     * one is not re-checked, so an entry sent back exactly as it was read
-     * never fails on a file deleted since.
-     */
-    private void checkImageId(FieldErrors errors, Weblog weblog, String field, String id, String stored) {
-        if (id == null || id.equals(stored)) {
-            return;
-        }
-        if (WeblogOwnership.publicImage(weblogger, id, weblog) == null) {
-            errors.add(field, field + " must be the id of an image in this weblog's media, "
-                    + "outside any private directory.");
-        }
-    }
-
-    /**
      * Applies a write {@link #checkWrite} passed. Each step repeats a check
      * that already passed on identical input, so none of them refuses here.
      */

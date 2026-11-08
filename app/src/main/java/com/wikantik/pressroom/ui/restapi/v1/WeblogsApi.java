@@ -6,8 +6,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.themes.SharedTheme;
 import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.WeblogTheme;
+import com.wikantik.pressroom.ui.controllers.SharedThemeRules;
 import com.wikantik.pressroom.ui.controllers.WeblogSettingsRules;
 import com.wikantik.pressroom.ui.controllers.UISecurityEnforced;
 import com.wikantik.pressroom.ui.restapi.ApiException;
@@ -42,7 +45,8 @@ import org.springframework.web.bind.annotation.RestController;
  * regardless.
  *
  * <p>{@code update} lays the PATCH over the settings form's own bean and judges it with the
- * form's shared {@code WeblogSettingsRules}, so the two surfaces cannot drift.
+ * form's shared {@code WeblogSettingsRules}, so the two surfaces cannot drift. Its {@code theme}
+ * is the Theme page's switch, through the page's own {@code SharedThemeRules}.
  *
  * <p><b>{@code @AdminScoped} despite living outside {@code /v1/admin}.</b>
  * {@code AdminScopedCoverageTest} does not require it here -- it only scans
@@ -92,6 +96,9 @@ public class WeblogsApi extends BaseApiController implements UISecurityEnforced 
         Weblog weblog = requireActionWeblog(request);
         Set<String> cleared = ClearFields.validate(body.clear(), body,
                 AdminDtos.WEBLOG_CLEARABLE, AdminDtos.WEBLOG_PAIRS);
+        if (body.theme() != null) {
+            requireOfferedTheme(weblog, body.theme());
+        }
 
         // The settings form's own bean carries the change, so the form's copyTo stores it:
         // one way to store each value, whichever surface changed it.
@@ -116,11 +123,33 @@ public class WeblogsApi extends BaseApiController implements UISecurityEnforced 
         }
 
         bean.copyTo(weblog, weblogger.getBusinessManager());
+        if (body.theme() != null) {
+            SharedThemeRules.switchTo(weblogger.getWeblogManager(), weblog, body.theme(),
+                    weblogger.getThemeManager().getTheme(weblog));
+        }
         weblogger.getWeblogManager().saveWeblog(weblog);
         weblogger.flush();
         // WeblogPageCache expires only against weblog.lastModified; invalidate bumps it.
         CacheManager.invalidate(weblog);
         return AdminDtos.toView(weblog);
+    }
+
+    /**
+     * The theme page's rule ({@link SharedThemeRules#offered}) over the
+     * enabled themes, refused as {@code weblogs create} refuses a wrong theme:
+     * a 400 on {@code theme} listing the ones that are offered. A custom theme
+     * is imported and edited template by template, which only the admin UI
+     * does. The site space never reaches here (the API withholds it).
+     */
+    private void requireOfferedTheme(Weblog weblog, String theme) {
+        if (WeblogTheme.CUSTOM.equals(theme)) {
+            throw ApiException.invalidField("theme", "Custom themes are managed in the admin UI.");
+        }
+        List<String> offered = SharedThemeRules.offeredThemes(weblogger.getThemeManager(), weblog,
+                weblog.getEditorTheme()).stream().map(SharedTheme::getId).toList();
+        if (!offered.contains(theme)) {
+            throw ApiException.invalidField("theme", "theme must be one of: " + String.join(", ", offered) + ".");
+        }
     }
 
     @Override

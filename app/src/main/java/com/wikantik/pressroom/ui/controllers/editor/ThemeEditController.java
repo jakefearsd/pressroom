@@ -19,7 +19,6 @@
 package com.wikantik.pressroom.ui.controllers.editor;
 
 import java.util.List;
-import java.util.Set;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -27,7 +26,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
-import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.business.themes.SharedTheme;
 import com.wikantik.pressroom.business.themes.ThemeManager;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
@@ -35,8 +33,8 @@ import com.wikantik.pressroom.pojos.Theme;
 import com.wikantik.pressroom.pojos.ThemeTemplate.ComponentType;
 import com.wikantik.pressroom.pojos.WeblogTheme;
 import com.wikantik.pressroom.pojos.Weblog;
-import com.wikantik.pressroom.pojos.WeblogTemplate;
 import com.wikantik.pressroom.ui.controllers.BaseController;
+import com.wikantik.pressroom.ui.controllers.SharedThemeRules;
 import com.wikantik.pressroom.util.cache.CacheManager;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -172,17 +170,8 @@ public class ThemeEditController extends BaseController {
             if (!hasErrors(model)) {
                 try {
                     String originalTheme = weblog.getEditorTheme();
-                    WeblogManager mgr = weblogger.getWeblogManager();
-
-                    WeblogTheme theme = currentTheme(request);
-                    if (!originalTheme.equals(selectedThemeId) && theme != null && theme.getStylesheet() != null) {
-                        WeblogTemplate stylesheet = mgr.getTemplateByAction(getActionWeblog(request), ComponentType.STYLESHEET);
-                        if (stylesheet != null) {
-                            mgr.removeTemplate(stylesheet);
-                        }
-                    }
-
-                    weblog.setEditorTheme(selectedThemeId);
+                    SharedThemeRules.switchTo(weblogger.getWeblogManager(), weblog, selectedThemeId,
+                            currentTheme(request));
                     weblogger.getWeblogManager().saveWeblog(weblog);
                     weblogger.flush();
                     CacheManager.invalidate(weblog);
@@ -241,38 +230,9 @@ public class ThemeEditController extends BaseController {
                         || WeblogTheme.CUSTOM.equals(weblog.getEditorTheme()));
     }
 
-    /**
-     * Themes not meant to be picked from this page: {@code frontpage} is the
-     * {@code $site}-wide aggregator theme (its templates render the
-     * multi-blog directory named by {@code site.frontpage.weblog.handle},
-     * not an individual weblog -- see {@code SiteModel}/{@code
-     * ThemeMatrixIT}'s exclusion of it for the same reason) and breaks a
-     * normal weblog that adopts it. {@code theme.xml} has no theme-level
-     * "hidden"/"sitewide" flag to key off of (only per-template {@code
-     * <hidden>}), so this is a hardcoded id rather than metadata-driven;
-     * revisit if that descriptor ever grows one.
-     */
-    private static final String SITEWIDE_ONLY_THEME_ID = "frontpage";
-
-    /**
-     * The themes the site space (the hidden weblog owning the site's pages)
-     * renders with: the three blog themes and {@code frontpage}, which on the
-     * site space is the theme a new one starts on rather than a misfit.
-     */
-    private static final Set<String> SITE_THEME_IDS = Set.of("journal", "portfolio", "travel", "frontpage");
-
-    /**
-     * Whether the picker offers this shared theme to this weblog -- the one
-     * rule both the list the form shows and the save behind it apply. The
-     * site space is offered the site themes; any other weblog every theme
-     * but {@code frontpage}, unless it is already on it and must not be
-     * stranded.
-     */
+    /** {@link SharedThemeRules#offered}, the rule the API's theme switch applies too. */
     private static boolean offered(Weblog weblog, String themeId, String currentThemeId) {
-        if (weblog.isSiteSpace()) {
-            return SITE_THEME_IDS.contains(themeId);
-        }
-        return !SITEWIDE_ONLY_THEME_ID.equals(themeId) || SITEWIDE_ONLY_THEME_ID.equals(currentThemeId);
+        return SharedThemeRules.offered(weblog, themeId, currentThemeId);
     }
 
     /**
@@ -307,9 +267,7 @@ public class ThemeEditController extends BaseController {
         Weblog weblog = getActionWeblog(request);
         String currentThemeId = WeblogTheme.CUSTOM.equals(weblog.getEditorTheme())
                 ? null : currentThemeId(request);
-        List<SharedTheme> selectable = themeMgr.getEnabledThemesList().stream()
-                .filter(t -> offered(weblog, t.getId(), currentThemeId))
-                .toList();
+        List<SharedTheme> selectable = SharedThemeRules.offeredThemes(themeMgr, weblog, currentThemeId);
         model.addAttribute("themes", selectable);
         model.addAttribute("customTheme", WeblogTheme.CUSTOM.equals(getActionWeblog(request).getEditorTheme()));
         model.addAttribute("customThemeAllowed", customThemeAllowed(request));

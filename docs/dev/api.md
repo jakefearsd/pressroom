@@ -124,6 +124,17 @@ scripts and agents alongside the JSP admin UI. Reference and error contract:
 - **Adding an `/api/v1` route means deciding its MCP action in the same change**: an `ActionDecl` in
   `McpToolCatalog`, or an `Exclusion` with a reason. `McpCoverageTest` fails until you do, and
   `McpDocsTest` until the README's MCP table matches.
+- **Adding a field to an admin form bean means deciding its API field in the same change.**
+  `FormBodyParityTest` (spec `docs/superpowers/specs/2026-11-08-agent-api-parity-design.md`, G1-G4)
+  holds `EntryBean` to `EntryWrite`, `WeblogConfigBean` to `WeblogPatch` and `PageBean` to
+  `PageWrite`: every property with a getter and a setter is a body field of the same name, an entry
+  in the test's rename table (`content` -> `text`), or an exclusion with a reason (`pinnedToMain`).
+  A rename or exclusion naming nothing live fails it too. `McpCoverageTest` holds routes to tools;
+  this holds bodies to forms, which is how the page SEO card went missing from the API.
+- **One rule per shared field, one home each**: `SeoFields` (meta title, search description,
+  canonical URL, og image id length) serves `EntryDtos` and `PageDtos`;
+  `BaseApiController.checkImageId` is the public-image check for both; `SharedThemeRules` is the
+  Theme page's `offered` rule and switch, shared with `PATCH /weblogs/{handle}` `theme`.
 - **Arguments are derived, not declared** (`ArgumentDeriver`). Path variables (`{handle}` becomes
   `weblog`), `@RequestParam`s and the `@RequestBody` record's components become arguments. A path
   value must be one segment (empty, `.`, `..`, or containing `/`, `\` or `;` is refused).

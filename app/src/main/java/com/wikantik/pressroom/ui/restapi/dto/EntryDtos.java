@@ -12,7 +12,6 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 import com.wikantik.pressroom.business.ContentHashes;
-import org.apache.commons.lang3.StringUtils;
 import com.wikantik.pressroom.pojos.JsonLdType;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
@@ -353,29 +352,14 @@ public final class EntryDtos {
             errors.check("pubTime", () -> entry.setPubTime(pubTime(write.pubTime(), weblog)));
         }
         if (write.metaTitle() != null) {
-            errors.check("metaTitle", () -> {
-                String value = StringUtils.trimToNull(write.metaTitle());
-                ColumnLimits.requireMaxLength("metaTitle", value, ColumnLimits.META_TITLE);
-                entry.setMetaTitle(value);
-            });
+            errors.check("metaTitle", () -> entry.setMetaTitle(SeoFields.metaTitle(write.metaTitle())));
         }
         if (write.searchDescription() != null) {
-            errors.check("searchDescription", () -> {
-                String value = StringUtils.trimToNull(write.searchDescription());
-                ColumnLimits.requireMaxLength("searchDescription", value, ColumnLimits.SEARCH_DESCRIPTION);
-                entry.setSearchDescription(value);
-            });
+            errors.check("searchDescription",
+                    () -> entry.setSearchDescription(SeoFields.searchDescription(write.searchDescription())));
         }
         if (write.canonicalUrl() != null) {
-            errors.check("canonicalUrl", () -> {
-                String value = StringUtils.trimToNull(write.canonicalUrl());
-                ColumnLimits.requireMaxLength("canonicalUrl", value, ColumnLimits.CANONICAL_URL);
-                if (value != null && !EntryFieldRules.isValidCanonicalUrl(value)) {
-                    throw ApiException.invalidField("canonicalUrl",
-                            "canonicalUrl must be an absolute http or https URL.");
-                }
-                entry.setCanonicalUrl(value);
-            });
+            errors.check("canonicalUrl", () -> entry.setCanonicalUrl(SeoFields.canonicalUrl(write.canonicalUrl())));
         }
         if (write.commentsClosed() != null) {
             entry.setCommentsClosed(write.commentsClosed());
@@ -391,10 +375,7 @@ public final class EntryDtos {
             });
         }
         if (write.ogImageId() != null) {
-            errors.check("ogImageId", () -> {
-                ColumnLimits.requireMaxLength("ogImageId", write.ogImageId(), ColumnLimits.OG_IMAGE_ID);
-                entry.setOgImageId(write.ogImageId());
-            });
+            errors.check("ogImageId", () -> entry.setOgImageId(SeoFields.ogImageId(write.ogImageId())));
         }
         // The location: the type decides which structured-data block the
         // permalink emits (TOURIST_ATTRACTION carries the coordinates as its
