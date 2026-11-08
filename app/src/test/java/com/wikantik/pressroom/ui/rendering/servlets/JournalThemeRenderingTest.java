@@ -24,6 +24,7 @@ import org.apache.commons.text.StringEscapeUtils;
 import com.wikantik.pressroom.TestUtils;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.themes.SharedTheme;
+import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
@@ -220,6 +221,43 @@ class JournalThemeRenderingTest {
         assertTrue(body.contains("<p class=\"qj-sum\">Fish &amp; chips were the first thing anybody ordered on "
                 + "that coast, every single time. Nobody could say why.</p>"),
                 "two whole sentences, no heading, escaped once:\n" + body);
+    }
+
+    /**
+     * Spec 2026-11-07 (pictures by default), criteria 14 and 15: a row shows
+     * its post's featured image beside the writing, and every row says how
+     * long the read is, as the front page does. A post with no featured
+     * image keeps the text-only row.
+     */
+    @Test
+    void aRowShowsItsFeaturedImageAndEveryRowItsReadingTime() throws Exception {
+        MediaFile image = TestUtils.setupImageMediaFile(weblog, "row-image");
+        WeblogEntry pictured = TestUtils.setupWeblogEntry("pictured", weblog, user);
+        TestUtils.setupWeblogEntry("plain", weblog, user);
+        WeblogEntryManager mgr = TestUtils.weblogger().getWeblogEntryManager();
+        WeblogEntry managed = mgr.getWeblogEntry(pictured.getId());
+        managed.setFeaturedImageId(image.getId());
+        mgr.saveWeblogEntry(managed);
+        TestUtils.endSession(true);
+
+        String body = render("/" + HANDLE + "/");
+
+        String picturedRow = row(body, "/entry/pictured\"");
+        String plainRow = row(body, "/entry/plain\"");
+        assertTrue(picturedRow.contains("class=\"qj-thumb\"") && picturedRow.contains("mediaresource/" + image.getId()),
+                "the row shows the featured image:\n" + picturedRow);
+        assertTrue(picturedRow.contains("srcset="), "responsively:\n" + picturedRow);
+        assertFalse(plainRow.contains("<img"), "no featured image, no picture:\n" + plainRow);
+        assertTrue(picturedRow.contains("1 min read") && plainRow.contains("1 min read"),
+                "each row says how long the read is:\n" + body);
+    }
+
+    /** The {@code <article>} that links to {@code href}. */
+    private static String row(String body, String href) {
+        int at = body.indexOf(href);
+        assertTrue(at >= 0, "no row links to " + href + ":\n" + body);
+        int start = body.lastIndexOf("<article", at);
+        return body.substring(start, body.indexOf("</article>", at));
     }
 
     @Test

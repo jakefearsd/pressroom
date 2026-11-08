@@ -1116,6 +1116,33 @@ class EntryEditControllerTest extends EditorControllerTestSupport {
         verify(weblogger.getWeblogEntryManager()).saveWeblogEntry(any(), any());
     }
 
+    /** Spec 2026-11-07 (pictures by default), criterion 6: Blogger's rule, in the editor too. */
+    @Test
+    void withNoFeaturedImagePickedTheFirstPictureInTheTextIsIt() throws Exception {
+        com.wikantik.pressroom.pojos.Weblog other = new com.wikantik.pressroom.pojos.Weblog();
+        other.setId("weblog-2");
+        givenImage("mf-foreign", other, false);
+        givenImage("mf-first", weblog, false);
+        givenImage("mf-second", weblog, false);
+        bean.setText("Intro\n\n[image id=\"mf-foreign\"]\n\n[image id=\"mf-first\"]\n\n[image id=\"mf-second\"]");
+
+        controller.entryAddSaveDraft(request, model, bean);
+
+        assertEquals("mf-first", captureSavedEntry().getFeaturedImageId());
+    }
+
+    @Test
+    void aPickedFeaturedImageIsKeptOverTheTextsFirstPicture() throws Exception {
+        givenImage("mf-first", weblog, false);
+        givenImage("mf-picked", weblog, false);
+        bean.setText("[image id=\"mf-first\"]");
+        bean.setFeaturedImageId("mf-picked");
+
+        controller.entryAddSaveDraft(request, model, bean);
+
+        assertEquals("mf-picked", captureSavedEntry().getFeaturedImageId());
+    }
+
     @Test
     void aNonHttpCanonicalUrlIsRejectedAndNothingIsSaved() throws Exception {
         // A stored javascript:/data:/file: URL would be emitted straight into

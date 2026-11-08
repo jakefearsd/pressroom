@@ -24,6 +24,7 @@ import java.time.format.DateTimeParseException;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import java.util.TimeZone;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -687,6 +688,12 @@ public class EntryEditController extends BaseController {
                 entry.setPubTime(pubTime);
 
                 bean.copyTo(entry, lookupSubmittedCategory(bean));
+                // None picked: the first picture in the text, as Blogger does
+                // and as the API does (spec 2026-11-07, pictures by default).
+                if (StringUtils.isBlank(entry.getFeaturedImageId())) {
+                    entry.setFeaturedImageId(WeblogOwnership.firstPublicImage(
+                            weblogger, entry.getWebsite(), entry.getText(), Set.of()));
+                }
 
                 if (entry.isPublished() && entry.getPubTime() == null) {
                     entry.setPubTime(entry.getUpdateTime());

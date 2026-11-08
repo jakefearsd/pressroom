@@ -51,7 +51,6 @@ public final class SeoBody {
     public static final String IMAGE_ALT_MISSING = "image_alt_missing";
     public static final String FRAGMENT_LINK_BROKEN = "fragment_link_broken";
     public static final String ENTRY_LINK_BROKEN = "entry_link_broken";
-    public static final String FEATURED_IMAGE_REPEATED = "featured_image_repeated";
     public static final String IMAGE_NOT_RESPONSIVE = "image_not_responsive";
 
     /**
@@ -61,12 +60,8 @@ public final class SeoBody {
      *                         absolute, as its url strategy builds them ({@code /blog/entry/})
      * @param publishedAnchors which of {@link #entryAnchors} are published entries (or the entry itself)
      * @param media            for an image source that is one of the weblog's media files, that file
-     * @param shownFeaturedImageId the entry's featured image when the weblog's theme prints it with the
-     *                         entry, so a copy in the body shows twice; null when there is none or the
-     *                         theme does not show it
      */
-    public record Site(List<String> entryUrlPrefixes, Set<String> publishedAnchors, Map<String, Media> media,
-                       String shownFeaturedImageId) {
+    public record Site(List<String> entryUrlPrefixes, Set<String> publishedAnchors, Map<String, Media> media) {
     }
 
     /**
@@ -129,7 +124,6 @@ public final class SeoBody {
         bodyH1(findings);
         headingSkips(findings);
         imagesWithoutAlt(site, findings);
-        featuredImageRepeated(site, findings);
         imagesNotResponsive(site, findings);
         brokenFragments(findings);
         brokenEntryLinks(site, findings);
@@ -188,32 +182,6 @@ public final class SeoBody {
                 ? "1 image has" : undescribed.size() + " images have") + " no alt text, or only a file name: "
                 + EntrySeoChecks.named(undescribed) + ". Describe each one: in Markdown ![what it shows](url); "
                 + "for a media file, its alt text or the [image] caption. Write alt=\"\" for a purely decorative "
-                + "image."));
-    }
-
-    /**
-     * The featured image again in the body, on a theme that already prints
-     * it with the entry ({@link Site#shownFeaturedImageId}): readers see it
-     * twice. The first agent post with a featured image did exactly this.
-     */
-    private void featuredImageRepeated(Site site, List<Finding> findings) {
-        if (site.shownFeaturedImageId() == null) {
-            return;
-        }
-        String repeated = null;
-        for (Image image : images) {
-            Media media = image.src() == null ? null : site.media().get(image.src());
-            if (media != null && site.shownFeaturedImageId().equals(media.id())) {
-                repeated = image.src();
-                break;
-            }
-        }
-        if (repeated == null) {
-            return;
-        }
-        findings.add(Finding.of(FEATURED_IMAGE_REPEATED, EntrySeoChecks.WARNING, "The body shows the featured "
-                + "image, " + repeated + ", and this weblog's theme already shows the featured image with the "
-                + "entry, so readers see it twice. Take it out of the body, or choose a different featured "
                 + "image."));
     }
 

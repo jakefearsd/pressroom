@@ -23,11 +23,11 @@ public final class McpInstructions {
             SEO scan; `audits seo` lists SEO gaps, `seo_entry` checks one entry, body too.
             - `entries revisions` lists what each save replaced; `revision` diffs one; `restore_revision` puts \
             it back. `revisionNote` on `update` says why.
-            - Featured image: featuredImageUrl (a public image URL; featuredImageAlt) imports and sets it; or \
-            `media import` it and set featuredImageId (a re-import returns the first copy). A theme may show it: \
-            keep it out of the text.
-            - `importExternalImages: true` imports images the text loads from other sites and repoints the text; \
-            if one fails nothing is written, and a retry reuses those imported.
+            - Pictures: other sites' images in sent text are copied in and repointed (importExternalImages, \
+            default on; false opts out); a failed one stays linked (with true, nothing is written; a retry \
+            reuses copies). Unset, the featured image is the text's first picture; no hero repeats it. \
+            Else featuredImageUrl (featuredImageAlt), or `media import` (a re-import returns the first copy) \
+            and featuredImageId.
             - In entry text, `[image id=<media id> caption="..."]` places an imported image responsively; \
             `[gallery dir="<directory>"]`, `[map]` with `[pin lat=.. lng=.. label=".."]`, `[video url="..."]` \
             and `[faq]` with `[q]`/`[a]` are the others.

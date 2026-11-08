@@ -469,10 +469,17 @@ color everything else; preview warns about inline colors.
 
 Place this weblog's images with `[image id=...]` rather than a hand-written
 `<img>`: the shortcode serves a size that fits the reader's screen, where a
-plain `<img>` makes every reader download the full-size file. And keep the
-featured image out of the text: some themes (portfolio, travel) already
-print it with the entry, so a copy in the body shows twice. Preview warns
-about both.
+plain `<img>` makes every reader download the full-size file; preview warns
+about a plain one.
+
+Pictures work as on Blogger. A save that leaves an entry with no featured
+image makes the first of this weblog's pictures in the text its featured
+image (an `[image id=...]`, or an `<img>` or Markdown image of a
+`.../mediaresource/<id>` URL; never one in code). A featured image you set
+wins, and an update that sends `clear: ["featuredImageId"]` is left with
+none. A theme that prints the featured image above the post (portfolio,
+travel) leaves it out when the text already shows that picture, so it is
+never seen twice: put the picture in the text where you want it.
 
 HTML still works, mixed with Markdown: HTML blocks pass through Markdown
 untouched, and bare paragraphs between them are wrapped in `<p>`.
@@ -565,11 +572,9 @@ badly, and is empty when nothing will: an element that sets a text color
 or background inline, a code block that names no language, and the body
 checks of the [SEO audit](#audits) (an `h1` in the body, a skipped heading
 level, an image with no alt text, a link to a missing part of the entry or
-to an unpublished entry, the featured image repeated in the body, an image
-of the weblog placed with a plain `<img>`), each as a sentence. Warnings are
-advice: the same text saves without complaint. `featuredImageId`, optional,
-names the featured image the entry will have in place of its stored one, so
-a preview before a create can say whether the body repeats it. `POST .../entries/{id}/preview`
+to an unpublished entry, an image of the weblog placed with a plain
+`<img>`), each as a sentence. Warnings are advice: the same text saves
+without complaint. `POST .../entries/{id}/preview`
 also takes `edits` in place of `text` (below): it renders what an update
 with those edits would store, and saves nothing. On `.../entries/preview`,
 with no entry to apply them to, `edits` is a 400.
@@ -696,9 +701,18 @@ refusal is a 400 on `featuredImageUrl`. A private default media directory
 refuses every import, because readers could not see the images: a 400 on
 `featuredImageUrl`, or on `text` when only body images are imported.
 
-**`importExternalImages: true`** on create or update imports each image the
-text loads from a host other than the site's own, and points the text at the
-local copy. Found are `<img src>` tags in HTML (the first `src` wins, as in a
+**`importExternalImages`** imports each image the text loads from a host
+other than the site's own, and points the text at the local copy. It is on
+by default: a create or update that sends `text` (or `edits`) and leaves the
+field out imports as though it were `true`, so a post never depends on
+another site keeping its pictures. Send `false` to keep linking to them. A
+write that sends no text imports only when it says `true` (a status change
+starts no fetches). Left out, the import is **best effort**: an image that
+cannot be copied (refused, failed, out of budget, an external `srcset`, or
+past the first 10) stays linked as it was, and the write saves; a site with
+uploads switched off or a private default media directory saves the text as
+sent. Asked for with `true`, it is all or nothing, as listed below. The first
+copied picture becomes the featured image when the entry has none (above). Found are `<img src>` tags in HTML (the first `src` wins, as in a
 browser) and every Markdown image, reference-style ones included, never an
 image inside code. A Markdown image that is a paragraph of its own (not in a
 list, quote or link, and with no title) becomes `[image id="..." alt="..."]`,
@@ -718,7 +732,7 @@ Markdown on lines of their own avoids that.
   400 on `text`.
 - The whole import step has a 60-second budget. An image not started within
   it counts as not fetched.
-- All or nothing for the entry: if any image is refused or not fetched, the
+- With `true`, all or nothing for the entry: if any image is refused or not fetched, the
   write is a 400 naming each such image (on `text`, or on `featuredImageUrl` for
   the featured one), and the entry is not saved. Images that did import stay in the library, and a retry matches
   them by content hash, so it costs downloads, not copies.
@@ -1021,7 +1035,7 @@ entry route. The checks report findings, never a score:
 | Code | Finding | Severity |
 |---|---|---|
 | `missing_search_description`, `missing_meta_title` | The field is blank (whitespace counts as blank). | warning |
-| `missing_featured_image` | No featured image. Optional: a post is complete without one, and a theme that shows it does so with the entry, so it never also goes in the text. | info |
+| `missing_featured_image` | No featured image. Optional: a post with no picture is complete without one. But when the text shows a picture (an `<img>`, a Markdown image or an `[image]` shortcode, outside code), it is a **warning**: the front page and every list show the post as a lettered tile. A save sets the first of the weblog's own pictures as the featured image, so this means the picture is still on another site: the write sent `importExternalImages: false`, uploads are off, or the copy failed. Save the text again, or set `featuredImageUrl`. | info; warning when the text shows a picture |
 | `noindex` | The entry asks search engines not to list it. | warning |
 | `search_description_long` | Over 160 characters: a search result cuts it off. | warning |
 | `search_description_short` | Under 50 characters: search engines tend to replace it. | info |
@@ -1033,7 +1047,6 @@ entry route. The checks report findings, never a score:
 | `heading_skip` | A heading more than one level below the one before it (`h2` then `h4`); the entry title counts as the `h1` before the first. | info |
 | `image_alt_missing` | An image with no `alt`, or with only its file name as `alt` (what `[image]` falls back to for a media file with no alt text and no caption). `alt=""` marks a decorative image and is not reported. | warning |
 | `fragment_link_broken` | A link to `#x` with no `id="x"` in the body. `#` and `#top` always work. | warning |
-| `featured_image_repeated` | The body shows the entry's featured image, and the weblog's theme already prints the featured image with the entry (portfolio and travel do; journal does not), so readers see it twice. | warning |
 | `image_not_responsive` | An image of this weblog's media, with resized copies, placed as a plain `<img>` with no `srcset`, so every reader downloads the full-size file. `[image id=...]` and `[gallery]` always write the `srcset`; the message names the `[image id=...]` to use. | warning |
 | `entry_link_broken` | A link to one of this weblog's entry urls, relative or absolute, whose anchor is not a published entry. | warning |
 

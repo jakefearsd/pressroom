@@ -200,6 +200,17 @@ class TravelThemeRenderingTest {
                 "and no responsive-image markup at all:\n" + body);
     }
 
+    /** Spec 2026-11-07 (pictures by default), criterion 15: cards say how long the read is. */
+    @Test
+    void eachCardSaysHowLongTheReadIs() throws Exception {
+        TestUtils.setupWeblogEntry("a-short-read", weblog, user);
+        TestUtils.endSession(true);
+
+        String body = render("/" + HANDLE + "/");
+
+        assertTrue(body.contains("1 min read"), body);
+    }
+
     /**
      * A card showed an excerpt only when the author had written a search
      * description, which most entries never get, so cards in one row had
@@ -273,6 +284,24 @@ class TravelThemeRenderingTest {
         assertTrue(body.contains("<h1 class=\"tg-entry-title\">"), body);
         assertFalse(body.contains("<figure class=\"tg-hero\">"),
                 "no featured image means no empty hero figure:\n" + body);
+    }
+
+    /** Spec 2026-11-07 (pictures by default), criterion 12: the hero never repeats the body. */
+    @Test
+    void aPermalinkWhoseTextShowsTheFeaturedImageSkipsTheHero() throws Exception {
+        MediaFile image = TestUtils.setupImageMediaFile(weblog, "in-text-image");
+        WeblogEntry entry = entryWithFeaturedImage("shown-in-text", image.getId());
+        WeblogEntryManager mgr = TestUtils.weblogger().getWeblogEntryManager();
+        WeblogEntry managed = mgr.getWeblogEntry(entry.getId());
+        managed.setText("Intro.\n\n[image id=\"" + image.getId() + "\"]\n\nMore.");
+        mgr.saveWeblogEntry(managed);
+        TestUtils.endSession(true);
+
+        String body = render("/" + HANDLE + "/entry/shown-in-text");
+
+        assertFalse(body.contains("<figure class=\"tg-hero\">"),
+                "the text already shows the featured image, so no hero repeats it:\n" + body);
+        assertTrue(body.contains("mediaresource/" + image.getId()), "the text's picture still renders:\n" + body);
     }
 
     // ------------------------------------------------------- shortcode blocks

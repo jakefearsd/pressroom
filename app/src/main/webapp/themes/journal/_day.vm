@@ -46,7 +46,12 @@
     #end
 #else
 #foreach($entry in $entries)
-<article class="qj-entry">
+## A row with a featured image shows it beside the writing, as the front
+## page's Latest list does (spec 2026-11-07). Reset first: #set to a null
+## keeps the previous row's value.
+#set($rowImage = false)
+#set($rowImage = $entry.featuredImage)
+<article class="qj-entry#if($rowImage) qj-entry-pictured#end">
     ## "MMM d", not "MMM dd": the zero-padded form ("Mar 04") is a machine's
     ## way of writing a date. The ISO value a machine actually wants is on the
     ## <time> element, where it belongs.
@@ -67,8 +72,13 @@
         ## in the row, and emphasising it made the only colour on the page point
         ## at the metadata rather than the writing. The accent belongs to the
         ## title's hover state, which is the one thing here you can act on.
-        <p class="qj-meta">$utils.escapeHTML($entry.category.name)</p>
+        <p class="qj-meta">$utils.escapeHTML($entry.category.name) <span class="qj-read">&middot; $text.get("discovery.readingTime", [$entry.readingMinutes])</span></p>
     </div>
+    #if($rowImage)
+    ## Decorative here: the title beside it is the link a reader uses, so the
+    ## picture is one more way in for a pointer, and none for a screen reader.
+    <a class="qj-thumb" href="$url.entry($entry.anchor)" tabindex="-1" aria-hidden="true">#showResponsiveImage($rowImage "" "(max-width: 560px) 100vw, 10rem" "qj-thumb-img")</a>
+    #end
 </article>
 #end
 #end

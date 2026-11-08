@@ -49,9 +49,17 @@ final class EntryImports {
      */
     static final Duration BUDGET = Duration.ofSeconds(60);
 
-    /** What the import step will do, worked out before anything is fetched. */
-    record Plan(String featuredUrl, String featuredAlt, String text, ExternalImages.Scan scan) {
-        static final Plan NONE = new Plan(null, null, null, null);
+    /**
+     * What the import step will do, worked out before anything is fetched.
+     * {@code defaulted}: the body import runs because the write sent text and
+     * left importExternalImages out, not because it asked. A defaulted import
+     * is best effort (spec 2026-11-07): a default must never make a write fail
+     * that would have saved without it, so a body image it cannot copy stays
+     * linked where it was, and only the first {@link #MAX_BODY_IMAGES} are
+     * tried. Asked for with true, it stays all or nothing.
+     */
+    record Plan(String featuredUrl, String featuredAlt, String text, ExternalImages.Scan scan, boolean defaulted) {
+        static final Plan NONE = new Plan(null, null, null, null, false);
 
         boolean isEmpty() {
             return featuredUrl == null && (scan == null || scan.refs().isEmpty());
@@ -64,6 +72,8 @@ final class EntryImports {
     private final Weblogger weblogger;
     private final RemoteImageFetcher fetcher;
     private final Clock clock;
+    /** Ids {@link #run} imported: public images of the weblog, though not yet committed with the entry. */
+    private final Set<String> importedIds = new HashSet<>();
 
     EntryImports(Weblogger weblogger, RemoteImageFetcher fetcher, Clock clock) {
         this.weblogger = weblogger;
@@ -78,7 +88,12 @@ final class EntryImports {
      * text, scanned when an update asks for an import without sending text.
      */
     Plan plan(FieldErrors errors, Weblog weblog, EntryDtos.EntryWrite body, Set<String> cleared, String storedText) {
-        boolean importBody = Boolean.TRUE.equals(body.importExternalImages());
+        // Spec 2026-11-07: a write that sends text imports unless it says
+        // false. One that sends no text does not, unless asked: a status
+        // change must not start fetching. An update's edits arrive here
+        // already resolved into text.
+        boolean defaulted = body.importExternalImages() == null && body.text() != null;
+        boolean importBody = Boolean.TRUE.equals(body.importExternalImages()) || defaulted;
         String featuredUrl = body.featuredImageUrl();
         if (body.featuredImageAlt() != null) {
             if (featuredUrl == null) {
@@ -91,6 +106,10 @@ final class EntryImports {
             return Plan.NONE;
         }
         boolean uploads = WebloggerRuntimeConfig.getBooleanProperty("uploads.enabled");
+        if (defaulted && !uploads) {
+            // Not asked for, so a site that takes no uploads saves the text as sent.
+            importBody = false;
+        }
         if (featuredUrl != null) {
             if (featuredUrl.isBlank()) {
                 errors.add("featuredImageUrl", "featuredImageUrl cannot be blank.");
@@ -107,20 +126,22 @@ final class EntryImports {
             }
         }
         if (!importBody) {
-            return new Plan(featuredUrl, body.featuredImageAlt(), null, null);
+            return featuredUrl == null ? Plan.NONE : new Plan(featuredUrl, body.featuredImageAlt(), null, null, false);
         }
         if (!uploads) {
             errors.add("importExternalImages", "File upload is disabled for this site.");
         }
         String text = body.text() != null ? body.text() : storedText;
         ExternalImages.Scan scan = ExternalImages.scan(text, ownHosts(weblog));
-        scan.refusals().forEach(refusal -> errors.add("text", refusal));
-        int distinct = scan.distinctUrls().size();
-        if (distinct > MAX_BODY_IMAGES) {
-            errors.add("text", "The text loads " + distinct + " images from other sites; at most "
-                    + MAX_BODY_IMAGES + " are imported in one write.");
+        if (!defaulted) {
+            scan.refusals().forEach(refusal -> errors.add("text", refusal));
+            int distinct = scan.distinctUrls().size();
+            if (distinct > MAX_BODY_IMAGES) {
+                errors.add("text", "The text loads " + distinct + " images from other sites; at most "
+                        + MAX_BODY_IMAGES + " are imported in one write.");
+            }
         }
-        return new Plan(featuredUrl, body.featuredImageAlt(), text, scan);
+        return new Plan(featuredUrl, body.featuredImageAlt(), text, scan, defaulted);
     }
 
     /**
@@ -134,6 +155,10 @@ final class EntryImports {
         }
         String field = plan.featuredUrl() != null ? "featuredImageUrl" : "text";
         MediaFileDirectory directory = MediaUploads.defaultDirectory(weblog, weblogger.getMediaFileManager());
+        if (directory.isPrivate() && plan.defaulted() && plan.featuredUrl() == null) {
+            // Not asked for: readers could not see the copies, so keep the text as sent.
+            return body;
+        }
         if (directory.isPrivate()) {
             throw ApiException.invalidField(field,
                     "The weblog's default media directory is private, so readers could not see imported images.");
@@ -148,20 +173,28 @@ final class EntryImports {
             if (!attempted.add(wanted.url())) {
                 continue;
             }
+            // Best effort (a defaulted body image): a failure leaves it linked.
+            boolean mayFail = plan.defaulted() && "text".equals(wanted.field());
             if (Duration.between(started, clock.instant()).compareTo(BUDGET) >= 0) {
-                failures.add(wanted.field(), "Image " + ExternalImages.abbreviate(wanted.url())
-                        + " was not fetched: the import step's " + BUDGET.toSeconds() + "-second budget ran out.");
+                if (!mayFail) {
+                    failures.add(wanted.field(), "Image " + ExternalImages.abbreviate(wanted.url())
+                            + " was not fetched: the import step's " + BUDGET.toSeconds()
+                            + "-second budget ran out.");
+                }
                 continue;
             }
             try {
                 imported.put(wanted.url(), MediaImports.importImage(weblogger, fetcher, weblog, directory,
                         wanted.url(), null, wanted.alt()).file());
             } catch (MediaImports.ImportRefused e) {
-                failures.add(wanted.field(),
-                        "Image " + ExternalImages.abbreviate(wanted.url()) + ": " + e.getMessage());
+                if (!mayFail) {
+                    failures.add(wanted.field(),
+                            "Image " + ExternalImages.abbreviate(wanted.url()) + ": " + e.getMessage());
+                }
             }
         }
         failures.throwIfAny();
+        imported.values().forEach(file -> importedIds.add(file.getId()));
 
         String featuredId = plan.featuredUrl() == null ? null : imported.get(plan.featuredUrl()).getId();
         String text = null;
@@ -177,6 +210,11 @@ final class EntryImports {
         return body.withImports(featuredId, text);
     }
 
+    /** Ids of the files {@link #run} imported, for the featured-image default. */
+    Set<String> importedIds() {
+        return Set.copyOf(importedIds);
+    }
+
     /** The featured image first, then each body URL once, with the first alt text it carries. */
     private static List<Wanted> wanted(Plan plan) {
         List<Wanted> wanted = new ArrayList<>();
@@ -189,7 +227,10 @@ final class EntryImports {
                 altByUrl.merge(ref.url(), ref.alt() == null ? "" : ref.alt(),
                         (first, next) -> first.isEmpty() ? next : first);
             }
-            altByUrl.forEach((url, alt) -> wanted.add(new Wanted(url, alt.isEmpty() ? null : alt, "text")));
+            // Explicit imports refused more than the cap in plan(); a defaulted
+            // one tries the first MAX_BODY_IMAGES and leaves the rest linked.
+            altByUrl.entrySet().stream().limit(MAX_BODY_IMAGES).forEach(e ->
+                    wanted.add(new Wanted(e.getKey(), e.getValue().isEmpty() ? null : e.getValue(), "text")));
         }
         return wanted;
     }

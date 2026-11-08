@@ -118,6 +118,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
             entry.setAnchor(body.anchor());
         }
         apply(entry, weblog, effective, Set.of());
+        defaultFeaturedImage(entry, weblog, Set.of(), imports.importedIds());
         // No explicit category fallback needed here:
         // JPAWeblogEntryManagerImpl.saveWeblogEntry already defaults a
         // categoryless entry to the weblog's first category -- the same
@@ -190,6 +191,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
             requireUnchangedUnderLock(entry, read);
         }
         apply(entry, weblog, effective, cleared);
+        defaultFeaturedImage(entry, weblog, cleared, imports.importedIds());
         // The token's user made this save, so a revision it leaves names them,
         // and carries the note when one was sent.
         weblogger.getWeblogEntryManager().saveWeblogEntry(entry, requireAuthenticatedUser(request), revisionNote);
@@ -412,7 +414,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         FieldErrors errors = new FieldErrors();
         String text = EntryEdits.resolve(errors, body.text(), body.edits(), entry.getText());
         errors.throwIfAny();
-        return renderPreview(entry, text, body.featuredImageId());
+        return renderPreview(entry, text);
     }
 
     /**
@@ -436,7 +438,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         WeblogEntry entry = new WeblogEntry();
         entry.setWebsite(weblog);
         entry.setCreatorUserName(user.getUserName());
-        return renderPreview(entry, body.text(), body.featuredImageId());
+        return renderPreview(entry, body.text());
     }
 
     /**
@@ -455,8 +457,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
      * flush ({@code FlushModeType.COMMIT}), so they cannot persist the text
      * set below either.
      */
-    private EntryDtos.PreviewView renderPreview(WeblogEntry entry, String text, String featuredImageId)
-            throws WebloggerException {
+    private EntryDtos.PreviewView renderPreview(WeblogEntry entry, String text) throws WebloggerException {
         // Mutates a JPA-managed entity (when entry came from requireLiveEntry
         // rather than the previewNew scratch path) without saving. Safe only
         // because nothing on this request path calls weblogger.flush() or
@@ -465,10 +466,7 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         entry.setText(text == null ? "" : text);
         String html = weblogger.getEntryRenderer().transformedText(entry);
         List<String> warnings = new ArrayList<>(PreviewLint.warnings(html));
-        // The request's featured image is passed along, never set on the
-        // entry: like the text above, a field set here could be persisted.
-        String featured = StringUtils.isNotBlank(featuredImageId) ? featuredImageId : entry.getFeaturedImageId();
-        warnings.addAll(SeoBodies.warnings(weblogger, entry.getWebsite(), entry, html, featured));
+        warnings.addAll(SeoBodies.warnings(weblogger, entry.getWebsite(), entry, html));
         return new EntryDtos.PreviewView(html, warnings);
     }
 
@@ -528,6 +526,17 @@ public class EntriesWriteApi extends BaseApiController implements UISecurityEnfo
         }
         checkImageId(errors, weblog, "featuredImageId", body.featuredImageId(), entry.getFeaturedImageId());
         checkImageId(errors, weblog, "ogImageId", body.ogImageId(), entry.getOgImageId());
+    }
+
+    /**
+     * An entry left with no featured image gets the first picture its text
+     * shows, as Blogger does (spec 2026-11-07, pictures by default), unless
+     * this write cleared it: that is a caller saying "none".
+     */
+    private void defaultFeaturedImage(WeblogEntry entry, Weblog weblog, Set<String> cleared, Set<String> importedNow) {
+        if (StringUtils.isBlank(entry.getFeaturedImageId()) && !cleared.contains("featuredImageId")) {
+            entry.setFeaturedImageId(WeblogOwnership.firstPublicImage(weblogger, weblog, entry.getText(), importedNow));
+        }
     }
 
     /**

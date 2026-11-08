@@ -18,10 +18,12 @@
 
 package com.wikantik.pressroom.ui.controllers;
 
+import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.LeadImages;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.FormSubmission;
 import com.wikantik.pressroom.pojos.MediaFile;
@@ -286,6 +288,26 @@ public final class WeblogOwnership {
             return null;
         }
         return file;
+    }
+
+    /**
+     * The featured image a save gives an entry that has none: the first
+     * picture its text shows ({@link LeadImages}) that is a {@link
+     * #publicImage} of {@code weblog}, or null. Blogger's rule (spec
+     * 2026-11-07, pictures by default), so a post with pictures never reaches
+     * the front page, a list or a share preview without one. {@code
+     * importedNow} are ids the same write just imported into the weblog's
+     * public default directory, usable though the write has not committed.
+     * A lookup that fails skips that picture: the worst case is no default,
+     * which is how every entry was before.
+     */
+    public static String firstPublicImage(Weblogger weblogger, Weblog weblog, String text, Set<String> importedNow) {
+        for (String id : LeadImages.mediaIds(text)) {
+            if (importedNow.contains(id) || publicImage(weblogger, id, weblog) != null) {
+                return id;
+            }
+        }
+        return null;
     }
 
     /**

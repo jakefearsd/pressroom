@@ -16,7 +16,10 @@
 #if($model.permalink)
     #foreach($entry in $entries)
     <article class="pf-entry">
-        #if($entry.featuredImage)
+        ## No hero when the text already shows the featured image: with the
+        ## first picture the featured image by default, the hero would repeat it
+        ## (spec 2026-11-07).
+        #if($entry.featuredImage && !$entry.featuredImageInText)
         <figure class="pf-hero">
         ## Alt text: #showResponsiveImage escapes its $alt argument, and
         ## $entry.title is ALREADY stored escaped -- passing it straight in
@@ -76,7 +79,7 @@
         ## the stylesheet when the card is the only one in its run, where it
         ## stands between rows of writing and reads as one of them. Outside
         ## the link, so they never become part of its accessible name.
-        <p class="pf-card-meta"><time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time> &middot; $utils.escapeHTML($entry.category.name)</p>
+        <p class="pf-card-meta"><time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time> &middot; $utils.escapeHTML($entry.category.name) &middot; $text.get("discovery.readingTime", [$entry.readingMinutes])</p>
         #set($excerpt = $entry.excerpt)
         #if($utils.isNotEmpty($excerpt))
         <p class="pf-card-sum">$utils.escapeHTML($excerpt)</p>
@@ -92,7 +95,7 @@
             #end
     <article class="pf-row">
         <h2 class="pf-row-title"><a href="$url.entry($entry.anchor)">$entry.title</a></h2>
-        <p class="pf-row-meta"><time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time> &middot; $utils.escapeHTML($entry.category.name)</p>
+        <p class="pf-row-meta"><time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time> &middot; $utils.escapeHTML($entry.category.name) &middot; $text.get("discovery.readingTime", [$entry.readingMinutes])</p>
         ## The author's summary, else the search description, else the
         ## post's first couple of sentences (WeblogEntryWrapper#getExcerpt).
         ## Plain text, escaped here once.

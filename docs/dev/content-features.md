@@ -75,18 +75,15 @@ resolves through the index at the end of `CLAUDE.md`.
   not run must not read as passed. `image_alt_missing` recognises the
   `[image]` fallback by `GalleryMarkup.fileNameAsAlt`, so the two cannot
   drift; `alt=""` is decorative and never reported.
-  `featured_image_repeated` (2026-10-31: the first agent post with a
-  featured image also opened its body with it, and portfolio printed it
-  twice) fires only when the weblog's theme prints the featured image,
-  judged by whether any of its templates reads `featuredImage` (portfolio
-  and travel do, journal does not; a custom theme by what it does), and
-  `SeoBodies` reads the theme only when the body does show the featured
-  image. `image_not_responsive` is a plain `<img>` of a weblog file with
+  `featured_image_repeated` was retired 2026-11-07 (spec "pictures by
+  default"): travel and portfolio now leave out the hero when the text shows
+  the featured image (`WeblogEntryWrapper.isFeaturedImageInText`), and the
+  first picture is the featured image by default, so the body showing it is
+  the usual case. `image_not_responsive` is a plain `<img>` of a weblog file with
   resized copies (`RenditionSupport.isLadderEligible` and wider than the
   narrowest rung) and no `srcset`: `[image]` and `[gallery]` always write
   one for such a file, so its absence means hand-written markup. Preview
-  takes an optional `featuredImageId` (the one a create will set) and passes
-  it to `SeoBodies`, never onto the entry, which may be JPA-managed.
+  still accepts `featuredImageId` and ignores it.
   `importExternalImages` writes a standalone Markdown image (a top-level
   paragraph of its own, no title) as `[image id=".." alt=".."]`
   (`ExternalImages.Ref.standalone`), so its own imports pass the check;

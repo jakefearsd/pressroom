@@ -79,6 +79,41 @@ class EntrySeoChecksTest {
         assertEquals(EntrySeoChecks.INFO, found.severity());
     }
 
+    /**
+     * But a post whose text shows a picture and that has no featured image is
+     * a warning (Jake, 2026-11-07): the front page and every list page show
+     * a post's featured image or a lettered tile, so eight agent posts that
+     * hotlinked their pictures went out as tiles. The message names the fix,
+     * and on a hero theme it also says to take the picture out of the text.
+     */
+    @Test
+    void aMissingFeaturedImageIsAWarningWhenTheTextShowsAPicture() {
+        for (String text : List.of(
+                "<p>Intro.</p><img src=\"https://raw.githubusercontent.com/a/b/x.jpg\" alt=\"Ruin\">",
+                "Intro.\n\n![Ruin](https://raw.githubusercontent.com/a/b/x.jpg)\n",
+                "Intro.\n\n[image id=\"0c0f9e40-0000-4000-8000-000000000000\" alt=\"Ruin\"]\n")) {
+            WeblogEntry entry = new WeblogEntry();
+            entry.setText(text);
+
+            Finding found = only(EntrySeoChecks.gaps(entry), "missing_featured_image");
+
+            assertEquals(EntrySeoChecks.WARNING, found.severity(), text);
+            assertTrue(found.message().contains("featuredImageUrl"), found.message());
+            // Spec 2026-11-07: the picture stays in the text (no hero repeats
+            // it now), and the usual cause is an import the write opted out of.
+            assertFalse(found.message().contains("take it out of the text"), found.message());
+            assertTrue(found.message().contains("importExternalImages: false"), found.message());
+        }
+    }
+
+    @Test
+    void aPictureOnlyInACodeSpanIsNotAPicture() {
+        WeblogEntry entry = new WeblogEntry();
+        entry.setText("Write `![alt](url)` for an image, or `<img src=\"x\">`.");
+
+        assertEquals(EntrySeoChecks.INFO, only(EntrySeoChecks.gaps(entry), "missing_featured_image").severity());
+    }
+
     @Test
     void noindexIsAWarningOfItsOwn() {
         WeblogEntry entry = clean("e1", "Harbour walk");

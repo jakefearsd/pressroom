@@ -210,6 +210,17 @@ class PortfolioThemeRenderingTest {
                 "the whole card links to the entry:\n" + body);
     }
 
+    /** Spec 2026-11-07 (pictures by default), criterion 15: cards say how long the read is. */
+    @Test
+    void eachCardSaysHowLongTheReadIs() throws Exception {
+        TestUtils.setupWeblogEntry("a-short-read", weblog, user);
+        TestUtils.endSession(true);
+
+        String body = render("/" + HANDLE + "/");
+
+        assertTrue(body.contains("1 min read"), body);
+    }
+
     /**
      * A card carries its date and opening too, hidden while it is one picture
      * among others: a run of ONE picture post between rows of writing (the
@@ -326,6 +337,24 @@ class PortfolioThemeRenderingTest {
     }
 
     // ------------------------------------------------------------- permalink
+
+    /** Spec 2026-11-07 (pictures by default), criterion 12: the hero never repeats the body. */
+    @Test
+    void aPermalinkWhoseTextShowsTheFeaturedImageSkipsTheHero() throws Exception {
+        MediaFile image = TestUtils.setupImageMediaFile(weblog, "in-text-image");
+        WeblogEntry entry = entryWithFeaturedImage("shown-in-text", image.getId());
+        WeblogEntryManager mgr = TestUtils.weblogger().getWeblogEntryManager();
+        WeblogEntry managed = mgr.getWeblogEntry(entry.getId());
+        managed.setText("Intro.\n\n[image id=\"" + image.getId() + "\"]\n\nMore.");
+        mgr.saveWeblogEntry(managed);
+        TestUtils.endSession(true);
+
+        String body = render("/" + HANDLE + "/entry/shown-in-text");
+
+        assertFalse(body.contains("<figure class=\"pf-hero\">"),
+                "the text already shows the featured image, so no hero repeats it:\n" + body);
+        assertTrue(body.contains("mediaresource/" + image.getId()), "the text's picture still renders:\n" + body);
+    }
 
     @Test
     void thePermalinkLeadsWithAFullBleedHero() throws Exception {

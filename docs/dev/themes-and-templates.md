@@ -183,6 +183,16 @@ resolves through the index at the end of `CLAUDE.md`.
   `searchresults.vm` empty it before the pager and close the last run after,
   inside one `div.pf-entries`. A text-heavy weblog on portfolio is a list;
   the old no-image tile showed a title and nothing else.
+- **Pictures by default (2026-11-07).** A save gives an entry with no
+  featured image the first of its weblog's pictures in the text
+  (`LeadImages`, `WeblogOwnership.firstPublicImage`; API and editor). So the
+  travel and portfolio heroes print only when the text does not already show
+  that picture (`$entry.featuredImageInText`), or every such post would show
+  it twice. journal's list rows show the featured image in a third column
+  (`.qj-entry-pictured`, `a.qj-thumb`, `aria-hidden`: the title is the link);
+  on a phone it leads the row. Every list (journal rows, travel cards,
+  portfolio cards and rows) shows `discovery.readingTime`, as the front page
+  does.
 - The search pager macro emits its own labelled `<nav class="search-pager">`
   and the hit line `p.search-hits`; a theme wraps it in a `div`, never a
   second `nav`, and styles both (`ThemePolishTest`).

@@ -25,6 +25,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import com.wikantik.pressroom.util.Excerpts;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
@@ -110,9 +111,17 @@ public final class EntrySeoChecks {
                     + SeoLimits.TITLE_MAX + " characters for search results."));
         }
         if (StringUtils.isBlank(entry.getFeaturedImageId())) {
-            gaps.add(Finding.of(MISSING_FEATURED_IMAGE, INFO, "There is no featured image, so a shared "
-                    + "link or a search result shows no picture. Set featuredImageId to one of the weblog's "
-                    + "images."));
+            gaps.add(showsAPicture(entry.getText())
+                    ? Finding.of(MISSING_FEATURED_IMAGE, WARNING, "There is no featured image, but the text "
+                            + "shows a picture, so the front page and every list of posts show this post as a "
+                            + "lettered tile, and a shared link shows no picture. A save makes the first of the "
+                            + "weblog's own pictures in the text the featured image, and first copies in pictures "
+                            + "from other sites, unless the write sends importExternalImages: false; a picture "
+                            + "whose copy failed stays linked. Save the text again, or set featuredImageUrl to the "
+                            + "picture.")
+                    : Finding.of(MISSING_FEATURED_IMAGE, INFO, "There is no featured image, so a shared "
+                            + "link or a search result shows no picture. Set featuredImageId to one of the "
+                            + "weblog's images."));
         }
         // Explicitly opted out only: noindex defaults to FALSE, and null is not an opt-out.
         if (Boolean.TRUE.equals(entry.getNoindex())) {
@@ -120,6 +129,19 @@ public final class EntrySeoChecks {
                     + "not to list it."));
         }
         return gaps;
+    }
+
+    /** An HTML image, a Markdown image or an image shortcode, outside code spans and fences. */
+    private static final Pattern PICTURE = Pattern.compile("<img\\b|!\\[[^\\]]*]\\(|\\[image\\s", Pattern.CASE_INSENSITIVE);
+    private static final Pattern CODE = Pattern.compile("(?s)```.*?```|`[^`\\n]*`");
+
+    /**
+     * Whether the text shows a picture. A featured image is optional, but a
+     * post that shows one in its text and sets none reaches every list as a
+     * lettered tile (2026-11-07), so that case is a warning.
+     */
+    static boolean showsAPicture(String text) {
+        return text != null && PICTURE.matcher(CODE.matcher(text).replaceAll("")).find();
     }
 
     /** {@link #gaps} and the length checks: every check of the entry's own fields. */

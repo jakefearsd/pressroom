@@ -10,7 +10,10 @@
 #if($model.permalink)
     #foreach($entry in $entries)
     <article class="tg-entry">
-        #if($entry.featuredImage)
+        ## No hero when the text already shows the featured image: with the
+        ## first picture the featured image by default, the hero would repeat it
+        ## (spec 2026-11-07).
+        #if($entry.featuredImage && !$entry.featuredImageInText)
         <figure class="tg-hero">
         ## Alt text: #showResponsiveImage escapes its $alt argument, and
         ## $entry.title is ALREADY stored escaped -- passing it straight in
@@ -55,7 +58,7 @@
             <h2 class="tg-card-title">
                 <a href="$url.entry($entry.anchor)">$entry.title</a>
             </h2>
-            <p class="tg-card-meta"><time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time></p>
+            <p class="tg-card-meta"><time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time> &middot; $text.get("discovery.readingTime", [$entry.readingMinutes])</p>
             ## Every card gets a line of prose, as journal's rows do, or cards
             ## without one are shorter than their neighbours in the same row:
             ## the author's summary, else the search description, else the

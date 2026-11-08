@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.LeadImages;
 import com.wikantik.pressroom.business.EntryRenderer;
 import com.wikantik.pressroom.business.PreviewURLStrategy;
 import com.wikantik.pressroom.business.URLStrategy;
@@ -345,6 +346,18 @@ public final class WeblogEntryWrapper {
      */
     public MediaFileWrapper getFeaturedImage() {
         return resolveMediaFile(this.pojo.getFeaturedImageId());
+    }
+
+    /**
+     * Whether the text already shows the featured image as a picture
+     * ({@link LeadImages}). A theme that prints the featured image above the
+     * post leaves it out then, so readers never see it twice (spec
+     * 2026-11-07, pictures by default): with the first picture now the
+     * featured image by default, that is the usual case, not a mistake.
+     */
+    public boolean isFeaturedImageInText() {
+        String featured = this.pojo.getFeaturedImageId();
+        return featured != null && LeadImages.mediaIds(this.pojo.getText()).contains(featured);
     }
 
     public String getMetaTitle() {

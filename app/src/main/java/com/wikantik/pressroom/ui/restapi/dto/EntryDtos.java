@@ -80,16 +80,16 @@ public final class EntryDtos {
      * before a controller method ever runs) is treated as an empty draft
      * rather than rejected: an author previewing a blank editor is a normal
      * moment, not an error. {@code edits}, previewing an existing entry,
-     * apply to its stored text in place of {@code text}. {@code featuredImageId},
-     * optional, is the featured image the entry will have, in place of its
-     * stored one, so a preview can warn about the body repeating it.
+     * apply to its stored text in place of {@code text}. {@code featuredImageId}
+     * is accepted and ignored: it only served a warning about the body
+     * repeating the featured image, retired with spec 2026-11-07.
      */
     public record PreviewRequest(
             String text,
             @Schema(description = EDITS_DESCRIPTION)
             List<TextEdit> edits,
-            @Schema(description = "The featured image the entry will have, if not its stored one; preview then "
-                    + "warns when the body shows it too and the theme already prints it.")
+            @Schema(description = "Ignored; accepted so older clients keep working. It served a warning about "
+                    + "the body repeating the featured image, which no theme does any more.", deprecated = true)
             String featuredImageId) {
     }
 
@@ -255,10 +255,13 @@ public final class EntryDtos {
             @Schema(description = "Alt text for the image featuredImageUrl imports; it fills the file's alt "
                     + "text only when that has none.")
             String featuredImageAlt,
-            @Schema(description = "True to import every image the text loads from another site (HTML img src "
-                    + "and Markdown images, at most 10) and point the text at the copies. Without text on an "
-                    + "update, the stored text. All or nothing: if any image fails, the entry is not written; "
-                    + "images already imported stay in the media library and a retry reuses them.")
+            @Schema(description = "Import every image the text loads from another site (HTML img src and "
+                    + "Markdown images, at most 10) and point the text at the copies. Default: on, best effort, "
+                    + "when the write sends text or edits: an image that cannot be copied stays linked and the "
+                    + "write saves. False keeps linking. True is all or nothing: if any image fails, the entry "
+                    + "is not written (images already imported stay and a retry reuses them); with no text on "
+                    + "an update it imports from the stored text. With no featured image, the first picture "
+                    + "becomes it.")
             Boolean importExternalImages,
             @Schema(description = "On update, fields to remove: summary, metaTitle, searchDescription, "
                     + "canonicalUrl, featuredImageId, ogImageId, jsonLdType (back to BLOG_POSTING), "
