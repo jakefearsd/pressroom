@@ -59,7 +59,7 @@ class FormBodyParityTest {
                         Map.of("id", "The entry's id is the update route's path variable; create assigns one.",
                                 "locale", "A hidden field the editor round-trips unchanged; no surface edits "
                                         + "an entry's locale.",
-                                "pinnedToMain", "Roller's old pin to the main page, which the front page "
+                                "pinnedToMain", "The legacy pin to the main page, which the front page "
                                         + "ignores; promotion will be designed separately.")),
                 new Parity("WeblogConfigBean -> WeblogPatch", WeblogConfigBean.class, AdminDtos.WeblogPatch.class,
                         Map.of(),
