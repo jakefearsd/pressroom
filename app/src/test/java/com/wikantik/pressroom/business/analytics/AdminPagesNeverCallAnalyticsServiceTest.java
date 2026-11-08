@@ -31,6 +31,8 @@ import com.wikantik.pressroom.ui.controllers.admin.SiteTrafficController;
 import com.wikantik.pressroom.ui.controllers.editor.EntriesBean;
 import com.wikantik.pressroom.ui.controllers.editor.EntriesController;
 import com.wikantik.pressroom.ui.controllers.editor.TrafficController;
+import com.wikantik.pressroom.ui.restapi.v1.BaseApiController;
+import com.wikantik.pressroom.ui.restapi.v1.TrafficApi;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -45,7 +47,7 @@ import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * AC 8 for the admin pages: no admin request reaches Umami. The REAL analytics
+ * AC 8 for the admin pages, and the API's traffic route: no admin request reaches Umami. The REAL analytics
  * manager, with everything registered and read once through a fake service, is
  * what each controller asks; the service is then told to hang (every call
  * waits up to 30 s) and each page is served. Each must come back in normal
@@ -74,6 +76,15 @@ class AdminPagesNeverCallAnalyticsServiceTest {
             void serve(AdminPagesNeverCallAnalyticsServiceTest t, MockHttpServletRequest request) {
                 assertEquals(".Traffic", t.wire(new TrafficController())
                         .execute(request, new ExtendedModelMap(), "30d", "posts", "views"));
+            }
+        },
+        /** The API's traffic route (spec 2026-11-08-agent-api-parity-design, T3): the snapshot only. */
+        API_TRAFFIC {
+            @Override
+            void serve(AdminPagesNeverCallAnalyticsServiceTest t, MockHttpServletRequest request) {
+                TrafficApi api = new TrafficApi();
+                set(BaseApiController.class, api, "weblogger", t.tier.weblogger);
+                assertEquals("30d", api.get(request, "30d").period());
             }
         },
         GLOBAL_TRAFFIC {
@@ -178,8 +189,12 @@ class AdminPagesNeverCallAnalyticsServiceTest {
     }
 
     private static void set(BaseController controller, String name, Object value) {
+        set(BaseController.class, controller, name, value);
+    }
+
+    private static void set(Class<?> declaring, Object controller, String name, Object value) {
         try {
-            Field field = BaseController.class.getDeclaredField(name);
+            Field field = declaring.getDeclaredField(name);
             field.setAccessible(true);
             field.set(controller, value);
         } catch (ReflectiveOperationException e) {

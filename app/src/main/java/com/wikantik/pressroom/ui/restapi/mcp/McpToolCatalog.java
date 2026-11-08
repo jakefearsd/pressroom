@@ -107,6 +107,12 @@ public final class McpToolCatalog {
                             + "alt text, links to missing parts of the entry or to unpublished entries.",
                             "GET " + W + "/audit/seo/entries/{id}"),
                     action("media", "Media files with no alt text.", "GET " + W + "/audit/media")),
+            tool("traffic", "What readers read: a weblog's views and visitors from the last analytics read. "
+                    + "Needs a weblog admin.", true,
+                    action("get", "Totals against the previous period, a daily series, views, visitors and trend "
+                            + "per post, and sources, places and devices, for period 24h, 7d, 30d (default) or "
+                            + "90d; asOf and state (STALE when the last read failed) say how fresh.",
+                            "GET " + W + "/traffic")),
             tool("users", "Site user accounts. Needs an ADMIN token. Admin accounts are read-only here: "
                     + "they are managed in the admin UI.", false,
                     action("list", "List users and their roles.", "GET /v1/admin/users"),

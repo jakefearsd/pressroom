@@ -64,6 +64,7 @@ printf '%s\n' "$PASSWORD" | bin/pressroom-api auth login \
 - [Redirects](#redirects)
 - [Comments](#comments)
 - [Audits](#audits)
+- [Traffic](#traffic)
 - [Site administration](#site-administration)
 - [Maintenance actions](#maintenance-actions)
 - [MCP](#mcp)
@@ -1102,6 +1103,67 @@ directory is involved in making the fix), so a readable directory name
 serves a reader better here than an id they would only have to look up
 again.
 
+## Traffic
+
+```
+GET /api/v1/weblogs/{handle}/traffic[?period=]
+```
+
+What readers read on one weblog: the numbers its Traffic page shows, for
+deciding which posts to update or write next. Only a weblog admin may read
+them (the Traffic page's permission): a member who can post gets 403, a
+caller with no role on the weblog 404. The site space is not offered here
+and answers 404 like an unknown weblog. A `READ` token is enough.
+
+`period` is `24h`, `7d`, `30d` (the default) or `90d`. Anything else is a
+400 on `period` that names those four; the Traffic page shows 30d instead,
+the API does not guess.
+
+The numbers come from Pressroom's own copy of the analytics, which a
+background read refreshes (every 15 minutes by default); no request waits on the
+analytics service. So read `state` and `asOf` before the numbers:
+
+| `state` | Meaning |
+|---|---|
+| `NOT_CONFIGURED` | No analytics service is configured. No numbers. |
+| `NO_DATA` | Nothing has been read for this weblog yet. No numbers (or zeros, just after it was registered). |
+| `STALE` | The last read failed; these are the numbers from `asOf`, the last good read. |
+| `OK` | A current snapshot, read at `asOf`. |
+
+```json
+{
+  "state": "OK",
+  "asOf": "2026-11-08T10:15:00Z",
+  "period": "30d",
+  "current":  {"visitors": 40, "visits": 50, "views": 120, "bounces": 10, "totalTimeSeconds": 3600},
+  "previous": {"visitors": 20, "visits": 25, "views": 60, "bounces": 5, "totalTimeSeconds": 1800},
+  "series": [{"day": "2026-11-07", "visitors": 7, "views": 15}],
+  "posts": [{"entryId": "8a2f...", "title": "Spring in Auburn", "path": "/myblog/entry/spring-in-auburn",
+             "views": 90, "visitors": 30, "trend": 0.5}],
+  "breakdowns": {"sources": [{"key": "google.com", "value": 12}], "places": [], "devices": [],
+                 "events": [], "campaigns": [], "speed": []},
+  "pathsCappedAt": 0
+}
+```
+
+- `previous` is the period of the same length just before this one.
+  Visitors are distinct within a period: never add two periods' (or two
+  days') visitors together.
+- `series` has one bucket per day, zero-filled, in the site's time zone; for
+  `24h` the buckets are hours and carry `hour` (0 to 23).
+- `posts` has one row per recorded path, most viewed first. `entryId` and
+  `title` are null for a path that is not an entry (a tag page, the front
+  page); `title` is stored escaped, as in `entries`. `visitors` is null when
+  the service cannot count it. `trend` compares this period's daily view
+  rate with the next longer period's, minus one: 0 is steady, 1 is twice the
+  usual rate, -0.5 half; null when no longer period has the path to compare
+  with.
+- `pathsCappedAt` is 0 when `posts` holds every recorded path; otherwise only
+  the top paths were read, and a post missing from `posts` is unknown, not
+  zero.
+- With no snapshot, `asOf`, `current` and `previous` are absent and the
+  lists and `breakdowns` are empty.
+
 ## Site administration
 
 `ADMIN` scope only, for all of the below.
@@ -1296,6 +1358,7 @@ claude mcp add --transport http pressroom https://blog.example.com/api/mcp \
 | `redirects` | `list`, `create`, `delete` |
 | `comments` | `list`, `get`, `update`, `delete`, `reply` |
 | `audits` | `seo`, `seo_entry`, `media` |
+| `traffic` | `get` |
 | `users` | `list`, `create`, `update` |
 | `site_settings` | `get`, `update` |
 | `maintenance` | `flush_cache`, `rebuild_index`, `regenerate_renditions` |
@@ -1340,7 +1403,7 @@ regenerate-renditions,users,config,weblogs}` (`admin reindex` is the old
 name of `rebuild-index` and still works). `bin/pressroom-api <group> --help`
 prints that group's full usage. It does not wrap categories and tags, pages,
 redirects, comments, weblog creation (`POST /api/v1/weblogs`), media imports
-by URL, the one-entry SEO audit, or listing and revoking tokens: call those with `curl`, using the
+by URL, the one-entry SEO audit, traffic, or listing and revoking tokens: call those with `curl`, using the
 paths documented above, or through MCP.
 
 The CLI, REST and MCP name some operations differently:

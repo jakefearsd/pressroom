@@ -151,9 +151,9 @@ class McpServerConfigTest {
         assertEquals("{\"status\":404}", result.get("content").get(0).get("text").asString());
     }
 
-    /** Criterion 7: only the two tools that read and never write say so. */
+    /** Criterion 7: only the tools that read and never write say so (traffic: spec 2026-11-08, T7). */
     @Test
-    void toolsListMarksExactlyWhoamiAndAuditsReadOnly() throws Exception {
+    void toolsListMarksExactlyWhoamiAuditsAndTrafficReadOnly() throws Exception {
         JsonNode answer = post(rpc("tools/list", Map.of()), (request, call) -> fail("listing dispatches nothing"));
 
         java.util.Set<String> readOnly = new java.util.TreeSet<>();
@@ -165,7 +165,7 @@ class McpServerConfigTest {
             }
         }
         assertTrue(tools > 2, answer.toString());
-        assertEquals(java.util.Set.of("audits", "whoami"), readOnly);
+        assertEquals(java.util.Set.of("audits", "traffic", "whoami"), readOnly);
     }
 
     // ---------------------------------------------------------------- helpers

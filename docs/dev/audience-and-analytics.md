@@ -95,7 +95,9 @@ read-only Grafana contract over two databases. Spec:
   Maintenance "Sync now") calls `read` per site and period and replaces the
   local tables `analytics_site`, `analytics_summary`, `analytics_path_views`
   and `analytics_breakdown` (V043). No request path calls Umami; admin pages,
-  the entries-list Views (30d) column and discovery read the cache only.
+  the entries-list Views (30d) column, discovery and the API's
+  `GET /v1/weblogs/{handle}/traffic` (`TrafficApi`, MCP `traffic get`) read
+  the cache only.
 - **Snapshots are selected, never summed.** Each period (24h, 7d, 30d, 90d,
   plus the discovery window) is its own snapshot, replaced whole. Visitors
   are unique counts per period, so adding two periods or two days double
@@ -121,7 +123,14 @@ read-only Grafana contract over two databases. Spec:
   the lock; requested syncs ("Sync now", a blog save) still queue behind the
   running one. AC 8 is proven with the real manager on a hanging service for
   page renders (`RenderingNeverCallsAnalyticsServiceTest`) and for the admin
-  pages, Sync now and a blog save (`AdminPagesNeverCallAnalyticsServiceTest`).
+  pages, the API's traffic route, Sync now and a blog save
+  (`AdminPagesNeverCallAnalyticsServiceTest`).
+- **The API's traffic is the Traffic page's, minus three things**
+  (`TrafficDtos`): no `lastError` (internal text; `STALE` says enough), a NaN
+  trend is null (JSON has no NaN), and an unknown `period` is a 400 rather
+  than the page's fall-back to 30d. Same permission (`WeblogPermission.ADMIN`),
+  but never the site space: the interceptor withholds it from every API
+  handler (`TrafficApiSecurityTest`).
 - **Cache expiry rides `weblog.lastModified`.** Whether a blog carries the
   tracker tag is part of its rendered pages, so each registration-state change
   advances `lastModified` (`JPAAnalyticsManagerImpl`; the new answer is
