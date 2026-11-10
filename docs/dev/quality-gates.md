@@ -322,3 +322,41 @@ a 200+-token method copied into a second class for CPD) each turned
 `docs/superpowers/specs/2026-08-18-static-analysis-quality-gates-design.md`.
 Cost: PMD+CPD+SpotBugs add ~10 seconds to a warm `verify` (inside the
 30-second budget); a cold full `verify` runs in under 20 seconds.
+
+## Log-only catches
+
+Moved from CLAUDE.md (2026-11-08); the rule stays there in short.
+
+**A `catch` that logs and falls through is fine in a display path and a
+bug in a decision path; the difference is what the caller does with the
+answer.** ~170 in this tree, mostly correct (a sidebar that cannot load
+renders empty). The wrong ones share a shape:
+
+```java
+private void myValidate(...) {
+    try {
+        if (weblogManager.getTemplateByName(weblog, bean.getName()) != null) {
+            addError(model, "pagesForm.error.alreadyExists", ...);
+        }
+    } catch (WebloggerException ex) {
+        log.error("Error checking page name uniqueness", ex);   // <-- no error added
+    }
+}
+// caller:
+myValidate(bean, template, request, model);
+if (!hasErrors(model)) { ...save... }
+```
+
+The caller reads an empty error list as "passed", so an unreachable store
+let the save through unchecked. **A check that could not run is not a
+check that passed.** `TemplateEditController` and `TemplatesController`
+both did this and now add an error; their tests pin it.
+
+When adding a `catch` that only logs, ask what the caller does next; if it
+proceeds as though nothing was wrong, fail closed. Two sweeps to repeat:
+methods named `*validate*`/`check*` with a log-only catch, and
+`boolean` methods that swallow — what matters is the value they fall
+through to (every one today falls to `false`, i.e. deny or degrade;
+`PressroomHandlerInterceptor.preHandle` is fail-closed because a
+swallowed weblog lookup leaves `actionWeblog` null and `enforceSecurity`
+then refuses).

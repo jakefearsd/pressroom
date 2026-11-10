@@ -242,3 +242,40 @@ this; every named logger also writes to the console, so the run's stdout log
 beside it carries the same lines), and capture what else was in flight from the failsafe report
 timestamps BEFORE rerunning anything -- an isolated rerun overwrites
 `it-selenium/target/failsafe-reports`.
+
+## Parallel agents in worktrees
+
+Moved from CLAUDE.md (2026-11-08); the rule stays there in short.
+
+**Parallelising implementers means git worktrees — and a worktree's base
+MUST be pinned and verified before you dispatch into it.** Each worktree
+has its own `app/target/` and git index, so builds need no serialising.
+But a worktree branched from a stale commit silently *reverts* everything
+else that changed in those files since the branch point — and the result
+compiles, passes tests and gates. This has happened here (two agents ~22
+commits behind master, files carrying a prior wave's charset,
+resource-handling, `volatile` and suppression fixes).
+
+Before dispatching into a worktree:
+
+```bash
+git -C <worktree> rev-parse --short HEAD        # is this the base you meant?
+
+# Does the agent's scope overlap anything changed on master since that
+# base? LC_ALL=C on BOTH sides: a locale-sensitive sort makes comm print
+# "input is not in sorted order" and a still-empty (reassuring) result.
+git diff --name-only <base>..<branch> | LC_ALL=C sort > /tmp/a
+git diff --name-only <base>..master   | LC_ALL=C sort > /tmp/b
+LC_ALL=C comm -12 /tmp/a /tmp/b
+
+# Cross-check with git itself (no sorting needed, authoritative):
+git merge-tree --write-tree <branch> master >/dev/null && echo clean
+```
+
+A non-empty overlap means a merge can revert real work. **Do not resolve
+a large overlap by cherry-picking or rebasing** — a bad resolution reverts
+a fix silently. Discard and redo on the correct base; the discarded
+agent's report (written to the main checkout, never inside the worktree)
+survives as a checklist. Corollary: **a worktree on a stale base may not
+even contain the quality gates**, so its `mvn verify` proves less than it
+looks (missing plugins in its `pom.xml` caught the case above).

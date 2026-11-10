@@ -23,116 +23,47 @@ This repository is part of the **Simple Agility** small-business ecosystem:
 
 - **Never commit or push unless explicitly asked.**
 - **A dispatched agent may commit its own work. No agent may ever push.**
-  A local commit is how a background agent *finishes* (undone by one
-  `git reset`). A push is outward-facing (CI, other people; on a `v*.*.*`
-  tag it publishes container images), so only the top-level session pushes,
-  only when asked in so many words — never a subagent, reviewer, or agent
-  that believes it is finishing up. Written down because a read-only agent
-  once pushed to `master`, noticed only when `HEAD` had moved. An agent that
-  believes the work needs pushing says so in its report and stops.
+  A local commit is how a background agent finishes (one `git reset` undoes
+  it); a push is outward-facing (CI; on a `v*.*.*` tag it publishes
+  container images). Only the top-level session pushes, only when asked in
+  so many words. An agent that believes the work needs pushing says so in
+  its report and stops. (A read-only agent once pushed to `master`.)
 - **Work directly on `master`.** Solo-developer repo; no feature branch unless explicitly asked.
 - **Ship work; don't let agents sit idle.** Dispatch the next piece rather
-  than waiting for the current one to wrap up: reviews are read-only, so
-  the next implementer runs alongside the previous reviewer. Prepare briefs
-  ahead so a dispatch is instant. Nothing in flight is a planning failure, not a pause.
-  **The one hard serialisation is the build.** Implementers share
-  `app/target/`, so two concurrent `mvn -pl app test` runs clobber each
-  other's output — never run two builds at once in one working tree;
-  everything else (reviews, briefs, greps) overlaps freely.
-  The busy check must be **bracketed and scoped to this repo**:
+  than waiting; reviews are read-only, so the next implementer runs
+  alongside the previous reviewer. **The one hard serialisation is the
+  build**: implementers share `app/target/`, so never run two
+  `mvn -pl app test` in one working tree. The busy check is bracketed and
+  repo-scoped (unbracketed, it matches itself; likewise
+  `pkill -f "[s]pring-boot:run"`); inline the wait in the build command,
+  never poll as a separate step:
 
   ```bash
   pgrep -f "[s]urefirebooter.*$(git rev-parse --show-toplevel)/app/target/" >/dev/null && echo BUSY || echo CLEAR
   ```
-
-  An unbracketed `pgrep -f surefirebooter` matches the checking command
-  itself, so a `while pgrep …; do sleep; done` loop waits on itself forever
-  (the same self-match makes `pkill -f "spring-boot:run"` kill its own
-  shell; use `[s]pring-boot` there too). The path is the repo-exact `app/target/`
-  of the current checkout or worktree, so other checkouts' builds (and a
-  worktree's, from the main checkout) do not match, from any subdirectory. Never poll for a lock as a separate background step —
-  inline the wait in the build command.
-- **Parallelising implementers means git worktrees — and a worktree's base
-  MUST be pinned and verified before you dispatch into it.** Each worktree
-  has its own `app/target/` and git index, so builds need no serialising.
-  But a worktree branched from a stale commit silently *reverts* everything
-  else that changed in those files since the branch point — and the result
-  compiles, passes tests and gates. This has happened here (two agents ~22
-  commits behind master, files carrying a prior wave's charset,
-  resource-handling, `volatile` and suppression fixes).
-
-  Before dispatching into a worktree:
-
-  ```bash
-  git -C <worktree> rev-parse --short HEAD        # is this the base you meant?
-
-  # Does the agent's scope overlap anything changed on master since that
-  # base? LC_ALL=C on BOTH sides: a locale-sensitive sort makes comm print
-  # "input is not in sorted order" and a still-empty (reassuring) result.
-  git diff --name-only <base>..<branch> | LC_ALL=C sort > /tmp/a
-  git diff --name-only <base>..master   | LC_ALL=C sort > /tmp/b
-  LC_ALL=C comm -12 /tmp/a /tmp/b
-
-  # Cross-check with git itself (no sorting needed, authoritative):
-  git merge-tree --write-tree <branch> master >/dev/null && echo clean
-  ```
-
-  A non-empty overlap means a merge can revert real work. **Do not resolve
-  a large overlap by cherry-picking or rebasing** — a bad resolution reverts
-  a fix silently. Discard and redo on the correct base; the discarded
-  agent's report (written to the main checkout, never inside the worktree)
-  survives as a checklist. Corollary: **a worktree on a stale base may not
-  even contain the quality gates**, so its `mvn verify` proves less than it
-  looks (missing plugins in its `pom.xml` caught the case above).
+- **Parallel implementers mean git worktrees, and a worktree's base MUST be
+  pinned and verified before dispatch.** One branched from a stale commit
+  silently reverts master's later changes to the same files, and still
+  compiles and passes the gates. Run the base and overlap check in
+  `docs/dev/build-and-ci.md`, "Parallel agents in worktrees", first; a
+  non-empty overlap means discard and redo on the right base, never
+  cherry-pick or rebase through it.
 - **All development is test-driven.** Write the failing test first, run it
   and watch it fail for the reason you expect, then write the minimum code
   that makes it pass. A test never seen to fail has not been shown to test
-  anything — "wrote the code, then added a passing test" is not TDD; the
-  order is what makes the test a specification.
+  anything.
 - **Acceptance criteria live in the spec, not in the code review.** Work
   large enough for a spec under `docs/superpowers/specs/` states there what
-  "done" means, concretely enough to write a test against; a plan's tasks
-  derive their tests from it. A requirement no test could check is not yet
-  a criterion — sharpen it or drop it.
-- **Characterisation tests are the exception that proves the rule.** When
-  extracting or refactoring existing behaviour, the test is written first
-  and expected to pass immediately against the old code, proving the
-  refactor changed nothing. Say so in the test's javadoc, or a later reader
-  takes it for one written backwards.
-
-- **A `catch` that logs and falls through is fine in a display path and a
-  bug in a decision path; the difference is what the caller does with the
-  answer.** ~170 in this tree, mostly correct (a sidebar that cannot load
-  renders empty). The wrong ones share a shape:
-
-  ```java
-  private void myValidate(...) {
-      try {
-          if (weblogManager.getTemplateByName(weblog, bean.getName()) != null) {
-              addError(model, "pagesForm.error.alreadyExists", ...);
-          }
-      } catch (WebloggerException ex) {
-          log.error("Error checking page name uniqueness", ex);   // <-- no error added
-      }
-  }
-  // caller:
-  myValidate(bean, template, request, model);
-  if (!hasErrors(model)) { ...save... }
-  ```
-
-  The caller reads an empty error list as "passed", so an unreachable store
-  let the save through unchecked. **A check that could not run is not a
-  check that passed.** `TemplateEditController` and `TemplatesController`
-  both did this and now add an error; their tests pin it.
-
-  When adding a `catch` that only logs, ask what the caller does next; if it
-  proceeds as though nothing was wrong, fail closed. Two sweeps to repeat:
-  methods named `*validate*`/`check*` with a log-only catch, and
-  `boolean` methods that swallow — what matters is the value they fall
-  through to (every one today falls to `false`, i.e. deny or degrade;
-  `PressroomHandlerInterceptor.preHandle` is fail-closed because a
-  swallowed weblog lookup leaves `actionWeblog` null and `enforceSecurity`
-  then refuses).
+  "done" means, concretely enough to write a test against. A requirement no
+  test could check is not yet a criterion.
+- **Characterisation tests are the exception**: when refactoring, the test
+  is written first and passes immediately against the old code; say so in
+  its javadoc, or a later reader takes it for one written backwards.
+- **A check that could not run is not a check that passed.** A `catch` that
+  only logs is fine in a display path and a bug in a decision path (a
+  `*validate*`/`check*` method whose caller reads "no errors" as "passed").
+  Fail closed. Example and the sweeps to repeat: `docs/dev/quality-gates.md`,
+  "Log-only catches".
 
 ## Build and Development Commands
 
@@ -288,8 +219,8 @@ here.
 
 | Former CLAUDE.md section(s) | Read |
 |---|---|
-| Frontend build; Testing Commands; CI: three tiers (incl. the `createUser!save.rol` 403, root-caused: `docs/dev/browser-its.md`, "A click is not a barrier") | `docs/dev/build-and-ci.md` |
-| Coverage gates; Static-analysis gates | `docs/dev/quality-gates.md` |
+| Frontend build; Testing Commands; Parallel agents in worktrees; CI: three tiers (incl. the `createUser!save.rol` 403, root-caused: `docs/dev/browser-its.md`, "A click is not a barrier") | `docs/dev/build-and-ci.md` |
+| Coverage gates; Static-analysis gates; Log-only catches | `docs/dev/quality-gates.md` |
 | The IT harness cleans up by identity; Permutation coverage; Browser ITs run class-parallel; BrowserHealth; Run the browser suite at BOTH context paths | `docs/dev/browser-its.md` |
 | Database; Schema changes | `docs/dev/database.md` |
 | Architecture Overview (DI rules, packages, patterns, Security Architecture, Database Schema, Search) | `docs/dev/architecture.md` |
