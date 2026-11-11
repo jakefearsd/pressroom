@@ -122,4 +122,17 @@ class SiteDirectoryControllerTest {
     private static List<String> handles(Object weblogs) {
         return ((List<Weblog>) weblogs).stream().map(Weblog::getHandle).toList();
     }
+
+    /** The directory is public: it is described by the site description, fitted to a search description. */
+    @Test
+    void theDirectoryIsDescribedByTheSiteDescription() throws Exception {
+        when(weblogger.propertiesManager().getProperty("site.description"))
+                .thenReturn(new com.wikantik.pressroom.pojos.RuntimeConfigProperty("site.description",
+                        "A site of blogs. " + "It has a long description that goes on. ".repeat(6)));
+
+        controller.show(ControllerTestFixture.requestFor(null), model);
+
+        String description = (String) model.getAttribute("metaDescription");
+        assertEquals("A site of blogs. " + "It has a long description that goes on. ".repeat(3).trim(), description);
+    }
 }

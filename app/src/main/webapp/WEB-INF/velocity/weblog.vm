@@ -183,17 +183,34 @@ containing "</script>" cannot terminate the inline JSON-LD block).
     ## through raw when it is off (no attribute safety at all). These are
     ## plain-text fields, so a single deterministic escape is both safer and
     ## cleaner than sanitizing.
+    ##
+    ## Every page gets one (Bing's site scan flags a page without). What an
+    ## author typed for search is emitted whole; a fallback is fitted to
+    ## whole sentences within 160 characters ($utils.metaDescription):
+    ##   entry: search description, else its excerpt (summary, else opening);
+    ##   page:  search description, else its opening;
+    ##   then the blog's about text, and on the site space (the root) the
+    ##   site description from Global Config.
     #set($seoDescription = false)
     #if ($seoEntry)
         #if ($utils.isNotEmpty($seoEntry.pojo.searchDescription))
             #set($seoDescription = $seoEntry.pojo.searchDescription)
+        #elseif ($utils.isNotEmpty($seoEntry.excerpt))
+            #set($seoDescription = $utils.metaDescription($seoEntry.excerpt))
         #end
     #elseif ($seoPage)
         #if ($utils.isNotEmpty($seoPage.searchDescription))
             #set($seoDescription = $seoPage.searchDescription)
+        #elseif ($utils.isNotEmpty($seoPage.excerpt))
+            #set($seoDescription = $utils.metaDescription($seoPage.excerpt))
         #end
-    #elseif ($utils.isNotEmpty($model.weblog.pojo.about))
-        #set($seoDescription = $model.weblog.pojo.about)
+    #end
+    #if (!$seoDescription)
+        #if ($utils.isNotEmpty($model.weblog.pojo.about))
+            #set($seoDescription = $utils.metaDescription($model.weblog.pojo.about))
+        #elseif ($model.weblog.siteSpace && $utils.isNotEmpty($config.siteDescription))
+            #set($seoDescription = $utils.metaDescription($config.siteDescription))
+        #end
     #end
     #if ($seoDescription)
     <meta name="description" content="$utils.escapeHTML($seoDescription)">

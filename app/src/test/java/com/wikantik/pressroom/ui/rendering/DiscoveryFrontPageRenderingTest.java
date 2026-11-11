@@ -322,6 +322,26 @@ class DiscoveryFrontPageRenderingTest {
     }
 
     /**
+     * The site space has no about text of its own, so the root is described
+     * by Global Config's site description, cut to whole sentences within a
+     * search description's 160 characters.
+     */
+    @Test
+    void theRootIsDescribedByTheSiteDescription() throws Exception {
+        fiveBlogsOfFour();
+        String first = "Pressroom is a blog platform built so that agents can publish alongside people.";
+        String second = "It began as a fork of an older blog server.";
+        String third = "This blog is where both are written about, release by release.";
+        setProperty("site.description", first + " " + second + " " + third);
+        RenderingTestSupport.clearRenderCaches();
+
+        String body = root("frontpage");
+
+        assertTrue(body.contains("<meta name=\"description\" content=\"" + first + " " + second + "\">"),
+                "the two sentences that fit:\n" + body);
+    }
+
+    /**
      * The site description is a full-width row of the masthead, as wide as
      * the page below it: the brand block closes right after the site name,
      * so the mark sits beside the name and the description is not indented

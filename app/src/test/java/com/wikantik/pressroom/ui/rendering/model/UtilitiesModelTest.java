@@ -239,9 +239,13 @@ class UtilitiesModelTest {
         assertEquals("it's", model().escapeJson("it's"),
                 "The apostrophe must NOT be escaped: \\' is invalid JSON and makes "
                         + "every parser reject the whole JSON-LD block.");
-        assertEquals("<\\/script>", model().escapeJson("</script>"),
+        assertEquals("\\u003c\\/script\\u003e", model().escapeJson("</script>"),
                 "The forward slash must be escaped so a value containing </script> "
                         + "cannot terminate the surrounding inline script element.");
+        assertEquals("\\\"\\u003e\\u003cscript\\u003ealert(1)", model().escapeJson("\"><script>alert(1)"),
+                "No markup survives into a script block at all: < and > are \\u escapes, "
+                        + "which every JSON parser reads back as the same characters.");
+        assertEquals("Fish \\u0026 Chips", model().escapeJson("Fish & Chips"));
         assertEquals("line1\\nline2", model().escapeJson("line1\nline2"),
                 "A raw newline is invalid inside a JSON string literal.");
         assertNull(model().escapeJson(null), "escapeJson(null) must return null");
@@ -891,5 +895,47 @@ class UtilitiesModelTest {
         } finally {
             WebloggerRuntimeConfig.setRelativeContextURL(previous);
         }
+    }
+
+    // --- titleWithName: a <title> carries the blog's name only when it fits ---
+
+    @Test
+    void aShortTitleIsJoinedToTheName() {
+        assertEquals("Short post — Test Weblog", model().titleWithName("Short post", "Test Weblog"));
+    }
+
+    @Test
+    void aTitleTheNameWouldPushPastWhatASearchResultShowsStandsAlone() {
+        String title = "A".repeat(50);
+        assertEquals(title, model().titleWithName(title, "Test Weblog"),
+                "50 + 3 + 11 = 64 is past " + com.wikantik.pressroom.business.seo.SeoLimits.TITLE_MAX);
+        String fits = "A".repeat(46);
+        assertEquals(fits + " — Test Weblog", model().titleWithName(fits, "Test Weblog"),
+                "46 + 3 + 11 = 60 is exactly the limit");
+    }
+
+    /** Both are HTML-escaped on the way in; a reader sees one character per entity. */
+    @Test
+    void lengthIsCountedInTheCharactersAReaderSees() {
+        String title = "Fish &amp; Chips " + "A".repeat(29);
+        assertEquals(title + " — Test Weblog", model().titleWithName(title, "Test Weblog"),
+                "\"Fish & Chips \" is 13 characters, so 13 + 29 + 3 + 11 = 56 fits");
+    }
+
+    @Test
+    void aMissingTitleOrNameNeverPrintsNull() {
+        assertEquals("Test Weblog", model().titleWithName(null, "Test Weblog"));
+        assertEquals("Short post", model().titleWithName("Short post", null));
+    }
+
+    // --- metaDescription: fallback text fitted to a search description ---
+
+    @Test
+    void metaDescriptionFitsTextToTheSearchDescriptionLimit() {
+        String sentence = "Every sentence here is about forty chars. ";
+        String fitted = model().metaDescription(sentence.repeat(6));
+        assertTrue(fitted.length() <= com.wikantik.pressroom.business.seo.SeoLimits.DESCRIPTION_MAX, fitted);
+        assertTrue(fitted.endsWith("chars."), fitted);
+        assertNull(model().metaDescription(null));
     }
 }

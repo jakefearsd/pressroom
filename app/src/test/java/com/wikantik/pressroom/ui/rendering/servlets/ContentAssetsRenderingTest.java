@@ -422,9 +422,13 @@ class ContentAssetsRenderingTest {
         return found.get(0);
     }
 
-    /** The style attribute of the last element opened before {@code text}, as the reader receives it. */
+    /**
+     * The style attribute of the last element opened before {@code text}, as
+     * the reader receives it. Searched from {@code <body}: the head's meta
+     * description quotes the post's opening too.
+     */
     private static String styleBefore(String body, String text) {
-        int at = body.indexOf(text);
+        int at = body.indexOf(text, body.indexOf("<body"));
         assertTrue(at > 0, "no " + text + " in the page");
         int open = body.lastIndexOf("style=\"", at);
         assertTrue(open > 0, "no inline style before " + text);

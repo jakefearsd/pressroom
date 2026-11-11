@@ -123,6 +123,33 @@ public final class Excerpts {
     }
 
     /**
+     * Text sized for a field that holds at most {@code max} characters, a
+     * meta description say: whole if it fits, else the whole sentences that
+     * fit, else its first sentence cut at a word, with an ellipsis.
+     *
+     * @return the fitted text, or null when there is no text
+     */
+    public static String fit(String text, int max) {
+        if (StringUtils.isBlank(text)) {
+            return null;
+        }
+        String whole = squash(text);
+        if (whole.length() <= max) {
+            return whole;
+        }
+        BreakIterator sentences = BreakIterator.getSentenceInstance(Locale.ROOT);
+        sentences.setText(whole);
+        int fits = 0;
+        for (int end = sentences.next(); end != BreakIterator.DONE; end = sentences.next()) {
+            if (whole.substring(0, end).stripTrailing().length() > max) {
+                break;
+            }
+            fits = end;
+        }
+        return fits > 0 ? whole.substring(0, fits).strip() : cut(whole, max);
+    }
+
+    /**
      * Every word of the markup in reading order, as plain text: an author's
      * own summary, shown whole.
      *
@@ -238,19 +265,19 @@ public final class Excerpts {
         private static String join(String head, String tail) {
             return head.isEmpty() ? tail : head + " " + tail;
         }
+    }
 
-        /** The sentence cut at the last word that fits in {@code room}, ellipsis included. */
-        private static String cut(String sentence, int room) {
-            int limit = room - ELLIPSIS.length();
-            int at = sentence.lastIndexOf(' ', limit);
-            if (at <= 0) {
-                // No word to cut at: cut at the limit, but never between the
-                // two halves of a character such as an emoji.
-                at = Character.isHighSurrogate(sentence.charAt(limit - 1)) ? limit - 1 : limit;
-            }
-            String head = sentence.substring(0, at);
-            return head.stripTrailing() + ELLIPSIS;
+    /** The sentence cut at the last word that fits in {@code room}, ellipsis included. */
+    private static String cut(String sentence, int room) {
+        int limit = room - ELLIPSIS.length();
+        int at = sentence.lastIndexOf(' ', limit);
+        if (at <= 0) {
+            // No word to cut at: cut at the limit, but never between the
+            // two halves of a character such as an emoji.
+            at = Character.isHighSurrogate(sentence.charAt(limit - 1)) ? limit - 1 : limit;
         }
+        String head = sentence.substring(0, at);
+        return head.stripTrailing() + ELLIPSIS;
     }
 
     /** One open element, and what it switched on, so its close can switch it off again. */

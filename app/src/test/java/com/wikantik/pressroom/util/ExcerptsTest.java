@@ -235,4 +235,32 @@ class ExcerptsTest {
         assertEquals("a\u2003b", Excerpts.squash("a\u2003b"), "an em space is not \\s: it stays");
         assertEquals("\u2003a", Excerpts.squash("\u2003a"), "and trim keeps it too");
     }
+
+    // --- fit: fallback text sized for a meta description ---
+
+    @Test
+    void fitLeavesTextThatAlreadyFitsAlone() {
+        assertEquals("One short sentence.", Excerpts.fit("  One short sentence. ", 160));
+        assertNull(Excerpts.fit(null, 160));
+        assertNull(Excerpts.fit("   ", 160));
+    }
+
+    @Test
+    void fitKeepsTheWholeSentencesThatFit() {
+        String first = "The first sentence runs to about fifty characters.";
+        String second = "The second one is much the same length as the first.";
+        String third = "A third would take the whole past the limit of the tag.";
+        String fitted = Excerpts.fit(first + " " + second + " " + third, 110);
+        assertEquals(first + " " + second, fitted);
+    }
+
+    @Test
+    void fitCutsAnOverlongFirstSentenceAtAWord() {
+        String sentence = "This single sentence goes on and on without ever reaching a full stop before the limit";
+        String fitted = Excerpts.fit(sentence, 40);
+        assertTrue(fitted.length() <= 40, fitted);
+        assertTrue(fitted.endsWith("…"), fitted);
+        assertTrue(sentence.startsWith(fitted.substring(0, fitted.length() - 1)), fitted);
+        assertFalse(fitted.substring(0, fitted.length() - 1).endsWith(" "), fitted);
+    }
 }

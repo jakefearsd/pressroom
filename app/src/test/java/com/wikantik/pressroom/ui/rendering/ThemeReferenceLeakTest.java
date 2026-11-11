@@ -174,7 +174,6 @@ class ThemeReferenceLeakTest {
             "weblog-entries-atom.vm|standard: $model.tags", // null when the view is not a tag view; tested with #if/#elseif
             "weblog.vm: $colophonFacts.copyrightText", // null unless the weblog sets copyright text; tested with $utils.isNotEmpty
             "weblog.vm: $colophonFacts.privacyUrl", // null unless a privacy URL is configured; tested with $utils.isNotEmpty
-            "weblog.vm: $entry.pojo.metaTitle", // null when the entry has no meta title; tested with $utils.isNotEmpty in the showEntryTitle macro
             "weblog.vm: $image.objectPosition", // null when the image has no focal point; assigned to $responsiveObjectPosition, which is tested with #if
             "weblog.vm: $model.canonicalUrl", // null when no canonical URL applies; assigned to $seoCanonical, which is tested with #if
             "weblog.vm: $model.page", // null when the view is not a static page; tested with #if / negated in #set
@@ -183,7 +182,6 @@ class ThemeReferenceLeakTest {
             "weblog.vm: $model.term", // null outside a search; tested with $utils.isNotEmpty
             "weblog.vm: $model.weblogCategory", // null when the view is not a category view; tested with #if/#elseif
             "weblog.vm: $model.weblogDate", // null when the view is not a date archive; tested with #if / negated in #set
-            "weblog.vm: $page.metaTitle", // null when the page has no meta title; tested with $utils.isNotEmpty in the showPageTitle macro
             "weblog.vm: $responsiveObjectPosition", // null when the image has no focal point; tested with #if
             "weblog.vm: $seoBusinessJson", // null when the weblog has no business profile; tested with #if
             "weblog.vm: $seoCanonical", // null when no canonical URL applies; tested with #if

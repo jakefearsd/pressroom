@@ -21,7 +21,7 @@
     #if($fdMetaTitle)
     <title>$utils.escapeHTML($fdMetaTitle)</title>
     #elseif($fdPageTitle)
-    <title>$utils.escapeHTML($fdPageTitle) — $utils.escapeHTML($config.siteName)</title>
+    <title>$utils.titleWithName($utils.escapeHTML($fdPageTitle), $utils.escapeHTML($config.siteName))</title>
     #else
     <title>$utils.escapeHTML($config.siteName)</title>
     #end

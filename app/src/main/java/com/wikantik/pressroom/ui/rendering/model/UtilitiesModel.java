@@ -43,7 +43,9 @@ import com.wikantik.pressroom.pojos.JsonLdType;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.wrapper.WeblogWrapper;
 import com.wikantik.pressroom.ui.rendering.util.WeblogRequest;
+import com.wikantik.pressroom.business.seo.SeoLimits;
 import com.wikantik.pressroom.util.DateUtil;
+import com.wikantik.pressroom.util.Excerpts;
 import com.wikantik.pressroom.util.RegexUtil;
 import com.wikantik.pressroom.business.shortcodes.GalleryMarkup;
 import com.wikantik.pressroom.pojos.Business;
@@ -304,6 +306,32 @@ public class UtilitiesModel implements Model {
     public String unescapeHTML(String str) {
         return StringEscapeUtils.unescapeHtml4(str);
     }
+
+    /**
+     * A {@code <title>}: "title — name" when that fits in what a search
+     * result shows ({@link SeoLimits#TITLE_MAX}, counted in the characters a
+     * reader sees), else the title alone, since the name would only be cut
+     * off. Both come in HTML-escaped and go out as they came.
+     */
+    public String titleWithName(String title, String name) {
+        if (StringUtils.isEmpty(title)) {
+            return name == null ? "" : name;
+        }
+        if (StringUtils.isEmpty(name)) {
+            return title;
+        }
+        String joined = title + " — " + name;
+        return StringEscapeUtils.unescapeHtml4(joined).length() <= SeoLimits.TITLE_MAX ? joined : title;
+    }
+
+    /**
+     * Fallback text (an excerpt, a blog's about text) fitted to a search
+     * description: whole sentences within {@link SeoLimits#DESCRIPTION_MAX}.
+     * Plain text in and out; escape it on the way out.
+     */
+    public String metaDescription(String text) {
+        return Excerpts.fit(text, SeoLimits.DESCRIPTION_MAX);
+    }
     
     public String escapeXML(String str) {
         return StringEscapeUtils.escapeXml11(str);
@@ -327,10 +355,16 @@ public class UtilitiesModel implements Model {
      * {@link #escapeJavaScript} this never produces {@code \'} (invalid
      * JSON), and it escapes the forward slash so a value containing
      * {@code </script>} cannot terminate the surrounding inline script
-     * element.
+     * element. {@code <}, {@code >} and {@code &} become {@code \\u} escapes,
+     * so no markup at all reaches the script block (a post's opening is a
+     * description too): every JSON parser reads them back unchanged.
      */
     public String escapeJson(String str) {
-        return StringEscapeUtils.escapeJson(str);
+        String escaped = StringEscapeUtils.escapeJson(str);
+        if (escaped == null) {
+            return null;
+        }
+        return escaped.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026");
     }
 
     /**

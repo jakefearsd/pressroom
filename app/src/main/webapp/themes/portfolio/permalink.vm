@@ -12,7 +12,7 @@
     #if($utils.isNotEmpty($model.weblogEntry.pojo.metaTitle))
     <title>#showEntryTitle($model.weblogEntry)</title>
     #else
-    <title>#showEntryTitle($model.weblogEntry) — $model.weblog.name</title>
+    <title>$utils.titleWithName($model.weblogEntry.title, $model.weblog.name)</title>
     #end
     <link href="$url.absoluteSite/favicon.svg" rel="icon" type="image/svg+xml" />
     #showAutodiscoveryLinks($model.weblog)

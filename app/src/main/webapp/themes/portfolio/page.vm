@@ -12,7 +12,7 @@
     #if($utils.isNotEmpty($model.page.metaTitle))
     <title>#showPageTitle($model.page)</title>
     #else
-    <title>#showPageTitle($model.page) — $model.weblog.name</title>
+    <title>$utils.titleWithName($utils.escapeHTML($model.page.title), $model.weblog.name)</title>
     #end
     <link href="$url.absoluteSite/favicon.svg" rel="icon" type="image/svg+xml" />
     ## The site space (the site's own pages) has no posts, so no feed, no

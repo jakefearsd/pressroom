@@ -23,9 +23,12 @@ import java.util.List;
 import jakarta.servlet.http.HttpServletRequest;
 
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.seo.SeoLimits;
+import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.ui.controllers.BaseController;
+import com.wikantik.pressroom.util.Excerpts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
@@ -77,6 +80,9 @@ public class SiteDirectoryController extends BaseController {
             weblogs = List.of();
         }
         model.addAttribute("weblogs", weblogs);
+        // A public page a search engine reads: head.jsp emits this.
+        model.addAttribute("metaDescription", Excerpts.fit(
+                WebloggerRuntimeConfig.getProperty("site.description"), SeoLimits.DESCRIPTION_MAX));
         // Only an admin is offered the way to pick a front-page weblog.
         User user = getAuthenticatedUser(request);
         model.addAttribute("userIsAdmin", user != null && isGlobalAdmin(user));

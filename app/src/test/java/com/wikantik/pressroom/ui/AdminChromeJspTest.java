@@ -444,4 +444,16 @@ class AdminChromeJspTest {
         assertTrue(src.contains("<c:param name='v' value='${editorBundleVersion}'/>"),
                 "the editor bundle URL carries ?v=<version>, encoded by c:param");
     }
+
+    /**
+     * A controller that sets {@code metaDescription} gets a description in
+     * the head: the site directory is a public page a search engine reads
+     * (Bing site scan, 2026-11-11). It is admin-typed text, so escaped.
+     */
+    @Test
+    void theHeadEmitsAMetaDescriptionWhenTheControllerSetsOne() {
+        String src = jsp("tiles/head.jsp");
+        assertTrue(src.contains("<c:if test=\"${not empty metaDescription}\">"), src);
+        assertTrue(src.contains("<meta name=\"description\" content=\"${fn:escapeXml(metaDescription)}\">"), src);
+    }
 }

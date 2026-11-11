@@ -13,6 +13,17 @@ resolves through the index at the end of `CLAUDE.md`.
   theme head) emits meta description, canonical, robots noindex, Open
   Graph/Twitter card and JSON-LD; `#showResponsiveImage` is the theme-side
   `<picture>`/srcset emitter.
+- **Every page has a description** (Bing's site scan, 2026-11-11). The SEO
+  head macro uses what an author typed for search whole; otherwise a fallback
+  fitted by `$utils.metaDescription` (`Excerpts.fit`: whole sentences within
+  `SeoLimits.DESCRIPTION_MAX`): an entry's excerpt (summary, else opening), a
+  page's opening (`WeblogPageWrapper.getExcerpt`), the blog's about text,
+  and on the site space the Global Config site description. The admin-UI
+  site directory sets `metaDescription`, which `tiles/head.jsp` emits.
+- **`<title>` carries the blog's name only when it fits**:
+  `$utils.titleWithName` joins "title — name" only within
+  `SeoLimits.TITLE_MAX` (counted unescaped), else the title stands alone. A
+  meta title is still the whole title.
 - **Search-engine verification**: Global Config's `site.verification.bing`
   (Bing Webmaster Tools' `msvalidate.01` code, blank for none) is emitted by
   the SEO head macro on every public page, so the root carries it whatever

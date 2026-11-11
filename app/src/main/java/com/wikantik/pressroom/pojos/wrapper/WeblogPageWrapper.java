@@ -23,6 +23,7 @@ import java.sql.Timestamp;
 import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.WeblogPage;
+import com.wikantik.pressroom.util.Excerpts;
 
 /**
  * The template view of a static page ({@code $model.page}).
@@ -80,6 +81,15 @@ public final class WeblogPageWrapper {
      */
     public String getRenderedContent() {
         return weblogger.getEntryRenderer().pageContent(this.pojo);
+    }
+
+    /**
+     * The opening sentences of the page's content, as plain text (see
+     * {@link Excerpts#opening}): what describes a page with no search
+     * description of its own. Not escaped.
+     */
+    public String getExcerpt() {
+        return Excerpts.opening(getRenderedContent(), this.pojo.getWeblog().getLocaleInstance());
     }
 
     public WeblogPage.PubStatus getStatus() {

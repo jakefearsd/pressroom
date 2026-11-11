@@ -24,7 +24,7 @@ markup so a page does not look foreign inside any of them.
     #if($utils.isNotEmpty($model.page.metaTitle))
     <title>$utils.escapeHTML($model.page.metaTitle)</title>
     #else
-    <title>$utils.escapeHTML($model.page.title) — $model.weblog.name</title>
+    <title>$utils.titleWithName($utils.escapeHTML($model.page.title), $model.weblog.name)</title>
     #end
     <link href="$url.absoluteSite/favicon.svg" rel="icon" type="image/svg+xml" />
     #showAutodiscoveryLinks($model.weblog)

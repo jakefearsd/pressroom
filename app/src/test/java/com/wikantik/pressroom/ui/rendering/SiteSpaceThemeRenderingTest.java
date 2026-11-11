@@ -199,7 +199,8 @@ class SiteSpaceThemeRenderingTest {
             assertTrue(body.contains("\"@type\": \"WebSite\""), theme + ":\n" + body);
             assertFalse(body.contains("\"@type\": \"Blog\""), theme + ":\n" + body);
             assertTrue(body.contains("\"name\": \"" + SITE_NAME + "\""), theme + ":\n" + body);
-            assertTrue(body.contains("\"description\": \"Boats & \\\"quiet\\\" water\""), theme + ":\n" + body);
+            // & is a \\u escape in a script block ($utils.escapeJson); it parses back to "&".
+            assertTrue(body.contains("\"description\": \"Boats \\u0026 \\\"quiet\\\" water\""), theme + ":\n" + body);
         }
     }
 

@@ -291,6 +291,101 @@ class SeoHeadRenderingTest {
         assertEquals("All about rendering tests", blog.path("description").asString());
     }
 
+    // --- every page has a description (Bing site scan, 2026-11-11) ---
+
+    /** An entry with no search description is described by its summary, as lists show it. */
+    @Test
+    void anEntryWithoutASearchDescriptionIsDescribedByItsSummary() throws Exception {
+        WeblogEntry entry = TestUtils.setupWeblogEntry("summarised", weblog, user);
+        updateEntry(entry, e -> e.setSummary("The summary an author wrote for the list."));
+
+        String body = render("/" + HANDLE + "/entry/summarised");
+
+        assertTrue(body.contains("<meta name=\"description\" content=\"The summary an author wrote for the list.\">"),
+                "the summary stands in for the missing search description:\n" + body);
+        assertTrue(body.contains("<meta property=\"og:description\" content=\"The summary an author wrote for the list.\">"),
+                body);
+    }
+
+    /** With neither, the opening sentences, cut to whole sentences within the limit. */
+    @Test
+    void anEntryWithNeitherIsDescribedByItsOpeningSentences() throws Exception {
+        String first = "Malakoff Diggins is where hydraulic mining tore open a whole mountainside.";
+        String second = "The cliffs it left are pink and white and eroding still.";
+        String third = "A court in 1884 stopped it, the first ruling of its kind in the United States.";
+        WeblogEntry entry = TestUtils.setupWeblogEntry("opening-only", weblog, user);
+        updateEntry(entry, e -> e.setText(first + " " + second + " " + third));
+
+        String body = render("/" + HANDLE + "/entry/opening-only");
+
+        assertTrue(body.contains("<meta name=\"description\" content=\"" + first + " " + second + "\">"),
+                "the first two sentences fit in 160 characters; the third does not:\n" + body);
+    }
+
+    /**
+     * A search description an author wrote is theirs: emitted whole, never
+     * cut. A guard, not a new behaviour: it passes against the code before
+     * the fallbacks were added, and must keep passing with them.
+     */
+    @Test
+    void aSearchDescriptionStillWinsAndIsNotCut() throws Exception {
+        String written = "An author's own description. ".repeat(7).trim();
+        WeblogEntry entry = TestUtils.setupWeblogEntry("described", weblog, user);
+        updateEntry(entry, e -> {
+            e.setSearchDescription(written);
+            e.setSummary("A summary that must not be used.");
+        });
+
+        String body = render("/" + HANDLE + "/entry/described");
+
+        assertTrue(body.contains("<meta name=\"description\" content=\"" + written + "\">"), body);
+    }
+
+    @Test
+    void aPageWithoutASearchDescriptionIsDescribedByItsOpening() throws Exception {
+        savePage("privacy", "Privacy", p -> p.setContent("We keep no more than we need. Here is what that means."));
+
+        String body = render("/" + HANDLE + "/privacy");
+
+        assertTrue(body.contains(
+                "<meta name=\"description\" content=\"We keep no more than we need. Here is what that means.\">"),
+                "the page's own opening describes it:\n" + body);
+    }
+
+    // --- a <title> carries the blog's name only when it fits ---
+
+    /** A guard: passes before and after; only a title that would not fit changes. */
+    @Test
+    void aShortEntryTitleKeepsTheBlogName() throws Exception {
+        TestUtils.setupWeblogEntry("short-title", weblog, user);
+
+        String body = render("/" + HANDLE + "/entry/short-title");
+
+        assertTrue(body.contains("<title>short-title — Test Weblog</title>"), body);
+    }
+
+    @Test
+    void aLongEntryTitleDropsTheBlogName() throws Exception {
+        String title = "Malakoff Diggins: Water Cannons, Carved Canyons, and a First Law";
+        WeblogEntry entry = TestUtils.setupWeblogEntry("long-title", weblog, user);
+        updateEntry(entry, e -> e.setTitle(title));
+
+        String body = render("/" + HANDLE + "/entry/long-title");
+
+        assertTrue(body.contains("<title>" + title + "</title>"),
+                "past what a search result shows, the name would only be cut off:\n" + body);
+    }
+
+    @Test
+    void aLongPageTitleDropsTheBlogName() throws Exception {
+        String title = "Everything This Site Collects, Keeps, Shares and Then Deletes";
+        savePage("long-page", title, null);
+
+        String body = render("/" + HANDLE + "/long-page");
+
+        assertTrue(body.contains("<title>" + title + "</title>"), body);
+    }
+
     @Test
     void noindexEntryGetsARobotsMeta() throws Exception {
         WeblogEntry entry = TestUtils.setupWeblogEntry("hidden-entry", weblog, user);
@@ -493,12 +588,13 @@ class SeoHeadRenderingTest {
         assertFalse(body.contains("href=\"https://example.com/x?a=1&b=2\""),
                 "a raw unescaped ampersand must never reach an HTML attribute:\n" + body);
 
-        // JSON has no need to escape '&', but commons-text's escapeJson does
-        // escape '/' to "\/" -- the raw ld+json source must carry exactly
-        // that: '&' untouched, '/' escaped.
+        // commons-text's escapeJson escapes '/' to "\/", and $utils.escapeJson
+        // also turns '&' (with '<' and '>') into a \\u escape so no markup
+        // reaches the script block -- the raw ld+json source carries exactly
+        // that, and parses back to the URL below.
         List<String> ldSources = ldJsonSources(body);
         assertTrue(ldSources.stream().anyMatch(src -> src.contains(
-                "\"mainEntityOfPage\": \"https:\\/\\/example.com\\/x?a=1&b=2\",")),
+                "\"mainEntityOfPage\": \"https:\\/\\/example.com\\/x?a=1\\u0026b=2\",")),
                 "mainEntityOfPage must carry the correctly JSON-escaped value:\n" + ldSources);
         JsonNode posting = singleLdJson(body, "BlogPosting");
         assertEquals("https://example.com/x?a=1&b=2",
