@@ -76,7 +76,7 @@ public class GlobalConfigController extends BaseController {
      */
     private static final List<String> RENDERED_PAGE_INPUTS =
             List.of(PRIVACY_PAGE, FRONTPAGE_WEBLOG_HANDLE, FRONTPAGE_PAGE, ABSOLUTE_URL,
-                    "site.name", "site.shortName", "site.description");
+                    "site.name", "site.shortName", "site.description", "site.verification.bing");
 
     private final ResourceBundle bundle = ResourceBundle.getBundle("ApplicationResources");
 

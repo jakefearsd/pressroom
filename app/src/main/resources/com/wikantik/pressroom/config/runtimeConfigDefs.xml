@@ -62,6 +62,10 @@
          <type>text</type>
 	 <default-value>A default install of the Pressroom Weblogger open source blog server</default-value>
       </property-def>      
+      <property-def  name="site.verification.bing"  key="configForm.bingVerification">
+         <type>string</type>
+         <default-value></default-value>
+      </property-def>
       <property-def  name="site.frontpage.weblog.handle"  key="configForm.frontpageWeblogHandle">
          <type>string</type>
          <default-value></default-value>

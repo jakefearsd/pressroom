@@ -67,6 +67,11 @@ public class ConfigModel implements Model {
         return getProperty("site.description");
     }
     
+    /** Global Config's site.verification.bing: the msvalidate.01 code, blank for none. */
+    public String getBingSiteVerification() {
+        return getProperty("site.verification.bing");
+    }
+
     public String getSiteEmail() {
         return getProperty("site.adminemail");
     }

@@ -702,7 +702,8 @@ class GlobalConfigControllerTest {
      */
     @Test
     void changingTheSiteNameShortNameOrDescriptionTouchesAndClears() throws Exception {
-        for (String name : new String[] {"site.name", "site.shortName", "site.description"}) {
+        for (String name : new String[] {"site.name", "site.shortName", "site.description",
+                "site.verification.bing"}) {
             Map<String, RuntimeConfigProperty> stored =
                     linkProps("front/privacy", "front", "https://x.test");
             stored.put(name, new RuntimeConfigProperty(name, "Old"));

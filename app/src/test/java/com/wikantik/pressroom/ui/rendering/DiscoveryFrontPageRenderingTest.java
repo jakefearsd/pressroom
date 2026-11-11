@@ -289,6 +289,39 @@ class DiscoveryFrontPageRenderingTest {
     }
 
     /**
+     * Bing Webmaster Tools verifies a site by fetching its root and looking
+     * for {@code msvalidate.01}; the code is Global Config's
+     * {@code site.verification.bing}, and no code means no tag.
+     */
+    @Test
+    void theRootCarriesTheBingVerificationCodeWhenOneIsSet() throws Exception {
+        fiveBlogsOfFour();
+        setProperty("site.verification.bing", "");
+        String without = root("frontpage");
+        assertFalse(without.contains("msvalidate.01"), "no code, no tag:\n" + without);
+
+        setProperty("site.verification.bing", "E4648D0A2665219A08F7CAC3A9419944");
+        RenderingTestSupport.clearRenderCaches();
+        String with = root("frontpage");
+        assertEquals(1, count(with,
+                "<meta name=\"msvalidate.01\" content=\"E4648D0A2665219A08F7CAC3A9419944\">"),
+                "the root's head carries the code once:\n" + with);
+        assertTrue(with.indexOf("msvalidate.01") < with.indexOf("</head>"), "in the head:\n" + with);
+    }
+
+    /** The code is admin-typed text in an attribute: a quote cannot end the attribute. */
+    @Test
+    void theBingVerificationCodeIsEscaped() throws Exception {
+        fiveBlogsOfFour();
+        setProperty("site.verification.bing", "A\"><script>x</script>");
+        RenderingTestSupport.clearRenderCaches();
+        String body = root("frontpage");
+        assertTrue(body.contains(
+                "<meta name=\"msvalidate.01\" content=\"A&quot;&gt;&lt;script&gt;x&lt;/script&gt;\">"),
+                "escaped once:\n" + body);
+    }
+
+    /**
      * The site description is a full-width row of the masthead, as wide as
      * the page below it: the brand block closes right after the site name,
      * so the mark sits beside the name and the description is not indented

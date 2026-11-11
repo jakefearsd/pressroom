@@ -198,6 +198,11 @@ containing "</script>" cannot terminate the inline JSON-LD block).
     #if ($seoDescription)
     <meta name="description" content="$utils.escapeHTML($seoDescription)">
     #end
+    ## Bing Webmaster Tools reads msvalidate.01 off the site root; every page
+    ## carries it, so whatever the front door serves at / does too.
+    #if ($utils.isNotEmpty($config.bingSiteVerification))
+    <meta name="msvalidate.01" content="$utils.escapeHTML($config.bingSiteVerification)">
+    #end
     ## A search results page is an unbounded set of thin, near-duplicate pages
     ## -- one per ?q= permutation a crawler can invent -- and it is the one
     ## page here with no canonical URL to collapse them onto (see the

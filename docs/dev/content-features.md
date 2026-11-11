@@ -13,6 +13,11 @@ resolves through the index at the end of `CLAUDE.md`.
   theme head) emits meta description, canonical, robots noindex, Open
   Graph/Twitter card and JSON-LD; `#showResponsiveImage` is the theme-side
   `<picture>`/srcset emitter.
+- **Search-engine verification**: Global Config's `site.verification.bing`
+  (Bing Webmaster Tools' `msvalidate.01` code, blank for none) is emitted by
+  the SEO head macro on every public page, so the root carries it whatever
+  the front door is. It is a `RENDERED_PAGE_INPUTS` setting: changing it
+  expires every cached page (`GlobalConfigController`).
 - Site pages have their own sitemap, `/sitemap-site-pages.xml` (404 with no
   site space or no published page; not cached), listed in the `/sitemap.xml`
   index only when it has a published page, with the front door at the root.
