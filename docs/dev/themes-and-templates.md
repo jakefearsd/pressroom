@@ -452,6 +452,9 @@ Spec `docs/superpowers/specs/2026-11-11-post-page-discovery-design.md`.
   `section.entry-more.entry-related`. Preview and static pages do not call
   it. `AfterEntryRenderingTest` pins the class names and renders all three
   themes.
+- **The share row is per blog** (`Weblog.shareRowEnabled`, V046, default on):
+  off, the macro emits no `nav.entry-share` and none of its style or script;
+  the lists and their style are untouched.
 - **The picks** are `$model.furtherReading` (`FurtherReading`, built once per
   render): the blog's newest 200 published posts are the candidates
   (one query) and `WeblogEntryManager.getSharedTagCounts` gives the tag

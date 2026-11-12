@@ -33,6 +33,13 @@ already allows the fetch.
   weblog handle 404s; **a filled honeypot or a too-fast submit answers 204,
   identically to success, and stores nothing**, so automation learns nothing.
   Subscribe mirrors both.
+- **Blog settings says whether the subscribe form is on** (0.9.1), beside the
+  list field: `SubscribeFormStatus` is `Weblog.isSubscribeFormShown()` (the
+  predicate the showSubscribeForm macro renders on) plus
+  `ListmonkClient.isSiteConfigured()` (the base URL `NewsletterController`
+  answers 503 without). Never restate either rule. With a list but no site
+  service the placeholder still renders and sign-ups fail, which is why the
+  status reads "off".
 - **`/newsletter/subscribe` is served by the app, not Caddy.** Throttle and
   `pressroom_event` recording live in `NewsletterController`; the old Caddy
   `handle /newsletter/subscribe { rewrite ... reverse_proxy listmonk }` block

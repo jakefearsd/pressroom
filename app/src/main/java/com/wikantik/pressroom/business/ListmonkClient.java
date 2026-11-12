@@ -64,10 +64,15 @@ public class ListmonkClient {
     }
 
     public ListmonkClient(String baseUrl, String apiUser, String apiToken, HttpClient http) {
-        this.baseUrl = StringUtils.stripEnd(StringUtils.trimToNull(baseUrl), "/");
+        this.baseUrl = normalise(baseUrl);
         this.apiUser = StringUtils.trimToNull(apiUser);
         this.apiToken = StringUtils.trimToNull(apiToken);
         this.http = http;
+    }
+
+    /** The base URL as it is used: trimmed, no trailing slash, null when blank. */
+    private static String normalise(String baseUrl) {
+        return StringUtils.stripEnd(StringUtils.trimToNull(baseUrl), "/");
     }
 
     public static ListmonkClient fromConfig() {
@@ -76,6 +81,20 @@ public class ListmonkClient {
                 WebloggerConfig.getProperty("newsletter.listmonk.apiuser"),
                 WebloggerConfig.getProperty("newsletter.listmonk.apitoken"),
                 HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build());
+    }
+
+    /**
+     * Whether this base URL names a newsletter service: the same reading the
+     * constructor gives it, without building a client (an HttpClient is not
+     * free). {@link #isUnconfigured()} is its negation for a built client.
+     */
+    public static boolean isBaseUrlConfigured(String baseUrl) {
+        return normalise(baseUrl) != null;
+    }
+
+    /** Whether this site has a newsletter service configured at all. A startup property. */
+    public static boolean isSiteConfigured() {
+        return isBaseUrlConfigured(WebloggerConfig.getProperty("newsletter.listmonk.baseurl"));
     }
 
     public boolean isUnconfigured() {

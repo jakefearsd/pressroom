@@ -99,7 +99,6 @@ class DiscoveryFrontPageRenderingTest {
             "templates/weblog/discovery.vm|standard: $fdShare", // that #set of a null featured image; handed to the showSeoHead macro, which tests it with #elseif
             "templates/weblog/discovery.vm|standard: fdShare", // the same #set, as the recorder names its target
             "weblog.vm: $seoLeadImage", // the showSeoHead macro's optional picture, null when the lead story has none; tested with #elseif
-            "templates/weblog/discovery.vm|standard: $model.weblog.newsletterListUuid", // null unless the site space names a newsletter list; tested with $utils.isNotEmpty
             "weblog.vm: $colophonFacts.copyrightText", // null unless the weblog sets copyright text; tested with $utils.isNotEmpty
             "weblog.vm: $colophonFacts.privacyUrl", // null unless a privacy URL is configured; tested with $utils.isNotEmpty
             "weblog.vm: $model.page", // null when the view is not a static page; tested with #if / negated in #set

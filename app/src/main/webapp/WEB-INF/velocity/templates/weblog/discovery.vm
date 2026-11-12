@@ -80,7 +80,7 @@ comment names one with its hash, so nothing here is invoked by accident.
 #set($fdShare = false)
 #if($dFront.headline)#set($fdShare = $dFront.headline.featuredImage)#end
 #set($fdList = "")
-#if($utils.isNotEmpty($model.weblog.newsletterListUuid))#set($fdList = $model.weblog.newsletterListUuid)#end
+#if($model.weblog.subscribeFormShown)#set($fdList = $model.weblog.newsletterListUuid)#end
 #set($fdHandles = [])
 #foreach($fdBlog in $dFront.allBlogs)#set($fdAdded = $fdHandles.add($fdBlog.handle))#end
 ## the house slots' blogs: those no shelf shows, else every blog

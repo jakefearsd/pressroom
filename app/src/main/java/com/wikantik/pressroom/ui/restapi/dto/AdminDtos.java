@@ -66,6 +66,8 @@ public final class AdminDtos {
                               int entryDisplayCount, boolean active, boolean commentsEnabled, boolean commentNotify,
                               @Schema(description = "Show the more-from-the-site block on this blog. Default true.")
                               boolean showMoreFromSite,
+                              @Schema(description = "Show the share row under this blog's posts. Default true.")
+                              boolean shareRowEnabled,
                               @Schema(description = "The same value as theme, under its older name.",
                                       deprecated = true)
                               String editorTheme,
@@ -131,6 +133,8 @@ public final class AdminDtos {
                                Boolean commentNotify,
                                @Schema(description = "Show popular posts from the site's other blogs on this blog. Not clearable.")
                                Boolean showMoreFromSite,
+                               @Schema(description = "Show the share row under this blog's posts. Not clearable.")
+                               Boolean shareRowEnabled,
                                @Schema(description = THEME_DESCRIPTION)
                                String theme,
                                @Schema(description = "Fields to remove: tagline, copyright, customDomain, icon, about, "
@@ -157,7 +161,8 @@ public final class AdminDtos {
                 Boolean.TRUE.equals(weblog.getActive()),
                 Boolean.TRUE.equals(weblog.getCommentsEnabled()),
                 !Boolean.FALSE.equals(weblog.getCommentNotify()),
-                !Boolean.FALSE.equals(weblog.getShowMoreFromSite()), weblog.getEditorTheme(),
+                !Boolean.FALSE.equals(weblog.getShowMoreFromSite()),
+                !Boolean.FALSE.equals(weblog.getShareRowEnabled()), weblog.getEditorTheme(),
                 weblog.getEditorTheme(), weblog.getCreatorUserName(), weblog.getCustomDomain(), weblog.getIconPath(),
                 weblog.getAbout(), weblog.getNewsletterListUuid(),
                 weblog.getBusiness() == null ? null : weblog.getBusiness().getId(),
@@ -220,6 +225,9 @@ public final class AdminDtos {
         }
         if (patch.showMoreFromSite() != null) {
             bean.setShowMoreFromSite(patch.showMoreFromSite());
+        }
+        if (patch.shareRowEnabled() != null) {
+            bean.setShareRowEnabled(patch.shareRowEnabled());
         }
         setIfPresent(patch.customDomain(), bean::setCustomDomain);
         setIfPresent(patch.icon(), bean::setIcon);

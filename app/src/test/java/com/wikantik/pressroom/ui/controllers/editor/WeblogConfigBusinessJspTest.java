@@ -89,4 +89,35 @@ class WeblogConfigBusinessJspTest {
         assertTrue(jsp.contains("code=\"weblogSettings.showMoreFromSite\""));
         assertTrue(jsp.contains("code=\"weblogSettings.showMoreFromSite.help\""));
     }
+
+    /** 0.9.1 criterion 20. The name never says "share link": that term is the tokened URLs V020 removed. */
+    @Test
+    void shareRowCheckboxNamedAndLabelled() throws IOException {
+        String jsp = read();
+        assertTrue(jsp.contains("name=\"bean.shareRowEnabled\" value=\"true\" ${bean.shareRowEnabled ? 'checked' : ''}"),
+                "shareRowEnabled checkbox");
+        assertTrue(jsp.contains("code=\"weblogSettings.shareRowEnabled\""));
+        assertTrue(jsp.contains("code=\"weblogSettings.shareRowEnabled.help\""));
+        assertTrue(!jsp.toLowerCase(java.util.Locale.ROOT).contains("sharelink"), "never 'share link'");
+    }
+
+    /**
+     * 0.9.1 criteria 17 and 18: the status sits in the newsletter list field's row, as a message
+     * (text, not a colour), one message per state the controller can put in the model.
+     */
+    @Test
+    void subscribeFormStatusIsTextBesideTheListField() throws IOException {
+        String jsp = read();
+        Matcher row = Pattern.compile("(?s)for=\"weblog_bean_newsletterListUuid\".*?id=\"settings-business\"")
+                .matcher(jsp);
+        assertTrue(row.find(), "newsletter row not found");
+        String body = row.group();
+        assertTrue(body.contains("id=\"subscribe-form-status\""), body);
+        assertTrue(body.contains("${subscribeFormStatus.key == 'on'}"), "chosen by the model's status: " + body);
+        for (com.wikantik.pressroom.business.SubscribeFormStatus status
+                : com.wikantik.pressroom.business.SubscribeFormStatus.values()) {
+            assertTrue(body.contains("<spring:message code=\"websiteSettings.subscribeForm." + status.getKey() + "\"/>"),
+                    "a message for " + status + ": " + body);
+        }
+    }
 }

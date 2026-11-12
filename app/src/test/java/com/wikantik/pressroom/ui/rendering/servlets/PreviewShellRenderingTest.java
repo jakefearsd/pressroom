@@ -73,7 +73,6 @@ class PreviewShellRenderingTest {
             "weblog.vm: $analytics", // a preview loads no $analytics model, so the lookup is null; tested with $utils.isNotEmpty
             "weblog.vm: $trackerSiteId", // #set of a null website id; tested with $utils.isNotEmpty
             "weblog.vm: trackerSiteId", // #set of a null website id; tested with $utils.isNotEmpty
-            "weblog.vm: $weblog.newsletterListUuid", // null unless a newsletter list is configured; tested with #if
             "weblog.vm: seoBusinessJson" // #set of a null business JSON-LD; tested with #if
     );
 

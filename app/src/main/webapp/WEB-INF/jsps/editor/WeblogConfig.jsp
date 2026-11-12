@@ -147,6 +147,15 @@
         </div>
     </div>
 
+    <div class="row mb-3">
+        <div class="offset-sm-3 col-sm-9">
+            <div class="form-check">
+                <label class="form-check-label"><input type="checkbox" class="form-check-input" name="bean.shareRowEnabled" value="true" ${bean.shareRowEnabled ? 'checked' : ''}/> <spring:message code="weblogSettings.shareRowEnabled"/></label>
+            </div>
+            <div class="form-text"><spring:message code="weblogSettings.shareRowEnabled.help"/></div>
+        </div>
+    </div>
+
     <%-- ***** Language/i18n settings ***** --%>
 
     <h2 class="section-head" id="settings-language"><spring:message code="websiteSettings.languageSettings"/></h2>
@@ -183,6 +192,14 @@
         <div class="col-sm-9">
             <input id="weblog_bean_newsletterListUuid" type="text" name="bean.newsletterListUuid" value="${fn:escapeXml(bean.newsletterListUuid)}" size="40" maxlength="64" class="form-control"/>
             <div class="form-text"><spring:message code="websiteSettings.newsletterListUuid.tip"/></div>
+            <%-- Whether readers get the form, in words (SubscribeFormStatus, from the stored blog). --%>
+            <div class="form-text" id="subscribe-form-status">
+                <c:choose>
+                    <c:when test="${subscribeFormStatus.key == 'on'}"><spring:message code="websiteSettings.subscribeForm.on"/></c:when>
+                    <c:when test="${subscribeFormStatus.key == 'offNotConfigured'}"><spring:message code="websiteSettings.subscribeForm.offNotConfigured"/></c:when>
+                    <c:otherwise><spring:message code="websiteSettings.subscribeForm.offNoList"/></c:otherwise>
+                </c:choose>
+            </div>
         </div>
     </div>
 

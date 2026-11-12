@@ -45,6 +45,7 @@ public class WeblogConfigBean {
     private boolean commentsEnabled = false;
     private boolean commentNotify = false;
     private boolean showMoreFromSite = false;
+    private boolean shareRowEnabled = false;
     private String icon = null;
     private String about = null;
 
@@ -167,6 +168,14 @@ public class WeblogConfigBean {
         this.showMoreFromSite = showMoreFromSite;
     }
 
+    public boolean getShareRowEnabled() {
+        return shareRowEnabled;
+    }
+
+    public void setShareRowEnabled(boolean shareRowEnabled) {
+        this.shareRowEnabled = shareRowEnabled;
+    }
+
     public boolean getActive() {
         return active;
     }
@@ -269,6 +278,7 @@ public class WeblogConfigBean {
         setCommentsEnabled(Boolean.TRUE.equals(dataHolder.getCommentsEnabled()));
         setCommentNotify(!Boolean.FALSE.equals(dataHolder.getCommentNotify()));
         setShowMoreFromSite(!Boolean.FALSE.equals(dataHolder.getShowMoreFromSite()));
+        setShareRowEnabled(!Boolean.FALSE.equals(dataHolder.getShareRowEnabled()));
         this.newsletterListUuid = dataHolder.getNewsletterListUuid();
         this.customDomain = dataHolder.getCustomDomain();
         setIcon(dataHolder.getIconPath());
@@ -296,6 +306,7 @@ public class WeblogConfigBean {
         dataHolder.setCommentsEnabled(this.getCommentsEnabled());
         dataHolder.setCommentNotify(this.getCommentNotify());
         dataHolder.setShowMoreFromSite(this.getShowMoreFromSite());
+        dataHolder.setShareRowEnabled(this.getShareRowEnabled());
         dataHolder.setIconPath(getIcon());
         dataHolder.setAbout(getAbout());
         dataHolder.setNewsletterListUuid(StringUtils.trimToNull(this.newsletterListUuid));

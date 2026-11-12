@@ -250,6 +250,16 @@ public final class WeblogWrapper {
         return !Boolean.FALSE.equals(this.pojo.getShowMoreFromSite());
     }
 
+    /** Whether a post page ends with the share row; null reads as true. Read by the showAfterEntry macro. */
+    public boolean getShareRowEnabled() {
+        return !Boolean.FALSE.equals(this.pojo.getShareRowEnabled());
+    }
+
+    /** Whether this blog's pages carry the subscribe form. Read by the showSubscribeForm macro. */
+    public boolean isSubscribeFormShown() {
+        return this.pojo.isSubscribeFormShown();
+    }
+
     /**
      * The hostname the weblog is served on besides the site host, or null.
      * Read off the weblog, never the request: a rendered page is cached by

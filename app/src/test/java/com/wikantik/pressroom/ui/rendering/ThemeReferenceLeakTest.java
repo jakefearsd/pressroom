@@ -199,7 +199,6 @@ class ThemeReferenceLeakTest {
             "weblog.vm: $analytics.websiteId()", // null unless the weblog is registered with Umami; tested with $utils.isNotEmpty
             "weblog.vm: $trackerSiteId", // #set of a null website id; tested with $utils.isNotEmpty
             "weblog.vm: trackerSiteId", // #set of a null website id; tested with $utils.isNotEmpty
-            "weblog.vm: $weblog.newsletterListUuid", // null unless a newsletter list is configured; tested with #if
             "weblog.vm: responsiveObjectPosition", // #set of a null focal point; tested with #if
             "weblog.vm: seoBusinessJson", // #set of a null business JSON-LD; tested with #if
             "weblog.vm: seoCanonical", // #set of a null canonical URL; tested with #if

@@ -228,6 +228,43 @@ class AfterEntryRenderingTest {
         });
     }
 
+    /** 0.9.1 criterion 19: off means no row and none of its style or script; the lists are untouched. */
+    @Test
+    void aBlogWithTheShareRowOffShowsNoRowButKeepsNearbyAndKeepReading() throws Exception {
+        post("auburn", place(38.8966, -121.0769));
+        post("no-place");
+        post("newcastle", place(38.874, -121.133));
+
+        inEveryTheme("en_US", theme -> {
+            String on = render("newcastle");
+            only(SHARE, on);
+            assertTrue(on.contains(".entry-share {") && on.contains("querySelector('.entry-share')"),
+                    "on by default, with its style and script:\n" + on);
+
+            setShareRow(false);
+            try {
+                String off = render("newcastle");
+                assertFalse(off.contains("entry-share"),
+                        "no share row, share style or share script:\n" + off);
+                assertFalse(off.contains("navigator.share") || off.contains("navigator.clipboard"), off);
+                assertEquals(List.of("auburn"), anchors(only(NEARBY, off)), off);
+                assertEquals(List.of("no-place"), anchors(only(RELATED, off)), off);
+                assertTrue(off.contains(".entry-more .entry-more-list {") && off.contains(".entry-more-label {"),
+                        "the lists keep their style:\n" + off);
+            } finally {
+                setShareRow(true);
+            }
+        });
+    }
+
+    /** Saved through the manager, as the settings form does: the save moves lastModified, which expires the page. */
+    private void setShareRow(boolean enabled) throws Exception {
+        Weblog managed = TestUtils.getManagedWebsite(weblog);
+        managed.setShareRowEnabled(enabled);
+        TestUtils.weblogger().getWeblogManager().saveWeblog(managed);
+        TestUtils.endSession(true);
+    }
+
     // ------------------------------------------------------------ keep reading
 
     /** Criteria 5 and 6. */

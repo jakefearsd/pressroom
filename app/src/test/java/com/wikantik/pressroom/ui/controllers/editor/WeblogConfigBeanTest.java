@@ -153,6 +153,31 @@ class WeblogConfigBeanTest {
         org.junit.jupiter.api.Assertions.assertTrue(present.getShowMoreFromSite());
     }
 
+    /** 0.9.1 criteria 19 and 20: null reads as on; an unticked box (nothing posted) saves off. */
+    @Test
+    void shareRowEnabledRoundTripsNullReadsAsTrueAndUncheckedSavesFalse() {
+        Weblog w = weblog();
+        w.setShareRowEnabled(null);
+        WeblogConfigBean b = new WeblogConfigBean();
+        b.copyFrom(w);
+        org.junit.jupiter.api.Assertions.assertTrue(b.getShareRowEnabled());
+
+        w.setShareRowEnabled(Boolean.FALSE);
+        b.copyFrom(w);
+        org.junit.jupiter.api.Assertions.assertFalse(b.getShareRowEnabled());
+
+        b.setShareRowEnabled(true);
+        b.copyTo(w);
+        assertEquals(Boolean.TRUE, w.getShareRowEnabled());
+
+        WeblogConfigBean absent = new WeblogConfigBean();
+        new org.springframework.web.bind.WebDataBinder(absent, "bean")
+                .bind(new org.springframework.beans.MutablePropertyValues());
+        org.junit.jupiter.api.Assertions.assertFalse(absent.getShareRowEnabled());
+        absent.copyTo(w);
+        assertEquals(Boolean.FALSE, w.getShareRowEnabled());
+    }
+
     @Test
     void copyrightRoundTrips() {
         Weblog w = weblog();

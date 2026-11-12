@@ -95,6 +95,9 @@ build, write or title anything for a social feed.
 - Adding a network is a link in the macro. Removing one that nobody uses is
   the expected direction: the row's clicks are named for analytics
   (`data-umami-event="share"`), so usage is measured, not assumed.
+- A blog can turn its row off (`shareRowEnabled`, "Show the share row under
+  posts" in blog settings and the API; on by default). Off means no row, style
+  or script at all, never a reduced row.
 - Unrelated to the tokened "share links" for drafts and media folders removed
   in V020: those stay removed.
 

@@ -26,6 +26,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.ListmonkClient;
+import com.wikantik.pressroom.business.SubscribeFormStatus;
 import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.Business;
@@ -72,6 +74,7 @@ public class WeblogConfigController extends BaseController {
         loadFormData(model, request);
 
         bean.copyFrom(getActionWeblog(request));
+        showSubscribeFormStatus(request, model);
 
         return ".WeblogConfig";
     }
@@ -101,8 +104,20 @@ public class WeblogConfigController extends BaseController {
                 addError(model, "generic.error.check.logs", request);
             }
         }
+        // After the save, so the page describes the list that was just stored.
+        showSubscribeFormStatus(request, model);
 
         return ".WeblogConfig";
+    }
+
+    /**
+     * Whether readers get the subscribe form, shown beside the newsletter list
+     * field. Read from the stored weblog, never from the submitted bean: a
+     * refused save changed nothing on the blog's pages.
+     */
+    private void showSubscribeFormStatus(HttpServletRequest request, Model model) {
+        model.addAttribute("subscribeFormStatus",
+                SubscribeFormStatus.of(getActionWeblog(request), ListmonkClient.isSiteConfigured()));
     }
 
     private void myValidate(WeblogConfigBean bean, HttpServletRequest request, Model model) {

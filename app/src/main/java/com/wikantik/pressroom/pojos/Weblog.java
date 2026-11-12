@@ -61,6 +61,7 @@ public class Weblog implements Serializable {
     private Boolean commentsEnabled  = Boolean.FALSE;
     private Boolean commentNotify    = Boolean.TRUE;
     private Boolean showMoreFromSite = Boolean.TRUE;
+    private Boolean shareRowEnabled  = Boolean.TRUE;
     private Date    dateCreated      = new Date();
     private int     entryDisplayCount = 15;
     private Date    lastModified     = new Date();
@@ -292,6 +293,7 @@ public class Weblog implements Serializable {
         this.setCommentsEnabled(other.getCommentsEnabled());
         this.setCommentNotify(other.getCommentNotify());
         this.setShowMoreFromSite(other.getShowMoreFromSite());
+        this.setShareRowEnabled(other.getShareRowEnabled());
         this.setLastModified(other.getLastModified());
         this.setWeblogCategories(other.getWeblogCategories());
     }
@@ -377,6 +379,18 @@ public class Weblog implements Serializable {
     public void setShowMoreFromSite(Boolean showMoreFromSite) {
         this.showMoreFromSite = showMoreFromSite;
     }
+
+    /**
+     * Whether a post page ends with the share row (the showAfterEntry macro);
+     * null reads as true everywhere. Nearby and Keep reading do not depend on it.
+     */
+    public Boolean getShareRowEnabled() {
+        return shareRowEnabled;
+    }
+
+    public void setShareRowEnabled(Boolean shareRowEnabled) {
+        this.shareRowEnabled = shareRowEnabled;
+    }
     
     /**
      * The last time any visible part of this weblog was modified.
@@ -433,6 +447,16 @@ public class Weblog implements Serializable {
 
     public void setNewsletterListUuid(String newsletterListUuid) {
         this.newsletterListUuid = newsletterListUuid;
+    }
+
+    /**
+     * Whether this blog's pages carry the reader subscribe form: exactly when
+     * a newsletter list is set. The one statement of that rule: the
+     * showSubscribeForm macro renders on it and blog settings reports it
+     * ({@code SubscribeFormStatus}), so the two cannot disagree.
+     */
+    public boolean isSubscribeFormShown() {
+        return newsletterListUuid != null && !newsletterListUuid.isEmpty();
     }
 
     /**

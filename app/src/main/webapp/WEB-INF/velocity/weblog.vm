@@ -2339,7 +2339,7 @@ data -- Listmonk records the address, sends the double opt-in email and owns
 the unsubscribe link.
 *#
 #macro(showSubscribeForm $weblog $prompt)
-#if($weblog.newsletterListUuid && $weblog.newsletterListUuid != "")
+#if($weblog.subscribeFormShown)
 <div class="newsletter-subscribe-block">
     <p class="newsletter-prompt">$utils.escapeHTML($prompt)</p>
     <div class="subscribe-form-slot" data-list-uuid="$utils.escapeHTML($weblog.newsletterListUuid)"
@@ -2373,6 +2373,10 @@ shown by the script only where the browser can do the work: the device's own
 share sheet (navigator.share) and copy to clipboard. Pinterest needs a
 picture, so it appears only with a featured image.
 
+A blog can turn the row off (Weblog.shareRowEnabled, blog settings and the
+API; on by default). Off, this macro emits no nav.entry-share and none of the
+row's style or script; the lists and their style are emitted as before.
+
 Encoding: the address and title go through $utils.encodeComponent (a space
 is %20, which mailto needs); the title is stored HTML-escaped, so it is
 unescaped first, or an ampersand would travel as "&amp;". Titles in the
@@ -2391,12 +2395,16 @@ analytics script when a blog has one; they do nothing otherwise.
 #set($aeUrl = $utils.encodeComponent($aeEntry.permalink))
 #set($aeTitle = $utils.encodeComponent($utils.unescapeHTML($aeEntry.title)))
 #set($aeReading = $model.furtherReading)
+#set($aeShare = $aeEntry.website.shareRowEnabled)
 <style>
+#if($aeShare)
 .entry-share { display: flex; flex-wrap: wrap; align-items: baseline; gap: .375rem 1.125rem; margin: 2rem 0 0; padding: .875rem 0 0; border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent); font-size: .875rem; }
-.entry-share .entry-share-label, .entry-more .entry-more-label { margin: 0; font-size: .75rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: color-mix(in srgb, currentColor 70%, transparent); }
+.entry-share .entry-share-label { margin: 0; font-size: .75rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: color-mix(in srgb, currentColor 70%, transparent); }
 .entry-share a, .entry-share button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: .2em; }
 .entry-share a:hover, .entry-share button:hover { text-decoration-color: currentColor; }
 .entry-share [hidden] { display: none; }
+#end
+.entry-more .entry-more-label { margin: 0; font-size: .75rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: color-mix(in srgb, currentColor 70%, transparent); }
 .entry-more { margin: 2rem 0 0; padding: 1rem 0 0; border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent); }
 .entry-more .entry-more-list { list-style: none; margin: .875rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: 1.125rem 1.5rem; }
 .entry-more .entry-more-item { display: flex; align-items: flex-start; gap: .875rem; min-width: 0; margin: 0; padding: 0; }
@@ -2407,6 +2415,7 @@ analytics script when a blog has one; they do nothing otherwise.
 .entry-more .entry-more-title:hover { text-decoration: underline; }
 .entry-more .entry-more-meta { font-size: .8125rem; color: color-mix(in srgb, currentColor 70%, transparent); }
 </style>
+#if($aeShare)
 <nav class="entry-share" aria-label="$text.get("afterEntry.share")" data-url="$utils.escapeHTML($aeEntry.permalink)" data-title="$aeEntry.title">
     <span class="entry-share-label" aria-hidden="true">$text.get("afterEntry.share")</span>
     <button type="button" class="entry-share-copy" hidden data-copied="$text.get("afterEntry.share.copied")" data-umami-event="share" data-umami-event-via="copy">$text.get("afterEntry.share.copy")</button>
@@ -2445,6 +2454,7 @@ analytics script when a blog has one; they do nothing otherwise.
   }
 })();
 </script>
+#end
 #if(!$aeReading.nearby.isEmpty())
 <section class="entry-more entry-nearby" aria-labelledby="entry-nearby-label">
     <h2 class="entry-more-label" id="entry-nearby-label">$text.get("afterEntry.nearby")</h2>
