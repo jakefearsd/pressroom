@@ -68,6 +68,11 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
 
     /** Section sizes: fixed numbers, not settings (spec, "Front page"). */
     static final int POPULAR_SLOTS = 5;
+    /**
+     * The most posts of one blog among the popular picks, so one busy blog
+     * does not fill the rail; relaxed only when the other blogs run out.
+     */
+    static final int POPULAR_PER_BLOG = 2;
     static final int BLOG_CARDS = 3;
     static final int CARD_ENTRIES = 3;
     static final int DIFFERENT_SLOTS = 3;
@@ -332,8 +337,9 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
         if (headline != null) {
             taken.add(headline);
         }
+        // at most POPULAR_PER_BLOG of one blog, the headline's blog not counted for it
         List<DiscoveryCandidate> popular = DiscoverySlots.fill(s.ranked, s.pool, POPULAR_SLOTS, share, taken,
-                s.random(SALT_POPULAR), s::weight);
+                s.random(SALT_POPULAR), s::weight, DiscoveryCandidate::weblogId, POPULAR_PER_BLOG);
 
         List<String> cardWeblogs = DiscoverySlots.fill(
                 withUntaken(s, s.rankedWeblogs, taken), withUntaken(s, s.weblogsWithEntries, taken),

@@ -232,6 +232,39 @@ class JPADiscoveryManagerImplTest {
                 ids(page.popular()));
     }
 
+    /**
+     * "Popular right now" shows at most
+     * {@link JPADiscoveryManagerImpl#POPULAR_PER_BLOG} posts of one blog: a
+     * third is passed over for the next-ranked post of another blog. The
+     * headline is not counted.
+     */
+    @Test
+    void popularTakesAtMostTwoPostsFromOneBlog() throws Exception {
+        Fixture f = threeBlogsOfSix();
+        setShare("0");
+        source.configured = true;
+        source.rows = List.of(
+                row(f, 0, 0, 100),
+                row(f, 1, 0, 90),
+                row(f, 1, 1, 80),
+                row(f, 1, 2, 70),
+                row(f, 1, 3, 60),
+                row(f, 2, 0, 50),
+                row(f, 0, 1, 40),
+                row(f, 2, 1, 30),
+                row(f, 0, 2, 20));
+
+        JPADiscoveryManagerImpl manager = manager();
+        manager.refresh();
+        FrontPageSelection page = manager.selectFrontPage();
+
+        assertEquals(2, JPADiscoveryManagerImpl.POPULAR_PER_BLOG);
+        assertEquals(f.entries[0][0].getId(), page.headline().getId());
+        assertEquals(List.of(f.entries[1][0].getId(), f.entries[1][1].getId(), f.entries[2][0].getId(),
+                        f.entries[0][1].getId(), f.entries[2][1].getId()),
+                ids(page.popular()));
+    }
+
     @Test
     void blogCardsFollowBlogScore() throws Exception {
         Fixture f = threeBlogsOfSix();

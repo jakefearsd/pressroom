@@ -19,6 +19,16 @@ footer (site pages, directory, colophon).
   three cards of 3, different 3, latest 8. **Latest is picked last**, from
   the newest posts no other section took, so it never changes the others;
   on a small site it can be short or empty (the template hides it).
+- **Popular takes at most two posts of one blog** (`POPULAR_PER_BLOG`, a
+  constant; the headline is not counted): a third is passed over for the
+  next-ranked post of another blog, and random picks keep to it too
+  (`DiscoverySlots.fill` with a group and a cap). The cap is relaxed only
+  when no other blog has a post left, passed-over posts first in rank order,
+  so the rail is never shorter for it. No other section is capped.
+- **Share picture**: the lead story's featured image is the page's
+  `og:image` (and `twitter:card` is `summary_large_image`). The template
+  hands it to the `showSeoHead` macro's optional `$seoLeadImage`, which
+  sizes and escapes it as an entry's; no lead picture, no `og:image`.
 - **Three blog lists, three jobs.** The pills are navigation. The sidebar's
   "Recently updated" is `activeBlogs`: at most `ACTIVE_BLOGS` (5), the blog
   with the newest eligible post first, blogs with no post left out, so the

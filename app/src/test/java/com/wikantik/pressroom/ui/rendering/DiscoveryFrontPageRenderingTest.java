@@ -94,6 +94,11 @@ class DiscoveryFrontPageRenderingTest {
             "templates/weblog/discovery.vm|standard: $fdPost.featuredImage", // null for a post with no featured image; #set after a false default, so $fdImg stays false
             "templates/weblog/discovery.vm|standard: $fdImg", // that #set of a null featured image; tested with #if($fdImg)
             "templates/weblog/discovery.vm|standard: fdImg", // the same #set, as the recorder names its target
+            "templates/weblog/discovery.vm|standard: $dFront.headline", // null on a site with nothing eligible; tested with #if before the lead's picture is read
+            "templates/weblog/discovery.vm|standard: $dFront.headline.featuredImage", // null when the lead story has no featured image; assigned to $fdShare
+            "templates/weblog/discovery.vm|standard: $fdShare", // that #set of a null featured image; handed to the showSeoHead macro, which tests it with #elseif
+            "templates/weblog/discovery.vm|standard: fdShare", // the same #set, as the recorder names its target
+            "weblog.vm: $seoLeadImage", // the showSeoHead macro's optional picture, null when the lead story has none; tested with #elseif
             "templates/weblog/discovery.vm|standard: $model.weblog.newsletterListUuid", // null unless the site space names a newsletter list; tested with $utils.isNotEmpty
             "weblog.vm: $colophonFacts.copyrightText", // null unless the weblog sets copyright text; tested with $utils.isNotEmpty
             "weblog.vm: $colophonFacts.privacyUrl", // null unless a privacy URL is configured; tested with $utils.isNotEmpty
@@ -636,6 +641,80 @@ class DiscoveryFrontPageRenderingTest {
             assertTrue(body.contains("alt=\"A harbour at dusk "), theme + ": the image's own alt text:\n" + body);
             assertTrue(body.contains("alt=\"Fish &amp; Chips "), theme + ": else the post title, escaped once:\n" + body);
             assertFalse(body.contains("alt=\"\""), theme + ": no picture goes undescribed:\n" + body);
+        }
+    }
+
+    /**
+     * A link to the front page shared on a social network shows the lead
+     * story's picture: {@code og:image} is the headline post's featured
+     * image, by its absolute address, and the Twitter card is the large one,
+     * as on the post's own page.
+     */
+    @Test
+    void theLeadStorysPictureIsTheSharePicture() throws Exception {
+        setProperty("uploads.enabled", "true");
+        List<String> images = new ArrayList<>();
+        int minutes = 10;
+        for (int b = 0; b < 5; b++) {
+            Weblog blog = blog("discfpog" + b, "Shared Blog " + b);
+            images.add(image(blog, "share" + b + ".jpg"));
+            for (int e = 0; e < 4; e++) {
+                post(blog, "discfpog-" + b + "-" + e, "Shared " + b + "." + e, minutes++);
+                feature("discfpog-" + b + "-" + e, blog, images.get(b));
+            }
+        }
+        refresh();
+        // the newest post leads (no traffic in the test tier): blog 0's first
+        // 1600 wide, so the original itself: no rendition parameter
+        String address = ABSOLUTE_HOST + "/pressroom/discfpog0/mediaresource/" + images.get(0);
+
+        for (String theme : THEMES) {
+            String body = root(theme);
+            String head = body.substring(0, body.indexOf("</head>"));
+            assertTrue(section(body, "fd-discovery-headline").contains(">Shared 0.0</a>"),
+                    theme + ": precondition, the lead story:\n" + body);
+            assertEquals(1, count(head, "<meta property=\"og:image\" content=\""
+                    + StringEscapeUtils.escapeHtml4(address) + "\">"), theme + ": the lead's picture:\n" + head);
+            assertEquals(1, count(head, "property=\"og:image\""), theme + ": one share picture:\n" + head);
+            assertTrue(head.contains("<meta property=\"og:image:width\" content=\"1600\">")
+                    && head.contains("<meta property=\"og:image:height\" content=\"1000\">"),
+                    theme + ": with its size:\n" + head);
+            assertTrue(head.contains("<meta name=\"twitter:card\" content=\"summary_large_image\">"),
+                    theme + ": the large card:\n" + head);
+            assertEquals(1, count(head, "name=\"twitter:card\""), theme + ": one card:\n" + head);
+        }
+    }
+
+    /**
+     * A lead story with no picture leaves the head as it was: no
+     * {@code og:image}, the small card. Other posts' pictures are not
+     * borrowed. Characterisation: this held before the lead's picture was
+     * shared, and passed when written.
+     */
+    @Test
+    void aLeadStoryWithNoPictureSharesNone() throws Exception {
+        setProperty("uploads.enabled", "true");
+        int minutes = 10;
+        for (int b = 0; b < 5; b++) {
+            Weblog blog = blog("discfpno" + b, "Plain Blog " + b);
+            String image = image(blog, "other" + b + ".jpg");
+            for (int e = 0; e < 4; e++) {
+                post(blog, "discfpno-" + b + "-" + e, "Plain " + b + "." + e, minutes++);
+                if (b + e > 0) {
+                    feature("discfpno-" + b + "-" + e, blog, image);
+                }
+            }
+        }
+        refresh();
+
+        for (String theme : THEMES) {
+            String body = root(theme);
+            String head = body.substring(0, body.indexOf("</head>"));
+            assertTrue(section(body, "fd-discovery-headline").contains(">Plain 0.0</a>"),
+                    theme + ": precondition, the lead story:\n" + body);
+            assertFalse(head.contains("og:image"), theme + ": no share picture:\n" + head);
+            assertEquals(1, count(head, "<meta name=\"twitter:card\" content=\"summary\">"),
+                    theme + ": the small card:\n" + head);
         }
     }
 

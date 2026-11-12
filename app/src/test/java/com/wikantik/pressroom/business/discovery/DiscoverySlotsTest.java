@@ -103,4 +103,55 @@ class DiscoverySlotsTest {
         final List<String> neg = fill(List.of(), List.of("a", "b"), 2, 100, new HashSet<>(), new Random(3), x -> -5);
         assertEquals(2, neg.size());
     }
+
+    // ------------------------------------------------------------ per-group cap
+
+    /** The group of "a1" is "a": these tests cap picks per first letter. */
+    private static String letter(final String item) {
+        return item.substring(0, 1);
+    }
+
+    @Test void aCappedGroupIsSkippedForTheNextRankedOfAnother() {
+        final List<String> ranked = List.of("a1", "a2", "a3", "a4", "b1", "c1", "b2");
+        final List<String> got = fill(ranked, ranked, 5, 0, new HashSet<>(), new Random(1), x -> 1,
+                DiscoverySlotsTest::letter, 2);
+        assertEquals(List.of("a1", "a2", "b1", "c1", "b2"), got);
+    }
+
+    @Test void theCapRelaxesInRankOrderWhenOtherGroupsRunOut() {
+        final List<String> ranked = List.of("a1", "a2", "a3", "a4", "b1");
+        final List<String> pool = List.of("a1", "a2", "a3", "a4", "b1", "a5");
+        final Set<String> taken = new HashSet<>();
+        final List<String> got = fill(ranked, pool, 5, 0, taken, new Random(1), x -> 1,
+                DiscoverySlotsTest::letter, 2);
+        assertEquals(List.of("a1", "a2", "b1", "a3", "a4"), got, "never shorter than without the cap");
+        assertTrue(taken.containsAll(got));
+    }
+
+    @Test void randomPicksKeepToTheCapToo() {
+        final List<String> pool = List.of("a1", "a2", "a3", "a4", "a5", "a6", "b1", "c1");
+        for (int seed = 0; seed < 200; seed++) {
+            final List<String> got = fill(List.of(), pool, 4, 100, new HashSet<>(), new Random(seed), x -> 1,
+                    DiscoverySlotsTest::letter, 2);
+            assertEquals(4, got.size(), "seed " + seed + ": " + got);
+            assertEquals(4, new HashSet<>(got).size(), "seed " + seed + ": " + got);
+            assertEquals(2, got.stream().filter(x -> x.startsWith("a")).count(), "seed " + seed + ": " + got);
+        }
+    }
+
+    @Test void oneGroupAloneStillFillsEverySlot() {
+        final List<String> pool = List.of("a1", "a2", "a3", "a4", "a5", "a6");
+        final List<String> got = fill(List.of("a3"), pool, 5, 20, new HashSet<>(), new Random(1), x -> 1,
+                DiscoverySlotsTest::letter, 2);
+        assertEquals("a3", got.get(0));
+        assertEquals(5, new HashSet<>(got).size(), got.toString());
+    }
+
+    @Test void takenItemsDoNotCountTowardsTheCap() {
+        final Set<String> taken = new HashSet<>(Set.of("a1"));
+        final List<String> ranked = List.of("a1", "a2", "a3", "a4", "b1");
+        final List<String> got = fill(ranked, ranked, 3, 0, taken, new Random(1), x -> 1,
+                DiscoverySlotsTest::letter, 2);
+        assertEquals(List.of("a2", "a3", "b1"), got);
+    }
 }
