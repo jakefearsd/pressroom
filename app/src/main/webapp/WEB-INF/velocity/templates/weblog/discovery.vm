@@ -75,6 +75,10 @@ comment names one with its hash, so nothing here is invoked by accident.
 #macro(fdSubscribe)<div class="subscribe-form-slot" data-list-uuid="$utils.escapeHTML($fdList)" data-endpoint="$utils.escapeHTML($url.site)/newsletter/subscribe"></div>#end
 ## ------------------------------------------------------------ data
 #set($dFront = $discovery.frontPage)
+## The lead story's picture is the page's share picture (og:image): handed
+## to the showSeoHead macro in the head below. False when the lead has none.
+#set($fdShare = false)
+#if($dFront.headline)#set($fdShare = $dFront.headline.featuredImage)#end
 #set($fdList = "")
 #if($utils.isNotEmpty($model.weblog.newsletterListUuid))#set($fdList = $model.weblog.newsletterListUuid)#end
 #set($fdHandles = [])
@@ -96,7 +100,7 @@ comment names one with its hash, so nothing here is invoked by accident.
     <title>$model.weblog.name</title>
     <link href="$url.absoluteSite/favicon.svg" rel="icon" type="image/svg+xml" />
     ## The site space has no posts, so no feed autodiscovery.
-    #showSeoHead()
+    #showSeoHead($fdShare)
     #showAnalyticsTrackingCode($model.weblog)
     #showAudienceAssets()
     <style>

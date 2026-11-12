@@ -163,8 +163,13 @@ escaping via $utils.escapeHTML (a stored canonical URL or meta title
 containing a double quote must not break out of its attribute) and JSON
 string escaping via $utils.escapeJson (which also escapes "/", so a value
 containing "</script>" cannot terminate the inline JSON-LD block).
+
+The optional $seoLeadImage is a picture (MediaFileWrapper) for a view that
+is neither an entry nor a static page: the discovery front page passes its
+lead story's featured image, so a shared link to / shows it. Every other
+caller passes nothing and gets no og:image on such a view, as before.
 *#
-#macro(showSeoHead)
+#macro(showSeoHead $seoLeadImage=false)
     #set($seoEntry = false)
     #if ($model.permalink && $model.weblogEntry)
         #set($seoEntry = $model.weblogEntry)
@@ -312,6 +317,8 @@ containing "</script>" cannot terminate the inline JSON-LD block).
         #end
     #elseif ($seoPage)
         #set($seoImage = $model.pageOgImage)
+    #elseif ($seoLeadImage)
+        #set($seoImage = $seoLeadImage)
     #end
     #if ($seoImage)
         ## The 1600px rendition only exists for rendition-eligible formats
