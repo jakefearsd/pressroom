@@ -2356,11 +2356,12 @@ analytics script when a blog has one; they do nothing otherwise.
 .entry-share a:hover, .entry-share button:hover { text-decoration-color: currentColor; }
 .entry-share [hidden] { display: none; }
 .entry-more { margin: 2rem 0 0; padding: 1rem 0 0; border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent); }
-.entry-more .entry-more-list { list-style: none; margin: .875rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: 1.25rem; }
-.entry-more .entry-more-item { display: flex; flex-direction: column; gap: .375rem; min-width: 0; margin: 0; padding: 0; }
-.entry-more .entry-more-media { display: block; aspect-ratio: 3 / 2; overflow: hidden; border-radius: 6px; background: color-mix(in srgb, currentColor 6%, transparent); }
+.entry-more .entry-more-list { list-style: none; margin: .875rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: 1.125rem 1.5rem; }
+.entry-more .entry-more-item { display: flex; align-items: flex-start; gap: .875rem; min-width: 0; margin: 0; padding: 0; }
+.entry-more .entry-more-text { display: flex; flex-direction: column; gap: .25rem; min-width: 0; }
+.entry-more .entry-more-media { display: block; flex: none; width: 6.5rem; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 6px; background: color-mix(in srgb, currentColor 6%, transparent); }
 .entry-more .entry-more-img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.entry-more .entry-more-title { color: inherit; font-size: 1rem; font-weight: 600; line-height: 1.3; text-decoration: none; overflow-wrap: anywhere; }
+.entry-more .entry-more-title { color: inherit; font-size: .9375rem; font-weight: 600; line-height: 1.3; text-decoration: none; overflow-wrap: anywhere; }
 .entry-more .entry-more-title:hover { text-decoration: underline; }
 .entry-more .entry-more-meta { font-size: .8125rem; color: color-mix(in srgb, currentColor 70%, transparent); }
 </style>
@@ -2410,8 +2411,10 @@ analytics script when a blog has one; they do nothing otherwise.
 #set($aePost = $aeNear.entry)
         <li class="entry-more-item">
 #aeMedia($aePost)
+            <div class="entry-more-text">
             <a class="entry-more-title" href="$url.entry($aePost.anchor)" data-umami-event="nearby">$aePost.title</a>
             <span class="entry-more-meta">#if($aeNear.distance < 1)#if($aeNear.miles)$text.get("afterEntry.miUnder")#else$text.get("afterEntry.kmUnder")#end#elseif($aeNear.miles)$text.get("afterEntry.mi", [$aeNear.distance])#else$text.get("afterEntry.km", [$aeNear.distance])#end</span>
+            </div>
         </li>
 #end
     </ul>
@@ -2424,8 +2427,10 @@ analytics script when a blog has one; they do nothing otherwise.
 #foreach($aePost in $aeReading.related)
         <li class="entry-more-item">
 #aeMedia($aePost)
+            <div class="entry-more-text">
             <a class="entry-more-title" href="$url.entry($aePost.anchor)" data-umami-event="keep-reading">$aePost.title</a>
             <span class="entry-more-meta">$utils.escapeHTML($aePost.category.name)</span>
+            </div>
         </li>
 #end
     </ul>
@@ -2438,7 +2443,7 @@ analytics script when a blog has one; they do nothing otherwise.
 ## link, so it is out of the tab order and hidden from assistive technology.
 #macro(aeMedia $aeMediaPost)
 #if($aeMediaPost.featuredImage)
-            <a class="entry-more-media" href="$url.entry($aeMediaPost.anchor)" tabindex="-1" aria-hidden="true">#showResponsiveImage($aeMediaPost.featuredImage $utils.pictureAlt($aeMediaPost.featuredImage, $aeMediaPost.title) "(max-width: 640px) 100vw, 18rem" "entry-more-img")</a>
+            <a class="entry-more-media" href="$url.entry($aeMediaPost.anchor)" tabindex="-1" aria-hidden="true">#showResponsiveImage($aeMediaPost.featuredImage $utils.pictureAlt($aeMediaPost.featuredImage, $aeMediaPost.title) "7rem" "entry-more-img")</a>
 #end
 #end
 
