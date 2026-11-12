@@ -46,6 +46,7 @@ import com.wikantik.pressroom.pojos.PressroomEvent;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.business.SitemapEntry;
 import com.wikantik.pressroom.business.discovery.DiscoveryCandidate;
+import com.wikantik.pressroom.business.related.GeoBox;
 import com.wikantik.pressroom.pojos.WeblogEntrySearchCriteria;
 import com.wikantik.pressroom.pojos.TagStat;
 import com.wikantik.pressroom.pojos.TagStatComparator;
@@ -1567,6 +1568,48 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         }
         return counts;
     }
+
+    /**
+     * @inheritDoc
+     */
+    @Override
+    public List<WeblogEntry> getPublishedEntriesInBox(Weblog excluded, GeoBox box, int max)
+            throws WebloggerException {
+        return strategy.getDynamicQuery(
+                        box.crossesAntimeridian() ? ENTRIES_IN_BOX_ACROSS_180 : ENTRIES_IN_BOX, WeblogEntry.class)
+                .setParameter(1, PubStatus.PUBLISHED)
+                .setParameter(2, new Timestamp(System.currentTimeMillis()))
+                .setParameter(3, excluded)
+                .setParameter(4, Boolean.TRUE)
+                .setParameter(5, Boolean.FALSE)
+                .setParameter(6, box.south())
+                .setParameter(7, box.north())
+                .setParameter(8, box.west())
+                .setParameter(9, box.east())
+                .setMaxResults(max)
+                .getResultList();
+    }
+
+    /**
+     * Other weblogs' posts a reader may be offered, inside a latitude band.
+     * The weblog and noindex conditions repeat DiscoveryEligibility so that
+     * rows it would drop do not use up the row limit; that class stays the
+     * rule, and the caller applies it.
+     */
+    private static final String ENTRIES_IN_BAND =
+            "SELECT e FROM WeblogEntry e WHERE e.status = ?1 AND e.pubTime <= ?2 AND e.website <> ?3"
+            + " AND e.website.visible = ?4 AND e.website.active = ?4 AND e.website.siteSpace = ?5"
+            + " AND (e.noindex IS NULL OR e.noindex = ?5)"
+            + " AND e.geoLatitude BETWEEN ?6 AND ?7 AND ";
+
+    private static final String NEWEST_FIRST = " ORDER BY e.pubTime DESC, e.id";
+
+    private static final String ENTRIES_IN_BOX =
+            ENTRIES_IN_BAND + "e.geoLongitude BETWEEN ?8 AND ?9" + NEWEST_FIRST;
+
+    /** West of 180 or east of -180: the box runs across the antimeridian. */
+    private static final String ENTRIES_IN_BOX_ACROSS_180 =
+            ENTRIES_IN_BAND + "(e.geoLongitude >= ?8 OR e.geoLongitude <= ?9)" + NEWEST_FIRST;
 
     private static final String SHARED_TAG_COUNTS =
             "SELECT t.weblogEntry.id, COUNT(t) FROM WeblogEntryTag t"

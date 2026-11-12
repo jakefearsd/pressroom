@@ -435,9 +435,24 @@ Spec `docs/superpowers/specs/2026-11-11-post-page-discovery-design.md`.
   Keep reading is 3 posts by 2 points per shared tag + 3 for the same
   category, newest first among equals, so the newest posts fill the list on
   an untagged blog. A post under Nearby is not repeated.
+- **Nearby fills from other blogs** (0.9.1, spec
+  `2026-11-12-patch-0-9-1-design.md`). The blog's own posts always come
+  first; only when they leave one of the 3 places empty, and the post has
+  coordinates, one more query runs: `WeblogEntryManager.getPublishedEntriesInBox`,
+  bounded by `GeoBox.around` (the box holding 80 km, antimeridian and poles
+  included) and 50 rows, newest first. `DiscoveryEligibility` (discovery.md,
+  "Eligibility") then decides, the picker measures and sorts. A blog with
+  "more from the site" off asks no other blog. An other-blog item
+  (`NearbyEntry.otherBlog`) links the post's absolute permalink, never
+  `$url.entry` (that is this blog's address), and its meta line ends with
+  `span.entry-more-blog`, the blog's name printed bare (`WeblogWrapper`
+  escapes it). Keep reading stays same-blog. The 50 newest located posts in
+  the box are all that is looked at: in a region with more, an older, nearer
+  post of another blog can be missed.
 - **Freshness** is the page cache's: a post page re-renders when
   `weblog.lastModified` moves or the discovery generation does, so a new post
-  appears under its neighbours without any invalidation of its own.
+  appears under its neighbours without any invalidation of its own. Another
+  blog's new post reaches Nearby with the next discovery generation.
 - **Styling is in the macro**, not in a theme stylesheet: one `<style>` built
   on `currentColor` and `color-mix`, selectors doubled (`.entry-more
   .entry-more-label`) to sit above a theme's `main h2`. A forked theme that

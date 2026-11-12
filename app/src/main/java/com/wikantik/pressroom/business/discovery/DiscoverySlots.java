@@ -81,8 +81,25 @@ public final class DiscoverySlots {
     public static <T> List<T> fill(final List<T> ranked, final List<T> pool, final int slots,
             final int sharePercent, final Set<T> taken, final Random random,
             final ToDoubleFunction<T> weight, final Function<T, ?> group, final int perGroup) {
+        return fill(ranked, pool, slots, sharePercent, taken, random, weight, group, perGroup, Map.of());
+    }
+
+    /**
+     * {@link #fill(List, List, int, int, Set, Random, ToDoubleFunction, Function, int)}
+     * for a section shown beside items already picked: each group starts
+     * with the count given, so a group shown once elsewhere gets one pick
+     * fewer here, ranked or random. The cap is relaxed as before when no
+     * other group has an item left.
+     *
+     * @param alreadyShown picks per group made outside this section that count
+     *                     toward the cap (the lead story's blog: 1)
+     */
+    public static <T> List<T> fill(final List<T> ranked, final List<T> pool, final int slots,
+            final int sharePercent, final Set<T> taken, final Random random,
+            final ToDoubleFunction<T> weight, final Function<T, ?> group, final int perGroup,
+            final Map<?, Integer> alreadyShown) {
         final List<T> chosen = new ArrayList<>();
-        final Map<Object, Integer> picked = new HashMap<>();
+        final Map<Object, Integer> picked = new HashMap<>(alreadyShown);
         final int rankedWanted = slots - randomSlots(slots, sharePercent);
         for (final T item : ranked) {
             if (chosen.size() >= rankedWanted) {

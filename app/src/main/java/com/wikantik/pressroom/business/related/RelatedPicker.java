@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.business.related;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -27,8 +28,9 @@ import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 
 /**
- * Picks what a post page offers after the article: the same blog's nearest
- * posts ("Nearby") and its most related ones ("Keep reading"). Spec
+ * Picks what a post page offers after the article: the nearest posts
+ * ("Nearby": the same blog's, then other blogs' in the places left) and the
+ * same blog's most related ones ("Keep reading"). Spec
  * {@code docs/superpowers/specs/2026-11-11-post-page-discovery-design.md}.
  *
  * <p>Pure: the caller loads the candidates and the shared-tag counts, so
@@ -66,6 +68,24 @@ public final class RelatedPicker {
                 .sorted(Comparator.comparingDouble(Near::km))
                 .limit(max)
                 .toList();
+    }
+
+    /**
+     * {@link #nearby(WeblogEntry, List, int, double)} over two sets of
+     * candidates: the blog's own posts come first, nearest first, and other
+     * blogs' posts fill only the places those leave, nearest first. So a
+     * neighbouring blog's post never displaces one of the blog's own,
+     * however close it is.
+     */
+    public static List<Near> nearby(WeblogEntry current, List<WeblogEntry> own,
+            List<WeblogEntry> others, int max, double maxKm) {
+        List<Near> ownNear = nearby(current, own, max, maxKm);
+        if (ownNear.size() >= max || others.isEmpty()) {
+            return ownNear;
+        }
+        List<Near> all = new ArrayList<>(ownNear);
+        all.addAll(nearby(current, others, max - ownNear.size(), maxKm));
+        return List.copyOf(all);
     }
 
     /**

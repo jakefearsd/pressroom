@@ -21,6 +21,7 @@ package com.wikantik.pressroom.business.discovery;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -153,5 +154,51 @@ class DiscoverySlotsTest {
         final List<String> got = fill(ranked, ranked, 3, 0, taken, new Random(1), x -> 1,
                 DiscoverySlotsTest::letter, 2);
         assertEquals(List.of("a2", "a3", "b1"), got);
+    }
+
+    // ------------------------------------------- groups already on the page
+
+    /** 0.9.1 criterion 1: the lead story's blog starts with one against the cap. */
+    @Test void aGroupAlreadyShownStartsPartWayToTheCap() {
+        final List<String> ranked = List.of("a2", "a3", "b1", "c1", "b2", "c2");
+        final List<String> got = fill(ranked, ranked, 4, 0, new HashSet<>(), new Random(1), x -> 1,
+                DiscoverySlotsTest::letter, 2, Map.of("a", 1));
+        assertEquals(List.of("a2", "b1", "c1", "b2"), got);
+    }
+
+    /** 0.9.1 criterion 2. */
+    @Test void theCapStillRelaxesForAGroupAlreadyShown() {
+        final List<String> ranked = List.of("a2", "a3", "b1", "a4");
+        final List<String> got = fill(ranked, ranked, 4, 0, new HashSet<>(), new Random(1), x -> 1,
+                DiscoverySlotsTest::letter, 2, Map.of("a", 1));
+        assertEquals(List.of("a2", "b1", "a3", "a4"), got, "never shorter than without the cap");
+    }
+
+    @Test void randomPicksCountAGroupAlreadyShown() {
+        final List<String> pool = List.of("a2", "a3", "a4", "a5", "a6", "b1", "b2", "c1", "c2");
+        for (int seed = 0; seed < 200; seed++) {
+            final List<String> got = fill(List.of(), pool, 4, 100, new HashSet<>(), new Random(seed), x -> 1,
+                    DiscoverySlotsTest::letter, 2, Map.of("a", 1));
+            assertEquals(4, got.size(), "seed " + seed + ": " + got);
+            assertTrue(got.stream().filter(x -> x.startsWith("a")).count() <= 1, "seed " + seed + ": " + got);
+        }
+    }
+
+    /**
+     * 0.9.1 criterion 3. A characterisation test for the nine-argument fill:
+     * it passed before the groups-already-shown overload existed and pins
+     * that nothing shown beforehand leaves every pick, ranked and random,
+     * as it was.
+     */
+    @Test void withNothingAlreadyShownEveryPickIsAsBefore() {
+        final List<String> ranked = List.of("a1", "b1", "a2");
+        final List<String> pool = List.of("a1", "a2", "a3", "a4", "a5", "a6", "b1", "b2", "c1", "c2");
+        for (int seed = 0; seed < 200; seed++) {
+            final List<String> before = fill(ranked, pool, 5, 40, new HashSet<>(), new Random(seed), x -> 1,
+                    DiscoverySlotsTest::letter, 2);
+            final List<String> after = fill(ranked, pool, 5, 40, new HashSet<>(), new Random(seed), x -> 1,
+                    DiscoverySlotsTest::letter, 2, Map.of());
+            assertEquals(before, after, "seed " + seed);
+        }
     }
 }

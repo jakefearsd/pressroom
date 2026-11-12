@@ -20,11 +20,14 @@ footer (site pages, directory, colophon).
   the newest posts no other section took, so it never changes the others;
   on a small site it can be short or empty (the template hides it).
 - **Popular takes at most two posts of one blog** (`POPULAR_PER_BLOG`, a
-  constant; the headline is not counted): a third is passed over for the
-  next-ranked post of another blog, and random picks keep to it too
-  (`DiscoverySlots.fill` with a group and a cap). The cap is relaxed only
-  when no other blog has a post left, passed-over posts first in rank order,
-  so the rail is never shorter for it. No other section is capped.
+  constant): a third is passed over for the next-ranked post of another
+  blog, and random picks keep to it too (`DiscoverySlots.fill` with a group
+  and a cap). **The headline's blog starts with one counted** (0.9.1: the
+  lead sits beside the rail, so uncounted it gave one blog three places
+  above the fold; `fill`'s `alreadyShown` map), so that blog gets one more
+  post in the rail, ranked or random. The cap is relaxed only when no other
+  blog has a post left, passed-over posts first in rank order, so the rail
+  is never shorter for it. No other section is capped.
 - **Share picture**: the lead story's featured image is the page's
   `og:image` (and `twitter:card` is `summary_large_image`). The template
   hands it to the `showSeoHead` macro's optional `$seoLeadImage`, which
@@ -135,6 +138,11 @@ blogs' posts with `showMoreFromSite` (it stays in `/` and in other blogs'
 blocks); the block then keeps only the places list and the link home, as it
 does when no other blog has an eligible post, because every blog links back
 to the front page.
+
+The rule is `DiscoveryEligibility` (pure, public). A post page's cross-blog
+Nearby (themes-and-templates.md, "After the article") applies the same class
+to other blogs' posts and honours the same `showMoreFromSite` opt-out; it
+reads no snapshot, so it needs no refresh. Change the rule there, once.
 
 ## Popularity source
 

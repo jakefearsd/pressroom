@@ -64,6 +64,7 @@ class AfterEntryRenderingTest {
     private String handle;
     private User user;
     private Weblog weblog;
+    private final List<Weblog> otherBlogs = new ArrayList<>();
     private long clock = System.currentTimeMillis() - 86_400_000L * 30;
 
     @BeforeEach
@@ -79,6 +80,9 @@ class AfterEntryRenderingTest {
 
     @AfterEach
     void tearDown() throws Exception {
+        for (Weblog other : otherBlogs) {
+            TestUtils.teardownWeblog(other.getId());
+        }
         TestUtils.teardownWeblog(weblog.getId());
         TestUtils.teardownUser(user.getUserName());
         TestUtils.endSession(true);
@@ -309,6 +313,99 @@ class AfterEntryRenderingTest {
 
             assertFalse(render("far-away").contains("entry-nearby"),
                     "Munich has no post within range");
+        });
+    }
+
+    // ------------------------------------------------- nearby, other blogs
+
+    private interface BlogEdit {
+        void apply(Weblog blog);
+    }
+
+    /** Another blog of the site, removed with the test. */
+    private Weblog otherBlog(String handlePrefix, BlogEdit edit) throws Exception {
+        Weblog other = TestUtils.setupWeblog(handlePrefix + handle.substring("afterentry".length()), user);
+        otherBlogs.add(other);
+        Weblog managed = TestUtils.getManagedWebsite(other);
+        edit.apply(managed);
+        TestUtils.weblogger().getWeblogManager().saveWeblog(managed);
+        TestUtils.endSession(true);
+        return other;
+    }
+
+    private void postOn(Weblog blog, String anchor, PubStatus status, Edit edit) throws Exception {
+        Weblog mine = weblog;
+        weblog = blog;
+        try {
+            post(anchor, status, edit);
+        } finally {
+            weblog = mine;
+        }
+    }
+
+    /** 0.9.1 criteria 4, 5, 6, 8 and 9. */
+    @Test
+    void nearbyFillsFromOtherBlogsWithTheirNameAndAbsoluteLink() throws Exception {
+        Weblog neighbour = otherBlog("aeneighbour", blog -> blog.setName("Tom & Jerry \"Farms\""));
+        Weblog hidden = otherBlog("aehidden", blog -> blog.setVisible(Boolean.FALSE));
+        Weblog inactive = otherBlog("aeinactive", blog -> blog.setActive(Boolean.FALSE));
+        long tomorrow = System.currentTimeMillis() + 86_400_000L;
+
+        postOn(neighbour, "other-grass-valley", PubStatus.PUBLISHED, place(39.2191, -121.0611));
+        postOn(neighbour, "other-next-door", PubStatus.PUBLISHED, place(38.8745, -121.1335));
+        postOn(neighbour, "other-san-diego", PubStatus.PUBLISHED, place(32.7157, -117.1611));
+        postOn(neighbour, "other-draft", PubStatus.DRAFT, place(38.8741, -121.1331));
+        postOn(neighbour, "other-scheduled", PubStatus.SCHEDULED, entry -> {
+            place(38.8741, -121.1331).apply(entry);
+            entry.setPubTime(new Timestamp(tomorrow));
+        });
+        postOn(hidden, "other-hidden", PubStatus.PUBLISHED, place(38.8741, -121.1331));
+        postOn(inactive, "other-inactive", PubStatus.PUBLISHED, place(38.8741, -121.1331));
+        post("auburn", place(38.8966, -121.0769));
+        post("no-place");
+        post("newcastle", place(38.874, -121.133));
+
+        inEveryTheme("en_US", theme -> {
+            String body = render("newcastle");
+            String nearby = only(NEARBY, body);
+            // the blog's own post first although the neighbour's is nearer
+            assertEquals(List.of("auburn", "other-next-door", "other-grass-valley"), anchors(nearby), nearby);
+            assertFalse(nearby.contains("$"), "a Velocity reference leaked:\n" + nearby);
+
+            String blogName = "<span class=\"entry-more-blog\">Tom &amp; Jerry &quot;Farms&quot;</span>";
+            assertEquals(2, nearby.split(Pattern.quote(blogName), -1).length - 1,
+                    "each other-blog item names its blog, escaped once:\n" + nearby);
+            assertEquals(2, nearby.split("entry-more-blog", -1).length - 1,
+                    "the blog's own item names no blog:\n" + nearby);
+            assertTrue(nearby.contains(">3 mi away</span>"), nearby);
+            assertTrue(nearby.contains(">Under 1 mi away &middot; " + blogName + "</span>"), nearby);
+            assertTrue(nearby.contains(">24 mi away &middot; " + blogName + "</span>"), nearby);
+
+            String otherLink = "href=\"https?://[^\"/]+(/[^\"]*)?/" + neighbour.getHandle() + "/entry/";
+            assertTrue(Pattern.compile("<a class=\"entry-more-title\" " + otherLink + "other-next-door\"")
+                    .matcher(nearby).find(), "the other blog's absolute permalink:\n" + nearby);
+            assertFalse(nearby.contains("/" + handle + "/entry/other-"),
+                    "never the other post's anchor under this blog's address:\n" + nearby);
+
+            assertEquals(List.of("no-place"), anchors(only(RELATED, body)),
+                    "Keep reading stays same-blog and repeats nothing from Nearby:\n" + body);
+        });
+    }
+
+    /** 0.9.1 criterion 4: other blogs only fill; a full own blog shows none of them. */
+    @Test
+    void aBlogWithThreeNearbyPostsOfItsOwnShowsNoOtherBlog() throws Exception {
+        Weblog neighbour = otherBlog("aeneighbour", blog -> blog.setName("Neighbour"));
+        postOn(neighbour, "other-next-door", PubStatus.PUBLISHED, place(38.8741, -121.1331));
+        post("grass-valley", place(39.2191, -121.0611));
+        post("auburn", place(38.8966, -121.0769));
+        post("next-door", place(38.8745, -121.1335));
+        post("newcastle", place(38.874, -121.133));
+
+        inEveryTheme("en_US", theme -> {
+            String nearby = only(NEARBY, render("newcastle"));
+            assertEquals(List.of("next-door", "auburn", "grass-valley"), anchors(nearby), nearby);
+            assertFalse(nearby.contains("entry-more-blog"), nearby);
         });
     }
 

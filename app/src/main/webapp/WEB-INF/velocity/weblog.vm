@@ -2319,7 +2319,10 @@ permalink.vm calls it between the entries pager and the comments macro:
 
 The picks are $model.furtherReading (FurtherReading, RelatedPicker); a post
 shown under Nearby is not repeated under Keep reading, and a section with
-nothing in it is not rendered. Spec:
+nothing in it is not rendered. Nearby is the blog's own posts first; places
+they leave go to other blogs' posts (0.9.1), each linked by its absolute
+permalink and named by its blog (escaped by WeblogWrapper, so printed bare).
+Keep reading is always the same blog. Spec:
 docs/superpowers/specs/2026-11-11-post-page-discovery-design.md.
 
 Sharing is for a reader who already wants to pass the post on, and stays
@@ -2409,11 +2412,12 @@ analytics script when a blog has one; they do nothing otherwise.
     <ul class="entry-more-list">
 #foreach($aeNear in $aeReading.nearby)
 #set($aePost = $aeNear.entry)
+#if($aeNear.otherBlog)#set($aeHref = $utils.escapeHTML($aePost.permalink))#else#set($aeHref = $url.entry($aePost.anchor))#end
         <li class="entry-more-item">
-#aeMedia($aePost)
+#aeMedia($aePost $aeHref)
             <div class="entry-more-text">
-            <a class="entry-more-title" href="$url.entry($aePost.anchor)" data-umami-event="nearby">$aePost.title</a>
-            <span class="entry-more-meta">#if($aeNear.distance < 1)#if($aeNear.miles)$text.get("afterEntry.miUnder")#else$text.get("afterEntry.kmUnder")#end#elseif($aeNear.miles)$text.get("afterEntry.mi", [$aeNear.distance])#else$text.get("afterEntry.km", [$aeNear.distance])#end</span>
+            <a class="entry-more-title" href="$aeHref" data-umami-event="nearby">$aePost.title</a>
+            <span class="entry-more-meta">#if($aeNear.distance < 1)#if($aeNear.miles)$text.get("afterEntry.miUnder")#else$text.get("afterEntry.kmUnder")#end#elseif($aeNear.miles)$text.get("afterEntry.mi", [$aeNear.distance])#else$text.get("afterEntry.km", [$aeNear.distance])#end#if($aeNear.otherBlog) &middot; <span class="entry-more-blog">$aePost.website.name</span>#end</span>
             </div>
         </li>
 #end
@@ -2425,10 +2429,11 @@ analytics script when a blog has one; they do nothing otherwise.
     <h2 class="entry-more-label" id="entry-related-label">$text.get("afterEntry.related")</h2>
     <ul class="entry-more-list">
 #foreach($aePost in $aeReading.related)
+#set($aeHref = $url.entry($aePost.anchor))
         <li class="entry-more-item">
-#aeMedia($aePost)
+#aeMedia($aePost $aeHref)
             <div class="entry-more-text">
-            <a class="entry-more-title" href="$url.entry($aePost.anchor)" data-umami-event="keep-reading">$aePost.title</a>
+            <a class="entry-more-title" href="$aeHref" data-umami-event="keep-reading">$aePost.title</a>
             <span class="entry-more-meta">$utils.escapeHTML($aePost.category.name)</span>
             </div>
         </li>
@@ -2441,9 +2446,9 @@ analytics script when a blog has one; they do nothing otherwise.
 
 ## A list item's picture, linking to the post; decorative beside the title
 ## link, so it is out of the tab order and hidden from assistive technology.
-#macro(aeMedia $aeMediaPost)
+#macro(aeMedia $aeMediaPost $aeMediaHref)
 #if($aeMediaPost.featuredImage)
-            <a class="entry-more-media" href="$url.entry($aeMediaPost.anchor)" tabindex="-1" aria-hidden="true">#showResponsiveImage($aeMediaPost.featuredImage $utils.pictureAlt($aeMediaPost.featuredImage, $aeMediaPost.title) "7rem" "entry-more-img")</a>
+            <a class="entry-more-media" href="$aeMediaHref" tabindex="-1" aria-hidden="true">#showResponsiveImage($aeMediaPost.featuredImage $utils.pictureAlt($aeMediaPost.featuredImage, $aeMediaPost.title) "7rem" "entry-more-img")</a>
 #end
 #end
 

@@ -21,7 +21,6 @@ import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
-import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
 import com.wikantik.pressroom.util.DiscoveryGeneration;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
@@ -337,9 +336,11 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
         if (headline != null) {
             taken.add(headline);
         }
-        // at most POPULAR_PER_BLOG of one blog, the headline's blog not counted for it
+        // at most POPULAR_PER_BLOG of one blog; the headline sits beside the rail, so its blog starts at one
+        Map<String, Integer> besideTheRail = headline == null ? Map.of() : Map.of(headline.weblogId(), 1);
         List<DiscoveryCandidate> popular = DiscoverySlots.fill(s.ranked, s.pool, POPULAR_SLOTS, share, taken,
-                s.random(SALT_POPULAR), s::weight, DiscoveryCandidate::weblogId, POPULAR_PER_BLOG);
+                s.random(SALT_POPULAR), s::weight, DiscoveryCandidate::weblogId, POPULAR_PER_BLOG,
+                besideTheRail);
 
         List<String> cardWeblogs = DiscoverySlots.fill(
                 withUntaken(s, s.rankedWeblogs, taken), withUntaken(s, s.weblogsWithEntries, taken),
@@ -574,17 +575,11 @@ public class JPADiscoveryManagerImpl implements DiscoveryManager {
     }
 
     static boolean isEligible(WeblogEntry entry) {
-        return entry != null
-                && entry.getStatus() == PubStatus.PUBLISHED
-                && !Boolean.TRUE.equals(entry.getNoindex())
-                && isEligible(entry.getWebsite());
+        return DiscoveryEligibility.isEligible(entry);
     }
 
     static boolean isEligible(Weblog weblog) {
-        return weblog != null
-                && !weblog.isSiteSpace()
-                && Boolean.TRUE.equals(weblog.getVisible())
-                && Boolean.TRUE.equals(weblog.getActive());
+        return DiscoveryEligibility.isEligible(weblog);
     }
 
     private static List<String> entryIds(List<DiscoveryCandidate> candidates) {

@@ -233,10 +233,39 @@ class JPADiscoveryManagerImplTest {
     }
 
     /**
+     * 0.9.1 criterion 1: the lead story is above the fold beside the rail,
+     * so its blog starts the rail with one against the cap and gets one more
+     * post there, not two.
+     */
+    @Test
+    void popularCountsTheHeadlinesBlogTowardsTheCap() throws Exception {
+        Fixture f = threeBlogsOfSix();
+        setShare("0");
+        source.configured = true;
+        source.rows = List.of(
+                row(f, 0, 0, 100),
+                row(f, 0, 1, 90),
+                row(f, 0, 2, 80),
+                row(f, 1, 0, 70),
+                row(f, 2, 0, 60),
+                row(f, 1, 1, 50),
+                row(f, 2, 1, 40));
+
+        JPADiscoveryManagerImpl manager = manager();
+        manager.refresh();
+        FrontPageSelection page = manager.selectFrontPage();
+
+        assertEquals(f.entries[0][0].getId(), page.headline().getId());
+        assertEquals(List.of(f.entries[0][1].getId(), f.entries[1][0].getId(), f.entries[2][0].getId(),
+                        f.entries[1][1].getId(), f.entries[2][1].getId()),
+                ids(page.popular()));
+    }
+
+    /**
      * "Popular right now" shows at most
      * {@link JPADiscoveryManagerImpl#POPULAR_PER_BLOG} posts of one blog: a
      * third is passed over for the next-ranked post of another blog. The
-     * headline is not counted.
+     * headline's blog starts with one counted.
      */
     @Test
     void popularTakesAtMostTwoPostsFromOneBlog() throws Exception {

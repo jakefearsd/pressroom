@@ -22,6 +22,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.related.GeoBox;
 import com.wikantik.pressroom.business.discovery.DiscoveryCandidate;
 import com.wikantik.pressroom.pojos.TagStat;
 import com.wikantik.pressroom.pojos.User;
@@ -354,6 +355,23 @@ public interface WeblogEntryManager {
      * (it shares all of its own). Empty, with no query, for an untagged entry.
      */
     Map<String, Long> getSharedTagCounts(WeblogEntry entry) throws WebloggerException;
+
+    /**
+     * Other weblogs' published posts with coordinates inside a box, for a
+     * post page's cross-blog Nearby: one query, newest first, at most
+     * {@code max} rows, never every located post on the site. Published at
+     * or before now (never a draft or a scheduled post), not {@code noindex},
+     * and only of weblogs that are visible, active and not the site space;
+     * the caller still applies {@code DiscoveryEligibility}, which is the
+     * rule (the conditions here only keep ineligible rows from using up the
+     * row limit).
+     *
+     * @param excluded the weblog whose own posts are left out
+     * @param box      the latitude/longitude bounds
+     * @param max      the row limit
+     */
+    List<WeblogEntry> getPublishedEntriesInBox(Weblog excluded, GeoBox box, int max)
+            throws WebloggerException;
 
     /**
      * Locks an entry's row until the current unit of work commits or rolls

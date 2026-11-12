@@ -154,4 +154,48 @@ class RelatedPickerTest {
 
         assertTrue(RelatedPicker.nearby(current, List.of(a), 3, 80.0).isEmpty());
     }
+
+    // --------------------------------------------- other blogs fill (0.9.1)
+
+    private static List<String> nearIds(List<RelatedPicker.Near> near) {
+        return near.stream().map(n -> n.entry().getId()).toList();
+    }
+
+    /** 0.9.1 criterion 4: own posts first, then other blogs' nearest first. */
+    @Test
+    void otherBlogsFillThePlacesTheOwnBlogLeavesNearestFirst() {
+        WeblogEntry current = at(entry("current", FARMS, 10), 38.874, -121.133);
+        WeblogEntry ownAuburn = at(entry("ownAuburn", FARMS, 1), 38.8966, -121.0769);
+        WeblogEntry otherNextDoor = at(entry("otherNextDoor", MINES, 2), 38.8745, -121.1335);
+        WeblogEntry otherGrassValley = at(entry("otherGrassValley", MINES, 3), 39.2191, -121.0611);
+        WeblogEntry otherSanDiego = at(entry("otherSanDiego", MINES, 4), 32.7157, -117.1611);
+        WeblogEntry otherNoPlace = entry("otherNoPlace", MINES, 5);
+
+        List<RelatedPicker.Near> near = RelatedPicker.nearby(current, List.of(ownAuburn, current),
+                List.of(otherSanDiego, otherGrassValley, otherNoPlace, otherNextDoor), 3, 80);
+
+        assertEquals(List.of("ownAuburn", "otherNextDoor", "otherGrassValley"), nearIds(near));
+        assertTrue(near.get(1).km() < 1, "the distance comes with it: " + near.get(1).km());
+    }
+
+    @Test
+    void otherBlogsNeverDisplaceAnOwnPostAndNeverPassTheMaximum() {
+        WeblogEntry current = at(entry("current", FARMS, 10), 38.874, -121.133);
+        List<WeblogEntry> own = List.of(
+                at(entry("own1", FARMS, 1), 38.8966, -121.0769),
+                at(entry("own2", FARMS, 2), 39.2191, -121.0611),
+                at(entry("own3", FARMS, 3), 38.90, -121.07));
+        List<WeblogEntry> others = List.of(
+                at(entry("other1", MINES, 4), 38.8745, -121.1335),
+                at(entry("other2", MINES, 5), 38.8746, -121.1336));
+
+        assertEquals(Set.of("own1", "own2", "own3"),
+                Set.copyOf(nearIds(RelatedPicker.nearby(current, own, others, 3, 80))),
+                "a full own blog leaves no place, however near the others are");
+        assertEquals(List.of("own1", "other1", "other2"),
+                nearIds(RelatedPicker.nearby(current, own.subList(0, 1), others, 3, 80)));
+        assertEquals(List.of("own1", "other1"),
+                nearIds(RelatedPicker.nearby(current, own.subList(0, 1), others, 2, 80)));
+        assertEquals(List.of(), RelatedPicker.nearby(entry("noPlace", FARMS, 1), own, others, 3, 80));
+    }
 }
