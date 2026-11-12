@@ -106,9 +106,17 @@ public final class EntrySeoChecks {
                     + SeoLimits.DESCRIPTION_MIN + " to " + SeoLimits.DESCRIPTION_MAX + " characters."));
         }
         if (StringUtils.isBlank(entry.getMetaTitle())) {
-            gaps.add(Finding.of(MISSING_META_TITLE, WARNING, "There is no meta title, so the page title is "
-                    + "the entry title followed by the weblog name. Write one of at most "
-                    + SeoLimits.TITLE_MAX + " characters for search results."));
+            // Only when the title cannot stand in for one: a title that fits is the page title (with the
+            // weblog's name when that fits too). Flagging every entry taught agents to copy the title in.
+            String title = StringEscapeUtils.unescapeHtml4(entry.getTitle());
+            if (StringUtils.isBlank(title)) {
+                gaps.add(Finding.of(MISSING_META_TITLE, WARNING, "There is no title or meta title, so the "
+                        + "page title is only the weblog's name. Give the entry a title."));
+            } else if (length(title) > SeoLimits.TITLE_MAX) {
+                gaps.add(Finding.of(MISSING_META_TITLE, WARNING, "The title is " + length(title)
+                        + " characters and a search result shows " + SeoLimits.TITLE_MAX + ". Write a meta title "
+                        + "of at most " + SeoLimits.TITLE_MAX + ": a shorter title, not this one cut off."));
+            }
         }
         if (StringUtils.isBlank(entry.getFeaturedImageId())) {
             gaps.add(showsAPicture(entry.getText())
@@ -191,9 +199,11 @@ public final class EntrySeoChecks {
     /**
      * The {@code <title>} the bundled themes print on the entry's permalink
      * page ({@code themes/<name>/permalink.vm}): the meta title whenever it
-     * is non-empty, else the entry title, then " — ", then the weblog's
-     * name. The entry title is stored HTML-escaped, so it is unescaped
-     * first; the meta title and the weblog name are stored as typed.
+     * is non-empty, else the entry title, followed by " — " and the weblog's
+     * name only when the whole fits in {@link SeoLimits#TITLE_MAX} (as
+     * {@code UtilitiesModel#titleWithName} decides for the themes). The entry
+     * title is stored HTML-escaped, so it is unescaped first; the meta title
+     * and the weblog name are stored as typed.
      *
      * @return the text of the title, or null when the entry has no title at all
      */
@@ -207,7 +217,11 @@ public final class EntrySeoChecks {
             return null;
         }
         String name = weblog.getName();
-        return StringUtils.isBlank(name) ? title : title + TITLE_SEPARATOR + name;
+        if (StringUtils.isBlank(name)) {
+            return title;
+        }
+        String joined = title + TITLE_SEPARATOR + name;
+        return length(joined) <= SeoLimits.TITLE_MAX ? joined : title;
     }
 
     /** Characters as a reader counts them: code points, not UTF-16 units. */

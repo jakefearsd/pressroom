@@ -252,6 +252,43 @@ class JournalThemeRenderingTest {
                 "each row says how long the read is:\n" + body);
     }
 
+    /**
+     * A row's picture is described: by the image's own alt text when it has
+     * one, else by the post's title. The thumbnail's link is hidden from
+     * assistive technology, so this costs a screen reader nothing; an empty
+     * alt is what search engines report as "image missing alt text" (Bing
+     * site scan, 2026-11-11). The title is stored escaped, so the alt must
+     * carry it escaped exactly once.
+     */
+    @Test
+    void aRowsPictureIsDescribedByItsAltTextElseByThePostTitle() throws Exception {
+        MediaFile described = TestUtils.setupImageMediaFile(weblog, "described");
+        MediaFile bare = TestUtils.setupImageMediaFile(weblog, "bare");
+        var media = TestUtils.weblogger().getMediaFileManager();
+        MediaFile managedImage = media.getMediaFile(described.getId());
+        managedImage.setAltText("A teapot on a sunny sill");
+        media.updateMediaFile(managedImage.getWeblog(), managedImage);
+        TestUtils.setupWeblogEntry("with-alt", weblog, user);
+        TestUtils.setupWeblogEntry("without-alt", weblog, user);
+        WeblogEntryManager mgr = TestUtils.weblogger().getWeblogEntryManager();
+        WeblogEntry withAlt = mgr.getWeblogEntryByAnchor(TestUtils.getManagedWebsite(weblog), "with-alt");
+        withAlt.setFeaturedImageId(described.getId());
+        mgr.saveWeblogEntry(withAlt);
+        WeblogEntry withoutAlt = mgr.getWeblogEntryByAnchor(TestUtils.getManagedWebsite(weblog), "without-alt");
+        withoutAlt.setTitle("Tea &amp; Toast");
+        withoutAlt.setFeaturedImageId(bare.getId());
+        mgr.saveWeblogEntry(withoutAlt);
+        TestUtils.endSession(true);
+
+        String body = render("/" + HANDLE + "/");
+
+        assertTrue(row(body, "/entry/with-alt\"").contains("alt=\"A teapot on a sunny sill\""),
+                "the image's own alt text:\n" + row(body, "/entry/with-alt\""));
+        assertTrue(row(body, "/entry/without-alt\"").contains("alt=\"Tea &amp; Toast\""),
+                "else the post title, escaped once:\n" + row(body, "/entry/without-alt\""));
+        assertFalse(body.contains("alt=\"\""), "no picture goes undescribed:\n" + body);
+    }
+
     /** The {@code <article>} that links to {@code href}. */
     private static String row(String body, String href) {
         int at = body.indexOf(href);

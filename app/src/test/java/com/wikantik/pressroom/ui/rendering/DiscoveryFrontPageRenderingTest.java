@@ -607,7 +607,48 @@ class DiscoveryFrontPageRenderingTest {
         }
     }
 
+    /**
+     * Every picture on the front page is described: by the image's own alt
+     * text when it has one, else by the post's title, escaped once. The
+     * picture's link is hidden from assistive technology, so this costs a
+     * screen reader nothing; an empty alt is what search engines report as
+     * "image missing alt text" (Bing site scan, 2026-11-11).
+     */
+    @Test
+    void everyPictureIsDescribedByItsAltTextElseByThePostTitle() throws Exception {
+        setProperty("uploads.enabled", "true");
+        int minutes = 10;
+        for (int b = 0; b < 5; b++) {
+            Weblog blog = blog("discfpalt" + b, "Alt Blog " + b);
+            String plain = image(blog, "plain" + b + ".jpg");
+            String described = image(blog, "described" + b + ".jpg");
+            describe(described, "A harbour at dusk " + b);
+            for (int e = 0; e < 4; e++) {
+                String anchor = "discfpalt-" + b + "-" + e;
+                post(blog, anchor, "Fish &amp; Chips " + b + "." + e, minutes++);
+                feature(anchor, blog, e % 2 == 0 ? described : plain);
+            }
+        }
+        refresh();
+
+        for (String theme : THEMES) {
+            String body = root(theme);
+            assertTrue(body.contains("alt=\"A harbour at dusk "), theme + ": the image's own alt text:\n" + body);
+            assertTrue(body.contains("alt=\"Fish &amp; Chips "), theme + ": else the post title, escaped once:\n" + body);
+            assertFalse(body.contains("alt=\"\""), theme + ": no picture goes undescribed:\n" + body);
+        }
+    }
+
     // ------------------------------------------------------------- helpers
+
+    private static void describe(String imageId, String alt) throws Exception {
+        MediaFileManager media = TestUtils.weblogger().getMediaFileManager();
+        MediaFile file = media.getMediaFile(imageId);
+        file.setAltText(alt);
+        media.updateMediaFile(file.getWeblog(), file);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+    }
 
     /** A generated JPEG in the blog's default media directory; its id. */
     private String image(Weblog blog, String name) throws Exception {

@@ -57,10 +57,13 @@ public final class PageDtos {
             @Schema(description = "Position in the navigation, lowest first; pages with the same number "
                     + "sort by title.")
             Integer navOrder,
-            @Schema(description = "Replaces the whole <title> and og:title; at most 255 characters.")
+            @Schema(description = "The search-result title: replaces the whole <title> and og:title. At most 60 characters, "
+                    + "the length a search result shows; write one, not a copy of the title and not the title cut "
+                    + "off: lead with the place or topic. Without one the page title is the title, plus the blog's name "
+                    + "when that fits.")
             String metaTitle,
-            @Schema(description = "The meta description search engines and share previews show; at most "
-                    + "255 characters.")
+            @Schema(description = "The meta description search engines and share previews show: one or two whole sentences, "
+                    + "50 to 160 characters (longer is cut off in a search result), saying what a reader will find.")
             String searchDescription,
             @Schema(description = "An absolute http(s) URL this page canonicalises to, when it was first "
                     + "published elsewhere.")

@@ -237,7 +237,8 @@ class AuditApiTest {
         WeblogEntry first = new WeblogEntry();
         first.setId("e1");
         first.setAnchor("first");
-        first.setTitle("First");
+        // Longer than a search result shows: only then is a missing meta title a gap.
+        first.setTitle("First " + "t".repeat(SeoLimits.TITLE_MAX));
 
         WeblogEntry second = new WeblogEntry();
         second.setId("e2");
@@ -399,13 +400,14 @@ class AuditApiTest {
         assertEquals("Harbour walk", audit.get("title").asString());
         List<String> codes = new java.util.ArrayList<>();
         audit.get("findings").forEach(f -> codes.add(f.get("code").asString()));
-        assertEquals(List.of("missing_meta_title", "search_description_short", "body_h1", "fragment_link_broken"),
+        // No missing_meta_title: "Harbour walk" fits a search result, so it is the page title.
+        assertEquals(List.of("search_description_short", "body_h1", "fragment_link_broken"),
                 codes, audit.toString());
-        tools.jackson.databind.JsonNode shortOne = audit.get("findings").get(1);
+        tools.jackson.databind.JsonNode shortOne = audit.get("findings").get(0);
         assertEquals("info", shortOne.get("severity").asString());
         assertEquals("Too short.".length(), shortOne.get("value").asInt());
         assertEquals(SeoLimits.DESCRIPTION_MIN, shortOne.get("limit").asInt());
-        tools.jackson.databind.JsonNode h1 = audit.get("findings").get(2);
+        tools.jackson.databind.JsonNode h1 = audit.get("findings").get(1);
         assertEquals("warning", h1.get("severity").asString());
         assertTrue(h1.get("message").asString().contains("Welcome"), h1.toString());
         assertFalse(h1.has("value") || h1.has("limit"), "value and limit are for lengths only: " + h1);

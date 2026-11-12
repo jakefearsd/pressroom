@@ -220,7 +220,15 @@ public final class EntryDtos {
             String pubTime,
             @Schema(description = "The entry's tags. On update, replaces the whole set.")
             List<String> tags,
-            String metaTitle, String searchDescription, String canonicalUrl,
+            @Schema(description = "The search-result title: replaces the whole <title> and og:title. At most 60 characters, "
+                    + "the length a search result shows; write one, not a copy of the title and not the title cut "
+                    + "off: lead with the place or topic. Without one the page title is the title, plus the blog's name "
+                    + "when that fits.")
+            String metaTitle,
+            @Schema(description = "The meta description search engines and share previews show: one or two whole sentences, "
+                    + "50 to 160 characters (longer is cut off in a search result), saying what a reader will find.")
+            String searchDescription,
+            String canonicalUrl,
             Boolean noindex,
             @Schema(description = "Id of a media file in this weblog, used as the featured image.")
             String featuredImageId,
@@ -251,8 +259,9 @@ public final class EntryDtos {
                     + "featured image, in one call. An image already in the weblog's default directory with the "
                     + "same bytes is reused. Not with featuredImageId.")
             String featuredImageUrl,
-            @Schema(description = "Alt text for the image featuredImageUrl imports; it fills the file's alt "
-                    + "text only when that has none.")
+            @Schema(description = "Alt text for the image featuredImageUrl imports: what the picture shows, "
+                    + "in a short phrase. Always send it with featuredImageUrl. It fills the file's alt text only "
+                    + "when that has none.")
             String featuredImageAlt,
             @Schema(description = "Import every image the text loads from another site (HTML img src and "
                     + "Markdown images, at most 10) and point the text at the copies. Default: on, best effort, "

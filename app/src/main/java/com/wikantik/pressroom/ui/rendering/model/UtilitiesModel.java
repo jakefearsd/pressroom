@@ -41,6 +41,7 @@ import com.wikantik.pressroom.business.jsonld.EntryJsonLd;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.JsonLdType;
 import com.wikantik.pressroom.pojos.WeblogEntry;
+import com.wikantik.pressroom.pojos.wrapper.MediaFileWrapper;
 import com.wikantik.pressroom.pojos.wrapper.WeblogWrapper;
 import com.wikantik.pressroom.ui.rendering.util.WeblogRequest;
 import com.wikantik.pressroom.business.seo.SeoLimits;
@@ -322,6 +323,22 @@ public class UtilitiesModel implements Model {
         }
         String joined = title + " — " + name;
         return StringEscapeUtils.unescapeHtml4(joined).length() <= SeoLimits.TITLE_MAX ? joined : title;
+    }
+
+    /**
+     * The alt text for a post's picture in a list: the image's own alt text
+     * when it has one, else the post's title. Never empty when there is a
+     * title -- an empty alt is what search engines report as "image missing
+     * alt text", and the lists hide these links from assistive technology
+     * anyway. The title comes in HTML-escaped (entry titles are stored that
+     * way); the result is plain text, escaped once on the way out.
+     */
+    public String pictureAlt(MediaFileWrapper image, String title) {
+        String alt = image == null ? null : image.getAltText();
+        if (StringUtils.isNotBlank(alt)) {
+            return alt;
+        }
+        return title == null ? "" : StringEscapeUtils.unescapeHtml4(title);
     }
 
     /**

@@ -85,6 +85,28 @@ class ToolSchemasTest {
         }
     }
 
+    /**
+     * Agents wrote meta titles that repeated the entry title or cut it off at
+     * 100 characters, and featured images with no alt text (Bing site scan,
+     * 2026-11-11): the fields now say what a good value is, where every agent
+     * reads them.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void theSeoFieldsTellAnAgentWhatAGoodValueIs() {
+        for (String tool : List.of("entries", "pages")) {
+            Map<String, Object> props = properties(tool);
+            String metaTitle = (String) ((Map<String, Object>) props.get("metaTitle")).get("description");
+            assertTrue(metaTitle != null && metaTitle.contains("60 characters") && metaTitle.contains("not a copy"),
+                    tool + ".metaTitle: " + metaTitle);
+            String description = (String) ((Map<String, Object>) props.get("searchDescription")).get("description");
+            assertTrue(description != null && description.contains("160 characters"),
+                    tool + ".searchDescription: " + description);
+        }
+        String alt = (String) ((Map<String, Object>) properties("entries").get("featuredImageAlt")).get("description");
+        assertTrue(alt.contains("Always send"), "entries.featuredImageAlt: " + alt);
+    }
+
     /** Every shared description reaches the agent, whichever action declared the argument first. */
     @Test
     @SuppressWarnings("unchecked")
@@ -104,8 +126,8 @@ class ToolSchemasTest {
         }
         // 14 through anchor (Task 3); featuredImageUrl, featuredImageAlt and importExternalImages (Task 8) make 17;
         // summary, once it became the line under the title in entry lists, 18; edits and expectedContentHash
-        // (spec 2026-10-24), 20; revisionNote (Wave B), 21.
-        assertEquals(21, described);
+        // (spec 2026-10-24), 20; revisionNote (Wave B), 21; metaTitle and searchDescription (Bing scan), 23.
+        assertEquals(23, described);
     }
 
     /**

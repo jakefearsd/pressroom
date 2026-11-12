@@ -26,6 +26,7 @@ import com.wikantik.pressroom.pojos.GlobalPermission;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogPermission;
+import com.wikantik.pressroom.pojos.wrapper.MediaFileWrapper;
 import com.wikantik.pressroom.pojos.wrapper.WeblogWrapper;
 import com.wikantik.pressroom.ui.rendering.util.ParsedRequest;
 import com.wikantik.pressroom.ui.rendering.util.WeblogRequest;
@@ -926,6 +927,29 @@ class UtilitiesModelTest {
     void aMissingTitleOrNameNeverPrintsNull() {
         assertEquals("Test Weblog", model().titleWithName(null, "Test Weblog"));
         assertEquals("Short post", model().titleWithName("Short post", null));
+    }
+
+    // --- pictureAlt: a post's picture is described, never alt="" ---
+
+    @Test
+    void aPictureIsDescribedByItsOwnAltText() {
+        MediaFileWrapper image = mock(MediaFileWrapper.class);
+        when(image.getAltText()).thenReturn("A harbour at dusk");
+        assertEquals("A harbour at dusk", model().pictureAlt(image, "Fish &amp; Chips"));
+    }
+
+    /** The title comes in HTML-escaped, the alt goes out as plain text: the macro escapes it once. */
+    @Test
+    void anUndescribedPictureTakesThePostTitleAsPlainText() {
+        MediaFileWrapper image = mock(MediaFileWrapper.class);
+        when(image.getAltText()).thenReturn("  ");
+        assertEquals("Fish & Chips", model().pictureAlt(image, "Fish &amp; Chips"));
+        assertEquals("Fish & Chips", model().pictureAlt(null, "Fish &amp; Chips"));
+    }
+
+    @Test
+    void aPictureWithNoAltTextAndNoTitleNeverPrintsNull() {
+        assertEquals("", model().pictureAlt(null, null));
     }
 
     // --- metaDescription: fallback text fitted to a search description ---

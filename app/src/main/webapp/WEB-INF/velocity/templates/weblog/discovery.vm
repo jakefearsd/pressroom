@@ -29,13 +29,15 @@ comment names one with its hash, so nothing here is invoked by accident.
 ## ------------------------------------------------------------ macros
 ## A post's picture: its featured image, else a tile in its blog's hue with
 ## the blog's initials. Hidden from assistive tech: the title link that
-## follows is the accessible one. $fdEager is true for the lead story's
+## follows is the accessible one. The picture still carries alt text (the image's own,
+## else the post title): an empty alt is what search engines report as
+## "image missing alt text". $fdEager is true for the lead story's
 ## picture only, the page's likely Largest Contentful Paint.
 #macro(fdMedia $fdPost $fdSizes $fdEager=false)
 #set($fdImg = false)
 #set($fdImg = $fdPost.featuredImage)
 #if($fdImg)
-<a class="fd-media" href="$utils.escapeHTML($fdPost.permalink)" tabindex="-1" aria-hidden="true">#showResponsiveImage($fdImg "" $fdSizes "" $fdEager)</a>
+<a class="fd-media" href="$utils.escapeHTML($fdPost.permalink)" tabindex="-1" aria-hidden="true">#showResponsiveImage($fdImg $utils.pictureAlt($fdImg, $fdPost.title) $fdSizes "" $fdEager)</a>
 #else
 <a class="fd-media fd-tile" href="$utils.escapeHTML($fdPost.permalink)" tabindex="-1" aria-hidden="true">$discovery.initials($fdPost.website)</a>
 #end

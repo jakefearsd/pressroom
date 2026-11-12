@@ -82,8 +82,14 @@ resolves through the index at the end of `CLAUDE.md`.
   6). A new rule goes there, not into a surface. Lengths read `SeoLimits`
   (the editor's counters do too), count code points, and `title_long`
   measures what the themes' `permalink.vm` prints: the meta title when
-  non-empty, else the *unescaped* entry title, " — " and the weblog name; a
-  theme that changes its `<title>` changes `EntrySeoChecks.pageTitle` with it.
+  non-empty, else the *unescaped* entry title, plus " — " and the weblog
+  name only when the whole fits in `TITLE_MAX` (`UtilitiesModel#titleWithName`);
+  a theme that changes its `<title>` changes `EntrySeoChecks.pageTitle` with
+  it. `missing_meta_title` fires only when the title cannot stand in (over
+  `TITLE_MAX`, or none): flagging every entry without one taught agents told
+  to publish warning-free to copy the title in (Bing scan, 2026-11-11). List
+  thumbnails (journal `_day.vm`, the front page) carry `$utils.pictureAlt`:
+  the image's alt text, else the post title, never `alt=""`.
   `SeoBody` reads HTML through the OWASP lexer like `Excerpts`, never a
   regex, and is pure: it says which entry anchors and image sources it needs
   resolved, and `ui.restapi.v1.SeoBodies` looks them up (published? which

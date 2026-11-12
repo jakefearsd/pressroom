@@ -255,16 +255,51 @@ class EntrySeoChecksTest {
         assertEquals("Fish & Chips — Coast Notes", EntrySeoChecks.pageTitle(entry, weblog()));
     }
 
+    /**
+     * The themes add " — weblog name" only when the whole fits in what a
+     * search result shows (UtilitiesModel#titleWithName, 0.8.10), so the
+     * checks count the title the reader is shown: a title that fits alone
+     * is never "too long" because of the name.
+     */
     @Test
-    void theWeblogNameCountsTowardsTheTitleLength() {
+    void theWeblogNameIsDroppedRatherThanMakingTheTitleTooLong() {
         Weblog weblog = weblog();
         WeblogEntry entry = clean("e1", "t".repeat(SeoLimits.TITLE_MAX - " — ".length() - weblog.getName().length()));
         entry.setMetaTitle(null);
-        assertEquals(List.of("missing_meta_title"), codes(EntrySeoChecks.fields(entry, weblog)));
+        assertEquals(entry.getTitle() + " — Coast Notes", EntrySeoChecks.pageTitle(entry, weblog));
+        assertEquals(List.of(), codes(EntrySeoChecks.fields(entry, weblog)));
+
+        entry.setTitle(entry.getTitle() + "t");
+        assertEquals(entry.getTitle(), EntrySeoChecks.pageTitle(entry, weblog), "the name no longer fits");
+        assertEquals(List.of(), codes(EntrySeoChecks.fields(entry, weblog)));
+    }
+
+    /**
+     * A title that fits needs no meta title. The warning used to fire on
+     * every entry without one, and agents told to publish with no warnings
+     * silenced it by copying the title in, or the title cut at 100
+     * characters (Bing site scan, 2026-11-11: 94 titles too long).
+     */
+    @Test
+    void onlyATitleTooLongForASearchResultNeedsAMetaTitle() {
+        Weblog weblog = weblog();
+        WeblogEntry entry = clean("e1", "t".repeat(SeoLimits.TITLE_MAX));
+        entry.setMetaTitle(null);
+        assertEquals(List.of(), codes(EntrySeoChecks.fields(entry, weblog)), "60 characters fits");
 
         entry.setTitle(entry.getTitle() + "t");
         assertEquals(List.of("missing_meta_title", "title_long"), codes(EntrySeoChecks.fields(entry, weblog)));
         assertEquals(SeoLimits.TITLE_MAX + 1, only(EntrySeoChecks.fields(entry, weblog), "title_long").value());
+        assertTrue(only(EntrySeoChecks.gaps(entry), "missing_meta_title").message().contains("61 characters"),
+                "says how long the title is");
+    }
+
+    /** "Fish &amp; Chips" is stored escaped; a reader sees one character per entity. */
+    @Test
+    void aTitlesLengthForTheMetaTitleCheckIsWhatAReaderSees() {
+        WeblogEntry entry = clean("e1", "&amp;".repeat(SeoLimits.TITLE_MAX));
+        entry.setMetaTitle(null);
+        assertEquals(List.of(), codes(EntrySeoChecks.gaps(entry)));
     }
 
     @Test

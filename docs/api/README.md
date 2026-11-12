@@ -1057,14 +1057,15 @@ entry route. The checks report findings, never a score:
 
 | Code | Finding | Severity |
 |---|---|---|
-| `missing_search_description`, `missing_meta_title` | The field is blank (whitespace counts as blank). | warning |
+| `missing_search_description` | The field is blank (whitespace counts as blank). | warning |
+| `missing_meta_title` | The meta title is blank and the entry title cannot stand in for it: the title is over 60 characters, or there is none. A title that fits is the page title, so it needs no meta title; never copy the title in. | warning |
 | `missing_featured_image` | No featured image. Optional: a post with no picture is complete without one. But when the text shows a picture (an `<img>`, a Markdown image or an `[image]` shortcode, outside code), it is a **warning**: the front page and every list show the post as a lettered tile. A save sets the first of the weblog's own pictures as the featured image, so this means the picture is still on another site: the write sent `importExternalImages: false`, uploads are off, or the copy failed. Save the text again, or set `featuredImageUrl`. | info; warning when the text shows a picture |
 | `noindex` | The entry asks search engines not to list it. | warning |
 | `search_description_long` | Over 160 characters: a search result cuts it off. | warning |
 | `search_description_short` | Under 50 characters: search engines tend to replace it. | info |
 | `search_description_cut` | The description is the post's own opening cut off mid-sentence with a full stop added ("...to bring hygienic,."). A search result, and the front page's excerpt, would show a broken sentence; the front page uses the post's opening instead. | warning |
 | `meta_title_cut` | The meta title is the start of the entry title ending inside a word ("...Placer Citr"), so the browser tab and a search result show a broken word. | warning |
-| `title_long` | The page title is over 60 characters. The page title is the meta title, or without one the entry title, " — " and the weblog's name. | warning |
+| `title_long` | The page title is over 60 characters. The page title is the meta title, or without one the entry title, followed by " — " and the weblog's name when the whole fits in 60 characters. | warning |
 | `title_duplicate`, `search_description_duplicate` | Another published entry of the weblog has the same page title or search description (case and spacing aside); the message names it by anchor. A draft is compared with the published entries. | warning |
 | `body_h1` | An `h1` in the body; the theme already prints the entry title as the page's `h1`. | warning |
 | `heading_skip` | A heading more than one level below the one before it (`h2` then `h4`); the entry title counts as the `h1` before the first. | info |

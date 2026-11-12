@@ -75,9 +75,11 @@
         <p class="qj-meta">$utils.escapeHTML($entry.category.name) <span class="qj-read">&middot; $text.get("discovery.readingTime", [$entry.readingMinutes])</span></p>
     </div>
     #if($rowImage)
-    ## Decorative here: the title beside it is the link a reader uses, so the
-    ## picture is one more way in for a pointer, and none for a screen reader.
-    <a class="qj-thumb" href="$url.entry($entry.anchor)" tabindex="-1" aria-hidden="true">#showResponsiveImage($rowImage "" "(max-width: 560px) 100vw, 10rem" "qj-thumb-img")</a>
+    ## Hidden from a screen reader: the title beside it is the link a reader
+    ## uses, so the picture is one more way in for a pointer only. It still
+    ## carries alt text (the image's own, else the post title): an empty alt
+    ## is what search engines report as "image missing alt text".
+    <a class="qj-thumb" href="$url.entry($entry.anchor)" tabindex="-1" aria-hidden="true">#showResponsiveImage($rowImage $utils.pictureAlt($rowImage, $entry.title) "(max-width: 560px) 100vw, 10rem" "qj-thumb-img")</a>
     #end
 </article>
 #end
