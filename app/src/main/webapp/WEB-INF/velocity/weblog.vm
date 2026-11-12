@@ -403,6 +403,22 @@ caller passes nothing and gets no og:image on such a view, as before.
     $seoTypedJson
     </script>
         #end
+        ## Where the post sits: site front page, blog, category, post, as a
+        ## BreadcrumbList. Finished, escaped JSON from BreadcrumbJsonLd, so
+        ## the values go over RAW: the post is named by its own title (stored
+        ## HTML-escaped, hence the unescape), not by its search title. Reset
+        ## first: a #set to null keeps the old value.
+        #set($seoCrumbUrl = $seoCanonicalArg)
+        #if ($utils.isEmpty($seoCrumbUrl))
+            #set($seoCrumbUrl = $seoEntry.permalink)
+        #end
+        #set($seoCrumbsJson = false)
+        #set($seoCrumbsJson = $utils.breadcrumbJsonLd($seoEntry.pojo, $utils.unescapeHTML($seoEntry.pojo.title), $seoCrumbUrl, $text.get("discovery.frontPage")))
+        #if ($seoCrumbsJson)
+    <script type="application/ld+json">
+    $seoCrumbsJson
+    </script>
+        #end
     #elseif (!$model.searchResults)
     <script type="application/ld+json">
     {
@@ -2277,6 +2293,29 @@ Show next/prev pager for search results.
   #end
 
 #end
+
+
+
+
+#**
+ The two pieces of a post page's byline the article themes share (0.9.1). Each
+ theme lays out its own line and keeps printing the publication date itself.
+
+ showEntryAuthor: "By <display name>" in span.entry-author; nothing when the
+ author has no display name.
+
+ showEntryUpdated: "Updated <date>" in time.entry-updated, with the calendar
+ day as its datetime, and ONLY when the post was last saved on a later
+ calendar day than it was published, as the blog's time zone counts days
+ (UtilitiesModel.updatedOnLaterDay). Saving a post restamps its update time,
+ so a same-day correction shows nothing.
+
+ The optional second argument is printed after the author and before the
+ updated date when there is one, for a theme that separates the parts of
+ its line with a mark: a separator with nothing beside it never shows.
+*#
+#macro(showEntryAuthor $emEntry $emTrail="")#set($emAuthor = false)#set($emAuthor = $emEntry.creator.screenName)#if($utils.isNotEmpty($emAuthor))<span class="entry-author">$text.get("entryMeta.by", [$utils.escapeHTML($emAuthor)])</span>$emTrail#end#end
+#macro(showEntryUpdated $emEntry $emLead="")#if($utils.updatedOnLaterDay($emEntry.pubTime, $emEntry.updateTime))$emLead<time class="entry-updated" datetime="$utils.formatIso8601Day($emEntry.updateTime)">$text.get("entryMeta.updated", [$utils.formatDate($emEntry.updateTime, "MMMM d, yyyy")])</time>#end#end
 
 
 

@@ -360,6 +360,16 @@ body.pf a:hover {
     letter-spacing: 0.05em;
 }
 
+/* Author and date under the title, in the closing meta line's voice. The
+   negative top margin takes back most of the title's bottom margin so the
+   two read as one block. */
+.pf-entry-byline {
+    margin: -.75rem 0 1.25rem;
+    color: var(--pf-muted);
+    font-size: .75rem;
+    letter-spacing: 0.08em;
+}
+
 /* A long bare URL is one unbreakable word; without this the page scrolled
    sideways at phone width. */
 .pf-entry-content {

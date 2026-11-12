@@ -31,6 +31,12 @@ import com.wikantik.pressroom.pojos.wrapper.WeblogWrapper;
 import com.wikantik.pressroom.ui.rendering.util.ParsedRequest;
 import com.wikantik.pressroom.ui.rendering.util.WeblogRequest;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import com.wikantik.pressroom.pojos.WeblogCategory;
+import com.wikantik.pressroom.pojos.WeblogEntry;
+import com.wikantik.pressroom.business.WeblogManager;
+import com.wikantik.pressroom.business.URLStrategy;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -971,5 +977,123 @@ class UtilitiesModelTest {
         assertTrue(fitted.length() <= com.wikantik.pressroom.business.seo.SeoLimits.DESCRIPTION_MAX, fitted);
         assertTrue(fitted.endsWith("chars."), fitted);
         assertNull(model().metaDescription(null));
+    }
+
+    // --- the post page's byline and breadcrumbs (0.9.1, section C) ---
+
+    @Test
+    void aPostIsUpdatedOnALaterDayAsTheWeblogsZoneCountsDays() {
+        Date published = utc("2026-03-03T12:30:00Z");
+        Date updated = utc("2026-03-03T13:30:00Z");
+
+        assertFalse(modelFor(weblog("en_US", "UTC")).updatedOnLaterDay(published, updated));
+        // Sydney passes midnight between the two
+        assertTrue(modelFor(weblog("en_US", "Australia/Sydney")).updatedOnLaterDay(published, updated));
+        assertFalse(model().updatedOnLaterDay(published, null), "a post never saved again has no later day");
+    }
+
+    @Test
+    void withoutAWeblogThereIsNoZoneAndNoUpdatedLine() throws Exception {
+        ParsedRequest plain = new ParsedRequest(mock(Weblogger.class), mock(HttpServletRequest.class)) {
+        };
+        assertFalse(modelFor(plain).updatedOnLaterDay(utc("2026-03-03T12:00:00Z"), utc("2026-03-09T12:00:00Z")));
+    }
+
+    /** A weblogger whose strategy answers with recognisable addresses. */
+    private static Weblogger breadcrumbTier(Weblog siteSpace) throws WebloggerException {
+        Weblogger weblogger = mock(Weblogger.class);
+        URLStrategy urls = mock(URLStrategy.class);
+        WeblogManager weblogs = mock(WeblogManager.class);
+        when(weblogger.getUrlStrategy()).thenReturn(urls);
+        when(weblogger.getWeblogManager()).thenReturn(weblogs);
+        when(weblogs.getSiteSpace()).thenReturn(siteSpace);
+        when(urls.getWeblogURL(any(), any(), eq(true))).thenAnswer(call ->
+                call.<Weblog>getArgument(0) == siteSpace ? "https://site.example/"
+                        : "https://site.example/" + call.<Weblog>getArgument(0).getHandle() + "/");
+        when(urls.getWeblogCollectionURL(any(), any(), anyString(), any(), any(), eq(-1), eq(true)))
+                .thenAnswer(call -> "https://site.example/testblog/category/" + call.<String>getArgument(2));
+        return weblogger;
+    }
+
+    private static WeblogEntry entryIn(Weblog blog, String category) {
+        WeblogEntry entry = new WeblogEntry();
+        entry.setWebsite(blog);
+        if (category != null) {
+            WeblogCategory cat = new WeblogCategory();
+            cat.setName(category);
+            entry.setCategory(cat);
+        }
+        return entry;
+    }
+
+    private static JsonNode trail(String json) {
+        assertNotNull(json);
+        return new ObjectMapper().readTree(json).path("itemListElement");
+    }
+
+    @Test
+    void thePostsTrailRunsSiteBlogCategoryPost() throws Exception {
+        Weblog site = weblog("en_US", "UTC");
+        Weblog blog = weblog("en_US", "UTC");
+        blog.setName("Fish & \"Chips\"");
+        WeblogRequest request = new WeblogRequest();
+        request.setWeblog(blog);
+        UtilitiesModel model = modelFor(request, breadcrumbTier(site));
+
+        JsonNode items = trail(model.breadcrumbJsonLd(
+                entryIn(blog, "Hikes"), "The </script> post", "https://site.example/testblog/entry/p", "Front page"));
+
+        assertEquals(4, items.size());
+        assertEquals("https://site.example/", items.get(0).path("item").asString());
+        assertEquals("Fish & \"Chips\"", items.get(1).path("name").asString(), "the blog's raw name, escaped once");
+        assertEquals("https://site.example/testblog/", items.get(1).path("item").asString());
+        assertEquals("Hikes", items.get(2).path("name").asString());
+        assertEquals("https://site.example/testblog/category/Hikes", items.get(2).path("item").asString());
+        assertEquals("The </script> post", items.get(3).path("name").asString());
+        assertEquals("https://site.example/testblog/entry/p", items.get(3).path("item").asString());
+    }
+
+    @Test
+    void aPostWithoutACategoryHasAShorterTrail() throws Exception {
+        Weblog blog = weblog("en_US", "UTC");
+        WeblogRequest request = new WeblogRequest();
+        request.setWeblog(blog);
+        UtilitiesModel model = modelFor(request, breadcrumbTier(weblog("en_US", "UTC")));
+
+        JsonNode items = trail(model.breadcrumbJsonLd(
+                entryIn(blog, null), "Post", "https://site.example/testblog/entry/p", "Front page"));
+
+        assertEquals(3, items.size());
+        assertEquals("Test Blog", items.get(1).path("name").asString());
+        assertEquals("Post", items.get(2).path("name").asString());
+    }
+
+    /** The site space's front page IS the site's: one step, not two. */
+    @Test
+    void aPostOfTheSiteSpaceHasNoBlogStep() throws Exception {
+        Weblog site = weblog("en_US", "UTC");
+        site.setSiteSpace(true);
+        WeblogRequest request = new WeblogRequest();
+        request.setWeblog(site);
+        UtilitiesModel model = modelFor(request, breadcrumbTier(site));
+
+        JsonNode items = trail(model.breadcrumbJsonLd(
+                entryIn(site, null), "Post", "https://site.example/entry/p", "Front page"));
+
+        assertEquals(2, items.size());
+        assertEquals("https://site.example/", items.get(0).path("item").asString());
+        assertEquals("Post", items.get(1).path("name").asString());
+    }
+
+    @Test
+    void thereIsNoTrailWithoutAPostOrWithoutTheTier() throws Exception {
+        Weblog blog = weblog("en_US", "UTC");
+        WeblogRequest request = new WeblogRequest();
+        request.setWeblog(blog);
+
+        assertNull(modelFor(request, breadcrumbTier(blog)).breadcrumbJsonLd(null, "Post", "https://x/", "Front page"));
+        assertNull(modelFor(request).breadcrumbJsonLd(entryIn(blog, "Hikes"), "Post", "https://x/", "Front page"));
+        assertNull(modelFor(request, breadcrumbTier(blog))
+                .breadcrumbJsonLd(new WeblogEntry(), "Post", "https://x/", "Front page"));
     }
 }

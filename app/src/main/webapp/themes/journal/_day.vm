@@ -26,8 +26,10 @@
         ## the post body is an h2 beneath it rather than its equal.
         <h1 class="qj-h1">$entry.title</h1>
         <p class="qj-byline">
-            <span>By $utils.escapeHTML($entry.creator.screenName)</span>
+            #showEntryAuthor($entry)
             <time class="d" datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time>
+            ## Only when the post changed on a later day (weblog.vm).
+            #showEntryUpdated($entry)
             ## Travel and portfolio have always offered this; the page cache is
             ## keyed per user (WeblogPageCache), so a reader never gets it.
             #if($utils.isUserAuthorizedToAuthor($entry.website))

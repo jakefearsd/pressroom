@@ -416,6 +416,32 @@ resolves through the index at the end of `CLAUDE.md`.
   unresolved reference. The script may contain no `$` or `#`: Velocity reads
   them (`MoreFromSiteRenderingTest` checks it reaches the page verbatim).
 
+## Post byline (author, date, "Updated")
+
+0.9.1 (spec `docs/superpowers/specs/2026-11-12-patch-0-9-1-design.md`,
+section C; `EntryMetaRenderingTest`). In journal, travel and portfolio a post
+page names the author and the publication date between the title and the
+text, once each.
+
+- **Each theme prints its own date and lays out its own line**; the shared
+  pieces are two macros in `weblog.vm`. The showEntryAuthor macro emits
+  `span.entry-author` ("By <display name>", `entryMeta.by`); the
+  showEntryUpdated macro emits `time.entry-updated` ("Updated <date>",
+  `entryMeta.updated`, `datetime` = the calendar day). Both take an optional
+  separator that is printed only when the piece is, so a mark never stands
+  alone.
+- **"Updated" shows only when the post was last saved on a later calendar day
+  than it was published, in the blog's time zone**:
+  `$utils.updatedOnLaterDay` -> `DateUtil.isLaterCalendarDay` (pure, unit
+  tested). `saveWeblogEntry` restamps `updateTime` on every save, so any
+  save on a later day counts, whatever changed; a same-day fix shows nothing.
+- Journal already had author and date (its hard-coded "By" became the
+  message key); travel had the date and gained the author; **portfolio's date
+  moved** from the closing `.pf-entry-meta` line (after the text, which now
+  holds the category and the edit link) up to a new `.pf-entry-byline` under
+  the title.
+- List pages and static pages call neither macro.
+
 ## After the article (share, Nearby, Keep reading)
 
 Spec `docs/superpowers/specs/2026-11-11-post-page-discovery-design.md`.

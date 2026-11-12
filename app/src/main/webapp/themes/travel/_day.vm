@@ -32,7 +32,11 @@
         ## the header is a paragraph on this page.
         <h1 class="tg-entry-title">$entry.title</h1>
         <p class="tg-entry-meta">
+            ## Author, date, then "Updated" only when the post changed on a
+            ## later day (both macros: weblog.vm).
+            #showEntryAuthor($entry " &middot;")
             <time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time>
+            #showEntryUpdated($entry "&middot; ")
             &middot; <a href="$url.category($entry.category.name)">$utils.escapeHTML($entry.category.name)</a>
             #if($utils.isUserAuthorizedToAuthor($entry.website))
             &middot; <a href="$url.editEntry($entry.anchor)">$text.get("generic.edit")</a>

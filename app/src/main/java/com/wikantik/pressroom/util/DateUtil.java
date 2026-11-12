@@ -20,6 +20,8 @@ package com.wikantik.pressroom.util;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
@@ -278,6 +280,23 @@ public abstract class DateUtil {
     }
     
     
+    /**
+     * Whether {@code second} falls on a later calendar day than {@code first}
+     * as a reader in {@code zone} counts days. The clock time between them is
+     * irrelevant: 23:59 and 00:01 are a day apart, 00:01 and 23:59 are not.
+     * A missing date or zone is never "later": the caller shows an extra line
+     * on true, and an unknown must not show it.
+     */
+    public static boolean isLaterCalendarDay(Date first, Date second, TimeZone zone) {
+        if (first == null || second == null || zone == null) {
+            return false;
+        }
+        ZoneId zoneId = zone.toZoneId();
+        // Instant.ofEpochMilli, not Date.toInstant: java.sql.Date refuses that call.
+        return Instant.ofEpochMilli(second.getTime()).atZone(zoneId).toLocalDate()
+                .isAfter(Instant.ofEpochMilli(first.getTime()).atZone(zoneId).toLocalDate());
+    }
+
     /**
      * Returns a java.sql.Timestamp equal to the current time
      **/

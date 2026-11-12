@@ -38,10 +38,18 @@
             ## The reading view's own title is the page's h1; the weblog
             ## name in the header is a paragraph on this page.
             <h1 class="pf-entry-title">$entry.title</h1>
+            ## Who and when, under the title (0.9.1): the date moved up
+            ## here from the closing meta line, which keeps the category.
+            ## "Updated" only when the post changed on a later day (both
+            ## macros: weblog.vm).
+            <p class="pf-entry-byline">
+                #showEntryAuthor($entry " &middot;")
+                <time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time>
+                #showEntryUpdated($entry "&middot; ")
+            </p>
             <div class="pf-entry-content">$entry.displayContent</div>
             <p class="pf-entry-meta">
-                <time datetime="$utils.formatIso8601Day($entry.pubTime)">$utils.formatDate($entry.pubTime, "MMMM d, yyyy")</time>
-                &middot; <a href="$url.category($entry.category.name)">$utils.escapeHTML($entry.category.name)</a>
+                <a href="$url.category($entry.category.name)">$utils.escapeHTML($entry.category.name)</a>
                 #if($utils.isUserAuthorizedToAuthor($entry.website))
                 &middot; <a href="$url.editEntry($entry.anchor)">$text.get("generic.edit")</a>
                 #end

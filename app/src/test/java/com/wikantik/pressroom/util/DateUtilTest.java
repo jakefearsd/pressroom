@@ -386,6 +386,63 @@ public class DateUtilTest {
         }
     }
 
+    /** Spec 2026-11-12 (0.9.1), criterion 11: the "Updated" line's decision. */
+    @Nested
+    class LaterCalendarDay {
+
+        @Test
+        public void aLaterDayInTheZoneIsLater() {
+            assertTrue(DateUtil.isLaterCalendarDay(
+                    dateIn(UTC, 2026, Calendar.MARCH, 3, 9, 0, 0, 0),
+                    dateIn(UTC, 2026, Calendar.MARCH, 4, 0, 0, 1, 0), UTC));
+        }
+
+        @Test
+        public void theSameDayIsNotLaterHoweverManyHoursApart() {
+            assertFalse(DateUtil.isLaterCalendarDay(
+                    dateIn(UTC, 2026, Calendar.MARCH, 3, 0, 0, 0, 0),
+                    dateIn(UTC, 2026, Calendar.MARCH, 3, 23, 59, 59, 999), UTC));
+        }
+
+        @Test
+        public void theDayIsTheZonesNotUtcs() {
+            // One UTC day, but Sydney (UTC+11 in March) passes midnight
+            // between the two: 23:30 on the 3rd and 00:30 on the 4th.
+            Date before = dateIn(UTC, 2026, Calendar.MARCH, 3, 12, 30, 0, 0);
+            Date after = dateIn(UTC, 2026, Calendar.MARCH, 3, 13, 30, 0, 0);
+            assertFalse(DateUtil.isLaterCalendarDay(before, after, UTC));
+            assertTrue(DateUtil.isLaterCalendarDay(before, after, SYDNEY));
+            // and the reverse: two UTC days, one Sydney day
+            Date lateUtc = dateIn(UTC, 2026, Calendar.MARCH, 3, 23, 0, 0, 0);
+            Date nextUtc = dateIn(UTC, 2026, Calendar.MARCH, 4, 1, 0, 0, 0);
+            assertTrue(DateUtil.isLaterCalendarDay(lateUtc, nextUtc, UTC));
+            assertFalse(DateUtil.isLaterCalendarDay(lateUtc, nextUtc, SYDNEY));
+        }
+
+        @Test
+        public void anEarlierDayIsNotLater() {
+            assertFalse(DateUtil.isLaterCalendarDay(
+                    dateIn(UTC, 2026, Calendar.MARCH, 4, 9, 0, 0, 0),
+                    dateIn(UTC, 2026, Calendar.MARCH, 3, 9, 0, 0, 0), UTC));
+        }
+
+        @Test
+        public void aSqlTimestampIsADateLikeAnyOther() {
+            assertTrue(DateUtil.isLaterCalendarDay(
+                    new java.sql.Timestamp(dateIn(UTC, 2026, Calendar.MARCH, 3, 9, 0, 0, 0).getTime()),
+                    new java.sql.Timestamp(dateIn(UTC, 2026, Calendar.MARCH, 9, 9, 0, 0, 0).getTime()), UTC));
+        }
+
+        @Test
+        public void aMissingDateOrZoneIsNeverLater() {
+            Date day = dateIn(UTC, 2026, Calendar.MARCH, 3, 9, 0, 0, 0);
+            Date next = dateIn(UTC, 2026, Calendar.MARCH, 4, 9, 0, 0, 0);
+            assertFalse(DateUtil.isLaterCalendarDay(null, next, UTC));
+            assertFalse(DateUtil.isLaterCalendarDay(day, null, UTC));
+            assertFalse(DateUtil.isLaterCalendarDay(day, next, null));
+        }
+    }
+
     @Test
     public void nowReturnsTheCurrentTimeAsASqlTimestamp() {
         long before = System.currentTimeMillis();

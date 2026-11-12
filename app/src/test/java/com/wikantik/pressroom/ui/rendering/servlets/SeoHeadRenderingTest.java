@@ -175,18 +175,35 @@ class SeoHeadRenderingTest {
         List<String> sources = new ArrayList<>();
         Matcher matcher = LD_JSON.matcher(body);
         while (matcher.find()) {
-            sources.add(matcher.group(1));
+            if (!isBreadcrumbs(matcher.group(1))) {
+                sources.add(matcher.group(1));
+            }
         }
         return sources;
     }
 
-    /** Extract every ld+json block and JSON-parse it; parse failure fails the test. */
+    /**
+     * A post page's BreadcrumbList (0.9.1) is a block of its own after the
+     * ones these tests are about, and {@code EntryMetaRenderingTest} owns it:
+     * leaving it out here keeps "exactly one block" and "BlogPosting plus the
+     * typed object" meaning what they always meant.
+     */
+    private static boolean isBreadcrumbs(String block) {
+        return block.contains("\"@type\":\"BreadcrumbList\"");
+    }
+
+    /**
+     * Extract every ld+json block but the breadcrumbs and JSON-parse it; parse
+     * failure fails the test.
+     */
     private static List<JsonNode> ldJsonBlocks(String body) {
         List<JsonNode> nodes = new ArrayList<>();
         Matcher matcher = LD_JSON.matcher(body);
         ObjectMapper mapper = new ObjectMapper();
         while (matcher.find()) {
-            nodes.add(mapper.readTree(matcher.group(1)));
+            if (!isBreadcrumbs(matcher.group(1))) {
+                nodes.add(mapper.readTree(matcher.group(1)));
+            }
         }
         return nodes;
     }

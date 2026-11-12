@@ -19,6 +19,7 @@
 package com.wikantik.pressroom.ui.rendering.model;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,10 +37,13 @@ import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.BookingLink;
 import com.wikantik.pressroom.business.Weblogger;
+import com.wikantik.pressroom.business.URLStrategy;
+import com.wikantik.pressroom.business.jsonld.BreadcrumbJsonLd;
 import com.wikantik.pressroom.business.jsonld.BusinessJsonLd;
 import com.wikantik.pressroom.business.jsonld.EntryJsonLd;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.JsonLdType;
+import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.wrapper.MediaFileWrapper;
 import com.wikantik.pressroom.pojos.wrapper.WeblogWrapper;
@@ -255,6 +259,17 @@ public class UtilitiesModel implements Model {
     }
     
     /**
+     * Whether a post published at {@code published} and last saved at
+     * {@code updated} was changed on a later calendar day, as the weblog's
+     * time zone counts days: the test for the post page's "Updated" line
+     * (the showEntryUpdated macro in weblog.vm).
+     */
+    public boolean updatedOnLaterDay(Date published, Date updated) {
+        return weblog != null
+                && DateUtil.isLaterCalendarDay(published, updated, weblog.getTimeZoneInstance());
+    }
+
+    /**
      * Return a date in RFC-822 format.
      */
     public String formatRfc822Date(Date date) {
@@ -427,6 +442,43 @@ public class UtilitiesModel implements Model {
         return BusinessJsonLd.forWeblog(w,
                 weblogger.getUrlStrategy().getWeblogURL(w, null, true),
                 WebloggerRuntimeConfig.getAbsoluteContextURL());
+    }
+
+    /**
+     * The finished {@code BreadcrumbList} JSON for a post page, or null when
+     * there is no trail to state: the site's front page, the post's blog
+     * (left out for a post of the site space, whose front page that is), its
+     * category, the post. Addresses are absolute and come from the url
+     * strategy, so they hold at any context path and on a custom domain.
+     *
+     * <p>Everything is handed to {@link BreadcrumbJsonLd} RAW and escaped
+     * there once -- {@code entryName} is the macro's plain resolved title,
+     * never the stored (HTML-escaped) one.
+     *
+     * @param entryName  the post's plain-text name
+     * @param entryUrl   the post's canonical address
+     * @param homeLabel  what to call the front page when the site has no name
+     */
+    public String breadcrumbJsonLd(WeblogEntry entry, String entryName, String entryUrl, String homeLabel) {
+        Weblog blog = entry == null ? null : entry.getWebsite();
+        if (blog == null || weblogger == null) {
+            return null;
+        }
+        URLStrategy urls = weblogger.getUrlStrategy();
+        List<BreadcrumbJsonLd.Crumb> trail = new ArrayList<>();
+        trail.add(new BreadcrumbJsonLd.Crumb(
+                StringUtils.defaultIfBlank(WebloggerRuntimeConfig.getProperty("site.name"), homeLabel),
+                DiscoveryModel.siteHomeUrl(weblogger, urls)));
+        if (!blog.isSiteSpace()) {
+            trail.add(new BreadcrumbJsonLd.Crumb(blog.getName(), urls.getWeblogURL(blog, null, true)));
+        }
+        WeblogCategory category = entry.getCategory();
+        if (category != null && StringUtils.isNotBlank(category.getName())) {
+            trail.add(new BreadcrumbJsonLd.Crumb(category.getName(),
+                    urls.getWeblogCollectionURL(blog, null, category.getName(), null, null, -1, true)));
+        }
+        trail.add(new BreadcrumbJsonLd.Crumb(entryName, entryUrl));
+        return BreadcrumbJsonLd.build(trail);
     }
 
     /** The business as a JSON object for BlogPosting.publisher, or null. */

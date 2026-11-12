@@ -158,6 +158,11 @@ public class DiscoveryModel implements Model {
      * looked up) the root is still the absolute context url.
      */
     public String getHomeUrl() {
+        return siteHomeUrl(weblogger, urlStrategy);
+    }
+
+    /** {@link #getHomeUrl} for a model that holds the tier but is not this one. */
+    static String siteHomeUrl(Weblogger weblogger, URLStrategy urlStrategy) {
         Weblog site = null;
         try {
             site = weblogger.getWeblogManager().getSiteSpace();

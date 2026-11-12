@@ -188,8 +188,9 @@ class EditorSeoIT extends PressroomIT {
         assertHeadContains(page, permalink, "\"description\":\"" + metaDescription + "\"");
         // and the block the permalink has always had is still there
         assertHeadContains(page, permalink, "\"@type\": \"BlogPosting\"");
-        assertTrue(headOf(page).split("application/ld\\+json", -1).length - 1 == 2,
-                "the head must carry both JSON-LD blocks. Head was:\n" + headOf(page));
+        // BlogPosting, the typed object, and the post page's BreadcrumbList (0.9.1)
+        assertTrue(headOf(page).split("application/ld\\+json", -1).length - 1 == 3,
+                "the head must carry all three JSON-LD blocks. Head was:\n" + headOf(page));
     }
 
     /**

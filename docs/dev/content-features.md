@@ -122,6 +122,28 @@ resolves through the index at the end of `CLAUDE.md`.
   flush. Unit-tested only (`BusinessManagerTest`, `BusinessesControllerTest`):
   `BusinessProfileIT` does not cover cache expiry.
 
+### Breadcrumbs (0.9.1)
+
+Every post page emits one more `application/ld+json` block after the article
+block (and the typed one, when there is one): a `BreadcrumbList` of the site
+front page, the blog, the post's category, the post. The showSeoHead macro
+calls `$utils.breadcrumbJsonLd`, which collects the steps and hands them RAW
+to `BreadcrumbJsonLd` (`business/jsonld`); `JsonLdWriter` is the one escape,
+so a title with a quote or `</script>` stays inside its string.
+
+- Addresses are absolute and come from the url strategy (context path and
+  custom domains hold). The front page is `DiscoveryModel.siteHomeUrl`, named
+  by `site.name` (else "Front page"); the last step is the page's canonical
+  URL, else the permalink.
+- The post is named by its own title (unescaped from storage), not its SEO
+  meta title.
+- A step with no name or address is dropped, as is a step at the same address
+  as the one before it; a post of the site space has no blog step; fewer than
+  two steps emit nothing.
+- A test that counts a permalink's ld+json blocks must allow for this one
+  (`SeoHeadRenderingTest.isBreadcrumbs`, `EditorSeoIT` expects three).
+- Not on list pages, static pages or search results.
+
 ## Travel (Stage 2 Wave 3)
 - Three shortcodes in `business/shortcodes`, registered in
   `ShortcodeExpander.builtIn(...)` like `[image]`/`[gallery]`: `[map]` with
