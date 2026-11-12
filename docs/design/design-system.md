@@ -73,6 +73,31 @@ why. Two are on the record:
 3. EMPTY STATES AS INVITATIONS: icon-free; one 16px 600 line ("No entries yet."), one --ink-soft sentence ("Your first post starts the archive."), one primary button ("Write an entry"). Never a bare table strip.
 4. WEIGHT, NOT SIZE: a page gets at most one piece of *layout* hierarchy allowed to sit outside the type scale (an entry title, a card's lead field) — everything else that needs emphasis reaches for font-weight (600, against 450 body) rather than a bigger size. The editor's title field is the canonical example: 26px serif, the one oversized element on the page, capped there on purpose; every other "this matters" cue on the same page — status pill, rail group labels, drawer headers — stays on-scale and leans on weight/color instead. Adding a second oversized element to compete with the title is the mistake this rule exists to block.
 
+## Sharing (reader pages, 2026-11-11)
+
+A post ends with one quiet row that lets a reader who already wants to pass it
+on do so in one click. Readers who use social networks may help us; we do not
+build, write or title anything for a social feed.
+
+- **Allowed:** one text row after the article (the showAfterEntry macro):
+  copy link, email, and plain links to a network's own share page, opened by
+  the reader's click; the device's share sheet where the browser has one.
+  Words, not icons; the page's own ink, not brand colours; the caps-label
+  role for "Share".
+- **Not allowed, in any theme:** third-party scripts, pixels, iframes or
+  embedded buttons; share or like counts; floating, sticky or slide-in bars;
+  pop-ups or prompts to share or follow; tracking parameters on the shared
+  address; pull quotes made to be posted; a second share row above the
+  article.
+- **Content stays written for the reader and for search.** No headline,
+  picture crop or summary is chosen for how it plays in a feed. The social
+  card (`og:` tags) describes the page as it is.
+- Adding a network is a link in the macro. Removing one that nobody uses is
+  the expected direction: the row's clicks are named for analytics
+  (`data-umami-event="share"`), so usage is measured, not assumed.
+- Unrelated to the tokened "share links" for drafts and media folders removed
+  in V020: those stay removed.
+
 ## Card format (every file)
 
 - First line EXACTLY: <!-- @dsCard group="GROUP" name="NAME" subtitle="SUBTITLE" -->

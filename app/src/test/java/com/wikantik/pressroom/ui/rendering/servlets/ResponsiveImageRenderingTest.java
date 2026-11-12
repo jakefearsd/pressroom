@@ -161,7 +161,8 @@ class ResponsiveImageRenderingTest {
                 "the img itself must carry the ladder srcset:\n" + body);
         assertTrue(body.contains(" width=\"500\" height=\"373\""),
                 "intrinsic dimensions must be declared to prevent layout shift:\n" + body);
-        assertTrue(body.contains(" loading=\"lazy\" decoding=\"async\""), body);
+        assertTrue(body.contains(" loading=\"eager\" fetchpriority=\"high\" decoding=\"async\""),
+                "the post hero is the largest paint, so it is not lazy:\n" + body);
         assertTrue(body.contains(" class=\"tg-hero-img\""),
                 "the permalink slot is the full-width hero:\n" + body);
         assertTrue(body.contains(" data-blurhash=\""),

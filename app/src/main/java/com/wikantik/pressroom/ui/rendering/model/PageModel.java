@@ -78,6 +78,7 @@ public class PageModel implements Model {
     private URLStrategy urlStrategy = null;
     private Map<String, String[]> requestParameters = null;
     private Weblog weblog = null;
+    private FurtherReading furtherReading = null;
 
     /**
      * The business-tier facade, handed in through {@code initData} by the
@@ -249,6 +250,28 @@ public class PageModel implements Model {
     }
     
     
+    /**
+     * The same blog's nearest and most related posts, for the post being
+     * displayed; both lists empty on any other page. Built once per render.
+     * A failed read costs the page these two sections, never the post: it is
+     * logged and the lists are empty.
+     */
+    public FurtherReading getFurtherReading() {
+        if (furtherReading == null) {
+            furtherReading = FurtherReading.NONE;
+            WeblogEntry entry = pageRequest.getWeblogEntry();
+            if (entry != null) {
+                try {
+                    furtherReading = FurtherReading.of(entry, urlStrategy, weblogger);
+                } catch (WebloggerException e) {
+                    log.error("ERROR: picking further reading for entry {}", entry.getId(), e);
+                }
+            }
+        }
+        return furtherReading;
+    }
+
+
     /**
      * The static page being rendered, or null on every other weblog view.
      *

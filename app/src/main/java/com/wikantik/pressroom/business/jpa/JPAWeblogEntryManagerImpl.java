@@ -1548,6 +1548,30 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         return counts;
     }
 
+    /**
+     * @inheritDoc
+     */
+    @Override
+    public Map<String, Long> getSharedTagCounts(WeblogEntry entry) throws WebloggerException {
+        List<String> names = entry.getTags().stream().map(WeblogEntryTag::getName).toList();
+        if (names.isEmpty()) {
+            return Map.of();
+        }
+        List<Object[]> rows = strategy.getDynamicQuery(SHARED_TAG_COUNTS, Object[].class)
+                .setParameter(1, entry.getWebsite())
+                .setParameter(2, names)
+                .getResultList();
+        Map<String, Long> counts = new HashMap<>();
+        for (Object[] columns : rows) {
+            counts.put((String) columns[0], ((Number) columns[1]).longValue());
+        }
+        return counts;
+    }
+
+    private static final String SHARED_TAG_COUNTS =
+            "SELECT t.weblogEntry.id, COUNT(t) FROM WeblogEntryTag t"
+            + " WHERE t.weblog = ?1 AND t.name IN ?2 GROUP BY t.weblogEntry.id";
+
     private static final String PUBLISHED_ENTRY_COUNTS =
             "SELECT e.website.id, COUNT(e) FROM WeblogEntry e WHERE e.status = ?1 GROUP BY e.website.id";
 

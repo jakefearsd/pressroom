@@ -2304,6 +2304,139 @@ the unsubscribe link.
 
 
 #**
+What a post page offers after the article, in this order: the share row,
+"Nearby" (a post with coordinates: the same blog's nearest posts) and "Keep
+reading" (the same blog's most related posts). Each article theme's
+permalink.vm calls it between the entries pager and the comments macro:
+    the showAfterEntry macro, with $model.weblogEntry
+
+The picks are $model.furtherReading (FurtherReading, RelatedPicker); a post
+shown under Nearby is not repeated under Keep reading, and a section with
+nothing in it is not rendered. Spec:
+docs/superpowers/specs/2026-11-11-post-page-discovery-design.md.
+
+Sharing is for a reader who already wants to pass the post on, and stays
+that small (docs/design/design-system.md, "Sharing"): plain links to each
+network's own share page, opened by the reader's click. No third-party
+script, image or frame, no counts, no icons, nothing sticky, no tracking
+parameter on the shared address. Two buttons are hidden in the markup and
+shown by the script only where the browser can do the work: the device's own
+share sheet (navigator.share) and copy to clipboard. Pinterest needs a
+picture, so it appears only with a featured image.
+
+Encoding: the address and title go through $utils.encodeComponent (a space
+is %20, which mailto needs); the title is stored HTML-escaped, so it is
+unescaped first, or an ampersand would travel as "&amp;". Titles in the
+lists are emitted bare, as everywhere.
+
+The style block is self-contained (currentColor and color-mix, no theme
+token, no hex colour), so no theme stylesheet carries a rule for it and a
+theme forked before this macro existed cannot show it unstyled. The class
+names (entry-share, entry-more, entry-nearby, entry-related, entry-more-title)
+are pinned by AfterEntryRenderingTest: restyle through them, never by
+renaming them. The data-umami-event attributes name the click for the
+analytics script when a blog has one; they do nothing otherwise.
+*#
+#macro(showAfterEntry $aeEntry)
+#if($aeEntry)
+#set($aeUrl = $utils.encodeComponent($aeEntry.permalink))
+#set($aeTitle = $utils.encodeComponent($utils.unescapeHTML($aeEntry.title)))
+#set($aeReading = $model.furtherReading)
+<style>
+.entry-share { display: flex; flex-wrap: wrap; align-items: baseline; gap: .375rem 1.125rem; margin: 2rem 0 0; padding: .875rem 0 0; border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent); font-size: .875rem; }
+.entry-share .entry-share-label, .entry-more .entry-more-label { margin: 0; font-size: .75rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: color-mix(in srgb, currentColor 70%, transparent); }
+.entry-share a, .entry-share button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: .2em; }
+.entry-share a:hover, .entry-share button:hover { text-decoration-color: currentColor; }
+.entry-share [hidden] { display: none; }
+.entry-more { margin: 2rem 0 0; padding: 1rem 0 0; border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent); }
+.entry-more .entry-more-list { list-style: none; margin: .875rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: 1.25rem; }
+.entry-more .entry-more-item { display: flex; flex-direction: column; gap: .375rem; min-width: 0; margin: 0; padding: 0; }
+.entry-more .entry-more-media { display: block; aspect-ratio: 3 / 2; overflow: hidden; border-radius: 6px; background: color-mix(in srgb, currentColor 6%, transparent); }
+.entry-more .entry-more-img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.entry-more .entry-more-title { color: inherit; font-size: 1rem; font-weight: 600; line-height: 1.3; text-decoration: none; overflow-wrap: anywhere; }
+.entry-more .entry-more-title:hover { text-decoration: underline; }
+.entry-more .entry-more-meta { font-size: .8125rem; color: color-mix(in srgb, currentColor 70%, transparent); }
+</style>
+<nav class="entry-share" aria-label="$text.get("afterEntry.share")" data-url="$utils.escapeHTML($aeEntry.permalink)" data-title="$aeEntry.title">
+    <span class="entry-share-label" aria-hidden="true">$text.get("afterEntry.share")</span>
+    <button type="button" class="entry-share-copy" hidden data-copied="$text.get("afterEntry.share.copied")" data-umami-event="share" data-umami-event-via="copy">$text.get("afterEntry.share.copy")</button>
+    <a href="mailto:?subject=${aeTitle}&amp;body=${aeUrl}" data-umami-event="share" data-umami-event-via="email">$text.get("afterEntry.share.email")</a>
+    <a href="https://www.facebook.com/sharer/sharer.php?u=${aeUrl}" target="_blank" rel="noopener" data-umami-event="share" data-umami-event-via="facebook">Facebook</a>
+    <a href="https://twitter.com/intent/tweet?url=${aeUrl}&amp;text=${aeTitle}" target="_blank" rel="noopener" data-umami-event="share" data-umami-event-via="x">X</a>
+    <a href="https://www.linkedin.com/sharing/share-offsite/?url=${aeUrl}" target="_blank" rel="noopener" data-umami-event="share" data-umami-event-via="linkedin">LinkedIn</a>
+#if($aeEntry.featuredImage)
+    <a href="https://www.pinterest.com/pin/create/button/?url=${aeUrl}&amp;media=$utils.encodeComponent($aeEntry.featuredImage.permalink)&amp;description=${aeTitle}" target="_blank" rel="noopener" data-umami-event="share" data-umami-event-via="pinterest">Pinterest</a>
+#end
+    <button type="button" class="entry-share-native" hidden data-umami-event="share" data-umami-event-via="device">$text.get("afterEntry.share.device")</button>
+</nav>
+<script>
+(function () {
+  var row = document.querySelector('.entry-share');
+  if (!row) { return; }
+  var address = row.getAttribute('data-url');
+  var title = row.getAttribute('data-title');
+  var device = row.querySelector('.entry-share-native');
+  if (device && navigator.share) {
+    device.hidden = false;
+    device.addEventListener('click', function () {
+      navigator.share({ title: title, url: address }).catch(function () {});
+    });
+  }
+  var copy = row.querySelector('.entry-share-copy');
+  if (copy && navigator.clipboard && navigator.clipboard.writeText) {
+    copy.hidden = false;
+    copy.addEventListener('click', function () {
+      navigator.clipboard.writeText(address).then(function () {
+        var label = copy.textContent;
+        copy.textContent = copy.getAttribute('data-copied');
+        setTimeout(function () { copy.textContent = label; }, 2000);
+      }).catch(function () {});
+    });
+  }
+})();
+</script>
+#if(!$aeReading.nearby.isEmpty())
+<section class="entry-more entry-nearby" aria-labelledby="entry-nearby-label">
+    <h2 class="entry-more-label" id="entry-nearby-label">$text.get("afterEntry.nearby")</h2>
+    <ul class="entry-more-list">
+#foreach($aeNear in $aeReading.nearby)
+#set($aePost = $aeNear.entry)
+        <li class="entry-more-item">
+#aeMedia($aePost)
+            <a class="entry-more-title" href="$url.entry($aePost.anchor)" data-umami-event="nearby">$aePost.title</a>
+            <span class="entry-more-meta">#if($aeNear.distance < 1)#if($aeNear.miles)$text.get("afterEntry.miUnder")#else$text.get("afterEntry.kmUnder")#end#elseif($aeNear.miles)$text.get("afterEntry.mi", [$aeNear.distance])#else$text.get("afterEntry.km", [$aeNear.distance])#end</span>
+        </li>
+#end
+    </ul>
+</section>
+#end
+#if(!$aeReading.related.isEmpty())
+<section class="entry-more entry-related" aria-labelledby="entry-related-label">
+    <h2 class="entry-more-label" id="entry-related-label">$text.get("afterEntry.related")</h2>
+    <ul class="entry-more-list">
+#foreach($aePost in $aeReading.related)
+        <li class="entry-more-item">
+#aeMedia($aePost)
+            <a class="entry-more-title" href="$url.entry($aePost.anchor)" data-umami-event="keep-reading">$aePost.title</a>
+            <span class="entry-more-meta">$utils.escapeHTML($aePost.category.name)</span>
+        </li>
+#end
+    </ul>
+</section>
+#end
+#end
+#end
+
+## A list item's picture, linking to the post; decorative beside the title
+## link, so it is out of the tab order and hidden from assistive technology.
+#macro(aeMedia $aeMediaPost)
+#if($aeMediaPost.featuredImage)
+            <a class="entry-more-media" href="$url.entry($aeMediaPost.anchor)" tabindex="-1" aria-hidden="true">#showResponsiveImage($aeMediaPost.featuredImage $utils.pictureAlt($aeMediaPost.featuredImage, $aeMediaPost.title) "(max-width: 640px) 100vw, 18rem" "entry-more-img")</a>
+#end
+#end
+
+
+#**
 The comments section of an entry page. Each bundled theme's permalink.vm
 calls it under the entry:
     #showComments($model.weblog $model.weblogEntry)

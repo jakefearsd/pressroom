@@ -46,7 +46,8 @@ footer (site pages, directory, colophon).
 - **The lead picture loads eagerly** (`#fdMedia(... true)` passes the
   `showResponsiveImage` macro's optional `$eager`: `loading="eager"
   fetchpriority="high"`): it is the page's likely Largest Contentful Paint.
-  Every other picture on the page, and every theme's, stays lazy.
+  Every other picture on the page stays lazy; a theme's post hero is the
+  other eager one (themes-and-templates.md, "After the article").
 - **Excerpts and reading times** come from `EntryRenderer.cachedOpening` /
   `cachedPlainText`, kept in the entry-HTML cache beside the text
   (themes-and-templates.md), not re-read out of each post's HTML per render.

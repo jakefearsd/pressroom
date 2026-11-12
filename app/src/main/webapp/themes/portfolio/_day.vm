@@ -29,7 +29,9 @@
         ## single escape lands on the plain text.
             #set($heroAlt = $utils.unescapeHTML($entry.title))
             #if($utils.isNotEmpty($entry.featuredImage.altText))#set($heroAlt = $entry.featuredImage.altText)#end
-            #showResponsiveImage($entry.featuredImage $heroAlt "100vw" "pf-hero-img")
+            ## Eager: the hero is the post page's largest paint, and a lazy one
+            ## waits for layout before it is even requested.
+            #showResponsiveImage($entry.featuredImage $heroAlt "100vw" "pf-hero-img" true)
         </figure>
         #end
         <div class="pf-entry-body">

@@ -487,6 +487,16 @@ class UtilitiesModelTest {
     }
 
     @Test
+    void encodeComponentUsesPercentTwentyForASpace() {
+        UtilitiesModel model = model();
+        // A mail program shows '+' as a plus sign: a mailto subject and a
+        // share link's parameter need %20 (the showAfterEntry macro).
+        assertEquals("Tom%20%26%20Jerry%2Fc", model.encodeComponent("Tom & Jerry/c"));
+        assertEquals("1%2B1", model.encodeComponent("1+1"), "a real plus stays a plus");
+        assertNull(model.encodeComponent(null), "encodeComponent(null) must return null");
+    }
+
+    @Test
     void hexEncodeObfuscatesTextAndLeavesNullAndEmptyAlone() {
         UtilitiesModel model = model();
         assertEquals("%61%62", model.hexEncode("ab"),

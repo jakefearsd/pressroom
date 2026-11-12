@@ -44,6 +44,9 @@
     #set($pager = $model.getWeblogEntriesPager())
     #showWeblogEntriesPager($pager)
 
+    ## Share row, Nearby and Keep reading (weblog.vm documents the macro).
+    #showAfterEntry($model.weblogEntry)
+
     #showComments($model.weblog $model.weblogEntry)
 
     ## Journal's reading-view steps: each neighbour on its own line with its

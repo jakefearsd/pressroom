@@ -574,6 +574,16 @@ public class UtilitiesModel implements Model {
     }
     
     /**
+     * URL encoding for one component of a link a reader's own program opens
+     * (a {@code mailto:} subject, a share link's parameter): as
+     * {@link #encode(String)}, with a space as {@code %20}. A {@code +} is a
+     * space only in form encoding; a mail program shows it as a plus sign.
+     */
+    public final String encodeComponent(String s) {
+        return s == null ? null : URLUtilities.encode(s).replace("+", "%20");
+    }
+
+    /**
      * URL decoding.
      * @param s a URL-encoded string to be URL-decoded
      * @return URL decoded value of s using character encoding UTF-8; null if s is null.

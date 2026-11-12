@@ -348,6 +348,14 @@ public interface WeblogEntryManager {
     Map<String, Long> getPublishedEntryCounts() throws WebloggerException;
 
     /**
+     * How many of an entry's tags each other entry of its weblog carries:
+     * entry id to count, in one grouped query, for ranking the posts related
+     * to it. An entry sharing no tag is absent; the entry itself is present
+     * (it shares all of its own). Empty, with no query, for an untagged entry.
+     */
+    Map<String, Long> getSharedTagCounts(WeblogEntry entry) throws WebloggerException;
+
+    /**
      * Locks an entry's row until the current unit of work commits or rolls
      * back, and returns its text as last committed. A save of the entry in
      * flight in another transaction is waited for, and its text is what this

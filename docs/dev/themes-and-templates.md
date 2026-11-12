@@ -416,6 +416,40 @@ resolves through the index at the end of `CLAUDE.md`.
   unresolved reference. The script may contain no `$` or `#`: Velocity reads
   them (`MoreFromSiteRenderingTest` checks it reaches the page verbatim).
 
+## After the article (share, Nearby, Keep reading)
+
+Spec `docs/superpowers/specs/2026-11-11-post-page-discovery-design.md`.
+
+- Each article theme's `permalink.vm` calls the showAfterEntry macro
+  (`weblog.vm`) between the entries pager and the comments macro:
+  `nav.entry-share`, then `section.entry-more.entry-nearby`, then
+  `section.entry-more.entry-related`. Preview and static pages do not call
+  it. `AfterEntryRenderingTest` pins the class names and renders all three
+  themes.
+- **The picks** are `$model.furtherReading` (`FurtherReading`, built once per
+  render): the blog's newest 200 published posts are the candidates
+  (one query) and `WeblogEntryManager.getSharedTagCounts` gives the tag
+  overlap (one grouped query), so the cost does not grow with the blog.
+  `RelatedPicker` is pure: Nearby is the nearest 3 posts with coordinates
+  within 80 km (miles for a blog whose locale country is US, GB, LR or MM);
+  Keep reading is 3 posts by 2 points per shared tag + 3 for the same
+  category, newest first among equals, so the newest posts fill the list on
+  an untagged blog. A post under Nearby is not repeated.
+- **Freshness** is the page cache's: a post page re-renders when
+  `weblog.lastModified` moves or the discovery generation does, so a new post
+  appears under its neighbours without any invalidation of its own.
+- **Styling is in the macro**, not in a theme stylesheet: one `<style>` built
+  on `currentColor` and `color-mix`, selectors doubled (`.entry-more
+  .entry-more-label`) to sit above a theme's `main h2`. A forked theme that
+  does not call the macro shows nothing; one that does needs no rule. No `#`
+  and no `$` in the style or script: Velocity reads them.
+- **Sharing rules** are in `docs/design/design-system.md`, "Sharing". Share
+  links are built with `$utils.encodeComponent` (space as `%20`, which
+  `mailto:` needs) from the unescaped title.
+- **The post hero loads eagerly** in travel and portfolio (`_day.vm` passes
+  the image macro's `$eager`); journal's post page has no hero. Card and
+  list pictures stay lazy.
+
 ## Content assets (callouts, code blocks, heading anchors)
 
 The `showContentAssets` macro in `WEB-INF/velocity/weblog.vm` styles and
