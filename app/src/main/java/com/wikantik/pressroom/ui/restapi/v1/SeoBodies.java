@@ -44,7 +44,22 @@ final class SeoBodies {
                 urls.getWeblogEntryURL(weblog, null, "", true));
         Map<String, SeoBody.Media> media = media(weblogger, weblog, body.imageSources());
         return body.findings(new SeoBody.Site(entryPrefixes, published(weblogger, weblog, entry,
-                body.entryAnchors(entryPrefixes)), media));
+                body.entryAnchors(entryPrefixes)), media, ownHosts(urls, weblog)));
+    }
+
+    /**
+     * The hosts an image is not hot-linked from: the ones a save would not
+     * import from ({@code EntryImports.ownHosts}), and the one the weblog's
+     * media urls are built on, so that its own media never reads as another
+     * site's whatever the site url says.
+     */
+    private static Set<String> ownHosts(URLStrategy urls, Weblog weblog) {
+        Set<String> hosts = EntryImports.ownHosts(urls, weblog);
+        String mediaHost = SeoBody.hostOf(urls.getMediaFileURL(weblog, "", true));
+        if (mediaHost != null) {
+            hosts.add(mediaHost);
+        }
+        return hosts;
     }
 
     /** The finding messages: what a preview adds to its warnings. */

@@ -104,7 +104,8 @@ public final class McpToolCatalog {
                             + "noindex, or with a page title or search description too long, too short or the same "
                             + "as another entry's.", "GET " + W + "/audit/seo"),
                     action("seo_entry", "Every SEO check for one entry, its rendered body included: headings, image "
-                            + "alt text, links to missing parts of the entry or to unpublished entries.",
+                            + "alt text, images hot-linked from other sites, links to missing parts of the entry or "
+                            + "to unpublished entries.",
                             "GET " + W + "/audit/seo/entries/{id}"),
                     action("media", "Media files with no alt text.", "GET " + W + "/audit/media")),
             tool("traffic", "What readers read: a weblog's views and visitors from the last analytics read. "

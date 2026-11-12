@@ -18,6 +18,8 @@
 package com.wikantik.pressroom.business.seo;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -52,6 +54,7 @@ public final class SeoBody {
     public static final String FRAGMENT_LINK_BROKEN = "fragment_link_broken";
     public static final String ENTRY_LINK_BROKEN = "entry_link_broken";
     public static final String IMAGE_NOT_RESPONSIVE = "image_not_responsive";
+    public static final String IMAGE_HOTLINKED = "image_hotlinked";
 
     /**
      * What the body checks need to know about the weblog.
@@ -60,8 +63,11 @@ public final class SeoBody {
      *                         absolute, as its url strategy builds them ({@code /blog/entry/})
      * @param publishedAnchors which of {@link #entryAnchors} are published entries (or the entry itself)
      * @param media            for an image source that is one of the weblog's media files, that file
+     * @param ownHosts         the hosts that serve this site, in lower case: the site's own and the
+     *                         weblog's (a custom domain included); an image on any other is hot-linked
      */
-    public record Site(List<String> entryUrlPrefixes, Set<String> publishedAnchors, Map<String, Media> media) {
+    public record Site(List<String> entryUrlPrefixes, Set<String> publishedAnchors, Map<String, Media> media,
+                       Set<String> ownHosts) {
     }
 
     /**
@@ -125,6 +131,7 @@ public final class SeoBody {
         headingSkips(findings);
         imagesWithoutAlt(site, findings);
         imagesNotResponsive(site, findings);
+        imagesHotLinked(site, findings);
         brokenFragments(findings);
         brokenEntryLinks(site, findings);
         return findings;
@@ -210,6 +217,72 @@ public final class SeoBody {
                 + "with a plain img, so every reader downloads the full-size file. Place "
                 + (placements.size() == 1 ? "it" : "each") + " with " + EntrySeoChecks.named(placements)
                 + " instead, which serves a size that fits the screen; add caption=\"...\" for a caption."));
+    }
+
+    /**
+     * An image another site serves: it gets no resized or WebP copy, and it
+     * breaks when that site moves or removes it. A relative url and a
+     * {@code data:} URI are not on another site; neither is one on a host of
+     * ours. One whose host cannot be read is skipped: this is advice, and
+     * the fetch behind {@code importExternalImages} is what refuses it.
+     */
+    private void imagesHotLinked(Site site, List<Finding> findings) {
+        Set<String> hosts = new LinkedHashSet<>();
+        int count = 0;
+        for (Image image : images) {
+            String host = hostOf(image.src());
+            if (host != null && !site.ownHosts().contains(host)) {
+                hosts.add(host);
+                count++;
+            }
+        }
+        if (count == 0) {
+            return;
+        }
+        findings.add(Finding.of(IMAGE_HOTLINKED, EntrySeoChecks.WARNING, (count == 1 ? "1 image is" : count
+                + " images are") + " loaded from " + (hosts.size() == 1 ? "another site" : "other sites") + " ("
+                + EntrySeoChecks.named(List.copyOf(hosts)) + "), so readers get no resized or WebP copy and the "
+                + "picture breaks when that site moves it. Import " + (count == 1 ? "it" : "each") + " into this "
+                + "weblog's media: save the text again with importExternalImages left on, or use POST "
+                + "media/imports (in MCP, media import) and place the copy with [image id=...]."));
+    }
+
+    /**
+     * The host an absolute ({@code http://}, {@code https://}) or
+     * protocol-relative ({@code //}) url names, in lower case and without a
+     * root dot; null for any other url and for one whose host cannot be
+     * read. Only the authority is parsed, as a browser finds it (up to the
+     * first slash, backslash, query or fragment), so nothing in the path can
+     * hide the host or make the url unreadable.
+     */
+    public static String hostOf(String src) {
+        if (src == null) {
+            return null;
+        }
+        String url = src.strip();
+        String lower = url.toLowerCase(Locale.ROOT);
+        int start;
+        if (lower.startsWith("https://")) {
+            start = "https://".length();
+        } else if (lower.startsWith("http://")) {
+            start = "http://".length();
+        } else if (lower.startsWith("//")) {
+            start = 2;
+        } else {
+            return null;
+        }
+        int end = StringUtils.indexOfAny(url.substring(start), '/', '\\', '?', '#');
+        String authority = end < 0 ? url.substring(start) : url.substring(start, start + end);
+        try {
+            String host = new URI("http://" + authority).getHost();
+            if (host == null) {
+                return null;
+            }
+            String name = host.toLowerCase(Locale.ROOT);
+            return name.endsWith(".") ? name.substring(0, name.length() - 1) : name;
+        } catch (URISyntaxException unreadable) {
+            return null;
+        }
     }
 
     /** A src already asking for a resized copy ({@code ?w=}), which is what a reader downloads. */

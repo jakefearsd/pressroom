@@ -729,4 +729,33 @@ class AuditApiTest {
         verify(weblogger, never()).getThemeManager();
     }
 
+
+    /**
+     * Spec 2026-11-12, criteria 14 to 16: the entry audit reports images on
+     * another host once, and the weblog's own host (as its url strategy
+     * builds it, a custom domain included) is not another host.
+     */
+    @Test
+    void seoEntryReportsImagesHotLinkedFromAnotherHost() throws Exception {
+        Weblogger weblogger = renderingWeblogger();
+        Weblog weblog = aWeblog();
+        when(weblogger.getUrlStrategy().getWeblogURL(weblog, null, true)).thenReturn("https://Coast.Example.org/");
+        entryOf(weblogger, weblog, "![A map](https://raw.githubusercontent.com/someone/repo/main/map.png)\n\n"
+                + "<img src=\"https://coast.example.org/static/own.png\" alt=\"Ours\">\n\n"
+                + "![Relative](/myblog/mediaresource/m1)\n");
+
+        tools.jackson.databind.JsonNode audit = json(seoEntry(weblogger, weblog));
+
+        tools.jackson.databind.JsonNode found = null;
+        for (tools.jackson.databind.JsonNode finding : audit.get("findings")) {
+            if ("image_hotlinked".equals(finding.get("code").asString())) {
+                assertNull(found, "one finding per entry");
+                found = finding;
+            }
+        }
+        assertNotNull(found, audit.toString());
+        assertEquals("warning", found.get("severity").asString());
+        String message = found.get("message").asString();
+        assertTrue(message.startsWith("1 image is loaded from another site (raw.githubusercontent.com)"), message);
+    }
 }

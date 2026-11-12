@@ -1072,9 +1072,10 @@ entry route. The checks report findings, never a score:
 | `image_alt_missing` | An image with no `alt`, or with only its file name as `alt` (what `[image]` falls back to for a media file with no alt text and no caption). `alt=""` marks a decorative image and is not reported. | warning |
 | `fragment_link_broken` | A link to `#x` with no `id="x"` in the body. `#` and `#top` always work. | warning |
 | `image_not_responsive` | An image of this weblog's media, with resized copies, placed as a plain `<img>` with no `srcset`, so every reader downloads the full-size file. `[image id=...]` and `[gallery]` always write the `srcset`; the message names the `[image id=...]` to use. | warning |
+| `image_hotlinked` | An image loaded from another site: an absolute `http(s)` or protocol-relative `src` whose host is neither the site's nor the weblog's own (a custom domain included). It gets no resized or WebP copy and breaks when that site moves it. One finding per entry; the message names the hosts and counts the images. Save the text again with `importExternalImages` left on, or copy each in with `media/imports` and place it with `[image id=...]`. Relative urls and `data:` URIs are not reported. | warning |
 | `entry_link_broken` | A link to one of this weblog's entry urls, relative or absolute, whose anchor is not a published entry. | warning |
 
-Body checks (the last five) are `audit/seo/entries/{id}`'s and preview's;
+Body checks (the last seven, from `body_h1` on) are `audit/seo/entries/{id}`'s and preview's;
 `audit/seo` lists the others.
 
 **`?status=TRASHED` is refused here with a 400 — unlike `GET .../entries`,

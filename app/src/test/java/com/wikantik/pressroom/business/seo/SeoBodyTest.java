@@ -19,9 +19,11 @@ class SeoBodyTest {
 
     private static final String RELATIVE = "/coast/entry/";
     private static final String ABSOLUTE = "https://blog.example.com/coast/entry/";
+    private static final Set<String> OWN_HOSTS = Set.of("blog.example.com", "coast.example.org");
+
     private static final SeoBody.Site SITE = new SeoBody.Site(List.of(RELATIVE, ABSOLUTE), Set.of("ferry"),
             Map.of("https://blog.example.com/coast/mediaresource/m1",
-                    new SeoBody.Media("m1", "IMG_2034-sunset.jpg", false)));
+                    new SeoBody.Media("m1", "IMG_2034-sunset.jpg", false)), OWN_HOSTS);
 
     private static final String CLEAN = """
             Opening paragraph.
@@ -32,9 +34,9 @@ class SeoBodyTest {
             [the ferry again](https://blog.example.com/coast/entry/ferry?utm_source=x#times).
             Elsewhere: [another blog](https://elsewhere.example/entry/nope), [top](#top), [here](#).
 
-            ![A ferry leaving at dawn](https://images.example/ferry.jpg)
+            ![A ferry leaving at dawn](https://blog.example.com/static/ferry.jpg)
 
-            <img src="https://images.example/rule.png" alt="">
+            <img src="/static/rule.png" alt="">
 
             ### Times
 
@@ -110,7 +112,7 @@ class SeoBodyTest {
     @Test
     void anImageWhoseAltIsItsFileNameIsMissingAlt() {
         assertEquals(List.of("image_alt_missing"),
-                codes(findings("![IMG_2034.jpg](https://images.example/photos/IMG_2034.jpg)\n")));
+                codes(findings("![IMG_2034.jpg](/photos/IMG_2034.jpg)\n")));
     }
 
     /**
@@ -124,7 +126,7 @@ class SeoBodyTest {
                 + " alt=\"IMG 2034 sunset\"></figure>";
         SeoBody.Site site = new SeoBody.Site(List.of(), Set.of(),
                 Map.of("https://blog.example.com/coast/mediaresource/m1?w=640",
-                        new SeoBody.Media("m1", "IMG_2034-sunset.jpg", false)));
+                        new SeoBody.Media("m1", "IMG_2034-sunset.jpg", false)), OWN_HOSTS);
 
         assertEquals(List.of("image_alt_missing"), codes(SeoBody.of(html).findings(site)));
     }
@@ -180,7 +182,8 @@ class SeoBodyTest {
 
     /** p1, 1376 pixels wide, with resized copies. */
     private static SeoBody.Site photoSite() {
-        return new SeoBody.Site(List.of(), Set.of(), Map.of(PHOTO, new SeoBody.Media("p1", "harbour.jpg", true)));
+        return new SeoBody.Site(List.of(), Set.of(), Map.of(PHOTO, new SeoBody.Media("p1", "harbour.jpg", true)),
+                OWN_HOSTS);
     }
 
     /**
@@ -225,15 +228,15 @@ class SeoBodyTest {
     @Test
     void aMediaImageWithoutResizedCopiesNeedsNoSrcset() {
         SeoBody.Site site = new SeoBody.Site(List.of(), Set.of(),
-                Map.of(PHOTO, new SeoBody.Media("p1", "harbour.gif", false)));
+                Map.of(PHOTO, new SeoBody.Media("p1", "harbour.gif", false)), OWN_HOSTS);
 
         assertEquals(List.of(), SeoBody.of("<img src=\"" + PHOTO + "\" alt=\"The harbour\">").findings(site));
     }
 
-    /** An image from another site is not this weblog's to resize. */
+    /** An image from another site is not this weblog's to resize; it is hot-linked, and only that. */
     @Test
     void anImageFromElsewhereIsNotJudgedResponsive() {
-        assertEquals(List.of(), findings("![A ferry](https://images.example/ferry.jpg)\n"));
+        assertEquals(List.of("image_hotlinked"), codes(findings("![A ferry](https://images.example/ferry.jpg)\n")));
     }
 
     /** An img already pointing at a resized copy (?w=) downloads that copy, not the full-size file. */
@@ -241,8 +244,109 @@ class SeoBodyTest {
     void aMediaImageAlreadyAtAResizedCopyIsNotJudgedFullSize() {
         String copy = PHOTO + "?w=960";
         SeoBody.Site site = new SeoBody.Site(List.of(), Set.of(),
-                Map.of(copy, new SeoBody.Media("p1", "harbour.jpg", true)));
+                Map.of(copy, new SeoBody.Media("p1", "harbour.jpg", true)), OWN_HOSTS);
 
         assertEquals(List.of(), SeoBody.of("<img src=\"" + copy + "\" alt=\"The harbour\">").findings(site));
+    }
+
+    // ---- images hot-linked from another site (spec 2026-11-12, section D) ------
+
+    /**
+     * Criterion 14: one warning for the entry, naming each other host once
+     * and counting the images, however they were written: Markdown, a raw
+     * img, protocol-relative. It names the fix.
+     */
+    @Test
+    void imagesOnOtherHostsAreOneWarningNamingTheHostsAndTheCount() {
+        Finding found = only(findings("""
+                ![A map](https://raw.githubusercontent.com/someone/repo/main/map.png)
+
+                <img src="https://RAW.githubusercontent.com/someone/repo/main/chart.png" alt="A chart">
+
+                <img src="//i.imgur.example/abc.jpg" alt="A view">
+
+                ![Ours](/coast/mediaresource/m1)
+                """), "image_hotlinked");
+
+        assertEquals(EntrySeoChecks.WARNING, found.severity());
+        assertTrue(found.message().startsWith("3 images are loaded from other sites"), found.message());
+        assertTrue(found.message().contains("raw.githubusercontent.com, i.imgur.example"), found.message());
+        assertFalse(found.message().contains("RAW."), found.message());
+        assertTrue(found.message().contains("importExternalImages") && found.message().contains("media/imports"),
+                found.message());
+        assertNull(found.value());
+        assertNull(found.limit());
+    }
+
+    @Test
+    void oneHotLinkedImageIsCountedInTheSingular() {
+        Finding found = only(findings("![A map](http://elsewhere.example/map.png)\n"), "image_hotlinked");
+
+        assertTrue(found.message().startsWith("1 image is loaded from another site (elsewhere.example)"),
+                found.message());
+    }
+
+    /**
+     * Criterion 15: a relative url, a data: URI and this site's own urls
+     * (the site's host or the weblog's own, in any case, with a port) are
+     * not hot-links.
+     */
+    @Test
+    void relativeDataAndOwnHostImagesAreNotHotLinked() {
+        String html = "<img src=\"/coast/mediaresource/m9\" alt=\"Picture a\">"
+                + "<img src=\"photos/b.png\" alt=\"Picture b\">"
+                + "<img src=\"data:image/png;base64,iVBORw0KGgo=\" alt=\"Picture c\">"
+                + "<img src=\"https://blog.example.com/coast/mediaresource/m9\" alt=\"Picture d\">"
+                + "<img src=\"HTTPS://Blog.Example.COM:8443/x.png\" alt=\"Picture e\">"
+                + "<img src=\"//coast.example.org/x.png\" alt=\"Picture f\">"
+                + "<img src=\"https://coast.example.org./x.png\" alt=\"Picture g\">"
+                + "<img alt=\"no src\">";
+
+        assertEquals(List.of(), SeoBody.of(html).findings(SITE));
+    }
+
+    /** A host that merely contains, starts or ends with one of ours is another site. */
+    @Test
+    void aHostThatOnlyLooksLikeOursIsHotLinked() {
+        String html = "<img src=\"https://blog.example.com.evil.example/a.png\" alt=\"Picture a\">"
+                + "<img src=\"https://evil-blog.example.com/b.png\" alt=\"Picture b\">"
+                + "<img src=\"https://blog.example.com@evil.example/c.png\" alt=\"Picture c\">"
+                + "<img src=\"https://evil.example\\@blog.example.com/d.png\" alt=\"Picture d\">";
+
+        Finding found = only(SeoBody.of(html).findings(SITE), "image_hotlinked");
+
+        assertTrue(found.message().startsWith("4 images are loaded from other sites"), found.message());
+        assertTrue(found.message().contains("blog.example.com.evil.example, evil-blog.example.com, evil.example"),
+                found.message());
+    }
+
+    /**
+     * A url whose host cannot be read is skipped, never thrown out of the
+     * checks, and the images around it are still judged; a space in the
+     * path does not hide the host.
+     */
+    @Test
+    void anUnreadableUrlIsSkippedAndTheOthersStillCount() {
+        String html = "<img src=\"https://[not a host/a.png\" alt=\"Picture a\">"
+                + "<img src=\"http:///b.png\" alt=\"Picture b\">"
+                + "<img src=\"https://\" alt=\"Picture c\">"
+                + "<img src=\"https://elsewhere.example/my photo.png\" alt=\"Picture d\">";
+
+        Finding found = only(SeoBody.of(html).findings(SITE), "image_hotlinked");
+
+        assertTrue(found.message().startsWith("1 image is loaded from another site (elsewhere.example)"),
+                found.message());
+    }
+
+    /** The count is of images, as the reader's browser fetches them; the hosts are distinct. */
+    @Test
+    void theSameImageTwiceIsCountedTwiceAndItsHostNamedOnce() {
+        String html = "<img src=\"https://elsewhere.example/a.png\" alt=\"Picture a\">"
+                + "<img src=\"https://elsewhere.example/a.png\" alt=\"Picture a\">";
+
+        Finding found = only(SeoBody.of(html).findings(SITE), "image_hotlinked");
+
+        assertTrue(found.message().startsWith("2 images are loaded from another site (elsewhere.example)"),
+                found.message());
     }
 }

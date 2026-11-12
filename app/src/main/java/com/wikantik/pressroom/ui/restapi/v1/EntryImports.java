@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.ExternalImages;
+import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.fetch.RemoteImageFetcher;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
@@ -132,7 +133,7 @@ final class EntryImports {
             errors.add("importExternalImages", "File upload is disabled for this site.");
         }
         String text = body.text() != null ? body.text() : storedText;
-        ExternalImages.Scan scan = ExternalImages.scan(text, ownHosts(weblog));
+        ExternalImages.Scan scan = ExternalImages.scan(text, ownHosts(weblogger.getUrlStrategy(), weblog));
         if (!defaulted) {
             scan.refusals().forEach(refusal -> errors.add("text", refusal));
             int distinct = scan.distinctUrls().size();
@@ -235,10 +236,14 @@ final class EntryImports {
         return wanted;
     }
 
-    /** This weblog's host (a custom domain included) and the site's, lower case. */
-    private Set<String> ownHosts(Weblog weblog) {
+    /**
+     * This weblog's host (a custom domain included) and the site's, lower
+     * case. Shared with the SEO checks ({@code SeoBodies}), so the image the
+     * hot-link warning names is the image a save would import.
+     */
+    static Set<String> ownHosts(URLStrategy urls, Weblog weblog) {
         Set<String> hosts = new HashSet<>();
-        addHost(hosts, weblogger.getUrlStrategy().getWeblogURL(weblog, null, true));
+        addHost(hosts, urls.getWeblogURL(weblog, null, true));
         addHost(hosts, WebloggerRuntimeConfig.getAbsoluteContextURL());
         return hosts;
     }

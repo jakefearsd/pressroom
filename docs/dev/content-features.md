@@ -106,6 +106,14 @@ resolves through the index at the end of `CLAUDE.md`.
   narrowest rung) and no `srcset`: `[image]` and `[gallery]` always write
   one for such a file, so its absence means hand-written markup. Preview
   still accepts `featuredImageId` and ignores it.
+  `image_hotlinked` (0.9.1) is an `<img src>` on a host that is not ours:
+  absolute http(s) or protocol-relative, host compared exactly and in lower
+  case against `EntryImports.ownHosts` (the site's and the weblog's, custom
+  domain included) -- the same set `importExternalImages` uses, so the
+  warning names what a save would import. Only the authority is parsed
+  (`SeoBody.hostOf`), so a space in the path cannot hide the host; a host
+  that cannot be read is skipped. It is a body check, so `audit/seo` (which
+  renders no body) does not list it.
   `importExternalImages` writes a standalone Markdown image (a top-level
   paragraph of its own, no title) as `[image id=".." alt=".."]`
   (`ExternalImages.Ref.standalone`), so its own imports pass the check;
