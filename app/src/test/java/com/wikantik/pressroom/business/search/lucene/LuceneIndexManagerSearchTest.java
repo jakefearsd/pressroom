@@ -552,6 +552,40 @@ class LuceneIndexManagerSearchTest {
                 new SearchSpec(WORD, SearchSpec.Scope.BLOG, "negoffset", null, -2147483640, 2), mock(URLStrategy.class))));
     }
 
+    /**
+     * More matches than the 500 considered is reported as capped, so the page
+     * does not print 500 as if it were the count (final review, B4); exactly
+     * 500 is not capped.
+     */
+    @Test
+    void moreMatchesThanConsideredAreReportedAsCapped() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("capblog");
+        java.util.Map<String, WeblogEntry> byId = new java.util.HashMap<>();
+        List<WeblogEntry> many = new java.util.ArrayList<>();
+        for (int i = 0; i < 501; i++) {
+            WeblogEntry entry = entry("cap-" + i, blog, "General", "Cap " + i);
+            byId.put(entry.getId(), entry);
+            many.add(entry);
+        }
+        when(entries.getWeblogEntry(org.mockito.ArgumentMatchers.anyString()))
+                .thenAnswer(inv -> byId.get(inv.getArgument(0, String.class)));
+        when(entries.getWeblogEntries(any())).thenReturn(many);
+        manager.rebuildWeblogIndex(); // one writer session for all of them
+
+        SearchHits capped = find(WORD, "capblog");
+        assertTrue(capped.capped(), "501 matches, 500 considered");
+        assertEquals(500, capped.total());
+        assertTrue(findSite(WORD, 0, 10).capped());
+
+        when(entries.getWeblogEntries(any())).thenReturn(many.subList(0, 500));
+        manager.rebuildWeblogIndex();
+
+        SearchHits exact = find(WORD, "capblog");
+        org.junit.jupiter.api.Assertions.assertFalse(exact.capped(), "exactly 500 is the count");
+        assertEquals(500, exact.total());
+    }
+
     // ------------------------------------------------------- scopes and eligibility
 
     private SearchHits findScoped(SearchSpec.Scope scope, String handle) throws Exception {

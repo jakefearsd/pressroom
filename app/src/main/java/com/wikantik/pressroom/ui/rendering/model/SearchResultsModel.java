@@ -18,6 +18,8 @@
 
 package com.wikantik.pressroom.ui.rendering.model;
 
+import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -67,8 +69,14 @@ public class SearchResultsModel extends PageModel {
 	private List<SearchHit> ownHits = List.of();
 	private int ownTotal = 0;
 	private List<SearchHit> otherHits = List.of();
-	private boolean anyWordFallback = false;
+	// each section says for itself whether it fell back to any of the words
+	private boolean ownFallback = false;
+	private boolean otherFallback = false;
+	// the own (or only) list's hit count is a floor: more matched than were considered
+	private boolean capped = false;
 	private Map<String, Integer> perBlog = Map.of();
+	// site view: "more from this blog" for each blog's first hit on this page
+	private Map<SearchHit, Integer> moreByHit = Map.of();
 	private int offset = 0;
 	private Set<String> categories = new TreeSet<>();
 	private String errorMessage = "";
@@ -122,6 +130,9 @@ public class SearchResultsModel extends PageModel {
 				SearchHits found = indexMgr.find(spec(scope, handle, offset, RESULTS_PER_PAGE), urlStrategy);
 				takeOwn(found);
 				perBlog = found.perBlog();
+				if (scope == SearchSpec.Scope.SITE) {
+					moreByHit = moreFromEachBlog(ownHits, perBlog);
+				}
 				// find answers a request past its end with the first page; show it as page 0
 				if (offset > 0 && offset >= ownTotal && !ownHits.isEmpty()) {
 					offset = 0;
@@ -135,8 +146,8 @@ public class SearchResultsModel extends PageModel {
 				if (searched != null && !Boolean.FALSE.equals(searched.getShowMoreFromSite())) {
 					SearchHits others = indexMgr.find(
 							spec(SearchSpec.Scope.OTHER_BLOGS, handle, 0, OTHERS_IN_BLOG_VIEW), urlStrategy);
-					otherHits = others.hits();
-					anyWordFallback |= others.anyWordFallback();
+						otherHits = others.hits();
+					otherFallback = others.anyWordFallback();
 				}
 			}
 		} catch (WebloggerException | IllegalArgumentException we) {
@@ -144,8 +155,11 @@ public class SearchResultsModel extends PageModel {
 			ownHits = List.of();
 			otherHits = List.of();
 			ownTotal = 0;
-			anyWordFallback = false;
+			ownFallback = false;
+			otherFallback = false;
+			capped = false;
 			perBlog = Map.of();
+			moreByHit = Map.of();
 			categories = new TreeSet<>();
 			offset = 0;
 		}
@@ -174,8 +188,27 @@ public class SearchResultsModel extends PageModel {
 	private void takeOwn(SearchHits found) {
 		ownHits = found.hits();
 		ownTotal = found.total();
-		anyWordFallback = found.anyWordFallback();
+		ownFallback = found.anyWordFallback();
+		capped = found.capped();
 		categories = found.categories();
+	}
+
+	/**
+	 * For each blog's first hit in {@code hits}, how many more of that blog's
+	 * posts matched; its later hits on the page get nothing, so "K more from
+	 * this blog" is said once per blog (final review, B5).
+	 */
+	private static Map<SearchHit, Integer> moreFromEachBlog(List<SearchHit> hits, Map<String, Integer> perBlog) {
+		Map<SearchHit, Integer> more = new IdentityHashMap<>();
+		Set<String> seen = new HashSet<>();
+		for (SearchHit hit : hits) {
+			WeblogWrapper blog = hit.entry().getWebsite();
+			String handle = blog == null ? null : blog.getHandle();
+			if (handle != null && seen.add(handle)) {
+				more.put(hit, Math.max(0, perBlog.getOrDefault(handle, 0) - 1));
+			}
+		}
+		return more;
 	}
 
 	/**
@@ -247,8 +280,26 @@ public class SearchResultsModel extends PageModel {
 		return otherHits;
 	}
 
-	public boolean isAnyWordFallback() {
-		return anyWordFallback;
+	/**
+	 * True when this blog's section (the blog view) or the one list (the site
+	 * and paged views) matched only some of the words.
+	 */
+	public boolean isOwnFallback() {
+		return ownFallback;
+	}
+
+	/** Blog view: true when the other blogs' section matched only some of the words. */
+	public boolean isOtherFallback() {
+		return otherFallback;
+	}
+
+	/**
+	 * True when more posts matched than the 500 considered, so {@link #getHits}
+	 * is a floor and the page says "more than" (final review, B4). The other
+	 * blogs' section shows no count, so only this one is carried.
+	 */
+	public boolean isCapped() {
+		return capped;
 	}
 
 	/** Site view: how many distinct blogs the hits fall in. */
@@ -256,9 +307,12 @@ public class SearchResultsModel extends PageModel {
 		return perBlog.size();
 	}
 
-	/** Site view: that blog's other matches, beyond the one shown. */
-	public int moreFromBlog(String handle) {
-		return Math.max(0, perBlog.getOrDefault(handle, 0) - 1);
+	/**
+	 * Site view: that blog's other matches, beyond the one shown, on the
+	 * blog's first hit on this page; 0 on its later hits, so it is said once.
+	 */
+	public int moreFor(SearchHit hit) {
+		return moreByHit.getOrDefault(hit, 0);
 	}
 
 	/** Blog view: this blog's matches alone, same words. */

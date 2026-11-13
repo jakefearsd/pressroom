@@ -29,12 +29,20 @@ import java.util.Set;
  * @param anyWordFallback true when no post had every word, so these match some of them
  * @param perBlog         blog handle to its number of matches among the hits considered
  * @param categories      lower-cased categories of the hits, for a site-wide search
+ * @param capped          true when more posts matched than the hits considered (500), so
+ *                        {@code total} is a floor, not the number of matches
  */
 public record SearchHits(List<SearchHit> hits, int total, boolean anyWordFallback,
-        Map<String, Integer> perBlog, Set<String> categories) {
+        Map<String, Integer> perBlog, Set<String> categories, boolean capped) {
 
     /** Nothing found. */
     public static final SearchHits NONE = new SearchHits(List.of(), 0, false, Map.of(), Set.of());
+
+    /** An answer within the hits considered: {@code total} is the number of matches. */
+    public SearchHits(List<SearchHit> hits, int total, boolean anyWordFallback,
+            Map<String, Integer> perBlog, Set<String> categories) {
+        this(hits, total, anyWordFallback, perBlog, categories, false);
+    }
 
     public List<SearchHit> getHits() {
         return hits;
@@ -54,5 +62,9 @@ public record SearchHits(List<SearchHit> hits, int total, boolean anyWordFallbac
 
     public Set<String> getCategories() {
         return categories;
+    }
+
+    public boolean isCapped() {
+        return capped;
     }
 }

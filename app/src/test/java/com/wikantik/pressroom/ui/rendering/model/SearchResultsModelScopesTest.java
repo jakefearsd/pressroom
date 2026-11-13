@@ -92,6 +92,16 @@ class SearchResultsModelScopesTest {
         return new SearchHit(entry, "", false);
     }
 
+    /** A hit from the blog with this handle. */
+    private SearchHit hit(String id, String handle) {
+        SearchHit hit = hit(id);
+        com.wikantik.pressroom.pojos.wrapper.WeblogWrapper website =
+                mock(com.wikantik.pressroom.pojos.wrapper.WeblogWrapper.class);
+        when(website.getHandle()).thenReturn(handle);
+        when(hit.entry().getWebsite()).thenReturn(website);
+        return hit;
+    }
+
     private static SearchHits hits(int total, boolean fallback, Map<String, Integer> perBlog, SearchHit... hits) {
         return new SearchHits(List.of(hits), total, fallback, perBlog, Set.of());
     }
@@ -151,7 +161,8 @@ class SearchResultsModelScopesTest {
         assertEquals(List.of(own), m.getOwnHits());
         assertEquals(12, m.getOwnTotal());
         assertEquals(List.of(other), m.getOtherHits());
-        assertTrue(m.isAnyWordFallback(), "either query falling back is said once");
+        assertFalse(m.isOwnFallback(), "this blog's section matched every word");
+        assertTrue(m.isOtherFallback(), "the other blogs' section fell back");
         assertNull(m.getWeblogEntriesPager().getNextLink(), "the blog view is not paged");
     }
 
@@ -335,36 +346,86 @@ class SearchResultsModelScopesTest {
         assertEquals("next-url", m.getWeblogEntriesPager().getNextLink());
     }
 
+    /**
+     * Each section reports its own fallback: the line used to be one OR of
+     * both, printed above everything, so it sat over this blog's results
+     * that matched every word (final review, B1; this test pinned that OR
+     * until then and was changed deliberately).
+     */
     @Test
-    void fallbackFlagIsTrueWhenEitherQueryFellBack() throws Exception {
+    void fallbackIsReportedForTheSectionThatFellBack() throws Exception {
         SearchHit own = hit("own");
         SearchHit other = hit("other");
         when(index.find(any(), any())).thenReturn(
                 hits(1, false, Map.of(), own),
                 hits(1, true, Map.of(), other));
-        assertTrue(model("myblog", false, false, 0).isAnyWordFallback());
+        SearchResultsModel othersFell = model("myblog", false, false, 0);
+        assertFalse(othersFell.isOwnFallback(), "this blog matched every word");
+        assertTrue(othersFell.isOtherFallback());
 
         when(index.find(any(), any())).thenReturn(
                 hits(1, true, Map.of(), own),
                 hits(1, false, Map.of(), other));
-        assertTrue(model("myblog", false, false, 0).isAnyWordFallback());
+        SearchResultsModel ownFell = model("myblog", false, false, 0);
+        assertTrue(ownFell.isOwnFallback());
+        assertFalse(ownFell.isOtherFallback());
 
         when(index.find(any(), any())).thenReturn(SearchHits.NONE);
-        assertFalse(model("myblog", false, false, 0).isAnyWordFallback());
+        SearchResultsModel none = model("myblog", false, false, 0);
+        assertFalse(none.isOwnFallback());
+        assertFalse(none.isOtherFallback());
     }
 
+    /** The site view's one list is the "own" list: its fallback is the own flag. */
     @Test
-    void moreFromBlogIsCountMinusOne() throws Exception {
+    void theSiteViewsFallbackIsTheOwnFlag() throws Exception {
         SearchHit x = hit("x");
+        when(index.find(any(), any())).thenReturn(hits(1, true, Map.of(), x));
+        SearchResultsModel m = model("home", true, false, 0);
+        assertTrue(m.isOwnFallback());
+        assertFalse(m.isOtherFallback());
+    }
+
+    /** More posts matched than the 500 considered: the page must not print 500 as the count (B4). */
+    @Test
+    void cappedComesFromTheListShown() throws Exception {
+        SearchHit x = hit("x");
+        SearchHit y = hit("y");
+        SearchHits cappedX = new SearchHits(List.of(x), 500, false, Map.of(), Set.of(), true);
+        when(index.find(any(), any())).thenReturn(cappedX);
+        assertTrue(model("home", true, false, 0).isCapped(), "site view");
+        assertTrue(model("myblog", false, true, 0).isCapped(), "paged blog view");
+
+        when(index.find(any(), any())).thenReturn(cappedX, hits(1, false, Map.of(), y));
+        assertTrue(model("myblog", false, false, 0).isCapped(), "blog view: this blog's section");
+
         when(index.find(any(), any())).thenReturn(
-                hits(6, false, Map.of("a", 4, "b", 1, "c", 1), x));
+                hits(1, false, Map.of(), x), new SearchHits(List.of(y), 500, false, Map.of(), Set.of(), true));
+        assertFalse(model("myblog", false, false, 0).isCapped(), "the other blogs' section shows no count");
+    }
+
+    /**
+     * "K more from this blog" is for the blog's first hit on the page only;
+     * it used to repeat on every hit of that blog (final review, B5; this
+     * test asked by handle until then and was changed deliberately).
+     */
+    @Test
+    void moreFromBlogIsCountMinusOneOnItsFirstHitOnly() throws Exception {
+        SearchHit a1 = hit("a1", "a");
+        SearchHit b1 = hit("b1", "b");
+        SearchHit a2 = hit("a2", "a");
+        SearchHit c1 = hit("c1", "c");
+        when(index.find(any(), any())).thenReturn(
+                hits(6, false, Map.of("a", 4, "b", 1, "c", 1), a1, b1, a2, c1));
 
         SearchResultsModel m = model("home", true, false, 0);
 
         assertEquals(3, m.getBlogCount());
-        assertEquals(3, m.moreFromBlog("a"));
-        assertEquals(0, m.moreFromBlog("b"));
-        assertEquals(0, m.moreFromBlog("unknown"), "never negative");
+        assertEquals(3, m.moreFor(a1));
+        assertEquals(0, m.moreFor(b1), "never negative");
+        assertEquals(0, m.moreFor(a2), "not again on the same blog's next hit");
+        assertEquals(0, m.moreFor(c1));
+        assertEquals(0, m.moreFor(hit("stranger", "a")), "a hit not on this page");
     }
 
     @Test
@@ -401,7 +462,9 @@ class SearchResultsModelScopesTest {
 
         assertEquals("second failed", m.getErrorMessage());
         assertTrue(m.getOwnHits().isEmpty());
-        assertFalse(m.isAnyWordFallback(), "a fallback flag from the first query is stale");
+        assertFalse(m.isOwnFallback(), "a fallback flag from the first query is stale");
+        assertFalse(m.isOtherFallback());
+        assertFalse(m.isCapped());
         assertEquals(0, m.getBlogCount());
         assertTrue(m.getCategories().isEmpty());
     }

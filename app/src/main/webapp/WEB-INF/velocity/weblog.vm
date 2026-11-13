@@ -2249,11 +2249,12 @@ site's results page); $term must arrive escaped too.
 
 #**
 The search box of a blog's home page: "Search {blog} and the rest of {site}",
-or "Search {blog}" when the site has no name. The blog name is escaped by
-WeblogWrapper, the site name is raw and escaped here.
+or "Search {blog}" when the site has no name or the blog shows no other
+blogs' posts in its results (its "more from the site" setting is off). The
+blog name is escaped by WeblogWrapper, the site name is raw and escaped here.
 *#
 #macro(showBlogSearchBox $weblog)
-    #if($utils.isNotEmpty($config.siteName))
+    #if($utils.isNotEmpty($config.siteName) && $weblog.showMoreFromSite)
         #set($blogSearchPlaceholder = $text.get("search.placeholderBlog", [$weblog.name, $utils.escapeHTML($config.siteName)]))
     #else
         #set($blogSearchPlaceholder = $text.get("search.placeholderBlogOnly", [$weblog.name]))
@@ -2339,7 +2340,7 @@ each stylesheet); nothing here is styled inline.
 *#
 #macro(showWeblogSearchAgainForm $weblog)
     <div id="searchAgain">
-        #if($model.hits > 0)<p class="search-hits">$text.get( "macro.weblog.searchhits", [$model.term, $model.hits])</p>#end
+        #if($model.hits > 0)<p class="search-hits">#if($model.capped)$text.get( "macro.weblog.searchhitsCapped", [$model.term, $model.hits])#else$text.get( "macro.weblog.searchhits", [$model.term, $model.hits])#end</p>#end
         <form role="search" method="get" action="$url.search">
           <input type="text" id="q-again" name="q" class="text medium" required maxlength="255" value="$model.term" aria-label="$text.get( "macro.weblog.searchbutton" )" />
           #set( $cats = $model.weblog.getWeblogCategories())
@@ -2369,8 +2370,9 @@ Show next/prev pager for search results.
     ## directly under the site-name h1 in every theme's search page.
     ## role="status" also gets the count announced when it changes, which is
     ## the one thing it is actually for.
+    ## A count that reached the 500 hits considered says so ($model.capped).
     <p class="search-summary" role="status">
-       $text.get("searchSummary.text", [$min, $max, $model.hits])
+       #if($model.capped)$text.get("searchSummary.textCapped", [$min, $max, $model.hits])#else$text.get("searchSummary.text", [$min, $max, $model.hits])#end
     </p>
 
     ## Previous on the left, more on the right, and no "Main" in between:
@@ -2671,6 +2673,12 @@ the blog view (this blog's best matches, then other blogs'), a paged blog
 view (scope=blog or a category: one heading and the current page), and the
 site view (one ranked list across blogs, each hit naming its blog).
 
+The "some of the words" line is printed inside the section that fell back,
+under its heading (ownFallback, otherFallback), never once over both. A
+count that reached the 500 hits considered (capped) says "more than", and
+"show all" becomes "show the first". In the site view, "K more from this
+blog" is on that blog's first hit on the page only (moreFor).
+
 Escaping: titles are stored escaped and printed bare; a snippet is already
 escaped, with its mark tags inserted, and printed bare; a blog name comes
 through WeblogWrapper, already escaped, and is passed to the messages as is.
@@ -2684,7 +2692,7 @@ main rules, and has no hash or dollar sign in it (Velocity reads those).
 #set($srPaged = $srModel.siteScope || $srModel.blogOnly)
 #if(!$srModel.ownHits.isEmpty() || !$srModel.otherHits.isEmpty())
 <style>
-.search-results .search-fallback { margin: 1rem 0 0; font-size: .875rem; color: color-mix(in srgb, currentColor 70%, transparent); }
+.search-results .search-fallback { margin: .625rem 0 0; font-size: .875rem; color: color-mix(in srgb, currentColor 70%, transparent); }
 .search-results .search-group { margin: 1.75rem 0 0; padding: 0 0 .375rem; border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent); font-size: .75rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: color-mix(in srgb, currentColor 70%, transparent); }
 .search-results .search-list { list-style: none; margin: 0; padding: 0; }
 .search-results .search-hit { display: flex; align-items: flex-start; gap: .875rem; margin: 0; padding: .875rem 0; border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent); }
@@ -2705,11 +2713,15 @@ main rules, and has no hash or dollar sign in it (Velocity reads those).
 }
 </style>
 <section class="search-results">
-#if($srModel.anyWordFallback)
+#if($srSiteView)
+#if($srModel.capped)
+    <h2 class="search-group">$text.get("search.siteCountCapped", [$srModel.hits, $srModel.blogCount])</h2>
+#else
+    <h2 class="search-group">$text.get("search.siteCount", [$srModel.hits, $srModel.blogCount])</h2>
+#end
+#if($srModel.ownFallback)
     <p class="search-fallback">$text.get("search.anyWord")</p>
 #end
-#if($srSiteView)
-    <h2 class="search-group">$text.get("search.siteCount", [$srModel.hits, $srModel.blogCount])</h2>
     <ol class="search-list">
 #foreach($srHit in $srModel.ownHits)
 #srHit($srModel $srHit true)
@@ -2717,20 +2729,34 @@ main rules, and has no hash or dollar sign in it (Velocity reads those).
     </ol>
 #else
 #if(!$srModel.ownHits.isEmpty())
+#if($srModel.capped)
+    <h2 class="search-group">$text.get("search.fromBlogCapped", [$srModel.weblog.name, $srModel.ownTotal])</h2>
+#else
     <h2 class="search-group">$text.get("search.fromBlog", [$srModel.weblog.name, $srModel.ownTotal])</h2>
+#end
+#if($srModel.ownFallback)
+    <p class="search-fallback">$text.get("search.anyWord")</p>
+#end
     <ol class="search-list">
 #foreach($srHit in $srModel.ownHits)
 #srHit($srModel $srHit false)
 #end
     </ol>
 #if(!$srPaged && $srModel.ownTotal > 8)
+#if($srModel.capped)
+    <a class="search-all" href="$utils.escapeHTML($srModel.showAllUrl)">$text.get("search.showAllCapped", [$srModel.ownTotal])</a>
+#else
     <a class="search-all" href="$utils.escapeHTML($srModel.showAllUrl)">$text.get("search.showAll", [$srModel.ownTotal])</a>
+#end
 #end
 #else
     <h2 class="search-group">$text.get("search.fromBlogNone", [$srModel.weblog.name])</h2>
 #end
 #if(!$srModel.otherHits.isEmpty())
     <h2 class="search-group search-group-other">$text.get("search.fromOthers")</h2>
+#if($srModel.otherFallback)
+    <p class="search-fallback">$text.get("search.anyWord")</p>
+#end
     <ol class="search-list">
 #foreach($srHit in $srModel.otherHits)
 #srHit($srModel $srHit false)
@@ -2761,7 +2787,7 @@ main rules, and has no hash or dollar sign in it (Velocity reads those).
 #if($utils.isNotEmpty($srHit.snippetHtml))
             <p class="search-snippet">$srHit.snippetHtml</p>
 #end
-            <p class="search-meta">#if($srAway)<a class="search-blog" href="$utils.escapeHTML($srEntry.website.absoluteURL)">$srEntry.website.name</a> &middot; #end<time datetime="$utils.formatIso8601Day($srEntry.pubTime)">$utils.formatDate($srEntry.pubTime, "MMM d, yyyy")</time>#if(!$srAway) &middot; $utils.escapeHTML($srEntry.category.name)#end#if($srSiteView && $srModel.moreFromBlog($srEntry.website.handle) > 0) &middot; <a class="search-more" href="$utils.escapeHTML($srModel.blogSearchUrl($srEntry.website))">$text.get("search.moreFromBlog", [$srModel.moreFromBlog($srEntry.website.handle)])</a>#end</p>
+            <p class="search-meta">#if($srAway)<a class="search-blog" href="$utils.escapeHTML($srEntry.website.absoluteURL)">$srEntry.website.name</a> &middot; #end<time datetime="$utils.formatIso8601Day($srEntry.pubTime)">$utils.formatDate($srEntry.pubTime, "MMM d, yyyy")</time>#if(!$srAway) &middot; $utils.escapeHTML($srEntry.category.name)#end#if($srSiteView && $srModel.moreFor($srHit) > 0) &middot; <a class="search-more" href="$utils.escapeHTML($srModel.blogSearchUrl($srEntry.website))">$text.get("search.moreFromBlog", [$srModel.moreFor($srHit)])</a>#end</p>
             </div>
         </li>
 #end

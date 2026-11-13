@@ -544,17 +544,31 @@ the same way (site view) whatever the site's theme; the choice is
 `templates/weblog/site-styles.vm` (parsed into both pages' style) and the
 showSiteMasthead and showSiteFooter macros.
 
-- **Markup** (pinned by `SearchServletRenderingTest`, all four themes):
-  `section.search-results` holds `p.search-fallback` (any-word retry only),
-  `h2.search-group` + `ol.search-list > li.search-hit` (optional
+- **Markup** (pinned by `SearchServletRenderingTest`, all four themes, and
+  the exact copy by `SearchResultsMacroTest`, which renders the macros alone
+  over the real model and bundle): `section.search-results` holds
+  `h2.search-group`, then `p.search-fallback` when that section matched only
+  some of the words, then `ol.search-list > li.search-hit` (optional
   `a.search-thumb`, `h3.search-title > a`, `p.search-snippet`,
   `p.search-meta`), `a.search-all` (blog view, more than 8 own matches), then
-  `h2.search-group.search-group-other`, its list and `a.search-site`.
+  `h2.search-group.search-group-other`, its own `p.search-fallback` when the
+  other blogs fell back, its list and `a.search-site`. The fallback line is
+  per section (`SearchResultsModel.isOwnFallback`/`isOtherFallback`); it was
+  one line over both until the final review, so it sat over this blog's
+  results that matched every word.
+- **Counts**: one and many through `choice` formats ("1 article", "1 article
+  across 1 blog", "1 more post from this blog"); Russian keeps its
+  number-neutral "Статей: N" form and Japanese, Korean and Chinese have one
+  form. A count that reached the 500 hits considered (`isCapped`, from
+  `SearchHits.capped`) says "more than" in the blog heading, the site heading
+  and the search-again hit line, "Show the first N" instead of "Show all N",
+  and "of the first N" in the paging line (`*Capped` keys).
 - **Three shapes**: blog view (this blog's top 8, then up to 5 from other
   blogs; the own heading says "Nothing in X matched." when only others do),
   paged blog view (`scope=blog` or a category: one heading, 10 a page, the
   theme's next/prev control) and site view (one ranked list, every hit names
-  its blog; "N more from this blog" links that blog's own search). The
+  its blog; "N more posts from this blog" links that blog's own search, on
+  the blog's first hit on the page only, `SearchResultsModel.moreFor`). The
   "Showing a-b of n" line and next/prev are shown for the paged views only.
 - **Escaping**: the title is stored escaped and printed bare; the snippet
   (`SearchHit.snippetHtml`) is already escaped with its mark tags and is
@@ -576,7 +590,8 @@ showSiteMasthead and showSiteFooter macros.
 `input[type=search][name=q][maxlength=255][required]` and a submit button
 (`.site-search-go`, hidden visually in the themes' headers). Three wrappers
 build the placeholder: `showBlogSearchBox($weblog)` ("Search {blog} and the
-rest of {site}", else "Search {blog}"), `showSiteSearchBox($weblog $term)`
+rest of {site}"; "Search {blog}" when the site has no name or the blog's
+`showMoreFromSite` is off, since its results then show no other blog), `showSiteSearchBox($weblog $term)`
 ("Search all of {site}", else "Search every blog"; `$term` fills the input) --
 the front page's masthead and `site-search.vm` both call it, so both post to
 `<ctx>/search` -- and `showSearchBoxValue`, the shared core. The placeholder

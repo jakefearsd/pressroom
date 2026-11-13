@@ -946,7 +946,8 @@ public class LuceneIndexManager implements IndexManager {
             // left out future-dated entries; this covers what the index has
             // not caught up with.
             int dropped = limit - results.size();
-            return new SearchHits(results, hits.length - dropped, anyWordFallback, perBlog, categories);
+            return new SearchHits(results, hits.length - dropped, anyWordFallback, perBlog, categories,
+                    search.isCapped());
 
         } catch (IOException e) {
             throw new WebloggerException(e);

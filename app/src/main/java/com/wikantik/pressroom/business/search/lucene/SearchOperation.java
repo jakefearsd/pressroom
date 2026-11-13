@@ -478,6 +478,18 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
         return (int) searchresults.totalHits.value();
     }
 
+    /**
+     * True when more documents matched than the {@value #DOC_LIMIT} considered,
+     * so the hit count is a floor rather than the number of matches.
+     */
+    public boolean isCapped() {
+        if (searchresults == null || searchresults.scoreDocs.length < DOC_LIMIT) {
+            return false;
+        }
+        return searchresults.totalHits.value() > searchresults.scoreDocs.length
+                || searchresults.totalHits.relation() == TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
+    }
+
     /** The words as the query that produced the results (for marking them in a snippet), or null. */
     public Query getParsedQuery() {
         return parsedQuery;

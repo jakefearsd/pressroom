@@ -525,7 +525,8 @@ class SearchServletRenderingTest {
         assertTrue(body.contains("3 articles across 2 blogs"), body);
         assertTrue(body.contains(">Test Weblog</a>"), body);
         assertTrue(body.contains(">Second Blog</a>"), body);
-        assertTrue(body.contains("1 more from this blog"), body);
+        assertTrue(body.contains("1 more post from this blog"), body);
+        assertEquals(1, count(body, "class=\"search-more\""), "said once, on the blog's first hit");
         assertTrue(body.contains("class=\"search-results\""), body);
         assertFalse(body.contains("class=\"search-all\""), body);
         assertTrue(site.getHandle().equals("searchsite"));
