@@ -570,6 +570,44 @@ class LuceneIndexManagerSearchTest {
                 "its own section still finds it");
     }
 
+    /**
+     * The query's own filters, before conversion can mask them: the
+     * conversion re-check drops the same posts, so the hits the index
+     * returns are counted directly.
+     */
+    private int indexHits(java.util.Set<String> handles, String excluded) throws Exception {
+        try (SearchOperation op = new SearchOperation(manager)) {
+            op.setTerm(WORD);
+            op.restrictToSite(handles);
+            op.excludeHandle(excluded);
+            op.run();
+            return op.getResultsCount();
+        }
+    }
+
+    @Test
+    void theQueryItselfNarrowsToTheSiteFlagAndTheHandleSet() throws Exception {
+        scopeFixture();
+        // scopea, scopeb (one site post, one noindex), scopec: three site-flagged posts in all
+        assertEquals(3, indexHits(Set.of("scopea", "scopeb", "scopec"), null));
+        assertEquals(1, indexHits(Set.of("scopea"), null), "handle set");
+        assertEquals(1, indexHits(Set.of("scopeb"), null), "site flag leaves out the noindex post");
+        assertEquals(0, indexHits(Set.of(), null), "an empty set finds nothing");
+    }
+
+    @Test
+    void theQueryItselfLeavesOutTheNamedBlog() throws Exception {
+        scopeFixture();
+        assertEquals(2, indexHits(Set.of("scopea", "scopeb", "scopec"), "scopea"));
+        assertEquals(1, indexHits(Set.of("scopea", "scopeb"), "scopea"));
+    }
+
+    @Test
+    void siteCountsCoverOnlyTheEligibleBlogsPosts() throws Exception {
+        scopeFixture();
+        assertEquals(java.util.Map.of("scopea", 1, "scopeb", 1), findScoped(SearchSpec.Scope.SITE, null).perBlog());
+    }
+
     @Test
     void blogScopeStillFindsItsOwnNoindexPost() throws Exception {
         scopeFixture();

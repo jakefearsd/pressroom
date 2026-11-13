@@ -64,9 +64,9 @@ public final class Snippets {
                     .withFieldMatcher(field -> true)
                     .withMaxLength(Math.max(plainContent.length(), 1))
                     .build();
-            String out = highlighter.highlightWithoutSearcher(FieldConstants.CONTENT, query, plainContent, 1)
-                    .toString();
-            return out == null ? "" : out;
+            // null when nothing in the text matches (no no-match passages are asked for)
+            Object out = highlighter.highlightWithoutSearcher(FieldConstants.CONTENT, query, plainContent, 1);
+            return out == null ? "" : out.toString();
         } catch (IOException | RuntimeException e) {
             // a display path: no passage is shown, the page still renders
             log.warn("Could not build a search snippet", e);

@@ -17,6 +17,14 @@
  */
 package com.wikantik.pressroom.business.search.lucene;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.Logger;
+import org.apache.logging.log4j.core.appender.AbstractAppender;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
@@ -77,10 +85,40 @@ class SnippetsTest {
         assertEquals(visible.strip(), visible, "no ragged edges");
     }
 
+    /** Captures what Snippets' own logger emits. */
+    private static final class Capture extends AbstractAppender {
+        private final List<LogEvent> events = new ArrayList<>();
+
+        Capture() {
+            super("snippets-test-appender", null, null, false, null);
+        }
+
+        @Override
+        public void append(LogEvent event) {
+            events.add(event.toImmutable());
+        }
+    }
+
+    /** A post with no passage match is the ordinary excerpt-fallback case: empty, and nothing logged. */
     @Test
     void noMatchIsEmpty() throws Exception {
-        assertEquals("", html("nothing to see here", "remodel", 160));
-        assertEquals("", html("", "remodel", 160));
-        assertEquals("", html(null, "remodel", 160));
+        Logger logger = (Logger) LogManager.getLogger(Snippets.class);
+        Level previous = logger.getLevel();
+        Capture capture = new Capture();
+        capture.start();
+        logger.addAppender(capture);
+        logger.setLevel(Level.ALL);
+        try {
+            assertEquals("", html("nothing to see here", "remodel", 160));
+            assertEquals("", html("", "remodel", 160));
+            assertEquals("", html(null, "remodel", 160));
+        } finally {
+            logger.removeAppender(capture);
+            logger.setLevel(previous);
+            capture.stop();
+        }
+        assertEquals(List.of(), capture.events.stream()
+                .filter(e -> e.getLevel().isMoreSpecificThan(Level.WARN))
+                .map(e -> e.getMessage().getFormattedMessage() + " / " + e.getThrown()).toList());
     }
 }

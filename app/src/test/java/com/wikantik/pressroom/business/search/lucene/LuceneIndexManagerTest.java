@@ -41,6 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -240,16 +241,20 @@ class LuceneIndexManagerTest {
         manager.shutdown();
     }
 
+    /** The thread manager can refuse work (a rejected execution is a RuntimeException); a save must not see it. */
     @Test
     void aFailingRebuildNeverFailsTheSave(@TempDir Path indexDir) throws Exception {
         Weblog blog = blog("Quiet Pond");
         LuceneIndexManager manager = renameFixture(indexDir, blog, post(blog));
         manager.noteWeblog(blog);
-        manager.shutdown(); // scheduling now has nowhere to go
+        ThreadManager threads = manager.weblogger().getThreadManager();
+        doThrow(new java.util.concurrent.RejectedExecutionException("pool is full"))
+                .when(threads).executeInBackground(any(Runnable.class));
 
         blog.setName("Heron Pond");
         assertDoesNotThrow(() -> manager.noteWeblog(blog));
         assertDoesNotThrow(() -> manager.noteWeblog(null));
+        manager.shutdown();
     }
 
     // No test drives initialize()'s createNewFile()-returns-false branch
