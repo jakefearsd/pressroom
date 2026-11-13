@@ -90,6 +90,29 @@ class SearchableTextTest {
         assertEquals("", SearchableText.of(entry, broken));
     }
 
+    /**
+     * A removed tag left a space before the punctuation that followed it
+     * ("the guide ."), which the snippets showed (final review, A4); a tag
+     * between two words still separates them.
+     */
+    @Test
+    void removedTagsLeaveNoSpaceBeforePunctuationButStillSeparateWords() {
+        EntryRenderer html = mock(EntryRenderer.class);
+        when(html.transformedText(entry)).thenReturn(
+                "<p>Read the <a href=\"/g\">guide</a>. Then (<em>really</em>) go, <b>now</b>!</p>"
+                        + "<p>Next<br>line: <i>yes</i>; <i>no</i>?</p><p>End</p>");
+        assertEquals("Read the guide. Then (really) go, now! Next line: yes; no? End",
+                SearchableText.of(entry, html));
+    }
+
+    /** A "<" that opens no whole tag is text; the scan neither drops it nor stalls on it. */
+    @Test
+    void closeUpTagsLeavesAStrayAngleBracketAlone() {
+        assertEquals("a < b<i>c.", SearchableText.closeUpTags("a < b<i>c</i></b>."));
+        assertEquals("<<<<", SearchableText.closeUpTags("<<<<"));
+        assertEquals("x <y", SearchableText.closeUpTags("x <y"));
+    }
+
     @Test
     void nullTextGivesEmpty() {
         entry.setText(null);

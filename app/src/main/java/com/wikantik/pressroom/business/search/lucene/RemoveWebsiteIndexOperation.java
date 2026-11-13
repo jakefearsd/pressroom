@@ -98,8 +98,7 @@ public class RemoveWebsiteIndexOperation extends WriteToIndexOperation {
         IndexWriter writer = beginWriting();
         try {
             if (writer != null) {
-                Term tHandle = IndexUtil.getTerm(FieldConstants.WEBSITE_HANDLE,
-                        handle);
+                Term tHandle = IndexUtil.handleTerm(handle);
 
                 if (tHandle != null) {
                     writer.deleteDocuments(tHandle);

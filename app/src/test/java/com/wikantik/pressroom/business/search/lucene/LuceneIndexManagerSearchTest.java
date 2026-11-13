@@ -109,9 +109,15 @@ class LuceneIndexManagerSearchTest {
         }).when(inline).executeInForeground(any(Runnable.class));
         when(pressroom.getThreadManager()).thenReturn(inline);
 
-        manager = new LuceneIndexManager(pressroom);
-        setField(manager, "indexDir", indexDir.toString());
-        setField(manager, "indexConsistencyMarker", new File(indexDir.toFile(), ".index-inconsistent"));
+        manager = newManager();
+    }
+
+    /** A manager over this test's index directory and tier: a second one stands for a restart. */
+    private LuceneIndexManager newManager() throws Exception {
+        LuceneIndexManager made = new LuceneIndexManager(pressroom);
+        setField(made, "indexDir", indexDir.toString());
+        setField(made, "indexConsistencyMarker", new File(indexDir.toFile(), ".index-inconsistent"));
+        return made;
     }
 
     /**
@@ -716,6 +722,316 @@ class LuceneIndexManagerSearchTest {
         assertTrue(findScoped(SearchSpec.Scope.SITE, null).hits().stream().allMatch(h -> h.otherBlog()));
         assertTrue(findScoped(SearchSpec.Scope.OTHER_BLOGS, "scopea").hits().stream().allMatch(h -> h.otherBlog()));
         assertTrue(findScoped(SearchSpec.Scope.BLOG, "scopeb").hits().stream().noneMatch(h -> h.otherBlog()));
+    }
+
+    // ------------------------------------------------------- handles keep their case
+
+    /**
+     * Handles are case-sensitive: the unique constraint and the lookup by
+     * handle compare them exactly, and handles may use A-Z. A blog whose
+     * handle has capitals was indexed verbatim and queried lowercased, so it
+     * was found in no scope (final review, A1).
+     */
+    @Test
+    void aMixedCaseHandleIsFoundInEveryScope() throws Exception {
+        manager.initialize();
+        Weblog mixed = weblog("MixedCase");
+        Weblog plain = weblog("plaincase");
+        index(entry("mx-1", mixed, "General", "Mixed one"));
+        index(entry("mx-2", mixed, "General", "Mixed two"));
+        index(entry("pl-1", plain, "General", "Plain one"));
+
+        assertEquals(Set.of("mx-1", "mx-2"), Set.copyOf(idsOf(find(WORD, "MixedCase"))));
+        assertEquals(Set.of("mx-1", "mx-2", "pl-1"), Set.copyOf(idsOf(findScoped(SearchSpec.Scope.SITE, null))));
+        assertEquals(Set.of("mx-1", "mx-2"), Set.copyOf(idsOf(findScoped(SearchSpec.Scope.OTHER_BLOGS, "plaincase"))));
+        assertEquals(List.of("pl-1"), idsOf(findScoped(SearchSpec.Scope.OTHER_BLOGS, "MixedCase")));
+        assertEquals(java.util.Map.of("MixedCase", 2, "plaincase", 1), findScoped(SearchSpec.Scope.SITE, null).perBlog(),
+                "the counts are keyed by the handle as stored, so the page can link the blog");
+    }
+
+    /** Two blogs may differ only by case (ws_handle_uq is case-sensitive); each search keeps them apart. */
+    @Test
+    void blogsWhoseHandlesDifferOnlyByCaseStayApart() throws Exception {
+        manager.initialize();
+        Weblog upper = weblog("TwinBlog");
+        Weblog lower = weblog("twinblog");
+        index(entry("twin-upper", upper, "General", "Upper"));
+        index(entry("twin-lower", lower, "General", "Lower"));
+
+        assertEquals(List.of("twin-upper"), idsOf(find(WORD, "TwinBlog")));
+        assertEquals(List.of("twin-lower"), idsOf(find(WORD, "twinblog")));
+        assertEquals(List.of("twin-lower"), idsOf(findScoped(SearchSpec.Scope.OTHER_BLOGS, "TwinBlog")));
+        assertEquals(List.of("twin-upper"), idsOf(findScoped(SearchSpec.Scope.OTHER_BLOGS, "twinblog")));
+    }
+
+    /** Characterisation: moreLikeThis already matched the handle verbatim; pinned so both paths stay one rule. */
+    @Test
+    void moreLikeThisWorksForAMixedCaseHandle() throws Exception {
+        manager.initialize();
+        kitchenFixture(weblog("MixedKitchen"));
+
+        assertEquals(Set.of("k2", "k3"), Set.copyOf(manager.moreLikeThis(entries.getWeblogEntry("k1"), 2)));
+    }
+
+    @Test
+    void rebuildingAMixedCaseBlogLeavesOneDocumentPerPost() throws Exception {
+        manager.initialize();
+        Weblog mixed = weblog("MixedRebuild");
+        mixed.setId("blog-mixed-rebuild");
+        WeblogEntry first = entry("mr-1", mixed, "General", "One");
+        WeblogEntry second = entry("mr-2", mixed, "General", "Two");
+        index(first);
+        index(second);
+        when(weblogManager.getWeblog("blog-mixed-rebuild")).thenReturn(mixed);
+        when(entries.getWeblogEntries(any())).thenReturn(List.of(first, second));
+
+        manager.rebuildWeblogIndex(mixed);
+        manager.rebuildWeblogIndex(mixed);
+
+        assertEquals(1, documentsWithId("mr-1"));
+        assertEquals(1, documentsWithId("mr-2"));
+        SearchHits hits = find(WORD, "MixedRebuild");
+        assertEquals(List.of("mr-1", "mr-2"), idsOf(hits).stream().sorted().toList());
+        assertEquals(2, hits.total());
+    }
+
+    @Test
+    void removingAMixedCaseBlogLeavesNothingBehind() throws Exception {
+        manager.initialize();
+        Weblog mixed = weblog("MixedRemove");
+        mixed.setId("blog-mixed-remove");
+        index(entry("rm-1", mixed, "General", "One"));
+        when(weblogManager.getWeblog("blog-mixed-remove")).thenReturn(mixed);
+
+        assertEquals(1, documentsWithId("rm-1"));
+
+        manager.removeWeblogIndex(mixed);
+
+        assertEquals(0, documentsWithId("rm-1"));
+    }
+
+    /** Documents in the index with this entry id, whatever any search filter would make of them. */
+    private int documentsWithId(String id) throws Exception {
+        org.apache.lucene.search.IndexSearcher searcher = manager.acquireSearcher();
+        try {
+            return searcher.count(new org.apache.lucene.search.TermQuery(
+                    new org.apache.lucene.index.Term(FieldConstants.ID, id)));
+        } finally {
+            manager.releaseSearcher(searcher);
+        }
+    }
+
+    // ------------------------------------------------------- the schema marker certifies a completed build
+
+    private String schemaMarker() throws Exception {
+        Path marker = indexDir.resolve(".index-schema");
+        return java.nio.file.Files.isRegularFile(marker) ? java.nio.file.Files.readString(marker).trim() : null;
+    }
+
+    /**
+     * The marker used to be written when the empty index was created, before
+     * the rebuild it promised: a rebuild that failed (or a JVM stopped during
+     * it) left a current marker over an empty index, and the next start
+     * trusted it and never rebuilt (final review, A2).
+     */
+    @Test
+    void aFailedRebuildLeavesNoCurrentMarkerAndTheNextStartRebuildsAgain() throws Exception {
+        when(entries.getWeblogEntries(any())).thenThrow(new WebloggerException("db down"));
+        manager.initialize(); // a brand-new directory: the full rebuild runs inline, and fails
+        assertEquals(null, schemaMarker(), "nothing was built, so nothing is certified");
+        manager.shutdown();
+
+        LuceneIndexManager restarted = newManager();
+        restarted.initialize();
+
+        assertTrue(restarted.isInconsistentAtStartup(), "the next start must rebuild");
+        org.mockito.Mockito.verify(entries, org.mockito.Mockito.times(2)).getWeblogEntries(any());
+        restarted.shutdown();
+    }
+
+    /** Characterisation: a site with nothing to index still completes a build, and the next start trusts it. */
+    @Test
+    void aCompletedFullRebuildWritesTheMarkerAndTheNextStartTrustsIt() throws Exception {
+        manager.initialize();
+        assertEquals(String.valueOf(LuceneIndexManager.SCHEMA_VERSION), schemaMarker());
+        manager.shutdown();
+
+        LuceneIndexManager restarted = newManager();
+        restarted.initialize();
+
+        org.junit.jupiter.api.Assertions.assertFalse(restarted.isInconsistentAtStartup());
+        restarted.shutdown();
+    }
+
+    /**
+     * One post that cannot be turned into a document (here a missing update
+     * time) is logged and skipped; it used to roll back the whole rebuild.
+     */
+    @Test
+    void aRebuildSkipsAPostItCannotIndexAndKeepsTheRest() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("skipblog");
+        WeblogEntry first = entry("skip-1", blog, "General", "One");
+        WeblogEntry broken = entry("skip-broken", blog, "General", "Broken");
+        broken.setUpdateTime(null);
+        WeblogEntry second = entry("skip-2", blog, "General", "Two");
+        when(entries.getWeblogEntries(any())).thenReturn(List.of(first, broken, second));
+
+        List<String> warnings;
+        try (LogLines logged = LogLines.of(RebuildWebsiteIndexOperation.class)) {
+            manager.rebuildWeblogIndex();
+            warnings = logged.at(org.apache.logging.log4j.Level.WARN);
+        }
+
+        assertEquals(1, documentsWithId("skip-1"));
+        assertEquals(1, documentsWithId("skip-2"));
+        assertEquals(0, documentsWithId("skip-broken"));
+        assertEquals(1, warnings.size(), warnings.toString());
+        assertTrue(warnings.get(0).contains("skip-broken"), warnings.get(0));
+        assertEquals(String.valueOf(LuceneIndexManager.SCHEMA_VERSION), schemaMarker(), "the rebuild still completed");
+    }
+
+    /** The entry locale column is nullable; a post without one is indexed, with no locale term. */
+    @Test
+    void anEntryWithNoLocaleIsIndexed() throws Exception {
+        manager.initialize();
+        WeblogEntry entry = entry("no-locale", weblog("localeblog"), "General", "No locale");
+        entry.setLocale(null);
+        index(entry);
+
+        assertEquals(1, documentsWithId("no-locale"));
+    }
+
+    // ------------------------------------------------------- rename detection survives a restart
+
+    /**
+     * The names noteWeblog compares against were only ever learned from a
+     * save, so the first rename after every restart (every deploy) was not
+     * reindexed (final review, A3).
+     */
+    @Test
+    void aRenameIsCaughtOnTheFirstSaveAfterARestart() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("renameblog");
+        blog.setId("blog-rename");
+        blog.setName("Old name");
+        WeblogEntry post = entry("rn-1", blog, "General", "A post");
+        index(post);
+        manager.shutdown();
+
+        LuceneIndexManager restarted = newManager();
+        restarted.initialize(); // the index is current: no rebuild, the names are read
+        org.junit.jupiter.api.Assertions.assertFalse(restarted.isInconsistentAtStartup());
+        blog.setName("Zebraword gazette");
+        when(weblogManager.getWeblog("blog-rename")).thenReturn(blog);
+        when(entries.getWeblogEntries(any())).thenReturn(List.of(post));
+
+        restarted.noteWeblog(blog);
+
+        assertEquals(List.of("rn-1"), idsOf(restarted.find(
+                new SearchSpec("zebraword", SearchSpec.Scope.BLOG, "renameblog", null, 0, 10), mock(URLStrategy.class))));
+        restarted.shutdown();
+    }
+
+    @Test
+    void aCompletedFullRebuildLearnsTheNames() throws Exception {
+        Weblog blog = weblog("seedblog");
+        blog.setId("blog-seed");
+        blog.setName("Old name");
+        WeblogEntry post = entry("seed-1", blog, "General", "A post");
+        when(entries.getWeblogEntry("seed-1")).thenReturn(post);
+        when(entries.getWeblogEntries(any())).thenReturn(List.of(post));
+        when(weblogManager.getWeblog("blog-seed")).thenReturn(blog);
+        manager.initialize(); // brand-new: the full rebuild runs, indexes the post, and reads the names
+
+        blog.setName("Zebraword gazette");
+        manager.noteWeblog(blog);
+
+        assertEquals(List.of("seed-1"), idsOf(find("zebraword", "seedblog")));
+    }
+
+    // ------------------------------------------------------- what the index holds (final review, A4)
+
+    @Test
+    void theSummaryIsIndexedAsDecodedText() throws Exception {
+        manager.initialize();
+        WeblogEntry entry = entry("sum-1", weblog("sumblog"), "General", "Plain");
+        entry.setSummary("Fish &amp; quokkachips");
+        index(entry);
+
+        assertEquals(List.of("sum-1"), idsOf(find("quokkachips", "sumblog")));
+        assertEquals(List.of(), idsOf(find("amp", "sumblog")), "an entity is not a word");
+    }
+
+    @Test
+    void aBlogWithNoNameOrTaglineIndexesNoWordNull() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("namelessblog");
+        // setName(null) stores "" and the column is NOT NULL, so a null name
+        // only arrives some other way; the field is set directly to stand for it
+        Field name = Weblog.class.getDeclaredField("name");
+        name.setAccessible(true);
+        name.set(blog, null);
+        blog.setTagline(null);
+        index(entry("nameless-1", blog, "General", "Plain"));
+
+        assertEquals(1, documentsWithId("nameless-1"));
+        assertEquals(List.of(), idsOf(find("null", "namelessblog")));
+    }
+
+    /** A document without stored title or body gives MoreLikeThis nothing to go on, not the word "null". */
+    @Test
+    void moreLikeThisReadsAMissingStoredFieldAsNoText() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("mltnull");
+        post("np-1", blog, "Null pointers", "A null pointer and a null check.", 3);
+        post("np-2", blog, "More null", "Null again, and null once more.", 4);
+        try (org.apache.lucene.index.IndexWriter writer = new org.apache.lucene.index.IndexWriter(
+                manager.getIndexDirectory(), new org.apache.lucene.index.IndexWriterConfig(new EnglishAnalyzer()))) {
+            org.apache.lucene.document.Document bare = new org.apache.lucene.document.Document();
+            bare.add(new org.apache.lucene.document.StringField(FieldConstants.ID, "bare",
+                    org.apache.lucene.document.Field.Store.YES));
+            bare.add(new org.apache.lucene.document.StringField(FieldConstants.WEBSITE_HANDLE, "mltnull",
+                    org.apache.lucene.document.Field.Store.YES));
+            bare.add(new org.apache.lucene.document.SortedDocValuesField(FieldConstants.WEBSITE_HANDLE,
+                    new org.apache.lucene.util.BytesRef("mltnull")));
+            writer.addDocument(bare);
+        }
+        manager.refreshSearcher();
+        WeblogEntry bareEntry = entry("bare", blog, "General", "Bare");
+
+        assertEquals(List.of(), manager.moreLikeThis(bareEntry, 5));
+    }
+
+    /** Site counts read the handle from doc values, not up to 500 stored documents. */
+    @Test
+    void theHandleIsASortedDocValue() throws Exception {
+        manager.initialize();
+        index(entry("dv-1", weblog("dvblog"), "General", "One"));
+
+        org.apache.lucene.search.IndexSearcher searcher = manager.acquireSearcher();
+        try {
+            org.apache.lucene.index.FieldInfo handle = org.apache.lucene.index.FieldInfos
+                    .getMergedFieldInfos(searcher.getIndexReader()).fieldInfo(FieldConstants.WEBSITE_HANDLE);
+            assertEquals(org.apache.lucene.index.DocValuesType.SORTED, handle.getDocValuesType());
+        } finally {
+            manager.releaseSearcher(searcher);
+        }
+    }
+
+    /** Hits come in score order across segments; the counts must not depend on it. */
+    @Test
+    void perBlogCountsHitsAcrossSegmentsInAnyOrder() throws Exception {
+        manager.initialize();
+        Weblog a = weblog("segmenta");
+        Weblog b = weblog("segmentb");
+        // each index() is its own commit, so its own segment; ages interleave the score order
+        for (int i = 0; i < 6; i++) {
+            post("seg-" + i, i % 2 == 0 ? a : b, "Segment " + i, WORD + " body", 6 - i);
+        }
+        post("seg-6", a, "Segment 6", WORD + " body", 20);
+
+        assertEquals(java.util.Map.of("segmenta", 4, "segmentb", 3), findSite(WORD, 0, 2).perBlog());
     }
 
     // ------------------------------------------------------- more like this

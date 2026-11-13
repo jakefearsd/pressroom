@@ -295,7 +295,7 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
             .add(FunctionScoreQuery.boostByValue(words, new RecencySource(nowMillis)),
                     BooleanClause.Occur.MUST);
 
-        Term handleTerm = IndexUtil.getTerm(FieldConstants.WEBSITE_HANDLE, weblogHandle);
+        Term handleTerm = IndexUtil.handleTerm(weblogHandle);
         if (handleTerm != null) {
             query.add(new TermQuery(handleTerm), BooleanClause.Occur.FILTER);
         }
@@ -308,7 +308,7 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
                     BooleanClause.Occur.FILTER);
             java.util.List<BytesRef> handles = new java.util.ArrayList<>();
             for (String handle : siteHandles) {
-                Term term = IndexUtil.getTerm(FieldConstants.WEBSITE_HANDLE, handle);
+                Term term = IndexUtil.handleTerm(handle);
                 if (term != null) {
                     handles.add(term.bytes());
                 }
@@ -318,7 +318,7 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
             }
             query.add(new TermInSetQuery(FieldConstants.WEBSITE_HANDLE, handles), BooleanClause.Occur.FILTER);
         }
-        Term excludedTerm = IndexUtil.getTerm(FieldConstants.WEBSITE_HANDLE, excludedHandle);
+        Term excludedTerm = IndexUtil.handleTerm(excludedHandle);
         if (excludedTerm != null) {
             query.add(new TermQuery(excludedTerm), BooleanClause.Occur.MUST_NOT);
         }

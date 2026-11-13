@@ -57,11 +57,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * A weblog rebuild ({@link RebuildWebsiteIndexOperation}) must be all or
- * nothing: it deletes the weblog's documents and re-adds them from the
- * database inside one writer session, and if anything fails along the way
- * -- the entry query, or building/adding one of the documents -- the index
- * must be left exactly as it was before the rebuild started, not emptied.
+ * A weblog rebuild ({@link RebuildWebsiteIndexOperation}) deletes the
+ * weblog's documents and re-adds them from the database inside one writer
+ * session. If the index work fails along the way -- the entry query, or the
+ * writer -- the index must be left exactly as it was before the rebuild
+ * started, not emptied. One post whose document cannot be built is skipped
+ * instead, and the others are indexed.
  *
  * <p>Follows {@link IndexWriteOperationFailureTest}'s idioms: a mocked tier
  * whose {@link ThreadManager} runs operations inline, against a real Lucene
@@ -134,26 +135,27 @@ class RebuildWebsiteIndexOperationFailureTest {
     }
 
     /**
-     * The query succeeds, but building the document for one of the returned
-     * entries fails partway through the add loop (a null title is refused by
-     * Lucene's {@code TextField}). The documents already indexed before this
-     * rebuild started must survive, and the half-built document must never
-     * appear.
+     * The query succeeds, but the document for one of the returned entries
+     * cannot be built (a null title is refused by Lucene's {@code
+     * TextField}). That post is skipped and the rest are indexed: one bad row
+     * used to roll back the whole rebuild, which on the startup rebuild left
+     * search empty (final review, A2; this test pinned the roll-back until
+     * then and was changed deliberately).
      */
     @Test
-    void aRebuildThatFailsWhileAddingADocumentLeavesThePreviousDocumentsIndexed() throws Exception {
+    void aRebuildSkipsADocumentItCannotBuildAndIndexesTheOthers() throws Exception {
         index(entry("r1"));
         assertTrue(indexedDocs().containsKey("r1"), "precondition: r1 is indexed");
 
         WeblogEntry bad = entry("r2");
         bad.setTitle(null);
-        when(entries.getWeblogEntries(any())).thenReturn(List.of(bad));
+        when(entries.getWeblogEntries(any())).thenReturn(List.of(entry("r1"), bad, entry("r3")));
 
         manager.rebuildWeblogIndex(blog);
 
         Map<String, Document> docs = indexedDocs();
-        assertTrue(docs.containsKey("r1"),
-                "a rebuild that fails partway through adding documents must leave the previous documents intact");
+        assertTrue(docs.containsKey("r1"), "the posts before the bad one are indexed");
+        assertTrue(docs.containsKey("r3"), "and the posts after it");
         assertFalse(docs.containsKey("r2"), "the entry that failed to build must not appear");
     }
 

@@ -148,9 +148,11 @@ templates).
 - **Blog rename**: the blog's name and tagline are in each of its posts'
   `blog` field. `IndexManager.noteWeblog` (called after commit from
   `JPAWeblogManagerImpl.saveWeblog`) remembers them per handle in memory and
-  schedules `rebuildWeblogIndex` when a known handle's text changed. The first
-  sighting after a JVM start only records, so a rename that is the first save
-  since a restart is not caught until the next rebuild.
+  schedules `rebuildWeblogIndex` when a known handle's text changed. Every
+  blog's text is learned (`noteEveryWeblog`) at startup over a current index
+  and when a full rebuild commits, so the first rename after a restart (every
+  deploy) is caught too; if the blogs cannot be read then, that is logged and
+  a rename is caught from its blog's second save (final review, 2026-11-13).
 - **Upgrade rehearsal (2026-11-13)**: v0.9.2's index (no `.index-schema`) opened by this
   build logs "Index schema is not version 2; rebuilding the index.", rebuilds in the
   background, and leaves `.index-schema` holding `2`. Dev database, 2,994 posts, one of
@@ -171,20 +173,42 @@ templates).
   until 2026-11-03 it deleted by a "constant" field no document carried, so
   every entry indexed before it was then indexed twice).
 - **Index schema v2** (`LuceneIndexManager.SCHEMA_VERSION`, stamped as text in
-  `.index-schema` in the index directory; written whenever an index is
-  created, deleted with the index). Anything but the current version at
-  startup, or an unreadable stamp, empties the index and schedules the full
-  rebuild. Fields (`IndexOperation.getDocument`, names in `FieldConstants`):
+  `.index-schema` in the index directory, deleted with the index). The stamp
+  certifies a **completed** build: it is written only when a full rebuild
+  commits (a site with nothing to index still completes one), never when the
+  empty index is created. Anything but the current version at startup, a
+  missing or an unreadable stamp, empties the index and schedules the full
+  rebuild, so a rebuild that failed or a JVM stopped mid-rebuild is rebuilt
+  again at the next start rather than trusted empty. Searches during that
+  rebuild see the empty index until its single commit. The in-use marker
+  `.index-inconsistent` is a separate question (did the last run shut down
+  cleanly?); the class comment of `LuceneIndexManager` gives the interplay.
+  A rebuild skips (WARN, entry id, throwable) a post whose document cannot be
+  built and commits the rest; only an index-level failure (the entry query,
+  the writer) rolls it back. A post with no locale is indexed with no
+  `locale` term. Fields (`IndexOperation.getDocument`, names in `FieldConstants`):
   `title`, `content` (stored; the plain text a reader sees, from
   `SearchableText.of`: uncached render, tags stripped, entities decoded; a
   post that fails to render is indexed by title only), `summary`, `tags`,
   `cattext`, `blog` (name and tagline), keyword `site=1` (only when
   `DiscoveryEligibility.isEligible(entry)` at index time), `pubnum` (epoch
-  millis doc value), plus the keyword fields `id`, `handle`, `locale`, `cat`.
-  Analyzer `EnglishAnalyzer` at index and query time; token limit
+  millis doc value), plus the keyword fields `id`, `handle` (also a sorted
+  doc value, which the site view's per-blog counts read), `locale`, `cat`.
+  `summary` is decoded like `content` ("Fish &amp; chips" is not the word
+  "amp"); a missing blog name or tagline is no words, never "null"; removed
+  tags leave no space before closing punctuation. Analyzer `EnglishAnalyzer`
+  at index and query time; token limit
   `lucene.analyzer.maxTokenCount=20000`. **Keyword fields never go through
-  the analyzer**: `IndexUtil.getTerm` lowercases only (a stemmed handle
-  matched no blog, a stop-word handle dropped the weblog filter). Index
+  the analyzer** (a stemmed handle matched no blog, a stop-word handle
+  dropped the weblog filter). **Handles keep their case**: they are
+  case-sensitive (the unique constraint and `getWeblogByHandle` compare them
+  exactly, and A-Z is allowed), so two blogs may differ only by case. Every
+  writer and reader of `handle` (the BLOG filter, the eligible set, the
+  other-blogs exclusion, delete-by-handle in rebuild and remove,
+  MoreLikeThis, the conversion re-check) goes through `IndexUtil.handleKey` /
+  `handleTerm`; until the final review the term was lowercased, so a blog
+  with a capital in its handle was found in no scope and each rebuild
+  duplicated its documents. `locale` is indexed and queried lowercased. Index
   tests on a mocked tier must stub `Weblogger.getEntryRenderer()`
   (`PassthroughRenderer.install`), or every post indexes with empty content.
 - **Index Location**: configurable work directory

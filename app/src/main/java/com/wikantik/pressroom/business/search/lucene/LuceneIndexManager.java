@@ -26,6 +26,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -51,6 +52,11 @@ import org.apache.lucene.analysis.miscellaneous.LimitTokenCountAnalyzer;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.ReaderUtil;
+import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.StoredFields;
@@ -77,6 +83,24 @@ import com.wikantik.pressroom.pojos.wrapper.WeblogEntryWrapper;
 /**
  * Lucene implementation of IndexManager. This is the central entry point into
  * the Lucene searching API.
+ *
+ * <p>Whether the index on disk is trusted at startup rests on two files in the
+ * index directory, which answer different questions:
+ * <ul>
+ * <li>{@code .index-inconsistent} (the in-use marker): did the last run shut
+ * down cleanly? {@link #initialize()} creates it and {@link #shutdown()}
+ * deletes it, so finding it at startup means a run died with writes possibly
+ * half-done; the index is emptied and fully rebuilt.</li>
+ * <li>{@code .index-schema} (the schema marker): does the index hold a
+ * <em>completed</em> build in the current layout? It is written only when a
+ * full rebuild commits (a site with nothing to index still completes one),
+ * never when an empty index is created. A start that finds it missing,
+ * unreadable or naming another version empties the index and rebuilds. So a
+ * rebuild that fails, or a JVM stopped during it, leaves no current marker,
+ * and the next start rebuilds again instead of trusting an empty index.
+ * Searches during that rebuild see the empty index until its single commit.
+ * Deleting the index deletes both files.</li>
+ * </ul>
  * 
  * @author Mindaugas Idzelis (min@idzelis.com)
  * @author mraible (formatting and making indexDir configurable)
@@ -206,10 +230,12 @@ public class LuceneIndexManager implements IndexManager {
                 }
             }
 
-            // An index laid out by an earlier build (or one whose stamp cannot
-            // be read: fail closed) is emptied and rebuilt in the background.
+            // An index laid out by an earlier build, one whose stamp cannot be
+            // read (fail closed), or one whose last full build never completed
+            // is emptied and rebuilt in the background; the rebuild writes the
+            // stamp when it commits (see the class comment).
             if (!schemaIsCurrent()) {
-                log.info("Index schema is not version {}; rebuilding the index.", SCHEMA_VERSION);
+                log.info("Index schema is not a completed version {} build; rebuilding the index.", SCHEMA_VERSION);
                 inconsistentAtStartup = true;
                 deleteIndex();
                 createIndex(getIndexDirectory());
@@ -252,6 +278,9 @@ public class LuceneIndexManager implements IndexManager {
                     log.error("ERROR: scheduling re-index operation", ex);
                 }
             } else {
+                // the index holds each blog's name as it is now: learn them,
+                // so the first rename after this start is caught
+                noteEveryWeblog();
                 log.info("Index initialized and ready for use.");
             }
         }
@@ -300,9 +329,8 @@ public class LuceneIndexManager implements IndexManager {
             if (handle == null) {
                 return;
             }
-            String tagline = weblog.getTagline();
-            String searchable = weblog.getName() + "\n" + (tagline == null ? "" : tagline);
-            String before = blogText.put(weblog.getHandle(), searchable);
+            String searchable = searchableText(weblog);
+            String before = blogText.put(handle, searchable);
             if (before != null && !before.equals(searchable)) {
                 // the name and tagline are part of each of the blog's posts
                 rebuildWeblogIndex(weblog);
@@ -310,6 +338,40 @@ public class LuceneIndexManager implements IndexManager {
         } catch (WebloggerException | RuntimeException e) {
             log.warn("Could not reindex renamed weblog {}", handle, e);
         }
+    }
+
+    private static String searchableText(Weblog weblog) {
+        String tagline = weblog.getTagline();
+        return weblog.getName() + "\n" + (tagline == null ? "" : tagline);
+    }
+
+    /**
+     * Learns every blog's name and tagline as the index now holds them, so
+     * {@link #noteWeblog} catches the first rename after a start (which used
+     * to be only recorded). Called when a full rebuild commits and at startup
+     * over a current index. A failure leaves the names unlearned: logged, and
+     * a rename is then caught from its blog's second save, as before.
+     */
+    void noteEveryWeblog() {
+        try {
+            for (Weblog blog : pressroom.getWeblogManager().getWeblogs(null, null, null, null, 0, -1)) {
+                if (blog.getHandle() != null) {
+                    blogText.put(blog.getHandle(), searchableText(blog));
+                }
+            }
+        } catch (WebloggerException | RuntimeException e) {
+            log.warn("Could not read the blogs' names; a blog renamed before its next save is reindexed late", e);
+        }
+    }
+
+    /**
+     * A full rebuild has committed: the index now holds a completed build in
+     * the current layout, so the schema marker may say so, and it holds every
+     * blog's current name.
+     */
+    void fullRebuildCompleted() {
+        writeSchemaMarker();
+        noteEveryWeblog();
     }
 
     @Override
@@ -392,8 +454,9 @@ public class LuceneIndexManager implements IndexManager {
         }
         Document doc = searcher.storedFields().document(own.scoreDocs[0].doc);
         Map<String, java.util.Collection<Object>> text = new java.util.LinkedHashMap<>();
-        text.put(FieldConstants.TITLE, List.of(String.valueOf(doc.get(FieldConstants.TITLE))));
-        text.put(FieldConstants.CONTENT, List.of(String.valueOf(doc.get(FieldConstants.CONTENT))));
+        // a field the document lacks is no text, never the word "null"
+        text.put(FieldConstants.TITLE, List.of(java.util.Objects.toString(doc.get(FieldConstants.TITLE), "")));
+        text.put(FieldConstants.CONTENT, List.of(java.util.Objects.toString(doc.get(FieldConstants.CONTENT), "")));
         text.put(FieldConstants.TAGS, entry.getTags().stream().map(t -> (Object) t.getName()).toList());
 
         MoreLikeThis like = new MoreLikeThis(searcher.getIndexReader());
@@ -405,7 +468,7 @@ public class LuceneIndexManager implements IndexManager {
         Query similar = like.like(text);
 
         BooleanQuery.Builder query = new BooleanQuery.Builder().add(similar, BooleanClause.Occur.MUST);
-        query.add(new TermQuery(new Term(FieldConstants.WEBSITE_HANDLE, entry.getWebsite().getHandle())),
+        query.add(new TermQuery(IndexUtil.handleTerm(entry.getWebsite().getHandle())),
                 BooleanClause.Occur.FILTER);
         query.add(new TermQuery(new Term(FieldConstants.ID, entry.getId())), BooleanClause.Occur.MUST_NOT);
         query.add(SearchOperation.notFuture(now()), BooleanClause.Occur.FILTER);
@@ -746,9 +809,9 @@ public class LuceneIndexManager implements IndexManager {
                         getAnalyzer(), 128));
 
         try (IndexWriter writer = new IndexWriter(dir, config)) {
-            // an empty commit is what writes the first segments file
+            // an empty commit is what writes the first segments file; no
+            // schema marker: an empty index is not a completed build
             writer.commit();
-            writeSchemaMarker();
         } catch (IOException e) {
             log.error("Error creating index", e);
         }
@@ -825,13 +888,7 @@ public class LuceneIndexManager implements IndexManager {
             // how many of the hits considered each blog holds, not only this
             // page's; only the front page's "more from this blog" reads it
             if (siteScope) {
-                for (ScoreDoc hit : hits) {
-                    String blog = stored.document(hit.doc, Set.of(FieldConstants.WEBSITE_HANDLE))
-                            .get(FieldConstants.WEBSITE_HANDLE);
-                    if (blog != null) {
-                        perBlog.merge(blog, 1, Integer::sum);
-                    }
-                }
+                perBlog = countPerBlog(search.getSearcher().getIndexReader(), hits);
             }
             Query words = search.getParsedQuery();
 
@@ -884,14 +941,38 @@ public class LuceneIndexManager implements IndexManager {
         }
     }
 
-    @SuppressFBWarnings(
-            value = "IMPROPER_UNICODE",
-            justification = "Blog handles are limited to ASCII characters (allowedChars) when a blog is "
-                    + "created, so case-insensitive equality has no Unicode folding cases to get wrong; "
-                    + "the comparison only decides which blog's own posts to leave out of 'other blogs'.")
+    /**
+     * Each blog's number of hits, read from the handle's doc values. Doc
+     * values are read forward only, segment by segment, so the hits (in score
+     * order) are visited in document order.
+     */
+    static Map<String, Integer> countPerBlog(IndexReader reader, ScoreDoc[] hits) throws IOException {
+        int[] docs = new int[hits.length];
+        for (int i = 0; i < hits.length; i++) {
+            docs[i] = hits[i].doc;
+        }
+        Arrays.sort(docs);
+        Map<String, Integer> counts = new TreeMap<>();
+        List<LeafReaderContext> leaves = reader.leaves();
+        LeafReaderContext leaf = null;
+        SortedDocValues handles = null;
+        for (int doc : docs) {
+            if (leaf == null || doc >= leaf.docBase + leaf.reader().maxDoc()) {
+                leaf = leaves.get(ReaderUtil.subIndex(doc, leaves));
+                handles = DocValues.getSorted(leaf.reader(), FieldConstants.WEBSITE_HANDLE);
+            }
+            if (handles.advanceExact(doc - leaf.docBase)) {
+                counts.merge(handles.lookupOrd(handles.ordValue()).utf8ToString(), 1, Integer::sum);
+            }
+        }
+        return counts;
+    }
+
+    /** The searched blog's own post, in "other blogs": handles compared by the index's one rule. */
     private static boolean isExcluded(SearchSpec spec, WeblogEntry entry) {
         return spec.scope() == SearchSpec.Scope.OTHER_BLOGS
-                && entry.getWebsite().getHandle().equalsIgnoreCase(spec.weblogHandle().strip());
+                && java.util.Objects.equals(IndexUtil.handleKey(entry.getWebsite().getHandle()),
+                        IndexUtil.handleKey(spec.weblogHandle()));
     }
 
     /**

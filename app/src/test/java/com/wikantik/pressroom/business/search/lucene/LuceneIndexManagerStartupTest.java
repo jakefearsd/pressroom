@@ -60,7 +60,8 @@ import static org.mockito.Mockito.when;
  * How {@link LuceneIndexManager} decides at startup whether the index on disk
  * can be trusted, and what it does when it cannot. These are characterisation
  * tests, written against the existing behaviour and expected to pass as soon
- * as they were written.
+ * as they were written, except the schema-marker ones changed for the final
+ * review's A2 (the marker now certifies a completed build).
  *
  * <p>The decision rests on the {@code .index-inconsistent} marker: {@code
  * initialize()} creates it and {@code shutdown()} deletes it, so a marker
@@ -91,6 +92,8 @@ class LuceneIndexManagerStartupTest {
         assertTrue(first.isInconsistentAtStartup(), "a brand-new index directory needs a first build");
         verify(firstThreads).executeInBackground(isA(RebuildWebsiteIndexOperation.class));
         addDocument(indexDir, "entry-kept");
+        // the first build startup scheduled completes (this thread manager only records it)
+        first.fullRebuildCompleted();
         first.shutdown();
 
         ThreadManager secondThreads = mock(ThreadManager.class);
@@ -241,8 +244,8 @@ class LuceneIndexManagerStartupTest {
         assertTrue(next.isInconsistentAtStartup());
         verify(threads).executeInBackground(isA(RebuildWebsiteIndexOperation.class));
         assertEquals(0, numDocs(indexDir), "the outdated index must be emptied for the rebuild to fill");
-        assertEquals("2", Files.readString(indexDir.resolve(SCHEMA_MARKER)).trim(),
-                "the new index carries the current schema version");
+        assertFalse(Files.exists(indexDir.resolve(SCHEMA_MARKER)),
+                "the emptied index is not a completed build: no marker until the rebuild commits");
         next.shutdown();
     }
 
@@ -275,11 +278,19 @@ class LuceneIndexManagerStartupTest {
         next.shutdown();
     }
 
+    /**
+     * The marker certifies a completed build, so creating the empty index
+     * does not write it; the full rebuild's commit does (final review, A2:
+     * it used to be written at creation, before the rebuild it promised).
+     */
     @Test
-    void markerIsWrittenWhenAnIndexIsCreated(@TempDir Path tmp) throws Exception {
+    void markerIsWrittenOnlyWhenTheFullRebuildCompletes(@TempDir Path tmp) throws Exception {
         Path indexDir = tmp.resolve("index");
         LuceneIndexManager manager = managerOver(indexDir, mock(ThreadManager.class));
         manager.initialize();
+        assertFalse(Files.exists(indexDir.resolve(SCHEMA_MARKER)), "scheduled, not yet complete");
+
+        manager.fullRebuildCompleted();
 
         assertEquals(String.valueOf(LuceneIndexManager.SCHEMA_VERSION),
                 Files.readString(indexDir.resolve(SCHEMA_MARKER)).trim());
@@ -307,6 +318,8 @@ class LuceneIndexManagerStartupTest {
     private static LuceneIndexManager managerOver(Path indexDir, ThreadManager threads) throws Exception {
         Weblogger pressroom = mock(Weblogger.class);
         when(pressroom.getThreadManager()).thenReturn(threads);
+        // a site with no blogs: what startup reads to learn the blogs' names
+        when(pressroom.getWeblogManager()).thenReturn(mock(com.wikantik.pressroom.business.WeblogManager.class));
         LuceneIndexManager manager = new LuceneIndexManager(pressroom);
         setField(manager, "indexDir", indexDir.toString());
         setField(manager, "indexConsistencyMarker", new File(indexDir.toFile(), MARKER));

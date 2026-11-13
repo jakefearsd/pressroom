@@ -22,8 +22,10 @@ package com.wikantik.pressroom.business.search.lucene;
 
 import java.io.IOException;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
+import org.apache.commons.text.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.lucene.analysis.miscellaneous.LimitTokenCountAnalyzer;
@@ -83,9 +85,12 @@ public abstract class IndexOperation implements Runnable {
         doc.add(new StringField(FieldConstants.ID, data.getId(),
                 Field.Store.YES));
 
-        // keyword
-        doc.add(new StringField(FieldConstants.WEBSITE_HANDLE, data
-                .getWebsite().getHandle(), Field.Store.YES));
+        // keyword, case kept (IndexUtil.handleKey: handles are case-sensitive);
+        // also a doc value, so the site view counts hits per blog without
+        // reading up to 500 stored documents
+        String handle = IndexUtil.handleKey(data.getWebsite().getHandle());
+        doc.add(new StringField(FieldConstants.WEBSITE_HANDLE, handle, Field.Store.YES));
+        doc.add(new SortedDocValuesField(FieldConstants.WEBSITE_HANDLE, new BytesRef(handle)));
 
         // No author login: nothing searches by author, and public search
         // could enumerate logins through "username:a*" (code review,
@@ -95,9 +100,12 @@ public abstract class IndexOperation implements Runnable {
         doc.add(new TextField(FieldConstants.TITLE, data.getTitle(),
                 Field.Store.YES));
 
-        // keyword needs to be in lower case as we are used in a term
-        doc.add(new StringField(FieldConstants.LOCALE, data.getLocale()
-                .toLowerCase(Locale.ROOT), Field.Store.YES));
+        // keyword needs to be in lower case as we are used in a term; the
+        // column is nullable, and a post without one simply has no locale term
+        if (data.getLocale() != null) {
+            doc.add(new StringField(FieldConstants.LOCALE, data.getLocale()
+                    .toLowerCase(Locale.ROOT), Field.Store.YES));
+        }
 
         // The text a reader sees (shortcodes expanded, markdown rendered, tags
         // stripped); stored, because snippets are cut from it.
@@ -106,8 +114,10 @@ public abstract class IndexOperation implements Runnable {
                 Field.Store.YES));
 
         if (data.getSummary() != null) {
+            // decoded as the body is: "Fish &amp; chips" is not the word "amp"
             doc.add(new TextField(FieldConstants.SUMMARY,
-                    Utilities.removeHTML(data.getSummary(), true), Field.Store.NO));
+                    StringEscapeUtils.unescapeHtml4(Utilities.removeHTML(data.getSummary(), true)),
+                    Field.Store.NO));
         }
 
         if (!data.getTags().isEmpty()) {
@@ -117,10 +127,11 @@ public abstract class IndexOperation implements Runnable {
                     Field.Store.NO));
         }
 
+        // a missing name or tagline is no words, never the word "null"
         Weblog blog = data.getWebsite();
-        String tagline = blog.getTagline();
         doc.add(new TextField(FieldConstants.BLOG,
-                blog.getName() + (tagline == null ? "" : " " + tagline), Field.Store.NO));
+                (Objects.toString(blog.getName(), "") + " " + Objects.toString(blog.getTagline(), "")).strip(),
+                Field.Store.NO));
 
         // the entry's half of the "more from the site" rule; the blog's half
         // is decided at query time

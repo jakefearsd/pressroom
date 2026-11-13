@@ -24,6 +24,7 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
 import com.wikantik.pressroom.util.PressroomConstants;
@@ -126,8 +127,7 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
                 // Delete Doc
                 Term tWebsite = null;
                 if (website != null) {
-                    tWebsite = IndexUtil.getTerm(FieldConstants.WEBSITE_HANDLE,
-                            website.getHandle());
+                    tWebsite = IndexUtil.handleTerm(website.getHandle());
                 }
                 if (tWebsite != null) {
                     writer.deleteDocuments(tWebsite);
@@ -138,10 +138,19 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
                     writer.deleteAll();
                 }
 
-                // Add Doc
+                // Add Doc. A post that cannot be made into a document is
+                // skipped, not allowed to roll back every other post's.
                 for (WeblogEntry entry : entries) {
-                    writer.addDocument(getDocument(entry));
-                    log.debug("Indexed entry {}: {}", entry.getPubTime(), entry.getAnchor());
+                    Document doc = documentOrNull(entry);
+                    if (doc != null) {
+                        writer.addDocument(doc);
+                        log.debug("Indexed entry {}: {}", entry.getPubTime(), entry.getAnchor());
+                    }
+                }
+                writer.commit();
+                if (website == null) {
+                    // only now is there a completed build to certify
+                    manager.fullRebuildCompleted();
                 }
             }
             succeeded = true;
@@ -176,6 +185,16 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
         } else {
             log.info("Completed rebuilding index for website handle: '{}' in '{}' seconds",
                     website.getHandle(), length);
+        }
+    }
+
+    /** The entry's document, or null (logged) when it cannot be built. */
+    private Document documentOrNull(WeblogEntry entry) {
+        try {
+            return getDocument(entry);
+        } catch (RuntimeException e) {
+            log.warn("Could not index entry {}; it is left out of this rebuild", entry.getId(), e);
+            return null;
         }
     }
 }

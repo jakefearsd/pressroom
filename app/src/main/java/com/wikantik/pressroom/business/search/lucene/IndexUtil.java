@@ -33,10 +33,11 @@ public final class IndexUtil {
     private IndexUtil() {}
 
     /**
-     * Create a lucene term for a keyword field (handle, locale). Those fields
-     * are indexed verbatim (lowercase), so the term is the lowercased input;
-     * running it through the text analyzer would stem it (a handle
-     * "searchother" became "searchoth") or drop it as a stop word.
+     * Create a lucene term for a keyword field indexed lowercased (the
+     * locale). Keyword fields never go through the text analyzer, which would
+     * stem them (a handle "searchother" became "searchoth") or drop them as
+     * stop words. Not for the handle, which keeps its case: use
+     * {@link #handleTerm}.
      *
      * @param field
      *            The lucene document field to create a term with
@@ -50,6 +51,26 @@ public final class IndexUtil {
             return null;
         }
         return new Term(field, input.strip().toLowerCase(Locale.ROOT));
+    }
+
+    /**
+     * The handle as the index holds it: exactly as stored, case kept. Handles
+     * are case-sensitive (the unique constraint and the lookup by handle
+     * compare them exactly, and they may use A-Z), so two blogs may differ
+     * only by case and must stay apart. Every writer and reader of the
+     * {@code handle} field goes through this rule (final review, A1: a
+     * lowercased query term found no blog with a capital in its handle).
+     *
+     * @return the handle, stripped, or null when blank
+     */
+    static String handleKey(String handle) {
+        return handle == null || handle.isBlank() ? null : handle.strip();
+    }
+
+    /** The term for {@link #handleKey}, or null when blank. */
+    static Term handleTerm(String handle) {
+        String key = handleKey(handle);
+        return key == null ? null : new Term(FieldConstants.WEBSITE_HANDLE, key);
     }
 
 }

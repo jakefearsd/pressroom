@@ -16,15 +16,23 @@ class IndexUtilTest {
 
     @Test
     void keywordTermsAreNotStemmedOrDropped() {
-        assertEquals(new Term("handle", "searchother"), IndexUtil.getTerm("handle", "searchother"));
-        assertEquals(new Term("handle", "the"), IndexUtil.getTerm("handle", "the"));
+        assertEquals(new Term("handle", "searchother"), IndexUtil.handleTerm("searchother"));
+        assertEquals(new Term("handle", "the"), IndexUtil.handleTerm("the"));
         assertEquals(new Term("locale", "en_us"), IndexUtil.getTerm("locale", "en_US"));
+    }
+
+    /** Handles are case-sensitive (two blogs may differ only by case), so the term keeps the case. */
+    @Test
+    void aHandleTermKeepsItsCase() {
+        assertEquals(new Term("handle", "MixedCase"), IndexUtil.handleTerm(" MixedCase "));
+        assertNull(IndexUtil.handleTerm("  "));
+        assertNull(IndexUtil.handleTerm(null));
     }
 
     @Test
     void nothingToMatchGivesNoTerm() {
-        assertNull(IndexUtil.getTerm("handle", null));
+        assertNull(IndexUtil.getTerm("locale", null));
         assertNull(IndexUtil.getTerm(null, "x"));
-        assertNull(IndexUtil.getTerm("handle", "  "));
+        assertNull(IndexUtil.getTerm("locale", "  "));
     }
 }
