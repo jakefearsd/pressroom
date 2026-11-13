@@ -19,6 +19,7 @@
 package com.wikantik.pressroom.ui.rendering.model;
 
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.BlogStanding;
 import com.wikantik.pressroom.business.MultiWeblogURLStrategy;
 import com.wikantik.pressroom.business.PropertiesManager;
 import com.wikantik.pressroom.business.URLStrategy;

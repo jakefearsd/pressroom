@@ -15,7 +15,7 @@
  * copyright in this work, please see the NOTICE file in the top level
  * directory of this distribution.
  */
-package com.wikantik.pressroom.ui.rendering.model;
+package com.wikantik.pressroom.business;
 
 import java.util.Date;
 

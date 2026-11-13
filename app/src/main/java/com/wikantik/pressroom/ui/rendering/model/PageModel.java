@@ -35,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.commons.validator.routines.UrlValidator;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.BlogStanding;
 import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.pojos.MediaFile;

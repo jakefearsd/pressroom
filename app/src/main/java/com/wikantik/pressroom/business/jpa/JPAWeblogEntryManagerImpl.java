@@ -56,7 +56,7 @@ import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
 import com.wikantik.pressroom.pojos.WeblogEntryTag;
 import com.wikantik.pressroom.pojos.Weblog;
-import com.wikantik.pressroom.ui.rendering.model.BlogStanding;
+import com.wikantik.pressroom.business.BlogStanding;
 import com.wikantik.pressroom.pojos.WeblogEntryAttribute;
 import com.wikantik.pressroom.pojos.WeblogEntryRevision;
 import com.wikantik.pressroom.config.WebloggerConfig;

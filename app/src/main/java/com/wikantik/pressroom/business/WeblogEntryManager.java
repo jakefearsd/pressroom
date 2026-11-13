@@ -27,7 +27,6 @@ import com.wikantik.pressroom.business.discovery.DiscoveryCandidate;
 import com.wikantik.pressroom.pojos.TagStat;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
-import com.wikantik.pressroom.ui.rendering.model.BlogStanding;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntryRevision;

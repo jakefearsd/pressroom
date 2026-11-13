@@ -20,6 +20,7 @@ package com.wikantik.pressroom.ui.rendering.model;
 
 import java.util.Map;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.BlogStanding;
 import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.pojos.wrapper.WeblogEntryWrapper;
 import com.wikantik.pressroom.ui.rendering.pagers.WeblogEntriesLatestPager;

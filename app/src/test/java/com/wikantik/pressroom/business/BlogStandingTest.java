@@ -34,7 +34,6 @@ import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
-import com.wikantik.pressroom.ui.rendering.model.BlogStanding;
 
 /**
  * {@link WeblogEntryManager#getBlogStanding}: the blog line's count and date.
