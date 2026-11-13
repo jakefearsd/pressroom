@@ -504,6 +504,12 @@ three article themes' `searchresults.vm` and frontpage's `weblog.vm` (search
 branch) call it inside their main element after their own search-again form,
 empty line and error line, and keep keying the branch on
 `$model.searchResults`. It prints nothing when the search found nothing.
+The site's search at `/search` renders the site space's theme template
+named `site-search` when it has one, else the shared
+`WEB-INF/velocity/templates/weblog/site-search.vm`, which calls the macro
+the same way (site view) whatever the site's theme; the choice is
+`SearchServlet.selectTemplate`, mirroring the discovery page's
+(discovery.md, "Site search").
 
 - **Markup** (pinned by `SearchServletRenderingTest`, all four themes):
   `section.search-results` holds `p.search-fallback` (any-word retry only),

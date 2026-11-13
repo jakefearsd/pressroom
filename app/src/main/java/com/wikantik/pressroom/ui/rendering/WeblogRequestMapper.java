@@ -114,10 +114,18 @@ public class WeblogRequestMapper {
      * stylesheet ({@code page/}), theme resources ({@code resource/}) and
      * media files ({@code mediaresource/}) as {@code /site-space/<context>/...}
      * because they reuse the per-weblog asset routes. Every other context
-     * (entry, feed, search, category, tags, date) has nothing behind it for
-     * the site, so it stays a 404.
+     * (entry, feed, search, category, tags, date) stays a 404 under the
+     * handle: the site's search lives at {@code /search}, the rest has
+     * nothing behind it for the site.
      */
     private static final Set<String> SITE_ASSET_CONTEXTS = Set.of("page", "resource", "mediaresource");
+
+    /**
+     * The site's search, {@code <ctx>/search}: the site space's search
+     * context at the root, where the url strategy builds it. On the site host
+     * only; on a custom domain {@code /search} is that blog's own.
+     */
+    private static final String SITE_SEARCH_PATH = "search";
 
 
     // url patterns that are not allowed to be considered weblog handles
@@ -260,6 +268,14 @@ public class WeblogRequestMapper {
         // stylesheet on every single page), /search and /resource/<file> on
         // every vhost page. Only the isWeblog() half is skippable: a
         // host-resolved handle is a weblog by construction.
+        // Site-wide search: exactly /search on the site host is the site
+        // space's search, its one address. Asked before the reserved-word
+        // skip, which keeps "search" from ever being a blog handle; anything
+        // after it (/search/x, /search/) and every miss below still declines.
+        if (vhostHandle == null && SITE_SEARCH_PATH.equals(servlet) && !trailingSlash
+                && forwardedAsSiteSearch(request, response)) {
+            return true;
+        }
         Set<String> reserved = (vhostHandle != null) ? appRestricted : restricted;
         if (reserved.contains(firstSegment)) {
             log.debug("SKIPPED {}", firstSegment);
@@ -618,6 +634,39 @@ public class WeblogRequestMapper {
             return false;
         }
         log.debug("forwarding site asset to {}", forwardUrl);
+        request.getRequestDispatcher(forwardUrl).forward(request, response);
+        return true;
+    }
+
+    /**
+     * Serve {@code /search} as the site space's search, forwarded exactly as
+     * a blog's {@code /<handle>/search} is. Declines -- the 404 it was before
+     * -- before bootstrap, when there is no site space, when looking it up
+     * fails, and for a POST (see {@link #calculateForwardUrl}). The search
+     * servlet serves the site space only to this FORWARD dispatch.
+     *
+     * @return true when the request was forwarded
+     */
+    private boolean forwardedAsSiteSearch(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        if (!provider.isBootstrapped()) {
+            return false;
+        }
+        try {
+            if (weblogger.getWeblogManager().getSiteSpace() == null) {
+                return false;
+            }
+        } catch (Exception ex) {
+            log.warn("Could not look up the site space; declining the site search", ex);
+            return false;
+        }
+        String forwardUrl = calculateForwardUrl(request, Weblog.SITE_SPACE_HANDLE, null,
+                SITE_SEARCH_PATH, null);
+        if (forwardUrl == null) {
+            return false;
+        }
+        log.debug("forwarding site search to {}", forwardUrl);
         request.getRequestDispatcher(forwardUrl).forward(request, response);
         return true;
     }

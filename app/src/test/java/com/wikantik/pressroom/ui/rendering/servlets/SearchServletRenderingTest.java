@@ -1,6 +1,14 @@
 package com.wikantik.pressroom.ui.rendering.servlets;
 
 import com.wikantik.pressroom.TestUtils;
+import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.themes.ThemeManager;
+import com.wikantik.pressroom.pojos.StaticThemeTemplate;
+import com.wikantik.pressroom.pojos.ThemeTemplate;
+import com.wikantik.pressroom.pojos.WeblogTheme;
+import com.wikantik.pressroom.ui.rendering.StrictReferences;
+import com.wikantik.pressroom.ui.rendering.velocity.InvalidReferenceRecorder;
+import jakarta.servlet.DispatcherType;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import org.junit.jupiter.api.AfterEach;
@@ -24,7 +32,12 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class SearchServletRenderingTest {
 
@@ -291,7 +304,14 @@ class SearchServletRenderingTest {
         RenderingTestSupport.clearRenderCaches();
     }
 
-    /** Publishes and indexes a post; the caller waits with awaitIndexed. */
+    /**
+     * Publishes and indexes a post; the caller waits with awaitIndexed.
+     * Reindexed (delete, then add), not added: newBlog's rename schedules a
+     * rebuild of that blog's documents on another thread, and a rebuild that
+     * ran between this save and a plain add left the post in the index twice
+     * ("3 articles across 2 blogs" for two posts). Writes hold one lock, so
+     * either order now leaves one document.
+     */
     private WeblogEntry post(Weblog blog, String anchor, String title, String text) throws Exception {
         WeblogEntry entry = TestUtils.setupWeblogEntry(anchor, TestUtils.getManagedWebsite(blog),
                 TestUtils.getManagedUser(user));
@@ -300,7 +320,7 @@ class SearchServletRenderingTest {
         TestUtils.weblogger().getWeblogEntryManager().saveWeblogEntry(entry);
         TestUtils.weblogger().flush();
         TestUtils.weblogger().getIndexManager()
-                .addEntryIndexOperation(TestUtils.getManagedWeblogEntry(entry));
+                .addEntryReIndexOperation(TestUtils.getManagedWeblogEntry(entry));
         TestUtils.endSession(true);
         return entry;
     }
@@ -523,5 +543,239 @@ class SearchServletRenderingTest {
         setProperty(FRONTPAGE_AGGREGATED_PROP, "true");
         RenderingTestSupport.clearRenderCaches();
         assertTrue(search(site.getHandle(), "zzznope").contains("No posts matched that search."));
+    }
+
+    // ------------------------------------- site-wide search: the site space at /search
+
+    private static final String SITE_NAME = "Harbour & Hills";
+    private static final String SITE_NAME_HTML = "Harbour &amp; Hills";
+
+    private void givenSiteSpace(String theme) throws Exception {
+        siteSpaceCreated = true;
+        var weblogs = TestUtils.weblogger().getWeblogManager();
+        Weblog site = weblogs.getOrCreateSiteSpace(
+                TestUtils.weblogger().getUserManager().getUserByUserName(user.getUserName()));
+        site.setEditorTheme(theme);
+        weblogs.saveWeblog(site);
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+        if (!originalProperties.containsKey("site.name")) {
+            setProperty("site.name", SITE_NAME);
+        }
+        RenderingTestSupport.clearRenderCaches();
+    }
+
+    /** {@code /search} as WeblogRequestMapper forwards it: the site space, by FORWARD. */
+    private MockHttpServletResponse siteSearch(String query, String... more) throws Exception {
+        MockHttpServletRequest request = RenderingTestSupport
+                .anonymousGet("/pressroom-ui/rendering/search", "/" + Weblog.SITE_SPACE_HANDLE);
+        request.setDispatcherType(DispatcherType.FORWARD);
+        if (query != null) {
+            request.setParameter("q", query);
+        }
+        for (int i = 0; i < more.length; i += 2) {
+            request.setParameter(more[i], more[i + 1]);
+        }
+        return RenderingTestSupport.execute(RenderingTestSupport.searchServlet(), request);
+    }
+
+    private String siteSearchBody(String query, String... more) throws Exception {
+        MockHttpServletResponse response = siteSearch(query, more);
+        String body = response.getContentAsString();
+        assertEquals(200, response.getStatus(), body);
+        assertFalse(body.contains("$model.") || body.contains("$hit") || body.contains("$text.")
+                        || body.contains("$url.") || body.contains("$config.") || body.contains("$utils."),
+                "a Velocity reference leaked into the page:\n" + body);
+        return body;
+    }
+
+    private static int count(String body, String needle) {
+        int found = 0;
+        for (int at = body.indexOf(needle); at >= 0; at = body.indexOf(needle, at + 1)) {
+            found++;
+        }
+        return found;
+    }
+
+    /**
+     * The site's search renders the shared {@code templates/weblog/site-search.vm}
+     * whatever theme the site space runs (no bundled theme ships its own), with
+     * the site name as the one h1 and one ranked list naming each hit's blog.
+     */
+    @Test
+    void siteSpaceSearchRendersTheSharedTemplateWithResultsOfSeveralBlogs() throws Exception {
+        Weblog other = newBlog("searchother", "Other Notes", "journal");
+        post(weblog, "site-own", "Zorbix at home", "zorbix");
+        post(other, "site-other", "Zorbix abroad", "zorbix");
+        awaitIndexed(weblog, "zorbix", 1);
+        awaitIndexed(other, "zorbix", 1);
+
+        for (String theme : List.of("frontpage", "journal", "travel", "portfolio")) {
+            givenSiteSpace(theme);
+            String body = siteSearchBody("zorbix");
+
+            assertTrue(body.contains("<body class=\"site-search-page\">"), theme + ": the shared template:\n" + body);
+            assertEquals(1, count(body, "<h1"), theme + ": one h1:\n" + body);
+            assertTrue(body.contains(SITE_NAME_HTML + "</a></h1>"), theme + ": the h1 is the site name:\n" + body);
+            assertTrue(body.contains("class=\"search-results\""), body);
+            assertTrue(body.contains("2 articles across 2 blogs"), body);
+            assertEquals(2, count(body, "<a class=\"search-blog\""), theme + ": each hit names its blog:\n" + body);
+            assertTrue(body.contains(">Test Weblog</a>"), body);
+            assertTrue(body.contains(">Other Notes</a>"), body);
+            assertTrue(body.contains("Zorbix at home") && body.contains("Zorbix abroad"), body);
+        }
+    }
+
+    /**
+     * Noindex like every results page, and the query is reader input on an
+     * anonymous page: it comes back escaped in the input and in the title.
+     */
+    @Test
+    void siteSpaceSearchPageIsNoindexAndHasTheSearchFormPrefilled() throws Exception {
+        givenSiteSpace("frontpage");
+
+        String body = siteSearchBody("say \"hi\" <b>");
+
+        assertTrue(body.contains("<meta name=\"robots\" content=\"noindex\">"), body);
+        assertTrue(java.util.regex.Pattern.compile(
+                "<form class=\"site-search\" role=\"search\" method=\"get\" action=\"[^\"]*/search\">")
+                .matcher(body).find(), "the form posts to the site's search address:\n" + body);
+        assertTrue(body.contains("<input type=\"search\" name=\"q\" maxlength=\"255\" required"
+                + " value=\"say &quot;hi&quot; &lt;b&gt;\""), body);
+        assertTrue(body.contains("<title>Search: say &quot;hi&quot; &lt;b&gt; — " + SITE_NAME_HTML + "</title>"),
+                body);
+        assertFalse(body.contains("\"hi\" <b>"), "the raw query must not reach the page:\n" + body);
+        assertFalse(body.contains("site-space/search"), "the handle is never the address:\n" + body);
+    }
+
+    @Test
+    void siteSpaceSearchWithNoQueryShowsTheFormAndNoResults() throws Exception {
+        givenSiteSpace("frontpage");
+
+        String body = siteSearchBody(null);
+
+        assertTrue(body.contains("<form class=\"site-search\""), body);
+        assertTrue(body.contains("value=\"\""), "an empty input:\n" + body);
+        assertTrue(body.contains("<title>Search — " + SITE_NAME_HTML + "</title>"), body);
+        assertFalse(body.contains("class=\"search-results\""), body);
+        assertFalse(body.contains("class=\"site-search-empty\""), "no query is not an empty result:\n" + body);
+        assertFalse(body.contains("class=\"site-search-error\""), body);
+    }
+
+    @Test
+    void siteSpaceSearchEmptyAndFallbackStatesRender() throws Exception {
+        post(weblog, "site-fallback", "Fallback", "zorbix and nothing more");
+        awaitIndexed(weblog, "zorbix", 1);
+        givenSiteSpace("frontpage");
+
+        String empty = siteSearchBody("zzznope");
+        assertTrue(empty.contains("<p class=\"site-search-empty\">No posts matched that search."), empty);
+        assertFalse(empty.contains("class=\"search-results\""), empty);
+
+        String fallback = siteSearchBody("zorbix absentword");
+        assertTrue(fallback.contains("class=\"search-fallback\""), fallback);
+        assertFalse(fallback.contains("class=\"site-search-empty\""), fallback);
+    }
+
+    /** The site view is paged by ten, and its pager links stay on the site's address. */
+    @Test
+    void siteSpaceSearchPagesByTenAtTheSiteAddress() throws Exception {
+        for (int i = 0; i < 11; i++) {
+            post(weblog, "site-many-" + i, "Many " + i, "zorbix");
+        }
+        awaitIndexed(weblog, "zorbix", 11);
+        givenSiteSpace("frontpage");
+
+        String body = siteSearchBody("zorbix");
+        assertEquals(10, count(body, "<li class=\"search-hit\">"), body);
+        assertTrue(java.util.regex.Pattern.compile("rel=\"next\" href=\"[^\"]*/search\\?[^\"]*page=1")
+                .matcher(body).find(), "next goes to the site's search, page 1:\n" + body);
+        assertFalse(body.contains("site-space/search"), body);
+
+        String second = siteSearchBody("zorbix", "page", "1");
+        assertEquals(1, count(second, "<li class=\"search-hit\">"), second);
+        assertTrue(second.contains("rel=\"prev\""), second);
+    }
+
+    /** Like the page servlet, the search servlet serves the site space to the mapper's forward only. */
+    @Test
+    void theSiteSpacesSearchIsNotServedByItsHandle() throws Exception {
+        givenSiteSpace("frontpage");
+        MockHttpServletRequest request = RenderingTestSupport
+                .anonymousGet("/pressroom-ui/rendering/search", "/" + Weblog.SITE_SPACE_HANDLE);
+        request.setParameter("q", "zorbix");
+
+        assertEquals(404, RenderingTestSupport.execute(RenderingTestSupport.searchServlet(), request).getStatus());
+    }
+
+    /**
+     * The template choice, as PageServlet's for the discovery page: the site
+     * space's theme's own {@code site-search} template when it has one (a
+     * forked theme), else the shared one, also when the lookup fails. A blog
+     * keeps its theme's search template, never site-search.
+     */
+    @Test
+    void aSiteSpaceThemeWithItsOwnSiteSearchTemplateIsUsed() throws Exception {
+        Weblog site = new Weblog();
+        site.setHandle(Weblog.SITE_SPACE_HANDLE);
+        site.setSiteSpace(true);
+        ThemeManager themes = mock(ThemeManager.class);
+        WeblogTheme theme = mock(WeblogTheme.class);
+        when(themes.getTheme(any(Weblog.class))).thenReturn(theme);
+
+        ThemeTemplate own = mock(ThemeTemplate.class);
+        when(theme.getTemplateByName("site-search")).thenReturn(own);
+        assertSame(own, SearchServlet.selectTemplate(site, themes));
+
+        when(theme.getTemplateByName("site-search")).thenReturn(null);
+        ThemeTemplate shared = SearchServlet.selectTemplate(site, themes);
+        assertInstanceOf(StaticThemeTemplate.class, shared);
+        assertEquals("templates/weblog/site-search.vm", shared.getId());
+
+        when(theme.getTemplateByName("site-search")).thenThrow(new WebloggerException("theme is broken"));
+        assertEquals("templates/weblog/site-search.vm", SearchServlet.selectTemplate(site, themes).getId());
+
+        ThemeTemplate blogSearch = mock(ThemeTemplate.class);
+        when(theme.getTemplateByAction(ThemeTemplate.ComponentType.SEARCH)).thenReturn(blogSearch);
+        assertSame(blogSearch, SearchServlet.selectTemplate(weblog, themes));
+    }
+
+    /**
+     * What the shared site-search template, and the macros it calls, leave
+     * unresolved, each with its reason (RenderedTemplateCoverageTest names
+     * this class for {@code templates/weblog/site-search.vm}). Cleared and
+     * asserted inside the one test, so the theme renders above do not count.
+     */
+    private static final java.util.Set<String> SITE_SEARCH_REFERENCES = java.util.Set.of(
+            "weblog.vm: $model.canonicalUrl", // null on every results page (PageModel: search results have no canonical); assigned to $seoCanonical
+            "weblog.vm: $seoCanonical", // that #set of a null canonical; tested with #if
+            "weblog.vm: seoCanonical", // the same #set, as the recorder names its target
+            "weblog.vm: $model.page", // null when the view is not a static page; tested with #if
+            "weblog.vm: $analytics.websiteId()", // null unless the site space is registered with Umami; tested with $utils.isNotEmpty
+            "weblog.vm: $trackerSiteId", // #set of a null website id; tested with $utils.isNotEmpty
+            "weblog.vm: trackerSiteId", // the same #set, as the recorder names its target
+            "weblog.vm: $colophonFacts.copyrightText", // null unless copyright text is set; tested with $utils.isNotEmpty
+            "weblog.vm: $colophonFacts.privacyUrl", // null unless a privacy URL is configured; tested with $utils.isNotEmpty
+            "weblog.vm: $pager.prevLink", // null on the first page of results; tested with #if in the next/prev macro
+            "weblog.vm: $pager.nextLink", // null on the last page of results; tested with #if in the next/prev macro
+            "weblog.vm: $srEntry.featuredImage" // null for a hit with no featured image; tested with #if in the hit macro
+    );
+
+    @Test
+    void siteSearchLeavesOnlyTheExpectedReferencesUnresolved() throws Exception {
+        Weblog other = newBlog("searchother", "Other Notes", "journal");
+        post(weblog, "strict-own", "Zorbix at home", "zorbix");
+        post(other, "strict-other", "Zorbix abroad", "zorbix");
+        awaitIndexed(weblog, "zorbix", 1);
+        awaitIndexed(other, "zorbix", 1);
+        givenSiteSpace("frontpage");
+
+        InvalidReferenceRecorder.clear();
+        siteSearchBody("zorbix");
+        siteSearchBody("zorbix absentword");
+        siteSearchBody("zzznope");
+        siteSearchBody(null);
+
+        StrictReferences.assertRecordedExactly("site-search.vm", SITE_SEARCH_REFERENCES);
     }
 }

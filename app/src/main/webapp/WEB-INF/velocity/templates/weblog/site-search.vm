@@ -1,0 +1,108 @@
+#**
+The site's search results page, at /search: WeblogRequestMapper forwards
+it to the search servlet for the site space, and the servlet renders this
+template whatever theme the site space uses (a theme may ship its own
+template named site-search; none of the bundled themes does), as PageServlet
+does the discovery front page. A plain page: the site name as the one h1
+linking home, the search form, the results, the site footer.
+
+Data: $model is SearchResultsModel in its site view (one ranked list across
+blogs, paged by ten); the results come from the showSearchResults macro,
+untouched. $model.term is the query already escaped (escapeXml10), so it is
+emitted bare; the site space's name comes escaped from the wrapper;
+$config.siteName is raw and escaped here. The page is noindex (the
+showSeoHead macro, since $model.searchResults is true) and never cached.
+
+The form's markup (form.site-search, input[type=search][name=q]) is a
+contract: the front page's search box posts to the same address. The style
+below has no hash and no dollar sign: Velocity would read either.
+*#
+<!DOCTYPE html>
+## lang: WeblogWrapper#getLanguageTag, as page.vm explains.
+<html lang="$model.weblog.getLanguageTag()">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src * data:; frame-src https://www.youtube-nocookie.com https://player.vimeo.com; font-src 'self'; base-uri 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'">
+    ## The themes' title rule, "Search: q — Site": both halves arrive escaped.
+    #if($utils.isNotEmpty($model.term))
+    <title>$utils.titleWithName($text.get("search.title", [$model.term]), $model.weblog.name)</title>
+    #else
+    <title>$utils.titleWithName($text.get("search.titleNone"), $model.weblog.name)</title>
+    #end
+    <link href="$url.absoluteSite/favicon.svg" rel="icon" type="image/svg+xml" />
+    ## The site space has no posts, so no feed autodiscovery.
+    #showSeoHead()
+    #showAnalyticsTrackingCode($model.weblog)
+    <style>
+body.site-search-page { color-scheme: light dark; margin: 0; background: Canvas; color: CanvasText;
+    font-family: system-ui, sans-serif; line-height: 1.55; }
+.site-search-page * { box-sizing: border-box; }
+.site-search-wrap { max-width: 46rem; margin: 0 auto; padding: 0 16px; }
+.site-search-skip { position: absolute; left: -9999px; }
+.site-search-skip:focus { left: 16px; top: 8px; padding: .25rem .5rem; background: Canvas; }
+.site-search-mast { padding: 1.5rem 0 1rem; border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent); }
+.site-search-site { margin: 0; font-size: 1.5rem; line-height: 1.2; }
+.site-search-site a { color: inherit; text-decoration: none; }
+.site-search { display: flex; gap: .5rem; margin: 1.5rem 0 0; }
+.site-search input[type=search] { flex: 1 1 auto; min-width: 0; padding: .5rem .625rem; font: inherit;
+    border: 1px solid color-mix(in srgb, currentColor 35%, transparent); border-radius: 6px; background: Canvas; color: inherit; }
+.site-search button { padding: .5rem 1rem; font: inherit; border: 1px solid currentColor; border-radius: 6px;
+    background: transparent; color: inherit; cursor: pointer; }
+.site-search-empty, .site-search-error { margin: 1.5rem 0 0; }
+.site-search-pager .search-summary { margin: 1rem 0 0; font-size: .875rem; }
+.site-search-pager .search-pager { display: flex; justify-content: space-between; margin: 1rem 0 0; }
+.site-search-foot { margin: 3rem 0 0; padding: 1.5rem 0 2rem; font-size: .875rem;
+    border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent); }
+.site-search-foot ul { list-style: none; margin: 0 0 1rem; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; }
+.site-search-foot a { color: inherit; }
+    </style>
+</head>
+<body class="site-search-page">
+<a class="site-search-skip" href="#main">$text.get("discovery.skip")</a>
+
+<header class="site-search-mast">
+    <div class="site-search-wrap">
+        ## a list page: the site name is its h1 (docs/dev/themes-and-templates.md, the heading rule)
+        <h1 class="site-search-site"><a href="$url.home">$utils.escapeHTML($config.siteName)</a></h1>
+    </div>
+</header>
+
+<main id="main" class="site-search-wrap">
+    <form class="site-search" role="search" method="get" action="$url.search">
+        <input type="search" name="q" maxlength="255" required value="$model.term" aria-label="$text.get("search.wholeSite")" placeholder="$text.get("search.wholeSite")">
+        <button type="submit">$text.get("macro.weblog.searchbutton")</button>
+    </form>
+    #set($pager = $model.getWeblogEntriesPager())
+    #if($model.hits > 0 && ($model.siteScope || $model.blogOnly))
+    ## A div, not a nav: the pager macro emits its own labelled nav.
+    <div class="site-search-pager">
+        #showNextPrevSearchControl($pager)
+    </div>
+    #end
+    ## A failed search also reports zero hits, so the error comes first, in
+    ## fixed words: the exception text is internal detail on a public page.
+    #if($utils.isNotEmpty($model.errorMessage))
+    <p class="site-search-error">$text.get("search.unavailable")</p>
+    #elseif($utils.isNotEmpty($model.term) && $model.hits == 0 && $model.otherHits.isEmpty())
+    <p class="site-search-empty">$text.get("search.siteEmpty")</p>
+    #end
+    #showSearchResults($model)
+</main>
+
+<footer class="site-search-foot">
+    <div class="site-search-wrap">
+        <nav aria-label="$text.get('discovery.siteNav')">
+            <ul>
+                <li><a href="$url.home">$text.get("discovery.frontPage")</a></li>
+            #foreach($navPage in $model.getNavPages($model.weblog))
+                <li><a href="$url.staticPage($navPage.slug)">$utils.escapeHTML($navPage.title)</a></li>
+            #end
+                <li><a href="$url.site/pressroom-ui/siteDirectory.rol">$text.get("discovery.directory")</a></li>
+            </ul>
+        </nav>
+        #showColophon($model.weblog)
+    </div>
+</footer>
+</body>
+</html>

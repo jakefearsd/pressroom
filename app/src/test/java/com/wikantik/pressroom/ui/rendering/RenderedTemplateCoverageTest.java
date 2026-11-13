@@ -79,6 +79,8 @@ class RenderedTemplateCoverageTest {
         RENDERED_BY.put("templates/weblog/page.vm", FallbackPageTitleTest.class);
         // discovery.vm: the discovery front page of a site space on a theme with no discovery template (journal).
         RENDERED_BY.put("templates/weblog/discovery.vm", DiscoveryFrontPageRenderingTest.class);
+        // site-search.vm: the site's search at /search, on a site space whose theme has no site-search template.
+        RENDERED_BY.put("templates/weblog/site-search.vm", named("servlets.SearchServletRenderingTest"));
         // preview.vm: the PreviewServlet shell.
         RENDERED_BY.put("templates/weblog/preview.vm", named("servlets.PreviewShellRenderingTest"));
     }

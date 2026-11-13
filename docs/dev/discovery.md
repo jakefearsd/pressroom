@@ -74,6 +74,33 @@ footer (site pages, directory, colophon).
 - **Reading time** is `getReadingMinutes()` (rendered words / 230, rounded
   up). Dates are absolute: the page is cached until the next generation.
 
+## Site search
+
+`<ctx>/search` (routing.md, "The site root") is the site space's search,
+chosen like the discovery page: `SearchServlet.selectTemplate` gives the
+site space its theme's template named `site-search` when it has one (a
+forked theme; declare it hidden, as `discovery`), else the shared
+`WEB-INF/velocity/templates/weblog/site-search.vm`, also when that lookup
+throws. No bundled theme ships one, so it is one page on every install. A
+blog's search is untouched (its theme's search template, else its default).
+
+The page is plain: the site name as the one `h1` linking home, the form
+`form.site-search[role=search][method=get]` with
+`input[type=search][name=q][maxlength=255][required]` prefilled with
+`$model.term` (escaped), the pager for the paged view, the error line
+(`search.unavailable`) or the empty line (`search.siteEmpty`, only when
+there was a query), the showSearchResults macro untouched, and a footer
+(front page, site pages, directory, colophon). Its own small inline style
+on system colours, not the discovery stylesheet. Noindex through the
+showSeoHead macro; the title is "Search: q — Site"
+(`search.title`/`search.titleNone`). The front page's search box posts to
+this address, so the form markup is a contract.
+
+`SearchResultsModel` has one notion of "the site", `isTheSite`: the
+searched weblog `isSiteSpace()`, or the legacy aggregated front-page blog
+(`WebloggerRuntimeConfig.isSiteWideWeblog`). Either is `isSiteScope()`: one
+`Scope.SITE` find, paged by ten, and never an other-blogs query.
+
 ## Snapshot and generation
 
 `JPADiscoveryManagerImpl` keeps one snapshot of eligible posts, scores and

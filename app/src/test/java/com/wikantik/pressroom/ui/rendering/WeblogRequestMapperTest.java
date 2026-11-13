@@ -1092,4 +1092,125 @@ class WeblogRequestMapperTest {
         assertFalse(coldMapper.handleRequest(publicUrl("GET", "/site-space/page/x.css"), response));
         assertNull(response.getForwardedUrl());
     }
+
+    // ------------------------------------------------- site-wide search at /search
+
+    private static final String SITE_SEARCH_FORWARD = "/pressroom-ui/rendering/search/site-space";
+
+    private void givenSiteSpace() throws Exception {
+        TestUtils.weblogger().getWeblogManager().getOrCreateSiteSpace(
+                TestUtils.weblogger().getUserManager().getUserByUserName(user.getUserName()));
+        TestUtils.weblogger().flush();
+        TestUtils.endSession(true);
+    }
+
+    /**
+     * {@code /search} on the site host is the one address of site-wide search:
+     * the search servlet for the site space, whose url strategy builds
+     * {@code <ctx>/search?q=...}. Before, "search" was a reserved first
+     * segment and the site space answered only its asset contexts, so the
+     * "Search the whole site" link was a 404.
+     */
+    @Test
+    void siteSearchForwardsToTheSearchServletForTheSiteSpace() throws Exception {
+        givenSiteSpace();
+        MockHttpServletRequest request = publicUrlAt("", "GET", "/search");
+        request.setQueryString("q=x");
+        request.setParameter("q", "x");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertTrue(mapper.handleRequest(request, response));
+        assertEquals(SITE_SEARCH_FORWARD, response.getForwardedUrl());
+    }
+
+    @Test
+    void siteSearchWorksUnderAContextPath() throws Exception {
+        givenSiteSpace();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertTrue(mapper.handleRequest(publicUrl("GET", "/search"), response));
+        assertEquals(SITE_SEARCH_FORWARD, response.getForwardedUrl());
+    }
+
+    /** Exactly {@code /search}: anything after it, a trailing slash included, stays a 404. */
+    @ParameterizedTest
+    @ValueSource(strings = {"/search/x", "/search/", "/search/x/y", "/en/search"})
+    void searchWithAFurtherSegmentIsNotHandled(String path) throws Exception {
+        givenSiteSpace();
+        for (String contextPath : new String[] {"/pressroom", ""}) {
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            assertFalse(mapper.handleRequest(publicUrlAt(contextPath, "GET", path), response),
+                    contextPath + path);
+            assertNull(response.getForwardedUrl(), contextPath + path);
+            assertNull(response.getHeader("Location"), contextPath + path);
+        }
+    }
+
+    /** The handle is never a public address for the site's pages, search included. */
+    @Test
+    void siteSpaceHandleSearchIsNotAnAddress() throws Exception {
+        givenSiteSpace();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertFalse(mapper.handleRequest(publicUrl("GET", "/site-space/search"), response));
+        assertNull(response.getForwardedUrl());
+    }
+
+    /**
+     * No site space, a tier not yet bootstrapped, or a site-space lookup that
+     * throws: {@code /search} declines, the 404 it was before (never a 500).
+     */
+    @Test
+    void noSiteSpaceMeansNoSiteSearch() throws Exception {
+        MockHttpServletResponse none = new MockHttpServletResponse();
+        assertFalse(mapper.handleRequest(publicUrl("GET", "/search"), none), "no site space");
+        assertNull(none.getForwardedUrl());
+
+        givenSiteSpace();
+        WebloggerProvider cold = mock(WebloggerProvider.class);
+        when(cold.isBootstrapped()).thenReturn(false);
+        MockHttpServletResponse coldResponse = new MockHttpServletResponse();
+        assertFalse(new WeblogRequestMapper(cold, TestUtils.weblogger())
+                .handleRequest(publicUrl("GET", "/search"), coldResponse), "not bootstrapped");
+        assertNull(coldResponse.getForwardedUrl());
+
+        Weblogger broken = mock(Weblogger.class);
+        when(broken.getWeblogManager()).thenThrow(new IllegalStateException("tier gone"));
+        MockHttpServletResponse brokenResponse = new MockHttpServletResponse();
+        assertFalse(new WeblogRequestMapper(bootstrappedProvider(), broken)
+                .handleRequest(publicUrl("GET", "/search"), brokenResponse), "lookup throws");
+        assertNull(brokenResponse.getForwardedUrl());
+    }
+
+    /** Nothing in the public url space accepts a POST, the site's search included. */
+    @Test
+    void aPostToSiteSearchIsNotForwarded() throws Exception {
+        givenSiteSpace();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertFalse(mapper.handleRequest(publicUrl("POST", "/search"), response));
+        assertNull(response.getForwardedUrl());
+    }
+
+    /**
+     * Characterisation test: written after the behaviour and passing against
+     * the code before {@code /search} became the site's search. On a custom
+     * domain {@code /search} is that blog's own search, site space or not.
+     */
+    @Test
+    void searchOnACustomDomainIsThatBlogsSearch() throws Exception {
+        givenSiteSpace();
+        givenCustomDomain("vhost.example.com");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertTrue(mapper.handleRequest(vhostUrl("GET", "/search"), response));
+        assertEquals("/pressroom-ui/rendering/search/mapperblog", response.getForwardedUrl());
+    }
+
+    /** {@code search} stays a protected word: no blog can take the handle. */
+    @Test
+    void searchStaysAProtectedUrl() {
+        assertTrue(mapper.restricted.contains("search"));
+    }
 }

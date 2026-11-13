@@ -52,9 +52,10 @@ page" is one comparison, `WebloggerRuntimeConfig.isFrontDoorPage` (the
 property trimmed, the slug exact), shared by the mapper, `FrontDoor` and
 the URL strategy, so the 301 and the links never disagree. `PageServlet`
 serves the site space only to a FORWARD dispatch, and only a
-`WeblogPageRequest` parses its hyphenated handle, so
-`/pressroom-ui/rendering/{page,feed,search,...}/site-space/...` requested
-directly is a 404.
+`WeblogPageRequest` (and the resource, media and search requests) parses
+its hyphenated handle, and each of those servlets has the same FORWARD
+gate, so `/pressroom-ui/rendering/{page,feed,search,...}/site-space/...`
+requested directly is a 404.
 
 The site space's ASSETS keep the handle. Its pages live at the root, but the
 url strategy (`MultiWeblogURLStrategy.assetRoot`) builds the theme
@@ -66,7 +67,7 @@ broken `[image]`s. The mapper forwards exactly those three contexts under the
 handle (with data, no locale, no trailing slash, GET) to the page, resource
 and media servlets; every other `/site-space/...` url (the bare handle, a
 slug, entry, feed, search, category, tags, date, and `page/discovery`,
-whose one address is `/`) declines and 404s.
+whose one address is `/`) declines and 404s (the site's search has its own address, `/search`, below).
 `WeblogResourceRequest` and `WeblogMediaResourceRequest` admit the handle
 like `WeblogPageRequest`, and `ResourceServlet`/`MediaResourceServlet` carry
 the same FORWARD gate as `PageServlet`. Under the handle the `page/`
@@ -75,6 +76,22 @@ context serves the theme stylesheet's link and the discovery template only
 forward, since the mapper declines it), so frontpage's `directory` template
 is not a site address. The preview strategy's root already
 names the handle, so its `assetRoot` adds nothing.
+
+Site-wide search answers at exactly `<ctx>/search` (with or without `?q=`)
+on the site host: the address `MultiWeblogURLStrategy.getWeblogSearchURL`
+already built for the site space (its root has no handle), and so the
+"Search the whole site" link and the front page's search box. The mapper
+checks it BEFORE the reserved-word skip (`search` stays in
+`pressroomProtectedUrls`, so no blog can take the handle) and forwards it
+through `calculateForwardUrl` to `/pressroom-ui/rendering/search/site-space`
+when the tier is bootstrapped and a site space exists. It declines, the 404
+it was before, with no site space, before bootstrap, when that lookup
+throws, for a POST, and for `/search/`, `/search/<anything>`,
+`/<locale>/search` and `/site-space/search`. On a custom domain `/search`
+is that blog's own search, and `/<handle>/search` is unchanged.
+`WeblogSearchRequest` admits the site-space handle and `SearchServlet`
+carries the same FORWARD gate as `PageServlet`, so the search servlet's own
+path with the handle is a 404. The page itself: discovery.md, "Site search".
 
 Empty is a real choice, not a gap: Global Config's front-page menu starts
 with "None", and a save never fails over that field. With no weblogs the

@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -35,8 +36,11 @@ import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.util.PressroomConstants;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.Weblogger;
+import com.wikantik.pressroom.business.themes.ThemeManager;
 import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
+import com.wikantik.pressroom.pojos.StaticThemeTemplate;
+import com.wikantik.pressroom.pojos.TemplateRendition.TemplateLanguage;
 import com.wikantik.pressroom.pojos.ThemeTemplate;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogTheme;
@@ -52,6 +56,9 @@ public class SearchServlet extends HttpServlet {
     private static final long serialVersionUID = 6246730804167411636L;
 
     private static final Logger log = LoggerFactory.getLogger(SearchServlet.class);
+
+    /** The site space's theme template that may override the shared site search page. */
+    static final String SITE_SEARCH_TEMPLATE = "site-search";
 
     // Development theme reloading
     Boolean themeReload = false;
@@ -104,6 +111,13 @@ public class SearchServlet extends HttpServlet {
                 RenderingServletUtils.sendNotFound(response);
                 return;
             }
+            // The site's search is reached only through WeblogRequestMapper's
+            // forward of /search, never by the site space's internal handle
+            // at this servlet's own path (as PageServlet).
+            if (weblog.isSiteSpace() && request.getDispatcherType() != DispatcherType.FORWARD) {
+                RenderingServletUtils.sendNotFound(response);
+                return;
+            }
         } catch (Exception e) {
             // invalid search request format or weblog doesn't exist
             log.debug("error creating weblog search request", e);
@@ -128,14 +142,7 @@ public class SearchServlet extends HttpServlet {
         // lookup template to use for rendering
         ThemeTemplate page = null;
         try {
-            // try looking for a specific search page
-            WeblogTheme theme = weblogger.getThemeManager().getTheme(weblog);
-            page = theme.getTemplateByAction(ThemeTemplate.ComponentType.SEARCH);
-
-            // if not found then fall back on default page
-            if (page == null) {
-                page = theme.getDefaultTemplate();
-            }
+            page = selectTemplate(weblog, weblogger.getThemeManager());
 
             // if still null then that's a problem
             if (page == null) {
@@ -196,6 +203,41 @@ public class SearchServlet extends HttpServlet {
         }
 
         log.debug("Exiting");
+    }
+
+    /**
+     * The template that renders this weblog's search: its theme's search
+     * template, else its default template, or null when it has neither. The
+     * site space's search (the site's, at {@code /search}) is the one
+     * exception: see {@link #siteSearchTemplate}.
+     */
+    static ThemeTemplate selectTemplate(Weblog weblog, ThemeManager themes) throws WebloggerException {
+        if (weblog.isSiteSpace()) {
+            return siteSearchTemplate(weblog, themes);
+        }
+        WeblogTheme theme = themes.getTheme(weblog);
+        ThemeTemplate page = theme.getTemplateByAction(ThemeTemplate.ComponentType.SEARCH);
+        return page != null ? page : theme.getDefaultTemplate();
+    }
+
+    /**
+     * The site's search results page, chosen as PageServlet chooses the
+     * discovery front page: the site space's theme's own template named
+     * {@value #SITE_SEARCH_TEMPLATE} (a forked theme may ship one), else the
+     * shared plain page. The site space's theme can be any theme, and a
+     * blog's search template would dress the site in one blog's chrome. A
+     * lookup that fails falls back too: the site's search never 500s over
+     * its template.
+     */
+    private static ThemeTemplate siteSearchTemplate(Weblog weblog, ThemeManager themes) {
+        ThemeTemplate template = null;
+        try {
+            template = themes.getTheme(weblog).getTemplateByName(SITE_SEARCH_TEMPLATE);
+        } catch (Exception e) {
+            log.warn("Error looking up the site-search template of the site space; using the shared one", e);
+        }
+        return template != null ? template
+                : new StaticThemeTemplate("templates/weblog/site-search.vm", TemplateLanguage.VELOCITY);
     }
 
 }

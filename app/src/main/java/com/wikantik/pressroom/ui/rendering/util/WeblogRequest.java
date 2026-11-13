@@ -80,10 +80,11 @@ public class WeblogRequest extends ParsedRequest {
 
     /**
      * @param admitSiteSpace whether {@link Weblog#SITE_SPACE_HANDLE}, which no
-     *        blog handle can be, is read as a handle. Only a page request
-     *        says yes: site pages render through the page servlet and nowhere
-     *        else, so a crafted feed, search or resource url for the site
-     *        space parses as no weblog at all.
+     *        blog handle can be, is read as a handle. The page, resource,
+     *        media and search requests say yes, for the site's pages, assets
+     *        and search, and their servlets serve the site space only to
+     *        WeblogRequestMapper's forward; a feed url for the site space
+     *        parses as no weblog at all.
      */
     protected WeblogRequest(Weblogger weblogger, HttpServletRequest request,
             boolean admitSiteSpace) throws InvalidRequestException {

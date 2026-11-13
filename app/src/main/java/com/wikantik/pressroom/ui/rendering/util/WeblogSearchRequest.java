@@ -53,8 +53,11 @@ public class WeblogSearchRequest extends WeblogRequest {
             throws InvalidRequestException {
 
         // let our parent take care of their business first
-        // parent determines weblog handle and locale if specified
-        super(weblogger, request);
+        // parent determines weblog handle and locale if specified. The site
+        // space's handle is admitted: the site's search (/search) is its
+        // search, and the servlet refuses it unless WeblogRequestMapper
+        // forwarded the request.
+        super(weblogger, request, true);
         
         String servlet = request.getServletPath();
         

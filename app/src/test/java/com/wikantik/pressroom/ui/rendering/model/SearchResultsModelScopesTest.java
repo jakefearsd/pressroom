@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.MultiWeblogURLStrategy;
 import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.business.Weblogger;
@@ -198,6 +199,55 @@ class SearchResultsModelScopesTest {
                 specs(1));
         assertTrue(m.isSiteScope());
         assertTrue(m.getOtherHits().isEmpty());
+    }
+
+    /**
+     * The site space's search (at {@code /search}) is the site's: one ranked
+     * list across blogs, paged by ten, whatever the legacy aggregated
+     * front-page blog setting says.
+     */
+    @Test
+    void theSiteSpaceIsSiteScope() throws Exception {
+        blog.setSiteSpace(true);
+        blog.setHandle(Weblog.SITE_SPACE_HANDLE);
+        when(index.find(any(), any())).thenReturn(SearchHits.NONE);
+
+        SearchResultsModel m = model(Weblog.SITE_SPACE_HANDLE, false, false, 1);
+
+        assertEquals(List.of(new SearchSpec("spain", SearchSpec.Scope.SITE, Weblog.SITE_SPACE_HANDLE,
+                null, 10, 10, "en_US")), specs(1));
+        assertTrue(m.isSiteScope());
+        assertTrue(m.getOtherHits().isEmpty());
+    }
+
+    /**
+     * Characterisation test (passes against the code before the site's search
+     * had an address): the url strategy already builds the site space's
+     * search at the context root, so the "Search the whole site" link is
+     * {@code <absolute context>/search?q=...}, at the root context and under
+     * a prefix alike; with no site space there is no link.
+     */
+    @Test
+    void siteSearchUrlIsTheRootSearchAddress() throws Exception {
+        when(index.find(any(), any())).thenReturn(SearchHits.NONE);
+        WeblogManager weblogManager = mock(WeblogManager.class);
+        when(weblogger.getWeblogManager()).thenReturn(weblogManager);
+        Weblog site = new Weblog();
+        site.setHandle(Weblog.SITE_SPACE_HANDLE);
+        site.setSiteSpace(true);
+        when(weblogManager.getSiteSpace()).thenReturn(site);
+        urls = new MultiWeblogURLStrategy();
+
+        config.when(WebloggerRuntimeConfig::getAbsoluteContextURL).thenReturn("https://example.com/pressroom");
+        assertEquals("https://example.com/pressroom/search?q=spain",
+                model("myblog", false, false, 0).getSiteSearchUrl());
+
+        config.when(WebloggerRuntimeConfig::getAbsoluteContextURL).thenReturn("https://example.com");
+        assertEquals("https://example.com/search?q=spain",
+                model("myblog", false, false, 0).getSiteSearchUrl());
+
+        when(weblogManager.getSiteSpace()).thenReturn(null);
+        assertNull(model("myblog", false, false, 0).getSiteSearchUrl());
     }
 
     @Test

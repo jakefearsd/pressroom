@@ -89,8 +89,8 @@ public class SearchResultsModel extends PageModel {
 		super.init(initData);
 
 		String handle = searchRequest.getWeblogHandle();
-		// the site-wide weblog's search is the site's; any other is one blog's
-		siteScope = WebloggerRuntimeConfig.isSiteWideWeblog(handle);
+		Weblog searched = searchRequest.getWeblog();
+		siteScope = isTheSite(searched, handle);
 		blogOnly = searchRequest.isBlogOnly();
 
 		// if there is no query, then we are done
@@ -121,9 +121,9 @@ public class SearchResultsModel extends PageModel {
 				SearchHits own = indexMgr.find(
 						spec(SearchSpec.Scope.BLOG, handle, 0, OWN_IN_BLOG_VIEW), urlStrategy);
 				takeOwn(own);
-				Weblog searched = searchRequest.getWeblog();
-				if (searched != null && !searched.isSiteSpace()
-						&& !Boolean.FALSE.equals(searched.getShowMoreFromSite())) {
+				// Never the site: isTheSite made its search the paged site view
+				// above, so the site space never asks for "other" blogs.
+				if (searched != null && !Boolean.FALSE.equals(searched.getShowMoreFromSite())) {
 					SearchHits others = indexMgr.find(
 							spec(SearchSpec.Scope.OTHER_BLOGS, handle, 0, OTHERS_IN_BLOG_VIEW), urlStrategy);
 					otherHits = others.hits();
@@ -144,6 +144,17 @@ public class SearchResultsModel extends PageModel {
 		// search completed, setup pager based on results
 		pager = new SearchResultsPager(urlStrategy, searchRequest,
 			paged && ownTotal > offset + RESULTS_PER_PAGE, offset / RESULTS_PER_PAGE);
+	}
+
+	/**
+	 * Whether the searched weblog is the site, whose search is site-wide: the
+	 * site space (its search is {@code /search}), or the legacy aggregated
+	 * front-page blog. The one notion of "the site" in this model; the site
+	 * has no "other" blogs to add.
+	 */
+	private static boolean isTheSite(Weblog searched, String handle) {
+		return (searched != null && searched.isSiteSpace())
+				|| WebloggerRuntimeConfig.isSiteWideWeblog(handle);
 	}
 
 	private SearchSpec spec(SearchSpec.Scope scope, String handle, int from, int size) {
@@ -203,7 +214,7 @@ public class SearchResultsModel extends PageModel {
 		return ownHits.size();
 	}
 
-	/** The searched weblog is the site space. */
+	/** The searched weblog is the site: the site space, or the aggregated front-page blog. */
 	public boolean isSiteScope() {
 		return siteScope;
 	}
