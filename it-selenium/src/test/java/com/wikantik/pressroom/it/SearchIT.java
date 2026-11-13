@@ -19,15 +19,22 @@ package com.wikantik.pressroom.it;
 
 import java.time.Duration;
 
+import com.codeborne.selenide.WebDriverRunner;
 import com.wikantik.pressroom.it.support.Editor;
 import com.wikantik.pressroom.it.support.PressroomIT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openqa.selenium.Keys;
 
+import static com.codeborne.selenide.CollectionCondition.size;
+import static com.codeborne.selenide.Condition.exactText;
 import static com.codeborne.selenide.Condition.exist;
+import static com.codeborne.selenide.Condition.text;
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
+import static com.codeborne.selenide.Selenide.$$;
 import static com.codeborne.selenide.Selenide.executeJavaScript;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -119,6 +126,137 @@ class SearchIT extends PressroomIT {
         sleepFor(Duration.ofSeconds(5));
         assertTrue(!searchFinds(term, title),
                 "an unpublished draft became findable once indexing settled");
+    }
+
+    // ------------------------------------------------- the search boxes
+
+    /**
+     * Blog A's home page has a search box in its header; typing in it lists
+     * A's posts under A's name first, then a post of blog B under "other
+     * blogs", naming B.
+     */
+    @Test
+    void searchFromBlogHomeShowsThisBlogThenOtherBlogs() {
+        String term = "quokka" + nonce();
+        String nameA = "Box Alpha " + nonce();
+        String nameB = "Box Beta " + nonce();
+        String handleA = createWeblog(nameA);
+        String handleB = createWeblog(nameB);
+        String titleA = "Alpha " + term;
+        String titleB = "Beta " + term;
+        publishEntryOn(handleA, titleA, "Alpha writes about " + term + ".");
+        publishEntryOn(handleB, titleB, "Beta writes about " + term + ".");
+        logout();
+        assertTrue(waitForPage(baseUrl() + "/" + handleA + "/search?q=" + term, titleA, titleB),
+                "the index never held both posts");
+
+        openPath("/" + handleA + "/");
+        $("header form.site-search input[type=search]").shouldBe(visible).setValue(term).sendKeys(Keys.ENTER);
+
+        $("h2.search-group").shouldHave(text(nameA));
+        $("section.search-results li.search-hit h3.search-title a").shouldHave(exactText(titleA));
+        $("h2.search-group-other").shouldBe(visible);
+        $$("h2.search-group-other ~ ol li.search-hit").shouldHave(size(1));
+        $("h2.search-group-other ~ ol li.search-hit h3.search-title a").shouldHave(exactText(titleB));
+        $("h2.search-group-other ~ ol li.search-hit .search-blog").shouldHave(exactText(nameB));
+    }
+
+    /** The front page's masthead box searches every blog: posts of several blogs in one ranked list. */
+    @Test
+    void searchFromFrontPageListsPostsOfSeveralBlogs() {
+        String term = "marmot" + nonce();
+        String nameA = "Front Alpha " + nonce();
+        String nameB = "Front Beta " + nonce();
+        String handleA = createWeblog(nameA);
+        String handleB = createWeblog(nameB);
+        String titleA = "Alpha " + term;
+        String titleB = "Beta " + term;
+        publishEntryOn(handleA, titleA, "Alpha writes about " + term + ".");
+        publishEntryOn(handleB, titleB, "Beta writes about " + term + ".");
+        logout();
+        assertTrue(waitForPage(baseUrl() + "/search?q=" + term, titleA, titleB),
+                "the site search never listed both posts");
+
+        openPath("/");
+        $(".fd-mast form.site-search input[type=search]").shouldBe(visible).setValue(term).sendKeys(Keys.ENTER);
+
+        assertTrue(WebDriverRunner.url().contains("/search?q=" + term),
+                "the front page's box must post to the site search, got " + WebDriverRunner.url());
+        $$("li.search-hit h3.search-title a").shouldHave(size(2));
+        $$("li.search-hit .search-blog").shouldHave(size(2));
+        $("section.search-results").shouldHave(text(nameA)).shouldHave(text(nameB));
+    }
+
+    /** More than eight matches in this blog: the "show all" link pages that one blog and drops the others. */
+    @Test
+    void showAllLinkPagesOneBlog() {
+        String term = "ocelot" + nonce();
+        String nameA = "Many Alpha " + nonce();
+        String nameB = "Many Beta " + nonce();
+        String handleA = createWeblog(nameA);
+        String handleB = createWeblog(nameB);
+        for (int i = 0; i < 9; i++) {
+            publishEntryOn(handleA, "Many " + i + " " + term, "Post " + i + " about " + term + ".");
+        }
+        String titleB = "Other " + term;
+        publishEntryOn(handleB, titleB, "Beta writes about " + term + ".");
+        logout();
+        assertTrue(waitForPage(baseUrl() + "/" + handleA + "/search?q=" + term, "Many 8 " + term, titleB),
+                "the index never held every post");
+
+        openPath("/" + handleA + "/");
+        $("header form.site-search input[type=search]").shouldBe(visible).setValue(term).sendKeys(Keys.ENTER);
+        $$("section.search-results ol").first().$$("li.search-hit").shouldHave(size(8));
+        $("a.search-all").shouldBe(visible).click();
+
+        assertTrue(WebDriverRunner.url().contains("scope=blog"), "got " + WebDriverRunner.url());
+        $$("li.search-hit").shouldHave(size(9));
+        $("h2.search-group-other").shouldNot(exist);
+        // the page's "more from the site" panel may name B's post; the results must not
+        assertFalse($("section.search-results").text().contains(titleB),
+                "another blog's post among the results of a one-blog page");
+        assertEquals(1, $$("h2.search-group").size(), "one heading on a one-blog page");
+    }
+
+    private String createWeblog(String name) {
+        loginAsAdmin();
+        String handle = "box" + nonce();
+        openPath("/pressroom-ui/createWeblog.rol");
+        $("#name").should(visible).setValue(name);
+        $("#handle").setValue(handle);
+        $("#emailAddress").setValue(handle + "@example.invalid");
+        $("select[name='theme']").selectOptionByValue("journal");
+        clickAndAwaitNewPage($("button[type='submit']"));
+        $("#messages").should(exist);
+        return handle;
+    }
+
+    private void publishEntryOn(String handle, String title, String body) {
+        openPath("/pressroom-ui/authoring/entryAdd.rol?weblog=" + handle);
+        writeEntry(title, body);
+        $("button[formaction$='entryAdd!publish.rol']").click();
+        $(PERMALINK).should(exist);
+    }
+
+    /** Polls an anonymous GET until the page holds every needle: the index is asynchronous. */
+    private boolean waitForPage(String url, String... needles) {
+        long deadline = System.currentTimeMillis() + INDEX_TIMEOUT.toMillis();
+        do {
+            String page = getAnonymously(url);
+            boolean all = true;
+            for (String needle : needles) {
+                all &= page.contains(needle);
+            }
+            if (all) {
+                return true;
+            }
+            sleepFor(Duration.ofSeconds(2));
+        } while (System.currentTimeMillis() < deadline);
+        return false;
+    }
+
+    private static String nonce() {
+        return Long.toString(System.nanoTime(), 36);
     }
 
     // ---------------------------------------------------------------- helpers

@@ -326,6 +326,43 @@ class DiscoveryFrontPageRenderingTest {
     }
 
     /**
+     * The masthead's one search box posts to the site's own search at /search,
+     * with the context path: the front page searches every blog, never one.
+     */
+    @Test
+    void discoveryMastheadHasOneSearchFormPostingToTheSiteSearch() throws Exception {
+        fiveBlogsOfFour();
+        for (String theme : THEMES) {
+            String body = root(theme);
+            assertEquals(1, count(body, "<form class=\"site-search\""), theme + ": one search form:\n" + body);
+            String mast = body.substring(body.indexOf("<header class=\"fd-mast\">"), body.indexOf("</header>"));
+            Matcher form = Pattern.compile("<form class=\"site-search\" role=\"search\" method=\"get\" "
+                    + "action=\"([^\"]*)\">\\s*<input type=\"search\" name=\"q\" maxlength=\"255\" required "
+                    + "value=\"\" aria-label=\"([^\"]*)\" placeholder=\"\\2\"").matcher(mast);
+            assertTrue(form.find(), theme + ": the form is in the masthead:\n" + mast);
+            assertTrue(form.group(1).endsWith("/search") && !form.group(1).contains("site-space"),
+                    theme + ": posts to the site search: " + form.group(1));
+            assertEquals("Search all of " + SITE_NAME, form.group(2), theme + ": the placeholder");
+        }
+    }
+
+    /** An empty site name falls back to the placeholders that need no name; a name with markup is escaped. */
+    @Test
+    void placeholderFallsBackWhenSiteNameIsEmptyAndEscapesAName() throws Exception {
+        fiveBlogsOfFour();
+        setProperty("site.name", "");
+        RenderingTestSupport.clearRenderCaches();
+        String body = root("frontpage");
+        assertTrue(body.contains("placeholder=\"Search every blog\""), "no name, no \"of\":\n" + body);
+
+        setProperty("site.name", "Q\"><b>x</b>");
+        RenderingTestSupport.clearRenderCaches();
+        body = renderRoot();
+        assertTrue(body.contains("placeholder=\"Search all of Q&quot;&gt;&lt;b&gt;x&lt;/b&gt;\""),
+                "the name cannot end the attribute:\n" + body);
+    }
+
+    /**
      * The site space has no about text of its own, so the root is described
      * by Global Config's site description, cut to whole sentences within a
      * search description's 160 characters.

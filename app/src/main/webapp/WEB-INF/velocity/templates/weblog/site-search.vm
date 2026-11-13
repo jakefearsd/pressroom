@@ -14,7 +14,8 @@ $config.siteName is raw and escaped here. The page is noindex (the
 showSeoHead macro, since $model.searchResults is true) and never cached.
 
 The form's markup (form.site-search, input[type=search][name=q]) is a
-contract: the front page's search box posts to the same address. The style
+contract, and the showSiteSearchBox macro prints it for this page and for
+the front page alike, so both post to the same address. The style
 below has no hash and no dollar sign: Velocity would read either.
 *#
 <!DOCTYPE html>
@@ -69,10 +70,8 @@ body.site-search-page { color-scheme: light dark; margin: 0; background: Canvas;
 </header>
 
 <main id="main" class="site-search-wrap">
-    <form class="site-search" role="search" method="get" action="$url.search">
-        <input type="search" name="q" maxlength="255" required value="$model.term" aria-label="$text.get("search.wholeSite")" placeholder="$text.get("search.wholeSite")">
-        <button type="submit">$text.get("macro.weblog.searchbutton")</button>
-    </form>
+    ## The one search box (weblog.vm), filled with the query so far.
+    #showSiteSearchBox($model.weblog $model.term)
     #set($pager = $model.getWeblogEntriesPager())
     #if($model.hits > 0 && ($model.siteScope || $model.blogOnly))
     ## A div, not a nav: the pager macro emits its own labelled nav.

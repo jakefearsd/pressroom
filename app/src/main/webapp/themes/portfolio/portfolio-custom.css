@@ -566,7 +566,11 @@ body.pf .comments {
     padding: 1rem 1rem 3rem;
 }
 
+.pf-header .site-search { margin: .9rem auto 0; max-width: 18rem; }
+.pf-header .site-search input { width: 100%; }
+
 .pf-search input,
+.pf-header .site-search input,
 #searchAgain input.text {
     background: var(--pf-surface);
     border: 1px solid var(--pf-line);
@@ -578,10 +582,18 @@ body.pf .comments {
 }
 
 .pf-search input:focus,
+.pf-header .site-search input:focus,
 #searchAgain input.text:focus {
     outline: 2px solid var(--pf-accent);
     outline-offset: 1px;
     border-color: var(--pf-muted);
+}
+
+/* The home page's search box sits in the header (the showSearchBox macro);
+ * Enter searches and the button stays for assistive technology only. */
+.pf-header .site-search-go {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap;
 }
 
 .pf-search-head {

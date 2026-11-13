@@ -251,7 +251,11 @@ class ThemeChromeConsistencyTest {
             String footer = between(read(template(theme, "weblog.vm")), "<footer", "</footer>");
             assertFalse(footer.isEmpty(), theme + "/weblog.vm has no footer to compare against");
             for (String file : CHROME_PAGES) {
-                if (!unguarded(read(template(theme, file))).contains(footer)) {
+                // The home page's search box moved to its header while the
+                // other pages kept the footer form: it is the one difference.
+                String other = between(unguarded(read(template(theme, file))), "<footer", "</footer>")
+                        .replaceFirst("(?s)\\n    <form class=\"[a-z]+-search\".*?</form>", "");
+                if (!other.contains(footer)) {
                     offenders.add(theme + "/" + file + ": footer differs from weblog.vm's");
                 }
             }
@@ -277,6 +281,10 @@ class ThemeChromeConsistencyTest {
             assertTrue(home.contains("#showWeblogCategoryLinksList()"),
                     theme + "/weblog.vm's header lost the category nav");
             assertTrue(home.contains("-tagline\""), theme + "/weblog.vm's header lost the tagline");
+            assertTrue(home.contains("#showBlogSearchBox($model.weblog)"),
+                    theme + "/weblog.vm's header lost the search box");
+            // The search box is the home page's alone; the other pages' headers do not carry it.
+            home = home.replace("    #showBlogSearchBox($model.weblog)\n", "");
             String list = home.replaceAll("(?s)\\s*#if\\(\\$utils.isNotEmpty\\(\\$model.weblog.tagline\\)\\).*?#end", "");
             String reading = list.replaceAll("<h1 (class=\"[a-z]+-(?:site|name)\">.*?)</h1>", "<p $1</p>");
             assertFalse(reading.equals(list), theme + ": the site name is not an h1 in weblog.vm");

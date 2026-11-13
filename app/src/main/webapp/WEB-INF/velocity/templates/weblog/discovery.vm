@@ -172,6 +172,14 @@ body.fd-front img { max-width: 100%; }
 .fd-brand .fd-mark { width: 40px; height: 40px; border-radius: 8px; font-size: var(--t-head); }
 .fd-site a { font-family: var(--serif); font-size: var(--t-site); font-weight: 600; letter-spacing: -.01em;
     line-height: 1.1; }
+/* the search box: modest, a quiet field in the masthead's row; the submit
+   button stays for assistive technology and Enter searches */
+.fd-mast .site-search { flex: 0 1 18rem; margin: 0; }
+.fd-mast .site-search input { width: 100%; height: 40px; padding: 0 14px; font: inherit; color: inherit;
+    border: 1px solid var(--line); border-radius: 99px; background: var(--surface); }
+.fd-mast .site-search input::placeholder { color: var(--ink-soft); }
+.site-search-go { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
+    white-space: nowrap; }
 .fd-tag { flex: 1 0 100%; color: var(--ink-soft); text-wrap: pretty; }
 .fd-sections { border-block: 1px solid var(--line); background: var(--surface); }
 /* One row that scrolls sideways and shows it: the list fades at whichever
@@ -368,6 +376,7 @@ body.fd-front a.fd-sections-all { flex: none; padding: 6px 0; font-weight: 600; 
             ## a list page: the site name is its h1 (docs/dev/themes-and-templates.md, the heading rule)
             <h1 class="fd-site"><a href="$url.home">$utils.escapeHTML($config.siteName)</a></h1>
         </div>
+        #showSiteSearchBox($model.weblog "")
         #if($fdList != "")<a class="fd-btn" href="#fd-newsletter">$text.get("discovery.newsletter.button")</a>#end
         ## its own row, as wide as the page below: not indented under the mark
         #if($utils.isNotEmpty($config.siteDescription))<p class="fd-tag">$utils.escapeHTML($config.siteDescription)</p>#end

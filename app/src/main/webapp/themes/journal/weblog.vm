@@ -50,6 +50,7 @@
     #if($utils.isNotEmpty($model.weblog.tagline))
     <p class="qj-tagline">$utils.escapeHTML($model.weblog.tagline)</p>
     #end
+    #showBlogSearchBox($model.weblog)
     <nav class="qj-nav">
         #showWeblogCategoryLinksList()
         <ul>
@@ -137,9 +138,6 @@
 </main>
 
 <footer class="qj-footer">
-    <form class="qj-search" role="search" method="get" action="$url.search">
-        <input type="search" name="q" placeholder="Search the journal" aria-label="$text.get("macro.weblog.searchbutton")">
-    </form>
     #showSubscribeForm($model.weblog "Get new entries by email")
     #showBusinessCard($model.weblog "Book a stay")
     #showColophon($model.weblog)

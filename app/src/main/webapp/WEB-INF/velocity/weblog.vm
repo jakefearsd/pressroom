@@ -2221,6 +2221,63 @@ to be an alert() from an inline validator script.
 
 
 #**
+The search box at the top of a front page or a blog's home: one input, GET
+form.site-search, posting to $url.search (the blog's own search, or the site's
+at /search on the front page, whichever $url this render holds). No script is
+needed to search, an empty query is refused by the required attribute, and
+the submit button is there for assistive technology and the pages that show
+it (the themes hide it visually in the header).
+
+$placeholder arrives already escaped, because it lands inside an attribute
+and $text.get does not escape its arguments. The weblog argument is the
+page's weblog: it is passed so a caller reads as what it searches.
+showSearchBoxValue is the same box with the query so far in the input (the
+site's results page); $term must arrive escaped too.
+*#
+#macro(showSearchBox $weblog $placeholder)
+    #showSearchBoxValue($weblog $placeholder "")
+#end
+
+
+#macro(showSearchBoxValue $weblog $placeholder $term)
+    <form class="site-search" role="search" method="get" action="$url.search">
+        <input type="search" name="q" maxlength="255" required value="$term" aria-label="$placeholder" placeholder="$placeholder">
+        <button type="submit" class="site-search-go">$text.get("macro.weblog.searchbutton")</button>
+    </form>
+#end
+
+
+#**
+The search box of a blog's home page: "Search {blog} and the rest of {site}",
+or "Search {blog}" when the site has no name. The blog name is escaped by
+WeblogWrapper, the site name is raw and escaped here.
+*#
+#macro(showBlogSearchBox $weblog)
+    #if($utils.isNotEmpty($config.siteName))
+        #set($blogSearchPlaceholder = $text.get("search.placeholderBlog", [$weblog.name, $utils.escapeHTML($config.siteName)]))
+    #else
+        #set($blogSearchPlaceholder = $text.get("search.placeholderBlogOnly", [$weblog.name]))
+    #end
+    #showSearchBox($weblog $blogSearchPlaceholder)
+#end
+
+
+#**
+The search box of the front page and of the site's own search page:
+"Search all of {site}", or "Search every blog" when the site has no name.
+$term is the escaped query so far, "" on the front page.
+*#
+#macro(showSiteSearchBox $weblog $term)
+    #if($utils.isNotEmpty($config.siteName))
+        #set($siteSearchPlaceholder = $text.get("search.placeholderSite", [$utils.escapeHTML($config.siteName)]))
+    #else
+        #set($siteSearchPlaceholder = $text.get("search.placeholderSiteOnly"))
+    #end
+    #showSearchBoxValue($weblog $siteSearchPlaceholder $term)
+#end
+
+
+#**
 Show search again form for a weblog.
 
 The hit line is printed only when something matched: a zero-hit search gets

@@ -331,8 +331,11 @@ body.qj :focus-visible { outline: 2px solid var(--qj-focus); outline-offset: 2px
 /* A rule the caret sits on, not a rounded box floating in white space. The
  * boxed input was the one control on the page that looked like the browser's
  * default rather than part of the theme. */
-.qj-search { margin: 0; }
-.qj-search input {
+.qj-search,
+.qj-head .site-search { margin: 0; }
+.qj-head .site-search { margin-top: .9rem; }
+.qj-search input,
+.qj-head .site-search input {
     width: 100%;
     max-width: 20rem;
     padding: .35rem 0;
@@ -344,10 +347,20 @@ body.qj :focus-visible { outline: 2px solid var(--qj-focus); outline-offset: 2px
     font-family: "IBM Plex Serif", Georgia, serif;
     font-size: .90625rem;
 }
-.qj-search input::placeholder { color: var(--qj-ink-soft); }
+.qj-search input::placeholder,
+.qj-head .site-search input::placeholder { color: var(--qj-ink-soft); }
 /* The accent underline is an extra affordance, not a replacement: body.qj's
  * :focus-visible ring still applies, so keyboard focus stays visible. */
-.qj-search input:focus { border-bottom-color: var(--qj-accent); }
+.qj-search input:focus,
+.qj-head .site-search input:focus { border-bottom-color: var(--qj-accent); }
+
+/* The home page's search box sits in the header (the showSearchBox macro);
+ * Enter searches and the button stays for assistive technology only. */
+.qj-head .site-search-go {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap;
+}
+
 
 /* ---- reading view (permalink) ----
  * Visual source of truth: docs/design/journal/journal-permalink.html (the

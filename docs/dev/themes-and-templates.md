@@ -536,6 +536,27 @@ the same way (site view) whatever the site's theme; the choice is
 - `SearchResultsModel.getResults()` and the pager's `entries` argument are
   gone; `SearchResultsPager.getEntries()` is an empty map (interface only).
 
+### The search boxes
+
+`showSearchBox($weblog $placeholder)` (`weblog.vm`) prints
+`form.site-search[role=search][method=get]` posting to `$url.search`, with
+`input[type=search][name=q][maxlength=255][required]` and a submit button
+(`.site-search-go`, hidden visually in the themes' headers). Three wrappers
+build the placeholder: `showBlogSearchBox($weblog)` ("Search {blog} and the
+rest of {site}", else "Search {blog}"), `showSiteSearchBox($weblog $term)`
+("Search all of {site}", else "Search every blog"; `$term` fills the input) --
+the front page's masthead and `site-search.vm` both call it, so both post to
+`<ctx>/search` -- and `showSearchBoxValue`, the shared core. The placeholder
+is an attribute and `$text.get` does not escape arguments: the blog name is
+already escaped by `WeblogWrapper`, the raw `$config.siteName` is escaped at
+the call. Keys: `search.placeholder{Blog,BlogOnly,Site,SiteOnly}`.
+
+Only a blog's HOME page has the box, in the `<header>` between tagline and nav
+(`weblog.vm` of journal, travel, portfolio); its footer form is gone there.
+Post, static and results pages keep their footer `form.qj-search`/`tg-search`/
+`pf-search`. `ThemeChromeConsistencyTest` knows the difference. The themes
+reuse their footer form's input styles for `.XX-header .site-search`.
+
 ## Content assets (callouts, code blocks, heading anchors)
 
 The `showContentAssets` macro in `WEB-INF/velocity/weblog.vm` styles and
