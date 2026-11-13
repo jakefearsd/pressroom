@@ -685,8 +685,10 @@ class PortfolioThemeRenderingTest {
                 "the search head must allow the video providers' frames:\n" + body);
         assertTrue(body.contains(".jgrid { display: flex;"), body);
         assertTrue(body.contains("/webjars/photoswipe/"), body);
-        assertTrue(body.contains("<div class=\"pf-entries\">"),
-                "search results reuse the front page's runs of grid and list:\n" + body);
+        // results are the showSearchResults macro's list now (SearchServletRenderingTest),
+        // not the front page's runs of grid and list; a miss shows the theme's own line
+        assertTrue(body.contains("class=\"pf-search-empty\""),
+                "a search that finds nothing says so in the portfolio template:\n" + body);
         assertTrue(body.contains("id=\"searchAgain\""),
                 "the search-again form must be present:\n" + body);
     }

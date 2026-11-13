@@ -497,6 +497,39 @@ Spec `docs/superpowers/specs/2026-11-11-post-page-discovery-design.md`.
   the image macro's `$eager`); journal's post page has no hero. Card and
   list pictures stay lazy.
 
+## Search results
+
+The showSearchResults macro (`weblog.vm`) renders every results page; the
+three article themes' `searchresults.vm` and frontpage's `weblog.vm` (search
+branch) call it inside their main element after their own search-again form,
+empty line and error line, and keep keying the branch on
+`$model.searchResults`. It prints nothing when the search found nothing.
+
+- **Markup** (pinned by `SearchServletRenderingTest`, all four themes):
+  `section.search-results` holds `p.search-fallback` (any-word retry only),
+  `h2.search-group` + `ol.search-list > li.search-hit` (optional
+  `a.search-thumb`, `h3.search-title > a`, `p.search-snippet`,
+  `p.search-meta`), `a.search-all` (blog view, more than 8 own matches), then
+  `h2.search-group.search-group-other`, its list and `a.search-site`.
+- **Three shapes**: blog view (this blog's top 8, then up to 5 from other
+  blogs; the own heading says "Nothing in X matched." when only others do),
+  paged blog view (`scope=blog` or a category: one heading, 10 a page, the
+  theme's next/prev control) and site view (one ranked list, every hit names
+  its blog; "N more from this blog" links that blog's own search). The
+  "Showing a-b of n" line and next/prev are shown for the paged views only.
+- **Escaping**: the title is stored escaped and printed bare; the snippet
+  (`SearchHit.snippetHtml`) is already escaped with its mark tags and is
+  printed bare, never through `escapeHTML`; blog names come through
+  `WeblogWrapper`. A hit of another blog links its absolute permalink, never
+  `$url.entry`. A thumbnail is the entry's `featuredImage` through
+  `showResponsiveImage`, as the Nearby and Keep reading lists do.
+- **Styling is in the macro** (one `<style>`, `currentColor`/`color-mix`,
+  selectors doubled), as in "After the article"; no `#` or `$` in it.
+- The empty and error lines stay in each theme; the empty line shows only
+  when neither this blog nor another has a match.
+- `SearchResultsModel.getResults()` and the pager's `entries` argument are
+  gone; `SearchResultsPager.getEntries()` is an empty map (interface only).
+
 ## Content assets (callouts, code blocks, heading anchors)
 
 The `showContentAssets` macro in `WEB-INF/velocity/weblog.vm` styles and

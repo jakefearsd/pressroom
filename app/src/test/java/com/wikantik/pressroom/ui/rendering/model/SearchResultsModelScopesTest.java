@@ -52,7 +52,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -390,19 +389,5 @@ class SearchResultsModelScopesTest {
         when(weblogManager.getSiteSpace()).thenReturn(null);
 
         assertNull(model("myblog", false, false, 0).getSiteSearchUrl());
-    }
-
-    @Test
-    void theDayGroupedBridgeHoldsTheOwnHits() throws Exception {
-        SearchHit own = hit("own");
-        SearchHit other = hit("other");
-        when(index.find(any(), any())).thenReturn(
-                hits(1, false, Map.of(), own), hits(1, false, Map.of(), other));
-
-        SearchResultsModel m = model("myblog", false, false, 0);
-
-        assertEquals(1, m.getResults().size());
-        assertEquals(1, m.getResults().values().iterator().next().size());
-        verifyNoInteractions(urls);
     }
 }

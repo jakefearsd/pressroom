@@ -47,7 +47,7 @@
     #set($pager = $model.getWeblogEntriesPager())
     <div class="tg-search-head">
         #showWeblogSearchAgainForm($model.weblog)
-        #if($model.hits > 0)
+        #if($model.hits > 0 && ($model.siteScope || $model.blogOnly))
         ## A div, not a nav: the macro emits its own labelled nav for the
         ## links, and a second one around it nested two landmarks.
         <div class="tg-pager">
@@ -64,12 +64,10 @@
     ## because a failed search also reports zero hits.
     #if($utils.isNotEmpty($model.errorMessage))
     <p class="tg-search-error">Search is temporarily unavailable. Please try again shortly.</p>
-    #elseif($model.hits == 0)
+    #elseif($model.hits == 0 && $model.otherHits.isEmpty())
     <p class="tg-search-empty">No entries matched that search. Try a different word, or a shorter phrase.</p>
     #end
-    <div class="tg-cards">
-        #showWeblogEntriesPager($pager)
-    </div>
+    #showSearchResults($model)
 </main>
 
 <footer class="tg-footer">

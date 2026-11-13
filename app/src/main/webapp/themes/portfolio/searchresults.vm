@@ -47,7 +47,7 @@
     #set($pager = $model.getWeblogEntriesPager())
     <div class="pf-search-head">
         #showWeblogSearchAgainForm($model.weblog)
-        #if($model.hits > 0)
+        #if($model.hits > 0 && ($model.siteScope || $model.blogOnly))
         ## A div, not a nav: the macro emits its own labelled nav for the
         ## links, and a second one around it nested two landmarks.
         <div class="pf-pager">
@@ -64,17 +64,10 @@
     ## because a failed search also reports zero hits.
     #if($utils.isNotEmpty($model.errorMessage))
     <p class="pf-search-error">Search is temporarily unavailable. Please try again shortly.</p>
-    #elseif($model.hits == 0)
+    #elseif($model.hits == 0 && $model.otherHits.isEmpty())
     <p class="pf-search-empty">No entries matched that search. Try a different word, or a shorter phrase.</p>
     #end
-    ## Runs of pictures and of writing, as on the front page (weblog.vm).
-    <div class="pf-entries">
-        #set($pfRun = "")
-        #showWeblogEntriesPager($pager)
-        #if($pfRun != "")
-        </div>
-        #end
-    </div>
+    #showSearchResults($model)
 </main>
 
 <footer class="pf-footer">

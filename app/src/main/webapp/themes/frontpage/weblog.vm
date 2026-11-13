@@ -82,7 +82,7 @@
     <h2 class="fd-label">Search results</h2>
     <div class="fd-search-again">
         #showWeblogSearchAgainForm($model.weblog)
-        #if($model.hits > 0)
+        #if($model.hits > 0 && ($model.siteScope || $model.blogOnly))
             #showNextPrevSearchControl($pager)
         #end
     </div>
@@ -91,19 +91,11 @@
     ## exception text is internal detail and never printed.
     #if($utils.isNotEmpty($model.errorMessage))
     <p class="fd-search-error">Search is temporarily unavailable. Please try again shortly.</p>
-    #elseif($model.hits == 0)
+    #elseif($model.hits == 0 && $model.otherHits.isEmpty())
     <p class="fd-search-empty">No posts matched that search. Try a different word, or a shorter phrase.</p>
     #end
 
-    <div class="fd-posts">
-    #set($map = $pager.getEntries())
-    #foreach($day in $map.keySet())
-        #set($entries = $map.get($day))
-        #foreach($entry in $entries)
-            #includeTemplate($model.weblog "_entry")
-        #end
-    #end
-    </div>
+    #showSearchResults($model)
 
 #end
 

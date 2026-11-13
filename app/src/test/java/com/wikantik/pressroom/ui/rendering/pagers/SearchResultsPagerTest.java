@@ -18,13 +18,9 @@
 
 package com.wikantik.pressroom.ui.rendering.pagers;
 
-import java.util.Date;
-import java.util.Map;
-import java.util.Set;
 
 import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.pojos.Weblog;
-import com.wikantik.pressroom.pojos.wrapper.WeblogEntryWrapper;
 import com.wikantik.pressroom.ui.rendering.util.WeblogSearchRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -78,7 +74,7 @@ class SearchResultsPagerTest {
         searchRequest.setWeblogCategoryName(category);
         searchRequest.setLocale("en_US");
         searchRequest.setPageNum(pageNum);
-        return new SearchResultsPager(urlStrategy, searchRequest, Map.of(), more);
+        return new SearchResultsPager(urlStrategy, searchRequest, more);
     }
 
     @Test
@@ -158,7 +154,7 @@ class SearchResultsPagerTest {
         searchRequest.setQuery("pressroom");
         searchRequest.setLocale("en_US");
         searchRequest.setScopeBlog(true);
-        SearchResultsPager pager = new SearchResultsPager(urlStrategy, searchRequest, Map.of(), true);
+        SearchResultsPager pager = new SearchResultsPager(urlStrategy, searchRequest, true);
 
         pager.getNextLink();
 
@@ -189,18 +185,15 @@ class SearchResultsPagerTest {
     }
 
     @Test
-    void resultsAreHandedBackUntouched() {
-        // The pager is a view over results the search model already built; it
-        // must not copy or reorder them.
-        Map<Date, Set<WeblogEntryWrapper>> results = Map.of(new Date(1_000L), Set.of());
+    void thePagerListsNoEntries() {
+        // The results macro lists hits from the model; the pager only links.
         WeblogSearchRequest searchRequest = new WeblogSearchRequest();
         searchRequest.setWeblog(weblog);
         searchRequest.setLocale("en_US");
 
-        SearchResultsPager pager =
-                new SearchResultsPager(urlStrategy, searchRequest, results, false);
+        SearchResultsPager pager = new SearchResultsPager(urlStrategy, searchRequest, false);
 
-        assertSame(results, pager.getEntries());
+        assertTrue(pager.getEntries().isEmpty());
     }
 
     @Test
@@ -231,7 +224,7 @@ class SearchResultsPagerTest {
         searchRequest.setPageNum(1);
 
         SearchResultsPager pager =
-                new SearchResultsPager(urlStrategy, searchRequest, Map.of(), true);
+                new SearchResultsPager(urlStrategy, searchRequest, true);
 
         assertRenderedLabel(pager.getHomeName(), "searchPager.home",
                 "The home control under a three-part locale");
@@ -247,7 +240,7 @@ class SearchResultsPagerTest {
         searchRequest.setPageNum(1);
 
         SearchResultsPager pager =
-                new SearchResultsPager(urlStrategy, searchRequest, Map.of(), true);
+                new SearchResultsPager(urlStrategy, searchRequest, true);
 
         assertRenderedLabel(pager.getHomeName(), "searchPager.home",
                 "The home control under the fallback locale");

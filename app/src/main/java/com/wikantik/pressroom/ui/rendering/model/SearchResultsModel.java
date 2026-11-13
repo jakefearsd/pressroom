@@ -18,17 +18,13 @@
 
 package com.wikantik.pressroom.ui.rendering.model;
 
-import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.TreeSet;
 import org.apache.commons.text.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.wikantik.pressroom.util.DateUtil;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.search.IndexManager;
@@ -37,10 +33,8 @@ import com.wikantik.pressroom.business.search.SearchHits;
 import com.wikantik.pressroom.business.search.SearchSpec;
 import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.Weblog;
-import com.wikantik.pressroom.pojos.WeblogEntryWrapperComparator;
 import com.wikantik.pressroom.pojos.wrapper.WeblogWrapper;
 import com.wikantik.pressroom.pojos.wrapper.WeblogCategoryWrapper;
-import com.wikantik.pressroom.pojos.wrapper.WeblogEntryWrapper;
 import com.wikantik.pressroom.ui.rendering.pagers.SearchResultsPager;
 import com.wikantik.pressroom.ui.rendering.pagers.WeblogEntriesPager;
 import com.wikantik.pressroom.ui.rendering.util.WeblogSearchRequest;
@@ -64,10 +58,6 @@ public class SearchResultsModel extends PageModel {
 	static final int OWN_IN_BLOG_VIEW = 8;
 	/** How many other-blog matches the blog view shows. */
 	static final int OTHERS_IN_BLOG_VIEW = 5;
-
-	// The day-grouped map the current theme templates and the pager still read.
-	// Temporary bridge, filled from ownHits; the templates move to getOwnHits().
-    private Map<Date, Set<WeblogEntryWrapper>> results = new TreeMap<>(Collections.reverseOrder());
 
 	// the pager used by the 3.0+ rendering system
 	private SearchResultsPager pager = null;
@@ -105,7 +95,7 @@ public class SearchResultsModel extends PageModel {
 
 		// if there is no query, then we are done
 		if (searchRequest.getQuery() == null) {
-			pager = new SearchResultsPager(urlStrategy, searchRequest, results, false);
+			pager = new SearchResultsPager(urlStrategy, searchRequest, false);
 			return;
 		}
 
@@ -140,10 +130,6 @@ public class SearchResultsModel extends PageModel {
 					anyWordFallback |= others.anyWordFallback();
 				}
 			}
-			// temporary bridge for the day-grouped templates
-			for (SearchHit hit : ownHits) {
-				addEntryToResults(results, hit.entry());
-			}
 		} catch (WebloggerException | IllegalArgumentException we) {
 			errorMessage = we.getMessage();
 			ownHits = List.of();
@@ -156,7 +142,7 @@ public class SearchResultsModel extends PageModel {
 		}
 
 		// search completed, setup pager based on results
-		pager = new SearchResultsPager(urlStrategy, searchRequest, results,
+		pager = new SearchResultsPager(urlStrategy, searchRequest,
 			paged && ownTotal > offset + RESULTS_PER_PAGE, offset / RESULTS_PER_PAGE);
 	}
 
@@ -170,24 +156,6 @@ public class SearchResultsModel extends PageModel {
 		ownTotal = found.total();
 		anyWordFallback = found.anyWordFallback();
 		categories = found.categories();
-	}
-
-	private void addEntryToResults(
-		Map<Date, Set<WeblogEntryWrapper>> results,
-		WeblogEntryWrapper entry) {
-
-		// convert entry's each date to midnight (00m 00h 00s)
-		Date midnight = DateUtil.getStartOfDay(entry.getPubTime());
-
-		// ensure we do not get duplicates from Lucene by
-		// using a Set Collection. Entries sorted by pubTime.
-		Set<WeblogEntryWrapper> set = results.get(midnight);
-		if (set == null) {
-			// date is not mapped yet, so we need a new Set
-			set = new TreeSet<>(new WeblogEntryWrapperComparator());
-			results.put(midnight, set);
-		}
-		set.add(entry);
 	}
 
 	/**
@@ -305,10 +273,6 @@ public class SearchResultsModel extends PageModel {
 		}
 		return urlStrategy.getWeblogSearchURL(blog.getPojo(), null, searchRequest.getQuery(),
 				null, 0, true, true);
-	}
-
-	public Map<Date, Set<WeblogEntryWrapper>> getResults() {
-		return results;
 	}
 
 	public Set<String> getCategories() {

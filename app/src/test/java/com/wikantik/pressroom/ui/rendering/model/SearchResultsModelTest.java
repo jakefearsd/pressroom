@@ -20,23 +20,20 @@
 
 package com.wikantik.pressroom.ui.rendering.model;
 
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.TestUtils;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.WeblogEntryManager;
-import com.wikantik.pressroom.business.search.IndexManagerTest;
 import com.wikantik.pressroom.business.search.IndexManager;
+import com.wikantik.pressroom.business.search.IndexManagerTest;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
-import com.wikantik.pressroom.pojos.wrapper.WeblogEntryWrapper;
 import com.wikantik.pressroom.ui.rendering.util.WeblogPageRequest;
 import com.wikantik.pressroom.ui.rendering.util.WeblogSearchRequest;
 import org.junit.jupiter.api.AfterEach;
@@ -90,22 +87,10 @@ class SearchResultsModelTest {
 
         try {
             SearchResultsModel model = executeSearch("Enterprise");
-            assertEquals(1, model.getResults().size());
-            int count = 0;
-            for (Date midnight : model.getResults().keySet()) {
-                Set<WeblogEntryWrapper> wrappers = model.getResults().get(midnight);
-                count += wrappers.size();
-            }
-            assertEquals(2, count);
+            assertEquals(2, model.getOwnHits().size());
 
             model = executeSearch("Tholian");
-            assertEquals(1, model.getResults().size());
-            count = 0;
-            for (Date midnight : model.getResults().keySet()) {
-                Set<WeblogEntryWrapper> wrappers = model.getResults().get(midnight);
-                count += wrappers.size();
-            }
-            assertEquals(1, count);
+            assertEquals(1, model.getOwnHits().size());
 
         } finally {
             for (WeblogEntry entry : entries) {

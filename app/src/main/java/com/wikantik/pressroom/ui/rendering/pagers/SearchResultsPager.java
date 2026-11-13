@@ -40,8 +40,6 @@ public class SearchResultsPager implements WeblogEntriesPager {
     // url strategy
     final URLStrategy urlStrategy;
     
-    private final Map<Date, Set<WeblogEntryWrapper>> entries;
-    
     private final Weblog weblog;
     private final String locale;
     private final String query;
@@ -50,18 +48,15 @@ public class SearchResultsPager implements WeblogEntriesPager {
     private final boolean moreResults;
     private final boolean blogOnly;
     
-    public SearchResultsPager(URLStrategy strat, WeblogSearchRequest searchRequest, Map<Date, Set<WeblogEntryWrapper>> entries, boolean more) {
-        this(strat, searchRequest, entries, more, searchRequest.getPageNum());
+    public SearchResultsPager(URLStrategy strat, WeblogSearchRequest searchRequest, boolean more) {
+        this(strat, searchRequest, more, searchRequest.getPageNum());
     }
 
     /** As above, for the page actually shown (negative counts as the first). */
-    public SearchResultsPager(URLStrategy strat, WeblogSearchRequest searchRequest, Map<Date, Set<WeblogEntryWrapper>> entries, boolean more, int shownPage) {
+    public SearchResultsPager(URLStrategy strat, WeblogSearchRequest searchRequest, boolean more, int shownPage) {
         
         // url strategy for building urls
         this.urlStrategy = strat;
-        
-        // store search results
-        this.entries = entries;
         
         // data from search request
         this.weblog = searchRequest.getWeblog();
@@ -83,9 +78,10 @@ public class SearchResultsPager implements WeblogEntriesPager {
     }
     
     
+    /** Search results are listed by the results macro from the model, not the pager. */
     @Override
     public Map<Date, Set<WeblogEntryWrapper>> getEntries() {
-        return entries;
+        return Map.of();
     }
     
     
