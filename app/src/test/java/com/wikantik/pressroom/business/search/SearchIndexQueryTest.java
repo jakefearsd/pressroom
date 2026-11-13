@@ -97,7 +97,7 @@ class SearchIndexQueryTest {
 
     @Test
     void aSearchFindsAnIndexedEntryByAWordInItsBody() throws Exception {
-        SearchResultList results = search("quokkaword", blog.getHandle());
+        SearchHits results = search("quokkaword", blog.getHandle());
 
         assertTrue(titlesOf(results).contains("Hiking in Spain"),
                 "got: " + titlesOf(results));
@@ -192,14 +192,12 @@ class SearchIndexQueryTest {
     @Test
     void aSearchCanBeNarrowedToACategory() throws Exception {
         List<String> inTravel = titlesOf(TestUtils.weblogger().getIndexManager()
-                .search("quokkaword", blog.getHandle(), "Travel", null, 0, 10,
-                        TestUtils.weblogger().getUrlStrategy()));
+                .find(new SearchSpec("quokkaword", SearchSpec.Scope.BLOG, blog.getHandle(), "Travel", 0, 10), TestUtils.weblogger().getUrlStrategy()));
 
         assertTrue(inTravel.contains("Hiking in Spain"), "got: " + inTravel);
 
         List<String> inNothing = titlesOf(TestUtils.weblogger().getIndexManager()
-                .search("quokkaword", blog.getHandle(), "NoSuchCategory", null, 0, 10,
-                        TestUtils.weblogger().getUrlStrategy()));
+                .find(new SearchSpec("quokkaword", SearchSpec.Scope.BLOG, blog.getHandle(), "NoSuchCategory", 0, 10), TestUtils.weblogger().getUrlStrategy()));
 
         assertTrue(inNothing.isEmpty(),
                 "a category with nothing in it must return nothing: " + inNothing);
@@ -249,10 +247,8 @@ class SearchIndexQueryTest {
         throw new AssertionError(handle + ": expected " + expected + " indexed documents, still " + count);
     }
 
-    private static SearchResultList search(String term, String handle) throws Exception {
-        return TestUtils.weblogger().getIndexManager().search(
-                term, handle, null, null, 0, 10,
-                TestUtils.weblogger().getUrlStrategy());
+    private static SearchHits search(String term, String handle) throws Exception {
+        return TestUtils.weblogger().getIndexManager().find(new SearchSpec(term, SearchSpec.Scope.BLOG, handle, null, 0, 10), TestUtils.weblogger().getUrlStrategy());
     }
 
     /**
@@ -275,9 +271,8 @@ class SearchIndexQueryTest {
         throw new AssertionError(message + " -- still " + titles + " after 10s");
     }
 
-    private static List<String> titlesOf(SearchResultList results) {
-        return results.getResults().stream()
-                .map(WeblogEntryWrapper::getTitle)
+    private static List<String> titlesOf(SearchHits results) {
+        return results.hits().stream().map(h -> h.entry().getTitle())
                 .toList();
     }
 

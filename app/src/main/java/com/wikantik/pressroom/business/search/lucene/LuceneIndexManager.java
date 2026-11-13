@@ -28,7 +28,9 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.locks.ReentrantLock;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -42,10 +44,10 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.SearcherManager;
-import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -55,9 +57,10 @@ import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.search.IndexManager;
-import com.wikantik.pressroom.business.search.SearchResultList;
+import com.wikantik.pressroom.business.search.SearchHit;
+import com.wikantik.pressroom.business.search.SearchHits;
+import com.wikantik.pressroom.business.search.SearchSpec;
 import com.wikantik.pressroom.config.WebloggerConfig;
-import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.wrapper.WeblogEntryWrapper;
@@ -270,14 +273,10 @@ public class LuceneIndexManager implements IndexManager {
     }
 
     @Override
-    public SearchResultList search(
-        String term,
-        String weblogHandle,
-        String category,
-        String locale,
-        int pageNum,
-        int entryCount,
-        URLStrategy urlStrategy) throws WebloggerException {
+    public SearchHits find(SearchSpec spec, URLStrategy urlStrategy) throws WebloggerException {
+        if (spec.scope() == SearchSpec.Scope.OTHER_BLOGS) {
+            throw new UnsupportedOperationException("other-blogs search is not implemented yet");
+        }
 
         // try-with-resources: the operation holds a counted reference to the
         // searcher it queried (see acquireSearcher), and it must hold it
@@ -287,30 +286,21 @@ public class LuceneIndexManager implements IndexManager {
         // lets go on every path out: hits, no hits, a query the parser
         // rejected, a conversion that threw.
         try (SearchOperation search = new SearchOperation(this)) {
-            search.setTerm(term);
-            boolean weblogSpecific = !WebloggerRuntimeConfig.isSiteWideWeblog(weblogHandle);
-            if (weblogSpecific) {
-                search.setWeblogHandle(weblogHandle);
+            search.setTerm(spec.words());
+            if (spec.scope() == SearchSpec.Scope.BLOG) {
+                search.setWeblogHandle(spec.weblogHandle());
             }
-            if (category != null) {
-                search.setCategory(category);
+            if (spec.category() != null) {
+                search.setCategory(spec.category());
             }
-            if (locale != null) {
-                search.setLocale(locale);
+            if (spec.locale() != null) {
+                search.setLocale(spec.locale());
             }
 
             executeIndexOperationNow(search);
             if (search.getResultsCount() >= 0) {
-                TopFieldDocs docs = search.getResults();
-                ScoreDoc[] hitsArr = docs.scoreDocs;
-                return convertHitsToEntryList(
-                    hitsArr,
-                    search,
-                    pageNum,
-                    entryCount,
-                    weblogHandle,
-                    weblogSpecific,
-                    urlStrategy);
+                return convertHitsToEntryList(search.getResults().scoreDocs, search, spec,
+                        search.isAnyWordFallback(), urlStrategy);
             }
             throw new WebloggerException("Error executing search");
         }
@@ -664,26 +654,25 @@ public class LuceneIndexManager implements IndexManager {
      * @throws WebloggerException
      *             the weblogger exception
      */
-    SearchResultList convertHitsToEntryList(
+    SearchHits convertHitsToEntryList(
         ScoreDoc[] hits,
         SearchOperation search,
-        int pageNum,
-        int entryCount,
-        String weblogHandle,
-        boolean websiteSpecificSearch,
+        SearchSpec spec,
+        boolean anyWordFallback,
         URLStrategy urlStrategy)
         throws WebloggerException {
 
-        List<WeblogEntryWrapper> results = new ArrayList<>();
+        List<SearchHit> results = new ArrayList<>();
+        boolean blogScope = spec.scope() == SearchSpec.Scope.BLOG;
 
         // determine offset
-        int offset = pageNum * entryCount;
+        int offset = spec.offset();
         if (offset >= hits.length) {
             offset = 0;
         }
 
         // determine limit
-        int limit = entryCount;
+        int limit = spec.limit();
         if (offset + limit > hits.length) {
             limit = hits.length - offset;
         }
@@ -691,19 +680,27 @@ public class LuceneIndexManager implements IndexManager {
         try {
             Set<String> categories = new TreeSet<>();
             Set<String> categorySet = new TreeSet<>();
+            Map<String, Integer> perBlog = new TreeMap<>();
             WeblogEntryManager weblogMgr = pressroom.getWeblogEntryManager();
+            StoredFields stored = search.getSearcher().storedFields();
+
+            // how many of the hits considered each blog holds, not only this page's
+            for (ScoreDoc hit : hits) {
+                String blog = stored.document(hit.doc, Set.of(FieldConstants.WEBSITE_HANDLE))
+                        .get(FieldConstants.WEBSITE_HANDLE);
+                if (blog != null) {
+                    perBlog.merge(blog, 1, Integer::sum);
+                }
+            }
 
             WeblogEntry entry;
             Document doc;
-            String handle;
             Timestamp now = now();
             for (int i = offset; i < offset + limit; i++) {
-                doc = search.getSearcher().storedFields().document(hits[i].doc);
-                handle = doc.getField(FieldConstants.WEBSITE_HANDLE).stringValue();
+                doc = stored.document(hits[i].doc);
                 entry = weblogMgr.getWeblogEntry(doc.getField(FieldConstants.ID).stringValue());
 
-                if (!(websiteSpecificSearch && handle.equals(weblogHandle))
-                    && doc.getField(FieldConstants.CATEGORY) != null) {
+                if (!blogScope && doc.getField(FieldConstants.CATEGORY) != null) {
                     categorySet.add(doc.getField(FieldConstants.CATEGORY).stringValue());
                 }
 
@@ -720,7 +717,7 @@ public class LuceneIndexManager implements IndexManager {
                 // being current, the same defence ReIndexEntryOperation
                 // already applies on the write side.
                 if (entry != null && entry.isPublished() && !entry.getPubTime().after(now)) {
-                    results.add(WeblogEntryWrapper.wrap(entry, urlStrategy, pressroom));
+                    results.add(new SearchHit(WeblogEntryWrapper.wrap(entry, urlStrategy, pressroom), "", false));
                 }
             }
 
@@ -733,7 +730,7 @@ public class LuceneIndexManager implements IndexManager {
             // left out future-dated entries; this covers what the index has
             // not caught up with.
             int dropped = limit - results.size();
-            return new SearchResultList(results, categories, limit, offset, hits.length - dropped);
+            return new SearchHits(results, hits.length - dropped, anyWordFallback, perBlog, categories);
 
         } catch (IOException e) {
             throw new WebloggerException(e);

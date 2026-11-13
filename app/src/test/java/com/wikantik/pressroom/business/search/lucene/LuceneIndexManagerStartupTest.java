@@ -37,6 +37,7 @@ import org.apache.lucene.store.FSDirectory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.runnable.ThreadManager;
+import com.wikantik.pressroom.business.search.SearchSpec;
 import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
@@ -167,8 +168,8 @@ class LuceneIndexManagerStartupTest {
             ((Runnable) inv.getArgument(0)).run();
             return null;
         }).when(threads).executeInForeground(any(Runnable.class));
-        assertTrue(manager.search("anything", "rebuildingblog", null, null, 0, 10, null)
-                        .getResults().isEmpty(),
+        assertTrue(manager.find(new SearchSpec("anything", SearchSpec.Scope.BLOG, "rebuildingblog", null, 0, 10), null)
+                        .hits().isEmpty(),
                 "a search during the rebuild must find nothing, not fail");
         manager.shutdown();
     }
@@ -212,7 +213,7 @@ class LuceneIndexManagerStartupTest {
         assertFalse(manager.isInconsistentAtStartup());
         verifyNoInteractions(threads);
         WebloggerException ex = assertThrows(WebloggerException.class,
-                () -> manager.search("anything", "disabledblog", null, null, 0, 10, null));
+                () -> manager.find(new SearchSpec("anything", SearchSpec.Scope.BLOG, "disabledblog", null, 0, 10), null));
         assertEquals("Error executing search", ex.getMessage());
     }
 

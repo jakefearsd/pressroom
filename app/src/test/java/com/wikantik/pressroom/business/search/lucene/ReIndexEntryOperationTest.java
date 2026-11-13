@@ -29,7 +29,8 @@ import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.logging.log4j.core.config.Property;
 import com.wikantik.pressroom.TestUtils;
 import com.wikantik.pressroom.business.search.IndexManager;
-import com.wikantik.pressroom.business.search.SearchResultList;
+import com.wikantik.pressroom.business.search.SearchHits;
+import com.wikantik.pressroom.business.search.SearchSpec;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
@@ -239,9 +240,8 @@ class ReIndexEntryOperationTest {
         return TestUtils.weblogger().getIndexManager();
     }
 
-    private static List<String> titlesOf(SearchResultList results) {
-        return results.getResults().stream()
-                .map(WeblogEntryWrapper::getTitle)
+    private static List<String> titlesOf(SearchHits results) {
+        return results.hits().stream().map(h -> h.entry().getTitle())
                 .toList();
     }
 
@@ -255,8 +255,7 @@ class ReIndexEntryOperationTest {
         long deadline = System.nanoTime() + java.time.Duration.ofSeconds(10).toNanos();
         List<String> titles = List.of();
         while (System.nanoTime() < deadline) {
-            titles = titlesOf(indexManager().search(WORD, blog.getHandle(), null, null,
-                    0, 10, TestUtils.weblogger().getUrlStrategy()));
+            titles = titlesOf(indexManager().find(new SearchSpec(WORD, SearchSpec.Scope.BLOG, blog.getHandle(), null, 0, 10), TestUtils.weblogger().getUrlStrategy()));
             if (condition.test(titles)) {
                 return;
             }

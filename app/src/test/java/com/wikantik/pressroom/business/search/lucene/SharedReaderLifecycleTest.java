@@ -43,7 +43,8 @@ import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.runnable.ThreadManager;
-import com.wikantik.pressroom.business.search.SearchResultList;
+import com.wikantik.pressroom.business.search.SearchHits;
+import com.wikantik.pressroom.business.search.SearchSpec;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;
@@ -154,8 +155,8 @@ class SharedReaderLifecycleTest {
         AtomicInteger refsAfterTheWrite = new AtomicInteger(-1);
         LuceneIndexManager straddling = new LuceneIndexManager(pressroom) {
             @Override
-            SearchResultList convertHitsToEntryList(ScoreDoc[] hits, SearchOperation search,
-                    int pageNum, int entryCount, String weblogHandle, boolean websiteSpecificSearch,
+            SearchHits convertHitsToEntryList(ScoreDoc[] hits, SearchOperation search,
+                    SearchSpec spec, boolean anyWordFallback,
                     URLStrategy urlStrategy) throws WebloggerException {
                 if (used.get() == null) {
                     // The query ran and the read lock is released; a write
@@ -168,8 +169,7 @@ class SharedReaderLifecycleTest {
                     }
                     refsAfterTheWrite.set(used.get().getRefCount());
                 }
-                return super.convertHitsToEntryList(hits, search, pageNum, entryCount,
-                        weblogHandle, websiteSpecificSearch, urlStrategy);
+                return super.convertHitsToEntryList(hits, search, spec, anyWordFallback, urlStrategy);
             }
         };
         manager = initialized(straddling);
@@ -229,7 +229,7 @@ class SharedReaderLifecycleTest {
         List<IndexReader> seen = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
             index(entry("entry-" + i));
-            assertEquals(i + 1, search(WORD).getResults().size());
+            assertEquals(i + 1, search(WORD).hits().size());
             seen.add(currentReader());
         }
 
@@ -460,15 +460,15 @@ class SharedReaderLifecycleTest {
         return field.get(manager) == null;
     }
 
-    private SearchResultList search(String term) throws Exception {
-        return manager.search(term, HANDLE, null, null, 0, 50, null);
+    private SearchHits search(String term) throws Exception {
+        return manager.find(new SearchSpec(term, SearchSpec.Scope.BLOG, HANDLE, null, 0, 50), null);
     }
 
-    private static List<String> titles(SearchResultList results) {
-        return results.getResults().stream().map(WeblogEntryWrapper::getTitle).toList();
+    private static List<String> titles(SearchHits results) {
+        return results.hits().stream().map(h -> h.entry().getTitle()).toList();
     }
 
-    private static List<String> sortedTitles(SearchResultList results) {
+    private static List<String> sortedTitles(SearchHits results) {
         return titles(results).stream().sorted().toList();
     }
 

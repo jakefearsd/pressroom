@@ -62,15 +62,12 @@ public interface IndexManager {
     /** Remove entry from index, returns immediately and operates in background */
     void removeEntryIndexOperation(WeblogEntry entry) throws WebloggerException;
 
-    SearchResultList search(
-        String term,
-        String weblogHandle,
-        String category,
-        String locale,
-        int pageNum,
-        int entryCount,
-        URLStrategy urlStrategy
-    ) throws WebloggerException;
+    /**
+     * Runs a reader's search: ranked by relevance, all of the words first and
+     * then any of them.
+     *
+     * @throws WebloggerException when the index cannot be searched or the
+     *     reader's query cannot be run
+     */
+    SearchHits find(SearchSpec spec, URLStrategy urlStrategy) throws WebloggerException;
 }
-
-

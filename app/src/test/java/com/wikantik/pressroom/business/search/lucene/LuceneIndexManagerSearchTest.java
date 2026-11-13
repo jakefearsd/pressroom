@@ -34,7 +34,8 @@ import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.runnable.ThreadManager;
-import com.wikantik.pressroom.business.search.SearchResultList;
+import com.wikantik.pressroom.business.search.SearchHits;
+import com.wikantik.pressroom.business.search.SearchSpec;
 import com.wikantik.pressroom.config.WebloggerConfig;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogCategory;
@@ -56,7 +57,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link LuceneIndexManager#search} over a private index: how it fails, and
+ * {@link LuceneIndexManager#find} over a private index: how it fails, and
  * the category facet it reports. These are characterisation tests, written
  * against the existing behaviour and expected to pass as soon as they were
  * written.
@@ -115,7 +116,7 @@ class LuceneIndexManagerSearchTest {
         assertThrows(IndexNotFoundException.class, manager::acquireSearcher);
 
         WebloggerException ex = assertThrows(WebloggerException.class,
-                () -> manager.search(WORD, "noindexblog", null, null, 0, 10, null));
+                () -> manager.find(new SearchSpec(WORD, SearchSpec.Scope.BLOG, "noindexblog", null, 0, 10), null));
         assertEquals("Error executing search", ex.getMessage());
     }
 
@@ -130,10 +131,10 @@ class LuceneIndexManagerSearchTest {
         Weblog blog = weblog("parseblog");
         index(entry("parse-1", blog, "General", "Parsable"));
 
-        assertEquals(List.of("parse-1"), idsOf(manager.search(WORD, "parseblog", null, null, 0, 10, null)));
+        assertEquals(List.of("parse-1"), idsOf(manager.find(new SearchSpec(WORD, SearchSpec.Scope.BLOG, "parseblog", null, 0, 10), null)));
 
         WebloggerException ex = assertThrows(WebloggerException.class,
-                () -> manager.search("\"" + WORD, "parseblog", null, null, 0, 10, null));
+                () -> manager.find(new SearchSpec("\"" + WORD, SearchSpec.Scope.BLOG, "parseblog", null, 0, 10), null));
         assertEquals("Error executing search", ex.getMessage());
 
         try (SearchOperation op = new SearchOperation(manager)) {
@@ -157,22 +158,22 @@ class LuceneIndexManagerSearchTest {
         index(entry("facet-1", hiking, "Mountains", "Up high"));
         index(entry("facet-2", cooking, "Recipes", "Soup"));
 
-        SearchResultList all;
+        SearchHits all;
         try (SearchOperation siteWide = new SearchOperation(manager)) {
             siteWide.setTerm(WORD);
             siteWide.run();
-            all = manager.convertHitsToEntryList(siteWide.getResults().scoreDocs,
-                    siteWide, 0, 10, null, false, mock(URLStrategy.class));
+            all = manager.convertHitsToEntryList(siteWide.getResults().scoreDocs, siteWide,
+                    new SearchSpec(WORD, SearchSpec.Scope.SITE, null, null, 0, 10), false,
+                    mock(URLStrategy.class));
         }
 
         assertEquals(Set.of("facet-1", "facet-2"), Set.copyOf(idsOf(all)));
-        assertEquals(Set.of("mountains", "recipes"), all.getCategories());
+        assertEquals(Set.of("mountains", "recipes"), all.categories());
 
-        SearchResultList scoped = manager.search(WORD, "facethiking", null, null, 0, 10,
-                mock(URLStrategy.class));
+        SearchHits scoped = manager.find(new SearchSpec(WORD, SearchSpec.Scope.BLOG, "facethiking", null, 0, 10), mock(URLStrategy.class));
         assertEquals(List.of("facet-1"), idsOf(scoped));
-        assertTrue(scoped.getCategories().isEmpty(),
-                "a weblog-scoped search must not offer category facets: " + scoped.getCategories());
+        assertTrue(scoped.categories().isEmpty(),
+                "a weblog-scoped search must not offer category facets: " + scoped.categories());
     }
 
     /**
@@ -237,7 +238,7 @@ class LuceneIndexManagerSearchTest {
         fixed.addEntryIndexOperation(atNow);
         fixed.addEntryIndexOperation(later);
 
-        assertEquals(List.of("now-1"), idsOf(fixed.search(WORD, "nowblog", null, null, 0, 10, null)));
+        assertEquals(List.of("now-1"), idsOf(fixed.find(new SearchSpec(WORD, SearchSpec.Scope.BLOG, "nowblog", null, 0, 10), null)));
         fixed.shutdown();
     }
 
@@ -260,10 +261,10 @@ class LuceneIndexManagerSearchTest {
         index(gone);
         when(entries.getWeblogEntry("count-3")).thenReturn(null);
 
-        SearchResultList results = manager.search(WORD, "countblog", null, null, 0, 10, mock(URLStrategy.class));
+        SearchHits results = manager.find(new SearchSpec(WORD, SearchSpec.Scope.BLOG, "countblog", null, 0, 10), mock(URLStrategy.class));
 
         assertEquals(List.of("count-1"), idsOf(results));
-        assertEquals(1, results.getTotalHits(), "the total must not count what the page dropped");
+        assertEquals(1, results.total(), "the total must not count what the page dropped");
     }
 
     /**
@@ -290,6 +291,164 @@ class LuceneIndexManagerSearchTest {
                 assertNotNull(op.getParseError(), "kept as the query's error: " + label);
             }
         }
+    }
+
+    // ------------------------------------------------------- ranking
+
+    private static final long DAY = 24L * 60 * 60 * 1000;
+
+    private SearchHits find(String words, String handle) throws Exception {
+        return manager.find(new SearchSpec(words, SearchSpec.Scope.BLOG, handle, null, 0, 10),
+                mock(URLStrategy.class));
+    }
+
+    private SearchHits findSite(String words, int offset, int limit) throws Exception {
+        return manager.find(new SearchSpec(words, SearchSpec.Scope.SITE, null, null, offset, limit),
+                mock(URLStrategy.class));
+    }
+
+    /** A post with chosen title, body and age, apart from the shared fixture word. */
+    private WeblogEntry post(String id, Weblog blog, String title, String text, long ageDays) throws Exception {
+        WeblogEntry entry = entry(id, blog, "General", title);
+        entry.setText(text);
+        Timestamp when = new Timestamp(System.currentTimeMillis() - ageDays * DAY);
+        entry.setPubTime(when);
+        entry.setUpdateTime(when);
+        index(entry);
+        return entry;
+    }
+
+    @Test
+    void titleMatchOutranksBodyMentionOfTheSameAge() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("rankblog");
+        post("body-1", blog, "Weekend notes", "we cooked a lot and the kitchen was warm", 10);
+        post("title-1", blog, "The kitchen", "we cooked a lot and it was warm", 10);
+
+        assertEquals(List.of("title-1", "body-1"), idsOf(find("kitchen", "rankblog")));
+    }
+
+    @Test
+    void oldTitleMatchOutranksNewPassingMention() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("oldblog");
+        post("new-1", blog, "Weekend notes", "we cooked a lot and the kitchen was warm", 1);
+        post("old-1", blog, "The kitchen", "we cooked a lot and it was warm", 3 * 365);
+
+        assertEquals(List.of("old-1", "new-1"), idsOf(find("kitchen", "oldblog")));
+    }
+
+    @Test
+    void newerOfTwoEqualMatchesComesFirst() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("tieblog");
+        post("tie-old", blog, "The kitchen", "same body here", 200);
+        post("tie-new", blog, "The kitchen", "same body here", 1);
+
+        assertEquals(List.of("tie-new", "tie-old"), idsOf(find("kitchen", "tieblog")));
+    }
+
+    @Test
+    void tagOnlyAndBlogNameOnlyMatchesAreFound() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("zanzibarblog");
+        WeblogEntry tagged = entry("tag-1", blog, "General", "Plain title");
+        tagged.setText("nothing relevant");
+        tagged.addTag("quokkatag");
+        index(tagged);
+
+        assertEquals(List.of("tag-1"), idsOf(find("quokkatag", "zanzibarblog")));
+        assertEquals(List.of("tag-1"), idsOf(find("zanzibarblog", "zanzibarblog")));
+    }
+
+    @Test
+    void allWordsThenAnyWord() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("anyblog");
+        post("any-1", blog, "Kitchen", "pots and pans", 5);
+        post("any-2", blog, "Savanna", "a zebra crossing", 5);
+
+        SearchHits both = find("kitchen zebra", "anyblog");
+        assertEquals(2, both.hits().size());
+        assertTrue(both.anyWordFallback());
+    }
+
+    @Test
+    void allWordsMatchDoesNotReportFallback() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("allblog");
+        post("all-1", blog, "Kitchen", "a zebra crossing", 5);
+
+        SearchHits hits = find("kitchen zebra", "allblog");
+        assertEquals(1, hits.hits().size());
+        assertTrue(!hits.anyWordFallback());
+    }
+
+    @Test
+    void readerCannotQueryNonSearchedFields() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("fieldblog");
+        blog.setName("Wombat Journal");
+        index(entry("fieldpost", blog, "General", "Plain"));
+        assertEquals(List.of("fieldpost"), idsOf(findSite("plain", 0, 10)), "fixture is findable");
+
+        // each would match the document if read as the field it names; read
+        // as the plain word after the colon, none of them is in the post
+        for (String query : List.of("site:1", "blog:x", "handle:fieldblog", "username:nobody",
+                "locale:en")) {
+            assertTrue(findSite(query, 0, 10).hits().isEmpty(), query);
+        }
+    }
+
+    @Test
+    void queryOfOnlyStopWordsFindsNothingWithoutError() throws Exception {
+        manager.initialize();
+        index(entry("stop-1", weblog("stopblog"), "General", "Plain"));
+
+        for (String query : List.of("the", "!!!", "\"", "*", "the of and")) {
+            SearchHits hits;
+            try {
+                hits = findSite(query, 0, 10);
+            } catch (WebloggerException e) {
+                throw new AssertionError("threw for: " + query, e);
+            }
+            assertEquals(0, hits.total(), query);
+            assertTrue(hits.hits().isEmpty(), query);
+        }
+    }
+
+    @Test
+    void perBlogCountsTheHitsOfEachBlog() throws Exception {
+        manager.initialize();
+        Weblog a = weblog("countera");
+        Weblog b = weblog("counterb");
+        index(entry("pb-1", a, "General", "One"));
+        index(entry("pb-2", a, "General", "Two"));
+        index(entry("pb-3", b, "General", "Three"));
+
+        SearchHits hits = findSite(WORD, 0, 1);
+
+        assertEquals(1, hits.hits().size(), "only the page");
+        assertEquals(java.util.Map.of("countera", 2, "counterb", 1), hits.perBlog(),
+                "but the counts cover every hit considered");
+    }
+
+    @Test
+    void offsetAndLimitPageThroughHits() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("pageblog");
+        for (int i = 0; i < 5; i++) {
+            post("pg-" + i, blog, "Page", WORD + " same body", i + 1);
+        }
+
+        List<String> first = idsOf(findSite(WORD, 0, 2));
+        List<String> second = idsOf(findSite(WORD, 2, 2));
+        List<String> third = idsOf(findSite(WORD, 4, 2));
+
+        assertEquals(List.of("pg-0", "pg-1"), first);
+        assertEquals(List.of("pg-2", "pg-3"), second);
+        assertEquals(List.of("pg-4"), third);
+        assertEquals(5, findSite(WORD, 2, 2).total());
     }
 
     private void index(WeblogEntry entry) throws Exception {
@@ -322,8 +481,8 @@ class LuceneIndexManagerSearchTest {
         return entry;
     }
 
-    private static List<String> idsOf(SearchResultList results) {
-        return results.getResults().stream().map(WeblogEntryWrapper::getId).toList();
+    private static List<String> idsOf(SearchHits results) {
+        return results.hits().stream().map(h -> h.entry().getId()).toList();
     }
 
     private static void setField(Object target, String name, Object value) throws Exception {

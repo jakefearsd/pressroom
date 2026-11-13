@@ -38,7 +38,8 @@ import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.runnable.ThreadManager;
-import com.wikantik.pressroom.business.search.SearchResultList;
+import com.wikantik.pressroom.business.search.SearchHits;
+import com.wikantik.pressroom.business.search.SearchSpec;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;
@@ -206,7 +207,7 @@ class SearchDuringWriteTest {
 
         for (int i = 0; i < 5; i++) {
             index(entry("entry-" + i));
-            assertEquals(i + 1, search().getResults().size(), "write " + i + " was not visible");
+            assertEquals(i + 1, search().hits().size(), "write " + i + " was not visible");
         }
     }
 
@@ -284,7 +285,7 @@ class SearchDuringWriteTest {
         int cycles = 60;
         for (int i = 0; i < cycles; i++) {
             index(entry("cycle-" + i));
-            assertEquals(i + 1, search().getResults().size());
+            assertEquals(i + 1, search().hits().size());
         }
 
         List<String> held = heldIndexFiles();
@@ -361,15 +362,15 @@ class SearchDuringWriteTest {
         manager.addEntryReIndexOperation(entry);
     }
 
-    private SearchResultList search() throws Exception {
-        return manager.search(WORD, HANDLE, null, null, 0, 100, null);
+    private SearchHits search() throws Exception {
+        return manager.find(new SearchSpec(WORD, SearchSpec.Scope.BLOG, HANDLE, null, 0, 100), null);
     }
 
-    private static List<String> titles(SearchResultList results) {
-        return results.getResults().stream().map(WeblogEntryWrapper::getTitle).toList();
+    private static List<String> titles(SearchHits results) {
+        return results.hits().stream().map(h -> h.entry().getTitle()).toList();
     }
 
-    private static List<String> sortedTitles(SearchResultList results) {
+    private static List<String> sortedTitles(SearchHits results) {
         return titles(results).stream().sorted().toList();
     }
 

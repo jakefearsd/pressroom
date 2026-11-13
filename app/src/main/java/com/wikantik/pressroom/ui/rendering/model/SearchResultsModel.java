@@ -30,7 +30,10 @@ import com.wikantik.pressroom.util.DateUtil;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.search.IndexManager;
-import com.wikantik.pressroom.business.search.SearchResultList;
+import com.wikantik.pressroom.business.search.SearchHit;
+import com.wikantik.pressroom.business.search.SearchHits;
+import com.wikantik.pressroom.business.search.SearchSpec;
+import com.wikantik.pressroom.config.WebloggerRuntimeConfig;
 import com.wikantik.pressroom.pojos.WeblogEntryWrapperComparator;
 import com.wikantik.pressroom.pojos.wrapper.WeblogCategoryWrapper;
 import com.wikantik.pressroom.pojos.wrapper.WeblogEntryWrapper;
@@ -87,24 +90,34 @@ public class SearchResultsModel extends PageModel {
 		// setup the search
 		IndexManager indexMgr = weblogger.getIndexManager();
 		try {
-			SearchResultList searchResultList = indexMgr.search(
+			String handle = searchRequest.getWeblogHandle();
+			// the site-wide weblog's search is the site's; any other is one blog's
+			SearchSpec.Scope scope = WebloggerRuntimeConfig.isSiteWideWeblog(handle)
+					? SearchSpec.Scope.SITE : SearchSpec.Scope.BLOG;
+			SearchHits found = indexMgr.find(new SearchSpec(
 				searchRequest.getQuery(),
-				searchRequest.getWeblogHandle(),
+				scope,
+				handle,
 				searchRequest.getWeblogCategoryName(),
-				searchRequest.getLocale(),
-				searchRequest.getPageNum(),
+				searchRequest.getPageNum() * RESULTS_PER_PAGE,
 				RESULTS_PER_PAGE,
+				searchRequest.getLocale()),
 				urlStrategy
 			);
 			// every match the index can page through, not this page's size:
 			// the reader's "N found" and the pager's next link both read it
-			hits = searchResultList.getTotalHits();
-			offset = searchResultList.getOffset();
-			limit = searchResultList.getLimit();
-			categories = searchResultList.getCategories();
+			hits = found.total();
+			// a page past the last match is shown as the first, as it always was
+			offset = searchRequest.getPageNum() * RESULTS_PER_PAGE;
+			if (offset >= hits) {
+				offset = 0;
+			}
+			limit = Math.min(RESULTS_PER_PAGE, hits - offset);
+			categories = found.categories();
 
 			Timestamp now = new Timestamp(new Date().getTime());
-			for (WeblogEntryWrapper entry : searchResultList.getResults()) {
+			for (SearchHit hit : found.hits()) {
+				WeblogEntryWrapper entry = hit.entry();
 				if (!entry.getPubTime().after(now)) {
 					addEntryToResults(results, entry);
 				}

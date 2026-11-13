@@ -86,15 +86,11 @@ public class IndexManagerTest {
         List<WeblogEntry> entries = createWeblogEntries(testWeblog, indexManager, entryManager);
 
         try {
-            SearchResultList result = indexManager.search("Enterprise",
-                testWeblog.getHandle(), null, testWeblog.getLocale(), 0, RESULTS_PER_PAGE,
-                TestUtils.weblogger().getUrlStrategy());
-            assertEquals(2, result.getResults().size());
+            SearchHits result = indexManager.find(new SearchSpec("Enterprise", SearchSpec.Scope.BLOG, testWeblog.getHandle(), null, 0, RESULTS_PER_PAGE, testWeblog.getLocale()), TestUtils.weblogger().getUrlStrategy());
+            assertEquals(2, result.hits().size());
 
-            result = indexManager.search("Tholian",
-                testWeblog.getHandle(), null, testWeblog.getLocale(), 0, RESULTS_PER_PAGE,
-                TestUtils.weblogger().getUrlStrategy());
-            assertEquals(1, result.getResults().size());
+            result = indexManager.find(new SearchSpec("Tholian", SearchSpec.Scope.BLOG, testWeblog.getHandle(), null, 0, RESULTS_PER_PAGE, testWeblog.getLocale()), TestUtils.weblogger().getUrlStrategy());
+            assertEquals(1, result.hits().size());
 
         } finally {
             for (WeblogEntry entry : entries) {
@@ -174,9 +170,7 @@ public class IndexManagerTest {
         long deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos();
         int found;
         do {
-            found = indexManager.search(term,
-                weblog.getHandle(), null, weblog.getLocale(), 0, RESULTS_PER_PAGE,
-                TestUtils.weblogger().getUrlStrategy()).getResults().size();
+            found = indexManager.find(new SearchSpec(term, SearchSpec.Scope.BLOG, weblog.getHandle(), null, 0, RESULTS_PER_PAGE, weblog.getLocale()), TestUtils.weblogger().getUrlStrategy()).hits().size();
             if (found == expected) {
                 return;
             }

@@ -20,21 +20,27 @@ package com.wikantik.pressroom.business.search.lucene;
 
 import java.io.IOException;
 import java.util.Locale;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.lucene.document.SortedDocValuesField;
+import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.queries.function.FunctionScoreQuery;
 import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.DoubleValues;
+import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TopFieldDocs;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.automaton.TooComplexToDeterminizeException;
 import org.apache.lucene.util.BytesRef;
 import com.wikantik.pressroom.business.search.IndexManager;
@@ -60,19 +66,31 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
     private static final Logger log = LoggerFactory.getLogger(
             SearchOperation.class);
 
-    private static final String[] SEARCH_FIELDS = new String[] {
-        FieldConstants.CONTENT,
-        FieldConstants.TITLE
-    };
+    /**
+     * The fields a reader's words search, with their weights: a word in the
+     * title counts four times a word in the body.
+     */
+    private static final Map<String, Float> FIELD_BOOSTS = Map.of(
+            FieldConstants.TITLE, 4.0f,
+            FieldConstants.TAGS, 3.0f,
+            FieldConstants.SUMMARY, 2.0f,
+            FieldConstants.BLOG, 2.0f,
+            FieldConstants.CATEGORY_TEXT, 1.5f,
+            FieldConstants.CONTENT, 1.0f);
 
-    private static final Sort SORTER = new Sort(new SortField(
-            FieldConstants.PUBLISHED, SortField.Type.STRING, true));
+    private static final String[] SEARCH_FIELDS = FIELD_BOOSTS.keySet().toArray(new String[0]);
+
+    private static final TopDocs NO_HITS = new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO),
+            new org.apache.lucene.search.ScoreDoc[0]);
+
+    private static final int DOC_LIMIT = 500;
 
     // ~ Instance fields
     // ========================================================
 
     private IndexSearcher searcher;
-    private TopFieldDocs searchresults;
+    private TopDocs searchresults;
+    private boolean anyWordFallback;
 
     // The searcher this operation acquired, held until close(). Guarded by
     // this operation's monitor, as is `closed`: run() executes on the
@@ -119,8 +137,9 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
 
         private static final java.util.Set<String> SEARCHED = java.util.Set.of(SEARCH_FIELDS);
 
-        SearchedFieldsOnly(String[] fields, org.apache.lucene.analysis.Analyzer analyzer) {
-            super(fields, analyzer);
+        SearchedFieldsOnly(String[] fields, org.apache.lucene.analysis.Analyzer analyzer,
+                Map<String, Float> boosts) {
+            super(fields, analyzer, boosts);
         }
 
         private static String confine(String field) {
@@ -171,9 +190,10 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
      */
     @Override
     protected void doRun() {
-        final int docLimit = 500;
-        searchresults = null;
+                searchresults = null;
         searcher = null;
+        anyWordFallback = false;
+        parseError = null;
 
         try {
             // acquired with a counted reference that close() lets go of: it
@@ -184,51 +204,29 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
                 return;
             }
 
-            MultiFieldQueryParser multiParser = new SearchedFieldsOnly(
-                    SEARCH_FIELDS, LuceneIndexManager.getAnalyzer());
-
-            // Make it an AND by default. Comment this out for an or (default)
-            multiParser.setDefaultOperator(MultiFieldQueryParser.Operator.AND);
-
-            // Create a query object out of our term
-            Query query = multiParser.parse(term);
-
-            Term handleTerm = IndexUtil.getTerm(FieldConstants.WEBSITE_HANDLE, weblogHandle);
-            if (handleTerm != null) {
-                query = new BooleanQuery.Builder()
-                    .add(query, BooleanClause.Occur.MUST)
-                    .add(new TermQuery(handleTerm), BooleanClause.Occur.MUST)
-                    .build();
+            // Nothing to search for is zero hits, not the reader's error:
+            // punctuation alone ("!!!") is a parse error to Lucene, but a
+            // reader who typed it simply found nothing.
+            if (term == null || term.codePoints().noneMatch(Character::isLetterOrDigit)) {
+                searchresults = NO_HITS;
+                return;
             }
 
-            if (category != null) {
-                Term catTerm = new Term(FieldConstants.CATEGORY, category.toLowerCase(Locale.ROOT));
-                query = new BooleanQuery.Builder()
-                    .add(query, BooleanClause.Occur.MUST)
-                    .add(new TermQuery(catTerm), BooleanClause.Occur.MUST)
-                    .build();
+            long nowMillis = manager.now().getTime();
+
+            // All of the words first; when no post has them all, any of them.
+            // The page says which it did, so a reader is never shown partial
+            // matches as if they were complete ones.
+            Query all = parse(MultiFieldQueryParser.Operator.AND);
+            searchresults = run(searcher, all, nowMillis);
+            if (searchresults.totalHits.value() == 0 && !isEmpty(all)) {
+                Query any = parse(MultiFieldQueryParser.Operator.OR);
+                TopDocs second = run(searcher, any, nowMillis);
+                if (second.totalHits.value() > 0) {
+                    searchresults = second;
+                    anyWordFallback = true;
+                }
             }
-
-            Term localeTerm = IndexUtil.getTerm(FieldConstants.LOCALE, locale);
-            if (localeTerm != null) {
-                query = new BooleanQuery.Builder()
-                    .add(query, BooleanClause.Occur.MUST)
-                    .add(new TermQuery(localeTerm), BooleanClause.Occur.MUST)
-                    .build();
-            }
-
-            // A future-dated entry is in the index but never on a results
-            // page, so it is left out here rather than after the fact: the
-            // total a reader is told ("N entries match", whether there is a
-            // next page) is the hit count. PUBLISHED holds the pub time as
-            // Timestamp#toString, whose text order is time order.
-            query = new BooleanQuery.Builder()
-                .add(query, BooleanClause.Occur.MUST)
-                .add(SortedDocValuesField.newSlowRangeQuery(FieldConstants.PUBLISHED, null,
-                        new BytesRef(manager.now().toString()), true, true), BooleanClause.Occur.FILTER)
-                .build();
-
-            searchresults = searcher.search(query, docLimit, SORTER);
 
         } catch (IOException e) {
             log.error("Error searching index", e);
@@ -249,6 +247,117 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
         }
         // the searcher stays acquired: close() lets go of it, after the
         // caller has finished reading hits through getSearcher()
+    }
+
+    private Query parse(MultiFieldQueryParser.Operator operator) throws ParseException {
+        MultiFieldQueryParser parser = new SearchedFieldsOnly(
+                SEARCH_FIELDS, LuceneIndexManager.getAnalyzer(), FIELD_BOOSTS);
+        parser.setDefaultOperator(operator);
+        return parser.parse(term);
+    }
+
+    /** Words that analyse to nothing (only stop words, only punctuation) parse to an empty query. */
+    private static boolean isEmpty(Query query) {
+        return query instanceof BooleanQuery bq && bq.clauses().isEmpty();
+    }
+
+    /**
+     * Ranks the parsed words by relevance, scaled by the recency factor, and
+     * narrows them to the scope. The narrowing clauses are filters, so they
+     * add nothing to a score.
+     */
+    private TopDocs run(IndexSearcher indexSearcher, Query words, long nowMillis) throws IOException {
+        if (isEmpty(words)) {
+            return NO_HITS;
+        }
+        BooleanQuery.Builder query = new BooleanQuery.Builder()
+            .add(FunctionScoreQuery.boostByValue(words, new RecencySource(nowMillis)),
+                    BooleanClause.Occur.MUST);
+
+        Term handleTerm = IndexUtil.getTerm(FieldConstants.WEBSITE_HANDLE, weblogHandle);
+        if (handleTerm != null) {
+            query.add(new TermQuery(handleTerm), BooleanClause.Occur.FILTER);
+        }
+        if (category != null) {
+            query.add(new TermQuery(new Term(FieldConstants.CATEGORY, category.toLowerCase(Locale.ROOT))),
+                    BooleanClause.Occur.FILTER);
+        }
+        Term localeTerm = IndexUtil.getTerm(FieldConstants.LOCALE, locale);
+        if (localeTerm != null) {
+            query.add(new TermQuery(localeTerm), BooleanClause.Occur.FILTER);
+        }
+
+        // A future-dated entry is in the index but never on a results
+        // page, so it is left out here rather than after the fact: the
+        // total a reader is told ("N entries match", whether there is a
+        // next page) is the hit count. PUBLISHED holds the pub time as
+        // Timestamp#toString, whose text order is time order.
+        query.add(SortedDocValuesField.newSlowRangeQuery(FieldConstants.PUBLISHED, null,
+                new BytesRef(manager.now().toString()), true, true), BooleanClause.Occur.FILTER);
+
+        return indexSearcher.search(query.build(), DOC_LIMIT);
+    }
+
+    /** Multiplies a score by {@link RecencyBoost#factor}, read from the publish time doc value. */
+    private static final class RecencySource extends DoubleValuesSource {
+
+        private final long nowMillis;
+
+        RecencySource(long nowMillis) {
+            this.nowMillis = nowMillis;
+        }
+
+        @Override
+        public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
+            NumericDocValues published = DocValues.getNumeric(ctx.reader(), FieldConstants.PUBLISHED_NUM);
+            return new DoubleValues() {
+                private double factor = 1.0;
+
+                @Override
+                public double doubleValue() {
+                    return factor;
+                }
+
+                @Override
+                public boolean advanceExact(int doc) throws IOException {
+                    // a document with no publish time (none is indexed
+                    // without one) is simply not boosted
+                    factor = published.advanceExact(doc)
+                            ? RecencyBoost.factor(published.longValue(), nowMillis) : 1.0;
+                    return true;
+                }
+            };
+        }
+
+        @Override
+        public boolean needsScores() {
+            return false;
+        }
+
+        @Override
+        public DoubleValuesSource rewrite(IndexSearcher indexSearcher) {
+            return this;
+        }
+
+        @Override
+        public int hashCode() {
+            return Long.hashCode(nowMillis);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof RecencySource other && other.nowMillis == nowMillis;
+        }
+
+        @Override
+        public String toString() {
+            return "recency(" + FieldConstants.PUBLISHED_NUM + ")";
+        }
+
+        @Override
+        public boolean isCacheable(LeafReaderContext ctx) {
+            return true;
+        }
     }
 
     /**
@@ -302,7 +411,7 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
      * 
      * @return the results
      */
-    public TopFieldDocs getResults() {
+    public TopDocs getResults() {
         return searchresults;
     }
 
@@ -318,6 +427,11 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
         // TotalHits became a record in Lucene 10, so this is an accessor
         // rather than a public field.
         return (int) searchresults.totalHits.value();
+    }
+
+    /** True when no post had every word and these results match some of them. */
+    public boolean isAnyWordFallback() {
+        return anyWordFallback;
     }
 
     /**
