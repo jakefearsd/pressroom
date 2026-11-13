@@ -151,6 +151,12 @@ templates).
   schedules `rebuildWeblogIndex` when a known handle's text changed. The first
   sighting after a JVM start only records, so a rename that is the first save
   since a restart is not caught until the next rebuild.
+- **Upgrade rehearsal (2026-11-13)**: v0.9.2's index (no `.index-schema`) opened by this
+  build logs "Index schema is not version 2; rebuilding the index.", rebuilds in the
+  background, and leaves `.index-schema` holding `2`. Dev database, 2,994 posts, one of
+  them 86 KB with a word at about token 12,000: rebuild 3.9 s (v0.9.2 built its own in
+  0.7-0.9 s), index 12 MB (v0.9.2: 3.1 MB). Searching that word, and a word that is only
+  a tag, finds the post afterwards.
 - **A reader's query reaches only the searched fields** (the six above):
   `SearchOperation.SearchedFieldsOnly` reads any other "field:" a reader
   names as plain words, and the index holds no author login. Both since
