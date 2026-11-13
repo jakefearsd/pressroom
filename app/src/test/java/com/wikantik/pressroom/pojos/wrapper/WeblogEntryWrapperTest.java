@@ -311,6 +311,10 @@ class WeblogEntryWrapperTest {
         assertEquals("For search engines & readers.", wrapper.getExcerpt(),
                 "a blank summary is no summary");
 
+        entry.setSummary("The opening sentence of the post, written to be long enou");
+        assertEquals("For search engines & readers.", wrapper.getExcerpt(),
+                "a summary that is the post's own text cut mid-word is passed over");
+
         entry.setSummary("![](https://example.com/a.jpg)");
         assertEquals("For search engines & readers.", wrapper.getExcerpt(),
                 "nor is one with no words in it");

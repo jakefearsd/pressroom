@@ -192,6 +192,30 @@ public final class Excerpts {
         return at >= 0 && after < body.length() && SENTENCE_END.indexOf(body.charAt(after)) < 0;
     }
 
+    /**
+     * Whether {@code summary} is the post's own text cut off part-way, with
+     * nothing to say so ("...for a navigable harb"): a run of the post's words
+     * that stops short of a sentence end where the post itself carries on.
+     * Shown as an excerpt it reads as a broken sentence, so the caller passes
+     * it over. A whole sentence of the post, an honest ellipsis, or words the
+     * post does not contain are not a clip. Whitespace is compared squashed.
+     *
+     * @param text the post's text as plain text; a run with inline markup in
+     *             it simply does not match
+     */
+    public static boolean isClippedFrom(String summary, String text) {
+        if (StringUtils.isAnyBlank(summary, text)) {
+            return false;
+        }
+        String run = squash(summary);
+        if (run.length() < CUT_MIN_CHARS || SENTENCE_END.indexOf(run.charAt(run.length() - 1)) >= 0) {
+            return false;
+        }
+        String body = squash(text);
+        int at = body.indexOf(run);
+        return at >= 0 && at + run.length() < body.length();
+    }
+
     private static Collector collect(String html) {
         Collector collector = new Collector();
         HtmlSanitizer.sanitize(html, collector);

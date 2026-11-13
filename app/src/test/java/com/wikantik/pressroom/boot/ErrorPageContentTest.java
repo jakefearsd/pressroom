@@ -148,4 +148,20 @@ class ErrorPageContentTest {
                         && content.contains("fn:escapeXml(requestScope['pressroom.notFound.weblogUrl'])"),
                 "both are escaped");
     }
+
+    /**
+     * A 404 inside a weblog names two ways on: back to that weblog, and the
+     * site's front page (the weblog link alone left a reader who followed a
+     * dead link from elsewhere with no way to the rest of the site).
+     */
+    @Test
+    void theNotFoundPageInsideAWeblogAlsoLinksTheFrontPage() throws IOException {
+        String content = JSP_COMMENT.matcher(Files.readString(ERRORS_DIR.resolve("404.jsp"),
+                StandardCharsets.UTF_8)).replaceAll("");
+        int when = content.indexOf("<c:when test=\"${not empty requestScope['pressroom.notFound.weblogUrl']}\">");
+        assertTrue(when >= 0, "the in-a-weblog branch");
+        String branch = content.substring(when, content.indexOf("</c:when>", when));
+        assertTrue(branch.contains("href=\"${fn:escapeXml(pageContext.request.contextPath)}/\""),
+                "the weblog branch links the site root too:\n" + branch);
+    }
 }

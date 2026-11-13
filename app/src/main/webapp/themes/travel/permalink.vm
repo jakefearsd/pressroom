@@ -29,6 +29,8 @@
 <!-- permalink -->
 <body class="tg">
 <a class="tg-skip" href="#main">Skip to content</a>
+## The site's name, the way to its front page and its other blogs (weblog.vm).
+#showSiteBar($model.weblog)
 
 <header class="tg-header">
     <p class="tg-name"><a href="$url.home">$model.weblog.name</a></p>

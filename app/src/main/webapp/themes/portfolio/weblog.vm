@@ -40,6 +40,8 @@
 <!-- weblog -->
 <body class="pf">
 <a class="pf-skip" href="#main">Skip to content</a>
+## The site's name, the way to its front page and its other blogs (weblog.vm).
+#showSiteBar($model.weblog)
 
 <header class="pf-header">
     <h1 class="pf-name"><a href="$url.home">$model.weblog.name</a></h1>

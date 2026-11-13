@@ -38,6 +38,13 @@ footer (site pages, directory, colophon).
   sticky sidebar never outgrows the screen; when it leaves blogs out it
   links down to All blogs. All blogs is the one complete list, and shows
   each blog's tagline (its post count when it has none).
+- **The pills are one row that scrolls** (0.9.2; before, the row was clipped
+  at the page edge with the scrollbar hidden and no cue). The list fades at
+  whichever end has more (`data-more="back on"`, set by the `data-fd-row`
+  script), a step button sits over each fade (hidden under `hover: none`: a
+  finger scrolls the row itself), and "All N blogs" sits outside the list so
+  it never scrolls away and works without script. Headless Chrome reports
+  `hover: none`, so a screenshot shows no buttons.
 - **Blog hues**: six, assigned by a blog's position in `allBlogs` (by name),
   `data-b="1".."6"`; the mark is `DiscoveryModel.initials`.
 - **House slots** `data-slot="a|b|c"` hold the future ad positions. Until
@@ -164,6 +171,21 @@ Deploy notes: `docker_deployment.md`, "Front page popularity".
 `JPADiscoveryManagerImpl.pickFrontPage` has a "promoted first" comment: the
 next project (hand-promoted posts) fills slots there, before ranking.
 Nothing is built for it yet.
+
+## The site bar (every blog page)
+
+`showSiteBar` in `weblog.vm` (0.9.2): the strip above each bundled theme's
+header with the site's mark and name linking the front page and, on a site
+of more than one blog, a "Blogs" menu (a `details`; script only closes it on
+Escape or an outside click). Before it, a blog's only way to the front page
+was the footer's "Visit the front page" link. The bundled themes call it
+right after the skip link in all four templates; a forked theme has no bar
+until its templates call it (it keeps the footer link). Nothing on the site
+space or in a preview. The list is `$discovery.frontPage.allBlogs`, so the
+bar and the front page's row agree. Its rules are `showSiteBarStyles`,
+emitted by `showContentAssets`; they set no colour: the bar inherits the
+theme's ink, and a theme names `--site-bar-surface` and `--site-bar-line`
+(last block of each theme stylesheet). Pinned by `SiteBarRenderingTest`.
 
 ## Places you've been
 

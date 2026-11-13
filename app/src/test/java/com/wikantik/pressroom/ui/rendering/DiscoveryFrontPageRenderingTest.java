@@ -369,6 +369,41 @@ class DiscoveryFrontPageRenderingTest {
                 "the description follows the brand block, in the masthead:\n" + header);
     }
 
+    /**
+     * The blog row is one line that scrolls sideways, and says so: before
+     * 2026-11-12 it was simply clipped at the page's edge ("Wikar"), with the
+     * scrollbar hidden and nothing to show there was more. It now carries a
+     * step button at each end (hidden until the script finds the row
+     * overflowing that way) and, outside the scrolling list so it never
+     * scrolls away, a link to the complete list. The script is checked for
+     * the characters Velocity would read.
+     */
+    @Test
+    void theBlogRowScrollsAndLinksTheFullList() throws Exception {
+        fiveBlogsOfFour();
+        String body = root("frontpage");
+        Matcher nav = Pattern.compile("<nav class=\"fd-sections\"[^>]*>(.*?)</nav>", Pattern.DOTALL).matcher(body);
+        assertTrue(nav.find(), "the blog row:\n" + body);
+        String row = nav.group(1);
+        int list = row.indexOf("<ul");
+        int listEnd = row.indexOf("</ul>");
+        int back = row.indexOf("<button type=\"button\" class=\"fd-step fd-step-back\" hidden");
+        int on = row.indexOf("<button type=\"button\" class=\"fd-step fd-step-on\" hidden");
+        int all = row.indexOf("<a class=\"fd-sections-all\" href=\"#fd-all-label\">All 5 blogs</a>");
+        assertTrue(back >= 0 && on >= 0, "a step button for each end, hidden until needed:\n" + row);
+        assertTrue(row.contains("aria-label=\"Earlier blogs\"") && row.contains("aria-label=\"More blogs\""),
+                "each button is named:\n" + row);
+        assertTrue(list >= 0 && all > listEnd, "the link to every blog sits outside the scrolling list:\n" + row);
+        assertEquals(6, count(row.substring(list, listEnd), "<li>"), "the front page and five blogs:\n" + row);
+        assertTrue(body.contains("id=\"fd-all-label\""), "the link's target exists:\n" + body);
+
+        Matcher script = Pattern.compile("<script data-fd-row>(.*?)</script>", Pattern.DOTALL).matcher(body);
+        assertTrue(script.find(), "the row's script:\n" + body);
+        assertFalse(script.group(1).contains("$") || script.group(1).contains("#"),
+                "no dollar or hash for Velocity to read:\n" + script.group(1));
+        assertTrue(script.group(1).contains("scrollBy"), "the buttons scroll the list:\n" + script.group(1));
+    }
+
     @Test
     void emptySiteRendersWithoutError() throws Exception {
         TestUtils.weblogger().getDiscoveryManager().refresh();

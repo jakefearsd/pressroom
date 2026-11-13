@@ -174,7 +174,34 @@ body.fd-front img { max-width: 100%; }
     line-height: 1.1; }
 .fd-tag { flex: 1 0 100%; color: var(--ink-soft); text-wrap: pretty; }
 .fd-sections { border-block: 1px solid var(--line); background: var(--surface); }
-.fd-sections ul { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding-block: 6px; }
+/* One row that scrolls sideways and shows it: the list fades at whichever
+   end has more (the script sets data-more), a step button sits over each
+   fade for a pointer, and the link to every blog is outside the list, so it
+   never scrolls away. Without the script the row still scrolls and the link
+   still says there is more. */
+.fd-sections-row { display: flex; align-items: center; gap: 12px; }
+.fd-sections-scroll { position: relative; flex: 1 1 auto; min-width: 0; }
+.fd-sections ul { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding-block: 6px;
+    scroll-padding-inline: 40px; overscroll-behavior-x: contain; }
+.fd-sections ul::-webkit-scrollbar { display: none; }
+.fd-sections ul[data-more~="on"] { -webkit-mask-image: linear-gradient(to left, transparent, #000 56px);
+    mask-image: linear-gradient(to left, transparent, #000 56px); }
+.fd-sections ul[data-more~="back"] { -webkit-mask-image: linear-gradient(to right, transparent, #000 56px);
+    mask-image: linear-gradient(to right, transparent, #000 56px); }
+.fd-sections ul[data-more~="back"][data-more~="on"] {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 56px, #000 calc(100% - 56px), transparent);
+    mask-image: linear-gradient(to right, transparent, #000 56px, #000 calc(100% - 56px), transparent); }
+.fd-step { position: absolute; top: 50%; z-index: 1; display: grid; place-items: center; width: 28px; height: 28px;
+    margin-top: -14px; padding: 0; border: 1px solid var(--line); border-radius: 99px; background: var(--surface);
+    color: var(--ink); font: inherit; font-weight: 600; line-height: 1; cursor: pointer; }
+.fd-step[hidden] { display: none; }
+.fd-step:hover { border-color: var(--accent); color: var(--accent); }
+.fd-step-back { left: 0; }
+.fd-step-on { right: 0; }
+/* a finger scrolls the row itself; the fades are cue enough */
+@media (hover: none) { .fd-step { display: none; } }
+body.fd-front a.fd-sections-all { flex: none; padding: 6px 0; font-weight: 600; color: var(--accent);
+    white-space: nowrap; }
 .fd-sections a { display: inline-flex; gap: 8px; align-items: center; padding: 6px 12px; border-radius: 99px;
     white-space: nowrap; font-weight: 600; color: var(--ink-soft); }
 .fd-sections a:hover, .fd-sections a[aria-current] { background: var(--accent-quiet); color: var(--ink); }
@@ -319,6 +346,9 @@ body.fd-front img { max-width: 100%; }
     .fd-shelf { scroll-snap-align: start; }
     .fd-spot { grid-template-columns: auto minmax(0, 1fr); }
     .fd-spot-go { grid-column: 2; }
+    /* slot B is one column: a link placed in a second one squeezed the first to nothing,
+       and the mark sat on top of the words */
+    .fd-slot-b .fd-spot-go { grid-column: 1; }
     .fd-band h2 { font-size: var(--t-head); }
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -346,16 +376,60 @@ body.fd-front img { max-width: 100%; }
 
 #if(!$dFront.allBlogs.isEmpty())
 <nav class="fd-sections" aria-label="$text.get('discovery.blogsNav')">
-    <div class="fd-wrap">
-        <ul>
-            <li><a href="$url.home" aria-current="page">$text.get("discovery.frontPage")</a></li>
-            #foreach($fdBlog in $dFront.allBlogs)
-            #fdHue($fdBlog)
-            <li><a href="$utils.escapeHTML($fdBlog.absoluteURL)" data-b="$fdB"><span class="fd-dot" aria-hidden="true"></span>$fdBlog.name</a></li>
-            #end
-        </ul>
+    <div class="fd-wrap fd-sections-row">
+        <div class="fd-sections-scroll">
+            <button type="button" class="fd-step fd-step-back" hidden aria-label="$text.get('discovery.blogsNav.back')">&#8249;</button>
+            <ul>
+                <li><a href="$url.home" aria-current="page">$text.get("discovery.frontPage")</a></li>
+                #foreach($fdBlog in $dFront.allBlogs)
+                #fdHue($fdBlog)
+                <li><a href="$utils.escapeHTML($fdBlog.absoluteURL)" data-b="$fdB"><span class="fd-dot" aria-hidden="true"></span>$fdBlog.name</a></li>
+                #end
+            </ul>
+            <button type="button" class="fd-step fd-step-on" hidden aria-label="$text.get('discovery.blogsNav.on')">&#8250;</button>
+        </div>
+        ## outside the list: it stays put while the row scrolls
+        <a class="fd-sections-all" href="#fd-all-label">$text.get("discovery.allBlogsLink", [$dFront.allBlogs.size()])</a>
     </div>
 </nav>
+## The row's ends: which way there is more, and the two buttons that step
+## that way. No dollar sign and no hash in the script: Velocity would read
+## either.
+<script data-fd-row>
+(function () {
+    var row = document.querySelector('.fd-sections-scroll');
+    if (!row) {
+        return;
+    }
+    var list = row.querySelector('ul');
+    var back = row.querySelector('.fd-step-back');
+    var on = row.querySelector('.fd-step-on');
+    function sync() {
+        var most = list.scrollWidth - list.clientWidth;
+        var at = Math.abs(list.scrollLeft);
+        var more = [];
+        if (at > 4) {
+            more.push('back');
+        }
+        if (at < most - 4) {
+            more.push('on');
+        }
+        list.setAttribute('data-more', more.join(' '));
+        back.hidden = more.indexOf('back') < 0;
+        on.hidden = more.indexOf('on') < 0;
+    }
+    function step(way) {
+        var rtl = getComputedStyle(list).direction === 'rtl';
+        list.scrollBy({ left: (rtl ? -way : way) * Math.max(160, list.clientWidth * 0.75), behavior: 'smooth' });
+    }
+    back.addEventListener('click', function () { step(-1); });
+    on.addEventListener('click', function () { step(1); });
+    list.addEventListener('scroll', sync, { passive: true });
+    window.addEventListener('resize', sync);
+    window.addEventListener('load', sync);
+    sync();
+})();
+</script>
 #end
 
 <main id="main">

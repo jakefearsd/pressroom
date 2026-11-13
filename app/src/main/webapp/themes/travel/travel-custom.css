@@ -466,3 +466,8 @@ body.tg .places-been-list li + li::before { content: "\00b7"; margin: 0 .5em; co
 body.tg .places-been-list a { color: var(--tg-accent); }
 body.tg .more-from-site-home { margin: 1rem 0 0; font-size: .8125rem; }
 body.tg .more-from-site-home a { color: var(--tg-accent); }
+
+/* ---- site bar ----
+ * The strip above the header (the showSiteBar macro, weblog.vm) inherits this
+ * theme's ink and font; these two name its menu surface and its rule. */
+body.tg { --site-bar-surface: var(--tg-paper); --site-bar-line: var(--tg-line); }

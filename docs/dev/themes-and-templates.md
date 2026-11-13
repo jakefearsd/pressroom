@@ -164,7 +164,10 @@ resolves through the index at the end of `CLAUDE.md`.
   sentences) is English by decision, not bundle keys.
 - **The line under a title in an entry list is `$entry.excerpt`, every
   theme** (`WeblogEntryWrapper#getExcerpt`): the author's Summary (editor
-  drawer, API `summary`) rendered and shown as plain text, else the search
+  drawer, API `summary`) rendered and shown as plain text (passed over when
+  it is the post's own text cut off part-way with nothing to say so,
+  `Excerpts.isClippedFrom`: agents stored 250-character cuts, "...for a
+  navigable harb"), else the search
   description, else the post's opening (`Excerpts.opening`) — the first two
   sentences of the writer's own paragraphs, a third when two come to under
   100 characters, at most 300 (a sentence that would run past that is left

@@ -287,7 +287,9 @@ public final class WeblogEntryWrapper {
 
     /**
      * The line of prose an entry list shows under this entry's title: the
-     * author's own summary when there is one, else the search description
+     * author's own summary when there is one (unless it is the post's own
+     * text cut off part-way, see {@link Excerpts#isClippedFrom}), else the
+     * search description
      * (unless it is only the post's opening cut mid-sentence, see
      * {@link Excerpts#isCutFrom}), else the opening sentences of the post
      * (see {@link Excerpts#opening}).
@@ -297,15 +299,17 @@ public final class WeblogEntryWrapper {
      * @return the excerpt, or null when the entry has nothing to show
      */
     public String getExcerpt() {
+        EntryRenderer renderer = weblogger.getEntryRenderer();
         String summary = this.pojo.getSummary();
         if (summary != null && !summary.isBlank()) {
-            // A summary with no words in it -- an image, say -- falls through.
+            // A summary with no words in it -- an image, say -- falls through,
+            // and so does one that is the post's own text cut mid-word
+            // ("...for a navigable harb"): what follows says it better.
             String text = Excerpts.plainText(getTransformedSummary());
-            if (text != null) {
+            if (text != null && !Excerpts.isClippedFrom(text, plainText(renderer))) {
                 return text;
             }
         }
-        EntryRenderer renderer = weblogger.getEntryRenderer();
         String description = getSearchDescription();
         // A description that is merely the opening cut mid-sentence ("...to
         // bring hygienic,.") is passed over: the opening, cut at a sentence, says it better.

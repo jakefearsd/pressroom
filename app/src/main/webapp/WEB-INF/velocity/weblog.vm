@@ -56,6 +56,7 @@ These are the documented macros in order defined in this file:
     #showSubscribeForm($weblog $prompt)
     #showComments($weblog $entry)
     #showBusinessCard($weblog $bookLabel)
+    #showSiteBar($weblog)                            (first in the body: the way to the front page)
     #showMoreFromSite($weblog)                       (called by the colophon)
     #showPlacesYouveBeen($weblog)                    (called by the colophon)
     #showColophon($weblog)
@@ -1093,6 +1094,8 @@ CSP: the bundle is same-origin script; the callout icons are data: SVG masks,
 covered by the img-src * data: every bundled head declares. Nothing else.
 *#
 #macro(showContentAssets)
+## The site bar's rules ride along: every bundled head calls this macro.
+#showSiteBarStyles()
 #set($pressroomContentScope = ".qj-prose, .tg-entry-content, .pf-entry-content, .pressroom-preview-prose, .pressroom-content")
 ## Author boxes (single-quoted: a Velocity string literal is never parsed, so
 ## the hex prefixes cannot be read as directives). See the comment above.
@@ -2629,6 +2632,126 @@ Every value is escaped here; the model hands back raw strings.
     #if($card.bookingHref)<a class="business-card-book" href="$utils.escapeHTML($card.bookingHref)" rel="noopener" target="_blank" data-umami-event="business-card-click"#if($card.dest) data-umami-event-dest="$utils.escapeHTML($card.dest)"#end#if($cardSlug && $cardSlug != "") data-umami-event-entry="$utils.escapeHTML($cardSlug)"#end>$utils.escapeHTML($bookLabel)</a>#end
 </aside>
 #end
+#end
+
+#**
+The site bar: the strip above a theme's own header that names the site,
+links its front page and, on a site of more than one blog, lists every blog:
+    #showSiteBar($model.weblog)
+Each bundled theme calls it first in the body, right after the skip link, in
+all four of its templates. Before it (2026-11-12) a blog's only way to the
+front page was the one link at the foot of the more-from-the-site block,
+under everything else on the page.
+
+Renders nothing on the site space (its header already is the site) and where
+$discovery is not loaded (a preview: its links would be preview links). The
+blogs are the front page's own list ($discovery.frontPage.allBlogs: visible,
+active, by name), so the bar and the front page's row cannot disagree; the
+current blog is marked aria-current. The menu is a details element, so it
+opens without script; the script only closes it on Escape or a click
+elsewhere. No dollar sign and no hash in the script: Velocity would read
+either.
+
+The site name is escaped here; blog names come escaped from WeblogWrapper;
+every href is escaped here. The rules are the showSiteBarStyles macro, which
+the showContentAssets macro emits into every bundled head. They colour
+nothing themselves: the bar inherits the theme's ink and font, and a theme
+names its menu surface and rule with --site-bar-surface and --site-bar-line.
+
+The classes (site-bar, -home, -mark, -name, -blogs) are stable markers the
+rendering tests pin: restyle through them, never by renaming them.
+*#
+#macro(showSiteBar $weblog)
+#if($discovery && $weblog && !$weblog.siteSpace)
+#set($sbHome = $utils.escapeHTML($discovery.homeUrl))
+#set($sbBlogs = $discovery.frontPage.allBlogs)
+<nav class="site-bar" aria-label="$text.get("discovery.siteBar")">
+    <a class="site-bar-home" href="$sbHome">#if($utils.isNotEmpty($config.siteName))<span class="site-bar-mark" aria-hidden="true">$utils.escapeHTML($config.siteName.substring(0, 1))</span><span class="site-bar-name">$utils.escapeHTML($config.siteName)</span>#else<span class="site-bar-name">$text.get("discovery.frontPage")</span>#end</a>
+    #if($sbBlogs.size() > 1)
+    <details class="site-bar-blogs">
+        <summary>$text.get("discovery.blogsNav")</summary>
+        <ul>
+            <li class="site-bar-front"><a href="$sbHome">$text.get("discovery.frontPage")</a></li>
+            #foreach($sbBlog in $sbBlogs)
+            <li><a href="$utils.escapeHTML($sbBlog.absoluteURL)"#if($sbBlog.handle == $weblog.handle) aria-current="true"#end>$sbBlog.name</a></li>
+            #end
+        </ul>
+    </details>
+    #end
+</nav>
+#if($sbBlogs.size() > 1)
+<script>
+(function () {
+    var menu = document.querySelector('.site-bar-blogs');
+    if (!menu) {
+        return;
+    }
+    document.addEventListener('click', function (e) {
+        if (menu.open && !menu.contains(e.target)) {
+            menu.open = false;
+        }
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && menu.open) {
+            menu.open = false;
+            menu.querySelector('summary').focus();
+        }
+    });
+})();
+</script>
+#end
+#end
+#end
+
+#**
+The site bar's rules (see the showSiteBar macro), emitted into the head by
+the showContentAssets macro. Selectors that style links start at body nav so
+they outrank a theme's own "body.x a" colour.
+*#
+#macro(showSiteBarStyles)
+<style>
+.site-bar {
+  position: relative; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px));
+  border-bottom: 1px solid var(--site-bar-line, color-mix(in srgb, currentColor 15%, transparent));
+  font-size: .8125rem; line-height: 1.2; letter-spacing: 0; text-transform: none; text-align: left;
+}
+body nav.site-bar a { color: inherit; text-decoration: none; box-shadow: none; }
+body nav.site-bar a.site-bar-home { display: inline-flex; align-items: center; gap: 8px; min-width: 0; font-weight: 600; }
+.site-bar-mark {
+  display: grid; place-items: center; flex: none; width: 22px; height: 22px; border-radius: 5px;
+  background: color-mix(in srgb, currentColor 12%, transparent); font-size: .75rem; font-weight: 700;
+}
+.site-bar-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body nav.site-bar a.site-bar-home:hover .site-bar-name { text-decoration: underline; }
+.site-bar-blogs { position: relative; flex: none; }
+.site-bar-blogs summary {
+  padding: 4px 10px; border: 1px solid var(--site-bar-line, color-mix(in srgb, currentColor 15%, transparent));
+  border-radius: 99px; font-weight: 600; cursor: pointer; list-style: none; user-select: none;
+}
+.site-bar-blogs summary::-webkit-details-marker { display: none; }
+.site-bar-blogs summary::after {
+  content: ""; display: inline-block; margin-left: 6px; vertical-align: middle;
+  border: 4px solid transparent; border-top-color: currentColor; border-bottom-width: 0;
+}
+.site-bar-blogs[open] summary::after { transform: rotate(180deg); }
+.site-bar-blogs ul {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; display: block;
+  min-width: 15rem; max-width: min(22rem, calc(100vw - 32px)); max-height: min(70vh, 28rem); overflow-y: auto;
+  margin: 0; padding: 6px; list-style: none; border-radius: 8px;
+  border: 1px solid var(--site-bar-line, color-mix(in srgb, currentColor 15%, transparent));
+  background: var(--site-bar-surface, Canvas); box-shadow: 0 8px 24px rgba(0, 0, 0, .16);
+}
+.site-bar-blogs li { display: block; margin: 0; padding: 0; }
+body nav.site-bar .site-bar-blogs li a { display: block; padding: 7px 10px; border-radius: 5px; font-weight: 500; }
+body nav.site-bar .site-bar-blogs li a:hover,
+body nav.site-bar .site-bar-blogs li a[aria-current] { background: color-mix(in srgb, currentColor 9%, transparent); }
+body nav.site-bar .site-bar-blogs li a[aria-current] { font-weight: 700; }
+.site-bar-blogs li.site-bar-front {
+  margin-bottom: 4px; padding-bottom: 4px;
+  border-bottom: 1px solid var(--site-bar-line, color-mix(in srgb, currentColor 15%, transparent));
+}
+</style>
 #end
 
 #**

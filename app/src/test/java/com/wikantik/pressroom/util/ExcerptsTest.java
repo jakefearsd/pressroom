@@ -209,6 +209,35 @@ class ExcerptsTest {
     }
 
     /**
+     * A summary that is the post's own text cut off part-way through a word
+     * or a sentence, with nothing to say so (the case seen on
+     * blog.wikantik.com, 2026-11-12: summaries cut at 250 characters,
+     * "...for a navigable harb"), is recognised; a whole sentence of the post,
+     * an honest ellipsis, or words the post does not contain are not.
+     */
+    @Test
+    void aSummaryClippedFromThePostsOwnTextIsRecognised() {
+        assertTrue(Excerpts.isClippedFrom("Opened in October 1891, Markthalle Neun was one of fourteen munic",
+                MARKTHALLE), "cut inside a word");
+        assertTrue(Excerpts.isClippedFrom("Opened in October 1891, Markthalle Neun was one of fourteen municipal",
+                MARKTHALLE), "cut at a word, mid-sentence");
+        assertTrue(Excerpts.isClippedFrom("neighborhoods. Most of them were lost in", MARKTHALLE),
+                "a later run of the post, cut the same way");
+
+        assertFalse(Excerpts.isClippedFrom("Opened in October 1891, Markthalle Neun was one of fourteen municipal "
+                + "covered market halls commissioned by the City of Berlin to bring hygienic, centralized food "
+                + "distribution to the working-class neighborhoods.", MARKTHALLE), "a whole sentence of the post");
+        assertFalse(Excerpts.isClippedFrom(MARKTHALLE, MARKTHALLE), "the whole post");
+        assertFalse(Excerpts.isClippedFrom("Opened in October 1891, Markthalle Neun was one of fourteen…",
+                MARKTHALLE), "an ellipsis says it is cut, honestly");
+        assertFalse(Excerpts.isClippedFrom("A Kreuzberg market hall with street food every Thursday", MARKTHALLE),
+                "written by hand, not copied");
+        assertFalse(Excerpts.isClippedFrom("Opened in", MARKTHALLE), "too short to be sure");
+        assertFalse(Excerpts.isClippedFrom(null, MARKTHALLE));
+        assertFalse(Excerpts.isClippedFrom("Opened in October 1891, Markthalle Neun was", null));
+    }
+
+    /**
      * Characterisation test, written before {@code squash} lost its regular
      * expression and seen to pass against it: the profiling run of 2026-11-06
      * found {@code [\\s\\u00A0]+} the hottest code in a front-page render.
