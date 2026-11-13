@@ -328,6 +328,48 @@ class LuceneIndexManagerSearchTest {
         assertEquals(List.of("title-1", "body-1"), idsOf(find("kitchen", "rankblog")));
     }
 
+    /** The weights reach the query the index runs, not just a constant. */
+    @Test
+    void theParsedQueryWeighsEachFieldAsSpecified() throws Exception {
+        org.apache.lucene.search.BooleanQuery parsed = assertInstanceOf(
+                org.apache.lucene.search.BooleanQuery.class,
+                SearchOperation.parse("kitchen", org.apache.lucene.queryparser.classic.MultiFieldQueryParser
+                        .Operator.AND));
+        java.util.Map<String, Float> boosts = new java.util.HashMap<>();
+        for (org.apache.lucene.search.BooleanClause clause : parsed.clauses()) {
+            org.apache.lucene.search.Query q = clause.query();
+            float boost = 1.0f;
+            if (q instanceof org.apache.lucene.search.BoostQuery bq) {
+                boost = bq.getBoost();
+                q = bq.getQuery();
+            }
+            boosts.put(assertInstanceOf(org.apache.lucene.search.TermQuery.class, q).getTerm().field(), boost);
+        }
+        assertEquals(java.util.Map.of("title", 4.0f, "tags", 3.0f, "summary", 2.0f, "blog", 2.0f,
+                "cattext", 1.5f, "content", 1.0f), boosts);
+    }
+
+    /** One-token fields of equal length on each side, so only the weights can order them. */
+    @Test
+    void aTagMatchOutranksASummaryMatchOfTheSameAge() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("weightblog");
+        Timestamp when = new Timestamp(System.currentTimeMillis() - 5 * DAY);
+        // indexed first, so a tie in score would put it first
+        WeblogEntry summarised = entry("sum-1", blog, "General", "Plain one");
+        summarised.setText("nothing relevant");
+        summarised.setSummary("quokkaword");
+        summarised.setPubTime(when);
+        index(summarised);
+        WeblogEntry tagged = entry("tag-2", blog, "General", "Plain two");
+        tagged.setText("nothing relevant");
+        tagged.addTag("quokkaword");
+        tagged.setPubTime(when);
+        index(tagged);
+
+        assertEquals(List.of("tag-2", "sum-1"), idsOf(find("quokkaword", "weightblog")));
+    }
+
     @Test
     void oldTitleMatchOutranksNewPassingMention() throws Exception {
         manager.initialize();
@@ -389,13 +431,16 @@ class LuceneIndexManagerSearchTest {
         manager.initialize();
         Weblog blog = weblog("fieldblog");
         blog.setName("Wombat Journal");
-        index(entry("fieldpost", blog, "General", "Plain"));
+        WeblogEntry post = entry("fieldpost", blog, "General", "Plain");
+        post.setText("only ordinary words here");
+        index(post);
         assertEquals(List.of("fieldpost"), idsOf(findSite("plain", 0, 10)), "fixture is findable");
 
-        // each would match the document if read as the field it names; read
-        // as the plain word after the colon, none of them is in the post
+        // each would match the document if read as the field it names (its
+        // handle, id and locale are all in the index); read as the
+        // plain word after the colon, none of them is in the post
         for (String query : List.of("site:1", "blog:x", "handle:fieldblog", "username:nobody",
-                "locale:en")) {
+                "locale:en", "id:fieldpost")) {
             assertTrue(findSite(query, 0, 10).hits().isEmpty(), query);
         }
     }

@@ -70,13 +70,19 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
      * The fields a reader's words search, with their weights: a word in the
      * title counts four times a word in the body.
      */
-    private static final Map<String, Float> FIELD_BOOSTS = Map.of(
-            FieldConstants.TITLE, 4.0f,
-            FieldConstants.TAGS, 3.0f,
-            FieldConstants.SUMMARY, 2.0f,
-            FieldConstants.BLOG, 2.0f,
-            FieldConstants.CATEGORY_TEXT, 1.5f,
-            FieldConstants.CONTENT, 1.0f);
+    static final Map<String, Float> FIELD_BOOSTS = fieldBoosts();
+
+    private static Map<String, Float> fieldBoosts() {
+        // insertion order, so the parsed query is the same on every JVM run
+        Map<String, Float> boosts = new java.util.LinkedHashMap<>();
+        boosts.put(FieldConstants.TITLE, 4.0f);
+        boosts.put(FieldConstants.TAGS, 3.0f);
+        boosts.put(FieldConstants.SUMMARY, 2.0f);
+        boosts.put(FieldConstants.BLOG, 2.0f);
+        boosts.put(FieldConstants.CATEGORY_TEXT, 1.5f);
+        boosts.put(FieldConstants.CONTENT, 1.0f);
+        return java.util.Collections.unmodifiableMap(boosts);
+    }
 
     private static final String[] SEARCH_FIELDS = FIELD_BOOSTS.keySet().toArray(new String[0]);
 
@@ -250,10 +256,15 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
     }
 
     private Query parse(MultiFieldQueryParser.Operator operator) throws ParseException {
+        return parse(term, operator);
+    }
+
+    /** The reader's words as the query the index runs, confined to the searched fields and weighted. */
+    static Query parse(String words, MultiFieldQueryParser.Operator operator) throws ParseException {
         MultiFieldQueryParser parser = new SearchedFieldsOnly(
                 SEARCH_FIELDS, LuceneIndexManager.getAnalyzer(), FIELD_BOOSTS);
         parser.setDefaultOperator(operator);
-        return parser.parse(term);
+        return parser.parse(words);
     }
 
     /** Words that analyse to nothing (only stop words, only punctuation) parse to an empty query. */
