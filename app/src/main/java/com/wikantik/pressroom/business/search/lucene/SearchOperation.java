@@ -335,10 +335,15 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
         // total a reader is told ("N entries match", whether there is a
         // next page) is the hit count. PUBLISHED holds the pub time as
         // Timestamp#toString, whose text order is time order.
-        query.add(SortedDocValuesField.newSlowRangeQuery(FieldConstants.PUBLISHED, null,
-                new BytesRef(manager.now().toString()), true, true), BooleanClause.Occur.FILTER);
+        query.add(notFuture(manager.now()), BooleanClause.Occur.FILTER);
 
         return indexSearcher.search(query.build(), DOC_LIMIT);
+    }
+
+    /** Only documents published at or before {@code now}: the filter every reader-facing query carries. */
+    static Query notFuture(java.sql.Timestamp now) {
+        return SortedDocValuesField.newSlowRangeQuery(FieldConstants.PUBLISHED, null,
+                new BytesRef(now.toString()), true, true);
     }
 
     /** Multiplies a score by {@link RecencyBoost#factor}, read from the publish time doc value. */

@@ -42,6 +42,7 @@ import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.related.GeoBox;
+import com.wikantik.pressroom.business.search.IndexManager;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
@@ -56,6 +57,7 @@ class FurtherReadingTest {
     private Weblogger weblogger;
     private WeblogEntryManager entries;
     private URLStrategy urls;
+    private IndexManager index;
     private Weblog home;
     private Weblog neighbour;
     private final List<WeblogEntry> own = new ArrayList<>();
@@ -71,6 +73,9 @@ class FurtherReadingTest {
         when(entries.getWeblogEntries(any())).thenReturn(own);
         when(entries.getSharedTagCounts(any())).thenReturn(Map.of());
         when(entries.getPublishedEntriesInBox(any(), any(), anyInt())).thenReturn(others);
+        index = mock(IndexManager.class);
+        when(weblogger.getIndexManager()).thenReturn(index);
+        when(index.moreLikeThis(any(), anyInt())).thenReturn(List.of());
         home = weblog("home");
         neighbour = weblog("neighbour");
     }
@@ -198,5 +203,55 @@ class FurtherReadingTest {
 
         assertEquals(List.of("own-near"), nearbyIds(reading));
         verify(entries, never()).getPublishedEntriesInBox(any(), any(), anyInt());
+    }
+
+    @Test
+    void relatedFollowsTheIndexOrder() throws Exception {
+        WeblogEntry current = post(home, "current");
+        own.addAll(List.of(current, post(home, "a"), post(home, "b"), post(home, "c"), post(home, "d")));
+        when(index.moreLikeThis(current, 3)).thenReturn(List.of("a", "c", "outside-the-newest", "b"));
+
+        assertEquals(List.of("a", "c", "b"), relatedIds(FurtherReading.of(current, urls, weblogger)));
+    }
+
+    @Test
+    void fallsBackWhenIndexHasFewerThanThree() throws Exception {
+        WeblogEntry current = post(home, "current");
+        own.addAll(List.of(current, post(home, "a"), post(home, "b"), post(home, "c"), post(home, "d")));
+        when(index.moreLikeThis(current, 3)).thenReturn(List.of("a"));
+
+        // RelatedPicker with nothing shared: the newest first (d, c), skipping a
+        assertEquals(List.of("a", "d", "c"), relatedIds(FurtherReading.of(current, urls, weblogger)));
+    }
+
+    /** Characterisation: written against the unchanged fallback, it passed before the index was asked. */
+    @Test
+    void emptyIndexGivesExactlyTodaysPicks() throws Exception {
+        WeblogEntry current = post(home, "current");
+        own.addAll(List.of(current, post(home, "a"), post(home, "b"), post(home, "c"), post(home, "d")));
+
+        assertEquals(List.of("d", "c", "b"), relatedIds(FurtherReading.of(current, urls, weblogger)));
+    }
+
+    @Test
+    void postUnderNearbyIsNotRepeated() throws Exception {
+        WeblogEntry current = placed(home, "current", 0);
+        own.addAll(List.of(current, placed(home, "near", 0.1), post(home, "a"), post(home, "b"),
+                post(home, "c")));
+        when(index.moreLikeThis(current, 4)).thenReturn(List.of("near", "b", "current", "a", "c"));
+
+        FurtherReading reading = FurtherReading.of(current, urls, weblogger);
+
+        assertEquals(List.of("near"), nearbyIds(reading));
+        assertEquals(List.of("b", "a", "c"), relatedIds(reading));
+    }
+
+    @Test
+    void aMissingIndexManagerGivesTodaysPicks() throws Exception {
+        when(weblogger.getIndexManager()).thenReturn(null);
+        WeblogEntry current = post(home, "current");
+        own.addAll(List.of(current, post(home, "a")));
+
+        assertEquals(List.of("a"), relatedIds(FurtherReading.of(current, urls, weblogger)));
     }
 }

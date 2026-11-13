@@ -464,9 +464,17 @@ Spec `docs/superpowers/specs/2026-11-11-post-page-discovery-design.md`.
   overlap (one grouped query), so the cost does not grow with the blog.
   `RelatedPicker` is pure: Nearby is the nearest 3 posts with coordinates
   within 80 km (miles for a blog whose locale country is US, GB, LR or MM);
-  Keep reading is 3 posts by 2 points per shared tag + 3 for the same
-  category, newest first among equals, so the newest posts fill the list on
-  an untagged blog. A post under Nearby is not repeated.
+  Keep reading is picked by content first: `IndexManager.moreLikeThis`
+  (Lucene `MoreLikeThis` over the post's stored title and rendered text and
+  its own tag names, same blog, published, not future, never itself; one
+  index query per render) gives ids, resolved against the 200 candidates
+  (an id outside them is dropped) minus anything under Nearby, first 3.
+  Whatever is short is filled by the older rule, 2 points per shared tag + 3
+  for the same category, newest first among equals, so the newest posts fill
+  the list on an untagged blog and when search is off or fails (logged WARN).
+  A post under Nearby is not repeated. The index's picks are as fresh as the
+  index and the rendered page (see Freshness): a post edited to a new subject
+  is re-picked at the next render after the reindex.
 - **Nearby fills from other blogs** (0.9.1, spec
   `2026-11-12-patch-0-9-1-design.md`). The blog's own posts always come
   first; only when they leave one of the 3 places empty, and the post has

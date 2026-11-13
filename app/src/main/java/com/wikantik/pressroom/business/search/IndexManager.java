@@ -78,4 +78,12 @@ public interface IndexManager {
      *     reader's query cannot be run
      */
     SearchHits find(SearchSpec spec, URLStrategy urlStrategy) throws WebloggerException;
+
+    /**
+     * The posts most like {@code entry}, by what they say: ids of published,
+     * not-future posts of the same blog, best first, never the entry's own.
+     * A display path: empty when search is disabled, the entry is not in the
+     * index, or anything fails (logged), never an exception.
+     */
+    java.util.List<String> moreLikeThis(WeblogEntry entry, int max);
 }

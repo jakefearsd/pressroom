@@ -17,7 +17,10 @@
  */
 package com.wikantik.pressroom.ui.rendering.model;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -29,6 +32,7 @@ import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.discovery.DiscoveryEligibility;
+import com.wikantik.pressroom.business.search.IndexManager;
 import com.wikantik.pressroom.business.related.GeoBox;
 import com.wikantik.pressroom.business.related.RelatedPicker;
 import com.wikantik.pressroom.pojos.WeblogEntry;
@@ -100,15 +104,51 @@ public final class FurtherReading {
         Set<String> shown = near.stream().map(n -> n.entry().getId()).collect(Collectors.toSet());
         Map<String, Long> sharedTags = entries.getSharedTagCounts(entry);
 
+        List<WeblogEntry> related = relatedPosts(entry, candidates, shown, sharedTags, weblogger);
+
         return new FurtherReading(
                 near.stream()
                         .map(n -> new NearbyEntry(WeblogEntryWrapper.wrap(n.entry(), urls, weblogger),
                                 Math.round(miles ? n.km() / KM_PER_MILE : n.km()), miles,
                                 !sameBlog(entry, n.entry())))
                         .toList(),
-                RelatedPicker.related(entry, candidates, sharedTags, shown, RELATED_MAX).stream()
+                related.stream()
                         .map(e -> WeblogEntryWrapper.wrap(e, urls, weblogger))
                         .toList());
+    }
+
+    /**
+     * The index's picks first (what the post is about), resolved against the
+     * blog's own newest published posts, which is the second check that each
+     * is the same blog, published, not future and not the post itself; the
+     * tag-and-category rule fills what is left.
+     */
+    private static List<WeblogEntry> relatedPosts(WeblogEntry entry, List<WeblogEntry> candidates,
+            Set<String> shown, Map<String, Long> sharedTags, Weblogger weblogger) {
+        Map<String, WeblogEntry> byId = new LinkedHashMap<>();
+        for (WeblogEntry candidate : candidates) {
+            byId.putIfAbsent(candidate.getId(), candidate);
+        }
+        List<WeblogEntry> picks = new ArrayList<>();
+        IndexManager index = weblogger.getIndexManager();
+        List<String> ids = index == null ? List.of() : index.moreLikeThis(entry, RELATED_MAX + shown.size());
+        for (String id : ids) {
+            WeblogEntry found = byId.get(id);
+            if (found != null && !Objects.equals(id, entry.getId()) && !shown.contains(id)
+                    && picks.stream().noneMatch(p -> p.getId().equals(id))) {
+                picks.add(found);
+            }
+            if (picks.size() == RELATED_MAX) {
+                break;
+            }
+        }
+        if (picks.size() < RELATED_MAX) {
+            Set<String> exclude = new HashSet<>(shown);
+            picks.forEach(p -> exclude.add(p.getId()));
+            picks.addAll(RelatedPicker.related(entry, candidates, sharedTags, exclude,
+                    RELATED_MAX - picks.size()));
+        }
+        return picks;
     }
 
     private static boolean hasPlace(WeblogEntry entry) {

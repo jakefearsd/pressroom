@@ -39,7 +39,13 @@ import org.apache.commons.beanutils.ConstructorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.business.discovery.DiscoveryEligibility;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.queries.mlt.MoreLikeThis;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.miscellaneous.LimitTokenCountAnalyzer;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
@@ -348,6 +354,67 @@ public class LuceneIndexManager implements IndexManager {
             }
             throw new WebloggerException("Error executing search");
         }
+    }
+
+    @Override
+    public List<String> moreLikeThis(WeblogEntry entry, int max) {
+        if (!searchEnabled || entry == null || entry.getId() == null || max <= 0
+                || entry.getWebsite() == null || entry.getWebsite().getHandle() == null) {
+            return List.of();
+        }
+        IndexSearcher searcher = null;
+        try {
+            searcher = acquireSearcher();
+            return similar(searcher, entry, max);
+        } catch (IOException | RuntimeException e) {
+            log.warn("Could not pick posts like entry {}; the page falls back to tags", entry.getId(), e);
+            return List.of();
+        } finally {
+            if (searcher != null) {
+                releaseSearcher(searcher);
+            }
+        }
+    }
+
+    /**
+     * Terms are drawn from the entry's stored title and rendered text and from
+     * its own tag names (tags are indexed but not stored, and no field keeps
+     * term vectors), analysed as the index was.
+     */
+    private List<String> similar(IndexSearcher searcher, WeblogEntry entry, int max) throws IOException {
+        TopDocs own = searcher.search(new TermQuery(new Term(FieldConstants.ID, entry.getId())), 1);
+        if (own.scoreDocs.length == 0) {
+            return List.of();
+        }
+        Document doc = searcher.storedFields().document(own.scoreDocs[0].doc);
+        Map<String, java.util.Collection<Object>> text = new java.util.LinkedHashMap<>();
+        text.put(FieldConstants.TITLE, List.of(String.valueOf(doc.get(FieldConstants.TITLE))));
+        text.put(FieldConstants.CONTENT, List.of(String.valueOf(doc.get(FieldConstants.CONTENT))));
+        text.put(FieldConstants.TAGS, entry.getTags().stream().map(t -> (Object) t.getName()).toList());
+
+        MoreLikeThis like = new MoreLikeThis(searcher.getIndexReader());
+        like.setAnalyzer(getAnalyzer());
+        like.setFieldNames(new String[] {FieldConstants.TITLE, FieldConstants.TAGS, FieldConstants.CONTENT});
+        like.setMinTermFreq(1);
+        like.setMinDocFreq(2);
+        like.setBoost(true);
+        Query similar = like.like(text);
+
+        BooleanQuery.Builder query = new BooleanQuery.Builder().add(similar, BooleanClause.Occur.MUST);
+        query.add(new TermQuery(new Term(FieldConstants.WEBSITE_HANDLE, entry.getWebsite().getHandle())),
+                BooleanClause.Occur.FILTER);
+        query.add(new TermQuery(new Term(FieldConstants.ID, entry.getId())), BooleanClause.Occur.MUST_NOT);
+        query.add(SearchOperation.notFuture(now()), BooleanClause.Occur.FILTER);
+
+        List<String> ids = new ArrayList<>();
+        StoredFields stored = searcher.storedFields();
+        for (ScoreDoc hit : searcher.search(query.build(), max).scoreDocs) {
+            String id = stored.document(hit.doc).get(FieldConstants.ID);
+            if (id != null && !id.equals(entry.getId())) {
+                ids.add(id);
+            }
+        }
+        return ids;
     }
 
     /**

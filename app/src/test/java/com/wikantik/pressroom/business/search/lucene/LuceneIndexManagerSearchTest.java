@@ -699,6 +699,89 @@ class LuceneIndexManagerSearchTest {
         assertTrue(findScoped(SearchSpec.Scope.BLOG, "scopeb").hits().stream().noneMatch(h -> h.otherBlog()));
     }
 
+    // ------------------------------------------------------- more like this
+
+    private void kitchenFixture(Weblog blog) throws Exception {
+        post("k1", blog, "Renovating the kitchen", "We chose walnut cabinets and a granite countertop. "
+                + "The plumber moved the sink and the cabinets arrived late.", 30);
+        post("k2", blog, "Kitchen cabinets finished", "The granite countertop went in and the walnut "
+                + "cabinets were hung, then the sink was plumbed.", 40);
+        post("k3", blog, "Countertop choices", "Granite or quartz for the kitchen countertop, and walnut "
+                + "cabinets to match; the sink goes under the window.", 50);
+        for (int i = 0; i < 5; i++) {
+            post("u" + i, blog, "Day " + i + " in Lisbon", "Trams climb the hills of Lisbon, we ate "
+                    + "pastries by the river and watched ferries cross number" + i + ".", i);
+        }
+    }
+
+    @Test
+    void moreLikeThisFindsPostsOnTheSameSubjectWithoutTags() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("mltblog");
+        kitchenFixture(blog);
+        WeblogEntry k1 = entries.getWeblogEntry("k1");
+
+        List<String> ids = manager.moreLikeThis(k1, 2);
+
+        assertEquals(Set.of("k2", "k3"), Set.copyOf(ids));
+        assertEquals(2, ids.size());
+    }
+
+    @Test
+    void moreLikeThisNeverReturnsTheEntryItself() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("mltself");
+        kitchenFixture(blog);
+
+        List<String> ids = manager.moreLikeThis(entries.getWeblogEntry("k2"), 20);
+
+        assertTrue(!ids.contains("k2"), ids.toString());
+        assertEquals(List.of("k1", "k3"), ids.subList(0, 2).stream().sorted().toList());
+    }
+
+    @Test
+    void moreLikeThisStaysInsideTheBlog() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("mltone");
+        kitchenFixture(blog);
+        Weblog other = weblog("mlttwo");
+        post("o1", other, "Our kitchen too", "Walnut cabinets, a granite countertop and a new sink "
+                + "in the kitchen.", 1);
+
+        List<String> ids = manager.moreLikeThis(entries.getWeblogEntry("k1"), 20);
+
+        assertTrue(!ids.contains("o1"), ids.toString());
+        assertTrue(ids.containsAll(List.of("k2", "k3")), ids.toString());
+    }
+
+    @Test
+    void moreLikeThisSkipsFuturePosts() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("mltfuture");
+        kitchenFixture(blog);
+        post("future", blog, "Kitchen cabinets next year", "Walnut cabinets, granite countertop, sink.", -30);
+
+        assertTrue(!manager.moreLikeThis(entries.getWeblogEntry("k1"), 20).contains("future"));
+    }
+
+    @Test
+    void moreLikeThisIsEmptyForAnEntryNotInTheIndex() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("mltnone");
+        kitchenFixture(blog);
+
+        assertEquals(List.of(), manager.moreLikeThis(entry("ghost", blog, "General", "Ghost kitchen"), 3));
+    }
+
+    @Test
+    void moreLikeThisIsEmptyWhenSearchIsDisabledOrTheIndexFails() throws Exception {
+        Weblog blog = weblog("mltoff");
+        WeblogEntry e = entry("e1", blog, "General", "Anything");
+        assertEquals(List.of(), manager.moreLikeThis(e, 3), "no index on disk: logged, empty");
+        setField(manager, "searchEnabled", false);
+        assertEquals(List.of(), manager.moreLikeThis(e, 3));
+    }
+
     private void index(WeblogEntry entry) throws Exception {
         when(entries.getWeblogEntry(entry.getId())).thenReturn(entry);
         manager.addEntryIndexOperation(entry);
