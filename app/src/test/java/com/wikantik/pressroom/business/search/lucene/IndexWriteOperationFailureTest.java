@@ -94,6 +94,7 @@ class IndexWriteOperationFailureTest {
     @BeforeEach
     void setUp() throws Exception {
         pressroom = mock(Weblogger.class);
+        PassthroughRenderer.install(pressroom);
         entries = mock(WeblogEntryManager.class);
         weblogs = mock(WeblogManager.class);
         users = mock(UserManager.class);

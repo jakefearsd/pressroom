@@ -21,6 +21,7 @@ package com.wikantik.pressroom.business.search.lucene;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Timestamp;
@@ -36,7 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.miscellaneous.LimitTokenCountAnalyzer;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
@@ -77,6 +78,11 @@ public class LuceneIndexManager implements IndexManager {
     private final Weblogger pressroom;
 
     private static final Logger log = LoggerFactory.getLogger(LuceneIndexManager.class);
+
+    /** The index layout version; an index stamped with anything else is rebuilt at startup. */
+    static final int SCHEMA_VERSION = 2;
+
+    private static final String SCHEMA_MARKER = ".index-schema";
 
     private boolean searchEnabled = true;
 
@@ -179,6 +185,17 @@ public class LuceneIndexManager implements IndexManager {
                 } catch (IOException e) {
                     log.error("Error creating search index consistency marker", e);
                 }
+            }
+
+            // An index laid out by an earlier build (or one whose stamp cannot
+            // be read: fail closed) is emptied and rebuilt in the background.
+            if (!schemaIsCurrent()) {
+                log.info("Index schema is not version {}; rebuilding the index.", SCHEMA_VERSION);
+                inconsistentAtStartup = true;
+                deleteIndex();
+                createIndex(getIndexDirectory());
+                // deleteIndex() removes every file, the in-use marker too
+                markInUse();
             }
 
             if (indexExists()) {
@@ -333,7 +350,7 @@ public class LuceneIndexManager implements IndexManager {
     }
 
     private static Analyzer instantiateDefaultAnalyzer() {
-        return new StandardAnalyzer();
+        return new EnglishAnalyzer();
     }
 
     private void scheduleIndexOperation(final IndexOperation op) {
@@ -523,6 +540,36 @@ public class LuceneIndexManager implements IndexManager {
         return null;
     }
 
+    private boolean schemaIsCurrent() {
+        try {
+            return String.valueOf(SCHEMA_VERSION)
+                    .equals(Files.readString(Path.of(indexDir, SCHEMA_MARKER), StandardCharsets.UTF_8).trim());
+        } catch (IOException | RuntimeException e) {
+            log.debug("Search index schema marker unreadable; treating the index as outdated", e);
+            return false;
+        }
+    }
+
+    private void writeSchemaMarker() {
+        try {
+            Files.writeString(Path.of(indexDir, SCHEMA_MARKER), String.valueOf(SCHEMA_VERSION),
+                    StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            // without it the next start rebuilds again: slow, never wrong
+            log.error("Unable to write the search index schema marker", e);
+        }
+    }
+
+    private void markInUse() {
+        try {
+            if (!indexConsistencyMarker.exists() && !indexConsistencyMarker.createNewFile()) {
+                log.warn("Search index consistency marker could not be created: {}", indexConsistencyMarker);
+            }
+        } catch (IOException e) {
+            log.error("Error creating search index consistency marker", e);
+        }
+    }
+
     private boolean indexExists() {
         try {
             // getIndexDirectory() returns null on its own IOException
@@ -574,6 +621,7 @@ public class LuceneIndexManager implements IndexManager {
         try (IndexWriter writer = new IndexWriter(dir, config)) {
             // an empty commit is what writes the first segments file
             writer.commit();
+            writeSchemaMarker();
         } catch (IOException e) {
             log.error("Error creating index", e);
         }

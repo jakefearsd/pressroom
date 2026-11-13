@@ -132,6 +132,23 @@ templates).
 - **A site-wide rebuild replaces every document** (`writer.deleteAll()`;
   until 2026-11-03 it deleted by a "constant" field no document carried, so
   every entry indexed before it was then indexed twice).
+- **Index schema v2** (`LuceneIndexManager.SCHEMA_VERSION`, stamped as text in
+  `.index-schema` in the index directory; written whenever an index is
+  created, deleted with the index). Anything but the current version at
+  startup, or an unreadable stamp, empties the index and schedules the full
+  rebuild. Fields (`IndexOperation.getDocument`, names in `FieldConstants`):
+  `title`, `content` (stored; the plain text a reader sees, from
+  `SearchableText.of`: uncached render, tags stripped, entities decoded; a
+  post that fails to render is indexed by title only), `summary`, `tags`,
+  `cattext`, `blog` (name and tagline), keyword `site=1` (only when
+  `DiscoveryEligibility.isEligible(entry)` at index time), `pubnum` (epoch
+  millis doc value), plus the keyword fields `id`, `handle`, `locale`, `cat`.
+  Analyzer `EnglishAnalyzer` at index and query time; token limit
+  `lucene.analyzer.maxTokenCount=20000`. **Keyword fields never go through
+  the analyzer**: `IndexUtil.getTerm` lowercases only (a stemmed handle
+  matched no blog, a stop-word handle dropped the weblog filter). Index
+  tests on a mocked tier must stub `Weblogger.getEntryRenderer()`
+  (`PassthroughRenderer.install`), or every post indexes with empty content.
 - **Index Location**: configurable work directory
 - **Searches never wait for writes** (`LuceneIndexManager`): searches share
   a Lucene `SearcherManager` and take no lock; index writes serialise on

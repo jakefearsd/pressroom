@@ -26,7 +26,7 @@ import java.util.Properties;
 import java.util.Set;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.index.IndexNotFoundException;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.URLStrategy;
@@ -84,6 +84,7 @@ class LuceneIndexManagerSearchTest {
     @BeforeEach
     void setUp() throws Exception {
         pressroom = mock(Weblogger.class);
+        PassthroughRenderer.install(pressroom);
         entries = mock(WeblogEntryManager.class);
         when(pressroom.getWeblogEntryManager()).thenReturn(entries);
         when(pressroom.getUserManager()).thenReturn(mock(UserManager.class));
@@ -177,15 +178,15 @@ class LuceneIndexManagerSearchTest {
     /**
      * A {@code lucene.analyzer.class} that names no loadable class, or a
      * class with no public no-argument constructor, falls back to Lucene's
-     * {@link StandardAnalyzer} rather than leaving indexing and search with
+     * {@link EnglishAnalyzer} (the default since schema version 2) rather than leaving indexing and search with
      * no analyzer at all.
      */
     @Test
-    void anAnalyzerClassThatCannotBeInstantiatedFallsBackToTheStandardAnalyzer() throws Exception {
-        assertInstanceOf(StandardAnalyzer.class,
+    void anAnalyzerClassThatCannotBeInstantiatedFallsBackToTheEnglishAnalyzer() throws Exception {
+        assertInstanceOf(EnglishAnalyzer.class,
                 analyzerConfiguredAs("com.wikantik.pressroom.NoSuchAnalyzerAnywhere"));
         // A real Analyzer, but its only constructors take a delegate and a limit.
-        assertInstanceOf(StandardAnalyzer.class,
+        assertInstanceOf(EnglishAnalyzer.class,
                 analyzerConfiguredAs("org.apache.lucene.analysis.miscellaneous.LimitTokenCountAnalyzer"));
     }
 

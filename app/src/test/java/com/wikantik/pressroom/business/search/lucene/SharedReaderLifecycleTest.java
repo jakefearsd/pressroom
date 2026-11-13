@@ -107,6 +107,7 @@ class SharedReaderLifecycleTest {
     @BeforeEach
     void setUp() throws Exception {
         pressroom = mock(Weblogger.class);
+        PassthroughRenderer.install(pressroom);
         entries = mock(WeblogEntryManager.class);
         when(pressroom.getWeblogEntryManager()).thenReturn(entries);
         when(pressroom.getUserManager()).thenReturn(mock(UserManager.class));

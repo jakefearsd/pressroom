@@ -82,6 +82,7 @@ class RebuildWebsiteIndexOperationFailureTest {
     @BeforeEach
     void setUp() throws Exception {
         pressroom = mock(Weblogger.class);
+        PassthroughRenderer.install(pressroom);
         entries = mock(WeblogEntryManager.class);
         weblogs = mock(WeblogManager.class);
         UserManager users = mock(UserManager.class);

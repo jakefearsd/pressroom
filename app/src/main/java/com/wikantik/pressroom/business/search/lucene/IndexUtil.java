@@ -18,14 +18,9 @@
 /* Created on Jul 20, 2003 */
 package com.wikantik.pressroom.business.search.lucene;
 
-import java.io.IOException;
-import java.io.StringReader;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import java.util.Locale;
+
 import org.apache.lucene.index.Term;
 
 /**
@@ -35,38 +30,26 @@ import org.apache.lucene.index.Term;
  */
 public final class IndexUtil {
 
-    private static final Logger log = LoggerFactory.getLogger(IndexUtil.class);
-
     private IndexUtil() {}
 
     /**
-     * Create a lucene term from the first token of the input string.
-     * 
+     * Create a lucene term for a keyword field (handle, locale). Those fields
+     * are indexed verbatim (lowercase), so the term is the lowercased input;
+     * running it through the text analyzer would stem it (a handle
+     * "searchother" became "searchoth") or drop it as a stop word.
+     *
      * @param field
      *            The lucene document field to create a term with
      * @param input
      *            The input you wish to convert into a term
-     * 
-     * @return Lucene search term
+     *
+     * @return Lucene search term, or null for a null field or blank input
      */
     public static Term getTerm(String field, String input) {
-        if (input == null || field == null) {
+        if (input == null || field == null || input.isBlank()) {
             return null;
         }
-        Term term = null;
-        try (Analyzer analyzer = LuceneIndexManager.getAnalyzer();
-             TokenStream tokens = analyzer.tokenStream(field, new StringReader(input))) {
-            CharTermAttribute termAtt = tokens.addAttribute(CharTermAttribute.class);
-            tokens.reset();
-
-            if (tokens.incrementToken()) {
-                String termt = termAtt.toString();
-                term = new Term(field, termt);
-            }
-        } catch (IOException e) {
-            log.debug("Could not tokenize search term for field '{}'", field, e);
-        }
-        return term;
+        return new Term(field, input.strip().toLowerCase(Locale.ROOT));
     }
 
 }

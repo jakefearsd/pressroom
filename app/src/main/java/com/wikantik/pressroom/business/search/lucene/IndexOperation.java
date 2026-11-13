@@ -22,12 +22,14 @@ package com.wikantik.pressroom.business.search.lucene;
 
 import java.io.IOException;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.lucene.analysis.miscellaneous.LimitTokenCountAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
@@ -35,7 +37,11 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.util.BytesRef;
 import com.wikantik.pressroom.config.WebloggerConfig;
+import com.wikantik.pressroom.business.discovery.DiscoveryEligibility;
+import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogCategory;
+import com.wikantik.pressroom.pojos.WeblogEntryTag;
+import com.wikantik.pressroom.util.Utilities;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 
 /**
@@ -93,9 +99,34 @@ public abstract class IndexOperation implements Runnable {
         doc.add(new StringField(FieldConstants.LOCALE, data.getLocale()
                 .toLowerCase(Locale.ROOT), Field.Store.YES));
 
-        // index the entry text, but don't store it
-        doc.add(new TextField(FieldConstants.CONTENT, data.getText(),
-                Field.Store.NO));
+        // The text a reader sees (shortcodes expanded, markdown rendered, tags
+        // stripped); stored, because snippets are cut from it.
+        doc.add(new TextField(FieldConstants.CONTENT,
+                SearchableText.of(data, manager.weblogger().getEntryRenderer()),
+                Field.Store.YES));
+
+        if (data.getSummary() != null) {
+            doc.add(new TextField(FieldConstants.SUMMARY,
+                    Utilities.removeHTML(data.getSummary(), true), Field.Store.NO));
+        }
+
+        if (!data.getTags().isEmpty()) {
+            doc.add(new TextField(FieldConstants.TAGS,
+                    data.getTags().stream().map(WeblogEntryTag::getName).sorted()
+                            .collect(Collectors.joining(" ")),
+                    Field.Store.NO));
+        }
+
+        Weblog blog = data.getWebsite();
+        String tagline = blog.getTagline();
+        doc.add(new TextField(FieldConstants.BLOG,
+                blog.getName() + (tagline == null ? "" : " " + tagline), Field.Store.NO));
+
+        // the entry's half of the "more from the site" rule; the blog's half
+        // is decided at query time
+        if (DiscoveryEligibility.isEligible(data)) {
+            doc.add(new StringField(FieldConstants.SITE, FieldConstants.SITE_V, Field.Store.NO));
+        }
 
         // keyword
         doc.add(new StringField(FieldConstants.UPDATED, data.getUpdateTime()
@@ -105,6 +136,8 @@ public abstract class IndexOperation implements Runnable {
         if (data.getPubTime() != null) {
             // SearchOperation sorts results by date
             doc.add(new SortedDocValuesField(FieldConstants.PUBLISHED, new BytesRef(data.getPubTime().toString())));
+            // the recency factor reads this one
+            doc.add(new NumericDocValuesField(FieldConstants.PUBLISHED_NUM, data.getPubTime().getTime()));
         }
 
         // index Category, needs to be in lower case as it is used in a term
@@ -112,6 +145,7 @@ public abstract class IndexOperation implements Runnable {
         if (categorydata != null) {
             doc.add(new StringField(FieldConstants.CATEGORY, categorydata
                     .getName().toLowerCase(Locale.ROOT), Field.Store.YES));
+            doc.add(new TextField(FieldConstants.CATEGORY_TEXT, categorydata.getName(), Field.Store.NO));
         }
 
         return doc;

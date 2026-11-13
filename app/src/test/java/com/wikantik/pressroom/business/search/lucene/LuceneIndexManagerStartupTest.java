@@ -216,6 +216,91 @@ class LuceneIndexManagerStartupTest {
         assertEquals("Error executing search", ex.getMessage());
     }
 
+    // ------------------------------------------------------- schema version
+
+    private static final String SCHEMA_MARKER = ".index-schema";
+
+    /** An index with one document and the given schema marker content (null: no marker file). */
+    private static void indexWithSchemaMarker(Path indexDir, String marker) throws Exception {
+        LuceneIndexManager first = managerOver(indexDir, mock(ThreadManager.class));
+        first.initialize();
+        first.shutdown();
+        addDocument(indexDir, "entry-from-an-earlier-build");
+        Files.deleteIfExists(indexDir.resolve(SCHEMA_MARKER));
+        if (marker != null) {
+            Files.writeString(indexDir.resolve(SCHEMA_MARKER), marker, StandardCharsets.UTF_8);
+        }
+    }
+
+    private static void assertRebuilt(Path indexDir) throws Exception {
+        ThreadManager threads = mock(ThreadManager.class);
+        LuceneIndexManager next = managerOver(indexDir, threads);
+        next.initialize();
+
+        assertTrue(next.isInconsistentAtStartup());
+        verify(threads).executeInBackground(isA(RebuildWebsiteIndexOperation.class));
+        assertEquals(0, numDocs(indexDir), "the outdated index must be emptied for the rebuild to fill");
+        assertEquals("2", Files.readString(indexDir.resolve(SCHEMA_MARKER)).trim(),
+                "the new index carries the current schema version");
+        next.shutdown();
+    }
+
+    @Test
+    void indexWithoutSchemaMarkerIsRebuiltAtStartup(@TempDir Path tmp) throws Exception {
+        Path indexDir = tmp.resolve("index");
+        indexWithSchemaMarker(indexDir, null);
+        assertRebuilt(indexDir);
+    }
+
+    @Test
+    void indexWithOlderSchemaIsRebuiltAtStartup(@TempDir Path tmp) throws Exception {
+        Path indexDir = tmp.resolve("index");
+        indexWithSchemaMarker(indexDir, "1");
+        assertRebuilt(indexDir);
+    }
+
+    @Test
+    void indexWithCurrentSchemaIsLeftAlone(@TempDir Path tmp) throws Exception {
+        Path indexDir = tmp.resolve("index");
+        indexWithSchemaMarker(indexDir, "2");
+
+        ThreadManager threads = mock(ThreadManager.class);
+        LuceneIndexManager next = managerOver(indexDir, threads);
+        next.initialize();
+
+        assertFalse(next.isInconsistentAtStartup());
+        verifyNoInteractions(threads);
+        assertEquals(1, numDocs(indexDir));
+        next.shutdown();
+    }
+
+    @Test
+    void markerIsWrittenWhenAnIndexIsCreated(@TempDir Path tmp) throws Exception {
+        Path indexDir = tmp.resolve("index");
+        LuceneIndexManager manager = managerOver(indexDir, mock(ThreadManager.class));
+        manager.initialize();
+
+        assertEquals(String.valueOf(LuceneIndexManager.SCHEMA_VERSION),
+                Files.readString(indexDir.resolve(SCHEMA_MARKER)).trim());
+        manager.shutdown();
+    }
+
+    /** Fail closed: a marker that cannot be read is as good as none. */
+    @Test
+    void unreadableMarkerCountsAsOutdated(@TempDir Path tmp) throws Exception {
+        Path indexDir = tmp.resolve("index");
+        indexWithSchemaMarker(indexDir, null);
+        Files.createDirectory(indexDir.resolve(SCHEMA_MARKER));
+
+        ThreadManager threads = mock(ThreadManager.class);
+        LuceneIndexManager next = managerOver(indexDir, threads);
+        next.initialize();
+
+        assertTrue(next.isInconsistentAtStartup());
+        verify(threads).executeInBackground(isA(RebuildWebsiteIndexOperation.class));
+        next.shutdown();
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private static LuceneIndexManager managerOver(Path indexDir, ThreadManager threads) throws Exception {

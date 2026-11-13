@@ -36,7 +36,19 @@ public final class FieldConstants {
     public static final String TITLE = "title";
     public static final String PUBLISHED = "published";
     public static final String CONTENT = "content";
-    public static final String CONTENT_STORED = "content_stored";
+    /** Entry summary, plain text, indexed not stored. */
+    public static final String SUMMARY = "summary";
+    /** Tag names, space-joined, indexed not stored. */
+    public static final String TAGS = "tags";
+    /** Category name as text (the keyword {@link #CATEGORY} stays for the filter). */
+    public static final String CATEGORY_TEXT = "cattext";
+    /** Weblog name and tagline, indexed not stored. */
+    public static final String BLOG = "blog";
+    /** Keyword {@link #SITE_V}, present only for a post {@code DiscoveryEligibility} accepts at index time. */
+    public static final String SITE = "site";
+    public static final String SITE_V = "1";
+    /** Publish time in epoch millis, a numeric doc value for the recency factor. */
+    public static final String PUBLISHED_NUM = "pubnum";
     public static final String CONSTANT = "constant";
     // CONSTANT_V must be lowercase or match transform rules of analyzer
     public static final String CONSTANT_V = "v";

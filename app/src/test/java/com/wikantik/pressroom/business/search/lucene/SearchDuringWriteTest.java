@@ -103,6 +103,7 @@ class SearchDuringWriteTest {
     @BeforeEach
     void setUp() throws Exception {
         Weblogger pressroom = mock(Weblogger.class);
+        PassthroughRenderer.install(pressroom);
         entries = mock(WeblogEntryManager.class);
         weblogs = mock(WeblogManager.class);
         when(pressroom.getWeblogEntryManager()).thenReturn(entries);
