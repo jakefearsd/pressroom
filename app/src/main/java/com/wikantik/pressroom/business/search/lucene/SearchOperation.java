@@ -97,6 +97,7 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
 
     private IndexSearcher searcher;
     private TopDocs searchresults;
+    // guarded by this operation's monitor (setAnyWordFallback, isAnyWordFallback)
     private boolean anyWordFallback;
 
     // The searcher this operation acquired, held until close(). Guarded by
@@ -204,7 +205,7 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
     protected void doRun() {
                 searchresults = null;
         searcher = null;
-        anyWordFallback = false;
+        setAnyWordFallback(false);
         parseError = null;
         parsedQuery = null;
 
@@ -239,7 +240,7 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
                 if (second.totalHits.value() > 0) {
                     searchresults = second;
                     parsedQuery = any;
-                    anyWordFallback = true;
+                    setAnyWordFallback(true);
                 }
             }
 
@@ -497,8 +498,14 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
     }
 
     /** True when no post had every word and these results match some of them. */
-    public boolean isAnyWordFallback() {
+    public synchronized boolean isAnyWordFallback() {
         return anyWordFallback;
+    }
+
+    // run() sets it on the pool thread, the caller reads it afterwards: the
+    // same monitor that guards acquired and closed
+    private synchronized void setAnyWordFallback(boolean value) {
+        anyWordFallback = value;
     }
 
     /**

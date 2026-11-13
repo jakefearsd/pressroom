@@ -292,8 +292,12 @@ public class LuceneIndexManager implements IndexManager {
     public void noteWeblog(Weblog weblog) {
         // runs on every blog save, including those a publish causes: an
         // in-memory compare, and nothing it does may fail the save
+        if (weblog == null) {
+            return;
+        }
+        String handle = weblog.getHandle();
         try {
-            if (weblog == null || weblog.getHandle() == null) {
+            if (handle == null) {
                 return;
             }
             String tagline = weblog.getTagline();
@@ -304,7 +308,7 @@ public class LuceneIndexManager implements IndexManager {
                 rebuildWeblogIndex(weblog);
             }
         } catch (WebloggerException | RuntimeException e) {
-            log.warn("Could not reindex renamed weblog {}", weblog == null ? null : weblog.getHandle(), e);
+            log.warn("Could not reindex renamed weblog {}", handle, e);
         }
     }
 
@@ -318,7 +322,7 @@ public class LuceneIndexManager implements IndexManager {
         Set<String> eligibleHandles = null;
         if (spec.scope() != SearchSpec.Scope.BLOG) {
             eligibleHandles = eligibleHandles();
-            if (eligibleHandles == null || eligibleHandles.isEmpty()) {
+            if (eligibleHandles.isEmpty()) {
                 return SearchHits.NONE;
             }
         }
@@ -421,8 +425,8 @@ public class LuceneIndexManager implements IndexManager {
      * The handles of the blogs discovery would list, asked of the weblog
      * manager at query time so hiding a blog takes effect without a reindex.
      *
-     * @return the handles, or null when they cannot be read: the caller then
-     *         finds nothing, never everything
+     * @return the handles; empty both when no blog is eligible and when the
+     *         list cannot be read, so the caller finds nothing, never everything
      */
     private Set<String> eligibleHandles() {
         try {
@@ -435,7 +439,7 @@ public class LuceneIndexManager implements IndexManager {
             return handles;
         } catch (WebloggerException | RuntimeException e) {
             log.error("Could not list the blogs a site search may reach; returning no hits", e);
-            return null;
+            return Set.of();
         }
     }
 
@@ -880,6 +884,11 @@ public class LuceneIndexManager implements IndexManager {
         }
     }
 
+    @SuppressFBWarnings(
+            value = "IMPROPER_UNICODE",
+            justification = "Blog handles are limited to ASCII characters (allowedChars) when a blog is "
+                    + "created, so case-insensitive equality has no Unicode folding cases to get wrong; "
+                    + "the comparison only decides which blog's own posts to leave out of 'other blogs'.")
     private static boolean isExcluded(SearchSpec spec, WeblogEntry entry) {
         return spec.scope() == SearchSpec.Scope.OTHER_BLOGS
                 && entry.getWebsite().getHandle().equalsIgnoreCase(spec.weblogHandle().strip());
