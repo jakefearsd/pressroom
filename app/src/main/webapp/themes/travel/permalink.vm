@@ -81,7 +81,6 @@
     <form class="tg-search" role="search" method="get" action="$url.search">
         <input type="search" name="q" placeholder="Search guides" aria-label="$text.get("macro.weblog.searchbutton")">
     </form>
-    #showSubscribeForm($model.weblog "Get new guides by email")
     #showBusinessCard($model.weblog "Book a stay")
     #showColophon($model.weblog)
 </footer>

@@ -255,7 +255,16 @@ class ThemeChromeConsistencyTest {
                 // other pages kept the footer form: it is the one difference.
                 String other = between(unguarded(read(template(theme, file))), "<footer", "</footer>")
                         .replaceFirst("(?s)\\n    <form class=\"[a-z]+-search\".*?</form>", "");
-                if (!other.contains(footer)) {
+                // A post page has its subscribe form once, after Keep reading
+                // (the showAfterEntry macro), so its footer is the home
+                // page's without the form; every other page keeps the form.
+                String expected = footer;
+                if (file.equals("permalink.vm")) {
+                    expected = footer.replaceFirst("\n[ ]*#showSubscribeForm\\([^\n]*", "");
+                    assertFalse(other.contains("#showSubscribeForm"),
+                            theme + "/permalink.vm: the form is in the after-entry macro, not the footer");
+                }
+                if (!other.contains(expected)) {
                     offenders.add(theme + "/" + file + ": footer differs from weblog.vm's");
                 }
             }

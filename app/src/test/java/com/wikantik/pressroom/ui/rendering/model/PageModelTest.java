@@ -22,6 +22,7 @@ import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.MultiWeblogURLStrategy;
 import com.wikantik.pressroom.business.PropertiesManager;
 import com.wikantik.pressroom.business.URLStrategy;
+import com.wikantik.pressroom.business.WeblogEntryManager;
 import com.wikantik.pressroom.business.WeblogPageManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.themes.ThemeManager;
@@ -44,6 +45,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +60,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -640,5 +644,41 @@ class PageModelTest {
         WeblogPageRequest impossible = pageRequest();
         impossible.setWeblogDate("202613");
         assertNull(modelFor(impossible).getWeblogDateLabel(), "month 13 is no archive");
+    }
+    // ------------------------------------------------------- blog standing
+
+    /**
+     * The blog line's numbers come from one query, asked once per render, and
+     * are exposed through JavaBean getters (Velocity does not see a record's
+     * accessors). The counting rules themselves are BlogStandingTest's.
+     */
+    @Test
+    void blogStandingIsAskedOncePerRenderAndReadableByVelocity() throws Exception {
+        WeblogEntryManager entries = mock(WeblogEntryManager.class);
+        when(weblogger.getWeblogEntryManager()).thenReturn(entries);
+        Date latest = new Date(1_700_000_000_000L);
+        when(entries.getBlogStanding(any(Weblog.class), any(Date.class)))
+                .thenReturn(new BlogStanding(42, latest));
+        PageModel model = modelFor(pageRequest());
+
+        assertEquals(42L, model.getBlogStanding().getArticles());
+        assertEquals(latest, model.getBlogStanding().getLatest());
+        verify(entries, times(1)).getBlogStanding(any(Weblog.class), any(Date.class));
+        assertTrue(java.util.Arrays.stream(BlogStanding.class.getMethods())
+                .anyMatch(m -> m.getName().equals("getArticles")), "Velocity reads getArticles()");
+    }
+
+    @Test
+    void aFailedStandingReadLeavesTheLineOutWithoutFailingThePage() throws Exception {
+        WeblogEntryManager entries = mock(WeblogEntryManager.class);
+        when(weblogger.getWeblogEntryManager()).thenReturn(entries);
+        when(entries.getBlogStanding(any(Weblog.class), any(Date.class)))
+                .thenThrow(new WebloggerException("database down"));
+        PageModel model = modelFor(pageRequest());
+
+        assertEquals(0L, model.getBlogStanding().getArticles(),
+                "no posts counted, so the macro shows no line");
+        assertEquals(0L, model.getBlogStanding().getArticles());
+        verify(entries, times(1)).getBlogStanding(any(Weblog.class), any(Date.class));
     }
 }

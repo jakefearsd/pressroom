@@ -2410,9 +2410,45 @@ the unsubscribe link.
 
 
 #**
+The blog line, one quiet line under a post's title: "From <blog> · 42 articles
+· latest 9 Nov 2026 · Subscribe". It tells a reader who arrived from a search
+that the article belongs to a blog still publishing, and how to follow it. The
+themes' _day.vm call it from the permalink branch, right after the byline:
+    #showBlogLine($model.weblog)
+
+$model.blogStanding counts published, not-future posts and dates the newest;
+the line is left out for a blog with fewer than two (nothing to stand on). The
+date is absolute because the page is cached: count and date are as old as the
+last change to the blog, which is what expires the page. It is formatted in the
+blog's locale and time zone. Subscribe is a link to the form
+(div#subscribe in the showAfterEntry macro) and appears only when the blog's
+subscribe form is on. The blog name from WeblogWrapper is already escaped. The
+style is on currentColor and color-mix, selectors doubled to sit above a
+theme's own rules, with no hash or dollar sign in it.
+*#
+#macro(showBlogLine $blWeblog)
+#set($blStanding = $model.blogStanding)
+#if($blStanding.articles >= 2)
+<style>
+.blog-line.blog-line { margin: .5rem 0 0; font-size: .8125rem; line-height: 1.5; color: color-mix(in srgb, currentColor 70%, transparent); }
+.blog-line.blog-line a { color: inherit; text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: .2em; }
+.blog-line.blog-line a:hover { text-decoration-color: currentColor; }
+</style>
+#set($blName = "<a class=""blog-line-name"" href=""$url.home"">$blWeblog.name</a>")
+#set($blDayText = $utils.formatDate($blStanding.latest, "d MMM yyyy"))
+#set($blDay = "<time datetime=""$utils.formatIso8601Day($blStanding.latest)"">$blDayText</time>")
+<p class="blog-line">$text.get("blogLine.from", [$blName]) &middot; $text.get("blogLine.articles", [$blStanding.articles]) &middot; $text.get("blogLine.latest", [$blDay])#if($blWeblog.subscribeFormShown) &middot; <a class="blog-line-subscribe" href="#subscribe">$text.get("blogLine.subscribe")</a>#end</p>
+#end
+#end
+
+
+#**
 What a post page offers after the article, in this order: the share row,
-"Nearby" (a post with coordinates: the same blog's nearest posts) and "Keep
-reading" (the same blog's most related posts). Each article theme's
+"Nearby" (a post with coordinates: the same blog's nearest posts), "Keep
+reading" (the same blog's most related posts) and, when the blog has a
+subscribe form, that form in div#subscribe.entry-subscribe (the target of the
+blog line's Subscribe link; a post page has it here and not in the footer; a
+blog with the share row off still gets it). Each article theme's
 permalink.vm calls it between the entries pager and the comments macro:
     the showAfterEntry macro, with $model.weblogEntry
 
@@ -2474,6 +2510,8 @@ analytics script when a blog has one; they do nothing otherwise.
 .entry-more .entry-more-title { color: inherit; font-size: .9375rem; font-weight: 600; line-height: 1.3; text-decoration: none; overflow-wrap: anywhere; }
 .entry-more .entry-more-title:hover { text-decoration: underline; }
 .entry-more .entry-more-meta { font-size: .8125rem; color: color-mix(in srgb, currentColor 70%, transparent); }
+.entry-subscribe.entry-subscribe { margin: 2rem 0 0; padding: 1rem 0 0; border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent); font-size: .875rem; }
+.entry-subscribe.entry-subscribe .newsletter-prompt { margin: 0 0 .25rem; font-size: .875rem; color: color-mix(in srgb, currentColor 70%, transparent); }
 </style>
 #if($aeShare)
 <nav class="entry-share" aria-label="$text.get("afterEntry.share")" data-url="$utils.escapeHTML($aeEntry.permalink)" data-title="$aeEntry.title">
@@ -2549,6 +2587,13 @@ analytics script when a blog has one; they do nothing otherwise.
 #end
     </ul>
 </section>
+#end
+#if($model.weblog.subscribeFormShown)
+## The blog's name is escaped by WeblogWrapper and the macro escapes its prompt
+## again, so the prompt is built from the plain name.
+<div class="entry-subscribe" id="subscribe">
+#showSubscribeForm($model.weblog $text.get("afterEntry.subscribePrompt", [$utils.unescapeHTML($model.weblog.name)]))
+</div>
 #end
 #end
 #end

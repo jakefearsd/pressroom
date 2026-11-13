@@ -42,6 +42,9 @@
             &middot; <a href="$url.editEntry($entry.anchor)">$text.get("generic.edit")</a>
             #end
         </p>
+        ## The blog line, under the title and byline (weblog.vm); the macro
+        ## is called on the post page only.
+        #showBlogLine($model.weblog)
         <div class="tg-entry-content">$entry.displayContent</div>
         ## The meta line runs above the content in this theme, so the tag
         ## row lands here -- last in the article, either way.

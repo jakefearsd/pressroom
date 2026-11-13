@@ -26,6 +26,7 @@ import java.time.format.FormatStyle;
 import java.util.Locale;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -79,6 +80,7 @@ public class PageModel implements Model {
     private Map<String, String[]> requestParameters = null;
     private Weblog weblog = null;
     private FurtherReading furtherReading = null;
+    private BlogStanding blogStanding = null;
 
     /**
      * The business-tier facade, handed in through {@code initData} by the
@@ -269,6 +271,28 @@ public class PageModel implements Model {
             }
         }
         return furtherReading;
+    }
+
+
+    /**
+     * What this blog has published (published, not-future posts and the
+     * newest one's time), for the blog line under a post's title. Built once
+     * per render, with one query. It is as old as the page cache entry, which
+     * expires when the blog changes. A failed read is logged and the line is
+     * left out (the standing then counts no posts).
+     */
+    public BlogStanding getBlogStanding() {
+        if (blogStanding == null) {
+            blogStanding = BlogStanding.NONE;
+            if (weblog != null) {
+                try {
+                    blogStanding = weblogger.getWeblogEntryManager().getBlogStanding(weblog, new Date());
+                } catch (WebloggerException e) {
+                    log.error("ERROR: counting the posts of weblog {}", weblog.getHandle(), e);
+                }
+            }
+        }
+        return blogStanding;
     }
 
 

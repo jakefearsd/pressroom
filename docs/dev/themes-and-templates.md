@@ -481,6 +481,27 @@ Spec `docs/superpowers/specs/2026-11-11-post-page-discovery-design.md`.
   escapes it). Keep reading stays same-blog. The 50 newest located posts in
   the box are all that is looked at: in a region with more, an older, nearer
   post of another blog can be missed.
+- **The blog line and the subscribe form** (site-search spec, section 5).
+  `showBlogLine($model.weblog)` (`weblog.vm`) prints `p.blog-line` under the
+  title and byline: "From <blog> · 42 articles · latest 9 Nov 2026 ·
+  Subscribe". It is called from each article theme's `_day.vm` (permalink
+  branch), not `permalink.vm`, because the title block lives there; the
+  preview shares `_day.vm`, so `PreviewPageModel.getBlogStanding()` is empty
+  and the macro prints nothing. `$model.blogStanding` (`BlogStanding`, JavaBean
+  getters, built once per render) is one query,
+  `WeblogEntryManager.getBlogStanding(weblog, now)`: PUBLISHED posts whose
+  pubTime has come, and the newest pubTime. `getEntryCount(Weblog)` is not
+  used: it counts every PUBLISHED row, a post due within the next minute
+  included. Under two posts the line is omitted. The date is absolute
+  (`d MMM yyyy`, the blog's locale and zone) because the page is cached; count
+  and date are as old as the last change to the blog. "Subscribe" links to
+  `div#subscribe.entry-subscribe`, which the showAfterEntry macro prints after
+  Keep reading (share row off or not, Nearby/Keep reading present or not) when
+  `weblog.subscribeFormShown`, with the prompt "New articles from {blog}". The
+  post page's footer no longer calls the form (every other page keeps its
+  footer form); `ThemeChromeConsistencyTest` expects permalink's footer to be
+  the home footer minus the form. The form's script (`showAudienceAssets`)
+  fills every `.subscribe-form-slot` on load, so the slot may sit anywhere.
 - **Freshness** is the page cache's: a post page re-renders when
   `weblog.lastModified` moves or the discovery generation does, so a new post
   appears under its neighbours without any invalidation of its own. Another

@@ -27,6 +27,7 @@ import com.wikantik.pressroom.business.discovery.DiscoveryCandidate;
 import com.wikantik.pressroom.pojos.TagStat;
 import com.wikantik.pressroom.pojos.User;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.ui.rendering.model.BlogStanding;
 import com.wikantik.pressroom.pojos.WeblogCategory;
 import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntryRevision;
@@ -339,6 +340,16 @@ public interface WeblogEntryManager {
      * Get weblog entry count 
      */    
     long getEntryCount(Weblog websiteData) throws WebloggerException;
+
+    /**
+     * What a weblog has published as of {@code asOf}: the number of posts with
+     * status PUBLISHED and a publication time not after it, and the newest
+     * such time, in one query. Unlike {@link #getEntryCount(Weblog)}, which
+     * counts every PUBLISHED row, a post scheduled for later is not counted.
+     * Drafts, pending and trashed posts are never counted. A weblog with none
+     * answers 0 and a null latest.
+     */
+    BlogStanding getBlogStanding(Weblog weblog, Date asOf) throws WebloggerException;
 
     /**
      * Every weblog's {@link #getEntryCount(Weblog)} at once: published

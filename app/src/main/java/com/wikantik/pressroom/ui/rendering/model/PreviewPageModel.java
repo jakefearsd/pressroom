@@ -73,6 +73,18 @@ public class PreviewPageModel extends PageModel {
     }
     
     
+    /**
+     * No blog line in a preview. The themes' _day.vm shows the line under a
+     * post's title and is shared with the preview, which has no after-entry
+     * section either; an empty standing makes the macro print nothing, and
+     * costs no query.
+     */
+    @Override
+    public BlogStanding getBlogStanding() {
+        return BlogStanding.NONE;
+    }
+
+
     @Override
     public WeblogEntryWrapper getWeblogEntry() {
         

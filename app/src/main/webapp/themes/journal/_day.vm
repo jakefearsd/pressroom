@@ -36,6 +36,9 @@
             <a class="qj-edit" href="$url.editEntry($entry.anchor)">$text.get("generic.edit")</a>
             #end
         </p>
+        ## The blog line, under the title and byline (weblog.vm); the macro
+        ## is called on the post page only.
+        #showBlogLine($model.weblog)
         <div class="qj-prose">$entry.displayContent</div>
         ## Last thing in the reading view, after the prose: a reader who has
         ## just finished the piece is the one looking for more of the subject.

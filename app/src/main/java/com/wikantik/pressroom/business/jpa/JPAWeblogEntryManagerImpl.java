@@ -56,6 +56,7 @@ import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.pojos.WeblogEntry.PubStatus;
 import com.wikantik.pressroom.pojos.WeblogEntryTag;
 import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.ui.rendering.model.BlogStanding;
 import com.wikantik.pressroom.pojos.WeblogEntryAttribute;
 import com.wikantik.pressroom.pojos.WeblogEntryRevision;
 import com.wikantik.pressroom.config.WebloggerConfig;
@@ -1614,6 +1615,20 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     private static final String SHARED_TAG_COUNTS =
             "SELECT t.weblogEntry.id, COUNT(t) FROM WeblogEntryTag t"
             + " WHERE t.weblog = ?1 AND t.name IN ?2 GROUP BY t.weblogEntry.id";
+
+    private static final String BLOG_STANDING =
+            "SELECT COUNT(e), MAX(e.pubTime) FROM WeblogEntry e"
+            + " WHERE e.website = ?1 AND e.status = ?2 AND e.pubTime <= ?3";
+
+    @Override
+    public BlogStanding getBlogStanding(Weblog weblog, Date asOf) throws WebloggerException {
+        Object[] row = strategy.getDynamicQuery(BLOG_STANDING, Object[].class)
+                .setParameter(1, weblog)
+                .setParameter(2, PubStatus.PUBLISHED)
+                .setParameter(3, new Timestamp(asOf.getTime()))
+                .getSingleResult();
+        return new BlogStanding(((Number) row[0]).longValue(), (Date) row[1]);
+    }
 
     private static final String PUBLISHED_ENTRY_COUNTS =
             "SELECT e.website.id, COUNT(e) FROM WeblogEntry e WHERE e.status = ?1 GROUP BY e.website.id";
