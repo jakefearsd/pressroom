@@ -206,6 +206,34 @@ class LuceneIndexManagerSearchTest {
                 analyzerConfiguredAs("org.apache.lucene.analysis.miscellaneous.LimitTokenCountAnalyzer"));
     }
 
+    /**
+     * One analyzer serves every parse, snippet and MoreLikeThis call; it used
+     * to be built by reflection for each and never closed (final review, C3).
+     */
+    @Test
+    void theAnalyzerIsSharedNotBuiltPerCall() throws Exception {
+        assertTrue(manager.getAnalyzer() == manager.getAnalyzer(), "the same instance on every call");
+    }
+
+    /** A write closes its LimitTokenCountAnalyzer wrapper; the shared analyzer it wraps stays usable. */
+    @Test
+    void anIndexWriteLeavesTheSharedAnalyzerOpen() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("analyzerblog");
+        index(entry("an-1", blog, "General", "One"));
+        index(entry("an-2", blog, "General", "Two"));
+
+        try (org.apache.lucene.analysis.TokenStream tokens = manager.getAnalyzer().tokenStream("content", "kitchens")) {
+            org.apache.lucene.analysis.tokenattributes.CharTermAttribute term =
+                    tokens.addAttribute(org.apache.lucene.analysis.tokenattributes.CharTermAttribute.class);
+            tokens.reset();
+            assertTrue(tokens.incrementToken());
+            assertEquals("kitchen", term.toString());
+            tokens.end();
+        }
+        assertEquals(2, find(WORD, "analyzerblog").total());
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private static Analyzer analyzerConfiguredAs(String className) throws Exception {
@@ -215,7 +243,7 @@ class LuceneIndexManagerSearchTest {
         String previous = config.getProperty("lucene.analyzer.class");
         config.setProperty("lucene.analyzer.class", className);
         try {
-            return LuceneIndexManager.getAnalyzer();
+            return LuceneIndexManager.newAnalyzer();
         } finally {
             if (previous == null) {
                 config.remove("lucene.analyzer.class");
@@ -349,7 +377,7 @@ class LuceneIndexManagerSearchTest {
         org.apache.lucene.search.BooleanQuery parsed = assertInstanceOf(
                 org.apache.lucene.search.BooleanQuery.class,
                 SearchOperation.parse("kitchen", org.apache.lucene.queryparser.classic.MultiFieldQueryParser
-                        .Operator.AND));
+                        .Operator.AND, manager.getAnalyzer()));
         java.util.Map<String, Float> boosts = new java.util.HashMap<>();
         for (org.apache.lucene.search.BooleanClause clause : parsed.clauses()) {
             org.apache.lucene.search.Query q = clause.query();
@@ -509,6 +537,19 @@ class LuceneIndexManagerSearchTest {
         assertEquals(List.of("pg-2", "pg-3"), second);
         assertEquals(List.of("pg-4"), third);
         assertEquals(5, findSite(WORD, 2, 2).total());
+    }
+
+    /** A negative offset (an overflowed page number) is the first page, never an index out of bounds (C2). */
+    @Test
+    void aNegativeOffsetIsTheFirstPage() throws Exception {
+        manager.initialize();
+        Weblog blog = weblog("negoffset");
+        for (int i = 0; i < 3; i++) {
+            post("neg-" + i, blog, "Page", WORD + " same body", i + 1);
+        }
+
+        assertEquals(List.of("neg-0", "neg-1"), idsOf(manager.find(
+                new SearchSpec(WORD, SearchSpec.Scope.BLOG, "negoffset", null, -2147483640, 2), mock(URLStrategy.class))));
     }
 
     // ------------------------------------------------------- scopes and eligibility

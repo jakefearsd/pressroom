@@ -266,13 +266,13 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
     }
 
     private Query parse(MultiFieldQueryParser.Operator operator) throws ParseException {
-        return parse(term, operator);
+        return parse(term, operator, manager.getAnalyzer());
     }
 
     /** The reader's words as the query the index runs, confined to the searched fields and weighted. */
-    static Query parse(String words, MultiFieldQueryParser.Operator operator) throws ParseException {
-        MultiFieldQueryParser parser = new SearchedFieldsOnly(
-                SEARCH_FIELDS, LuceneIndexManager.getAnalyzer(), FIELD_BOOSTS);
+    static Query parse(String words, MultiFieldQueryParser.Operator operator,
+            org.apache.lucene.analysis.Analyzer analyzer) throws ParseException {
+        MultiFieldQueryParser parser = new SearchedFieldsOnly(SEARCH_FIELDS, analyzer, FIELD_BOOSTS);
         parser.setDefaultOperator(operator);
         return parser.parse(words);
     }

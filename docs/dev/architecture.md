@@ -140,7 +140,10 @@ templates).
   be stale. Fails closed: an empty set, or a failure listing blogs (logged at
   ERROR), is zero hits. `perBlog` is computed for `SITE` only.
 - **Snippets** (`Snippets.html`, page hits only): the stored `content`
-  passage about 160 chars, around the first match, escaped, with only
+  passage about 160 chars, around the first match (the highlighter analyses
+  at most the first 50,000 characters, `Snippets.MAX_ANALYSED_CHARS`, so one
+  request's work is bounded; a match beyond that shows the excerpt), escaped,
+  with only
   `<mark>`/`</mark>` added; the output is emitted unescaped by templates, so
   that is an XSS boundary. A post matched only in title, tags or summary
   shows its list excerpt (`WeblogEntryWrapper.getExcerpt`, plain text)
@@ -159,6 +162,14 @@ templates).
   them 86 KB with a word at about token 12,000: rebuild 3.9 s (v0.9.2 built its own in
   0.7-0.9 s), index 12 MB (v0.9.2: 3.1 MB). Searching that word, and a word that is only
   a tag, finds the post afterwards.
+- **Input bounds on the anonymous endpoint** (`WeblogSearchRequest`): `q` is
+  trimmed and cut to 255 code points (`MAX_QUERY_CODE_POINTS`, never inside
+  a surrogate pair), whatever a form allowed; `page` is clamped to 0..49
+  (500 hits considered, 10 a page), a non-numeric or negative one is 0
+  (`page=214748365` overflowed the offset into a 500 until the final
+  review). Every reader search input carries `maxlength="255"`
+  (`ThemeChromeConsistencyTest.everySearchInputCarriesTheQueryLimit`). No
+  request throttle (an owner decision for later).
 - **A reader's query reaches only the searched fields** (the six above):
   `SearchOperation.SearchedFieldsOnly` reads any other "field:" a reader
   names as plain words, and the index holds no author login. Both since
@@ -197,7 +208,11 @@ templates).
   `summary` is decoded like `content` ("Fish &amp; chips" is not the word
   "amp"); a missing blog name or tagline is no words, never "null"; removed
   tags leave no space before closing punctuation. Analyzer `EnglishAnalyzer`
-  at index and query time; token limit
+  at index and query time, one instance per manager
+  (`LuceneIndexManager.getAnalyzer()`, shared by parsing, snippets,
+  MoreLikeThis and the writers' `LimitTokenCountAnalyzer` wrappers, whose
+  close does not close it; it was built by reflection per call until the
+  final review); token limit
   `lucene.analyzer.maxTokenCount=20000`. **Keyword fields never go through
   the analyzer** (a stemmed handle matched no blog, a stop-word handle
   dropped the weblog filter). **Handles keep their case**: they are

@@ -79,7 +79,7 @@
 
 <footer class="tg-footer">
     <form class="tg-search" role="search" method="get" action="$url.search">
-        <input type="search" name="q" placeholder="Search guides" aria-label="$text.get("macro.weblog.searchbutton")">
+        <input type="search" name="q" maxlength="255" placeholder="Search guides" aria-label="$text.get("macro.weblog.searchbutton")">
     </form>
     #showBusinessCard($model.weblog "Book a stay")
     #showColophon($model.weblog)

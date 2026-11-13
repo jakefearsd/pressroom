@@ -94,6 +94,7 @@ class AddEntryOperationTest {
         FSDirectory dir = FSDirectory.open(indexDir);
         when(manager.getIndexDirectory()).thenReturn(dir);
         when(manager.weblogger()).thenReturn(pressroom);
+        when(manager.getAnalyzer()).thenReturn(LuceneIndexManager.newAnalyzer());
 
         new AddEntryOperation(pressroom, manager, entry).doRun();
         return new IndexSearcher(DirectoryReader.open(dir));

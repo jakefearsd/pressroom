@@ -36,6 +36,15 @@ public class WeblogSearchRequest extends WeblogRequest {
     
     public static final String SEARCH_SERVLET = "/pressroom-ui/rendering/search";
     
+    /** The most of a query a search reads, in code points; the forms' maxlength says the same. */
+    public static final int MAX_QUERY_CODE_POINTS = 255;
+
+    /**
+     * The last page there can be: 500 hits are considered, 10 a page. A
+     * larger page overflowed the offset into a negative index (final review).
+     */
+    static final int LAST_PAGE = 49;
+
     // lightweight attributes
     private String query = null;
     private int pageNum = 0;
@@ -104,12 +113,12 @@ public class WeblogSearchRequest extends WeblogRequest {
             throws InvalidRequestException {
 
         if (request.getParameter("q") != null && !request.getParameter("q").isBlank()) {
-            this.query = request.getParameter("q");
+            this.query = bounded(request.getParameter("q"));
         }
 
         if (request.getParameter("page") != null) {
             try {
-                this.pageNum = Integer.parseInt(request.getParameter("page"));
+                this.pageNum = Math.clamp(Integer.parseInt(request.getParameter("page")), 0, LAST_PAGE);
             } catch (NumberFormatException ignored) {
                 // A malformed "page" parameter is routine, not a request
                 // error -- crawlers and hand-edited search URLs send these
@@ -124,6 +133,19 @@ public class WeblogSearchRequest extends WeblogRequest {
             this.weblogCategoryName =
                     decodeOrReject(request.getParameter("cat"), request);
         }
+    }
+
+    /**
+     * The reader's words, trimmed and cut to {@link #MAX_QUERY_CODE_POINTS}
+     * code points (never inside a surrogate pair): the anonymous endpoint's
+     * own bound, whatever a form allowed.
+     */
+    static String bounded(String words) {
+        String trimmed = words.strip();
+        if (trimmed.codePointCount(0, trimmed.length()) <= MAX_QUERY_CODE_POINTS) {
+            return trimmed;
+        }
+        return trimmed.substring(0, trimmed.offsetByCodePoints(0, MAX_QUERY_CODE_POINTS));
     }
 
     public String getQuery() {

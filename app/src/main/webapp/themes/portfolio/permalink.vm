@@ -79,7 +79,7 @@
 
 <footer class="pf-footer">
     <form class="pf-search" role="search" method="get" action="$url.search">
-        <input type="search" name="q" placeholder="Search" aria-label="$text.get("macro.weblog.searchbutton")">
+        <input type="search" name="q" maxlength="255" placeholder="Search" aria-label="$text.get("macro.weblog.searchbutton")">
     </form>
     #showBusinessCard($model.weblog "Book a session")
     #showColophon($model.weblog)

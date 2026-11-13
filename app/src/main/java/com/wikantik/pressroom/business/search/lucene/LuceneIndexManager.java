@@ -48,7 +48,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.miscellaneous.LimitTokenCountAnalyzer;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -146,6 +145,17 @@ public class LuceneIndexManager implements IndexManager {
     /** About how long a result's passage is. */
     private static final int SNIPPET_CHARS = 160;
 
+    /**
+     * The one analyzer this manager's parsing, snippets, MoreLikeThis and
+     * index writers use (Lucene analyzers are thread-safe and reusable). Made
+     * with the manager and never closed: it lives as long as the manager, and
+     * a search may still run after {@link #shutdown()} (see acquireSearcher).
+     * The writers wrap it in a {@code LimitTokenCountAnalyzer} each, whose
+     * close does not close it. It used to be built by reflection for every
+     * parse, snippet and MoreLikeThis call and never closed (final review, C3).
+     */
+    private final Analyzer analyzer;
+
 
     /** The tier an {@link IndexOperation} resolves entry authors through. */
     Weblogger weblogger() {
@@ -185,6 +195,8 @@ public class LuceneIndexManager implements IndexManager {
 
         String test = indexDir + File.separator + ".index-inconsistent";
         indexConsistencyMarker = new File(test);
+
+        this.analyzer = newAnalyzer();
     }
 
     /**
@@ -460,7 +472,7 @@ public class LuceneIndexManager implements IndexManager {
         text.put(FieldConstants.TAGS, entry.getTags().stream().map(t -> (Object) t.getName()).toList());
 
         MoreLikeThis like = new MoreLikeThis(searcher.getIndexReader());
-        like.setAnalyzer(getAnalyzer());
+        like.setAnalyzer(analyzer);
         like.setFieldNames(new String[] {FieldConstants.TITLE, FieldConstants.TAGS, FieldConstants.CONTENT});
         like.setMinTermFreq(1);
         like.setMinDocFreq(2);
@@ -517,15 +529,15 @@ public class LuceneIndexManager implements IndexManager {
     }
 
     /**
-     * This is the analyzer that will be used to tokenize comment text.
-     * 
-     * @return Analyzer to be used in manipulating the database.
+     * The analyzer the index is built and searched with: this manager's one
+     * shared instance.
      */
-    public static final Analyzer getAnalyzer() {
-        return instantiateAnalyzer();
+    public Analyzer getAnalyzer() {
+        return analyzer;
     }
 
-    private static Analyzer instantiateAnalyzer() {
+    /** A new analyzer of the configured class ({@code lucene.analyzer.class}), English when that fails. */
+    static Analyzer newAnalyzer() {
         final String className = WebloggerConfig.getProperty("lucene.analyzer.class");
         try {
             final Class<?> clazz = Class.forName(className);
@@ -804,9 +816,8 @@ public class LuceneIndexManager implements IndexManager {
             return;
         }
 
-        IndexWriterConfig config = new IndexWriterConfig(
-                new LimitTokenCountAnalyzer(
-                        getAnalyzer(), 128));
+        // no document is added, so the shared analyzer needs no token limit
+        IndexWriterConfig config = new IndexWriterConfig(analyzer);
 
         try (IndexWriter writer = new IndexWriter(dir, config)) {
             // an empty commit is what writes the first segments file; no
@@ -866,9 +877,10 @@ public class LuceneIndexManager implements IndexManager {
         boolean blogScope = spec.scope() == SearchSpec.Scope.BLOG;
         boolean siteScope = spec.scope() == SearchSpec.Scope.SITE;
 
-        // determine offset
+        // determine offset: past the end, or negative (an overflowed page
+        // number), is the first page
         int offset = spec.offset();
-        if (offset >= hits.length) {
+        if (offset < 0 || offset >= hits.length) {
             offset = 0;
         }
 
@@ -980,8 +992,8 @@ public class LuceneIndexManager implements IndexManager {
      * words are only in its title, tags or summary shows the excerpt its
      * list entry shows instead, escaped here because the excerpt is plain text.
      */
-    private static String snippet(Document doc, Query words, WeblogEntryWrapper entry) {
-        String marked = Snippets.html(doc.get(FieldConstants.CONTENT), words, getAnalyzer(), SNIPPET_CHARS);
+    private String snippet(Document doc, Query words, WeblogEntryWrapper entry) {
+        String marked = Snippets.html(doc.get(FieldConstants.CONTENT), words, analyzer, SNIPPET_CHARS);
         if (!marked.isEmpty()) {
             return marked;
         }

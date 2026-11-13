@@ -60,7 +60,7 @@
 <footer class="pf-footer">
     #if(!$model.weblog.siteSpace)
     <form class="pf-search" role="search" method="get" action="$url.search">
-        <input type="search" name="q" placeholder="Search" aria-label="$text.get("macro.weblog.searchbutton")">
+        <input type="search" name="q" maxlength="255" placeholder="Search" aria-label="$text.get("macro.weblog.searchbutton")">
     </form>
     #end
     #showSubscribeForm($model.weblog "New work, by email")

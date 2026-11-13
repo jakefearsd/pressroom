@@ -41,8 +41,23 @@ class SnippetsTest {
     private static final Analyzer ANALYZER = new EnglishAnalyzer();
 
     private static String html(String text, String words, int max) throws Exception {
-        Query query = SearchOperation.parse(words, MultiFieldQueryParser.Operator.OR);
+        Query query = SearchOperation.parse(words, MultiFieldQueryParser.Operator.OR, ANALYZER);
         return Snippets.html(text, query, ANALYZER, max);
+    }
+
+    /**
+     * The highlighter re-analysed the whole stored body for every hit; it now
+     * reads at most the first {@link Snippets#MAX_ANALYSED_CHARS} characters,
+     * so one request's work is bounded, and a match past them has no passage
+     * (the hit shows its excerpt instead). Final review, C4.
+     */
+    @Test
+    void onlyTheStartOfAVeryLongBodyIsAnalysed() throws Exception {
+        String filler = "lorem ipsum dolor sit amet ".repeat(4000); // 108,000 characters
+        assertTrue(filler.length() > Snippets.MAX_ANALYSED_CHARS);
+        assertEquals("", html(filler + "quokkaword at the end", "quokkaword", 160),
+                "a match past the analysed length has no passage");
+        assertTrue(html("quokkaword at the start " + filler, "quokkaword", 160).contains("<mark>quokkaword</mark>"));
     }
 
     @Test

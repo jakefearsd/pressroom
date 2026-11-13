@@ -170,8 +170,10 @@ public abstract class IndexOperation implements Runnable {
     protected IndexWriter beginWriting() {
         try {
 
+            // a wrapper of the manager's shared analyzer: closing it in
+            // endWriting() does not close the one it wraps
             analyzer = new LimitTokenCountAnalyzer(
-                    LuceneIndexManager.getAnalyzer(),
+                    manager.getAnalyzer(),
                     WebloggerConfig.getIntProperty("lucene.analyzer.maxTokenCount"));
 
             IndexWriterConfig config = new IndexWriterConfig(analyzer);

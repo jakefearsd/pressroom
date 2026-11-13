@@ -41,6 +41,12 @@ public final class Snippets {
 
     private static final Logger log = LoggerFactory.getLogger(Snippets.class);
 
+    /**
+     * How much of a stored body is analysed for its passage (final review,
+     * C4); a match beyond it has no passage and the hit shows its excerpt.
+     */
+    static final int MAX_ANALYSED_CHARS = 50_000;
+
     private Snippets() {
     }
 
@@ -55,6 +61,7 @@ public final class Snippets {
         if (plainContent == null || plainContent.isBlank() || query == null) {
             return "";
         }
+        String analysed = analysedPart(plainContent);
         try {
             UnifiedHighlighter highlighter = UnifiedHighlighter.builderWithoutSearcher(analyzer)
                     .withBreakIterator(WholeBreakIterator::new)
@@ -62,16 +69,30 @@ public final class Snippets {
                     .withMaxNoHighlightPassages(0)
                     // the words are parsed across several fields; the passage is cut from the body
                     .withFieldMatcher(field -> true)
-                    .withMaxLength(Math.max(plainContent.length(), 1))
+                    .withMaxLength(Math.max(analysed.length(), 1))
                     .build();
             // null when nothing in the text matches (no no-match passages are asked for)
-            Object out = highlighter.highlightWithoutSearcher(FieldConstants.CONTENT, query, plainContent, 1);
+            Object out = highlighter.highlightWithoutSearcher(FieldConstants.CONTENT, query, analysed, 1);
             return out == null ? "" : out.toString();
         } catch (IOException | RuntimeException e) {
             // a display path: no passage is shown, the page still renders
             log.warn("Could not build a search snippet", e);
             return "";
         }
+    }
+
+    /**
+     * The start of the text the highlighter reads, at most
+     * {@link #MAX_ANALYSED_CHARS} characters, never ending inside a surrogate
+     * pair: a request analyses each hit's body, so this bounds its work.
+     */
+    private static String analysedPart(String text) {
+        if (text.length() <= MAX_ANALYSED_CHARS) {
+            return text;
+        }
+        int end = Character.isHighSurrogate(text.charAt(MAX_ANALYSED_CHARS - 1))
+                ? MAX_ANALYSED_CHARS - 1 : MAX_ANALYSED_CHARS;
+        return text.substring(0, end);
     }
 
     /** HTML-escapes plain text: {@code & < > " '}, and nothing else. */

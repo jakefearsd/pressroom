@@ -396,4 +396,32 @@ class ThemeChromeConsistencyTest {
         }
         assertTrue(offenders.isEmpty(), String.join("\n  ", offenders));
     }
+
+    private static final Pattern SEARCH_INPUT = Pattern.compile("<input\\b[^>]*\\bname=\"q\"[^>]*>");
+
+    /**
+     * Every reader search box, in every theme and in the shared macros,
+     * carries the 255-character limit the request enforces (the theme footer
+     * forms had none; final review, C1).
+     */
+    @Test
+    void everySearchInputCarriesTheQueryLimit() throws IOException {
+        List<String> missing = new ArrayList<>();
+        int seen = 0;
+        for (Path root : List.of(THEMES, Paths.get("src/main/webapp/WEB-INF/velocity"))) {
+            try (Stream<Path> files = Files.walk(root)) {
+                for (Path file : files.filter(f -> f.toString().endsWith(".vm")).sorted().toList()) {
+                    Matcher input = SEARCH_INPUT.matcher(Files.readString(file, StandardCharsets.UTF_8));
+                    while (input.find()) {
+                        seen++;
+                        if (!input.group().contains("maxlength=\"255\"")) {
+                            missing.add(file + ": " + input.group());
+                        }
+                    }
+                }
+            }
+        }
+        assertTrue(seen >= 12, "expected the search inputs to be found, saw " + seen);
+        assertTrue(missing.isEmpty(), String.join("\n", missing));
+    }
 }

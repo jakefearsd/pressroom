@@ -113,11 +113,35 @@ class WeblogSearchRequestTest {
                 "a value past Integer.MAX_VALUE must not overflow into a real page");
     }
 
+    /**
+     * Pages run 0..49 (500 hits considered, 10 a page). A negative page was
+     * carried through to the pager, and page=214748365 overflowed the offset
+     * into a negative index that escaped as a 500 (final review, C2); this
+     * test pinned the carry-through until then and was changed deliberately.
+     */
     @Test
-    void negativePageNumberIsCarriedThroughToTheSearchPager() throws Exception {
-        // SearchResultsPager only emits a previous link when page > 0, so a
-        // negative index is inert there rather than being clamped here.
-        assertEquals(-2, parse("/myblog", "page", "-2").getPageNum());
+    void pageNumberIsClampedToThePagesThereCanBe() throws Exception {
+        assertEquals(0, parse("/myblog", "page", "-2").getPageNum(), "negative is the first page");
+        assertEquals(49, parse("/myblog", "page", "49").getPageNum());
+        assertEquals(49, parse("/myblog", "page", "50").getPageNum(), "past the last page is the last page");
+        assertEquals(49, parse("/myblog", "page", "214748365").getPageNum(), "no overflow into a negative offset");
+        assertEquals(49, parse("/myblog", "page", String.valueOf(Integer.MAX_VALUE)).getPageNum());
+    }
+
+    /**
+     * The 255-character limit was only a maxlength on some forms (final
+     * review, C1): the request trims the words and keeps at most 255 code
+     * points, never splitting a surrogate pair.
+     */
+    @Test
+    void queryIsTrimmedAndCutTo255CodePoints() throws Exception {
+        assertEquals("hello", parse("/myblog", "q", "  hello \t").getQuery());
+        assertEquals("a".repeat(255), parse("/myblog", "q", "  " + "a".repeat(300) + " ").getQuery());
+        String emoji = "\uD83D\uDE00";
+        String cut = parse("/myblog", "q", emoji.repeat(300)).getQuery();
+        assertEquals(255, cut.codePointCount(0, cut.length()));
+        assertEquals(emoji.repeat(255), cut);
+        assertEquals("x".repeat(255), parse("/myblog", "q", "x".repeat(255)).getQuery(), "255 is kept whole");
     }
 
     @Test
