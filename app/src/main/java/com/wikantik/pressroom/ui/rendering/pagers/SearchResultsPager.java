@@ -48,6 +48,7 @@ public class SearchResultsPager implements WeblogEntriesPager {
     private final String category;
     private final int page;
     private final boolean moreResults;
+    private final boolean blogOnly;
     
     public SearchResultsPager(URLStrategy strat, WeblogSearchRequest searchRequest, Map<Date, Set<WeblogEntryWrapper>> entries, boolean more) {
         
@@ -63,6 +64,7 @@ public class SearchResultsPager implements WeblogEntriesPager {
         this.category = searchRequest.getWeblogCategoryName();
         this.locale = searchRequest.getLocale();
         this.page = searchRequest.getPageNum();
+        this.blogOnly = searchRequest.isBlogOnly();
         
         // does this pager have more results?
         this.moreResults = more;
@@ -96,7 +98,7 @@ public class SearchResultsPager implements WeblogEntriesPager {
     @Override
     public String getNextLink() {
         if(moreResults) {
-            return urlStrategy.getWeblogSearchURL(weblog, locale, query, category, page + 1, false);
+            return urlStrategy.getWeblogSearchURL(weblog, locale, query, category, page + 1, blogOnly, false);
         }
         return null;
     }
@@ -112,7 +114,7 @@ public class SearchResultsPager implements WeblogEntriesPager {
     @Override
     public String getPrevLink() {
         if(page > 0) {
-            return urlStrategy.getWeblogSearchURL(weblog, locale, query, category, page - 1, false);
+            return urlStrategy.getWeblogSearchURL(weblog, locale, query, category, page - 1, blogOnly, false);
         }
         return null;
     }

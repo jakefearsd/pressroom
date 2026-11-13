@@ -40,6 +40,7 @@ public class WeblogSearchRequest extends WeblogRequest {
     private String query = null;
     private int pageNum = 0;
     private String weblogCategoryName = null;
+    private boolean scopeBlog = false;
     
     // heavyweight attributes
     private WeblogCategory weblogCategory = null;
@@ -113,6 +114,9 @@ public class WeblogSearchRequest extends WeblogRequest {
             }
         }
 
+        // "scope=blog" asks for this blog's matches alone; any other value is ignored
+        this.scopeBlog = "blog".equals(request.getParameter("scope"));
+
         if (request.getParameter("cat") != null && !request.getParameter("cat").isBlank()) {
             this.weblogCategoryName =
                     decodeOrReject(request.getParameter("cat"), request);
@@ -125,6 +129,18 @@ public class WeblogSearchRequest extends WeblogRequest {
 
     public void setQuery(String query) {
         this.query = query;
+    }
+
+    /**
+     * True when only this blog's matches are wanted: {@code scope=blog}, or
+     * any category, which belongs to one blog.
+     */
+    public boolean isBlogOnly() {
+        return scopeBlog || weblogCategoryName != null;
+    }
+
+    public void setScopeBlog(boolean scopeBlog) {
+        this.scopeBlog = scopeBlog;
     }
 
     public int getPageNum() {

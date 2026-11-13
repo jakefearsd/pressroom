@@ -24,8 +24,10 @@ import org.junit.jupiter.api.Test;
 
 import static com.wikantik.pressroom.ui.rendering.util.WeblogSearchRequest.SEARCH_SERVLET;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Unit tests for {@link WeblogSearchRequest}.
@@ -125,6 +127,24 @@ class WeblogSearchRequestTest {
                 "A blank cat is no filter and must not restrict the search to a "
                         + "category that cannot exist");
         assertNull(parse("/myblog").getWeblogCategoryName());
+    }
+
+    @Test
+    void scopeBlogIsBlogOnly() throws Exception {
+        assertTrue(parse("/myblog", "scope", "blog").isBlogOnly());
+        assertFalse(parse("/myblog").isBlogOnly());
+    }
+
+    @Test
+    void categoryImpliesBlogOnly() throws Exception {
+        assertTrue(parse("/myblog", "cat", "Java").isBlogOnly(),
+                "a category belongs to one blog, so it narrows to it");
+    }
+
+    @Test
+    void unknownScopeValueIsIgnored() throws Exception {
+        assertFalse(parse("/myblog", "scope", "everything").isBlogOnly());
+        assertFalse(parse("/myblog", "scope", "").isBlogOnly());
     }
 
     @Test

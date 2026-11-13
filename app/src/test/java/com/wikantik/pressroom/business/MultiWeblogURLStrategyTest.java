@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -207,6 +208,17 @@ class MultiWeblogURLStrategyTest {
         assertTrue(url.contains("q=spain"), url);
         assertTrue(url.contains("cat=Travel"), url);
         assertTrue(url.contains("page=2"), url);
+    }
+
+    @Test
+    void aBlogOnlySearchUrlAsksForScopeBlogAndTheOldFormDoesNot() {
+        String blogOnly = strategy.getWeblogSearchURL(weblog("blog", null), null, "spain",
+                null, 0, true, false);
+        String plain = strategy.getWeblogSearchURL(weblog("blog", null), null, "spain",
+                null, 0, false);
+
+        assertTrue(blogOnly.contains("scope=blog"), blogOnly);
+        assertFalse(plain.contains("scope="), plain);
     }
 
     /**

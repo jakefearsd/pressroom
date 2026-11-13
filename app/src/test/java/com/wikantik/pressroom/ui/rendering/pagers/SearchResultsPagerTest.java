@@ -66,7 +66,7 @@ class SearchResultsPagerTest {
         weblog.setHandle("myblog");
         weblog.setLocale("en_US");
         when(urlStrategy.getWeblogURL(any(), any(), anyBoolean())).thenReturn(WEBLOG_URL);
-        when(urlStrategy.getWeblogSearchURL(any(), any(), any(), any(), anyInt(), anyBoolean()))
+        when(urlStrategy.getWeblogSearchURL(any(), any(), any(), any(), anyInt(), anyBoolean(), anyBoolean()))
                 .thenAnswer(call -> WEBLOG_URL + "?q=" + call.getArgument(2)
                         + "&page=" + call.getArgument(4));
     }
@@ -146,9 +146,24 @@ class SearchResultsPagerTest {
         pager.getPrevLink();
 
         verify(urlStrategy, atLeastOnce()).getWeblogSearchURL(eq(weblog), eq("en_US"),
-                eq("pressroom"), eq("Java"), eq(2), eq(false));
+                eq("pressroom"), eq("Java"), eq(2), eq(true), eq(false));
         verify(urlStrategy, atLeastOnce()).getWeblogSearchURL(eq(weblog), eq("en_US"),
-                eq("pressroom"), eq("Java"), eq(0), eq(false));
+                eq("pressroom"), eq("Java"), eq(0), eq(true), eq(false));
+    }
+
+    @Test
+    void nextLinkCarriesScopeBlog() {
+        WeblogSearchRequest searchRequest = new WeblogSearchRequest();
+        searchRequest.setWeblog(weblog);
+        searchRequest.setQuery("pressroom");
+        searchRequest.setLocale("en_US");
+        searchRequest.setScopeBlog(true);
+        SearchResultsPager pager = new SearchResultsPager(urlStrategy, searchRequest, Map.of(), true);
+
+        pager.getNextLink();
+
+        verify(urlStrategy).getWeblogSearchURL(eq(weblog), eq("en_US"),
+                eq("pressroom"), eq(null), eq(1), eq(true), eq(false));
     }
 
     @Test

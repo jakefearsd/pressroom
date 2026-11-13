@@ -118,7 +118,7 @@ class SearchResultsModelTest {
     /**
      * The hit count is every match, not the page that was read: it was set
      * from the size of the current page, so twelve matches read "10" and
-     * "Showing 11 - 10 of total 10" on page 2, and the pager, which offers a
+     * "Showing 11 - 10 of total 10" on page 2 (the paged, scope=blog view), and the pager, which offers a
      * next page only when hits exceed offset plus limit, never offered one.
      */
     @Test
@@ -133,11 +133,11 @@ class SearchResultsModelTest {
                 TestUtils.endSession(true);
                 indexManager.addEntryIndexOperation(TestUtils.getManagedWeblogEntry(entry));
             }
-            SearchResultsModel model = executeSearch("blah");
+            SearchResultsModel model = executeSearch("blah", true);
             long deadline = System.nanoTime() + java.time.Duration.ofSeconds(10).toNanos();
             while (model.getHits() != matches && System.nanoTime() < deadline) {
                 Thread.sleep(50);
-                model = executeSearch("blah");
+                model = executeSearch("blah", true);
             }
 
             assertEquals(matches, model.getHits(), "every match counts, not just this page");
@@ -151,6 +151,10 @@ class SearchResultsModelTest {
     }
 
     SearchResultsModel executeSearch(String term) throws WebloggerException {
+        return executeSearch(term, false);
+    }
+
+    SearchResultsModel executeSearch(String term, boolean blogOnly) throws WebloggerException {
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(request.getServletPath()).thenReturn(SEARCH_SERVLET);
         when(request.getRequestURL()).thenReturn(
@@ -160,6 +164,7 @@ class SearchResultsModelTest {
         WeblogSearchRequest searchRequest = new WeblogSearchRequest(TestUtils.weblogger(), request);
         searchRequest.setWeblogHandle(testWeblog.getHandle());
         searchRequest.setQuery(term);
+        searchRequest.setScopeBlog(blogOnly);
 
         WeblogPageRequest pageRequest = new WeblogPageRequest();
 

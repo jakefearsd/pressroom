@@ -374,6 +374,17 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
                                                   String category,
                                                   int pageNum,
                                                   boolean absolute) {
+        return getWeblogSearchURL(weblog, locale, query, category, pageNum, false, absolute);
+    }
+
+    @Override
+    public String getWeblogSearchURL(Weblog weblog,
+                                                  String locale,
+                                                  String query,
+                                                  String category,
+                                                  int pageNum,
+                                                  boolean blogOnly,
+                                                  boolean absolute) {
         
         if(weblog == null) {
             return null;
@@ -391,6 +402,9 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
             // other stuff only makes sense if there is a query
             if(category != null) {
                 params.put("cat", category);
+            }
+            if(blogOnly) {
+                params.put("scope", "blog");
             }
             if(pageNum > 0) {
                 params.put("page", Integer.toString(pageNum));

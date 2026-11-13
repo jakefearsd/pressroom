@@ -175,6 +175,18 @@ public interface URLStrategy {
                                                   String category,
                                                   int pageNum,
                                                   boolean absolute);
+
+    /**
+     * Get url to search endpoint on a given weblog; {@code blogOnly} adds
+     * {@code scope=blog}, which pages that blog's matches alone.
+     */
+    String getWeblogSearchURL(Weblog weblog,
+                                                  String locale,
+                                                  String query,
+                                                  String category,
+                                                  int pageNum,
+                                                  boolean blogOnly,
+                                                  boolean absolute);
     
     
     /**
