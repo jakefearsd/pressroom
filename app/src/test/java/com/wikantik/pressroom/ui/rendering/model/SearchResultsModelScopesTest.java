@@ -275,6 +275,71 @@ class SearchResultsModelScopesTest {
     }
 
     @Test
+    void anIllegalArgumentFromFindIsAnErrorStateNotAThrow() throws Exception {
+        when(index.find(any(), any())).thenThrow(new IllegalArgumentException("BLOG search needs a blog handle"));
+
+        SearchResultsModel m = model("myblog", false, false, 0);
+
+        assertEquals("BLOG search needs a blog handle", m.getErrorMessage());
+        assertTrue(m.getOwnHits().isEmpty());
+    }
+
+    @Test
+    void aFailingOtherBlogsQueryLeavesNoStaleState() throws Exception {
+        SearchHit own = hit("own");
+        when(index.find(any(), any())).thenReturn(
+                new SearchHits(List.of(own), 1, true, Map.of("a", 2), Set.of("travel"))).thenThrow(
+                new WebloggerException("second failed"));
+
+        SearchResultsModel m = model("myblog", false, false, 0);
+
+        assertEquals("second failed", m.getErrorMessage());
+        assertTrue(m.getOwnHits().isEmpty());
+        assertFalse(m.isAnyWordFallback(), "a fallback flag from the first query is stale");
+        assertEquals(0, m.getBlogCount());
+        assertTrue(m.getCategories().isEmpty());
+    }
+
+    @Test
+    void aPageNumberPastTheEndIsShownAsTheFirstPage() throws Exception {
+        SearchHit a = hit("a");
+        // find answers a request past its end with the first page
+        when(index.find(any(), any())).thenReturn(hits(7, false, Map.of(), a));
+        when(urls.getWeblogSearchURL(any(), any(), any(), any(), org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyBoolean(), org.mockito.ArgumentMatchers.anyBoolean()))
+                .thenAnswer(call -> "page-" + call.getArgument(4));
+
+        SearchResultsModel m = model("myblog", false, true, 5);
+
+        assertEquals(0, m.getOffset());
+        assertNull(m.getWeblogEntriesPager().getPrevLink(), "page 0 has nothing before it");
+    }
+
+    @Test
+    void aNegativePageNumberIsPageZeroForTheLinks() throws Exception {
+        SearchHit a = hit("a");
+        SearchHit b = hit("b");
+        when(index.find(any(), any())).thenReturn(hits(25, false, Map.of(), a, b));
+        when(urls.getWeblogSearchURL(any(), any(), any(), any(), org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyBoolean(), org.mockito.ArgumentMatchers.anyBoolean()))
+                .thenAnswer(call -> "page-" + call.getArgument(4));
+
+        SearchResultsModel m = model("myblog", false, true, -3);
+
+        assertEquals("page-1", m.getWeblogEntriesPager().getNextLink());
+        assertNull(m.getWeblogEntriesPager().getPrevLink());
+    }
+
+    @Test
+    void theBlogViewKeepsTheCategoriesOfItsOwnResult() throws Exception {
+        SearchHit own = hit("own");
+        when(index.find(any(), any())).thenReturn(
+                new SearchHits(List.of(own), 1, false, Map.of(), Set.of("travel")), SearchHits.NONE);
+
+        assertEquals(Set.of("travel"), model("myblog", false, false, 0).getCategories());
+    }
+
+    @Test
     void noQueryRunsNoSearch() throws Exception {
         config.when(() -> WebloggerRuntimeConfig.isSiteWideWeblog("myblog")).thenReturn(false);
         WeblogSearchRequest request = new WeblogSearchRequest();

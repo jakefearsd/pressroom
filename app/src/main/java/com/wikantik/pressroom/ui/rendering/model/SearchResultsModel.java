@@ -123,7 +123,10 @@ public class SearchResultsModel extends PageModel {
 				SearchHits found = indexMgr.find(spec(scope, handle, offset, RESULTS_PER_PAGE), urlStrategy);
 				takeOwn(found);
 				perBlog = found.perBlog();
-				categories = found.categories();
+				// find answers a request past its end with the first page; show it as page 0
+				if (offset > 0 && offset >= ownTotal && !ownHits.isEmpty()) {
+					offset = 0;
+				}
 			} else {
 				SearchHits own = indexMgr.find(
 						spec(SearchSpec.Scope.BLOG, handle, 0, OWN_IN_BLOG_VIEW), urlStrategy);
@@ -141,16 +144,20 @@ public class SearchResultsModel extends PageModel {
 			for (SearchHit hit : ownHits) {
 				addEntryToResults(results, hit.entry());
 			}
-		} catch (WebloggerException we) {
+		} catch (WebloggerException | IllegalArgumentException we) {
 			errorMessage = we.getMessage();
 			ownHits = List.of();
 			otherHits = List.of();
 			ownTotal = 0;
+			anyWordFallback = false;
+			perBlog = Map.of();
+			categories = new TreeSet<>();
+			offset = 0;
 		}
 
 		// search completed, setup pager based on results
-		pager = new SearchResultsPager(
-			urlStrategy, searchRequest, results, paged && ownTotal > offset + RESULTS_PER_PAGE);
+		pager = new SearchResultsPager(urlStrategy, searchRequest, results,
+			paged && ownTotal > offset + RESULTS_PER_PAGE, offset / RESULTS_PER_PAGE);
 	}
 
 	private SearchSpec spec(SearchSpec.Scope scope, String handle, int from, int size) {
@@ -162,6 +169,7 @@ public class SearchResultsModel extends PageModel {
 		ownHits = found.hits();
 		ownTotal = found.total();
 		anyWordFallback = found.anyWordFallback();
+		categories = found.categories();
 	}
 
 	private void addEntryToResults(

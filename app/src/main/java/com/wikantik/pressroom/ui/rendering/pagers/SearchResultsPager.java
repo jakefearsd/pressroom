@@ -51,6 +51,11 @@ public class SearchResultsPager implements WeblogEntriesPager {
     private final boolean blogOnly;
     
     public SearchResultsPager(URLStrategy strat, WeblogSearchRequest searchRequest, Map<Date, Set<WeblogEntryWrapper>> entries, boolean more) {
+        this(strat, searchRequest, entries, more, searchRequest.getPageNum());
+    }
+
+    /** As above, for the page actually shown (negative counts as the first). */
+    public SearchResultsPager(URLStrategy strat, WeblogSearchRequest searchRequest, Map<Date, Set<WeblogEntryWrapper>> entries, boolean more, int shownPage) {
         
         // url strategy for building urls
         this.urlStrategy = strat;
@@ -63,7 +68,7 @@ public class SearchResultsPager implements WeblogEntriesPager {
         this.query = searchRequest.getQuery();
         this.category = searchRequest.getWeblogCategoryName();
         this.locale = searchRequest.getLocale();
-        this.page = searchRequest.getPageNum();
+        this.page = Math.max(0, shownPage);
         this.blogOnly = searchRequest.isBlogOnly();
         
         // does this pager have more results?
