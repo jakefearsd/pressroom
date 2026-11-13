@@ -1,0 +1,90 @@
+#**
+The base stylesheet the site's own pages share: the discovery front page
+(discovery.vm) and the site's search results (site-search.vm) parse it inside
+their style element, so both have the same tokens, type, link treatment,
+masthead and footer; the masthead and footer markup are the
+showSiteMasthead and showSiteFooter macros in weblog.vm. Each page adds its
+own rules after it. A parsed template, not a macro: it carries colours and
+the webjars font urls, which a macro's style may not.
+*#
+/* Quiet Instrument tokens (docs/design/design-system.md), plus six blog hues.
+   Plex is self-hosted (webjars), so the policy's font-src 'self' covers it. */
+@font-face { font-family: "IBM Plex Serif"; font-style: normal; font-weight: 600; font-display: swap;
+    src: url("$url.site/webjars/ibm__plex-serif/2.0.0/fonts/complete/woff2/IBMPlexSerif-SemiBold.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 400; font-display: swap;
+    src: url("$url.site/webjars/ibm__plex-sans/1.1.0/fonts/complete/woff2/IBMPlexSans-Regular.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 600; font-display: swap;
+    src: url("$url.site/webjars/ibm__plex-sans/1.1.0/fonts/complete/woff2/IBMPlexSans-SemiBold.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap;
+    src: url("$url.site/webjars/ibm__plex-mono/2.5.0/fonts/complete/woff2/IBMPlexMono-Regular.woff2") format("woff2"); }
+:root {
+    color-scheme: light dark;
+    --paper: #F7F9F9; --surface: #FFFFFF; --ink: #17262A; --ink-soft: #5A6E72; --line: #DCE4E4;
+    --accent: #0F6E68; --accent-quiet: #E3F0EE; --focus: #2AA198; --on-accent: #FFFFFF;
+    --b1: #0F6E68; --b2: #9A6A1F; --b3: #3F5F8A; --b4: #2F7D4F; --b5: #7A4F7A; --b6: #A33B2E;
+    --serif: "IBM Plex Serif", Georgia, serif; --sans: "IBM Plex Sans", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, monospace;
+    --t-label: .75rem; --t-body: .90625rem; --t-read: 1rem; --t-head: 1.25rem; --t-site: 1.75rem;
+    --t-lead: clamp(1.75rem, 3.4vw, 2.5rem);
+    --r: 6px; --wrap: 75rem; --gutter: max(16px, env(safe-area-inset-left, 0px));
+}
+@media (prefers-color-scheme: dark) {
+    :root {
+        --paper: #131C1C; --surface: #1A2626; --ink: #DCE7E5; --ink-soft: #8FA5A2; --line: #2A3838;
+        --accent: #4FB3AA; --accent-quiet: #1E3230; --on-accent: #0E1616;
+        --b1: #4FB3AA; --b2: #D0A45C; --b3: #8AA8D6; --b4: #6FBF8F; --b5: #C496C4; --b6: #D0705F;
+    }
+}
+[data-b="1"] { --hue: var(--b1); } [data-b="2"] { --hue: var(--b2); } [data-b="3"] { --hue: var(--b3); }
+[data-b="4"] { --hue: var(--b4); } [data-b="5"] { --hue: var(--b5); } [data-b="6"] { --hue: var(--b6); }
+body.fd-front * { box-sizing: border-box; }
+body.fd-front { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans);
+    font-size: var(--t-body); line-height: 1.55; }
+body.fd-front a { color: inherit; text-decoration: none; }
+body.fd-front a:hover { color: var(--accent); }
+body.fd-front :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+body.fd-front h1, body.fd-front h2, body.fd-front h3, body.fd-front p { margin: 0; }
+body.fd-front ul, body.fd-front ol { list-style: none; margin: 0; padding: 0; }
+body.fd-front img { max-width: 100%; }
+.fd-wrap { max-width: var(--wrap); margin: 0 auto; padding-left: var(--gutter);
+    padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.fd-skip { position: absolute; left: -9999px; top: 0; z-index: 10; padding: .5rem .75rem;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+.fd-skip:focus { left: .75rem; top: .75rem; }
+.fd-label { font-size: var(--t-label); font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--ink-soft); }
+.fd-mark { display: grid; place-items: center; width: 28px; height: 28px; flex: none; border-radius: 6px;
+    background: var(--hue, var(--accent)); color: var(--surface); font-family: var(--serif);
+    font-size: var(--t-label); font-weight: 600; }
+
+/* masthead */
+.fd-mast .fd-wrap { display: flex; flex-wrap: wrap; gap: 12px 32px; align-items: center;
+    justify-content: space-between; padding-block: 24px 16px; }
+/* the mark sits beside the site name; the description is the next row */
+.fd-brand { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.fd-brand .fd-mark { width: 40px; height: 40px; border-radius: 8px; font-size: var(--t-head); }
+.fd-site a { font-family: var(--serif); font-size: var(--t-site); font-weight: 600; letter-spacing: -.01em;
+    line-height: 1.1; }
+/* the search box: modest, a quiet field in the masthead's row; the submit
+   button stays for assistive technology and Enter searches */
+.fd-mast .site-search { flex: 0 1 18rem; margin: 0; }
+.fd-mast .site-search input { width: 100%; height: 40px; padding: 0 14px; font: inherit; color: inherit;
+    border: 1px solid var(--line); border-radius: 99px; background: var(--surface); }
+.fd-mast .site-search input::placeholder { color: var(--ink-soft); }
+.site-search-go { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
+    white-space: nowrap; }
+.fd-tag { flex: 1 0 100%; color: var(--ink-soft); text-wrap: pretty; }
+
+/* footer */
+.fd-foot { border-top: 1px solid var(--line); margin-top: 32px; background: var(--surface); }
+.fd-foot .fd-wrap { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; padding-block: 32px; }
+.fd-foot nav li + li { margin-top: 6px; }
+.fd-foot .fd-about { color: var(--ink-soft); max-width: 48ch; margin-top: 8px; }
+.fd-foot .colophon { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 16px;
+    font-size: var(--t-label); color: var(--ink-soft); }
+.fd-foot .colophon p { margin: 0 0 4px; }
+.fd-foot .colophon a { text-decoration: underline; }
+.fd-foot .colophon-meta span + span::before { content: "\00b7"; margin: 0 .5em; }
+@media (max-width: 640px) {
+    .fd-foot .fd-wrap { grid-template-columns: minmax(0, 1fr); }
+}

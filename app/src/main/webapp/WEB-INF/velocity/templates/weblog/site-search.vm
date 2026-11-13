@@ -3,20 +3,18 @@ The site's search results page, at /search: WeblogRequestMapper forwards
 it to the search servlet for the site space, and the servlet renders this
 template whatever theme the site space uses (a theme may ship its own
 template named site-search; none of the bundled themes does), as PageServlet
-does the discovery front page. A plain page: the site name as the one h1
-linking home, the search form, the results, the site footer.
+does the discovery front page. It belongs to the front page: the same base
+stylesheet (site-styles.vm, parsed below), the same masthead with the search
+field, filled with the query, and the same footer (the showSiteMasthead and
+showSiteFooter macros in weblog.vm). Between them, the results, then one
+paging control. None of the front page's own sections.
 
 Data: $model is SearchResultsModel in its site view (one ranked list across
 blogs, paged by ten); the results come from the showSearchResults macro,
 untouched. $model.term is the query already escaped (escapeXml10), so it is
-emitted bare; the site space's name comes escaped from the wrapper;
-$config.siteName is raw and escaped here. The page is noindex (the
-showSeoHead macro, since $model.searchResults is true) and never cached.
-
-The form's markup (form.site-search, input[type=search][name=q]) is a
-contract, and the showSiteSearchBox macro prints it for this page and for
-the front page alike, so both post to the same address. The style
-below has no hash and no dollar sign: Velocity would read either.
+emitted bare; the site space's name comes escaped from the wrapper. The page
+is noindex (the showSeoHead macro, since $model.searchResults is true) and
+never cached.
 *#
 <!DOCTYPE html>
 ## lang: WeblogWrapper#getLanguageTag, as page.vm explains.
@@ -36,49 +34,34 @@ below has no hash and no dollar sign: Velocity would read either.
     #showSeoHead()
     #showAnalyticsTrackingCode($model.weblog)
     <style>
-body.site-search-page { color-scheme: light dark; margin: 0; background: Canvas; color: CanvasText;
-    font-family: system-ui, sans-serif; line-height: 1.55; }
-.site-search-page * { box-sizing: border-box; }
-.site-search-wrap { max-width: 46rem; margin: 0 auto; padding: 0 16px; }
-.site-search-skip { position: absolute; left: -9999px; }
-.site-search-skip:focus { left: 16px; top: 8px; padding: .25rem .5rem; background: Canvas; }
-.site-search-mast { padding: 1.5rem 0 1rem; border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent); }
-.site-search-site { margin: 0; font-size: 1.5rem; line-height: 1.2; }
-.site-search-site a { color: inherit; text-decoration: none; }
-.site-search { display: flex; gap: .5rem; margin: 1.5rem 0 0; }
-.site-search input[type=search] { flex: 1 1 auto; min-width: 0; padding: .5rem .625rem; font: inherit;
-    border: 1px solid color-mix(in srgb, currentColor 35%, transparent); border-radius: 6px; background: Canvas; color: inherit; }
-.site-search button { padding: .5rem 1rem; font: inherit; border: 1px solid currentColor; border-radius: 6px;
-    background: transparent; color: inherit; cursor: pointer; }
-.site-search-empty, .site-search-error { margin: 1.5rem 0 0; }
-.site-search-pager .search-summary { margin: 1rem 0 0; font-size: .875rem; }
-.site-search-pager .search-pager { display: flex; justify-content: space-between; margin: 1rem 0 0; }
-.site-search-foot { margin: 3rem 0 0; padding: 1.5rem 0 2rem; font-size: .875rem;
-    border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent); }
-.site-search-foot ul { list-style: none; margin: 0 0 1rem; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; }
-.site-search-foot a { color: inherit; }
+#parse("templates/weblog/site-styles.vm")
+/* the results page: one readable column under the masthead, aligned with it;
+   a rule under the masthead where the front page has its blog row */
+.site-search-page .fd-mast { border-bottom: 1px solid var(--line); }
+.site-search-body { max-width: 48rem; padding-block: 16px 48px; }
+.site-search-body .search-results { color: var(--ink); }
+.site-search-body .search-results .search-group { color: var(--ink-soft); }
+.site-search-body .search-results .search-title a { font-family: var(--serif); font-size: var(--t-read); }
+.site-search-body .search-results .search-title a:hover,
+.site-search-body .search-results .search-meta a:hover { color: var(--accent); }
+.site-search-empty, .site-search-error { padding-block: 32px; color: var(--ink-soft); }
+/* paging: one quiet line after the list */
+.site-search-pager { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between;
+    gap: 8px 24px; margin-top: 20px; font-size: var(--t-label); color: var(--ink-soft); }
+.site-search-pager .search-summary { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.site-search-pager .search-pager { display: flex; gap: 20px; }
+.site-search-pager .search-pager a { color: var(--accent); font-weight: 600; }
+.site-search-pager .search-pager a:hover { text-decoration: underline; }
     </style>
 </head>
-<body class="site-search-page">
-<a class="site-search-skip" href="#main">$text.get("discovery.skip")</a>
+<body class="fd-front site-search-page">
+<a class="fd-skip" href="#main">$text.get("discovery.skip")</a>
 
-<header class="site-search-mast">
-    <div class="site-search-wrap">
-        ## a list page: the site name is its h1 (docs/dev/themes-and-templates.md, the heading rule)
-        <h1 class="site-search-site"><a href="$url.home">$utils.escapeHTML($config.siteName)</a></h1>
-    </div>
-</header>
+## the site's masthead (weblog.vm): the front page's, the field filled with the query
+#showSiteMasthead($model.weblog $model.term false)
 
-<main id="main" class="site-search-wrap">
-    ## The one search box (weblog.vm), filled with the query so far.
-    #showSiteSearchBox($model.weblog $model.term)
-    #set($pager = $model.getWeblogEntriesPager())
-    #if($model.hits > 0 && ($model.siteScope || $model.blogOnly))
-    ## A div, not a nav: the pager macro emits its own labelled nav.
-    <div class="site-search-pager">
-        #showNextPrevSearchControl($pager)
-    </div>
-    #end
+<main id="main" class="fd-wrap">
+<div class="site-search-body">
     ## A failed search also reports zero hits, so the error comes first, in
     ## fixed words: the exception text is internal detail on a public page.
     #if($utils.isNotEmpty($model.errorMessage))
@@ -87,21 +70,18 @@ body.site-search-page { color-scheme: light dark; margin: 0; background: Canvas;
     <p class="site-search-empty">$text.get("search.siteEmpty")</p>
     #end
     #showSearchResults($model)
+    ## One paging control, after the results. A div, not a nav: the pager
+    ## macro emits its own labelled nav.
+    #set($pager = $model.getWeblogEntriesPager())
+    #if($model.hits > 0 && ($model.siteScope || $model.blogOnly))
+    <div class="site-search-pager">
+        #showNextPrevSearchControl($pager)
+    </div>
+    #end
+</div>
 </main>
 
-<footer class="site-search-foot">
-    <div class="site-search-wrap">
-        <nav aria-label="$text.get('discovery.siteNav')">
-            <ul>
-                <li><a href="$url.home">$text.get("discovery.frontPage")</a></li>
-            #foreach($navPage in $model.getNavPages($model.weblog))
-                <li><a href="$url.staticPage($navPage.slug)">$utils.escapeHTML($navPage.title)</a></li>
-            #end
-                <li><a href="$url.site/pressroom-ui/siteDirectory.rol">$text.get("discovery.directory")</a></li>
-            </ul>
-        </nav>
-        #showColophon($model.weblog)
-    </div>
-</footer>
+## the site's footer (weblog.vm), the front page's
+#showSiteFooter($model.weblog)
 </body>
 </html>

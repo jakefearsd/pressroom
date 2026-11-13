@@ -614,7 +614,7 @@ class SearchServletRenderingTest {
             givenSiteSpace(theme);
             String body = siteSearchBody("zorbix");
 
-            assertTrue(body.contains("<body class=\"site-search-page\">"), theme + ": the shared template:\n" + body);
+            assertTrue(body.contains("<body class=\"fd-front site-search-page\">"), theme + ": the shared template:\n" + body);
             assertEquals(1, count(body, "<h1"), theme + ": one h1:\n" + body);
             assertTrue(body.contains(SITE_NAME_HTML + "</a></h1>"), theme + ": the h1 is the site name:\n" + body);
             assertTrue(body.contains("class=\"search-results\""), body);
@@ -677,6 +677,62 @@ class SearchServletRenderingTest {
         assertFalse(fallback.contains("class=\"site-search-empty\""), fallback);
     }
 
+    /** The front page as FrontDoor forwards it, in the same fixture, to compare chrome with. */
+    private String discoveryBody() throws Exception {
+        MockHttpServletRequest request = RenderingTestSupport.anonymousGet("/pressroom-ui/rendering/page",
+                "/" + Weblog.SITE_SPACE_HANDLE + "/page/discovery");
+        request.setDispatcherType(DispatcherType.FORWARD);
+        MockHttpServletResponse response = RenderingTestSupport.execute(RenderingTestSupport.pageServlet(), request);
+        assertEquals(200, response.getStatus(), response.getContentAsString());
+        return response.getContentAsString();
+    }
+
+    private static String element(String body, String open, String close) {
+        int start = body.indexOf(open);
+        assertTrue(start >= 0, "no " + open + ":\n" + body);
+        int end = body.indexOf(close, start);
+        assertTrue(end > start, "no " + close + " after " + open + ":\n" + body);
+        return body.substring(start, end + close.length()).replaceAll("\\s+", " ");
+    }
+
+    /**
+     * The site's search belongs to the front page: the same masthead (mark,
+     * site name as the h1, the search field in the same place, the
+     * description row), the same footer, and the same base stylesheet, all
+     * drawn by the same code. With no query the two mastheads are identical.
+     */
+    @Test
+    void siteSpaceSearchCarriesTheFrontPagesMastheadFooterAndStyles() throws Exception {
+        givenSiteSpace("frontpage");
+        setProperty("site.description", "Notes from the harbour.");
+        RenderingTestSupport.clearRenderCaches();
+
+        String front = discoveryBody();
+        String search = siteSearchBody(null);
+
+        String mast = element(search, "<header class=\"fd-mast\">", "</header>");
+        assertEquals(element(front, "<header class=\"fd-mast\">", "</header>"), mast, "the same masthead");
+        assertTrue(mast.contains("<span class=\"fd-mark\" aria-hidden=\"true\">H</span>"), mast);
+        assertTrue(mast.contains("<h1 class=\"fd-site\"><a href="), mast);
+        assertTrue(mast.contains("<form class=\"site-search\""), "the search field is in the masthead:\n" + mast);
+        assertTrue(mast.contains("<p class=\"fd-tag\">Notes from the harbour.</p>"), mast);
+        assertEquals(element(front, "<footer class=\"fd-foot\">", "</footer>"),
+                element(search, "<footer class=\"fd-foot\">", "</footer>"), "the same footer");
+        for (String rule : List.of("@font-face { font-family: \"IBM Plex Serif\"", "--accent: #0F6E68",
+                "body.fd-front a { color: inherit; text-decoration: none; }", ".fd-brand .fd-mark {",
+                ".fd-mast .site-search input {", ".fd-foot .colophon {")) {
+            assertTrue(front.contains(rule), "the front page has " + rule);
+            assertTrue(search.contains(rule), "the site search has the front page's " + rule + ":\n" + search);
+        }
+        assertFalse(search.contains(".fd-lead") || search.contains(".fd-shelf") || search.contains(".fd-sections"),
+                "none of the front page's own sections or their styles:\n" + search);
+
+        String withQuery = siteSearchBody("say \"hi\"");
+        String queryMast = element(withQuery, "<header class=\"fd-mast\">", "</header>");
+        assertTrue(queryMast.contains("value=\"say &quot;hi&quot;\""), "the masthead's field holds the query:\n" + queryMast);
+        assertEquals(1, count(withQuery, "<form class=\"site-search\""), "one search field:\n" + withQuery);
+    }
+
     /** The site view is paged by ten, and its pager links stay on the site's address. */
     @Test
     void siteSpaceSearchPagesByTenAtTheSiteAddress() throws Exception {
@@ -695,6 +751,14 @@ class SearchServletRenderingTest {
         String second = siteSearchBody("zorbix", "page", "1");
         assertEquals(1, count(second, "<li class=\"search-hit\">"), second);
         assertTrue(second.contains("rel=\"prev\""), second);
+
+        // one paging control, after the list: results first
+        for (String page : List.of(body, second)) {
+            assertEquals(1, count(page, "class=\"search-summary\""), page);
+            assertEquals(1, count(page, "<nav class=\"search-pager\""), page);
+            assertTrue(page.indexOf("class=\"search-summary\"") > page.lastIndexOf("<li class=\"search-hit\">"),
+                    "the pager follows the results:\n" + page);
+        }
     }
 
     /** Like the page servlet, the search servlet serves the site space to the mapper's forward only. */

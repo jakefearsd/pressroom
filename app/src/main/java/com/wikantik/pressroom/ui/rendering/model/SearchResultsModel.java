@@ -91,6 +91,15 @@ public class SearchResultsModel extends PageModel {
 		String handle = searchRequest.getWeblogHandle();
 		Weblog searched = searchRequest.getWeblog();
 		siteScope = isTheSite(searched, handle);
+		if (searched != null && searched.isSiteSpace()) {
+			// The site's one address always shows the site's results: the site
+			// space has no posts and no categories, so scope=blog and cat are
+			// dropped here, before the query, the view and the pager's links
+			// read them. (The aggregated front-page blog is a real blog, whose
+			// scope=blog pages its own posts.)
+			searchRequest.setScopeBlog(false);
+			searchRequest.setWeblogCategoryName(null);
+		}
 		blogOnly = searchRequest.isBlogOnly();
 
 		// if there is no query, then we are done

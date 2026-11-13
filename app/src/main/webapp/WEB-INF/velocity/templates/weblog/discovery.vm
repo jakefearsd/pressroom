@@ -104,52 +104,7 @@ comment names one with its hash, so nothing here is invoked by accident.
     #showAnalyticsTrackingCode($model.weblog)
     #showAudienceAssets()
     <style>
-/* Quiet Instrument tokens (docs/design/design-system.md), plus six blog hues.
-   Plex is self-hosted (webjars), so the policy's font-src 'self' covers it. */
-@font-face { font-family: "IBM Plex Serif"; font-style: normal; font-weight: 600; font-display: swap;
-    src: url("$url.site/webjars/ibm__plex-serif/2.0.0/fonts/complete/woff2/IBMPlexSerif-SemiBold.woff2") format("woff2"); }
-@font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 400; font-display: swap;
-    src: url("$url.site/webjars/ibm__plex-sans/1.1.0/fonts/complete/woff2/IBMPlexSans-Regular.woff2") format("woff2"); }
-@font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 600; font-display: swap;
-    src: url("$url.site/webjars/ibm__plex-sans/1.1.0/fonts/complete/woff2/IBMPlexSans-SemiBold.woff2") format("woff2"); }
-@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap;
-    src: url("$url.site/webjars/ibm__plex-mono/2.5.0/fonts/complete/woff2/IBMPlexMono-Regular.woff2") format("woff2"); }
-:root {
-    color-scheme: light dark;
-    --paper: #F7F9F9; --surface: #FFFFFF; --ink: #17262A; --ink-soft: #5A6E72; --line: #DCE4E4;
-    --accent: #0F6E68; --accent-quiet: #E3F0EE; --focus: #2AA198; --on-accent: #FFFFFF;
-    --b1: #0F6E68; --b2: #9A6A1F; --b3: #3F5F8A; --b4: #2F7D4F; --b5: #7A4F7A; --b6: #A33B2E;
-    --serif: "IBM Plex Serif", Georgia, serif; --sans: "IBM Plex Sans", system-ui, sans-serif;
-    --mono: "IBM Plex Mono", ui-monospace, monospace;
-    --t-label: .75rem; --t-body: .90625rem; --t-read: 1rem; --t-head: 1.25rem; --t-site: 1.75rem;
-    --t-lead: clamp(1.75rem, 3.4vw, 2.5rem);
-    --r: 6px; --wrap: 75rem; --gutter: max(16px, env(safe-area-inset-left, 0px));
-}
-@media (prefers-color-scheme: dark) {
-    :root {
-        --paper: #131C1C; --surface: #1A2626; --ink: #DCE7E5; --ink-soft: #8FA5A2; --line: #2A3838;
-        --accent: #4FB3AA; --accent-quiet: #1E3230; --on-accent: #0E1616;
-        --b1: #4FB3AA; --b2: #D0A45C; --b3: #8AA8D6; --b4: #6FBF8F; --b5: #C496C4; --b6: #D0705F;
-    }
-}
-[data-b="1"] { --hue: var(--b1); } [data-b="2"] { --hue: var(--b2); } [data-b="3"] { --hue: var(--b3); }
-[data-b="4"] { --hue: var(--b4); } [data-b="5"] { --hue: var(--b5); } [data-b="6"] { --hue: var(--b6); }
-body.fd-front * { box-sizing: border-box; }
-body.fd-front { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans);
-    font-size: var(--t-body); line-height: 1.55; }
-body.fd-front a { color: inherit; text-decoration: none; }
-body.fd-front a:hover { color: var(--accent); }
-body.fd-front :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-body.fd-front h1, body.fd-front h2, body.fd-front h3, body.fd-front p { margin: 0; }
-body.fd-front ul, body.fd-front ol { list-style: none; margin: 0; padding: 0; }
-body.fd-front img { max-width: 100%; }
-.fd-wrap { max-width: var(--wrap); margin: 0 auto; padding-left: var(--gutter);
-    padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-.fd-skip { position: absolute; left: -9999px; top: 0; z-index: 10; padding: .5rem .75rem;
-    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
-.fd-skip:focus { left: .75rem; top: .75rem; }
-.fd-label { font-size: var(--t-label); font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
-    color: var(--ink-soft); }
+#parse("templates/weblog/site-styles.vm")
 .fd-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-family: var(--mono); font-size: var(--t-label);
     color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .fd-meta > * + *::before { content: "\00b7"; margin-right: 12px; color: var(--ink-soft); opacity: .6; }
@@ -160,27 +115,8 @@ body.fd-front img { max-width: 100%; }
 .fd-btn, .fd-front .newsletter-subscribe button { display: inline-flex; align-items: center; justify-content: center;
     height: 40px; padding: 0 18px; border-radius: 99px; border: 0; background: var(--accent);
     color: var(--on-accent) !important; font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
-.fd-mark { display: grid; place-items: center; width: 28px; height: 28px; flex: none; border-radius: 6px;
-    background: var(--hue, var(--accent)); color: var(--surface); font-family: var(--serif);
-    font-size: var(--t-label); font-weight: 600; }
 
-/* masthead and blog nav */
-.fd-mast .fd-wrap { display: flex; flex-wrap: wrap; gap: 12px 32px; align-items: center;
-    justify-content: space-between; padding-block: 24px 16px; }
-/* the mark sits beside the site name; the description is the next row */
-.fd-brand { display: flex; gap: 12px; align-items: center; min-width: 0; }
-.fd-brand .fd-mark { width: 40px; height: 40px; border-radius: 8px; font-size: var(--t-head); }
-.fd-site a { font-family: var(--serif); font-size: var(--t-site); font-weight: 600; letter-spacing: -.01em;
-    line-height: 1.1; }
-/* the search box: modest, a quiet field in the masthead's row; the submit
-   button stays for assistive technology and Enter searches */
-.fd-mast .site-search { flex: 0 1 18rem; margin: 0; }
-.fd-mast .site-search input { width: 100%; height: 40px; padding: 0 14px; font: inherit; color: inherit;
-    border: 1px solid var(--line); border-radius: 99px; background: var(--surface); }
-.fd-mast .site-search input::placeholder { color: var(--ink-soft); }
-.site-search-go { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
-    white-space: nowrap; }
-.fd-tag { flex: 1 0 100%; color: var(--ink-soft); text-wrap: pretty; }
+/* blog nav */
 .fd-sections { border-block: 1px solid var(--line); background: var(--surface); }
 /* One row that scrolls sideways and shows it: the list fades at whichever
    end has more (the script sets data-more), a step button sits over each
@@ -324,15 +260,6 @@ body.fd-front a.fd-sections-all { flex: none; padding: 6px 0; font-weight: 600; 
 .fd-dir p { color: var(--ink-soft); font-size: var(--t-label); display: -webkit-box; -webkit-line-clamp: 2;
     -webkit-box-orient: vertical; overflow: hidden; }
 .fd-empty { padding-block: 48px; color: var(--ink-soft); }
-.fd-foot { border-top: 1px solid var(--line); margin-top: 32px; background: var(--surface); }
-.fd-foot .fd-wrap { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; padding-block: 32px; }
-.fd-foot nav li + li { margin-top: 6px; }
-.fd-foot .fd-about { color: var(--ink-soft); max-width: 48ch; margin-top: 8px; }
-.fd-foot .colophon { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 16px;
-    font-size: var(--t-label); color: var(--ink-soft); }
-.fd-foot .colophon p { margin: 0 0 4px; }
-.fd-foot .colophon a { text-decoration: underline; }
-.fd-foot .colophon-meta span + span::before { content: "\00b7"; margin: 0 .5em; }
 
 @media (max-width: 1020px) {
     .fd-top, .fd-body { grid-template-columns: minmax(0, 1fr); }
@@ -343,7 +270,7 @@ body.fd-front a.fd-sections-all { flex: none; padding: 6px 0; font-weight: 600; 
 @media (max-width: 640px) {
     .fd-top { padding-top: 16px; gap: 24px; }
     .fd-lead .fd-media { margin-inline: calc(-1 * var(--gutter)); border-radius: 0; max-width: none; }
-    .fd-rail, .fd-side-in, .fd-diff, .fd-dir, .fd-band .fd-wrap, .fd-foot .fd-wrap { grid-template-columns: minmax(0, 1fr); }
+    .fd-rail, .fd-side-in, .fd-diff, .fd-dir, .fd-band .fd-wrap { grid-template-columns: minmax(0, 1fr); }
     .fd-latest li { grid-template-columns: minmax(0, 1fr) 96px; gap: 14px; }
     .fd-latest li .fd-media { grid-column: 2; grid-row: 1; aspect-ratio: 1; font-size: var(--t-head); }
     .fd-latest li .fd-txt { grid-column: 1; grid-row: 1; }
@@ -369,19 +296,9 @@ body.fd-front a.fd-sections-all { flex: none; padding: 6px 0; font-weight: 600; 
 <body class="fd-front">
 <a class="fd-skip" href="#main">$text.get("discovery.skip")</a>
 
-<header class="fd-mast">
-    <div class="fd-wrap">
-        <div class="fd-brand">
-            #if($utils.isNotEmpty($config.siteName))<span class="fd-mark" aria-hidden="true">$utils.escapeHTML($config.siteName.substring(0, 1))</span>#end
-            ## a list page: the site name is its h1 (docs/dev/themes-and-templates.md, the heading rule)
-            <h1 class="fd-site"><a href="$url.home">$utils.escapeHTML($config.siteName)</a></h1>
-        </div>
-        #showSiteSearchBox($model.weblog "")
-        #if($fdList != "")<a class="fd-btn" href="#fd-newsletter">$text.get("discovery.newsletter.button")</a>#end
-        ## its own row, as wide as the page below: not indented under the mark
-        #if($utils.isNotEmpty($config.siteDescription))<p class="fd-tag">$utils.escapeHTML($config.siteDescription)</p>#end
-    </div>
-</header>
+## the site's masthead (weblog.vm), shared with the site's search page
+#set($fdNewsletter = $fdList != "")
+#showSiteMasthead($model.weblog "" $fdNewsletter)
 
 #if(!$dFront.allBlogs.isEmpty())
 <nav class="fd-sections" aria-label="$text.get('discovery.blogsNav')">
@@ -626,23 +543,7 @@ body.fd-front a.fd-sections-all { flex: none; padding: 6px 0; font-weight: 600; 
 #end
 </main>
 
-<footer class="fd-foot">
-    <div class="fd-wrap">
-        <div>
-            <p class="fd-label">$utils.escapeHTML($config.siteName)</p>
-            #if($utils.isNotEmpty($config.siteDescription))<p class="fd-about">$utils.escapeHTML($config.siteDescription)</p>#end
-        </div>
-        <nav aria-labelledby="fd-sitenav-label">
-            <p class="fd-label" id="fd-sitenav-label">$text.get("discovery.siteNav")</p>
-            <ul>
-            #foreach($navPage in $model.getNavPages($model.weblog))
-                <li><a href="$url.staticPage($navPage.slug)">$utils.escapeHTML($navPage.title)</a></li>
-            #end
-                <li><a href="$url.site/pressroom-ui/siteDirectory.rol">$text.get("discovery.directory")</a></li>
-            </ul>
-        </nav>
-        #showColophon($model.weblog)
-    </div>
-</footer>
+## the site's footer (weblog.vm), shared with the site's search page
+#showSiteFooter($model.weblog)
 </body>
 </html>

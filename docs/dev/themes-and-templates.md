@@ -112,7 +112,9 @@ resolves through the index at the end of `CLAUDE.md`.
   one** since the 2026-11-03 redesign (frontpage's was removed), so `/` is
   one page on every install: a standalone document with its own inline
   stylesheet (Quiet Instrument tokens plus six blog hues, Plex from the
-  webjars), not the site theme's chrome. It reads `$discovery.frontPage`
+  webjars; the base of it, masthead and footer are shared with the site's
+  search page: discovery.md, "Site search"), not the site theme's chrome.
+  It reads `$discovery.frontPage`
   (`DiscoveryModel`, in `rendering.pageModels`) and carries the stable
   section classes `fd-discovery-headline`/`-popular`/`-latest`/`-blogs`/
   `-different`/`-all`, which `DiscoveryFrontPageRenderingTest` and the
@@ -538,7 +540,9 @@ named `site-search` when it has one, else the shared
 `WEB-INF/velocity/templates/weblog/site-search.vm`, which calls the macro
 the same way (site view) whatever the site's theme; the choice is
 `SearchServlet.selectTemplate`, mirroring the discovery page's
-(discovery.md, "Site search").
+(discovery.md, "Site search"). That page shares the front page's chrome:
+`templates/weblog/site-styles.vm` (parsed into both pages' style) and the
+showSiteMasthead and showSiteFooter macros.
 
 - **Markup** (pinned by `SearchServletRenderingTest`, all four themes):
   `section.search-results` holds `p.search-fallback` (any-word retry only),

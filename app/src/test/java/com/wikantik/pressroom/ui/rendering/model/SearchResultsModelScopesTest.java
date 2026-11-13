@@ -221,6 +221,63 @@ class SearchResultsModelScopesTest {
     }
 
     /**
+     * The site's one address always shows the site's results: {@code scope=blog}
+     * and {@code cat} on {@code /search} are ignored, in the query, the view
+     * and the pager's links alike (the site space has no posts or categories).
+     */
+    @Test
+    void theSiteSpaceIgnoresScopeBlogAndCategory() throws Exception {
+        blog.setSiteSpace(true);
+        blog.setHandle(Weblog.SITE_SPACE_HANDLE);
+        SearchHit a = hit("a");
+        when(index.find(any(), any())).thenReturn(hits(25, false, Map.of("x", 25), a));
+        when(urls.getWeblogSearchURL(any(), any(), any(), any(), org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyBoolean(), org.mockito.ArgumentMatchers.anyBoolean()))
+                .thenAnswer(call -> "cat=" + call.getArgument(3) + ";blogOnly=" + call.getArgument(5));
+        config.when(() -> WebloggerRuntimeConfig.isSiteWideWeblog(Weblog.SITE_SPACE_HANDLE)).thenReturn(false);
+        WeblogSearchRequest request = new WeblogSearchRequest();
+        request.setWeblog(blog);
+        request.setWeblogHandle(Weblog.SITE_SPACE_HANDLE);
+        request.setQuery("spain");
+        request.setLocale("en_US");
+        request.setScopeBlog(true);
+        request.setWeblogCategoryName("Travel");
+        WeblogPageRequest pageRequest = new WeblogPageRequest();
+        pageRequest.setWeblog(blog);
+        Map<String, Object> init = new HashMap<>();
+        init.put("searchRequest", request);
+        init.put("parsedRequest", pageRequest);
+        init.put("weblogger", weblogger);
+        init.put("urlStrategy", urls);
+        SearchResultsModel m = new SearchResultsModel();
+
+        m.init(init);
+
+        assertEquals(List.of(new SearchSpec("spain", SearchSpec.Scope.SITE, Weblog.SITE_SPACE_HANDLE,
+                null, 0, 10, "en_US")), specs(1));
+        assertTrue(m.isSiteScope());
+        assertFalse(m.isBlogOnly());
+        assertNull(m.getWeblogCategoryName());
+        assertEquals("cat=null;blogOnly=false", m.getWeblogEntriesPager().getNextLink(),
+                "the pager stays on the site's results");
+    }
+
+    /**
+     * The legacy aggregated front-page blog is a real blog: its scope=blog
+     * still pages its own posts (the "N more from this blog" links ask for it).
+     */
+    @Test
+    void theAggregatedFrontPageBlogKeepsScopeBlog() throws Exception {
+        when(index.find(any(), any())).thenReturn(SearchHits.NONE);
+
+        SearchResultsModel m = model("home", true, true, 0);
+
+        assertEquals(List.of(new SearchSpec("spain", SearchSpec.Scope.BLOG, "home", null, 0, 10, "en_US")),
+                specs(1));
+        assertTrue(m.isBlogOnly());
+    }
+
+    /**
      * Characterisation test (passes against the code before the site's search
      * had an address): the url strategy already builds the site space's
      * search at the context root, so the "Search the whole site" link is

@@ -86,6 +86,9 @@ class DiscoveryHeadlineLabelTest {
         frontPage.put("allBlogs", List.of(blog));
 
         VelocityEngine engine = new VelocityEngine();
+        // discovery.vm parses the shared templates/weblog/site-styles.vm, so
+        // the engine reads files from the velocity root, as the webapp's does
+        engine.setProperty("resource.loader.file.path", "src/main/webapp/WEB-INF/velocity");
         engine.init();
         VelocityContext context = new VelocityContext();
         context.put("discovery", Map.of("frontPage", frontPage));

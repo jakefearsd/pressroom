@@ -574,6 +574,12 @@ public class PageServlet extends HttpServlet {
                 && !(weblog.isSiteSpace() && FrontDoor.DISCOVERY_TEMPLATE.equals(pageRequest.getWeblogPageName()))) {
             return "template is hidden";
         }
+        // A theme's site-search template renders the site's search at
+        // /search (SearchServlet), never a page: no weblog serves it by name,
+        // whether or not its theme declares it hidden.
+        if (SearchServlet.SITE_SEARCH_TEMPLATE.equals(pageRequest.getWeblogPageName())) {
+            return "template is hidden";
+        }
 
         // multi-locale weblogs are gone: a request naming a locale view is
         // never servable, the same outcome this check already produced for

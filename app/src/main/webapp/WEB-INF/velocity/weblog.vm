@@ -2263,6 +2263,58 @@ WeblogWrapper, the site name is raw and escaped here.
 
 
 #**
+The site's own masthead, shared by the discovery front page and the site's
+search results page (templates/weblog/discovery.vm, site-search.vm), whose
+base stylesheet (templates/weblog/site-styles.vm) styles it: the site's mark
+beside its name, the name as the page's one h1, the site search box filled
+with $term (the escaped query so far, "" on the front page), the newsletter
+button when $mastNewsletter is true (the front page only: it links that
+page's newsletter band), and the site description as its own row.
+*#
+#macro(showSiteMasthead $weblog $term $mastNewsletter)
+<header class="fd-mast">
+    <div class="fd-wrap">
+        <div class="fd-brand">
+            #if($utils.isNotEmpty($config.siteName))<span class="fd-mark" aria-hidden="true">$utils.escapeHTML($config.siteName.substring(0, 1))</span>#end
+            ## a list page: the site name is its h1 (docs/dev/themes-and-templates.md, the heading rule)
+            <h1 class="fd-site"><a href="$url.home">$utils.escapeHTML($config.siteName)</a></h1>
+        </div>
+        #showSiteSearchBox($weblog $term)
+        #if($mastNewsletter)<a class="fd-btn" href="#fd-newsletter">$text.get("discovery.newsletter.button")</a>#end
+        ## its own row, as wide as the page below: not indented under the mark
+        #if($utils.isNotEmpty($config.siteDescription))<p class="fd-tag">$utils.escapeHTML($config.siteDescription)</p>#end
+    </div>
+</header>
+#end
+
+
+#**
+The site's own footer, shared like the masthead above: the site's name and
+description, its pages and the blog directory, then the colophon.
+*#
+#macro(showSiteFooter $weblog)
+<footer class="fd-foot">
+    <div class="fd-wrap">
+        <div>
+            <p class="fd-label">$utils.escapeHTML($config.siteName)</p>
+            #if($utils.isNotEmpty($config.siteDescription))<p class="fd-about">$utils.escapeHTML($config.siteDescription)</p>#end
+        </div>
+        <nav aria-labelledby="fd-sitenav-label">
+            <p class="fd-label" id="fd-sitenav-label">$text.get("discovery.siteNav")</p>
+            <ul>
+            #foreach($navPage in $model.getNavPages($weblog))
+                <li><a href="$url.staticPage($navPage.slug)">$utils.escapeHTML($navPage.title)</a></li>
+            #end
+                <li><a href="$url.site/pressroom-ui/siteDirectory.rol">$text.get("discovery.directory")</a></li>
+            </ul>
+        </nav>
+        #showColophon($weblog)
+    </div>
+</footer>
+#end
+
+
+#**
 The search box of the front page and of the site's own search page:
 "Search all of {site}", or "Search every blog" when the site has no name.
 $term is the escaped query so far, "" on the front page.

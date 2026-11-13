@@ -355,6 +355,31 @@ class PageServletDecisionTest {
     }
 
     /**
+     * A theme's {@code site-search} template renders the site's search at
+     * {@code /search}, never a blog page: like the discovery template, a blog
+     * on that theme does not serve it by name, hidden or not (a forked theme
+     * may forget to declare it hidden).
+     */
+    @Test
+    void theSiteSearchTemplateIsNeverServedByNameOnABlog() throws Exception {
+        ThemeTemplate shown = template();
+        when(shown.isHidden()).thenReturn(false);
+        when(pageRequest.getWeblogPageName()).thenReturn("site-search");
+
+        assertEquals("template is hidden",
+                PageServlet.rejectionReason(pageRequest, weblog, shown, false, weblogger.weblogEntryManager()));
+
+        ThemeTemplate hidden = template();
+        when(hidden.isHidden()).thenReturn(true);
+        assertEquals("template is hidden",
+                PageServlet.rejectionReason(pageRequest, weblog, hidden, false, weblogger.weblogEntryManager()));
+
+        when(pageRequest.getWeblogPageName()).thenReturn("site-searches");
+        assertNull(PageServlet.rejectionReason(pageRequest, weblog, shown, false, weblogger.weblogEntryManager()),
+                "only that name");
+    }
+
+    /**
      * Multi-locale weblogs are gone: a request naming a locale is always
      * rejected now, whatever the weblog. There is no longer a setting that
      * can make this allowed.
