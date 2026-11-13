@@ -118,8 +118,40 @@ templates).
 ### Search Implementation
 - **Engine**: Apache Lucene, background indexing; asynchronous
   add/remove/rebuild operations
-- **Scope**: full-text across entries with category and locale filtering
-- **A reader's query reaches only the searched fields** (title, content):
+- **Entry point**: `IndexManager.find(SearchSpec, URLStrategy)` returns
+  `SearchHits` (ranked hits with snippets, total, per-blog counts for the
+  site scope, categories). Three scopes (`SearchSpec.Scope`): `BLOG` (one
+  blog, its own noindex posts included), `OTHER_BLOGS` (the site scope minus
+  the named blog) and `SITE`. `BLOG` and `OTHER_BLOGS` without a handle throw
+  `IllegalArgumentException`, never a whole-site search.
+- **Ranking**: relevance, not newest-first. Searched fields and weights:
+  `title` 4, `tags` 3, `summary` 2, `blog` 2, `cattext` 1.5, `content` 1
+  (`SearchOperation.FIELD_BOOSTS`); scaled by a recency factor, 1.25 for a
+  post published now falling linearly to 1.0 at 730 days (`RecencyBoost`,
+  applied through `FunctionScoreQuery`). All of the words first (AND); only
+  when that finds nothing, any of them (OR) and `anyWordFallback` is set so
+  the page says so. At most 500 hits are considered.
+- **Eligibility is enforced here, not by the page** (`SITE`, `OTHER_BLOGS`):
+  FILTER clauses `site:1` (the entry half, stamped at index time) and
+  `handle` in the set of blogs `DiscoveryEligibility.isEligible(Weblog)`
+  accepts, asked of `WeblogManager` on every search (so hiding a blog needs
+  no reindex); then each hit's entry is re-checked with
+  `DiscoveryEligibility.isEligible(entry)` at conversion, since the flag can
+  be stale. Fails closed: an empty set, or a failure listing blogs (logged at
+  ERROR), is zero hits. `perBlog` is computed for `SITE` only.
+- **Snippets** (`Snippets.html`, page hits only): the stored `content`
+  passage about 160 chars, around the first match, escaped, with only
+  `<mark>`/`</mark>` added; the output is emitted unescaped by templates, so
+  that is an XSS boundary. A post matched only in title, tags or summary
+  shows its list excerpt (`WeblogEntryWrapper.getExcerpt`, plain text)
+  escaped once.
+- **Blog rename**: the blog's name and tagline are in each of its posts'
+  `blog` field. `IndexManager.noteWeblog` (called after commit from
+  `JPAWeblogManagerImpl.saveWeblog`) remembers them per handle in memory and
+  schedules `rebuildWeblogIndex` when a known handle's text changed. The first
+  sighting after a JVM start only records, so a rename that is the first save
+  since a restart is not caught until the next rebuild.
+- **A reader's query reaches only the searched fields** (the six above):
   `SearchOperation.SearchedFieldsOnly` reads any other "field:" a reader
   names as plain words, and the index holds no author login. Both since
   2026-11-03 (code review): "username:a*" enumerated author logins on a

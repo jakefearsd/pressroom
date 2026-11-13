@@ -145,6 +145,20 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         // once committed: the sync runs on another thread with its own
         // EntityManager, so asked any earlier it could read the old row.
         strategy.runAfterCommit(() -> analyticsSaw(weblog));
+
+        // The blog's name and tagline are searchable on its posts, so a
+        // rename reindexes them. Once committed, for the same reason: the
+        // rebuild runs on another thread and must read the new row.
+        strategy.runAfterCommit(() -> searchSaw(weblog));
+    }
+
+    /** Cheap, and never fails the save: the index manager compares in memory and logs its own trouble. */
+    private void searchSaw(Weblog weblog) {
+        try {
+            pressroom.getIndexManager().noteWeblog(weblog);
+        } catch (RuntimeException e) {
+            log.warn("Could not note saved weblog {} for the search index", weblog.getHandle(), e);
+        }
     }
 
     /**

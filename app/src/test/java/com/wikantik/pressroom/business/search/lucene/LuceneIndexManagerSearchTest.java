@@ -32,6 +32,7 @@ import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.URLStrategy;
 import com.wikantik.pressroom.business.UserManager;
 import com.wikantik.pressroom.business.WeblogEntryManager;
+import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.business.Weblogger;
 import com.wikantik.pressroom.business.runnable.ThreadManager;
 import com.wikantik.pressroom.business.search.SearchHits;
@@ -52,6 +53,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -81,6 +83,9 @@ class LuceneIndexManagerSearchTest {
     private Weblogger pressroom;
     private WeblogEntryManager entries;
     private LuceneIndexManager manager;
+    private WeblogManager weblogManager;
+    /** Every blog {@link #weblog} made: what the mocked WeblogManager lists. */
+    private final List<Weblog> knownBlogs = new java.util.ArrayList<>();
 
     @BeforeEach
     void setUp() throws Exception {
@@ -89,6 +94,10 @@ class LuceneIndexManagerSearchTest {
         entries = mock(WeblogEntryManager.class);
         when(pressroom.getWeblogEntryManager()).thenReturn(entries);
         when(pressroom.getUserManager()).thenReturn(mock(UserManager.class));
+        weblogManager = mock(WeblogManager.class);
+        when(weblogManager.getWeblogs(any(), any(), any(), any(), anyInt(), anyInt()))
+                .thenAnswer(inv -> List.copyOf(knownBlogs));
+        when(pressroom.getWeblogManager()).thenReturn(weblogManager);
         ThreadManager inline = mock(ThreadManager.class);
         doAnswer(inv -> {
             ((Runnable) inv.getArgument(0)).run();
@@ -496,15 +505,172 @@ class LuceneIndexManagerSearchTest {
         assertEquals(5, findSite(WORD, 2, 2).total());
     }
 
+    // ------------------------------------------------------- scopes and eligibility
+
+    private SearchHits findScoped(SearchSpec.Scope scope, String handle) throws Exception {
+        return manager.find(new SearchSpec(WORD, scope, handle, null, 0, 20), mock(URLStrategy.class));
+    }
+
+    /** Blogs A, B, C (C hidden), a noindex post on B, a post in the site space. */
+    private void scopeFixture() throws Exception {
+        manager.initialize();
+        Weblog a = weblog("scopea");
+        Weblog b = weblog("scopeb");
+        Weblog c = weblog("scopec");
+        Weblog space = weblog("scopespace");
+        space.setSiteSpace(true);
+        index(entry("sc-a", a, "General", "A post"));
+        index(entry("sc-b", b, "General", "B post"));
+        WeblogEntry hidden = entry("sc-b-noindex", b, "General", "B hidden post");
+        hidden.setNoindex(Boolean.TRUE);
+        index(hidden);
+        index(entry("sc-c", c, "General", "C post"));
+        index(entry("sc-space", space, "General", "Site space post"));
+        c.setVisible(Boolean.FALSE);
+    }
+
+    @Test
+    void otherBlogsScopeLeavesOutTheNamedBlog() throws Exception {
+        scopeFixture();
+        assertEquals(List.of("sc-b"), idsOf(findScoped(SearchSpec.Scope.OTHER_BLOGS, "scopea")));
+        assertEquals(List.of("sc-a"), idsOf(findScoped(SearchSpec.Scope.OTHER_BLOGS, "scopeb")));
+    }
+
+    @Test
+    void otherBlogsAndSiteScopesLeaveOutNoindexPosts() throws Exception {
+        scopeFixture();
+        assertTrue(!idsOf(findScoped(SearchSpec.Scope.OTHER_BLOGS, "scopea")).contains("sc-b-noindex"));
+        assertTrue(!idsOf(findScoped(SearchSpec.Scope.SITE, null)).contains("sc-b-noindex"));
+    }
+
+    @Test
+    void otherBlogsAndSiteScopesLeaveOutHiddenInactiveAndSiteSpaceBlogs() throws Exception {
+        scopeFixture();
+        // inactive too, flipped after indexing
+        knownBlogs.stream().filter(w -> w.getHandle().equals("scopeb")).findFirst().orElseThrow()
+                .setActive(Boolean.FALSE);
+
+        assertEquals(Set.of("sc-a"), Set.copyOf(idsOf(findScoped(SearchSpec.Scope.SITE, null))));
+        assertEquals(List.of(), idsOf(findScoped(SearchSpec.Scope.OTHER_BLOGS, "scopea")));
+    }
+
+    @Test
+    void hidingABlogTakesEffectWithoutReindex() throws Exception {
+        manager.initialize();
+        Weblog a = weblog("hidea");
+        Weblog b = weblog("hideb");
+        index(entry("hide-a", a, "General", "A"));
+        index(entry("hide-b", b, "General", "B"));
+        assertEquals(Set.of("hide-a", "hide-b"), Set.copyOf(idsOf(findScoped(SearchSpec.Scope.SITE, null))));
+
+        b.setVisible(Boolean.FALSE);
+
+        assertEquals(List.of("hide-a"), idsOf(findScoped(SearchSpec.Scope.SITE, null)));
+        assertEquals(List.of("hide-b"), idsOf(findScoped(SearchSpec.Scope.BLOG, "hideb")),
+                "its own section still finds it");
+    }
+
+    @Test
+    void blogScopeStillFindsItsOwnNoindexPost() throws Exception {
+        scopeFixture();
+        assertEquals(Set.of("sc-b", "sc-b-noindex"), Set.copyOf(idsOf(findScoped(SearchSpec.Scope.BLOG, "scopeb"))));
+    }
+
+    @Test
+    void staleSiteFlagIsCaughtAtConversion() throws Exception {
+        manager.initialize();
+        Weblog a = weblog("stalea");
+        WeblogEntry first = entry("stale-1", a, "General", "One");
+        WeblogEntry second = entry("stale-2", a, "General", "Two");
+        index(first);
+        index(second);
+        assertEquals(2, findScoped(SearchSpec.Scope.SITE, null).total());
+
+        second.setNoindex(Boolean.TRUE); // the index still says site:1
+
+        SearchHits hits = findScoped(SearchSpec.Scope.SITE, null);
+        assertEquals(List.of("stale-1"), idsOf(hits));
+        assertEquals(1, hits.total(), "the total drops what conversion dropped");
+    }
+
+    @Test
+    void scopesNeedingABlogFailClosedWithoutOne() throws Exception {
+        scopeFixture();
+        for (SearchSpec.Scope scope : List.of(SearchSpec.Scope.BLOG, SearchSpec.Scope.OTHER_BLOGS)) {
+            for (String handle : java.util.Arrays.asList(null, "", "   ")) {
+                assertThrows(IllegalArgumentException.class, () -> findScoped(scope, handle),
+                        scope + " with handle '" + handle + "'");
+            }
+        }
+    }
+
+    @Test
+    void anUnreadableBlogListFindsNothingRatherThanEverything() throws Exception {
+        scopeFixture();
+        when(weblogManager.getWeblogs(any(), any(), any(), any(), anyInt(), anyInt()))
+                .thenThrow(new WebloggerException("db down"));
+
+        assertEquals(0, findScoped(SearchSpec.Scope.SITE, null).total());
+        assertEquals(List.of(), idsOf(findScoped(SearchSpec.Scope.OTHER_BLOGS, "scopea")));
+    }
+
+    @Test
+    void noEligibleBlogMeansNoSiteHits() throws Exception {
+        scopeFixture();
+        knownBlogs.clear();
+        assertEquals(List.of(), idsOf(findScoped(SearchSpec.Scope.SITE, null)));
+    }
+
+    @Test
+    void perBlogIsOnlyComputedForSiteScope() throws Exception {
+        scopeFixture();
+        assertTrue(findScoped(SearchSpec.Scope.BLOG, "scopeb").perBlog().isEmpty());
+        assertTrue(findScoped(SearchSpec.Scope.OTHER_BLOGS, "scopea").perBlog().isEmpty());
+        assertEquals(java.util.Map.of("scopea", 1, "scopeb", 1), findScoped(SearchSpec.Scope.SITE, null).perBlog());
+    }
+
+    @Test
+    void snippetEscapesOnceAndFallsBackToExcerpt() throws Exception {
+        manager.initialize();
+        Weblog a = weblog("snipa");
+        // a body match is marked, and the text is escaped
+        WeblogEntry body = entry("snip-body", a, "General", "Plain");
+        body.setText("Fish & <b>chips</b> with a quokkaword on top");
+        index(body);
+        // a title-only match has no body passage: the list excerpt stands in
+        WeblogEntry titled = entry("snip-title", a, "General", "Quokkaword");
+        titled.setText("nothing relevant");
+        index(titled);
+        when(pressroom.getEntryRenderer().cachedOpening(titled)).thenReturn("Tom & Jerry <i>go</i> out");
+
+        java.util.Map<String, String> snippets = new java.util.HashMap<>();
+        for (var hit : manager.find(new SearchSpec("quokkaword", SearchSpec.Scope.BLOG, "snipa", null, 0, 10),
+                mock(URLStrategy.class)).hits()) {
+            snippets.put(hit.entry().getId(), hit.snippetHtml());
+        }
+
+        assertEquals("Fish &amp; chips with a <mark>quokkaword</mark> on top", snippets.get("snip-body"));
+        assertEquals("Tom &amp; Jerry &lt;i&gt;go&lt;/i&gt; out", snippets.get("snip-title"));
+    }
+
+    @Test
+    void siteAndOtherBlogHitsAreMarkedOtherBlog() throws Exception {
+        scopeFixture();
+        assertTrue(findScoped(SearchSpec.Scope.SITE, null).hits().stream().allMatch(h -> h.otherBlog()));
+        assertTrue(findScoped(SearchSpec.Scope.OTHER_BLOGS, "scopea").hits().stream().allMatch(h -> h.otherBlog()));
+        assertTrue(findScoped(SearchSpec.Scope.BLOG, "scopeb").hits().stream().noneMatch(h -> h.otherBlog()));
+    }
+
     private void index(WeblogEntry entry) throws Exception {
         when(entries.getWeblogEntry(entry.getId())).thenReturn(entry);
         manager.addEntryIndexOperation(entry);
     }
 
-    private static Weblog weblog(String handle) {
+    private Weblog weblog(String handle) {
         Weblog weblog = new Weblog();
         weblog.setHandle(handle);
         weblog.setName(handle);
+        knownBlogs.add(weblog);
         return weblog;
     }
 

@@ -149,7 +149,11 @@ to the front page.
 The rule is `DiscoveryEligibility` (pure, public). A post page's cross-blog
 Nearby (themes-and-templates.md, "After the article") applies the same class
 to other blogs' posts and honours the same `showMoreFromSite` opt-out; it
-reads no snapshot, so it needs no refresh. Change the rule there, once.
+reads no snapshot, so it needs no refresh. Search applies the same rule too
+(`LuceneIndexManager.find`, scopes `SITE` and `OTHER_BLOGS`): the entry half
+as the `site:1` index flag and again on each hit, the blog half at query time
+from `WeblogManager`, so hiding a blog needs no reindex. A blog's own search
+(`BLOG`) is not filtered by it. Change the rule there, once.
 
 ## Popularity source
 

@@ -21,13 +21,26 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
 
+import java.sql.Timestamp;
+
+import com.wikantik.pressroom.business.URLStrategy;
+import com.wikantik.pressroom.business.WeblogEntryManager;
+import com.wikantik.pressroom.business.WeblogManager;
 import com.wikantik.pressroom.business.Weblogger;
+import com.wikantik.pressroom.business.search.SearchSpec;
+import com.wikantik.pressroom.pojos.Weblog;
+import com.wikantik.pressroom.pojos.WeblogCategory;
+import com.wikantik.pressroom.pojos.WeblogEntry;
 import com.wikantik.pressroom.business.runnable.ThreadManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -103,6 +116,140 @@ class LuceneIndexManagerTest {
         assertDoesNotThrow(manager::initialize,
                 "a failed mkdirs() must be logged, not thrown, and initialize() must still return "
                         + "having done everything it safely can");
+    }
+
+    // ------------------------------------------------------- blog rename
+
+    private final java.util.List<Runnable> scheduled = new java.util.ArrayList<>();
+
+    /** A manager over a private index whose operations are recorded, then run on the calling thread. */
+    private LuceneIndexManager renameFixture(Path indexDir, Weblog blog, WeblogEntry post) throws Exception {
+        Weblogger pressroom = mock(Weblogger.class);
+        PassthroughRenderer.install(pressroom);
+        WeblogEntryManager entries = mock(WeblogEntryManager.class);
+        when(pressroom.getWeblogEntryManager()).thenReturn(entries);
+        when(entries.getWeblogEntries(any())).thenReturn(java.util.List.of(post));
+        when(entries.getWeblogEntry(post.getId())).thenReturn(post);
+        WeblogManager weblogs = mock(WeblogManager.class);
+        when(weblogs.getWeblog(blog.getId())).thenReturn(blog);
+        when(weblogs.getWeblogs(any(), any(), any(), any(), anyInt(), anyInt())).thenReturn(java.util.List.of(blog));
+        when(pressroom.getWeblogManager()).thenReturn(weblogs);
+        ThreadManager threads = mock(ThreadManager.class);
+        doAnswer(inv -> {
+            Runnable op = inv.getArgument(0);
+            scheduled.add(op);
+            op.run();
+            return null;
+        }).when(threads).executeInBackground(any(Runnable.class));
+        doAnswer(inv -> {
+            ((Runnable) inv.getArgument(0)).run();
+            return null;
+        }).when(threads).executeInForeground(any(Runnable.class));
+        when(pressroom.getThreadManager()).thenReturn(threads);
+
+        LuceneIndexManager manager = new LuceneIndexManager(pressroom);
+        setField(manager, "indexDir", indexDir.toString());
+        setField(manager, "indexConsistencyMarker", new File(indexDir.toFile(), ".index-inconsistent"));
+        manager.initialize();
+        manager.addEntryIndexOperation(post);
+        scheduled.clear();
+        return manager;
+    }
+
+    private static Weblog blog(String name) {
+        Weblog blog = new Weblog();
+        blog.setId("rename-blog-id");
+        blog.setHandle("renameblog");
+        blog.setName(name);
+        return blog;
+    }
+
+    private static WeblogEntry post(Weblog blog) {
+        WeblogCategory cat = new WeblogCategory();
+        cat.setName("General");
+        WeblogEntry entry = new WeblogEntry();
+        entry.setId("rename-post");
+        entry.setWebsite(blog);
+        entry.setCategory(cat);
+        entry.setTitle("A post");
+        entry.setText("ordinary words only");
+        entry.setLocale("en");
+        entry.setCreatorUserName("nobody");
+        entry.setStatus(WeblogEntry.PubStatus.PUBLISHED);
+        Timestamp past = new Timestamp(System.currentTimeMillis() - 60_000);
+        entry.setPubTime(past);
+        entry.setUpdateTime(past);
+        return entry;
+    }
+
+    private static boolean rebuilds(java.util.List<Runnable> ops) {
+        return ops.stream().anyMatch(op -> op instanceof RebuildWebsiteIndexOperation);
+    }
+
+    @Test
+    void firstSightOfABlogSchedulesNothing(@TempDir Path indexDir) throws Exception {
+        Weblog blog = blog("Quiet Pond");
+        LuceneIndexManager manager = renameFixture(indexDir, blog, post(blog));
+
+        manager.noteWeblog(blog);
+
+        assertTrue(scheduled.isEmpty(), "" + scheduled);
+        manager.shutdown();
+    }
+
+    @Test
+    void unchangedBlogSchedulesNothing(@TempDir Path indexDir) throws Exception {
+        Weblog blog = blog("Quiet Pond");
+        LuceneIndexManager manager = renameFixture(indexDir, blog, post(blog));
+
+        manager.noteWeblog(blog);
+        manager.noteWeblog(blog);
+
+        assertTrue(scheduled.isEmpty(), "" + scheduled);
+        manager.shutdown();
+    }
+
+    @Test
+    void renamedBlogIsReindexed(@TempDir Path indexDir) throws Exception {
+        Weblog blog = blog("Quiet Pond");
+        WeblogEntry post = post(blog);
+        LuceneIndexManager manager = renameFixture(indexDir, blog, post);
+        manager.noteWeblog(blog);
+        assertTrue(manager.find(new SearchSpec("heron", SearchSpec.Scope.BLOG, "renameblog", null, 0, 10),
+                mock(URLStrategy.class)).hits().isEmpty());
+
+        blog.setName("Heron Pond");
+        manager.noteWeblog(blog);
+
+        assertTrue(rebuilds(scheduled), "" + scheduled);
+        assertEquals(1, manager.find(new SearchSpec("heron", SearchSpec.Scope.BLOG, "renameblog", null, 0, 10),
+                mock(URLStrategy.class)).hits().size(), "the blog's new name finds its posts");
+        manager.shutdown();
+    }
+
+    @Test
+    void aChangedTaglineIsReindexedToo(@TempDir Path indexDir) throws Exception {
+        Weblog blog = blog("Quiet Pond");
+        LuceneIndexManager manager = renameFixture(indexDir, blog, post(blog));
+        manager.noteWeblog(blog);
+
+        blog.setTagline("herons");
+        manager.noteWeblog(blog);
+
+        assertTrue(rebuilds(scheduled), "" + scheduled);
+        manager.shutdown();
+    }
+
+    @Test
+    void aFailingRebuildNeverFailsTheSave(@TempDir Path indexDir) throws Exception {
+        Weblog blog = blog("Quiet Pond");
+        LuceneIndexManager manager = renameFixture(indexDir, blog, post(blog));
+        manager.noteWeblog(blog);
+        manager.shutdown(); // scheduling now has nowhere to go
+
+        blog.setName("Heron Pond");
+        assertDoesNotThrow(() -> manager.noteWeblog(blog));
+        assertDoesNotThrow(() -> manager.noteWeblog(null));
     }
 
     // No test drives initialize()'s createNewFile()-returns-false branch

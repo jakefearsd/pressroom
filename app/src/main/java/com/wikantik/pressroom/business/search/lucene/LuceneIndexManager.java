@@ -27,6 +27,7 @@ import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -37,6 +38,8 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.commons.beanutils.ConstructorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.wikantik.pressroom.business.discovery.DiscoveryEligibility;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.miscellaneous.LimitTokenCountAnalyzer;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
@@ -100,11 +103,18 @@ public class LuceneIndexManager implements IndexManager {
 
     // Serialises index writes -- only one IndexWriter may hold the
     // directory's lock -- and nothing else: searches never take it.
+    /** Each blog's searchable name and tagline as last noted, by handle (see {@link #noteWeblog}). */
+    private final java.util.concurrent.ConcurrentMap<String, String> blogText =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
     private final ReentrantLock writeLock = new ReentrantLock();
 
     // A search that finds its searchers closed under it reopens them; this
     // bounds how often before it gives up (see acquireSearcher).
     private static final int MAX_ACQUIRE_ATTEMPTS = 3;
+
+    /** About how long a result's passage is. */
+    private static final int SNIPPET_CHARS = 160;
 
 
     /** The tier an {@link IndexOperation} resolves entry authors through. */
@@ -273,9 +283,38 @@ public class LuceneIndexManager implements IndexManager {
     }
 
     @Override
+    public void noteWeblog(Weblog weblog) {
+        // runs on every blog save, including those a publish causes: an
+        // in-memory compare, and nothing it does may fail the save
+        try {
+            if (weblog == null || weblog.getHandle() == null) {
+                return;
+            }
+            String tagline = weblog.getTagline();
+            String searchable = weblog.getName() + "\n" + (tagline == null ? "" : tagline);
+            String before = blogText.put(weblog.getHandle(), searchable);
+            if (before != null && !before.equals(searchable)) {
+                // the name and tagline are part of each of the blog's posts
+                rebuildWeblogIndex(weblog);
+            }
+        } catch (WebloggerException | RuntimeException e) {
+            log.warn("Could not reindex renamed weblog {}", weblog == null ? null : weblog.getHandle(), e);
+        }
+    }
+
+    @Override
     public SearchHits find(SearchSpec spec, URLStrategy urlStrategy) throws WebloggerException {
-        if (spec.scope() == SearchSpec.Scope.OTHER_BLOGS) {
-            throw new UnsupportedOperationException("other-blogs search is not implemented yet");
+        boolean needsBlog = spec.scope() != SearchSpec.Scope.SITE;
+        if (needsBlog && (spec.weblogHandle() == null || spec.weblogHandle().isBlank())) {
+            // never fall through to a search of the whole site
+            throw new IllegalArgumentException(spec.scope() + " search needs a blog handle");
+        }
+        Set<String> eligibleHandles = null;
+        if (spec.scope() != SearchSpec.Scope.BLOG) {
+            eligibleHandles = eligibleHandles();
+            if (eligibleHandles == null || eligibleHandles.isEmpty()) {
+                return SearchHits.NONE;
+            }
         }
 
         // try-with-resources: the operation holds a counted reference to the
@@ -289,6 +328,11 @@ public class LuceneIndexManager implements IndexManager {
             search.setTerm(spec.words());
             if (spec.scope() == SearchSpec.Scope.BLOG) {
                 search.setWeblogHandle(spec.weblogHandle());
+            } else {
+                search.restrictToSite(eligibleHandles);
+                if (spec.scope() == SearchSpec.Scope.OTHER_BLOGS) {
+                    search.excludeHandle(spec.weblogHandle());
+                }
             }
             if (spec.category() != null) {
                 search.setCategory(spec.category());
@@ -303,6 +347,28 @@ public class LuceneIndexManager implements IndexManager {
                         search.isAnyWordFallback(), urlStrategy);
             }
             throw new WebloggerException("Error executing search");
+        }
+    }
+
+    /**
+     * The handles of the blogs discovery would list, asked of the weblog
+     * manager at query time so hiding a blog takes effect without a reindex.
+     *
+     * @return the handles, or null when they cannot be read: the caller then
+     *         finds nothing, never everything
+     */
+    private Set<String> eligibleHandles() {
+        try {
+            Set<String> handles = new HashSet<>();
+            for (Weblog blog : pressroom.getWeblogManager().getWeblogs(Boolean.TRUE, Boolean.TRUE, null, null, 0, -1)) {
+                if (DiscoveryEligibility.isEligible(blog) && blog.getHandle() != null) {
+                    handles.add(blog.getHandle());
+                }
+            }
+            return handles;
+        } catch (WebloggerException | RuntimeException e) {
+            log.error("Could not list the blogs a site search may reach; returning no hits", e);
+            return null;
         }
     }
 
@@ -664,6 +730,7 @@ public class LuceneIndexManager implements IndexManager {
 
         List<SearchHit> results = new ArrayList<>();
         boolean blogScope = spec.scope() == SearchSpec.Scope.BLOG;
+        boolean siteScope = spec.scope() == SearchSpec.Scope.SITE;
 
         // determine offset
         int offset = spec.offset();
@@ -684,14 +751,18 @@ public class LuceneIndexManager implements IndexManager {
             WeblogEntryManager weblogMgr = pressroom.getWeblogEntryManager();
             StoredFields stored = search.getSearcher().storedFields();
 
-            // how many of the hits considered each blog holds, not only this page's
-            for (ScoreDoc hit : hits) {
-                String blog = stored.document(hit.doc, Set.of(FieldConstants.WEBSITE_HANDLE))
-                        .get(FieldConstants.WEBSITE_HANDLE);
-                if (blog != null) {
-                    perBlog.merge(blog, 1, Integer::sum);
+            // how many of the hits considered each blog holds, not only this
+            // page's; only the front page's "more from this blog" reads it
+            if (siteScope) {
+                for (ScoreDoc hit : hits) {
+                    String blog = stored.document(hit.doc, Set.of(FieldConstants.WEBSITE_HANDLE))
+                            .get(FieldConstants.WEBSITE_HANDLE);
+                    if (blog != null) {
+                        perBlog.merge(blog, 1, Integer::sum);
+                    }
                 }
             }
+            Query words = search.getParsedQuery();
 
             WeblogEntry entry;
             Document doc;
@@ -716,8 +787,13 @@ public class LuceneIndexManager implements IndexManager {
                 // construction rather than relying on the index always
                 // being current, the same defence ReIndexEntryOperation
                 // already applies on the write side.
-                if (entry != null && entry.isPublished() && !entry.getPubTime().after(now)) {
-                    results.add(new SearchHit(WeblogEntryWrapper.wrap(entry, urlStrategy, pressroom), "", false));
+                // The site and other-blog scopes apply the discovery rule again
+                // here: the index flag and the blog set can be stale.
+                if (entry != null && entry.isPublished() && !entry.getPubTime().after(now)
+                        && (blogScope || (DiscoveryEligibility.isEligible(entry)
+                                && !isExcluded(spec, entry)))) {
+                    WeblogEntryWrapper wrapped = WeblogEntryWrapper.wrap(entry, urlStrategy, pressroom);
+                    results.add(new SearchHit(wrapped, snippet(doc, words, wrapped), !blogScope));
                 }
             }
 
@@ -734,6 +810,30 @@ public class LuceneIndexManager implements IndexManager {
 
         } catch (IOException e) {
             throw new WebloggerException(e);
+        }
+    }
+
+    private static boolean isExcluded(SearchSpec spec, WeblogEntry entry) {
+        return spec.scope() == SearchSpec.Scope.OTHER_BLOGS
+                && entry.getWebsite().getHandle().equalsIgnoreCase(spec.weblogHandle().strip());
+    }
+
+    /**
+     * The passage of the stored text with the words marked; a post whose
+     * words are only in its title, tags or summary shows the excerpt its
+     * list entry shows instead, escaped here because the excerpt is plain text.
+     */
+    private static String snippet(Document doc, Query words, WeblogEntryWrapper entry) {
+        String marked = Snippets.html(doc.get(FieldConstants.CONTENT), words, getAnalyzer(), SNIPPET_CHARS);
+        if (!marked.isEmpty()) {
+            return marked;
+        }
+        try {
+            return Snippets.escape(entry.getExcerpt());
+        } catch (RuntimeException e) {
+            // a display path: no passage, the hit still shows
+            log.warn("Could not read the list excerpt for a search hit", e);
+            return "";
         }
     }
 

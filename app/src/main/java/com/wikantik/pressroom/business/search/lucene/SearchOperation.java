@@ -38,6 +38,7 @@ import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermInSetQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -112,6 +113,11 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
     private String category;
     private String locale;
     private String parseError;
+    private Query parsedQuery;
+    // Null: not narrowed to the site. A set (possibly empty): only posts
+    // flagged for the site whose blog handle is in it.
+    private java.util.Set<String> siteHandles;
+    private String excludedHandle;
 
     // ~ Constructors
     // ===========================================================
@@ -200,6 +206,7 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
         searcher = null;
         anyWordFallback = false;
         parseError = null;
+        parsedQuery = null;
 
         try {
             // acquired with a counted reference that close() lets go of: it
@@ -224,12 +231,14 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
             // The page says which it did, so a reader is never shown partial
             // matches as if they were complete ones.
             Query all = parse(MultiFieldQueryParser.Operator.AND);
+            parsedQuery = all;
             searchresults = run(searcher, all, nowMillis);
             if (searchresults.totalHits.value() == 0 && !isEmpty(all)) {
                 Query any = parse(MultiFieldQueryParser.Operator.OR);
                 TopDocs second = run(searcher, any, nowMillis);
                 if (second.totalHits.value() > 0) {
                     searchresults = second;
+                    parsedQuery = any;
                     anyWordFallback = true;
                 }
             }
@@ -288,6 +297,29 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
         Term handleTerm = IndexUtil.getTerm(FieldConstants.WEBSITE_HANDLE, weblogHandle);
         if (handleTerm != null) {
             query.add(new TermQuery(handleTerm), BooleanClause.Occur.FILTER);
+        }
+        if (siteHandles != null) {
+            // fail closed: no eligible blog is no hit, never an unfiltered search
+            if (siteHandles.isEmpty()) {
+                return NO_HITS;
+            }
+            query.add(new TermQuery(new Term(FieldConstants.SITE, FieldConstants.SITE_V)),
+                    BooleanClause.Occur.FILTER);
+            java.util.List<BytesRef> handles = new java.util.ArrayList<>();
+            for (String handle : siteHandles) {
+                Term term = IndexUtil.getTerm(FieldConstants.WEBSITE_HANDLE, handle);
+                if (term != null) {
+                    handles.add(term.bytes());
+                }
+            }
+            if (handles.isEmpty()) {
+                return NO_HITS;
+            }
+            query.add(new TermInSetQuery(FieldConstants.WEBSITE_HANDLE, handles), BooleanClause.Occur.FILTER);
+        }
+        Term excludedTerm = IndexUtil.getTerm(FieldConstants.WEBSITE_HANDLE, excludedHandle);
+        if (excludedTerm != null) {
+            query.add(new TermQuery(excludedTerm), BooleanClause.Occur.MUST_NOT);
         }
         if (category != null) {
             query.add(new TermQuery(new Term(FieldConstants.CATEGORY, category.toLowerCase(Locale.ROOT))),
@@ -438,6 +470,25 @@ public class SearchOperation extends ReadFromIndexOperation implements AutoClose
         // TotalHits became a record in Lucene 10, so this is an accessor
         // rather than a public field.
         return (int) searchresults.totalHits.value();
+    }
+
+    /** The words as the query that produced the results (for marking them in a snippet), or null. */
+    public Query getParsedQuery() {
+        return parsedQuery;
+    }
+
+    /**
+     * Narrows the search to posts flagged for the site whose blog is one of
+     * {@code handles}: the blog half of the discovery rule, decided by the
+     * caller at query time. An empty set finds nothing.
+     */
+    public void restrictToSite(java.util.Set<String> handles) {
+        this.siteHandles = java.util.Set.copyOf(handles);
+    }
+
+    /** Leaves out the posts of this blog. */
+    public void excludeHandle(String handle) {
+        this.excludedHandle = handle;
     }
 
     /** True when no post had every word and these results match some of them. */

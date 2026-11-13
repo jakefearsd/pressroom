@@ -63,6 +63,14 @@ public interface IndexManager {
     void removeEntryIndexOperation(WeblogEntry entry) throws WebloggerException;
 
     /**
+     * Notes a saved blog. Its name and tagline are searchable on each of its
+     * posts, so a blog seen before whose name or tagline has changed has its
+     * posts reindexed (in the background); the first sighting of a blog only
+     * records it. Cheap, and never throws: it runs on every blog save.
+     */
+    void noteWeblog(Weblog weblog);
+
+    /**
      * Runs a reader's search: ranked by relevance, all of the words first and
      * then any of them.
      *
