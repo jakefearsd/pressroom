@@ -555,6 +555,25 @@ class LuceneIndexManagerSearchTest {
     }
 
     @Test
+    void otherBlogsAndSiteScopesLeaveOutFutureDatedPostsAndDrafts() throws Exception {
+        scopeFixture();
+        Weblog b = knownBlogs.stream().filter(w -> w.getHandle().equals("scopeb")).findFirst().orElseThrow();
+        WeblogEntry future = entry("sc-b-future", b, "General", "B future post");
+        future.setPubTime(new Timestamp(System.currentTimeMillis() + 3_600_000));
+        index(future);
+        WeblogEntry draft = entry("sc-b-draft", b, "General", "B draft post");
+        draft.setStatus(PubStatus.DRAFT);
+        index(draft);
+
+        for (String id : List.of("sc-b-future", "sc-b-draft")) {
+            assertTrue(!idsOf(findScoped(SearchSpec.Scope.OTHER_BLOGS, "scopea")).contains(id), id);
+            assertTrue(!idsOf(findScoped(SearchSpec.Scope.SITE, null)).contains(id), id);
+        }
+        assertEquals(List.of("sc-b"), idsOf(findScoped(SearchSpec.Scope.OTHER_BLOGS, "scopea")),
+                "the live post of the same blog is still found");
+    }
+
+    @Test
     void hidingABlogTakesEffectWithoutReindex() throws Exception {
         manager.initialize();
         Weblog a = weblog("hidea");
