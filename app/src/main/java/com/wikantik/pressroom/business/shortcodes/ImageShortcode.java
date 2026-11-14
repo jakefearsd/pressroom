@@ -84,6 +84,40 @@ public class ImageShortcode implements ShortcodeHandler {
     }
 
     /**
+     * The weblog's public image with this id, or null (the shortcode is left
+     * as written). The id is global, so it can name any weblog's file: only
+     * this weblog's images outside every private directory render, the same
+     * rule the API applies to featuredImageId and the one [gallery] applies
+     * to a private directory. The owner is reported to {@code reads} before
+     * the checks, refusal included: the render cache keeps nothing that read
+     * another weblog.
+     */
+    private MediaFileWrapper publicImageOf(Weblog weblog, String id, ShortcodeReads reads) {
+        try {
+            MediaFile mediaFile = weblogger.getMediaFileManager().getMediaFile(id);
+            if (mediaFile == null) {
+                log.debug("[image] shortcode id {} is not an image media file", id);
+                return null;
+            }
+            Weblog owner = ownerOf(mediaFile);
+            reads.readFrom(owner);
+            if (!mediaFile.isImageFile()) {
+                log.debug("[image] shortcode id {} is not an image media file", id);
+                return null;
+            }
+            if (owner == null || !weblog.getId().equals(owner.getId()) || isPrivate(mediaFile)) {
+                log.debug("[image] shortcode id {} is not a public image of weblog {}", id, weblog.getHandle());
+                return null;
+            }
+            return MediaFileWrapper.wrap(mediaFile, weblogger.getUrlStrategy(), weblogger);
+        } catch (Exception e) {
+            log.warn("[image] shortcode could not resolve media file {}", id, e);
+            reads.readFrom(null);
+            return null;
+        }
+    }
+
+    /**
      * Reports the media file's weblog to {@code reads}: the id is global, so
      * it may name another weblog's file, whose changes move that weblog's
      * {@code lastModified} and never this entry's.
@@ -110,31 +144,8 @@ public class ImageShortcode implements ShortcodeHandler {
             return null;
         }
 
-        MediaFileWrapper media;
-        try {
-            MediaFile mediaFile = weblogger.getMediaFileManager().getMediaFile(id);
-            Weblog owner = mediaFile == null ? null : ownerOf(mediaFile);
-            if (mediaFile != null) {
-                // Reported before the checks below, refusal included: the
-                // render cache keeps nothing that read another weblog.
-                reads.readFrom(owner);
-            }
-            if (mediaFile == null || !mediaFile.isImageFile()) {
-                log.debug("[image] shortcode id {} is not an image media file", id);
-                return null;
-            }
-            // The id is global, so it can name any weblog's file. Only this
-            // weblog's images outside every private directory render: the
-            // same rule the API applies to featuredImageId, and the one
-            // [gallery] applies to a private directory.
-            if (owner == null || !weblog.getId().equals(owner.getId()) || isPrivate(mediaFile)) {
-                log.debug("[image] shortcode id {} is not a public image of weblog {}", id, weblog.getHandle());
-                return null;
-            }
-            media = MediaFileWrapper.wrap(mediaFile, weblogger.getUrlStrategy(), weblogger);
-        } catch (Exception e) {
-            log.warn("[image] shortcode could not resolve media file {}", id, e);
-            reads.readFrom(null);
+        MediaFileWrapper media = publicImageOf(weblog, id, reads);
+        if (media == null) {
             return null;
         }
 

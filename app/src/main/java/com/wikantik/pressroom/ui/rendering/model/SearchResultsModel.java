@@ -120,53 +120,73 @@ public class SearchResultsModel extends PageModel {
 		boolean paged = siteScope || blogOnly;
 		try {
 			if (paged) {
-				// The one place paging is worked out: the offset asked for, from the
-				// page number alone. The index clamps a page past its end by itself,
-				// so the model never second-guesses it from the total (which drops
-				// stale documents and so can disagree with what find returned).
-				offset = Math.max(0, searchRequest.getPageNum()) * RESULTS_PER_PAGE;
-				SearchSpec.Scope scope = (siteScope && !blogOnly)
-						? SearchSpec.Scope.SITE : SearchSpec.Scope.BLOG;
-				SearchHits found = indexMgr.find(spec(scope, handle, offset, RESULTS_PER_PAGE), urlStrategy);
-				takeOwn(found);
-				perBlog = found.perBlog();
-				if (scope == SearchSpec.Scope.SITE) {
-					moreByHit = moreFromEachBlog(ownHits, perBlog);
-				}
-				// find answers a request past its end with the first page; show it as page 0
-				if (offset > 0 && offset >= ownTotal && !ownHits.isEmpty()) {
-					offset = 0;
-				}
+				findPaged(indexMgr, handle);
 			} else {
-				SearchHits own = indexMgr.find(
-						spec(SearchSpec.Scope.BLOG, handle, 0, OWN_IN_BLOG_VIEW), urlStrategy);
-				takeOwn(own);
-				// Never the site: isTheSite made its search the paged site view
-				// above, so the site space never asks for "other" blogs.
-				if (searched != null && !Boolean.FALSE.equals(searched.getShowMoreFromSite())) {
-					SearchHits others = indexMgr.find(
-							spec(SearchSpec.Scope.OTHER_BLOGS, handle, 0, OTHERS_IN_BLOG_VIEW), urlStrategy);
-						otherHits = others.hits();
-					otherFallback = others.anyWordFallback();
-				}
+				findInBlogView(indexMgr, searched, handle);
 			}
 		} catch (WebloggerException | IllegalArgumentException we) {
 			errorMessage = we.getMessage();
-			ownHits = List.of();
-			otherHits = List.of();
-			ownTotal = 0;
-			ownFallback = false;
-			otherFallback = false;
-			capped = false;
-			perBlog = Map.of();
-			moreByHit = Map.of();
-			categories = new TreeSet<>();
-			offset = 0;
+			forgetResults();
 		}
 
 		// search completed, setup pager based on results
 		pager = new SearchResultsPager(urlStrategy, searchRequest,
 			paged && ownTotal > offset + RESULTS_PER_PAGE, offset / RESULTS_PER_PAGE);
+	}
+
+	/**
+	 * One page of the site's or (scope=blog) one blog's results. The one
+	 * place paging is worked out: the offset asked for, from the page number
+	 * alone. The index clamps a page past its end by itself, so the model
+	 * never second-guesses it from the total (which drops stale documents
+	 * and so can disagree with what find returned).
+	 */
+	private void findPaged(IndexManager indexMgr, String handle) throws WebloggerException {
+		offset = Math.max(0, searchRequest.getPageNum()) * RESULTS_PER_PAGE;
+		SearchSpec.Scope scope = (siteScope && !blogOnly)
+				? SearchSpec.Scope.SITE : SearchSpec.Scope.BLOG;
+		SearchHits found = indexMgr.find(spec(scope, handle, offset, RESULTS_PER_PAGE), urlStrategy);
+		takeOwn(found);
+		perBlog = found.perBlog();
+		if (scope == SearchSpec.Scope.SITE) {
+			moreByHit = moreFromEachBlog(ownHits, perBlog);
+		}
+		// find answers a request past its end with the first page; show it as page 0
+		if (offset > 0 && offset >= ownTotal && !ownHits.isEmpty()) {
+			offset = 0;
+		}
+	}
+
+	/**
+	 * A blog's own view: its first results, and those of the other blogs
+	 * unless the blog turned "more from the site" off. Never the site:
+	 * isTheSite made its search the paged site view, so the site space never
+	 * asks for "other" blogs.
+	 */
+	private void findInBlogView(IndexManager indexMgr, Weblog searched, String handle) throws WebloggerException {
+		SearchHits own = indexMgr.find(
+				spec(SearchSpec.Scope.BLOG, handle, 0, OWN_IN_BLOG_VIEW), urlStrategy);
+		takeOwn(own);
+		if (searched != null && !Boolean.FALSE.equals(searched.getShowMoreFromSite())) {
+			SearchHits others = indexMgr.find(
+					spec(SearchSpec.Scope.OTHER_BLOGS, handle, 0, OTHERS_IN_BLOG_VIEW), urlStrategy);
+			otherHits = others.hits();
+			otherFallback = others.anyWordFallback();
+		}
+	}
+
+	/** A search that failed shows no results, only its message. */
+	private void forgetResults() {
+		ownHits = List.of();
+		otherHits = List.of();
+		ownTotal = 0;
+		ownFallback = false;
+		otherFallback = false;
+		capped = false;
+		perBlog = Map.of();
+		moreByHit = Map.of();
+		categories = new TreeSet<>();
+		offset = 0;
 	}
 
 	/**

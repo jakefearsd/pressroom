@@ -17,6 +17,8 @@
  */
 package com.wikantik.pressroom.ui.controllers.editor;
 
+import java.io.IOException;
+
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.commons.lang3.StringUtils;
@@ -117,24 +119,8 @@ public class MediaFileEditController extends MediaFileBase {
             return ".MediaFileEdit";
         }
 
-        // resolve directory for validation -- ownership-checked, because the
-        // posted directoryId is what the file would be moved into
-        MediaFileDirectory directory = null;
-        try {
-            directory = ownedDirectory(bean.getDirectoryId(), request);
-            if (directory == null) {
-                log.warn("Refusing to save into directory {}: not owned by weblog {}",
-                        bean.getDirectoryId(), getActionWeblog(request).getHandle());
-                addError(model, "MediaFile.error.view", request);
-            }
-        } catch (WebloggerException ex) {
-            // the duplicate-name check below needs the directory: a check
-            // that could not run is not a check that passed
-            log.error("Error looking up media file directory", ex);
-            addError(model, "generic.error.check.logs", request);
-        }
-
         // validate
+        MediaFileDirectory directory = postedDirectory(bean, request, model);
         if (directory != null) {
             MediaFile fileWithSameName = directory.getMediaFile(bean.getName());
             if (fileWithSameName != null && !fileWithSameName.getId().equals(mediaFileId)) {
@@ -142,48 +128,75 @@ public class MediaFileEditController extends MediaFileBase {
                         StringEscapeUtils.escapeHtml4(bean.getName()), request);
             }
         }
-
-        if (!hasErrors(model)) {
-            MediaFileManager manager = weblogger.getMediaFileManager();
-            try {
-                MediaFile mediaFile = ownedMediaFile(mediaFileId, request);
-                if (mediaFile == null) {
-                    log.warn("Refusing to save media file {}: not owned by weblog {}",
-                            mediaFileId, getActionWeblog(request).getHandle());
-                    addError(model, "MediaFile.error.view", request);
-                    return ".MediaFileEdit";
-                }
-                bean.copyTo(mediaFile, weblogger.getMediaFileManager());
-
-                if (uploadedFile != null && !uploadedFile.isEmpty()) {
-                    mediaFile.setLength(uploadedFile.getSize());
-                    mediaFile.setContentType(MediaUploads.effectiveContentType(
-                            uploadedFile.getContentType(), mediaFile.getName()));
-                    manager.updateMediaFile(getActionWeblog(request), mediaFile, uploadedFile.getInputStream());
-                } else {
-                    manager.updateMediaFile(getActionWeblog(request), mediaFile);
-                }
-
-                // Move file if directory changed
-                if (!bean.getDirectoryId().equals(mediaFile.getDirectory().getId())) {
-                    doMoveSelected(new String[]{mediaFile.getId()}, bean.getDirectoryId(), request, model);
-                }
-
-                weblogger.flush();
-                addMessage(model, "mediaFile.update.success", request);
-                return ".MediaFileEditSuccess";
-
-            } catch (FileIOException ex) {
-                addError(model, "uploadFiles.error.upload",
-                    StringEscapeUtils.escapeHtml4(bean.getName()), request);
-            } catch (Exception e) {
-                log.error("Error uploading file {}", bean.getName(), e);
-                addError(model, "uploadFiles.error.upload",
-                    StringEscapeUtils.escapeHtml4(bean.getName()), request);
-            }
+        if (hasErrors(model)) {
+            return ".MediaFileEdit";
         }
 
+        try {
+            MediaFile mediaFile = ownedMediaFile(mediaFileId, request);
+            if (mediaFile == null) {
+                log.warn("Refusing to save media file {}: not owned by weblog {}",
+                        mediaFileId, getActionWeblog(request).getHandle());
+                addError(model, "MediaFile.error.view", request);
+                return ".MediaFileEdit";
+            }
+            applyChanges(request, model, bean, mediaFile, uploadedFile);
+            weblogger.flush();
+            addMessage(model, "mediaFile.update.success", request);
+            return ".MediaFileEditSuccess";
+
+        } catch (FileIOException ex) {
+            addError(model, "uploadFiles.error.upload",
+                StringEscapeUtils.escapeHtml4(bean.getName()), request);
+        } catch (Exception e) {
+            log.error("Error uploading file {}", bean.getName(), e);
+            addError(model, "uploadFiles.error.upload",
+                StringEscapeUtils.escapeHtml4(bean.getName()), request);
+        }
         return ".MediaFileEdit";
+    }
+
+    /**
+     * The posted folder, ownership-checked because it is what the file
+     * would be moved into; null, with an error on the model, when it is not
+     * this weblog's or cannot be looked up. The duplicate-name check needs
+     * it: a check that could not run is not a check that passed.
+     */
+    private MediaFileDirectory postedDirectory(MediaFileBean bean, HttpServletRequest request, Model model) {
+        try {
+            MediaFileDirectory directory = ownedDirectory(bean.getDirectoryId(), request);
+            if (directory == null) {
+                log.warn("Refusing to save into directory {}: not owned by weblog {}",
+                        bean.getDirectoryId(), getActionWeblog(request).getHandle());
+                addError(model, "MediaFile.error.view", request);
+            }
+            return directory;
+        } catch (WebloggerException ex) {
+            log.error("Error looking up media file directory", ex);
+            addError(model, "generic.error.check.logs", request);
+            return null;
+        }
+    }
+
+    /** Applies the form, and a replacement upload if one came, then moves the file if its folder changed. */
+    private void applyChanges(HttpServletRequest request, Model model, MediaFileBean bean, MediaFile mediaFile,
+            MultipartFile uploadedFile) throws WebloggerException, IOException {
+        MediaFileManager manager = weblogger.getMediaFileManager();
+        bean.copyTo(mediaFile, manager);
+
+        if (uploadedFile != null && !uploadedFile.isEmpty()) {
+            mediaFile.setLength(uploadedFile.getSize());
+            mediaFile.setContentType(MediaUploads.effectiveContentType(
+                    uploadedFile.getContentType(), mediaFile.getName()));
+            manager.updateMediaFile(getActionWeblog(request), mediaFile, uploadedFile.getInputStream());
+        } else {
+            manager.updateMediaFile(getActionWeblog(request), mediaFile);
+        }
+
+        // Move file if directory changed
+        if (!bean.getDirectoryId().equals(mediaFile.getDirectory().getId())) {
+            doMoveSelected(new String[]{mediaFile.getId()}, bean.getDirectoryId(), request, model);
+        }
     }
 
     /**
