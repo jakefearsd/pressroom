@@ -206,54 +206,11 @@ public class GlobalConfigController extends BaseController {
         Map<String, String> accepted = new LinkedHashMap<>();
         for (Map.Entry<String, RuntimeConfigProperty> propEntry : properties.entrySet()) {
             String propName = propEntry.getKey();
-            String incomingProp = request.getParameter(propEntry.getValue().getName());
-
             PropertyDef propertyDef = globalConfigDef.getPropertyDef(propName);
-            if (propertyDef == null) {
-                // we're only processing defined properties, i.e. ones shown in the UI
-                continue;
-            }
-
-            if (DiscoverySettings.REFRESH_SECONDS.equals(propName)) {
-                // Edited in minutes, stored in seconds: the form never posts
-                // the seconds property itself. Absent leaves it as it is.
-                acceptRefreshMinutes(request, propertyDef, accepted, model);
-
-            } else if ("boolean".equals(propertyDef.getType())) {
-                // an unticked checkbox submits nothing, so absent means false
-                accepted.put(propName, Boolean.toString(Boolean.parseBoolean(incomingProp)));
-
-            } else if (incomingProp != null && "integer".equals(propertyDef.getType())) {
-                try {
-                    int parsed = Integer.parseInt(incomingProp);
-                    if (DiscoverySettings.rangeError(propName, parsed).isPresent()) {
-                        addRangeError(model, propertyDef, DiscoverySettings.min(propName),
-                                DiscoverySettings.max(propName), request);
-                    }
-                } catch (NumberFormatException nfe) {
-                    String propDesc = bundle.getString(propertyDef.getKey());
-                    addError(model, "ConfigForm.invalidIntegerProperty", new Object[]{propDesc, StringEscapeUtils.escapeHtml4(incomingProp)}, request);
-                }
-                accepted.put(propName, incomingProp);
-
-            } else if (incomingProp != null && "float".equals(propertyDef.getType())) {
-                try {
-                    Float.parseFloat(incomingProp);
-                } catch (NumberFormatException nfe) {
-                    String propDesc = bundle.getString(propertyDef.getKey());
-                    addError(model, "ConfigForm.invalidFloatProperty", new Object[]{propDesc, StringEscapeUtils.escapeHtml4(incomingProp)}, request);
-                }
-                accepted.put(propName, incomingProp);
-
-            } else if (incomingProp != null) {
-                accepted.put(propName, incomingProp.trim());
-
-            } else if (!FRONTPAGE_WEBLOG_HANDLE.equals(propName) && !FRONTPAGE_PAGE.equals(propName)) {
-                // Missing from the form. The front-page weblog is exempt: it is
-                // a content choice, so absent it is left as it is rather than
-                // blocking every other setting. So is the front-page page,
-                // which is derived from that select, never submitted itself.
-                addError(model, "ConfigForm.invalidProperty", propName, request);
+            // we're only processing defined properties, i.e. ones shown in the UI
+            if (propertyDef != null) {
+                accept(propName, propertyDef, request.getParameter(propEntry.getValue().getName()),
+                        accepted, model, request);
             }
         }
 
@@ -271,11 +228,8 @@ public class GlobalConfigController extends BaseController {
             // Re-render what the admin typed, on detached copies: the managed
             // entities stay exactly as stored.
             Map<String, RuntimeConfigProperty> shown = new LinkedHashMap<>();
-            for (Map.Entry<String, RuntimeConfigProperty> propEntry : properties.entrySet()) {
-                String propName = propEntry.getKey();
-                shown.put(propName, new RuntimeConfigProperty(propName,
-                        accepted.getOrDefault(propName, propEntry.getValue().getValue())));
-            }
+            properties.forEach((propName, stored) -> shown.put(propName,
+                    new RuntimeConfigProperty(propName, accepted.getOrDefault(propName, stored.getValue()))));
             model.addAttribute("properties", shown);
             return ".GlobalConfig";
         }
@@ -318,6 +272,63 @@ public class GlobalConfigController extends BaseController {
         }
 
         return ".GlobalConfig";
+    }
+
+    /**
+     * Checks one submitted property and records the value to store in
+     * {@code accepted}; a value that does not parse is still recorded, so
+     * the form shows what was typed beside the error.
+     */
+    private void accept(String propName, PropertyDef propertyDef, String incomingProp,
+            Map<String, String> accepted, Model model, HttpServletRequest request) {
+        String type = propertyDef.getType();
+        if (DiscoverySettings.REFRESH_SECONDS.equals(propName)) {
+            // Edited in minutes, stored in seconds: the form never posts
+            // the seconds property itself. Absent leaves it as it is.
+            acceptRefreshMinutes(request, propertyDef, accepted, model);
+
+        } else if ("boolean".equals(type)) {
+            // an unticked checkbox submits nothing, so absent means false
+            accepted.put(propName, Boolean.toString(Boolean.parseBoolean(incomingProp)));
+
+        } else if (incomingProp == null) {
+            if (!FRONTPAGE_WEBLOG_HANDLE.equals(propName) && !FRONTPAGE_PAGE.equals(propName)) {
+                // Missing from the form. The front-page weblog is exempt: it is
+                // a content choice, so absent it is left as it is rather than
+                // blocking every other setting. So is the front-page page,
+                // which is derived from that select, never submitted itself.
+                addError(model, "ConfigForm.invalidProperty", propName, request);
+            }
+
+        } else if ("integer".equals(type)) {
+            try {
+                int parsed = Integer.parseInt(incomingProp);
+                if (DiscoverySettings.rangeError(propName, parsed).isPresent()) {
+                    addRangeError(model, propertyDef, DiscoverySettings.min(propName),
+                            DiscoverySettings.max(propName), request);
+                }
+            } catch (NumberFormatException nfe) {
+                addUnparsedError(model, "ConfigForm.invalidIntegerProperty", propertyDef, incomingProp, request);
+            }
+            accepted.put(propName, incomingProp);
+
+        } else if ("float".equals(type)) {
+            try {
+                Float.parseFloat(incomingProp);
+            } catch (NumberFormatException nfe) {
+                addUnparsedError(model, "ConfigForm.invalidFloatProperty", propertyDef, incomingProp, request);
+            }
+            accepted.put(propName, incomingProp);
+
+        } else {
+            accepted.put(propName, incomingProp.trim());
+        }
+    }
+
+    private void addUnparsedError(Model model, String key, PropertyDef propertyDef, String incomingProp,
+            HttpServletRequest request) {
+        String propDesc = bundle.getString(propertyDef.getKey());
+        addError(model, key, new Object[]{propDesc, StringEscapeUtils.escapeHtml4(incomingProp)}, request);
     }
 
     /**
