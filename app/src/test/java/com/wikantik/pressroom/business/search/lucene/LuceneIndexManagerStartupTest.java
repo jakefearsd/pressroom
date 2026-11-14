@@ -157,6 +157,11 @@ class LuceneIndexManagerStartupTest {
         Files.createDirectories(indexDir);
         Path segments = indexDir.resolve("segments_1");
         Files.write(segments, "this is not a lucene commit point".getBytes(StandardCharsets.UTF_8));
+        // A current schema stamp, so startup gets as far as opening the index.
+        // Without it the schema check (added later) rebuilt the directory first
+        // and this test no longer reached the open that fails.
+        Files.writeString(indexDir.resolve(".index-schema"), String.valueOf(LuceneIndexManager.SCHEMA_VERSION),
+                StandardCharsets.UTF_8);
 
         ThreadManager threads = mock(ThreadManager.class);
         LuceneIndexManager manager = managerOver(indexDir, threads);
