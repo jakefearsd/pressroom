@@ -358,6 +358,18 @@ class WeblogRequestMapperTest {
         assertEquals(404, response.getStatus());
     }
 
+    /**
+     * Characterisation test, written before handleRequest was split up and
+     * passing against the old code: the one tags shape that forwards with
+     * data, a tag query without a trailing slash.
+     */
+    @Test
+    void aTagQueryWithoutATrailingSlashForwards() throws Exception {
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        assertTrue(mapper.handleRequest(publicUrl("GET", "/mapperblog/tags/spain+food"), response));
+        assertEquals("/pressroom-ui/rendering/page/mapperblog/tags/spain+food", response.getForwardedUrl());
+    }
+
     // --------------------------------------------------- static-page slugs
 
     /**

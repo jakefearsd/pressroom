@@ -190,15 +190,6 @@ public class WeblogRequestMapper {
      * rendering servlet. Returns {@code true} when the request was handled
      * (forwarded or redirected) and the filter chain must not continue.
      */
-    @SuppressFBWarnings(
-            value = "UNVALIDATED_REDIRECT",
-            justification = "Both Locations stay on a fixed host: https:// plus the weblog's own custom "
-                    + "domain from VirtualHostRegistry, or the context path plus a handle isWeblog() has "
-                    + "just found stored and a locale segment LocaleSegment.isLocale admits only at two or "
-                    + "five characters (on a custom domain the locale comes first). A segment holds no "
-                    + "slash, and a backslash, which a browser would read as one, never arrives: Tomcat "
-                    + "refuses it in a path with a 400. The request path only ever follows that host or a "
-                    + "context-relative /.")
     public boolean handleRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         
@@ -218,40 +209,103 @@ public class WeblogRequestMapper {
         if (normalized == null) {
             return false;
         }
-        String servlet = normalized.path();
-        // kinda silly, but we need to keep track of whether or not the url had
-        // a trailing slash so that we can act accordingly
-        boolean trailingSlash = normalized.trailingSlash();
-        String pathInfo = null;
+        MappedPath mapped = MappedPath.of(normalized, vhostHandle);
+        log.debug("potential weblog handle = {}", mapped.weblogHandle());
 
-        // The first path segment, whatever it turns out to mean. On a custom
-        // domain it is content; otherwise it is the candidate weblog handle.
-        int firstSlash = servlet.indexOf('/');
-        String firstSegment = firstSlash < 0 ? servlet : servlet.substring(0, firstSlash);
-
-        String weblogHandle = null;
-        if (vhostHandle != null) {
-            weblogHandle = vhostHandle;
-            pathInfo = servlet.isEmpty() ? null : servlet;
-            if (servlet.isEmpty()) {
-                // The custom domain's root IS the weblog home and is already the
-                // canonical url. There is no shorter form to redirect to, so
-                // suppress the trailing-slash redirect for this case ONLY --
-                // suppressing it for every vhost request would make the 404
-                // branch below swallow every permalink.
-                trailingSlash = true;
+        if (vhostHandle == null) {
+            SiteHostAnswer answer = siteHostClaim(mapped, request, response);
+            if (answer != SiteHostAnswer.WEBLOG_URL) {
+                return answer == SiteHostAnswer.HANDLED;
             }
-        } else if (!servlet.isEmpty()) {
-            weblogHandle = firstSegment;
-            if (firstSlash != -1) {
-                pathInfo = servlet.substring(firstSlash + 1);
-            }
+        } else if (appRestricted.contains(mapped.firstSegment())) {
+            // See siteHostClaim for why a custom domain reserves only the
+            // application paths.
+            log.debug("SKIPPED {}", mapped.firstSegment());
+            return false;
         }
 
-        log.debug("potential weblog handle = {}", weblogHandle);
+        log.debug("WEBLOG_URL {}", request.getServletPath());
+        return dispatchWeblogUrl(mapped, vhostHandle != null, request, response);
+    }
 
-        // The protected-url list applies in BOTH modes, but which list differs.
-        // On the site host a context is always the SECOND segment
+    /**
+     * Where a request path stands once the host has been asked: whose weblog
+     * it would be and what is left after the handle.
+     *
+     * @param path          the normalized path, no outer slashes
+     * @param firstSegment  its first segment: content on a custom domain,
+     *                      otherwise the candidate weblog handle
+     * @param loneSegment   the path is one segment, non-empty, no trailing slash
+     * @param weblogHandle  the host's weblog, or the first segment; null for
+     *                      the bare site root
+     * @param pathInfo      the weblog-relative rest, null for the weblog root
+     * @param trailingSlash whether the url ended with a slash. Forced true for
+     *                      a custom domain's root, which IS the weblog home and
+     *                      already the canonical url: there is no shorter form
+     *                      to redirect to. Forced for that case ONLY --
+     *                      forcing it for every vhost request would make the
+     *                      404 branch swallow every permalink.
+     */
+    private record MappedPath(String path, String firstSegment, boolean loneSegment,
+                              String weblogHandle, String pathInfo, boolean trailingSlash) {
+
+        static MappedPath of(NormalizedPath normalized, String vhostHandle) {
+            String path = normalized.path();
+            int firstSlash = path.indexOf('/');
+            String firstSegment = firstSlash < 0 ? path : path.substring(0, firstSlash);
+            boolean loneSegment = firstSlash < 0 && !path.isEmpty() && !normalized.trailingSlash();
+            if (vhostHandle != null) {
+                return new MappedPath(path, firstSegment, loneSegment, vhostHandle,
+                        path.isEmpty() ? null : path, normalized.trailingSlash() || path.isEmpty());
+            }
+            String pathInfo = firstSlash < 0 ? null : path.substring(firstSlash + 1);
+            return new MappedPath(path, firstSegment, loneSegment, path.isEmpty() ? null : firstSegment,
+                    pathInfo, normalized.trailingSlash());
+        }
+    }
+
+    /** What the site host made of a request before any weblog dispatch. */
+    private enum SiteHostAnswer {
+        /** Forwarded or redirected: the filter chain must not continue. */
+        HANDLED,
+        /** Not this mapper's: the rest of the filter chain serves or 404s it. */
+        DECLINED,
+        /** A weblog's url on this host, still to be dispatched. */
+        WEBLOG_URL;
+
+        static SiteHostAnswer of(boolean handled) {
+            return handled ? HANDLED : DECLINED;
+        }
+    }
+
+    /**
+     * What the site host decides before a path is taken for a weblog's: the
+     * site's search, the reserved roots, the site space's assets, site pages,
+     * and the permanent redirect of a weblog that has its own domain.
+     *
+     * @return HANDLED or DECLINED when that settles the request, WEBLOG_URL
+     *         when the path is a weblog's on this host
+     */
+    @SuppressFBWarnings(
+            value = "UNVALIDATED_REDIRECT",
+            justification = "The Location is https:// plus the weblog's own custom domain from "
+                    + "VirtualHostRegistry, then the context path plus a handle isWeblog() has just found "
+                    + "stored. A segment holds no slash, and a backslash, which a browser would read as "
+                    + "one, never arrives: Tomcat refuses it in a path with a 400. The request path only "
+                    + "ever follows that host.")
+    private SiteHostAnswer siteHostClaim(MappedPath mapped, HttpServletRequest request,
+            HttpServletResponse response) throws ServletException, IOException {
+
+        // Site-wide search: exactly /search on the site host is the site
+        // space's search, its one address. Asked before the reserved-word
+        // skip, which keeps "search" from ever being a blog handle; anything
+        // after it (/search/x, /search/) and every miss below still declines.
+        if (SITE_SEARCH_PATH.equals(mapped.path()) && !mapped.trailingSlash()
+                && forwardedAsSiteSearch(request, response)) {
+            return SiteHostAnswer.HANDLED;
+        }
+        // The protected-url list applies on both kinds of host, but which list
+        // differs. On the site host a context is always the SECOND segment
         // (/<handle>/page/x), so the full `restricted` set (application paths
         // PLUS weblog request contexts) is tested against the first segment,
         // which is always the candidate handle. On a custom domain the whole
@@ -260,36 +314,29 @@ public class WeblogRequestMapper {
         // APPLICATION paths are reserved: /themes/**, /webjars/**,
         // /pressroom-ui/rendering/**, /newsletter/**, /robots.txt and
         // /sitemap.xml still must not be swallowed, but reserving the weblog
-        // request contexts here would kill /page/<theme>.css (the theme
+        // request contexts there would kill /page/<theme>.css (the theme
         // stylesheet on every single page), /search and /resource/<file> on
-        // every vhost page. Only the isWeblog() half is skippable: a
+        // every vhost page. Only the isWeblog() half is skippable there: a
         // host-resolved handle is a weblog by construction.
-        // Site-wide search: exactly /search on the site host is the site
-        // space's search, its one address. Asked before the reserved-word
-        // skip, which keeps "search" from ever being a blog handle; anything
-        // after it (/search/x, /search/) and every miss below still declines.
-        if (vhostHandle == null && SITE_SEARCH_PATH.equals(servlet) && !trailingSlash
-                && forwardedAsSiteSearch(request, response)) {
-            return true;
+        if (restricted.contains(mapped.firstSegment())) {
+            log.debug("SKIPPED {}", mapped.firstSegment());
+            return SiteHostAnswer.DECLINED;
         }
-        Set<String> reserved = (vhostHandle != null) ? appRestricted : restricted;
-        if (reserved.contains(firstSegment)) {
-            log.debug("SKIPPED {}", firstSegment);
-            return false;
+        String weblogHandle = mapped.weblogHandle();
+        if (Weblog.SITE_SPACE_HANDLE.equals(weblogHandle)) {
+            return SiteHostAnswer.of(
+                    forwardedAsSiteAsset(mapped.pathInfo(), mapped.trailingSlash(), request, response));
         }
-        if (vhostHandle == null && Weblog.SITE_SPACE_HANDLE.equals(weblogHandle)) {
-            return forwardedAsSiteAsset(pathInfo, trailingSlash, request, response);
-        }
-        if (vhostHandle == null && !this.isWeblog(weblogHandle)) {
+        if (!this.isWeblog(weblogHandle)) {
             // Not a blog: on the site host a lone segment may be a site page,
             // /<slug>. Asked only now, after the cheaper checks have failed and
             // a blog has had its claim (a blog handle wins over a site slug),
             // and never on a custom domain, where /<slug> is that blog's Page.
-            if (firstSlash < 0 && !servlet.isEmpty() && !trailingSlash) {
-                return answeredAsSitePage(firstSegment, request, response);
+            if (mapped.loneSegment()) {
+                return SiteHostAnswer.of(answeredAsSitePage(mapped.firstSegment(), request, response));
             }
             log.debug("SKIPPED {}", weblogHandle);
-            return false;
+            return SiteHostAnswer.DECLINED;
         }
 
         // The custom domain is canonical: a weblog that has one is reachable at
@@ -298,51 +345,60 @@ public class WeblogRequestMapper {
         // it STILL needs the context path: this is one Tomcat context reached
         // under many hostnames, so a deployment under a prefix (e.g. /pressroom)
         // has that prefix on the custom domain too. pathInfo was stripped of
-        // it above (line ~139), so it has to be added back here rather than
-        // assumed away the way the container-internal FORWARD below can.
-        // Redirect precisely when the weblog has a hostname and THIS request
-        // did not arrive on it. vhostHandle != null means the host already
-        // resolved the weblog, i.e. we are on the canonical domain already.
+        // it by normalizePath, so it has to be added back here rather than
+        // assumed away the way the container-internal FORWARD can.
         String canonicalHost = vhostHostFor(weblogHandle);
-        if (vhostHandle == null && canonicalHost != null) {
-            StringBuilder target = new StringBuilder("https://").append(canonicalHost)
-                    .append(request.getContextPath());
-            if (pathInfo != null) {
-                target.append('/').append(pathInfo);
-            }
-            if (trailingSlash && (pathInfo == null || !pathInfo.endsWith("/"))) {
-                target.append('/');
-            }
-            if (request.getQueryString() != null) {
-                target.append('?').append(request.getQueryString());
-            }
-            response.setStatus(HttpServletResponse.SC_MOVED_PERMANENTLY);
-            response.setHeader("Location", target.toString());
-            return true;
+        if (canonicalHost == null) {
+            return SiteHostAnswer.WEBLOG_URL;
         }
+        String pathInfo = mapped.pathInfo();
+        StringBuilder target = new StringBuilder("https://").append(canonicalHost)
+                .append(request.getContextPath());
+        if (pathInfo != null) {
+            target.append('/').append(pathInfo);
+        }
+        if (mapped.trailingSlash() && (pathInfo == null || !pathInfo.endsWith("/"))) {
+            target.append('/');
+        }
+        if (request.getQueryString() != null) {
+            target.append('?').append(request.getQueryString());
+        }
+        response.setStatus(HttpServletResponse.SC_MOVED_PERMANENTLY);
+        response.setHeader("Location", target.toString());
+        return SiteHostAnswer.HANDLED;
+    }
 
-        log.debug("WEBLOG_URL {}", request.getServletPath());
-        
-        // parse the rest of the url and build forward url
-        String weblogLocale = null;
-        String weblogRequestContext = null;
-        String weblogRequestData = null;
-        if(pathInfo != null) {
-            WeblogPathInfo parsed = parsePathInfo(pathInfo);
-            weblogLocale = parsed.locale();
-            weblogRequestContext = parsed.context();
-            weblogRequestData = parsed.data();
-        }
-        
+    /**
+     * Dispatch a url resolved to a weblog: the trailing-slash rules (a
+     * redirect for the home page's short form, a 404 for a slash where none
+     * belongs), then the forward to the servlet that renders it.
+     *
+     * @param onCustomDomain the host supplied the handle, so no url built
+     *                       here may carry it
+     */
+    @SuppressFBWarnings(
+            value = "UNVALIDATED_REDIRECT",
+            justification = "The Location is the context path plus a handle isWeblog() has just found "
+                    + "stored (none on a custom domain) and a locale segment LocaleSegment.isLocale admits "
+                    + "only at two or five characters: context-relative, on this host.")
+    private boolean dispatchWeblogUrl(MappedPath mapped, boolean onCustomDomain,
+            HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        String weblogHandle = mapped.weblogHandle();
+        String pathInfo = mapped.pathInfo();
+        WeblogPathInfo parsed = pathInfo == null
+                ? new WeblogPathInfo(null, null, null) : parsePathInfo(pathInfo);
+
         // special handling for trailing slash issue
         // we need this because by http standards the urls /foo and /foo/ are
         // supposed to be considered different, so we must enforce that
-        if(weblogRequestContext == null && !trailingSlash) {
+        if (parsed.context() == null && !mapped.trailingSlash()) {
             // this means someone referred to a weblog index page with the
             // shortest form of url /<weblog> or /<weblog>/<locale> and we need
             // to do a redirect to /<weblog>/ or /<weblog>/<locale>/
             //
-            // Two things here are easy to get wrong, and both were:
+            // Three things here are easy to get wrong, and all were:
             //
             // 1. The context path has to be on the front. Unlike the FORWARD
             //    below -- which is dispatched inside the container and is
@@ -359,54 +415,38 @@ public class WeblogRequestMapper {
             //    the weblog's default-locale home instead of the German one.
             // 3. In vhost mode there is no handle segment at all -- the host
             //    already supplies it (see the "Host-first resolution" comment
-            //    above) -- so appending weblogHandle here would leak the
-            //    handle back into a user-visible url on exactly the host this
-            //    feature exists to remove it from, and the resulting
+            //    in handleRequest) -- so appending weblogHandle here would leak
+            //    the handle back into a user-visible url on exactly the host
+            //    this feature exists to remove it from, and the resulting
             //    /<contextPath>/<handle>/<locale>/ url is not one this mapper
-            //    (or WeblogRequestMapper in vhost mode) can ever resolve: it
-            //    404s.
+            //    can ever resolve in vhost mode: it 404s.
             StringBuilder redirectUrl = new StringBuilder(request.getContextPath()).append('/');
-            if (vhostHandle == null) {
+            if (!onCustomDomain) {
                 redirectUrl.append(weblogHandle).append('/');
             }
-            if(weblogLocale != null) {
-                redirectUrl.append(weblogLocale).append('/');
+            if (parsed.locale() != null) {
+                redirectUrl.append(parsed.locale()).append('/');
             }
-            if(request.getQueryString() != null) {
+            if (request.getQueryString() != null) {
                 redirectUrl.append('?').append(request.getQueryString());
             }
 
             response.sendRedirect(redirectUrl.toString());
             return true;
-            
-        } else if(weblogRequestContext != null &&
-                "tags".equals(weblogRequestContext)) {
-            // tags section can have an index page at /<weblog>/tags/ and
-            // a tags query at /<weblog>/tags/tag1+tag2, buth that's it
-            if((weblogRequestData == null && !trailingSlash) ||
-                    (weblogRequestData != null && trailingSlash)) {
-                // A decided 404 -- one of the consultation seams where a
-                // redirect rule may answer instead (see RedirectResponder).
-                if (answeredByRedirect(weblogHandle, pathInfo, request, response)) {
-                    return true;
-                }
+        }
+
+        if (slashMisplaced(parsed, mapped.trailingSlash())) {
+            // A decided 404 -- one of the consultation seams where a
+            // redirect rule may answer instead (see RedirectResponder).
+            if (!answeredByRedirect(weblogHandle, pathInfo, request, response)) {
                 response.sendError(HttpServletResponse.SC_NOT_FOUND);
-                return true;
             }
-        } else if(weblogRequestContext != null && trailingSlash) {
-            // this means that someone has accessed a weblog url and included
-            // a trailing slash, like /<weblog>/entry/<anchor>/ which is not
-            // supported, so we need to offer up a 404 Not Found
-            if (answeredByRedirect(weblogHandle, pathInfo, request, response)) {
-                return true;
-            }
-            response.sendError(HttpServletResponse.SC_NOT_FOUND);
             return true;
         }
 
         // calculate forward url
-        String forwardUrl = calculateForwardUrl(request, weblogHandle, weblogLocale,
-                weblogRequestContext, weblogRequestData);
+        String forwardUrl = calculateForwardUrl(request, weblogHandle, parsed.locale(),
+                parsed.context(), parsed.data());
 
         // if we don't have a forward url then the request was invalid somehow.
         // This decline is the seam that serves the site-migration case
@@ -418,20 +458,35 @@ public class WeblogRequestMapper {
         // one seam where "would 404" holds by argument rather than by
         // construction, which is why RedirectServingTest pins the no-rule
         // decline as well as the rule-answered 301.
-        if(forwardUrl == null) {
+        if (forwardUrl == null) {
             return answeredByRedirect(weblogHandle, pathInfo, request, response);
         }
-        
+
         // dispatch to forward url
         log.debug("forwarding to {}", forwardUrl);
         RequestDispatcher dispatch = request.getRequestDispatcher(forwardUrl);
         dispatch.forward(request, response);
-        
+
         // we dealt with this request ourselves, so return "true"
         return true;
     }
 
-    
+    /**
+     * Whether a url that names a context has its trailing slash wrong, which
+     * is a 404: http treats /foo and /foo/ as different resources, and a
+     * weblog url such as /<weblog>/entry/<anchor>/ is not one this site
+     * serves. The tags section is the one context with both forms: an index
+     * page at /<weblog>/tags/ (slash required) and a tag query at
+     * /<weblog>/tags/tag1+tag2 (no slash).
+     */
+    private static boolean slashMisplaced(WeblogPathInfo parsed, boolean trailingSlash) {
+        if ("tags".equals(parsed.context())) {
+            boolean index = parsed.data() == null;
+            return index != trailingSlash;
+        }
+        return parsed.context() != null && trailingSlash;
+    }
+
     /**
      * The servlet forward url for one parsed weblog request, or null when the
      * request is not one this mapper serves.
