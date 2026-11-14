@@ -37,8 +37,4 @@ public class FilePathException extends WebloggerException {
         super(s, t);
     }
     
-    public FilePathException(Throwable t) {
-        super(t);
-    }
-    
 }

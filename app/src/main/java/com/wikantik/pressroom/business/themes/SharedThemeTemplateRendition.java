@@ -19,8 +19,6 @@
 package com.wikantik.pressroom.business.themes;
 
 import com.wikantik.pressroom.pojos.TemplateRendition;
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import java.io.Serializable;
 import java.util.Date;
@@ -36,10 +34,6 @@ public class SharedThemeTemplateRendition implements Serializable, TemplateRendi
 	private RenditionType type;
 	private TemplateLanguage templateLanguage;
 	private Date lastModified;
-
-	public SharedThemeTemplateRendition(RenditionType type) {
-		this.type = type;
-	}
 
 	public SharedThemeTemplateRendition() {
 	}
@@ -92,25 +86,6 @@ public class SharedThemeTemplateRendition implements Serializable, TemplateRendi
     @Override
 	public String toString() {
         return "{" + this.template + ", [ " + this.template +"] , " + this.type + "}";
-	}
-
-    @Override
-	public boolean equals(Object other) {
-		if (other == this) {
-            return true;
-        }
-		if (!(other instanceof SharedThemeTemplateRendition)) {
-            return false;
-        }
-		SharedThemeTemplateRendition o = (SharedThemeTemplateRendition) other;
-		return new EqualsBuilder()
-				.append(template, o.getTemplate()).isEquals();
-	}
-
-    @Override
-	public int hashCode() {
-		return new HashCodeBuilder()
-				.append(getTemplate()).toHashCode();
 	}
 
 	// @Override

@@ -37,14 +37,6 @@ public abstract class PressroomException extends Exception {
 
 
     /**
-     * Construct emtpy exception object.
-     */
-    protected PressroomException() {
-        super();
-    }
-
-
-    /**
      * Construct PressroomException with message string.
      * @param s Error message string.
      */
@@ -70,24 +62,4 @@ public abstract class PressroomException extends Exception {
     protected PressroomException(Throwable t) {
         super(t);
     }
-
-
-    /**
-     * Get root cause message.
-     * @return Root cause message.
-     */
-    public String getRootCauseMessage() {
-        String rcmessage = null;
-        if (getCause()!=null) {
-            if (getCause().getCause()!=null) {
-                rcmessage = getCause().getCause().getMessage();
-            }
-            rcmessage = (rcmessage == null) ? getCause().getMessage() : rcmessage;
-            rcmessage = (rcmessage == null) ? super.getMessage() : rcmessage;
-            rcmessage = (rcmessage == null) ? "NONE" : rcmessage;
-        }
-        return rcmessage;
-    }
-
-
 }

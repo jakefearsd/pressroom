@@ -32,16 +32,8 @@ public class ThemeInitializationException extends WebloggerException {
         super(s, t);
     }
     
-    public ThemeInitializationException(Throwable t) {
-        super(t);
-    }
-    
     public ThemeInitializationException(String s) {
         super(s);
-    }
-    
-    public ThemeInitializationException() {
-        super();
     }
     
 }

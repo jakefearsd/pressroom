@@ -32,12 +32,4 @@ public class FileNotFoundException extends WebloggerException {
         super(s);
     }
     
-    public FileNotFoundException(String s, Throwable t) {
-        super(s, t);
-    }
-    
-    public FileNotFoundException(Throwable t) {
-        super(t);
-    }
-    
 }

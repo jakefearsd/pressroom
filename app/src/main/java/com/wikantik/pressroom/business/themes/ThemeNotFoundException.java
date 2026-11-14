@@ -28,20 +28,8 @@ public class ThemeNotFoundException extends WebloggerException {
 
     private static final long serialVersionUID = 1L;
 
-    public ThemeNotFoundException(String s,Throwable t) {
-        super(s, t);
-    }
-    
-    public ThemeNotFoundException(Throwable t) {
-        super(t);
-    }
-    
     public ThemeNotFoundException(String s) {
         super(s);
-    }
-    
-    public ThemeNotFoundException() {
-        super();
     }
     
 }

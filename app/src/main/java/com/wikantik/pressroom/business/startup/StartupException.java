@@ -43,16 +43,6 @@ public class StartupException extends WebloggerException {
         this.startupLog = Collections.emptyList();
     }
     
-    public StartupException(String msg, List<String> log) {
-        super(msg);
-        
-        if(log != null) {
-            this.startupLog = log;
-        } else {
-            this.startupLog = Collections.emptyList();
-        }
-    }
-    
     public StartupException(String msg, Throwable t, List<String> log) {
         super(msg, t);
         

@@ -25,11 +25,6 @@ public class WebloggerException extends PressroomException {
 
     private static final long serialVersionUID = 1L;
 
-    public WebloggerException() {
-        super();
-    }
-    
-    
     /**
      * Construct WebloggerException with message string.
      *

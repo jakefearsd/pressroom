@@ -32,16 +32,8 @@ public class ThemeParsingException extends WebloggerException {
         super(s, t);
     }
     
-    public ThemeParsingException(Throwable t) {
-        super(t);
-    }
-    
     public ThemeParsingException(String s) {
         super(s);
-    }
-    
-    public ThemeParsingException() {
-        super();
     }
     
 }

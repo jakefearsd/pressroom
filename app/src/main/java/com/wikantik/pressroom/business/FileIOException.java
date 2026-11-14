@@ -37,8 +37,4 @@ public class FileIOException extends WebloggerException {
         super(s, t);
     }
     
-    public FileIOException(Throwable t) {
-        super(t);
-    }
-    
 }
