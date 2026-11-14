@@ -279,4 +279,71 @@ class UserWeblogsControllerTest {
         assertEquals(List.of("memberPermissions.saveError"), ControllerTestFixture.flashErrors(redirect));
         assertEquals(0, weblogger.flushCount());
     }
+
+    /** Change and remove refuse a blank, unknown or unreadable account the way grant does. */
+    @Test
+    void changeAndRemoveRefuseAnAccountThatCannotBeFound() throws Exception {
+        when(weblogger.userManager().getUserByUserName("broken", null)).thenThrow(new WebloggerException("db down"));
+
+        for (String name : java.util.Arrays.asList(null, "", "nobody", "broken")) {
+            RedirectAttributesModelMap changed = new RedirectAttributesModelMap();
+            assertEquals("redirect:/pressroom-ui/admin/userAdmin.rol",
+                    controller.change(asAdmin(), changed, name, "travel", "post"), "change " + name);
+            assertEquals(List.of("userAdmin.error.userNotFound"), ControllerTestFixture.flashErrors(changed));
+
+            RedirectAttributesModelMap removed = new RedirectAttributesModelMap();
+            assertEquals("redirect:/pressroom-ui/admin/userAdmin.rol",
+                    controller.remove(asAdmin(), removed, name, "travel"), "remove " + name);
+            assertEquals(List.of("userAdmin.error.userNotFound"), ControllerTestFixture.flashErrors(removed));
+        }
+        verify(weblogger.userManager(), never()).revokeWeblogPermission(any(), any(), any());
+    }
+
+    /** A failed change or removal is reported and nothing is flushed or logged. */
+    @Test
+    void aStoreFailureWhileChangingOrRemovingIsReported() throws Exception {
+        when(weblogger.userManager().getWeblogPermission(travel, person)).thenReturn(member(person, "post"));
+        doThrow(new WebloggerException("db down"))
+                .when(weblogger.userManager()).revokeWeblogPermission(travel, person, WeblogPermission.ALL_ACTIONS);
+
+        try (AdminLogCapture log = AdminLogCapture.start()) {
+            controller.change(asAdmin(), redirect, "jake", "travel", "admin");
+            assertEquals(List.of("memberPermissions.saveError"), ControllerTestFixture.flashErrors(redirect));
+
+            RedirectAttributesModelMap removed = new RedirectAttributesModelMap();
+            controller.remove(asAdmin(), removed, "jake", "travel");
+            assertEquals(List.of("memberPermissions.saveError"), ControllerTestFixture.flashErrors(removed));
+
+            assertEquals(List.of(), log.lines());
+        }
+        assertEquals(0, weblogger.flushCount());
+        verify(weblogger.userManager(), never()).grantWeblogPermission(any(), any(), any());
+    }
+
+    /** A change or removal naming no weblog, or one that does not exist, says so and touches nothing. */
+    @Test
+    void changingOrRemovingOnAnUnknownWeblogSaysSo() throws Exception {
+        for (String handle : java.util.Arrays.asList(null, " ", "nosuchblog")) {
+            RedirectAttributesModelMap changed = new RedirectAttributesModelMap();
+            controller.change(asAdmin(), changed, "jake", handle, "post");
+            assertEquals(List.of("userWeblogs.error.noSuchWeblog"), ControllerTestFixture.flashErrors(changed));
+
+            RedirectAttributesModelMap removed = new RedirectAttributesModelMap();
+            controller.remove(asAdmin(), removed, "jake", handle);
+            assertEquals(List.of("userWeblogs.error.noSuchWeblog"), ControllerTestFixture.flashErrors(removed));
+        }
+        verify(weblogger.userManager(), never()).revokeWeblogPermission(any(), any(), any());
+    }
+
+    /** A change TO admin never trips the last-admin rule, which guards only moves away from admin. */
+    @Test
+    void settingAnAdminToAdminDoesNotConsultTheLastAdminRule() throws Exception {
+        when(weblogger.userManager().getWeblogPermission(travel, person)).thenReturn(member(person, "admin"));
+
+        controller.change(asAdmin(), redirect, "jake", "travel", "admin");
+
+        assertEquals(List.of(), ControllerTestFixture.flashErrors(redirect));
+        verify(weblogger.userManager()).grantWeblogPermission(travel, person, List.of("admin"));
+        verify(weblogger.userManager(), never()).getWeblogPermissions(travel);
+    }
 }
