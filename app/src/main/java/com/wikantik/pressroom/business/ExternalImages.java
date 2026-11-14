@@ -250,65 +250,87 @@ public final class ExternalImages {
         if (range.length != 2) {
             return;
         }
-        Matcher open = OPEN.matcher(text).region(range[0], range[1]);
+        int limit = range[1];
+        Matcher open = OPEN.matcher(text).region(range[0], limit);
         while (open.find()) {
-            String src = null;
-            int srcStart = -1;
-            int srcEnd = -1;
-            boolean srcSeen = false;
-            String alt = null;
-            boolean srcsetExternal = false;
-            Matcher attrName = NAME.matcher(text);
-            Matcher attrValue = VALUE.matcher(text);
-            int pos = open.end();
-            while (true) {
-                attrName.region(pos, range[1]);
-                if (!attrName.lookingAt()) {
-                    break;
-                }
-                pos = attrName.end();
-                String name = attrName.group(1);
-                String rawValue = null;
-                int valueGroup = 0;
-                attrValue.region(pos, range[1]);
-                if (attrValue.lookingAt()) {
-                    pos = attrValue.end();
-                    valueGroup = attrValue.start(1) >= 0 ? 1 : attrValue.start(2) >= 0 ? 2 : 3;
-                    rawValue = attrValue.group(valueGroup);
-                }
-                if (SRC.matcher(name).matches()) {
-                    // A browser uses the first src and ignores the rest.
-                    if (!srcSeen) {
-                        srcSeen = true;
-                        if (rawValue != null) {
-                            src = StringEscapeUtils.unescapeHtml4(rawValue);
-                            srcStart = attrValue.start(valueGroup);
-                            srcEnd = attrValue.end(valueGroup);
-                        }
-                    }
-                } else if (SRCSET.matcher(name).matches()) {
-                    srcsetExternal |= rawValue != null && srcsetIsExternal(
-                            StringEscapeUtils.unescapeHtml4(rawValue), ownHosts);
-                } else if (ALT.matcher(name).matches() && rawValue != null) {
-                    alt = StringEscapeUtils.unescapeHtml4(rawValue);
-                }
-            }
-            int tagEnd = pos;
-            while (tagEnd < range[1] && text.charAt(tagEnd) != '>') {
-                tagEnd++;
-            }
-            if (tagEnd < range[1]) {
-                tagEnd++;
-            }
-            if (srcsetExternal) {
+            ImgAttributes img = new ImgAttributes(ownHosts);
+            int tagEnd = closingOf(text, img.read(text, open.end(), limit), limit);
+            if (img.srcsetExternal) {
                 refusals.add("srcset is not imported; use one src, or [image id=...] for a "
                         + "responsive image: " + abbreviate(text.substring(open.start(), tagEnd)));
             }
-            if (open.group(1) != null && isExternal(src, ownHosts)) {
-                refs.add(new Ref(Kind.HTML_SRC, srcStart, srcEnd, src, alt, null, null, false));
+            if (open.group(1) != null && isExternal(img.src, ownHosts)) {
+                refs.add(new Ref(Kind.HTML_SRC, img.srcStart, img.srcEnd, img.src, img.alt, null, null, false));
             }
             // Resume after this tag, so a tag-looking run inside an attribute value is not a tag.
-            open.region(tagEnd, range[1]);
+            open.region(tagEnd, limit);
+        }
+    }
+
+    /** Just past the {@code >} at or after {@code pos}, or {@code limit} when the tag is unclosed. */
+    private static int closingOf(String text, int pos, int limit) {
+        int tagEnd = pos;
+        while (tagEnd < limit && text.charAt(tagEnd) != '>') {
+            tagEnd++;
+        }
+        return tagEnd < limit ? tagEnd + 1 : tagEnd;
+    }
+
+    /** What one HTML image tag's attributes say about importing it. */
+    private static final class ImgAttributes {
+        private final Set<String> ownHosts;
+        private String src;
+        private int srcStart = -1;
+        private int srcEnd = -1;
+        private boolean srcSeen;
+        private String alt;
+        private boolean srcsetExternal;
+
+        ImgAttributes(Set<String> ownHosts) {
+            this.ownHosts = ownHosts;
+        }
+
+        /**
+         * Reads the attributes from {@code from} up to the first thing that is
+         * not one, and returns where they stop.
+         */
+        int read(String text, int from, int limit) {
+            Matcher attrName = NAME.matcher(text);
+            Matcher attrValue = VALUE.matcher(text);
+            int pos = from;
+            attrName.region(pos, limit);
+            while (attrName.lookingAt()) {
+                pos = attrName.end();
+                attrValue.region(pos, limit);
+                if (attrValue.lookingAt()) {
+                    pos = attrValue.end();
+                    int group = attrValue.start(1) >= 0 ? 1 : attrValue.start(2) >= 0 ? 2 : 3;
+                    accept(attrName.group(1), attrValue.group(group), attrValue.start(group), attrValue.end(group));
+                } else {
+                    accept(attrName.group(1), null, -1, -1);
+                }
+                attrName.region(pos, limit);
+            }
+            return pos;
+        }
+
+        private void accept(String name, String rawValue, int valueStart, int valueEnd) {
+            if (SRC.matcher(name).matches()) {
+                // A browser uses the first src and ignores the rest.
+                if (!srcSeen) {
+                    srcSeen = true;
+                    if (rawValue != null) {
+                        src = StringEscapeUtils.unescapeHtml4(rawValue);
+                        srcStart = valueStart;
+                        srcEnd = valueEnd;
+                    }
+                }
+            } else if (SRCSET.matcher(name).matches()) {
+                srcsetExternal |= rawValue != null && srcsetIsExternal(
+                        StringEscapeUtils.unescapeHtml4(rawValue), ownHosts);
+            } else if (ALT.matcher(name).matches() && rawValue != null) {
+                alt = StringEscapeUtils.unescapeHtml4(rawValue);
+            }
         }
     }
 
