@@ -33,9 +33,9 @@ import java.util.Map;
 public class ConfigDef {
     
     private List<DisplayGroup> displayGroups;
-    private String name = null;
+    private String name;
 
-    Map<String, PropertyDef> propertyDefs = null;
+    Map<String, PropertyDef> propertyDefs;
     
     
     public ConfigDef() {

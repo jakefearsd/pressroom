@@ -629,7 +629,7 @@ public class JPAWeblogManagerImpl implements WeblogManager {
         List<Object> params = new ArrayList<>();
         int size = 0;
         String queryString;
-        StringBuilder whereClause = new StringBuilder();
+        StringBuilder whereClause = new StringBuilder(128);
 
         queryString = "SELECT w FROM Weblog w";
         // the site space is hidden from every listing

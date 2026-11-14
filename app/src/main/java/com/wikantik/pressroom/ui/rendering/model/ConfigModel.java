@@ -46,7 +46,7 @@ public class ConfigModel implements Model {
      * 10). Only the build-info accessors read it; every site.* accessor goes
      * through {@code WebloggerRuntimeConfig}.
      */
-    private Weblogger weblogger = null;
+    private Weblogger weblogger;
 
     /** Init model: needs the facade and nothing else -- no request, no url strategy. */
     @Override

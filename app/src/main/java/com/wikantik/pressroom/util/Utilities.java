@@ -4,12 +4,11 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.nio.file.Files;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -183,7 +182,7 @@ public final class Utilities {
             return html;
         }
         Matcher m = mLinkPattern.matcher(html);
-        StringBuilder buf = new StringBuilder();
+        StringBuilder buf = new StringBuilder(64);
         while (m.find()) {
             int start = m.start();
             int end = m.end();
@@ -294,7 +293,7 @@ public final class Utilities {
     /** Convert string to integer array. */
     public static int[] stringToIntArray(String instr, String delim) {
         String[] str = StringUtils.split(instr, delim);
-        int intArray[] = new int[str.length];
+        int[] intArray = new int[str.length];
         int i = 0;
         for (String string : str) {
             int nInt = Integer.parseInt(string);
@@ -309,7 +308,7 @@ public final class Utilities {
         StringBuilder bldr = new StringBuilder();
         for (int s : intArray) {
             if (bldr.length() > 0) {
-                bldr.append(",").append(Integer.toString(s));
+                bldr.append(',').append(Integer.toString(s));
             } else {
                 bldr.append(Integer.toString(s));
             }
@@ -328,14 +327,14 @@ public final class Utilities {
         OutputStream out;
 
         try {
-            in = new FileInputStream(from);
+            in = Files.newInputStream(from.toPath());
         } catch (IOException ex) {
             throw new IOException("Utilities.copyFile: opening input stream '"
                     + from.getPath() + "', " + ex.getMessage(), ex);
         }
 
         try {
-            out = new FileOutputStream(to);
+            out = Files.newOutputStream(to.toPath());
         } catch (Exception ex) {
             try {
                 in.close();
@@ -359,8 +358,8 @@ public final class Utilities {
         BufferedReader in = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
         String line;
         while ((line = in.readLine()) != null) {
-            sb.append(line);
-            sb.append(System.getProperty("line.separator"));
+            sb.append(line)
+                    .append(System.getProperty("line.separator"));
         }
         return sb.toString();
     }
@@ -432,7 +431,7 @@ public final class Utilities {
             throws IOException {
         BufferedInputStream in = new BufferedInputStream(input);
         BufferedOutputStream out = new BufferedOutputStream(output);
-        byte buffer[] = new byte[PressroomConstants.EIGHT_KB_IN_BYTES];
+        byte[] buffer = new byte[PressroomConstants.EIGHT_KB_IN_BYTES];
         for (int count = in.read(buffer, 0, PressroomConstants.EIGHT_KB_IN_BYTES); count != -1;
                 count = in.read(buffer, 0, PressroomConstants.EIGHT_KB_IN_BYTES)) {
             out.write(buffer, 0, count);
@@ -675,12 +674,12 @@ public final class Utilities {
             byte2 = bByte2 ? (aValue[i + 1] & 0xFF) : 0;
             byte3 = bByte3 ? (aValue[i + 2] & 0xFF) : 0;
 
-            tt.append(strBase64Chars.charAt(byte1 / 4));
-            tt.append(strBase64Chars
-                    .charAt((byte2 / 16) + ((byte1 & 0x3) * 16)));
-            tt.append(bByte2 ? strBase64Chars.charAt((byte3 / 64)
-                    + ((byte2 & 0xF) * 4)) : '=');
-            tt.append(bByte3 ? strBase64Chars.charAt(byte3 & 0x3F) : '=');
+            tt.append(strBase64Chars.charAt(byte1 / 4))
+                    .append(strBase64Chars
+                    .charAt((byte2 / 16) + ((byte1 & 0x3) * 16)))
+                    .append(bByte2 ? strBase64Chars.charAt((byte3 / 64)
+                    + ((byte2 & 0xF) * 4)) : '=')
+                    .append(bByte3 ? strBase64Chars.charAt(byte3 & 0x3F) : '=');
         }
 
         return tt.toString();

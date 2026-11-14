@@ -53,8 +53,8 @@ public class SearchResultsModel extends PageModel {
 	public static final int RESULTS_PER_PAGE = 10;
 
 	// the original search request
-	WeblogSearchRequest searchRequest = null;
-	private URLStrategy urlStrategy = null;
+	WeblogSearchRequest searchRequest;
+	private URLStrategy urlStrategy;
 
 	/** How many of this blog's own matches the blog view shows. */
 	static final int OWN_IN_BLOG_VIEW = 8;
@@ -62,22 +62,22 @@ public class SearchResultsModel extends PageModel {
 	static final int OTHERS_IN_BLOG_VIEW = 5;
 
 	// the pager used by the 3.0+ rendering system
-	private SearchResultsPager pager = null;
+	private SearchResultsPager pager;
 
-	private boolean siteScope = false;
-	private boolean blogOnly = false;
+	private boolean siteScope;
+	private boolean blogOnly;
 	private List<SearchHit> ownHits = List.of();
-	private int ownTotal = 0;
+	private int ownTotal;
 	private List<SearchHit> otherHits = List.of();
 	// each section says for itself whether it fell back to any of the words
-	private boolean ownFallback = false;
-	private boolean otherFallback = false;
+	private boolean ownFallback;
+	private boolean otherFallback;
 	// the own (or only) list's hit count is a floor: more matched than were considered
-	private boolean capped = false;
+	private boolean capped;
 	private Map<String, Integer> perBlog = Map.of();
 	// site view: "more from this blog" for each blog's first hit on this page
 	private Map<SearchHit, Integer> moreByHit = Map.of();
-	private int offset = 0;
+	private int offset;
 	private Set<String> categories = new TreeSet<>();
 	private String errorMessage = "";
 

@@ -39,7 +39,7 @@ public class GenericThrottle {
     
     // threshold and interval to determine who is abusive
     private int threshold = 1;
-    private int interval = 0;
+    private int interval;
     
     // a cache to maintain the data
     Cache clientHistoryCache;
@@ -166,7 +166,7 @@ public class GenericThrottle {
     // just something to keep a few properties in
     private final class ClientInfo {
         
-        public int hits = 0;
+        public int hits;
         public java.util.Date start = new java.util.Date();
         
     }

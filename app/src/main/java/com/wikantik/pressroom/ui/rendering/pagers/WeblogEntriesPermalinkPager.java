@@ -41,12 +41,12 @@ public class WeblogEntriesPermalinkPager extends AbstractWeblogEntriesPager {
     
     private static final Logger log = LoggerFactory.getLogger(WeblogEntriesPermalinkPager.class);
     
-    WeblogEntry currEntry = null;
-    WeblogEntry nextEntry = null;
-    WeblogEntry prevEntry = null;
+    WeblogEntry currEntry;
+    WeblogEntry nextEntry;
+    WeblogEntry prevEntry;
     
     // collection for the pager
-    Map<Date, List<WeblogEntryWrapper>> entries = null;
+    Map<Date, List<WeblogEntryWrapper>> entries;
     
     
     public WeblogEntriesPermalinkPager(

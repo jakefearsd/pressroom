@@ -40,10 +40,10 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
  */
 public class PropertyDef {
     
-    private String name = null;
-    private String key = null;
-    private String type = null;
-    private String defaultValue = null;
+    private String name;
+    private String key;
+    private String type;
+    private String defaultValue;
     private int rows = 5;
     private int cols = 25;
     
@@ -60,6 +60,10 @@ public class PropertyDef {
         return name;
     }
 
+    @SuppressFBWarnings(
+            value = "UWF_FIELD_NOT_INITIALIZED_IN_CONSTRUCTOR",
+            justification = "name is a required element of runtimeConfigDefs.xml; the digester sets it "
+                    + "through setName before any definition is read.")
     public String getNameWithUnderbars() {
         return name.replace(".", "_");
     }

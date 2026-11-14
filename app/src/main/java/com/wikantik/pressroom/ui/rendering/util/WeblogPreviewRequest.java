@@ -38,13 +38,13 @@ public class WeblogPreviewRequest extends WeblogPageRequest {
     private static final String PREVIEW_SERVLET = "/pressroom-ui/authoring/preview";
     
     // lightweight attributes
-    private String themeName = null;
-    private String previewEntry = null;
+    private String themeName;
+    private String previewEntry;
     private String type = "standard";
     
     // heavyweight attributes
-    private Theme theme = null;
-    private WeblogEntry weblogEntry = null;
+    private Theme theme;
+    private WeblogEntry weblogEntry;
     
     public WeblogPreviewRequest(Weblogger weblogger, HttpServletRequest request)
             throws InvalidRequestException {

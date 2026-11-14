@@ -31,11 +31,11 @@ public class TaskLock implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private String id = EntityIds.newId();
-    private String name = null;
-    private Date timeAcquired = null;
-    private int timeLeased = 0;
-    private Date lastRun = null;
-    private String clientId = null;
+    private String name;
+    private Date timeAcquired;
+    private int timeLeased;
+    private Date lastRun;
+    private String clientId;
     
     
     public TaskLock() {}
@@ -87,12 +87,12 @@ public class TaskLock implements Serializable {
     @Override
     public String toString() {
         StringBuilder buf = new StringBuilder();
-        buf.append("{");
-        buf.append(getId());
-        buf.append(", ").append(getName());
-        buf.append(", ").append(getTimeAcquired());
-        buf.append(", ").append(getTimeLeased());
-        buf.append("}");
+        buf.append('{')
+                .append(getId())
+                .append(", ").append(getName())
+                .append(", ").append(getTimeAcquired())
+                .append(", ").append(getTimeLeased())
+                .append('}');
         return buf.toString();
     }
 

@@ -27,8 +27,8 @@ package com.wikantik.pressroom.ui.controllers.util;
  */
 public class KeyValueObject {
 
-    private Object key = null;
-    private Object value = null;
+    private Object key;
+    private Object value;
 
 
     public KeyValueObject() {}

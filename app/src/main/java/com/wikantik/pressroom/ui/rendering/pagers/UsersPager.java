@@ -37,7 +37,7 @@ public class UsersPager extends AbstractPager<UserWrapper> {
     /** The business tier this pager queries; handed in by the model that built it (plan Task 11). */
     private final Weblogger weblogger;
 
-    private String letter = null;
+    private String letter;
     
     // collection for the pager
     

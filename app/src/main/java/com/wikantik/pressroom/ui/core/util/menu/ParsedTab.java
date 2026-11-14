@@ -27,11 +27,11 @@ import java.util.List;
  */
 public class ParsedTab implements MenuGated {
     
-    private String name = null;
-    private List<String> weblogPermissionActions = null;
-    private List<String> globalPermissionActions = null;
-    private String enabledProperty = null;
-    private String disabledProperty = null;
+    private String name;
+    private List<String> weblogPermissionActions;
+    private List<String> globalPermissionActions;
+    private String enabledProperty;
+    private String disabledProperty;
     
     private List<ParsedTabItem> tabItems = new ArrayList<>();
     

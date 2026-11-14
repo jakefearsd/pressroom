@@ -162,8 +162,8 @@ public final class TextDiff {
             oldBefore[k + 1] = oldBefore[k] + (kind == Kind.ADDED ? 0 : 1);
             newBefore[k + 1] = newBefore[k] + (kind == Kind.REMOVED ? 0 : 1);
         }
-        StringBuilder out = new StringBuilder();
-        out.append("--- ").append(fromLabel).append('\n').append("+++ ").append(toLabel).append('\n');
+        StringBuilder out = new StringBuilder(64);
+        out.append("--- ").append(fromLabel).append("\n+++ ").append(toLabel).append('\n');
         int k = 0;
         while (k < n) {
             if (lines.get(k).kind() == Kind.SAME) {

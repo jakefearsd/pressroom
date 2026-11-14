@@ -19,8 +19,8 @@
 package com.wikantik.pressroom.config;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -178,7 +178,7 @@ public final class WebloggerConfig {
 
             // make sure the file exists, then try and load it
             if(customConfigFile.exists()) {
-                try(InputStream is = new FileInputStream(customConfigFile)) {
+                try(InputStream is = Files.newInputStream(customConfigFile.toPath())) {
                     config.load(is);
                 }
                 note(false, "Loaded the custom properties from " + customConfigFile.getAbsolutePath());

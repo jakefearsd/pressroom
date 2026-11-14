@@ -26,19 +26,19 @@ import com.wikantik.pressroom.pojos.User;
  */
 public class ProfileBean {
 
-    private String id = null;
-    private String userName = null;
-    private String password = null;
-    private String screenName = null;
-    private String fullName = null;
-    private String emailAddress = null;
-    private String locale = null;
-    private String timeZone = null;
+    private String id;
+    private String userName;
+    private String password;
+    private String screenName;
+    private String fullName;
+    private String emailAddress;
+    private String locale;
+    private String timeZone;
 
-    private String passwordText = null;
-    private String passwordConfirm = null;
+    private String passwordText;
+    private String passwordConfirm;
     /** Asked only when the password changes; never filled from the stored user. */
-    private String currentPassword = null;
+    private String currentPassword;
 
 
     // CPD-OFF -- A pojo and its form bean necessarily name the same fields, and

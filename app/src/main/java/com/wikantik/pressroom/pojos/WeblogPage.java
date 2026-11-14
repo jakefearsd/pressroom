@@ -47,7 +47,7 @@ public class WeblogPage implements ShortcodeContext, Serializable {
     private String content;
     private PubStatus status = PubStatus.DRAFT;
     private Boolean showInNav = Boolean.TRUE;
-    private int navOrder = 0;
+    private int navOrder;
     private Timestamp created;
     private Timestamp updated;
     private String metaTitle;

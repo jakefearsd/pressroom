@@ -39,7 +39,7 @@ public class WeblogsPager extends AbstractPager<WeblogWrapper> {
     /** The business tier this pager queries; handed in by the model that built it (plan Task 11). */
     private final Weblogger weblogger;
 
-    private String letter = null;
+    private String letter;
     private int sinceDays;
     
     // collection for the pager

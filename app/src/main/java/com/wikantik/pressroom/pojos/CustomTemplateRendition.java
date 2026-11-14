@@ -30,11 +30,11 @@ public class CustomTemplateRendition implements Serializable, TemplateRendition 
 
 	private static final long serialVersionUID = -1497618963802805151L;
 	private String id = EntityIds.newId();
-    private WeblogTemplate weblogTemplate = null;
+    private WeblogTemplate weblogTemplate;
 	// template contents
-	private String template = null;
-	private RenditionType type = null;
-	private TemplateLanguage templateLanguage = null;
+	private String template;
+	private RenditionType type;
+	private TemplateLanguage templateLanguage;
 
 	public CustomTemplateRendition(WeblogTemplate template, RenditionType type) {
 		this.weblogTemplate = template;

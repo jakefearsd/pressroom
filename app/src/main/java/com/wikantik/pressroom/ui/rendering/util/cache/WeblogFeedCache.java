@@ -94,11 +94,10 @@ public final class WeblogFeedCache extends LazyExpiringRenderCache {
 
         StringBuilder key = new StringBuilder(128);
 
-        key.append(CACHE_ID).append(':');
-        key.append(feedRequest.getWeblogHandle());
-
-        key.append('/').append(feedRequest.getType());
-        key.append('/').append(feedRequest.getFormat());
+        key.append(CACHE_ID).append(':')
+                .append(feedRequest.getWeblogHandle())
+                .append('/').append(feedRequest.getType())
+                .append('/').append(feedRequest.getFormat());
         if(feedRequest.getPage() > 0) {
             // ?page=N is a different list of entries (FeedModel pages by it);
             // without it an anonymous ?page=9999 cached an empty feed over the

@@ -50,17 +50,17 @@ public class URLModel implements Model {
     
     private static final Logger log = LoggerFactory.getLogger(URLModel.class);
     
-    protected Weblog weblog = null;
-    protected String locale = null;
+    protected Weblog weblog;
+    protected String locale;
     
-    protected URLStrategy urlStrategy = null;
+    protected URLStrategy urlStrategy;
 
     /**
      * The business-tier facade, handed in through {@code initData} by the
      * servlet that loaded this model (plan Task 10); shared with the preview
      * subclass.
      */
-    protected Weblogger weblogger = null;
+    protected Weblogger weblogger;
     
     
     public URLModel() {}

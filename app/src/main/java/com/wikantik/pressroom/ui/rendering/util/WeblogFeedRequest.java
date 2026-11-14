@@ -48,16 +48,16 @@ public class WeblogFeedRequest extends WeblogRequest {
     private static final String FEED_SERVLET = "/pressroom-ui/rendering/feed";
     
     // lightweight attributes
-    private String type = null;
-    private String format = null;
-    private String weblogCategoryName = null;
-    private List<String> tags = null;
-    private int    page = 0;
-    private boolean excerpts = false;
-    private String term = null;
+    private String type;
+    private String format;
+    private String weblogCategoryName;
+    private List<String> tags;
+    private int    page;
+    private boolean excerpts;
+    private String term;
     
     // heavyweight attributes
-    private WeblogCategory weblogCategory = null;
+    private WeblogCategory weblogCategory;
 
     public WeblogFeedRequest() {}
 

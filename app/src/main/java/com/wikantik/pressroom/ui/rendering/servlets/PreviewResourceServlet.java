@@ -52,7 +52,7 @@ public class PreviewResourceServlet extends HttpServlet {
 
     private static final Logger log = LoggerFactory.getLogger(PreviewResourceServlet.class);
 
-    private transient ServletContext context = null;
+    private transient ServletContext context;
 
     private final transient Weblogger weblogger;
 

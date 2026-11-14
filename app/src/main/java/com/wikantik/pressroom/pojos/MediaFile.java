@@ -275,7 +275,7 @@ public class MediaFile implements Serializable {
     public String getTagsAsString() {
         StringBuilder sb = new StringBuilder();
         for (MediaFileTag tag : getTags()) {
-            sb.append(tag.getName()).append(" ");
+            sb.append(tag.getName()).append(' ');
         }
         if (sb.length() > 0) {
             sb.deleteCharAt(sb.length() - 1);

@@ -41,10 +41,10 @@ public class MenuModel implements Model {
     
     private static final Logger log = LoggerFactory.getLogger(MenuModel.class);
     
-    private WeblogPageRequest pageRequest = null;
+    private WeblogPageRequest pageRequest;
 
     /** The business-tier facade, handed in through {@code initData} (plan Task 10). */
-    private Weblogger weblogger = null;
+    private Weblogger weblogger;
 
 
     /** Template context name to be used for model */

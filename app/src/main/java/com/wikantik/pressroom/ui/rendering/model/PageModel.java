@@ -76,19 +76,19 @@ public class PageModel implements Model {
     private static final UrlValidator CANONICAL_URL_VALIDATOR =
             new UrlValidator(new String[] {"http", "https"});
 
-    private WeblogPageRequest pageRequest = null;
-    private URLStrategy urlStrategy = null;
-    private Map<String, String[]> requestParameters = null;
-    private Weblog weblog = null;
-    private FurtherReading furtherReading = null;
-    private BlogStanding blogStanding = null;
+    private WeblogPageRequest pageRequest;
+    private URLStrategy urlStrategy;
+    private Map<String, String[]> requestParameters;
+    private Weblog weblog;
+    private FurtherReading furtherReading;
+    private BlogStanding blogStanding;
 
     /**
      * The business-tier facade, handed in through {@code initData} by the
      * servlet that loaded this model (plan Task 10). Protected so the preview
      * and search subclasses share it rather than locating their own.
      */
-    protected Weblogger weblogger = null;
+    protected Weblogger weblogger;
     
     
     /**

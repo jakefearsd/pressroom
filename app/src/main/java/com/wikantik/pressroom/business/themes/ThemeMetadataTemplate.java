@@ -29,13 +29,13 @@ import java.util.Map;
  */
 public class ThemeMetadataTemplate {
     
-    private ComponentType action = null;
-    private String name = null;
-    private String description = null;
-    private String link = null;
-    private boolean navbar = false;
-    private boolean hidden = false;
-    private String contentType = null;
+    private ComponentType action;
+    private String name;
+    private String description;
+    private String link;
+    private boolean navbar;
+    private boolean hidden;
+    private String contentType;
 
     // Hash table to keep metadata about parsed template code files
     private Map<RenditionType, ThemeMetadataTemplateRendition> templateRenditionTable

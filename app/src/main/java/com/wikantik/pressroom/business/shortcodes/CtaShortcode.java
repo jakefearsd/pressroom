@@ -105,11 +105,10 @@ public class CtaShortcode implements ShortcodeHandler {
             return null;
         }
 
-        StringBuilder html = new StringBuilder(160);
+        StringBuilder html = new StringBuilder(256);
         html.append("<a class=\"cta-card\" href=\"").append(escape(BookingLink.withUtmParams(href,
                 content == null ? null : content.getWeblog(), content == null ? null : content.getSlug())))
-                .append("\" rel=\"nofollow sponsored noopener\" target=\"_blank\"")
-                .append(" data-umami-event=\"cta-click\"");
+                .append("\" rel=\"nofollow sponsored noopener\" target=\"_blank\" data-umami-event=\"cta-click\"");
         String slug = content == null ? null : StringUtils.trimToNull(content.getSlug());
         if (slug != null) {
             html.append(" data-umami-event-entry=\"").append(escape(slug)).append('"');
@@ -118,8 +117,7 @@ public class CtaShortcode implements ShortcodeHandler {
         if (dest != null) {
             html.append(" data-umami-event-dest=\"").append(escape(dest)).append('"');
         }
-        html.append('>');
-        html.append("<span class=\"cta-label\">").append(escape(label)).append("</span>");
+        html.append("><span class=\"cta-label\">").append(escape(label)).append("</span>");
         String note = StringUtils.trimToNull(attributes.get("note"));
         if (note != null) {
             html.append("<span class=\"cta-note\">").append(escape(note)).append("</span>");

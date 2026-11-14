@@ -54,13 +54,13 @@ public class WeblogRequest extends ParsedRequest {
     private static final Logger log = LoggerFactory.getLogger(WeblogRequest.class);
     
     // lightweight attributes
-    private String weblogHandle = null;
-    private String locale = null;
-    private String pathInfo = null;
+    private String weblogHandle;
+    private String locale;
+    private String pathInfo;
     
     // heavyweight attributes
-    private Weblog weblog = null;
-    private Locale localeInstance = null;
+    private Weblog weblog;
+    private Locale localeInstance;
     
     
     public WeblogRequest() {}

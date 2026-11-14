@@ -46,13 +46,13 @@ public class WeblogSearchRequest extends WeblogRequest {
     static final int LAST_PAGE = 49;
 
     // lightweight attributes
-    private String query = null;
-    private int pageNum = 0;
-    private String weblogCategoryName = null;
-    private boolean scopeBlog = false;
+    private String query;
+    private int pageNum;
+    private String weblogCategoryName;
+    private boolean scopeBlog;
     
     // heavyweight attributes
-    private WeblogCategory weblogCategory = null;
+    private WeblogCategory weblogCategory;
     
     
     public WeblogSearchRequest() {}

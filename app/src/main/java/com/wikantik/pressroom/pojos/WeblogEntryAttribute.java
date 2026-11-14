@@ -78,11 +78,11 @@ public class WeblogEntryAttribute implements Comparable<WeblogEntryAttribute> {
     @Override
     public String toString() {
         StringBuilder buf = new StringBuilder();
-        buf.append("{");
-        buf.append(getId());
-        buf.append(", ").append(getName());
-        buf.append(", ").append(getValue());
-        buf.append("}");
+        buf.append('{')
+                .append(getId())
+                .append(", ").append(getName())
+                .append(", ").append(getValue())
+                .append('}');
         return buf.toString();
     }
     

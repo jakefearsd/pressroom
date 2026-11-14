@@ -33,13 +33,13 @@ public class WeblogCategory implements Serializable, Comparable<WeblogCategory> 
     
     // attributes
     private String id = EntityIds.newId();
-    private String name = null;
-    private String description = null;
-    private String image = null;
+    private String name;
+    private String description;
+    private String image;
     private int position;
 
     // associations
-    private Weblog weblog = null;
+    private Weblog weblog;
 
     public WeblogCategory() {
     }

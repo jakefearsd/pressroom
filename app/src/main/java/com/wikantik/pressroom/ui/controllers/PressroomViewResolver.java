@@ -37,7 +37,7 @@ import java.util.Map;
 public class PressroomViewResolver implements ViewResolver, Ordered {
 
     private final Map<String, ViewDefinition> definitions = new HashMap<>();
-    private int order = 0;
+    private int order;
 
     public void setOrder(int order) { this.order = order; }
 

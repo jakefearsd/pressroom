@@ -35,8 +35,8 @@ import com.wikantik.pressroom.ui.rendering.util.WeblogRequest;
  */
 public class PreviewPageModel extends PageModel {
     
-    private WeblogPreviewRequest previewRequest = null;
-    private URLStrategy urlStrategy = null;
+    private WeblogPreviewRequest previewRequest;
+    private URLStrategy urlStrategy;
     
     
     /** 

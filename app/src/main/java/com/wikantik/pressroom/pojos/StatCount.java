@@ -41,7 +41,7 @@ public class StatCount {
     private long count;
     
     /** Weblog handle of weblog that stat is associated with, or null if none */
-    private String weblogHandle = null;
+    private String weblogHandle;
 
     public StatCount(String subjectId, String subjectNameShort, String subjectNameLong, String typeKey, long count) {
         this.subjectId = subjectId;
@@ -104,10 +104,10 @@ public class StatCount {
     @Override
     public String toString() {
         StringBuilder buf = new StringBuilder();
-        buf.append("{");
-        buf.append(getWeblogHandle());
-        buf.append(", ").append(getCount());
-        buf.append("}");
+        buf.append('{')
+                .append(getWeblogHandle())
+                .append(", ").append(getCount())
+                .append('}');
         return buf.toString();
     }
 

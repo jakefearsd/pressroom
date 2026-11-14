@@ -33,20 +33,20 @@ import com.wikantik.pressroom.pojos.WeblogTemplate;
 public class TemplateEditBean {
     private static final Logger log = LoggerFactory.getLogger(TemplateEditBean.class);
  
-    private String id = null;
-    private String name = null;
-    private ComponentType action = null;
-    private String description = null;
-    private String link = null;
-    private String contentsStandard = null;
-    private boolean navbar= false;
-    private boolean hidden = false;
+    private String id;
+    private String name;
+    private ComponentType action;
+    private String description;
+    private String link;
+    private String contentsStandard;
+    private boolean navbar;
+    private boolean hidden;
     private Boolean autoContentType = Boolean.FALSE;
-    private String manualContentType = null;
-    private String type = null;
+    private String manualContentType;
+    private String type;
 
     // template ID of standard template version
-    private String standardTemplateId = null;
+    private String standardTemplateId;
     
     
     public String getId() {

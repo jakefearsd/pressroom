@@ -62,49 +62,49 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
 
     // Simple properies
     private String    id            = EntityIds.newId();
-    private String    title         = null;
-    private String    link          = null;
-    private String    summary       = null;
-    private String    text          = null;
-    private String    anchor        = null;
-    private Timestamp pubTime       = null;
-    private Timestamp updateTime    = null;
+    private String    title;
+    private String    link;
+    private String    summary;
+    private String    text;
+    private String    anchor;
+    private Timestamp pubTime;
+    private Timestamp updateTime;
     private Boolean   rightToLeft   = Boolean.FALSE;
     private Boolean   pinnedToMain  = Boolean.FALSE;
     private PubStatus status        = PubStatus.DRAFT;
-    private String    locale        = null;
-    private String    creatorUserName = null;
-    private String    searchDescription = null;
+    private String    locale;
+    private String    creatorUserName;
+    private String    searchDescription;
 
     // Wave 1 media & SEO foundation
-    private String    featuredImageId = null;
-    private String    metaTitle       = null;
-    private String    ogImageId       = null;
-    private String    canonicalUrl    = null;
+    private String    featuredImageId;
+    private String    metaTitle;
+    private String    ogImageId;
+    private String    canonicalUrl;
     private Boolean   noindex         = Boolean.FALSE;
     private Boolean   commentsClosed  = Boolean.FALSE;
 
     // Wave 3 travel structured data
-    private JsonLdType jsonLdType     = null;
-    private Double    geoLatitude     = null;
-    private Double    geoLongitude    = null;
-    private Timestamp eventStart      = null;
-    private Timestamp eventEnd        = null;
-    private String    eventLocation   = null;
+    private JsonLdType jsonLdType;
+    private Double    geoLatitude;
+    private Double    geoLongitude;
+    private Timestamp eventStart;
+    private Timestamp eventEnd;
+    private String    eventLocation;
 
     // Wave B audience: newsletter
-    private Timestamp newsletterSentAt = null;
+    private Timestamp newsletterSentAt;
 
     // W5 trash
-    private Timestamp trashedAt = null;
+    private Timestamp trashedAt;
 
     // set to true when switching between pending/draft/scheduled and published
     // either the aggregate table needs the entry's tags added (for published)
     // or subtracted (anything else)
 
     // Associated objects
-    private Weblog        website  = null;
-    private WeblogCategory category = null;
+    private Weblog        website;
+    private WeblogCategory category;
     
     // Collection of name/value entry attributes
     private transient Set<WeblogEntryAttribute> attSet = new TreeSet<>();
@@ -189,11 +189,11 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
 
     /** Status as loaded from the database; null for a new entry. Set by the
      *  same post-load callback that snapshots content for revisions. */
-    private transient PubStatus loadedStatus = null;
+    private transient PubStatus loadedStatus;
 
     /** Anchor as loaded from the database (or last saved); null for a new
      *  entry. A save claims an anchor only when it differs from this. */
-    private transient String loadedAnchor = null;
+    private transient String loadedAnchor;
 
     /**
      * JPA {@code post-load} callback: remember the content as read from the
@@ -289,12 +289,12 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
     @Override
     public String toString() {
         StringBuilder buf = new StringBuilder();
-        buf.append("{");
-        buf.append(getId());
-        buf.append(", ").append(this.getAnchor());
-        buf.append(", ").append(this.getTitle());
-        buf.append(", ").append(this.getPubTime());
-        buf.append("}");
+        buf.append('{')
+                .append(getId())
+                .append(", ").append(this.getAnchor())
+                .append(", ").append(this.getTitle())
+                .append(", ").append(this.getPubTime())
+                .append('}');
         return buf.toString();
     }
 
@@ -815,7 +815,7 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
         Set<WeblogEntryTag> tmp = new TreeSet<>(new WeblogEntryTagComparator());
         tmp.addAll(getTags());
         for (WeblogEntryTag entryTag : tmp) {
-            sb.append(entryTag.getName()).append(" ");
+            sb.append(entryTag.getName()).append(' ');
         }
         if (sb.length() > 0) {
             sb.deleteCharAt(sb.length() - 1);

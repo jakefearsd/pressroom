@@ -76,11 +76,11 @@ public class UserRole implements Serializable {
     @Override
     public String toString() {
         StringBuilder buf = new StringBuilder();
-        buf.append("{");
-        buf.append(getId());
-        buf.append(", ").append(getUserName());
-        buf.append(", ").append(getRole());
-        buf.append("}");
+        buf.append('{')
+                .append(getId())
+                .append(", ").append(getUserName())
+                .append(", ").append(getRole())
+                .append('}');
         return buf.toString();
     }
     

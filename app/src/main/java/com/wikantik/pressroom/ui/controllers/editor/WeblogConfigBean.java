@@ -33,35 +33,35 @@ import com.wikantik.pressroom.pojos.Weblog;
  */
 public class WeblogConfigBean {
     
-    private String handle = null;
-    private String name = null;
-    private String tagline = null;
-    private String copyright = null;
-    private String emailAddress = null;
-    private String locale = null;
-    private String timeZone = null;
+    private String handle;
+    private String name;
+    private String tagline;
+    private String copyright;
+    private String emailAddress;
+    private String locale;
+    private String timeZone;
     private int entryDisplayCount = 15;
-    private boolean active = false;
-    private boolean commentsEnabled = false;
-    private boolean commentNotify = false;
-    private boolean showMoreFromSite = false;
-    private boolean shareRowEnabled = false;
-    private String icon = null;
-    private String about = null;
+    private boolean active;
+    private boolean commentsEnabled;
+    private boolean commentNotify;
+    private boolean showMoreFromSite;
+    private boolean shareRowEnabled;
+    private String icon;
+    private String about;
 
-    private String newsletterListUuid = null;
-    private String customDomain = null;
+    private String newsletterListUuid;
+    private String customDomain;
 
-    private String businessId = null;
-    private String placeType = null;
-    private String placeLocality = null;
-    private String placeRegion = null;
-    private String placeCountry = null;
+    private String businessId;
+    private String placeType;
+    private String placeLocality;
+    private String placeRegion;
+    private String placeCountry;
     // Latitude and longitude arrive as text so a typo is a field error on the
     // form, not a binding failure that never reaches the controller.
-    private String placeLat = null;
-    private String placeLng = null;
-    private String bookingUrl = null;
+    private String placeLat;
+    private String placeLng;
+    private String bookingUrl;
 
 
     public String getHandle() {

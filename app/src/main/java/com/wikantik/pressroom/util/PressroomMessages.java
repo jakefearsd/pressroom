@@ -78,12 +78,12 @@ public class PressroomMessages
     {
         StringBuilder sb = new StringBuilder();
         for (PressroomMessage msg : mMessages) {
-            sb.append(msg.getKey());
-            sb.append(" : ");
+            sb.append(msg.getKey())
+                    .append(" : ");
         }
         for (PressroomMessage msg : mErrors) {
-            sb.append(msg.getKey());
-            sb.append(" : ");
+            sb.append(msg.getKey())
+                    .append(" : ");
         }
         return sb.toString();
     }

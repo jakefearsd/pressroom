@@ -161,7 +161,7 @@ public class JPACommentManagerImpl implements CommentManager {
 
     /** The status and entry conditions after the weblog's, numbered as {@link #bind} binds them. */
     private static String filters(Status status, WeblogEntry entry) {
-        StringBuilder where = new StringBuilder();
+        StringBuilder where = new StringBuilder(64);
         int next = 2;
         if (status != null) {
             where.append(" AND c.status = ?").append(next++);

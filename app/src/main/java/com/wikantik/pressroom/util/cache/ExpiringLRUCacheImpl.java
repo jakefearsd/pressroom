@@ -31,7 +31,7 @@ public class ExpiringLRUCacheImpl extends LRUCacheImpl {
 
     private static final Logger log = LoggerFactory.getLogger(ExpiringLRUCacheImpl.class);
 
-    private long timeout = 0;
+    private long timeout;
 
 
     protected ExpiringLRUCacheImpl(String id) {

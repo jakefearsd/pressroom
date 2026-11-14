@@ -59,7 +59,7 @@ public class MediaFileSearchBean {
     private String tags;
 
     // Page number of results
-    private int pageNum = 0;
+    private int pageNum;
     
     // Sort option for search results
     private int sortOption;

@@ -40,10 +40,10 @@ public class WeblogEntriesLatestPager extends AbstractWeblogEntriesPager {
     private static final Logger log = LoggerFactory.getLogger(WeblogEntriesLatestPager.class);
     
     // collection for the pager
-    private Map<Date, List<WeblogEntryWrapper>> entries = null;
+    private Map<Date, List<WeblogEntryWrapper>> entries;
     
     // are there more pages?
-    private boolean more = false;
+    private boolean more;
     
     
     public WeblogEntriesLatestPager(

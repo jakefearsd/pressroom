@@ -33,10 +33,10 @@ public class WeblogPreviewResourceRequest extends WeblogResourceRequest {
     private static final Logger log = LoggerFactory.getLogger(WeblogPreviewResourceRequest.class);
         
     // lightweight attributes
-    private String themeName = null;
+    private String themeName;
     
     // heavyweight attributes
-    private Theme theme = null;
+    private Theme theme;
     
     
     public WeblogPreviewResourceRequest() {}

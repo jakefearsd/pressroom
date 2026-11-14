@@ -67,14 +67,14 @@ public class DatabaseProvider  {
     private ConfigurationType type = ConfigurationType.JNDI_NAME;
     private List<String> startupLog = new ArrayList<>();
     
-    private DataSource dataSource = null;    
+    private DataSource dataSource;    
     private String jndiName; 
     
     private String jdbcDriverClass;
     private String jdbcConnectionURL;
     private String jdbcPassword;
     private String jdbcUsername;
-    private Properties props = null;
+    private Properties props;
     
     
     /**

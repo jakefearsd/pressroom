@@ -56,12 +56,12 @@ public abstract class SharedTheme implements Theme, Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    protected String id = null;
-    protected String name = null;
-    protected String description = null;
-    protected String author = null;
-    protected Date lastModified = null;
-    protected boolean enabled = false;
+    protected String id;
+    protected String name;
+    protected String description;
+    protected String author;
+    protected Date lastModified;
+    protected boolean enabled;
     
     public abstract List<ThemeResource> getResources();
     

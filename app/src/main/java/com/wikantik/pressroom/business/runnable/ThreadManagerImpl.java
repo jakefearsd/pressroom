@@ -48,7 +48,7 @@ public abstract class ThreadManagerImpl implements ThreadManager {
     private static final Logger log = LoggerFactory.getLogger(ThreadManagerImpl.class);
     
     // our own scheduler thread
-    private Thread schedulerThread = null;
+    private Thread schedulerThread;
     
     // a simple thread executor
     private final ExecutorService serviceScheduler;

@@ -32,11 +32,11 @@ public class WeblogEntryTag implements Serializable {
     private static final long serialVersionUID = -2602052289337573384L;
     
     private String id = EntityIds.newId();
-    private Weblog website = null;
-    private WeblogEntry weblogEntry = null;
-    private String userName = null;
-    private String name = null;
-    private Timestamp time = null;
+    private Weblog website;
+    private WeblogEntry weblogEntry;
+    private String userName;
+    private String name;
+    private Timestamp time;
     
     
     public WeblogEntryTag() {
@@ -125,11 +125,11 @@ public class WeblogEntryTag implements Serializable {
     @Override
     public String toString() {
         StringBuilder buf = new StringBuilder();
-        buf.append("{");
-        buf.append(getId());
-        buf.append(", ").append(getName());
-        buf.append(", ").append(getTime());
-        buf.append("}");
+        buf.append('{')
+                .append(getId())
+                .append(", ").append(getName())
+                .append(", ").append(getTime())
+                .append('}');
         return buf.toString();
     }
     

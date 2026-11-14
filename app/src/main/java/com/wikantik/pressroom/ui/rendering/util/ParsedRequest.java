@@ -54,10 +54,10 @@ public abstract class ParsedRequest {
     private final Weblogger weblogger;
 
     // lightweight attributes
-    private String authenticUser = null;
+    private String authenticUser;
 
     // heavyweight attributes
-    private User user = null;
+    private User user;
 
 
     /** A carrier with no facade; see the class javadoc. */

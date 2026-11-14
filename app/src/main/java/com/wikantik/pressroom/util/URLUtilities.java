@@ -72,14 +72,14 @@ public final class URLUtilities {
         for (Map.Entry<String, String> entry : params.entrySet()) {
 
             if (queryString.length() == 0) {
-                queryString.append("?");
+                queryString.append('?');
             } else {
-                queryString.append("&");
+                queryString.append('&');
             }
 
-            queryString.append(encode(entry.getKey()));
-            queryString.append("=");
-            queryString.append(encode(entry.getValue()));
+            queryString.append(encode(entry.getKey()))
+                    .append('=')
+                    .append(encode(entry.getValue()));
         }
 
         return queryString.toString();
@@ -115,8 +115,8 @@ public final class URLUtilities {
             // do rest of tags, joining them with a '+'
             while(tagsIT.hasNext()) {
                 tag = tagsIT.next();
-                tagsString.append("+");
-                tagsString.append(encode(tag));
+                tagsString.append('+')
+                        .append(encode(tag));
             }
         }
         return tagsString.toString();

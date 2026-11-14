@@ -49,7 +49,7 @@ public class VelocityRenderer implements Renderer {
     private org.apache.velocity.Template velocityTemplate;
 
     // a possible exception
-    private Exception velocityException = null;
+    private Exception velocityException;
 
     /**
      * The last-modified stamp each failing template was last logged at in

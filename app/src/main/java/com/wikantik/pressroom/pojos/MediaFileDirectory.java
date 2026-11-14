@@ -34,7 +34,7 @@ public class MediaFileDirectory {
     String description;
     Weblog weblog;
     String coverMediaFileId;
-    boolean isPrivate = false;
+    boolean isPrivate;
     Set<MediaFile> mediaFiles = new HashSet<>();
 
     public MediaFileDirectory() {

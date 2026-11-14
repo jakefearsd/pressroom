@@ -99,8 +99,8 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
             if (absolute) {
                 url.append("https://").append(customDomain);
             }
-            url.append(WebloggerRuntimeConfig.getRelativeContextURL());
-            url.append('/');
+            url.append(WebloggerRuntimeConfig.getRelativeContextURL())
+                    .append('/');
         } else {
             if (absolute) {
                 url.append(WebloggerRuntimeConfig.getAbsoluteContextURL());
@@ -166,8 +166,8 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
         
         StringBuilder url = new StringBuilder();
         
-        url.append(weblogRoot(weblog, locale, absolute));
-        url.append("entry/").append(URLUtilities.encode(entryAnchor));
+        url.append(weblogRoot(weblog, locale, absolute))
+                .append("entry/").append(URLUtilities.encode(entryAnchor));
         
     return url.toString();
 }
@@ -187,10 +187,9 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
         }
         
         StringBuilder url = new StringBuilder();
-        url.append(assetRoot(weblog, null, absolute));
-        url.append("mediaresource");
-        url.append('/');
-        url.append(URLUtilities.encode(fileAnchor));
+        url.append(assetRoot(weblog, null, absolute))
+                .append("mediaresource/")
+                .append(URLUtilities.encode(fileAnchor));
         
         return url.toString();
     }
@@ -283,8 +282,8 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
         Map<String, String> params = new HashMap<>(commonParams());
         
         if(pageLink != null) {
-            pathinfo.append(assetRoot(weblog, locale, absolute));
-            pathinfo.append("page/").append(URLUtilities.encode(pageLink));
+            pathinfo.append(assetRoot(weblog, locale, absolute))
+                    .append("page/").append(URLUtilities.encode(pageLink));
             
             // for custom pages we only allow query params
             if(dateString != null) {
@@ -343,8 +342,8 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
         
         StringBuilder url = new StringBuilder(URL_BUFFER_SIZE);
         
-        url.append(weblogRoot(weblog, locale, absolute));
-        url.append("feed/").append(type).append('/').append(format);
+        url.append(weblogRoot(weblog, locale, absolute))
+                .append("feed/").append(type).append('/').append(format);
         
         Map<String, String> params = new HashMap<>(commonParams());
         if(category != null && !category.isBlank()) {
@@ -392,8 +391,8 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
         
         StringBuilder url = new StringBuilder(URL_BUFFER_SIZE);
         
-        url.append(weblogRoot(weblog, locale, absolute));
-        url.append("search");
+        url.append(weblogRoot(weblog, locale, absolute))
+                .append("search");
         
         Map<String, String> params = new HashMap<>(commonParams());
         if(query != null) {
@@ -427,8 +426,8 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
         
         StringBuilder url = new StringBuilder(URL_BUFFER_SIZE);
         
-        url.append(assetRoot(weblog, null, absolute));
-        url.append("resource/");
+        url.append(assetRoot(weblog, null, absolute))
+                .append("resource/");
         
         if(filePath.startsWith("/")) {
             url.append(URLUtilities.encodePath(filePath.substring(1)));
@@ -448,8 +447,6 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
         
         StringBuilder url = new StringBuilder(URL_BUFFER_SIZE);
         
-        url.append(weblogRoot(weblog, null, true));
-        url.append("search");
 
         // Built by hand rather than through getQueryString, and that is the
         // point of the comment: the braces are OpenSearch template
@@ -458,7 +455,8 @@ public class MultiWeblogURLStrategy extends AbstractURLStrategy {
         // %7BsearchTerms%7D and no consumer would recognise them. This is the
         // one url on this class whose query string is a template rather than
         // data, which is exactly why it does not share the encoder.
-        url.append("?q={searchTerms}&page={startPage}");
+        url.append(weblogRoot(weblog, null, true))
+                .append("search?q={searchTerms}&page={startPage}");
 
         return url.toString();
     }

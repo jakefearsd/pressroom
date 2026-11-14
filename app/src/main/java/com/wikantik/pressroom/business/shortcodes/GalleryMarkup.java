@@ -143,10 +143,8 @@ public final class GalleryMarkup {
             // invisible.
             html.append(" class=\"").append(aspectRatioClass(aspectRatio)).append('"');
         }
-        html.append(">\n");
-
         // ---- lightbox anchor: absolute original + data payload (T4 reads these)
-        html.append("<a href=\"").append(urls.original(image)).append('"');
+        html.append(">\n<a href=\"").append(urls.original(image)).append('"');
         if (knownDimensions) {
             html.append(" data-pswp-width=\"").append(image.getWidth())
                     .append("\" data-pswp-height=\"").append(image.getHeight()).append('"');
@@ -161,10 +159,8 @@ public final class GalleryMarkup {
                 image.getExifIso() == null ? null : image.getExifIso().toString());
         appendDataAttribute(html, "data-exif-focal", escape(image.getExifFocalLength()));
         appendDataAttribute(html, "data-blurhash", escape(image.getBlurhash()));
-        html.append(">\n");
-
         // ---- the grid image itself
-        html.append("<img src=\"").append(urls.original(image)).append('"');
+        html.append(">\n<img src=\"").append(urls.original(image)).append('"');
         String srcset = srcset(image, urls);
         if (srcset != null) {
             // sizes = the figure's flex-basis (--ar * row height): what the
@@ -182,8 +178,7 @@ public final class GalleryMarkup {
         html.append(" alt=\"")
                 .append(escape(firstNonBlank(image.getAltText(), image.getDescription(),
                         fileNameAsAlt(image.getName()))))
-                .append('"');
-        html.append(" loading=\"lazy\" decoding=\"async\"");
+                .append("\" loading=\"lazy\" decoding=\"async\"");
         if (StringUtils.isNotBlank(image.getBlurhash())) {
             html.append(" data-blurhash=\"").append(escape(image.getBlurhash())).append('"');
             String averageColor = image.getAverageColor();
@@ -270,17 +265,17 @@ public final class GalleryMarkup {
     private static String buildGridStyles() {
         StringBuilder css = new StringBuilder(2048);
         css.append(".jgrid { display: flex; flex-wrap: wrap; gap: .5rem; --row-h: ")
-                .append(DEFAULT_ROW_HEIGHT).append("px; }\n");
-        css.append(".jgrid figure {\n")
-                .append("  margin: 0;\n")
-                // pre-ladder uploads have no stored dimensions
-                .append("  --ar: 1.5;\n")
-                // --ar is width / height
-                .append("  flex-grow: var(--ar);\n")
-                .append("  flex-basis: calc(var(--ar) * var(--row-h));\n")
-                // stops a panorama dominating a row
-                .append("  min-width: 120px;\n")
-                .append("}\n");
+                .append(DEFAULT_ROW_HEIGHT)
+                .append("px; }\n.jgrid figure {\n"
+                        + "  margin: 0;\n"
+                        // pre-ladder uploads have no stored dimensions
+                        + "  --ar: 1.5;\n"
+                        // --ar is width / height
+                        + "  flex-grow: var(--ar);\n"
+                        + "  flex-basis: calc(var(--ar) * var(--row-h));\n"
+                        // stops a panorama dominating a row
+                        + "  min-width: 120px;\n"
+                        + "}\n");
 
         // Row-height ladder: the shortcode's row attribute snaps to a rung.
         for (int rung : ROW_HEIGHT_LADDER) {
@@ -295,19 +290,17 @@ public final class GalleryMarkup {
             css.append(".jgrid figure.ar-").append(hundredths).append("{--ar:")
                     .append(trimTrailingZeros(hundredths / 100.0)).append('}');
         }
-        css.append('\n');
-
-        css.append(".jgrid figure a { display: block; }\n")
-                .append(".jgrid figure img {\n")
-                .append("  display: block; width: 100%; height: auto;\n")
+        css.append("\n.jgrid figure a { display: block; }\n"
+                + ".jgrid figure img {\n"
+                + "  display: block; width: 100%; height: auto;\n"
                 // reserves the box, zero CLS
-                .append("  aspect-ratio: var(--ar);\n")
-                .append("  object-fit: cover;\n")
-                .append("}\n")
-                .append(".jgrid figcaption { font-size: .85em; padding: .15rem 0; }\n")
+                + "  aspect-ratio: var(--ar);\n"
+                + "  object-fit: cover;\n"
+                + "}\n"
+                + ".jgrid figcaption { font-size: .85em; padding: .15rem 0; }\n"
                 // keep the last row at natural height instead of stretching it
-                .append(".jgrid::after { content: \"\"; flex-grow: 999999; }\n")
-                .append("@media (max-width: 640px) { .jgrid { --row-h: ")
+                + ".jgrid::after { content: \"\"; flex-grow: 999999; }\n"
+                + "@media (max-width: 640px) { .jgrid { --row-h: ")
                 .append(ROW_HEIGHT_LADDER[0]).append("px; } }\n");
         return css.toString();
     }

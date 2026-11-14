@@ -313,8 +313,8 @@ public final class ShortcodeExpander {
             if (close >= 0 && close + 1 < to && text.charAt(close + 1) == ']'
                     && handlers.containsKey(
                             text.substring(nameStart, close).toLowerCase(Locale.ROOT))) {
-                out.append(text, pos, idx);
-                out.append("[/").append(text, nameStart, close).append(']');
+                out.append(text, pos, idx)
+                        .append("[/").append(text, nameStart, close).append(']');
                 pos = close + 2;
                 changed = true;
             } else {

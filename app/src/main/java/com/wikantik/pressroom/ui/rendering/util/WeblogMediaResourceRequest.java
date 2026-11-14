@@ -34,9 +34,9 @@ public class WeblogMediaResourceRequest extends WeblogRequest {
     private static final Logger log = LoggerFactory.getLogger(WeblogMediaResourceRequest.class);
         
     // lightweight attributes
-    private String resourceId = null;
+    private String resourceId;
 
-    private boolean thumbnail = false;
+    private boolean thumbnail;
 
     // requested responsive rendition width (?w=), or -1 if absent/invalid;
     // validated against the ladder set by the caller, not here

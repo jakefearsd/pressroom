@@ -128,7 +128,7 @@ public class LuceneIndexManager implements IndexManager {
     // volatile: written during initialize() (the bootstrap thread) and read
     // via isInconsistentAtStartup() from whatever thread later asks -- an
     // admin request thread, unrelated to the one that bootstrapped search.
-    private volatile boolean inconsistentAtStartup = false;
+    private volatile boolean inconsistentAtStartup;
 
     // Serialises index writes -- only one IndexWriter may hold the
     // directory's lock -- and nothing else: searches never take it.

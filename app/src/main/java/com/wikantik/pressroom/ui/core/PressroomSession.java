@@ -51,7 +51,7 @@ public class PressroomSession
     private static final long serialVersionUID = 5890132909166913727L;
 
     // the id of the user represented by this session
-    private String userName = null;
+    private String userName;
     
     private static final Logger log;
     

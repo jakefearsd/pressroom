@@ -125,8 +125,7 @@ public class VideoShortcode implements ShortcodeHandler {
                     + "HTMLSanitizer whenever weblogAdminsUntrusted is on (the shipped default).")
     private static String markup(Provider provider, String id, String caption) {
         StringBuilder html = new StringBuilder(320);
-        html.append("<figure class=\"video-figure\">");
-        html.append("<div class=\"video-embed\" data-provider=\"")
+        html.append("<figure class=\"video-figure\"><div class=\"video-embed\" data-provider=\"")
                 .append(provider.name())
                 .append("\" data-video-id=\"").append(id).append("\">");
 

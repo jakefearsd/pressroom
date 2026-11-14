@@ -31,9 +31,9 @@ import com.wikantik.pressroom.ui.rendering.util.WeblogRequest;
  */
 public class PreviewURLModel extends URLModel {
     
-    private Weblog weblog = null;
+    private Weblog weblog;
 
-    private URLStrategy urlStrategy = null;
+    private URLStrategy urlStrategy;
     
     
     @Override

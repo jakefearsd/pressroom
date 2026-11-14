@@ -27,10 +27,10 @@ import com.wikantik.pressroom.pojos.WeblogCategory;
  */
 public class CategoryBean {
     
-    private String id = null;
-    private String name = null;
-    private String description = null;
-    private String image = null;
+    private String id;
+    private String name;
+    private String description;
+    private String image;
     
     
     public String getId() {

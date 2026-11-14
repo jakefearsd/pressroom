@@ -293,7 +293,7 @@ public class RemoteImageFetcher implements AutoCloseable {
 
     private static FetchRefusal tooLarge(long maxBytes) {
         return new FetchRefusal("Larger than this site's "
-                + String.format(Locale.ROOT, "%.2f", maxBytes / 1048576.0) + " MB per-file limit.");
+                + String.format(Locale.ROOT, "%.2f", maxBytes / 1_048_576.0) + " MB per-file limit.");
     }
 
     /**

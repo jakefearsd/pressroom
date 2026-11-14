@@ -55,30 +55,30 @@ public class WeblogPageRequest extends WeblogRequest {
     private static final String PAGE_SERVLET = "/pressroom-ui/rendering/page";
 
     // lightweight attributes
-    private String context = null;
-    private String weblogAnchor = null;
-    private String weblogPageName = null;
-    private String weblogCategoryName = null;
-    private String weblogDate = null;
-    private List<String> tags = null;
-    private int pageNum = 0;
+    private String context;
+    private String weblogAnchor;
+    private String weblogPageName;
+    private String weblogCategoryName;
+    private String weblogDate;
+    private List<String> tags;
+    private int pageNum;
     private Map<String, String[]> customParams = Collections.emptyMap();
 
     // lightweight: the raw, unresolved path segment for a candidate bare-slug
     // page request (/<handle>/<slug>), set during parsing with no database
     // access. null on every other kind of request.
-    private String pageSlug = null;
+    private String pageSlug;
 
     // heavyweight attributes
-    private WeblogEntry weblogEntry = null;
-    private ThemeTemplate weblogPage = null;
-    private WeblogCategory weblogCategory = null;
-    private WeblogPage weblogPageContent = null;
-    private boolean weblogPageContentResolved = false;
+    private WeblogEntry weblogEntry;
+    private ThemeTemplate weblogPage;
+    private WeblogCategory weblogCategory;
+    private WeblogPage weblogPageContent;
+    private boolean weblogPageContentResolved;
 
     // Page hits
-    private boolean websitePageHit = false;
-    private boolean otherPageHit = false;
+    private boolean websitePageHit;
+    private boolean otherPageHit;
 
     public WeblogPageRequest() {
     }

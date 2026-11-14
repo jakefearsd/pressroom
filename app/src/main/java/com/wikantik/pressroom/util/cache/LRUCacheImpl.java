@@ -43,10 +43,10 @@ public class LRUCacheImpl implements Cache {
     protected final LongSupplier clock;
 
     // for metrics
-    protected double hits = 0;
-    protected double misses = 0;
-    protected double puts = 0;
-    protected double removes = 0;
+    protected double hits;
+    protected double misses;
+    protected double puts;
+    protected double removes;
     protected Date startTime;
 
 

@@ -23,9 +23,9 @@ import com.wikantik.pressroom.pojos.TemplateRendition.RenditionType;
 import com.wikantik.pressroom.pojos.TemplateRendition.TemplateLanguage;
 
 public class ThemeMetadataTemplateRendition {
-    private TemplateLanguage templateLang = null;
-    private String contentsFile = null;
-    private RenditionType type = null;
+    private TemplateLanguage templateLang;
+    private String contentsFile;
+    private RenditionType type;
 
     public TemplateLanguage getTemplateLang() {
         return templateLang;

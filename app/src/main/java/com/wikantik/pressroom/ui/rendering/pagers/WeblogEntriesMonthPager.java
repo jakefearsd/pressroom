@@ -19,7 +19,13 @@
 package com.wikantik.pressroom.ui.rendering.pagers;
 
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.TimeZone;
+import java.util.TreeMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,10 +51,10 @@ public class WeblogEntriesMonthPager extends AbstractWeblogEntriesPager {
     private Date prevMonth;
     
     // collection for the pager
-    private Map<Date, List<WeblogEntryWrapper>> entries = null;
+    private Map<Date, List<WeblogEntryWrapper>> entries;
     
     // are there more pages?
-    private boolean more = false;
+    private boolean more;
     
     
     public WeblogEntriesMonthPager(

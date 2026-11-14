@@ -39,10 +39,10 @@ public final class WebloggerStartup {
     
     // volatile: written by the boot thread or by an install-wizard request
     // (createDatabase/upgradeDatabase), read by every other request thread.
-    private static volatile boolean prepared = false;
+    private static volatile boolean prepared;
 
-    private static DatabaseProvider dbProvider = null;
-    private static StartupException dbProviderException = null;
+    private static DatabaseProvider dbProvider;
+    private static StartupException dbProviderException;
 
     /**
      * How long a configured relay that did not answer is left alone before the
@@ -55,7 +55,7 @@ public final class WebloggerStartup {
 
     private static final MailProviderFactory REAL_MAIL = MailProvider::new;
 
-    private static volatile MailProvider mailProvider = null;
+    private static volatile MailProvider mailProvider;
 
     /** When the next use may try the relay again; {@link #NEVER} when there is nothing to retry. */
     private static final AtomicLong nextMailRetry = new AtomicLong(NEVER);

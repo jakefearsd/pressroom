@@ -75,9 +75,9 @@ public class UtilitiesModel implements Model {
     private static final Pattern TEL_EXTENSION =
             Pattern.compile(" *(?:extension|ext\\.?|x) *(\\d*) *$", Pattern.CASE_INSENSITIVE);
     
-    private ParsedRequest parsedRequest = null;
-    private Weblog weblog = null;
-    private Weblogger weblogger = null;
+    private ParsedRequest parsedRequest;
+    private Weblog weblog;
+    private Weblogger weblogger;
     
     
     /**

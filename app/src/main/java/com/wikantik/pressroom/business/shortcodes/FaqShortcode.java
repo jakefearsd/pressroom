@@ -87,8 +87,7 @@ public class FaqShortcode implements ShortcodeHandler {
         StringBuilder html = new StringBuilder(128 * pairs.size());
         html.append("<dl class=\"faq\">\n");
         for (FaqBlocks.Qa pair : pairs) {
-            html.append("<dt>").append(pair.question()).append("</dt>\n");
-            html.append("<dd>").append(pair.answer()).append("</dd>\n");
+            html.append("<dt>").append(pair.question()).append("</dt>\n<dd>").append(pair.answer()).append("</dd>\n");
         }
         html.append("</dl>");
         return html.toString();

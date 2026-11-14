@@ -26,12 +26,12 @@ import java.util.Set;
  */
 public class ThemeMetadata {
 
-    private String id = null;
-    private String name = null;
-    private String description = null;
-    private String author = null;
-    private String previewImage = null;
-    private ThemeMetadataTemplate stylesheet = null;
+    private String id;
+    private String name;
+    private String description;
+    private String author;
+    private String previewImage;
+    private ThemeMetadataTemplate stylesheet;
     private Set<ThemeMetadataTemplate> templates = new HashSet<>();
     private Set<String> resources = new HashSet<>();
 

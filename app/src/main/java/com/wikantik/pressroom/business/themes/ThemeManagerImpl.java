@@ -95,7 +95,7 @@ public class ThemeManagerImpl implements ThemeManager {
 	// directory where themes are kept
 	private String themeDir;
 	// the Map contains ... (theme id, Theme)
-	private Map<String, SharedTheme> themes = null;
+	private Map<String, SharedTheme> themes;
 
 	@SuppressFBWarnings(
 			value = "PATH_TRAVERSAL_IN",

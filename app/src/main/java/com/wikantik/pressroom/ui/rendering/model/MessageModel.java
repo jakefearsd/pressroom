@@ -31,7 +31,7 @@ import com.wikantik.pressroom.util.I18nMessages;
  */
 public class MessageModel implements Model {  
     
-    I18nMessages messages = null;
+    I18nMessages messages;
     
     
     /** Template context name to be used for model */

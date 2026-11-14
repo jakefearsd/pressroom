@@ -6,8 +6,9 @@
 
     <description>
         Pressroom's PMD gate: PMD's own quickstart set plus the security category,
-        minus six rules, plus 21 defect-finding rules chosen 2026-10 from the
-        other categories (see the groups below). Zero tolerance: see
+        minus six rules, plus 30 named rules chosen from the other categories (the
+        21 defect-finding rules of 2026-10 and the 9 hygiene rules of 2026-11;
+        see the groups below). Zero tolerance: see
         docs/superpowers/specs/2026-08-18-static-analysis-quality-gates-design.md.
 
         A rule is excluded only when violating it is SYSTEMATICALLY not a defect
@@ -110,4 +111,33 @@
     <rule ref="category/java/design.xml/CollapsibleIfStatements"/>
     <rule ref="category/java/design.xml/MutableStaticState"/>
     <rule ref="category/java/design.xml/AvoidThrowingNullPointerException"/>
+
+    <!-- Added 2026-11, maintenance pass. Mechanical hygiene held at zero so a
+         new site fails the build instead of accumulating again. -->
+
+    <!-- Needless allocation and work in string building: single characters
+         appended as one-character strings, literals appended one call at a
+         time, a builder re-named on every statement, a builder that must
+         regrow past its declared size; and the legacy file streams, which
+         carry a finalizer and so cost the collector work. -->
+    <rule ref="category/java/performance.xml/AppendCharacterWithChar"/>
+    <rule ref="category/java/performance.xml/ConsecutiveLiteralAppends"/>
+    <rule ref="category/java/performance.xml/ConsecutiveAppendsShouldReuse"/>
+    <rule ref="category/java/performance.xml/InsufficientStringBufferDeclaration"/>
+    <rule ref="category/java/performance.xml/AvoidFileStream"/>
+
+    <!-- Initialisers that restate the JVM default, C-style array declarators,
+         a lowercase long suffix that reads as a one, and wildcard imports
+         that hide where a name comes from. A decimal literal is grouped only
+         from eight digits: the sRGB constants in BlurHash are published
+         values, and 0.040_45 would be worse than 0.04045. -->
+    <rule ref="category/java/performance.xml/RedundantFieldInitializer"/>
+    <rule ref="category/java/codestyle.xml/CStyleArrayDeclaration"/>
+    <rule ref="category/java/errorprone.xml/LongLiteralEndingWithLowercaseL"/>
+    <rule ref="category/java/bestpractices.xml/OnDemandImport"/>
+    <rule ref="category/java/codestyle.xml/UseUnderscoresInNumericLiterals">
+        <properties>
+            <property name="acceptableDecimalLength" value="7"/>
+        </properties>
+    </rule>
 </ruleset>

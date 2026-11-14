@@ -24,7 +24,7 @@ public final class PressroomConstants {
     public static final int ONE_KB_IN_BYTES = 1024;
     public static final int FOUR_KB_IN_BYTES = 4096;
     public static final int EIGHT_KB_IN_BYTES = 8192;
-    public static final int TWENTYFOUR_KB_IN_BYTES = 24576;
+    public static final int TWENTYFOUR_KB_IN_BYTES = 24_576;
 
     public static final int ONE_MB_IN_BYTES = ONE_KB_IN_BYTES * ONE_KB_IN_BYTES;
 

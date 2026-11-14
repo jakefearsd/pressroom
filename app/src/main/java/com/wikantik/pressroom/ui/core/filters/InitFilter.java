@@ -52,7 +52,7 @@ public class InitFilter implements Filter {
 
     private static final Logger log = LoggerFactory.getLogger(InitFilter.class);
 
-    private boolean initialized = false;
+    private boolean initialized;
 
     private final WebloggerProvider provider;
     private final Weblogger weblogger;

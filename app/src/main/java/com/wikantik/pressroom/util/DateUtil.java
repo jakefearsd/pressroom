@@ -36,7 +36,7 @@ import org.apache.commons.lang3.StringUtils;
  */
 public abstract class DateUtil {
     
-    public static final long MILLIS_IN_DAY = 86400000;
+    public static final long MILLIS_IN_DAY = 86_400_000;
     
     // a bunch of date formats
     private static final String FORMAT_DEFAULT_DATE = "dd.MM.yyyy";
@@ -520,9 +520,9 @@ public abstract class DateUtil {
         
         String str = format(date, getIso8601DateFormat());
         StringBuilder sb = new StringBuilder();
-        sb.append( str.substring(0,str.length()-2) );
-        sb.append( ":" );
-        sb.append( str.substring(str.length()-2) );
+        sb.append( str.substring(0,str.length()-2) )
+                .append(':')
+                .append( str.substring(str.length()-2) );
         return sb.toString();
     }
     

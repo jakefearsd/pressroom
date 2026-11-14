@@ -65,7 +65,7 @@ public final class PressroomContext {
 
     private static final Logger log = LoggerFactory.getLogger(PressroomContext.class);
 
-    private static ServletContext servletContext = null;
+    private static ServletContext servletContext;
     private static PasswordEncoder encoder;
 
 

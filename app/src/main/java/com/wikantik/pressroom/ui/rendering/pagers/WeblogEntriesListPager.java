@@ -54,7 +54,7 @@ public class WeblogEntriesListPager extends AbstractPager<WeblogEntryWrapper> {
     // are there more entries?
     
     // most recent update time of current set of entries
-    private Date lastUpdated = null;    
+    private Date lastUpdated;    
     
     
     public WeblogEntriesListPager(

@@ -20,9 +20,9 @@ package com.wikantik.pressroom.business.themes;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.Serializable;
+import java.nio.file.Files;
 import com.wikantik.pressroom.pojos.ThemeResource;
 
 
@@ -115,8 +115,8 @@ public class SharedThemeResourceFromDir
     @Override
     public InputStream getInputStream() {
         try {
-            return new FileInputStream(resourceFile);
-        } catch (java.io.FileNotFoundException ex) {
+            return Files.newInputStream(resourceFile.toPath());
+        } catch (java.io.IOException ex) {
             // should never happen, rethrow as runtime exception
             throw new RuntimeException("Error constructing input stream", ex);
         }

@@ -173,16 +173,15 @@ public class SeoController extends BaseController {
             return ResponseEntity.internalServerError().build();
         }
 
-        StringBuilder xml = new StringBuilder();
-        xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-        xml.append("<sitemapindex xmlns=\"").append(SITEMAP_NS).append("\">\n");
+        StringBuilder xml = new StringBuilder(256);
+        xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<sitemapindex xmlns=\"").append(SITEMAP_NS)
+                .append("\">\n");
         for (Weblog weblog : weblogs) {
             String customDomain = weblog.getCustomDomain();
             if (customDomain != null && !customDomain.isBlank()) {
                 continue;
             }
-            xml.append("  <sitemap>\n");
-            xml.append("    <loc>").append(escapeXml(absoluteContextURL()
+            xml.append("  <sitemap>\n    <loc>").append(escapeXml(absoluteContextURL()
                     + "/sitemap-" + weblog.getHandle() + ".xml")).append("</loc>\n");
             appendLastmod(xml, "    ", instant(weblog.getLastModified()));
             xml.append("  </sitemap>\n");
@@ -190,10 +189,8 @@ public class SeoController extends BaseController {
         try {
             Weblog site = weblogger.getWeblogManager().getSiteSpace();
             if (site != null && !weblogger.getWeblogPageManager().getPublishedPages(site).isEmpty()) {
-                xml.append("  <sitemap>\n");
-                xml.append("    <loc>").append(escapeXml(absoluteContextURL()
-                        + "/sitemap-site-pages.xml")).append("</loc>\n");
-                xml.append("  </sitemap>\n");
+                xml.append("  <sitemap>\n    <loc>").append(escapeXml(absoluteContextURL()
+                        + "/sitemap-site-pages.xml")).append("</loc>\n  </sitemap>\n");
             }
         } catch (WebloggerException e) {
             // A display-path catch: the index is still valid without the site's entry.
@@ -294,9 +291,9 @@ public class SeoController extends BaseController {
             if (pages.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
-            StringBuilder xml = new StringBuilder();
-            xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-            xml.append("<urlset xmlns=\"").append(SITEMAP_NS).append("\">\n");
+            StringBuilder xml = new StringBuilder(128);
+            xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"").append(SITEMAP_NS)
+                    .append("\">\n");
             appendPages(xml, pages, site, weblogger.getUrlStrategy());
             xml.append("</urlset>\n");
             return xmlResponse(xml);
@@ -321,14 +318,11 @@ public class SeoController extends BaseController {
                 .getSitemapEntries(weblog, MAX_SITEMAP_URLS);
         List<WeblogPage> pages = weblogger.getWeblogPageManager().getPublishedPages(weblog);
 
-        StringBuilder xml = new StringBuilder();
-        xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-        xml.append("<urlset xmlns=\"").append(SITEMAP_NS)
-                .append("\" xmlns:image=\"").append(IMAGE_NS).append("\">\n");
-
-        // the weblog home page
-        xml.append("  <url>\n");
-        xml.append("    <loc>").append(escapeXml(weblogURL)).append("</loc>\n");
+        StringBuilder xml = new StringBuilder(256);
+        xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"").append(SITEMAP_NS)
+                .append("\" xmlns:image=\"").append(IMAGE_NS)
+                // the weblog home page follows the urlset opening
+                .append("\">\n  <url>\n    <loc>").append(escapeXml(weblogURL)).append("</loc>\n");
         appendLastmod(xml, "    ", instant(weblog.getLastModified()));
         xml.append("  </url>\n");
 
@@ -337,8 +331,7 @@ public class SeoController extends BaseController {
             if (entry.noindex() || canonicalElsewhere(entry.canonicalUrl(), loc)) {
                 continue;
             }
-            xml.append("  <url>\n");
-            xml.append("    <loc>").append(escapeXml(loc)).append("</loc>\n");
+            xml.append("  <url>\n    <loc>").append(escapeXml(loc)).append("</loc>\n");
             appendLastmod(xml, "    ", entry.lastmod());
             appendFeaturedImage(xml, urlStrategy, weblog, entry.publicImageId());
             xml.append("  </url>\n");
@@ -370,8 +363,7 @@ public class SeoController extends BaseController {
                     || canonicalElsewhere(page.getCanonicalUrl(), loc)) {
                 continue;
             }
-            xml.append("  <url>\n");
-            xml.append("    <loc>").append(escapeXml(loc)).append("</loc>\n");
+            xml.append("  <url>\n    <loc>").append(escapeXml(loc)).append("</loc>\n");
             appendLastmod(xml, "    ", instant(page.getUpdated()));
             xml.append("  </url>\n");
         }
@@ -458,9 +450,8 @@ public class SeoController extends BaseController {
         // Largest rendition of the pipeline's ladder; MediaResourceServlet
         // serves the original when no such rendition exists for the file.
         String imageURL = urlStrategy.getMediaFileURL(weblog, publicImageId, true) + "?w=1600";
-        xml.append("    <image:image>\n");
-        xml.append("      <image:loc>").append(escapeXml(imageURL)).append("</image:loc>\n");
-        xml.append("    </image:image>\n");
+        xml.append("    <image:image>\n      <image:loc>").append(escapeXml(imageURL))
+                .append("</image:loc>\n    </image:image>\n");
     }
 
     private static ResponseEntity<String> xmlResponse(StringBuilder xml) {

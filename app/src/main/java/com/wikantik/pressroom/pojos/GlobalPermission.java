@@ -142,10 +142,10 @@ public class GlobalPermission extends PressroomPermission {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
+        StringBuilder sb = new StringBuilder(64);
         sb.append("GlobalPermission: ");
         for (String action : getActionsAsList()) { 
-            sb.append(" ").append(action).append(" ");
+            sb.append(' ').append(action).append(' ');
         }
         return sb.toString();
     }

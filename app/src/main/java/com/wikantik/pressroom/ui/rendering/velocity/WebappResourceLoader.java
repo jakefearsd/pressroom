@@ -66,9 +66,9 @@ public class WebappResourceLoader extends ResourceLoader {
 	private static final Logger log = LoggerFactory.getLogger(WebappResourceLoader.class);
 
 	// The root paths for templates (relative to webapp's root).
-	protected String[] paths = null;
-	protected Map<String, String> templatePaths = null;
-	protected ServletContext servletContext = null;
+	protected String[] paths;
+	protected Map<String, String> templatePaths;
+	protected ServletContext servletContext;
 
 	/**
 	 * This is abstract in the base class, so we need it. <br>

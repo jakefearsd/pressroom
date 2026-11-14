@@ -28,10 +28,10 @@ public class CachedContent implements AutoCloseable, Serializable {
     private final String contentType;
     
     // Use a byte array output stream to cached the output bytes
-    private transient ByteArrayOutputStream outstream = null;
+    private transient ByteArrayOutputStream outstream;
     
     // The PrintWriter that users will be writing to
-    private transient PrintWriter cachedWriter = null;
+    private transient PrintWriter cachedWriter;
     
     
     public CachedContent(int size) {

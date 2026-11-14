@@ -309,8 +309,8 @@ public class WeblogRequestMapper {
         // resolved the weblog, i.e. we are on the canonical domain already.
         String canonicalHost = vhostHostFor(weblogHandle);
         if (vhostHandle == null && canonicalHost != null) {
-            StringBuilder target = new StringBuilder("https://").append(canonicalHost);
-            target.append(request.getContextPath());
+            StringBuilder target = new StringBuilder("https://").append(canonicalHost)
+                    .append(request.getContextPath());
             if (pathInfo != null) {
                 target.append('/').append(pathInfo);
             }

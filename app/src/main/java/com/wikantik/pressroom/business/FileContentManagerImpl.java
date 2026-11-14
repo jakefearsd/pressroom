@@ -349,7 +349,7 @@ public class FileContentManagerImpl implements FileContentManager {
         long size = 0;
 
         if (dir.exists() && dir.isDirectory() && dir.canRead()) {
-            long dirSize = 0l;
+            long dirSize = 0L;
             File[] files = dir.listFiles();
             if (files != null) {
                 for (File file : files) {
@@ -479,8 +479,8 @@ public class FileContentManagerImpl implements FileContentManager {
         if (rangeRule.equals(contentType)) {
             return true;
         }
-        String ruleParts[] = rangeRule.split("/");
-        String typeParts[] = contentType.split("/");
+        String[] ruleParts = rangeRule.split("/");
+        String[] typeParts = contentType.split("/");
         return ruleParts[0].equals(typeParts[0]) && "*".equals(ruleParts[1]);
     }
 

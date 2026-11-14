@@ -53,10 +53,10 @@ public class FeedModel implements Model {
         return WebloggerRuntimeConfig.getIntProperty("site.newsfeeds.defaultEntries");
     }
 
-    private WeblogFeedRequest feedRequest = null;
-    private URLStrategy urlStrategy = null;
-    private Weblogger weblogger = null;
-    private Weblog weblog = null;
+    private WeblogFeedRequest feedRequest;
+    private URLStrategy urlStrategy;
+    private Weblogger weblogger;
+    private Weblog weblog;
     
     
     @Override

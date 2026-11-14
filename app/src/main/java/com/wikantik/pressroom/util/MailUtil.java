@@ -108,9 +108,9 @@ public final class MailUtil {
             String from = creator.isAgent()
                     ? WebloggerRuntimeConfig.getProperty("site.adminemail")
                     : creator.getEmailAddress();
-            String cc[] = creator.isAgent() || from == null ? new String[0] : new String[] {from};
-            String bcc[] = new String[0];
-            String to[];
+            String[] cc = creator.isAgent() || from == null ? new String[0] : new String[] {from};
+            String[] bcc = new String[0];
+            String[] to;
             String subject;
             String content;
             

@@ -45,7 +45,7 @@ import com.wikantik.pressroom.config.WebloggerConfig;
  * DI wave, plan Task 6b) rather than the static locator.
  */
 public class BootstrapFilter implements Filter {
-    private ServletContext context = null;
+    private ServletContext context;
     private static final Logger log = LoggerFactory.getLogger(BootstrapFilter.class);
 
     private final WebloggerProvider provider;

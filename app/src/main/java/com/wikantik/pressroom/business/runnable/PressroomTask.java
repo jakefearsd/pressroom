@@ -34,8 +34,8 @@ import com.wikantik.pressroom.util.DateUtil;
  * specifics.
  */
 public abstract class PressroomTask implements Runnable {
-    private String taskName = null;
-    private Weblogger weblogger = null;
+    private String taskName;
+    private Weblogger weblogger;
     protected static final int DEFAULT_INTERVAL_MINS = 1440;
 
     

@@ -37,17 +37,17 @@ public class SharedThemeTemplate implements ThemeTemplate, Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private String id = null;
-    private ComponentType action = null;
-    private String name = null;
-    private String description = null;
-    private String contents = null;
-    private String link = null;
-    private Date lastModified = null;
-    private boolean hidden = false;
-    private boolean navbar = false;
-    private String  outputContentType = null;
-    private String type = null;
+    private String id;
+    private ComponentType action;
+    private String name;
+    private String description;
+    private String contents;
+    private String link;
+    private Date lastModified;
+    private boolean hidden;
+    private boolean navbar;
+    private String  outputContentType;
+    private String type;
 
     //hash map to cache template Code objects parsed
     private transient Map<RenditionType, TemplateRendition> templateRenditionHashMap = new EnumMap<>(RenditionType.class);

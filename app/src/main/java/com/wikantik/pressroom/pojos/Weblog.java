@@ -21,7 +21,11 @@ package com.wikantik.pressroom.pojos;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+import java.util.TimeZone;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -47,15 +51,15 @@ public class Weblog implements Serializable {
     
     // Simple properties
     private String  id               = EntityIds.newId();
-    private String  handle           = null;
-    private String  name             = null;
-    private String  tagline          = null;
-    private String  copyright        = null;
-    private boolean siteSpace        = false;
-    private String  emailAddress     = null;
-    private String  editorTheme      = null;
-    private String  locale           = null;
-    private String  timeZone         = null;
+    private String  handle;
+    private String  name;
+    private String  tagline;
+    private String  copyright;
+    private boolean siteSpace;
+    private String  emailAddress;
+    private String  editorTheme;
+    private String  locale;
+    private String  timeZone;
     private Boolean visible          = Boolean.TRUE;
     private Boolean active           = Boolean.TRUE;
     private Boolean commentsEnabled  = Boolean.FALSE;
@@ -65,19 +69,19 @@ public class Weblog implements Serializable {
     private Date    dateCreated      = new Date();
     private int     entryDisplayCount = 15;
     private Date    lastModified     = new Date();
-    private String  iconPath         = null;
-    private String  about            = null;
-    private String  creator          = null;
-    private String  newsletterListUuid = null;
-    private String  customDomain     = null;
-    private Business business        = null;
-    private String  placeType        = null;
-    private String  placeLocality    = null;
-    private String  placeRegion      = null;
-    private String  placeCountry     = null;
-    private BigDecimal placeLat      = null;
-    private BigDecimal placeLng      = null;
-    private String  bookingUrl       = null;
+    private String  iconPath;
+    private String  about;
+    private String  creator;
+    private String  newsletterListUuid;
+    private String  customDomain;
+    private Business business;
+    private String  placeType;
+    private String  placeLocality;
+    private String  placeRegion;
+    private String  placeCountry;
+    private BigDecimal placeLat;
+    private BigDecimal placeLng;
+    private String  bookingUrl;
 
 
     private transient List<WeblogCategory> weblogCategories = new ArrayList<>();

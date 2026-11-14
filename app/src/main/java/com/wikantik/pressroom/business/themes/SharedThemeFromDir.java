@@ -25,11 +25,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import com.wikantik.pressroom.pojos.TemplateRendition.RenditionType;
 import com.wikantik.pressroom.pojos.ThemeResource;
 import com.wikantik.pressroom.pojos.ThemeTemplate;
@@ -60,10 +67,10 @@ public class SharedThemeFromDir extends SharedTheme {
     private String themeDir;
 
     // the theme preview image
-    private transient ThemeResource previewImage = null;
+    private transient ThemeResource previewImage;
 
     // the theme stylesheet
-    private transient ThemeTemplate stylesheet = null;
+    private transient ThemeTemplate stylesheet;
 
     // we keep templates in a Map for faster lookups by name
     private transient Map<String, ThemeTemplate> templatesByName = new HashMap<>();
@@ -174,12 +181,12 @@ public class SharedThemeFromDir extends SharedTheme {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append(name);
-        sb.append("\n");
+        sb.append(name)
+                .append('\n');
 
         for (ThemeTemplate template : templatesByName.values()) {
-            sb.append(template);
-            sb.append("\n");
+            sb.append(template)
+                    .append('\n');
         }
 
         return sb.toString();
@@ -221,8 +228,7 @@ public class SharedThemeFromDir extends SharedTheme {
     log.debug("Parsing theme descriptor for {}", this.themeDir);
 
     ThemeMetadata themeMetadata;
-    try (InputStream is = new FileInputStream(this.themeDir + File.separator
-            + "theme.xml")) {
+    try (InputStream is = Files.newInputStream(Path.of(this.themeDir, "theme.xml"))) {
         // lookup theme descriptor and parse it
         ThemeMetadataParser parser = new ThemeMetadataParser();
         themeMetadata = parser.unmarshall(is);
@@ -439,7 +445,7 @@ public class SharedThemeFromDir extends SharedTheme {
 
         char[] chars;
         int length;
-        try (FileInputStream stream = new FileInputStream(templateFile);
+        try (InputStream stream = Files.newInputStream(templateFile.toPath());
              InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             chars = new char[(int) templateFile.length()];
             length = reader.read(chars);

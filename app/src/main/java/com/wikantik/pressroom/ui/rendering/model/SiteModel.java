@@ -58,17 +58,17 @@ public class SiteModel implements Model {
     
     private static final Logger log = LoggerFactory.getLogger(SiteModel.class);   
     
-    private Weblog weblog = null;
-    private WeblogRequest weblogRequest = null;
-    private WeblogFeedRequest feedRequest = null;
+    private Weblog weblog;
+    private WeblogRequest weblogRequest;
+    private WeblogFeedRequest feedRequest;
     private List<String> tags = Collections.emptyList();
-    private String pageLink = null;
-    private int pageNum = 0;
+    private String pageLink;
+    private int pageNum;
     
-    private URLStrategy urlStrategy = null;
+    private URLStrategy urlStrategy;
 
     /** The business-tier facade, handed in through {@code initData} (plan Task 10). */
-    private Weblogger weblogger = null;
+    private Weblogger weblogger;
 
 
     @Override

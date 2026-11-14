@@ -32,10 +32,10 @@ public class SharedThemeTemplateRendition implements Serializable, TemplateRendi
 
 	private static final long serialVersionUID = 1L;
 
-	private String template = null;
-	private RenditionType type = null;
-	private TemplateLanguage templateLanguage = null;
-	private Date lastModified = null;
+	private String template;
+	private RenditionType type;
+	private TemplateLanguage templateLanguage;
+	private Date lastModified;
 
 	public SharedThemeTemplateRendition(RenditionType type) {
 		this.type = type;

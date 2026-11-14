@@ -46,7 +46,7 @@ public class ScheduledEntriesTask extends PressroomTaskWithLeasing {
 
     // a unique id for this specific task instance
     // this is meant to be unique for each client in a clustered environment
-    private String clientId = null;
+    private String clientId;
 
     // a String description of when to start this task
     private String startTimeDesc = "immediate";

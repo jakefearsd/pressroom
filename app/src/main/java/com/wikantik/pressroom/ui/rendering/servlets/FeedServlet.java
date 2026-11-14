@@ -52,8 +52,8 @@ public class FeedServlet extends HttpServlet {
 
     private static final Logger log = LoggerFactory.getLogger(FeedServlet.class);
 
-    private transient RenderCache<WeblogFeedRequest> siteWideRenderCache = null;
-    private transient RenderCache<WeblogFeedRequest> weblogRenderCache = null;
+    private transient RenderCache<WeblogFeedRequest> siteWideRenderCache;
+    private transient RenderCache<WeblogFeedRequest> weblogRenderCache;
 
 
     private final transient Weblogger weblogger;

@@ -55,10 +55,10 @@ public class TagStat implements java.io.Serializable {
 
     @Override
     public String toString() {
-        StringBuilder str = new StringBuilder("{");
+        StringBuilder str = new StringBuilder("{name=");
 
-        str.append("name=").append(name).append(" count=").append(count);
-        str.append('}');
+        str.append(name).append(" count=").append(count)
+                .append('}');
 
         return str.toString();
     }

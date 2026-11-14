@@ -700,7 +700,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         List<Object> params = new ArrayList<>();
         int size = 0;
         String queryString = "SELECT m FROM MediaFile m WHERE ";
-        StringBuilder whereClause = new StringBuilder();
+        StringBuilder whereClause = new StringBuilder(192);
         StringBuilder orderBy = new StringBuilder();
 
         params.add(size++, weblog);
@@ -718,18 +718,17 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
 
         if (filter.getSize() > 0) {
             params.add(size++, filter.getSize());
-            whereClause.append(" AND m.length ");
             // An expression, not a statement: adding a SizeFilterType constant
             // is then a compile error here, where a statement switch with a
             // default would quietly run a wrong query.
-            whereClause.append(switch (filter.getSizeFilterType()) {
+            whereClause.append(" AND m.length ").append(switch (filter.getSizeFilterType()) {
                 case GT -> ">";
                 case GTE -> ">=";
                 case EQ -> "=";
                 case LT -> "<";
                 case LTE -> "<=";
-            });
-            whereClause.append(" ?").append(size);
+            })
+                    .append(" ?").append(size);
         }
 
         if (filter.getTags() != null && filter.getTags().size() > 1) {
@@ -737,7 +736,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
                     .append(" AND EXISTS (SELECT t FROM MediaFileTag t WHERE t.mediaFile = m and t.name IN (");
             for (String tag : filter.getTags()) {
                 params.add(size++, tag);
-                whereClause.append("?").append(size).append(",");
+                whereClause.append('?').append(size).append(',');
             }
             whereClause.deleteCharAt(whereClause.lastIndexOf(","));
             whereClause.append("))");
@@ -745,7 +744,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
             params.add(size++, filter.getTags().get(0));
             whereClause
                     .append(" AND EXISTS (SELECT t FROM MediaFileTag t WHERE t.mediaFile = m and t.name = ?")
-                    .append(size).append(")");
+                    .append(size).append(')');
         }
 
         if (filter.getType() != null) {

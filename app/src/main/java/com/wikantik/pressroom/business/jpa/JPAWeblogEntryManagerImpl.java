@@ -18,7 +18,21 @@
 
 package com.wikantik.pressroom.business.jpa;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TimeZone;
+import java.util.TreeMap;
 import java.text.SimpleDateFormat;
 import java.sql.Timestamp;
 import jakarta.persistence.EntityManager;
@@ -620,7 +634,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         List<Object> params = new ArrayList<>();
         int size = 0;
         String queryString = "SELECT e FROM WeblogEntry e WHERE ";
-        StringBuilder whereClause = new StringBuilder();
+        StringBuilder whereClause = new StringBuilder(128);
 
         params.add(size++, current.getWebsite());
         whereClause.append("e.website = ?").append(size);
@@ -705,15 +719,14 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
 
         List<Object> params = new ArrayList<>();
         int size = 0;
-        StringBuilder queryString = new StringBuilder();
+        StringBuilder queryString = new StringBuilder(384);
         
         queryString.append("SELECT e FROM WeblogEntry e WHERE ");
         if (wesc.getTags() != null && !wesc.getTags().isEmpty()) {
             // EXISTS, not a join on e.tags: a join yields one row per matching
             // tag, so an entry carrying two of the tags was listed twice and
             // the duplicates counted against maxResults (short pages).
-            queryString.append("EXISTS (SELECT t FROM WeblogEntryTag t")
-                    .append(" WHERE t.weblogEntry = e AND (");
+            queryString.append("EXISTS (SELECT t FROM WeblogEntryTag t WHERE t.weblogEntry = e AND (");
             for (int i = 0; i < wesc.getTags().size(); i++) {
                 if (i != 0) {
                     queryString.append(" OR ");
@@ -782,10 +795,10 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         
         if (StringUtils.isNotEmpty(wesc.getText())) {
             params.add(size++, '%' + wesc.getText() + '%');
-            queryString.append(" AND ( e.text LIKE ?").append(size);
-            queryString.append("    OR e.summary LIKE ?").append(size);
-            queryString.append("    OR e.title LIKE ?").append(size);
-            queryString.append(") ");
+            queryString.append(" AND ( e.text LIKE ?").append(size)
+                    .append("    OR e.summary LIKE ?").append(size)
+                    .append("    OR e.title LIKE ?").append(size)
+                    .append(") ");
         }
 
         if (wesc.getSortBy() != null && wesc.getSortBy().equals(WeblogEntrySearchCriteria.SortBy.UPDATE_TIME)) {
@@ -1382,7 +1395,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
                 
         List<Object> params = new ArrayList<>();
         int size = 0;
-        StringBuilder queryString = new StringBuilder();
+        StringBuilder queryString = new StringBuilder(192);
         queryString.append("SELECT w.name, SUM(w.total) FROM WeblogEntryTagAggregate w WHERE ");
                 
         if (website != null) {
@@ -1444,9 +1457,8 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         // (/tags/a+a) is counted once here too.
         List<String> names = new ArrayList<>(new LinkedHashSet<>(tags));
         
-        StringBuilder queryString = new StringBuilder();
-        queryString.append("SELECT DISTINCT w.name ");
-        queryString.append("FROM WeblogEntryTagAggregate w WHERE w.name IN (");
+        StringBuilder queryString = new StringBuilder(128);
+        queryString.append("SELECT DISTINCT w.name FROM WeblogEntryTagAggregate w WHERE w.name IN (");
         // Append tags as parameter markers to avoid potential escaping issues
         // The IN clause would be of form (?1, ?2, ?3, ..)
         List<Object> params = new ArrayList<>(names.size() + 1);

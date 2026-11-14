@@ -146,7 +146,7 @@ public class ImageShortcode implements ShortcodeHandler {
         // via the wrapper so both emitters stay aligned.
         String srcset = media.getSrcset();
 
-        StringBuilder html = new StringBuilder(256);
+        StringBuilder html = new StringBuilder(320);
         html.append("<figure class=\"shortcode-image\">\n<picture>\n");
         if (srcset != null) {
             // WebP is negotiated on the same URLs via the Accept header, so
@@ -179,8 +179,8 @@ public class ImageShortcode implements ShortcodeHandler {
                 ? attributes.get("alt")
                 : firstNonBlank(media.getAltText(), captionText(body, attributes.get("caption")),
                         GalleryMarkup.fileNameAsAlt(media.getName()));
-        html.append(" alt=\"").append(escape(StringUtils.defaultString(alt))).append('"');
-        html.append(" loading=\"lazy\" decoding=\"async\"");
+        html.append(" alt=\"").append(escape(StringUtils.defaultString(alt)))
+                .append("\" loading=\"lazy\" decoding=\"async\"");
         if (StringUtils.isNotBlank(media.getBlurhash())) {
             html.append(" data-blurhash=\"").append(escape(media.getBlurhash())).append('"');
             // JS-free blur-up: the BlurHash average color as an inline

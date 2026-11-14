@@ -37,7 +37,7 @@ public abstract class AbstractPager<T> implements Pager<T> {
 
     final URLStrategy urlStrategy;
     private String url;
-    private int page = 0;
+    private int page;
 
     /** How many items make up one page. */
     private final int length;
@@ -46,7 +46,7 @@ public abstract class AbstractPager<T> implements Pager<T> {
     private List<T> items;
 
     /** Whether the fetch turned up more than this page holds. */
-    private boolean more = false;
+    private boolean more;
 
 
     protected AbstractPager(URLStrategy strat, String baseUrl, int pageNum, int length) {

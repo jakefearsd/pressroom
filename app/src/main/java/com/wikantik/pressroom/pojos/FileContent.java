@@ -19,8 +19,8 @@
 package com.wikantik.pressroom.pojos;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.InputStream;
+import java.nio.file.Files;
 
 
 /**
@@ -70,8 +70,8 @@ public class FileContent {
      */
     public InputStream getInputStream() {
         try {
-            return new FileInputStream(resourceFile);
-        } catch (java.io.FileNotFoundException ex) {
+            return Files.newInputStream(resourceFile.toPath());
+        } catch (java.io.IOException ex) {
             // should never happen, rethrow as runtime exception
             throw new RuntimeException("Error constructing input stream", ex);
         }

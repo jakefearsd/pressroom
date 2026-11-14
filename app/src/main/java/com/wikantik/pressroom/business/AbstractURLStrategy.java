@@ -94,8 +94,8 @@ public abstract class AbstractURLStrategy implements URLStrategy {
             url.append(WebloggerRuntimeConfig.getRelativeContextURL());
         }
         
-        url.append(namespace);
-        url.append('/').append(action).append(".rol");
+        url.append(namespace)
+                .append('/').append(action).append(".rol");
         
         // put weblog handle parameter, if necessary
         Map<String, String> params = new HashMap<>();

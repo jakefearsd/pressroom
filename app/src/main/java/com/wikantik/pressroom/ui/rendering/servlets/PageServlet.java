@@ -76,9 +76,9 @@ public class PageServlet extends HttpServlet {
     static final String NOT_FOUND_WEBLOG_NAME = "pressroom.notFound.weblogName";
     static final String NOT_FOUND_WEBLOG_URL = "pressroom.notFound.weblogUrl";
     // for caching
-    private boolean excludeOwnerPages = false;
-    private transient RenderCache<WeblogPageRequest> siteWideRenderCache = null;
-    private transient RenderCache<WeblogPageRequest> weblogRenderCache = null;
+    private boolean excludeOwnerPages;
+    private transient RenderCache<WeblogPageRequest> siteWideRenderCache;
+    private transient RenderCache<WeblogPageRequest> weblogRenderCache;
 
     // Development theme reloading
     Boolean themeReload = false;

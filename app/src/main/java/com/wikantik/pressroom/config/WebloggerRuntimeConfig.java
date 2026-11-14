@@ -51,15 +51,15 @@ public final class WebloggerRuntimeConfig {
     // a private lock object -- not this class's own intrinsic lock -- so
     // nothing outside this file can contend on or block the parse
     // (NonThreadSafeSingleton).
-    private static volatile RuntimeConfigDefs configDefs = null;
+    private static volatile RuntimeConfigDefs configDefs;
     private static final Object CONFIG_DEFS_LOCK = new Object();
     // Same reasoning for the compare-and-clear in detach(PropertiesManager):
     // a private lock, not the class's own (USO_UNSAFE_STATIC_METHOD_SYNCHRONIZATION).
     private static final Object ATTACH_LOCK = new Object();
     
     // special case for our context urls
-    private static String relativeContextURL = null;
-    private static String absoluteContextURL = null;
+    private static String relativeContextURL;
+    private static String absoluteContextURL;
 
     /**
      * The one business-tier reference this static facade still holds, and the

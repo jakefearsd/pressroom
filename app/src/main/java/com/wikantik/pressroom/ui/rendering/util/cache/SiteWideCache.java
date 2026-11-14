@@ -56,10 +56,10 @@ public final class SiteWideCache implements CacheHandler {
     
     // keep cached content
     private boolean cacheEnabled = true;
-    private Cache contentCache = null;
+    private Cache contentCache;
     
     // keep a cached version of last expired time
-    private ExpiringCacheEntry lastUpdateTime = null;
+    private ExpiringCacheEntry lastUpdateTime;
 
     /**
      * Moves on every clear and invalidation. A render takes it before reading
@@ -265,9 +265,8 @@ public final class SiteWideCache implements CacheHandler {
 
         StringBuilder key = new StringBuilder(128);
 
-        key.append(CACHE_ID).append(':');
-        key.append("page/");
-        key.append(pageRequest.getWeblogHandle());
+        key.append(CACHE_ID).append(":page/")
+                .append(pageRequest.getWeblogHandle());
 
         if(pageRequest.getWeblogAnchor() != null) {
             // may contain spaces or other bad chars
@@ -350,12 +349,10 @@ public final class SiteWideCache implements CacheHandler {
         
         StringBuilder key = new StringBuilder(128);
         
-        key.append(CACHE_ID).append(':');
-        key.append("feed/");
-        key.append(feedRequest.getWeblogHandle());
-        
-        key.append('/').append(feedRequest.getType());
-        key.append('/').append(feedRequest.getFormat());
+        key.append(CACHE_ID).append(":feed/")
+                .append(feedRequest.getWeblogHandle())
+                .append('/').append(feedRequest.getType())
+                .append('/').append(feedRequest.getFormat());
         if(feedRequest.getPage() > 0) {
             // ?page=N is a different list of entries (FeedModel pages by it);
             // without it an anonymous ?page=9999 cached an empty feed over the

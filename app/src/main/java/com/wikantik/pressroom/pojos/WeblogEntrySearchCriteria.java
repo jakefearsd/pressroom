@@ -85,7 +85,7 @@ public class WeblogEntrySearchCriteria {
     // safe behaviour, since the unsafe direction puts deleted entries back on
     // a public page. Only the trash screen sets this true; a caller wanting
     // trash specifically should ask for status == PubStatus.TRASHED instead.
-    private boolean includeTrashed = false;
+    private boolean includeTrashed;
     // Text appearing in the text or summary, or null for all
     private String text;
     // Date field to sort by
@@ -95,7 +95,7 @@ public class WeblogEntrySearchCriteria {
 
     private String locale;
     // Offset into results for paging
-    private int offset = 0;
+    private int offset;
 
     private int maxResults = -1;
 

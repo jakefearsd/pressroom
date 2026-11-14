@@ -37,14 +37,14 @@ import com.wikantik.pressroom.util.Utilities;
  */
 public class EntriesBean {
     
-    private String endDateString = null;
-    private String startDateString = null;
-    private String categoryName = null;
-    private String tagsAsString = null;
-    private String text = null;
+    private String endDateString;
+    private String startDateString;
+    private String categoryName;
+    private String tagsAsString;
+    private String text;
     private String status = "ALL";
     private WeblogEntrySearchCriteria.SortBy sortBy = WeblogEntrySearchCriteria.SortBy.UPDATE_TIME;
-    private int page = 0;
+    private int page;
     
     
     public EntriesBean() {
@@ -190,16 +190,16 @@ public class EntriesBean {
     
     @Override
     public String toString() {
-        StringBuilder buf = new StringBuilder();
+        StringBuilder buf = new StringBuilder(128);
         
-        buf.append("startDate = ").append(getStartDate()).append("\n");
-        buf.append("endDate = ").append(getEndDate()).append("\n");
-        buf.append("status = ").append(getStatus()).append("\n");
-        buf.append("sortBy = ").append(getSortBy()).append("\n");
-        buf.append("catName = ").append(getCategoryName()).append("\n");
-        buf.append("tags = ").append(getTagsAsString()).append("\n");
-        buf.append("text = ").append(getText()).append("\n");
-        buf.append("page = ").append(getPage()).append("\n");
+        buf.append("startDate = ").append(getStartDate())
+                .append("\nendDate = ").append(getEndDate())
+                .append("\nstatus = ").append(getStatus())
+                .append("\nsortBy = ").append(getSortBy())
+                .append("\ncatName = ").append(getCategoryName())
+                .append("\ntags = ").append(getTagsAsString())
+                .append("\ntext = ").append(getText())
+                .append("\npage = ").append(getPage()).append('\n');
         
         return buf.toString();
     }

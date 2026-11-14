@@ -50,10 +50,10 @@ public class WeblogEntriesDayPager extends AbstractWeblogEntriesPager {
     private Date prevDay;
     
     // collection for the pager
-    private Map<Date, List<WeblogEntryWrapper>> entries = null;
+    private Map<Date, List<WeblogEntryWrapper>> entries;
     
     // are there more pages?
-    private boolean more = false;
+    private boolean more;
     
     
     public WeblogEntriesDayPager(

@@ -34,7 +34,7 @@ public class WeblogResourceRequest extends WeblogRequest {
     private static final Logger log = LoggerFactory.getLogger(WeblogResourceRequest.class);
         
     // lightweight attributes
-    private String resourcePath = null;
+    private String resourcePath;
     
     
     public WeblogResourceRequest() {}

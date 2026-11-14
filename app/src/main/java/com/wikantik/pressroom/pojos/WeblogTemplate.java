@@ -43,17 +43,17 @@ public class WeblogTemplate implements ThemeTemplate, Serializable {
     
     // attributes
     private String id = EntityIds.newId();
-    private ComponentType action = null;
-    private String  name = null;
-    private String  description = null;
-    private String  link = null;
-    private Date    lastModified = null;
-    private boolean hidden = false;
-    private boolean navbar = false;
-    private String  outputContentType = null;
+    private ComponentType action;
+    private String  name;
+    private String  description;
+    private String  link;
+    private Date    lastModified;
+    private boolean hidden;
+    private boolean navbar;
+    private String  outputContentType;
 
     // associations
-    private Weblog weblog = null;
+    private Weblog weblog;
 
     public WeblogTemplate() {}
     

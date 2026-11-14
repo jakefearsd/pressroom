@@ -286,14 +286,14 @@ public class User implements Serializable {
     @Override
     public String toString() {
         StringBuilder buf = new StringBuilder();
-        buf.append("{");
-        buf.append(getId());
-        buf.append(", ").append(getUserName());
-        buf.append(", ").append(getFullName());
-        buf.append(", ").append(getEmailAddress());
-        buf.append(", ").append(getDateCreated());
-        buf.append(", ").append(getEnabled());
-        buf.append("}");
+        buf.append('{')
+                .append(getId())
+                .append(", ").append(getUserName())
+                .append(", ").append(getFullName())
+                .append(", ").append(getEmailAddress())
+                .append(", ").append(getDateCreated())
+                .append(", ").append(getEnabled())
+                .append('}');
         return buf.toString();
     }
     

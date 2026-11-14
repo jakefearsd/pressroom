@@ -29,23 +29,23 @@ import com.wikantik.pressroom.pojos.WeblogPage;
  */
 public class PageBean {
 
-    private String id = null;
-    private String slug = null;
-    private String title = null;
-    private String content = null;
+    private String id;
+    private String slug;
+    private String title;
+    private String content;
     // Defaulting to DRAFT here (as WeblogPage.status itself defaults) means a
     // freshly-submitted "new page" form -- which carries no status field at
     // all until the JSP grows one -- still creates a draft rather than an
     // NPE or an accidental publish.
     private String status = WeblogPage.PubStatus.DRAFT.name();
     private boolean showInNav = true;
-    private int navOrder = 0;
+    private int navOrder;
 
-    private String metaTitle = null;
-    private String searchDescription = null;
-    private String canonicalUrl = null;
-    private boolean noindex = false;
-    private String ogImageId = null;
+    private String metaTitle;
+    private String searchDescription;
+    private String canonicalUrl;
+    private boolean noindex;
+    private String ogImageId;
 
     public String getId() {
         return id;

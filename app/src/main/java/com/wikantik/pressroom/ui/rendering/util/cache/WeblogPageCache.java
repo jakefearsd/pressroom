@@ -112,8 +112,8 @@ public final class WeblogPageCache extends LazyExpiringRenderCache {
 
         StringBuilder key = new StringBuilder(128);
 
-        key.append(CACHE_ID).append(':');
-        key.append(pageRequest.getWeblogHandle());
+        key.append(CACHE_ID).append(':')
+                .append(pageRequest.getWeblogHandle());
 
         if(pageRequest.getWeblogAnchor() != null) {
             // may contain spaces or other bad chars

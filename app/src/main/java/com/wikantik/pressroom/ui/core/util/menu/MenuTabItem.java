@@ -24,9 +24,9 @@ package com.wikantik.pressroom.ui.core.util.menu;
  */
 public class MenuTabItem {
     
-    private String key = null;
-    private String action = null;
-    private boolean selected = false;
+    private String key;
+    private String action;
+    private boolean selected;
     
     
     public String getKey() {

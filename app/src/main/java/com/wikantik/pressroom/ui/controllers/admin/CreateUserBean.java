@@ -30,18 +30,18 @@ import com.wikantik.pressroom.pojos.User;
  */
 public class CreateUserBean {
 
-    private String id = null;
-    private String userName = null;
-    private String password = null;
-    private String screenName = null;
-    private String fullName = null;
-    private String emailAddress = null;
-    private String locale = null;
-    private String timeZone = null;
+    private String id;
+    private String userName;
+    private String password;
+    private String screenName;
+    private String fullName;
+    private String emailAddress;
+    private String locale;
+    private String timeZone;
     private Boolean enabled = Boolean.FALSE;
-    private boolean administrator = false;
+    private boolean administrator;
     /** The editor role, offered only for an SSO-bound account; set by the controller, never by copyFrom. */
-    private boolean writer = false;
+    private boolean writer;
     /** "Email a set-password link": offered, and the default, only while mail can deliver one. */
     public static final String PASSWORD_LINK = "link";
     /** "Set a password now". */

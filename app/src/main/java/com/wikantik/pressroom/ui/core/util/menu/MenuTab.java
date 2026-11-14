@@ -27,9 +27,9 @@ import java.util.List;
  */
 public class MenuTab {
     
-    private String key = null;
-    private String action = null;
-    private boolean selected = false;
+    private String key;
+    private String action;
+    private boolean selected;
     private List<MenuTabItem> items = new ArrayList<>();
     
     

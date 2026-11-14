@@ -32,10 +32,10 @@ public class WeblogEntryTagAggregate implements Serializable {
     public static final long serialVersionUID = -4343500268898106982L;
     
     private String id = EntityIds.newId();
-    private String name = null;
-    private Weblog website = null;
-    private Timestamp lastUsed = null;
-    private int total = 0;
+    private String name;
+    private Weblog website;
+    private Timestamp lastUsed;
+    private int total;
     
     
     public WeblogEntryTagAggregate() {
@@ -107,12 +107,12 @@ public class WeblogEntryTagAggregate implements Serializable {
     @Override
     public String toString() {
         StringBuilder buf = new StringBuilder();
-        buf.append("{");
-        buf.append(getId());
-        buf.append(", ").append(getName());
-        buf.append(", ").append(getTotal());
-        buf.append(", ").append(getLastUsed());
-        buf.append("}");
+        buf.append('{')
+                .append(getId())
+                .append(", ").append(getName())
+                .append(", ").append(getTotal())
+                .append(", ").append(getLastUsed())
+                .append('}');
         return buf.toString();
     }
     

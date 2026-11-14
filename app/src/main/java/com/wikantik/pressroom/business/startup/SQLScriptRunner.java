@@ -23,7 +23,12 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -51,8 +56,8 @@ public class SQLScriptRunner {
 
     private List<String> commands = new ArrayList<>();
     private List<String> messages = new ArrayList<>();
-    private boolean      failed = false;
-    private boolean      errors = false;
+    private boolean      failed;
+    private boolean      errors;
 
 
     /** Creates a new instance of SQLScriptRunner */
@@ -144,13 +149,8 @@ public class SQLScriptRunner {
     
     
     /** Creates a new instance of SQLScriptRunner */
-    @SuppressFBWarnings(
-            value = "PATH_TRAVERSAL_IN",
-            justification = "Only tests call the path constructor, with scripts under target/test-classes; "
-                    + "production runs migrations through the InputStream constructor "
-                    + "(DatabaseInstaller.applyMigration).")
     public SQLScriptRunner(String scriptPath) throws IOException {
-        this(new FileInputStream(scriptPath));
+        this(Files.newInputStream(Path.of(scriptPath)));
     }
     
     

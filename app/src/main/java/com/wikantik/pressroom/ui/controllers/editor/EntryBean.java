@@ -45,39 +45,39 @@ public class EntryBean {
     
     private static final Logger log = LoggerFactory.getLogger(EntryBean.class);
     
-    private String id = null;
-    private String title = null;
-    private String locale = null;
-    private String categoryId = null;
-    private String tagsString = null;
-    private String summary = null;
-    private String text = null;
-    private String status = null;
+    private String id;
+    private String title;
+    private String locale;
+    private String categoryId;
+    private String tagsString;
+    private String summary;
+    private String text;
+    private String status;
 
-    private String pubTimeLocal = null;
-    private boolean pinnedToMain = false;
-    private String searchDescription = null;
+    private String pubTimeLocal;
+    private boolean pinnedToMain;
+    private String searchDescription;
 
     // Wave 1 media & SEO foundation -- no editor UI yet, plumbing only
-    private String featuredImageId = null;
-    private String metaTitle = null;
-    private String ogImageId = null;
-    private String canonicalUrl = null;
-    private boolean noindex = false;
-    private boolean commentsClosed = false;
+    private String featuredImageId;
+    private String metaTitle;
+    private String ogImageId;
+    private String canonicalUrl;
+    private boolean noindex;
+    private boolean commentsClosed;
 
     // Wave 3 travel structured data, edited in the SEO card.
     // jsonLdType holds a JsonLdType enum name, like status holds a PubStatus
     // name; the form binds event times as text (eventStartLocal/eventEndLocal) which
     // the controller reads in the weblog's zone into eventStart/eventEnd.
-    private String jsonLdType = null;
-    private Double geoLatitude = null;
-    private Double geoLongitude = null;
-    private Timestamp eventStart = null;
-    private Timestamp eventEnd = null;
-    private String eventStartLocal = null;
-    private String eventEndLocal = null;
-    private String eventLocation = null;
+    private String jsonLdType;
+    private Double geoLatitude;
+    private Double geoLongitude;
+    private Timestamp eventStart;
+    private Timestamp eventEnd;
+    private String eventStartLocal;
+    private String eventEndLocal;
+    private String eventLocation;
     
     
     public String getId() {
@@ -451,18 +451,18 @@ public class EntryBean {
     
     @Override
     public String toString() {
-        StringBuilder buf = new StringBuilder();
+        StringBuilder buf = new StringBuilder(128);
         
         //title,locale,catId,tags,text,summary,pubTimeLocal,status
-        buf.append("title = ").append(getTitle()).append("\n");
-        buf.append("locale = ").append(getLocale()).append("\n");
-        buf.append("status = ").append(getStatus()).append("\n");
-        buf.append("catId = ").append(getCategoryId()).append("\n");
-        buf.append("tags = ").append(getTagsAsString()).append("\n");
-        buf.append("pubTimeLocal = ").append(getPubTimeLocal()).append("\n");
-        buf.append("text = ").append(getText()).append("\n");
-        buf.append("summary = ").append(getSummary()).append("\n");
-        buf.append("search description = ").append(getSearchDescription()).append("\n");
+        buf.append("title = ").append(getTitle())
+                .append("\nlocale = ").append(getLocale())
+                .append("\nstatus = ").append(getStatus())
+                .append("\ncatId = ").append(getCategoryId())
+                .append("\ntags = ").append(getTagsAsString())
+                .append("\npubTimeLocal = ").append(getPubTimeLocal())
+                .append("\ntext = ").append(getText())
+                .append("\nsummary = ").append(getSummary())
+                .append("\nsearch description = ").append(getSearchDescription()) .append('\n');
 
         return buf.toString();
     }
