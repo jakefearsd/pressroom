@@ -102,88 +102,15 @@ public class ThemeEditController extends BaseController {
         Weblog weblog = getActionWeblog(request);
 
         if (WeblogTheme.CUSTOM.equals(themeType)) {
-            if (weblog.isSiteSpace()) {
-                addError(model, "themeEditor.error.notOffered", request);
-            } else if (!customThemeAllowed(request)) {
-                addError(model, "themeEditor.error.customThemeNotAllowed", request);
-            } else if (importTheme && !StringUtils.isEmpty(selectedThemeId)
-                    && !offered(weblog, selectedThemeId, currentThemeId(request))) {
-                // The same rule as the shared branch: the picker leaves frontpage
-                // out, and this stops a form posted without the picker.
-                addError(model, "themeEditor.error.notOffered", request);
-            } else if (importTheme) {
-                try {
-                    ThemeManager themeMgr = weblogger.getThemeManager();
-                    if (!StringUtils.isEmpty(selectedThemeId)) {
-                        SharedTheme t = themeMgr.getTheme(selectedThemeId);
-                        // Re-importing the current theme keeps a customised
-                        // stylesheet. The check throws rather than answering
-                        // "not customised" when it cannot run, so the catch
-                        // below refuses instead of overwriting the stylesheet.
-                        boolean skipStylesheet = selectedThemeId.equals(weblog.getEditorTheme())
-                                && hasCustomisedSharedStylesheet(weblog);
-                        themeMgr.importTheme(getActionWeblog(request), t, skipStylesheet);
-                        addMessage(model, "themeEditor.setCustomTheme.success", t.getName(), request);
-                    }
-                } catch (Exception re) {
-                    log.error("Error customizing theme for weblog - {}", weblog.getHandle(), re);
-                    addError(model, "generic.error.check.logs", request);
-                    loadThemeData(request, model);
-                    return ".ThemeEdit";
-                }
+            if (!importedForCustom(request, model, weblog, selectedThemeId, importTheme)) {
+                loadThemeData(request, model);
+                return ".ThemeEdit";
             }
-
             if (!hasErrors(model)) {
-                try {
-                    weblog.setEditorTheme(WeblogTheme.CUSTOM);
-                    weblogger.getWeblogManager().saveWeblog(weblog);
-                    weblogger.flush();
-                    CacheManager.invalidate(weblog);
-                    // NOT themeEditor.setTheme.success, whose {0} is a theme NAME: this
-                    // branch used to feed it the WeblogTheme.CUSTOM storage constant, so
-                    // the banner read "Theme set to custom". Nor setCustomTheme.success,
-                    // which names the shared theme an import came from and has no meaning
-                    // on the path where nothing was imported.
-                    addMessage(model, "themeEditor.setCustomTheme.enabled", request);
-                    addMessage(model, "themeEditor.setCustomTheme.instructions", request);
-                } catch (WebloggerException re) {
-                    log.error("Error saving weblog - {}", weblog.getHandle(), re);
-                    addError(model, "generic.error.check.logs", request);
-                }
+                enableCustomTheme(request, model, weblog);
             }
-
         } else if ("shared".equals(themeType)) {
-            Theme newTheme = null;
-            if (offered(weblog, selectedThemeId, currentThemeId(request))) {
-                try {
-                    ThemeManager themeMgr = weblogger.getThemeManager();
-                    newTheme = themeMgr.getTheme(selectedThemeId);
-                } catch (Exception ex) {
-                    log.warn("Theme not found", ex);
-                    addError(model, "themeEditor.error.notFound", request);
-                }
-            } else {
-                // The picker leaves it out; this stops a form posted without the picker.
-                addError(model, "themeEditor.error.notOffered", request);
-            }
-
-            if (!hasErrors(model)) {
-                try {
-                    String originalTheme = weblog.getEditorTheme();
-                    SharedThemeRules.switchTo(weblogger.getWeblogManager(), weblog, selectedThemeId,
-                            currentTheme(request));
-                    weblogger.getWeblogManager().saveWeblog(weblog);
-                    weblogger.flush();
-                    CacheManager.invalidate(weblog);
-
-                    if (!originalTheme.equals(selectedThemeId)) {
-                        addMessage(model, "themeEditor.setTheme.success", newTheme.getName(), request);
-                    }
-                } catch (WebloggerException re) {
-                    log.error("Error saving weblog - {}", weblog.getHandle(), re);
-                    addError(model, "generic.error.check.logs", request);
-                }
-            }
+            switchToSharedTheme(request, model, weblog, selectedThemeId);
         }
 
         loadThemeData(request, model);
@@ -199,6 +126,98 @@ public class ThemeEditController extends BaseController {
         model.addAttribute("currentThemeName", currentThemeName(request));
 
         return ".ThemeEdit";
+    }
+
+    /**
+     * The checks before a switch to a custom theme, and the import of the
+     * chosen shared theme's templates when asked for. A refusal is an error
+     * on the model. Returns false only when the import itself failed, which
+     * ends the request at once.
+     */
+    private boolean importedForCustom(HttpServletRequest request, Model model, Weblog weblog,
+            String selectedThemeId, boolean importTheme) {
+        if (weblog.isSiteSpace()) {
+            addError(model, "themeEditor.error.notOffered", request);
+        } else if (!customThemeAllowed(request)) {
+            addError(model, "themeEditor.error.customThemeNotAllowed", request);
+        } else if (importTheme && !StringUtils.isEmpty(selectedThemeId)
+                && !offered(weblog, selectedThemeId, currentThemeId(request))) {
+            // The same rule as the shared branch: the picker leaves frontpage
+            // out, and this stops a form posted without the picker.
+            addError(model, "themeEditor.error.notOffered", request);
+        } else if (importTheme && !StringUtils.isEmpty(selectedThemeId)) {
+            try {
+                ThemeManager themeMgr = weblogger.getThemeManager();
+                SharedTheme t = themeMgr.getTheme(selectedThemeId);
+                // Re-importing the current theme keeps a customised
+                // stylesheet. The check throws rather than answering
+                // "not customised" when it cannot run, so the catch
+                // below refuses instead of overwriting the stylesheet.
+                boolean skipStylesheet = selectedThemeId.equals(weblog.getEditorTheme())
+                        && hasCustomisedSharedStylesheet(weblog);
+                themeMgr.importTheme(getActionWeblog(request), t, skipStylesheet);
+                addMessage(model, "themeEditor.setCustomTheme.success", t.getName(), request);
+            } catch (Exception re) {
+                log.error("Error customizing theme for weblog - {}", weblog.getHandle(), re);
+                addError(model, "generic.error.check.logs", request);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void enableCustomTheme(HttpServletRequest request, Model model, Weblog weblog) {
+        try {
+            weblog.setEditorTheme(WeblogTheme.CUSTOM);
+            weblogger.getWeblogManager().saveWeblog(weblog);
+            weblogger.flush();
+            CacheManager.invalidate(weblog);
+            // NOT themeEditor.setTheme.success, whose {0} is a theme NAME: this
+            // branch used to feed it the WeblogTheme.CUSTOM storage constant, so
+            // the banner read "Theme set to custom". Nor setCustomTheme.success,
+            // which names the shared theme an import came from and has no meaning
+            // on the path where nothing was imported.
+            addMessage(model, "themeEditor.setCustomTheme.enabled", request);
+            addMessage(model, "themeEditor.setCustomTheme.instructions", request);
+        } catch (WebloggerException re) {
+            log.error("Error saving weblog - {}", weblog.getHandle(), re);
+            addError(model, "generic.error.check.logs", request);
+        }
+    }
+
+    private void switchToSharedTheme(HttpServletRequest request, Model model, Weblog weblog,
+            String selectedThemeId) {
+        if (!offered(weblog, selectedThemeId, currentThemeId(request))) {
+            // The picker leaves it out; this stops a form posted without the picker.
+            addError(model, "themeEditor.error.notOffered", request);
+            return;
+        }
+        Theme newTheme;
+        try {
+            newTheme = weblogger.getThemeManager().getTheme(selectedThemeId);
+        } catch (Exception ex) {
+            log.warn("Theme not found", ex);
+            addError(model, "themeEditor.error.notFound", request);
+            return;
+        }
+        if (hasErrors(model)) {
+            return;
+        }
+        try {
+            String originalTheme = weblog.getEditorTheme();
+            SharedThemeRules.switchTo(weblogger.getWeblogManager(), weblog, selectedThemeId,
+                    currentTheme(request));
+            weblogger.getWeblogManager().saveWeblog(weblog);
+            weblogger.flush();
+            CacheManager.invalidate(weblog);
+
+            if (!originalTheme.equals(selectedThemeId)) {
+                addMessage(model, "themeEditor.setTheme.success", newTheme.getName(), request);
+            }
+        } catch (WebloggerException re) {
+            log.error("Error saving weblog - {}", weblog.getHandle(), re);
+            addError(model, "generic.error.check.logs", request);
+        }
     }
 
     /**
