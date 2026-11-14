@@ -176,4 +176,35 @@ class PreviewServletDecisionTest {
                 "an empty theme parameter is no theme preview at all");
         assertTrue(response.getContentType().startsWith("text/html"));
     }
+
+    // --- a theme that cannot be read ---------------------------------------
+
+    private MockHttpServletResponse previewWithBrokenThemes(String pathInfo, String... params) throws Exception {
+        com.wikantik.pressroom.business.themes.ThemeManager broken =
+                org.mockito.Mockito.mock(com.wikantik.pressroom.business.themes.ThemeManager.class);
+        org.mockito.Mockito.when(broken.getTheme(org.mockito.ArgumentMatchers.any(Weblog.class)))
+                .thenThrow(new com.wikantik.pressroom.WebloggerException("theme directory unreadable"));
+        com.wikantik.pressroom.business.Weblogger weblogger = org.mockito.Mockito.mock(
+                com.wikantik.pressroom.business.Weblogger.class,
+                org.mockito.AdditionalAnswers.delegatesTo(TestUtils.weblogger()));
+        org.mockito.Mockito.doReturn(broken).when(weblogger).getThemeManager();
+        PreviewServlet servlet = new PreviewServlet(weblogger);
+        servlet.init(new org.springframework.mock.web.MockServletConfig(
+                com.wikantik.pressroom.ui.core.PressroomContext.getServletContext()));
+        MockHttpServletRequest request = RenderingTestSupport.anonymousGet(PREVIEW_SERVLET, pathInfo);
+        for (int i = 0; i + 1 < params.length; i += 2) {
+            request.setParameter(params[i], params[i + 1]);
+        }
+        return RenderingTestSupport.execute(servlet, request);
+    }
+
+    /**
+     * Every rung of the ladder fails soft when the theme cannot be read, so
+     * nothing is left to render: a 404, not a 500 with a stack trace.
+     */
+    @Test
+    void aThemeThatCannotBeReadLeavesNothingToPreview() throws Exception {
+        assertEquals(404, previewWithBrokenThemes("/" + handle).getStatus());
+        assertEquals(404, previewWithBrokenThemes("/" + handle + "/entry/some-post").getStatus());
+    }
 }
