@@ -178,37 +178,7 @@ final class EntryImports {
             throw ApiException.invalidField(field,
                     "The weblog's default media directory is private, so readers could not see imported images.");
         }
-        Instant started = clock.instant();
-        Map<String, MediaFile> imported = new LinkedHashMap<>();
-        FieldErrors failures = new FieldErrors();
-        // Attempts, not successes: a URL that failed as the featured image is
-        // not fetched (or reported) again as a body image.
-        Set<String> attempted = new HashSet<>();
-        for (Wanted wanted : wanted(plan)) {
-            if (!attempted.add(wanted.url())) {
-                continue;
-            }
-            // Best effort (a defaulted body image): a failure leaves it linked.
-            boolean mayFail = plan.defaulted() && "text".equals(wanted.field());
-            if (Duration.between(started, clock.instant()).compareTo(BUDGET) >= 0) {
-                if (!mayFail) {
-                    failures.add(wanted.field(), "Image " + ExternalImages.abbreviate(wanted.url())
-                            + " was not fetched: the import step's " + BUDGET.toSeconds()
-                            + "-second budget ran out.");
-                }
-                continue;
-            }
-            try {
-                imported.put(wanted.url(), MediaImports.importImage(weblogger, fetcher, weblog, directory,
-                        wanted.url(), null, wanted.alt()).file());
-            } catch (MediaImports.ImportRefused e) {
-                if (!mayFail) {
-                    failures.add(wanted.field(),
-                            "Image " + ExternalImages.abbreviate(wanted.url()) + ": " + e.getMessage());
-                }
-            }
-        }
-        failures.throwIfAny();
+        Map<String, MediaFile> imported = importAll(plan, weblog, directory);
         imported.values().forEach(file -> importedIds.add(file.getId()));
 
         String featuredId = plan.featuredUrl() == null ? null : imported.get(plan.featuredUrl()).getId();
@@ -223,6 +193,51 @@ final class EntryImports {
             text = ExternalImages.rewrite(plan.text(), plan.scan().refs(), local, ids);
         }
         return body.withImports(featuredId, text);
+    }
+
+    /**
+     * Imports every wanted image within the time budget, by URL. Refuses
+     * with one error per image that failed, except a defaulted body image:
+     * that import is best effort, and a failure leaves the image linked.
+     */
+    private Map<String, MediaFile> importAll(Plan plan, Weblog weblog, MediaFileDirectory directory)
+            throws WebloggerException {
+        Instant started = clock.instant();
+        Map<String, MediaFile> imported = new LinkedHashMap<>();
+        FieldErrors failures = new FieldErrors();
+        // Attempts, not successes: a URL that failed as the featured image is
+        // not fetched (or reported) again as a body image.
+        Set<String> attempted = new HashSet<>();
+        for (Wanted wanted : wanted(plan)) {
+            if (!attempted.add(wanted.url())) {
+                continue;
+            }
+            String problem = importOne(wanted, started, weblog, directory, imported);
+            boolean mayFail = plan.defaulted() && "text".equals(wanted.field());
+            if (problem != null && !mayFail) {
+                failures.add(wanted.field(), "Image " + ExternalImages.abbreviate(wanted.url()) + problem);
+            }
+        }
+        failures.throwIfAny();
+        return imported;
+    }
+
+    /**
+     * Imports one image into {@code imported}. Null when it was imported,
+     * else why not, worded to follow "Image &lt;url&gt;".
+     */
+    private String importOne(Wanted wanted, Instant started, Weblog weblog, MediaFileDirectory directory,
+            Map<String, MediaFile> imported) throws WebloggerException {
+        if (Duration.between(started, clock.instant()).compareTo(BUDGET) >= 0) {
+            return " was not fetched: the import step's " + BUDGET.toSeconds() + "-second budget ran out.";
+        }
+        try {
+            imported.put(wanted.url(), MediaImports.importImage(weblogger, fetcher, weblog, directory,
+                    wanted.url(), null, wanted.alt()).file());
+            return null;
+        } catch (MediaImports.ImportRefused e) {
+            return ": " + e.getMessage();
+        }
     }
 
     /** Ids of the files {@link #run} imported, for the featured-image default. */
