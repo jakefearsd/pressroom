@@ -119,6 +119,17 @@ class UtilitiesModelBusinessCardTest {
     }
 
     /**
+     * Characterisation test, written before the telephone was split out of
+     * businessCard and passing against the old code: a telephone with no
+     * digits before its extension is left off the card entirely.
+     */
+    @Test
+    void aTelephoneWithoutDigitsIsNotOnTheCard() {
+        Map<String, String> card = cardWithPhone("call us x12");
+        assertEquals(Map.of("name", "Casa Azul Group", "locality", "Azores"), card);
+    }
+
+    /**
      * An extension is RFC 3966 ";ext=": folding its digits into the number
      * dials a wrong line. The text shown stays exactly as typed.
      */

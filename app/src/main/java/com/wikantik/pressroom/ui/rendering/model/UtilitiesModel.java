@@ -528,17 +528,7 @@ public class UtilitiesModel implements Model {
         }
         String phone = business == null ? null : StringUtils.trimToNull(business.getTelephone());
         if (phone != null) {
-            Matcher ext = TEL_EXTENSION.matcher(phone);
-            boolean hasExt = ext.find();
-            String number = hasExt ? phone.substring(0, ext.start()) : phone;
-            String digits = number.replaceAll("[^0-9]", "");
-            if (!digits.isEmpty()) {
-                card.put("telephone", phone);
-                String href = "tel:" + (number.trim().startsWith("+") ? "+" : "") + digits;
-                // RFC 3966: an extension is a parameter, never more digits of the number.
-                String extDigits = hasExt ? ext.group(1) : "";
-                card.put("telHref", extDigits.isEmpty() ? href : href + ";ext=" + extDigits);
-            }
+            putTelephone(card, phone);
         }
         String booking = BookingLink.resolve(w);
         if (booking != null) {
@@ -549,6 +539,25 @@ public class UtilitiesModel implements Model {
             }
         }
         return card;
+    }
+
+    /**
+     * The card's {@code telephone} (as typed) and {@code telHref}, when the
+     * number has any digits before its extension. RFC 3966: an extension is
+     * a parameter, never more digits of the number.
+     */
+    private static void putTelephone(Map<String, String> card, String phone) {
+        Matcher ext = TEL_EXTENSION.matcher(phone);
+        boolean hasExt = ext.find();
+        String number = hasExt ? phone.substring(0, ext.start()) : phone;
+        String digits = number.replaceAll("[^0-9]", "");
+        if (digits.isEmpty()) {
+            return;
+        }
+        card.put("telephone", phone);
+        String href = "tel:" + (number.trim().startsWith("+") ? "+" : "") + digits;
+        String extDigits = hasExt ? ext.group(1) : "";
+        card.put("telHref", extDigits.isEmpty() ? href : href + ";ext=" + extDigits);
     }
 
     public String replace(String src, String target, String rWith) {
