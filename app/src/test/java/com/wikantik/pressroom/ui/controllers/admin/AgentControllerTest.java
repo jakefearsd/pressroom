@@ -475,4 +475,149 @@ class AgentControllerTest {
         assertEquals(List.of("apiTokens.error.noSuchToken"), ControllerTestFixture.flashErrors(redirect));
         verify(weblogger.apiTokenManager(), never()).revoke(any(ApiToken.class));
     }
+
+    // ------------------------------------------------ refusals and store failures
+
+    /** Every action on an agent page refuses a name that is blank, unknown, a person, or unreadable. */
+    @Test
+    void everyActionRefusesAnAccountThatIsNotAReadableAgent() throws Exception {
+        when(weblogger.userManager().getUserByUserName("broken", null)).thenThrow(new WebloggerException("db down"));
+
+        for (String name : java.util.Arrays.asList(null, " ", "nobody", "broken")) {
+            ExtendedModelMap pageModel = new ExtendedModelMap();
+            assertEquals(".UserAdmin", controller.page(asAdmin(), pageModel, name), "page for " + name);
+            assertEquals(List.of("userAdmin.error.userNotFound"), ControllerTestFixture.errors(pageModel));
+
+            ExtendedModelMap saveModel = new ExtendedModelMap();
+            assertEquals(".UserAdmin", controller.save(asAdmin(), saveModel, new RedirectAttributesModelMap(),
+                    newAgent(name, "Publisher")), "save for " + name);
+            assertEquals(List.of("userAdmin.error.userNotFound"), ControllerTestFixture.errors(saveModel));
+
+            ExtendedModelMap mintModel = new ExtendedModelMap();
+            assertEquals(".UserAdmin", controller.mint(asAdmin(), mintModel, new RedirectAttributesModelMap(),
+                    name, "x", "POST", "", "90"), "mint for " + name);
+            assertEquals(List.of("userAdmin.error.userNotFound"), ControllerTestFixture.errors(mintModel));
+
+            RedirectAttributesModelMap enableRedirect = new RedirectAttributesModelMap();
+            assertEquals("redirect:/pressroom-ui/admin/userAdmin.rol",
+                    controller.changeEnabled(asAdmin(), enableRedirect, name, "false"), "enable for " + name);
+            assertEquals(List.of("userAdmin.error.userNotFound"), ControllerTestFixture.flashErrors(enableRedirect));
+
+            RedirectAttributesModelMap revokeRedirect = new RedirectAttributesModelMap();
+            assertEquals("redirect:/pressroom-ui/admin/userAdmin.rol",
+                    controller.revoke(asAdmin(), revokeRedirect, name, "t1"), "revoke for " + name);
+            assertEquals(List.of("userAdmin.error.userNotFound"), ControllerTestFixture.flashErrors(revokeRedirect));
+        }
+        verify(weblogger.userManager(), never()).saveUser(any());
+        verify(weblogger.apiTokenManager(), never()).issueToken(any(), anyString(), any(), any(), any(), any());
+        verify(weblogger.apiTokenManager(), never()).revoke(any(ApiToken.class));
+    }
+
+    /** A missing or over-long name keeps the details form, and nothing is written. */
+    @Test
+    void aSaveWithAMissingOrOverlongNameKeepsTheFormAndWritesNothing() throws Exception {
+        stored();
+
+        assertEquals(".Agent", controller.save(asAdmin(), model, redirect, newAgent("bot1", "  ")));
+        assertEquals(List.of("agent.error.nameRequired"), ControllerTestFixture.errors(model));
+        assertEquals(List.of("bean_name"), ControllerTestFixture.invalidFields(model));
+
+        ExtendedModelMap tooLong = new ExtendedModelMap();
+        assertEquals(".Agent", controller.save(asAdmin(), tooLong, redirect, newAgent("bot1", "n".repeat(256))));
+        assertEquals(List.of("agent.error.nameTooLong"), ControllerTestFixture.errors(tooLong));
+
+        assertEquals("Publisher", agent.getScreenName(), "a refused save leaves the stored name");
+        verify(weblogger.userManager(), never()).saveUser(any());
+        assertEquals(0, weblogger.flushCount());
+    }
+
+    /** A name of exactly the column width is accepted. */
+    @Test
+    void aNameOfExactlyTheColumnWidthIsAccepted() throws Exception {
+        stored();
+        String full = "n".repeat(255);
+
+        assertEquals("redirect:/pressroom-ui/admin/agent.rol",
+                controller.save(asAdmin(), model, redirect, newAgent("bot1", full)));
+        assertEquals(full, agent.getScreenName());
+    }
+
+    /** A store failure while saving the details keeps the form, says so, and logs no grant. */
+    @Test
+    void aStoreFailureWhileSavingTheDetailsKeepsTheFormAndLogsNoGrant() throws Exception {
+        stored();
+        doThrow(new WebloggerException("db down")).when(weblogger.userManager()).saveUser(agent);
+        AgentBean bean = newAgent("bot1", "Publisher Two");
+        bean.setSiteAdmin(true);
+
+        try (AdminLogCapture log = AdminLogCapture.start()) {
+            assertEquals(".Agent", controller.save(asAdmin(), model, redirect, bean));
+
+            assertEquals(List.of("generic.error.check.logs"), ControllerTestFixture.errors(model));
+            assertEquals(List.of(), ControllerTestFixture.flashMessages(redirect));
+            assertEquals(List.of(), log.lines());
+            verify(weblogger.userManager(), never()).grantRole(anyString(), any());
+            assertEquals(0, weblogger.flushCount());
+        }
+    }
+
+    /** Saving with the role unchanged neither grants, revokes nor logs. */
+    @Test
+    void savingWithTheRoleUnchangedTouchesNoRole() throws Exception {
+        stored();
+        when(weblogger.userManager().hasRole("admin", agent)).thenReturn(true);
+        AgentBean bean = newAgent("bot1", "Publisher");
+        bean.setSiteAdmin(true);
+
+        try (AdminLogCapture log = AdminLogCapture.start()) {
+            controller.save(asAdmin(), model, redirect, bean);
+
+            verify(weblogger.userManager(), never()).grantRole(anyString(), any());
+            verify(weblogger.userManager(), never()).revokeRole(anyString(), any());
+            assertEquals(List.of(), log.lines());
+            assertEquals(List.of("agent.saved"), ControllerTestFixture.flashMessages(redirect));
+        }
+    }
+
+    /** A store failure while disabling says so, and the audit log records nothing. */
+    @Test
+    void aStoreFailureWhileDisablingIsReportedAndNotLogged() throws Exception {
+        stored();
+        doThrow(new WebloggerException("db down")).when(weblogger.userManager()).saveUser(agent);
+
+        try (AdminLogCapture log = AdminLogCapture.start()) {
+            assertEquals("redirect:/pressroom-ui/admin/agent.rol",
+                    controller.changeEnabled(asAdmin(), redirect, "bot1", "false"));
+
+            assertEquals(List.of("generic.error.check.logs"), ControllerTestFixture.flashErrors(redirect));
+            assertEquals(List.of(), ControllerTestFixture.flashMessages(redirect));
+            assertEquals(List.of(), log.lines());
+        }
+    }
+
+    /** A revocation the store cannot complete is reported as a failure, not as revoked. */
+    @Test
+    void aRevocationTheStoreCannotCompleteIsReported() throws Exception {
+        stored();
+        ApiToken token = tokenOf(agent, "t1");
+        when(weblogger.apiTokenManager().getToken("t1")).thenReturn(token);
+        doThrow(new WebloggerException("db down")).when(weblogger.apiTokenManager()).revoke(token);
+
+        assertEquals("redirect:/pressroom-ui/admin/agent.rol", controller.revoke(asAdmin(), redirect, "bot1", "t1"));
+
+        assertEquals(List.of("generic.error.check.logs"), ControllerTestFixture.flashErrors(redirect));
+        assertEquals(List.of(), ControllerTestFixture.flashMessages(redirect));
+    }
+
+    /** The memberships list is display only: a store that cannot list shows none, and the page still opens. */
+    @Test
+    void membershipsThatCannotBeListedShowAsNone() throws Exception {
+        stored();
+        siteAdmin(false);
+        when(weblogger.userManager().getWeblogPermissions(agent)).thenThrow(new WebloggerException("db down"));
+
+        assertEquals(".Agent", controller.page(asAdmin(), model, "bot1"));
+        assertEquals(List.of(), model.getAttribute("permissions"));
+        assertEquals(List.of(), ControllerTestFixture.errors(model));
+    }
 }
