@@ -18,9 +18,6 @@
 
 package com.wikantik.pressroom.util;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.text.MessageFormat;
 import java.util.Collections;
 import java.util.HashMap;
@@ -173,70 +170,21 @@ public final class I18nMessages {
 		// cache-clearing calls below fails.
 		messagesMap.remove(key);
 
-		try {
-
-			// ResourceBundle.clearCache has been the supported way to do this
-			// since Java 6. The previous implementation reached into the
-			// private ResourceBundle.cacheList field by reflection, which the
-			// JDK now refuses: the call threw before the cached instance was
-			// evicted, so "reload messages" quietly did nothing at all.
-			@SuppressWarnings("PMD.UseProperClassLoader") // the bundles were loaded through this class's loader, so that is the cache to clear
-			ClassLoader loader = I18nMessages.class.getClassLoader();
-			if (loader != null) {
-				ResourceBundle.clearCache(loader);
-			}
-
-			clearTomcatCache();
-
-		} catch (Exception e) {
-			log.error("Error clearing message resource bundles", e);
+		// ResourceBundle.clearCache has been the supported way to do this
+		// since Java 6. The previous implementation reached into the
+		// private ResourceBundle.cacheList field by reflection, which the
+		// JDK now refuses: the call threw before the cached instance was
+		// evicted, so "reload messages" quietly did nothing at all.
+		//
+		// There used to be a second step here that reflectively cleared a
+		// Tomcat WebappClassLoader's resourceEntries map. It could never
+		// work: the embedded container's context loader is not that exact
+		// class, and the field is declared on WebappClassLoaderBase, so
+		// getDeclaredField on the subclass threw. Removed (2026-11-14).
+		@SuppressWarnings("PMD.UseProperClassLoader") // the bundles were loaded through this class's loader, so that is the cache to clear
+		ClassLoader loader = I18nMessages.class.getClassLoader();
+		if (loader != null) {
+			ResourceBundle.clearCache(loader);
 		}
-
-	}
-
-	/**
-	 * Clear tomcat cache.
-	 */
-	private static void clearTomcatCache() {
-
-		ClassLoader loader = Thread.currentThread().getContextClassLoader();
-		// no need for compilation here.
-		Class<?> cl = loader.getClass();
-
-		try {
-			if ("org.apache.catalina.loader.WebappClassLoader".equals(cl
-					.getName())) {
-				clearMap(cl, loader, "resourceEntries");
-			} else {
-				log.debug("class loader {} is not tomcat loader.", cl.getName());
-			}
-		} catch (ReflectiveOperationException | RuntimeException e) {
-			log.warn("couldn't clear tomcat cache", e);
-		}
-	}
-
-	// AvoidAccessibilityAlteration: this is Tomcat-hot-reload plumbing, not a
-	// general reflection utility. clearTomcatCache's caller only reaches here
-	// after confirming the context classloader's exact class name is
-	// org.apache.catalina.loader.WebappClassLoader, so setAccessible is only
-	// ever exercised against that one known, non-public Tomcat field
-	// (resourceEntries) and only to invoke its own public clear() method --
-	// there is no other way to flush Tomcat's classloader-level resource
-	// bundle cache on theme/locale reload (see docs/dev/themes-and-templates.md), because the field is deliberately not exposed by Tomcat.
-	@SuppressWarnings("PMD.AvoidAccessibilityAlteration")
-	private static void clearMap(Class<?> cl, Object obj, String name)
-			throws NoSuchFieldException, IllegalAccessException,
-			NoSuchMethodException, InvocationTargetException {
-		Field field = cl.getDeclaredField(name);
-		field.setAccessible(true);
-
-		Object cache = field.get(obj);
-
-		synchronized (cache) {
-			Class<?> ccl = cache.getClass();
-			Method clearMethod = ccl.getMethod("clear");
-			clearMethod.invoke(cache);
-		}
-
 	}
 }
