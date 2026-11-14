@@ -386,53 +386,59 @@ public final class ShortcodeExpander {
                     + "with its closer; it decides only how the author's own text nests.")
     private static int findMatchingCloser(String text, String name, int from) {
         String closer = "[/" + name + "]";
-        int depth = 1;
-        int candidate = -1;   // best closer so far once the tag is balanced
-        int lastCloser = -1;  // unbalanced-opens fallback
+        CloserScan scan = new CloserScan();
         int pos = from;
 
         int idx;
         while ((idx = text.indexOf('[', pos)) >= 0) {
             if (text.regionMatches(true, idx, closer, 0, closer.length())) {
-                if (idx > 0 && text.charAt(idx - 1) == '[' && closesDoubled(text, idx + closer.length())) {
-                    // [[/name]]: a literal mention, not structure.
-                    pos = idx + closer.length() + 1;
-                    continue;
-                }
-                lastCloser = idx;
-                if (depth > 0) {
-                    depth--;
-                }
-                if (depth == 0) {
-                    candidate = idx;
-                }
-                pos = idx + closer.length();
+                pos = scan.closerAt(text, idx, closer.length());
                 continue;
             }
-
             Matcher open = OPEN_TAG.matcher(text).region(idx, text.length());
-            if (open.lookingAt()) {
-                // A well-formed tag (any name): skip its whole span so its
-                // quoted attribute values are opaque to this scan.
-                boolean escapedOpen = !open.group(1).isEmpty() && closesDoubled(text, open.end());
-                boolean opensABody = !escapedOpen
-                        && open.group(2).equalsIgnoreCase(name)
-                        && !isSelfClosing(open.group(3), open.group(4));
-                if (opensABody) {
-                    if (depth == 0) {
-                        // This tag's run of closers is over; the ones that
-                        // follow belong to the new same-name open.
-                        return candidate;
-                    }
-                    depth++;
-                }
-                pos = escapedOpen ? open.end() + 1 : open.end();
+            if (!open.lookingAt()) {
+                pos = idx + 1;
                 continue;
             }
-
-            pos = idx + 1;
+            // A well-formed tag (any name): skip its whole span so its
+            // quoted attribute values are opaque to this scan.
+            boolean escapedOpen = !open.group(1).isEmpty() && closesDoubled(text, open.end());
+            if (!escapedOpen && open.group(2).equalsIgnoreCase(name)
+                    && !isSelfClosing(open.group(3), open.group(4))) {
+                // a same-name open that has a body
+                if (scan.depth == 0) {
+                    // This tag's run of closers is over; the ones that
+                    // follow belong to the new same-name open.
+                    return scan.candidate;
+                }
+                scan.depth++;
+            }
+            pos = escapedOpen ? open.end() + 1 : open.end();
         }
-        return candidate >= 0 ? candidate : lastCloser;
+        return scan.candidate >= 0 ? scan.candidate : scan.lastCloser;
+    }
+
+    /** Where findMatchingCloser's scan stands: open depth and the closers seen. */
+    private static final class CloserScan {
+        private int depth = 1;
+        private int candidate = -1;   // best closer so far once the tag is balanced
+        private int lastCloser = -1;  // unbalanced-opens fallback
+
+        /** Takes the closer at {@code idx} into account and returns where the scan resumes. */
+        int closerAt(String text, int idx, int closerLength) {
+            if (idx > 0 && text.charAt(idx - 1) == '[' && closesDoubled(text, idx + closerLength)) {
+                // [[/name]]: a literal mention, not structure.
+                return idx + closerLength + 1;
+            }
+            lastCloser = idx;
+            if (depth > 0) {
+                depth--;
+            }
+            if (depth == 0) {
+                candidate = idx;
+            }
+            return idx + closerLength;
+        }
     }
 
     private static Map<String, String> parseAttributes(String attributeText) {
