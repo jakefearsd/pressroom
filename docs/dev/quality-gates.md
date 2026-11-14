@@ -241,7 +241,11 @@ double-checked locking), `AbstractClassWithoutAbstractMethod` (4; `DateUtil`
 became a final utility class, the other three are bases nobody should
 instantiate) and `PublicMemberInNonPublicType` (7; two nested classes were
 narrowed, the other four are `LazyExpiringRenderCache` methods its public
-subclasses expose to other packages).
+subclasses expose to other packages). Triaged and left ungated: `NullAssignment` (57;
+each is null meaning absent, or a buffer dropped on close) and
+`ConstructorCallsOverridableMethod` (47; the only overrides reached from a
+constructor return constants, as `WeblogResourceRequest.isLocale` does, and
+the javac twin `this-escape` is off for the same reason).
 
 Six PMD rules and five SpotBugs families are excluded, each with a reason
 comment in the config file: three SpotBugs-core families, and two
