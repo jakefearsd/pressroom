@@ -70,6 +70,15 @@ public final class Snippets {
                     // the words are parsed across several fields; the passage is cut from the body
                     .withFieldMatcher(field -> true)
                     .withMaxLength(Math.max(analysed.length(), 1))
+                    // Plain words (the usual search) are marked by filtering the
+                    // analysed tokens as they stream past. With these two left on,
+                    // the highlighter instead builds a one-document index of every
+                    // hit's text and asks the query where it matched: profiling
+                    // (2026-11-13) put that at a quarter of a results page's CPU
+                    // time. A quoted phrase still gets that index, for positions.
+                    // (The builder's withFlags is not read by this Lucene version.)
+                    .withWeightMatches(false)
+                    .withPassageRelevancyOverSpeed(false)
                     .build();
             // null when nothing in the text matches (no no-match passages are asked for)
             Object out = highlighter.highlightWithoutSearcher(FieldConstants.CONTENT, query, analysed, 1);

@@ -136,4 +136,31 @@ class SnippetsTest {
                 .filter(e -> e.getLevel().isMoreSpecificThan(Level.WARN))
                 .map(e -> e.getMessage().getFormattedMessage() + " / " + e.getThrown()).toList());
     }
+
+    /**
+     * Characterisation, written before the highlighter stopped building a
+     * throwaway index per hit: it passed against the old code too. A quoted
+     * phrase marks the phrase, not a stray occurrence of one of its words.
+     * (The old code put one mark around the whole phrase, the new one marks
+     * each word; the assertion reads both the same.)
+     */
+    @Test
+    void aQuotedPhraseMarksOnlyThePhrase() throws Exception {
+        String out = html("A stone wall, then the old stone bridge over the river.", "\"stone bridge\"", 160);
+        assertEquals("A stone wall, then the old <mark>stone bridge</mark> over the river.",
+                out.replace("</mark> <mark>", " "));
+    }
+
+    /** Characterisation (see above): a wildcard word still marks what it matches. */
+    @Test
+    void aWildcardWordIsMarked() throws Exception {
+        assertTrue(html("The remodeling took a month.", "remod*", 160).contains("<mark>remodeling</mark>"));
+    }
+
+    /** Characterisation (see above): plain words mark every occurrence in the window, stemmed. */
+    @Test
+    void plainWordsMarkEveryOccurrence() throws Exception {
+        assertEquals("<mark>Bridges</mark> and a <mark>bridge</mark>; the <mark>river</mark> runs under.",
+                html("Bridges and a bridge; the river runs under.", "bridge river", 160));
+    }
 }
