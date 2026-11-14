@@ -131,4 +131,46 @@ class CwebpEncoderTest {
             Thread.interrupted();
         }
     }
+
+    /**
+     * run() is the whole contract with the external tool, whichever tool it
+     * is: success only for an exit status of 0 within the time allowed. A
+     * tool that overruns is stopped and counts as a failure, so a hung cwebp
+     * cannot hold an upload. ({@code true}, {@code false} and {@code sleep}
+     * stand in for cwebp, which CI has and a laptop may not.)
+     */
+    @Test
+    void runIsSuccessOnlyForExitZeroWithinTheTimeAllowed() {
+        org.junit.jupiter.api.Assumptions.assumeTrue(new File("/bin/sleep").canExecute()
+                || new File("/usr/bin/sleep").canExecute(), "needs coreutils");
+
+        assertTrue(CwebpEncoder.run(List.of("true"), 5), "exit 0");
+        assertFalse(CwebpEncoder.run(List.of("false"), 5), "exit 1");
+        long started = System.nanoTime();
+        assertFalse(CwebpEncoder.run(List.of("sleep", "30"), 1), "overran its second");
+        assertTrue(System.nanoTime() - started < java.util.concurrent.TimeUnit.SECONDS.toNanos(20),
+                "an overrunning tool is stopped, not waited for");
+    }
+
+    /** The operator's force switch decides detection without running anything. */
+    @Test
+    void theForcePropertyDecidesDetection() {
+        String previous = System.getProperty(CwebpEncoder.FORCE_PROPERTY);
+        try {
+            System.setProperty(CwebpEncoder.FORCE_PROPERTY, "true");
+            CwebpEncoder.setAvailableForTesting(null);
+            assertTrue(CwebpEncoder.isAvailable());
+
+            System.setProperty(CwebpEncoder.FORCE_PROPERTY, "false");
+            CwebpEncoder.setAvailableForTesting(null);
+            assertFalse(CwebpEncoder.isAvailable());
+        } finally {
+            if (previous == null) {
+                System.clearProperty(CwebpEncoder.FORCE_PROPERTY);
+            } else {
+                System.setProperty(CwebpEncoder.FORCE_PROPERTY, previous);
+            }
+            CwebpEncoder.setAvailableForTesting(null);
+        }
+    }
 }
