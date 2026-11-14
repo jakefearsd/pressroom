@@ -124,7 +124,7 @@ public class UserEditController extends BaseController {
         User user = new User();
 
         // validate for create
-        myValidate(bean, user, true, model, request);
+        validateNew(bean, model, request);
 
         if (!hasErrors(model)) {
             bean.copyTo(user);
@@ -254,94 +254,89 @@ public class UserEditController extends BaseController {
         }
 
         // validate for modify
-        myValidate(bean, user, false, model, request);
+        validateEdit(bean, user, model, request);
         refuseSelfLockout(bean, user, getAuthenticatedUser(request), model, request);
+        if (hasErrors(model)) {
+            return ".UserEdit";
+        }
 
-        if (!hasErrors(model)) {
-            String screenNameBefore = user.getScreenName();
-            boolean enabledBefore = Boolean.TRUE.equals(user.getEnabled());
-            bean.copyTo(user);
+        String screenNameBefore = user.getScreenName();
+        boolean enabledBefore = Boolean.TRUE.equals(user.getEnabled());
+        bean.copyTo(user);
 
-            // reset password if set
-            boolean passwordChanged = !StringUtils.isEmpty(bean.getPassword());
-            if (passwordChanged) {
-                user.resetPassword(bean.getPassword());
+        // reset password if set
+        boolean passwordChanged = !StringUtils.isEmpty(bean.getPassword());
+        if (passwordChanged) {
+            user.resetPassword(bean.getPassword());
+        }
 
-                // invalidate user's session if it's not user executing this action
-                User authUser = getAuthenticatedUser(request);
-                if (authUser != null && !authUser.getUserName().equals(user.getUserName())) {
-                    PressroomLoginSessionManager sessionManager = PressroomLoginSessionManager.getInstance();
-                    sessionManager.invalidate(user.getUserName());
-                }
-            }
+        // A new password or a disabled account ends the user's session,
+        // unless it is the user executing this action.
+        boolean disabled = !user.getEnabled();
+        User authUser = getAuthenticatedUser(request);
+        boolean actingOnSelf = authUser != null && authUser.getUserName().equals(user.getUserName());
+        if (authUser != null && !actingOnSelf && (passwordChanged || disabled)) {
+            PressroomLoginSessionManager.getInstance().invalidate(user.getUserName());
+        }
 
-            // if user is disabled and not the same as the user executing this action, then invalidate session
-            User authUser = getAuthenticatedUser(request);
-            if (!user.getEnabled() && authUser != null && !authUser.getUserName().equals(user.getUserName())) {
-                PressroomLoginSessionManager sessionManager = PressroomLoginSessionManager.getInstance();
-                sessionManager.invalidate(user.getUserName());
-            }
+        try {
+            UserManager mgr = weblogger.getUserManager();
+            mgr.saveUser(user);
 
-            try {
-                UserManager mgr = weblogger.getUserManager();
-                mgr.saveUser(user);
-
-                if (user.isSsoBound()) {
-                    // a bound account never holds admin; only the editor role is editable
-                    boolean hasEditor = mgr.hasRole("editor", user);
-                    if (bean.isWriter() && !hasEditor) {
-                        mgr.grantRole("editor", user);
-                    } else if (!bean.isWriter() && hasEditor) {
-                        mgr.revokeRole("editor", user);
-                    }
-                    weblogger.flush();
-                    logEnabledChange(enabledBefore, user, authUser);
-                    expireIfRenamed(user, screenNameBefore);
-                    model.addAttribute("bean", new CreateUserBean());
-                    addMessage(model, "userAdmin.userSaved", request);
-                    return AccountRows.showList(weblogger, model, null, null);
-                }
-
-                // update Admin role as appropriate
-                boolean hasAdmin = false;
-                GlobalPermission adminPerm =
-                        new GlobalPermission(Collections.singletonList(GlobalPermission.ADMIN));
-                if (mgr.checkPermission(adminPerm, user)) {
-                    hasAdmin = true;
-                }
+            String roleEvent = null;
+            if (user.isSsoBound()) {
+                // a bound account never holds admin; only the editor role is editable
+                syncRole(mgr, user, "editor", bean.isWriter(), mgr.hasRole("editor", user));
+            } else {
                 // grant/revoke admin role if needed (refuseSelfLockout has
                 // already refused an admin unticking their own role)
-                String roleEvent = null;
-                if (hasAdmin && !bean.isAdministrator()) {
-                    mgr.revokeRole("admin", user);
-                    roleEvent = "siteAdmin.removed";
-                } else if (!hasAdmin && bean.isAdministrator()) {
-                    mgr.grantRole("admin", user);
-                    roleEvent = "siteAdmin.granted";
-                }
-                weblogger.flush();
-                if (passwordChanged && authUser != null && authUser.getUserName().equals(user.getUserName())) {
-                    // The account's other sessions end on their next request
-                    // (CredentialStampFilter); the admin's own stays signed in.
-                    CredentialStampFilter.restamp(request, user);
-                }
-                logEnabledChange(enabledBefore, user, authUser);
-                if (roleEvent != null) {
-                    AdminLog.record(roleEvent, authUser, "account=" + user.getUserName());
-                }
-                expireIfRenamed(user, screenNameBefore);
-
-                // successful edit: send user back to user admin page
-                model.addAttribute("bean", new CreateUserBean());
-                addMessage(model, "userAdmin.userSaved", request);
-                return AccountRows.showList(weblogger, model, null, null);
-
-            } catch (WebloggerException ex) {
-                log.error("ERROR in action", ex);
-                addError(model, "generic.error.check.logs", request);
+                boolean hasAdmin = mgr.checkPermission(
+                        new GlobalPermission(Collections.singletonList(GlobalPermission.ADMIN)), user);
+                roleEvent = syncRole(mgr, user, "admin", bean.isAdministrator(), hasAdmin);
             }
+            weblogger.flush();
+            if (passwordChanged && actingOnSelf) {
+                // The account's other sessions end on their next request
+                // (CredentialStampFilter); the admin's own stays signed in.
+                CredentialStampFilter.restamp(request, user);
+            }
+            logEnabledChange(enabledBefore, user, authUser);
+            if (roleEvent != null) {
+                AdminLog.record(roleEvent, authUser, "account=" + user.getUserName());
+            }
+            expireIfRenamed(user, screenNameBefore);
+
+            // successful edit: send user back to user admin page
+            model.addAttribute("bean", new CreateUserBean());
+            addMessage(model, "userAdmin.userSaved", request);
+            return AccountRows.showList(weblogger, model, null, null);
+
+        } catch (WebloggerException ex) {
+            log.error("ERROR in action", ex);
+            addError(model, "generic.error.check.logs", request);
         }
         return ".UserEdit";
+    }
+
+    /**
+     * Grants or revokes one role so that holding it matches the form.
+     *
+     * @return the admin-log event for a change to the admin role, else null
+     */
+    private static String syncRole(UserManager mgr, User user, String role, boolean wanted, boolean held)
+            throws WebloggerException {
+        if (wanted == held) {
+            return null;
+        }
+        if (wanted) {
+            mgr.grantRole(role, user);
+        } else {
+            mgr.revokeRole(role, user);
+        }
+        if (!"admin".equals(role)) {
+            return null;
+        }
+        return wanted ? "siteAdmin.granted" : "siteAdmin.removed";
     }
 
     @GetMapping("/modifyUser!cancel.rol")
@@ -446,40 +441,40 @@ public class UserEditController extends BaseController {
         return null;
     }
 
-    private void myValidate(CreateUserBean bean, User user, boolean isAdd,
-                            Model model, HttpServletRequest request) {
-        if (isAdd) {
-            String userNameProblem = UserNames.problem(bean.getUserName(), weblogger.getUserManager());
-            if (userNameProblem != null) {
-                addFieldError(model, "bean_userName", userNameProblem, request);
-            }
-            // Spec 2026-10-13, section 4: required on the server too, not
-            // only by the page's script.
-            if (StringUtils.isBlank(bean.getScreenName())) {
-                addFieldError(model, "bean_screenName", "personForm.error.screenName", request);
-            }
-            if (StringUtils.isBlank(bean.getFullName())) {
-                addFieldError(model, "bean_fullName", "personForm.error.fullName", request);
-            }
-            if (!EmailValidator.getInstance().isValid(StringUtils.trimToEmpty(bean.getEmailAddress()))) {
-                addFieldError(model, "bean_email", "personForm.error.email", request);
-            }
-            if (!sendsSetPasswordLink(bean)) {
-                if (StringUtils.isEmpty(bean.getPassword())) {
-                    addFieldError(model, "bean_password", "error.add.user.missingPassword", request);
-                } else if (!PasswordRules.isLongEnough(bean.getPassword())) {
-                    addFieldError(model, "bean_password", "personForm.error.passwordTooShort", request);
-                }
-            }
-        } else {
-            if (user.getUserName() == null) {
-                addError(model, "userAdmin.error.userNotFound", request);
-            }
-            if (user.isSsoBound() && !StringUtils.isEmpty(bean.getPassword())) {
-                addFieldError(model, "bean_password", "userAdmin.error.ssoPassword", request);
-            } else if (!StringUtils.isEmpty(bean.getPassword()) && !PasswordRules.isLongEnough(bean.getPassword())) {
-                addFieldError(model, "bean_password", "personForm.error.passwordTooShort", request);
-            }
+    private void validateNew(CreateUserBean bean, Model model, HttpServletRequest request) {
+        String userNameProblem = UserNames.problem(bean.getUserName(), weblogger.getUserManager());
+        if (userNameProblem != null) {
+            addFieldError(model, "bean_userName", userNameProblem, request);
+        }
+        // Spec 2026-10-13, section 4: required on the server too, not
+        // only by the page's script.
+        if (StringUtils.isBlank(bean.getScreenName())) {
+            addFieldError(model, "bean_screenName", "personForm.error.screenName", request);
+        }
+        if (StringUtils.isBlank(bean.getFullName())) {
+            addFieldError(model, "bean_fullName", "personForm.error.fullName", request);
+        }
+        if (!EmailValidator.getInstance().isValid(StringUtils.trimToEmpty(bean.getEmailAddress()))) {
+            addFieldError(model, "bean_email", "personForm.error.email", request);
+        }
+        if (sendsSetPasswordLink(bean)) {
+            return;
+        }
+        if (StringUtils.isEmpty(bean.getPassword())) {
+            addFieldError(model, "bean_password", "error.add.user.missingPassword", request);
+        } else if (!PasswordRules.isLongEnough(bean.getPassword())) {
+            addFieldError(model, "bean_password", "personForm.error.passwordTooShort", request);
+        }
+    }
+
+    private void validateEdit(CreateUserBean bean, User user, Model model, HttpServletRequest request) {
+        if (user.getUserName() == null) {
+            addError(model, "userAdmin.error.userNotFound", request);
+        }
+        if (user.isSsoBound() && !StringUtils.isEmpty(bean.getPassword())) {
+            addFieldError(model, "bean_password", "userAdmin.error.ssoPassword", request);
+        } else if (!StringUtils.isEmpty(bean.getPassword()) && !PasswordRules.isLongEnough(bean.getPassword())) {
+            addFieldError(model, "bean_password", "personForm.error.passwordTooShort", request);
         }
     }
 
