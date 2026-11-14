@@ -66,8 +66,8 @@ limitations under the License.
              (currently resolves to 6.1.3 via app's junit-bom import, matching the pin below). -->
         <junit-jupiter.version>6.1.3</junit-jupiter.version>
         <docker.plugin.version>0.49.0</docker.plugin.version>
-        <build-helper.version>3.6.2</build-helper.version>
-        <exec.plugin.version>3.6.4</exec.plugin.version>
+        <build-helper.version>3.8.0</build-helper.version>
+        <exec.plugin.version>3.7.0</exec.plugin.version>
         <!-- app-stop only; see the plugin comment below for why it cannot share the
              exec-maven-plugin declaration used for app-start and the pg-* steps. -->
         <antrun.plugin.version>3.2.0</antrun.plugin.version>
