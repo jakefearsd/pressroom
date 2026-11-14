@@ -19,9 +19,10 @@
 package com.wikantik.pressroom.util.cache;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.config.WebloggerConfig;
@@ -57,10 +58,15 @@ public final class CacheManager {
     private static final CacheFactory cacheFactory;
     
     // a set of all registered cache handlers
-    private static final Set<CacheHandler> cacheHandlers = new HashSet<>();
+    // Both registries are walked while they may still be growing: a cache is
+    // built on first use (a throttle on its controller's first request) while
+    // another thread clears every cache or fans out an invalidation. Handlers
+    // are walked on every change and registered a handful of times, so a
+    // copy-on-write set; caches by id in a concurrent map.
+    private static final Set<CacheHandler> cacheHandlers = new CopyOnWriteArraySet<>();
     
     // a map of all registered caches
-    private static final Map<String, Cache> caches = new HashMap<>();
+    private static final Map<String, Cache> caches = new ConcurrentHashMap<>();
     
     
     static {
@@ -156,7 +162,8 @@ public final class CacheManager {
         }
         
         if(cache != null) {
-            caches.put(cache.getId(), cache);
+            // a concurrent map takes no null key; an id-less cache is still cleared by clear()
+            caches.put(String.valueOf(cache.getId()), cache);
             
             // register the handler for this new cache
             if(handler != null) {

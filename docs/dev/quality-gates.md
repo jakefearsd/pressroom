@@ -439,6 +439,39 @@ through to (every one today falls to `false`, i.e. deny or degrade;
 swallowed weblog lookup leaves `actionWeblog` null and `enforceSecurity`
 then refuses).
 
+## Shared state (2026-11-13 audit)
+
+The multithreading rules are not gated: `UseConcurrentHashMap` (152 sites)
+fires on every local `HashMap`; `AvoidSynchronizedAtMethodLevel` (16) and
+`AvoidSynchronizedStatement` (24) push `ReentrantLock` to avoid pinning
+virtual threads, which `synchronized` no longer does on Java 24+, and the
+blocks here already lock private objects (SpotBugs `USO_*`). Read by hand
+instead, the shared mutable state found three real hazards:
+
+- `CacheManager`'s registries were a `HashMap` and a `HashSet`, grown when a
+  cache is built on first use (a throttle on its controller's first
+  request) while another thread clears every cache or fans out an
+  invalidation. Now a `ConcurrentHashMap` and a `CopyOnWriteArraySet`
+  (`CacheManagerTest`, two re-entrant registration tests).
+- `PluginManagerImpl` kept its plugin registry in a static map filled by
+  every instance's constructor and cleared by none, so a plugin one manager
+  loaded reached every later one. It is an instance field now
+  (`PluginManagerPluginsTest.aManagerSeesOnlyThePluginsItLoaded`).
+- `ThemeManagerImpl` swaps a theme on a request thread when
+  `themes.reload.mode` is on, by `remove` then `put` on a `HashMap`: a reader
+  between the two found no theme. A `ConcurrentHashMap` and one `put` (no
+  deterministic test; a dev-mode-only race).
+
+**PMD's `NonThreadSafeSingleton` (quickstart) throws on a record component
+in a null check** and is then not applied to that file: 7.28's
+`shouldConsiderField` asks for the component's `FieldDeclaration` ancestor
+with `firstOrThrow`, and a record component has none. It printed "Exception
+applying rule" for `PageReference` and `ReaderClaims` on every build. Those
+checks now go through the accessor (`handle() == null`); the first named
+reference in the condition is the one that matters. A processing error does
+not fail the build, so read the PMD output for "Exception applying rule"
+after adding a record.
+
 ## Generic catches
 
 PMD's `AvoidCatchingGenericException` is not gated, and will not be: of its

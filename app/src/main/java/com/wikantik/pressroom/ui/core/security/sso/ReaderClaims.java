@@ -41,7 +41,10 @@ public record ReaderClaims(String issuer, String subject, String email, boolean 
         if (!fromName.isEmpty()) {
             return fromName;
         }
-        if (email != null) {
+        // The accessor, not the component, in a null check: PMD 7.28's
+        // NonThreadSafeSingleton throws on a record component there, and is
+        // then silently not applied to this file (docs/dev/quality-gates.md).
+        if (email() != null) {
             String fromEmail = clean(email.substring(0, Math.max(0, email.lastIndexOf('@'))));
             if (!fromEmail.isEmpty()) {
                 return fromEmail;
@@ -67,7 +70,8 @@ public record ReaderClaims(String issuer, String subject, String email, boolean 
 
     /** Refuses sign-in unless there is a usable, provider-verified email. */
     public void requireUsable() throws ReaderSignInRefused {
-        if (email == null || email.isBlank()) {
+        // accessors for the reason given in displayName()
+        if (email() == null || email().isBlank()) {
             throw new ReaderSignInRefused("no email");
         }
         if (email.length() > MAX_EMAIL) {

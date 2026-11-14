@@ -25,9 +25,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Set;
 
 import jakarta.activation.FileTypeMap;
@@ -437,7 +437,9 @@ public class ThemeManagerImpl implements ThemeManager {
 					+ "directory's own listing.")
 	private Map<String, SharedTheme> loadAllThemesFromDisk() {
 
-		Map<String, SharedTheme> themeMap = new HashMap<>();
+		// concurrent: with themes.reload.mode on, reLoadThemeFromDisk replaces
+		// entries on a request thread while other requests read them
+		Map<String, SharedTheme> themeMap = new ConcurrentHashMap<>();
 
 		// first, get a list of the themes available
 		File themesdir = new File(this.themeDir);
@@ -494,7 +496,8 @@ public class ThemeManagerImpl implements ThemeManager {
             if (loadedTheme != null
                     && theme.getLastModified().after(
                             loadedTheme.getLastModified())) {
-                themes.remove(theme.getId());
+                // one put, not remove-then-put: a reader between the two
+                // found no such theme and rendered an error page
                 themes.put(theme.getId(), theme);
                 reloaded = true;
             }

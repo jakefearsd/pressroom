@@ -82,7 +82,10 @@ public record PageReference(String handle, String slug) {
                     + "alphanumerics, so a miss could only fail to refuse here; the lookups "
                     + "behind it refuse the site space anyway.")
     private Weblog weblog(Weblogger weblogger) throws WebloggerException {
-        if (handle == null) {
+        // The accessor, not the component, in a null check: PMD 7.28's
+        // NonThreadSafeSingleton throws on a record component there, and is
+        // then silently not applied to this file (docs/dev/quality-gates.md).
+        if (handle() == null) {
             return weblogger.getWeblogManager().getSiteSpace();
         }
         if (Weblog.SITE_SPACE_HANDLE.equalsIgnoreCase(handle)) {

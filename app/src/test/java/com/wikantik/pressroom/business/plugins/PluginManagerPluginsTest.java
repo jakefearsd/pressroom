@@ -17,7 +17,6 @@
  */
 package com.wikantik.pressroom.business.plugins;
 
-import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -28,7 +27,6 @@ import com.wikantik.pressroom.business.shortcodes.ShortcodeExpander;
 import com.wikantik.pressroom.config.StaticConfigOverride;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogEntry;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -39,10 +37,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Loading configured page plugins and applying them. The registry is a
- * static map that no production code clears, so each test empties it again
- * afterwards: a leftover plugin would otherwise rewrite every later render
- * test in the JVM.
+ * Loading configured page plugins and applying them. The registry belongs to
+ * the manager that loaded it; it was once a static map, filled by every
+ * manager constructed and cleared by none, so a plugin one test configured
+ * rewrote every later render in the JVM.
  */
 class PluginManagerPluginsTest {
 
@@ -60,13 +58,6 @@ class PluginManagerPluginsTest {
         @Override public String getDescription() { return "never initialises"; }
         @Override public void init(Weblog weblog) throws WebloggerException { throw new WebloggerException("no"); }
         @Override public String render(WeblogEntry entry, String str) { return "BROKEN"; }
-    }
-
-    @AfterEach
-    void emptyTheStaticRegistry() throws Exception {
-        Field field = PluginManagerImpl.class.getDeclaredField("mPagePlugins");
-        field.setAccessible(true);
-        ((Map<?, ?>) field.get(null)).clear();
     }
 
     private static ShortcodeExpander passThrough() {
@@ -93,6 +84,17 @@ class PluginManagerPluginsTest {
             String rendered = manager.applyWeblogEntryPlugins(plugins, new WeblogEntry(), "hello");
             assertTrue(rendered.contains("HELLO"), "got: " + rendered);
         }
+    }
+
+    /** A manager built without plugins configured has none, whatever an earlier one loaded. */
+    @Test
+    void aManagerSeesOnlyThePluginsItLoaded() {
+        try (var _ = StaticConfigOverride.set("plugins.page", ShoutPlugin.class.getName())) {
+            assertTrue(new PluginManagerImpl(passThrough()).hasPagePlugins());
+        }
+
+        assertFalse(new PluginManagerImpl(passThrough()).hasPagePlugins(),
+                "the plugin an earlier manager loaded leaked into this one");
     }
 
     @Test

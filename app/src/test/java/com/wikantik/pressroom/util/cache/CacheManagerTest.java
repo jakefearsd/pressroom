@@ -280,6 +280,80 @@ public class CacheManagerTest {
         assertEquals("value", cache.get("key"), "Caches must still work after shutdown()");
     }
 
+    /**
+     * The registry is walked while caches are still being registered: a
+     * throttle builds its cache on its controller's first request, while
+     * another thread may be clearing every cache or fanning out an
+     * invalidation. A plain HashMap failed that walk. Driven here on one
+     * thread, by a cache that registers another while it is being cleared;
+     * two of them, so whichever the walk meets first is not the last entry.
+     */
+    @Test
+    public void aCacheRegisteredWhileTheRegistryIsWalkedDoesNotBreakTheWalk() {
+        CacheManager.constructCache(null, registering("cache.test.walk.a"));
+        CacheManager.constructCache(null, registering("cache.test.walk.b"));
+
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> CacheManager.clear());
+    }
+
+    /** The same for the handler registry, walked on every invalidation. */
+    @Test
+    public void aHandlerRegisteredDuringAnInvalidationDoesNotBreakTheFanOut() {
+        // two of them, as above: whichever the fan-out meets first registers
+        CacheManager.registerHandler(new RegisteringHandler());
+        CacheManager.registerHandler(new RegisteringHandler());
+
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> CacheManager.invalidate(new Weblog()));
+    }
+
+    /** A handler that registers one more handler the first time it hears of a weblog. */
+    private static final class RegisteringHandler implements CacheHandler {
+        private boolean done;
+
+        @Override
+        public void invalidate(Weblog website) {
+            if (!done) {
+                done = true;
+                CacheManager.registerHandler(new RecordingHandler());
+            }
+        }
+    }
+
+    private static Map<String, String> registering(String id) {
+        Map<String, String> props = props(id);
+        props.put("factory", RegisteringFactory.class.getName());
+        return props;
+    }
+
+    /** Builds caches that register one more cache the first time they are cleared. */
+    public static final class RegisteringFactory implements CacheFactory {
+
+        public RegisteringFactory() {
+        }
+
+        @Override
+        public Cache constructCache(Map<String, ?> properties) {
+            return new RegisteringCache((String) properties.get("id"));
+        }
+    }
+
+    private static final class RegisteringCache extends LRUCacheImpl {
+        private boolean done;
+
+        RegisteringCache(String id) {
+            super(id, 10);
+        }
+
+        @Override
+        public synchronized void clear() {
+            super.clear();
+            if (!done) {
+                done = true;
+                CacheManager.constructCache(null, props(getId() + ".late"));
+            }
+        }
+    }
+
     private static Map<String, String> props(String id) {
         Map<String, String> props = new HashMap<>();
         props.put("id", id);
