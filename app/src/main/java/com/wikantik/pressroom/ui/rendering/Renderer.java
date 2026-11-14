@@ -25,6 +25,7 @@ import java.util.Map;
 /**
  * Renders content to writer based on values in a map.
  */
+@FunctionalInterface
 public interface Renderer {
     
     

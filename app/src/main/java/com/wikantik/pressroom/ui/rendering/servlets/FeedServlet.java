@@ -253,8 +253,8 @@ public class FeedServlet extends HttpServlet {
         }
 
         log.debug("HIT {}", cacheKey);
-        response.setContentLength(cachedContent.getContent().length);
-        response.getOutputStream().write(cachedContent.getContent());
+        response.setContentLength(cachedContent.length());
+        cachedContent.writeTo(response.getOutputStream());
         return true;
     }
 

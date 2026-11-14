@@ -189,7 +189,7 @@ the next person who trips one:
   old `getStatus().equals(...)` threw on a null status.
 
 **Defect rules added 2026-11-13 (same pass), each site read by hand**, so the
-ruleset now names 40:
+ruleset now names 43:
 
 - `AvoidReassigningParameters` (42 sites). A parameter keeps the caller's
   value; a normalised copy gets its own name. Two sites were defects:
@@ -214,6 +214,14 @@ ruleset now names 40:
   also left `exclude.xml` at zero; four sites carry `@SuppressFBWarnings`
   (the two beans, and two deliberate rethrows of a `RuntimeException` in
   `RemoteImageFetcher.exchange` and `WebloggerConfig.runAtClassLoad`).
+- `ArrayIsStoredDirectly` (2), `MethodReturnsInternalArray` (2),
+  `ImplicitFunctionalInterface` (7). `PressroomMessage` copies its argument
+  array in and out (null still means "no arguments"); `CachedContent` hands
+  a cached page to the response with `writeTo(OutputStream)` and
+  `length()`, so the serving path copies nothing, and `getContent()` returns
+  a copy. Five single-method interfaces are `@FunctionalInterface`;
+  `UIActionPreparable` and `WeblogPinnedCredential` are roles found with
+  `instanceof` and carry a reasoned suppression instead.
 
 Considered and left out: `ReplaceJavaUtilDate` (376 sites; the JPA pojos are
 `Date`-typed), `AvoidCatchingGenericException` (213; see "Generic catches"),
@@ -225,7 +233,15 @@ methods, and a two-array signature cannot be varargs, so the rule could only
 be held with suppressions) and `EmptyMethodInAbstractClassShouldBeAbstract`
 (9 sites that are deliberate no-op hooks and null-returning defaults on
 `BaseController` and the pager base; making them abstract forces an empty
-override into every subclass).
+override into every subclass). Declined in the same pass after
+fixing the real sites: `AvoidFieldNameMatchingMethodName` (26; a field with
+a same-named accessor is the record idiom, `extension()` for `extension`,
+and the lazily built `throttle` fields behind `throttle()` are correct
+double-checked locking), `AbstractClassWithoutAbstractMethod` (4; `DateUtil`
+became a final utility class, the other three are bases nobody should
+instantiate) and `PublicMemberInNonPublicType` (7; two nested classes were
+narrowed, the other four are `LazyExpiringRenderCache` methods its public
+subclasses expose to other packages).
 
 Six PMD rules and five SpotBugs families are excluded, each with a reason
 comment in the config file: three SpotBugs-core families, and two

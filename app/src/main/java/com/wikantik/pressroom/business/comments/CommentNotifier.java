@@ -27,6 +27,7 @@ import com.wikantik.pressroom.pojos.ReaderComment;
  * <p>An implementation must not throw and must not block the request: the
  * comment is already stored, and a failure to notify loses nothing.
  */
+@FunctionalInterface
 public interface CommentNotifier {
 
     /** A comment was stored {@code PENDING}. */

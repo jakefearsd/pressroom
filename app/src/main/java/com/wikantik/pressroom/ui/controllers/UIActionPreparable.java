@@ -27,6 +27,9 @@ package com.wikantik.pressroom.ui.controllers;
  * custom prepare method can make use of anything the custom interceptors
  * provide.
  */
+// A lifecycle hook a controller opts into and the dispatcher finds with
+// instanceof, not a function to pass around: no lambda is ever one.
+@SuppressWarnings("PMD.ImplicitFunctionalInterface")
 public interface UIActionPreparable {
 
     void myPrepare();

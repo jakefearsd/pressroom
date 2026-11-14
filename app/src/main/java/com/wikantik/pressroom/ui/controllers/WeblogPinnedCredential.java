@@ -8,6 +8,9 @@ package com.wikantik.pressroom.ui.controllers;
  * the caller may not see gets; this interface lets it read the pin without
  * a second import from {@code ui.restapi}.
  */
+// A capability the interceptor detects with instanceof on the authentication's
+// details (ApiPrincipal implements it); a lambda could never be one.
+@SuppressWarnings("PMD.ImplicitFunctionalInterface")
 public interface WeblogPinnedCredential {
 
     /** The handle of the one weblog this credential may act on, or null when it has no limit. */

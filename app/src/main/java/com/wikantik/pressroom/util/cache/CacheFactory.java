@@ -28,6 +28,7 @@ import java.util.Map;
  * In Pressroom you switch between various caching options by choosing a different
  * cache factory before starting up the application.
  */
+@FunctionalInterface
 public interface CacheFactory {
     
     Cache constructCache(Map<String, ?> properties);

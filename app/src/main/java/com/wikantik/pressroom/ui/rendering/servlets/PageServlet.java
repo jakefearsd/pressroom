@@ -363,9 +363,9 @@ public class PageServlet extends HttpServlet {
         // hit counting used to gate on isWebsitePageHit()/isOtherPageHit()
         // here; Umami owns traffic counting now (see WeblogPageRequest).
 
-        response.setContentLength(cachedContent.getContent().length);
+        response.setContentLength(cachedContent.length());
         response.setContentType(cachedContent.getContentType());
-        response.getOutputStream().write(cachedContent.getContent());
+        cachedContent.writeTo(response.getOutputStream());
         return true;
     }
 

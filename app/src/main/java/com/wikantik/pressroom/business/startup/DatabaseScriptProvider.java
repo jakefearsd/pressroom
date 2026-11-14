@@ -24,6 +24,7 @@ import java.io.InputStream;
 /**
  * Interface for retrieving database script.
  */
+@FunctionalInterface
 public interface DatabaseScriptProvider {
 
     /**

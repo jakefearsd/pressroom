@@ -27,6 +27,7 @@ import com.wikantik.pressroom.pojos.Template;
  * Implementations of this interface are used to handle the actual lookup of
  * what Renderer object should be used to render a given resource.
  */
+@FunctionalInterface
 public interface RendererFactory {
 
     /**

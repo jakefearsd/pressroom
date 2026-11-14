@@ -162,7 +162,7 @@ public class LRUCacheImpl implements Cache {
 
         protected final int maxsize;
         
-        public LRULinkedHashMap(int maxsize) {
+        LRULinkedHashMap(int maxsize) {
             super(maxsize * 4 / 3 + 1, 0.75f, true);
             this.maxsize = maxsize;
         }

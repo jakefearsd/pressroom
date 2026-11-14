@@ -251,8 +251,8 @@ final class RenderingServletUtils {
         if (contentType != null) {
             response.setContentType(contentType);
         }
-        response.setContentLength(rendererOutput.getContent().length);
-        response.getOutputStream().write(rendererOutput.getContent());
+        response.setContentLength(rendererOutput.length());
+        rendererOutput.writeTo(response.getOutputStream());
 
         return renderedError ? null : rendererOutput;
     }

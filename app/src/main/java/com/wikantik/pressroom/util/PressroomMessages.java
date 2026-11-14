@@ -17,6 +17,7 @@
 */
 package com.wikantik.pressroom.util;
 
+import org.apache.commons.lang3.ArrayUtils;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -94,15 +95,23 @@ public class PressroomMessages
         public PressroomMessage(String key, String[] args)
         {
             mKey = key;
-            mArgs = args;
+            mArgs = copyOf(args);
         }
+        // null means "no arguments", the contract PressroomMessagesTest pins
+        // and both readers (MediaFileAddController, MediaUploads) check for
+        @SuppressWarnings("PMD.ReturnEmptyCollectionRatherThanNull")
         public String[] getArgs()
         {
-            return mArgs;
+            return mArgs == null ? null : mArgs.clone();
         }
         public void setArgs(String[] args)
         {
-            mArgs = args;
+            mArgs = copyOf(args);
+        }
+        /** A copy, so no caller shares the array (null stays null). */
+        private static String[] copyOf(String[] args)
+        {
+            return ArrayUtils.clone(args);
         }
         public String getKey()
         {

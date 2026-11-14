@@ -34,7 +34,10 @@ import org.apache.commons.lang3.StringUtils;
  *
  * TODO: all date handling functions need to be aware of locale and timezone.
  */
-public abstract class DateUtil {
+public final class DateUtil {
+
+    private DateUtil() {
+    }
     
     public static final long MILLIS_IN_DAY = 86_400_000;
     

@@ -3,6 +3,7 @@ package com.wikantik.pressroom.util.cache;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.Serializable;
@@ -60,7 +61,20 @@ public class CachedContent implements AutoCloseable, Serializable {
      *       enclosed Writer up until the last call to flush().
      */
     public byte[] getContent() {
-        return this.content;
+        return this.content.clone();
+    }
+
+    /** The number of bytes {@link #writeTo} writes. */
+    public int length() {
+        return this.content.length;
+    }
+
+    /**
+     * Writes the content to {@code out} without copying it: the serving path,
+     * where a cached page is written once per request.
+     */
+    public void writeTo(OutputStream out) throws IOException {
+        out.write(this.content);
     }
     
     

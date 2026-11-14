@@ -6,7 +6,7 @@
 
     <description>
         Pressroom's PMD gate: PMD's own quickstart set plus the security category,
-        minus six rules, plus 40 named rules chosen from the other categories (the
+        minus six rules, plus 43 named rules chosen from the other categories (the
         21 defect-finding rules of 2026-10, the 14 hygiene rules of 2026-11 and
         the defect rules added after them; see the groups below). Zero tolerance: see
         docs/superpowers/specs/2026-08-18-static-analysis-quality-gates-design.md.
@@ -173,4 +173,13 @@
     <rule ref="category/java/design.xml/SignatureDeclareThrowsException"/>
     <rule ref="category/java/design.xml/AvoidUncheckedExceptionsInSignatures"/>
     <rule ref="category/java/design.xml/ExceptionAsFlowControl"/>
+
+    <!-- Internal arrays stay internal: a caller's array is copied on the way
+         in and on the way out (CachedContent hands its bytes to the response
+         with writeTo, not by returning them). A single-method interface says
+         whether it is meant as a lambda: @FunctionalInterface, or a reasoned
+         suppression for a role found with instanceof. -->
+    <rule ref="category/java/bestpractices.xml/ArrayIsStoredDirectly"/>
+    <rule ref="category/java/bestpractices.xml/MethodReturnsInternalArray"/>
+    <rule ref="category/java/bestpractices.xml/ImplicitFunctionalInterface"/>
 </ruleset>

@@ -360,7 +360,10 @@ class QualityGatePomTest {
                 "category/java/design.xml/AvoidThrowingRawExceptionTypes",
                 "category/java/design.xml/SignatureDeclareThrowsException",
                 "category/java/design.xml/AvoidUncheckedExceptionsInSignatures",
-                "category/java/design.xml/ExceptionAsFlowControl"), refs,
+                "category/java/design.xml/ExceptionAsFlowControl",
+                "category/java/bestpractices.xml/ArrayIsStoredDirectly",
+                "category/java/bestpractices.xml/MethodReturnsInternalArray",
+                "category/java/bestpractices.xml/ImplicitFunctionalInterface"), refs,
                 "config/pmd/ruleset.xml's <rule ref> set IS the gate's scope, not merely its exclusions. "
                 + "Deleting the security category, or swapping quickstart.xml for a narrower ruleset, "
                 + "silently shrinks the gate with no other test failing. Changing this set is a spec "
