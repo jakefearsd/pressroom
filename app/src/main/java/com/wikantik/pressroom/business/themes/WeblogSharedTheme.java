@@ -62,7 +62,7 @@ public class WeblogSharedTheme extends WeblogTheme {
 
     private static final Logger log = LoggerFactory.getLogger(WeblogSharedTheme.class);
     
-    private SharedTheme theme;
+    private final SharedTheme theme;
 
     // The weblog-side template store; transient because WeblogTheme is
     // Serializable and a manager is not state worth serialising.
@@ -201,8 +201,6 @@ public class WeblogSharedTheme extends WeblogTheme {
             return null;
         }
         
-        ThemeTemplate template;
-        
         // if name refers to the stylesheet then return result of getStylesheet()
         ThemeTemplate stylesheet = getStylesheet();
         if (stylesheet != null && name.equals(stylesheet.getName())) {
@@ -211,7 +209,7 @@ public class WeblogSharedTheme extends WeblogTheme {
         
         // first check if this user has selected a theme
         // if so then return the proper theme template
-        template = this.theme.getTemplateByName(name);
+        ThemeTemplate template = this.theme.getTemplateByName(name);
         
         // if we didn't get the Template from a theme then look in the db
         if (template == null) {
@@ -233,8 +231,6 @@ public class WeblogSharedTheme extends WeblogTheme {
             return null;
         }
 
-        ThemeTemplate template;
-
         // if name refers to the stylesheet then return result of getStylesheet()
         ThemeTemplate stylesheet = getStylesheet();
         if(stylesheet != null && link.equals(stylesheet.getLink())) {
@@ -243,7 +239,7 @@ public class WeblogSharedTheme extends WeblogTheme {
 
         // first check if this user has selected a theme
         // if so then return the proper theme template
-        template = this.theme.getTemplateByLink(link);
+        ThemeTemplate template = this.theme.getTemplateByLink(link);
 
         // if we didn't get the Template from a theme then look in the db
         if(template == null) {

@@ -129,13 +129,13 @@ public final class Utilities {
         if (str == null) {
             return "";
         }
-        StringBuilder ret = new StringBuilder(str.length());
-        int start = 0;
         int beginTag = str.indexOf('<');
-        int endTag = 0;
         if (beginTag == -1) {
             return str;
         }
+        StringBuilder ret = new StringBuilder(str.length());
+        int start = 0;
+        int endTag = 0;
 
         while (beginTag >= start) {
             endTag = str.indexOf('>', beginTag);
@@ -324,7 +324,6 @@ public final class Utilities {
     @SuppressWarnings("PMD.CloseResource")
     public static void copyFile(File from, File to) throws IOException {
         InputStream in;
-        OutputStream out;
 
         try {
             in = Files.newInputStream(from.toPath());
@@ -333,6 +332,7 @@ public final class Utilities {
                     + from.getPath() + "', " + ex.getMessage(), ex);
         }
 
+        OutputStream out;
         try {
             out = Files.newOutputStream(to.toPath());
         } catch (Exception ex) {
@@ -602,13 +602,13 @@ public final class Utilities {
         if (str == null) {
             return "";
         }
-        StringBuilder ret = new StringBuilder(str.length());
-        int start = 0;
         int beginTag = str.indexOf('<');
-        int endTag;
         if (beginTag == -1) {
             return str;
         }
+        StringBuilder ret = new StringBuilder(str.length());
+        int start = 0;
+        int endTag;
 
         while (beginTag >= start) {
             endTag = str.indexOf('>', beginTag);

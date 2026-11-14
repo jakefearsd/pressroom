@@ -57,10 +57,10 @@ public class SharedThemeResourceFromDir
     private static final long serialVersionUID = 1L;
 
     // the physical java.io.File backing this resource
-    private File resourceFile;
+    private final File resourceFile;
     
     // the relative path of the resource within the theme
-    private String relativePath;
+    private final String relativePath;
     
     
     public SharedThemeResourceFromDir(String path, File file) {

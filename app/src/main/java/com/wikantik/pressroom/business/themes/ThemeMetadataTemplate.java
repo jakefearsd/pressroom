@@ -38,7 +38,7 @@ public class ThemeMetadataTemplate {
     private String contentType;
 
     // Hash table to keep metadata about parsed template code files
-    private Map<RenditionType, ThemeMetadataTemplateRendition> templateRenditionTable
+    private final Map<RenditionType, ThemeMetadataTemplateRendition> templateRenditionTable
             = new EnumMap<>(RenditionType.class);
 
     public ComponentType getAction() {

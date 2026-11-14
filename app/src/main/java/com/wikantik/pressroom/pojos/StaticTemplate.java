@@ -43,7 +43,7 @@ public class StaticTemplate implements Template, Serializable {
     private String description;
     private Date lastModified = new Date();
     private String  outputContentType;
-    private transient TemplateRendition templateRendition;
+    private final transient TemplateRendition templateRendition;
 
     public StaticTemplate(String id, TemplateLanguage lang) {
         this.id = id;

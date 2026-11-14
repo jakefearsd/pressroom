@@ -146,8 +146,6 @@ public class InitFilter implements Filter {
 
     protected static String getAbsoluteUrl(boolean secure, String serverName, String contextPath, String requestURI, String requestURL){
 
-        String url;
-
         // Trust the container's own request URL, which is proxy-aware with
         // server.forward-headers-strategy=native (Tomcat's RemoteIpValve
         // rewrites getScheme()/isSecure()/the port from X-Forwarded-Proto
@@ -170,6 +168,7 @@ public class InitFilter implements Filter {
         int index = fullUrl.indexOf('/',
                 fullUrl.indexOf(serverName));
 
+        String url;
         if (index != -1) {
             // extract just the part leading up to uri
             url = fullUrl.substring(0, index);

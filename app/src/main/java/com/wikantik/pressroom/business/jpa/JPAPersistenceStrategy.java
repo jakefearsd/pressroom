@@ -135,7 +135,7 @@ public class JPAPersistenceStrategy {
     /**
      * The EntityManagerFactory for this Pressroom instance.
      */
-    private EntityManagerFactory emf;
+    private final EntityManagerFactory emf;
     
             
     /**

@@ -469,8 +469,6 @@ public class PageServlet extends HttpServlet {
      */
     static ThemeTemplate selectTemplate(WeblogPageRequest pageRequest, Weblog weblog, ThemeManager themes) {
 
-        ThemeTemplate page = null;
-
         // A static page: getPageSlug() is the syntactic signal, set during
         // parsing with no database access, that this request's single path
         // segment looked like a page slug. Only inside this branch do we
@@ -519,6 +517,8 @@ public class PageServlet extends HttpServlet {
             }
             return pageRequest.getWeblogPage();
         }
+
+        ThemeTemplate page = null;
 
         // A tags index uses the theme's tagsIndex template when it has one
         // and otherwise falls back to the default template below, whose pager

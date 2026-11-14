@@ -254,7 +254,7 @@ public class ThemeManagerImpl implements ThemeManager {
 
 			// if template is an action, lookup by action
 			if (themeTemplate.getAction() != null
-					&& !themeTemplate.getAction().equals(ComponentType.CUSTOM)) {
+					&& themeTemplate.getAction() != ComponentType.CUSTOM) {
 				importedActionTemplates.add(themeTemplate.getAction());
 				template = wmgr.getTemplateByAction(weblog,
                         themeTemplate.getAction());

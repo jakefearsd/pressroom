@@ -6,8 +6,8 @@
 
     <description>
         Pressroom's PMD gate: PMD's own quickstart set plus the security category,
-        minus six rules, plus 30 named rules chosen from the other categories (the
-        21 defect-finding rules of 2026-10 and the 9 hygiene rules of 2026-11;
+        minus six rules, plus 35 named rules chosen from the other categories (the
+        21 defect-finding rules of 2026-10 and the 14 hygiene rules of 2026-11;
         see the groups below). Zero tolerance: see
         docs/superpowers/specs/2026-08-18-static-analysis-quality-gates-design.md.
 
@@ -140,4 +140,15 @@
             <property name="acceptableDecimalLength" value="7"/>
         </properties>
     </rule>
+
+    <!-- Code that says what it means. Enums compare with ==, which is null-safe
+         and checked by the compiler where equals() on an unrelated type is not;
+         a field assigned only in the constructor is final; a local is declared
+         where it is first needed, not above an early return; and a getX, isX,
+         setX or canX name keeps the shape the name promises (a setter that
+         returns a status, or a canX that returns a map, is renamed). -->
+    <rule ref="category/java/bestpractices.xml/EnumComparison"/>
+    <rule ref="category/java/design.xml/ImmutableField"/>
+    <rule ref="category/java/codestyle.xml/PrematureDeclaration"/>
+    <rule ref="category/java/codestyle.xml/LinguisticNaming"/>
 </ruleset>

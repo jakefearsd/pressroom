@@ -73,7 +73,7 @@ public class WeblogEntriesPermalinkPager extends AbstractWeblogEntriesPager {
             try {
                 WeblogEntryManager wmgr = weblogger.getWeblogEntryManager();
                 currEntry = wmgr.getWeblogEntryByAnchor(weblog, entryAnchor);
-                if (currEntry != null && currEntry.getStatus().equals(PubStatus.PUBLISHED)) {
+                if (currEntry != null && currEntry.getStatus() == PubStatus.PUBLISHED) {
                     entries = Map.of(new Date(currEntry.getPubTime().getTime()), List.of(WeblogEntryWrapper.wrap(currEntry, urlStrategy, weblogger)));
                 }
             } catch (Exception e) {
@@ -153,7 +153,7 @@ public class WeblogEntriesPermalinkPager extends AbstractWeblogEntriesPager {
                 nextEntry = wmgr.getNextEntry(currEntry, null, locale);
                 // make sure that entry is published and not to future
                 if (nextEntry != null && nextEntry.getPubTime().after(new Date())
-                        && nextEntry.getStatus().equals(PubStatus.PUBLISHED)) {
+                        && nextEntry.getStatus() == PubStatus.PUBLISHED) {
                     nextEntry = null;
                 }
             } catch (WebloggerException e) {
@@ -173,7 +173,7 @@ public class WeblogEntriesPermalinkPager extends AbstractWeblogEntriesPager {
                 prevEntry = wmgr.getPreviousEntry(currEntry, null, locale);
                 // make sure that entry is published and not to future
                 if (prevEntry != null && prevEntry.getPubTime().after(new Date())
-                        && prevEntry.getStatus().equals(PubStatus.PUBLISHED)) {
+                        && prevEntry.getStatus() == PubStatus.PUBLISHED) {
                     prevEntry = null;
                 }
             } catch (WebloggerException e) {

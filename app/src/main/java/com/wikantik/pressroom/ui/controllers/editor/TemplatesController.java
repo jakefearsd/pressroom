@@ -99,11 +99,11 @@ public class TemplatesController extends BaseController {
                 newTemplate.setNavbar(false);
                 newTemplate.setLastModified(new Date());
 
-                if (ComponentType.CUSTOM.equals(newTmplAction)) {
+                if (newTmplAction == ComponentType.CUSTOM) {
                     newTemplate.setLink(newTmplName);
                 }
 
-                if (ComponentType.WEBLOG.equals(newTmplAction)) {
+                if (newTmplAction == ComponentType.WEBLOG) {
                     newTemplate.setName(WeblogTemplate.DEFAULT_PAGE);
                 }
 
@@ -224,14 +224,14 @@ public class TemplatesController extends BaseController {
                 actionsMap.put(ComponentType.TAGSINDEX, ComponentType.TAGSINDEX.getReadableName());
 
                 for (WeblogTemplate tmpPage : pages) {
-                    if (!ComponentType.CUSTOM.equals(tmpPage.getAction())) {
+                    if (tmpPage.getAction() != ComponentType.CUSTOM) {
                         actionsMap.remove(tmpPage.getAction());
                     }
                 }
             } else {
                 actionsMap.put(ComponentType.WEBLOG, ComponentType.WEBLOG.getReadableName());
                 for (WeblogTemplate tmpPage : pages) {
-                    if (ComponentType.WEBLOG.equals(tmpPage.getAction())) {
+                    if (tmpPage.getAction() == ComponentType.WEBLOG) {
                         actionsMap.remove(ComponentType.WEBLOG);
                         break;
                     }

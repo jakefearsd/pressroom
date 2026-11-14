@@ -112,7 +112,6 @@ public class MediaResourceServlet extends HttpServlet {
         }
 
         long resourceLastMod;
-        InputStream resourceStream = null;
         MediaFile mediaFile;
 
         try {
@@ -179,6 +178,7 @@ public class MediaResourceServlet extends HttpServlet {
 
         // set the content type based on whatever is in our web.xml mime defs
         String servedContentType = null;
+        InputStream resourceStream = null;
         if (resourceRequest.isThumbnail()) {
             servedContentType = "image/png";
             try {

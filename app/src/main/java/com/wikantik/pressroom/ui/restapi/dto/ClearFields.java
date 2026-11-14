@@ -37,7 +37,7 @@ public final class ClearFields {
                 throw ApiException.invalidField("clear", pair.get(0) + " and " + pair.get(1) + " are cleared together.");
             }
         }
-        for (String set : setFields(body)) {
+        for (String set : fieldsWithValue(body)) {
             if (names.contains(set)) {
                 throw ApiException.invalidField("clear", set + " is both set and cleared.");
             }
@@ -46,7 +46,7 @@ public final class ClearFields {
     }
 
     /** The body's components that carry a value, {@code clear} itself excluded. */
-    static Set<String> setFields(Record body) {
+    static Set<String> fieldsWithValue(Record body) {
         Set<String> set = new HashSet<>();
         for (RecordComponent component : body.getClass().getRecordComponents()) {
             if ("clear".equals(component.getName())) {

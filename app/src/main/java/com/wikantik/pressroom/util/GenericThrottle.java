@@ -167,7 +167,7 @@ public class GenericThrottle {
     private final class ClientInfo {
         
         public int hits;
-        public java.util.Date start = new java.util.Date();
+        public final java.util.Date start = new java.util.Date();
         
     }
     

@@ -202,11 +202,6 @@ public class WeblogRequestMapper {
     public boolean handleRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         
-        String weblogHandle = null;
-        String weblogLocale = null;
-        String weblogRequestContext = null;
-        String weblogRequestData = null;
-        
         log.debug("evaluating [{}]", request.getRequestURI());
 
         // Host-first resolution. A weblog that owns a hostname supplies its own
@@ -234,6 +229,7 @@ public class WeblogRequestMapper {
         int firstSlash = servlet.indexOf('/');
         String firstSegment = firstSlash < 0 ? servlet : servlet.substring(0, firstSlash);
 
+        String weblogHandle = null;
         if (vhostHandle != null) {
             weblogHandle = vhostHandle;
             pathInfo = servlet.isEmpty() ? null : servlet;
@@ -328,6 +324,9 @@ public class WeblogRequestMapper {
         log.debug("WEBLOG_URL {}", request.getServletPath());
         
         // parse the rest of the url and build forward url
+        String weblogLocale = null;
+        String weblogRequestContext = null;
+        String weblogRequestData = null;
         if(pathInfo != null) {
             WeblogPathInfo parsed = parsePathInfo(pathInfo);
             weblogLocale = parsed.locale();
@@ -679,14 +678,13 @@ public class WeblogRequestMapper {
 
         log.debug("checking weblog handle {}", potentialHandle);
 
-        boolean isWeblog = false;
-
         // Before bootstrap there is no manager to ask, and the answer is the
         // same one the locator's IllegalStateException used to fall into below.
         if (!provider.isBootstrapped()) {
             return false;
         }
 
+        boolean isWeblog = false;
         try {
             Weblog weblog = weblogger.getWeblogManager()
                     .getWeblogByHandle(potentialHandle);

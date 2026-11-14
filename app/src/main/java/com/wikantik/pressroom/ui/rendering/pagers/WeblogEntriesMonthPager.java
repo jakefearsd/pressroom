@@ -44,9 +44,9 @@ public class WeblogEntriesMonthPager extends AbstractWeblogEntriesPager {
     
     private static final Logger log = LoggerFactory.getLogger(WeblogEntriesMonthPager.class);
     
-    private SimpleDateFormat monthFormat;
+    private final SimpleDateFormat monthFormat;
     
-    private Date month;
+    private final Date month;
     private Date nextMonth;
     private Date prevMonth;
     

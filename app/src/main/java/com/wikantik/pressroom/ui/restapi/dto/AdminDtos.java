@@ -248,7 +248,7 @@ public final class AdminDtos {
         for (String name : cleared) {
             clearOnBean(bean, name);
         }
-        Set<String> touched = new HashSet<>(ClearFields.setFields(patch));
+        Set<String> touched = new HashSet<>(ClearFields.fieldsWithValue(patch));
         touched.addAll(cleared);
         return touched;
     }

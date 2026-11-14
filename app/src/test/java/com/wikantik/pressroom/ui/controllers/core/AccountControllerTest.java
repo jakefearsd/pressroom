@@ -472,7 +472,7 @@ class AccountControllerTest {
     @Test
     void aDeletedHiddenCommentLeavesNoRowOnThePage() throws Exception {
         ReaderComment hidden = published(reader, entryA, "Hidden later");
-        service().setStatus(comments().getComment(hidden.getId()), Status.HIDDEN, TestUtils.getManagedUser(owner));
+        service().changeStatus(comments().getComment(hidden.getId()), Status.HIDDEN, TestUtils.getManagedUser(owner));
         TestUtils.endSession(true);
 
         perform(post(DELETE_COMMENT).with(csrf()).with(as(reader)).param("id", hidden.getId()));
@@ -873,7 +873,7 @@ class AccountControllerTest {
     private ReaderComment published(User who, WeblogEntry on, String body) throws Exception {
         ReaderComment c = service().post(who, on.getId(), body, null).comment();
         TestUtils.endSession(true);
-        service().setStatus(comments().getComment(c.getId()), Status.PUBLISHED, TestUtils.getManagedUser(owner));
+        service().changeStatus(comments().getComment(c.getId()), Status.PUBLISHED, TestUtils.getManagedUser(owner));
         TestUtils.endSession(true);
         return c;
     }

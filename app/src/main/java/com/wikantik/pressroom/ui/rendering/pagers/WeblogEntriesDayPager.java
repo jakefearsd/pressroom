@@ -43,9 +43,9 @@ public class WeblogEntriesDayPager extends AbstractWeblogEntriesPager {
     
     private static final Logger log = LoggerFactory.getLogger(WeblogEntriesDayPager.class);
     
-    private SimpleDateFormat dayFormat;
+    private final SimpleDateFormat dayFormat;
     
-    private Date day;
+    private final Date day;
     private Date nextDay;
     private Date prevDay;
     

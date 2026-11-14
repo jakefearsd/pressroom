@@ -181,7 +181,7 @@ public class CommentsModerationController extends BaseController {
             for (ReaderComment c : owned(ids, request)) {
                 // The service refuses a move it forbids (publishing a reader-deleted
                 // tombstone); a refused one is not counted.
-                if (comments.setStatus(c, target, actor)) {
+                if (comments.changeStatus(c, target, actor)) {
                     done++;
                 }
             }

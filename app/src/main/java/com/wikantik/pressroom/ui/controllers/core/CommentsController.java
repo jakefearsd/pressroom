@@ -152,7 +152,7 @@ public class CommentsController extends BaseController {
                 log.error("no CSRF token on the comment session request for {}", user.getUserName());
                 return noStore(HttpStatus.INTERNAL_SERVER_ERROR).build();
             }
-            return noStore(HttpStatus.OK).body(canPost(request, user, entry, csrf));
+            return noStore(HttpStatus.OK).body(postingState(request, user, entry, csrf));
         } catch (WebloggerException ex) {
             log.error("the comment session could not be answered", ex);
             return noStore(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -222,7 +222,7 @@ public class CommentsController extends BaseController {
         return body;
     }
 
-    private Map<String, Object> canPost(HttpServletRequest request, User user, WeblogEntry entry, CsrfToken csrf)
+    private Map<String, Object> postingState(HttpServletRequest request, User user, WeblogEntry entry, CsrfToken csrf)
             throws WebloggerException {
         CommentManager store = weblogger.getCommentManager();
         List<Map<String, String>> pending = new ArrayList<>();

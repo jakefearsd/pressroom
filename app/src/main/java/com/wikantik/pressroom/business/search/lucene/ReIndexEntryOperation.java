@@ -46,7 +46,7 @@ public class ReIndexEntryOperation extends WriteToIndexOperation {
     // ========================================================
 
     private WeblogEntry data;
-    private Weblogger pressroom;
+    private final Weblogger pressroom;
 
     // ~ Constructors
     // ===========================================================

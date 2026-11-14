@@ -1054,17 +1054,17 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
     
     /** Convenience method for checking status */
     public boolean isDraft() {
-        return getStatus().equals(PubStatus.DRAFT);
+        return getStatus() == PubStatus.DRAFT;
     }
 
     /** Convenience method for checking status */
     public boolean isPending() {
-        return getStatus().equals(PubStatus.PENDING);
+        return getStatus() == PubStatus.PENDING;
     }
 
     /** Convenience method for checking status */
     public boolean isPublished() {
-        return getStatus().equals(PubStatus.PUBLISHED);
+        return getStatus() == PubStatus.PUBLISHED;
     }
 
 }

@@ -159,11 +159,46 @@ list. What they now enforce:
   build. The 35 older reason comments were re-read against the code at the
   same time; seven had gone stale and were corrected.
 
+**14 hygiene rules added 2026-11-13 (the maintenance pass), each at zero**, so
+the ruleset now names 35: performance `AppendCharacterWithChar`,
+`ConsecutiveLiteralAppends`, `ConsecutiveAppendsShouldReuse`,
+`InsufficientStringBufferDeclaration`, `AvoidFileStream`,
+`RedundantFieldInitializer`; codestyle `CStyleArrayDeclaration`,
+`UseUnderscoresInNumericLiterals`, `PrematureDeclaration`, `LinguisticNaming`;
+errorprone `LongLiteralEndingWithLowercaseL`; bestpractices `OnDemandImport`,
+`EnumComparison`; design `ImmutableField`. Baseline was 761 sites. Notes for
+the next person who trips one:
+
+- `AvoidFileStream`: open files with `Files.newInputStream(path)` /
+  `Files.newOutputStream(path)`. They throw `NoSuchFileException`, not
+  `FileNotFoundException`, and the message text differs. A side effect:
+  find-sec-bugs does not flag `Files.newInputStream(Path.of(s))` as
+  `PATH_TRAVERSAL_IN`, so the old site suppression became a
+  `US_USELESS_SUPPRESSION` and was deleted (the input is still only ever a
+  test script path).
+- `ImmutableField` is held on the non-JPA classes only; a rule hit on a
+  `pojos/` entity would mean the mapping is wrong, not that the field is final.
+- `UseUnderscoresInNumericLiterals` runs with `acceptableDecimalLength` 7, so
+  integers are grouped (`86_400_000`) but a published decimal constant
+  (sRGB `0.0031308`) is left alone.
+- `ConsecutiveAppendsShouldReuse` flags the FIRST of two consecutive appends,
+  and `ConsecutiveLiteralAppends` also counts the constructor argument and a
+  comment between appends. Write a long literal chain as one
+  `append("a" + "b")` with the comments between the `+` lines.
+- `EnumComparison` makes `entry.getStatus() == PubStatus.X` legal where the
+  old `getStatus().equals(...)` threw on a null status.
+
 Considered and left out: `ReplaceJavaUtilDate` (376 sites; the JPA pojos are
 `Date`-typed), `AvoidCatchingGenericException` (213),
-`UseConcurrentHashMap` (96), `AvoidLiteralsInIfCondition`,
-`AvoidDuplicateLiterals` and `RedundantFieldInitializer` (450). They are
-opinion or noise here.
+`UseConcurrentHashMap` (96), `AvoidLiteralsInIfCondition` and
+`AvoidDuplicateLiterals`. They are opinion or noise here. Also tried in the
+2026-11 pass and declined: `UseVarargs` (15 sites: a Spring `@RequestParam`
+array, template-reachable `UtilitiesModel`/`I18nMessages`/`PressroomMessages`
+methods, and a two-array signature cannot be varargs, so the rule could only
+be held with suppressions) and `EmptyMethodInAbstractClassShouldBeAbstract`
+(9 sites that are deliberate no-op hooks and null-returning defaults on
+`BaseController` and the pager base; making them abstract forces an empty
+override into every subclass).
 
 Six PMD rules and five SpotBugs families are excluded, each with a reason
 comment in the config file: three SpotBugs-core families, and two

@@ -160,7 +160,7 @@ public class LRUCacheImpl implements Cache {
     private static class LRULinkedHashMap<K, V> extends LinkedHashMap<K, V> {
         private static final long serialVersionUID = 1L;
 
-        protected int maxsize;
+        protected final int maxsize;
         
         public LRULinkedHashMap(int maxsize) {
             super(maxsize * 4 / 3 + 1, 0.75f, true);

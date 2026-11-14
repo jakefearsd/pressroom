@@ -299,7 +299,7 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         // if the entry was published to future, set status as SCHEDULED
         // we only consider an entry future published if it is scheduled
         // more than 1 minute into the future
-        if (PubStatus.PUBLISHED.equals(entry.getStatus()) &&
+        if (entry.getStatus() == PubStatus.PUBLISHED &&
                 entry.getPubTime().after(new Date(System.currentTimeMillis() + PressroomConstants.MIN_IN_MS))) {
             entry.setStatus(PubStatus.SCHEDULED);
         }
@@ -628,12 +628,10 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
 			return Collections.emptyList();
 		}
 
-        TypedQuery<WeblogEntry> query;
         WeblogCategory category;
         
         List<Object> params = new ArrayList<>();
         int size = 0;
-        String queryString = "SELECT e FROM WeblogEntry e WHERE ";
         StringBuilder whereClause = new StringBuilder(128);
 
         params.add(size++, current.getWebsite());
@@ -673,7 +671,9 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         } else {
             whereClause.append(" ORDER BY e.pubTime DESC");
         }
-        query = strategy.getDynamicQuery(queryString + whereClause.toString(), WeblogEntry.class);
+        String queryString = "SELECT e FROM WeblogEntry e WHERE ";
+        TypedQuery<WeblogEntry> query =
+                strategy.getDynamicQuery(queryString + whereClause.toString(), WeblogEntry.class);
         bindParams(query, params);
         query.setMaxResults(maxEntries);
         
@@ -801,15 +801,15 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
                     .append(") ");
         }
 
-        if (wesc.getSortBy() != null && wesc.getSortBy().equals(WeblogEntrySearchCriteria.SortBy.UPDATE_TIME)) {
+        if (wesc.getSortBy() == WeblogEntrySearchCriteria.SortBy.UPDATE_TIME) {
             queryString.append(" ORDER BY e.updateTime ");
-        } else if (wesc.getSortBy() != null && wesc.getSortBy().equals(WeblogEntrySearchCriteria.SortBy.TRASH_TIME)) {
+        } else if (wesc.getSortBy() == WeblogEntrySearchCriteria.SortBy.TRASH_TIME) {
             queryString.append(" ORDER BY e.trashedAt ");
         } else {
             queryString.append(" ORDER BY e.pubTime ");
         }
         
-        if (wesc.getSortOrder() != null && wesc.getSortOrder().equals(WeblogEntrySearchCriteria.SortOrder.ASCENDING)) {
+        if (wesc.getSortOrder() == WeblogEntrySearchCriteria.SortOrder.ASCENDING) {
             queryString.append("ASC ");
         } else {
             queryString.append("DESC ");

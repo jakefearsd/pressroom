@@ -57,14 +57,14 @@ public class MailProvider {
     @SuppressWarnings("PMD.MutableStaticState") // test seam: MailProviderTest shrinks it, see above
     static int connectTimeoutMillis = 30_000;
 
-    private Session session;
+    private final Session session;
     
     private ConfigurationType type = ConfigurationType.JNDI_NAME;
     
-    private String mailHostname;
+    private final String mailHostname;
     private int    mailPort = -1;
-    private String mailUsername;
-    private String mailPassword;
+    private final String mailUsername;
+    private final String mailPassword;
 
     
     @SuppressFBWarnings(

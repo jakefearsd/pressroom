@@ -52,7 +52,7 @@ import org.springframework.stereotype.Component;
  * a change expires the weblog's rendered pages. The posting endpoint, the
  * moderation page, the API and the account page all come through here.
  *
- * <p>Comments passed in ({@link #setStatus}, {@link #delete}, {@link #reply})
+ * <p>Comments passed in ({@link #changeStatus}, {@link #delete}, {@link #reply})
  * must be managed, that is, fetched in the current request. Logs go to
  * {@code pressroom.comments}: ids, statuses, usernames and refusal codes, never
  * a body or an email address.
@@ -376,7 +376,7 @@ public class CommentService {
      *         never published. Every surface (moderation page, API, MCP) gets
      *         this one answer.
      */
-    public boolean setStatus(ReaderComment c, Status status, User actor) throws WebloggerException {
+    public boolean changeStatus(ReaderComment c, Status status, User actor) throws WebloggerException {
         Objects.requireNonNull(status, "status");
         Status before = c.getStatus();
         if (before == status) {

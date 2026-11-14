@@ -326,8 +326,8 @@ class CommentsControllerTest {
         ReaderComment held = service().post(reader, entry.getId(), "Still held", null).comment();
         ReaderComment theirs = service().post(other, entry.getId(), "Approve them", null).comment();
         TestUtils.endSession(true);
-        service().setStatus(comments().getComment(mine.getId()), Status.PUBLISHED, owner);
-        service().setStatus(comments().getComment(theirs.getId()), Status.PUBLISHED, owner);
+        service().changeStatus(comments().getComment(mine.getId()), Status.PUBLISHED, owner);
+        service().changeStatus(comments().getComment(theirs.getId()), Status.PUBLISHED, owner);
         TestUtils.endSession(true);
         ReaderComment reply = service().post(owner, entry.getId(), "Thanks", mine.getId()).comment();
         TestUtils.endSession(true);
@@ -541,7 +541,7 @@ class CommentsControllerTest {
     void deletingOwnIs204AndOthersIs404() throws Exception {
         ReaderComment parent = service().post(reader, entry.getId(), "Approve me", null).comment();
         TestUtils.endSession(true);
-        service().setStatus(comments().getComment(parent.getId()), Status.PUBLISHED, owner);
+        service().changeStatus(comments().getComment(parent.getId()), Status.PUBLISHED, owner);
         TestUtils.endSession(true);
         ReaderComment reply = service().post(owner, entry.getId(), "Thanks", parent.getId()).comment();
         ReaderComment second = service().post(reader, entry.getId(), "Another", null).comment();

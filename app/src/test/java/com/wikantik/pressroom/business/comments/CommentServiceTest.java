@@ -529,7 +529,7 @@ class CommentServiceTest {
         assertEquals("", fetch(c).getBody(), "fixture: a tombstone");
 
         boolean moved = keeps("refusing to publish a tombstone",
-                () -> service.setStatus(fetch(c), Status.PUBLISHED, TestUtils.getManagedUser(owner)));
+                () -> service.changeStatus(fetch(c), Status.PUBLISHED, TestUtils.getManagedUser(owner)));
         TestUtils.endSession(true);
 
         assertFalse(moved, "a tombstone was published");
@@ -537,11 +537,11 @@ class CommentServiceTest {
 
         ReaderComment hidden = post(reader, ea2, BODY).comment();
         setStatus(hidden, Status.HIDDEN);
-        assertTrue(service.setStatus(fetch(hidden), Status.PUBLISHED, TestUtils.getManagedUser(owner)),
+        assertTrue(service.changeStatus(fetch(hidden), Status.PUBLISHED, TestUtils.getManagedUser(owner)),
                 "a hidden comment with its text is published again");
         TestUtils.endSession(true);
         assertEquals(Status.PUBLISHED, fetch(hidden).getStatus());
-        assertTrue(service.setStatus(fetch(hidden), Status.PUBLISHED, TestUtils.getManagedUser(owner)),
+        assertTrue(service.changeStatus(fetch(hidden), Status.PUBLISHED, TestUtils.getManagedUser(owner)),
                 "moving to the status it has is no refusal");
         TestUtils.endSession(true);
     }
@@ -865,10 +865,10 @@ class CommentServiceTest {
         List<String> lines;
         try (SsoLogCapture capture = SsoLogCapture.everyLogger()) {
             assertThrows(WebloggerException.class,
-                    () -> broken.setStatus(fetch(held), Status.HIDDEN, TestUtils.getManagedUser(owner)));
+                    () -> broken.changeStatus(fetch(held), Status.HIDDEN, TestUtils.getManagedUser(owner)));
             TestUtils.endSession(false);
             assertThrows(WebloggerException.class,
-                    () -> broken.setStatus(fetch(own), Status.HIDDEN, TestUtils.getManagedUser(owner)));
+                    () -> broken.changeStatus(fetch(own), Status.HIDDEN, TestUtils.getManagedUser(owner)));
             TestUtils.endSession(false);
             assertThrows(WebloggerException.class, () -> broken.delete(fetch(held), TestUtils.getManagedUser(owner)));
             TestUtils.endSession(false);
@@ -984,7 +984,7 @@ class CommentServiceTest {
     }
 
     private void setStatus(ReaderComment c, Status status) throws Exception {
-        service.setStatus(fetch(c), status, TestUtils.getManagedUser(owner));
+        service.changeStatus(fetch(c), status, TestUtils.getManagedUser(owner));
         TestUtils.endSession(true);
     }
 

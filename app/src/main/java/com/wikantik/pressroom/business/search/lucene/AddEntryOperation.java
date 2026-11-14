@@ -42,7 +42,7 @@ public class AddEntryOperation extends WriteToIndexOperation {
     //~ Instance fields ========================================================
     
     private WeblogEntry data;
-    private Weblogger pressroom;
+    private final Weblogger pressroom;
     
     //~ Constructors ===========================================================
     

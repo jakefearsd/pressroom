@@ -109,10 +109,6 @@ public final class MailUtil {
                     ? WebloggerRuntimeConfig.getProperty("site.adminemail")
                     : creator.getEmailAddress();
             String[] cc = creator.isAgent() || from == null ? new String[0] : new String[] {from};
-            String[] bcc = new String[0];
-            String[] to;
-            String subject;
-            String content;
             
             // list of enabled website authors and admins
             List<String> reviewers = new ArrayList<>();
@@ -128,7 +124,7 @@ public final class MailUtil {
                 }
             }
 
-            to = reviewers.toArray(String[]::new);
+            String[] to = reviewers.toArray(String[]::new);
             if (to.length == 0) {
                 log.debug("No reviewer to tell about pending entry {}", entry.getId());
                 return;
@@ -146,14 +142,15 @@ public final class MailUtil {
                     resources.getString("weblogEntry.pendingEntrySubject"),
                     entry.getWebsite().getName(),
                     entry.getWebsite().getHandle()));
-            subject = sb.toString();
+            String subject = sb.toString();
             sb = new StringBuilder();
             sb.append(
                     MessageFormat.format(
                     resources.getString("weblogEntry.pendingEntryContent"),
                     userName, userName, editURL)
                     );
-            content = sb.toString();
+            String content = sb.toString();
+            String[] bcc = new String[0];
             sendTextMessage(
                     from, to, cc, bcc, subject, content);
         } catch (MessagingException e) {

@@ -209,7 +209,7 @@ public class AgentController extends TokenFormController {
 
     /** One button behind data-confirm; disabling ends every token on its next request. */
     @PostMapping("/agent!setEnabled.rol")
-    public String setEnabled(HttpServletRequest request, RedirectAttributes redirectAttributes,
+    public String changeEnabled(HttpServletRequest request, RedirectAttributes redirectAttributes,
                              @RequestParam(name = "userName", required = false) String userName,
                              @RequestParam(name = "enabled", required = false) String enabled) {
         User agent = lookupAgent(userName);

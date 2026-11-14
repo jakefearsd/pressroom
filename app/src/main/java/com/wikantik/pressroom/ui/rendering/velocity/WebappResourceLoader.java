@@ -131,21 +131,10 @@ public class WebappResourceLoader extends ResourceLoader {
     @Override
 	public Reader getResourceReader(String name, String encoding) {
 
-		InputStream result = null;
-		Exception exception = null;
-
 		if (name == null || name.length() == 0) {
 			throw new ResourceNotFoundException(
 					"WebappResourceLoader: No template name provided");
 		}
-
-		// names are <template>|<renditionType>
-		// loading weblog.vm etc will not have the type so only check for
-		// one.
-		// split always yields at least one element -- name is known non-empty
-		// above, and String.split never returns a zero-length array -- so there
-		// is nothing here to guard against.
-		String[] split = name.split("\\|", 2);
 
 		if (servletContext == null) {
 			// getResourceAsStream() below would otherwise throw an
@@ -158,11 +147,21 @@ public class WebappResourceLoader extends ResourceLoader {
 					"WebappResourceLoader: ServletContext not initialized; cannot load '" + name + "'");
 		}
 
+		// names are <template>|<renditionType>
+		// loading weblog.vm etc will not have the type so only check for
+		// one.
+		// split always yields at least one element -- name is known non-empty
+		// above, and String.split never returns a zero-length array -- so there
+		// is nothing here to guard against.
+		String[] split = name.split("\\|", 2);
+
+		InputStream result = null;
 		String savedPath = templatePaths.get(name);
 		if (savedPath != null) {
 			result = servletContext.getResourceAsStream(savedPath + split[0]);
 		}
 
+		Exception exception = null;
 		if (result == null) {
             for (String pathSegment : paths) {
 				String path = pathSegment + split[0];

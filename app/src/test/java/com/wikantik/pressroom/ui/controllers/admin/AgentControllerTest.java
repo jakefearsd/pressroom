@@ -335,7 +335,7 @@ class AgentControllerTest {
         stored();
 
         try (AdminLogCapture log = AdminLogCapture.start()) {
-            String view = controller.setEnabled(asAdmin(), redirect, "bot1", "false");
+            String view = controller.changeEnabled(asAdmin(), redirect, "bot1", "false");
 
             assertEquals("redirect:/pressroom-ui/admin/agent.rol", view);
             assertEquals("bot1", redirect.asMap().get("userName"));
@@ -353,9 +353,9 @@ class AgentControllerTest {
         stored();
 
         try (AdminLogCapture log = AdminLogCapture.start()) {
-            controller.setEnabled(asAdmin(), redirect, "bot1", "true");
+            controller.changeEnabled(asAdmin(), redirect, "bot1", "true");
             agent.setEnabled(Boolean.FALSE);
-            controller.setEnabled(asAdmin(), redirect, "bot1", "false");
+            controller.changeEnabled(asAdmin(), redirect, "bot1", "false");
 
             assertEquals(List.of(), log.lines());
         }
@@ -367,7 +367,7 @@ class AgentControllerTest {
         agent.setEnabled(Boolean.FALSE);
 
         try (AdminLogCapture log = AdminLogCapture.start()) {
-            controller.setEnabled(asAdmin(), redirect, "bot1", "true");
+            controller.changeEnabled(asAdmin(), redirect, "bot1", "true");
 
             assertEquals(Boolean.TRUE, agent.getEnabled());
             assertEquals(List.of("account.enabled account=bot1 by=admin"), log.lines());

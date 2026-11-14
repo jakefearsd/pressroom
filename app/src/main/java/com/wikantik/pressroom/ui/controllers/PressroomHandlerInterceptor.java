@@ -229,8 +229,6 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
             return false;
         }
 
-        Object controller = handlerMethod.getBean();
-
         // Skip all checks if the application hasn't been bootstrapped yet
         // (install/setup controllers need to run before bootstrap)
         if (!provider.isBootstrapped()) {
@@ -253,6 +251,7 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
                 log.warn("Error looking up weblog with handle: {}", weblogHandle, e);
             }
         }
+        Object controller = handlerMethod.getBean();
         if (actionWeblog != null && actionWeblog.isSiteSpace()
                 && !siteSpaceOffered(controller, apiHandler, authenticatedUser)) {
             log.debug("DENIED: the site space is not offered to this handler or caller");

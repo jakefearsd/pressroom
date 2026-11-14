@@ -73,7 +73,7 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
         registerMessage("comments.deleted", "{0} deleted.");
         try {
             // The service answers whether it moved the comment; it does unless a test says not.
-            when(service.setStatus(any(), any(), any())).thenReturn(true);
+            when(service.changeStatus(any(), any(), any())).thenReturn(true);
         } catch (WebloggerException e) {
             throw new IllegalStateException(e);
         }
@@ -172,13 +172,13 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
         ReaderComment b = comment("b", weblog, Status.PENDING, "y");
 
         controller.approve(new String[] {"a", "b"}, "PENDING", null, 0, request, model);
-        verify(service).setStatus(a, Status.PUBLISHED, user);
-        verify(service).setStatus(b, Status.PUBLISHED, user);
+        verify(service).changeStatus(a, Status.PUBLISHED, user);
+        verify(service).changeStatus(b, Status.PUBLISHED, user);
         assertTrue(messages(model).contains("2 approved."), messages(model).toString());
 
         Model m2 = newModel();
         controller.hide(new String[] {"a"}, "PUBLISHED", null, 0, request, m2);
-        verify(service).setStatus(a, Status.HIDDEN, user);
+        verify(service).changeStatus(a, Status.HIDDEN, user);
         assertTrue(messages(m2).contains("1 hidden."));
 
         Model m3 = newModel();
@@ -197,7 +197,7 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
         controller.delete(new String[] {"f"}, "PENDING", null, 0, request, newModel());
         controller.hide(new String[] {"f"}, "PENDING", null, 0, request, newModel());
 
-        verify(service).setStatus(mine, Status.PUBLISHED, user);
+        verify(service).changeStatus(mine, Status.PUBLISHED, user);
     }
 
     @Test
@@ -206,7 +206,7 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
         controller.approve(new String[] {"f"}, "PENDING", null, 0, request, model);
         controller.hide(new String[] {"f"}, "PENDING", null, 0, request, newModel());
         controller.delete(new String[] {"f"}, "PENDING", null, 0, request, newModel());
-        verify(service, never()).setStatus(any(), any(), any());
+        verify(service, never()).changeStatus(any(), any(), any());
         verify(service, never()).delete(any(), any());
         assertTrue(messages(model).contains("0 approved."));
         assertEquals("f", foreign.getId());
@@ -220,12 +220,12 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
     void aTombstoneTheServiceRefusesIsNotCounted() throws Exception {
         ReaderComment t = comment("t", weblog, Status.HIDDEN, "");
         ReaderComment a = comment("a", weblog, Status.PENDING, "x");
-        when(service.setStatus(t, Status.PUBLISHED, user)).thenReturn(false);
+        when(service.changeStatus(t, Status.PUBLISHED, user)).thenReturn(false);
 
         controller.approve(new String[] {"t", "a"}, "HIDDEN", null, 0, request, model);
 
-        verify(service).setStatus(t, Status.PUBLISHED, user);
-        verify(service).setStatus(a, Status.PUBLISHED, user);
+        verify(service).changeStatus(t, Status.PUBLISHED, user);
+        verify(service).changeStatus(a, Status.PUBLISHED, user);
         assertTrue(messages(model).contains("1 approved."), messages(model).toString());
         assertTrue(errors(model).isEmpty(), errors(model).toString());
     }
@@ -234,7 +234,7 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
     void aFailingServiceReportsAnError() throws Exception {
         ReaderComment a = comment("a", weblog, Status.PENDING, "x");
         org.mockito.Mockito.doThrow(new WebloggerException("down")).when(service)
-                .setStatus(a, Status.PUBLISHED, user);
+                .changeStatus(a, Status.PUBLISHED, user);
         controller.approve(new String[] {"a"}, "PENDING", null, 0, request, model);
         assertTrue(errors(model).contains("generic.error.check.logs"));
     }
@@ -308,7 +308,7 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
 
         controller.approve(new String[] {"o"}, "PENDING", null, 0, request, model);
 
-        verify(service, never()).setStatus(orphan, Status.PUBLISHED, user);
+        verify(service, never()).changeStatus(orphan, Status.PUBLISHED, user);
         assertTrue(messages(model).contains("0 approved."), "Got: " + messages(model));
     }
 
@@ -321,7 +321,7 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
 
         controller.approve(new String[] {"boom", "a"}, "PENDING", null, 0, request, model);
 
-        verify(service).setStatus(a, Status.PUBLISHED, user);
+        verify(service).changeStatus(a, Status.PUBLISHED, user);
         assertTrue(messages(model).contains("1 approved."), "Got: " + messages(model));
     }
 
@@ -445,7 +445,7 @@ class CommentsModerationControllerTest extends EditorControllerTestSupport {
         assertEquals("PUBLISHED", model.getAttribute("status"));
         assertEquals(2, model.getAttribute("page"));
         assertEquals("e1", model.getAttribute("entryFilter"));
-        verify(service).setStatus(a, Status.HIDDEN, user);
+        verify(service).changeStatus(a, Status.HIDDEN, user);
     }
 
     @Test

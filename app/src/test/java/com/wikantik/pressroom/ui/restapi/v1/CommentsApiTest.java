@@ -86,7 +86,7 @@ class CommentsApiTest {
         when(weblogger.getCommentManager()).thenReturn(comments);
         when(weblogger.getWeblogEntryManager()).thenReturn(entries);
         // The service moves a comment unless a test says it refuses.
-        when(service.setStatus(any(), any(), any())).thenReturn(true);
+        when(service.changeStatus(any(), any(), any())).thenReturn(true);
 
         weblog = aWeblog("myblog");
         other = aWeblog("other");
@@ -258,14 +258,14 @@ class CommentsApiTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"PUBLISHED\"}"))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
-        verify(service).setStatus(c, Status.PUBLISHED, actor);
+        verify(service).changeStatus(c, Status.PUBLISHED, actor);
         assertEquals("c1", json(body).get("id").asString());
 
         mvc.perform(patch(BASE + "/c1").requestAttr("actionWeblog", weblog)
                         .requestAttr("authenticatedUser", actor)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"hidden\"}"))
                 .andExpect(status().isOk());
-        verify(service).setStatus(c, Status.HIDDEN, actor);
+        verify(service).changeStatus(c, Status.HIDDEN, actor);
     }
 
     /**
@@ -277,13 +277,13 @@ class CommentsApiTest {
     void publishingATombstoneIsAConflict() throws Exception {
         ReaderComment tombstone = aComment("t1", entry, Status.HIDDEN, "");
         when(comments.getComment("t1")).thenReturn(tombstone);
-        when(service.setStatus(tombstone, Status.PUBLISHED, owner)).thenReturn(false);
+        when(service.changeStatus(tombstone, Status.PUBLISHED, owner)).thenReturn(false);
 
         mvc.perform(patch(BASE + "/t1").requestAttr("actionWeblog", weblog)
                         .requestAttr("authenticatedUser", owner)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"PUBLISHED\"}"))
                 .andExpect(status().isConflict());
-        verify(service).setStatus(tombstone, Status.PUBLISHED, owner);
+        verify(service).changeStatus(tombstone, Status.PUBLISHED, owner);
     }
 
     @Test
@@ -298,7 +298,7 @@ class CommentsApiTest {
                             .contentType(MediaType.APPLICATION_JSON).content(bad))
                     .andExpect(status().isBadRequest());
         }
-        verify(service, never()).setStatus(any(), any(), any());
+        verify(service, never()).changeStatus(any(), any(), any());
     }
 
     @Test
@@ -366,7 +366,7 @@ class CommentsApiTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"body\":\"x\"}"))
                 .andExpect(status().isNotFound());
 
-        verify(service, never()).setStatus(any(), any(), any());
+        verify(service, never()).changeStatus(any(), any(), any());
         verify(service, never()).delete(any(), any());
         verify(service, never()).reply(any(), any(), any());
     }
@@ -424,7 +424,7 @@ class CommentsApiTest {
                 .andExpect(status().isOk());
         mvc.perform(delete(BASE + "/c1").requestAttr("actionWeblog", weblog).requestAttr("authenticatedUser", owner))
                 .andExpect(status().isNoContent());
-        verify(service).setStatus(c, Status.HIDDEN, owner);
+        verify(service).changeStatus(c, Status.HIDDEN, owner);
         verify(service).delete(c, owner);
     }
 

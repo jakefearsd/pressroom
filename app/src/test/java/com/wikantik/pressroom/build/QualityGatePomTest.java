@@ -352,7 +352,11 @@ class QualityGatePomTest {
                 "category/java/codestyle.xml/CStyleArrayDeclaration",
                 "category/java/errorprone.xml/LongLiteralEndingWithLowercaseL",
                 "category/java/bestpractices.xml/OnDemandImport",
-                "category/java/codestyle.xml/UseUnderscoresInNumericLiterals"), refs,
+                "category/java/codestyle.xml/UseUnderscoresInNumericLiterals",
+                "category/java/bestpractices.xml/EnumComparison",
+                "category/java/design.xml/ImmutableField",
+                "category/java/codestyle.xml/PrematureDeclaration",
+                "category/java/codestyle.xml/LinguisticNaming"), refs,
                 "config/pmd/ruleset.xml's <rule ref> set IS the gate's scope, not merely its exclusions. "
                 + "Deleting the security category, or swapping quickstart.xml for a narrower ruleset, "
                 + "silently shrinks the gate with no other test failing. Changing this set is a spec "

@@ -174,7 +174,7 @@ public class WeblogTemplate implements ThemeTemplate, Serializable {
      * template, meaning a template with action = ACTION_CUSTOM.
      */
     public boolean isCustom() {
-        return ComponentType.CUSTOM.equals(getAction()) && !isRequired();
+        return getAction() == ComponentType.CUSTOM && !isRequired();
     }
 
 
@@ -189,7 +189,7 @@ public class WeblogTemplate implements ThemeTemplate, Serializable {
     @Override
     public CustomTemplateRendition getTemplateRendition(CustomTemplateRendition.RenditionType desiredType) throws WebloggerException {
         for (CustomTemplateRendition rnd : templateRenditions) {
-            if (rnd.getType().equals(desiredType)) {
+            if (rnd.getType() == desiredType) {
                 return rnd;
             }
         }
@@ -206,7 +206,7 @@ public class WeblogTemplate implements ThemeTemplate, Serializable {
 
     public boolean hasTemplateRendition(CustomTemplateRendition proposed) {
         for (CustomTemplateRendition rnd : templateRenditions) {
-            if(rnd.getType().equals(proposed.getType())) {
+            if(rnd.getType() == proposed.getType()) {
                 return true;
             }
         }

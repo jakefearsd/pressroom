@@ -64,7 +64,7 @@ public class SharedThemeFromDir extends SharedTheme {
     private static final Logger log = LoggerFactory.getLogger(SharedThemeFromDir.class);
 
     // the filesystem directory where we should read this theme from
-    private String themeDir;
+    private final String themeDir;
 
     // the theme preview image
     private transient ThemeResource previewImage;
@@ -73,17 +73,17 @@ public class SharedThemeFromDir extends SharedTheme {
     private transient ThemeTemplate stylesheet;
 
     // we keep templates in a Map for faster lookups by name
-    private transient Map<String, ThemeTemplate> templatesByName = new HashMap<>();
+    private final transient Map<String, ThemeTemplate> templatesByName = new HashMap<>();
 
     // we keep templates in a Map for faster lookups by link
-    private transient Map<String, ThemeTemplate> templatesByLink = new HashMap<>();
+    private final transient Map<String, ThemeTemplate> templatesByLink = new HashMap<>();
 
     // we keep templates in a Map for faster lookups by action
-    private transient Map<ComponentType, ThemeTemplate> templatesByAction = new EnumMap<>(ComponentType.class);
+    private final transient Map<ComponentType, ThemeTemplate> templatesByAction = new EnumMap<>(ComponentType.class);
 
     // we keep resources in a Map for faster lookups by path
     // the Map contains ... (resource path, ThemeResource)
-    private transient Map<String, ThemeResource> resources = new HashMap<>();
+    private final transient Map<String, ThemeResource> resources = new HashMap<>();
 
     public SharedThemeFromDir(String themeDirPath)
             throws ThemeInitializationException {
@@ -466,7 +466,7 @@ public class SharedThemeFromDir extends SharedTheme {
     private void addTemplate(ThemeTemplate template) {
         this.templatesByName.put(template.getName(), template);
         this.templatesByLink.put(template.getLink(), template);
-        if (!ComponentType.CUSTOM.equals(template.getAction())) {
+        if (template.getAction() != ComponentType.CUSTOM) {
             this.templatesByAction.put(template.getAction(), template);
         }
     }

@@ -70,15 +70,14 @@ public class WeblogSearchRequest extends WeblogRequest {
         
         String servlet = request.getServletPath();
         
-        // we only want the path info left over from after our parents parsing
-        String pathInfo = this.getPathInfo();
-        
         // was this request bound for the search servlet?
         if (!isValidDestination(servlet)) {
             throw new InvalidRequestException("not a weblog search request, "+
                     request.getRequestURL());
         }
 
+        // we only want the path info left over from after our parents parsing
+        String pathInfo = this.getPathInfo();
         parsePathInfo(pathInfo, request);
         parseQueryParameters(request);
     }

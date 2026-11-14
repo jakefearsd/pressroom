@@ -47,7 +47,7 @@ public class RemoveWebsiteIndexOperation extends WriteToIndexOperation {
     // ========================================================
 
     private final Weblog website;
-    private Weblogger pressroom;
+    private final Weblogger pressroom;
 
     // ~ Constructors
     // ===========================================================

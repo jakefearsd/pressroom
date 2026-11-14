@@ -69,7 +69,7 @@ public class VelocityRendererFactory implements RendererFactory {
 
         Renderer renderer = null;
 
-        if (TemplateLanguage.VELOCITY.equals(lang)) {
+        if (lang == TemplateLanguage.VELOCITY) {
             // standard velocity template
             try {
                renderer = new VelocityRenderer(template);

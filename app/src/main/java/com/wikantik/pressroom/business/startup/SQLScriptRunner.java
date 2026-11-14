@@ -55,7 +55,7 @@ public class SQLScriptRunner {
     private static final Pattern DOLLAR_QUOTE = Pattern.compile("\\$[A-Za-z0-9_]*\\$");
 
     private List<String> commands = new ArrayList<>();
-    private List<String> messages = new ArrayList<>();
+    private final List<String> messages = new ArrayList<>();
     private boolean      failed;
     private boolean      errors;
 

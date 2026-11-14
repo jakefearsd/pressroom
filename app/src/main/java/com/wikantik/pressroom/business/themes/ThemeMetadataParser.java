@@ -99,7 +99,7 @@ public class ThemeMetadataParser {
             ThemeMetadataTemplate tmpl = elementToTemplateMetadata(template);
             theme.addTemplate(tmpl);
 
-            if(ComponentType.WEBLOG.equals(tmpl.getAction())) {
+            if(tmpl.getAction() == ComponentType.WEBLOG) {
                 weblogActionTemplate = true;
             }
         }

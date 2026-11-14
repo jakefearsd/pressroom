@@ -53,7 +53,7 @@ public class RebuildWebsiteIndexOperation extends WriteToIndexOperation {
     // ========================================================
 
     private Weblog website;
-    private Weblogger pressroom;
+    private final Weblogger pressroom;
 
     // ~ Constructors
     // ===========================================================
