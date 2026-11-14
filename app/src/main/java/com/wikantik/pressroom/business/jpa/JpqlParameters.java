@@ -40,7 +40,10 @@ final class JpqlParameters {
 
     /**
      * Appends {@code condition} followed by the value's placeholder, when
-     * there is a value; nothing when it is null.
+     * there is a value; nothing when it is null. Only for criteria that are
+     * genuinely optional (a date bound, a locale): a null here widens the
+     * query, so a filter that was asked for binds its value with
+     * {@link #bind} even when that value is null.
      */
     void andIf(StringBuilder query, String condition, Object value) {
         if (value != null) {

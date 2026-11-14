@@ -153,6 +153,22 @@ class WeblogEntryCriteriaTest {
                 "only the named author's entries, and all of them");
     }
 
+    /**
+     * A user criterion whose user has no name names nobody, so it matches
+     * nothing; it must not widen to every author's entries. Review M2: the
+     * JpqlParameters refactor (d19445bf7) dropped the condition for a null
+     * name, where the old code bound NULL and matched no row.
+     */
+    @Test
+    void aUserCriterionWithNoUserNameMatchesNothing() throws Exception {
+        List<String> anchors = anchorsOf(criteria(c -> {
+            c.setWeblog(managed(blog));
+            c.setUser(new User());
+        }));
+
+        assertEquals(List.of(), anchors, "a user was asked for, so not everyone's entries");
+    }
+
     // ---------------------------------------------------------------- dates
 
     @Test

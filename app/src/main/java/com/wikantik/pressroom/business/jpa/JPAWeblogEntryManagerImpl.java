@@ -785,13 +785,19 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         } else {
             queryString.append("e.website.visible = ").append(params.bind(Boolean.TRUE));
         }
-        params.andIf(queryString, " AND e.creatorUserName = ",
-                wesc.getUser() == null ? null : wesc.getUser().getUserName());
+        if (wesc.getUser() != null) {
+            // Bound even when the name is null: a user was asked for, so a
+            // nameless one matches no row rather than every author's (andIf
+            // would drop the condition and widen the query).
+            queryString.append(" AND e.creatorUserName = ").append(params.bind(wesc.getUser().getUserName()));
+        }
         params.andIf(queryString, " AND e.pubTime >= ",
                 wesc.getStartDate() == null ? null : new Timestamp(wesc.getStartDate().getTime()));
         params.andIf(queryString, " AND e.pubTime <= ",
                 wesc.getEndDate() == null ? null : new Timestamp(wesc.getEndDate().getTime()));
-        params.andIf(queryString, " AND e.category.id = ", cat == null ? null : cat.getId());
+        if (cat != null) {
+            queryString.append(" AND e.category.id = ").append(params.bind(cat.getId()));
+        }
         queryString.append(statusCondition(params, wesc));
         params.andIf(queryString, " AND e.locale like ",
                 wesc.getLocale() == null ? null : wesc.getLocale() + '%');
