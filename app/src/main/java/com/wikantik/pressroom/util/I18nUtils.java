@@ -30,36 +30,22 @@ public final class I18nUtils {
     private I18nUtils() {
     }
 
+    /**
+     * The locale a {@code language[_COUNTRY[_variant]]} string names, or the
+     * default locale for null or any other shape. StringUtils.split drops
+     * empty parts and never yields a null one.
+     */
     public static Locale toLocale(String locale) {
-        if (locale != null) {
-            String[] localeStr = StringUtils.split(locale,"_");
-            if (localeStr.length == 1) {
-                if (localeStr[0] == null) {
-                    localeStr[0] = "";
-                }
-                return Locale.of(localeStr[0]);
-            } else if (localeStr.length == 2) {
-                if (localeStr[0] == null) {
-                    localeStr[0] = "";
-                }
-                if (localeStr[1] == null) {
-                    localeStr[1] = "";
-                }
-                return Locale.of(localeStr[0], localeStr[1]);
-            } else if (localeStr.length == 3) {
-                if (localeStr[0] == null) {
-                    localeStr[0] = "";
-                }
-                if (localeStr[1] == null) {
-                    localeStr[1] = "";
-                }
-                if (localeStr[2] == null) {
-                    localeStr[2] = "";
-                }
-                return Locale.of(localeStr[0], localeStr[1], localeStr[2]);
-            }
+        if (locale == null) {
+            return Locale.getDefault();
         }
-        return Locale.getDefault();
+        String[] parts = StringUtils.split(locale, "_");
+        return switch (parts.length) {
+            case 1 -> Locale.of(parts[0]);
+            case 2 -> Locale.of(parts[0], parts[1]);
+            case 3 -> Locale.of(parts[0], parts[1], parts[2]);
+            default -> Locale.getDefault();
+        };
     }
     
 }

@@ -89,33 +89,34 @@ public final class ModelLoader {
         requireWeblogger(initData);
 
         String[] models = Utilities.stringToStringArray(modelsString, ",");
-        if (models != null) {
-            for (String model : models) {
-                try {
-                    Model pageModel = (Model) Reflection.newInstance(model);
-                    pageModel.init(initData);
-                    modelMap.put(pageModel.getModelName(), pageModel);
-                } catch (WebloggerException re) {
-                    if(fail) {
-                        throw re;
-                    } else {
-                        log.warn("Error initializing model: {}", model);
-                    }
-                } catch (ClassNotFoundException cnfe) {
-                    if(fail) {
-                        throw new WebloggerException("Error finding model: " + model, cnfe);
-                    } else {
-                        log.warn("Error finding model: {}", model);
-                    }
-                } catch (ReflectiveOperationException ex) {
-                    if(fail) {
-                        throw new WebloggerException("Error instantiating model: " + model, ex);
-                    } else {
-                        log.warn("Error instantiating model: {}", model);
-                    }
+        if (models == null) {
+            return;
+        }
+        for (String model : models) {
+            try {
+                Model pageModel = (Model) Reflection.newInstance(model);
+                pageModel.init(initData);
+                modelMap.put(pageModel.getModelName(), pageModel);
+            } catch (WebloggerException re) {
+                if (fail) {
+                    throw re;
                 }
+                log.warn("Error initializing model: {}", model);
+            } catch (ClassNotFoundException cnfe) {
+                failOrWarn(fail, "Error finding model: ", model, cnfe);
+            } catch (ReflectiveOperationException ex) {
+                failOrWarn(fail, "Error instantiating model: ", model, ex);
             }
         }
     }
-    
+
+    /** With {@code fail}, the problem is thrown; otherwise the model is skipped with a warning. */
+    private static void failOrWarn(boolean fail, String problem, String model, ReflectiveOperationException cause)
+            throws WebloggerException {
+        if (fail) {
+            throw new WebloggerException(problem + model, cause);
+        }
+        log.warn("{}{}", problem, model);
+    }
+
 }

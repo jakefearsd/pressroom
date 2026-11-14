@@ -97,6 +97,21 @@ class WeblogPermissionTest {
                 "A limited member must NOT be able to administer the weblog");
     }
 
+    /**
+     * Characterisation test, written before implies was flattened and
+     * passing against the old code: actions outside the ladder imply
+     * whatever is asked. No grant stores such an action (Memberships.LEVELS
+     * and the member forms admit only the three levels); this pins the
+     * ladder's last rung as it stands, not as a policy.
+     */
+    @Test
+    void actionsOutsideTheLadderFallThroughToImplied() {
+        WeblogPermission unknown = held("comment");
+
+        assertTrue(unknown.implies(demanded(WeblogPermission.EDIT_DRAFT)));
+        assertTrue(unknown.implies(demanded(WeblogPermission.ADMIN)));
+    }
+
     @Test
     void aPermissionGrantingNothingImpliesNothing() {
         // pressroom_permission.actions is nullable and revoking the last action

@@ -75,33 +75,23 @@ public class WeblogPermission extends ObjectPermission implements Serializable {
             // same guard for the same reason.
             return false;
         }
-        if (perm instanceof WeblogPermission) {
-            WeblogPermission rperm = (WeblogPermission)perm;
-
-            if (hasAction(ADMIN)) {
-                // admin implies all other permissions
-                return true;
-            } else if (hasAction(POST)) {
-                // Best we've got is POST, so make sure perm doesn't specify ADMIN
-                for (String action : rperm.getActionsAsList()) {
-                    if (ADMIN.equals(action)) {
-                        return false;
-                    }
-                }
-            } else if (hasAction(EDIT_DRAFT)) {
-                // Best we've got is EDIT_DRAFT, so make sure perm doesn't specify anything else
-                for (String action : rperm.getActionsAsList()) {
-                    if (POST.equals(action)) {
-                        return false;
-                    }
-                    if (ADMIN.equals(action)) {
-                        return false;
-                    }
-                }
-            }
+        if (!(perm instanceof WeblogPermission rperm)) {
+            return false;
+        }
+        List<String> asked = rperm.getActionsAsList();
+        if (hasAction(ADMIN)) {
+            // admin implies all other permissions
             return true;
         }
-        return false;
+        if (hasAction(POST)) {
+            // Best we've got is POST, so make sure perm doesn't specify ADMIN
+            return !asked.contains(ADMIN);
+        }
+        // Best we've got is EDIT_DRAFT, so make sure perm doesn't specify
+        // anything else. Holding none of the three implies whatever is asked
+        // (no grant stores such an action: the member forms admit only the
+        // three levels).
+        return !hasAction(EDIT_DRAFT) || !asked.contains(POST) && !asked.contains(ADMIN);
     }
     
     @Override
