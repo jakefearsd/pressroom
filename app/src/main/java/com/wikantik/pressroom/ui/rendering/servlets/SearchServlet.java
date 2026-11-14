@@ -143,12 +143,11 @@ public class SearchServlet extends HttpServlet {
         ThemeTemplate page = null;
         try {
             page = selectTemplate(weblog, weblogger.getThemeManager());
-
-            // if still null then that's a problem
             if (page == null) {
-                throw new WebloggerException("Could not lookup default page for weblog " + weblog.getHandle());
+                // a problem, but one the renderer below answers with a 404
+                log.error("Could not lookup default page for weblog {}", weblog.getHandle());
             }
-        } catch (Exception e) {
+        } catch (WebloggerException | RuntimeException e) {
             log.error("Error getting default page for weblog {}", weblog.getHandle(), e);
         }
 

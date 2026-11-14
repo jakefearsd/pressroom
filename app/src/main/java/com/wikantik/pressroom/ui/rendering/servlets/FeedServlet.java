@@ -110,18 +110,19 @@ public class FeedServlet extends HttpServlet {
             feedRequest = new WeblogFeedRequest(weblogger, request);
 
             weblog = feedRequest.getWeblog();
-            if (weblog == null) {
-                throw new WebloggerException("unable to lookup weblog: "
-                        + feedRequest.getWeblogHandle());
-            }
 
             // is this the site-wide weblog?
             isSiteWide = WebloggerRuntimeConfig.isSiteWideWeblog(feedRequest
                     .getWeblogHandle());
 
         } catch (WebloggerException | RuntimeException e) {
-            // invalid feed request format or weblog doesn't exist
+            // invalid feed request format
             log.debug("error creating weblog feed request", e);
+            RenderingServletUtils.sendNotFound(response);
+            return;
+        }
+        if (weblog == null) {
+            log.debug("unable to lookup weblog: {}", feedRequest.getWeblogHandle());
             RenderingServletUtils.sendNotFound(response);
             return;
         }

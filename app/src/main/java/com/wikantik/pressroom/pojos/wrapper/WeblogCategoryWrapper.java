@@ -106,7 +106,8 @@ public final class WeblogCategoryWrapper {
         try {
             return weblogger.getWeblogEntryManager().isWeblogCategoryInUse(this.pojo);
         } catch (WebloggerException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException("Could not tell whether category "
+                    + this.pojo.getName() + " is in use", e);
         }
     }
     

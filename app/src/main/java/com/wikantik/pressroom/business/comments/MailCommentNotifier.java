@@ -17,6 +17,8 @@
  */
 package com.wikantik.pressroom.business.comments;
 
+import jakarta.mail.MessagingException;
+import com.wikantik.pressroom.WebloggerException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -106,7 +108,7 @@ public class MailCommentNotifier implements CommentNotifier {
         while (current != null && names.size() < 10) {
             names.add(current.getClass().getSimpleName());
             Throwable next = current.getCause();
-            if (next == null && current instanceof jakarta.mail.MessagingException messaging) {
+            if (next == null && current instanceof MessagingException messaging) {
                 next = messaging.getNextException();
             }
             current = next;
@@ -132,11 +134,11 @@ public class MailCommentNotifier implements CommentNotifier {
             for (String address : adminAddresses(weblog)) {
                 try {
                     MailUtil.sendTextMessage(from, new String[] {address}, null, null, subject, content);
-                } catch (Exception ex) {
+                } catch (MessagingException | RuntimeException ex) {
                     log.error("Could not send the held-comment notice for comment {}: {}", commentId, kinds(ex));
                 }
             }
-        } catch (Exception ex) {
+        } catch (WebloggerException | RuntimeException ex) {
             log.error("Could not find who to tell about held comment {}: {}", commentId, kinds(ex));
         } finally {
             weblogger.release();
@@ -144,7 +146,7 @@ public class MailCommentNotifier implements CommentNotifier {
     }
 
     /** Distinct email addresses of enabled {@code ADMIN} members who have one; agents are left out. */
-    private List<String> adminAddresses(Weblog weblog) throws Exception {
+    private List<String> adminAddresses(Weblog weblog) throws WebloggerException {
         UserManager users = weblogger.getUserManager();
         List<String> addresses = new ArrayList<>();
         for (WeblogPermission permission : users.getWeblogPermissions(weblog)) {

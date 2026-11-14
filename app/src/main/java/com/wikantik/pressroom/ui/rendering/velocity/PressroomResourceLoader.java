@@ -20,7 +20,7 @@ package com.wikantik.pressroom.ui.rendering.velocity;
 import java.io.ByteArrayInputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
@@ -104,39 +104,38 @@ public class PressroomResourceLoader extends ResourceLoader {
 
 		log.debug("   Actually, it's {}", templateName);
 
+		String contents;
 		try {
-			WeblogTemplate page = weblogger.getWeblogManager().getTemplate(templateName);
-
-			if (page == null) {
-				throw new ResourceNotFoundException(
-						"PressroomResourceLoader: page \"" + templateName + "\" not found");
-			}
-			String contents = "";
-			TemplateRendition templateCode = page.getTemplateRendition(renditionType);
-			if (templateCode != null) {
-				contents = templateCode.getTemplate();
-			}
-			// Velocity passes a NULL encoding from resourceExists(); see the same
-			// guard in ThemeResourceLoader, where an unguarded getBytes(null)
-			// produced intermittent 404s the moment caching was switched on. This
-			// loader still runs uncached, so the path is not reachable today -- the
-			// guard is here so that stays a choice rather than a trap.
-			String charset = (encoding == null || encoding.isEmpty())
-					? StandardCharsets.UTF_8.name() : encoding;
-			return new InputStreamReader(new ByteArrayInputStream(contents.getBytes(charset)), charset);
-
-		} catch (UnsupportedEncodingException uex) {
-			// This should never actually happen. We expect UTF-8 in all JRE
-			// installation.
-//			log.error(uex);
-			throw new RuntimeException(uex);
-
-		} catch (WebloggerException | ResourceNotFoundException re) {
-			String msg = "PressroomResourceLoader Error: "
-					+ "database problem trying to load resource " + templateName;
-//			log.error(msg, re);
-			throw new ResourceNotFoundException(msg, re);
+			contents = contentsOf(templateName, renditionType);
+		} catch (WebloggerException re) {
+			throw new ResourceNotFoundException("PressroomResourceLoader Error: "
+					+ "database problem trying to load resource " + templateName, re);
 		}
+		if (contents == null) {
+			throw new ResourceNotFoundException(
+					"PressroomResourceLoader: page \"" + templateName + "\" not found");
+		}
+		// Velocity passes a NULL encoding from resourceExists(); see the same
+		// guard in ThemeResourceLoader, where an unguarded getBytes(null)
+		// produced intermittent 404s the moment caching was switched on. This
+		// loader still runs uncached, so the path is not reachable today -- the
+		// guard is here so that stays a choice rather than a trap.
+		Charset charset = (encoding == null || encoding.isEmpty())
+				? StandardCharsets.UTF_8 : Charset.forName(encoding);
+		return new InputStreamReader(new ByteArrayInputStream(contents.getBytes(charset)), charset);
+	}
+
+	/**
+	 * The named template's markup in the given rendition: empty when it has
+	 * no such rendition, null when there is no such template.
+	 */
+	private String contentsOf(String templateName, RenditionType renditionType) throws WebloggerException {
+		WeblogTemplate page = weblogger.getWeblogManager().getTemplate(templateName);
+		if (page == null) {
+			return null;
+		}
+		TemplateRendition templateCode = page.getTemplateRendition(renditionType);
+		return templateCode == null ? "" : templateCode.getTemplate();
 	}
 
 	/**

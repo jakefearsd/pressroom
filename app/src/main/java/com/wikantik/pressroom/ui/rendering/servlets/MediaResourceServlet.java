@@ -96,20 +96,18 @@ public class MediaResourceServlet extends HttpServlet {
             resourceRequest = new WeblogMediaResourceRequest(weblogger, request);
 
             weblog = resourceRequest.getWeblog();
-            if (weblog == null) {
-                throw new WebloggerException("unable to lookup weblog: "
-                        + resourceRequest.getWeblogHandle());
-            }
-            // The site space's files are reached only through the mapper's
-            // forward of /site-space/<context>/..., never at this servlet's
-            // own path.
-            if (weblog.isSiteSpace() && request.getDispatcherType() != DispatcherType.FORWARD) {
-                throw new WebloggerException("the site space is not served by its handle");
-            }
 
         } catch (WebloggerException | RuntimeException e) {
-            // invalid resource request or weblog doesn't exist
+            // invalid resource request
             log.debug("error creating weblog resource request", e);
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+        // The site space's files are reached only through the mapper's
+        // forward of /site-space/<context>/..., never at this servlet's
+        // own path.
+        if (weblog == null || (weblog.isSiteSpace() && request.getDispatcherType() != DispatcherType.FORWARD)) {
+            log.debug("no weblog to serve resources for {}", resourceRequest.getWeblogHandle());
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
             return;
         }

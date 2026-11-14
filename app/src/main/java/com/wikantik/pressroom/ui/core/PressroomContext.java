@@ -176,7 +176,7 @@ public final class PressroomContext {
         } else if ("SHA".equals(migrateFrom)) {
             encoders.put(null, legacyDigestEncoder("SHA-1"));
         } else {
-            throw new RuntimeException("passwds.encryption.lazyUpgradeFrom="+migrateFrom+" is no valid encoding to upgrade from.");
+            throw new IllegalStateException("passwds.encryption.lazyUpgradeFrom="+migrateFrom+" is no valid encoding to upgrade from.");
         }
         
         // supported encoders
@@ -189,12 +189,12 @@ public final class PressroomContext {
         String algorithm = WebloggerConfig.getProperty("passwds.encryption.algorithm");
 
         if ("SHA".equals(algorithm) || "MD5".equals(algorithm)) {
-            throw new RuntimeException("passwds.encryption.algorithm="+algorithm+" is outdated,"
+            throw new IllegalStateException("passwds.encryption.algorithm="+algorithm+" is outdated,"
                     + " please set passwds.encryption.algorithm to 'bcrypt' for automatic lazy upgrade.");
         }
 
         if (!encoders.containsKey(algorithm)) {
-            throw new RuntimeException("passwds.encryption.algorithm="+algorithm+" is not supported.");
+            throw new IllegalStateException("passwds.encryption.algorithm="+algorithm+" is not supported.");
         }
 
         log.info("Password Encryption Algorithm set to '{}'", algorithm);

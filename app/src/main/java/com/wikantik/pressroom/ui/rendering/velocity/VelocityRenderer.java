@@ -60,7 +60,7 @@ public class VelocityRenderer implements Renderer {
      */
     private static final Map<String, Long> LOGGED_FAILURES = new ConcurrentHashMap<>();
 
-    public VelocityRenderer(Template template) throws Exception {
+    public VelocityRenderer(Template template) {
 
         // the Template we are supposed to render
         this.renderTemplate = template;

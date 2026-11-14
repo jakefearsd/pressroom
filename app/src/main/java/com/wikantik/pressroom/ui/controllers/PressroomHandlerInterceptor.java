@@ -18,6 +18,7 @@
 
 package com.wikantik.pressroom.ui.controllers;
 
+import com.wikantik.pressroom.WebloggerException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -106,7 +107,7 @@ public class PressroomHandlerInterceptor implements HandlerInterceptor {
     private boolean enforceSecurity(UISecurityEnforced secured, boolean apiHandler,
                                     HttpServletRequest request, HttpServletResponse response,
                                     User authenticatedUser, Weblog actionWeblog)
-            throws Exception {
+            throws IOException, WebloggerException {
 
         if (!secured.isUserRequired()) {
             return true;

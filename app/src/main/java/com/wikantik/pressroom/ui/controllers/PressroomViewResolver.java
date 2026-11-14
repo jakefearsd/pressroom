@@ -17,6 +17,8 @@
  */
 package com.wikantik.pressroom.ui.controllers;
 
+import jakarta.servlet.ServletException;
+import java.io.IOException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.core.Ordered;
@@ -520,7 +522,7 @@ public class PressroomViewResolver implements ViewResolver, Ordered {
 
         @Override
         public void render(Map<String, ?> model, HttpServletRequest request,
-                           HttpServletResponse response) throws Exception {
+                           HttpServletResponse response) throws ServletException, IOException {
             // expose tile attribute paths (prefixed with "tile_" to avoid
             // collisions with model attributes like "menu")
             definition.attributes().forEach((key, value) ->

@@ -18,6 +18,7 @@
 
 package com.wikantik.pressroom.config;
 
+import java.io.IOException;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -134,7 +135,7 @@ public final class WebloggerConfig {
             value = "PATH_TRAVERSAL_IN",
             justification = "The path comes from the operator's -Dpressroom.custom.config JVM property, "
                     + "read once at startup; no request input reaches it.")
-    static void loadLayers(Map<String, String> env, Properties systemProperties) throws Exception {
+    static void loadLayers(Map<String, String> env, Properties systemProperties) throws IOException {
         // Refuse before any file is read: an old name left in the deploy would otherwise be ignored silently.
         LegacyConfigNames.refuse(env, systemProperties);
 
@@ -213,15 +214,18 @@ public final class WebloggerConfig {
 
     /**
      * Runs {@code work}, escalating a {@link RuntimeException} (a
-     * programming or configuration error) but only logging anything else (a
-     * missing optional file, matched by the broad {@code Exception} catch
-     * this class has always used here). Extracted from the static
+     * programming or configuration error) but only logging an
+     * {@link IOException} (a missing or unreadable optional file). Extracted from the static
      * initializer above purely so {@code WebloggerConfigTest} can drive both
      * catch clauses directly -- the initializer itself runs exactly once, at
      * class-load, before any test in the suite can intervene, so this
      * extraction is the only seam that reaches either branch. Package-
      * private, not private, for that test.
      */
+    @SuppressFBWarnings(
+            value = "THROWS_METHOD_THROWS_RUNTIMEEXCEPTION",
+            justification = "The point of the method: a RuntimeException is printed and then rethrown "
+                    + "unchanged so the class fails to load, where an IOException only prints.")
     static void runAtClassLoad(ExceptionalRunnable work) {
         try {
             work.run();
@@ -230,7 +234,7 @@ public final class WebloggerConfig {
             // error, not a missing optional file -- do not boot on it.
             printBootstrapFailure(e);
             throw e;
-        } catch (Exception e) {
+        } catch (IOException e) {
             printBootstrapFailure(e);
         }
     }
@@ -261,7 +265,7 @@ public final class WebloggerConfig {
     /** A block of work that may throw a checked exception. */
     @FunctionalInterface
     interface ExceptionalRunnable {
-        void run() throws Exception;
+        void run() throws IOException;
     }
 
 

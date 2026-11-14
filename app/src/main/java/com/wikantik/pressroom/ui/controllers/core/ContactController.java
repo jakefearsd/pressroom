@@ -17,6 +17,7 @@
  */
 package com.wikantik.pressroom.ui.controllers.core;
 
+import jakarta.mail.MessagingException;
 import java.util.Collections;
 import java.util.List;
 
@@ -296,7 +297,7 @@ public class ContactController extends BaseController {
      * transport, matching how other controller tests in this package stub
      * their collaborators.
      */
-    void sendNotification(Weblog weblog, FormSubmission s, String subject, String body) throws Exception {
+    void sendNotification(Weblog weblog, FormSubmission s, String subject, String body) throws MessagingException {
         MailUtil.sendTextMessage(weblog.getEmailAddress(), s.getEmail(),
                 new String[] { weblog.getEmailAddress() }, subject, body);
     }

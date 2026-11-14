@@ -87,10 +87,10 @@ public class JPAPropertiesManagerImpl implements PropertiesManager {
             initializeMissingProps(props);
             this.saveProperties(props);
 
-        } catch (Exception e) {
+        } catch (WebloggerException | RuntimeException e) {
             log.error("Failed to initialize runtime configuration properties."+
                     "Please check that the database has been upgraded!", e);
-            throw new RuntimeException(e);
+            throw new IllegalStateException("Runtime configuration properties could not be initialized", e);
         }
         
     }

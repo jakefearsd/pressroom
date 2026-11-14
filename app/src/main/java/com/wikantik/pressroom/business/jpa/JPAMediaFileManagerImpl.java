@@ -333,7 +333,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
      * from the same image first.
      */
     private void writeAdminThumbnail(FileContentManager cmgr, MediaFile mediaFile,
-            BufferedImage img) throws Exception {
+            BufferedImage img) throws IOException, WebloggerException {
         int newWidth = mediaFile.getThumbnailWidth();
         int newHeight = mediaFile.getThumbnailHeight();
 
@@ -884,7 +884,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
                     // the smallest rendition. This also stores the entity.
                     extractExifAndBlurhash(cmgr, mf, fc);
                     count++;
-                } catch (Exception e) {
+                } catch (WebloggerException | IOException | RuntimeException e) {
                     log.warn("Failed to regenerate renditions for media file {}", mf.getId(), e);
                 }
             }
@@ -1021,7 +1021,7 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
             pressroom.getWeblogManager().saveWeblog(weblog);
         } catch (WebloggerException e) {
             throw e;
-        } catch (Exception e) {
+        } catch (IOException | RuntimeException e) {
             throw new WebloggerException("Error cropping media file " + mediaFile.getId(), e);
         }
     }

@@ -97,14 +97,15 @@ public class PreviewResourceServlet extends HttpServlet {
             resourceRequest = new WeblogPreviewResourceRequest(weblogger, request);
 
             weblog = resourceRequest.getWeblog();
-            if (weblog == null) {
-                throw new WebloggerException("unable to lookup weblog: "
-                        + resourceRequest.getWeblogHandle());
-            }
 
         } catch (WebloggerException | RuntimeException e) {
-            // invalid resource request or weblog doesn't exist
+            // invalid resource request
             log.debug("error creating weblog resource request", e);
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+        if (weblog == null) {
+            log.debug("unable to lookup weblog: {}", resourceRequest.getWeblogHandle());
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
             return;
         }
@@ -157,20 +158,17 @@ public class PreviewResourceServlet extends HttpServlet {
                 // The authoring path admits any editor, not only this weblog's
                 // members, so a private directory's file is refused here as on
                 // ResourceServlet: answered as a file that does not exist.
-                if (mf.getDirectory() != null && mf.getDirectory().isPrivate()) {
-                    throw new WebloggerException("private media file");
+                if (mf != null && (mf.getDirectory() == null || !mf.getDirectory().isPrivate())) {
+                    resourceLastMod = mf.getLastModified();
+                    resourceStream = mf.getInputStream();
                 }
-                resourceLastMod = mf.getLastModified();
-                resourceStream = mf.getInputStream();
-
-            } catch (Exception ex) {
-                // still not found? then we don't have it, 404.
-                // resourceStream is unconditionally null here for the same
-                // reason as the theme-lookup catch above: the enclosing
-                // `if (resourceStream == null)` guarantees it going in, and
-                // this try block's only assignment to it is its last
-                // statement, so any exception here precedes that assignment.
+            } catch (WebloggerException | RuntimeException ex) {
+                // resourceStream stays null: this try block's only assignment
+                // to it is its last statement, so any exception precedes it.
                 log.debug("Unable to get resource", ex);
+            }
+            if (resourceStream == null) {
+                // still not found? then we don't have it, 404.
                 response.sendError(HttpServletResponse.SC_NOT_FOUND);
                 return;
             }

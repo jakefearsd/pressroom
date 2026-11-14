@@ -35,8 +35,9 @@ public class ReaderOidcUserService implements OAuth2UserService<OidcUserRequest,
         this.delegate = delegate;
     }
 
+    /** Refuses the sign-in with an {@code OAuth2AuthenticationException} carrying {@link #REFUSED} or {@link #FAILED}. */
     @Override
-    public OidcUser loadUser(OidcUserRequest userRequest) throws OAuth2AuthenticationException {
+    public OidcUser loadUser(OidcUserRequest userRequest) {
         OidcUser fromProvider = delegate.loadUser(userRequest);
         OidcIdToken idToken = fromProvider == null ? null : fromProvider.getIdToken();
         URL issuer = idToken == null ? null : idToken.getIssuer();

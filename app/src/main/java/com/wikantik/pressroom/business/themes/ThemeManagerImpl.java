@@ -107,7 +107,7 @@ public class ThemeManagerImpl implements ThemeManager {
 		// get theme directory from config and verify it
 		this.themeDir = WebloggerConfig.getProperty("themes.dir");
 		if (themeDir == null || themeDir.isBlank()) {
-			throw new RuntimeException(
+			throw new IllegalStateException(
 					"couldn't get themes directory from config");
 		} else {
 			// chop off trailing slash if it exists
@@ -119,7 +119,7 @@ public class ThemeManagerImpl implements ThemeManager {
 			File themeDirFile = new File(themeDir);
 			if (!themeDirFile.exists() || !themeDirFile.isDirectory()
 					|| !themeDirFile.canRead()) {
-				throw new RuntimeException("couldn't access theme dir ["
+				throw new IllegalStateException("couldn't access theme dir ["
 						+ themeDir + "]");
 			}
 		}

@@ -189,7 +189,7 @@ the next person who trips one:
   old `getStatus().equals(...)` threw on a null status.
 
 **Defect rules added 2026-11-13 (same pass), each site read by hand**, so the
-ruleset now names 36:
+ruleset now names 40:
 
 - `AvoidReassigningParameters` (42 sites). A parameter keeps the caller's
   value; a normalised copy gets its own name. Two sites were defects:
@@ -199,6 +199,21 @@ ruleset now names 36:
   and left the address; `GenericThrottle` repaired a negative cache size but
   let zero through, a cache that forgets every client, so nobody was ever
   throttled.
+- `AvoidThrowingRawExceptionTypes` (15), `SignatureDeclareThrowsException`
+  (11), `AvoidUncheckedExceptionsInSignatures` (1), `ExceptionAsFlowControl`
+  (13). An unusable configuration throws `IllegalStateException`, an
+  unreadable file `UncheckedIOException`; a signature names what it throws
+  (`throws Exception` had made every caller catch everything). The two
+  Spring Security filter-chain beans keep `throws Exception`, suppressed at
+  the method, because `HttpSecurity` declares it. The rendering servlets
+  threw `WebloggerException` inside their own try blocks to reach the 404 in
+  the catch, and `ResourceServlet` reached it through a `NullPointerException`
+  on a missing media file; each is now an `if` after the try. The resource
+  loaders build a `Charset` instead of catching `UnsupportedEncodingException`.
+  With the signatures narrowed, SpotBugs' `THROWS_METHOD_THROWS_*` detectors
+  also left `exclude.xml` at zero; four sites carry `@SuppressFBWarnings`
+  (the two beans, and two deliberate rethrows of a `RuntimeException` in
+  `RemoteImageFetcher.exchange` and `WebloggerConfig.runAtClassLoad`).
 
 Considered and left out: `ReplaceJavaUtilDate` (376 sites; the JPA pojos are
 `Date`-typed), `AvoidCatchingGenericException` (213; see "Generic catches"),

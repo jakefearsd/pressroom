@@ -35,7 +35,7 @@ public class PressroomRememberMeAuthenticationProvider extends RememberMeAuthent
         log.debug("initializing: PressroomRememberMeAuthenticationProvider");
 
         if (WebloggerConfig.getBooleanProperty("rememberme.enabled") && "springRocks".equals(getKey())) {
-            throw new RuntimeException(
+            throw new IllegalStateException(
                 "If remember-me is to be enabled, rememberme.key must be specified in the pressroom " +
                 "properties file. Make sure it is a secret and make sure it is NOT springRocks");
         }

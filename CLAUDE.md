@@ -121,7 +121,7 @@ Fixture, mock and render-cache conventions for tests: `docs/dev/build-and-ci.md`
 - **Diff coverage ~90%** on changed lines (`bin/check-diff-coverage.sh`),
   judged over the pushed range. A mechanical sweep failing it is expected:
   accept the red run, never add assertion-free tests to satisfy it.
-- **PMD 7.28.0 (pinned — the count depends on it; quickstart + security + 36
+- **PMD 7.28.0 (pinned — the count depends on it; quickstart + security + 40
   named rules), CPD @110 tokens, SpotBugs 4.10.5 with find-sec-bugs 1.14.0:
   zero violations.** A rule is excluded only as a whole family that is
   systematically not a defect here, with a reason in `config/pmd/ruleset.xml`

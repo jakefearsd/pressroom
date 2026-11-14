@@ -144,6 +144,11 @@ public class RemoteImageFetcher implements AutoCloseable {
     // Not try-with-resources: the response must be closed AFTER get.cancel() (see
     // the finally block), and a resource would close before that block runs.
     @SuppressWarnings("PMD.UseTryWithResources")
+    @SuppressFBWarnings(
+            value = "THROWS_METHOD_THROWS_RUNTIMEEXCEPTION",
+            justification = "The rethrow of an unexpected runtime fault from the HTTP client, after one that "
+                    + "the deadline caused has been turned into a refusal; it is not wrapped, so the "
+                    + "caller sees the original.")
     private Answer exchange(URI uri, long remainingNanos, long maxBytes) throws FetchRefusal {
         HttpGet get = new HttpGet(uri);
         get.setHeader(HttpHeaders.ACCEPT, "image/jpeg, image/png, image/gif, image/webp");

@@ -549,7 +549,7 @@ class ContactControllerTest {
         private FormSubmission notifiedSubmission;
 
         @Override
-        void sendNotification(Weblog weblog, FormSubmission s, String subject, String body) throws Exception {
+        void sendNotification(Weblog weblog, FormSubmission s, String subject, String body) throws MessagingException {
             notifyCount++;
             notifiedSubmission = s;
             if (throwOnNotify) {

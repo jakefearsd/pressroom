@@ -85,7 +85,7 @@ public final class CacheManager {
                 factory = (CacheFactory) Reflection.newInstance(DEFAULT_FACTORY);
             } catch(ReflectiveOperationException e) {
                 log.error("Failed to instantiate a cache factory", e);
-                throw new RuntimeException(e);
+                throw new IllegalStateException("No cache factory could be instantiated", e);
             }
         }
         cacheFactory = factory;

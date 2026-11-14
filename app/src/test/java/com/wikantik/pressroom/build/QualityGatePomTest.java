@@ -44,7 +44,7 @@ class QualityGatePomTest {
      * its log-forging family (fixed in log4j2.xml instead).
      */
     private static final List<String> PERMITTED_SPOTBUGS_EXCLUSIONS = List.of(
-            "EI_EXPOSE_REP", "SE_TRANSIENT_FIELD_NOT_RESTORED", "THROWS_METHOD_THROWS",
+            "EI_EXPOSE_REP", "SE_TRANSIENT_FIELD_NOT_RESTORED", "MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR",
             "SPRING_ENDPOINT", "CRLF_INJECTION_LOGS");
 
     /**
@@ -60,7 +60,6 @@ class QualityGatePomTest {
     private static final List<String> PERMITTED_SPOTBUGS_PATTERNS = List.of(
             "EI_EXPOSE_REP", "EI_EXPOSE_REP2", "MS_EXPOSE_REP",
             "SE_TRANSIENT_FIELD_NOT_RESTORED", "SE_COMPARATOR_SHOULD_BE_SERIALIZABLE", "CT_CONSTRUCTOR_THROW",
-            "THROWS_METHOD_THROWS_RUNTIMEEXCEPTION", "THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION",
             "MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR",
             "SPRING_ENDPOINT", "SERVLET_PARAMETER", "SERVLET_SERVER_NAME", "SERVLET_QUERY_STRING",
             "SERVLET_HEADER", "SERVLET_HEADER_USER_AGENT", "SERVLET_HEADER_REFERER",
@@ -357,7 +356,11 @@ class QualityGatePomTest {
                 "category/java/design.xml/ImmutableField",
                 "category/java/codestyle.xml/PrematureDeclaration",
                 "category/java/codestyle.xml/LinguisticNaming",
-                "category/java/bestpractices.xml/AvoidReassigningParameters"), refs,
+                "category/java/bestpractices.xml/AvoidReassigningParameters",
+                "category/java/design.xml/AvoidThrowingRawExceptionTypes",
+                "category/java/design.xml/SignatureDeclareThrowsException",
+                "category/java/design.xml/AvoidUncheckedExceptionsInSignatures",
+                "category/java/design.xml/ExceptionAsFlowControl"), refs,
                 "config/pmd/ruleset.xml's <rule ref> set IS the gate's scope, not merely its exclusions. "
                 + "Deleting the security category, or swapping quickstart.xml for a narrower ruleset, "
                 + "silently shrinks the gate with no other test failing. Changing this set is a spec "

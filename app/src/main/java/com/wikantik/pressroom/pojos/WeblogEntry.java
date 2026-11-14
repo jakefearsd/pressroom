@@ -614,7 +614,7 @@ public class WeblogEntry implements Serializable, ShortcodeContext {
         return null;
     }
         
-    public void putEntryAttribute(String name, String value) throws Exception {
+    public void putEntryAttribute(String name, String value) {
         WeblogEntryAttribute att = null;
         for (WeblogEntryAttribute o : getEntryAttributes()) {
             if (name.equals(o.getName())) {

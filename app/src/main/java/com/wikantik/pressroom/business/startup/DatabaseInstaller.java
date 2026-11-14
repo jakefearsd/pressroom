@@ -113,7 +113,7 @@ public class DatabaseInstaller {
             }
             return appliedVersions(con).isEmpty();
         } catch (SQLException e) {
-            throw new RuntimeException("Error checking database state", e);
+            throw new IllegalStateException("Error checking database state", e);
         }
     }
 
@@ -122,7 +122,7 @@ public class DatabaseInstaller {
         try (Connection con = db.getConnection()) {
             return !tableExists(con, TRACKING_TABLE) || !pendingMigrations(appliedVersions(con)).isEmpty();
         } catch (SQLException e) {
-            throw new RuntimeException("Error checking for pending migrations", e);
+            throw new IllegalStateException("Error checking for pending migrations", e);
         }
     }
 

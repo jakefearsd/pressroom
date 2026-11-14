@@ -99,23 +99,24 @@ public class ResourceServlet extends HttpServlet {
             resourceRequest = new WeblogResourceRequest(weblogger, request);
 
             weblog = resourceRequest.getWeblog();
-            if (weblog == null) {
-                throw new WebloggerException("unable to lookup weblog: "
-                        + resourceRequest.getWeblogHandle());
-            }
-            // The site space's files are reached only through the mapper's
-            // forward of /site-space/<context>/..., never at this servlet's
-            // own path.
-            if (weblog.isSiteSpace() && request.getDispatcherType() != DispatcherType.FORWARD) {
-                throw new WebloggerException("the site space is not served by its handle");
-            }
 
         } catch (WebloggerException | RuntimeException e) {
-            // invalid resource request or weblog doesn't exist
+            // invalid resource request
             if (!response.isCommitted()) {
                 response.reset();
             }
             log.debug("error creating weblog resource request", e);
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+        // The site space's files are reached only through the mapper's
+        // forward of /site-space/<context>/..., never at this servlet's
+        // own path.
+        if (weblog == null || (weblog.isSiteSpace() && request.getDispatcherType() != DispatcherType.FORWARD)) {
+            if (!response.isCommitted()) {
+                response.reset();
+            }
+            log.debug("no weblog to serve resources for {}", resourceRequest.getWeblogHandle());
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
             return;
         }
@@ -158,23 +159,20 @@ public class ResourceServlet extends HttpServlet {
                 // A private directory's files are not served publicly by any
                 // route (see MediaResourceServlet). Answer as for a file that
                 // does not exist, so nothing here reveals that it does.
-                if (mf.getDirectory() != null && mf.getDirectory().isPrivate()) {
-                    throw new WebloggerException("private media file");
+                if (mf != null && (mf.getDirectory() == null || !mf.getDirectory().isPrivate())) {
+                    resourceLastMod = mf.getLastModified();
+                    resourceStream = mf.getInputStream();
                 }
-                resourceLastMod = mf.getLastModified();
-                resourceStream = mf.getInputStream();
-
-            } catch (Exception ex) {
+            } catch (WebloggerException | RuntimeException ex) {
+                // resourceStream stays null: this try block's only assignment
+                // to it is its last statement, so any exception precedes it.
+                log.debug("Unable to get resource", ex);
+            }
+            if (resourceStream == null) {
                 // still not found? then we don't have it, 404.
-                // resourceStream is unconditionally null here for the same
-                // reason as the theme-lookup catch above: the enclosing
-                // `if (resourceStream == null)` guarantees it going in, and
-                // this try block's only assignment to it is its last
-                // statement, so any exception here precedes that assignment.
                 if (!response.isCommitted()) {
                     response.reset();
                 }
-                log.debug("Unable to get resource", ex);
                 response.sendError(HttpServletResponse.SC_NOT_FOUND);
                 return;
             }

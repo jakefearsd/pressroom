@@ -26,7 +26,7 @@ package com.wikantik.pressroom.ui.rendering.velocity;
 import java.io.ByteArrayInputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.Locale;
@@ -95,8 +95,8 @@ public class ThemeResourceLoader extends ResourceLoader {
         // caching switched off; with caching on it is reached constantly, and
         // String.getBytes(null) throws NPE -- which surfaced as a renderer that
         // could not be created and an intermittent 404 on a page that was fine.
-        String charset = (encoding == null || encoding.isEmpty())
-                ? StandardCharsets.UTF_8.name() : encoding;
+        Charset charset = (encoding == null || encoding.isEmpty())
+                ? StandardCharsets.UTF_8 : Charset.forName(encoding);
 
         RenditionType renditionType = RenditionType.STANDARD;
         String templateName = name;
@@ -139,12 +139,6 @@ public class ThemeResourceLoader extends ResourceLoader {
 
             // return the input stream
             return new InputStreamReader(new ByteArrayInputStream(contents.getBytes(charset)), charset);
-
-        } catch (UnsupportedEncodingException uex) {
-            // We expect UTF-8 in all JRE installation.
-            // This rethrows as a Runtime exception after logging.
-            logger.error("Unsupported encoding", uex);
-            throw new RuntimeException(uex);
 
         } catch (ThemeNotFoundException tnfe) {
             String msg = "ThemeResourceLoader Error: " + tnfe.getMessage();

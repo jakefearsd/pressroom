@@ -206,8 +206,11 @@ Leaves 307 violations across 31 rules. The largest remaining are
 | `SE_TRANSIENT_FIELD_NOT_RESTORED`, `SE_COMPARATOR_SHOULD_BE_SERIALIZABLE`, `CT_CONSTRUCTOR_THROW` | 42 | entities are never Java-serialized; constructor-throw is the Spring bean-init idiom |
 | `THROWS_METHOD_THROWS_*`, `REC_CATCH_EXCEPTION`, `MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR` | 94 | style opinions, pervasive and load-bearing in framework-shaped code |
 
-2026-11-13: `REC_CATCH_EXCEPTION` left this family at zero (31 sites fixed);
-see `docs/dev/quality-gates.md`, "Generic catches".
+2026-11-13: `REC_CATCH_EXCEPTION` (31 sites fixed) and both
+`THROWS_METHOD_THROWS_*` detectors left this family at zero, leaving
+`MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR` alone in it; see
+`docs/dev/quality-gates.md`, "Generic catches" and the 2026-11-13 defect
+rules.
 
 **Design-time figure. Superseded by the Measured baseline table above, which
 reports 134 gated -- not 132.** Kept because it is the record of what was

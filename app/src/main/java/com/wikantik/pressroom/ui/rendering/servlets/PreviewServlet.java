@@ -103,13 +103,14 @@ public class PreviewServlet extends HttpServlet {
 
             // lookup weblog specified by preview request
             weblog = previewRequest.getWeblog();
-            if (weblog == null) {
-                throw new WebloggerException("unable to lookup weblog: " +
-                        previewRequest.getWeblogHandle());
-            }
         } catch (WebloggerException | RuntimeException e) {
             // some kind of error parsing the request or getting weblog
             log.debug("error creating preview request", e);
+            RenderingServletUtils.sendNotFound(response);
+            return;
+        }
+        if (weblog == null) {
+            log.debug("unable to lookup weblog: {}", previewRequest.getWeblogHandle());
             RenderingServletUtils.sendNotFound(response);
             return;
         }

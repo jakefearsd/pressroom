@@ -153,16 +153,6 @@ public class PageServlet extends HttpServlet {
             pageRequest = new WeblogPageRequest(weblogger, request);
 
             weblog = pageRequest.getWeblog();
-            if (weblog == null) {
-                throw new WebloggerException("unable to lookup weblog: "
-                        + pageRequest.getWeblogHandle());
-            }
-            // The site space is reached only through a container forward --
-            // WeblogRequestMapper's /<slug>, index.jsp's / -- never by its
-            // internal handle at this servlet's own path.
-            if (weblog.isSiteSpace() && request.getDispatcherType() != DispatcherType.FORWARD) {
-                throw new WebloggerException("the site space is not served by its handle");
-            }
 
             // is this the site-wide weblog?
             isSiteWide = WebloggerRuntimeConfig.isSiteWideWeblog(pageRequest
@@ -170,6 +160,14 @@ public class PageServlet extends HttpServlet {
         } catch (WebloggerException | RuntimeException e) {
             // some kind of error parsing the request or looking up weblog
             log.debug("error creating page request", e);
+            RenderingServletUtils.sendNotFound(response);
+            return;
+        }
+        // The site space is reached only through a container forward --
+        // WeblogRequestMapper's /<slug>, index.jsp's / -- never by its
+        // internal handle at this servlet's own path.
+        if (weblog == null || (weblog.isSiteSpace() && request.getDispatcherType() != DispatcherType.FORWARD)) {
+            log.debug("no weblog to serve for {}", pageRequest.getWeblogHandle());
             RenderingServletUtils.sendNotFound(response);
             return;
         }

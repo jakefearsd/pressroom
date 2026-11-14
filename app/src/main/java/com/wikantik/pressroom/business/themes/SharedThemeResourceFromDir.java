@@ -117,8 +117,8 @@ public class SharedThemeResourceFromDir
         try {
             return Files.newInputStream(resourceFile.toPath());
         } catch (java.io.IOException ex) {
-            // should never happen, rethrow as runtime exception
-            throw new RuntimeException("Error constructing input stream", ex);
+            // should never happen: the resource was found when the theme loaded
+            throw new java.io.UncheckedIOException("Error constructing input stream", ex);
         }
     }
     

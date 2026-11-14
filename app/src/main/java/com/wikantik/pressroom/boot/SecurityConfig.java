@@ -16,6 +16,7 @@
  */
 package com.wikantik.pressroom.boot;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -246,6 +247,12 @@ public class SecurityConfig {
      */
     @Bean
     @Order(2)
+    // HttpSecurity's configurers and build() declare throws Exception: the
+    // signature is Spring Security's, and a @Bean method can only pass it on.
+    @SuppressWarnings("PMD.SignatureDeclareThrowsException")
+    @SuppressFBWarnings(
+            value = "THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION",
+            justification = "HttpSecurity's configurers and build() declare throws Exception.")
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http, AuthenticationManager authenticationManager,
             PressroomRememberMeServices rememberMeServices, ObjectProvider<SsoLogin> ssoLogin,
@@ -354,6 +361,12 @@ public class SecurityConfig {
      */
     @Bean
     @Order(1)
+    // HttpSecurity's configurers and build() declare throws Exception: the
+    // signature is Spring Security's, and a @Bean method can only pass it on.
+    @SuppressWarnings("PMD.SignatureDeclareThrowsException")
+    @SuppressFBWarnings(
+            value = "THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION",
+            justification = "HttpSecurity's configurers and build() declare throws Exception.")
     public SecurityFilterChain apiSecurityFilterChain(
             HttpSecurity http, ApiTokenAuthFilter apiTokenAuthFilter,
             ApiAuthenticationEntryPoint apiAuthenticationEntryPoint,

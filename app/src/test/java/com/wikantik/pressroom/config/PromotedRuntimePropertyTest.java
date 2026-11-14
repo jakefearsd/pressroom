@@ -187,14 +187,15 @@ class PromotedRuntimePropertyTest {
      * <p>Reflective because the method is private and has no reason to be
      * anything else; nothing persists, so this leaves the database alone.
      */
-    @SuppressWarnings("unchecked")
     private static Map<String, RuntimeConfigProperty> seedInto(
             Map<String, RuntimeConfigProperty> props) throws Exception {
         PropertiesManager pmgr = TestUtils.weblogger().getPropertiesManager();
         Method seed = pmgr.getClass()
                 .getDeclaredMethod("initializeMissingProps", Map.class);
         seed.setAccessible(true);
-        return (Map<String, RuntimeConfigProperty>) seed.invoke(pmgr, props);
+        // it fills the map it is given
+        seed.invoke(pmgr, props);
+        return props;
     }
 
     /**

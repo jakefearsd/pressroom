@@ -2,8 +2,9 @@
 <!--
   Pressroom's SpotBugs exclusion filter, re-counted on 2026-10-12 with
   find-sec-bugs 1.14.0 loaded. Five families: three of SpotBugs' own (557
-  findings) and two of find-sec-bugs' (source markers 252,
-  CRLF_INJECTION_LOGS 439). Everything outside them is at zero.
+  findings then; the third has since narrowed to one detector) and two of
+  find-sec-bugs' (source markers 252, CRLF_INJECTION_LOGS 439). Everything
+  outside them is at zero.
 
   IMPROPER_UNICODE is deliberately NOT here, though it fires on every case
   fold near an equals: a new fold must fail the build until someone decides,
@@ -38,18 +39,21 @@
         <Bug pattern="SE_TRANSIENT_FIELD_NOT_RESTORED,SE_COMPARATOR_SHOULD_BE_SERIALIZABLE,CT_CONSTRUCTOR_THROW"/>
     </Match>
 
-    <!-- Style opinions about exception declarations and constructor call graphs
-         (89 findings), pervasive and load-bearing in framework-shaped code:
-         template methods called from constructors are how the servlet and
-         manager hierarchies are written. THROWS_METHOD_THROWS_CLAUSE_THROWABLE
-         and MC_OVERRIDABLE_METHOD_CALL_IN_READ_OBJECT were listed here too and
-         found nothing by 2026-10-12, so they are gate-checked again.
-         REC_CATCH_EXCEPTION left this list on 2026-11-13 at zero: its 31
-         sites now name what they catch, with a RuntimeException that is
-         caught on purpose written out. SpotBugs flags only some shapes of
-         catch (Exception); see docs/dev/quality-gates.md, "Generic catches". -->
+    <!-- Template methods called from constructors: pervasive and
+         load-bearing in framework-shaped code, because that is how the
+         servlet and manager hierarchies are written (javac's this-escape lint
+         is off for the same reason). This family once also held the exception
+         style detectors. THROWS_METHOD_THROWS_CLAUSE_THROWABLE and
+         MC_OVERRIDABLE_METHOD_CALL_IN_READ_OBJECT found nothing by 2026-10-12
+         and were dropped. On 2026-11-13 REC_CATCH_EXCEPTION (31 sites),
+         THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION and
+         THROWS_METHOD_THROWS_RUNTIMEEXCEPTION left at zero: catches name what
+         they catch, signatures name what they throw, and the four sites where
+         a framework signature or a deliberate rethrow requires otherwise carry
+         a reasoned @SuppressFBWarnings. See docs/dev/quality-gates.md,
+         "Generic catches". -->
     <Match>
-        <Bug pattern="THROWS_METHOD_THROWS_RUNTIMEEXCEPTION,THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION,MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR"/>
+        <Bug pattern="MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR"/>
     </Match>
 
     <!-- find-sec-bugs' source markers (252 findings). find-sec-bugs marks
