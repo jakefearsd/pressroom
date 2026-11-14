@@ -162,4 +162,84 @@ class MediaResourceServletAccessTest {
         assertEquals(404, response.getStatus());
         assertEquals(0, response.getContentAsByteArray().length);
     }
+
+    // ---- a media store that fails or returns something unservable
+
+    /** The servlet over a media manager answering {@code getMediaFile(id, true)} with {@code answer}. */
+    private MockHttpServletResponse servedBy(org.mockito.stubbing.Answer<MediaFile> answer, boolean thumbnail)
+            throws Exception {
+        com.wikantik.pressroom.business.MediaFileManager media =
+                mock(com.wikantik.pressroom.business.MediaFileManager.class);
+        when(media.getMediaFile(anyString(), org.mockito.ArgumentMatchers.eq(true))).thenAnswer(answer);
+        Weblogger weblogger = mock(Weblogger.class, org.mockito.AdditionalAnswers.delegatesTo(TestUtils.weblogger()));
+        org.mockito.Mockito.doReturn(media).when(weblogger).getMediaFileManager();
+        MediaResourceServlet servlet = new MediaResourceServlet(weblogger);
+        servlet.init(new MockServletConfig(PressroomContext.getServletContext()));
+        MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
+                "/pressroom-ui/rendering/media-resources", "/mediaaccessblog/m1");
+        if (thumbnail) {
+            request.setParameter("t", "true");
+        }
+        return RenderingTestSupport.execute(servlet, request);
+    }
+
+    /** A stored file of this weblog, with the given bytes and thumbnail behaviour. */
+    private MediaFile storedFile(java.io.InputStream bytes, boolean thumbnailFails) throws Exception {
+        MediaFile file = new MediaFile() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public java.io.InputStream getThumbnailInputStream() {
+                if (thumbnailFails) {
+                    throw new java.io.UncheckedIOException(new java.io.IOException("thumbnail unreadable"));
+                }
+                return null;
+            }
+        };
+        file.setId("m1");
+        file.setContentType("image/jpeg");
+        file.setLastUpdated(new java.sql.Timestamp(1_700_000_000_000L));
+        com.wikantik.pressroom.pojos.MediaFileDirectory directory =
+                new com.wikantik.pressroom.pojos.MediaFileDirectory(TestUtils.getManagedWebsite(weblog), "d", null);
+        file.setDirectory(directory);
+        file.setInputStream(bytes);
+        return file;
+    }
+
+    @Test
+    void aMediaLookupThatFailsOrFindsNothingServableIs404() throws Exception {
+        assertEquals(404, servedBy(i -> { throw new com.wikantik.pressroom.WebloggerException("db down"); }, false)
+                .getStatus());
+        assertEquals(404, servedBy(i -> null, false).getStatus());
+        MediaFile unsaved = storedFile(new java.io.ByteArrayInputStream(new byte[] {1}), false);
+        unsaved.setLastUpdated(null);
+        assertEquals(404, servedBy(i -> unsaved, false).getStatus(), "no modification time: not a stored file");
+    }
+
+    /** A thumbnail that cannot be read falls back to the original, not to an error. */
+    @Test
+    void aThumbnailThatCannotBeReadServesTheOriginal() throws Exception {
+        byte[] original = {9, 8, 7};
+        MediaFile file = storedFile(new java.io.ByteArrayInputStream(original), true);
+
+        MockHttpServletResponse response = servedBy(i -> file, true);
+
+        assertEquals(200, response.getStatus());
+        assertEquals("image/jpeg", response.getContentType());
+        org.junit.jupiter.api.Assertions.assertArrayEquals(original, response.getContentAsByteArray());
+    }
+
+    /** Bytes that cannot be read from storage are a 500, never a truncated 200. */
+    @Test
+    void aFileThatCannotBeReadFromStorageIs500() throws Exception {
+        java.io.InputStream failing = new java.io.InputStream() {
+            @Override
+            public int read() throws java.io.IOException {
+                throw new java.io.IOException("disk error");
+            }
+        };
+        MediaFile file = storedFile(failing, false);
+
+        assertEquals(500, servedBy(i -> file, false).getStatus());
+    }
 }
