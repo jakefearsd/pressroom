@@ -368,7 +368,11 @@ public class FileContentManagerTest  {
         @BeforeEach
         void createWeblog() throws Exception {
             testUser = TestUtils.setupUser("FCMTest_canSave");
-            testWeblog = TestUtils.setupWeblog("FCMTest_canSave", testUser);
+            // A per-run handle: teardown leaves on-disk uploads behind, and a
+            // fixed handle's directory carried one test's bytes into the next
+            // test's quota (see testRenditionsExcludedFromQuota... below).
+            testWeblog = TestUtils.setupWeblog("FCMTest_canSave_" + UUIDGenerator.generateUUID().substring(0, 8),
+                    testUser);
             TestUtils.endSession(true);
         }
 
@@ -519,6 +523,50 @@ public class FileContentManagerTest  {
                     "image/* must admit image/jpeg");
             assertFalse(canSave("notes.txt", "text/plain", 10, new PressroomMessages()),
                     "and must not admit text/plain");
+        }
+
+        /** The content-type rules: any type, one exact type, and a range that names another family. */
+        @Test
+        void contentTypeRulesMatchAnyTypeAnExactTypeOrARange() throws Exception {
+            configure("true", "1.00", "30000", "*/*", "");
+            assertTrue(canSave("notes.txt", "text/plain", 10, new PressroomMessages()), "*/* admits anything typed");
+
+            configure("true", "1.00", "30000", "application/pdf", "");
+            assertTrue(canSave("guide.pdf", "application/pdf", 10, new PressroomMessages()));
+            assertFalse(canSave("guide.zip", "application/zip", 10, new PressroomMessages()),
+                    "an exact type admits only itself");
+
+            configure("true", "1.00", "30000", "image/png", "");
+            assertFalse(canSave("hawk.jpg", "image/jpeg", 10, new PressroomMessages()),
+                    "the same family is not enough without a * subtype");
+        }
+
+        /**
+         * The quota counts every byte under the weblog's uploads directory,
+         * subdirectories included: a file a level down still uses up room.
+         */
+        @Test
+        void filesInSubdirectoriesCountAgainstTheQuota() throws Exception {
+            configure("true", "10.00", "0.001", "", "");
+            Path nested = Path.of(com.wikantik.pressroom.config.WebloggerConfig.getProperty("mediafiles.storage.dir"),
+                    testWeblog.getHandle(), "nested-" + UUIDGenerator.generateUUID().substring(0, 8));
+            Files.createDirectories(nested);
+            try {
+                assertTrue(canSave("hawk.jpg", "image/jpeg", 900, new PressroomMessages()), "room before");
+                Files.write(nested.resolve("big.bin"), new byte[900]);
+
+                PressroomMessages messages = new PressroomMessages();
+                assertFalse(canSave("hawk.jpg", "image/jpeg", 900, messages),
+                        "900 bytes a level down leave no room for 900 more in ~1KB");
+                assertTrue(errorKeys(messages).contains("error.upload.dirmax"), "got: " + errorKeys(messages));
+
+                assertThrows(FilePathException.class, () -> TestUtils.weblogger().getFileContentManager()
+                        .getFileContent(TestUtils.getManagedWebsite(testWeblog), nested.getFileName().toString()),
+                        "a directory is not a file to serve");
+            } finally {
+                Files.deleteIfExists(nested.resolve("big.bin"));
+                Files.deleteIfExists(nested);
+            }
         }
 
         /**
