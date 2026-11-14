@@ -157,55 +157,9 @@ public class PageEditController extends BaseController {
         // the API's rule), checked against the stored value before copyTo.
         checkPickedImage(model, "weblogEdit.error.ogImageUnusable", bean.getOgImageId(),
                 page.getOgImageId(), request);
-        if (hasErrors(model)) {
-            if (!isNew) {
-                model.addAttribute("page", page);
-            }
-        } else {
-            // copyTo is inside the try, not before it, the same shape as
-            // EntryEditController#doSave -- it is defensive against a garbage
-            // status (see PageBean#parseStatus) but is still ordinary application
-            // code reachable from a crafted POST, and nothing here may 500.
-            try {
-                bean.copyTo(page);
-                weblogger.getWeblogPageManager().savePage(page);
-                weblogger.flush();
-                bean.copyFrom(page);
-                model.addAttribute("page", page);
-                addMessage(model, "pageEdit.saved", request);
-            } catch (SiteSlugClashException ex) {
-                // The name is another author's blog handle, and
-                // <spring:message arguments> does not escape.
-                addFieldError(model, "page_bean_slug", ex.getMessageKey(),
-                        new Object[] {StringEscapeUtils.escapeHtml4(ex.getArgument())}, request);
-                if (!isNew) {
-                    model.addAttribute("page", page);
-                }
-            } catch (WebloggerException ex) {
-                // A reserved or malformed slug is the one expected failure mode
-                // here (see WeblogPageManager#savePage), and it must surface as a
-                // field error the author can fix, not a 500.
-                String message = ex.getMessage() == null ? "" : ex.getMessage();
-                if (message.contains("reserved")) {
-                    addFieldError(model, "page_bean_slug", "pageEdit.error.slugReserved", request);
-                } else if (message.contains("slug")) {
-                    addFieldError(model, "page_bean_slug", "pageEdit.error.slugInvalid", request);
-                } else {
-                    log.error("Error saving page {}", bean.getId(), ex);
-                    addError(model, "generic.error.check.logs", request);
-                }
-                if (!isNew) {
-                    model.addAttribute("page", page);
-                }
-            } catch (Exception ex) {
-                // Catch-all, matching EntryEditController#doSave's shape: nothing
-                // in this method may turn a bad POST into a 500.
-                log.error("Error saving page {}", bean.getId(), ex);
-                addError(model, "generic.error.check.logs", request);
-                if (!isNew) {
-                    model.addAttribute("page", page);
-                }
-            }
+        boolean saved = !hasErrors(model) && saved(bean, page, model, request);
+        if (saved || !isNew) {
+            model.addAttribute("page", page);
         }
 
         // See the matching comment in edit(): getPageTitle() (via
@@ -224,6 +178,49 @@ public class PageEditController extends BaseController {
         addPageEditModelAttributes(request, model, bean);
         model.addAttribute("bean", bean);
         return ".PageEdit";
+    }
+
+    /**
+     * Applies the form to the page and saves it. Every failure is reported
+     * on the model and answers false: nothing here may turn a bad POST into
+     * a 500.
+     */
+    private boolean saved(PageBean bean, WeblogPage page, Model model, HttpServletRequest request) {
+        // copyTo is inside the try, not before it, the same shape as
+        // EntryEditController#doSave -- it is defensive against a garbage
+        // status (see PageBean#parseStatus) but is still ordinary application
+        // code reachable from a crafted POST.
+        try {
+            bean.copyTo(page);
+            weblogger.getWeblogPageManager().savePage(page);
+            weblogger.flush();
+            bean.copyFrom(page);
+            addMessage(model, "pageEdit.saved", request);
+            return true;
+        } catch (SiteSlugClashException ex) {
+            // The name is another author's blog handle, and
+            // <spring:message arguments> does not escape.
+            addFieldError(model, "page_bean_slug", ex.getMessageKey(),
+                    new Object[] {StringEscapeUtils.escapeHtml4(ex.getArgument())}, request);
+        } catch (WebloggerException ex) {
+            // A reserved or malformed slug is the one expected failure mode
+            // here (see WeblogPageManager#savePage), and it must surface as a
+            // field error the author can fix, not a 500.
+            String message = ex.getMessage() == null ? "" : ex.getMessage();
+            if (message.contains("reserved")) {
+                addFieldError(model, "page_bean_slug", "pageEdit.error.slugReserved", request);
+            } else if (message.contains("slug")) {
+                addFieldError(model, "page_bean_slug", "pageEdit.error.slugInvalid", request);
+            } else {
+                log.error("Error saving page {}", bean.getId(), ex);
+                addError(model, "generic.error.check.logs", request);
+            }
+        } catch (Exception ex) {
+            // Catch-all, matching EntryEditController#doSave's shape.
+            log.error("Error saving page {}", bean.getId(), ex);
+            addError(model, "generic.error.check.logs", request);
+        }
+        return false;
     }
 
     /**

@@ -338,6 +338,33 @@ class PageEditControllerTest extends EditorControllerTestSupport {
         assertFalse(errors(model).contains("pageEdit.error.slugReserved"));
     }
 
+    /**
+     * Characterisation test, written before save was split up and passing
+     * against the old code: a clash on an existing page still shows that
+     * page, and one on a new page shows none.
+     */
+    @Test
+    void aSlugClashRedisplaysAnExistingPageButNoNewOne() throws Exception {
+        doThrow(new com.wikantik.pressroom.business.SiteSlugClashException(
+                "pageEdit.error.slugIsWeblog", "travel"))
+                .when(weblogger.getWeblogPageManager()).savePage(any());
+        WeblogPage existing = pageOn(weblogA, "about");
+        PageBean edit = new PageBean();
+        edit.setId(existing.getId());
+        edit.setSlug("travel");
+        edit.setTitle("About");
+
+        controller.save(requestFor(weblogA), model, edit);
+        assertEquals(existing, model.getAttribute("page"));
+
+        PageBean create = new PageBean();
+        create.setSlug("travel");
+        create.setTitle("Travel");
+        Model fresh = newModel();
+        controller.save(requestFor(weblogA), fresh, create);
+        assertNull(fresh.getAttribute("page"));
+    }
+
     @Test
     void savingWithABlankSlugIsAFieldErrorNotA500() throws Exception {
         doThrow(new WebloggerException("page slug is required"))
