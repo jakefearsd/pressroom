@@ -87,11 +87,15 @@ public class WeblogPermission extends ObjectPermission implements Serializable {
             // Best we've got is POST, so make sure perm doesn't specify ADMIN
             return !asked.contains(ADMIN);
         }
-        // Best we've got is EDIT_DRAFT, so make sure perm doesn't specify
-        // anything else. Holding none of the three implies whatever is asked
-        // (no grant stores such an action: the member forms admit only the
-        // three levels).
-        return !hasAction(EDIT_DRAFT) || !asked.contains(POST) && !asked.contains(ADMIN);
+        if (hasAction(EDIT_DRAFT)) {
+            // Best we've got is EDIT_DRAFT, so make sure perm doesn't specify
+            // anything else
+            return !asked.contains(POST) && !asked.contains(ADMIN);
+        }
+        // None of the three: an action the ladder does not know grants
+        // nothing, so it implies nothing (fail closed). No grant path stores
+        // one today; the member forms admit only Memberships.LEVELS.
+        return false;
     }
     
     @Override

@@ -98,18 +98,38 @@ class WeblogPermissionTest {
     }
 
     /**
-     * Characterisation test, written before implies was flattened and
-     * passing against the old code: actions outside the ladder imply
-     * whatever is asked. No grant stores such an action (Memberships.LEVELS
-     * and the member forms admit only the three levels); this pins the
-     * ladder's last rung as it stands, not as a policy.
+     * A permission holding only actions outside the admin/post/draft ladder
+     * grants nothing the ladder knows, so it implies nothing. This replaced a
+     * characterisation test (2026-11-13) that pinned the old answer, "implies
+     * whatever is asked": the ladder's last rung fell through to {@code true},
+     * so a row carrying an unknown action would have passed every check,
+     * weblog administration included. No grant path stores such an action
+     * today (Memberships.LEVELS), so the change fails closed without moving
+     * any real member's access.
      */
     @Test
-    void actionsOutsideTheLadderFallThroughToImplied() {
+    void actionsOutsideTheLadderImplyNothing() {
         WeblogPermission unknown = held("comment");
 
-        assertTrue(unknown.implies(demanded(WeblogPermission.EDIT_DRAFT)));
-        assertTrue(unknown.implies(demanded(WeblogPermission.ADMIN)));
+        assertFalse(unknown.implies(demanded(WeblogPermission.EDIT_DRAFT)),
+                "An action the ladder does not know must not grant draft editing");
+        assertFalse(unknown.implies(demanded(WeblogPermission.POST)),
+                "An action the ladder does not know must not grant publishing");
+        assertFalse(unknown.implies(demanded(WeblogPermission.ADMIN)),
+                "An action the ladder does not know must not grant administration");
+        assertFalse(unknown.implies(demanded("comment")),
+                "Outside the ladder there is nothing to imply, not even the same word");
+    }
+
+    /** An unknown action beside a known one leaves the known rung in charge. */
+    @Test
+    void anUnknownActionBesideALadderActionLeavesTheLadderInCharge() {
+        WeblogPermission draftPlus = held("comment", WeblogPermission.EDIT_DRAFT);
+
+        assertTrue(draftPlus.implies(demanded(WeblogPermission.EDIT_DRAFT)));
+        assertFalse(draftPlus.implies(demanded(WeblogPermission.POST)));
+        assertTrue(held("comment", WeblogPermission.POST).implies(demanded(WeblogPermission.POST)));
+        assertFalse(held("comment", WeblogPermission.POST).implies(demanded(WeblogPermission.ADMIN)));
     }
 
     @Test
