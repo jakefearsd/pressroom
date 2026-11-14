@@ -40,7 +40,7 @@ limitations under the License.
     </scm>
 
     <properties>
-        <jacoco-plugin.version>0.8.15</jacoco-plugin.version>
+        <jacoco-plugin.version>0.8.16</jacoco-plugin.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <testcontainers.version>2.0.5</testcontainers.version>
@@ -259,12 +259,12 @@ limitations under the License.
                         <dependency>
                             <groupId>net.sourceforge.pmd</groupId>
                             <artifactId>pmd-core</artifactId>
-                            <version>7.28.0</version>
+                            <version>7.29.0</version>
                         </dependency>
                         <dependency>
                             <groupId>net.sourceforge.pmd</groupId>
                             <artifactId>pmd-java</artifactId>
-                            <version>7.28.0</version>
+                            <version>7.29.0</version>
                         </dependency>
                     </dependencies>
                 </plugin>
