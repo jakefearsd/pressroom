@@ -695,27 +695,19 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
     public List<MediaFile> searchMediaFiles(Weblog weblog,
             MediaFileFilter filter) throws WebloggerException {
 
-        List<Object> params = new ArrayList<>();
-        int size = 0;
-        String queryString = "SELECT m FROM MediaFile m WHERE ";
+        JpqlParameters params = new JpqlParameters();
         StringBuilder whereClause = new StringBuilder(192);
-        StringBuilder orderBy = new StringBuilder();
-
-        params.add(size++, weblog);
-        whereClause.append("m.directory.weblog = ?").append(size);
+        whereClause.append("m.directory.weblog = ").append(params.bind(weblog));
 
         if (!StringUtils.isEmpty(filter.getName())) {
-            String nameFilter = filter.getName();
-            nameFilter = nameFilter.trim();
+            String nameFilter = filter.getName().trim();
             if (!nameFilter.endsWith("%")) {
                 nameFilter = nameFilter + "%";
             }
-            params.add(size++, nameFilter);
-            whereClause.append(" AND m.name like ?").append(size);
+            whereClause.append(" AND m.name like ").append(params.bind(nameFilter));
         }
 
         if (filter.getSize() > 0) {
-            params.add(size++, filter.getSize());
             // An expression, not a statement: adding a SizeFilterType constant
             // is then a compile error here, where a statement switch with a
             // default would quietly run a wrong query.
@@ -726,62 +718,79 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
                 case LT -> "<";
                 case LTE -> "<=";
             })
-                    .append(" ?").append(size);
+                    .append(' ').append(params.bind(filter.getSize()));
         }
 
-        if (filter.getTags() != null && filter.getTags().size() > 1) {
-            whereClause
-                    .append(" AND EXISTS (SELECT t FROM MediaFileTag t WHERE t.mediaFile = m and t.name IN (");
-            for (String tag : filter.getTags()) {
-                params.add(size++, tag);
-                whereClause.append('?').append(size).append(',');
-            }
-            whereClause.deleteCharAt(whereClause.lastIndexOf(","));
-            whereClause.append("))");
-        } else if (filter.getTags() != null && filter.getTags().size() == 1) {
-            params.add(size++, filter.getTags().get(0));
-            whereClause
-                    .append(" AND EXISTS (SELECT t FROM MediaFileTag t WHERE t.mediaFile = m and t.name = ?")
-                    .append(size).append(')');
-        }
+        appendTagFilter(whereClause, params, filter.getTags());
+        appendTypeFilter(whereClause, params, filter.getType());
 
-        if (filter.getType() != null) {
-            if (filter.getType() == MediaFileType.OTHERS) {
-                for (MediaFileType type : MediaFileType.values()) {
-                    if (type != MediaFileType.OTHERS) {
-                        params.add(size++, type.getContentTypePrefix() + "%");
-                        whereClause.append(" AND m.contentType not like ?")
-                                .append(size);
-                    }
-                }
-            } else {
-                params.add(size++, filter.getType().getContentTypePrefix()
-                        + "%");
-                whereClause.append(" AND m.contentType like ?").append(size);
-            }
-        }
+        String orderBy = filter.getOrder() == null ? " order by m.name" : switch (filter.getOrder()) {
+            case NAME -> " order by m.name";
+            case DATE_UPLOADED -> " order by m.dateUploaded";
+            case TYPE -> " order by m.contentType";
+        };
 
-        if (filter.getOrder() != null) {
-            orderBy.append(switch (filter.getOrder()) {
-                case NAME -> " order by m.name";
-                case DATE_UPLOADED -> " order by m.dateUploaded";
-                case TYPE -> " order by m.contentType";
-            });
-        } else {
-            orderBy.append(" order by m.name");
-        }
-
-        TypedQuery<MediaFile> query = strategy.getDynamicQuery(queryString
-                + whereClause.toString() + orderBy.toString(), MediaFile.class);
-        for (int i = 0; i < params.size(); i++) {
-            query.setParameter(i + 1, params.get(i));
-        }
+        TypedQuery<MediaFile> query = strategy.getDynamicQuery("SELECT m FROM MediaFile m WHERE "
+                + whereClause + orderBy, MediaFile.class);
+        params.setOn(query);
 
         if (filter.getStartIndex() >= 0) {
             query.setFirstResult(filter.getStartIndex());
             query.setMaxResults(filter.getLength());
         }
         return query.getResultList();
+    }
+
+    /** Positional JPQL parameters, numbered from 1 in the order they are bound. */
+    private static final class JpqlParameters {
+        private final List<Object> values = new ArrayList<>();
+
+        /** Records the value and returns its placeholder, {@code ?n}. */
+        String bind(Object value) {
+            values.add(value);
+            return "?" + values.size();
+        }
+
+        void setOn(TypedQuery<?> query) {
+            for (int i = 0; i < values.size(); i++) {
+                query.setParameter(i + 1, values.get(i));
+            }
+        }
+    }
+
+    /** A file carries the one tag asked for, or any of several. */
+    private static void appendTagFilter(StringBuilder whereClause, JpqlParameters params, List<String> tags) {
+        if (tags == null || tags.isEmpty()) {
+            return;
+        }
+        whereClause.append(" AND EXISTS (SELECT t FROM MediaFileTag t WHERE t.mediaFile = m and t.name ");
+        if (tags.size() == 1) {
+            whereClause.append("= ").append(params.bind(tags.get(0))).append(')');
+            return;
+        }
+        whereClause.append("IN (");
+        for (String tag : tags) {
+            whereClause.append(params.bind(tag)).append(',');
+        }
+        whereClause.deleteCharAt(whereClause.length() - 1);
+        whereClause.append("))");
+    }
+
+    /** A file of this type, or for OTHERS of none of the named types. */
+    private static void appendTypeFilter(StringBuilder whereClause, JpqlParameters params, MediaFileType type) {
+        if (type == null) {
+            return;
+        }
+        if (type != MediaFileType.OTHERS) {
+            whereClause.append(" AND m.contentType like ").append(params.bind(type.getContentTypePrefix() + "%"));
+            return;
+        }
+        for (MediaFileType named : MediaFileType.values()) {
+            if (named != MediaFileType.OTHERS) {
+                whereClause.append(" AND m.contentType not like ")
+                        .append(params.bind(named.getContentTypePrefix() + "%"));
+            }
+        }
     }
 
     @Override

@@ -350,81 +350,81 @@ public class ThemeManagerImpl implements ThemeManager {
 
 		MediaFileManager fileMgr = pressroom.getMediaFileManager();
 		// now lets import all the theme resources
-        for (ThemeResource resource : theme.getResources()) {
-
+		for (ThemeResource resource : theme.getResources()) {
 			log.debug("Importing resource {}", resource.getPath());
-
 			if (resource.isDirectory()) {
-				MediaFileDirectory mdir = fileMgr.getMediaFileDirectoryByName(
-						weblog, resource.getPath());
-				if (mdir == null) {
-					log.debug("    Creating directory: {}", resource.getPath());
-					fileMgr.createMediaFileDirectory(weblog, resource.getPath());
-					pressroom.flush();
-				} else {
-					log.debug("    No action: directory already exists");
-				}
-
+				directoryNamed(fileMgr, weblog, resource.getPath());
 			} else {
-				String resourcePath = resource.getPath();
-
-				MediaFileDirectory mdir;
-				String justName;
-				String justPath;
-
-				if (resourcePath.indexOf('/') == -1) {
-					mdir = fileMgr.getDefaultMediaFileDirectory(weblog);
-					justPath = "";
-					justName = resourcePath;
-
-				} else {
-					justPath = resourcePath.substring(0, resourcePath.lastIndexOf('/'));
-					if (!justPath.startsWith("/")) {
-                        justPath = "/".concat(justPath);
-                    }
-					justName = resourcePath.substring(resourcePath.lastIndexOf('/') + 1);
-					mdir = fileMgr.getMediaFileDirectoryByName(weblog, justPath);
-					if (mdir == null) {
-						log.debug("    Creating directory: {}", justPath);
-						mdir = fileMgr.createMediaFileDirectory(weblog, justPath);
-						pressroom.flush();
-					}
-				}
-
-				MediaFile oldmf = fileMgr.getMediaFileByOriginalPath(weblog,
-						justPath + "/" + justName);
-				if (oldmf != null) {
-					fileMgr.removeMediaFile(weblog, oldmf);
-				}
-
-				// save file without file-type, quota checks, etc.
-				MediaFile mf = new MediaFile();
-				mf.setDirectory(mdir);
-				mf.setWeblog(weblog);
-				mf.setName(justName);
-				mf.setOriginalPath(justPath + "/" + justName);
-				mf.setContentType(map.getContentType(justName));
-				mf.setLength(resource.getLength());
-
-				log.debug("    Saving file: {}", justName);
-				log.debug("    Saving in directory = {}", mf.getDirectory());
-				PressroomMessages errors = new PressroomMessages();
-				try (InputStream is = resource.getInputStream()) {
-					mf.setInputStream(is);
-					fileMgr.createThemeMediaFile(weblog, mf, errors);
-				} catch (IOException ex) {
-					// only reached when closing the stream itself fails --
-					// createThemeMediaFile() declares WebloggerException, not
-					// IOException, so it propagates past this catch untouched
-					errors.addError("error.closingStream");
-					log.debug("ERROR closing inputstream");
-				}
-				if (errors.getErrorCount() > 0) {
-					throw new WebloggerException(errors.toString());
-				}
-				pressroom.flush();
+				importFile(fileMgr, weblog, resource);
 			}
 		}
+	}
+
+	/** The weblog's media directory of this name, created when it does not exist yet. */
+	private MediaFileDirectory directoryNamed(MediaFileManager fileMgr, Weblog weblog, String path)
+			throws WebloggerException {
+		MediaFileDirectory mdir = fileMgr.getMediaFileDirectoryByName(weblog, path);
+		if (mdir == null) {
+			log.debug("    Creating directory: {}", path);
+			mdir = fileMgr.createMediaFileDirectory(weblog, path);
+			pressroom.flush();
+		}
+		return mdir;
+	}
+
+	/**
+	 * Saves one theme file in the media directory its path names (the
+	 * default directory for a bare name), replacing the file an earlier
+	 * import left at that path. No file-type or quota checks: the theme is
+	 * the operator's.
+	 */
+	private void importFile(MediaFileManager fileMgr, Weblog weblog, ThemeResource resource)
+			throws WebloggerException {
+		String resourcePath = resource.getPath();
+		int lastSlash = resourcePath.lastIndexOf('/');
+		String justName = resourcePath.substring(lastSlash + 1);
+		String justPath;
+		MediaFileDirectory mdir;
+		if (lastSlash == -1) {
+			justPath = "";
+			mdir = fileMgr.getDefaultMediaFileDirectory(weblog);
+		} else {
+			String dirPath = resourcePath.substring(0, lastSlash);
+			justPath = dirPath.startsWith("/") ? dirPath : "/".concat(dirPath);
+			mdir = directoryNamed(fileMgr, weblog, justPath);
+		}
+
+		MediaFile oldmf = fileMgr.getMediaFileByOriginalPath(weblog,
+				justPath + "/" + justName);
+		if (oldmf != null) {
+			fileMgr.removeMediaFile(weblog, oldmf);
+		}
+
+		MediaFile mf = new MediaFile();
+		mf.setDirectory(mdir);
+		mf.setWeblog(weblog);
+		mf.setName(justName);
+		mf.setOriginalPath(justPath + "/" + justName);
+		mf.setContentType(map.getContentType(justName));
+		mf.setLength(resource.getLength());
+
+		log.debug("    Saving file: {}", justName);
+		log.debug("    Saving in directory = {}", mf.getDirectory());
+		PressroomMessages errors = new PressroomMessages();
+		try (InputStream is = resource.getInputStream()) {
+			mf.setInputStream(is);
+			fileMgr.createThemeMediaFile(weblog, mf, errors);
+		} catch (IOException ex) {
+			// only reached when closing the stream itself fails --
+			// createThemeMediaFile() declares WebloggerException, not
+			// IOException, so it propagates past this catch untouched
+			errors.addError("error.closingStream");
+			log.debug("ERROR closing inputstream");
+		}
+		if (errors.getErrorCount() > 0) {
+			throw new WebloggerException(errors.toString());
+		}
+		pressroom.flush();
 	}
 
 	/**
