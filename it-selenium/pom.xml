@@ -43,7 +43,7 @@ limitations under the License.
 
     <properties>
         <!-- Versions match the sibling jspwiki/wikantik Selenide suite. -->
-        <selenide.version>7.19.1</selenide.version>
+        <selenide.version>7.19.0</selenide.version>
         <selenium.version>4.52.0</selenium.version>
         <!-- Raised past selenide-core's transitive 5.6.2, which leaks a pooled
              connection whenever a response carries an unsupported
