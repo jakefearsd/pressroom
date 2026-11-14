@@ -697,6 +697,31 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
     }
 
     /**
+     * The status condition of an entry search. An explicit status wins
+     * outright: a caller asking for TRASHED gets trash, and a caller asking
+     * for anything else cannot get it -- that asymmetry is the property the
+     * whole trash design rests on, so it must not be second-guessed here.
+     *
+     * <p>With no explicit status, trash is excluded unless it was asked for.
+     * This is the ONE place a new, thoughtless caller is protected --
+     * getWeblogEntries() backs 23 call sites, 11 of which set no status, and
+     * every one of them must default to never seeing a deleted entry. The
+     * alternative (require every caller to remember to exclude TRASHED) fails
+     * open: forget it once and a deleted entry is back on a public page. With
+     * no status and includeTrashed true there is no status condition at all
+     * (only the trash screen does this).
+     */
+    private static String statusCondition(JpqlParameters params, WeblogEntrySearchCriteria wesc) {
+        if (wesc.getStatus() != null) {
+            return " AND e.status = " + params.bind(wesc.getStatus());
+        }
+        if (!wesc.isIncludeTrashed()) {
+            return " AND e.status <> " + params.bind(PubStatus.TRASHED);
+        }
+        return "";
+    }
+
+    /**
      * @inheritDoc
      */
     @Override
@@ -717,87 +742,44 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
             }
         }
 
-        List<Object> params = new ArrayList<>();
-        int size = 0;
+        JpqlParameters params = new JpqlParameters();
         StringBuilder queryString = new StringBuilder(384);
-        
+
         queryString.append("SELECT e FROM WeblogEntry e WHERE ");
         if (wesc.getTags() != null && !wesc.getTags().isEmpty()) {
             // EXISTS, not a join on e.tags: a join yields one row per matching
             // tag, so an entry carrying two of the tags was listed twice and
             // the duplicates counted against maxResults (short pages).
             queryString.append("EXISTS (SELECT t FROM WeblogEntryTag t WHERE t.weblogEntry = e AND (");
-            for (int i = 0; i < wesc.getTags().size(); i++) {
-                if (i != 0) {
-                    queryString.append(" OR ");
-                }
-                params.add(size++, wesc.getTags().get(i));
-                queryString.append(" t.name = ?").append(size);                
+            String or = "";
+            for (String tag : wesc.getTags()) {
+                queryString.append(or).append(" t.name = ").append(params.bind(tag));
+                or = " OR ";
             }
             queryString.append(")) AND ");
         }
 
         if (wesc.getWeblog() != null) {
-            params.add(size++, wesc.getWeblog().getId());
-            queryString.append("e.website.id = ?").append(size);
+            queryString.append("e.website.id = ").append(params.bind(wesc.getWeblog().getId()));
         } else {
-            params.add(size++, Boolean.TRUE);
-            queryString.append("e.website.visible = ?").append(size);
+            queryString.append("e.website.visible = ").append(params.bind(Boolean.TRUE));
         }
-        
-        if (wesc.getUser() != null) {
-            params.add(size++, wesc.getUser().getUserName());
-            queryString.append(" AND e.creatorUserName = ?").append(size);
-        }
-        
-        if (wesc.getStartDate() != null) {
-            Timestamp start = new Timestamp(wesc.getStartDate().getTime());
-            params.add(size++, start);
-            queryString.append(" AND e.pubTime >= ?").append(size);
-        }
-        
-        if (wesc.getEndDate() != null) {
-            Timestamp end = new Timestamp(wesc.getEndDate().getTime());
-            params.add(size++, end);
-            queryString.append(" AND e.pubTime <= ?").append(size);
-        }
-        
-        if (cat != null) {
-            params.add(size++, cat.getId());
-            queryString.append(" AND e.category.id = ?").append(size);
-        }
-                
-        if (wesc.getStatus() != null) {
-            // An explicit status wins outright: a caller asking for TRASHED
-            // gets trash, and a caller asking for anything else cannot get
-            // it -- that asymmetry is the property the whole trash design
-            // rests on, so it must not be second-guessed here.
-            params.add(size++, wesc.getStatus());
-            queryString.append(" AND e.status = ?").append(size);
-        } else if (!wesc.isIncludeTrashed()) {
-            // No explicit status and trash was not asked for: exclude it.
-            // This is the ONE place a new, thoughtless caller is protected --
-            // getWeblogEntries() backs 23 call sites, 11 of which set no
-            // status, and every one of them must default to never seeing a
-            // deleted entry. The alternative (require every caller to
-            // remember to exclude TRASHED) fails open: forget it once and a
-            // deleted entry is back on a public page.
-            params.add(size++, PubStatus.TRASHED);
-            queryString.append(" AND e.status <> ?").append(size);
-        }
-        // else: no explicit status, includeTrashed true -- no status
-        // condition at all (only the trash screen does this).
+        params.andIf(queryString, " AND e.creatorUserName = ",
+                wesc.getUser() == null ? null : wesc.getUser().getUserName());
+        params.andIf(queryString, " AND e.pubTime >= ",
+                wesc.getStartDate() == null ? null : new Timestamp(wesc.getStartDate().getTime()));
+        params.andIf(queryString, " AND e.pubTime <= ",
+                wesc.getEndDate() == null ? null : new Timestamp(wesc.getEndDate().getTime()));
+        params.andIf(queryString, " AND e.category.id = ", cat == null ? null : cat.getId());
+        queryString.append(statusCondition(params, wesc));
+        params.andIf(queryString, " AND e.locale like ",
+                wesc.getLocale() == null ? null : wesc.getLocale() + '%');
 
-        if (wesc.getLocale() != null) {
-            params.add(size++, wesc.getLocale() + '%');
-            queryString.append(" AND e.locale like ?").append(size);
-        }
-        
         if (StringUtils.isNotEmpty(wesc.getText())) {
-            params.add(size++, '%' + wesc.getText() + '%');
-            queryString.append(" AND ( e.text LIKE ?").append(size)
-                    .append("    OR e.summary LIKE ?").append(size)
-                    .append("    OR e.title LIKE ?").append(size)
+            String text = params.bind('%' + wesc.getText() + '%');
+            queryString.append(" AND ( e.text LIKE ").append(text)
+                    .append("    OR e.summary LIKE ").append(text)
+                    .append("    OR e.title LIKE ").append(text)
                     .append(") ");
         }
 
@@ -808,16 +790,11 @@ public class JPAWeblogEntryManagerImpl implements WeblogEntryManager {
         } else {
             queryString.append(" ORDER BY e.pubTime ");
         }
-        
-        if (wesc.getSortOrder() == WeblogEntrySearchCriteria.SortOrder.ASCENDING) {
-            queryString.append("ASC ");
-        } else {
-            queryString.append("DESC ");
-        }
-        
-        
+        queryString.append(wesc.getSortOrder() == WeblogEntrySearchCriteria.SortOrder.ASCENDING
+                ? "ASC " : "DESC ");
+
         TypedQuery<WeblogEntry> query = strategy.getDynamicQuery(queryString.toString(), WeblogEntry.class);
-        bindParams(query, params);
+        params.setOn(query);
 
         setFirstMax( query, wesc.getOffset(), wesc.getMaxResults() );
         if (wesc.getMaxResults() <= 0) {

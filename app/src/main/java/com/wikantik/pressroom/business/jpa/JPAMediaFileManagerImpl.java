@@ -741,23 +741,6 @@ public class JPAMediaFileManagerImpl implements MediaFileManager {
         return query.getResultList();
     }
 
-    /** Positional JPQL parameters, numbered from 1 in the order they are bound. */
-    private static final class JpqlParameters {
-        private final List<Object> values = new ArrayList<>();
-
-        /** Records the value and returns its placeholder, {@code ?n}. */
-        String bind(Object value) {
-            values.add(value);
-            return "?" + values.size();
-        }
-
-        void setOn(TypedQuery<?> query) {
-            for (int i = 0; i < values.size(); i++) {
-                query.setParameter(i + 1, values.get(i));
-            }
-        }
-    }
-
     /** A file carries the one tag asked for, or any of several. */
     private static void appendTagFilter(StringBuilder whereClause, JpqlParameters params, List<String> tags) {
         if (tags == null || tags.isEmpty()) {
