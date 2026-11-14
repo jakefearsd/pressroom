@@ -19,7 +19,6 @@
 package com.wikantik.pressroom.ui.rendering.servlets;
 
 import java.io.IOException;
-import java.io.InputStream;
 
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.ServletConfig;
@@ -33,12 +32,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.Weblogger;
-import com.wikantik.pressroom.business.MediaFileManager;
-import com.wikantik.pressroom.pojos.MediaFile;
-import com.wikantik.pressroom.pojos.ThemeResource;
 import com.wikantik.pressroom.pojos.Weblog;
 import com.wikantik.pressroom.pojos.WeblogTheme;
-import com.wikantik.pressroom.ui.rendering.util.ModDateHeaderUtil;
 import com.wikantik.pressroom.ui.rendering.util.WeblogResourceRequest;
 
 /**
@@ -110,72 +105,24 @@ public class ResourceServlet extends HttpServlet {
 
         // first see if resource comes from weblog's shared theme, then
         // whether it is in the weblog's upload dir
-        Found found;
+        ServableResource found;
         try {
-            found = themeResource(weblog, path);
+            WeblogTheme weblogTheme = weblogger.getThemeManager().getTheme(weblog);
+            found = weblogTheme == null ? null : ServableResource.of(weblogTheme.getResource(path));
         } catch (WebloggerException | RuntimeException ex) {
             // hmmm, some kind of error getting theme. that's an error.
             fail(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             return;
         }
         if (found == null) {
-            found = uploadedResource(weblog, path);
+            found = ServableResource.uploaded(weblogger, weblog, path);
         }
         if (found == null) {
             // still not found? then we don't have it, 404.
             fail(response, HttpServletResponse.SC_NOT_FOUND);
             return;
         }
-
-        // Respond with 304 Not Modified if it is not modified.
-        if (ModDateHeaderUtil.respondIfNotModified(request, response, found.lastModified())) {
-            return;
-        }
-        ModDateHeaderUtil.setLastModifiedHeader(response, found.lastModified());
-
-        // set the content type based on whatever is in our web.xml mime defs
-        response.setContentType(this.context.getMimeType(path));
-
-        // streamResource closes the stream
-        RenderingServletUtils.streamResource(found.stream(), response, path);
-    }
-
-    /** A resource's bytes, still to be closed, and when it last changed. */
-    private record Found(long lastModified, InputStream stream) {
-    }
-
-    /** The resource from the weblog's theme, or null when the theme has none at that path. */
-    private Found themeResource(Weblog weblog, String path) throws WebloggerException {
-        WeblogTheme weblogTheme = weblogger.getThemeManager().getTheme(weblog);
-        ThemeResource resource = weblogTheme == null ? null : weblogTheme.getResource(path);
-        if (resource == null) {
-            return null;
-        }
-        long lastModified = resource.getLastModified();
-        InputStream stream = resource.getInputStream();
-        return stream == null ? null : new Found(lastModified, stream);
-    }
-
-    /**
-     * The file uploaded at that path, or null. A private directory's files
-     * are not served publicly by any route (see MediaResourceServlet): one
-     * answers as a file that does not exist, so nothing here reveals that
-     * it does. A lookup that fails is a miss too.
-     */
-    private Found uploadedResource(Weblog weblog, String path) {
-        try {
-            MediaFileManager mmgr = weblogger.getMediaFileManager();
-            MediaFile mf = mmgr.getMediaFileByOriginalPath(weblog, path);
-            if (mf == null || (mf.getDirectory() != null && mf.getDirectory().isPrivate())) {
-                return null;
-            }
-            long lastModified = mf.getLastModified();
-            InputStream stream = mf.getInputStream();
-            return stream == null ? null : new Found(lastModified, stream);
-        } catch (WebloggerException | RuntimeException ex) {
-            log.debug("Unable to get resource", ex);
-            return null;
-        }
+        found.serve(request, response, context, path);
     }
 
     private static void fail(HttpServletResponse response, int status) throws IOException {

@@ -2,6 +2,8 @@ package com.wikantik.pressroom.ui.rendering.servlets;
 
 import com.wikantik.pressroom.TestUtils;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.Weblogger;
@@ -20,6 +22,7 @@ import org.springframework.mock.web.MockServletConfig;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -100,5 +103,43 @@ class ResourceServletThemeFailureTest {
         assertArrayEquals(css, response.getContentAsByteArray());
         assertEquals(1_700_000_000_000L, response.getDateHeader("Last-Modified"));
         verify(weblogger, never()).getMediaFileManager();
+    }
+
+    /**
+     * A 304 sends no bytes, so the stream opened to find the resource must
+     * be closed there and then. It was left open for the collector: a file
+     * handle per revalidation of every theme stylesheet and upload.
+     */
+    @Test
+    void aNotModifiedAnswerClosesTheStreamItOpened() throws Exception {
+        boolean[] closed = {false};
+        InputStream css = new ByteArrayInputStream(new byte[] {1, 2, 3}) {
+            @Override
+            public void close() throws IOException {
+                closed[0] = true;
+                super.close();
+            }
+        };
+        ThemeResource resource = mock(ThemeResource.class);
+        when(resource.getLastModified()).thenReturn(1_700_000_000_000L);
+        when(resource.getInputStream()).thenReturn(css);
+        WeblogTheme theme = mock(WeblogTheme.class);
+        when(theme.getResource("style.css")).thenReturn(resource);
+        ThemeManager themes = mock(ThemeManager.class);
+        when(themes.getTheme(org.mockito.ArgumentMatchers.any(Weblog.class))).thenReturn(theme);
+        Weblogger real = TestUtils.weblogger();
+        Weblogger weblogger = mock(Weblogger.class);
+        when(weblogger.getWeblogManager()).thenReturn(real.getWeblogManager());
+        when(weblogger.getThemeManager()).thenReturn(themes);
+        ResourceServlet servlet = new ResourceServlet(weblogger);
+        servlet.init(new MockServletConfig(PressroomContext.getServletContext()));
+
+        MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
+                "/pressroom-ui/rendering/resources", "/resfailblog/style.css");
+        request.addHeader("If-Modified-Since", 1_700_000_000_000L);
+        MockHttpServletResponse response = RenderingTestSupport.execute(servlet, request);
+
+        assertEquals(304, response.getStatus());
+        assertTrue(closed[0], "the stream opened for a 304 must be closed");
     }
 }

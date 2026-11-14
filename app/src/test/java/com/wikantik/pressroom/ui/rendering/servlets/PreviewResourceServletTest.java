@@ -1,6 +1,15 @@
 package com.wikantik.pressroom.ui.rendering.servlets;
 
 import com.wikantik.pressroom.TestUtils;
+import com.wikantik.pressroom.WebloggerException;
+import com.wikantik.pressroom.business.Weblogger;
+import com.wikantik.pressroom.business.themes.SharedTheme;
+import com.wikantik.pressroom.business.themes.ThemeManager;
+import com.wikantik.pressroom.pojos.ThemeResource;
+import com.wikantik.pressroom.pojos.WeblogTheme;
+import com.wikantik.pressroom.ui.core.PressroomContext;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import com.wikantik.pressroom.business.MediaFileManager;
 import com.wikantik.pressroom.pojos.MediaFile;
 import com.wikantik.pressroom.pojos.User;
@@ -10,9 +19,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.mock.web.MockServletConfig;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * The preview counterpart of ResourceServlet: it serves a weblog's uploads and
@@ -142,5 +154,60 @@ class PreviewResourceServletTest {
         assertEquals(304, RenderingTestSupport.execute(
                         RenderingTestSupport.previewResourceServlet(), conditional).getStatus(),
                 "an author reloading a preview must not re-download every image each time");
+    }
+
+    private static ThemeResource themeFile(String text) {
+        ThemeResource resource = mock(ThemeResource.class);
+        when(resource.getLastModified()).thenReturn(1_700_000_000_000L);
+        when(resource.getInputStream())
+                .thenReturn(new ByteArrayInputStream(text.getBytes(StandardCharsets.US_ASCII)));
+        return resource;
+    }
+
+    private MockHttpServletResponse getWith(ThemeManager themes, String... params) throws Exception {
+        Weblogger real = TestUtils.weblogger();
+        Weblogger weblogger = mock(Weblogger.class);
+        when(weblogger.getWeblogManager()).thenReturn(real.getWeblogManager());
+        when(weblogger.getMediaFileManager()).thenReturn(real.getMediaFileManager());
+        when(weblogger.getThemeManager()).thenReturn(themes);
+        PreviewResourceServlet servlet = new PreviewResourceServlet(weblogger);
+        servlet.init(new MockServletConfig(PressroomContext.getServletContext()));
+        MockHttpServletRequest request =
+                RenderingTestSupport.anonymousGet(PREVIEW_RESOURCE, "/" + handle + "/style.css");
+        for (int i = 0; i + 1 < params.length; i += 2) {
+            request.setParameter(params[i], params[i + 1]);
+        }
+        return RenderingTestSupport.execute(servlet, request);
+    }
+
+    /**
+     * Characterisation test, written before doGet shared its lookups with
+     * ResourceServlet and passing against the old code: the previewed theme
+     * is asked first, then the weblog's own theme.
+     */
+    @Test
+    void thePreviewedThemeWinsOverTheWeblogsOwnTheme() throws Exception {
+        SharedTheme previewed = mock(SharedTheme.class);
+        ThemeResource previewedFile = themeFile("previewed");
+        when(previewed.getResource("style.css")).thenReturn(previewedFile);
+        WeblogTheme own = mock(WeblogTheme.class);
+        ThemeResource ownFile = themeFile("own");
+        when(own.getResource("style.css")).thenReturn(ownFile);
+        ThemeManager themes = mock(ThemeManager.class);
+        when(themes.getTheme("previewed")).thenReturn(previewed);
+        when(themes.getTheme(org.mockito.ArgumentMatchers.any(Weblog.class))).thenReturn(own);
+
+        assertEquals("previewed", getWith(themes, "theme", "previewed").getContentAsString());
+        assertEquals("own", getWith(themes).getContentAsString());
+    }
+
+    /** Characterisation test, as above: a weblog theme that cannot be read is a 500. */
+    @Test
+    void aThemeLookupThatFailsIsA500() throws Exception {
+        ThemeManager themes = mock(ThemeManager.class);
+        when(themes.getTheme(org.mockito.ArgumentMatchers.any(Weblog.class)))
+                .thenThrow(new WebloggerException("theme directory unreadable"));
+
+        assertEquals(500, getWith(themes).getStatus());
     }
 }

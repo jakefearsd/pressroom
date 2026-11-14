@@ -19,7 +19,6 @@
 package com.wikantik.pressroom.ui.rendering.servlets;
 
 import java.io.IOException;
-import java.io.InputStream;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
@@ -31,13 +30,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.wikantik.pressroom.WebloggerException;
 import com.wikantik.pressroom.business.Weblogger;
-import com.wikantik.pressroom.business.MediaFileManager;
-import com.wikantik.pressroom.pojos.MediaFile;
-import com.wikantik.pressroom.pojos.Theme;
-import com.wikantik.pressroom.pojos.ThemeResource;
 import com.wikantik.pressroom.pojos.WeblogTheme;
 import com.wikantik.pressroom.pojos.Weblog;
-import com.wikantik.pressroom.ui.rendering.util.ModDateHeaderUtil;
 import com.wikantik.pressroom.ui.rendering.util.WeblogPreviewResourceRequest;
 
 /**
@@ -79,12 +73,6 @@ public class PreviewResourceServlet extends HttpServlet {
     /**
      * Handles requests for user uploaded resources.
      */
-    // False positive: "'resourceStream' is reassigned, but the original
-    // instance is not closed" -- each reassignment below is reached only
-    // inside `if (resourceStream == null)`, so there is never a live stream
-    // to lose at that point. The stream this variable ends up holding is
-    // closed by RenderingServletUtils.streamResource, which this method hands it to.
-    @SuppressWarnings("PMD.CloseResource")
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -110,85 +98,37 @@ public class PreviewResourceServlet extends HttpServlet {
             return;
         }
 
-        log.debug("Resource requested [{}]", resourceRequest.getResourcePath());
-
-        long resourceLastMod = 0;
-        InputStream resourceStream = null;
+        String path = resourceRequest.getResourcePath();
+        log.debug("Resource requested [{}]", path);
 
         // first, see if we have a preview theme to operate from
+        ServableResource found = null;
         if (!StringUtils.isEmpty(resourceRequest.getThemeName())) {
-            Theme theme = resourceRequest.getTheme();
-            ThemeResource resource = theme.getResource(resourceRequest
-                    .getResourcePath());
-            if (resource != null) {
-                resourceLastMod = resource.getLastModified();
-                resourceStream = resource.getInputStream();
-            }
+            found = ServableResource.of(resourceRequest.getTheme().getResource(path));
         }
 
         // second, see if resource comes from weblog's configured shared theme
-        if (resourceStream == null) {
+        if (found == null) {
             try {
                 WeblogTheme weblogTheme = weblogger.getThemeManager().getTheme(weblog);
-                if (weblogTheme != null) {
-                    ThemeResource resource = weblogTheme
-                            .getResource(resourceRequest.getResourcePath());
-                    if (resource != null) {
-                        resourceLastMod = resource.getLastModified();
-                        resourceStream = resource.getInputStream();
-                    }
-                }
+                found = weblogTheme == null ? null : ServableResource.of(weblogTheme.getResource(path));
             } catch (WebloggerException | RuntimeException ex) {
                 // hmmm, some kind of error getting theme. that's an error.
-                // resourceStream is unconditionally null here: the only
-                // assignment to it in this try block is the last statement,
-                // so any exception thrown by this block is thrown before
-                // that assignment runs and there is never a stream to close.
                 response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                 return;
             }
         }
 
         // if not from theme then see if resource is in weblog's upload dir
-        if (resourceStream == null) {
-            try {
-                MediaFileManager mmgr = weblogger.getMediaFileManager();
-                MediaFile mf = mmgr.getMediaFileByOriginalPath(weblog,
-                        resourceRequest.getResourcePath());
-                // The authoring path admits any editor, not only this weblog's
-                // members, so a private directory's file is refused here as on
-                // ResourceServlet: answered as a file that does not exist.
-                if (mf != null && (mf.getDirectory() == null || !mf.getDirectory().isPrivate())) {
-                    resourceLastMod = mf.getLastModified();
-                    resourceStream = mf.getInputStream();
-                }
-            } catch (WebloggerException | RuntimeException ex) {
-                // resourceStream stays null: this try block's only assignment
-                // to it is its last statement, so any exception precedes it.
-                log.debug("Unable to get resource", ex);
-            }
-            if (resourceStream == null) {
-                // still not found? then we don't have it, 404.
-                response.sendError(HttpServletResponse.SC_NOT_FOUND);
-                return;
-            }
+        if (found == null) {
+            found = ServableResource.uploaded(weblogger, weblog, path);
         }
-
-        // Respond with 304 Not Modified if it is not modified.
-        if (ModDateHeaderUtil.respondIfNotModified(request, response,
-                resourceLastMod)) {
+        if (found == null) {
+            // still not found? then we don't have it, 404.
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
             return;
-        } else {
-            // set last-modified date
-            ModDateHeaderUtil.setLastModifiedHeader(response, resourceLastMod);
         }
-
-        // set the content type based on whatever is in our web.xml mime defs
-        response.setContentType(this.context.getMimeType(resourceRequest
-                .getResourcePath()));
-
-        RenderingServletUtils.streamResource(resourceStream, response,
-                resourceRequest.getResourcePath());
+        found.serve(request, response, context, path);
     }
 
 }
