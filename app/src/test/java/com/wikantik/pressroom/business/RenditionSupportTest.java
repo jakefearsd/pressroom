@@ -237,6 +237,39 @@ class RenditionSupportTest {
         assertEquals(480, decoded480.getWidth());
     }
 
+    /**
+     * With cwebp reported available, each rung also gets a WebP sibling when
+     * the encoder really runs, and none when it declines (no binary on this
+     * machine); either way the raster ladder is complete and the two temp
+     * files each attempt makes are removed.
+     */
+    @Test
+    void aWebpSiblingFollowsTheEncodersAnswerAndNoTempFileIsLeft() throws Exception {
+        boolean cwebpRuns = CwebpEncoder.run(List.of("cwebp", "-version"), 5);
+        CwebpEncoder.setAvailableForTesting(true);
+        FakeFileContentManager cmgr = new FakeFileContentManager();
+        MediaFile mediaFile = imageMediaFile("image/jpeg");
+        java.nio.file.Path tmp = java.nio.file.Path.of(System.getProperty("java.io.tmpdir"));
+        java.util.Set<String> before = renditionTemps(tmp);
+
+        RenditionSupport.generate(cmgr, mediaFile, noisyImage(1000, 600));
+
+        assertTrue(cmgr.saved.containsKey(mediaFile.getId() + "_480"));
+        assertTrue(cmgr.saved.containsKey(mediaFile.getId() + "_960"));
+        assertEquals(cwebpRuns, cmgr.saved.containsKey(mediaFile.getId() + "_480.webp"),
+                "a webp sibling exactly when cwebp really ran: " + cmgr.saved.keySet());
+        assertEquals(cwebpRuns, cmgr.saved.containsKey(mediaFile.getId() + "_960.webp"));
+        assertEquals(before, renditionTemps(tmp), "the temp input and output are deleted");
+    }
+
+    private static java.util.Set<String> renditionTemps(java.nio.file.Path dir) throws java.io.IOException {
+        try (var files = java.nio.file.Files.list(dir)) {
+            return files.map(f -> f.getFileName().toString())
+                    .filter(n -> n.startsWith("pressroom-rendition-"))
+                    .collect(java.util.stream.Collectors.toSet());
+        }
+    }
+
     @Test
     void generatePreservesThePngFormatFamily() throws Exception {
         CwebpEncoder.setAvailableForTesting(false);
