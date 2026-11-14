@@ -272,46 +272,45 @@ public class ThemeManagerImpl implements ThemeManager {
 
 			// update template attributes except leave existing custom stylesheets as-is
 			if (!themeTemplate.equals(stylesheetTemplate) || !skipStylesheet) {
-				template.setAction(themeTemplate.getAction());
-				template.setName(themeTemplate.getName());
-				template.setDescription(themeTemplate.getDescription());
-				template.setLink(themeTemplate.getLink());
-				template.setHidden(themeTemplate.isHidden());
-				template.setNavbar(themeTemplate.isNavbar());
-                template.setOutputContentType(themeTemplate.getOutputContentType());
-				template.setLastModified(new Date());
-
-				// save it
-				wmgr.saveTemplate(template);
-
-                // create weblog template code objects and save them
-                for (RenditionType type : RenditionType.values()) {
-
-                    // See if we already have some code for this template already (eg previous theme)
-                    CustomTemplateRendition weblogTemplateCode = template.getTemplateRendition(type);
-
-                    // Get the template for the new theme
-                    TemplateRendition templateCode = themeTemplate.getTemplateRendition(type);
-                    if (templateCode != null) {
-
-                        // Check for existing template
-                        if (weblogTemplateCode == null) {
-                            // Does not exist so create a new one
-                            weblogTemplateCode = new CustomTemplateRendition(template, type);
-                        }
-                        weblogTemplateCode.setType(type);
-                        weblogTemplateCode.setTemplate(templateCode.getTemplate());
-                        weblogTemplateCode.setTemplateLanguage(templateCode
-                                .getTemplateLanguage());
-                        pressroom.getWeblogManager()
-                                .saveTemplateRendition(weblogTemplateCode);
-                    }
-
-                }
-            }
+				copyTemplate(wmgr, themeTemplate, template);
+			}
 		}
 
 		return importedActionTemplates;
+	}
+
+	/** Copies one theme template's attributes and renditions onto the weblog's template, and saves both. */
+	private void copyTemplate(WeblogManager wmgr, ThemeTemplate themeTemplate, WeblogTemplate template)
+			throws WebloggerException {
+		template.setAction(themeTemplate.getAction());
+		template.setName(themeTemplate.getName());
+		template.setDescription(themeTemplate.getDescription());
+		template.setLink(themeTemplate.getLink());
+		template.setHidden(themeTemplate.isHidden());
+		template.setNavbar(themeTemplate.isNavbar());
+		template.setOutputContentType(themeTemplate.getOutputContentType());
+		template.setLastModified(new Date());
+
+		// save it
+		wmgr.saveTemplate(template);
+
+		// create weblog template code objects and save them
+		for (RenditionType type : RenditionType.values()) {
+			// Get the template for the new theme
+			TemplateRendition templateCode = themeTemplate.getTemplateRendition(type);
+			if (templateCode == null) {
+				continue;
+			}
+			// Reuse the code this template already has (eg previous theme), else create it
+			CustomTemplateRendition weblogTemplateCode = template.getTemplateRendition(type);
+			if (weblogTemplateCode == null) {
+				weblogTemplateCode = new CustomTemplateRendition(template, type);
+			}
+			weblogTemplateCode.setType(type);
+			weblogTemplateCode.setTemplate(templateCode.getTemplate());
+			weblogTemplateCode.setTemplateLanguage(templateCode.getTemplateLanguage());
+			pressroom.getWeblogManager().saveTemplateRendition(weblogTemplateCode);
+		}
 	}
 
 	/**

@@ -301,15 +301,7 @@ public class GlobalConfigController extends BaseController {
             }
 
         } else if ("integer".equals(type)) {
-            try {
-                int parsed = Integer.parseInt(incomingProp);
-                if (DiscoverySettings.rangeError(propName, parsed).isPresent()) {
-                    addRangeError(model, propertyDef, DiscoverySettings.min(propName),
-                            DiscoverySettings.max(propName), request);
-                }
-            } catch (NumberFormatException nfe) {
-                addUnparsedError(model, "ConfigForm.invalidIntegerProperty", propertyDef, incomingProp, request);
-            }
+            checkInteger(propName, propertyDef, incomingProp, model, request);
             accepted.put(propName, incomingProp);
 
         } else if ("float".equals(type)) {
@@ -322,6 +314,22 @@ public class GlobalConfigController extends BaseController {
 
         } else {
             accepted.put(propName, incomingProp.trim());
+        }
+    }
+
+    /** An integer property must parse, and a discovery setting must lie in its range. */
+    private void checkInteger(String propName, PropertyDef propertyDef, String incomingProp, Model model,
+            HttpServletRequest request) {
+        int parsed;
+        try {
+            parsed = Integer.parseInt(incomingProp);
+        } catch (NumberFormatException nfe) {
+            addUnparsedError(model, "ConfigForm.invalidIntegerProperty", propertyDef, incomingProp, request);
+            return;
+        }
+        if (DiscoverySettings.rangeError(propName, parsed).isPresent()) {
+            addRangeError(model, propertyDef, DiscoverySettings.min(propName),
+                    DiscoverySettings.max(propName), request);
         }
     }
 
