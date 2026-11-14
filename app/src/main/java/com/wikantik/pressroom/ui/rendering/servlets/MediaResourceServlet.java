@@ -208,10 +208,16 @@ public class MediaResourceServlet extends HttpServlet {
     private record Served(String contentType, InputStream stream) {
     }
 
-    /** The file's thumbnail, or null (the original is served) when it cannot be read. */
+    /**
+     * The file's thumbnail, or null (the original is served) when it has none
+     * or it cannot be read. A file with no stored thumbnail is the normal
+     * case for every non-image upload and every image ImageIO cannot decode:
+     * {@code getThumbnailInputStream()} answers null without throwing.
+     */
     private static Served thumbnail(MediaFile mediaFile) {
         try {
-            return new Served("image/png", mediaFile.getThumbnailInputStream());
+            InputStream thumbnail = mediaFile.getThumbnailInputStream();
+            return thumbnail == null ? null : new Served("image/png", thumbnail);
         } catch (Exception e) {
             if (log.isDebugEnabled()) {
                 log.debug("ERROR loading thumbnail for {}", mediaFile.getId(), e);

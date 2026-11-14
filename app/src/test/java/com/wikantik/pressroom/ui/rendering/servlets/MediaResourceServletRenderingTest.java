@@ -83,6 +83,38 @@ class MediaResourceServletRenderingTest {
                 "thumbnail must be smaller than the original");
     }
 
+    /**
+     * A file with no stored thumbnail (every non-image upload, every image
+     * ImageIO cannot decode) asked for with ?t=true is served as itself, as
+     * the lightbox, the image chooser and the SEO preview expect. Review C1:
+     * the doGet split (8e00e52f7) made this a 500.
+     */
+    @Test
+    void aThumbnailRequestForAFileWithoutOneServesTheOriginal() throws Exception {
+        byte[] pdf = "%PDF-1.4 not really a pdf".getBytes(StandardCharsets.US_ASCII);
+        MediaFile document = TestUtils.setupImageMediaFile(weblog, "guide.jpg");
+        com.wikantik.pressroom.business.MediaFileManager mfMgr = TestUtils.weblogger().getMediaFileManager();
+        MediaFile plain = new MediaFile();
+        plain.setName("guide.pdf");
+        plain.setDirectory(document.getDirectory());
+        plain.setWeblog(TestUtils.getManagedWebsite(weblog));
+        plain.setContentType("application/pdf");
+        plain.setInputStream(new ByteArrayInputStream(pdf));
+        mfMgr.createMediaFile(TestUtils.getManagedWebsite(weblog), plain,
+                new com.wikantik.pressroom.util.PressroomMessages());
+        TestUtils.endSession(true);
+
+        MockHttpServletRequest thumb = RenderingTestSupport.anonymousGet(
+                "/pressroom-ui/rendering/media-resources", "/mediablog/" + plain.getId());
+        thumb.setParameter("t", "true");
+        MockHttpServletResponse response = RenderingTestSupport.execute(
+                RenderingTestSupport.mediaResourceServlet(), thumb);
+
+        assertEquals(200, response.getStatus());
+        assertEquals("application/pdf", response.getContentType());
+        assertArrayEquals(pdf, response.getContentAsByteArray());
+    }
+
     @Test
     void unknownMediaFileIsNotFound() throws Exception {
         MockHttpServletRequest request = RenderingTestSupport.anonymousGet(
